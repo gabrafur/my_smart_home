@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "minor_version": 9,
+  "key": "core.area_registry",
+  "data": {
+    "areas": [
+      {
+        "aliases": [],
+        "floor_id": "andar_superior",
+        "humidity_entity_id": null,
+        "icon": "mdi:sofa",
+        "id": "living_room",
+        "labels": [],
+        "name": "Hall Superior",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-02-28T23:00:47.434184+00:00",
+        "modified_at": "2026-04-22T13:58:37.918301+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "andar_superior",
+        "humidity_entity_id": null,
+        "icon": "mdi:bed",
+        "id": "bedroom",
+        "labels": [],
+        "name": "Quarto Principal",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-02-28T23:00:47.434303+00:00",
+        "modified_at": "2026-04-22T13:57:59.519215+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "garagem",
+        "humidity_entity_id": null,
+        "icon": "mdi:flower",
+        "id": "jardim",
+        "labels": [],
+        "name": "Jardim",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-04-12T17:09:05.252232+00:00",
+        "modified_at": "2026-04-12T17:09:05.252237+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "garagem",
+        "humidity_entity_id": null,
+        "icon": "mdi:desktop-classic",
+        "id": "escritorio",
+        "labels": [],
+        "name": "Escritório",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-04-12T17:09:44.792221+00:00",
+        "modified_at": "2026-04-12T17:09:44.792226+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "garagem",
+        "humidity_entity_id": null,
+        "icon": "mdi:car",
+        "id": "garagem",
+        "labels": [],
+        "name": "Garagem",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-04-12T22:01:49.679405+00:00",
+        "modified_at": "2026-04-12T22:01:49.679410+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "terreo",
+        "humidity_entity_id": null,
+        "icon": "mdi:television-classic",
+        "id": "sala_de_tv",
+        "labels": [],
+        "name": "Sala de TV",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-04-13T23:57:51.988762+00:00",
+        "modified_at": "2026-04-13T23:57:51.988768+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "terreo",
+        "humidity_entity_id": null,
+        "icon": "mdi:flower-outline",
+        "id": "varanda",
+        "labels": [],
+        "name": "Varanda",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-04-19T19:51:14.997379+00:00",
+        "modified_at": "2026-04-19T19:51:14.997385+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "terreo",
+        "humidity_entity_id": null,
+        "icon": "mdi:table-furniture",
+        "id": "sala_de_estar",
+        "labels": [],
+        "name": "Sala de Estar",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-04-19T19:54:03.422626+00:00",
+        "modified_at": "2026-04-19T19:54:03.422631+00:00"
+      },
+      {
+        "aliases": [],
+        "floor_id": "terreo",
+        "humidity_entity_id": null,
+        "icon": "mdi:faucet-variant",
+        "id": "cozinha",
+        "labels": [],
+        "name": "Cozinha",
+        "picture": null,
+        "temperature_entity_id": null,
+        "created_at": "2026-04-22T13:54:45.277676+00:00",
+        "modified_at": "2026-04-22T13:54:45.277680+00:00"
+      }
+    ]
+  }
+}

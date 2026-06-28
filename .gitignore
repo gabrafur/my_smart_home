@@ -1,0 +1,62 @@
+# Runtime databases, locks, logs, and backups
+*.db
+*.db-*
+*.log
+*.log.*
+*.tar
+*.zip
+*.bak
+*.backup
+*.pid
+*.lock
+*.tmp
+
+# Local/editor/generated metadata
+.agents/
+.codex/
+.DS_Store
+__pycache__/
+*.py[cod]
+*.gz
+
+# Home Assistant secrets and volatile state
+homeassistant/secrets.yaml
+homeassistant/.ha_run.lock
+homeassistant/home-assistant_v2.db*
+homeassistant/home-assistant.log*
+homeassistant/backups/
+homeassistant/.cloud/
+homeassistant/custom_components/hacs/hacs_frontend/
+homeassistant/.storage/*
+!homeassistant/.storage/core.area_registry
+!homeassistant/.storage/core.device_registry
+!homeassistant/.storage/core.entity_registry
+!homeassistant/.storage/core.floor_registry
+!homeassistant/.storage/lovelace.map
+!homeassistant/.storage/lovelace_dashboards
+!homeassistant/.storage/homeassistant.exposed_entities
+!homeassistant/.storage/person
+
+# Node-RED runtime secrets and dependencies
+nodered/node_modules/
+nodered/.npm/
+nodered/flows_cred.json
+nodered/.flows_cred.json*
+nodered/.config.users.json*
+nodered/.config.runtime.json*
+nodered/backups/
+
+# Mosquitto runtime and credentials
+mosquitto/data/
+mosquitto/log/
+mosquitto/config/password.txt
+
+# Zigbee2MQTT contains MQTT password and Zigbee network key
+zigbee2mqtt/configuration.yaml
+zigbee2mqtt/coordinator_backup.json
+zigbee2mqtt/database.db
+zigbee2mqtt/state.json
+zigbee2mqtt/log/
+
+# Portainer contains app database, keys, certs, and Docker state
+portainer/

@@ -1,0 +1,769 @@
+[
+    {
+        "id": "29d64664bf8cbde8",
+        "type": "tab",
+        "label": "garagem",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "ce258dec9814b96b",
+        "type": "tab",
+        "label": "iluminacao_externa",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "2fd40fd570e6f37a",
+        "type": "tab",
+        "label": "iluminacao_seguranca",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "4126427d5e161a03",
+        "type": "server",
+        "name": "Home Assistant",
+        "version": 6,
+        "addon": false,
+        "rejectUnauthorizedCerts": false,
+        "ha_boolean": [
+            "y",
+            "yes",
+            "true",
+            "on",
+            "home",
+            "open"
+        ],
+        "connectionDelay": true,
+        "cacheJson": true,
+        "heartbeat": false,
+        "heartbeatInterval": 30,
+        "areaSelector": "friendlyName",
+        "deviceSelector": "friendlyName",
+        "entitySelector": "friendlyName",
+        "statusSeparator": ": ",
+        "statusYear": "hidden",
+        "statusMonth": "short",
+        "statusDay": "numeric",
+        "statusHourCycle": "default",
+        "statusTimeFormat": "h:m",
+        "enableGlobalContextStore": false
+    },
+    {
+        "id": "721c47f31046b8bc",
+        "type": "mqtt-broker",
+        "name": "Zigbee2MQTT",
+        "broker": "mosquitto",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "45296e246a57590d",
+        "type": "mqtt in",
+        "z": "29d64664bf8cbde8",
+        "name": "botao_portao_garagem",
+        "topic": "zigbee2mqtt/botao_portao_garagem",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 260,
+        "y": 180,
+        "wires": [
+            [
+                "d544e3fb332e4562"
+            ]
+        ]
+    },
+    {
+        "id": "d544e3fb332e4562",
+        "type": "switch",
+        "z": "29d64664bf8cbde8",
+        "name": "action single",
+        "property": "payload.action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "single",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 470,
+        "y": 180,
+        "wires": [
+            [
+                "10d528954a2d5cae"
+            ]
+        ]
+    },
+    {
+        "id": "10d528954a2d5cae",
+        "type": "api-call-service",
+        "z": "29d64664bf8cbde8",
+        "name": "acionar_portao",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "scene.turn_on",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "scene.acionar_portao"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "scene",
+        "service": "turn_on",
+        "x": 660,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "70e147e6b7df9826",
+        "type": "DuloNodeHub",
+        "z": "ce258dec9814b96b",
+        "name": "",
+        "installation": "standalone",
+        "x": 180,
+        "y": 100,
+        "wires": [
+            [
+                "2dd5071569184cb4"
+            ]
+        ]
+    },
+    {
+        "id": "2dd5071569184cb4",
+        "type": "DuloNodeDevice",
+        "z": "ce258dec9814b96b",
+        "name": "Iluminação Externa",
+        "deviceType": "light",
+        "x": 370,
+        "y": 100,
+        "wires": [
+            [
+                "1002cd64ca2b5824"
+            ]
+        ]
+    },
+    {
+        "id": "1002cd64ca2b5824",
+        "type": "switch",
+        "z": "ce258dec9814b96b",
+        "name": "Comando manual ON/OFF",
+        "property": "payload.components.PowerController.powerState",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "OFF",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 600,
+        "y": 100,
+        "wires": [
+            [
+                "d940e2132bca7ecc"
+            ],
+            [
+                "c7fe1a52ffe5091d"
+            ]
+        ]
+    },
+    {
+        "id": "24743bc9f254d1c1",
+        "type": "server-state-changed",
+        "z": "ce258dec9814b96b",
+        "name": "Pôr do sol",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 2,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sun.sun"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "below_horizon",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [],
+        "x": 660,
+        "y": 220,
+        "wires": [
+            [
+                "943c87e6b17f0d68"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "d940e2132bca7ecc",
+        "type": "change",
+        "z": "ce258dec9814b96b",
+        "name": "Definir ON manual",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"state\":\"ON\"}",
+                "tot": "json"
+            },
+            {
+                "t": "set",
+                "p": "source",
+                "pt": "msg",
+                "to": "manual",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "A iluminação externa foi ligada",
+                "tot": "str"
+            }
+        ],
+        "x": 840,
+        "y": 80,
+        "wires": [
+            [
+                "88e6fc3e56fa347c",
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "c7fe1a52ffe5091d",
+        "type": "change",
+        "z": "ce258dec9814b96b",
+        "name": "Definir OFF manual",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"state\":\"OFF\"}",
+                "tot": "json"
+            },
+            {
+                "t": "set",
+                "p": "source",
+                "pt": "msg",
+                "to": "manual",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "A iluminação externa foi desligada",
+                "tot": "str"
+            }
+        ],
+        "x": 840,
+        "y": 120,
+        "wires": [
+            [
+                "88e6fc3e56fa347c",
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "943c87e6b17f0d68",
+        "type": "change",
+        "z": "ce258dec9814b96b",
+        "name": "Definir ON pôr do sol",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"state\":\"ON\"}",
+                "tot": "json"
+            },
+            {
+                "t": "set",
+                "p": "source",
+                "pt": "msg",
+                "to": "sunset",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "Pôr do sol. A iluminação externa foi ligada",
+                "tot": "str"
+            }
+        ],
+        "x": 860,
+        "y": 220,
+        "wires": [
+            [
+                "88e6fc3e56fa347c",
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "88e6fc3e56fa347c",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Distribuir para tópicos Zigbee2MQTT",
+        "func": "const topics = [\n    'zigbee2mqtt/lampada_varanda/set',\n    'zigbee2mqtt/lampadas_garagem/set',\n    'zigbee2mqtt/refletores_jardim/set'\n];\n\nreturn topics.map(topic => ({\n    ...msg,\n    topic\n}));",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1190,
+        "y": 100,
+        "wires": [
+            [
+                "205cde805aa5e22c"
+            ],
+            [
+                "c6d4a518b02043a0"
+            ],
+            [
+                "864f90600b6a19ec"
+            ]
+        ]
+    },
+    {
+        "id": "9d81b75a18d482f1",
+        "type": "api-call-service",
+        "z": "ce258dec9814b96b",
+        "name": "Avisar Alexa",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.alexa_media_echo_dot_de_gabriel",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"message\": msg.notify_text}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "alexa_media_echo_dot_de_gabriel",
+        "x": 1110,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "205cde805aa5e22c",
+        "type": "mqtt out",
+        "z": "ce258dec9814b96b",
+        "name": "lampada_varanda",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1460,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "c6d4a518b02043a0",
+        "type": "mqtt out",
+        "z": "ce258dec9814b96b",
+        "name": "lampadas_garagem",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1470,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "864f90600b6a19ec",
+        "type": "mqtt out",
+        "z": "ce258dec9814b96b",
+        "name": "refletores_jardim",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1460,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "sec_comment_arrival_light",
+        "type": "comment",
+        "z": "2fd40fd570e6f37a",
+        "name": "Liga refletor_portao_carros no escuro quando alguem esta chegando",
+        "info": "Calcula distancia ate Casa Vitoria usando lat/lon dos device_trackers. Arma Gabriel, Valeria e Creta individualmente quando ficam a mais de 100 m ou not_home; liga quando qualquer um deles volta para perto de casa apos o por do sol. Desliga ao travar o Creta ou por timeout.",
+        "x": 560,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "sec_arrival_state_changed",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "name": "Chegada apos por do sol",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "device_tracker.iphone_de_gabriel_furlan",
+                "device_tracker.iphone_de_valeria",
+                "device_tracker.creta_location",
+                "lock.creta_door_lock",
+                "sun.sun"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"arrival_check\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 220,
+        "y": 140,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_engine_off_changed",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "name": "Creta desligou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.creta_engine"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "off",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"event\":\"turn_off\",\"reason\":\"creta_engine_off\"}",
+                "valueType": "json"
+            }
+        ],
+        "x": 190,
+        "y": 240,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_creta_locked_changed",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "name": "Creta travou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "lock.creta_door_lock"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "locked",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"event\":\"turn_off\",\"reason\":\"creta_locked\"}",
+                "valueType": "json"
+            }
+        ],
+        "x": 180,
+        "y": 300,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_arrival_decision",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "name": "Controlar refletor chegada",
+        "func": "const HOME_LAT = -20.310367851039004;\nconst HOME_LON = -40.317321761139894;\nconst event = msg.payload?.event;\n\nconst ACTIVE_KEY = \"refletor_portao_carros_active_by_arrival\";\nconst ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst ARM_DISTANCE_M = 100;\nconst PHONE_ARRIVAL_DISTANCE_M = 45;\nconst CRETA_ARRIVAL_DISTANCE_M = 90;\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 +\n        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *\n        Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\n\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const valid = Number.isFinite(lat) && Number.isFinite(lon);\n\n    return {\n        entity_id: entity?.entity_id,\n        state: entity?.state,\n        latitude: lat,\n        longitude: lon,\n        gps_accuracy: Number.isFinite(gpsAccuracy) ? gpsAccuracy : null,\n        distance_m: valid ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null,\n    };\n}\n\nfunction isAway(item) {\n    return item.distance_m !== null && (item.distance_m > ARM_DISTANCE_M || item.state === \"not_home\");\n}\n\nfunction isNear(item, distance) {\n    return item.distance_m !== null && item.distance_m <= distance;\n}\n\nif (event === \"turn_off\") {\n    if (flow.get(ACTIVE_KEY)) {\n        flow.set(ACTIVE_KEY, false);\n        flow.set(ARMED_KEY, {});\n        msg.payload = { reason: msg.payload.reason ?? \"arrival_finished\" };\n        return [null, msg];\n    }\n    return [null, null];\n}\n\nif (event !== \"arrival_check\") {\n    return [null, null];\n}\n\nconst gabriel = position(msg.payload.gabriel);\nconst valeria = position(msg.payload.valeria);\nconst creta = position(msg.payload.creta);\nconst sunBelow = msg.payload.sun?.state === \"below_horizon\";\nconst lockState = msg.payload.creta_lock?.state;\nconst armedEntities = flow.get(ARMED_KEY) ?? {};\n\nmsg.payload = {\n    event,\n    sun_below_horizon: sunBelow,\n    gabriel,\n    valeria,\n    creta,\n    creta_lock: lockState,\n    arriving: [],\n};\n\nfor (const [name, item] of Object.entries({ gabriel, valeria, creta })) {\n    if (isAway(item)) {\n        armedEntities[name] = true;\n    }\n}\n\nif (armedEntities.gabriel && isNear(gabriel, PHONE_ARRIVAL_DISTANCE_M)) {\n    msg.payload.arriving.push(\"gabriel\");\n}\nif (armedEntities.valeria && isNear(valeria, PHONE_ARRIVAL_DISTANCE_M)) {\n    msg.payload.arriving.push(\"valeria\");\n}\nif (armedEntities.creta && isNear(creta, CRETA_ARRIVAL_DISTANCE_M)) {\n    msg.payload.arriving.push(\"creta\");\n}\n\nflow.set(ARMED_KEY, armedEntities);\n\nconst active = flow.get(ACTIVE_KEY) === true;\nmsg.payload.should_turn_on = sunBelow && msg.payload.arriving.length > 0;\n\nif (!active && msg.payload.should_turn_on) {\n    flow.set(ACTIVE_KEY, true);\n    msg.payload.reason = \"arriving_after_dark\";\n    return [msg, null];\n}\n\nreturn [null, null];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 180,
+        "wires": [
+            [
+                "sec_reflector_turn_on",
+                "sec_auto_off_delay"
+            ],
+            [
+                "sec_reflector_turn_off"
+            ]
+        ]
+    },
+    {
+        "id": "sec_reflector_turn_on",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "name": "Ligar refletor_portao_carros",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_on",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.refletor_portao_carros"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_on",
+        "x": 800,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sec_auto_off_delay",
+        "type": "delay",
+        "z": "2fd40fd570e6f37a",
+        "name": "Desligar apos 10 min",
+        "pauseType": "delay",
+        "timeout": "10",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 820,
+        "y": 180,
+        "wires": [
+            [
+                "sec_auto_off_event"
+            ]
+        ]
+    },
+    {
+        "id": "sec_auto_off_event",
+        "type": "change",
+        "z": "2fd40fd570e6f37a",
+        "name": "Timeout seguranca",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "{\"event\":\"turn_off\",\"reason\":\"timeout_10min\"}",
+                "tot": "json"
+            }
+        ],
+        "x": 1010,
+        "y": 260,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_reflector_turn_off",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "name": "Desligar refletor_portao_carros",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.refletor_portao_carros"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_off",
+        "x": 770,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    }
+]
