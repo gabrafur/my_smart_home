@@ -287,6 +287,20 @@
                 "pt": "msg",
                 "to": "A iluminação externa foi ligada",
                 "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "expected_state",
+                "pt": "msg",
+                "to": "on",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_success",
+                "pt": "msg",
+                "to": "A iluminação externa foi ligada",
+                "tot": "str"
             }
         ],
         "x": 840,
@@ -294,7 +308,7 @@
         "wires": [
             [
                 "88e6fc3e56fa347c",
-                "9d81b75a18d482f1"
+                "ext_wait_confirm"
             ]
         ]
     },
@@ -324,6 +338,20 @@
                 "pt": "msg",
                 "to": "A iluminação externa foi desligada",
                 "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "expected_state",
+                "pt": "msg",
+                "to": "off",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_success",
+                "pt": "msg",
+                "to": "A iluminação externa foi desligada",
+                "tot": "str"
             }
         ],
         "x": 840,
@@ -331,7 +359,7 @@
         "wires": [
             [
                 "88e6fc3e56fa347c",
-                "9d81b75a18d482f1"
+                "ext_wait_confirm"
             ]
         ]
     },
@@ -361,6 +389,20 @@
                 "pt": "msg",
                 "to": "Pôr do sol. A iluminação externa foi ligada",
                 "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "expected_state",
+                "pt": "msg",
+                "to": "on",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "notify_success",
+                "pt": "msg",
+                "to": "Pôr do sol. A iluminação externa foi ligada",
+                "tot": "str"
             }
         ],
         "x": 860,
@@ -368,7 +410,7 @@
         "wires": [
             [
                 "88e6fc3e56fa347c",
-                "9d81b75a18d482f1"
+                "ext_wait_confirm"
             ]
         ]
     },
@@ -764,6 +806,89 @@
         "y": 300,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "ext_wait_confirm",
+        "type": "delay",
+        "z": "ce258dec9814b96b",
+        "name": "Aguardar confirmação das luzes",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1140,
+        "y": 300,
+        "wires": [
+            [
+                "ext_check_states"
+            ]
+        ]
+    },
+    {
+        "id": "ext_check_states",
+        "type": "api-current-state",
+        "z": "ce258dec9814b96b",
+        "name": "Confirmar estados no Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.lampada_varanda",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"expected_state\": expected_state, \"notify_success\": notify_success, \"lampada_varanda\": $entities(\"switch.lampada_varanda\").state, \"lampadas_garagem\": $entities(\"switch.lampadas_garagem\").state, \"refletores_jardim\": $entities(\"switch.refletores_jardim\").state}",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 1410,
+        "y": 300,
+        "wires": [
+            [
+                "ext_build_alexa_message"
+            ]
+        ]
+    },
+    {
+        "id": "ext_build_alexa_message",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Montar aviso confirmado",
+        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state || 'desconhecido'}`);\n\nif (failed.length === 0) {\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a iluminação externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}.`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1670,
+        "y": 300,
+        "wires": [
+            [
+                "9d81b75a18d482f1"
+            ]
         ]
     }
 ]
