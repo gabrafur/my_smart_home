@@ -1004,6 +1004,92 @@ O script:
 
 ## 21. Source Control no VS Code/Cursor
 
+## 22. Atualizacao automatica de Docker e integracoes
+
+Script:
+
+```bash
+/mnt/data/docker/scripts/docker-auto-update.mjs
+```
+
+Modos:
+
+```bash
+# Atualizacao diaria de imagens Docker
+node /mnt/data/docker/scripts/docker-auto-update.mjs daily
+
+# Checagem de entidades update.* do Home Assistant
+node /mnt/data/docker/scripts/docker-auto-update.mjs ha-updates
+
+# Teste sem aplicar mudancas
+node /mnt/data/docker/scripts/docker-auto-update.mjs daily --dry-run
+node /mnt/data/docker/scripts/docker-auto-update.mjs ha-updates --dry-run
+```
+
+O modo `daily`:
+
+- roda `scripts/git-backup.sh` antes de mexer;
+- puxa os canais configurados (`latest`/`stable`) das imagens Docker;
+- resolve os novos digests;
+- atualiza o `docker-compose.yml` se houver digest novo;
+- valida `docker compose config --quiet`;
+- valida os fluxos do Node-RED com `npm run flows:validate`;
+- recria os containers com `docker compose up -d`;
+- roda backup Git novamente se houve mudanca;
+- limpa imagens antigas com `docker image prune -f`.
+
+O modo `ha-updates`:
+
+- usa `HA_LONG_LIVED_TOKEN` do `.env`;
+- consulta a API local do Home Assistant;
+- instala atualizacoes seguras de entidades `update.*`;
+- ignora firmware/SLZB automaticamente;
+- reinicia o Home Assistant quando alguma integracao foi atualizada.
+
+Para habilitar o modo `ha-updates`, crie um token de longa duracao no Home Assistant em:
+
+```text
+Perfil do usuario -> Tokens de acesso de longa duracao
+```
+
+Depois adicione ao `.env`:
+
+```bash
+HA_LONG_LIVED_TOKEN=COLE_O_TOKEN_AQUI
+```
+
+Cron recomendado:
+
+```cron
+# Smart home Docker auto update - created by Codex
+15 4 * * * /usr/bin/node /mnt/data/docker/scripts/docker-auto-update.mjs daily >> /mnt/data/docker/.docker-auto-update.cron.log 2>&1
+
+# Smart home Home Assistant integration update watcher - created by Codex
+*/30 * * * * /usr/bin/node /mnt/data/docker/scripts/docker-auto-update.mjs ha-updates >> /mnt/data/docker/.docker-auto-update.cron.log 2>&1
+```
+
+Ver logs:
+
+```bash
+tail -100 /mnt/data/docker/.docker-auto-update.log
+tail -100 /mnt/data/docker/.docker-auto-update.cron.log
+```
+
+Instalar manualmente:
+
+```bash
+crontab -l > /tmp/current-cron 2>/dev/null || true
+cat >> /tmp/current-cron <<'EOF'
+
+# Smart home Docker auto update - created by Codex
+15 4 * * * /usr/bin/node /mnt/data/docker/scripts/docker-auto-update.mjs daily >> /mnt/data/docker/.docker-auto-update.cron.log 2>&1
+
+# Smart home Home Assistant integration update watcher - created by Codex
+*/30 * * * * /usr/bin/node /mnt/data/docker/scripts/docker-auto-update.mjs ha-updates >> /mnt/data/docker/.docker-auto-update.cron.log 2>&1
+EOF
+crontab /tmp/current-cron
+```
+
 O projeto inclui:
 
 ```json
@@ -1032,7 +1118,7 @@ cd /mnt/data/docker
 git status --short --branch
 ```
 
-## 22. Atualizacao manual da stack
+## 23. Atualizacao manual da stack
 
 Nao foi configurado Watchtower. Atualizacao e manual.
 
@@ -1060,7 +1146,7 @@ scripts/git-backup.sh
 docker compose ps
 ```
 
-## 23. Backup seguro fora do Git
+## 24. Backup seguro fora do Git
 
 O Git nao substitui backup completo porque segredos e bancos foram ignorados.
 
@@ -1097,7 +1183,7 @@ gpg -c /mnt/data/secure-backups/smart-home-secrets-$(date +%F).tar.gz
 
 Guarde a senha fora do Raspberry Pi.
 
-## 24. Restauracao completa em outro Raspberry Pi
+## 25. Restauracao completa em outro Raspberry Pi
 
 Resumo pratico:
 
@@ -1142,7 +1228,7 @@ docker logs --tail 100 nodered
 docker logs --tail 100 zigbee2mqtt
 ```
 
-### 24.1. Prompt de IA para restauracao guiada
+### 25.1. Prompt de IA para restauracao guiada
 
 Use este prompt em uma IA com acesso ao terminal do novo host. Cole junto deste documento e, se possivel, informe o IP novo do Raspberry Pi e onde esta o backup seguro dos segredos.
 
@@ -1200,7 +1286,7 @@ Tarefas:
    - pendencias ou alertas restantes.
 ```
 
-## 25. Comandos de diagnostico rapido
+## 26. Comandos de diagnostico rapido
 
 ### Docker
 
@@ -1277,7 +1363,7 @@ Backup saudavel deve mostrar:
 - `git status --short` vazio depois de um backup com push;
 - `crontab -l` contendo `/mnt/data/docker/scripts/git-backup.sh`.
 
-## 26. Troubleshooting
+## 27. Troubleshooting
 
 ### Container nao sobe
 
@@ -1395,7 +1481,7 @@ Adicione o padrao ao `.gitignore`, depois rode:
 scripts/git-backup.sh
 ```
 
-## 27. Checklist final
+## 28. Checklist final
 
 Depois de restaurar tudo:
 
