@@ -10,6 +10,8 @@
 *.pid
 *.lock
 *.tmp
+.git-backup.log
+.git-backup.lock
 
 # Local/editor/generated metadata
 .agents/
