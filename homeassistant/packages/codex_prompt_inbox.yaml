@@ -1,0 +1,69 @@
+input_text:
+  codex_prompt:
+    name: Prompt para Codex
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:robot
+  codex_prompt_status:
+    name: Status do ultimo prompt Codex
+    min: 0
+    max: 255
+    mode: text
+    icon: mdi:clipboard-check
+
+input_select:
+  codex_prompt_priority:
+    name: Prioridade do prompt Codex
+    options:
+      - normal
+      - baixa
+      - alta
+    initial: normal
+    icon: mdi:flag
+
+input_boolean:
+  codex_prompt_ready:
+    name: Prompt Codex pronto para execucao
+    icon: mdi:checkbox-marked-circle-outline
+
+script:
+  codex_enviar_prompt:
+    alias: Codex - enviar prompt
+    mode: single
+    sequence:
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.codex_prompt_ready
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.codex_prompt_status
+        data:
+          value: "Prompt marcado como pronto para o Codex"
+      - service: persistent_notification.create
+        data:
+          title: "Prompt Codex pronto"
+          message: >
+            Prioridade: {{ states('input_select.codex_prompt_priority') }}
+
+            {{ states('input_text.codex_prompt') }}
+
+            Chame o Codex para revisar e executar este pedido.
+
+  codex_limpar_prompt:
+    alias: Codex - limpar prompt
+    mode: single
+    sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.codex_prompt_ready
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.codex_prompt
+        data:
+          value: ""
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.codex_prompt_status
+        data:
+          value: "Prompt limpo"

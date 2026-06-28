@@ -1,0 +1,34 @@
+title: Codex
+views:
+  - title: Inbox
+    path: inbox
+    icon: mdi:robot
+    cards:
+      - type: entities
+        title: Criar prompt para Codex
+        show_header_toggle: false
+        entities:
+          - entity: input_select.codex_prompt_priority
+          - entity: input_text.codex_prompt
+          - entity: input_boolean.codex_prompt_ready
+          - entity: input_text.codex_prompt_status
+          - type: button
+            name: Marcar para Codex
+            icon: mdi:send
+            tap_action:
+              action: call-service
+              service: script.codex_enviar_prompt
+          - type: button
+            name: Limpar prompt
+            icon: mdi:trash-can-outline
+            tap_action:
+              action: call-service
+              service: script.codex_limpar_prompt
+      - type: markdown
+        content: >
+          A integracao OpenAI do Home Assistant pode ser usada para conversa e
+          assistente da casa, mas execucao de mudancas no Docker/Node-RED/Home
+          Assistant deve continuar passando pelo Codex no host, com revisao.
+
+          Quando o prompt estiver marcado como pronto, chame o Codex e peça para
+          ler `input_text.codex_prompt`.

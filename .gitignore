@@ -31,6 +31,7 @@ homeassistant/.ha_run.lock
 homeassistant/home-assistant_v2.db*
 homeassistant/home-assistant.log*
 homeassistant/backups/
+homeassistant/codex_prompts/
 homeassistant/.cloud/
 homeassistant/custom_components/hacs/hacs_frontend/
 homeassistant/.storage/*
