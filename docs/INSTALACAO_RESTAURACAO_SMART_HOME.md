@@ -1142,6 +1142,64 @@ docker logs --tail 100 nodered
 docker logs --tail 100 zigbee2mqtt
 ```
 
+### 24.1. Prompt de IA para restauracao guiada
+
+Use este prompt em uma IA com acesso ao terminal do novo host. Cole junto deste documento e, se possivel, informe o IP novo do Raspberry Pi e onde esta o backup seguro dos segredos.
+
+```text
+Voce e um agente de restauracao da minha casa inteligente. Trabalhe no Linux local com cuidado, sem apagar dados existentes sem confirmar comigo.
+
+Objetivo: restaurar completamente minha stack de casa inteligente a partir do repositorio git@github.com:gabrafur/my_smart_home.git usando Docker Compose.
+
+Contexto fixo:
+- Diretorio alvo: /mnt/data/docker
+- Usuario operacional: gabriel
+- Timezone: America/Sao_Paulo
+- Stack: Home Assistant, Node-RED, Mosquitto, Zigbee2MQTT, AppDaemon e Portainer
+- Coordenador Zigbee de rede: tcp://192.168.0.197:7638
+- O repositorio versiona configuracoes e scripts, mas nao versiona segredos/runtime.
+
+Tarefas:
+1. Verificar Linux, usuario, Docker, Docker Compose, git, curl, jq, sqlite3, ripgrep, mosquitto-clients e cron.
+2. Criar /mnt/data se necessario e clonar ou atualizar /mnt/data/docker a partir do GitHub.
+3. Ler docs/INSTALACAO_RESTAURACAO_SMART_HOME.md antes de alterar arquivos.
+4. Conferir .gitignore e garantir que segredos nao serao enviados ao Git.
+5. Restaurar de backup seguro, se disponivel:
+   - .env
+   - .local-secrets/
+   - homeassistant/secrets.yaml
+   - homeassistant/.storage/auth
+   - homeassistant/.storage/auth_provider.homeassistant
+   - homeassistant/.storage/http.auth
+   - nodered/flows_cred.json
+   - nodered/.config.runtime.json
+   - nodered/.config.users.json
+   - mosquitto/config/password.txt
+   - zigbee2mqtt/configuration.yaml
+   - zigbee2mqtt/coordinator_backup.json
+   - zigbee2mqtt/database.db
+   - portainer/
+6. Se .env ou .local-secrets nao existirem, executar node scripts/setup-node-red-security.mjs.
+7. Se for necessario trocar ou recriar senha MQTT, executar node scripts/rotate-mqtt-password.mjs e reiniciar mosquitto, zigbee2mqtt, nodered e homeassistant.
+8. Validar:
+   - docker compose config --quiet
+   - npm run flows:validate em /mnt/data/docker/nodered
+   - docker compose up -d
+   - docker compose ps
+   - logs de homeassistant, nodered, zigbee2mqtt e mosquitto
+9. Testar MQTT com a senha em .local-secrets/mqtt-gabriel-password.txt:
+   - mosquitto_sub em zigbee2mqtt/bridge/state deve retornar online.
+10. Confirmar que Node-RED pede login e que /settings sem autenticacao retorna 401.
+11. Confirmar que o backup Git automatico existe no crontab e que scripts/git-backup.sh roda sem erro.
+12. No final, relatar:
+   - containers ativos
+   - URLs locais
+   - usuario do Node-RED
+   - caminho local da senha do Node-RED, sem imprimir a senha
+   - estado do backup Git
+   - pendencias ou alertas restantes.
+```
+
 ## 25. Comandos de diagnostico rapido
 
 ### Docker
@@ -1168,6 +1226,15 @@ npm run flows:validate
 npm run flows:summary
 docker logs --tail 200 nodered
 ```
+
+Login do editor:
+
+```bash
+cat /mnt/data/docker/.env | grep '^NODE_RED_ADMIN_USER='
+cat /mnt/data/docker/.local-secrets/node-red-admin-password.txt
+```
+
+No ambiente atual, o usuario configurado e `gabriel`. A senha fica apenas no arquivo local acima e nao entra no Git.
 
 ### MQTT
 
@@ -1200,7 +1267,15 @@ cd /mnt/data/docker
 git status --short --branch
 scripts/git-backup.sh
 tail -50 .git-backup.log
+crontab -l
 ```
+
+Backup saudavel deve mostrar:
+
+- `scripts/git-backup.sh` terminando sem erro;
+- `.git-backup.log` com `backup finished: pushed ...` ou `backup finished: no changes`;
+- `git status --short` vazio depois de um backup com push;
+- `crontab -l` contendo `/mnt/data/docker/scripts/git-backup.sh`.
 
 ## 26. Troubleshooting
 
