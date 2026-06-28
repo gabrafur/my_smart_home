@@ -1,0 +1,6 @@
+{
+  "git.enabled": true,
+  "git.path": "/usr/bin/git",
+  "git.autoRepositoryDetection": true,
+  "git.openRepositoryInParentFolders": "always"
+}
