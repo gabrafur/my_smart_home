@@ -704,6 +704,48 @@ docker logs --tail 200 homeassistant
 
 Algumas integracoes dependem de arquivos `.storage` ignorados no Git. Se elas nao voltarem logadas, reautentique pela UI do Home Assistant.
 
+### 13.1. Inbox Codex na interface
+
+Foi criado um painel lateral chamado `Codex`.
+
+URL local:
+
+```text
+http://192.168.0.205:8123/codex-inbox/inbox
+```
+
+Entidades criadas por package:
+
+- `input_text.codex_prompt`
+- `input_select.codex_prompt_priority`
+- `input_boolean.codex_prompt_ready`
+- `input_text.codex_prompt_status`
+- `script.codex_enviar_prompt`
+- `script.codex_limpar_prompt`
+
+Arquivos:
+
+```bash
+homeassistant/packages/codex_prompt_inbox.yaml
+homeassistant/dashboards/codex.yaml
+```
+
+Uso:
+
+1. Abra o painel `Codex`.
+2. Escreva um prompt curto em `Prompt para Codex`.
+3. Escolha a prioridade.
+4. Clique em `Marcar para Codex`.
+5. Depois chame o Codex e peça para ler `input_text.codex_prompt`.
+
+Limite atual: `input_text` do Home Assistant aceita ate 255 caracteres. Para pedidos maiores, escreva um resumo no painel e coloque detalhes no chat do Codex.
+
+Sobre a integracao OpenAI:
+
+- A integracao OpenAI Conversation do Home Assistant e util para conversa, assistente e controle de entidades permitidas.
+- Ela nao executa alteracoes no Docker, Node-RED ou arquivos do host como o Codex.
+- Mudancas estruturais continuam passando pelo Codex no host, com validacao, backup Git e revisao.
+
 ## 14. Zigbee2MQTT
 
 Acesse:
