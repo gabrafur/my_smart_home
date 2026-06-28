@@ -81,8 +81,7 @@
         "willPayload": "",
         "willMsg": {},
         "userProps": "",
-        "sessionExpiry": "",
-        "credentials": {}
+        "sessionExpiry": ""
     },
     {
         "id": "45296e246a57590d",
@@ -97,8 +96,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 260,
-        "y": 180,
+        "x": 310,
+        "y": 120,
         "wires": [
             [
                 "d544e3fb332e4562"
@@ -122,8 +121,8 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 470,
-        "y": 180,
+        "x": 520,
+        "y": 120,
         "wires": [
             [
                 "10d528954a2d5cae"
@@ -134,16 +133,16 @@
         "id": "10d528954a2d5cae",
         "type": "api-call-service",
         "z": "29d64664bf8cbde8",
-        "name": "acionar_portao",
+        "name": "acionar_portao_garagem",
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "scene.turn_on",
+        "action": "script.portao_garagem_acionar",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
         "entityId": [
-            "scene.acionar_portao"
+            "script.portao_garagem_acionar"
         ],
         "labelId": [],
         "data": "",
@@ -153,10 +152,104 @@
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "scene",
-        "service": "turn_on",
-        "x": 660,
-        "y": 180,
+        "domain": "script",
+        "service": "portao_garagem_acionar",
+        "x": 830,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gar_portao_error_catch",
+        "type": "catch",
+        "z": "29d64664bf8cbde8",
+        "name": "erro ao acionar portao",
+        "scope": [
+            "10d528954a2d5cae"
+        ],
+        "uncaught": false,
+        "x": 430,
+        "y": 240,
+        "wires": [
+            [
+                "gar_portao_retry_decision"
+            ]
+        ]
+    },
+    {
+        "id": "gar_portao_retry_decision",
+        "type": "function",
+        "z": "29d64664bf8cbde8",
+        "name": "tentar novamente ate 2x",
+        "func": "const maxRetries = 2;\nmsg.portao_retry_count = Number(msg.portao_retry_count || 0) + 1;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nif (msg.portao_retry_count <= maxRetries) {\n    node.warn(`Erro ao acionar portao; tentativa extra ${msg.portao_retry_count}/${maxRetries}: ${errorMessage}`);\n    return [msg, null];\n}\n\nmsg.error_message = `Falha ao acionar o portao apos ${maxRetries + 1} tentativas. Ultimo erro: ${errorMessage}`;\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 240,
+        "wires": [
+            [
+                "gar_portao_retry_delay"
+            ],
+            [
+                "gar_portao_error_notify"
+            ]
+        ]
+    },
+    {
+        "id": "gar_portao_retry_delay",
+        "type": "delay",
+        "z": "29d64664bf8cbde8",
+        "name": "aguardar antes de tentar novamente",
+        "pauseType": "delay",
+        "timeout": "3",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 930,
+        "y": 220,
+        "wires": [
+            [
+                "10d528954a2d5cae"
+            ]
+        ]
+    },
+    {
+        "id": "gar_portao_error_notify",
+        "type": "api-call-service",
+        "z": "29d64664bf8cbde8",
+        "name": "notificar erro portao",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":\"Erro ao acionar portao da garagem\",\"message\": error_message ? error_message : \"Falha desconhecida no fluxo garagem\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 930,
+        "y": 280,
         "wires": [
             []
         ]
@@ -525,6 +618,89 @@
         "wires": []
     },
     {
+        "id": "ext_wait_confirm",
+        "type": "delay",
+        "z": "ce258dec9814b96b",
+        "name": "Aguardar confirmação das luzes",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1140,
+        "y": 300,
+        "wires": [
+            [
+                "ext_check_states"
+            ]
+        ]
+    },
+    {
+        "id": "ext_check_states",
+        "type": "api-current-state",
+        "z": "ce258dec9814b96b",
+        "name": "Confirmar estados no Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.lampada_varanda",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"expected_state\": expected_state, \"notify_success\": notify_success, \"lampada_varanda\": $entities(\"switch.lampada_varanda\").state, \"lampadas_garagem\": $entities(\"switch.lampadas_garagem\").state, \"refletores_jardim\": $entities(\"switch.refletores_jardim\").state}",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 1410,
+        "y": 300,
+        "wires": [
+            [
+                "ext_build_alexa_message"
+            ]
+        ]
+    },
+    {
+        "id": "ext_build_alexa_message",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Montar aviso confirmado",
+        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state || 'desconhecido'}`);\n\nif (failed.length === 0) {\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a iluminação externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}.`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1670,
+        "y": 300,
+        "wires": [
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
         "id": "sec_comment_arrival_light",
         "type": "comment",
         "z": "2fd40fd570e6f37a",
@@ -807,89 +983,6 @@
         "y": 300,
         "wires": [
             []
-        ]
-    },
-    {
-        "id": "ext_wait_confirm",
-        "type": "delay",
-        "z": "ce258dec9814b96b",
-        "name": "Aguardar confirmação das luzes",
-        "pauseType": "delay",
-        "timeout": "5",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 1140,
-        "y": 300,
-        "wires": [
-            [
-                "ext_check_states"
-            ]
-        ]
-    },
-    {
-        "id": "ext_check_states",
-        "type": "api-current-state",
-        "z": "ce258dec9814b96b",
-        "name": "Confirmar estados no Home Assistant",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "outputs": 1,
-        "halt_if": "",
-        "halt_if_type": "str",
-        "halt_if_compare": "is",
-        "entity_id": "switch.lampada_varanda",
-        "state_type": "str",
-        "blockInputOverrides": false,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "{\"expected_state\": expected_state, \"notify_success\": notify_success, \"lampada_varanda\": $entities(\"switch.lampada_varanda\").state, \"lampadas_garagem\": $entities(\"switch.lampadas_garagem\").state, \"refletores_jardim\": $entities(\"switch.refletores_jardim\").state}",
-                "valueType": "jsonata"
-            }
-        ],
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "override_topic": false,
-        "state_location": "payload",
-        "override_payload": "msg",
-        "entity_location": "data",
-        "override_data": "msg",
-        "x": 1410,
-        "y": 300,
-        "wires": [
-            [
-                "ext_build_alexa_message"
-            ]
-        ]
-    },
-    {
-        "id": "ext_build_alexa_message",
-        "type": "function",
-        "z": "ce258dec9814b96b",
-        "name": "Montar aviso confirmado",
-        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state || 'desconhecido'}`);\n\nif (failed.length === 0) {\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a iluminação externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}.`;\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1670,
-        "y": 300,
-        "wires": [
-            [
-                "9d81b75a18d482f1"
-            ]
         ]
     }
 ]
