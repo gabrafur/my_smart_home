@@ -1,0 +1,871 @@
+{
+  "title": "Hyundai / Kia Connect",
+  "config": {
+    "step": {
+      "credentials_password": {
+        "title": "Hyundai / Kia Connect - Credentials",
+        "description": "Enter your account credentials.",
+        "data": {
+          "username": "Username",
+          "password": "Password",
+          "pin": "Pin"
+        }
+      },
+      "credentials_token": {
+        "title": "Hyundai / Kia Connect - Credentials",
+        "description": "Enter your account credentials. Europe requires special token work — refer to the README.",
+        "data": {
+          "username": "Username",
+          "password": "Token",
+          "pin": "Pin"
+        }
+      },
+      "user": {
+        "title": "Hyundai / Kia Connect - Region and Brand",
+        "description": "Set up your Hyundai (Bluelink) / Kia (Uvo) Connect to integrate with Home Assistant.",
+        "data": {
+          "region": "Region",
+          "brand": "Brand"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Hyundai / Kia Connect - Reauthentication",
+        "description": "Your account is unable to authenticate. Click Submit to re-setup."
+      },
+      "select_otp_method": {
+        "title": "Select OTP Method",
+        "description": "Your account requires verification. Choose how you want to receive your one‑time password.",
+        "data": {
+          "method": "OTP delivery method"
+        }
+      },
+      "enter_otp": {
+        "title": "Enter One‑Time Password",
+        "description": "Enter the verification code sent to your selected method.",
+        "data": {
+          "otp": "One‑time password"
+        }
+      },
+      "reconfigure": {
+        "title": "Hyundai / Kia Connect - Reconfigure",
+        "data": {
+          "reconfigure_choice": "What would you like to do?"
+        }
+      },
+      "reconfigure_pin": {
+        "title": "Hyundai / Kia Connect - Set PIN",
+        "description": "Enter the PIN required to authorize remote commands (lock, unlock, climate) in the Kia/Hyundai Connect app.",
+        "data": {
+          "pin": "PIN"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Device is already configured",
+      "reauth_successful": "Successfully reauthenticated",
+      "reconfigure_successful": "Reconfiguration was successful"
+    },
+    "error": {
+      "invalid_auth": "Login failed into Hyundai (Bluelink) / Kia (Uvo) Connect servers. Please use the official app to logout and log back in, then try again.",
+      "invalid_credentials": "Invalid username or token/password",
+      "unknown": "Unexpected error"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hyundai / Kia Connect - Configuration",
+        "data": {
+          "scan_interval": "Scan Interval (min)",
+          "force_refresh": "Force Refresh Interval (min), use caution setting this too low as it consumes 12v battery",
+          "no_force_refresh_hour_start": "No Force Refresh Start Hour",
+          "no_force_refresh_hour_finish": "No Force Refresh Finish Hour",
+          "enable_geolocation_entity": "Enable Geolocation Entity using OpenStreetMap",
+          "use_email_with_geocode_api": "Use your Kia email address for Geocode API. Increases polling ability but provides it to the API."
+        }
+      }
+    }
+  },
+  "services": {
+    "force_update": {
+      "name": "Force Update",
+      "description": "Force your vehicle to update its data. All vehicles on the same account as the vehicle selected will be updated.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "update": {
+      "name": "Update",
+      "description": "Update vehicle data from service cache",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_climate": {
+      "name": "Start Climate",
+      "description": "Please use cautiously - Starts climate and engine. Not all options are available on all cars or regions. Use your car's mobile app as a guide and match the options available in your car.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "How long to run the climate system. Maximum duration may be limited by Model/Year/Region."
+        },
+        "climate": {
+          "name": "Climate",
+          "description": "Enable the HVAC System"
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Set temperature of climate control. Unit is specific to region."
+        },
+        "defrost": {
+          "name": "Defrost",
+          "description": "Front Windshield Defrost"
+        },
+        "heating": {
+          "name": "Heating",
+          "description": "Heated features like front/rear windows and side mirrors. Europe uses separate steering wheel setting."
+        },
+        "steering_wheel": {
+          "name": "Steering Wheel Heat",
+          "description": "Heating level for the steering wheel. Europe only, other regions use a heating setting."
+        },
+        "flseat": {
+          "name": "Front Left Seat",
+          "description": "Front Left Seat Heat Cool Setting"
+        },
+        "frseat": {
+          "name": "Front Right Seat",
+          "description": "Front Right Seat Heat Cool Setting"
+        },
+        "rlseat": {
+          "name": "Rear Left Seat",
+          "description": "Rear Left Seat Heat Cool Setting"
+        },
+        "rrseat": {
+          "name": "Rear Right Seat",
+          "description": "Rear Right Seat Heat Cool Setting"
+        }
+      }
+    },
+    "stop_climate": {
+      "name": "Stop Climate",
+      "description": "Please use cautiously - stop car and climate",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "stop_charge": {
+      "name": "Stop Charge",
+      "description": "Stop charging",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_charge": {
+      "name": "Start charge",
+      "description": "Start charging",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "lock": {
+      "name": "Lock",
+      "description": "Lock the vehicle",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "unlock": {
+      "name": "Unlock",
+      "description": "Unlock the vehicle",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "close_charge_port": {
+      "name": "Close Charge Port",
+      "description": "Close Charging Port",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "open_charge_port": {
+      "name": "Open Charging Port",
+      "description": "Open Charge Port",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "set_charge_limits": {
+      "name": "Set Charge Limits",
+      "description": "sets ac and dc charge capacity limits",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "dc_limit": {
+          "name": "DC Charge limit",
+          "description": "max charge capacity using DC charger"
+        },
+        "ac_limit": {
+          "name": "AC Charge limit",
+          "description": "max charge capacity using AC charger"
+        }
+      }
+    },
+    "set_charging_current": {
+      "name": "Set AC charging current",
+      "description": "Sets the AC charging current capacity",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "level": {
+          "name": "Charging current",
+          "description": "Charging current capacity percentage"
+        }
+      }
+    },
+    "schedule_charging_and_climate": {
+      "name": "Schedule charging and climate",
+      "description": "Please use cautiously - Schedule charging and climate. Not all options are available on all cars or regions. Use your car's mobile app as a guide and match the options available in your car.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "charging_enabled": {
+          "name": "Scheduled charging",
+          "description": "Enable scheduled Charging"
+        },
+        "first_departure_enabled": {
+          "name": "1st departure",
+          "description": "Enable first departure"
+        },
+        "first_departure_days": {
+          "name": "1st departure days",
+          "description": "Days which first departure applies to. Cannot be empty."
+        },
+        "first_departure_time": {
+          "name": "1st departure time",
+          "description": "First departure time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "second_departure_enabled": {
+          "name": "2nd departure",
+          "description": "Enable second departure"
+        },
+        "second_departure_days": {
+          "name": "2nd departure days",
+          "description": "Days which second departure applies to. Cannot be empty."
+        },
+        "second_departure_time": {
+          "name": "2nd departure time",
+          "description": "Second departure time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "off_peak_start_time": {
+          "name": "Off-peak start time",
+          "description": "Off-peak start time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "off_peak_end_time": {
+          "name": "Off-peak end time",
+          "description": "Off-peak end time. Use 00, 10, 20, 30, 40 or 50 for minute, and 00 for second"
+        },
+        "off_peak_charge_only_enabled": {
+          "name": "Off-peak tariffs only",
+          "description": "If true, charge only during the defined off-peak time, otherwise, charging may start before the off-peak time"
+        },
+        "climate_enabled": {
+          "name": "Climate",
+          "description": "Enable the HVAC System prior to departure"
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Set temperature of climate control. Unit is specific to region."
+        },
+        "temperature_unit": {
+          "name": "Temperature Unit",
+          "description": "Set temperature unit of climate control. Unit is specific to region."
+        },
+        "defrost": {
+          "name": "Defrost",
+          "description": "Front Windshield Defrost prior to departure"
+        }
+      }
+    },
+    "start_hazard_lights": {
+      "name": "Turn on the hazard lights",
+      "description": "Turn on the hazard lights for 30 seconds.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_hazard_lights_and_horn": {
+      "name": "Turn on the hazard lights and horn",
+      "description": "Turn on the hazard lights and horn for 30 seconds.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "start_valet_mode": {
+      "name": "Start valet mode",
+      "description": "Activate valet mode. If remote valet mode is activated while driving, the vehicle display screen is deactivated.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "stop_valet_mode": {
+      "name": "Stop valet mode",
+      "description": "Deactivate valet mode.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        }
+      }
+    },
+    "set_windows": {
+      "name": "Set Windows",
+      "description": "Control the windows of the vehicle. Open or close windows as needed.",
+      "fields": {
+        "device_id": {
+          "name": "Vehicle",
+          "description": "Target vehicle"
+        },
+        "flwindow": {
+          "name": "Front Left Window",
+          "description": "Action for the front left window"
+        },
+        "frwindow": {
+          "name": "Front Right Window",
+          "description": "Action for the front right window"
+        },
+        "rlwindow": {
+          "name": "Rear Left Window",
+          "description": "Action for the rear left window"
+        },
+        "rrwindow": {
+          "name": "Rear Right Window",
+          "description": "Action for the rear right window"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "air_temperature": {
+        "name": "Set Temperature"
+      },
+      "car_battery_percentage": {
+        "name": "Car Battery Level"
+      },
+      "daily_driving_stats": {
+        "name": "Daily Driving Stats"
+      },
+      "data": {
+        "name": "Data"
+      },
+      "dtc_count": {
+        "name": "DTC Count"
+      },
+      "ev_battery_capacity": {
+        "name": "EV Battery Capacity"
+      },
+      "ev_battery_pack_voltage": {
+        "name": "EV Battery Pack Voltage"
+      },
+      "ev_battery_percentage": {
+        "name": "EV Battery Level"
+      },
+      "ev_battery_remain": {
+        "name": "EV Battery Remaining Energy"
+      },
+      "ev_battery_soh_percentage": {
+        "name": "EV State of Health Battery"
+      },
+      "ev_battery_temperature_max": {
+        "name": "EV Battery Temperature Max"
+      },
+      "ev_battery_temperature_min": {
+        "name": "EV Battery Temperature Min"
+      },
+      "ev_battery_water_temperature": {
+        "name": "EV Battery Water Temperature"
+      },
+      "ev_charging_current": {
+        "name": "EV Charging Current Limit"
+      },
+      "ev_charging_power": {
+        "name": "EV Charging Power"
+      },
+      "ev_driving_range": {
+        "name": "EV Range"
+      },
+      "ev_estimated_current_charge_duration": {
+        "name": "Estimated Charge Duration"
+      },
+      "ev_estimated_fast_charge_duration": {
+        "name": "Estimated Fast Charge Duration"
+      },
+      "ev_estimated_portable_charge_duration": {
+        "name": "Estimated Portable Charge Duration"
+      },
+      "ev_estimated_station_charge_duration": {
+        "name": "Estimated Station Charge Duration"
+      },
+      "ev_first_departure_time": {
+        "name": "First departure time"
+      },
+      "ev_off_peak_end_time": {
+        "name": "EV Off Peak End Time"
+      },
+      "ev_off_peak_start_time": {
+        "name": "EV Off Peak Start Time"
+      },
+      "ev_second_departure_time": {
+        "name": "Second departure time"
+      },
+      "ev_target_range_charge_ac": {
+        "name": "Target Range of Charge AC"
+      },
+      "ev_target_range_charge_dc": {
+        "name": "Target Range of Charge DC"
+      },
+      "front_left_seat_status": {
+        "name": "Front Left Seat"
+      },
+      "front_right_seat_status": {
+        "name": "Front Right Seat"
+      },
+      "fuel_driving_range": {
+        "name": "Fuel Driving Range"
+      },
+      "fuel_level": {
+        "name": "Fuel Level"
+      },
+      "geocode_name": {
+        "name": "Geocoded Location"
+      },
+      "last_service_distance": {
+        "name": "Last Service"
+      },
+      "last_updated_at": {
+        "name": "Last Updated At"
+      },
+      "last_scanned_at": {
+        "name": "Last Scanned At"
+      },
+      "next_service_distance": {
+        "name": "Next Service"
+      },
+      "odometer": {
+        "name": "Odometer"
+      },
+      "outside_temperature": {
+        "name": "Outside temperature"
+      },
+      "power_consumption_30d": {
+        "name": "Average Energy Consumption"
+      },
+      "rear_left_seat_status": {
+        "name": "Rear Left Seat"
+      },
+      "rear_right_seat_status": {
+        "name": "Rear Right Seat"
+      },
+      "todays_daily_driving_stats": {
+        "name": "Today's Daily Driving Stats"
+      },
+      "total_driving_range": {
+        "name": "Total Driving Range"
+      },
+      "total_power_consumed": {
+        "name": "90 Day Energy Consumption"
+      },
+      "total_power_regenerated": {
+        "name": "Total Energy Regeneration"
+      },
+      "vehicle_identification_number": {
+        "name": "Vehicle Identification Number"
+      },
+      "ev_first_departure_climate_temperature": {
+        "name": "First departure climate temperature"
+      },
+      "ev_first_departure_days": {
+        "name": "First departure days"
+      },
+      "ev_second_departure_climate_temperature": {
+        "name": "Second departure climate temperature"
+      },
+      "ev_second_departure_days": {
+        "name": "Second departure days"
+      },
+      "ev_power_consumption_air_conditioning": {
+        "name": "EV Power Consumption Air Conditioning"
+      },
+      "ev_power_consumption_battery_cooling": {
+        "name": "EV Power Consumption Battery Cooling"
+      },
+      "ev_power_consumption_battery_heater": {
+        "name": "EV Power Consumption Battery Heater"
+      },
+      "location_last_updated_at": {
+        "name": "Location Last Updated"
+      },
+      "ev_v2l_max_power": {
+        "name": "V2L max power"
+      },
+      "ev_v2l_target_soc": {
+        "name": "V2L target SoC"
+      }
+    },
+    "binary_sensor": {
+      "accessory_on": {
+        "name": "Accessory"
+      },
+      "air_control_is_on": {
+        "name": "Air Conditioner"
+      },
+      "back_left_door_is_locked": {
+        "name": "Back Left Door Lock"
+      },
+      "back_left_door_is_open": {
+        "name": "Back Left Door"
+      },
+      "back_left_window_is_open": {
+        "name": "Back Left Window"
+      },
+      "back_right_door_is_locked": {
+        "name": "Back Right Door Lock"
+      },
+      "back_right_door_is_open": {
+        "name": "Back Right Door"
+      },
+      "back_right_window_is_open": {
+        "name": "Back Right Window"
+      },
+      "back_window_heater_is_on": {
+        "name": "Back Window Heater"
+      },
+      "brake_fluid_warning_is_on": {
+        "name": "Brake Fluid Warning"
+      },
+      "defrost_is_on": {
+        "name": "Defrost"
+      },
+      "engine_is_running": {
+        "name": "Engine"
+      },
+      "ev_battery_heating_state": {
+        "name": "EV battery heating"
+      },
+      "ev_battery_is_charging": {
+        "name": "EV Battery Charge"
+      },
+      "ev_battery_is_plugged_in": {
+        "name": "EV Battery Plug"
+      },
+      "ev_battery_precondition_enabled": {
+        "name": "EV battery precondition"
+      },
+      "ev_battery_winter_mode": {
+        "name": "EV Battery Winter Mode"
+      },
+      "ev_charge_port_door_is_open": {
+        "name": "EV Charge Port"
+      },
+      "ev_first_departure_enabled": {
+        "name": "EV Scheduled Departure 1"
+      },
+      "ev_second_departure_enabled": {
+        "name": "EV Scheduled Departure 2"
+      },
+      "front_left_door_is_locked": {
+        "name": "Front Left Door Lock"
+      },
+      "front_left_door_is_open": {
+        "name": "Front Left Door"
+      },
+      "front_left_seat_heater_on": {
+        "name": "Front Left Seat Heater"
+      },
+      "front_left_window_is_open": {
+        "name": "Front Left Window"
+      },
+      "front_right_door_is_locked": {
+        "name": "Front Right Door Lock"
+      },
+      "front_right_door_is_open": {
+        "name": "Front Right Door"
+      },
+      "front_right_seat_heater_on": {
+        "name": "Front Right Seat Heater"
+      },
+      "front_right_window_is_open": {
+        "name": "Front Right Window"
+      },
+      "fuel_level_is_low": {
+        "name": "Fuel Low Level"
+      },
+      "headlamp_left_low": {
+        "name": "Front Left Lamp Fault"
+      },
+      "headlamp_right_low": {
+        "name": "Front Right Lamp Fault"
+      },
+      "headlamp_left_high": {
+        "name": "Headlamp Left High Fault"
+      },
+      "headlamp_right_high": {
+        "name": "Headlamp Right High Fault"
+      },
+      "headlamp_left_bifunc": {
+        "name": "Headlamp Left Bifunctional Fault"
+      },
+      "headlamp_right_bifunc": {
+        "name": "Headlamp Right Bifunctional Fault"
+      },
+      "headlamp_status": {
+        "name": "Headlamp Status"
+      },
+      "hood_is_open": {
+        "name": "Hood"
+      },
+      "ign3": {
+        "name": "IGN3"
+      },
+      "is_locked": {
+        "name": "Locked"
+      },
+      "rear_left_seat_heater_on": {
+        "name": "Rear Left Seat Heater"
+      },
+      "rear_right_seat_heater_on": {
+        "name": "Rear Right Seat Heater"
+      },
+      "remote_ignition": {
+        "name": "Remote Ignition"
+      },
+      "side_mirror_heater_is_on": {
+        "name": "Side Mirror Heater"
+      },
+      "sleep_mode_check": {
+        "name": "Sleep Mode Check"
+      },
+      "smart_key_battery_warning_is_on": {
+        "name": "Smart Key Battery Warning"
+      },
+      "steering_wheel_heater_is_on": {
+        "name": "Steering Wheel Heater"
+      },
+      "stop_lamp_left": {
+        "name": "Rear Left Lamp Fault"
+      },
+      "stop_lamp_right": {
+        "name": "Rear Right Lamp Fault"
+      },
+      "sunroof_is_open": {
+        "name": "Sunroof"
+      },
+      "tire_pressure_all_warning_is_on": {
+        "name": "Tire Pressure - All"
+      },
+      "tire_pressure_front_left_warning_is_on": {
+        "name": "Tire Pressure - Front Left"
+      },
+      "tire_pressure_front_right_warning_is_on": {
+        "name": "Tire Pressure - Front Right"
+      },
+      "tire_pressure_rear_left_warning_is_on": {
+        "name": "Tire Pressure - Rear Left"
+      },
+      "tire_pressure_rear_right_warning_is_on": {
+        "name": "Tire Pressure - Rear Right"
+      },
+      "transmission_condition": {
+        "name": "Transmission Condition"
+      },
+      "trunk_is_open": {
+        "name": "Trunk"
+      },
+      "turn_signal_left_front": {
+        "name": "Turn Signal Left Front"
+      },
+      "turn_signal_left_rear": {
+        "name": "Turn Signal Left Rear"
+      },
+      "turn_signal_right_front": {
+        "name": "Turn Signal Right Front"
+      },
+      "turn_signal_right_rear": {
+        "name": "Turn Signal Right Rear"
+      },
+      "washer_fluid_warning_is_on": {
+        "name": "Washer Fluid Warning"
+      },
+      "ev_first_departure_climate_defrost": {
+        "name": "First departure defrost"
+      },
+      "ev_first_departure_climate_enabled": {
+        "name": "First departure climate"
+      },
+      "ev_second_departure_climate_defrost": {
+        "name": "Second departure defrost"
+      },
+      "ev_second_departure_climate_enabled": {
+        "name": "Second departure climate"
+      },
+      "ev_off_peak_charge_only_enabled": {
+        "name": "Off-peak charge only"
+      },
+      "ev_schedule_charge_enabled": {
+        "name": "Scheduled charging"
+      },
+      "ev_v2l_status": {
+        "name": "V2L status"
+      },
+      "ev_v2x_status": {
+        "name": "V2X status"
+      }
+    },
+    "lock": {
+      "door_lock": {
+        "name": "Door Lock"
+      }
+    },
+    "button": {
+      "force_refresh": {
+        "name": "Force Refresh"
+      },
+      "start_hazard_lights": {
+        "name": "Start Hazard Lights"
+      },
+      "start_hazard_lights_and_horn": {
+        "name": "Start Hazard Lights and Horn"
+      },
+      "open_all_windows": {
+        "name": "Open All Windows"
+      },
+      "close_all_windows": {
+        "name": "Close All Windows"
+      },
+      "vent_all_windows": {
+        "name": "Vent All Windows"
+      }
+    },
+    "cover": {
+      "front_left_window": {
+        "name": "Front Left Window"
+      },
+      "front_right_window": {
+        "name": "Front Right Window"
+      },
+      "back_left_window": {
+        "name": "Back Left Window"
+      },
+      "back_right_window": {
+        "name": "Back Right Window"
+      }
+    },
+    "switch": {
+      "ev_charging": {
+        "name": "EV Charging"
+      },
+      "climate": {
+        "name": "Climate"
+      },
+      "ev_first_departure_climate_defrost": {
+        "name": "First departure defrost"
+      },
+      "ev_first_departure_climate_enabled": {
+        "name": "First departure climate"
+      },
+      "ev_first_departure_enabled": {
+        "name": "EV Scheduled Departure 1"
+      },
+      "ev_second_departure_climate_defrost": {
+        "name": "Second departure defrost"
+      },
+      "ev_second_departure_climate_enabled": {
+        "name": "Second departure climate"
+      },
+      "ev_second_departure_enabled": {
+        "name": "EV Scheduled Departure 2"
+      },
+      "ev_off_peak_charge_only_enabled": {
+        "name": "Off-peak charge only"
+      },
+      "ev_schedule_charge_enabled": {
+        "name": "Scheduled charging"
+      },
+      "ev_charge_port_door": {
+        "name": "Charge Port"
+      },
+      "valet_mode_control": {
+        "name": "Valet Mode"
+      }
+    },
+    "climate": {
+      "climate_control": {
+        "name": "Climate Control"
+      }
+    },
+    "number": {
+      "ev_charge_limits_ac": {
+        "name": "AC Charging Limit"
+      },
+      "ev_charge_limits_dc": {
+        "name": "DC Charging Limit"
+      },
+      "ev_v2l_discharge_limit": {
+        "name": "V2L Limit"
+      }
+    },
+    "device_tracker": {
+      "location": {
+        "name": "Location"
+      }
+    }
+  }
+}

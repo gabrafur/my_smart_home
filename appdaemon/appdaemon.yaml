@@ -1,0 +1,18 @@
+appdaemon:
+  time_zone: America/Sao_Paulo
+  latitude: -20.3155
+  longitude: -40.3128
+  elevation: 0
+
+http:
+  url: http://0.0.0.0:5050
+
+admin:
+
+api:
+
+hadashboard:
+
+logs:
+  main_log:
+    level: INFO

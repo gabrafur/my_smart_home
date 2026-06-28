@@ -1,0 +1,15 @@
+{
+    "name": "node-red-project",
+    "description": "A Node-RED Project",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "flows:backup": "node tools/backup-flows.mjs",
+        "flows:validate": "node tools/validate-flows.mjs",
+        "flows:summary": "node tools/summarize-flows.mjs"
+    },
+    "dependencies": {
+        "node-red-contrib-dulonode": "~1.0.11",
+        "node-red-contrib-home-assistant-websocket": "~0.80.3"
+    }
+}

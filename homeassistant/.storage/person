@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "minor_version": 1,
+  "key": "person",
+  "data": {
+    "items": [
+      {
+        "id": "gabriel_bravim_furlan",
+        "name": "Gabriel",
+        "user_id": "4c8256f7470a4bb1a79421a76f43fdc4",
+        "device_trackers": [
+          "device_tracker.iphone_de_gabriel_furlan"
+        ],
+        "picture": null
+      },
+      {
+        "id": "valeria_fermal_soares",
+        "name": "Valéria",
+        "device_trackers": [
+          "device_tracker.iphone_de_valeria"
+        ],
+        "user_id": "729325889a76455fa4cc3005657082cc",
+        "picture": null
+      }
+    ]
+  }
+}
