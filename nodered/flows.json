@@ -81,7 +81,8 @@
         "willPayload": "",
         "willMsg": {},
         "userProps": "",
-        "sessionExpiry": ""
+        "sessionExpiry": "",
+        "credentials": {}
     },
     {
         "id": "45296e246a57590d",

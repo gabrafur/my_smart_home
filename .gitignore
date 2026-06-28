@@ -14,6 +14,10 @@
 .git-backup.lock
 
 # Local/editor/generated metadata
+.env
+.env.*
+!.env.example
+.local-secrets/
 .agents/
 .codex/
 .DS_Store
@@ -44,6 +48,7 @@ nodered/node_modules/
 nodered/.npm/
 nodered/flows_cred.json
 nodered/.flows_cred.json*
+nodered/.sessions.json
 nodered/.config.users.json*
 nodered/.config.runtime.json*
 nodered/backups/

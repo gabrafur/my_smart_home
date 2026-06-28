@@ -20,6 +20,23 @@
  *
  **/
 
+const fs = require("fs");
+const path = require("path");
+
+function readRuntimeCredentialSecret() {
+    try {
+        const runtimeConfigPath = path.join(__dirname, ".config.runtime.json");
+        const runtimeConfig = JSON.parse(fs.readFileSync(runtimeConfigPath, "utf8"));
+        return runtimeConfig._credentialSecret;
+    } catch (err) {
+        return undefined;
+    }
+}
+
+const credentialSecret = process.env.NODE_RED_CREDENTIAL_SECRET || readRuntimeCredentialSecret();
+const nodeRedAdminUser = process.env.NODE_RED_ADMIN_USER || "gabriel";
+const nodeRedAdminPasswordHash = process.env.NODE_RED_ADMIN_PASSWORD_HASH;
+
 module.exports = {
 
 /*******************************************************************************
@@ -41,7 +58,7 @@ module.exports = {
      * node-red from being able to decrypt your existing credentials and they will be
      * lost.
      */
-    //credentialSecret: "a-secret-key",
+    credentialSecret,
 
     /** By default, the flow JSON will be formatted over multiple lines making
      * it easier to compare changes when using version control.
@@ -73,14 +90,14 @@ module.exports = {
     /** To password protect the Node-RED editor and admin API, the following
      * property can be used. See https://nodered.org/docs/security.html for details.
      */
-    //adminAuth: {
-    //    type: "credentials",
-    //    users: [{
-    //        username: "admin",
-    //        password: "$2a$08$zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN.",
-    //        permissions: "*"
-    //    }]
-    //},
+    adminAuth: nodeRedAdminPasswordHash ? {
+        type: "credentials",
+        users: [{
+            username: nodeRedAdminUser,
+            password: nodeRedAdminPasswordHash,
+            permissions: "*"
+        }]
+    } : undefined,
 
     /** The following property can be used to enable HTTPS
      * This property can be either an object, containing both a (private) key
@@ -295,9 +312,9 @@ module.exports = {
     */
     diagnostics: {
         /** enable or disable diagnostics endpoint. Must be set to `false` to disable */
-        enabled: true,
+        enabled: false,
         /** enable or disable diagnostics display in the node-red editor. Must be set to `false` to disable */
-        ui: true,
+        ui: false,
     },
     /** Configure runtimeState options
      * - enabled:  When `enabled` is `true` flows runtime can be Started/Stopped
@@ -321,12 +338,12 @@ module.exports = {
          * telemetry without seeking further consent in the editor.
          * The user can override this setting via the user settings dialog within the editor
          */
-        // enabled: true,
+        enabled: false,
         /**
          * If telemetry is enabled, the editor will notify the user if a new version of Node-RED
          * is available. Set the following property to false to disable this notification.
          */
-        // updateNotification: true
+        updateNotification: false
     },
     /** Configure the logging output */
     logging: {

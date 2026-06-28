@@ -24,12 +24,14 @@ Ele foi escrito para Raspberry Pi/Debian/DietPi, mas os comandos tambem servem p
 
 | Servico | Container | Imagem | Porta/rede | Volume |
 |---|---|---|---|---|
-| Portainer | `portainer` | `portainer/portainer-ce:latest` | `9000:9000` | `./portainer:/data` |
-| Mosquitto | `mosquitto` | `eclipse-mosquitto:latest` | `1883:1883` | `./mosquitto/...` |
-| Home Assistant | `homeassistant` | `ghcr.io/home-assistant/home-assistant:stable` | `network_mode: host` | `./homeassistant:/config` |
-| AppDaemon | `appdaemon` | `acockburn/appdaemon:latest` | `network_mode: host` | `./appdaemon:/conf` |
-| Node-RED | `nodered` | `nodered/node-red:latest` | `1880:1880` | `./nodered:/data` |
-| Zigbee2MQTT | `zigbee2mqtt` | `koenkk/zigbee2mqtt:latest` | `8080:8080` | `./zigbee2mqtt:/app/data` |
+| Portainer | `portainer` | `portainer/portainer-ce@sha256:...` | `${HOST_LAN_IP}:9000` | `./portainer:/data` |
+| Mosquitto | `mosquitto` | `eclipse-mosquitto@sha256:...` | `${HOST_LAN_IP}:1883` | `./mosquitto/...` |
+| Home Assistant | `homeassistant` | `ghcr.io/home-assistant/home-assistant@sha256:...` | `network_mode: host` | `./homeassistant:/config` |
+| AppDaemon | `appdaemon` | `acockburn/appdaemon@sha256:...` | `network_mode: host` | `./appdaemon:/conf` |
+| Node-RED | `nodered` | `nodered/node-red@sha256:...` | `${HOST_LAN_IP}:1880` | `./nodered:/data` |
+| Zigbee2MQTT | `zigbee2mqtt` | `koenkk/zigbee2mqtt@sha256:...` | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` |
+
+As imagens estao fixadas por digest no `docker-compose.yml`. Isso evita mudancas silenciosas em restauracoes ou recriacoes de container.
 
 ### Acessos locais
 
@@ -40,6 +42,8 @@ Zigbee2MQTT    : http://192.168.0.205:8080
 Portainer      : http://192.168.0.205:9000
 MQTT           : 192.168.0.205:1883
 ```
+
+As portas publicadas de Portainer, Mosquitto, Node-RED e Zigbee2MQTT ficam presas ao IP definido em `.env` por `HOST_LAN_IP`. Se `.env` nao existir, o Compose cai para `127.0.0.1`, evitando exposicao acidental em todas as interfaces.
 
 ### Acessos remotos
 
@@ -82,6 +86,9 @@ O Git salva configuracoes reaproveitaveis, fluxos, scripts e manifests. Segredos
 - `mosquitto/config/mosquitto.conf`
 - `zigbee2mqtt/configuration.example.yaml`
 - `scripts/git-backup.sh`
+- `scripts/setup-node-red-security.mjs`
+- `scripts/rotate-mqtt-password.mjs`
+- `.env.example`
 - `.gitignore`
 - `.vscode/settings.json`
 
@@ -97,7 +104,10 @@ Arquivos abaixo precisam de backup seguro separado:
 - `homeassistant/.cloud/`
 - `homeassistant/backups/*.tar`
 - `homeassistant/home-assistant_v2.db*`
+- `.env`
+- `.local-secrets/`
 - `nodered/flows_cred.json`
+- `nodered/.sessions.json`
 - `nodered/.config.users.json`
 - `mosquitto/config/password.txt`
 - `mosquitto/data/mosquitto.db`
@@ -329,11 +339,47 @@ Esperado:
 origin git@github.com:gabrafur/my_smart_home.git
 ```
 
-## 8. Restaurar arquivos secretos fora do Git
+## 8. Seguranca local e restauracao de segredos
+
+Esta stack separa configuracao versionavel de segredo operacional.
+
+Controles aplicados:
+
+- `Node-RED` usa `credentialSecret` fixo via `.env`, preservando a capacidade de descriptografar `flows_cred.json` em outro Raspberry Pi.
+- O editor/admin API do `Node-RED` exige login. A senha fica em `.local-secrets/node-red-admin-password.txt`.
+- `Node-RED` desabilita `/diagnostics` e telemetria no `settings.js`.
+- `Mosquitto` usa `allow_anonymous false`.
+- A senha MQTT do usuario `gabriel` e forte, rotacionavel e guardada em `.local-secrets/mqtt-gabriel-password.txt`.
+- Portas publicadas usam `${HOST_LAN_IP}` em vez de `0.0.0.0`.
+- Imagens Docker ficam fixadas por digest.
+
+Em uma instalacao nova, depois de restaurar o repo e antes de subir os containers, crie ou restaure `.env`:
+
+```bash
+cd /mnt/data/docker
+cp .env.example .env
+```
+
+Se voce restaurou `nodered/.config.runtime.json`, rode:
+
+```bash
+node scripts/setup-node-red-security.mjs
+```
+
+Esse comando:
+
+- reaproveita o segredo de credenciais atual do Node-RED;
+- gera hash bcrypt para o login do editor;
+- grava `.env`;
+- grava a senha do admin em `.local-secrets/node-red-admin-password.txt`.
+
+Se voce nao restaurou `nodered/.config.runtime.json`, suba o Node-RED uma vez para ele criar o runtime, depois rode o comando acima e recrie o container.
+
+### 8.1. Restaurar arquivos secretos fora do Git
 
 Antes de subir os containers, restaure os arquivos sensiveis a partir de backup seguro.
 
-### 8.1. Home Assistant
+#### 8.1.1. Home Assistant
 
 Arquivos recomendados para restaurar:
 
@@ -360,18 +406,26 @@ Se voce tiver backup nativo do Home Assistant (`.tar`), mantenha em:
 /mnt/data/docker/homeassistant/backups/
 ```
 
-### 8.2. Node-RED
+#### 8.1.2. Node-RED
 
 Restaure:
 
 ```bash
 /mnt/data/docker/nodered/flows_cred.json
 /mnt/data/docker/nodered/.config.users.json
+/mnt/data/docker/.env
+/mnt/data/docker/.local-secrets/
 ```
 
-Sem `flows_cred.json`, os fluxos podem existir, mas credenciais de nodes podem precisar ser reconfiguradas.
+Sem `flows_cred.json`, os fluxos podem existir, mas credenciais de nodes podem precisar ser reconfiguradas. Sem `.env`, o Node-RED ainda tenta ler o segredo antigo de `.config.runtime.json`, mas o login do editor pode nao ficar ativo ate voce rodar:
 
-### 8.3. Mosquitto
+```bash
+cd /mnt/data/docker
+node scripts/setup-node-red-security.mjs
+docker compose up -d nodered
+```
+
+#### 8.1.3. Mosquitto
 
 Restaure:
 
@@ -382,13 +436,24 @@ Restaure:
 Se nao tiver backup, recrie:
 
 ```bash
-docker run --rm -it \
-  -v /mnt/data/docker/mosquitto/config:/mosquitto/config \
-  eclipse-mosquitto \
-  mosquitto_passwd -c /mosquitto/config/password.txt gabriel
+cd /mnt/data/docker
+node scripts/rotate-mqtt-password.mjs
 ```
 
-### 8.4. Zigbee2MQTT
+Esse script gera uma senha forte e atualiza, de forma coordenada:
+
+- `mosquitto/config/password.txt`;
+- `zigbee2mqtt/configuration.yaml`;
+- `homeassistant/.storage/core.config_entries`;
+- credenciais criptografadas do broker MQTT no `nodered/flows_cred.json`.
+
+Depois reinicie:
+
+```bash
+docker compose restart mosquitto zigbee2mqtt nodered homeassistant
+```
+
+#### 8.1.4. Zigbee2MQTT
 
 Restaure principalmente:
 
@@ -427,7 +492,15 @@ pan_id: RESTORE_FROM_SECURE_BACKUP
 ext_pan_id: RESTORE_FROM_SECURE_BACKUP
 ```
 
-### 8.5. Portainer
+Depois de criar/restaurar `configuration.yaml`, rode a rotacao MQTT se quiser gerar uma senha nova e sincronizar todos os consumidores:
+
+```bash
+cd /mnt/data/docker
+node scripts/rotate-mqtt-password.mjs
+docker compose restart mosquitto zigbee2mqtt nodered homeassistant
+```
+
+#### 8.1.5. Portainer
 
 Portainer foi ignorado no Git porque contem banco, chaves e estado. Para restaurar:
 
@@ -477,7 +550,7 @@ mqtt:
   base_topic: zigbee2mqtt
   server: mqtt://mosquitto:1883
   user: gabriel
-  password: SUA_SENHA
+  password: SENHA_FORTE_GERADA_PELO_SCRIPT
 serial:
   port: tcp://192.168.0.197:7638
   baudrate: 115200
@@ -545,12 +618,12 @@ docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 Espere algo parecido com:
 
 ```text
-zigbee2mqtt     koenkk/zigbee2mqtt:latest                  Up
-homeassistant   ghcr.io/home-assistant/home-assistant       Up
-portainer       portainer/portainer-ce:latest               Up
-nodered         nodered/node-red:latest                     Up (healthy)
-appdaemon       acockburn/appdaemon:latest                  Up
-mosquitto       eclipse-mosquitto:latest                    Up
+zigbee2mqtt     koenkk/zigbee2mqtt@sha256:...                    Up
+homeassistant   ghcr.io/home-assistant/home-assistant@sha256:...  Up
+portainer       portainer/portainer-ce@sha256:...                Up
+nodered         nodered/node-red@sha256:...                      Up (healthy)
+appdaemon       acockburn/appdaemon@sha256:...                   Up
+mosquitto       eclipse-mosquitto@sha256:...                     Up
 ```
 
 Logs iniciais:
@@ -569,13 +642,15 @@ docker logs --tail 100 portainer
 Abra um terminal escutando:
 
 ```bash
-mosquitto_sub -h 127.0.0.1 -p 1883 -u gabriel -P 'SUA_SENHA' -t 'zigbee2mqtt/#' -v
+MQTT_PASSWORD="$(tr -d '\n' < /mnt/data/docker/.local-secrets/mqtt-gabriel-password.txt)"
+mosquitto_sub -h 192.168.0.205 -p 1883 -u gabriel -P "$MQTT_PASSWORD" -t 'zigbee2mqtt/#' -v
 ```
 
 Em outro terminal publique teste:
 
 ```bash
-mosquitto_pub -h 127.0.0.1 -p 1883 -u gabriel -P 'SUA_SENHA' -t 'teste/casa' -m 'ok'
+MQTT_PASSWORD="$(tr -d '\n' < /mnt/data/docker/.local-secrets/mqtt-gabriel-password.txt)"
+mosquitto_pub -h 192.168.0.205 -p 1883 -u gabriel -P "$MQTT_PASSWORD" -t 'teste/casa' -m 'ok'
 ```
 
 Se o Mosquitto estiver correto, o subscriber recebe:
@@ -646,7 +721,8 @@ docker logs --tail 200 zigbee2mqtt
 Veja dispositivos:
 
 ```bash
-mosquitto_sub -h 127.0.0.1 -p 1883 -u gabriel -P 'SUA_SENHA' -t 'zigbee2mqtt/bridge/devices' -C 1
+MQTT_PASSWORD="$(tr -d '\n' < /mnt/data/docker/.local-secrets/mqtt-gabriel-password.txt)"
+mosquitto_sub -h 192.168.0.205 -p 1883 -u gabriel -P "$MQTT_PASSWORD" -t 'zigbee2mqtt/bridge/devices' -C 1
 ```
 
 Coordenador atual:
@@ -995,6 +1071,8 @@ mkdir -p /mnt/data/secure-backups
 tar \
   --exclude='homeassistant/home-assistant.log*' \
   -czf /mnt/data/secure-backups/smart-home-secrets-$(date +%F).tar.gz \
+  .env \
+  .local-secrets \
   homeassistant/secrets.yaml \
   homeassistant/.storage/auth \
   homeassistant/.storage/auth_provider.homeassistant \
@@ -1003,6 +1081,7 @@ tar \
   homeassistant/.cloud \
   nodered/flows_cred.json \
   nodered/.config.users.json \
+  nodered/.config.runtime.json \
   mosquitto/config/password.txt \
   zigbee2mqtt/configuration.yaml \
   zigbee2mqtt/coordinator_backup.json \
@@ -1043,7 +1122,14 @@ git clone git@github.com:gabrafur/my_smart_home.git docker
 
 # 5. Restaurar segredos de backup seguro
 cd /mnt/data/docker
-# copiar secrets.yaml, flows_cred.json, password.txt, zigbee2mqtt/configuration.yaml etc.
+# copiar .env, .local-secrets, secrets.yaml, flows_cred.json,
+# password.txt, zigbee2mqtt/configuration.yaml etc.
+
+# se .env/.local-secrets nao foram restaurados, gere novamente:
+node scripts/setup-node-red-security.mjs
+
+# opcional/recomendado se voce quiser senha MQTT nova:
+node scripts/rotate-mqtt-password.mjs
 
 # 6. Subir containers
 docker compose pull
@@ -1086,14 +1172,16 @@ docker logs --tail 200 nodered
 ### MQTT
 
 ```bash
-mosquitto_sub -h 127.0.0.1 -p 1883 -u gabriel -P 'SUA_SENHA' -t '#' -v
+MQTT_PASSWORD="$(tr -d '\n' < /mnt/data/docker/.local-secrets/mqtt-gabriel-password.txt)"
+mosquitto_sub -h 192.168.0.205 -p 1883 -u gabriel -P "$MQTT_PASSWORD" -t '#' -v
 ```
 
 ### Zigbee2MQTT
 
 ```bash
 docker logs --tail 200 zigbee2mqtt
-mosquitto_sub -h 127.0.0.1 -p 1883 -u gabriel -P 'SUA_SENHA' -t 'zigbee2mqtt/bridge/state' -C 1
+MQTT_PASSWORD="$(tr -d '\n' < /mnt/data/docker/.local-secrets/mqtt-gabriel-password.txt)"
+mosquitto_sub -h 192.168.0.205 -p 1883 -u gabriel -P "$MQTT_PASSWORD" -t 'zigbee2mqtt/bridge/state' -C 1
 ```
 
 ### Tailscale
@@ -1144,6 +1232,15 @@ ls -l /mnt/data/docker/nodered/flows_cred.json
 
 Se nao existir, restaure do backup seguro. Sem ele, edite as credenciais pela UI.
 
+Confirme tambem se `.env` existe e se o segredo do Node-RED foi gerado:
+
+```bash
+cd /mnt/data/docker
+ls -l .env .local-secrets/node-red-admin-password.txt
+node scripts/setup-node-red-security.mjs
+docker compose up -d nodered
+```
+
 ### Zigbee2MQTT nao conecta no coordenador
 
 Verifique conectividade:
@@ -1176,12 +1273,9 @@ docker logs --tail 100 mosquitto
 Recrie se necessario:
 
 ```bash
-docker run --rm -it \
-  -v /mnt/data/docker/mosquitto/config:/mosquitto/config \
-  eclipse-mosquitto \
-  mosquitto_passwd -c /mosquitto/config/password.txt gabriel
-
-docker compose restart mosquitto zigbee2mqtt
+cd /mnt/data/docker
+node scripts/rotate-mqtt-password.mjs
+docker compose restart mosquitto zigbee2mqtt nodered homeassistant
 ```
 
 ### Home Assistant pede login novo
@@ -1255,4 +1349,3 @@ Checklist visual:
 - Tailscale acessa o host remotamente.
 - Backup Git diario existe no `crontab`.
 - Segredos estao guardados fora do Git.
-
