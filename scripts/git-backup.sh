@@ -44,7 +44,7 @@ cd "$REPO_DIR"
 
   allowed_suspicious="$(
     printf '%s\n' "$suspicious_files" |
-      grep -Ev '^homeassistant/configuration\.yaml$' ||
+      grep -Ev '^(homeassistant/configuration\.yaml|scripts/rotate-mqtt-password\.mjs)$' ||
       true
   )"
 
