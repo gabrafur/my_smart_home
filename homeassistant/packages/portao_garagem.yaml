@@ -1,0 +1,20 @@
+script:
+  portao_garagem_acionar:
+    alias: Portao garagem - acionar
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ states('scene.acionar_portao') not in ['unknown', 'unavailable'] }}"
+            sequence:
+              - service: scene.turn_on
+                target:
+                  entity_id: scene.acionar_portao
+        default:
+          - service: persistent_notification.create
+            data:
+              title: "Erro ao acionar portao da garagem"
+              message: >
+                A scene RF Tuya scene.acionar_portao nao esta disponivel no
+                Home Assistant. Verifique a integracao Tuya e o dispositivo RF.
