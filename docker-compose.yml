@@ -1,7 +1,7 @@
 services:
 
   portainer:
-    image: portainer/portainer-ce@sha256:3267f1869e0fa87b843c55f7fd848f9e3001367d053505f4cb8c664e4a997996
+    image: portainer/portainer-ce@sha256:5f9b4bda5582fc72c07d730f86168205f4042d82c9cde011c9146b12496e4625
     container_name: portainer
     restart: always
     ports:
@@ -11,7 +11,7 @@ services:
       - ./portainer:/data
 
   mosquitto:
-    image: eclipse-mosquitto@sha256:9cfdd46ad59f3e3e5f592f6baf57ab23e1ad00605509d0f5c1e9b179c5314d87
+    image: eclipse-mosquitto@sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
     container_name: mosquitto
     restart: always
     ports:
@@ -22,7 +22,7 @@ services:
       - ./mosquitto/log:/mosquitto/log
 
   homeassistant:
-    image: ghcr.io/home-assistant/home-assistant@sha256:96fa92d83fa8dae987fbbbcf58b1fea1140985ff6a8517b37f7b65c76ef20133
+    image: ghcr.io/home-assistant/home-assistant@sha256:adb3341e31e03e0048e60d8c1cf952e118a381ae258bb921d3da12a3b27bf0c2
     container_name: homeassistant
     restart: always
     network_mode: host
@@ -45,7 +45,7 @@ services:
       - TZ=America/Sao_Paulo
 
   nodered:
-    image: nodered/node-red@sha256:330d65c5d9c203df1fc4db8dc7a67cf15c3b3982c85d0f7e0f1aa90dbb8b43f9
+    image: nodered/node-red@sha256:153f411d2993abd9ccd8290017ff2bb531326320b5cd3b200c1a4bb1339eb819
     container_name: nodered
     restart: always
     depends_on:
@@ -61,7 +61,7 @@ services:
       - TZ=America/Sao_Paulo
 
   zigbee2mqtt:
-    image: koenkk/zigbee2mqtt@sha256:89cf02f379aa743a68494388e3a26fba7b8c9101f8b452038cc07aeff3fc983c
+    image: koenkk/zigbee2mqtt@sha256:1debff565ab6841417bd9f7ce8ad44f8c5f25a8b02a24ce3fd79e4779a4763a5
     container_name: zigbee2mqtt
     restart: always
     depends_on:
