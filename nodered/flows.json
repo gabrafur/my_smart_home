@@ -87,7 +87,7 @@
         "id": "45296e246a57590d",
         "type": "mqtt in",
         "z": "29d64664bf8cbde8",
-        "name": "botao_portao_garagem",
+        "name": "botao_portao_garagem JSON",
         "topic": "zigbee2mqtt/botao_portao_garagem",
         "qos": "2",
         "datatype": "auto-detect",
@@ -96,36 +96,11 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 310,
+        "x": 250,
         "y": 120,
         "wires": [
             [
-                "d544e3fb332e4562"
-            ]
-        ]
-    },
-    {
-        "id": "d544e3fb332e4562",
-        "type": "switch",
-        "z": "29d64664bf8cbde8",
-        "name": "action single",
-        "property": "payload.action",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "single",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 520,
-        "y": 120,
-        "wires": [
-            [
-                "10d528954a2d5cae"
+                "gar_portao_normalizar_click"
             ]
         ]
     },
@@ -154,7 +129,7 @@
         "blockInputOverrides": true,
         "domain": "script",
         "service": "portao_garagem_acionar",
-        "x": 830,
+        "x": 950,
         "y": 120,
         "wires": [
             []
@@ -169,7 +144,7 @@
             "10d528954a2d5cae"
         ],
         "uncaught": false,
-        "x": 430,
+        "x": 400,
         "y": 240,
         "wires": [
             [
@@ -217,7 +192,7 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 930,
+        "x": 970,
         "y": 220,
         "wires": [
             [
@@ -248,10 +223,51 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 930,
+        "x": 910,
         "y": 280,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "gar_portao_action_topic_in",
+        "type": "mqtt in",
+        "z": "29d64664bf8cbde8",
+        "name": "botao_portao_garagem action",
+        "topic": "zigbee2mqtt/botao_portao_garagem/action",
+        "qos": "2",
+        "datatype": "utf8",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 260,
+        "y": 180,
+        "wires": [
+            [
+                "gar_portao_normalizar_click"
+            ]
+        ]
+    },
+    {
+        "id": "gar_portao_normalizar_click",
+        "type": "function",
+        "z": "29d64664bf8cbde8",
+        "name": "normalizar clique e evitar duplicado",
+        "func": "const now = Date.now();\nconst dedupeMs = 900;\nlet action;\n\nif (typeof msg.payload === 'string') {\n    action = msg.payload;\n} else if (msg.payload && typeof msg.payload === 'object') {\n    action = msg.payload.action;\n}\n\nif (action !== 'single') {\n    return null;\n}\n\nconst lastAccepted = Number(flow.get('portao_garagem_last_click_ms') || 0);\nif (now - lastAccepted < dedupeMs) {\n    return null;\n}\n\nflow.set('portao_garagem_last_click_ms', now);\nmsg.payload = {\n    action,\n    source_topic: msg.topic,\n    received_at: new Date(now).toISOString(),\n};\nmsg.portao_retry_count = 0;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 120,
+        "wires": [
+            [
+                "10d528954a2d5cae"
+            ]
         ]
     },
     {
@@ -557,8 +573,8 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "alexa_media_echo_dot_de_gabriel",
-        "x": 1110,
-        "y": 220,
+        "x": 2010,
+        "y": 260,
         "wires": [
             []
         ]
@@ -634,8 +650,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1140,
-        "y": 300,
+        "x": 1230,
+        "y": 260,
         "wires": [
             [
                 "ext_check_states"
@@ -672,8 +688,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1410,
-        "y": 300,
+        "x": 1530,
+        "y": 260,
         "wires": [
             [
                 "ext_build_alexa_message"
@@ -692,8 +708,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1670,
-        "y": 300,
+        "x": 1810,
+        "y": 260,
         "wires": [
             [
                 "9d81b75a18d482f1"
