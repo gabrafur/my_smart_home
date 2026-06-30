@@ -720,27 +720,161 @@
         "id": "sec_comment_arrival_light",
         "type": "comment",
         "z": "2fd40fd570e6f37a",
-        "name": "Liga refletor_portao_carros no escuro quando alguem esta chegando",
-        "info": "Calcula distancia ate Casa Vitoria usando lat/lon dos device_trackers. Arma Gabriel, Valeria e Creta individualmente quando ficam a mais de 100 m ou not_home; liga quando qualquer um deles volta para perto de casa apos o por do sol. Desliga ao travar o Creta ou por timeout.",
-        "x": 560,
+        "name": "Liga refletor_portao_carros somente quando a chegada acontece no escuro",
+        "info": "Localizacao de Gabriel e Valeria aciona a luz quando alguem armado volta para ate 50 m de casa durante a noite e com o motor do Creta ligado. O por do sol, a localizacao e a trava do Creta apenas atualizam contexto; eles nao reaproveitam chegada antiga nem ligam a luz sozinhos. Gabriel e Valeria armam ao ficar a mais de 100 m de casa. Creta desligou/travou so desliga o refletor se o Creta estiver em casa.",
+        "x": 590,
         "y": 60,
         "wires": []
     },
     {
-        "id": "sec_arrival_state_changed",
+        "id": "sec_gabriel_location_changed",
         "type": "server-state-changed",
         "z": "2fd40fd570e6f37a",
-        "name": "Chegada apos por do sol",
+        "name": "Localizacao Gabriel",
         "server": "4126427d5e161a03",
         "version": 6,
         "outputs": 1,
         "exposeAsEntityConfig": "",
         "entities": {
             "entity": [
-                "device_tracker.iphone_de_gabriel_furlan",
-                "device_tracker.iphone_de_valeria",
-                "device_tracker.creta_location",
-                "lock.creta_door_lock",
+                "device_tracker.iphone_de_gabriel_furlan"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"source\": \"gabriel\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 180,
+        "y": 120,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_valeria_location_changed",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "name": "Localizacao Valeria",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "device_tracker.iphone_de_valeria"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"source\": \"valeria\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 180,
+        "y": 180,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_creta_location_changed",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "name": "Localizacao Creta",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "device_tracker.creta_location"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"source\": \"creta\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 180,
+        "y": 240,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_sun_changed",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "name": "Por do sol / amanhecer",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
                 "sun.sun"
             ],
             "substring": [],
@@ -764,12 +898,58 @@
             {
                 "property": "payload",
                 "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"arrival_check\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "value": "(\n  {\n    \"event\": \"context_update\",\n    \"source\": \"sun\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
                 "valueType": "jsonata"
             }
         ],
-        "x": 220,
-        "y": 140,
+        "x": 190,
+        "y": 320,
+        "wires": [
+            [
+                "sec_arrival_decision"
+            ]
+        ]
+    },
+    {
+        "id": "sec_creta_lock_context_changed",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "name": "Trava porta Creta atualizou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "lock.creta_door_lock"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"context_update\",\n    \"source\": \"creta_lock\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 210,
+        "y": 380,
         "wires": [
             [
                 "sec_arrival_decision"
@@ -780,7 +960,7 @@
         "id": "sec_engine_off_changed",
         "type": "server-state-changed",
         "z": "2fd40fd570e6f37a",
-        "name": "Creta desligou",
+        "name": "Creta desligou (se em casa)",
         "server": "4126427d5e161a03",
         "version": 6,
         "outputs": 1,
@@ -798,9 +978,9 @@
         "ifStateType": "str",
         "ifStateOperator": "is",
         "outputOnlyOnStateChange": true,
-        "for": "0",
+        "for": "5",
         "forType": "num",
-        "forUnits": "minutes",
+        "forUnits": "seconds",
         "ignorePrevStateNull": false,
         "ignorePrevStateUnknown": false,
         "ignorePrevStateUnavailable": false,
@@ -810,12 +990,12 @@
             {
                 "property": "payload",
                 "propertyType": "msg",
-                "value": "{\"event\":\"turn_off\",\"reason\":\"creta_engine_off\"}",
-                "valueType": "json"
+                "value": "(\n  {\n    \"event\": \"turn_off\",\n    \"reason\": \"creta_engine_off\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
             }
         ],
-        "x": 190,
-        "y": 240,
+        "x": 210,
+        "y": 460,
         "wires": [
             [
                 "sec_arrival_decision"
@@ -826,7 +1006,7 @@
         "id": "sec_creta_locked_changed",
         "type": "server-state-changed",
         "z": "2fd40fd570e6f37a",
-        "name": "Creta travou",
+        "name": "Creta travou (se em casa)",
         "server": "4126427d5e161a03",
         "version": 6,
         "outputs": 1,
@@ -844,9 +1024,9 @@
         "ifStateType": "str",
         "ifStateOperator": "is",
         "outputOnlyOnStateChange": true,
-        "for": "0",
+        "for": "5",
         "forType": "num",
-        "forUnits": "minutes",
+        "forUnits": "seconds",
         "ignorePrevStateNull": false,
         "ignorePrevStateUnknown": false,
         "ignorePrevStateUnavailable": false,
@@ -856,12 +1036,12 @@
             {
                 "property": "payload",
                 "propertyType": "msg",
-                "value": "{\"event\":\"turn_off\",\"reason\":\"creta_locked\"}",
-                "valueType": "json"
+                "value": "(\n  {\n    \"event\": \"turn_off\",\n    \"reason\": \"creta_locked\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
             }
         ],
-        "x": 180,
-        "y": 300,
+        "x": 210,
+        "y": 520,
         "wires": [
             [
                 "sec_arrival_decision"
@@ -869,19 +1049,151 @@
         ]
     },
     {
+        "id": "sec_refresh_comment",
+        "type": "comment",
+        "z": "2fd40fd570e6f37a",
+        "name": "Atualiza localizacoes e estado do Creta a cada 10 min",
+        "info": "Forca update_entity nas entidades Kia/Hyundai e envia request_location_update para os iPhones pelo app do Home Assistant. O iOS e a API Kia ainda podem atrasar ou ignorar uma requisicao, mas o fluxo deixa de depender apenas de atualizacoes espontaneas.",
+        "x": 640,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "sec_refresh_every_10min",
+        "type": "inject",
+        "z": "2fd40fd570e6f37a",
+        "name": "A cada 10 min",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "600",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "30",
+        "topic": "refresh_security_entities",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 680,
+        "wires": [
+            [
+                "sec_refresh_creta_entities",
+                "sec_request_gabriel_location",
+                "sec_request_valeria_location"
+            ]
+        ]
+    },
+    {
+        "id": "sec_refresh_creta_entities",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "name": "Atualizar Creta",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "homeassistant.update_entity",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "device_tracker.creta_location",
+            "binary_sensor.creta_engine",
+            "lock.creta_door_lock"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "homeassistant",
+        "service": "update_entity",
+        "x": 430,
+        "y": 640,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sec_request_gabriel_location",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "name": "Atualizar iPhone Gabriel",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.iphone_de_gabriel_furlan",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"message\":\"request_location_update\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "iphone_de_gabriel_furlan",
+        "x": 460,
+        "y": 700,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "sec_request_valeria_location",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "name": "Atualizar iPhone Valeria",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.iphone_de_valeria",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"message\":\"request_location_update\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "iphone_de_valeria",
+        "x": 450,
+        "y": 760,
+        "wires": [
+            []
+        ]
+    },
+    {
         "id": "sec_arrival_decision",
         "type": "function",
         "z": "2fd40fd570e6f37a",
-        "name": "Controlar refletor chegada",
-        "func": "const HOME_LAT = -20.310367851039004;\nconst HOME_LON = -40.317321761139894;\nconst event = msg.payload?.event;\n\nconst ACTIVE_KEY = \"refletor_portao_carros_active_by_arrival\";\nconst ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst ARM_DISTANCE_M = 100;\nconst PHONE_ARRIVAL_DISTANCE_M = 45;\nconst CRETA_ARRIVAL_DISTANCE_M = 90;\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 +\n        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *\n        Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\n\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const valid = Number.isFinite(lat) && Number.isFinite(lon);\n\n    return {\n        entity_id: entity?.entity_id,\n        state: entity?.state,\n        latitude: lat,\n        longitude: lon,\n        gps_accuracy: Number.isFinite(gpsAccuracy) ? gpsAccuracy : null,\n        distance_m: valid ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null,\n    };\n}\n\nfunction isAway(item) {\n    return item.distance_m !== null && (item.distance_m > ARM_DISTANCE_M || item.state === \"not_home\");\n}\n\nfunction isNear(item, distance) {\n    return item.distance_m !== null && item.distance_m <= distance;\n}\n\nif (event === \"turn_off\") {\n    if (flow.get(ACTIVE_KEY)) {\n        flow.set(ACTIVE_KEY, false);\n        flow.set(ARMED_KEY, {});\n        msg.payload = { reason: msg.payload.reason ?? \"arrival_finished\" };\n        return [null, msg];\n    }\n    return [null, null];\n}\n\nif (event !== \"arrival_check\") {\n    return [null, null];\n}\n\nconst gabriel = position(msg.payload.gabriel);\nconst valeria = position(msg.payload.valeria);\nconst creta = position(msg.payload.creta);\nconst sunBelow = msg.payload.sun?.state === \"below_horizon\";\nconst lockState = msg.payload.creta_lock?.state;\nconst armedEntities = flow.get(ARMED_KEY) ?? {};\n\nmsg.payload = {\n    event,\n    sun_below_horizon: sunBelow,\n    gabriel,\n    valeria,\n    creta,\n    creta_lock: lockState,\n    arriving: [],\n};\n\nfor (const [name, item] of Object.entries({ gabriel, valeria, creta })) {\n    if (isAway(item)) {\n        armedEntities[name] = true;\n    }\n}\n\nif (armedEntities.gabriel && isNear(gabriel, PHONE_ARRIVAL_DISTANCE_M)) {\n    msg.payload.arriving.push(\"gabriel\");\n}\nif (armedEntities.valeria && isNear(valeria, PHONE_ARRIVAL_DISTANCE_M)) {\n    msg.payload.arriving.push(\"valeria\");\n}\nif (armedEntities.creta && isNear(creta, CRETA_ARRIVAL_DISTANCE_M)) {\n    msg.payload.arriving.push(\"creta\");\n}\n\nflow.set(ARMED_KEY, armedEntities);\n\nconst active = flow.get(ACTIVE_KEY) === true;\nmsg.payload.should_turn_on = sunBelow && msg.payload.arriving.length > 0;\n\nif (!active && msg.payload.should_turn_on) {\n    flow.set(ACTIVE_KEY, true);\n    msg.payload.reason = \"arriving_after_dark\";\n    return [msg, null];\n}\n\nreturn [null, null];",
+        "name": "Decidir chegada no escuro",
+        "func": "const HOME_LAT = -20.310367851039004;\nconst HOME_LON = -40.317321761139894;\nconst event = msg.payload?.event;\n\nconst ACTIVE_KEY = \"refletor_portao_carros_active_by_arrival\";\nconst ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst ARM_DISTANCE_M = 100;\nconst ARRIVAL_DISTANCE_M = 50;\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 +\n        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *\n        Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\n\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const valid = Number.isFinite(lat) && Number.isFinite(lon);\n\n    return {\n        entity_id: entity?.entity_id,\n        state: entity?.state,\n        latitude: valid ? lat : null,\n        longitude: valid ? lon : null,\n        gps_accuracy: Number.isFinite(gpsAccuracy) ? gpsAccuracy : null,\n        distance_m: valid ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null,\n    };\n}\n\nfunction isAway(item) {\n    return item.state === \"not_home\" || (item.distance_m !== null && item.distance_m > ARM_DISTANCE_M);\n}\n\nfunction isHome(item) {\n    return item.state === \"home\" || (item.distance_m !== null && item.distance_m <= ARRIVAL_DISTANCE_M);\n}\n\nfunction updateAwayArming(armed, people) {\n    for (const [name, item] of Object.entries(people)) {\n        if (isAway(item)) {\n            armed[name] = true;\n        }\n    }\n}\n\nfunction clearCurrentHomeArming(armed, people) {\n    for (const [name, item] of Object.entries(people)) {\n        if (isHome(item)) {\n            armed[name] = false;\n        }\n    }\n}\n\nconst gabriel = position(msg.payload?.gabriel);\nconst valeria = position(msg.payload?.valeria);\nconst creta = position(msg.payload?.creta);\nconst trackedPeople = { gabriel, valeria };\nconst sunBelow = msg.payload?.sun?.state === \"below_horizon\";\nconst engineOn = msg.payload?.creta_engine?.state === \"on\";\nconst lockState = msg.payload?.creta_lock?.state;\nconst armedEntities = flow.get(ARMED_KEY) ?? {};\nconst active = flow.get(ACTIVE_KEY) === true;\n\nmsg.payload = {\n    event,\n    source: msg.payload?.source,\n    reason: msg.payload?.reason,\n    sun_below_horizon: sunBelow,\n    gabriel,\n    valeria,\n    creta,\n    creta_home: isHome(creta),\n    creta_engine_on: engineOn,\n    creta_lock: lockState,\n    arriving: [],\n};\n\nif (event === \"turn_off\") {\n    if (!msg.payload.creta_home) {\n        msg.payload.ignored = true;\n        msg.payload.reason = `${msg.payload.reason}_ignored_creta_not_home`;\n        return [null, null];\n    }\n\n    if (active) {\n        flow.set(ACTIVE_KEY, false);\n        flow.set(ARMED_KEY, {});\n        return [null, msg];\n    }\n    return [null, null];\n}\n\nif (event === \"context_update\") {\n    updateAwayArming(armedEntities, trackedPeople);\n    clearCurrentHomeArming(armedEntities, trackedPeople);\n    flow.set(ARMED_KEY, armedEntities);\n    return [null, null];\n}\n\nif (event !== \"location_update\") {\n    return [null, null];\n}\n\nupdateAwayArming(armedEntities, trackedPeople);\n\nconst source = msg.payload.source;\nconst sourcePosition = trackedPeople[source];\nif (sourcePosition && isHome(sourcePosition)) {\n    if (armedEntities[source]) {\n        msg.payload.arriving.push(source);\n    }\n    armedEntities[source] = false;\n}\n\nflow.set(ARMED_KEY, armedEntities);\n\nmsg.payload.should_turn_on =\n    !active &&\n    sunBelow &&\n    engineOn &&\n    msg.payload.arriving.length > 0;\n\nif (msg.payload.should_turn_on) {\n    flow.set(ACTIVE_KEY, true);\n    msg.payload.reason = \"arriving_after_dark\";\n    return [msg, null];\n}\n\nreturn [null, null];",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 180,
+        "x": 530,
+        "y": 260,
         "wires": [
             [
                 "sec_reflector_turn_on",
@@ -917,8 +1229,8 @@
         "blockInputOverrides": true,
         "domain": "switch",
         "service": "turn_on",
-        "x": 800,
-        "y": 120,
+        "x": 840,
+        "y": 220,
         "wires": [
             []
         ]
@@ -940,8 +1252,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 820,
-        "y": 180,
+        "x": 840,
+        "y": 280,
         "wires": [
             [
                 "sec_auto_off_event"
@@ -958,12 +1270,12 @@
                 "t": "set",
                 "p": "payload",
                 "pt": "msg",
-                "to": "{\"event\":\"turn_off\",\"reason\":\"timeout_10min\"}",
+                "to": "{\"event\":\"turn_off\",\"reason\":\"timeout_10min\",\"creta\":{\"state\":\"home\",\"attributes\":{}}}",
                 "tot": "json"
             }
         ],
-        "x": 1010,
-        "y": 260,
+        "x": 1090,
+        "y": 340,
         "wires": [
             [
                 "sec_arrival_decision"
@@ -995,8 +1307,8 @@
         "blockInputOverrides": true,
         "domain": "switch",
         "service": "turn_off",
-        "x": 770,
-        "y": 300,
+        "x": 830,
+        "y": 360,
         "wires": [
             []
         ]
