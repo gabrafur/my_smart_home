@@ -20,10 +20,26 @@ const nodeIds = new Set([
   "sec_creta_locked_changed",
   "sec_refresh_comment",
   "sec_refresh_every_10min",
+  "sec_refresh_context_snapshot",
+  "sec_refresh_anyone_away",
+  "sec_force_refresh_creta",
   "sec_refresh_creta_entities",
   "sec_request_gabriel_location",
   "sec_request_valeria_location",
   "sec_arrival_decision",
+  "sec_prepare_arrival_context",
+  "sec_turn_off_creta_home",
+  "sec_turn_off_if_active",
+  "sec_update_arming_context",
+  "sec_update_arming_location",
+  "sec_notify_valeria_approaching",
+  "sec_detect_arriving_source",
+  "sec_detect_arriving_person",
+  "sec_route_arrival_source",
+  "sec_check_dark",
+  "sec_check_engine_on",
+  "sec_check_reflector_inactive",
+  "sec_mark_reflector_active",
   "sec_reflector_turn_on",
   "sec_auto_off_delay",
   "sec_auto_off_event",
@@ -107,18 +123,18 @@ function stateChangedNode({
     ],
     x,
     y,
-    wires: [["sec_arrival_decision"]],
+    wires: [["sec_prepare_arrival_context"]],
   };
 }
 
-const decisionFunction = `const HOME_LAT = ${HOME_LAT};
+const prepareContextFunction = `const HOME_LAT = ${HOME_LAT};
 const HOME_LON = ${HOME_LON};
 const event = msg.payload?.event;
 
 const ACTIVE_KEY = "refletor_portao_carros_active_by_arrival";
 const ARMED_KEY = "refletor_portao_carros_arrival_armed_entities";
-const ARM_DISTANCE_M = 100;
 const ARRIVAL_DISTANCE_M = 50;
+const MAX_GPS_ACCURACY_M = 100;
 
 function distanceMeters(lat1, lon1, lat2, lon2) {
     const toRad = (value) => value * Math.PI / 180;
@@ -135,24 +151,85 @@ function position(entity) {
     const lat = Number(attrs.latitude);
     const lon = Number(attrs.longitude);
     const gpsAccuracy = Number(attrs.gps_accuracy);
-    const valid = Number.isFinite(lat) && Number.isFinite(lon);
+    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);
+    const hasGpsAccuracy = Number.isFinite(gpsAccuracy);
+    const reliableCoordinates = hasCoordinates && (!hasGpsAccuracy || gpsAccuracy <= MAX_GPS_ACCURACY_M);
 
     return {
         entity_id: entity?.entity_id,
         state: entity?.state,
-        latitude: valid ? lat : null,
-        longitude: valid ? lon : null,
-        gps_accuracy: Number.isFinite(gpsAccuracy) ? gpsAccuracy : null,
-        distance_m: valid ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null,
+        latitude: hasCoordinates ? lat : null,
+        longitude: hasCoordinates ? lon : null,
+        gps_accuracy: hasGpsAccuracy ? gpsAccuracy : null,
+        location_reliable: reliableCoordinates,
+        distance_m: reliableCoordinates ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null,
     };
 }
 
+function isHome(item) {
+    if (item.distance_m !== null) {
+        return item.distance_m <= ARRIVAL_DISTANCE_M;
+    }
+    if (item.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) {
+        return false;
+    }
+    return item.state === "home";
+}
+
+const gabriel = position(msg.payload?.gabriel);
+const valeria = position(msg.payload?.valeria);
+const creta = position(msg.payload?.creta);
+const sunBelow = msg.payload?.sun?.state === "below_horizon";
+const engineOn = msg.payload?.creta_engine?.state === "on";
+const lockState = msg.payload?.creta_lock?.state;
+
+msg.payload = {
+    event,
+    source: msg.payload?.source,
+    reason: msg.payload?.reason,
+    sun_below_horizon: sunBelow,
+    gabriel,
+    valeria,
+    creta,
+    creta_home: isHome(creta),
+    creta_engine_on: engineOn,
+    creta_lock: lockState,
+    active: flow.get(ACTIVE_KEY) === true,
+    armed: flow.get(ARMED_KEY) ?? {},
+    arriving: [],
+};
+
+if (event === "turn_off") {
+    return [msg, null, null];
+}
+if (event === "context_update") {
+    return [null, msg, null];
+}
+if (event === "location_update") {
+    return [null, null, msg];
+}
+return [null, null, null];`;
+
+const updateArmingContextFunction = `const ARMED_KEY = "refletor_portao_carros_arrival_armed_entities";
+const ARM_DISTANCE_M = 100;
+const ARRIVAL_DISTANCE_M = 50;
+const MAX_GPS_ACCURACY_M = 100;
+
 function isAway(item) {
-    return item.state === "not_home" || (item.distance_m !== null && item.distance_m > ARM_DISTANCE_M);
+    if (item && item.distance_m !== null) {
+        return item.distance_m > ARM_DISTANCE_M;
+    }
+    return item?.state === "not_home";
 }
 
 function isHome(item) {
-    return item.state === "home" || (item.distance_m !== null && item.distance_m <= ARRIVAL_DISTANCE_M);
+    if (item && item.distance_m !== null) {
+        return item.distance_m <= ARRIVAL_DISTANCE_M;
+    }
+    if (item?.gps_accuracy !== null && item?.gps_accuracy > MAX_GPS_ACCURACY_M) {
+        return false;
+    }
+    return item?.state === "home";
 }
 
 function updateAwayArming(armed, people) {
@@ -171,82 +248,194 @@ function clearCurrentHomeArming(armed, people) {
     }
 }
 
-const gabriel = position(msg.payload?.gabriel);
-const valeria = position(msg.payload?.valeria);
-const creta = position(msg.payload?.creta);
-const trackedPeople = { gabriel, valeria };
-const sunBelow = msg.payload?.sun?.state === "below_horizon";
-const engineOn = msg.payload?.creta_engine?.state === "on";
-const lockState = msg.payload?.creta_lock?.state;
-const armedEntities = flow.get(ARMED_KEY) ?? {};
-const active = flow.get(ACTIVE_KEY) === true;
-
-msg.payload = {
-    event,
-    source: msg.payload?.source,
-    reason: msg.payload?.reason,
-    sun_below_horizon: sunBelow,
-    gabriel,
-    valeria,
-    creta,
-    creta_home: isHome(creta),
-    creta_engine_on: engineOn,
-    creta_lock: lockState,
-    arriving: [],
+const armedEntities = msg.payload.armed ?? {};
+const trackedPeople = {
+    gabriel: msg.payload.gabriel,
+    valeria: msg.payload.valeria,
+    creta: msg.payload.creta,
 };
 
-if (event === "turn_off") {
-    if (!msg.payload.creta_home) {
-        msg.payload.ignored = true;
-        msg.payload.reason = \`\${msg.payload.reason}_ignored_creta_not_home\`;
-        return [null, null];
-    }
-
-    if (active) {
-        flow.set(ACTIVE_KEY, false);
-        flow.set(ARMED_KEY, {});
-        return [null, msg];
-    }
-    return [null, null];
-}
-
-if (event === "context_update") {
-    updateAwayArming(armedEntities, trackedPeople);
-    clearCurrentHomeArming(armedEntities, trackedPeople);
-    flow.set(ARMED_KEY, armedEntities);
-    return [null, null];
-}
-
-if (event !== "location_update") {
-    return [null, null];
-}
-
 updateAwayArming(armedEntities, trackedPeople);
-
-const source = msg.payload.source;
-const sourcePosition = trackedPeople[source];
-if (sourcePosition && isHome(sourcePosition)) {
-    if (armedEntities[source]) {
-        msg.payload.arriving.push(source);
-    }
-    armedEntities[source] = false;
-}
-
+clearCurrentHomeArming(armedEntities, trackedPeople);
 flow.set(ARMED_KEY, armedEntities);
 
-msg.payload.should_turn_on =
-    !active &&
-    sunBelow &&
-    engineOn &&
-    msg.payload.arriving.length > 0;
+return null;`;
 
-if (msg.payload.should_turn_on) {
-    flow.set(ACTIVE_KEY, true);
-    msg.payload.reason = "arriving_after_dark";
-    return [msg, null];
+const updateArmingLocationFunction = `const ARMED_KEY = "refletor_portao_carros_arrival_armed_entities";
+const VALERIA_APPROACH_NOTIFY_KEY = "valeria_approaching_gabriel_notified";
+const ARM_DISTANCE_M = 100;
+const VALERIA_APPROACH_DISTANCE_M = 700;
+const VALERIA_APPROACH_RESET_DISTANCE_M = 1000;
+
+function isAway(item) {
+    if (item && item.distance_m !== null) {
+        return item.distance_m > ARM_DISTANCE_M;
+    }
+    return item?.state === "not_home";
 }
 
-return [null, null];`;
+const armedEntities = msg.payload.armed ?? {};
+for (const [name, item] of Object.entries({
+    gabriel: msg.payload.gabriel,
+    valeria: msg.payload.valeria,
+    creta: msg.payload.creta,
+})) {
+    if (isAway(item)) {
+        armedEntities[name] = true;
+    }
+}
+
+msg.payload.armed = armedEntities;
+flow.set(ARMED_KEY, armedEntities);
+
+const valeria = msg.payload.valeria;
+let notify = null;
+if (valeria?.distance_m !== null && valeria.distance_m > VALERIA_APPROACH_RESET_DISTANCE_M) {
+    flow.set(VALERIA_APPROACH_NOTIFY_KEY, false);
+}
+
+if (
+    msg.payload.source === "valeria" &&
+    valeria?.distance_m !== null &&
+    valeria.distance_m <= VALERIA_APPROACH_DISTANCE_M &&
+    valeria.distance_m > 50 &&
+    flow.get(VALERIA_APPROACH_NOTIFY_KEY) !== true
+) {
+    flow.set(VALERIA_APPROACH_NOTIFY_KEY, true);
+    notify = {
+        payload: {
+            valeria_distance_m: valeria.distance_m,
+        },
+    };
+}
+
+return [msg, notify];`;
+
+const detectArrivingFunction = `const ARMED_KEY = "refletor_portao_carros_arrival_armed_entities";
+const ARRIVAL_DISTANCE_M = 50;
+const MAX_GPS_ACCURACY_M = 100;
+
+function isHome(item) {
+    if (item && item.distance_m !== null) {
+        return item.distance_m <= ARRIVAL_DISTANCE_M;
+    }
+    if (item?.gps_accuracy !== null && item?.gps_accuracy > MAX_GPS_ACCURACY_M) {
+        return false;
+    }
+    return item?.state === "home";
+}
+
+const trackedPeople = {
+    gabriel: msg.payload.gabriel,
+    valeria: msg.payload.valeria,
+    creta: msg.payload.creta,
+};
+const source = msg.payload.source;
+const sourcePosition = trackedPeople[source];
+const armedEntities = msg.payload.armed ?? {};
+
+if (!sourcePosition || !isHome(sourcePosition)) {
+    flow.set(ARMED_KEY, armedEntities);
+    return null;
+}
+
+if (armedEntities[source]) {
+    msg.payload.arriving = [source];
+    msg.payload.arrival_source_type = source === "creta" ? "creta" : "person";
+}
+armedEntities[source] = false;
+msg.payload.armed = armedEntities;
+flow.set(ARMED_KEY, armedEntities);
+
+return msg.payload.arriving.length > 0 ? msg : null;`;
+
+const checkEngineOrCretaNearbyFunction = `const CRETA_APPROACH_DISTANCE_M = 700;
+
+if (msg.payload?.creta_engine_on === true) {
+    msg.payload.engine_gate = "engine_on";
+    return msg;
+}
+
+const creta = msg.payload?.creta;
+const cretaWasAway = msg.payload?.armed?.creta === true;
+const cretaDistance = creta?.distance_m;
+const cretaNearby = cretaDistance !== null && cretaDistance <= CRETA_APPROACH_DISTANCE_M;
+
+if (cretaWasAway && cretaNearby) {
+    msg.payload.engine_gate = "creta_nearby_fallback";
+    msg.payload.reason = "arriving_after_dark_creta_nearby";
+    return msg;
+}
+
+return null;`;
+
+const turnOffIfActiveFunction = `const ACTIVE_KEY = "refletor_portao_carros_active_by_arrival";
+const ARMED_KEY = "refletor_portao_carros_arrival_armed_entities";
+
+const active = msg.payload?.active ?? flow.get(ACTIVE_KEY) === true;
+
+if (!active) {
+    return null;
+}
+
+flow.set(ACTIVE_KEY, false);
+flow.set(ARMED_KEY, {});
+return msg;`;
+
+const markActiveFunction = `const ACTIVE_KEY = "refletor_portao_carros_active_by_arrival";
+flow.set(ACTIVE_KEY, true);
+msg.payload.reason = "arriving_after_dark";
+return msg;`;
+
+const refreshAnyoneAwayFunction = `const HOME_LAT = ${HOME_LAT};
+const HOME_LON = ${HOME_LON};
+const ARM_DISTANCE_M = 100;
+const MAX_GPS_ACCURACY_M = 100;
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+    const toRad = (value) => value * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function distanceFromHome(entity) {
+    const attrs = entity?.attributes ?? {};
+    const lat = Number(attrs.latitude);
+    const lon = Number(attrs.longitude);
+    const gpsAccuracy = Number(attrs.gps_accuracy);
+    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);
+    const hasGpsAccuracy = Number.isFinite(gpsAccuracy);
+    const reliableCoordinates = hasCoordinates && (!hasGpsAccuracy || gpsAccuracy <= MAX_GPS_ACCURACY_M);
+    return reliableCoordinates ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null;
+}
+
+function isAway(entity) {
+    const distance = distanceFromHome(entity);
+    if (distance !== null) {
+        return distance > ARM_DISTANCE_M;
+    }
+    return entity?.state === "not_home";
+}
+
+const awayEntities = [];
+for (const [name, entity] of Object.entries({
+    gabriel: msg.payload?.gabriel,
+    valeria: msg.payload?.valeria,
+    creta: msg.payload?.creta,
+})) {
+    if (isAway(entity)) {
+        awayEntities.push(name);
+    }
+}
+
+msg.payload.refresh_allowed = awayEntities.length > 0;
+msg.payload.refresh_away_entities = awayEntities;
+
+return [msg, awayEntities.length > 0 ? msg : null];`;
 
 const newNodes = [
   {
@@ -254,7 +443,7 @@ const newNodes = [
     type: "comment",
     z: TAB_ID,
     name: "Liga refletor_portao_carros somente quando a chegada acontece no escuro",
-    info: "Localizacao de Gabriel e Valeria aciona a luz quando alguem armado volta para ate 50 m de casa durante a noite e com o motor do Creta ligado. O por do sol, a localizacao e a trava do Creta apenas atualizam contexto; eles nao reaproveitam chegada antiga nem ligam a luz sozinhos. Gabriel e Valeria armam ao ficar a mais de 100 m de casa. Creta desligou/travou so desliga o refletor se o Creta estiver em casa.",
+    info: "Localizacao de Gabriel e Valeria aciona a luz quando alguem armado volta para ate 50 m de casa durante a noite e com o motor do Creta ligado. Como fallback, se o Creta estava fora e volta para ate 50 m de casa durante a noite, tambem liga mesmo que o sensor do motor nao tenha atualizado. A rota de pessoa tambem aceita fallback quando o Creta estava armado como fora e ja aparece a ate 700 m de casa, cobrindo atraso da integracao do carro. O por do sol e a trava do Creta apenas atualizam contexto; eles nao reaproveitam chegada antiga nem ligam a luz sozinhos. Gabriel, Valeria e Creta armam ao ficar a mais de 100 m de casa. Creta desligou/travou so desliga o refletor se o Creta estiver em casa.",
     x: 590,
     y: 60,
     wires: [],
@@ -326,9 +515,9 @@ const newNodes = [
     type: "comment",
     z: TAB_ID,
     name: "Atualiza localizacoes e estado do Creta a cada 10 min",
-    info: "Forca update_entity nas entidades Kia/Hyundai e envia request_location_update para os iPhones pelo app do Home Assistant. O iOS e a API Kia ainda podem atrasar ou ignorar uma requisicao, mas o fluxo deixa de depender apenas de atualizacoes espontaneas.",
-    x: 560,
-    y: 620,
+    info: "Reavalia o contexto a cada 10 minutos. So forca update_entity nas entidades Kia/Hyundai e envia request_location_update para os iPhones quando Gabriel, Valeria ou Creta estiverem fora de casa.",
+    x: 620,
+    y: 680,
     wires: [],
   },
   {
@@ -352,9 +541,89 @@ const newNodes = [
     topic: "refresh_security_entities",
     payload: "",
     payloadType: "date",
-    x: 170,
-    y: 680,
-    wires: [["sec_refresh_creta_entities", "sec_request_gabriel_location", "sec_request_valeria_location"]],
+    x: 180,
+    y: 760,
+    wires: [["sec_refresh_context_snapshot"]],
+  },
+  {
+    id: "sec_refresh_context_snapshot",
+    type: "api-current-state",
+    z: TAB_ID,
+    name: "Reavaliar armado atual",
+    server: SERVER_ID,
+    version: 3,
+    outputs: 1,
+    halt_if: "",
+    halt_if_type: "str",
+    halt_if_compare: "is",
+    entity_id: "sun.sun",
+    state_type: "str",
+    blockInputOverrides: false,
+    outputProperties: [
+      {
+        property: "payload",
+        propertyType: "msg",
+        value: entitiesJsonata("context_update", "refresh"),
+        valueType: "jsonata",
+      },
+    ],
+    for: "0",
+    forType: "num",
+    forUnits: "minutes",
+    override_topic: false,
+    state_location: "payload",
+    override_payload: "msg",
+    entity_location: "data",
+    override_data: "msg",
+    x: 460,
+    y: 720,
+    wires: [["sec_refresh_anyone_away"]],
+  },
+  {
+    id: "sec_refresh_anyone_away",
+    type: "function",
+    z: TAB_ID,
+    name: "Gabriel/Valeria/Creta fora?",
+    func: refreshAnyoneAwayFunction,
+    outputs: 2,
+    timeout: "",
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 760,
+    y: 720,
+    wires: [
+      ["sec_prepare_arrival_context"],
+      ["sec_force_refresh_creta", "sec_refresh_creta_entities", "sec_request_gabriel_location", "sec_request_valeria_location"],
+    ],
+  },
+  {
+    id: "sec_force_refresh_creta",
+    type: "api-call-service",
+    z: TAB_ID,
+    name: "Forcar refresh Creta",
+    server: SERVER_ID,
+    version: 7,
+    debugenabled: false,
+    action: "button.press",
+    floorId: [],
+    areaId: [],
+    deviceId: [],
+    entityId: ["button.creta_force_refresh"],
+    labelId: [],
+    data: "",
+    dataType: "jsonata",
+    mergeContext: "",
+    mustacheAltTags: false,
+    outputProperties: [],
+    queue: "none",
+    blockInputOverrides: true,
+    domain: "button",
+    service: "press",
+    x: 1080,
+    y: 780,
+    wires: [[]],
   },
   {
     id: "sec_refresh_creta_entities",
@@ -368,14 +637,18 @@ const newNodes = [
     floorId: [],
     areaId: [],
     deviceId: [],
-    entityId: [
-      "device_tracker.creta_location",
-      "binary_sensor.creta_engine",
-      "lock.creta_door_lock",
-    ],
+    entityId: [],
     labelId: [],
-    data: "",
-    dataType: "jsonata",
+    data: JSON.stringify({
+      entity_id: [
+        "device_tracker.creta_location",
+        "binary_sensor.creta_engine",
+        "lock.creta_door_lock",
+        "device_tracker.iphone_de_gabriel_furlan",
+        "device_tracker.iphone_de_valeria",
+      ],
+    }),
+    dataType: "json",
     mergeContext: "",
     mustacheAltTags: false,
     outputProperties: [],
@@ -383,8 +656,8 @@ const newNodes = [
     blockInputOverrides: true,
     domain: "homeassistant",
     service: "update_entity",
-    x: 430,
-    y: 640,
+    x: 1080,
+    y: 840,
     wires: [[]],
   },
   {
@@ -410,8 +683,8 @@ const newNodes = [
     blockInputOverrides: true,
     domain: "notify",
     service: "send_message",
-    x: 460,
-    y: 700,
+    x: 1100,
+    y: 900,
     wires: [[]],
   },
   {
@@ -437,25 +710,212 @@ const newNodes = [
     blockInputOverrides: true,
     domain: "notify",
     service: "send_message",
-    x: 450,
-    y: 760,
+    x: 1100,
+    y: 960,
     wires: [[]],
   },
   {
-    id: "sec_arrival_decision",
+    id: "sec_prepare_arrival_context",
     type: "function",
     z: TAB_ID,
-    name: "Decidir chegada no escuro",
-    func: decisionFunction,
+    name: "Preparar estados e distancias",
+    func: prepareContextFunction,
+    outputs: 3,
+    timeout: "",
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 520,
+    y: 300,
+    wires: [
+      ["sec_turn_off_creta_home"],
+      ["sec_update_arming_context"],
+      ["sec_update_arming_location"],
+    ],
+  },
+  {
+    id: "sec_turn_off_creta_home",
+    type: "switch",
+    z: TAB_ID,
+    name: "Creta esta em casa?",
+    property: "payload.creta_home",
+    propertyType: "msg",
+    rules: [{ t: "true" }],
+    checkall: "true",
+    repair: false,
+    outputs: 1,
+    x: 820,
+    y: 560,
+    wires: [["sec_turn_off_if_active"]],
+  },
+  {
+    id: "sec_turn_off_if_active",
+    type: "function",
+    z: TAB_ID,
+    name: "Desligar se refletor ativo",
+    func: turnOffIfActiveFunction,
+    outputs: 1,
+    timeout: "",
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 1120,
+    y: 560,
+    wires: [["sec_reflector_turn_off"]],
+  },
+  {
+    id: "sec_update_arming_context",
+    type: "function",
+    z: TAB_ID,
+    name: "Atualizar armado por contexto",
+    func: updateArmingContextFunction,
+    outputs: 1,
+    timeout: "",
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 820,
+    y: 220,
+    wires: [[]],
+  },
+  {
+    id: "sec_update_arming_location",
+    type: "function",
+    z: TAB_ID,
+    name: "Atualizar armado por localizacao",
+    func: updateArmingLocationFunction,
     outputs: 2,
     timeout: "",
     noerr: 0,
     initialize: "",
     finalize: "",
     libs: [],
-    x: 530,
-    y: 260,
-    wires: [["sec_reflector_turn_on", "sec_auto_off_delay"], ["sec_reflector_turn_off"]],
+    x: 820,
+    y: 380,
+    wires: [["sec_detect_arriving_source"], ["sec_notify_valeria_approaching"]],
+  },
+  {
+    id: "sec_notify_valeria_approaching",
+    type: "api-call-service",
+    z: TAB_ID,
+    name: "Avisar Gabriel: Valeria aproximando",
+    server: SERVER_ID,
+    version: 7,
+    debugenabled: false,
+    action: "notify.send_message",
+    floorId: [],
+    areaId: [],
+    deviceId: [],
+    entityId: ["notify.iphone_de_gabriel_furlan"],
+    labelId: [],
+    data: "{\"title\":\"Casa inteligente\",\"message\":\"Valeria esta se aproximando de casa.\"}",
+    dataType: "json",
+    mergeContext: "",
+    mustacheAltTags: false,
+    outputProperties: [],
+    queue: "none",
+    blockInputOverrides: true,
+    domain: "notify",
+    service: "send_message",
+    x: 1120,
+    y: 460,
+    wires: [[]],
+  },
+  {
+    id: "sec_detect_arriving_source",
+    type: "function",
+    z: TAB_ID,
+    name: "Gabriel/Valeria/Creta chegou <= 50m?",
+    func: detectArrivingFunction,
+    outputs: 1,
+    timeout: "",
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 1120,
+    y: 380,
+    wires: [["sec_check_dark"]],
+  },
+  {
+    id: "sec_check_dark",
+    type: "switch",
+    z: TAB_ID,
+    name: "Esta escuro?",
+    property: "payload.sun_below_horizon",
+    propertyType: "msg",
+    rules: [{ t: "true" }],
+    checkall: "true",
+    repair: false,
+    outputs: 1,
+    x: 1400,
+    y: 380,
+    wires: [["sec_route_arrival_source"]],
+  },
+  {
+    id: "sec_route_arrival_source",
+    type: "switch",
+    z: TAB_ID,
+    name: "Chegada pessoa ou Creta?",
+    property: "payload.arrival_source_type",
+    propertyType: "msg",
+    rules: [{ t: "eq", v: "person", vt: "str" }, { t: "eq", v: "creta", vt: "str" }],
+    checkall: "true",
+    repair: false,
+    outputs: 2,
+    x: 1640,
+    y: 380,
+    wires: [["sec_check_engine_on"], ["sec_check_reflector_inactive"]],
+  },
+  {
+    id: "sec_check_engine_on",
+    type: "function",
+    z: TAB_ID,
+    name: "Motor ligado ou Creta aproximando?",
+    func: checkEngineOrCretaNearbyFunction,
+    outputs: 1,
+    timeout: "",
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 1900,
+    y: 300,
+    wires: [["sec_check_reflector_inactive"]],
+  },
+  {
+    id: "sec_check_reflector_inactive",
+    type: "switch",
+    z: TAB_ID,
+    name: "Refletor ainda inativo?",
+    property: "payload.active",
+    propertyType: "msg",
+    rules: [{ t: "false" }],
+    checkall: "true",
+    repair: false,
+    outputs: 1,
+    x: 2160,
+    y: 380,
+    wires: [["sec_mark_reflector_active"]],
+  },
+  {
+    id: "sec_mark_reflector_active",
+    type: "function",
+    z: TAB_ID,
+    name: "Marcar ativo por chegada",
+    func: markActiveFunction,
+    outputs: 1,
+    timeout: "",
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 2420,
+    y: 380,
+    wires: [["sec_reflector_turn_on", "sec_auto_off_delay"]],
   },
   {
     id: "sec_reflector_turn_on",
@@ -480,8 +940,8 @@ const newNodes = [
     blockInputOverrides: true,
     domain: "switch",
     service: "turn_on",
-    x: 840,
-    y: 220,
+    x: 2700,
+    y: 320,
     wires: [[]],
   },
   {
@@ -501,8 +961,8 @@ const newNodes = [
     drop: false,
     allowrate: false,
     outputs: 1,
-    x: 840,
-    y: 280,
+    x: 2700,
+    y: 420,
     wires: [["sec_auto_off_event"]],
   },
   {
@@ -519,9 +979,9 @@ const newNodes = [
         tot: "json",
       },
     ],
-    x: 1040,
-    y: 320,
-    wires: [["sec_arrival_decision"]],
+    x: 840,
+    y: 640,
+    wires: [["sec_turn_off_if_active"]],
   },
   {
     id: "sec_reflector_turn_off",
@@ -546,8 +1006,8 @@ const newNodes = [
     blockInputOverrides: true,
     domain: "switch",
     service: "turn_off",
-    x: 830,
-    y: 360,
+    x: 1400,
+    y: 560,
     wires: [[]],
   },
 ];
