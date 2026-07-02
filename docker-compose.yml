@@ -22,7 +22,7 @@ services:
       - ./mosquitto/log:/mosquitto/log
 
   homeassistant:
-    image: ghcr.io/home-assistant/home-assistant@sha256:adb3341e31e03e0048e60d8c1cf952e118a381ae258bb921d3da12a3b27bf0c2
+    image: ghcr.io/home-assistant/home-assistant@sha256:cb76c9922b530f6a5063a15463eb3ad6de287d297c826713abda16795bb98980
     container_name: homeassistant
     restart: always
     network_mode: host
@@ -45,7 +45,7 @@ services:
       - TZ=America/Sao_Paulo
 
   nodered:
-    image: nodered/node-red@sha256:153f411d2993abd9ccd8290017ff2bb531326320b5cd3b200c1a4bb1339eb819
+    image: nodered/node-red@sha256:6cb1b27fa5a83deec6a662db62eec8bb32e55ac5412d6b7a653e874ce62055d5
     container_name: nodered
     restart: always
     depends_on:
@@ -61,7 +61,7 @@ services:
       - TZ=America/Sao_Paulo
 
   zigbee2mqtt:
-    image: koenkk/zigbee2mqtt@sha256:1debff565ab6841417bd9f7ce8ad44f8c5f25a8b02a24ce3fd79e4779a4763a5
+    image: koenkk/zigbee2mqtt@sha256:80f7f04f72a99e4c4ef51ef7e98ee736edba6db0ecbb7abc626d0c4b0f1871f1
     container_name: zigbee2mqtt
     restart: always
     depends_on:
