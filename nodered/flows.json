@@ -737,7 +737,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 830,
+        "x": 1150,
         "y": 460,
         "wires": [
             [
@@ -825,7 +825,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 180,
+        "x": 210,
         "y": 120,
         "wires": [
             [
@@ -871,7 +871,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 180,
+        "x": 210,
         "y": 180,
         "wires": [
             [
@@ -917,7 +917,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 180,
+        "x": 210,
         "y": 240,
         "wires": [
             [
@@ -963,8 +963,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 190,
-        "y": 320,
+        "x": 200,
+        "y": 300,
         "wires": [
             [
                 "sec_prepare_arrival_context"
@@ -1009,8 +1009,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
-        "y": 380,
+        "x": 190,
+        "y": 360,
         "wires": [
             [
                 "sec_prepare_arrival_context"
@@ -1055,8 +1055,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
-        "y": 460,
+        "x": 180,
+        "y": 420,
         "wires": [
             [
                 "sec_prepare_arrival_context"
@@ -1101,8 +1101,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
-        "y": 520,
+        "x": 190,
+        "y": 480,
         "wires": [
             [
                 "sec_prepare_arrival_context"
@@ -1115,8 +1115,8 @@
         "z": "2fd40fd570e6f37a",
         "name": "Atualiza localizacoes e estado do Creta a cada 5 min",
         "info": "Reavalia o contexto a cada 5 minutos. So forca update_entity nas entidades Kia/Hyundai e envia request_location_update para os iPhones quando Gabriel, Valeria ou Creta estiverem fora de casa.",
-        "x": 510,
-        "y": 700,
+        "x": 420,
+        "y": 720,
         "wires": []
     },
     {
@@ -1439,9 +1439,7 @@
             [
                 "sec_detect_arriving_source"
             ],
-            [
-                "sec_notify_valeria_approaching"
-            ]
+            []
         ]
     },
     {
@@ -1469,7 +1467,7 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "send_message",
-        "x": 1120,
+        "x": 1460,
         "y": 460,
         "wires": [
             []
@@ -1491,7 +1489,8 @@
         "y": 380,
         "wires": [
             [
-                "sec_check_dark"
+                "sec_check_dark",
+                "sec_notify_valeria_approaching"
             ]
         ]
     },
