@@ -1,0 +1,44 @@
+shell_command:
+  moni_mobile_probe: "python3 /config/tools/moni_mobile_alarm.py probe"
+  moni_mobile_armar: "python3 /config/tools/moni_mobile_alarm.py arm_away"
+  moni_mobile_desarmar: "python3 /config/tools/moni_mobile_alarm.py disarm"
+
+input_select:
+  moni_mobile_estado:
+    name: Alarme Moni Mobile
+    options:
+      - unknown
+      - disarmed
+      - armed_away
+      - unavailable
+    initial: unknown
+    icon: mdi:shield-home
+
+template:
+  - alarm_control_panel:
+      - name: Alarme Moni Mobile
+        unique_id: moni_mobile_alarm
+        state: "{{ states('input_select.moni_mobile_estado') }}"
+        code_arm_required: false
+        code_format: no_code
+        arm_away:
+          - service: shell_command.moni_mobile_armar
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.moni_mobile_estado
+            data:
+              option: unknown
+        disarm:
+          - service: shell_command.moni_mobile_desarmar
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.moni_mobile_estado
+            data:
+              option: unknown
+
+script:
+  moni_mobile_testar_conexao:
+    alias: Moni Mobile - testar conexao
+    mode: single
+    sequence:
+      - service: shell_command.moni_mobile_probe
