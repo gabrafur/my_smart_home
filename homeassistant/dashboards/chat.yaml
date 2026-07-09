@@ -1,0 +1,40 @@
+title: Chat
+views:
+  - title: Claude
+    path: claude-chat
+    icon: mdi:chat-processing
+    cards:
+      - type: markdown
+        content: >
+          ## Chat com o Claude
+
+          Toque no botão abaixo (ou no ícone de balão de fala no topo de
+          qualquer tela do Home Assistant) para abrir o chat de voz/texto.
+
+          O assistente "Claude conversation" está configurado como motor do
+          pipeline **Home Assistant**, com permissão para controlar
+          dispositivos (luzes, interruptores, cenas, scripts, automações
+          expostas ao Assist).
+      - type: tile
+        entity: conversation.claude_conversation
+        name: Conversar com o Claude
+        icon: mdi:chat-processing
+        tap_action:
+          action: assist
+      - type: markdown
+        content: >
+          ## Claude Code (acesso total)
+
+          Chat com liberdade de execução real: edita arquivos do repositório,
+          mexe em fluxos do Node-RED, reinicia containers Docker, etc.
+          Restrito ao usuário Gabriel — qualquer outra conta recebe recusa.
+
+          Ao abrir o Assist pelo botão abaixo, se o diálogo não abrir direto
+          no pipeline certo, troque para **"Claude Code (Full Access)"** no
+          seletor no topo do popup.
+      - type: tile
+        entity: conversation.claude_code_full_access
+        name: Claude Code (Full Access)
+        icon: mdi:robot
+        tap_action:
+          action: assist

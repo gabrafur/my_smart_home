@@ -26,11 +26,29 @@ services:
     container_name: homeassistant
     restart: always
     network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     depends_on:
       - mosquitto
+      - matter_server
     volumes:
       - ./homeassistant:/config
       - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    environment:
+      - TZ=America/Sao_Paulo
+
+  matter_server:
+    image: ghcr.io/home-assistant-libs/python-matter-server:stable
+    container_name: matter_server
+    restart: always
+    network_mode: host
+    security_opt:
+      - apparmor=unconfined
+    volumes:
+      - ./matter-server:/data
+      - /run/dbus:/run/dbus:ro
     environment:
       - TZ=America/Sao_Paulo
 
@@ -72,3 +90,31 @@ services:
       - /mnt/data/docker/zigbee2mqtt:/app/data
     environment:
       - TZ=America/Sao_Paulo
+
+  claude-bridge:
+    build:
+      context: ./claude-bridge
+      args:
+        DOCKER_GID: "987"
+    container_name: claude-bridge
+    restart: always
+    volumes:
+      - /mnt/data/docker:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+      - claude-bridge-auth:/home/node/.claude
+    env_file:
+      - ./.env
+    environment:
+      - WORKDIR=/workspace
+      - TZ=America/Sao_Paulo
+      - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN}
+      # Auth comes from the CLAUDE_CODE_OAUTH_TOKEN in .env (generated once via
+      # `claude setup-token`, tied to the subscription plan), not API-key
+      # billing - unset any ANTHROPIC_API_KEY inherited from .env so the CLI
+      # doesn't try the API-key path instead.
+      - ANTHROPIC_API_KEY=
+    ports:
+      - "127.0.0.1:8099:8099"
+
+volumes:
+  claude-bridge-auth:

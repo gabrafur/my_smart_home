@@ -20,6 +20,7 @@
 .local-secrets/
 .agents/
 .codex/
+.claude/settings.local.json
 .DS_Store
 __pycache__/
 *.py[cod]
@@ -33,6 +34,8 @@ homeassistant/home-assistant.log*
 homeassistant/backups/
 homeassistant/codex_prompts/
 homeassistant/.cloud/
+homeassistant/.ssh/
+homeassistant/.cache/
 homeassistant/custom_components/hacs/hacs_frontend/
 homeassistant/.storage/*
 !homeassistant/.storage/core.area_registry
@@ -53,6 +56,10 @@ nodered/.sessions.json
 nodered/.config.users.json*
 nodered/.config.runtime.json*
 nodered/backups/
+nodered/flows.json.bak*
+
+# Tooling dependencies
+node_modules/
 
 # Mosquitto runtime and credentials
 mosquitto/data/

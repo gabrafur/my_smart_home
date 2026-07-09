@@ -1,0 +1,3 @@
+- [Doc on every update](feedback_doc_on_update.md) — create/update a docs/ file for every nontrivial repo change, proactively
+- [iluminacao_seguranca flow](project_iluminacao_seguranca_flow.md) — car-arrival security light: distance/refresh constraints, dietpi file ownership, docker cp workflow
+- [Power/Matter/Bluetooth host access](project_power_matter_bluetooth.md) — user pre-approved host D-Bus/NET_ADMIN/NET_RAW caps for HA + matter_server; already implemented

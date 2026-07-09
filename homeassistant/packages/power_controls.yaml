@@ -1,0 +1,34 @@
+shell_command:
+  raspberry_reiniciar: "python3 /config/tools/power_control.py raspberry reboot"
+  raspberry_desligar: "python3 /config/tools/power_control.py raspberry poweroff"
+  pc_reiniciar: "python3 /config/tools/power_control.py pc reboot"
+  pc_desligar: "python3 /config/tools/power_control.py pc poweroff"
+
+script:
+  raspberry_reiniciar:
+    alias: Raspberry - reiniciar
+    mode: single
+    icon: mdi:restart
+    sequence:
+      - service: shell_command.raspberry_reiniciar
+
+  raspberry_desligar:
+    alias: Raspberry - desligar
+    mode: single
+    icon: mdi:power
+    sequence:
+      - service: shell_command.raspberry_desligar
+
+  pc_reiniciar:
+    alias: PC - reiniciar
+    mode: single
+    icon: mdi:restart
+    sequence:
+      - service: shell_command.pc_reiniciar
+
+  pc_desligar:
+    alias: PC - desligar
+    mode: single
+    icon: mdi:power
+    sequence:
+      - service: shell_command.pc_desligar

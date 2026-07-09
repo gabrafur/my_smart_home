@@ -91,29 +91,38 @@ O conteudo dos pacotes muda a cada sessao e parece criptografado/dinamico. Porta
 - O protocolo GPRS interno usa AES-ECB com chave fixa, mas essa chave nao descriptografa o trafego do app Moni Mobile.
 - O app/servidor Delphi tem uma camada `TMBConnection`/`TCMClient` com token, tamanho de mensagens e comandos como `TCACommandSendArm` e `TCACommandSendDisarm`.
 - A DLL `GenerateAuthData.dll` foi analisada e descartada para este fluxo: ela gera autenticacao de push/Firebase, nao o pacote TCP de armar/desarmar.
+- O protocolo Moni Mobile do app tambem usa AES-ECB com PKCS7, mas com a chave fixa da classe `TMBConnection`.
+- O handshake usa um token de 2 bytes devolvido pelo servidor. Cada comando precisa montar o pacote autenticado com esse token atual.
+- A consulta periodica `00c9` retorna o resumo de zonas/particoes. Os bytes de particao observados usam `2` para desarmado e `3` para armado.
 
-## Instalacao parcial no Home Assistant
+## Integracao no Home Assistant
 
-Como `homeassistant/custom_components` esta sem permissao de escrita para o usuario atual, a instalacao foi feita via package:
+A estrutura da integracao customizada foi instalada em:
 
+- `homeassistant/custom_components/moni_mobile/`
 - `homeassistant/packages/moni_mobile_alarm.yaml`
 - `homeassistant/tools/moni_mobile_alarm.py`
 
-Isso cria uma entidade template `alarm_control_panel.alarme_moni_mobile` e comandos shell para testar conexao, armar e desarmar.
+Isso cria a plataforma `alarm_control_panel` `moni_mobile`, carregada pelo package com os dados vindos de `secrets.yaml`.
 
-Importante: os comandos de armar/desarmar ainda retornam erro proposital ate o pacote autenticado do Moni Mobile ser implementado. Isso evita marcar o alarme como armado/desarmado sem ter certeza de que a central aceitou o comando.
+Os comandos de armar/desarmar e a leitura de estado foram implementados no cliente TCP.
 
-Para instalar uma integracao customizada completa depois, ajuste as permissoes:
+O teste de conectividade TCP via helper funcionou:
 
 ```bash
-sudo chown -R gabriel:gabriel /mnt/data/docker/homeassistant/custom_components
+PYTHONPATH=/tmp/codex-moni-deps python3 homeassistant/tools/moni_mobile_alarm.py probe --timeout 5
 ```
+
+Resultados validados:
+
+- `state`: retornou `disarmed`;
+- `disarm`: comando aceito e estado final `disarmed`;
+- sequencia controlada `arm_away -> state -> disarm`: `arm_away` confirmou `armed_away`, `disarm` foi aceito, e a leitura posterior voltou para `disarmed`.
 
 ## Proximos passos
 
-Para finalizar a integracao real:
+Pendencias pequenas:
 
-1. Descobrir a funcao que gera o terceiro pacote do handshake Moni Mobile.
-2. Implementar o cliente TCP em `homeassistant/tools/moni_mobile_alarm.py`.
-3. Mover a entidade de package para `custom_components/moni_mobile` quando houver permissao de escrita.
-4. Reiniciar o Home Assistant e testar primeiro `script.moni_mobile_testar_conexao`.
+1. A entidade pode ficar `unknown` por alguns segundos logo apos um comando, enquanto o servidor atualiza o resumo. Isso e esperado nesta integracao (poll periodico + protocolo TCP proprietario); o flow `iluminacao_externa` (`nodered/flows.json`, node `Somente se alarme mudou`) ja trata esse `unknown` como glitch e ignora, usando o ultimo estado real conhecido para decidir se houve mudanca de fato. Ver detalhes em [ILUMINACAO_EXTERNA_NODERED.md](ILUMINACAO_EXTERNA_NODERED.md).
+2. Por seguranca, nao registrar payloads descriptografados em log, pois podem conter nomes, eventos e zonas.
+3. Se a senha de arme/desarme tiver zeros a esquerda, mantenha-a entre aspas em `secrets.yaml`; a integracao tambem tenta preservar o valor bruto do arquivo para evitar perda desses zeros.
