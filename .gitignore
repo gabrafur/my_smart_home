@@ -75,3 +75,6 @@ zigbee2mqtt/log/
 
 # Portainer contains app database, keys, certs, and Docker state
 portainer/
+
+# Matter server contains fabric credentials and device pairing certs
+matter-server/

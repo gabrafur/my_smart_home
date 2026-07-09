@@ -33,3 +33,25 @@ SSH key at `homeassistant/.ssh/ha_power_ed25519.pub`, secrets
 `pc_power_*`). Treat further host-access expansions for this container as
 already pre-approved in spirit, but still confirm scope for anything beyond
 power/Bluetooth/Matter.
+
+**2026-07-09 follow-up:** the compose-level access alone wasn't enough —
+Bluetooth stayed stuck at "discovered" because (1) the running `homeassistant`
+container was created before `cap_add`/dbus were added to compose, so it was
+live with none of those permissions until recreated; (2) `matter_server` was
+defined in compose but had never actually been created/started; (3) the host
+had no BlueZ (`bluetoothd`) installed at all, and the onboard Broadcom
+BT firmware never loaded (adapter stuck at placeholder MAC
+`AA:AA:AA:AA:AA:AA`). Fixed by installing `bluez`/`pi-bluetooth`/
+`firmware-brcm80211` on the host, force-reloading firmware via
+unbind/rebind of `serial0-0` from `hci_uart_bcm` (no reboot needed), then
+`docker compose up -d homeassistant matter_server` to recreate with current
+config. Full details and the exact commands are in
+[docs/BLUETOOTH_MATTER.md](docs/BLUETOOTH_MATTER.md). User provided a
+Home Assistant long-lived access token, stored at
+`.local-secrets/ha-long-lived-token.txt` (mode 600, gitignored) — usable for
+finishing config_entries flows (e.g. bluetooth/matter setup) via the HA REST
+API when the UI can't be driven directly. Also learned: HA's local Bluetooth
+adapter does NOT auto-create a config entry on restart even when everything
+is correctly wired — it must be triggered explicitly (POST to
+`/api/config/config_entries/flow` with `handler: bluetooth`, then confirm the
+returned flow_id) after any stale/ignored entry for the old MAC is deleted.
