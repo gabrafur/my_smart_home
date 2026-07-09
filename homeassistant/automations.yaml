@@ -1,1 +1,14 @@
-[]
+- id: "1783799940000"
+  alias: Wake TV Sala via Wake-On-LAN
+  description: >-
+    Substitui o Wake-On-LAN implícito (descontinuado) da integração
+    Samsung TV. Envia o magic packet para a TV Sala sempre que a
+    Home Assistant solicitar ligá-la.
+  triggers:
+    - trigger: samsungtv.turn_on
+      entity_id: media_player.samsung_qn90ba_50_qn50qn90bagxzd
+  actions:
+    - action: wake_on_lan.send_magic_packet
+      data:
+        mac: a0:d7:f3:30:d7:0e
+  mode: single
