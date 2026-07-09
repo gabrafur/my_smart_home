@@ -9,10 +9,21 @@ from YAML configuration.
 from __future__ import annotations
 
 import argparse
-import socket
+import re
 import sys
 from pathlib import Path
 from typing import Any
+
+CLIENT_DIRS = (
+    Path("/config/custom_components/moni_mobile"),
+    Path("homeassistant/custom_components/moni_mobile"),
+)
+for client_dir in CLIENT_DIRS:
+    if client_dir.exists():
+        sys.path.insert(0, str(client_dir))
+        break
+
+from client import MoniMobileClient  # noqa: E402
 
 try:
     import yaml
@@ -26,6 +37,10 @@ REQUIRED_SECRETS = (
     "moni_mobile_username",
     "moni_mobile_app_password",
     "moni_mobile_alarm_code",
+)
+_RAW_ALARM_CODE_RE = re.compile(
+    r"^\s*moni_mobile_alarm_code:\s*(?P<value>[^#\r\n]+?)\s*(?:#.*)?$",
+    re.MULTILINE,
 )
 
 
@@ -48,41 +63,59 @@ def load_secrets() -> dict[str, Any]:
         raise MoniMobileError(
             "Secrets ausentes para Moni Mobile: " + ", ".join(missing)
         )
+    raw_alarm_code = _read_raw_alarm_code(secrets_path, data["moni_mobile_alarm_code"])
+    data["moni_mobile_alarm_code"] = raw_alarm_code
     return data
 
 
-def tcp_probe(host: str, port: int, timeout: float) -> None:
-    """Verify that the proprietary TCP port is reachable."""
-    with socket.create_connection((host, port), timeout=timeout):
-        return
+def _read_raw_alarm_code(secrets_path: Path, fallback: Any) -> str:
+    """Read the alarm code preserving leading zeros from secrets.yaml."""
+    match = _RAW_ALARM_CODE_RE.search(secrets_path.read_text(encoding="utf-8"))
+    if not match:
+        return str(fallback)
+
+    value = match.group("value").strip()
+    if (value.startswith('"') and value.endswith('"')) or (
+        value.startswith("'") and value.endswith("'")
+    ):
+        value = value[1:-1]
+    return value
 
 
 def run_command(action: str, timeout: float) -> int:
-    """Execute an alarm action.
-
-    The public Moni Mobile endpoint uses a proprietary encrypted TCP protocol.
-    The helper is wired into Home Assistant now, but refuses to fake success
-    until the authenticated command packet is fully implemented.
-    """
+    """Execute an alarm action."""
     secrets = load_secrets()
-    host = str(secrets["moni_mobile_host"])
-    port = int(secrets["moni_mobile_port"])
+    client = MoniMobileClient(
+        host=str(secrets["moni_mobile_host"]),
+        port=int(secrets["moni_mobile_port"]),
+        username=str(secrets["moni_mobile_username"]),
+        app_password=str(secrets["moni_mobile_app_password"]),
+        alarm_code=str(secrets["moni_mobile_alarm_code"]),
+        timeout=timeout,
+    )
 
     if action == "probe":
-        tcp_probe(host, port, timeout)
+        client.probe()
         print("Moni Mobile TCP acessivel")
         return 0
+    if action == "state":
+        print(client.get_state() or "unknown")
+        return 0
+    if action == "arm_away":
+        client.arm_away()
+        print("Comando de armar enviado")
+        return 0
+    if action == "disarm":
+        client.disarm()
+        print("Comando de desarmar enviado")
+        return 0
 
-    tcp_probe(host, port, timeout)
-    raise MoniMobileError(
-        "Porta TCP Moni Mobile acessivel, mas o pacote autenticado de "
-        f"{action} ainda esta em engenharia reversa."
-    )
+    raise MoniMobileError(f"Acao desconhecida: {action}")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("probe", "arm_away", "disarm"))
+    parser.add_argument("action", choices=("probe", "state", "arm_away", "disarm"))
     parser.add_argument("--timeout", type=float, default=8.0)
     args = parser.parse_args()
 

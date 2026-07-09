@@ -834,6 +834,7 @@ Fluxos atuais:
 - `iluminacao_externa`
   - Liga luzes externas por comando manual ou por do sol.
   - Usa `lampada_varanda`, `lampadas_garagem`, `refletores_jardim`.
+  - Desliga tudo ao armar o alarme (`alarm_control_panel.alarme_moni_mobile`) e avisa no Alexa. Detalhes em [ILUMINACAO_EXTERNA_NODERED.md](ILUMINACAO_EXTERNA_NODERED.md).
 - `iluminacao_seguranca`
   - Acende `switch.refletor_portao_carros` quando esta escuro e alguem esta chegando.
   - Usa geolocalizacao de Gabriel, Valeria e Creta.

@@ -2,5 +2,6 @@
   "git.enabled": true,
   "git.path": "/usr/bin/git",
   "git.autoRepositoryDetection": true,
-  "git.openRepositoryInParentFolders": "always"
+  "git.openRepositoryInParentFolders": "always",
+  "postman.settings.dotenv-detection-notification-visibility": false
 }

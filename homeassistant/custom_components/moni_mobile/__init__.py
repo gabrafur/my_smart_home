@@ -1,0 +1,10 @@
+"""Moni Mobile alarm integration."""
+
+from __future__ import annotations
+
+from homeassistant.core import HomeAssistant
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the Moni Mobile integration."""
+    return True

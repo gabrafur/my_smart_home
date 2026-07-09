@@ -1,0 +1,10 @@
+{
+  "domain": "moni_mobile",
+  "name": "Moni Mobile Alarm",
+  "codeowners": [],
+  "config_flow": false,
+  "documentation": "https://monisoftware.com.br/",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "0.1.0"
+}
