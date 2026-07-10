@@ -222,6 +222,25 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self.async_set_updated_data(self.data)
 
+    async def async_refresh_day_trip_info(self, vehicle_id: str) -> None:
+        """Fetch today's trip log (start time, duration, distance per trip).
+
+        This hits a different endpoint (/tripinfo) than the regular status
+        poll. The BR backend only ever reports live "engine" state at
+        parking events (mirrors the /location/park 400-while-driving
+        behavior), so binary_sensor.*_engine's recorder history is a sparse
+        reconstruction of whatever moments we happened to poll and can miss
+        "on" entirely during a drive. This trip log is the same data the
+        Bluelink app's own trip history is built from, so it matches the
+        app regardless of polling luck.
+        """
+        await self.async_check_and_refresh_token()
+        yyyymmdd_string = dt_util.now().strftime("%Y%m%d")
+        await self.hass.async_add_executor_job(
+            self.vehicle_manager.update_day_trip_info, vehicle_id, yyyymmdd_string
+        )
+        self.async_set_updated_data(self.data)
+
     async def async_check_and_refresh_token(self):
         """Refresh token if needed via library."""
         await self.hass.async_add_executor_job(

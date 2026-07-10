@@ -437,6 +437,11 @@ async def async_setup_entry(
         entities.append(
             VehicleEntity(coordinator, coordinator.vehicle_manager.vehicles[vehicle_id])
         )
+        entities.append(
+            DayTripInfoEntity(
+                coordinator, coordinator.vehicle_manager.vehicles[vehicle_id]
+            )
+        )
     async_add_entities(entities)
     return True
 
@@ -513,6 +518,57 @@ class VehicleEntity(SensorEntity, HyundaiKiaConnectEntity):
     @property
     def unique_id(self):
         return f"{DOMAIN}-all-data-{self.vehicle.id}"
+
+
+class DayTripInfoEntity(SensorEntity, HyundaiKiaConnectEntity):
+    """Today's trip log from the /tripinfo endpoint (same source as the Bluelink app's trip history).
+
+    State is the number of trips recorded today; individual trips (start
+    time, drive/idle time, distance, speeds) are in state_attributes. Empty
+    until button.*_refresh_trip_info is pressed at least once - unlike the
+    regular status poll, this isn't fetched automatically to avoid extra
+    load on the rate-limited Kia/Hyundai API.
+    """
+
+    _attr_translation_key = "day_trip_info"
+    _attr_icon = "mdi:map-marker-path"
+
+    def __init__(self, coordinator, vehicle: Vehicle):
+        super().__init__(coordinator, vehicle)
+
+    @property
+    def state(self):
+        info = self.vehicle.day_trip_info
+        if info is None:
+            return None
+        return len(info.trip_list)
+
+    @property
+    def state_attributes(self):
+        info = self.vehicle.day_trip_info
+        if info is None:
+            return {"trips": []}
+        return {
+            "date": info.yyyymmdd,
+            "total_distance": info.summary.distance if info.summary else None,
+            "total_drive_time_min": info.summary.drive_time if info.summary else None,
+            "total_idle_time_min": info.summary.idle_time if info.summary else None,
+            "trips": [
+                {
+                    "start_time": trip.hhmmss,
+                    "drive_time_min": trip.drive_time,
+                    "idle_time_min": trip.idle_time,
+                    "distance": trip.distance,
+                    "avg_speed": trip.avg_speed,
+                    "max_speed": trip.max_speed,
+                }
+                for trip in info.trip_list
+            ],
+        }
+
+    @property
+    def unique_id(self):
+        return f"{DOMAIN}-day-trip-info-{self.vehicle.id}"
 
 
 class DailyDrivingStatsEntity(SensorEntity, HyundaiKiaConnectEntity):

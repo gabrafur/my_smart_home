@@ -252,6 +252,9 @@
       },
       "ev_v2l_target_soc": {
         "name": "V2L target SoC"
+      },
+      "day_trip_info": {
+        "name": "Day Trip Info"
       }
     },
     "binary_sensor": {
@@ -486,6 +489,9 @@
       },
       "vent_all_windows": {
         "name": "Vent All Windows"
+      },
+      "refresh_trip_info": {
+        "name": "Refresh Trip Info"
       }
     },
     "cover": {
