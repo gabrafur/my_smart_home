@@ -16,13 +16,7 @@ homeassistant:
 
 lovelace:
   dashboards:
-    codex-inbox:
-      mode: yaml
-      title: Codex
-      icon: mdi:robot
-      show_in_sidebar: true
-      filename: dashboards/codex.yaml
-    claude-chat:
+    chat-assistants:
       mode: yaml
       title: Chat
       icon: mdi:chat-processing
