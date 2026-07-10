@@ -34,9 +34,76 @@ check all three places that must stay in sync: `sec_detect_arriving_source`,
 info/name text — it's easy to update the code but forget the doc/comment
 text on the canvas itself, which happened here. See [[feedback-doc-on-update]].
 
-The repo file is owned by `dietpi` (Node-RED's host user), not `gabriel` —
-edits to `nodered/flows.json` must go through `docker cp` into the
-`nodered` container plus `docker exec -u 0 nodered chown node-red:node-red
-/data/flows.json`, then `docker restart nodered` to load them (Node-RED
-keeps flows in memory and would overwrite disk edits on next UI deploy
-otherwise).
+As of 2026-07-10 the repo file is owned by `gabriel` and directly editable
+(no `docker cp`/`chown` needed) — earlier notes about a `dietpi`-owned file
+requiring a `docker cp` workaround are stale, ownership must have been
+fixed since. `/mnt/data/docker/nodered` is bind-mounted straight into the
+container at `/data`, so a direct edit to `nodered/flows.json` is
+immediately visible inside the container. Node-RED still keeps the flow in
+memory once running, so a plain file edit alone does **not** take effect —
+`docker restart nodered` is required to make it reload `/data/flows.json`
+from disk. Confirm with `docker logs nodered --since 30s` after restart:
+look for `Starting flows` / `Started flows` with no errors, and reconnects
+to `Home Assistant` and `Zigbee2MQTT`. If a future session hits a
+permission error on this file, re-check ownership with `ls -la
+nodered/flows.json` before falling back to the old `docker cp` workaround.
+
+**2026-07-10 fix — Creta entities stopped updating during HA instability:**
+User reported `binary_sensor.creta_engine` not reflecting a same-day drive.
+Root cause was *not* the `kia_uvo`/`hyundai_kia_connect_api` integration
+(its `/location/park` call legitimately 400s while the car is moving in
+the BR region API — already caught/ignored by the lib, doesn't affect the
+engine sensor which comes from a separate endpoint). Real cause:
+`sec_refresh_anyone_away` set the `sec_kia_last_force_refresh_ts` cooldown
+flow var *optimistically*, before the downstream `button.press` service
+call ran — so if that call failed (confirmed via Node-RED log:
+`[error] [api-call-service:Forcar refresh Creta] ... "Connection lost"`),
+the 5-min cooldown was still consumed and blocked retries even though
+nothing actually refreshed. That day the `homeassistant` container was
+being stopped/started repeatedly (~09:13–09:46, `RestartCount=0` and
+`OOMKilled=false` on inspect, i.e. *external* restarts, not a crash loop —
+cause unknown, nothing in this repo's cron/scripts restarts it) which is
+what triggered the failed call in the first place. Fixed by only marking
+the cooldown on confirmed success: new node `sec_creta_refresh_ack` wired
+to `sec_force_refresh_creta`'s (previously unwired) output, doing the
+`flow.set` there instead of inside `sec_refresh_anyone_away`. See
+docs/ILUMINACAO_SEGURANCA_NODERED.md for full writeup. If entities go
+stale again, check `docker logs nodered | grep -i "Forcar refresh Creta"`
+first — a `Connection lost`/error there means HA was unreachable at that
+moment, not a Kia API problem.
+
+**2026-07-10 follow-up — engine history fundamentally can't be reconstructed
+from status polling:** even after the ack fix above, `binary_sensor.creta_engine`
+*history* still didn't match the Bluelink app. Confirmed empirically:
+across two full round-trips on 2026-07-09 (per `device_tracker.creta_location`),
+the engine binary_sensor never once recorded "on" — polling is too sparse
+(only forced live every 5 min while "away", cached otherwise) and Hyundai's
+BR backend likely only reports live status reliably around parking events
+(same pattern as the `/location/park` 400-while-driving behavior). Fixing
+this by polling more aggressively would fight a losing battle against
+account rate-limits for uncertain benefit. Real fix: added
+`sensor.garagem_creta_day_trip_info` in
+`homeassistant/custom_components/kia_uvo/` (coordinator.py +
+`async_refresh_day_trip_info`, button.py + `refresh_trip_info`, sensor.py +
+`DayTripInfoEntity`), which calls the `/tripinfo` endpoint — the same data
+source the Bluelink app's own trip history uses, entirely independent of
+status polling. Node-RED presses that button once per Creta arrival (not on
+a timer) via new nodes `sec_creta_trip_refresh_gate` →
+`sec_refresh_creta_trip_info`, gated on `arrival_source_type === "creta"`
+in `sec_detect_arriving_source`. Full writeup:
+[[project-creta-kia-uvo-integration]] (docs/CRETA_KIA_UVO_INTEGRATION.md).
+
+**Ownership note:** unlike `nodered/flows.json` (owned by `gabriel`,
+directly editable), `homeassistant/custom_components/kia_uvo/*` is owned by
+`root` (HA container runs as root, host has no user-namespace remapping) —
+the plain host user can't write it directly. Workaround used: write a
+small Python patch script to a writable scratch path, `docker cp` it into
+the container, then `docker exec -u 0 homeassistant python3 <script>` to
+apply it as root (the bind mount means this writes straight back to the
+repo path). Verify with `docker exec homeassistant python3 -m py_compile
+<file>` before restarting. New entities in this integration get their
+entity_id auto-prefixed with the device's area (`garagem_creta_...`) since
+the `garagem` area was set on the Creta device after the original entities
+were created — older entities kept their short `creta_*` IDs. Didn't touch
+the entity registry to reconcile this; just used the real (prefixed)
+entity_ids going forward.
