@@ -96,7 +96,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 250,
+        "x": 260,
         "y": 120,
         "wires": [
             [
@@ -625,8 +625,8 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "alexa_media_todo_lugar",
-        "x": 2010,
-        "y": 260,
+        "x": 2030,
+        "y": 360,
         "wires": [
             []
         ]
@@ -860,10 +860,12 @@
         "blockInputOverrides": true,
         "domain": "alarm_control_panel",
         "service": "alarm_arm_away",
-        "x": 840,
-        "y": 480,
+        "x": 860,
+        "y": 500,
         "wires": [
-            []
+            [
+                "arm_alarm_notify_success"
+            ]
         ]
     },
     {
@@ -891,10 +893,77 @@
         "blockInputOverrides": true,
         "domain": "alarm_control_panel",
         "service": "alarm_disarm",
-        "x": 850,
+        "x": 870,
         "y": 560,
         "wires": [
-            []
+            [
+                "disarm_alarm_notify_success"
+            ]
+        ]
+    },
+    {
+        "id": "arm_alarm_catch",
+        "type": "catch",
+        "z": "ce258dec9814b96b",
+        "name": "erro ao armar alarme",
+        "scope": [
+            "70eb073f8191e69e"
+        ],
+        "uncaught": false,
+        "x": 820,
+        "y": 360,
+        "wires": [
+            [
+                "arm_alarm_retry_decision"
+            ]
+        ]
+    },
+    {
+        "id": "arm_alarm_retry_decision",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "tentar novamente ate conseguir",
+        "func": "const attempt = Number(msg.arm_alarm_retry_count || 0) + 1;\nmsg.arm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao armar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'Não foi possível armar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando armar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1130,
+        "y": 360,
+        "wires": [
+            [
+                "arm_alarm_retry_delay"
+            ],
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "arm_alarm_retry_delay",
+        "type": "delay",
+        "z": "ce258dec9814b96b",
+        "name": "aguardar antes de tentar novamente",
+        "pauseType": "delay",
+        "timeout": "10",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1050,
+        "y": 440,
+        "wires": [
+            [
+                "70eb073f8191e69e"
+            ]
         ]
     },
     {
@@ -954,6 +1023,166 @@
                 "alarm_real_change_filter"
             ],
             []
+        ]
+    },
+    {
+        "id": "arm_alarm_notify_success",
+        "type": "change",
+        "z": "ce258dec9814b96b",
+        "name": "Definir aviso alarme armado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "Alarme armado com sucesso.",
+                "tot": "str"
+            }
+        ],
+        "x": 1120,
+        "y": 500,
+        "wires": [
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "disarm_alarm_notify_success",
+        "type": "change",
+        "z": "ce258dec9814b96b",
+        "name": "Definir aviso alarme desarmado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "Alarme desarmado com sucesso.",
+                "tot": "str"
+            }
+        ],
+        "x": 1150,
+        "y": 560,
+        "wires": [
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "133ec4c36a116175",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 620,
+        "y": 40,
+        "wires": [
+            [
+                "d940e2132bca7ecc"
+            ]
+        ]
+    },
+    {
+        "id": "4043829dac0a9fee",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 640,
+        "y": 460,
+        "wires": [
+            [
+                "70eb073f8191e69e"
+            ]
+        ]
+    },
+    {
+        "id": "0543222ad4ed094d",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 660,
+        "y": 580,
+        "wires": [
+            [
+                "8261c7cfb6756ca8"
+            ]
+        ]
+    },
+    {
+        "id": "2d743b91576b7e80",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 620,
+        "y": 160,
+        "wires": [
+            [
+                "c7fe1a52ffe5091d"
+            ]
         ]
     },
     {
