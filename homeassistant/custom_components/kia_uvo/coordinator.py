@@ -9,6 +9,7 @@ from datetime import timedelta
 import traceback
 import logging
 import asyncio
+import uuid
 
 from hyundai_kia_connect_api import (
     Vehicle,
@@ -84,6 +85,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             if config_entry.data.get(CONF_TOKEN, None)
             else None,
         )
+        self._ensure_unique_device_id()
         self.scan_interval: int = (
             config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL) * 60
         )
@@ -177,19 +179,35 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     self.vehicle_manager.check_and_force_update_vehicles,
                     self.force_refresh_interval,
                 )
-            except Exception:
+            except Exception as force_err:
+                _LOGGER.warning(
+                    "%s - Force update failed, falling back to cached: %s",
+                    DOMAIN,
+                    force_err,
+                )
                 try:
-                    _LOGGER.exception(
-                        f"Force update failed, falling back to cached: {traceback.format_exc()}"
-                    )
                     await self.hass.async_add_executor_job(
                         self.vehicle_manager.update_all_vehicles_with_cached_state
                     )
-                except Exception:
-                    _LOGGER.exception(f"Cached update failed: {traceback.format_exc()}")
-                    raise UpdateFailed(
-                        f"Error communicating with API: {traceback.format_exc()}"
+                except Exception as cached_err:
+                    # Both the force refresh and the cached-state fallback failed
+                    # (e.g. Hyundai's backend returning 503 Service Unavailable).
+                    # Log the full traceback for debugging, but keep the
+                    # UpdateFailed/ConfigEntryNotReady message short — dumping the
+                    # whole traceback into it makes the "Config Not Ready" log entry
+                    # unreadable and doesn't add anything the debug log doesn't
+                    # already have. retry_after=60 avoids waiting for HA's default
+                    # (longer) config-entry retry backoff while Hyundai's API is
+                    # transiently down.
+                    _LOGGER.debug(
+                        "%s - Cached update failed: %s",
+                        DOMAIN,
+                        traceback.format_exc(),
                     )
+                    raise UpdateFailed(
+                        f"Error communicating with API, will retry in 60s: {cached_err}",
+                        retry_after=60,
+                    ) from cached_err
 
         else:
             await self.hass.async_add_executor_job(
@@ -594,6 +612,42 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             lambda: self.vehicle_manager.set_windows_state(vehicle_id, options),
             "vent all windows",
         )
+
+    def _ensure_unique_device_id(self) -> None:
+        """Swap the library's shared hardcoded ccsp-device-id for a unique one.
+
+        hyundai_kia_connect_api hardcodes the same ccsp-device-id UUID for
+        every install worldwide (see upstream commit 245b155, "Use hardcoded
+        device_id instead of random UUID"). Hyundai's BR backend started
+        returning persistent 503s on /status/latest starting 2026-07-14
+        while the official Bluelink app (which uses a real per-device ID)
+        kept working fine — consistent with anti-abuse blocking of the
+        well-known shared fingerprint (thousands of HA installs presenting
+        the identical "device"). This generates one random UUID the first
+        time and reuses it afterwards (stored inside the persisted Token,
+        alongside access/refresh tokens) instead of regenerating it on every
+        restart, since constantly changing device_id looks just as
+        suspicious to fraud detection as sharing one.
+        """
+        shared_id = getattr(self.vehicle_manager.api, "ccsp_device_id", None)
+        if shared_id is None:
+            return
+        token = self.vehicle_manager.token
+        current = token.device_id if token else None
+        if current and current != shared_id:
+            # Already switched to a unique id on a previous run.
+            self.vehicle_manager.api.ccsp_device_id = current
+            return
+        new_device_id = str(uuid.uuid4())
+        _LOGGER.warning(
+            "%s - Replacing shared ccsp-device-id with a unique one (%s) to "
+            "rule out anti-abuse blocking of the library-wide default",
+            DOMAIN,
+            new_device_id,
+        )
+        self.vehicle_manager.api.ccsp_device_id = new_device_id
+        if token is not None:
+            token.device_id = new_device_id
 
     async def _async_save_token(self):
         """Persist the latest token into the config entry."""

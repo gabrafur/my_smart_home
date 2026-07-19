@@ -106,3 +106,62 @@ Sempre que mexer no fluxo de chegada (`sec_detect_arriving_source` e afins)
 em ILUMINACAO_SEGURANCA_NODERED.md, lembrar que `sec_creta_trip_refresh_gate`
 depende de `msg.payload.arrival_source_type` continuar sendo setado do
 jeito que esta hoje.
+
+## Update do fork removeu e depois reportou o sensor de trip-log (2026-07-19)
+
+Um update de upstream (HACS-style) sobrescreveu o fork local sem commit
+previo, trazendo features novas (botoes de valet mode, sensores de pressao
+dos pneus, `drive_mode`, fix do device_class de bateria em EV/PHEV;
+`hyundai_kia_connect_api` 4.23.1 → 4.25.2, `manifest.json` versao 3.6.0 →
+3.8.0) mas **removendo silenciosamente** tudo que foi adicionado na secao
+"Fix: sensor de historico de viagens" acima:
+`coordinator.async_refresh_day_trip_info`, o botao
+`button.garagem_creta_refresh_trip_info` e a entidade `DayTripInfoEntity`
+(`sensor.garagem_creta_day_trip_info`).
+
+**Reportado de volta no mesmo dia**, ja que `nodered/flows.json`
+(`sec_refresh_creta_trip_info`) continua dependendo dessa entidade.
+`VehicleManager.update_day_trip_info` e `Vehicle.day_trip_info` continuam
+com a mesma assinatura na versao nova da lib (confirmado via
+`inspect.signature` dentro do container), entao o reporte foi um
+copy-paste direto do codigo que ja existia no commit `fcefeec` para cima
+da base nova — sem alteracoes de logica. Tambem adicionadas as chaves
+`day_trip_info` (sensor) e `refresh_trip_info` (button) em `strings.json`
+e `translations/en.json` (so ingles, mesmo escopo do commit original).
+Entidades confirmadas de volta no entity registry (`restored: true`,
+`friendly_name` correto) apos restart; ficam `unavailable` ate a API da
+Hyundai voltar a responder (ver secao de fix abaixo), o que e esperado.
+
+**Licao:** esse componente e um fork local editado diretamente no host
+(nao um HACS gerenciado), mas alguma coisa (HACS rodando dentro do
+container? processo manual?) consegue sobrescreve-lo com uma versao
+upstream sem passar por git. Vale investigar a origem do update numa
+proxima sessao para nao perder essa feature de novo silenciosamente — por
+ora, so vigiar `git status` nesse diretorio de vez em quando.
+
+## Fix: `UpdateFailed` com traceback completo no log (2026-07-19)
+
+Sintoma: setup falhando com `Config Not Ready: Error communicating with
+API: Traceback (most recent call last): ...` — um traceback inteiro
+dumpado dentro da mensagem de erro do config entry, causado por um 503 da
+API da Hyundai BR (`br-ccapi.hyundai.com.br`, servico deles fora do ar
+temporariamente — nao e algo que da pra corrigir do nosso lado).
+
+O bloco de fallback em `coordinator.py::_async_update_data` (quando tanto
+o force-refresh quanto o `update_all_vehicles_with_cached_state` falham)
+usava `traceback.format_exc()` dentro do proprio `UpdateFailed(...)`,
+deixando o log ilegivel, e nao passava `retry_after`, entao o config entry
+ficava preso no backoff padrao (mais longo) do HA em vez de tentar de novo
+rapido. Alinhado com o padrao ja usado no bloco de refresh de token (ver
+`fcefeec`): mensagem curta com `retry_after=60`, traceback completo so no
+`_LOGGER.debug`. Testado ao vivo: apos o fix, `reason` do config entry
+passou a ser `Config Not Ready: Error communicating with API, will retry
+in 60s: 503 Server Error: ...` em vez do traceback completo.
+
+Editado via `docker cp` + `docker exec -u 0` (ver secao de ownership
+acima); aplicado com `homeassistant.restart` via API (reload de config
+entry sozinho **nao** reimporta o modulo Python do custom_component —
+confirmado ao vivo: apos so um reload, o traceback continuou aparecendo no
+formato antigo, com numeros de linha incoerentes porque o objeto de codigo
+em memoria ainda era o antigo mas o `linecache` estava lendo o arquivo
+novo do disco).
