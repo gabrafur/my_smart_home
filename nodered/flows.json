@@ -10,7 +10,7 @@
     {
         "id": "ce258dec9814b96b",
         "type": "tab",
-        "label": "iluminacao_externa",
+        "label": "iluminacao_externa_alarme",
         "disabled": false,
         "info": ""
     },
@@ -2065,8 +2065,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1180,
-        "y": 860,
+        "x": 1550,
+        "y": 220,
         "wires": [
             [
                 "sec_refresh_creta_trip_info"
@@ -2098,8 +2098,8 @@
         "blockInputOverrides": true,
         "domain": "button",
         "service": "press",
-        "x": 1440,
-        "y": 860,
+        "x": 1850,
+        "y": 220,
         "wires": [
             []
         ]

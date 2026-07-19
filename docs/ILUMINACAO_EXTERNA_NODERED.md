@@ -47,22 +47,23 @@ Alexa PowerController ON/OFF e chama `alarm_control_panel.alarm_arm_away`
 (node `Desarmar Alarme`, `8261c7cfb6756ca8`) na entidade
 `alarm_control_panel.alarme_moni_mobile`.
 
-- **Retry ate conseguir armar** (`arm_alarm_catch` -> `arm_alarm_retry_decision`
-  -> `arm_alarm_retry_delay` -> volta para `Armar Alarme`): a integracao
+- **Retry ate conseguir**, para armar e para desarmar: a integracao
   `moni_mobile` fala com um servidor TCP proprietario remoto que
   frequentemente falha o handshake/confirmacao (`HomeAssistantError:
-  Servidor Moni Mobile nao confirmou o arme`, etc.). Um node `catch`
-  escopado so ao node `Armar Alarme` pega qualquer erro desse tipo, espera
-  ~10-15s (com jitter) e tenta de novo, indefinidamente, ate a chamada ter
-  sucesso. Avisa no Alexa (via `Avisar Alexa`) na primeira falha e depois a
-  cada 5 tentativas, para nao spammar mas manter o usuario informado que o
-  alarme ainda nao foi armado.
+  Servidor Moni Mobile nao confirmou o arme/desarme`, etc.).
+  - Armar: `arm_alarm_catch` -> `arm_alarm_retry_decision` ->
+    `arm_alarm_retry_delay` -> volta para `Armar Alarme`.
+  - Desarmar: `disarm_alarm_catch` -> `disarm_alarm_retry_decision` ->
+    `disarm_alarm_retry_delay` -> volta para `Desarmar Alarme`.
+  - Ambos os `catch` sao escopados so ao node correspondente, esperam
+    ~10-15s (com jitter) e tentam de novo, indefinidamente, ate a chamada
+    ter sucesso. Avisam no Alexa (via `Avisar Alexa`) na primeira falha e
+    depois a cada 5 tentativas, para nao spammar mas manter o usuario
+    informado que o alarme ainda nao foi armado/desarmado.
 - **Aviso de sucesso**: tanto `Armar Alarme` quanto `Desarmar Alarme`, ao
   terminar com sucesso, seguem para um node `change` que define
   `notify_text` ("Alarme armado com sucesso." / "Alarme desarmado com
   sucesso.") e chama `Avisar Alexa`.
-- `Desarmar Alarme` **nao** tem retry automatico — falhas ao desarmar nao
-  sao repetidas sozinhas hoje.
 
 ## Historico relevante
 
@@ -89,6 +90,12 @@ Alexa PowerController ON/OFF e chama `alarm_control_panel.alarm_arm_away`
   sucesso/falha para `Armar Alarme` e `Desarmar Alarme`. Testado ao vivo:
   injecao manual disparou `Armar Alarme` e a entidade confirmou
   `armed_away` na primeira tentativa.
+
+- 2026-07-10: mesmo retry indefinido aplicado a `Desarmar Alarme`
+  (`disarm_alarm_catch`/`disarm_alarm_retry_decision`/
+  `disarm_alarm_retry_delay`), espelhando a logica de `Armar Alarme`, ja
+  que o mesmo servidor `moni_mobile` falha o handshake tanto ao armar
+  quanto ao desarmar.
 
 ## Manutencao
 
