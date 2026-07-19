@@ -13,18 +13,16 @@ from pathlib import Path
 
 
 SECRETS_PATH = Path("/config/secrets.yaml")
-LOGIN1_DESTINATION = "org.freedesktop.login1"
-LOGIN1_PATH = "/org/freedesktop/login1"
-LOGIN1_INTERFACE = "org.freedesktop.login1.Manager"
+SYSTEMD_DESTINATION = "org.freedesktop.systemd1"
+SYSTEMD_PATH = "/org/freedesktop/systemd1"
+SYSTEMD_INTERFACE = "org.freedesktop.systemd1.Manager"
 
 
 def raspberry_power(action: str, *, dry_run: bool = False, check_only: bool = False) -> None:
     method = "Reboot" if action == "reboot" else "PowerOff"
-    check_method = "CanReboot" if action == "reboot" else "CanPowerOff"
     dbus_method = "reboot" if action == "reboot" else "power_off"
-    dbus_check_method = "can_reboot" if action == "reboot" else "can_power_off"
     if dry_run:
-        print(f"DBus {LOGIN1_INTERFACE}.{method}(false)")
+        print(f"DBus {SYSTEMD_INTERFACE}.{method}()")
         return
 
     script = f"""
@@ -34,16 +32,15 @@ from dbus_fast.aio import MessageBus
 
 async def main():
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-    introspection = await bus.introspect("{LOGIN1_DESTINATION}", "{LOGIN1_PATH}")
-    proxy = bus.get_proxy_object("{LOGIN1_DESTINATION}", "{LOGIN1_PATH}", introspection)
-    manager = proxy.get_interface("{LOGIN1_INTERFACE}")
-    allowed = await manager.call_{dbus_check_method}()
-    if allowed not in ("yes", "challenge"):
-        raise SystemExit(f"{check_method} returned {{allowed!r}}")
+    introspection = await bus.introspect("{SYSTEMD_DESTINATION}", "{SYSTEMD_PATH}")
+    proxy = bus.get_proxy_object("{SYSTEMD_DESTINATION}", "{SYSTEMD_PATH}", introspection)
+    manager = proxy.get_interface("{SYSTEMD_INTERFACE}")
+    properties = proxy.get_interface("org.freedesktop.DBus.Properties")
+    state = await properties.call_get("{SYSTEMD_INTERFACE}", "SystemState")
     if {check_only!r}:
-        print(f"{check_method}: {{allowed}}")
+        print(f"SystemState: {{state.value}}")
         return
-    await manager.call_{dbus_method}(False)
+    await manager.call_{dbus_method}()
 
 asyncio.run(main())
 """
