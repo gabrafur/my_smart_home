@@ -20,7 +20,8 @@
 .local-secrets/
 .agents/
 .codex/
-.claude/settings.local.json
+.claude/
+CLAUDE.md
 .DS_Store
 __pycache__/
 *.py[cod]
@@ -28,6 +29,8 @@ __pycache__/
 
 # Home Assistant secrets and volatile state
 homeassistant/secrets.yaml
+homeassistant/tuya_key_dump.json
+homeassistant/custom_components/tuya_key_dump/
 homeassistant/.ha_run.lock
 homeassistant/home-assistant_v2.db*
 homeassistant/home-assistant.log*

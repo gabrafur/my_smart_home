@@ -48,6 +48,22 @@ to `Home Assistant` and `Zigbee2MQTT`. If a future session hits a
 permission error on this file, re-check ownership with `ls -la
 nodered/flows.json` before falling back to the old `docker cp` workaround.
 
+**2026-07-10 fix — Gabriel/Valeria have two device_trackers each:**
+`device_tracker.iphone_de_{gabriel_furlan,valeria}` (`mobile_app`
+integration, real-time push) and a second one from the `icloud` integration
+(`device_tracker.iphonegabrielfurlan` for Gabriel,
+`device_tracker.iphone_de_valeria_2` for Valeria — note the inconsistent
+naming, `icloud` doesn't reuse the `_2` suffix pattern for Gabriel). The
+`mobile_app` tracker can get stuck reporting a stale "home" fix when iOS
+suspends background updates (confirmed live: Valeria showed ~27m from home
+while actually ~5.2km away at work, and the `icloud` tracker had the
+correct position). Fixed by merging both trackers in `sec_refresh_anyone_away`
+and `sec_prepare_arrival_context` (function `mergeWithIcloudFallback`):
+prefer whichever tracker reports the *greater* distance from home when both
+have reliable coordinates. See docs/ILUMINACAO_SEGURANCA_NODERED.md
+("Fallback de localizacao via iCloud") for the trade-off (arrival detection
+can lag slightly since iCloud only polls ~every 30 min).
+
 **2026-07-10 fix — Creta entities stopped updating during HA instability:**
 User reported `binary_sensor.creta_engine` not reflecting a same-day drive.
 Root cause was *not* the `kia_uvo`/`hyundai_kia_connect_api` integration
