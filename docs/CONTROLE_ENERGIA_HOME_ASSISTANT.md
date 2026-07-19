@@ -9,10 +9,10 @@
 
 ## Raspberry
 
-O Raspberry usa o D-Bus do host, via `org.freedesktop.login1`, para chamar:
+O Raspberry usa o D-Bus do host, via `org.freedesktop.systemd1`, para chamar:
 
-- `Reboot(false)`
-- `PowerOff(false)`
+- `Reboot()`
+- `PowerOff()`
 
 Esse caminho depende do Home Assistant Container com acesso a `/run/dbus` do
 host. O mesmo acesso tambem e necessario para Bluetooth local no Home Assistant
@@ -22,6 +22,7 @@ Teste sem desligar nada:
 
 ```bash
 docker exec homeassistant python3 /config/tools/power_control.py raspberry reboot --dry-run
+docker exec homeassistant python3 /config/tools/power_control.py raspberry reboot --check-only
 ```
 
 ## PC Windows
