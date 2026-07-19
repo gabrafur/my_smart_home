@@ -15,3 +15,11 @@ Home Assistant long-lived access token at `ha-long-lived-token.txt` (mode
 ...)`) when a task needs to drive `config_entries`/services beyond what the
 UI conveniently exposes. See [[project_power_matter_bluetooth]] for an
 example (finishing Bluetooth/Matter setup via `/api/config/config_entries/flow`).
+
+Separately, `homeassistant/secrets.yaml` (referenced by `configuration.yaml`,
+tracked in git as a template/placeholder) was `chown`ed to `gabriel` and
+`chmod 600`ed on 2026-07-05 (was `nobody:nogroup` 644, unwritable from the
+host). It's now host-editable directly, unlike
+`homeassistant/custom_components/*`, which stays root-owned inside the
+container and needs the `docker cp` + `docker exec -u 0` workflow in
+[[project_creta_kia_uvo_integration]].

@@ -74,3 +74,38 @@ whatever entity_id HA actually assigned. Check
 before wiring any new automation to a `kia_uvo` entity; don't assume the
 `creta_*` short-name convention holds for anything created after
 2026-07-10.
+
+**2026-07-19 — upstream update dropped the trip-log feature, re-ported same
+day.** Found an uncommitted working-tree diff across all of
+`custom_components/kia_uvo/*` (valet mode buttons, tire pressure sensors,
+`drive_mode` sensor, EV/PHEV battery device_class fix, lib bump 4.23.1 →
+4.25.2) that looks like a HACS-style update overwrote the local fork. It
+had removed `coordinator.async_refresh_day_trip_info`,
+`button.garagem_creta_refresh_trip_info`, and
+`DayTripInfoEntity`/`sensor.garagem_creta_day_trip_info`. Re-added all
+three verbatim from commit `fcefeec` (the lib's `update_day_trip_info`/
+`day_trip_info` kept the same signature in 4.25.2, confirmed via
+`inspect.signature` in-container) plus the `day_trip_info`/
+`refresh_trip_info` translation keys in `strings.json` and
+`translations/en.json` only (matches original commit's scope). Confirmed
+via HA REST API that both entities are back in the entity registry with
+the right entity_id/friendly_name after restart (`unavailable` only
+because Hyundai's API was down at the time, not a code issue). Source of
+the silent overwrite is still unknown — this fork is edited directly on
+the host, not HACS-managed, so something else is touching these files
+outside git. Worth checking `git status` on this directory periodically.
+
+**Fix (2026-07-19) — noisy `Config Not Ready` log / slow retry on
+transient 503s.** `_async_update_data`'s fallback exception block (when both
+force-refresh and cached-state update fail, e.g. Hyundai BR's
+`br-ccapi.hyundai.com.br` returning 503) was dumping a full
+`traceback.format_exc()` into the `UpdateFailed` message and not setting
+`retry_after`. Fixed to match the existing token-refresh error pattern:
+short message + `retry_after=60`, full traceback only via `_LOGGER.debug`.
+**Editing this file requires a full `homeassistant.restart`, not just a
+config-entry reload** — reload reuses the already-imported Python module,
+so code changes don't take effect (confirmed live: traceback line numbers
+went incoherent after a reload-only attempt, because linecache read the
+new file against stale bytecode line offsets). Restart via HA REST API
+(`POST /api/services/homeassistant/restart` with the long-lived token, see
+[[reference-local-secrets]]) rather than `docker restart`.
