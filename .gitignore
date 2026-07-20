@@ -27,10 +27,14 @@ __pycache__/
 *.py[cod]
 *.gz
 
+# tinytuya wizard output (device local keys + cloud Access ID/Secret) — NUNCA commitar
+devices.json
+snapshot.json
+tinytuya.json
+tuya-raw.json
+
 # Home Assistant secrets and volatile state
 homeassistant/secrets.yaml
-homeassistant/tuya_key_dump.json
-homeassistant/custom_components/tuya_key_dump/
 homeassistant/.ha_run.lock
 homeassistant/home-assistant_v2.db*
 homeassistant/home-assistant.log*

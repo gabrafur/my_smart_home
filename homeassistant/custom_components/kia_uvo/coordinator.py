@@ -9,7 +9,7 @@ from datetime import timedelta
 import traceback
 import logging
 import asyncio
-import uuid
+import types
 
 from hyundai_kia_connect_api import (
     Vehicle,
@@ -21,6 +21,7 @@ from hyundai_kia_connect_api import (
     Token,
 )
 from hyundai_kia_connect_api.const import WINDOW_STATE
+from hyundai_kia_connect_api.ApiImplType1 import ApiImplType1
 from hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
     UnsupportedControlError,
@@ -85,7 +86,6 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             if config_entry.data.get(CONF_TOKEN, None)
             else None,
         )
-        self._ensure_unique_device_id()
         self.scan_interval: int = (
             config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL) * 60
         )
@@ -159,6 +159,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 f"Token refresh failed, will retry in 60s: {err}",
                 retry_after=60,
             ) from err
+        self._force_ccs2_status_endpoint()
         current_hour = dt_util.now().hour
 
         if (
@@ -258,6 +259,65 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             self.vehicle_manager.update_day_trip_info, vehicle_id, yyyymmdd_string
         )
         self.async_set_updated_data(self.data)
+
+    def _force_ccs2_status_endpoint(self) -> None:
+        """Force the CCS2 status endpoint, overriding Hyundai's stale flag.
+
+        The BR backend's /spa/vehicles list response includes a per-vehicle
+        ccuCCS2ProtocolSupport flag that HyundaiBlueLinkApiBR._get_vehicle_state
+        uses to pick between /status/latest (flag=0) and /ccs2/carstatus/latest
+        (flag=1). For this Creta the flag has been reporting 0 the whole time,
+        but /status/latest has returned a hard 503 (resCode 5031,
+        "Unavailable remote control - Service Temporary Unavailable") since
+        2026-07-14, while manually probing /ccs2/carstatus/latest with the
+        same token on 2026-07-19 returned 200 with fresh vehicle data. i.e.
+        Hyundai migrated this vehicle's backend to CCS2 without updating the
+        capability flag their own vehicle-list endpoint reports. Force it
+        every update instead of relying on the (wrong) upstream flag.
+
+        The /ccs2/carstatus/latest response is a deeply nested schema
+        (resMsg.state.Vehicle.Cabin.Door.Row1.Driver.Open, etc.), completely
+        different from the flat /status/latest shape (resMsg.doorOpen.frontLeft)
+        that HyundaiBlueLinkApiBR._update_vehicle_properties expects. Flipping
+        the URL alone made the API call succeed but left every field parsed
+        from the wrong shape (silently defaulting to None/False via .get()) -
+        confirmed live: sensor.creta_fuel_level stayed "unavailable" even
+        after status/latest 503s stopped. ApiImplType1 (used by other
+        Hyundai/Kia regions that are CCS2-native) already ships a complete,
+        battle-tested parser for this exact schema
+        (_update_vehicle_properties_ccs2 - only self-dependency is
+        self.data_timezone, which HyundaiBlueLinkApiBR also defines, so it's
+        safe to bind onto our api instance). Rebinding
+        api._update_vehicle_properties means update_vehicle_with_cached_state
+        / force_refresh_vehicle_state (which call self._update_vehicle_properties
+        internally, unaware of the swap) transparently get correct parsing.
+        """
+        api = self.vehicle_manager.api
+        for vehicle in self.vehicle_manager.vehicles.values():
+            vehicle.ccu_ccs2_protocol_support = True
+        def _parse_ccs2(api_self, vehicle, resmsg):
+            # HyundaiBlueLinkApiBR._get_vehicle_state returns response["resMsg"]
+            # as-is, but ApiImplType1._update_vehicle_properties_ccs2 (as called
+            # by KiaUvoApiEU/AU) expects resMsg["state"]["Vehicle"] - one level
+            # deeper. Confirmed live: calling it with the bare resMsg crashed on
+            # float(None) reading Drivetrain.FuelSystem.DTE.Total, which only
+            # exists under state.Vehicle.
+            inner = (resmsg or {}).get("state", {}).get("Vehicle", {})
+            ApiImplType1._update_vehicle_properties_ccs2(api_self, vehicle, inner)
+            # ApiImplType1's parser sets total_driving_range but never
+            # fuel_driving_range (a BR-flat-parser-only field our sensor.py
+            # SENSOR_DESCRIPTIONS already keys off of, entity
+            # sensor.creta_fuel_driving_range) - confirmed by diffing every
+            # "vehicle.X =" assignment between the two parsers, the only gap.
+            # Alias it instead of touching sensor.py, so the existing
+            # entity_id keeps working unchanged.
+            if vehicle.total_driving_range is not None:
+                vehicle.fuel_driving_range = (
+                    vehicle.total_driving_range,
+                    vehicle.total_driving_range_unit,
+                )
+
+        api._update_vehicle_properties = types.MethodType(_parse_ccs2, api)
 
     async def async_check_and_refresh_token(self):
         """Refresh token if needed via library."""
@@ -612,42 +672,6 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             lambda: self.vehicle_manager.set_windows_state(vehicle_id, options),
             "vent all windows",
         )
-
-    def _ensure_unique_device_id(self) -> None:
-        """Swap the library's shared hardcoded ccsp-device-id for a unique one.
-
-        hyundai_kia_connect_api hardcodes the same ccsp-device-id UUID for
-        every install worldwide (see upstream commit 245b155, "Use hardcoded
-        device_id instead of random UUID"). Hyundai's BR backend started
-        returning persistent 503s on /status/latest starting 2026-07-14
-        while the official Bluelink app (which uses a real per-device ID)
-        kept working fine — consistent with anti-abuse blocking of the
-        well-known shared fingerprint (thousands of HA installs presenting
-        the identical "device"). This generates one random UUID the first
-        time and reuses it afterwards (stored inside the persisted Token,
-        alongside access/refresh tokens) instead of regenerating it on every
-        restart, since constantly changing device_id looks just as
-        suspicious to fraud detection as sharing one.
-        """
-        shared_id = getattr(self.vehicle_manager.api, "ccsp_device_id", None)
-        if shared_id is None:
-            return
-        token = self.vehicle_manager.token
-        current = token.device_id if token else None
-        if current and current != shared_id:
-            # Already switched to a unique id on a previous run.
-            self.vehicle_manager.api.ccsp_device_id = current
-            return
-        new_device_id = str(uuid.uuid4())
-        _LOGGER.warning(
-            "%s - Replacing shared ccsp-device-id with a unique one (%s) to "
-            "rule out anti-abuse blocking of the library-wide default",
-            DOMAIN,
-            new_device_id,
-        )
-        self.vehicle_manager.api.ccsp_device_id = new_device_id
-        if token is not None:
-            token.device_id = new_device_id
 
     async def _async_save_token(self):
         """Persist the latest token into the config entry."""
