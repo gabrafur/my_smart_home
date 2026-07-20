@@ -158,6 +158,101 @@ rapido. Alinhado com o padrao ja usado no bloco de refresh de token (ver
 passou a ser `Config Not Ready: Error communicating with API, will retry
 in 60s: 503 Server Error: ...` em vez do traceback completo.
 
+**Correcao importante:** o paragrafo acima (escrito antes da investigacao
+abaixo) dizia que o 503 "nao e algo que da pra corrigir do nosso lado".
+Isso estava errado — era um endpoint errado sendo chamado, nao a Hyundai
+fora do ar. Ver secao seguinte.
+
+## Fix de verdade: endpoint `/status/latest` obsoleto para este veiculo (2026-07-19)
+
+**Sintoma:** desde 2026-07-14, TODA chamada a
+`/spa/vehicles/{id}/status/latest` (usada tanto pelo poll cached quanto
+pelo force-refresh) retornava 503 com corpo
+`{"resCode":"5031","resMsg":"Unavailable remote control - Service
+Temporary Unavailable"}`. `get_vehicles()` (`/spa/vehicles`, sem o id) e
+`/location/park` continuavam funcionando normalmente — so esse endpoint
+especifico quebrado, de forma consistente, nao intermitente. Confirmado
+via `docker logs` que a ultima leitura real de status foi 2026-07-11
+13:15, e as falhas comecaram sem parar em 2026-07-14 04:01 (~900+
+ocorrencias entre 07-14 e 07-19).
+
+**Causa raiz:** `HyundaiBlueLinkApiBR._get_vehicle_state` escolhe entre
+dois endpoints com base na flag `ccuCCS2ProtocolSupport` que a propria
+Hyundai retorna em `/spa/vehicles` (lista de veiculos):
+
+```python
+if not vehicle.ccu_ccs2_protocol_support:
+    url = url + "/status/latest"          # flag == 0
+else:
+    url = url + "/ccs2/carstatus/latest"   # flag == 1
+```
+
+Para esse Creta a flag sempre retornou `0`. Testando manualmente (chamada
+GET direta, read-only, com o token ja salvo) descobri que
+`/ccs2/carstatus/latest` retorna **200 com dados frescos** para o mesmo
+veiculo, no mesmo momento em que `/status/latest` retorna 503. Ou seja: a
+Hyundai migrou o backend desse veiculo (ou desse lote de veiculos/versao
+de TCU) para o protocolo CCS2 em algum momento por volta de 14/07, mas
+**nao atualizou a flag** que a propria API expoe para indicar isso. O app
+oficial funciona porque, aparentemente, nao depende dessa flag (ou usa
+CCS2 por padrao). Nao e bloqueio anti-abuso nem sessao/token/device_id —
+username+senha+device_id compartilhado da lib continuam funcionando 100%
+normal (login, listagem de veiculos, controle) o tempo todo; so esse
+endpoint de status especifico estava apontado errado.
+
+**Fix, em duas partes** (`coordinator.py::_force_ccs2_status_endpoint`,
+chamado a cada `_async_update_data`):
+
+1. Forca `vehicle.ccu_ccs2_protocol_support = True` para ignorar a flag
+   errada da Hyundai e sempre usar `/ccs2/carstatus/latest`.
+2. A resposta do CCS2 tem um schema completamente diferente (aninhado,
+   `resMsg.state.Vehicle.Cabin.Door.Row1.Driver.Open` em vez de
+   `resMsg.doorOpen.frontLeft`), entao so trocar a URL nao bastava — o
+   parser `_update_vehicle_properties` da BR (feito pra shape plano) lia
+   tudo errado silenciosamente (`.get()` sempre caindo no default). A lib
+   ja tem um parser CCS2 completo e maduro em `ApiImplType1` (usado por
+   outras regioes que sao CCS2-nativas, como EU/AU — referencias a varias
+   issues reais do GitHub nos comentarios: #1538, #1786, #1783, #1232,
+   #1652, #1205, #1187, #1771). Em vez de reescrever o parsing, o fix
+   troca dinamicamente o metodo bound `api._update_vehicle_properties`
+   (via `types.MethodType`) por um wrapper que faz o drill-down
+   `resMsg["state"]["Vehicle"]` (a lib EU chama
+   `_update_vehicle_properties_ccs2` ja com esse nivel, confirmado lendo
+   `KiaUvoApiEU.py`) e delega pro parser CCS2 existente. Unica dependencia
+   de `self` nesse parser e `self.data_timezone`, que a classe BR tambem
+   define com o mesmo nome — por isso da pra "emprestar" o metodo sem
+   reescrever nada.
+3. Unico campo que o parser CCS2 nao preenche e o parser BR preenchia:
+   `fuel_driving_range` (ele so seta `total_driving_range`, um atributo
+   diferente). Descoberto comparando programaticamente todo `vehicle.X =`
+   dos dois parsers. Corrigido com um alias de uma linha depois de chamar
+   o parser CCS2, em vez de mudar `sensor.py` (mantem o mesmo entity_id
+   `sensor.creta_fuel_driving_range`).
+
+**Testado ao vivo, ponta a ponta:** antes do fix, script standalone
+reproduzindo a chamada `/ccs2/carstatus/latest` batia num bug separado da
+lib (`float(None)` em `Drivetrain.FuelSystem.DTE.Total` — bug de nivel
+errado, nao da Hyundai) ate eu descobrir o drill-down correto. Depois do
+fix completo + restart: config entry foi de `setup_retry` (contínuo desde
+07-14) para `loaded`; `sensor.creta_fuel_level` = 20 (antes
+`unavailable`), `sensor.creta_car_battery_level` = 62,
+`sensor.creta_fuel_driving_range` = 110.0, `sensor.creta_last_updated_at`
+= 2026-07-18T17:24:41Z (dado fresco, nao mais o cache de 07-11),
+`device_tracker.creta_location` = home. Zero erros nos logs pos-restart.
+De bonus, o parser CCS2 preenche ~65 campos que o parser BR nunca setava
+(pressao dos pneus, drive_mode, avisos de oleo/bateria 12V, varios campos
+EV) — as `SENSOR_DESCRIPTIONS` de `tire_pressure_*`/`drive_mode`
+adicionadas pelo update de upstream (ver secao anterior) agora tem chance
+real de popular, quando o veiculo reportar esses dados (esse Creta
+especifico nao reporta `drive_mode`/pressao individual dos pneus — ficam
+`None`, o que e esperado, nao erro).
+
+**Nao investigado:** por que a Hyundai migrou esse veiculo pra CCS2 sem
+atualizar a flag, e se isso pode acontecer de novo (mudar pra `0` de
+novo, ou algum outro veiculo BR ter o mesmo problema). Se `ccuCCS2ProtocolSupport`
+comecar a vir `1` no futuro, `_force_ccs2_status_endpoint` continua
+funcionando igual (forcar True quando ja e True e no-op).
+
 Editado via `docker cp` + `docker exec -u 0` (ver secao de ownership
 acima); aplicado com `homeassistant.restart` via API (reload de config
 entry sozinho **nao** reimporta o modulo Python do custom_component —
