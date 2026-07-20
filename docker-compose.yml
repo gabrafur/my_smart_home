@@ -1,7 +1,7 @@
 services:
 
   portainer:
-    image: portainer/portainer-ce@sha256:5f9b4bda5582fc72c07d730f86168205f4042d82c9cde011c9146b12496e4625
+    image: portainer/portainer-ce@sha256:f6bc23d1695530a609563fd65c180aaafec0fc02e019d5fc63d16b6fbe83addd
     container_name: portainer
     restart: always
     ports:
@@ -22,7 +22,7 @@ services:
       - ./mosquitto/log:/mosquitto/log
 
   homeassistant:
-    image: ghcr.io/home-assistant/home-assistant@sha256:f73512ba4fe06bb4d57636fe3578d0820cdec46f81e8f837ab59e451662ff3cb
+    image: ghcr.io/home-assistant/home-assistant@sha256:1476924357b46e80735c13e94232ba5c853cac052e9df4bb28d50fa56348097b
     container_name: homeassistant
     restart: always
     network_mode: host
