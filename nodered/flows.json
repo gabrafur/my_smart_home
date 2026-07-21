@@ -105,131 +105,6 @@
         ]
     },
     {
-        "id": "10d528954a2d5cae",
-        "type": "api-call-service",
-        "z": "29d64664bf8cbde8",
-        "name": "acionar_portao_garagem",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "script.portao_garagem_acionar",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "script.portao_garagem_acionar"
-        ],
-        "labelId": [],
-        "data": "",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "script",
-        "service": "portao_garagem_acionar",
-        "x": 950,
-        "y": 120,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "gar_portao_error_catch",
-        "type": "catch",
-        "z": "29d64664bf8cbde8",
-        "name": "erro ao acionar portao",
-        "scope": [
-            "10d528954a2d5cae"
-        ],
-        "uncaught": false,
-        "x": 400,
-        "y": 240,
-        "wires": [
-            [
-                "gar_portao_retry_decision"
-            ]
-        ]
-    },
-    {
-        "id": "gar_portao_retry_decision",
-        "type": "function",
-        "z": "29d64664bf8cbde8",
-        "name": "tentar novamente ate 2x",
-        "func": "const maxRetries = 2;\nmsg.portao_retry_count = Number(msg.portao_retry_count || 0) + 1;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nif (msg.portao_retry_count <= maxRetries) {\n    node.warn(`Erro ao acionar portao; tentativa extra ${msg.portao_retry_count}/${maxRetries}: ${errorMessage}`);\n    return [msg, null];\n}\n\nmsg.error_message = `Falha ao acionar o portao apos ${maxRetries + 1} tentativas. Ultimo erro: ${errorMessage}`;\nreturn [null, msg];",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 650,
-        "y": 240,
-        "wires": [
-            [
-                "gar_portao_retry_delay"
-            ],
-            [
-                "gar_portao_error_notify"
-            ]
-        ]
-    },
-    {
-        "id": "gar_portao_retry_delay",
-        "type": "delay",
-        "z": "29d64664bf8cbde8",
-        "name": "aguardar antes de tentar novamente",
-        "pauseType": "delay",
-        "timeout": "3",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 970,
-        "y": 220,
-        "wires": [
-            [
-                "10d528954a2d5cae"
-            ]
-        ]
-    },
-    {
-        "id": "gar_portao_error_notify",
-        "type": "api-call-service",
-        "z": "29d64664bf8cbde8",
-        "name": "notificar erro portao",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\":\"Erro ao acionar portao da garagem\",\"message\": error_message ? error_message : \"Falha desconhecida no fluxo garagem\"}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 910,
-        "y": 280,
-        "wires": [
-            []
-        ]
-    },
-    {
         "id": "gar_portao_action_topic_in",
         "type": "mqtt in",
         "z": "29d64664bf8cbde8",
@@ -266,7 +141,7 @@
         "y": 120,
         "wires": [
             [
-                "10d528954a2d5cae"
+                "gar_relay_pulse_on"
             ]
         ]
     },
@@ -2361,6 +2236,90 @@
             [
                 "29a4e3c0935e2805",
                 "sec_reflector_turn_on"
+            ]
+        ]
+    },
+    {
+        "id": "gar_relay_pulse_on",
+        "type": "function",
+        "z": "29d64664bf8cbde8",
+        "name": "botoeira: liga o rele (inicio do pulso)",
+        "func": "// Botoeira: fecha o contato. O TS0001 nao honra on_time, entao o pulso e'\n// feito por software: este no liga, o delay+no seguinte desligam.\nmsg.topic = 'zigbee2mqtt/rele_acionador_portao/set';\nmsg.payload = JSON.stringify({ state: 'ON' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 120,
+        "wires": [
+            [
+                "gar_relay_mqtt_out",
+                "gar_relay_safety_delay"
+            ]
+        ]
+    },
+    {
+        "id": "gar_relay_mqtt_out",
+        "type": "mqtt out",
+        "z": "29d64664bf8cbde8",
+        "name": "rele_acionador_portao set",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 960,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "gar_relay_safety_delay",
+        "type": "delay",
+        "z": "29d64664bf8cbde8",
+        "name": "pulso: manter fechado ~0.7s",
+        "pauseType": "delay",
+        "timeout": "700",
+        "timeoutUnits": "milliseconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 660,
+        "y": 200,
+        "wires": [
+            [
+                "gar_relay_pulse_off"
+            ]
+        ]
+    },
+    {
+        "id": "gar_relay_pulse_off",
+        "type": "function",
+        "z": "29d64664bf8cbde8",
+        "name": "botoeira: solta o contato (fim do pulso)",
+        "func": "// Fim do pulso: abre o contato.\nmsg.topic = 'zigbee2mqtt/rele_acionador_portao/set';\nmsg.payload = JSON.stringify({ state: 'OFF' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 200,
+        "wires": [
+            [
+                "gar_relay_mqtt_out"
             ]
         ]
     }
