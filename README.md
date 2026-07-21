@@ -17,6 +17,15 @@ credentials (device local keys and cloud Access ID/Secret).
 On a new Raspberry Pi, restore the ignored secrets from a secure backup before
 starting the containers.
 
+## Remote access
+
+There is no public port-forwarding — every LAN-bound service is reachable only
+over the local network or a VPN overlay:
+
+- **Tailscale** — primary VPN (installed and enabled on the host).
+- **ZeroTier** — backup VPN, used when Tailscale is unavailable.
+- **MobaXterm** — terminal/SSH client used to connect in over either VPN.
+
 ## Documentation
 
 Per-feature write-ups (design, constraints, gotchas, and the reasoning behind
