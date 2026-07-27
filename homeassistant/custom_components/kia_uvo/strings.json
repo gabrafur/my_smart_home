@@ -267,9 +267,6 @@
       },
       "drive_mode": {
         "name": "Drive Mode"
-      },
-      "day_trip_info": {
-        "name": "Day Trip Info"
       }
     },
     "binary_sensor": {
@@ -516,9 +513,6 @@
       },
       "vent_all_windows": {
         "name": "Vent All Windows"
-      },
-      "refresh_trip_info": {
-        "name": "Refresh Trip Info"
       }
     },
     "cover": {
