@@ -63,7 +63,7 @@ services:
       - TZ=America/Sao_Paulo
 
   nodered:
-    image: nodered/node-red@sha256:6cb1b27fa5a83deec6a662db62eec8bb32e55ac5412d6b7a653e874ce62055d5
+    image: nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6
     container_name: nodered
     restart: always
     depends_on:
