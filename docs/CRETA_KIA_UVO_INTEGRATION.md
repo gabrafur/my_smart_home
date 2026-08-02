@@ -260,3 +260,76 @@ confirmado ao vivo: apos so um reload, o traceback continuou aparecendo no
 formato antigo, com numeros de linha incoerentes porque o objeto de codigo
 em memoria ainda era o antigo mas o `linecache` estava lendo o arquivo
 novo do disco).
+
+## Recorrencia (2026-08-02): o update de fork derrubou o fix CCS2 de novo
+
+Mesmo padrao da secao de 2026-07-19: um update de upstream (agora bump da
+lib `hyundai_kia_connect_api` 4.25.2 -> **4.25.3**) sobrescreveu o fork
+local e removeu **tanto** o `_force_ccs2_status_endpoint` do `coordinator.py`
+**quanto** o sensor de trip-log (`button.py`/`sensor.py`/`strings.json`/
+`translations/en.json`). O backup automatico noturno `876aeaf` (2026-07-27)
+capturou esse estado ja quebrado, e o `/status/latest` voltou a 503ar
+continuamente (resCode 5031) — `sensor.creta_fuel_level` ficou
+`unavailable` de novo.
+
+**Correcao:** restaurados os 5 arquivos verbatim do commit `212211a`
+(backup de 2026-07-20, ultimo estado bom) via `git show 212211a:<path> |
+docker cp`, **mantendo o `manifest.json` em 4.25.3** (a lib ja instalada no
+container) — o parser `ApiImplType1._update_vehicle_properties_ccs2`
+continua com a mesma assinatura `(self, vehicle, state)` em 4.25.3, e
+`data_timezone` segue existindo em `HyundaiBlueLinkApiBR`, entao o fix bom
+e compativel sem downgrade. Confirmado ao vivo apos `homeassistant.restart`:
+`sensor.creta_fuel_level` `unavailable` -> `90`, `sensor.creta_last_updated_at`
+com timestamp do proprio dia, zero 503 nos logs.
+
+**Origem do overwrite — FINALMENTE identificada (2026-08-02).** As duas notas
+anteriores diziam que a fonte era "desconhecida" / "algo fora do git tocando
+os arquivos". Era o proprio auto-updater do repo: `scripts/docker-auto-update.mjs`
+no modo `ha-updates` (cron a cada 30 min) lista as entidades `update.*` do HA
+que "parecem seguras" e chama `update/install` em cada uma. O HACS expoe a
+atualizacao do kia_uvo como `update.kia_uvo_hyundai_bluelink_update`; quando o
+upstream lanca uma versao nova, essa entidade vira `on` e o watcher **instala o
+release do HACS por cima do fork local**, apagando o fix CCS2 e o trip-log. Nao
+era HACS "sozinho" nem edicao manual — era o nosso cron auto-instalando o update
+do HACS.
+
+**Blindagem (2026-08-02):** `updateLooksSafe` em `docker-auto-update.mjs` ganhou
+uma lista `PROTECTED_UPDATE_PATTERNS` (`kia_uvo`, `hyundai`, `bluelink`, `uvo`)
+que barra o auto-install dessas entidades (match por substring em
+entity_id+friendly_name, resiste a mudanca de id). Testado via unit-test do
+predicado: o update do kia_uvo retorna `false` (nao instala), os demais seguem
+`true`. Agora o fork so muda por acao manual explicita — se um dia quiser
+mesmo atualizar o kia_uvo, faca no HACS e depois **re-aplique o fix CCS2 +
+trip-log** antes de considerar concluido. Se adicionar outro custom_component
+forkado, adicione o padrao dele nessa mesma lista.
+
+**Padrao a vigiar:** sempre que o Creta voltar a ficar `unavailable`, rodar
+`git status homeassistant/custom_components/kia_uvo/` e
+`grep -c _force_ccs2_status_endpoint coordinator.py` — se o grep der `0`, e o
+mesmo overwrite (alguem atualizou o kia_uvo manualmente por fora da blindagem);
+restaurar do ultimo backup bom (checar `git log` do `coordinator.py` por um
+commit que ainda tenha a funcao) mantendo o `manifest.json` na versao de lib
+atual do container.
+
+## Dashboard de viagens (2026-08-02)
+
+Dashboard Lovelace `creta-viagens` (titulo "Creta", `dashboards/creta.yaml`,
+registrado em `configuration.yaml` — url_path com hifen, ver
+[[reference-ha-lovelace-constraints]]): status ao vivo (combustivel, autonomia,
+odometro, bateria 12V, motor, travas, localizacao, timestamps), viagens de hoje
+renderizadas dinamicamente do `sensor.garagem_creta_day_trip_info` (card
+markdown com template Jinja sobre o atributo `trips`), grafico de historico de
+7 dias (motor + combustivel) e um card estatico com o historico de viagens
+recuperado de 28/07 a 01/08 (puxado do `/tripinfo` em 2026-08-02, ver secao
+abaixo). O sensor de trip e de **dia unico** e nao persiste entre restarts —
+some depois de reiniciar o HA ate a proxima chegada do Creta ou um press manual
+de `button.garagem_creta_refresh_trip_info`; por isso o card de "hoje" tem
+fallback "sem viagens ainda".
+
+**Por que o motor nao tem historico proprio pra recuperar:** o
+`binary_sensor.creta_engine` nunca registrou um unico `on` na janela do recorder
+(so `off`/`unavailable`) — mesma limitacao de polling ja documentada no topo
+deste arquivo. O "quando o carro rodou" real vem do `/tripinfo` (mesma fonte do
+app Bluelink), que devolve viagens de dias passados **inclusive dos dias em que
+o status estava em 503**. Foi de la que veio o historico recuperado no card do
+dashboard.
