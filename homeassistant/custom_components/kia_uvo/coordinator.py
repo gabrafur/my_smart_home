@@ -9,6 +9,7 @@ from datetime import timedelta
 import traceback
 import logging
 import asyncio
+import types
 
 from hyundai_kia_connect_api import (
     Vehicle,
@@ -20,6 +21,7 @@ from hyundai_kia_connect_api import (
     Token,
 )
 from hyundai_kia_connect_api.const import WINDOW_STATE
+from hyundai_kia_connect_api.ApiImplType1 import ApiImplType1
 from hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
     UnsupportedControlError,
@@ -157,6 +159,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 f"Token refresh failed, will retry in 60s: {err}",
                 retry_after=60,
             ) from err
+        self._force_ccs2_status_endpoint()
         current_hour = dt_util.now().hour
 
         if (
@@ -177,19 +180,35 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     self.vehicle_manager.check_and_force_update_vehicles,
                     self.force_refresh_interval,
                 )
-            except Exception:
+            except Exception as force_err:
+                _LOGGER.warning(
+                    "%s - Force update failed, falling back to cached: %s",
+                    DOMAIN,
+                    force_err,
+                )
                 try:
-                    _LOGGER.exception(
-                        f"Force update failed, falling back to cached: {traceback.format_exc()}"
-                    )
                     await self.hass.async_add_executor_job(
                         self.vehicle_manager.update_all_vehicles_with_cached_state
                     )
-                except Exception:
-                    _LOGGER.exception(f"Cached update failed: {traceback.format_exc()}")
-                    raise UpdateFailed(
-                        f"Error communicating with API: {traceback.format_exc()}"
+                except Exception as cached_err:
+                    # Both the force refresh and the cached-state fallback failed
+                    # (e.g. Hyundai's backend returning 503 Service Unavailable).
+                    # Log the full traceback for debugging, but keep the
+                    # UpdateFailed/ConfigEntryNotReady message short — dumping the
+                    # whole traceback into it makes the "Config Not Ready" log entry
+                    # unreadable and doesn't add anything the debug log doesn't
+                    # already have. retry_after=60 avoids waiting for HA's default
+                    # (longer) config-entry retry backoff while Hyundai's API is
+                    # transiently down.
+                    _LOGGER.debug(
+                        "%s - Cached update failed: %s",
+                        DOMAIN,
+                        traceback.format_exc(),
                     )
+                    raise UpdateFailed(
+                        f"Error communicating with API, will retry in 60s: {cached_err}",
+                        retry_after=60,
+                    ) from cached_err
 
         else:
             await self.hass.async_add_executor_job(
@@ -221,6 +240,84 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
         )
         self.async_set_updated_data(self.data)
+
+    async def async_refresh_day_trip_info(self, vehicle_id: str) -> None:
+        """Fetch today's trip log (start time, duration, distance per trip).
+
+        This hits a different endpoint (/tripinfo) than the regular status
+        poll. The BR backend only ever reports live "engine" state at
+        parking events (mirrors the /location/park 400-while-driving
+        behavior), so binary_sensor.*_engine's recorder history is a sparse
+        reconstruction of whatever moments we happened to poll and can miss
+        "on" entirely during a drive. This trip log is the same data the
+        Bluelink app's own trip history is built from, so it matches the
+        app regardless of polling luck.
+        """
+        await self.async_check_and_refresh_token()
+        yyyymmdd_string = dt_util.now().strftime("%Y%m%d")
+        await self.hass.async_add_executor_job(
+            self.vehicle_manager.update_day_trip_info, vehicle_id, yyyymmdd_string
+        )
+        self.async_set_updated_data(self.data)
+
+    def _force_ccs2_status_endpoint(self) -> None:
+        """Force the CCS2 status endpoint, overriding Hyundai's stale flag.
+
+        The BR backend's /spa/vehicles list response includes a per-vehicle
+        ccuCCS2ProtocolSupport flag that HyundaiBlueLinkApiBR._get_vehicle_state
+        uses to pick between /status/latest (flag=0) and /ccs2/carstatus/latest
+        (flag=1). For this Creta the flag has been reporting 0 the whole time,
+        but /status/latest has returned a hard 503 (resCode 5031,
+        "Unavailable remote control - Service Temporary Unavailable") since
+        2026-07-14, while manually probing /ccs2/carstatus/latest with the
+        same token on 2026-07-19 returned 200 with fresh vehicle data. i.e.
+        Hyundai migrated this vehicle's backend to CCS2 without updating the
+        capability flag their own vehicle-list endpoint reports. Force it
+        every update instead of relying on the (wrong) upstream flag.
+
+        The /ccs2/carstatus/latest response is a deeply nested schema
+        (resMsg.state.Vehicle.Cabin.Door.Row1.Driver.Open, etc.), completely
+        different from the flat /status/latest shape (resMsg.doorOpen.frontLeft)
+        that HyundaiBlueLinkApiBR._update_vehicle_properties expects. Flipping
+        the URL alone made the API call succeed but left every field parsed
+        from the wrong shape (silently defaulting to None/False via .get()) -
+        confirmed live: sensor.creta_fuel_level stayed "unavailable" even
+        after status/latest 503s stopped. ApiImplType1 (used by other
+        Hyundai/Kia regions that are CCS2-native) already ships a complete,
+        battle-tested parser for this exact schema
+        (_update_vehicle_properties_ccs2 - only self-dependency is
+        self.data_timezone, which HyundaiBlueLinkApiBR also defines, so it's
+        safe to bind onto our api instance). Rebinding
+        api._update_vehicle_properties means update_vehicle_with_cached_state
+        / force_refresh_vehicle_state (which call self._update_vehicle_properties
+        internally, unaware of the swap) transparently get correct parsing.
+        """
+        api = self.vehicle_manager.api
+        for vehicle in self.vehicle_manager.vehicles.values():
+            vehicle.ccu_ccs2_protocol_support = True
+        def _parse_ccs2(api_self, vehicle, resmsg):
+            # HyundaiBlueLinkApiBR._get_vehicle_state returns response["resMsg"]
+            # as-is, but ApiImplType1._update_vehicle_properties_ccs2 (as called
+            # by KiaUvoApiEU/AU) expects resMsg["state"]["Vehicle"] - one level
+            # deeper. Confirmed live: calling it with the bare resMsg crashed on
+            # float(None) reading Drivetrain.FuelSystem.DTE.Total, which only
+            # exists under state.Vehicle.
+            inner = (resmsg or {}).get("state", {}).get("Vehicle", {})
+            ApiImplType1._update_vehicle_properties_ccs2(api_self, vehicle, inner)
+            # ApiImplType1's parser sets total_driving_range but never
+            # fuel_driving_range (a BR-flat-parser-only field our sensor.py
+            # SENSOR_DESCRIPTIONS already keys off of, entity
+            # sensor.creta_fuel_driving_range) - confirmed by diffing every
+            # "vehicle.X =" assignment between the two parsers, the only gap.
+            # Alias it instead of touching sensor.py, so the existing
+            # entity_id keeps working unchanged.
+            if vehicle.total_driving_range is not None:
+                vehicle.fuel_driving_range = (
+                    vehicle.total_driving_range,
+                    vehicle.total_driving_range_unit,
+                )
+
+        api._update_vehicle_properties = types.MethodType(_parse_ccs2, api)
 
     async def async_check_and_refresh_token(self):
         """Refresh token if needed via library."""
