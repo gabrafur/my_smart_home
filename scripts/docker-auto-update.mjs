@@ -197,6 +197,15 @@ function haRequest(method, requestPath, token, body) {
   });
 }
 
+// Locally-forked custom_components whose HACS "update" entity must NEVER be
+// auto-installed: installing the upstream release overwrites our on-host
+// patches. kia_uvo carries a local CCS2-endpoint fix (without which the BR
+// Creta 503s on /status/latest) plus the trip-log sensor; a HACS auto-update
+// silently wiped both twice (2026-07-19, 2026-07-27) before this guard.
+// See docs/CRETA_KIA_UVO_INTEGRATION.md. Match is substring, on entity_id +
+// friendly_name, so it holds even if the exact entity_id changes.
+const PROTECTED_UPDATE_PATTERNS = ["kia_uvo", "hyundai", "bluelink", "uvo"];
+
 function updateLooksSafe(entity) {
   if (!entity.entity_id.startsWith("update.")) {
     return false;
@@ -208,14 +217,29 @@ function updateLooksSafe(entity) {
   if (name.includes("firmware") || name.includes("slzb")) {
     return false;
   }
+  if (PROTECTED_UPDATE_PATTERNS.some((pattern) => name.includes(pattern))) {
+    return false;
+  }
   return true;
 }
 
+function readHaToken() {
+  // Prefer the host-only secret store (single source of truth, mode 600),
+  // fall back to HA_LONG_LIVED_TOKEN in .env for backwards compatibility.
+  const tokenFile = path.join(repoRoot, ".local-secrets", "ha-long-lived-token.txt");
+  if (fs.existsSync(tokenFile)) {
+    const fromFile = fs.readFileSync(tokenFile, "utf8").trim();
+    if (fromFile) {
+      return fromFile;
+    }
+  }
+  return parseEnvFile().HA_LONG_LIVED_TOKEN;
+}
+
 async function haUpdates() {
-  const env = parseEnvFile();
-  const token = env.HA_LONG_LIVED_TOKEN;
+  const token = readHaToken();
   if (!token) {
-    log("ha-updates skipped: set HA_LONG_LIVED_TOKEN in .env to allow Home Assistant API updates");
+    log("ha-updates skipped: no HA token found (.local-secrets/ha-long-lived-token.txt or HA_LONG_LIVED_TOKEN in .env)");
     return;
   }
 
