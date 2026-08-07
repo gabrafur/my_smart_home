@@ -5,8 +5,18 @@ const flows = JSON.parse(fs.readFileSync(flowsUrl, "utf8"));
 
 const TAB_ID = "2fd40fd570e6f37a";
 const SERVER_ID = "4126427d5e161a03";
-const HOME_LAT = -20.310367851039004;
-const HOME_LON = -40.317321761139894;
+// O ponto de casa nunca fica hardcoded aqui: este repositorio e publico.
+// Passe pelo ambiente (os mesmos HOME_LAT/HOME_LON do .env consumido pelo
+// servico `nodered` no docker-compose). Este e um instalador one-off, entao
+// falhar alto e melhor do que gerar um fluxo com coordenada invalida.
+const HOME_LAT = Number(process.env.HOME_LAT);
+const HOME_LON = Number(process.env.HOME_LON);
+if (!Number.isFinite(HOME_LAT) || !Number.isFinite(HOME_LON)) {
+  throw new Error(
+    "Defina HOME_LAT e HOME_LON no ambiente antes de rodar este instalador " +
+      "(ex.: `set -a; . ../.env; set +a`).",
+  );
+}
 
 const nodeIds = new Set([
   "sec_comment_arrival_light",
