@@ -311,6 +311,46 @@ restaurar do ultimo backup bom (checar `git log` do `coordinator.py` por um
 commit que ainda tenha a funcao) mantendo o `manifest.json` na versao de lib
 atual do container.
 
+## Recorrencia (2026-08-07): update para o componente v3.9.0 / lib 4.26.0 — nova politica
+
+Caiu de novo, mas com contexto diferente e **origem NAO sendo o cron**: o log do
+`docker-auto-update.mjs` mostrou "no safe integration updates pending" o tempo
+todo desde 02/08 — a blindagem `PROTECTED_UPDATE_PATTERNS` **segurou**. O
+overwrite (componente kia_uvo `3.8.1` -> **`3.9.0`**, lib `4.25.3` -> **`4.26.0`**)
+veio pelo **proprio HACS**, um vetor diferente do cron. O `auto_update` por-repo
+do HACS esta desligado (flag `None` em `hacs.repositories`), entao foi provavel
+install manual pela UI ou um reset de estado do HACS durante o recreate dos
+containers pelo **update do DietPi** que rodava em paralelo (o container
+`homeassistant` chegou a sair com `Exit (128)` e o `docker compose up` falhou com
+`unsupported protocol: Yunix` enquanto o runtime do Docker era atualizado — isso
+e efeito do update do sistema, nao do kia_uvo; os containers voltaram sozinhos ao
+fim da etapa).
+
+**Mudanca de politica (a pedido):** em vez de reverter para o fork antigo, agora
+**mantemos a versao atualizada** do upstream e reaplicamos **so** os nossos dois
+patches por cima, cirurgicamente. Motivo: o 4.26.0 traz melhorias legitimas
+(criacao de entidade de bateria 12V e pressao de pneus que nao dependem mais de
+valor no setup, etc.) que vale a pena manter.
+
+**Como foi reaplicado (workflow reutilizavel):** dois scripts de patch idempotentes
+com ancoras old->new (mesma forma dos `Edit`), `docker cp` + `docker exec -u 0`:
+`patch1` = fix CCS2 no `coordinator.py` (imports `types`/`ApiImplType1`, a chamada
+`self._force_ccs2_status_endpoint()` apos o refresh de token, e o metodo); `patch2`
+= trip-log (metodo `async_refresh_day_trip_info` no coordinator, descricao do botao
+`refresh_trip_info`, classe `DayTripInfoEntity` + append no `sensor.py`, e as chaves
+de traducao). Compatibilidade com 4.26.0 confirmada em container ANTES de aplicar:
+`ApiImplType1._update_vehicle_properties_ccs2` mantem `(self, vehicle, state)`,
+`data_timezone` segue em `HyundaiBlueLinkApiBR`, `update_day_trip_info` existe.
+Verificado ao vivo apos `homeassistant.restart`: `fuel_level` 65, autonomia 299,
+`last_updated` do proprio dia, **0x 503**, e o botao de trip retornou as viagens de
+hoje.
+
+**Os DOIS vetores automaticos agora estao fechados:** (1) cron `ha-updates` —
+guard `PROTECTED_UPDATE_PATTERNS` (02/08); (2) HACS `auto_update` por-repo — ja
+`off`. Ou seja, o kia_uvo so muda por **install manual explicito no HACS**. Se
+fizer isso de proposito, **reaplique CCS2 + trip-log logo em seguida** (os scripts
+de patch sao o caminho rapido) e verifique `0x 503` antes de considerar pronto.
+
 ## Dashboard de viagens (2026-08-02)
 
 Dashboard Lovelace `creta-viagens` (titulo "Creta", `dashboards/creta.yaml`,
