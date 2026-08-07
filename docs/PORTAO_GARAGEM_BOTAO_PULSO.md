@@ -23,7 +23,7 @@ Duas fontes independentes disparam o mesmo relé:
 
 | Fonte | Caminho | Formato no MQTT |
 |---|---|---|
-| Botão Zigbee físico `botao_portao_garagem` | Node-RED, aba `garagem` (dedupe 900 ms → ON → delay 700 ms → OFF) | `{"state":"ON"}` (JSON) |
+| Botão Zigbee físico `botao_portao_garagem` | Node-RED, aba `garagem` (dedupe 900 ms + cooldown 3 s → ON → delay 700 ms → OFF) | `{"state":"ON"}` (JSON) |
 | Botão do dashboard `button.acionar_portao_da_garagem` | `script.portao_garagem_pulso` no HA | `ON` / `OFF` (cru, via `switch.turn_on`) |
 
 Os dois publicam em `zigbee2mqtt/rele_acionador_portao/set`. O formato do payload
@@ -55,6 +55,7 @@ feito **por software**: `ON` → `delay` → `OFF`.
 | `input_datetime.portao_garagem_ultimo_pulso` | Timestamp do último pulso — base do cooldown |
 | `input_text.portao_garagem_ultimo_pulso_origem` | Quem pediu o último pulso |
 | `automation.portao_garagem_carimbar_pulso_qualquer_origem` | Arma o cooldown do HA também para pulsos do Node-RED |
+| Nós `rele: comando` / `rele: estado` / `carimbar pulso` (Node-RED) | Armam o cooldown do Node-RED também para pulsos do HA. Instalados por `nodered/tools/add-shared-pulse-cooldown.mjs` |
 | `automation.portao_garagem_seguranca_rele_preso_em_on` | Rede de segurança: força `OFF` se o relé ficar `on` > 5 s |
 | `scene.acionar_portao` | Cena RF Tuya legada — **desabilitada**, não excluída |
 
@@ -80,10 +81,9 @@ clique
    timestamp, não em delay ou flag: se uma execução morrer no meio, o cooldown
    já está valendo, e ele **nunca trava permanentemente** (é uma comparação de
    tempo, não um estado que precisa ser limpo).
-3. **Cooldown compartilhado entre as duas fontes** — a automação
-   `portao_garagem_carimbar_pulso_qualquer_origem` carimba o timestamp em
-   *qualquer* `off → on` do relé, então um pulso do Node-RED também bloqueia o
-   botão do HA pelos 3 s seguintes.
+3. **Cooldown compartilhado e bidirecional entre as duas fontes** — um pulso de
+   qualquer origem bloqueia a outra ponta pelos 3 s seguintes. Detalhe do
+   mecanismo em "Como as duas fontes se enxergam", abaixo.
 4. **Guarda de estado inicial** — se o relé já está `on`, o script **não manda
    ON**: abre o contato, notifica e aborta. O próximo clique é que pulsa.
 5. **Guarda de disponibilidade** — `unavailable`/`unknown` vira erro registrado,
@@ -95,16 +95,46 @@ clique
    `power_on_behavior` do relé já está em `off` (uma queda de energia não fecha
    o contato sozinha).
 
-### Limitação conhecida
+### Como as duas fontes se enxergam
 
-O Node-RED **não** consulta o cooldown do HA (ele publica direto no MQTT para
-manter a latência < 100 ms). Ou seja: um clique no botão do HA seguido de um
-aperto no botão Zigbee físico **gera dois pulsos**. Isso é o comportamento
-correto — são dois comandos deliberados de um humano —, mas vale saber que a
-serialização é unidirecional: Node-RED → bloqueia o HA, HA → não bloqueia o
-Node-RED. Fechar isso exigiria rotear o botão físico pelo HA, o que reintroduz
-latência e uma dependência que a migração para o relé local quis justamente
-eliminar.
+O cooldown é **bidirecional**, e nenhuma das pontas depende da outra estar de pé:
+
+| Direção | Mecanismo |
+|---|---|
+| Node-RED → bloqueia o HA | `automation.portao_garagem_carimbar_pulso_qualquer_origem` carimba `input_datetime.portao_garagem_ultimo_pulso` a cada `off→on` do relé |
+| HA → bloqueia o Node-RED | nós `rele: comando (qualquer origem)` + `rele: estado reportado` na aba `garagem` carimbam `flow.portao_garagem_last_pulse_ms` a cada `ON` |
+
+Repare que o gatilho dos dois lados é o **mesmo evento físico** (o relé
+fechando), não uma mensagem de um sistema para o outro. Por isso o botão físico
+continua publicando direto no MQTT, com a latência < 100 ms que motivou sair da
+cena Tuya — não há chamada ao HA no caminho do clique.
+
+O lado do Node-RED assina **dois** tópicos de propósito:
+
+- `zigbee2mqtt/rele_acionador_portao/set` — vê o comando no instante em que é
+  publicado (pega o `ON` do HA em milissegundos, antes de o relé responder);
+- `zigbee2mqtt/rele_acionador_portao` — o estado reportado, que pega qualquer
+  pulso, inclusive um comandado fora dos dois caminhos (Developer Tools,
+  `mosquitto_pub`). É também o que permite testar a proteção **sem mover o
+  portão**: publicar um `ON` falso no tópico de estado arma o cooldown sem
+  comandar o relé.
+
+Os dois `ON` do mesmo pulso (comando + estado) são coalescidos por uma janela de
+500 ms, então contam como um só.
+
+> ⚠️ A janela de 3 s aparece em **dois** lugares: `cooldown_s` em
+> `script.portao_garagem_pulso` e `COOLDOWN_MS` em
+> `nodered/tools/add-shared-pulse-cooldown.mjs`. Mudou um, mude o outro.
+
+Efeito colateral a saber: o botão físico, que antes tinha só um dedupe de 900 ms
+contra retransmissão Zigbee do mesmo aperto, agora respeita também os 3 s. Dois
+apertos deliberados em menos de 3 s produzem **um** pulso. Como o portão leva
+mais de 10 s de percurso, isso não atrapalha usar um segundo pulso para parar ou
+inverter o movimento.
+
+O contexto do Node-RED é `memory`, então `portao_garagem_last_pulse_ms` zera num
+restart do container — o cooldown nasce desarmado. Falha para o lado seguro: o
+próximo clique passa, nenhum pulso é gerado sozinho.
 
 ## Restrição de acesso direto ao relé
 
@@ -161,9 +191,25 @@ tráfego real.
 | Reinício do HA com a config nova | `button.acionar_portao_da_garagem` nasce em `unknown`; **nenhum** `ON` no startup |
 | Relé `unknown` logo após o restart | Guarda 1 recusaria o pulso (caminho não exercitado fisicamente) |
 
+Cooldown bidirecional, testado publicando um `ON` **falso no tópico de estado**
+(que ninguém atua) para simular um pulso da outra ponta — nenhum destes moveu o
+portão:
+
+| Teste | Resultado |
+|---|---|
+| Pulso simulado do HA + **5 apertos** do botão físico em 1,5 s | **0 publicações** no `/set`; 5 avisos `clique ignorado` no log do Node-RED (305/611/916/1221/1527 ms) |
+| Pulso simulado do Node-RED + **3 cliques** no botão do HA em 1 s | **0 publicações** no `/set`; 3 registros `pulso IGNORADO` no logbook |
+| Botão físico usado normalmente fora da janela | Pulsa; `pulso EXTERNO detectado` no logbook. **Sem regressão** no caminho local |
+
 Não exercitados fisicamente (exigiriam movimentar o portão de propósito):
 guarda 3 (relé já ligado) e a automação de relé preso em `ON`. Ambos são
 condições de estado simples que só emitem `OFF`.
+
+> Nota de honestidade: durante uma primeira versão do teste do cooldown
+> bidirecional o portão **se moveu sem querer**. Os cliques simulados caíram em
+> t+2,0 / t+2,5 / t+3,0 s e o terceiro passou da janela de 3 s — o mecanismo
+> funcionou, o desenho do teste é que estava na borda. Ao testar cooldown, deixe
+> os eventos bem dentro da janela.
 
 ## Rollback
 
@@ -176,5 +222,10 @@ condições de estado simples que só emitem `OFF`.
 2. **Reexibir o relé**: mesmo caminho, `hidden_by: null`.
 3. **Remover o botão novo**: `git checkout homeassistant/packages/portao_garagem.yaml`
    e `docker compose restart homeassistant`.
-4. O fluxo `garagem` do Node-RED **não foi tocado** — o botão Zigbee físico
-   continua funcionando em qualquer cenário de rollback.
+4. **Reverter o cooldown compartilhado no Node-RED**:
+   `git checkout nodered/flows.json && docker compose restart nodered`. O botão
+   Zigbee físico volta ao dedupe de 900 ms puro e segue funcionando — o caminho
+   dele nunca passou pelo HA, em nenhum momento.
+
+Os itens são independentes: dá para reverter só o lado do Node-RED, só o do HA,
+ou reabilitar a cena Tuya sem desfazer nada.

@@ -129,8 +129,8 @@
         "id": "gar_portao_normalizar_click",
         "type": "function",
         "z": "29d64664bf8cbde8",
-        "name": "normalizar clique e evitar duplicado",
-        "func": "const now = Date.now();\nconst dedupeMs = 900;\nlet action;\n\nif (typeof msg.payload === 'string') {\n    action = msg.payload;\n} else if (msg.payload && typeof msg.payload === 'object') {\n    action = msg.payload.action;\n}\n\nif (action !== 'single') {\n    return null;\n}\n\nconst lastAccepted = Number(flow.get('portao_garagem_last_click_ms') || 0);\nif (now - lastAccepted < dedupeMs) {\n    return null;\n}\n\nflow.set('portao_garagem_last_click_ms', now);\nmsg.payload = {\n    action,\n    source_topic: msg.topic,\n    received_at: new Date(now).toISOString(),\n};\nmsg.portao_retry_count = 0;\nreturn msg;",
+        "name": "normalizar clique (dedupe + cooldown compartilhado)",
+        "func": "// Deixa passar no maximo um clique por vez, e so se nenhum pulso (deste\n// fluxo OU do botao do Home Assistant) tiver acontecido ha pouco.\n// Cada ON no rele e' uma acao fisica real no motor.\nconst now = Date.now();\n// Retransmissao Zigbee do MESMO aperto (o botao publica em dois topicos).\nconst dedupeMs = 900;\n// Janela morta apos um pulso de QUALQUER origem. Espelha cooldown_s do\n// script.portao_garagem_pulso no HA — mantenha os dois iguais.\nconst cooldownMs = 3000;\nlet action;\n\nif (typeof msg.payload === 'string') {\n    action = msg.payload;\n} else if (msg.payload && typeof msg.payload === 'object') {\n    action = msg.payload.action;\n}\n\nif (action !== 'single') {\n    return null;\n}\n\nconst lastAccepted = Number(flow.get('portao_garagem_last_click_ms') || 0);\nif (now - lastAccepted < dedupeMs) {\n    return null;\n}\n\n// Cooldown compartilhado: carimbado pelo no 'carimbar pulso' a cada ON do\n// rele, inclusive os que vieram do botao do dashboard.\nconst lastPulse = Number(flow.get('portao_garagem_last_pulse_ms') || 0);\nif (now - lastPulse < cooldownMs) {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'clique ignorado (cooldown)' });\n    node.warn('portao: clique ignorado — pulso ha ' + (now - lastPulse) + 'ms (cooldown ' + cooldownMs + 'ms)');\n    return null;\n}\n\nflow.set('portao_garagem_last_click_ms', now);\nnode.status({ fill: 'green', shape: 'dot', text: 'pulso ' + new Date(now).toLocaleTimeString() });\nmsg.payload = {\n    action,\n    source_topic: msg.topic,\n    received_at: new Date(now).toISOString(),\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -248,7 +248,7 @@
         "id": "2dd5071569184cb4",
         "type": "DuloNodeDevice",
         "z": "ce258dec9814b96b",
-        "name": "Ilumina\u00e7\u00e3o Externa",
+        "name": "Iluminação Externa",
         "deviceType": "light",
         "x": 370,
         "y": 100,
@@ -295,7 +295,7 @@
         "id": "24743bc9f254d1c1",
         "type": "server-state-changed",
         "z": "ce258dec9814b96b",
-        "name": "P\u00f4r do sol",
+        "name": "Pôr do sol",
         "server": "4126427d5e161a03",
         "version": 6,
         "outputs": 2,
@@ -355,7 +355,7 @@
                 "t": "set",
                 "p": "notify_text",
                 "pt": "msg",
-                "to": "A ilumina\u00e7\u00e3o externa foi ligada",
+                "to": "A iluminação externa foi ligada",
                 "tot": "str"
             },
             {
@@ -369,7 +369,7 @@
                 "t": "set",
                 "p": "notify_success",
                 "pt": "msg",
-                "to": "A ilumina\u00e7\u00e3o externa foi ligada",
+                "to": "A iluminação externa foi ligada",
                 "tot": "str"
             }
         ],
@@ -406,7 +406,7 @@
                 "t": "set",
                 "p": "notify_text",
                 "pt": "msg",
-                "to": "A ilumina\u00e7\u00e3o externa foi desligada",
+                "to": "A iluminação externa foi desligada",
                 "tot": "str"
             },
             {
@@ -420,7 +420,7 @@
                 "t": "set",
                 "p": "notify_success",
                 "pt": "msg",
-                "to": "A ilumina\u00e7\u00e3o externa foi desligada",
+                "to": "A iluminação externa foi desligada",
                 "tot": "str"
             }
         ],
@@ -457,7 +457,7 @@
                 "t": "set",
                 "p": "notify_text",
                 "pt": "msg",
-                "to": "Alarme armado. A ilumina\u00e7\u00e3o externa foi desligada",
+                "to": "Alarme armado. A iluminação externa foi desligada",
                 "tot": "str"
             },
             {
@@ -471,7 +471,7 @@
                 "t": "set",
                 "p": "notify_success",
                 "pt": "msg",
-                "to": "Alarme armado. A ilumina\u00e7\u00e3o externa foi desligada",
+                "to": "Alarme armado. A iluminação externa foi desligada",
                 "tot": "str"
             }
         ],
@@ -488,7 +488,7 @@
         "id": "943c87e6b17f0d68",
         "type": "change",
         "z": "ce258dec9814b96b",
-        "name": "Definir ON p\u00f4r do sol",
+        "name": "Definir ON pôr do sol",
         "rules": [
             {
                 "t": "set",
@@ -508,7 +508,7 @@
                 "t": "set",
                 "p": "notify_text",
                 "pt": "msg",
-                "to": "P\u00f4r do sol. A ilumina\u00e7\u00e3o externa foi ligada",
+                "to": "Pôr do sol. A iluminação externa foi ligada",
                 "tot": "str"
             },
             {
@@ -522,7 +522,7 @@
                 "t": "set",
                 "p": "notify_success",
                 "pt": "msg",
-                "to": "P\u00f4r do sol. A ilumina\u00e7\u00e3o externa foi ligada",
+                "to": "Pôr do sol. A iluminação externa foi ligada",
                 "tot": "str"
             }
         ],
@@ -539,7 +539,7 @@
         "id": "88e6fc3e56fa347c",
         "type": "function",
         "z": "ce258dec9814b96b",
-        "name": "Distribuir para t\u00f3picos Zigbee2MQTT",
+        "name": "Distribuir para tópicos Zigbee2MQTT",
         "func": "const topics = [\n    'zigbee2mqtt/lampada_varanda/set',\n    'zigbee2mqtt/lampadas_garagem/set',\n    'zigbee2mqtt/refletores_jardim/set'\n];\n\nreturn topics.map(topic => ({\n    ...msg,\n    topic\n}));",
         "outputs": 3,
         "timeout": "",
@@ -648,7 +648,7 @@
         "id": "ext_wait_confirm",
         "type": "delay",
         "z": "ce258dec9814b96b",
-        "name": "Aguardar confirma\u00e7\u00e3o das luzes",
+        "name": "Aguardar confirmação das luzes",
         "pauseType": "delay",
         "timeout": "5",
         "timeoutUnits": "seconds",
@@ -712,7 +712,7 @@
         "type": "function",
         "z": "ce258dec9814b96b",
         "name": "Montar aviso confirmado",
-        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state || 'desconhecido'}`);\n\nif (failed.length === 0) {\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a ilumina\u00e7\u00e3o externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}.`;\nreturn msg;",
+        "func": "const expected = msg.expected_state || msg.payload?.expected_state;\nconst labels = {\n    lampada_varanda: 'varanda',\n    lampadas_garagem: 'garagem',\n    refletores_jardim: 'jardim'\n};\nconst states = {\n    lampada_varanda: msg.payload?.lampada_varanda,\n    lampadas_garagem: msg.payload?.lampadas_garagem,\n    refletores_jardim: msg.payload?.refletores_jardim\n};\nconst failed = Object.entries(states)\n    .filter(([, state]) => state !== expected)\n    .map(([entity, state]) => `${labels[entity]} ${state || 'desconhecido'}`);\n\nif (failed.length === 0) {\n    msg.notify_text = msg.notify_success || msg.notify_text;\n    return msg;\n}\n\nconst expectedText = expected === 'on' ? 'ligada' : 'desligada';\nmsg.notify_text = `Erro ao acionar a iluminação externa. Esperado: ${expectedText}. Estado atual: ${failed.join(', ')}.`;\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -882,7 +882,7 @@
         "type": "function",
         "z": "ce258dec9814b96b",
         "name": "tentar novamente ate conseguir",
-        "func": "const attempt = Number(msg.arm_alarm_retry_count || 0) + 1;\nmsg.arm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao armar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'N\u00e3o foi poss\u00edvel armar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando armar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
+        "func": "const attempt = Number(msg.arm_alarm_retry_count || 0) + 1;\nmsg.arm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao armar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'Não foi possível armar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando armar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -1050,7 +1050,7 @@
         "type": "function",
         "z": "ce258dec9814b96b",
         "name": "tentar novamente ate conseguir",
-        "func": "const attempt = Number(msg.disarm_alarm_retry_count || 0) + 1;\nmsg.disarm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao desarmar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'N\u00e3o foi poss\u00edvel desarmar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando desarmar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
+        "func": "const attempt = Number(msg.disarm_alarm_retry_count || 0) + 1;\nmsg.disarm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao desarmar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'Não foi possível desarmar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando desarmar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -2015,7 +2015,7 @@
         "type": "function",
         "z": "2fd40fd570e6f37a",
         "name": "Atualizar armado por localizacao",
-        "func": "const ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst VALERIA_APPROACH_NOTIFY_KEY = \"valeria_approaching_gabriel_notified\";\nconst ARM_DISTANCE_M = 100;\nconst VALERIA_APPROACH_DISTANCE_M = 700;\nconst VALERIA_APPROACH_RESET_DISTANCE_M = 1000;\n// \"De carro\": o Creta tambem precisa estar chegando junto (estava fora/armado\n// e agora aparece a <= esta distancia de casa). Usa a POSICAO do Creta, nao o\n// binary_sensor.creta_engine - o polling do kia_uvo quase nunca pega o motor\n// \"on\" (ver docs/CRETA_KIA_UVO_INTEGRATION.md). Limiar mais folgado que o da\n// Valeria para tolerar o lag de GPS da integracao Kia.\nconst CRETA_ARRIVING_DISTANCE_M = 1500;\n\nfunction isAway(item) {\n    if (item && item.distance_m !== null) {\n        return item.distance_m > ARM_DISTANCE_M;\n    }\n    return item?.state === \"not_home\";\n}\n\nconst armedEntities = msg.payload.armed ?? {};\nfor (const [name, item] of Object.entries({\n    gabriel: msg.payload.gabriel,\n    valeria: msg.payload.valeria,\n    creta: msg.payload.creta,\n})) {\n    if (isAway(item)) {\n        armedEntities[name] = true;\n    }\n}\n\nmsg.payload.armed = armedEntities;\nflow.set(ARMED_KEY, armedEntities);\n\nconst valeria = msg.payload.valeria;\nconst creta = msg.payload.creta;\nlet notify = null;\n\n// Aviso \"Valeria chegando\" (push para Gabriel).\n//\n// ANTES nao funcionava NUNCA: exigia valeria.distance_m entre 50 e 700 m, e\n// leitura nessa faixa nao existe - o iOS so reporta travessia de zona, e ate\n// 07/08/2026 a unica zona era a home (100 m). Media no recorder: 0 pontos na\n// faixa em 2 dias. Exigia ainda o Creta a <=1000 m (nuvem Kia, que fica dias\n// sem atualizar), somando um segundo jeito de nunca disparar.\n//\n// AGORA dispara na travessia do anel zone.chegando, o mesmo sinal do\n// pre-acendimento do refletor. O Creta virou METADADO (muda so o texto), nao\n// condicao - senao a falta de dado da Kia voltaria a engolir o aviso.\nconst APPROACH_ZONE = \"chegando\";\nconst triggerState = msg.payload.trigger_state;\nconst triggerPrevState = msg.payload.trigger_prev_state;\n\nconst approachEntry =\n    triggerState === APPROACH_ZONE &&\n    triggerPrevState !== APPROACH_ZONE &&\n    triggerPrevState !== \"home\" &&\n    valeria?.any_tracker_home !== true;\n\n// Rearma o aviso quando ela sai do anel (ou, como reserva, se aparecer bem\n// longe), para o proximo retorno avisar de novo.\nif (\n    triggerState === \"not_home\" ||\n    (valeria?.distance_m !== null && valeria.distance_m > VALERIA_APPROACH_RESET_DISTANCE_M)\n) {\n    flow.set(VALERIA_APPROACH_NOTIFY_KEY, false);\n}\n\nif (\n    msg.payload.source === \"valeria\" &&\n    approachEntry &&\n    flow.get(VALERIA_APPROACH_NOTIFY_KEY) !== true\n) {\n    flow.set(VALERIA_APPROACH_NOTIFY_KEY, true);\n\n    // \"de carro\" so quando ha evidencia positiva: Creta estava fora (armado)\n    // e aparece perto junto com ela.\n    const byCar =\n        armedEntities.creta === true &&\n        creta?.distance_m !== null &&\n        creta.distance_m <= CRETA_ARRIVING_DISTANCE_M;\n\n    notify = {\n        payload: {\n            message: byCar\n                ? \"Val\u00e9ria est\u00e1 chegando de carro.\"\n                : \"Val\u00e9ria est\u00e1 chegando.\",\n            by_car: byCar,\n            valeria_distance_m: valeria?.distance_m ?? null,\n            creta_distance_m: creta?.distance_m ?? null,\n        },\n    };\n}\n\nreturn [msg, notify];\n",
+        "func": "const ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst VALERIA_APPROACH_NOTIFY_KEY = \"valeria_approaching_gabriel_notified\";\nconst ARM_DISTANCE_M = 100;\nconst VALERIA_APPROACH_DISTANCE_M = 700;\nconst VALERIA_APPROACH_RESET_DISTANCE_M = 1000;\n// \"De carro\": o Creta tambem precisa estar chegando junto (estava fora/armado\n// e agora aparece a <= esta distancia de casa). Usa a POSICAO do Creta, nao o\n// binary_sensor.creta_engine - o polling do kia_uvo quase nunca pega o motor\n// \"on\" (ver docs/CRETA_KIA_UVO_INTEGRATION.md). Limiar mais folgado que o da\n// Valeria para tolerar o lag de GPS da integracao Kia.\nconst CRETA_ARRIVING_DISTANCE_M = 1500;\n\nfunction isAway(item) {\n    if (item && item.distance_m !== null) {\n        return item.distance_m > ARM_DISTANCE_M;\n    }\n    return item?.state === \"not_home\";\n}\n\nconst armedEntities = msg.payload.armed ?? {};\nfor (const [name, item] of Object.entries({\n    gabriel: msg.payload.gabriel,\n    valeria: msg.payload.valeria,\n    creta: msg.payload.creta,\n})) {\n    if (isAway(item)) {\n        armedEntities[name] = true;\n    }\n}\n\nmsg.payload.armed = armedEntities;\nflow.set(ARMED_KEY, armedEntities);\n\nconst valeria = msg.payload.valeria;\nconst creta = msg.payload.creta;\nlet notify = null;\n\n// Aviso \"Valeria chegando\" (push para Gabriel).\n//\n// ANTES nao funcionava NUNCA: exigia valeria.distance_m entre 50 e 700 m, e\n// leitura nessa faixa nao existe - o iOS so reporta travessia de zona, e ate\n// 07/08/2026 a unica zona era a home (100 m). Media no recorder: 0 pontos na\n// faixa em 2 dias. Exigia ainda o Creta a <=1000 m (nuvem Kia, que fica dias\n// sem atualizar), somando um segundo jeito de nunca disparar.\n//\n// AGORA dispara na travessia do anel zone.chegando, o mesmo sinal do\n// pre-acendimento do refletor. O Creta virou METADADO (muda so o texto), nao\n// condicao - senao a falta de dado da Kia voltaria a engolir o aviso.\nconst APPROACH_ZONE = \"chegando\";\nconst triggerState = msg.payload.trigger_state;\nconst triggerPrevState = msg.payload.trigger_prev_state;\n\nconst approachEntry =\n    triggerState === APPROACH_ZONE &&\n    triggerPrevState !== APPROACH_ZONE &&\n    triggerPrevState !== \"home\" &&\n    valeria?.any_tracker_home !== true;\n\n// Rearma o aviso quando ela sai do anel (ou, como reserva, se aparecer bem\n// longe), para o proximo retorno avisar de novo.\nif (\n    triggerState === \"not_home\" ||\n    (valeria?.distance_m !== null && valeria.distance_m > VALERIA_APPROACH_RESET_DISTANCE_M)\n) {\n    flow.set(VALERIA_APPROACH_NOTIFY_KEY, false);\n}\n\nif (\n    msg.payload.source === \"valeria\" &&\n    approachEntry &&\n    flow.get(VALERIA_APPROACH_NOTIFY_KEY) !== true\n) {\n    flow.set(VALERIA_APPROACH_NOTIFY_KEY, true);\n\n    // \"de carro\" so quando ha evidencia positiva: Creta estava fora (armado)\n    // e aparece perto junto com ela.\n    const byCar =\n        armedEntities.creta === true &&\n        creta?.distance_m !== null &&\n        creta.distance_m <= CRETA_ARRIVING_DISTANCE_M;\n\n    notify = {\n        payload: {\n            message: byCar\n                ? \"Valéria está chegando de carro.\"\n                : \"Valéria está chegando.\",\n            by_car: byCar,\n            valeria_distance_m: valeria?.distance_m ?? null,\n            creta_distance_m: creta?.distance_m ?? null,\n        },\n    };\n}\n\nreturn [msg, notify];\n",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
@@ -2421,5 +2421,73 @@
                 "sec_force_refresh_creta"
             ]
         ]
+    },
+    {
+        "id": "gar_pulse_watch_note",
+        "type": "comment",
+        "z": "29d64664bf8cbde8",
+        "name": "Cooldown compartilhado com o botao do Home Assistant",
+        "info": "Duas fontes pulsam o mesmo rele:\n\n  - este fluxo (botao Zigbee fisico), publicando {\"state\":\"ON\"};\n  - button.acionar_portao_da_garagem no HA, publicando ON cru.\n\nOs nos abaixo observam o MQTT do rele e carimbam\nflow.portao_garagem_last_pulse_ms a cada ON, de qualquer origem. O\nnormalizador de clique respeita essa janela, entao um pulso vindo do HA\ntambem bloqueia este fluxo (e nao so o contrario).\n\nA janela (3s) espelha cooldown_s de script.portao_garagem_pulso.\nVer docs/PORTAO_GARAGEM_BOTAO_PULSO.md.",
+        "x": 340,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "gar_pulse_watch_set_in",
+        "type": "mqtt in",
+        "z": "29d64664bf8cbde8",
+        "name": "rele: comando (qualquer origem)",
+        "topic": "zigbee2mqtt/rele_acionador_portao/set",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 280,
+        "y": 300,
+        "wires": [
+            [
+                "gar_pulse_watch_stamp"
+            ]
+        ]
+    },
+    {
+        "id": "gar_pulse_watch_state_in",
+        "type": "mqtt in",
+        "z": "29d64664bf8cbde8",
+        "name": "rele: estado reportado",
+        "topic": "zigbee2mqtt/rele_acionador_portao",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 270,
+        "y": 360,
+        "wires": [
+            [
+                "gar_pulse_watch_stamp"
+            ]
+        ]
+    },
+    {
+        "id": "gar_pulse_watch_stamp",
+        "type": "function",
+        "z": "29d64664bf8cbde8",
+        "name": "carimbar pulso (arma cooldown compartilhado)",
+        "func": "// Carimba o instante de qualquer pulso do rele, venha do HA, deste\n// fluxo ou de um comando manual. Nao publica nada — so registra.\nconst samePulseMs = 500;\nconst now = Date.now();\n\n// O payload pode ser 'ON' cru (o HA publica assim, via switch.turn_on)\n// ou {\"state\":\"ON\"} (formato deste fluxo e do topico de estado).\nlet state;\nif (typeof msg.payload === 'string') {\n    state = msg.payload;\n} else if (msg.payload && typeof msg.payload === 'object') {\n    state = msg.payload.state;\n}\n\nif (String(state).toUpperCase() !== 'ON') {\n    return null;\n}\n\n// O mesmo pulso chega duas vezes (comando + estado). Conta uma so.\nconst last = Number(flow.get('portao_garagem_last_pulse_ms') || 0);\nif (now - last < samePulseMs) {\n    return null;\n}\n\nflow.set('portao_garagem_last_pulse_ms', now);\nnode.status({ fill: 'blue', shape: 'dot', text: 'pulso ' + new Date(now).toLocaleTimeString() });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 330,
+        "wires": []
     }
 ]
