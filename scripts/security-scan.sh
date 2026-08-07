@@ -153,6 +153,11 @@ bold "==> Conteudo dos arquivos rastreados"
 IGNORE_LINE_RE='!secret|CHANGE_ME|SUA_SENHA|replace-with|your-|example\.com|placeholder|<[A-Za-z_-]+>|sha256:|sha512-|integrity"|AA:AA:AA|zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN'
 
 # nome-da-regra <TAB> regex ERE
+#
+# `coordenada-nua` pega um decimal com 6+ casas em QUALQUER contexto, sem
+# exigir a palavra latitude/longitude ao lado. Existe porque um exemplo de
+# `git filter-repo` num documento chegou a carregar a coordenada de casa em
+# texto puro, sem rotulo — a regra rotulada nao pegava.
 RULES=$(cat <<'EOF'
 chave-privada	-----BEGIN [A-Z ]*PRIVATE KEY-----
 aws-access-key	AKIA[0-9A-Z]{16}
@@ -167,6 +172,7 @@ bcrypt-hash	\$2[aby]\$[0-9]{2}\$[A-Za-z0-9./]{20,}
 segredo-atribuido	(pass(word|wd)?|secret|token|api_?key|auth)["']?[[:space:]]*[:=][[:space:]]*["'][A-Za-z0-9/+_.-]{16,}["']
 mac-address	\b([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\b
 coordenada-precisa	(latitude|longitude|_LAT|_LON)["']?[[:space:]]*[:=][[:space:]]*-?[0-9]{1,3}\.[0-9]{5,}
+coordenada-nua	-?[0-9]{1,3}\.[0-9]{6,}
 url-com-credencial	[a-z][a-z0-9+.-]*://[^/[:space:]:@"']+:[^/[:space:]@"']+@
 EOF
 )
@@ -183,10 +189,13 @@ while IFS=$'\t' read -r rule regex; do
     line="${rest%%:*}"; text="${rest#*:}"
     # package-lock e vendored HACS geram ruido estrutural sem valor de auditoria
     case "$file" in
-      *package-lock.json|*/hacs_frontend/*) continue ;;
+      # ruido estrutural sem valor de auditoria: lockfile, frontend gerado do
+      # HACS e assets vendorizados (iconset.js e' path data de SVG, cheio de
+      # decimais longos que disparam `coordenada-nua`).
+      *package-lock.json|*/hacs_frontend/*|*/hacs/iconset.js|*.min.js|*.svg) continue ;;
     esac
-    printf '%s' "$text" | grep -qE "$IGNORE_LINE_RE" && continue
-    sample="$(printf '%s' "$text" | grep -oE "$regex" | head -n1)"
+    printf '%s' "$text" | grep -qE -- "$IGNORE_LINE_RE" && continue
+    sample="$(printf '%s' "$text" | grep -oE -- "$regex" | head -n1)"
     report "$rule" "$file" "$line" "$sample"
   done < <(git grep "${GREP_ARGS[@]}" -e "$regex" -- "${FILES[@]}" 2>/dev/null)
 done <<< "$RULES"
