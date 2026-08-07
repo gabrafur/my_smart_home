@@ -23,7 +23,8 @@ deixaria de ligar sozinha via comandos que usam `media_player.turn_on`
    `samsungtv.turn_on` (fornecido pela própria integração samsungtv para
    substituir o comportamento implícito) no entity_id
    `media_player.samsung_qn90ba_50_qn50qn90bagxzd`. A ação envia o magic
-   packet para o MAC `a0:d7:f3:30:d7:0e`.
+   packet para o MAC da TV, guardado em `secrets.yaml` como
+   `tv_sala_mac` (fora do git — este repositorio e publico).
 
 ```yaml
 - id: "1783799940000"
@@ -34,9 +35,14 @@ deixaria de ligar sozinha via comandos que usam `media_player.turn_on`
   actions:
     - action: wake_on_lan.send_magic_packet
       data:
-        mac: a0:d7:f3:30:d7:0e
+        mac: !secret tv_sala_mac
   mode: single
 ```
+
+> **Cuidado ao editar pela UI:** o editor de automações do Home Assistant
+> reescreve `automations.yaml` inteiro ao salvar e não preserva `!secret`.
+> Se precisar mexer nesta automação, edite o YAML direto — caso contrário o
+> MAC volta a ficar em claro no arquivo versionado.
 
 ## Por que este trigger
 

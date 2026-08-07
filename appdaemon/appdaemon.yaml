@@ -1,7 +1,7 @@
 appdaemon:
   time_zone: America/Sao_Paulo
-  latitude: -20.3155
-  longitude: -40.3128
+  latitude: -20.32
+  longitude: -40.31
   elevation: 0
 
 http:

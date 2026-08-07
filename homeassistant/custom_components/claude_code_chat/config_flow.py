@@ -17,18 +17,16 @@ from .const import (
     DOMAIN,
 )
 
-# Home Assistant user "Gabriel" (system-admin), read from /config/.storage/auth
-# at the time this integration was set up. Shown as the default so setup is a
-# one-click confirm, but it stays editable in case the user id ever changes.
-DEFAULT_ALLOWED_USER_ID = "4c8256f7470a4bb1a79421a76f43fdc4"
-
+# The single Home Assistant user id allowed to talk to this conversation agent.
+# Deliberately NOT defaulted to a real id: this repository is public, and the
+# HA user id is an account identifier that belongs in the config entry (stored
+# under .storage/, which is never versioned) and not in source. Read it from
+# /config/.storage/auth ("users" -> "id") and paste it during setup.
 STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_BRIDGE_URL, default=DEFAULT_BRIDGE_URL): str,
         vol.Required(CONF_BRIDGE_TOKEN): str,
-        vol.Required(
-            CONF_ALLOWED_USER_ID, default=DEFAULT_ALLOWED_USER_ID
-        ): str,
+        vol.Required(CONF_ALLOWED_USER_ID): str,
     }
 )
 
