@@ -71,7 +71,7 @@ Nenhum padrao de **credencial** foi encontrado no historico:
 - sem chaves privadas (`-----BEGIN ... PRIVATE KEY-----`)
 - sem JWT / token de acesso do Home Assistant
 - sem token de GitHub, AWS, Google, Anthropic ou Tailscale
-- sem URL com credencial embutida (`scheme://user:senha@host`)
+- sem URL com credencial embutida (`esquema://<usuario>:<senha>@host`)
 - o unico hash bcrypt encontrado em `nodered/settings.js` e o **exemplo
   comentado que acompanha o `settings.js` padrao do Node-RED**, presente na
   documentacao oficial do projeto — nao e' uma credencial desta instalacao.
@@ -133,10 +133,13 @@ git filter-repo \
 
 # 3. Substituir valores literais que sobraram em arquivos que DEVEM continuar
 #    no historico (docs, flows, packages). Um par por linha, no formato
-#    `literal==>substituto`. NAO versione este arquivo.
+#    `literal==>substituto`. Preencha os `<...>` com os valores reais
+#    (de secrets.yaml/.env) na hora de rodar. NAO versione este arquivo.
 cat > ../substituicoes.txt <<'EOF'
--20.310367851039004==>HOME_LAT
--40.317321761139894==>HOME_LON
+<latitude-de-casa>==>HOME_LAT
+<longitude-de-casa>==>HOME_LON
+<latitude-do-portao>==>GATE_LAT
+<longitude-do-portao>==>GATE_LON
 <mac-da-tv>==>TV_MAC
 <user-id-do-ha>==>HA_USER_ID
 <tailnet>.ts.net==>SEU-TAILNET.ts.net

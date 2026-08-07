@@ -57,7 +57,7 @@ cd "$REPO_DIR"
 
   secret_hits="$(
     git grep --cached -n -I -E 'home10|BEGIN OPENSSH|PRIVATE KEY|refresh[_-]?token[:=][[:space:]]*[A-Za-z0-9_.-]+|access[_-]?token[:=][[:space:]]*[A-Za-z0-9_.-]+|client[_-]?secret[:=][[:space:]]*[A-Za-z0-9_.-]+|api[_-]?key[:=][[:space:]]*[A-Za-z0-9_.-]+' |
-      grep -v '^scripts/git-backup\.sh:' ||
+      grep -Ev '^(scripts/git-backup\.sh|scripts/security-scan\.sh|docs/AUDITORIA_SEGURANCA_REPO_PUBLICO\.md):' ||
       true
   )"
 
