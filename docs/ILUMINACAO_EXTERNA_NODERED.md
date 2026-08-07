@@ -60,12 +60,33 @@ Alexa PowerController ON/OFF e chama `alarm_control_panel.alarm_arm_away`
     ter sucesso. Avisam no Alexa (via `Avisar Alexa`) na primeira falha e
     depois a cada 5 tentativas, para nao spammar mas manter o usuario
     informado que o alarme ainda nao foi armado/desarmado.
+  - **Guard de estado desejado** (contra retry obsoleto): todo comando
+    inicial passa antes por um `change` que grava `flow.alarm_desired`
+    (`alarm_set_desired_arm` = `"arm"`, `alarm_set_desired_disarm` =
+    `"disarm"`) — tanto o switch do device quanto os injects manuais. Cada
+    `..._retry_delay`, ao reentrar, passa por um `function` guard
+    (`alarm_guard_arm` / `alarm_guard_disarm`) que so deixa a rechamada seguir
+    se `flow.alarm_desired` ainda for a acao daquele loop; caso contrario
+    aborta (retorna `null`, com `node.warn` + status). Sem isso, com o device
+    offline os loops de armar e desarmar rodavam sem coordenacao: se o usuario
+    armasse (loop de retry iniciado) e depois desarmasse com sucesso, um retry
+    de armar pendente podia **re-armar por cima** do desarme. O guard fica so
+    no caminho de retry (nao no comando inicial), entao o setter sempre reflete
+    a ultima intencao real do usuario.
 - **Aviso de sucesso**: tanto `Armar Alarme` quanto `Desarmar Alarme`, ao
   terminar com sucesso, seguem para um node `change` que define
   `notify_text` ("Alarme armado com sucesso." / "Alarme desarmado com
   sucesso.") e chama `Avisar Alexa`.
 
 ## Historico relevante
+
+- 2026-08-02: adicionado o guard de estado desejado (nodes
+  `alarm_set_desired_*` e `alarm_guard_*`, ver secao "Armar/Desarmar
+  Alarme"). Antes, com o device
+  offline, loops de retry de armar e desarmar concorriam sem coordenacao e um
+  retry obsoleto podia reverter o ultimo comando do usuario (ex.: re-armar
+  apos um desarme bem-sucedido). Agora cada rechamada de retry so prossegue se
+  ainda condizer com `flow.alarm_desired`.
 
 - 2026-07-09: a entidade `moni_mobile` por vezes reporta `unknown` por
   alguns segundos durante o processo de armar (glitch de parsing do
