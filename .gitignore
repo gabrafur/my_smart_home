@@ -34,25 +34,28 @@ tinytuya.json
 tuya-raw.json
 
 # Home Assistant secrets and volatile state
+#
+# .storage/ is ignored WHOLESALE and deliberately: even the "boring" registries
+# (core.device_registry, core.entity_registry, person, ...) carry MAC/BSSID
+# addresses, per-device unique_ids, HomeKit pairing ids and resident names.
+# Do NOT re-add per-file `!` exceptions here.
 homeassistant/secrets.yaml
+homeassistant/.storage/
+homeassistant/.ha_ws_token
 homeassistant/.ha_run.lock
+homeassistant/.cloud/
+homeassistant/.ssh/
+homeassistant/.cache/
+homeassistant/*.db
+homeassistant/*.db-*
+homeassistant/*.log
+homeassistant/*.log.*
 homeassistant/home-assistant_v2.db*
 homeassistant/home-assistant.log*
 homeassistant/backups/
 homeassistant/codex_prompts/
-homeassistant/.cloud/
-homeassistant/.ssh/
-homeassistant/.cache/
+homeassistant/tts/
 homeassistant/custom_components/hacs/hacs_frontend/
-homeassistant/.storage/*
-!homeassistant/.storage/core.area_registry
-!homeassistant/.storage/core.device_registry
-!homeassistant/.storage/core.entity_registry
-!homeassistant/.storage/core.floor_registry
-!homeassistant/.storage/lovelace.map
-!homeassistant/.storage/lovelace_dashboards
-!homeassistant/.storage/homeassistant.exposed_entities
-!homeassistant/.storage/person
 
 # Node-RED runtime secrets and dependencies
 nodered/node_modules/
@@ -85,3 +88,6 @@ portainer/
 
 # Matter server contains fabric credentials and device pairing certs
 matter-server/
+
+# AppDaemon secrets (home coordinates, HA token)
+appdaemon/secrets.yaml
