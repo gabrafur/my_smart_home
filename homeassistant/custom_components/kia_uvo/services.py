@@ -1,22 +1,21 @@
 import logging
-from typing import cast
 from datetime import datetime
+from typing import cast
 
-
-from homeassistant.const import ATTR_DEVICE_ID
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import ServiceCall, callback, HomeAssistant
-from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
+from homeassistant.const import ATTR_DEVICE_ID
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers import device_registry
 from hyundai_kia_connect_api import (
     ClimateRequestOptions,
+    POICoord,
+    POIInfo,
     ScheduleChargingClimateRequestOptions,
     WindowRequestOptions,
-    POIInfo,
-    POICoord,
 )
 
 from .const import DOMAIN
+from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
 
 SERVICE_UPDATE = "update"
 SERVICE_FORCE_UPDATE = "force_update"
@@ -349,7 +348,7 @@ def _get_vehicle_id_from_device(hass: HomeAssistant, call: ServiceCall) -> str:
         coordinator = hass.data[DOMAIN][coordinators[0]]
         vehicles = coordinator.vehicle_manager.vehicles
         if len(vehicles) == 1:
-            return list(vehicles.keys())[0]
+            return next(iter(vehicles.keys()))
 
     device_entry = device_registry.async_get(hass).async_get(call.data[ATTR_DEVICE_ID])
     for entry in device_entry.identifiers:

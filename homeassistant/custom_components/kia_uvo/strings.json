@@ -88,6 +88,9 @@
   },
   "entity": {
     "sensor": {
+      "day_trip_info": {
+        "name": "Day Trip Info"
+      },
       "air_temperature": {
         "name": "Set Temperature"
       },
@@ -267,9 +270,6 @@
       },
       "drive_mode": {
         "name": "Drive Mode"
-      },
-      "day_trip_info": {
-        "name": "Day Trip Info"
       }
     },
     "binary_sensor": {
@@ -496,6 +496,9 @@
       "force_refresh": {
         "name": "Force Refresh"
       },
+      "refresh_trip_info": {
+        "name": "Refresh Trip Info"
+      },
       "start_hazard_lights": {
         "name": "Start Hazard Lights"
       },
@@ -516,9 +519,6 @@
       },
       "vent_all_windows": {
         "name": "Vent All Windows"
-      },
-      "refresh_trip_info": {
-        "name": "Refresh Trip Info"
       }
     },
     "cover": {
