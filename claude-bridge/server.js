@@ -3,10 +3,12 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { SharedHistoryStore } = require('./history');
 
 const PORT = process.env.PORT || 8099;
 const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN;
 const WORKDIR = process.env.WORKDIR || '/workspace';
+const HISTORY_DIR = process.env.HISTORY_DIR || path.join(WORKDIR, '.agent-history');
 const TIMEOUT_MS = Number(
   process.env.BRIDGE_TIMEOUT_MS || process.env.CLAUDE_TIMEOUT_MS || 5 * 60 * 1000,
 );
@@ -16,8 +18,28 @@ if (!BRIDGE_TOKEN) {
   process.exit(1);
 }
 
-// agent + conversation_id (from Home Assistant) -> CLI session id.
-const sessions = new Map();
+const history = new SharedHistoryStore(HISTORY_DIR);
+
+function clampLimit(value, fallback, maximum) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), maximum) : fallback;
+}
+
+function saveSession(key, sessionId) {
+  try {
+    history.setSession(key, sessionId);
+  } catch (err) {
+    console.error(`Failed to persist session ${key}: ${err.message}`);
+  }
+}
+
+function recordTurn(turn) {
+  try {
+    history.appendTurn(turn);
+  } catch (err) {
+    console.error(`Failed to append shared history: ${err.message}`);
+  }
+}
 
 function ensureClaudeWorkspaceTrust() {
   const configPath = path.join(os.homedir(), '.claude.json');
@@ -167,7 +189,13 @@ function runCodex(message, sessionId) {
 }
 
 const server = http.createServer((req, res) => {
-  if (req.method !== 'POST' || req.url !== '/chat') {
+  const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const supportedRoute = (
+    (req.method === 'POST' && requestUrl.pathname === '/chat')
+    || (req.method === 'GET' && requestUrl.pathname === '/history')
+    || (req.method === 'GET' && requestUrl.pathname === '/history/conversations')
+  );
+  if (!supportedRoute) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'not found' }));
     return;
@@ -177,6 +205,34 @@ const server = http.createServer((req, res) => {
   if (auth !== `Bearer ${BRIDGE_TOKEN}`) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'unauthorized' }));
+    return;
+  }
+
+  if (req.method === 'GET') {
+    try {
+      const agent = requestUrl.searchParams.get('agent');
+      if (agent && !['claude', 'codex'].includes(agent)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'unsupported agent' }));
+        return;
+      }
+      const limit = clampLimit(requestUrl.searchParams.get('limit'), 50, 500);
+      const result = requestUrl.pathname === '/history/conversations'
+        ? { conversations: history.listConversations({ agent, limit }) }
+        : {
+            turns: history.readTurns({
+              agent,
+              conversationId: requestUrl.searchParams.get('conversation_id'),
+              limit,
+            }),
+          };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      console.error(err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'failed to read shared history' }));
+    }
     return;
   }
 
@@ -193,6 +249,9 @@ const server = http.createServer((req, res) => {
     }
 
     const message = payload.message;
+    const historyPrompt = typeof payload.display_message === 'string'
+      ? payload.display_message
+      : message;
     const conversationId = payload.conversation_id || null;
     const agent = payload.agent || 'claude';
     if (!message || typeof message !== 'string') {
@@ -207,29 +266,49 @@ const server = http.createServer((req, res) => {
     }
 
     const sessionKey = conversationId ? `${agent}:${conversationId}` : null;
-    const priorSessionId = sessionKey ? sessions.get(sessionKey) : null;
+    const priorSessionId = history.getSession(sessionKey);
 
     try {
       const result = agent === 'codex'
         ? await runCodex(message, priorSessionId)
         : await runClaude(message, priorSessionId);
       if (sessionKey && result.session_id) {
-        sessions.set(sessionKey, result.session_id);
+        saveSession(sessionKey, result.session_id);
       }
       const reply = result.result || result.response || JSON.stringify(result);
+      recordTurn({
+        agent,
+        conversationId,
+        sessionId: result.session_id || priorSessionId,
+        prompt: historyPrompt,
+        reply,
+        status: 'success',
+      });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ reply }));
     } catch (err) {
       console.error(err);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
       const agentName = agent === 'codex' ? 'Codex' : 'Claude Code';
-      res.end(JSON.stringify({ reply: `Erro ao executar ${agentName}: ${err.message}` }));
+      const reply = `Erro ao executar ${agentName}: ${err.message}`;
+      recordTurn({
+        agent,
+        conversationId,
+        sessionId: priorSessionId,
+        prompt: historyPrompt,
+        reply,
+        status: 'error',
+      });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ reply }));
     }
   });
 });
 
 ensureClaudeWorkspaceTrust();
+history.initialize();
 
 server.listen(PORT, () => {
-  console.log(`agent bridge listening on :${PORT}, workdir=${WORKDIR}`);
+  console.log(
+    `agent bridge listening on :${PORT}, workdir=${WORKDIR}, history=${HISTORY_DIR}`,
+  );
 });

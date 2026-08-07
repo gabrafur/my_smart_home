@@ -91,6 +91,44 @@ curl -s -X POST http://127.0.0.1:8099/chat \
   -d '{"agent":"codex","message":"responda apenas: ok","conversation_id":"teste-codex-1"}'
 ```
 
+### 2.1. Histórico compartilhado com o workspace
+
+Cada turno enviado pelo Home Assistant é gravado no host em
+`/mnt/data/docker/.agent-history/turns.jsonl`. O mapeamento entre o
+`conversation_id` do Home Assistant e a sessão do CLI fica em
+`.agent-history/sessions.json`, portanto a conversa continua mesmo depois de
+restart ou rebuild do bridge.
+
+Na primeira instalação, crie o diretório com acesso para o usuário do host e o
+grupo do Docker usado pelo bridge:
+
+```bash
+cd /mnt/data/docker
+install -d -m 2770 -g 987 .agent-history
+```
+
+O diretório contém conteúdo privado e está ignorado pelo Git. Para consultar
+as conversas no workspace usado pelo Codex:
+
+```bash
+node scripts/agent-history.mjs list
+node scripts/agent-history.mjs show <conversation_id> codex
+```
+
+O bridge também oferece leitura autenticada para integrações locais:
+
+```bash
+TOKEN=$(grep ^CLAUDE_BRIDGE_TOKEN .env | cut -d= -f2-)
+curl -s http://127.0.0.1:8099/history/conversations \
+  -H "Authorization: Bearer $TOKEN"
+curl -s "http://127.0.0.1:8099/history?conversation_id=<conversation_id>" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Isso compartilha o conteúdo e a continuidade das conversas. A interface do
+Codex não importa essas conversas automaticamente para a lista nativa de chats;
+quando solicitado, o agente lê o transcript compartilhado como contexto.
+
 ### 3. Restart do Home Assistant (para carregar o custom_component)
 
 ```bash
@@ -168,6 +206,7 @@ A resposta deve bater com a realidade do host (mesma lista de `docker ps`).
 ## Arquivos envolvidos
 
 - `claude-bridge/Dockerfile`, `claude-bridge/server.js`, `claude-bridge/package.json`
+- `claude-bridge/history.js`, `scripts/agent-history.mjs`, `AGENTS.md`
 - `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_BRIDGE_TOKEN`) e `.env.example`
 - `docker-compose.yml` (serviço `claude-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)

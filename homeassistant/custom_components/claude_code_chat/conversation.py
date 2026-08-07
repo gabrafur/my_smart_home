@@ -81,6 +81,7 @@ class ClaudeCodeConversationEntity(
         session = async_get_clientsession(self.hass)
         payload = {
             "message": user_input.text,
+            "display_message": user_input.text,
             "conversation_id": user_input.conversation_id,
             "agent": "claude",
         }
@@ -155,11 +156,6 @@ class CodexConversationEntity(
             )
 
         session = async_get_clientsession(self.hass)
-        conversation_id = (
-            f"codex:{user_input.conversation_id}"
-            if user_input.conversation_id
-            else None
-        )
         message = (
             "Você está atendendo pelo assistente Codex dentro do Home Assistant. "
             "Responda diretamente ao usuário, em português quando o pedido estiver "
@@ -169,7 +165,8 @@ class CodexConversationEntity(
         )
         payload = {
             "message": message,
-            "conversation_id": conversation_id,
+            "display_message": prompt,
+            "conversation_id": user_input.conversation_id,
             "agent": "codex",
         }
         headers = {"Authorization": f"Bearer {data.bridge_token}"}
