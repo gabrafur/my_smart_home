@@ -50,10 +50,15 @@ As portas publicadas de Portainer, Mosquitto, Node-RED e Zigbee2MQTT ficam presa
 Tailscale esta instalado no host atual e habilitado. O host atual aparece como:
 
 ```text
-Hostname Tailscale: raspbery-gabriel.tailbe3cf5.ts.net
-IP Tailscale IPv4 : 100.69.100.59
+Hostname Tailscale: raspberry-pi.SEU-TAILNET.ts.net
+IP Tailscale IPv4 : 100.x.y.z
 Subnet route      : 192.168.0.0/24
 ```
+
+> `SEU-TAILNET`, o hostname e o IP `100.x.y.z` sao placeholders: o tailnet id e
+> o endereco do no identificam a rede privada e por isso nao entram neste
+> repositorio publico. Os valores reais aparecem em `tailscale status` no host
+> e no Tailscale Admin Console.
 
 ZeroTier foi citado como item de projeto, mas nao esta instalado no host atual. Este manual inclui a instalacao opcional.
 
@@ -68,15 +73,8 @@ O Git salva configuracoes reaproveitaveis, fluxos, scripts e manifests. Segredos
 - `homeassistant/automations.yaml`
 - `homeassistant/scenes.yaml`
 - `homeassistant/scripts.yaml`
-- registries selecionados de `.storage`:
-  - `core.area_registry`
-  - `core.device_registry`
-  - `core.entity_registry`
-  - `core.floor_registry`
-  - `lovelace.map`
-  - `lovelace_dashboards`
-  - `homeassistant.exposed_entities`
-  - `person`
+- `homeassistant/packages/*.yaml` (um arquivo por area de funcionalidade)
+- `homeassistant/dashboards/*.yaml`
 - `homeassistant/custom_components/` sem caches e sem frontend gerado do HACS.
 - `nodered/flows.json`
 - `nodered/package.json`
@@ -97,11 +95,15 @@ O Git salva configuracoes reaproveitaveis, fluxos, scripts e manifests. Segredos
 Arquivos abaixo precisam de backup seguro separado:
 
 - `homeassistant/secrets.yaml`
-- `homeassistant/.storage/auth`
-- `homeassistant/.storage/auth_provider.homeassistant`
-- `homeassistant/.storage/http.auth`
-- `homeassistant/.storage/cloud`
+- `homeassistant/.storage/` **inteiro** — nao apenas os arquivos de auth. Os
+  registries (`core.device_registry`, `core.entity_registry`, `person`, ...)
+  carregam MAC/BSSID, `unique_id` por dispositivo, identificadores de
+  pareamento HomeKit e nomes de moradores. Ate 2026-08-07 alguns deles eram
+  versionados por uma lista de excecoes `!` no `.gitignore`; a lista foi
+  removida e nao deve voltar (ver `docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md`).
 - `homeassistant/.cloud/`
+- `homeassistant/.cache/`, `homeassistant/tts/` — cache de runtime, so' ruido
+- `appdaemon/secrets.yaml`
 - `homeassistant/backups/*.tar`
 - `homeassistant/home-assistant_v2.db*`
 - `.env`
@@ -116,7 +118,9 @@ Arquivos abaixo precisam de backup seguro separado:
 - `zigbee2mqtt/database.db`
 - `portainer/`
 
-Motivo: esses arquivos contem senha, token, cookie, chave Zigbee, banco runtime ou credenciais.
+Motivo: esses arquivos contem senha, token, cookie, chave Zigbee, banco runtime,
+credenciais ou dado pessoal (coordenada de casa, MAC, nome de morador).
+`scripts/security-scan.sh` verifica essa fronteira automaticamente e roda na CI.
 
 ## 2. Instalacao do Linux base
 
@@ -144,7 +148,7 @@ dietpi-config
 
 Configure:
 
-- hostname: `DietPi` ou `raspbery-gabriel`;
+- hostname: `DietPi` ou `raspberry-pi`;
 - timezone: `America/Sao_Paulo`;
 - IP fixo no Ethernet, preferencialmente `192.168.0.205`;
 - senha forte para `root`;
@@ -910,7 +914,7 @@ Suba o node:
 
 ```bash
 sudo tailscale up \
-  --hostname=raspbery-gabriel \
+  --hostname=raspberry-pi \
   --ssh \
   --advertise-routes=192.168.0.0/24
 ```
@@ -918,7 +922,7 @@ sudo tailscale up \
 Depois aprove a subnet route no painel do Tailscale:
 
 ```text
-Tailscale Admin Console -> Machines -> raspbery-gabriel -> Edit route settings
+Tailscale Admin Console -> Machines -> raspberry-pi -> Edit route settings
 ```
 
 ### 18.2. Verificar
@@ -933,17 +937,17 @@ Estado atual observado:
 
 ```text
 BackendState : Running
-Tailscale IP : 100.69.100.59
-MagicDNS     : raspbery-gabriel.tailbe3cf5.ts.net
+Tailscale IP : 100.x.y.z
+MagicDNS     : raspberry-pi.SEU-TAILNET.ts.net
 Routes       : 192.168.0.0/24
 ```
 
 Teste de outro dispositivo do tailnet:
 
 ```bash
-ping 100.69.100.59
-curl -I http://100.69.100.59:8123
-curl -I http://raspbery-gabriel.tailbe3cf5.ts.net:8123
+ping 100.x.y.z
+curl -I http://100.x.y.z:8123
+curl -I http://raspberry-pi.SEU-TAILNET.ts.net:8123
 ```
 
 ### 18.3. Renovacao/validade
@@ -1083,7 +1087,8 @@ O modo `daily`:
 
 O modo `ha-updates`:
 
-- usa `HA_LONG_LIVED_TOKEN` do `.env`;
+- le o token, nesta ordem: `.local-secrets/ha-long-lived-token.txt` (fonte
+  preferida, mode 600) e, como fallback, `HA_LONG_LIVED_TOKEN` do `.env`;
 - consulta a API local do Home Assistant;
 - instala atualizacoes seguras de entidades `update.*`;
 - ignora firmware/SLZB automaticamente;
@@ -1095,11 +1100,23 @@ Para habilitar o modo `ha-updates`, crie um token de longa duracao no Home Assis
 Perfil do usuario -> Tokens de acesso de longa duracao
 ```
 
-Depois adicione ao `.env`:
+Depois grave o token no store de segredos do host (recomendado):
+
+```bash
+umask 077
+printf '%s' 'COLE_O_TOKEN_AQUI' > /mnt/data/docker/.local-secrets/ha-long-lived-token.txt
+```
+
+Alternativamente (fallback), adicione ao `.env`:
 
 ```bash
 HA_LONG_LIVED_TOKEN=COLE_O_TOKEN_AQUI
 ```
+
+> Nota historica: antes o script so lia o token do `.env`. Como o token ja
+> existia em `.local-secrets/ha-long-lived-token.txt` mas nao no `.env`, o modo
+> `ha-updates` era pulado em toda execucao (`ha-updates skipped: ...`). O
+> fallback para o `.local-secrets/` corrigiu isso.
 
 Cron recomendado:
 
@@ -1497,7 +1514,7 @@ Restaure de backup seguro ou recrie usuarios pela UI.
 ### Tailscale nao anuncia rota LAN
 
 ```bash
-sudo tailscale up --advertise-routes=192.168.0.0/24 --ssh --hostname=raspbery-gabriel
+sudo tailscale up --advertise-routes=192.168.0.0/24 --ssh --hostname=raspberry-pi
 tailscale status
 ```
 
