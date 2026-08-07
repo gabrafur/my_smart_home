@@ -1,6 +1,237 @@
+# Portão da garagem
+#
+# O acionamento é um RELÉ DE CONTATO SECO (switch.rele_acionador_portao, Tuya
+# TS0001 via zigbee2mqtt) ligado na botoeira (BT) da central do motor.
+#
+# CADA "ON" É UM PULSO FÍSICO REAL: a central executa a próxima ação do seu
+# ciclo (abrir / fechar / parar / inverter). Não há sensor de posição — o estado
+# do relé representa SOMENTE o pulso de comando, nunca a posição do portão.
+#
+# Regra de ouro: um clique => exatamente uma transição OFF -> ON -> OFF.
+# Nunca ON -> ON, nunca dois ciclos numa mesma solicitação, nunca retry de ON.
+#
+# Ver docs/PORTAO_GARAGEM_BOTAO_PULSO.md e docs/PORTAO_GARAGEM_RELE_LOCAL.md.
+
+input_datetime:
+  portao_garagem_ultimo_pulso:
+    name: Portão garagem - último pulso
+    icon: mdi:clock-check-outline
+    has_date: true
+    has_time: true
+
+input_text:
+  portao_garagem_ultimo_pulso_origem:
+    name: Portão garagem - origem do último pulso
+    icon: mdi:gesture-tap-button
+    max: 100
+    initial: ""
+
+template:
+  - button:
+      - name: Acionar Portão da Garagem
+        unique_id: portao_garagem_botao_pulso
+        icon: mdi:gate-arrow-right
+        press:
+          # Ponto de entrada único do usuário. Toda a proteção mora no script;
+          # o botão só repassa a origem para o log.
+          - action: script.portao_garagem_pulso
+            data:
+              origem: botao_dashboard
+
 script:
+  # ---------------------------------------------------------------------------
+  # Pulso único da botoeira: OFF -> ON -> (700 ms) -> OFF
+  # ---------------------------------------------------------------------------
+  portao_garagem_pulso:
+    alias: Portão garagem - pulso único (OFF → ON → OFF)
+    icon: mdi:gate-arrow-right
+    # single + silent: uma segunda chamada enquanto este script roda é
+    # DESCARTADA (não enfileirada, não reinicia). Nunca gera um segundo ON.
+    mode: single
+    max_exceeded: silent
+    fields:
+      origem:
+        name: Origem
+        description: Quem pediu o pulso (para o log).
+        default: desconhecida
+        selector:
+          text:
+    variables:
+      rele: switch.rele_acionador_portao
+      # Largura do pulso, em ms. Mesma validada em produção no fluxo Node-RED
+      # (nó "pulso: manter fechado ~0.7s"). O TS0001 não honra on_time, então o
+      # pulso é feito por software.
+      largura_pulso_ms: 700
+      # Janela morta contada a partir do INÍCIO do pulso (o pulso em si leva
+      # ~0,7 s), para absorver double-click e retransmissão.
+      cooldown_s: 3
+      origem_log: "{{ origem | default('desconhecida', true) }}"
+    sequence:
+      # --- Guarda 1: relé precisa estar respondendo ---------------------------
+      # Sem retry: se não dá para confiar na entrega, registra erro e para.
+      - alias: Aborta se o relé estiver indisponível
+        if:
+          - condition: template
+            value_template: "{{ states(rele) in ['unavailable', 'unknown'] }}"
+        then:
+          - action: logbook.log
+            data:
+              name: Portão garagem
+              entity_id: switch.rele_acionador_portao
+              message: >-
+                pulso RECUSADO (origem: {{ origem_log }}) — relé
+                {{ states(rele) }}. Nenhum ON enviado.
+          - action: persistent_notification.create
+            data:
+              notification_id: portao_garagem_pulso_erro
+              title: Portão da garagem - relé indisponível
+              message: >-
+                O relé `{{ rele }}` está `{{ states(rele) }}`. O pulso foi
+                recusado e NENHUM comando ON foi enviado. Verifique o
+                zigbee2mqtt / a rede Zigbee antes de tentar de novo.
+          - stop: Relé indisponível - nenhum ON enviado
+
+      # --- Guarda 2: cooldown / debounce -------------------------------------
+      # Cobre double-click, retransmissão do Zigbee e chamadas repetidas logo
+      # após o pulso anterior. Baseado em timestamp (não em delay), então não
+      # trava para sempre se uma execução for interrompida no meio.
+      - alias: Aborta se ainda estiver no cooldown do pulso anterior
+        if:
+          - condition: template
+            value_template: >-
+              {% set ts = state_attr('input_datetime.portao_garagem_ultimo_pulso', 'timestamp') %}
+              {{ ts is not none and (as_timestamp(now()) - ts) < cooldown_s }}
+        then:
+          - action: logbook.log
+            data:
+              name: Portão garagem
+              entity_id: switch.rele_acionador_portao
+              message: >-
+                pulso IGNORADO (origem: {{ origem_log }}) — dentro da janela de
+                cooldown de {{ cooldown_s }}s.
+          - stop: Cooldown ativo - nenhum ON enviado
+
+      # --- Guarda 3: relé já ligado ------------------------------------------
+      # NÃO manda outro ON. Desarma com segurança e devolve o controle ao
+      # usuário: o próximo clique (fora do cooldown) é que vai pulsar.
+      - alias: Relé já estava ligado - desarma e aborta (não envia ON)
+        if:
+          - condition: state
+            entity_id: switch.rele_acionador_portao
+            state: "on"
+        then:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.rele_acionador_portao
+          - delay:
+              milliseconds: 600
+          - action: logbook.log
+            data:
+              name: Portão garagem
+              entity_id: switch.rele_acionador_portao
+              message: >-
+                pulso RECUSADO (origem: {{ origem_log }}) — o relé já estava ON
+                antes do clique. Contato foi aberto (OFF); nenhum ON novo foi
+                enviado.
+          - action: persistent_notification.create
+            data:
+              notification_id: portao_garagem_rele_preso
+              title: Portão da garagem - relé estava ligado
+              message: >-
+                O relé já estava `on` quando o botão foi acionado, o que indica
+                um pulso anterior que não fechou (HA reiniciado no meio do
+                pulso, comando OFF perdido ou acionamento manual). O contato foi
+                aberto e NENHUM ON novo foi enviado. Investigue antes de acionar
+                de novo — estado atual do relé: `{{ states(rele) }}`.
+          - stop: Relé estava ON - desarmado, nenhum ON enviado
+
+      # --- Marca o pulso ANTES de acionar ------------------------------------
+      # Gravado antes do ON de propósito: se algo falhar no meio, o cooldown já
+      # está valendo e nenhum caminho concorrente consegue emitir um segundo ON.
+      - alias: Registra o instante e a origem do pulso
+        action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.portao_garagem_ultimo_pulso
+        data:
+          timestamp: "{{ as_timestamp(now()) }}"
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.portao_garagem_ultimo_pulso_origem
+        data:
+          value: "{{ origem_log }}"
+      - action: logbook.log
+        data:
+          name: Portão garagem
+          entity_id: switch.rele_acionador_portao
+          message: >-
+            pulso ÚNICO iniciado (origem: {{ origem_log }}) — largura
+            {{ largura_pulso_ms }} ms, cooldown {{ cooldown_s }}s.
+
+      # --- O pulso: ON -> espera -> OFF --------------------------------------
+      # Um único switch.turn_on. Sem repeat, sem retry, sem toggle, sem lógica
+      # condicional em cima do estado do relé para decidir liga/desliga.
+      - alias: PULSO - fecha o contato (único ON da execução)
+        action: switch.turn_on
+        target:
+          entity_id: switch.rele_acionador_portao
+      - alias: PULSO - mantém fechado pela largura configurada
+        delay:
+          milliseconds: "{{ largura_pulso_ms }}"
+      - alias: PULSO - abre o contato (OFF não é acionamento, só rearma o relé)
+        action: switch.turn_off
+        target:
+          entity_id: switch.rele_acionador_portao
+
+      # --- Garante o estado final OFF ----------------------------------------
+      # Reenviar OFF é seguro (não move o portão); reenviar ON não seria.
+      - delay:
+          milliseconds: 500
+      - alias: Se o relé não voltou para off, reforça o OFF
+        if:
+          - condition: state
+            entity_id: switch.rele_acionador_portao
+            state: "on"
+        then:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.rele_acionador_portao
+          - delay:
+              milliseconds: 800
+          - alias: Ainda ligado - alerta (a automação de segurança segue tentando)
+            if:
+              - condition: state
+                entity_id: switch.rele_acionador_portao
+                state: "on"
+            then:
+              - action: persistent_notification.create
+                data:
+                  notification_id: portao_garagem_rele_preso
+                  title: Portão da garagem - relé não voltou para off
+                  message: >-
+                    Depois do pulso, `{{ rele }}` continua `on` mesmo após dois
+                    comandos OFF. O contato pode estar fechado na botoeira.
+                    Verifique fisicamente.
+              - action: logbook.log
+                data:
+                  name: Portão garagem
+                  entity_id: switch.rele_acionador_portao
+                  message: >-
+                    ALERTA - relé continua ON após o pulso e após dois OFF.
+      - alias: Log de conclusão
+        action: logbook.log
+        data:
+          name: Portão garagem
+          entity_id: switch.rele_acionador_portao
+          message: >-
+            pulso concluído (origem: {{ origem_log }}) — relé em
+            {{ states(rele) }}.
+
+  # ---------------------------------------------------------------------------
+  # LEGADO - acionamento pela cena RF Tuya (nuvem). Mantido para rollback.
+  # Não é mais usado pelo Node-RED nem pelo botão novo.
+  # ---------------------------------------------------------------------------
   portao_garagem_acionar:
-    alias: Portao garagem - acionar
+    alias: Portao garagem - acionar (legado - cena RF Tuya)
     mode: single
     sequence:
       - choose:
@@ -18,3 +249,41 @@ script:
               message: >
                 A scene RF Tuya scene.acionar_portao nao esta disponivel no
                 Home Assistant. Verifique a integracao Tuya e o dispositivo RF.
+
+automation:
+  # Rede de segurança: o relé nunca deveria ficar fechado por mais de ~0,7 s.
+  # Se ficar (HA reiniciado no meio do pulso, OFF perdido, acionamento manual
+  # esquecido no Developer Tools), força a abertura do contato.
+  # Esta automação SÓ emite OFF — nunca ON —, então não move o portão.
+  - id: portao_garagem_rele_preso_em_on
+    alias: Portão garagem - segurança - relé preso em ON
+    description: >-
+      Abre o contato do relé da botoeira se ele ficar fechado por mais de 5 s.
+      Só envia OFF; nunca gera um pulso.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: switch.rele_acionador_portao
+        to: "on"
+        for: "00:00:05"
+    conditions: []
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.rele_acionador_portao
+      - action: logbook.log
+        data:
+          name: Portão garagem
+          entity_id: switch.rele_acionador_portao
+          message: >-
+            SEGURANÇA - relé estava ON há mais de 5s; contato aberto
+            automaticamente (nenhum ON foi enviado).
+      - action: persistent_notification.create
+        data:
+          notification_id: portao_garagem_rele_preso
+          title: Portão da garagem - contato ficou fechado
+          message: >-
+            O relé da botoeira ficou `on` por mais de 5 segundos e foi desligado
+            automaticamente. Isso não deveria acontecer num pulso normal
+            (~0,7 s) — verifique o log do script `portao_garagem_pulso` e o
+            zigbee2mqtt.
