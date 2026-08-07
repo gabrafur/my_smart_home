@@ -38,8 +38,8 @@
 
 zone:
   - name: chegando
-    latitude: -20.310367851039004
-    longitude: -40.317321761139894
+    latitude: !secret home_latitude
+    longitude: !secret home_longitude
     radius: 1500
     icon: mdi:car-arrow-right
     passive: false
