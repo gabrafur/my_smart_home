@@ -251,6 +251,56 @@ script:
                 Home Assistant. Verifique a integracao Tuya e o dispositivo RF.
 
 automation:
+  # Cooldown compartilhado entre as DUAS fontes de pulso.
+  #
+  # O botão Zigbee físico (botao_portao_garagem) é tratado dentro do Node-RED,
+  # que publica direto no MQTT para manter a latência baixa — ele NÃO passa por
+  # este script. Sem isso aqui, o HA não enxergaria um pulso vindo do Node-RED e
+  # um clique no botão do dashboard logo em seguida geraria um segundo pulso.
+  #
+  # Carimbando o "último pulso" a cada ON do relé (venha de onde vier), o
+  # cooldown do script passa a valer também para pulsos do Node-RED.
+  # Esta automação NÃO envia comando nenhum ao relé — só registra.
+  - id: portao_garagem_carimba_pulso_externo
+    alias: Portão garagem - carimbar pulso (qualquer origem)
+    description: >-
+      Arma o cooldown do script sempre que o relé fecha o contato, inclusive
+      quando o pulso veio do Node-RED / botão Zigbee físico.
+    mode: queued
+    max: 5
+    triggers:
+      - trigger: state
+        entity_id: switch.rele_acionador_portao
+        from: "off"
+        to: "on"
+    conditions: []
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.portao_garagem_ultimo_pulso
+        data:
+          timestamp: "{{ as_timestamp(now()) }}"
+      # Só sobrescreve a origem se o pulso NÃO veio do script (o script já
+      # gravou a origem real antes de ligar o relé).
+      - alias: Marca origem externa quando o pulso não veio do script
+        if:
+          - condition: template
+            value_template: >-
+              {{ not is_state('script.portao_garagem_pulso', 'on') }}
+        then:
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.portao_garagem_ultimo_pulso_origem
+            data:
+              value: externa_nodered_ou_manual
+          - action: logbook.log
+            data:
+              name: Portão garagem
+              entity_id: switch.rele_acionador_portao
+              message: >-
+                pulso EXTERNO detectado (Node-RED / botão Zigbee / manual) —
+                cooldown do botão do HA armado.
+
   # Rede de segurança: o relé nunca deveria ficar fechado por mais de ~0,7 s.
   # Se ficar (HA reiniciado no meio do pulso, OFF perdido, acionamento manual
   # esquecido no Developer Tools), força a abertura do contato.
