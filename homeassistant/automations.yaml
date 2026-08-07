@@ -10,5 +10,5 @@
   actions:
     - action: wake_on_lan.send_magic_packet
       data:
-        mac: a0:d7:f3:30:d7:0e
+        mac: !secret tv_sala_mac
   mode: single

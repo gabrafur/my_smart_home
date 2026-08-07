@@ -9,11 +9,12 @@ Claude Code tem numa sessão de terminal neste repositório. Roda via um serviç
 não-interativo (`-p --dangerously-skip-permissions`), sem revisão humana por
 mensagem.
 
-**Restrito a um único usuário do HA** (Gabriel — `user_id
-4c8256f7470a4bb1a79421a76f43fdc4`). Qualquer outra conta recebe recusa
-automática do agente.
+**Restrito a um único usuário do HA** (o `user_id` do administrador, lido de
+`/config/.storage/auth`). Qualquer outra conta recebe recusa automática do
+agente. O id fica no config entry da integração, nunca no código — este
+repositório é público.
 
-**Risco aceito conscientemente**: quem estiver logado como Gabriel no app/navegador
+**Risco aceito conscientemente**: quem estiver logado com essa conta no app/navegador
 do HA herda esse poder sem confirmação por ação. Vale considerar 2FA nessa conta.
 
 ## Por que os comandos abaixo precisam ser rodados manualmente
@@ -85,7 +86,9 @@ Espere ~30-60s o HA voltar (`docker compose logs -f homeassistant` até ver
    - **bridge_url**: `http://127.0.0.1:8099/chat` (já vem preenchido)
    - **bridge_token**: o mesmo valor do `CLAUDE_BRIDGE_TOKEN` no `.env`
      (rode `grep CLAUDE_BRIDGE_TOKEN .env` pra copiar)
-   - **allowed_user_id**: já vem preenchido com o ID do Gabriel — só confirme
+   - **allowed_user_id**: cole o `user_id` do administrador. Pegue em
+     `/config/.storage/auth` (chave `users` → `id`) ou em
+     **Configurações → Pessoas → (usuário)**, na URL do navegador
 4. Depois de criada, vá em **Configurações → Entidades**, busque por "Claude
    Code" e anote o `entity_id` exato gerado (esperado:
    `conversation.claude_code_full_access`, mas confirme). Se vier diferente,
