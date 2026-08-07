@@ -64,6 +64,24 @@ reportam o estado `chegando` no lugar de `not_home`.
 - `switch.refletor_portao_carros`
 - `button.creta_force_refresh`
 
+## Coordenadas de referencia
+
+`HOME_LAT`/`HOME_LON` (casa) e `GATE_LAT`/`GATE_LON` (portao/entrada) **nao
+ficam no repositorio** — este repo e publico e o ponto de casa e o endereco da
+familia. Eles vem do `.env`, entregue ao container pelo `env_file` do servico
+`nodered` no `docker-compose.yml`, e sao lidos com `env.get(...)` em
+`sec_prepare_arrival_context` e `sec_refresh_anyone_away`. A zona
+`zone.chegando` usa `!secret home_latitude`/`home_longitude`.
+
+Sem essas variaveis o fluxo **degrada de proposito** para o estado de zona do
+Home Assistant (`home`/`chegando`/`not_home`), que ja e o fallback de quando o
+GPS nao e confiavel; ele nunca calcula distancia a partir de coordenada
+invalida (guardas `HOME_KNOWN`/`GATE_KNOWN`).
+
+> `docker restart nodered` **nao** recarrega o `env_file`. Depois de mexer no
+> `.env`, use `docker compose up -d nodered` para recriar o container, senao o
+> fluxo roda degradado sem avisar.
+
 ## Fallback de localizacao via iCloud
 
 Gabriel e Valeria tem dois trackers cada: o `mobile_app` (app companion,
@@ -136,7 +154,7 @@ perder uma saida real por causa de um `mobile_app` travado.
    entidade armada volta para ate **300 m** de `HOME_LAT`/`HOME_LON`
    **ou** para ate **300 m** de `GATE_LAT`/`GATE_LON`
    (`ARRIVAL_DISTANCE_M`, mesmo valor para os dois pontos). O ponto do
-   portao/entrada (`GATE_LAT`/`GATE_LON` = 20°18'34.2"S 40°18'57.6"W, ~168 m
+   portao/entrada (`GATE_LAT`/`GATE_LON`, vindos do ambiente do container — ver abaixo; ~168 m
    de `HOME_LAT`/`HOME_LON`) existe para acender o refletor um pouco antes
    da chegada de fato em casa. O campo `creta_home` (mesmos 300 m, so contra
    `HOME_LAT`/`HOME_LON`) continua sendo calculado em
@@ -512,7 +530,7 @@ flow context), nao pelo periodo do inject:
   Tambem corrigido o texto de `sec_notify_valeria_approaching`, que dizia
   "Valeria ou Gabriel" mas so dispara para `source === "valeria"`.
 - 2026-07-10: adicionado um segundo ponto de referencia,
-  `GATE_LAT`/`GATE_LON` (20°18'34.2"S 40°18'57.6"W, portao/entrada, ~168 m
+  `GATE_LAT`/`GATE_LON` (portao/entrada, ~168 m
   de `HOME_LAT`/`HOME_LON`), para a deteccao de chegada em
   `sec_detect_arriving_source`: chegar a ate 300 m desse ponto conta como
   chegada, igual a chegar a ate 300 m de `HOME_LAT`/`HOME_LON`, para
