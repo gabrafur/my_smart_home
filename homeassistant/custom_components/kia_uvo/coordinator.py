@@ -2,32 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-import datetime as dt
-from datetime import timedelta
-import traceback
-import logging
 import asyncio
+import datetime as dt
+import logging
+import traceback
 import types
-
-from hyundai_kia_connect_api import (
-    Vehicle,
-    VehicleManager,
-    ClimateRequestOptions,
-    WindowRequestOptions,
-    ScheduleChargingClimateRequestOptions,
-    POIInfo,
-    Token,
-)
-from hyundai_kia_connect_api.const import WINDOW_STATE
-from hyundai_kia_connect_api.ApiImplType1 import ApiImplType1
-from hyundai_kia_connect_api.exceptions import (
-    AuthenticationError,
-    UnsupportedControlError,
-)
-
-from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from collections.abc import Callable
+from datetime import timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -38,24 +20,40 @@ from homeassistant.const import (
     CONF_USERNAME,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
+from hyundai_kia_connect_api import (
+    ClimateRequestOptions,
+    POIInfo,
+    ScheduleChargingClimateRequestOptions,
+    Token,
+    Vehicle,
+    VehicleManager,
+    WindowRequestOptions,
+)
+from hyundai_kia_connect_api.const import WINDOW_STATE
+from hyundai_kia_connect_api.exceptions import (
+    AuthenticationError,
+    UnsupportedControlError,
+)
+from hyundai_kia_connect_api.ApiImplType1 import ApiImplType1
 
 from .const import (
     CONF_BRAND,
+    CONF_ENABLE_GEOLOCATION_ENTITY,
     CONF_FORCE_REFRESH_INTERVAL,
     CONF_NO_FORCE_REFRESH_HOUR_FINISH,
     CONF_NO_FORCE_REFRESH_HOUR_START,
+    CONF_TOKEN,
+    CONF_USE_EMAIL_WITH_GEOCODE_API,
+    DEFAULT_ENABLE_GEOLOCATION_ENTITY,
     DEFAULT_FORCE_REFRESH_INTERVAL,
     DEFAULT_NO_FORCE_REFRESH_HOUR_FINISH,
     DEFAULT_NO_FORCE_REFRESH_HOUR_START,
     DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
-    DEFAULT_ENABLE_GEOLOCATION_ENTITY,
     DEFAULT_USE_EMAIL_WITH_GEOCODE_API,
-    CONF_USE_EMAIL_WITH_GEOCODE_API,
-    CONF_ENABLE_GEOLOCATION_ENTITY,
-    CONF_TOKEN,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -180,35 +178,19 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     self.vehicle_manager.check_and_force_update_vehicles,
                     self.force_refresh_interval,
                 )
-            except Exception as force_err:
-                _LOGGER.warning(
-                    "%s - Force update failed, falling back to cached: %s",
-                    DOMAIN,
-                    force_err,
-                )
+            except Exception:
                 try:
+                    _LOGGER.exception(
+                        f"Force update failed, falling back to cached: {traceback.format_exc()}"
+                    )
                     await self.hass.async_add_executor_job(
                         self.vehicle_manager.update_all_vehicles_with_cached_state
                     )
-                except Exception as cached_err:
-                    # Both the force refresh and the cached-state fallback failed
-                    # (e.g. Hyundai's backend returning 503 Service Unavailable).
-                    # Log the full traceback for debugging, but keep the
-                    # UpdateFailed/ConfigEntryNotReady message short — dumping the
-                    # whole traceback into it makes the "Config Not Ready" log entry
-                    # unreadable and doesn't add anything the debug log doesn't
-                    # already have. retry_after=60 avoids waiting for HA's default
-                    # (longer) config-entry retry backoff while Hyundai's API is
-                    # transiently down.
-                    _LOGGER.debug(
-                        "%s - Cached update failed: %s",
-                        DOMAIN,
-                        traceback.format_exc(),
-                    )
+                except Exception:
+                    _LOGGER.exception(f"Cached update failed: {traceback.format_exc()}")
                     raise UpdateFailed(
-                        f"Error communicating with API, will retry in 60s: {cached_err}",
-                        retry_after=60,
-                    ) from cached_err
+                        f"Error communicating with API: {traceback.format_exc()}"
+                    )
 
         else:
             await self.hass.async_add_executor_job(
