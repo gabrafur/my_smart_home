@@ -8,6 +8,7 @@ from typing import Literal
 import aiohttp
 
 from homeassistant.components import conversation
+from homeassistant.components.conversation import ConversationEntityFeature
 from homeassistant.const import MATCH_ALL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import intent
@@ -46,6 +47,7 @@ class ClaudeCodeConversationEntity(
 
     _attr_has_entity_name = True
     _attr_name = DEFAULT_NAME
+    _attr_supported_features = ConversationEntityFeature.CONTROL
 
     def __init__(self, entry: ClaudeCodeChatConfigEntry) -> None:
         self._entry = entry
@@ -111,6 +113,7 @@ class CodexConversationEntity(
 
     _attr_has_entity_name = True
     _attr_name = "Codex"
+    _attr_supported_features = ConversationEntityFeature.CONTROL
 
     def __init__(self, entry: ClaudeCodeChatConfigEntry) -> None:
         self._entry = entry
