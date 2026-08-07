@@ -1304,6 +1304,183 @@
         ]
     },
     {
+        "id": "grp_sec_gatilhos",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "1. Gatilhos de evento",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "sec_gabriel_location_changed",
+            "sec_valeria_location_changed",
+            "sec_creta_location_changed",
+            "sec_sun_changed",
+            "sec_creta_lock_context_changed",
+            "sec_engine_off_changed",
+            "sec_creta_locked_changed"
+        ],
+        "x": 70,
+        "y": 85,
+        "w": 300,
+        "h": 475
+    },
+    {
+        "id": "grp_sec_contexto",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "2. Contexto (distancias, trava creta_in_use)",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "sec_prepare_arrival_context"
+        ],
+        "x": 390,
+        "y": 265,
+        "w": 300,
+        "h": 115
+    },
+    {
+        "id": "grp_sec_deteccao",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "3. Deteccao de chegada",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "sec_update_arming_context",
+            "sec_update_arming_location",
+            "sec_detect_arriving_source",
+            "sec_notify_valeria_approaching",
+            "sec_creta_trip_refresh_gate",
+            "sec_refresh_creta_trip_info",
+            "sec_approach_wake_gate"
+        ],
+        "x": 710,
+        "y": 85,
+        "w": 860,
+        "h": 475
+    },
+    {
+        "id": "grp_sec_acender",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "4. Acender (escuro + Creta em uso + inativo)",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "sec_check_dark",
+            "sec_check_engine_on",
+            "sec_check_reflector_inactive",
+            "sec_mark_reflector_active",
+            "sec_reflector_turn_on",
+            "29a4e3c0935e2805",
+            "sec_auto_off_delay",
+            "sec_auto_off_event"
+        ],
+        "x": 1610,
+        "y": 65,
+        "w": 1380,
+        "h": 355
+    },
+    {
+        "id": "grp_sec_apagar",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "5. Apagar (5 condicoes independentes)",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "sec_evaluate_turn_off",
+            "sec_arrival_off_grace",
+            "sec_turn_off_if_active",
+            "sec_reflector_turn_off"
+        ],
+        "x": 710,
+        "y": 605,
+        "w": 2560,
+        "h": 195
+    },
+    {
+        "id": "grp_sec_refresh",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "6. Atualizacao de localizacao e do Creta",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#6b6b6b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "sec_refresh_every_10min",
+            "sec_refresh_context_snapshot",
+            "sec_refresh_anyone_away",
+            "sec_request_gabriel_location",
+            "sec_request_valeria_location",
+            "sec_force_refresh_creta",
+            "sec_creta_refresh_ack",
+            "sec_refresh_creta_entities"
+        ],
+        "x": 70,
+        "y": 865,
+        "w": 1480,
+        "h": 295
+    },
+    {
+        "id": "grp_sec_testes",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "7. Testes manuais",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "249963a6cd6c247a",
+            "965afc02b5d9e809"
+        ],
+        "x": 70,
+        "y": 1245,
+        "w": 300,
+        "h": 175
+    },
+    {
         "id": "249963a6cd6c247a",
         "type": "inject",
         "z": "2fd40fd570e6f37a",
@@ -1324,13 +1501,14 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 1150,
-        "y": 460,
+        "x": 180,
+        "y": 1300,
         "wires": [
             [
                 "sec_notify_valeria_approaching"
             ]
-        ]
+        ],
+        "g": "grp_sec_testes"
     },
     {
         "id": "29a4e3c0935e2805",
@@ -1358,11 +1536,12 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "send_message",
-        "x": 2700,
-        "y": 260,
+        "x": 2800,
+        "y": 200,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_comment_arrival_light",
@@ -1370,8 +1549,8 @@
         "z": "2fd40fd570e6f37a",
         "name": "Refletor: so com o Creta em uso + aproximacao, a noite",
         "info": "LIGA somente quando AS DUAS coisas valem:\n  1. Creta em uso (trava creta_in_use, mantida em\n     sec_prepare_arrival_context - ver por que nao e a leitura ao vivo\n     de binary_sensor.creta_engine no comentario de la), e\n  2. evidencia de aproximacao por QUALQUER fonte: localizacao do Creta,\n     do Gabriel ou da Valeria (anel zone.chegando, 1500 m; entrada na\n     zone.home como rede de seguranca).\nProximidade de pessoa sozinha NAO acende.\n\nDESLIGA por qualquer uma destas, de forma independente:\n  1. Creta desligado E destravado ....... imediato\n  2. chegada do Gabriel confirmada ...... apos 90 s\n  3. chegada da Valeria confirmada ...... apos 90 s\n  4. chegada do Creta confirmada ........ apos 90 s\n  5. 15 min ligado ...................... backstop\nA carencia de 90 s existe para a luz nao morrer no trajeto carro->porta.\n\nAnti-religamento: 5 min de silencio apos qualquer desligamento.\n\nVer docs/ILUMINACAO_SEGURANCA_NODERED.md.",
-        "x": 590,
-        "y": 60,
+        "x": 180,
+        "y": 80,
         "wires": []
     },
     {
@@ -1413,13 +1592,14 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
-        "y": 120,
+        "x": 180,
+        "y": 140,
         "wires": [
             [
                 "sec_prepare_arrival_context"
             ]
-        ]
+        ],
+        "g": "grp_sec_gatilhos"
     },
     {
         "id": "sec_valeria_location_changed",
@@ -1460,13 +1640,14 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
-        "y": 180,
+        "x": 180,
+        "y": 200,
         "wires": [
             [
                 "sec_prepare_arrival_context"
             ]
-        ]
+        ],
+        "g": "grp_sec_gatilhos"
     },
     {
         "id": "sec_creta_location_changed",
@@ -1506,13 +1687,14 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
-        "y": 240,
+        "x": 180,
+        "y": 260,
         "wires": [
             [
                 "sec_prepare_arrival_context"
             ]
-        ]
+        ],
+        "g": "grp_sec_gatilhos"
     },
     {
         "id": "sec_sun_changed",
@@ -1552,13 +1734,14 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 200,
-        "y": 300,
+        "x": 180,
+        "y": 320,
         "wires": [
             [
                 "sec_prepare_arrival_context"
             ]
-        ]
+        ],
+        "g": "grp_sec_gatilhos"
     },
     {
         "id": "sec_creta_lock_context_changed",
@@ -1598,13 +1781,14 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 190,
-        "y": 360,
+        "x": 180,
+        "y": 380,
         "wires": [
             [
                 "sec_prepare_arrival_context"
             ]
-        ]
+        ],
+        "g": "grp_sec_gatilhos"
     },
     {
         "id": "sec_engine_off_changed",
@@ -1645,12 +1829,13 @@
             }
         ],
         "x": 180,
-        "y": 420,
+        "y": 440,
         "wires": [
             [
                 "sec_prepare_arrival_context"
             ]
-        ]
+        ],
+        "g": "grp_sec_gatilhos"
     },
     {
         "id": "sec_creta_locked_changed",
@@ -1690,13 +1875,14 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 190,
-        "y": 480,
+        "x": 180,
+        "y": 500,
         "wires": [
             [
                 "sec_prepare_arrival_context"
             ]
-        ]
+        ],
+        "g": "grp_sec_gatilhos"
     },
     {
         "id": "sec_refresh_comment",
@@ -1704,8 +1890,8 @@
         "z": "2fd40fd570e6f37a",
         "name": "Atualiza localizacoes (30 s) e Creta (1-5 min fora / 10 min em casa) e reavalia chegada",
         "info": "Reavalia o contexto a cada 30 s (tick do inject \"A cada 30 s\").\n\niPhones: request_location_update a cada 30-60 s enquanto alguem esta fora.\n\nCreta (force-refresh Kia/Hyundai, sujeito a rate limit e a bateria 12V):\n- alguem fora + Creta <= 1500 m de casa: a cada 1 min;\n- alguem fora, mais longe: a cada 5 min;\n- ninguem fora (carro em casa): piso de 10 min, so' das 07h as 22h\n  (de madrugada nao acorda o carro parado, p/ poupar a bateria 12V).\n\nO gatilho REAL de \"chegando de carro\" e' a LOCALIZACAO do Creta\n(device_tracker.creta_location), nao o binary_sensor.creta_engine, que e'\npouco confiavel durante a viagem no backend BR.",
-        "x": 420,
-        "y": 720,
+        "x": 180,
+        "y": 900,
         "wires": []
     },
     {
@@ -1729,13 +1915,14 @@
         "topic": "refresh_security_entities",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 780,
+        "x": 180,
+        "y": 980,
         "wires": [
             [
                 "sec_refresh_context_snapshot"
             ]
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_refresh_context_snapshot",
@@ -1767,13 +1954,14 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 370,
-        "y": 780,
+        "x": 440,
+        "y": 980,
         "wires": [
             [
                 "sec_refresh_anyone_away"
             ]
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_refresh_anyone_away",
@@ -1787,8 +1975,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 620,
-        "y": 780,
+        "x": 720,
+        "y": 980,
         "wires": [
             [
                 "sec_prepare_arrival_context"
@@ -1801,7 +1989,8 @@
                 "sec_force_refresh_creta",
                 "sec_refresh_creta_entities"
             ]
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_force_refresh_creta",
@@ -1828,13 +2017,14 @@
         "blockInputOverrides": true,
         "domain": "button",
         "service": "press",
-        "x": 960,
-        "y": 700,
+        "x": 1060,
+        "y": 1040,
         "wires": [
             [
                 "sec_creta_refresh_ack"
             ]
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_creta_refresh_ack",
@@ -1848,11 +2038,12 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1300,
-        "y": 700,
+        "x": 1360,
+        "y": 1040,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_refresh_creta_entities",
@@ -1877,11 +2068,12 @@
         "blockInputOverrides": true,
         "domain": "homeassistant",
         "service": "update_entity",
-        "x": 960,
-        "y": 760,
+        "x": 1060,
+        "y": 1100,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_request_gabriel_location",
@@ -1908,11 +2100,12 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "send_message",
-        "x": 980,
-        "y": 820,
+        "x": 1060,
+        "y": 920,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_request_valeria_location",
@@ -1939,11 +2132,12 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "send_message",
-        "x": 980,
-        "y": 880,
+        "x": 1060,
+        "y": 980,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_refresh"
     },
     {
         "id": "sec_prepare_arrival_context",
@@ -1957,8 +2151,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 520,
-        "y": 300,
+        "x": 500,
+        "y": 320,
         "wires": [
             [
                 "sec_evaluate_turn_off"
@@ -1970,7 +2164,8 @@
                 "sec_update_arming_location",
                 "sec_evaluate_turn_off"
             ]
-        ]
+        ],
+        "g": "grp_sec_contexto"
     },
     {
         "id": "sec_turn_off_if_active",
@@ -1984,13 +2179,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1120,
-        "y": 560,
+        "x": 2800,
+        "y": 660,
         "wires": [
             [
                 "sec_reflector_turn_off"
             ]
-        ]
+        ],
+        "g": "grp_sec_apagar"
     },
     {
         "id": "sec_update_arming_context",
@@ -2005,10 +2201,11 @@
         "finalize": "",
         "libs": [],
         "x": 820,
-        "y": 220,
+        "y": 140,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_deteccao"
     },
     {
         "id": "sec_update_arming_location",
@@ -2023,7 +2220,7 @@
         "finalize": "",
         "libs": [],
         "x": 820,
-        "y": 380,
+        "y": 300,
         "wires": [
             [
                 "sec_detect_arriving_source"
@@ -2031,7 +2228,8 @@
             [
                 "sec_notify_valeria_approaching"
             ]
-        ]
+        ],
+        "g": "grp_sec_deteccao"
     },
     {
         "id": "sec_notify_valeria_approaching",
@@ -2058,11 +2256,12 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "send_message",
-        "x": 1480,
-        "y": 460,
+        "x": 1100,
+        "y": 420,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_deteccao"
     },
     {
         "id": "sec_detect_arriving_source",
@@ -2076,7 +2275,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1170,
+        "x": 1100,
         "y": 300,
         "wires": [
             [
@@ -2084,7 +2283,8 @@
                 "sec_creta_trip_refresh_gate",
                 "sec_approach_wake_gate"
             ]
-        ]
+        ],
+        "g": "grp_sec_deteccao"
     },
     {
         "id": "sec_creta_trip_refresh_gate",
@@ -2098,13 +2298,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1550,
-        "y": 220,
+        "x": 1100,
+        "y": 500,
         "wires": [
             [
                 "sec_refresh_creta_trip_info"
             ]
-        ]
+        ],
+        "g": "grp_sec_deteccao"
     },
     {
         "id": "sec_refresh_creta_trip_info",
@@ -2131,11 +2332,12 @@
         "blockInputOverrides": true,
         "domain": "button",
         "service": "press",
-        "x": 1850,
-        "y": 220,
+        "x": 1380,
+        "y": 500,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_deteccao"
     },
     {
         "id": "sec_check_dark",
@@ -2152,13 +2354,14 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 1530,
-        "y": 380,
+        "x": 1720,
+        "y": 200,
         "wires": [
             [
                 "sec_check_engine_on"
             ]
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_check_engine_on",
@@ -2172,13 +2375,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1970,
-        "y": 280,
+        "x": 2000,
+        "y": 200,
         "wires": [
             [
                 "sec_check_reflector_inactive"
             ]
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_check_reflector_inactive",
@@ -2195,13 +2399,14 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 2160,
-        "y": 380,
+        "x": 2280,
+        "y": 200,
         "wires": [
             [
                 "sec_mark_reflector_active"
             ]
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_mark_reflector_active",
@@ -2215,15 +2420,16 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2420,
-        "y": 380,
+        "x": 2540,
+        "y": 200,
         "wires": [
             [
                 "sec_reflector_turn_on",
                 "sec_auto_off_delay",
                 "29a4e3c0935e2805"
             ]
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_reflector_turn_on",
@@ -2250,11 +2456,12 @@
         "blockInputOverrides": true,
         "domain": "switch",
         "service": "turn_on",
-        "x": 2740,
-        "y": 320,
+        "x": 2800,
+        "y": 120,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_auto_off_delay",
@@ -2273,13 +2480,14 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 2700,
-        "y": 420,
+        "x": 2800,
+        "y": 280,
         "wires": [
             [
                 "sec_auto_off_event"
             ]
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_auto_off_event",
@@ -2295,13 +2503,14 @@
                 "tot": "json"
             }
         ],
-        "x": 1330,
-        "y": 640,
+        "x": 2800,
+        "y": 360,
         "wires": [
             [
                 "sec_turn_off_if_active"
             ]
-        ]
+        ],
+        "g": "grp_sec_acender"
     },
     {
         "id": "sec_reflector_turn_off",
@@ -2328,11 +2537,12 @@
         "blockInputOverrides": true,
         "domain": "switch",
         "service": "turn_off",
-        "x": 1400,
-        "y": 560,
+        "x": 3080,
+        "y": 660,
         "wires": [
             []
-        ]
+        ],
+        "g": "grp_sec_apagar"
     },
     {
         "id": "965afc02b5d9e809",
@@ -2355,14 +2565,15 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 2450,
-        "y": 300,
+        "x": 180,
+        "y": 1360,
         "wires": [
             [
                 "29a4e3c0935e2805",
                 "sec_reflector_turn_on"
             ]
-        ]
+        ],
+        "g": "grp_sec_testes"
     },
     {
         "id": "sec_evaluate_turn_off",
@@ -2371,8 +2582,8 @@
         "name": "Desligar? (condicoes independentes)",
         "func": "// Cada condicao abaixo e SUFICIENTE sozinha para apagar o refletor.\n//\n//   1. Creta desligado E destravado  -> imediato (alguem saiu do carro)\n//   2. chegada do Gabriel confirmada -> apos carencia\n//   3. chegada da Valeria confirmada -> apos carencia\n//   4. chegada do Creta confirmada   -> apos carencia\n//   5. 15 min ligado                 -> nao passa por aqui, e o backstop do\n//                                       node sec_auto_off_delay\n//\n// CARENCIA (out1): as chegadas so apagam ~90 s depois que o refletor acendeu.\n// Sem isso a luz morreria justo no trajeto carro->porta, que e o proposito\n// dela: a chegada e detectada ANTES de estacionar/desligar/destravar.\nconst ACTIVATED_AT_KEY = \"refletor_activated_at\";\nconst ARRIVAL_OFF_GRACE_MS = 90 * 1000;\n\nif (msg.payload?.active !== true) {\n    return null;\n}\n\n// (1) fim de uso do carro: imediato.\nif (msg.payload.creta_engine_on === false && msg.payload.creta_unlocked === true) {\n    msg.payload.off_reason = \"creta_desligado_e_destravado\";\n    return [msg, null];\n}\n\n// (2)(3)(4) \"chegada confirmada\" e a TRANSICAO para a zone.home da entidade que\n// disparou o evento - nao o estado \"esta em casa\". Usar o estado quebraria:\n// o tracker do app da Valeria passou 2 dias congelado com o iCloud dela\n// marcando casa, o que deixaria a condicao permanentemente verdadeira e\n// apagaria o refletor 90 s depois de cada acendimento.\nconst arrived =\n    msg.payload.trigger_state === \"home\" &&\n    msg.payload.trigger_prev_state !== undefined &&\n    msg.payload.trigger_prev_state !== \"home\";\n\nif (!arrived) {\n    return null;\n}\n\nmsg.payload.off_reason = `chegada_confirmada_${msg.payload.source ?? \"?\"}`;\n\nconst activatedAt = flow.get(ACTIVATED_AT_KEY);\nconst elapsed = typeof activatedAt === \"number\" ? Date.now() - activatedAt : ARRIVAL_OFF_GRACE_MS;\nmsg.delay = Math.max(0, ARRIVAL_OFF_GRACE_MS - elapsed);\nreturn [null, msg];",
         "outputs": 2,
-        "x": 640,
-        "y": 520,
+        "x": 820,
+        "y": 660,
         "wires": [
             [
                 "sec_turn_off_if_active"
@@ -2380,7 +2591,8 @@
             [
                 "sec_arrival_off_grace"
             ]
-        ]
+        ],
+        "g": "grp_sec_apagar"
     },
     {
         "id": "sec_arrival_off_grace",
@@ -2399,13 +2611,14 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 900,
-        "y": 560,
+        "x": 1120,
+        "y": 740,
         "wires": [
             [
                 "sec_turn_off_if_active"
             ]
-        ]
+        ],
+        "g": "grp_sec_apagar"
     },
     {
         "id": "sec_approach_wake_gate",
@@ -2414,13 +2627,14 @@
         "name": "Aproximacao -> acordar Creta",
         "func": "// Na travessia do anel, pede um refresh real ao carro para que o gate de\n// \"Creta em uso\" decida com o dado mais fresco possivel. Reutiliza o node\n// sec_force_refresh_creta que ja existe (e o cooldown de 15 min do\n// coordinator protege contra excesso - ver docs/CRETA_KIA_UVO_INTEGRATION.md).\n// So na aproximacao: e um evento raro, algumas vezes por dia.\nif (msg.payload?.arrival_stage !== \"approach\") {\n    return null;\n}\nreturn msg;",
         "outputs": 1,
-        "x": 640,
-        "y": 300,
+        "x": 1380,
+        "y": 420,
         "wires": [
             [
                 "sec_force_refresh_creta"
             ]
-        ]
+        ],
+        "g": "grp_sec_deteccao"
     },
     {
         "id": "gar_pulse_watch_note",
