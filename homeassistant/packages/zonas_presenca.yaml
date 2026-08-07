@@ -1,0 +1,45 @@
+# Zonas de presenca
+#
+# zone.chegando: anel de aproximacao ao redor de casa, usado pelo fluxo
+# iluminacao_seguranca (Node-RED) para acender o refletor do portao ANTES da
+# chegada, e nao no momento em que a pessoa ja esta em casa.
+#
+# Por que isto existe (ver docs/ILUMINACAO_SEGURANCA_NODERED.md):
+# o app Companion registra cada zona nao-passiva do HA como um geofence de
+# region monitoring do iOS. Enquanto so existia a zone.home (raio 100 m), o
+# iOS era instruido a avisar sobre um unico limite e nao reportava NADA no
+# caminho - por projeto, e assim que ele economiza bateria. Medido no
+# recorder: 0 leituras na faixa de 100-300 m em 2 dias, nos tres trackers.
+# Nao era GPS ruim; era ausencia de zona. Com este anel, o proprio iOS avisa
+# na hora da travessia, mesmo com o app suspenso ou encerrado.
+#
+# RAIO = 1500 m, dimensionado para o requisito "refletor aceso pelo menos
+# 2 minutos antes da chegada":
+#   - 1500 m em linha reta equivale a ~1800-2100 m de rua (fator tipico
+#     1.2-1.4x), entao mesmo a 50 km/h da ~2.2 min de antecedencia.
+#   - A chegada real medida em 02/08 (ver doc) percorreu 3090 m -> 36 m em
+#     6 min, ~30 km/h de media; nesse ritmo 1500 m dao ~3 min.
+#   - Geofence grande e MAIS confiavel no iOS que geofence pequeno, entao o
+#     raio maior nao custa precisao.
+# Ajustar aqui e o unico lugar: o fluxo nao tem o raio hardcoded, ele so
+# reage ao estado "chegando".
+#
+# Limitacao conhecida: se alguem passar tempo parado dentro do anel (um
+# ponto a ~600 m de casa, por exemplo), o gatilho de aproximacao nao dispara
+# na volta pra casa, porque nao houve travessia da borda. Nesse caso o
+# refletor ainda acende na entrada da zone.home (rede de seguranca do fluxo),
+# so que sem os 2 min de antecedencia.
+#
+# passive: false e obrigatorio - zona passiva NAO e usada para geofence nem
+# entra no estado dos device_tracker/person.
+#
+# Efeito colateral esperado: enquanto dentro do anel, device_tracker.* e
+# person.* reportam o estado "chegando" no lugar de "not_home".
+
+zone:
+  - name: chegando
+    latitude: -20.310367851039004
+    longitude: -40.317321761139894
+    radius: 1500
+    icon: mdi:car-arrow-right
+    passive: false
