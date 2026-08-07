@@ -50,6 +50,140 @@ real do carro, enquanto o app Bluelink mostrava certo. Investigacao:
 frequente so mitigaria parcialmente, e aumentaria o risco de rate-limit /
 dreno da bateria de 12V (ja documentado em ILUMINACAO_SEGURANCA_NODERED.md).
 
+> **CORRECAO (2026-08-07): a conclusao acima estava errada.** Nao era
+> amostragem esparsa — o `button.creta_force_refresh` **nunca forcou nada**.
+> A implementacao BR so relia o snapshot em cache. O sensor de motor nao
+> estava mal amostrado, estava sem dado. Ver a secao
+> "Force refresh nunca acordava o carro" abaixo.
+>
+> A observacao de 2026-07-10 de que "um press manual busca dado fresco"
+> provavelmente pegou uma coincidencia: o backend tinha dado novo por outro
+> motivo (um evento de estacionamento, ou o proprio app aberto no celular),
+> e o timestamp avancou sem que o nosso force tivesse causado isso.
+
+## Force refresh nunca acordava o carro (2026-08-07)
+
+**Sintoma:** usuario ligou o carro e reportou que `binary_sensor.creta_engine`
+nao mexia — nem no HA, nem no proprio app Bluelink.
+
+**Diagnostico, medido ao vivo com o motor ligado:**
+
+- Cada `button.press` chegava na API sem erro (com a atualizacao para 3.9.0 os
+  erros 500 do `br-ccapi` pararam), e `sensor.creta_last_scanned_at` avancava a
+  cada ciclo — o HA estava recebendo resposta.
+- Mas `sensor.creta_last_updated_at` (o timestamp **do veiculo**) ficou
+  congelado em 16:11:03 durante 4 minutos de motor comprovadamente ligado.
+- **A chamada voltava em 160 ms.** Esse foi o dado decisivo: um poll real, que
+  acorda o carro pela rede celular, leva 10-30 s. 160 ms so pode ser cache.
+- O usuario apertou refresh no app Bluelink; o `last_updated_at` pulou para
+  16:17:08 e o nosso ciclo seguinte leu `engine=on` — a primeira transicao do
+  sensor em 5 dias.
+
+**Causa raiz:** `HyundaiBlueLinkApiBR.force_refresh_vehicle_state` tem a
+docstring "wakes up the vehicle", mas so faz `GET /ccs2/carstatus/latest` (o
+snapshot em cache) com um header `REFRESH: true` que o backend BR ignora.
+
+**A engenharia reversa ja estava feita** — na propria biblioteca, para a regiao
+EU. `KiaUvoApiEU._force_refresh_vehicle_state_ccs2` documenta a sequencia
+correta para veiculos CCS2: `GET /ccs2/carstatus` (**sem** `/latest`) acorda o
+veiculo e devolve um envelope de comando assincrono, nao o estado; espera-se o
+carro reportar e so entao le-se o `/latest` ja fresco. A classe BR nunca
+recebeu esse metodo.
+
+**Fix:** `_install_br_wake_force_refresh()` em
+`custom_components/kia_uvo/coordinator.py` porta a sequencia, seguindo o mesmo
+padrao de monkey-patch na instancia da API ja usado por
+`_force_ccs2_status_endpoint` (o custom_component e versionado no repo; a lib
+em site-packages seria perdida no proximo update de imagem).
+
+Confirmado ao vivo logo apos aplicar:
+
+```text
+16:24:38  wake -> {"retCode":"S","resCode":"0000","msgId":"7c30a9c0-..."}
+16:24:44  o CARRO reportou (6 s depois do wake)
+16:25:03  HA leu /latest e aplicou; last_updated_at 16:17:08 -> 16:24:44
+```
+
+Duracao da chamada: 25 s (era 160 ms). O envelope `retCode: S` confirma que o
+comando de wake foi aceito pelo backend.
+
+**Detalhes que importam se alguem for mexer:**
+
+- O wrapper parte **sempre** de `type(api)._get_vehicle_state` (a funcao da
+  classe), nunca do atributo ja instalado na instancia. `_async_update_data`
+  reinstala isto a cada ciclo, e envolver o wrapper anterior empilharia mais um
+  `sleep(25)` por ciclo.
+- **Piso de 15 min entre wakes reais** (`BR_WAKE_MIN_INTERVAL_S`). Acordar o
+  carro puxa a bateria de 12 V e conta contra o rate limit — e' por isso que o
+  options flow trava o force interval proprio da integracao em 90 min. Quem
+  aperta o botao direto (o flow `iluminacao_seguranca` no Node-RED, a cada
+  30 s-5 min) contorna esse piso, entao o cooldown vive aqui, onde ninguem
+  contorna. Dentro do cooldown a chamada degrada para a leitura em cache.
+- O `sleep(25)` e o valor medido pelo upstream EU. Um refinamento possivel e
+  trocar por `check_action_status(vehicle_id, msgId, ...)`, que ja e usado
+  neste coordinator para comandos remotos e esperaria o tempo exato em vez de
+  um valor fixo. Nao foi feito: o valor fixo funcionou e espelha o upstream.
+- Nem todo wake produz dado novo. A tentativa das 16:23:24 foi aceita mas o
+  `last_updated_at` nao avancou; a das 16:24:38 avancou. Vale lembrar que a
+  API BR so aceita `/location/park` com o carro parado (400 em movimento), o
+  que sugere que o backend continua limitado durante a viagem.
+
+## Partida remota exige o carro TRAVADO (2026-08-07)
+
+Ao testar o ciclo completo liga/desliga por `switch.creta_climate`, a partida
+falhava silenciosamente: HTTP 200, o switch nao latchava, nada acontecia no
+carro (confirmado com o usuario olhando o veiculo).
+
+**`retCode: "S"` no BR significa "comando enfileirado", NAO "comando
+executado".** O request e a resposta imediata pareciam perfeitos:
+
+```text
+Start climate request:  {'action': 'start', 'options': {...,'igniOnDuration': 10},
+                         'hvacType': 1, 'tempCode': '15H', 'unit': 'C'}
+Start climate response: {'retCode': 'S', 'resCode': '0000', 'msgId': 'c35a0850-...'}
+```
+
+O desfecho real so aparece depois, no `check_action_status` — que devolve o
+historico de comandos com `result` e uma mensagem em portugues:
+
+```text
+'action': 'bluelink://control/engine/start', 'result': 'fail',
+'record': '[Falha] Falha na partida remota do motor. Verifique o status do seu
+           veiculo. (por exemplo, Marcha na posicao P, Porta / Porta-Mala /
+           Capo trancado e fechado, Ignicao desligada, etc.)'
+```
+
+**Causa:** o carro estava `unlocked`. Travando (`lock.lock` em
+`lock.creta_door_lock`) e repetindo, a partida funcionou de primeira —
+confirmado fisicamente pelo usuario.
+
+**Precondicoes da partida remota:** marcha em P, ignicao desligada, e portas /
+porta-malas / capo **trancados e fechados**.
+
+**Como depurar comandos remotos aqui:** nunca confie no `retCode` da resposta
+imediata. Ligue o debug (`logger.set_level` em `custom_components.kia_uvo` e
+`hyundai_kia_connect_api`) e leia o `Action status response` — o campo `record`
+diz em portugues exatamente qual precondicao falhou. Sem isso o sintoma e
+"HTTP 200 e nada acontece".
+
+**Ciclo completo validado ao vivo, e a prova final do fix de wake:**
+
+```text
+17:04:57  partida enviada (carro travado)
+17:05:04  HA le engine=on, climate=on   (last_updated_at 17:05:04)
+17:05:44  parada enviada
+17:05:51  HA le engine=off, climate=off (last_updated_at 17:05:51)
+```
+
+`binary_sensor.creta_engine` — que tinha **0 transicoes em 5 dias** — registrou
+o on->off inteiro sem ninguem abrir o app Bluelink. O sensor sempre funcionou;
+o que faltava era dado fresco.
+
+Nota: comandos remotos (`start_climate`/`stop_climate`) disparam o proprio
+refresh da integracao pelo caminho `async_await_action_and_refresh`, entao
+neste teste o dado fresco veio de la, nao do wake — o wake estava em cooldown
+(409 s de 900 s) e degradou para cache, exatamente como projetado.
+
 ## Fix: sensor de historico de viagens (`sensor.garagem_creta_day_trip_info`)
 
 Em vez de tentar reconstruir "motor ligado quando" a partir do polling de

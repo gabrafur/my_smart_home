@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
+import time
 import traceback
 import types
 from collections.abc import Callable
@@ -57,6 +58,18 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Segundos de espera entre acordar o veiculo e ler o snapshot ja fresco.
+# 25 s e o valor medido em campo pelo upstream (KiaUvoApiEU) para um CCS2
+# alcancavel; abaixo disso o /latest ainda devolve o estado antigo.
+BR_WAKE_SETTLE_SECONDS = 25
+
+# Piso de seguranca entre dois wakes reais. Acordar o carro puxa a bateria de
+# 12 V e conta contra o rate limit da Hyundai - e' por isso que o options flow
+# do kia_uvo trava o force interval proprio da integracao em 90 min. Quem
+# aperta button.*_force_refresh direto (o flow iluminacao_seguranca no
+# Node-RED) contorna esse piso, entao mantemos um aqui, que ninguem contorna.
+BR_WAKE_MIN_INTERVAL_S = 15 * 60
 
 
 class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
@@ -158,6 +171,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 retry_after=60,
             ) from err
         self._force_ccs2_status_endpoint()
+        self._install_br_wake_force_refresh()
         current_hour = dt_util.now().hour
 
         if (
@@ -300,6 +314,80 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 )
 
         api._update_vehicle_properties = types.MethodType(_parse_ccs2, api)
+
+    def _install_br_wake_force_refresh(self) -> None:
+        """Faz o force refresh realmente ACORDAR o carro no backend BR.
+
+        HyundaiBlueLinkApiBR.force_refresh_vehicle_state se anuncia como
+        "wakes up the vehicle", mas so faz GET /ccs2/carstatus/latest - o
+        snapshot em CACHE - com um header REFRESH: true que o backend BR
+        ignora.
+
+        Medido ao vivo em 2026-08-07: a chamada voltou em 160 ms (um poll real
+        do veiculo leva 10-30 s) e binary_sensor.creta_engine ficou "off"
+        durante 4 minutos de motor comprovadamente ligado, enquanto
+        sensor.creta_last_scanned_at avancava - ou seja, reliamos estado velho
+        da nuvem. Ao apertar o refresh no app Bluelink, o backend fez o poll de
+        verdade e o nosso ciclo seguinte leu engine=on. O sensor nunca esteve
+        quebrado; estava sem dado.
+
+        KiaUvoApiEU._force_refresh_vehicle_state_ccs2 ja implementa a sequencia
+        correta para veiculos CCS2; a classe BR simplesmente nunca a recebeu.
+        Portada aqui: GET /ccs2/carstatus (sem /latest) acorda o carro, espera
+        ele reportar, e so entao le o /latest ja fresco. O corpo do wake e um
+        envelope de comando assincrono, nao o estado, entao e descartado - mas
+        os erros propagam, para que um wake falho nunca caia em aplicar um
+        snapshot velho (mesma razao do upstream EU).
+        """
+        api = self.vehicle_manager.api
+        if type(api).__name__ != "HyundaiBlueLinkApiBR":
+            return
+        if not hasattr(self, "_br_last_wake_at"):
+            self._br_last_wake_at = None
+
+        # Parte SEMPRE da funcao da classe, nunca do atributo ja instalado na
+        # instancia: _async_update_data roda isto a cada ciclo, e envolver o
+        # wrapper anterior empilharia mais um sleep de 25 s por ciclo.
+        original = type(api)._get_vehicle_state
+        coordinator = self
+
+        def _get_vehicle_state_waking(
+            api_self, token, vehicle, force_refresh: bool = False
+        ):
+            if not force_refresh:
+                return original(api_self, token, vehicle, force_refresh=False)
+
+            now = dt_util.utcnow()
+            last = coordinator._br_last_wake_at
+            if (
+                last is not None
+                and (now - last).total_seconds() < BR_WAKE_MIN_INTERVAL_S
+            ):
+                _LOGGER.debug(
+                    "%s - wake em cooldown (ultimo ha %.0fs, piso %ds); "
+                    "lendo o snapshot em cache",
+                    DOMAIN,
+                    (now - last).total_seconds(),
+                    BR_WAKE_MIN_INTERVAL_S,
+                )
+                return original(api_self, token, vehicle, force_refresh=False)
+
+            headers = api_self._get_authenticated_headers(token)
+            wake_url = api_self._build_api_url(
+                f"/spa/vehicles/{vehicle.id}/ccs2/carstatus"
+            )
+            _LOGGER.debug("%s - acordando o veiculo: %s", DOMAIN, wake_url)
+            _wake_resp = api_self.session.get(wake_url, headers=headers)
+            _LOGGER.debug(
+                "%s - resposta do wake [%s]: %s",
+                DOMAIN, _wake_resp.status_code, _wake_resp.text[:600],
+            )
+            _wake_resp.json()
+            coordinator._br_last_wake_at = now
+            time.sleep(BR_WAKE_SETTLE_SECONDS)
+            return original(api_self, token, vehicle, force_refresh=False)
+
+        api._get_vehicle_state = types.MethodType(_get_vehicle_state_waking, api)
 
     async def async_check_and_refresh_token(self):
         """Refresh token if needed via library."""
