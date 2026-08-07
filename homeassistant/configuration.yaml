@@ -28,6 +28,12 @@ lovelace:
       icon: mdi:car
       show_in_sidebar: true
       filename: dashboards/creta.yaml
+    raspberry-pi-system-health:
+      mode: yaml
+      title: Raspberry Pi - System Health
+      icon: mdi:raspberry-pi
+      show_in_sidebar: true
+      filename: dashboards/raspberry_pi_health.yaml
 
 automation: !include automations.yaml
 script: !include scripts.yaml

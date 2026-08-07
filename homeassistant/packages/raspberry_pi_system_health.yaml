@@ -1,0 +1,618 @@
+recorder:
+  purge_keep_days: 30
+
+command_line:
+  - sensor:
+      name: Raspberry Pi Metrics Raw
+      unique_id: raspberry_pi_metrics_raw
+      command: "python3 /config/tools/raspberry_pi_health.py"
+      command_timeout: 10
+      scan_interval: 60
+      value_template: "{{ value_json.health }}"
+      json_attributes:
+        - hostname
+        - model
+        - os
+        - installation
+        - collected_at
+        - cpu_cores
+        - cpu_temperature_c
+        - cpu_frequency_mhz
+        - cpu_usage_percent
+        - load_1m
+        - load_5m
+        - load_15m
+        - memory_total_mb
+        - memory_available_mb
+        - memory_used_mb
+        - memory_used_percent
+        - swap_total_mb
+        - swap_used_mb
+        - swap_used_percent
+        - disk_path
+        - disk_total_gb
+        - disk_used_gb
+        - disk_free_gb
+        - disk_used_percent
+        - network_interface
+        - network_operstate
+        - network_ip
+        - network_rx_mb
+        - network_tx_mb
+        - network_rx_kbps
+        - network_tx_kbps
+        - vcgencmd_available
+        - vcgencmd_error
+        - throttled_hex
+        - throttled_value
+        - under_voltage_now
+        - frequency_capped_now
+        - throttled_now
+        - soft_temperature_limit_now
+        - under_voltage_occurred
+        - frequency_capped_occurred
+        - throttling_occurred
+        - soft_temperature_limit_occurred
+        - uptime_seconds
+        - last_boot
+        - health
+        - issues
+
+template:
+  - sensor:
+      - name: Raspberry Pi Health
+        unique_id: raspberry_pi_health
+        icon: >-
+          {% if this.state == 'critical' %}mdi:alert-octagon
+          {% elif this.state == 'warning' %}mdi:alert
+          {% else %}mdi:heart-pulse
+          {% endif %}
+        state: >-
+          {% set critical = [
+            states('binary_sensor.raspberry_pi_temperature_critical'),
+            states('binary_sensor.raspberry_pi_cpu_critical'),
+            states('binary_sensor.raspberry_pi_load_critical'),
+            states('binary_sensor.raspberry_pi_memory_critical'),
+            states('binary_sensor.raspberry_pi_swap_critical'),
+            states('binary_sensor.raspberry_pi_storage_critical'),
+            states('binary_sensor.raspberry_pi_hardware_critical')
+          ] %}
+          {% set warning = [
+            states('binary_sensor.raspberry_pi_temperature_warning'),
+            states('binary_sensor.raspberry_pi_cpu_warning'),
+            states('binary_sensor.raspberry_pi_load_warning'),
+            states('binary_sensor.raspberry_pi_memory_warning'),
+            states('binary_sensor.raspberry_pi_swap_warning'),
+            states('binary_sensor.raspberry_pi_storage_warning'),
+            states('binary_sensor.raspberry_pi_hardware_warning')
+          ] %}
+          {% if 'on' in critical %}
+            critical
+          {% elif 'on' in warning %}
+            warning
+          {% elif states('sensor.raspberry_pi_metrics_raw') in ['unavailable', 'unknown'] %}
+            critical
+          {% else %}
+            normal
+          {% endif %}
+        attributes:
+          model: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'model') }}"
+          os: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'os') }}"
+          installation: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'installation') }}"
+          hostname: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'hostname') }}"
+          collected_at: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'collected_at') }}"
+          issues: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'issues') }}"
+          temperature_warning_limit_c: 75
+          temperature_critical_limit_c: 82
+          cpu_warning_limit_percent: 85
+          cpu_critical_limit_percent: 95
+          memory_warning_limit_percent: 80
+          memory_critical_limit_percent: 90
+          storage_warning_limit_percent: 80
+          storage_critical_limit_percent: 90
+
+      - name: Raspberry Pi CPU Temperature
+        unique_id: raspberry_pi_cpu_temperature
+        icon: mdi:thermometer
+        device_class: temperature
+        unit_of_measurement: "°C"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_temperature_c') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_temperature_c') is number }}"
+
+      - name: Raspberry Pi CPU Usage
+        unique_id: raspberry_pi_cpu_usage
+        icon: mdi:cpu-64-bit
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_usage_percent') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_usage_percent') is number }}"
+
+      - name: Raspberry Pi CPU Frequency
+        unique_id: raspberry_pi_cpu_frequency
+        icon: mdi:sine-wave
+        unit_of_measurement: "MHz"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_frequency_mhz') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_frequency_mhz') is number }}"
+
+      - name: Raspberry Pi Load 1m
+        unique_id: raspberry_pi_load_1m
+        icon: mdi:chart-line
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'load_1m') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'load_1m') is number }}"
+
+      - name: Raspberry Pi Load 5m
+        unique_id: raspberry_pi_load_5m
+        icon: mdi:chart-line
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'load_5m') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'load_5m') is number }}"
+
+      - name: Raspberry Pi Load 15m
+        unique_id: raspberry_pi_load_15m
+        icon: mdi:chart-line
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'load_15m') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'load_15m') is number }}"
+
+      - name: Raspberry Pi Memory Usage
+        unique_id: raspberry_pi_memory_usage
+        icon: mdi:memory
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'memory_used_percent') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'memory_used_percent') is number }}"
+
+      - name: Raspberry Pi Memory Used
+        unique_id: raspberry_pi_memory_used
+        icon: mdi:memory
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'memory_used_mb') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'memory_used_mb') is number }}"
+
+      - name: Raspberry Pi Memory Available
+        unique_id: raspberry_pi_memory_available
+        icon: mdi:memory
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'memory_available_mb') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'memory_available_mb') is number }}"
+
+      - name: Raspberry Pi Swap Usage
+        unique_id: raspberry_pi_swap_usage
+        icon: mdi:swap-horizontal
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'swap_used_percent') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'swap_used_percent') is number }}"
+
+      - name: Raspberry Pi Swap Used
+        unique_id: raspberry_pi_swap_used
+        icon: mdi:swap-horizontal
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'swap_used_mb') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'swap_used_mb') is number }}"
+
+      - name: Raspberry Pi Storage Usage
+        unique_id: raspberry_pi_storage_usage
+        icon: mdi:harddisk
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_used_percent') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_used_percent') is number }}"
+
+      - name: Raspberry Pi Storage Used
+        unique_id: raspberry_pi_storage_used
+        icon: mdi:harddisk
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_used_gb') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_used_gb') is number }}"
+
+      - name: Raspberry Pi Storage Free
+        unique_id: raspberry_pi_storage_free
+        icon: mdi:harddisk
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_free_gb') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_free_gb') is number }}"
+
+      - name: Raspberry Pi Uptime
+        unique_id: raspberry_pi_uptime
+        icon: mdi:clock-outline
+        device_class: duration
+        unit_of_measurement: "s"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'uptime_seconds') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'uptime_seconds') is number }}"
+
+      - name: Raspberry Pi Last Boot
+        unique_id: raspberry_pi_last_boot
+        icon: mdi:restart
+        device_class: timestamp
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'last_boot') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'last_boot') not in [none, '', 'unknown', 'unavailable'] }}"
+
+      - name: Raspberry Pi IP Address
+        unique_id: raspberry_pi_ip_address
+        icon: mdi:ip-network
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_ip') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_ip') not in [none, '', 'unknown', 'unavailable'] }}"
+
+      - name: Raspberry Pi Network RX
+        unique_id: raspberry_pi_network_rx
+        icon: mdi:download-network
+        unit_of_measurement: "kbit/s"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_rx_kbps') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_rx_kbps') is number }}"
+
+      - name: Raspberry Pi Network TX
+        unique_id: raspberry_pi_network_tx
+        icon: mdi:upload-network
+        unit_of_measurement: "kbit/s"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_tx_kbps') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_tx_kbps') is number }}"
+
+      - name: Raspberry Pi Throttled Hex
+        unique_id: raspberry_pi_throttled_hex
+        icon: mdi:chip
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'throttled_hex') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'throttled_hex') not in [none, '', 'unknown', 'unavailable'] }}"
+
+  - binary_sensor:
+      - name: Raspberry Pi Temperature Warning
+        unique_id: raspberry_pi_temperature_warning
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_cpu_temperature') | float(0) >= 75 }}"
+        delay_on:
+          minutes: 5
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: warning
+          metric: CPU temperature
+          current_value: "{{ states('sensor.raspberry_pi_cpu_temperature') }} °C"
+          threshold: ">= 75 °C for 5 min"
+          recommended_action: "Check airflow, case fan, heatsink contact and ambient temperature."
+
+      - name: Raspberry Pi Temperature Critical
+        unique_id: raspberry_pi_temperature_critical
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_cpu_temperature') | float(0) >= 82 }}"
+        delay_on:
+          minutes: 2
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: critical
+          metric: CPU temperature
+          current_value: "{{ states('sensor.raspberry_pi_cpu_temperature') }} °C"
+          threshold: ">= 82 °C for 2 min"
+          recommended_action: "Reduce load immediately and inspect cooling; Raspberry Pi 5 starts thermal control near this range."
+
+      - name: Raspberry Pi CPU Warning
+        unique_id: raspberry_pi_cpu_warning
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_cpu_usage') | float(0) >= 85 }}"
+        delay_on:
+          minutes: 10
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: warning
+          metric: CPU usage
+          current_value: "{{ states('sensor.raspberry_pi_cpu_usage') }} %"
+          threshold: ">= 85 % for 10 min"
+          recommended_action: "Review automations, add-ons, integrations and recent logs for sustained CPU work."
+
+      - name: Raspberry Pi CPU Critical
+        unique_id: raspberry_pi_cpu_critical
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_cpu_usage') | float(0) >= 95 }}"
+        delay_on:
+          minutes: 15
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: critical
+          metric: CPU usage
+          current_value: "{{ states('sensor.raspberry_pi_cpu_usage') }} %"
+          threshold: ">= 95 % for 15 min"
+          recommended_action: "Identify runaway processes or integrations and consider restarting the affected service."
+
+      - name: Raspberry Pi Load Warning
+        unique_id: raspberry_pi_load_warning
+        device_class: problem
+        state: >-
+          {% set cores = state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_cores') | int(4) %}
+          {{ states('sensor.raspberry_pi_load_5m') | float(0) >= cores * 1.2 }}
+        delay_on:
+          minutes: 10
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: warning
+          metric: Load average 5m
+          current_value: "{{ states('sensor.raspberry_pi_load_5m') }}"
+          threshold: ">= 1.2x CPU cores for 10 min"
+          recommended_action: "Look for queues, slow storage or heavy processes keeping runnable tasks high."
+
+      - name: Raspberry Pi Load Critical
+        unique_id: raspberry_pi_load_critical
+        device_class: problem
+        state: >-
+          {% set cores = state_attr('sensor.raspberry_pi_metrics_raw', 'cpu_cores') | int(4) %}
+          {{ states('sensor.raspberry_pi_load_5m') | float(0) >= cores * 2 }}
+        delay_on:
+          minutes: 10
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: critical
+          metric: Load average 5m
+          current_value: "{{ states('sensor.raspberry_pi_load_5m') }}"
+          threshold: ">= 2x CPU cores for 10 min"
+          recommended_action: "Check CPU, memory pressure and disk I/O; the system may become sluggish."
+
+      - name: Raspberry Pi Memory Warning
+        unique_id: raspberry_pi_memory_warning
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_memory_usage') | float(0) >= 80 }}"
+        delay_on:
+          minutes: 10
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: warning
+          metric: Memory usage
+          current_value: "{{ states('sensor.raspberry_pi_memory_usage') }} %"
+          threshold: ">= 80 % for 10 min"
+          recommended_action: "Watch for a memory leak or a growing add-on/container."
+
+      - name: Raspberry Pi Memory Critical
+        unique_id: raspberry_pi_memory_critical
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_memory_usage') | float(0) >= 90 }}"
+        delay_on:
+          minutes: 5
+        delay_off:
+          minutes: 5
+        attributes:
+          severity: critical
+          metric: Memory usage
+          current_value: "{{ states('sensor.raspberry_pi_memory_usage') }} %"
+          threshold: ">= 90 % for 5 min"
+          recommended_action: "Free memory or restart the service causing pressure before the host swaps heavily."
+
+      - name: Raspberry Pi Swap Warning
+        unique_id: raspberry_pi_swap_warning
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_swap_usage') | float(0) >= 25 }}"
+        delay_on:
+          minutes: 10
+        delay_off:
+          minutes: 10
+        attributes:
+          severity: warning
+          metric: Swap usage
+          current_value: "{{ states('sensor.raspberry_pi_swap_usage') }} %"
+          threshold: ">= 25 % for 10 min"
+          recommended_action: "Investigate memory pressure; sustained swap can wear storage and slow Home Assistant."
+
+      - name: Raspberry Pi Swap Critical
+        unique_id: raspberry_pi_swap_critical
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_swap_usage') | float(0) >= 50 }}"
+        delay_on:
+          minutes: 5
+        delay_off:
+          minutes: 10
+        attributes:
+          severity: critical
+          metric: Swap usage
+          current_value: "{{ states('sensor.raspberry_pi_swap_usage') }} %"
+          threshold: ">= 50 % for 5 min"
+          recommended_action: "Reduce memory load quickly; the host is relying heavily on swap."
+
+      - name: Raspberry Pi Storage Warning
+        unique_id: raspberry_pi_storage_warning
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_storage_usage') | float(0) >= 80 }}"
+        delay_on:
+          minutes: 5
+        delay_off:
+          minutes: 10
+        attributes:
+          severity: warning
+          metric: Storage usage
+          current_value: "{{ states('sensor.raspberry_pi_storage_usage') }} % used, {{ states('sensor.raspberry_pi_storage_free') }} GiB free"
+          threshold: ">= 80 % for 5 min"
+          recommended_action: "Review backups, database growth, logs and media before the filesystem fills."
+
+      - name: Raspberry Pi Storage Critical
+        unique_id: raspberry_pi_storage_critical
+        device_class: problem
+        state: "{{ states('sensor.raspberry_pi_storage_usage') | float(0) >= 90 }}"
+        delay_on:
+          minutes: 2
+        delay_off:
+          minutes: 10
+        attributes:
+          severity: critical
+          metric: Storage usage
+          current_value: "{{ states('sensor.raspberry_pi_storage_usage') }} % used, {{ states('sensor.raspberry_pi_storage_free') }} GiB free"
+          threshold: ">= 90 % for 2 min"
+          recommended_action: "Delete old backups/logs or expand storage; Home Assistant may fail if the disk fills."
+
+      - name: Raspberry Pi Hardware Warning
+        unique_id: raspberry_pi_hardware_warning
+        device_class: problem
+        state: >-
+          {{ state_attr('sensor.raspberry_pi_metrics_raw', 'under_voltage_occurred') == true
+             or state_attr('sensor.raspberry_pi_metrics_raw', 'frequency_capped_occurred') == true
+             or state_attr('sensor.raspberry_pi_metrics_raw', 'throttling_occurred') == true
+             or state_attr('sensor.raspberry_pi_metrics_raw', 'soft_temperature_limit_occurred') == true }}
+        delay_on:
+          minutes: 1
+        attributes:
+          severity: warning
+          metric: Raspberry Pi throttling history
+          current_value: "{{ states('sensor.raspberry_pi_throttled_hex') }}"
+          threshold: "Any undervoltage/throttling bit occurred since boot"
+          recommended_action: "Inspect power supply and cooling. Sticky vcgencmd bits clear after reboot."
+
+      - name: Raspberry Pi Hardware Critical
+        unique_id: raspberry_pi_hardware_critical
+        device_class: problem
+        state: >-
+          {{ state_attr('sensor.raspberry_pi_metrics_raw', 'under_voltage_now') == true
+             or state_attr('sensor.raspberry_pi_metrics_raw', 'frequency_capped_now') == true
+             or state_attr('sensor.raspberry_pi_metrics_raw', 'throttled_now') == true
+             or state_attr('sensor.raspberry_pi_metrics_raw', 'soft_temperature_limit_now') == true }}
+        delay_on:
+          minutes: 1
+        delay_off:
+          minutes: 2
+        attributes:
+          severity: critical
+          metric: Raspberry Pi active throttling/power condition
+          current_value: "{{ states('sensor.raspberry_pi_throttled_hex') }}"
+          threshold: "Any active undervoltage/throttling bit for 1 min"
+          recommended_action: "Check the USB-C power supply, cable, fan and case airflow immediately."
+
+      - name: Raspberry Pi Network Link
+        unique_id: raspberry_pi_network_link
+        device_class: connectivity
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_operstate') in ['up', 'unknown'] }}"
+        attributes:
+          interface: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_interface') }}"
+          ip_address: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_ip') }}"
+
+automation:
+  - id: raspberry_pi_health_problem_notification
+    alias: Raspberry Pi - alerta de saude
+    mode: queued
+    max: 10
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.raspberry_pi_temperature_warning
+          - binary_sensor.raspberry_pi_temperature_critical
+          - binary_sensor.raspberry_pi_cpu_warning
+          - binary_sensor.raspberry_pi_cpu_critical
+          - binary_sensor.raspberry_pi_load_warning
+          - binary_sensor.raspberry_pi_load_critical
+          - binary_sensor.raspberry_pi_memory_warning
+          - binary_sensor.raspberry_pi_memory_critical
+          - binary_sensor.raspberry_pi_swap_warning
+          - binary_sensor.raspberry_pi_swap_critical
+          - binary_sensor.raspberry_pi_storage_warning
+          - binary_sensor.raspberry_pi_storage_critical
+          - binary_sensor.raspberry_pi_hardware_warning
+          - binary_sensor.raspberry_pi_hardware_critical
+        to: "on"
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and trigger.from_state.state != 'on' }}"
+    actions:
+      - variables:
+          host: "{{ state_attr('sensor.raspberry_pi_health', 'hostname') or 'Raspberry Pi' }}"
+          severity: "{{ state_attr(trigger.entity_id, 'severity') | default('warning', true) }}"
+          metric: "{{ state_attr(trigger.entity_id, 'metric') | default(trigger.to_state.name, true) }}"
+          current_value: "{{ state_attr(trigger.entity_id, 'current_value') | default('unknown', true) }}"
+          threshold: "{{ state_attr(trigger.entity_id, 'threshold') | default('unknown', true) }}"
+          action_text: "{{ state_attr(trigger.entity_id, 'recommended_action') | default('Review the Raspberry Pi health dashboard.', true) }}"
+          duration: "{{ threshold.split(' for ')[1] if ' for ' in threshold else 'persistent' }}"
+          message: >-
+            {{ host }}: {{ severity | upper }} em {{ metric }}.
+            Valor atual: {{ current_value }}.
+            Limite: {{ threshold }}.
+            Duracao: {{ duration }}.
+            Horario: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}.
+            Acao recomendada: {{ action_text }}
+      - action: persistent_notification.create
+        data:
+          title: "Raspberry Pi - {{ severity | upper }}"
+          message: "{{ message }}"
+          notification_id: "raspberry_pi_health_{{ trigger.entity_id | replace('.', '_') }}"
+      - action: notify.send_message
+        continue_on_error: true
+        target:
+          entity_id:
+            - notify.iphone_de_gabriel_furlan
+            - notify.iphone_de_valeria
+        data:
+          title: "Raspberry Pi - {{ severity | upper }}"
+          message: "{{ message }}"
+
+  - id: raspberry_pi_health_recovery_notification
+    alias: Raspberry Pi - recuperacao de saude
+    mode: queued
+    max: 10
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.raspberry_pi_temperature_warning
+          - binary_sensor.raspberry_pi_temperature_critical
+          - binary_sensor.raspberry_pi_cpu_warning
+          - binary_sensor.raspberry_pi_cpu_critical
+          - binary_sensor.raspberry_pi_load_warning
+          - binary_sensor.raspberry_pi_load_critical
+          - binary_sensor.raspberry_pi_memory_warning
+          - binary_sensor.raspberry_pi_memory_critical
+          - binary_sensor.raspberry_pi_swap_warning
+          - binary_sensor.raspberry_pi_swap_critical
+          - binary_sensor.raspberry_pi_storage_warning
+          - binary_sensor.raspberry_pi_storage_critical
+          - binary_sensor.raspberry_pi_hardware_critical
+        from: "on"
+        to: "off"
+    actions:
+      - variables:
+          host: "{{ state_attr('sensor.raspberry_pi_health', 'hostname') or 'Raspberry Pi' }}"
+          metric: "{{ state_attr(trigger.entity_id, 'metric') | default(trigger.to_state.name, true) }}"
+          current_value: "{{ state_attr(trigger.entity_id, 'current_value') | default('normal', true) }}"
+          message: >-
+            {{ host }}: RECUPERADO em {{ metric }}.
+            Valor atual: {{ current_value }}.
+            Severidade: normal.
+            Horario: {{ now().strftime('%Y-%m-%d %H:%M:%S') }}.
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: "raspberry_pi_health_{{ trigger.entity_id | replace('.', '_') }}"
+      - action: persistent_notification.create
+        data:
+          title: "Raspberry Pi - recuperado"
+          message: "{{ message }}"
+          notification_id: "raspberry_pi_health_recovered_{{ trigger.entity_id | replace('.', '_') }}"
+      - action: notify.send_message
+        continue_on_error: true
+        target:
+          entity_id:
+            - notify.iphone_de_gabriel_furlan
+            - notify.iphone_de_valeria
+        data:
+          title: "Raspberry Pi - recuperado"
+          message: "{{ message }}"
+
+  - id: raspberry_pi_home_assistant_started
+    alias: Raspberry Pi - Home Assistant iniciado
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: persistent_notification.create
+        data:
+          title: "Home Assistant iniciado"
+          message: >-
+            Home Assistant iniciou em {{ now().strftime('%Y-%m-%d %H:%M:%S') }}.
+            Ultimo boot do Raspberry Pi: {{ states('sensor.raspberry_pi_last_boot') }}.
+            Se esta inicializacao nao foi planejada, verifique energia, temperatura e logs.
+          notification_id: raspberry_pi_home_assistant_started

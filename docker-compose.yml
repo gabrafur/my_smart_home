@@ -35,9 +35,16 @@ services:
     volumes:
       - ./homeassistant:/config
       - /etc/localtime:/etc/localtime:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /usr/bin/vcgencmd:/usr/bin/vcgencmd:ro
       - /run/dbus:/run/dbus:ro
     environment:
       - TZ=America/Sao_Paulo
+      - PI_HEALTH_PROC_ROOT=/host/proc
+      - PI_HEALTH_SYS_ROOT=/host/sys
+      - PI_HEALTH_OS_RELEASE=/host/etc/os-release
 
   matter_server:
     image: ghcr.io/home-assistant-libs/python-matter-server:stable
