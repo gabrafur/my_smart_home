@@ -69,7 +69,14 @@ Removidos do fluxo (a cena de nuvem e seu tratamento de erro/retry):
 ou pelo backup `/data/flows.json.bak-relay` (dentro do container nodered).
 
 O `script.portao_garagem_acionar` e a `scene.acionar_portao` continuam existindo no
-HA porém **não são mais usados** pelo Node-RED (podem ser removidos depois, se quiser).
+HA porém **não são mais usados** pelo Node-RED.
+
+> **Atualização 2026-08-07:** a `scene.acionar_portao` foi **desabilitada** no
+> registry (não excluída — o rollback é reabilitar a entidade) depois que o botão
+> de pulso do lado do HA foi validado. Ver
+> [`PORTAO_GARAGEM_BOTAO_PULSO.md`](PORTAO_GARAGEM_BOTAO_PULSO.md) para o botão
+> `button.acionar_portao_da_garagem`, as guardas contra pulso duplicado e o
+> procedimento de rollback.
 
 ## Deploy e teste
 
