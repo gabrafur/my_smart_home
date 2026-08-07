@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
-  "main": "server.js"
+  "main": "server.js",
+  "scripts": {
+    "test": "node history.test.js"
+  }
 }

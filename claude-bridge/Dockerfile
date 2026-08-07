@@ -23,7 +23,7 @@ RUN (getent group ${DOCKER_GID} || groupadd -g ${DOCKER_GID} dockerhost) && \
     chown -R node:node /home/node/.claude /home/node/.codex
 
 WORKDIR /app
-COPY server.js package.json ./
+COPY server.js history.js package.json ./
 RUN chown -R node:node /app
 
 USER node

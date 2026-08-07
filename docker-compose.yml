@@ -114,6 +114,7 @@ services:
       - ./.env
     environment:
       - WORKDIR=/workspace
+      - HISTORY_DIR=/workspace/.agent-history
       - TZ=America/Sao_Paulo
       - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN}
       # Auth comes from the CLAUDE_CODE_OAUTH_TOKEN in .env (generated once via
