@@ -2,12 +2,11 @@
 
 ## O que é
 
-Um segundo assistente de chat no HA, separado do `conversation.claude_conversation`
-nativo, com acesso **irrestrito** a shell e Docker no host — o mesmo poder que o
-Claude Code tem numa sessão de terminal neste repositório. Roda via um serviço
-`claude-bridge` (novo container) que executa o Claude Code CLI em modo
-não-interativo (`-p --dangerously-skip-permissions`), sem revisão humana por
-mensagem.
+Dois assistentes de desenvolvimento no HA, separados do
+`conversation.claude_conversation` nativo, com acesso **irrestrito** a shell e
+Docker no host: **Claude Code (Full Access)** e **Codex**. O serviço
+`claude-bridge` executa o CLI selecionado em modo não interativo e mantém as
+sessões separadas por conversa.
 
 **Restrito a um único usuário do HA** (o `user_id` do administrador, lido de
 `/config/.storage/auth`). Qualquer outra conta recebe recusa automática do
@@ -54,6 +53,19 @@ Claude Code no terminal). Confirme que funcionou com:
 docker exec claude-bridge claude auth status
 ```
 
+### 1.6. Login do Codex com a conta ChatGPT
+
+O Codex usa um volume separado (`codex-bridge-auth`) para persistir o login.
+Como o container não tem navegador, use o fluxo por código de dispositivo:
+
+```bash
+docker exec -it claude-bridge codex login --device-auth
+docker exec claude-bridge codex login status
+```
+
+Abra no navegador o endereço exibido pelo primeiro comando e informe o código.
+O login sobrevive a restart e rebuild do container.
+
 ### 2. Testar o bridge isoladamente (antes de plugar no HA)
 
 ```bash
@@ -68,6 +80,16 @@ Deve devolver algo como `{"reply":"ok"}`. Se der erro de autenticação, refaça
 o passo 1.5 (`claude setup-token`). Se quiser confirmar que tem acesso real
 ao host, teste algo como `"liste os containers docker rodando"` — a resposta
 deve bater com `docker ps`.
+
+Para testar o Codex isoladamente, acrescente `"agent":"codex"` ao JSON:
+
+```bash
+TOKEN=$(grep ^CLAUDE_BRIDGE_TOKEN .env | cut -d= -f2-)
+curl -s -X POST http://127.0.0.1:8099/chat \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"codex","message":"responda apenas: ok","conversation_id":"teste-codex-1"}'
+```
 
 ### 3. Restart do Home Assistant (para carregar o custom_component)
 
@@ -146,7 +168,7 @@ A resposta deve bater com a realidade do host (mesma lista de `docker ps`).
 ## Arquivos envolvidos
 
 - `claude-bridge/Dockerfile`, `claude-bridge/server.js`, `claude-bridge/package.json`
-- `.env` (variáveis `ANTHROPIC_API_KEY`, `CLAUDE_BRIDGE_TOKEN`) e `.env.example`
+- `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_BRIDGE_TOKEN`) e `.env.example`
 - `docker-compose.yml` (serviço `claude-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)
 - `homeassistant/dashboards/chat.yaml` (card novo)

@@ -80,6 +80,7 @@ class ClaudeCodeConversationEntity(
         payload = {
             "message": user_input.text,
             "conversation_id": user_input.conversation_id,
+            "agent": "claude",
         }
         headers = {"Authorization": f"Bearer {data.bridge_token}"}
 
@@ -166,6 +167,7 @@ class CodexConversationEntity(
         payload = {
             "message": message,
             "conversation_id": conversation_id,
+            "agent": "codex",
         }
         headers = {"Authorization": f"Bearer {data.bridge_token}"}
 

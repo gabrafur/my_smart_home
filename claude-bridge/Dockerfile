@@ -11,7 +11,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin git && \
     rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @anthropic-ai/claude-code
+RUN npm install -g @anthropic-ai/claude-code @openai/codex
 
 # --dangerously-skip-permissions refuses to run as root/sudo, so run as the
 # image's built-in "node" user, added to a group matching the host's docker
@@ -19,8 +19,8 @@ RUN npm install -g @anthropic-ai/claude-code
 ARG DOCKER_GID=987
 RUN (getent group ${DOCKER_GID} || groupadd -g ${DOCKER_GID} dockerhost) && \
     usermod -aG ${DOCKER_GID} node && \
-    mkdir -p /home/node/.claude && \
-    chown -R node:node /home/node/.claude
+    mkdir -p /home/node/.claude /home/node/.codex && \
+    chown -R node:node /home/node/.claude /home/node/.codex
 
 WORKDIR /app
 COPY server.js package.json ./
