@@ -150,6 +150,51 @@ for (const cretaInUse of [false, true]) {
   assert.equal(run("sec_detect_arriving_source", prepared, flow, geoEnv), null);
 }
 
+// O falso not_home -> chegando de uma coordenada congelada continua sem push
+// quando o outro tracker confirma que a Valeria esta em casa.
+{
+  const flow = memoryFlow({
+    refletor_portao_carros_arrival_armed_entities: { valeria: true },
+  });
+  const prepared = run("sec_prepare_arrival_context", input({
+    source: "valeria",
+    valeria: entity("chegando", 644),
+    valeriaIcloud: entity("home", 20),
+  }), flow, geoEnv)[2];
+  const [, notification] = run("sec_update_arming_location", prepared, flow, geoEnv);
+  assert.equal(notification, null);
+}
+
+// Se o fluxo viu a saida completa, um iCloud congelado em home nao pode
+// engolir a volta real. O push fica antes do gate de escuridao e funciona de
+// dia tambem.
+{
+  const flow = memoryFlow({
+    refletor_portao_carros_arrival_armed_entities: { valeria: true },
+  });
+
+  const away = run("sec_prepare_arrival_context", input({
+    source: "valeria",
+    previous: "chegando",
+    current: "not_home",
+    valeria: entity("not_home", 2_000),
+    valeriaIcloud: entity("home", 20),
+  }), flow, geoEnv)[2];
+  run("sec_update_arming_location", away, flow, geoEnv);
+
+  const returningInput = input({
+    source: "valeria",
+    previous: "not_home",
+    current: "chegando",
+    valeria: entity("chegando", 1_400),
+    valeriaIcloud: entity("home", 20),
+  });
+  returningInput.payload.sun.state = "above_horizon";
+  const returning = run("sec_prepare_arrival_context", returningInput, flow, geoEnv)[2];
+  const [, notification] = run("sec_update_arming_location", returning, flow, geoEnv);
+  assert.equal(notification.payload.message, "Valéria está chegando de carro.");
+}
+
 // A travessia home -> chegando e saida, nunca chegada.
 {
   const flow = memoryFlow({
@@ -160,4 +205,4 @@ for (const cretaInUse of [false, true]) {
   assert.equal(run("sec_detect_arriving_source", prepared, flow, geoEnv), null);
 }
 
-console.log("security-light replay: 8 cenarios e sintaxe de todos os function nodes OK");
+console.log("security-light replay: 10 cenarios e sintaxe de todos os function nodes OK");
