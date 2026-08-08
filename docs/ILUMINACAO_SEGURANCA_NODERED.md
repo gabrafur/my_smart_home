@@ -145,9 +145,12 @@ perder uma saida real por causa de um `mobile_app` travado.
    > <=100 m de casa.
    >
    > **Corroboracao entre trackers (`any_tracker_home`).** Se QUALQUER um dos
-   > dois trackers da pessoa diz "em casa", a entrada no anel e ignorada — nao
-   > ha como se aproximar de onde ja se esta. Isso barra tracker **congelado**:
-   > ver "Historico relevante", 2026-08-07, o caso real da Valeria.
+   > dois trackers da pessoa diz "em casa", a entrada no anel normalmente e
+   > ignorada. Para a Valeria ha uma excecao importante: se o fluxo observou
+   > antes a saida completa ate `not_home`, esse ciclo de ausencia e evidencia
+   > mais nova e permite o push na volta mesmo que o iCloud continue congelado
+   > em `home`. Isso ainda barra a reclassificacao isolada de um tracker
+   > **congelado**; ver "Historico relevante", 2026-08-07 e 2026-08-08.
 
 4. **Rede de seguranca — chegada ja em casa.** A chegada tambem e detectada
    (node `sec_detect_arriving_source`, `arrival_stage = "home"`) quando uma
@@ -285,6 +288,10 @@ nao engole mais o aviso. O `data` do node e JSONata lendo `payload.message`.
 Dedup: um aviso por retorno. Rearma quando ela sai do anel (`not_home`) ou,
 como reserva, quando aparece a mais de 1000 m.
 
+O aviso nao passa por `sec_check_dark`: dia/noite so decide o acendimento do
+refletor. A notificacao e emitida diretamente por
+`sec_update_arming_location` na entrada do anel.
+
 ## Atualizacao de localizacao (refresh)
 
 Node `sec_refresh_every_10min` (inject, apesar do nome roda a cada **30 s**)
@@ -415,6 +422,15 @@ flow context), nao pelo periodo do inject:
   Creta a <=1000 m pela nuvem da Kia — duas maneiras independentes de nunca
   disparar. Agora dispara na travessia do anel e o Creta virou metadado (muda
   so o texto). Ver "Aviso Valeria chegando".
+
+- 2026-08-08 (**iCloud congelado em `home` engoliu chegada real da Valeria**):
+  o recorder mostrou o mobile_app fazendo `not_home -> chegando` as 12:05:38,
+  depois de ter feito a saida `home -> chegando -> not_home`, enquanto o
+  tracker iCloud continuava em `home`. O guard absoluto `any_tracker_home`
+  descartou o push antes do node de notificacao. Corrigido registrando o ciclo
+  de ausencia confirmado: uma saida observada ate `not_home` prevalece sobre o
+  `home` velho do outro tracker somente durante aquela volta. A reclassificacao
+  isolada que motivou o guard em 07/08 continua bloqueada.
 
 - 2026-08-07 (**regressao: o refletor parou de acender de vez**): o usuario
   reportou que o fluxo "deixou de funcionar". O recorder confirmou:
