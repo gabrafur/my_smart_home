@@ -15,3 +15,12 @@ script:
       - service: homeassistant.update_entity
         target:
           entity_id: alarm_control_panel.alarme_moni_mobile
+
+  moni_mobile_armar_via_carplay:
+    alias: Alarme Casa - Armar via CarPlay
+    icon: mdi:shield-lock
+    mode: single
+    sequence:
+      - action: alarm_control_panel.alarm_arm_away
+        target:
+          entity_id: alarm_control_panel.alarme_moni_mobile
