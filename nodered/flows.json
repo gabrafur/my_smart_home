@@ -2350,7 +2350,8 @@
             [
                 "sec_check_dark",
                 "sec_creta_trip_refresh_gate",
-                "sec_approach_wake_gate"
+                "sec_approach_wake_gate",
+                "sec_arrival_disarm_out"
             ]
         ]
     },
@@ -2701,6 +2702,185 @@
         "wires": [
             [
                 "sec_force_refresh_creta"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_arrival_disarm_tab",
+        "type": "tab",
+        "label": "alarme_desarme_chegada",
+        "disabled": false,
+        "info": "Desarma o alarme quando Gabriel, Valéria ou o Creta estão chegando em casa.",
+        "env": []
+    },
+    {
+        "id": "sec_arrival_disarm_out",
+        "type": "link out",
+        "z": "2fd40fd570e6f37a",
+        "name": "Chegada real -> desarme automatico",
+        "mode": "link",
+        "links": [
+            "alarm_arrival_in"
+        ],
+        "x": 1375,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "alarm_arrival_in",
+        "type": "link in",
+        "z": "alarm_arrival_disarm_tab",
+        "name": "Chegada detectada",
+        "links": [
+            "sec_arrival_disarm_out"
+        ],
+        "x": 155,
+        "y": 220,
+        "wires": [
+            [
+                "alarm_arrival_validate"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_arrival_comment",
+        "type": "comment",
+        "z": "alarm_arrival_disarm_tab",
+        "name": "Gabriel / Valéria / Creta chegando -> se armado, reutiliza o desarme com retry",
+        "info": "A chegada vem do fluxo iluminacao_seguranca, que valida zona, direção da travessia, distância, precisão do GPS e trackers congelados.",
+        "x": 420,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "alarm_arrival_validate",
+        "type": "function",
+        "z": "alarm_arrival_disarm_tab",
+        "name": "Validar chegada real",
+        "func": "const allowedSources = new Set([\"gabriel\", \"valeria\", \"creta\"]);\nconst allowedStages = new Set([\"approach\", \"home\"]);\nconst source = msg.payload?.source;\nconst arriving = msg.payload?.arriving;\nconst stage = msg.payload?.arrival_stage;\n\n// Defesa em profundidade: o link recebe somente a saida positiva do detector,\n// mas ainda exige a lista de chegada, a origem conhecida e o estagio valido.\nif (\n    !allowedSources.has(source) ||\n    !allowedStages.has(stage) ||\n    !Array.isArray(arriving) ||\n    !arriving.includes(source)\n) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"evento ignorado\" });\n    return null;\n}\n\nmsg.arrival_source = source;\nmsg.arrival_stage = stage;\nmsg.arrival_detected_at = Date.now();\nnode.status({ fill: \"blue\", shape: \"dot\", text: `${source}: ${stage}` });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 220,
+        "wires": [
+            [
+                "alarm_arrival_read_state"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_arrival_read_state",
+        "type": "api-current-state",
+        "z": "alarm_arrival_disarm_tab",
+        "name": "Ler estado atual do alarme",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "alarm_control_panel.alarme_moni_mobile",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "alarm_current_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "alarm_current_state",
+        "override_payload": "none",
+        "entity_location": "alarm_entity",
+        "override_data": "none",
+        "x": 610,
+        "y": 220,
+        "wires": [
+            [
+                "alarm_arrival_is_armed"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_arrival_is_armed",
+        "type": "switch",
+        "z": "alarm_arrival_disarm_tab",
+        "name": "Alarme esta armado?",
+        "property": "alarm_current_state",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "armed_away",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 850,
+        "y": 220,
+        "wires": [
+            [
+                "alarm_arrival_cooldown"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_arrival_cooldown",
+        "type": "function",
+        "z": "alarm_arrival_disarm_tab",
+        "name": "Evitar pedidos duplicados (60 s)",
+        "func": "const COOLDOWN_MS = 60 * 1000;\nconst LAST_REQUEST_KEY = \"alarm_arrival_last_disarm_request_at\";\nconst now = Date.now();\nconst lastRequest = Number(flow.get(LAST_REQUEST_KEY) || 0);\n\n// Gabriel/Valeria e Creta podem cruzar o anel quase juntos. Um unico pedido\n// basta: a cadeia compartilhada continuara tentando ate o alarme confirmar.\nif (now - lastRequest < COOLDOWN_MS) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"duplicado bloqueado\" });\n    return null;\n}\n\nflow.set(LAST_REQUEST_KEY, now);\nmsg.alarm_disarm_automatic = true;\nmsg.alarm_disarm_reason = `chegada_${msg.arrival_source}_${msg.arrival_stage}`;\nnode.status({ fill: \"green\", shape: \"dot\", text: msg.alarm_disarm_reason });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 220,
+        "wires": [
+            [
+                "alarm_arrival_to_disarm_out"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_arrival_to_disarm_out",
+        "type": "link out",
+        "z": "alarm_arrival_disarm_tab",
+        "name": "Pedir desarme com retry",
+        "mode": "link",
+        "links": [
+            "alarm_arrival_disarm_command_in"
+        ],
+        "x": 1325,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "alarm_arrival_disarm_command_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "name": "Desarme automatico por chegada",
+        "links": [
+            "alarm_arrival_to_disarm_out"
+        ],
+        "x": 355,
+        "y": 680,
+        "wires": [
+            [
+                "alarm_set_desired_disarm"
             ]
         ]
     }
