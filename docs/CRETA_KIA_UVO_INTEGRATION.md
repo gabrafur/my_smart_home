@@ -117,8 +117,8 @@ comando de wake foi aceito pelo backend.
   carro puxa a bateria de 12 V e conta contra o rate limit — e' por isso que o
   options flow trava o force interval proprio da integracao em 90 min. Quem
   aperta o botao direto (o flow `iluminacao_seguranca` no Node-RED, a cada
-  30 s-5 min) contorna esse piso, entao o cooldown vive aqui, onde ninguem
-  contorna. Dentro do cooldown a chamada degrada para a leitura em cache.
+  15 min, alem do wake pontual na entrada da zona) tambem passa por esse piso.
+  Dentro do cooldown a chamada degrada para a leitura em cache.
 - O `sleep(25)` e o valor medido pelo upstream EU. Um refinamento possivel e
   trocar por `check_action_status(vehicle_id, msgId, ...)`, que ja e usado
   neste coordinator para comandos remotos e esperaria o tempo exato em vez de
