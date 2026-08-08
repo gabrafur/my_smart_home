@@ -5,6 +5,8 @@
     "private": true,
     "scripts": {
         "flows:backup": "node tools/backup-flows.mjs",
+        "flows:install-alarm-arrival": "node tools/install-alarm-arrival-disarm-flow.mjs",
+        "flows:test-alarm-arrival": "node tools/test-alarm-arrival-disarm-flow.mjs",
         "flows:test-security": "node tools/test-security-light-flow.mjs",
         "flows:validate": "node tools/validate-flows.mjs",
         "flows:summary": "node tools/summarize-flows.mjs"
