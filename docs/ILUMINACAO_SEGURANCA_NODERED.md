@@ -298,36 +298,32 @@ flow context), nao pelo periodo do inject:
   (`IPHONE_NEARBY_DISTANCE_M`). E' barato e sem rate limit conhecido; o
   timestamp (`sec_iphone_last_refresh_ts`) e' marcado de forma otimista (se o
   HA estiver fora, perde-se no maximo um ciclo).
-- O refresh forcado do Creta (`button.creta_force_refresh` +
-  `homeassistant.update_entity`) roda **a cada 5 min** por padrao, mas passa
-  a rodar **a cada 1 min** quando o proprio Creta esta a menos de 1500 m de
-  casa (`KIA_NEARBY_DISTANCE_M`). Esse **piso de 1 min e' por tempo**, entao
-  continua valendo mesmo com o tick a cada 30 s — de proposito **nao** se
-  acelera o Creta abaixo de 1 min: a integracao `kia_uvo` tem lag e rate
-  limit da API da Kia/Hyundai, e forcar refresh com frequencia alta arrisca
-  bloqueio temporario da conta e drena a bateria de 12V do carro. A
-  aceleracao so perto de casa concentra o refresh extra exatamente na janela
-  em que a deteccao de chegada precisa de dado fresco.
-- **Piso de 10 min mesmo sem ninguem fora (2026-08-02):** quando ninguem esta
-  fora (carro em casa), o Creta ainda e' forcado a atualizar a cada **10 min**,
+- O refresh periodico do Creta (`button.creta_force_refresh` +
+  `homeassistant.update_entity`) roda **a cada 15 min**, longe ou perto. Esse
+  intervalo e' igual ao `BR_WAKE_MIN_INTERVAL_S` do coordinator: chamar o
+  botao a cada 1–5 min apenas devolvia cache durante o cooldown e criava
+  trafego inutil. A entrada na `zone.chegando` continua tendo um wake pontual
+  por `sec_approach_wake_gate`; o tick de 30 s permanece para os iPhones.
+- **Piso de 15 min mesmo sem ninguem fora (2026-08-08):** quando ninguem esta
+  fora (carro em casa), o Creta ainda e' forcado a atualizar a cada **15 min**,
   mas **so das 07h as 22h** (`KIA_BASELINE_INTERVAL_MS` / `KIA_BASELINE_HOUR_START`
   / `KIA_BASELINE_HOUR_FINISH`). Mantem `binary_sensor.creta_engine` e a
   localizacao razoavelmente frescos ao longo do dia sem depender de alguem estar
   fora; de madrugada **nao** acorda o carro parado, para poupar a bateria de 12V
   (mesma razao da janela `no_force_refresh` 22h-07h da integracao `kia_uvo`, cujo
-  piso oficial de `force_refresh` e' 90 min — por isso o piso de 10 min mora aqui,
+  piso oficial de `force_refresh` e' 90 min — por isso o piso de 15 min mora aqui,
   apertando o botao, e nao nas opcoes da integracao). Deliberadamente e' o **unico**
   controlador do `button.creta_force_refresh` (uma automacao equivalente no HA
   chegou a ser criada e foi removida): dois controladores ignorariam o cooldown
   `sec_kia_last_force_refresh_ts` um do outro.
-- O cooldown de 5 min (`sec_kia_last_force_refresh_ts`) so e marcado pelo
+- O cooldown de 15 min (`sec_kia_last_force_refresh_ts`) so e marcado pelo
   node `sec_creta_refresh_ack`, alimentado pela saida (antes desconectada)
   de `sec_force_refresh_creta`. Ou seja: so conta como "refresh feito" se a
   chamada `button.press` realmente teve sucesso. Antes o timestamp era
   gravado de forma otimista dentro de `sec_refresh_anyone_away`, antes mesmo
   do node de chamada de servico rodar — se a chamada falhasse (ex: Home
   Assistant fora do ar/reiniciando), o cooldown era consumido do mesmo jeito
-  e o proximo retry só aconteceria 5 min depois, mesmo que o tick de 1 min
+  e o proximo retry só aconteceria no intervalo seguinte, mesmo que o tick de 30 s
   continuasse rodando. Ver "Historico relevante" (2026-07-10, HA reiniciando
   em loop).
 

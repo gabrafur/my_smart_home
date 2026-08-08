@@ -39,7 +39,7 @@ O que importa proteger, em ordem de severidade:
 | --- | --- |
 | Coordenada de casa em `homeassistant/packages/zonas_presenca.yaml` | `!secret home_latitude` / `!secret home_longitude` |
 | Coordenada de casa e do portao em `nodered/flows.json` | `env.get("HOME_LAT")` etc., vindas do `.env` via `env_file` do servico `nodered` |
-| Coordenada em `nodered/tools/install-security-light-flow.mjs` | `process.env.HOME_LAT`, com falha explicita se ausente |
+| Instalador antigo `nodered/tools/install-security-light-flow.mjs` | Desativado; `nodered/flows.json` e a fonte de verdade validada por replay |
 | Coordenada em `appdaemon/appdaemon.yaml` | Arredondada para 2 casas (~1 km), precisao de sobra para o calculo solar |
 | MAC da TV em `homeassistant/automations.yaml` | `!secret tv_sala_mac` |
 | `user_id` do HA em `custom_components/claude_code_chat/config_flow.py` | Campo obrigatorio no config flow, sem default |
@@ -64,7 +64,7 @@ dados abaixo continuam recuperaveis com `git log`/`git show` em commits
 anteriores, e — como o repositorio ja e publico — devem ser considerados
 **ja expostos**.
 
-### Varredura completa (67 commits, 1098 blobs)
+### Varredura completa (79 commits, 679 blobs unicos)
 
 Nenhum padrao de **credencial** foi encontrado no historico:
 

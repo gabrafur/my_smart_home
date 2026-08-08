@@ -5,6 +5,7 @@
     "private": true,
     "scripts": {
         "flows:backup": "node tools/backup-flows.mjs",
+        "flows:test-security": "node tools/test-security-light-flow.mjs",
         "flows:validate": "node tools/validate-flows.mjs",
         "flows:summary": "node tools/summarize-flows.mjs"
     },
