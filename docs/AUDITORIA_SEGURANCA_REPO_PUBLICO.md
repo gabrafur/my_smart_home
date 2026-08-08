@@ -64,7 +64,7 @@ dados abaixo continuam recuperaveis com `git log`/`git show` em commits
 anteriores, e — como o repositorio ja e publico — devem ser considerados
 **ja expostos**.
 
-### Varredura completa (79 commits, 679 blobs unicos)
+### Varredura completa (82 commits, 680 blobs unicos)
 
 Nenhum padrao de **credencial** foi encontrado no historico:
 
