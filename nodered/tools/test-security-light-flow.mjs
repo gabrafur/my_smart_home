@@ -75,6 +75,15 @@ for (const node of flows.filter((item) => item.type === "function")) {
   new Function("msg", "flow", "node", "env", node.func);
 }
 
+// O inject manual precisa reproduzir o contrato do node de notificacao.
+// Um timestamp em payload faz o JSONata omitir `message` e o HA rejeitar a chamada.
+{
+  const manualMessage = byId.get("249963a6cd6c247a");
+  assert.equal(manualMessage?.payloadType, "json");
+  assert.equal(typeof JSON.parse(manualMessage.payload).message, "string");
+  assert.notEqual(JSON.parse(manualMessage.payload).message.trim(), "");
+}
+
 // O tick de 30 s continua servindo aos iPhones; wakes Kia respeitam o piso BR.
 assert.equal(byId.get("sec_refresh_every_10min")?.repeat, "30");
 const refreshFunc = byId.get("sec_refresh_anyone_away")?.func ?? "";
