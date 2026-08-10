@@ -483,6 +483,33 @@
         "wires": []
     },
     {
+        "id": "moni_mobile_arm_event",
+        "type": "server-events",
+        "z": "ce258dec9814b96b",
+        "name": "Rotina Moni Mobile Acionar Alarme",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "exposeAsEntityConfig": "",
+        "eventType": "node_red_moni_mobile_arm",
+        "eventData": "",
+        "waitForRunning": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 370,
+        "y": 440,
+        "wires": [
+            [
+                "alarm_set_desired_arm"
+            ]
+        ]
+    },
+    {
         "id": "70e147e6b7df9826",
         "type": "DuloNodeHub",
         "z": "ce258dec9814b96b",
@@ -1252,6 +1279,39 @@
             }
         ],
         "x": 1120,
+        "y": 500,
+        "wires": [
+            [
+                "moni_mobile_update_after_arm"
+            ]
+        ]
+    },
+    {
+        "id": "moni_mobile_update_after_arm",
+        "type": "api-call-service",
+        "z": "ce258dec9814b96b",
+        "name": "Atualizar estado Moni Mobile",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "homeassistant.update_entity",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "alarm_control_panel.alarme_moni_mobile"
+        ],
+        "labelId": [],
+        "data": "{}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "homeassistant",
+        "service": "update_entity",
+        "x": 1430,
         "y": 500,
         "wires": [
             [
