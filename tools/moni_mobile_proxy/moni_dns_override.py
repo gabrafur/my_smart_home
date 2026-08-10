@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--listen-host", default="0.0.0.0")
     parser.add_argument("--listen-port", type=int, default=53)
     parser.add_argument("--host", default="alarmsystem.dyndns.biz")
-    parser.add_argument("--ip", default="192.168.0.205")
+    parser.add_argument("--ip", default="127.0.0.1")
     parser.add_argument("--upstream", default="1.1.1.1")
     parser.add_argument("--upstream-port", type=int, default=53)
     return parser.parse_args()

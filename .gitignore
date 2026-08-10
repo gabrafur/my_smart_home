@@ -41,6 +41,7 @@ tuya-raw.json
 # addresses, per-device unique_ids, HomeKit pairing ids and resident names.
 # Do NOT re-add per-file `!` exceptions here.
 homeassistant/secrets.yaml
+!homeassistant/secrets.yaml.example
 homeassistant/.storage/
 homeassistant/.ha_ws_token
 homeassistant/.ha_run.lock
@@ -90,5 +91,7 @@ portainer/
 # Matter server contains fabric credentials and device pairing certs
 matter-server/
 
-# AppDaemon secrets (home coordinates, HA token)
+# AppDaemon runtime config is container-owned. The reviewable source lives in
+# templates/appdaemon/ and is mounted read-only by Compose.
+appdaemon/appdaemon.yaml
 appdaemon/secrets.yaml

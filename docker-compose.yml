@@ -41,23 +41,32 @@ services:
       - /usr/bin/vcgencmd:/usr/bin/vcgencmd:ro
       - /run/dbus:/run/dbus:ro
     environment:
-      - TZ=America/Sao_Paulo
+      - TZ=${TZ:-America/Sao_Paulo}
       - PI_HEALTH_PROC_ROOT=/host/proc
       - PI_HEALTH_SYS_ROOT=/host/sys
       - PI_HEALTH_OS_RELEASE=/host/etc/os-release
 
   matter_server:
-    image: ghcr.io/home-assistant-libs/python-matter-server:stable
+    # Legacy Python controller retained for the existing fabric. It is pinned
+    # because the upstream `stable` tag is mutable; see docs/CONTAINERS.md.
+    image: ghcr.io/home-assistant-libs/python-matter-server@sha256:170aa093ce91c76cde4cc390918307590f0f5558fcec93f913af3cb019e6562a
     container_name: matter_server
     restart: always
     network_mode: host
     security_opt:
       - apparmor=unconfined
+    command:
+      - --storage-path
+      - /data
+      - --paa-root-cert-dir
+      - /data/credentials
+      - --listen-address
+      - 127.0.0.1
     volumes:
       - ./matter-server:/data
       - /run/dbus:/run/dbus:ro
     environment:
-      - TZ=America/Sao_Paulo
+      - TZ=${TZ:-America/Sao_Paulo}
 
   appdaemon:
     image: acockburn/appdaemon@sha256:cabcb3a4e739db2572ecb8dc3cee685300ab27274efda83a6d8ce4d3988dc647
@@ -66,8 +75,10 @@ services:
     network_mode: host
     volumes:
       - ./appdaemon:/conf
+      - ./templates/appdaemon/appdaemon.yaml:/conf/appdaemon.yaml:ro
+      - ./.local-secrets/appdaemon-secrets.yaml:/conf/secrets.yaml:ro
     environment:
-      - TZ=America/Sao_Paulo
+      - TZ=${TZ:-America/Sao_Paulo}
 
   nodered:
     image: nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6
@@ -76,14 +87,19 @@ services:
     depends_on:
       - mosquitto
       - homeassistant
-    env_file:
-      - ./.env
     ports:
       - "${HOST_LAN_IP:-127.0.0.1}:1880:1880"
     volumes:
       - ./nodered:/data
     environment:
-      - TZ=America/Sao_Paulo
+      - TZ=${TZ:-America/Sao_Paulo}
+      - NODE_RED_ADMIN_USER=${NODE_RED_ADMIN_USER:-admin}
+      - NODE_RED_ADMIN_PASSWORD_HASH=${NODE_RED_ADMIN_PASSWORD_HASH:-}
+      - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET:-}
+      - HOME_LAT=${HOME_LAT:-}
+      - HOME_LON=${HOME_LON:-}
+      - GATE_LAT=${GATE_LAT:-}
+      - GATE_LON=${GATE_LON:-}
 
   zigbee2mqtt:
     image: koenkk/zigbee2mqtt@sha256:4fb4db4d49a217bed6d0204f454ce809febc565bbe051b85c556ee2bcef73d8c
@@ -94,29 +110,30 @@ services:
     ports:
       - "${HOST_LAN_IP:-127.0.0.1}:8080:8080"
     volumes:
-      - /mnt/data/docker/zigbee2mqtt:/app/data
+      - ./zigbee2mqtt:/app/data
     environment:
-      - TZ=America/Sao_Paulo
+      - TZ=${TZ:-America/Sao_Paulo}
 
   claude-bridge:
     build:
       context: ./claude-bridge
-      args:
-        DOCKER_GID: "987"
     container_name: claude-bridge
     restart: always
+    group_add:
+      # Numeric group that owns /var/run/docker.sock on the host.
+      - "${DOCKER_GID:-999}"
     volumes:
-      - /mnt/data/docker:/workspace
+      - .:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
       - claude-bridge-auth:/home/node/.claude
       - codex-bridge-auth:/home/node/.codex
-    env_file:
-      - ./.env
     environment:
       - WORKDIR=/workspace
       - HISTORY_DIR=/workspace/.agent-history
-      - TZ=America/Sao_Paulo
-      - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN}
+      - TZ=${TZ:-America/Sao_Paulo}
+      - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN:-}
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
+      - BRIDGE_TIMEOUT_MS=${BRIDGE_TIMEOUT_MS:-300000}
       # Auth comes from the CLAUDE_CODE_OAUTH_TOKEN in .env (generated once via
       # `claude setup-token`, tied to the subscription plan), not API-key
       # billing - unset any ANTHROPIC_API_KEY inherited from .env so the CLI
@@ -124,6 +141,12 @@ services:
       - ANTHROPIC_API_KEY=
     ports:
       - "127.0.0.1:8099:8099"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8099/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   claude-bridge-auth:

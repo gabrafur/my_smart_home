@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
@@ -11,15 +11,14 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin git && \
     rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @anthropic-ai/claude-code @openai/codex
+RUN npm install -g \
+    @anthropic-ai/claude-code@2.1.197 \
+    @openai/codex@0.147.0
 
 # --dangerously-skip-permissions refuses to run as root/sudo, so run as the
-# image's built-in "node" user, added to a group matching the host's docker
-# GID so it can use the mounted docker.sock.
-ARG DOCKER_GID=987
-RUN (getent group ${DOCKER_GID} || groupadd -g ${DOCKER_GID} dockerhost) && \
-    usermod -aG ${DOCKER_GID} node && \
-    mkdir -p /home/node/.claude /home/node/.codex && \
+# image's built-in "node" user. Compose adds the host docker socket GID at
+# runtime, avoiding a host-specific rebuild.
+RUN mkdir -p /home/node/.claude /home/node/.codex && \
     chown -R node:node /home/node/.claude /home/node/.codex
 
 WORKDIR /app

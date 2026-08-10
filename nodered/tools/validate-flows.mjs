@@ -1,6 +1,11 @@
 import fs from "node:fs";
 
-const files = ["flows.json", "flows_cred.json", "package.json"];
+const requiredFiles = ["flows.json", "package.json"];
+const optionalFiles = ["flows_cred.json"];
+const files = [
+  ...requiredFiles,
+  ...optionalFiles.filter((file) => fs.existsSync(new URL(`../${file}`, import.meta.url))),
+];
 
 for (const file of files) {
   JSON.parse(fs.readFileSync(new URL(`../${file}`, import.meta.url), "utf8"));

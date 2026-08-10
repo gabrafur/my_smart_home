@@ -1,0 +1,19 @@
+appdaemon:
+  time_zone: !secret time_zone
+  latitude: !secret latitude
+  longitude: !secret longitude
+  elevation: !secret elevation
+
+http:
+  # Admin/API/dashboard stay local to the host; use a trusted tunnel if needed.
+  url: http://127.0.0.1:5050
+
+admin:
+
+api:
+
+hadashboard:
+
+logs:
+  main_log:
+    level: INFO
