@@ -9,8 +9,13 @@ views:
         title: Codex
         history_limit: 200
   - title: Assistentes
-    icon: mdi:chat-processing
+    path: assistentes
+    icon: mdi:account-group-outline
     cards:
+      - type: markdown
+        content: >-
+          Escolha o assistente conforme a tarefa. Para conversar com o Codex,
+          use a aba **Codex** deste painel.
       - type: grid
         columns: 2
         square: false
@@ -18,7 +23,7 @@ views:
           - type: tile
             entity: conversation.claude_conversation
             name: Claude padrão
-            icon: mdi:chat
+            icon: mdi:message-text-outline
             tap_action:
               action: assist
               pipeline_id: 0179ef9e2add41ba9b61f00b93
@@ -34,16 +39,8 @@ views:
           - type: tile
             entity: conversation.claude_code_full_access
             name: Claude Code (Full Access)
-            icon: mdi:robot
+            icon: mdi:console-line
             tap_action:
               action: assist
               pipeline_id: 0179ef9e2add41ba9b61f00b91
-              start_listening: false
-          - type: tile
-            entity: conversation.codex
-            name: Codex
-            icon: mdi:robot-outline
-            tap_action:
-              action: assist
-              pipeline_id: 0179ef9e2add41ba9b61f00b92
               start_listening: false
