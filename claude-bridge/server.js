@@ -190,6 +190,11 @@ function runCodex(message, sessionId) {
 
 const server = http.createServer((req, res) => {
   const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  if (req.method === 'GET' && requestUrl.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok' }));
+    return;
+  }
   const supportedRoute = (
     (req.method === 'POST' && requestUrl.pathname === '/chat')
     || (req.method === 'GET' && requestUrl.pathname === '/history')

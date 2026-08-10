@@ -2,8 +2,9 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = "/mnt/data/docker";
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const composePath = path.join(repoRoot, "docker-compose.yml");
 const logPath = path.join(repoRoot, ".docker-auto-update.log");
 const lockPath = path.join(repoRoot, ".docker-auto-update.lock");
@@ -12,6 +13,7 @@ const imageChannels = [
   { service: "portainer", repo: "portainer/portainer-ce", tag: "latest" },
   { service: "mosquitto", repo: "eclipse-mosquitto", tag: "latest" },
   { service: "homeassistant", repo: "ghcr.io/home-assistant/home-assistant", tag: "stable" },
+  { service: "matter_server", repo: "ghcr.io/home-assistant-libs/python-matter-server", tag: "stable" },
   { service: "appdaemon", repo: "acockburn/appdaemon", tag: "latest" },
   { service: "nodered", repo: "nodered/node-red", tag: "latest" },
   { service: "zigbee2mqtt", repo: "koenkk/zigbee2mqtt", tag: "latest" },
@@ -109,11 +111,6 @@ function updateComposeDigests() {
     fs.writeFileSync(composePath, compose);
   }
   return true;
-}
-
-function validateLocalFiles() {
-  run("docker", ["compose", "config", "--quiet"]);
-  run("npm", ["run", "flows:validate"], { env: {}, capture: false, mutates: false, cwd: path.join(repoRoot, "nodered") });
 }
 
 function runInDir(command, commandArgs, cwd, options = {}) {

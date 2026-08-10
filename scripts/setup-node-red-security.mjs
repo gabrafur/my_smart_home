@@ -36,11 +36,13 @@ function readExistingPassword() {
 }
 
 function readCredentialSecret() {
-    const runtimeConfig = JSON.parse(fs.readFileSync(runtimePath, "utf8"));
-    if (!runtimeConfig._credentialSecret) {
-        throw new Error("Node-RED runtime credential secret was not found.");
+    if (fs.existsSync(runtimePath)) {
+        const runtimeConfig = JSON.parse(fs.readFileSync(runtimePath, "utf8"));
+        if (runtimeConfig._credentialSecret) {
+            return runtimeConfig._credentialSecret;
+        }
     }
-    return runtimeConfig._credentialSecret;
+    return crypto.randomBytes(32).toString("hex");
 }
 
 function bcryptHash(password) {
@@ -51,7 +53,7 @@ function bcryptHash(password) {
             "--rm",
             "--entrypoint",
             "node",
-            "nodered/node-red@sha256:330d65c5d9c203df1fc4db8dc7a67cf15c3b3982c85d0f7e0f1aa90dbb8b43f9",
+            "nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6",
             "-e",
             "const bcrypt=require('bcryptjs'); console.log(bcrypt.hashSync(process.argv[1], 8));",
             password,
@@ -65,9 +67,22 @@ const entries = fs.existsSync(envPath)
     ? parseEnv(fs.readFileSync(envPath, "utf8"))
     : new Map();
 
-entries.set("HOST_LAN_IP", entries.get("HOST_LAN_IP") || "192.168.0.205");
-entries.set("NODE_RED_ADMIN_USER", entries.get("NODE_RED_ADMIN_USER") || "gabriel");
-entries.set("NODE_RED_CREDENTIAL_SECRET", entries.get("NODE_RED_CREDENTIAL_SECRET") || readCredentialSecret());
+const isPlaceholder = (value) => !value || /^(replace-with|CHANGE_ME|optional-)/i.test(value);
+
+entries.set("HOST_LAN_IP", entries.get("HOST_LAN_IP") || "127.0.0.1");
+entries.set("NODE_RED_ADMIN_USER", entries.get("NODE_RED_ADMIN_USER") || "admin");
+const socketGid = fs.existsSync("/var/run/docker.sock")
+    ? String(fs.statSync("/var/run/docker.sock").gid)
+    : "999";
+if (!entries.get("DOCKER_GID") || entries.get("DOCKER_GID") === "999") {
+    entries.set("DOCKER_GID", socketGid);
+}
+entries.set(
+    "NODE_RED_CREDENTIAL_SECRET",
+    isPlaceholder(entries.get("NODE_RED_CREDENTIAL_SECRET"))
+        ? readCredentialSecret()
+        : entries.get("NODE_RED_CREDENTIAL_SECRET"),
+);
 entries.set("NODE_RED_ADMIN_PASSWORD_HASH", bcryptHash(password));
 
 fs.mkdirSync(secretsDir, { recursive: true, mode: 0o700 });

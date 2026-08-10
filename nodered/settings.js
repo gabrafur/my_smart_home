@@ -34,7 +34,7 @@ function readRuntimeCredentialSecret() {
 }
 
 const credentialSecret = process.env.NODE_RED_CREDENTIAL_SECRET || readRuntimeCredentialSecret();
-const nodeRedAdminUser = process.env.NODE_RED_ADMIN_USER || "gabriel";
+const nodeRedAdminUser = process.env.NODE_RED_ADMIN_USER || "admin";
 const nodeRedAdminPasswordHash = process.env.NODE_RED_ADMIN_PASSWORD_HASH;
 
 module.exports = {

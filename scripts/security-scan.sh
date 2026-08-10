@@ -76,6 +76,7 @@ FORBIDDEN_PATHS=(
   '^portainer/'
   '^matter-server/'
   '^appdaemon/secrets\.yaml$'
+  '^appdaemon/appdaemon\.yaml$'
   '^\.local-secrets/'
   '^\.env$'
   '^\.env\.[^e]'          # .env.local, .env.prod, ... mas nao .env.example
@@ -120,6 +121,7 @@ MUST_IGNORE=(
   '.env'
   '.local-secrets/token.txt'
   'appdaemon/secrets.yaml'
+  'appdaemon/appdaemon.yaml'
 )
 ignore_gaps=0
 for p in "${MUST_IGNORE[@]}"; do
@@ -130,7 +132,12 @@ for p in "${MUST_IGNORE[@]}"; do
   fi
 done
 # Os arquivos de exemplo precisam continuar versionaveis.
-MUST_NOT_IGNORE=('.env.example' 'zigbee2mqtt/configuration.example.yaml')
+MUST_NOT_IGNORE=(
+  '.env.example'
+  'homeassistant/secrets.yaml.example'
+  'templates/appdaemon/secrets.yaml.example'
+  'zigbee2mqtt/configuration.example.yaml'
+)
 for p in "${MUST_NOT_IGNORE[@]}"; do
   if git check-ignore -q --no-index "$p"; then
     red "  [gitignore] '$p' esta ignorado, mas e' um arquivo de exemplo"

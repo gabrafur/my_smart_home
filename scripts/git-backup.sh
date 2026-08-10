@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="/mnt/data/docker"
-BRANCH="main"
-REMOTE="origin"
-SSH_KEY="/home/gabriel/.ssh/id_ed25519"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+REMOTE="${GIT_BACKUP_REMOTE:-origin}"
+BRANCH="${GIT_BACKUP_BRANCH:-$(git -C "$REPO_DIR" branch --show-current)}"
+BRANCH="${BRANCH:-main}"
+SSH_KEY="${GIT_BACKUP_SSH_KEY:-}"
 LOG_FILE="$REPO_DIR/.git-backup.log"
 LOCK_FILE="$REPO_DIR/.git-backup.lock"
 
-export GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+if [[ -n "$SSH_KEY" ]]; then
+  export GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+fi
 
 log() {
   printf '[%s] %s\n' "$(date -Is)" "$*" >> "$LOG_FILE"
