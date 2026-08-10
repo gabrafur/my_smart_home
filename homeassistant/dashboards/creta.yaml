@@ -5,34 +5,49 @@ views:
     icon: mdi:car
     cards:
       - type: markdown
-        content: >
-          ## 🚗 Garagem ▸ Creta
+        content: >-
+          ## 🚗 Creta
 
-          Status ao vivo (via endpoint CCS2) e histórico de viagens (fonte
-          `/tripinfo`, a mesma do app Bluelink).
+          Status atual do veículo e viagens registradas pelo Bluelink.
 
-      - type: entities
-        title: Status atual
-        show_header_toggle: false
-        entities:
-          - entity: sensor.creta_fuel_level
+      - type: grid
+        title: Resumo
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.creta_fuel_level
             name: Combustível
-          - entity: sensor.creta_fuel_driving_range
+            icon: mdi:gas-station
+          - type: tile
+            entity: sensor.creta_fuel_driving_range
             name: Autonomia
-          - entity: sensor.garagem_creta_odometer
+            icon: mdi:map-marker-distance
+          - type: tile
+            entity: sensor.garagem_creta_odometer
             name: Odômetro
-          - entity: sensor.creta_car_battery_level
+            icon: mdi:speedometer
+          - type: tile
+            entity: sensor.creta_car_battery_level
             name: Bateria 12V
-          - entity: binary_sensor.creta_engine
+            icon: mdi:car-battery
+
+      - type: grid
+        title: Estado atual
+        columns: 3
+        square: false
+        cards:
+          - type: tile
+            entity: binary_sensor.creta_engine
             name: Motor
-          - entity: lock.creta_door_lock
+            icon: mdi:engine
+          - type: tile
+            entity: lock.creta_door_lock
             name: Travas
-          - entity: device_tracker.creta_location
+          - type: tile
+            entity: device_tracker.creta_location
             name: Localização
-          - entity: sensor.creta_last_updated_at
-            name: Última atualização (dados)
-          - entity: sensor.creta_last_scanned_at
-            name: Último scan
+            icon: mdi:map-marker-outline
 
       - type: markdown
         title: Viagens de hoje
@@ -40,24 +55,32 @@ views:
           {% set trips = state_attr('sensor.garagem_creta_day_trip_info',
           'trips') %}
           {% if trips %}
-          | Início | Dist. | Rodando | Parado | Méd | Máx |
-          |---|---|---|---|---|---|
-          {% for t in trips %}| {{ t.start_time[:2] }}:{{ t.start_time[2:4] }} | {{ t.distance }} km | {{ t.drive_time_min }} min | {{ t.idle_time_min }} min | {{ t.avg_speed }} | {{ t.max_speed }} |
-          {% endfor %}
+          {% set total = trips | sum(attribute='distance') %}
+          **{{ trips | length }} viagem(ns) · {{ total }} km no total**
 
-          _Total: {{ trips | sum(attribute='distance') }} km em {{ trips | length }} viagem(ns)._
+          {% for t in trips %}
+          **{{ t.start_time[:2] }}:{{ t.start_time[2:4] }} · {{ t.distance }} km**<br>
+          {{ t.drive_time_min }} min rodando · {{ t.idle_time_min }} min parado ·
+          {{ t.avg_speed }} km/h em média · máxima de {{ t.max_speed }} km/h
+
+          {% endfor %}
           {% else %}
-          _Sem viagens registradas hoje ainda._ Atualiza a cada chegada do
-          Creta em casa, ou pressione o botão abaixo.
+          _Nenhuma viagem registrada hoje._ As viagens são atualizadas quando
+          o Creta chega em casa ou pelo botão abaixo.
           {% endif %}
 
       - type: entities
+        title: Atualização dos dados
         show_header_toggle: false
         entities:
           - entity: button.garagem_creta_refresh_trip_info
             name: Atualizar viagens de hoje
           - entity: button.creta_force_refresh
             name: Forçar atualização de status
+          - entity: sensor.creta_last_updated_at
+            name: Dados recebidos em
+          - entity: sensor.creta_last_scanned_at
+            name: Última consulta ao Bluelink
 
       - type: history-graph
         title: Histórico — motor e combustível (7 dias)
@@ -67,51 +90,3 @@ views:
             name: Motor
           - entity: sensor.creta_fuel_level
             name: Combustível
-
-      - type: markdown
-        title: Histórico de viagens recuperado (28/07 – 01/08)
-        content: >
-          Recuperado em 02/08/2026 do endpoint `/tripinfo` da Hyundai (mesma
-          fonte do app Bluelink), inclusive dias em que o status estava em
-          503. Horários locais; distância em km; tempos em min; velocidades
-          km/h.
-
-          **01/08 — 3 viagens · 3 km**
-
-          | Início | Dist. | Rodando | Parado | Méd | Máx |
-          |---|---|---|---|---|---|
-          | 12:46 | 1 km | 7 min | 3 min | 18 | 63 |
-          | 13:08 | 1 km | 5 min | 2 min | 15 | 44 |
-          | 13:14 | 1 km | 5 min | 1 min | 20 | 56 |
-
-          **31/07 — 5 viagens · 34 km**
-
-          | Início | Dist. | Rodando | Parado | Méd | Máx |
-          |---|---|---|---|---|---|
-          | 07:52 | 3 km | 14 min | 3 min | 18 | 43 |
-          | 08:55 | 4 km | 18 min | 6 min | 17 | 55 |
-          | 14:18 | 4 km | 13 min | 4 min | 22 | 71 |
-          | 14:56 | 12 km | 28 min | 6 min | 29 | 79 |
-          | 17:34 | 11 km | 27 min | 7 min | 28 | 75 |
-
-          **30/07 — 2 viagens · 13 km**
-
-          | Início | Dist. | Rodando | Parado | Méd | Máx |
-          |---|---|---|---|---|---|
-          | 18:13 | 12 km | 27 min | 5 min | 29 | 73 |
-          | 18:44 | 1 km | 4 min | 1 min | 13 | 35 |
-
-          **29/07 — 3 viagens · 19 km**
-
-          | Início | Dist. | Rodando | Parado | Méd | Máx |
-          |---|---|---|---|---|---|
-          | 09:16 | 1 km | 6 min | 2 min | 12 | 37 |
-          | 12:37 | 10 km | 17 min | 3 min | 36 | 92 |
-          | 17:03 | 8 km | 18 min | 4 min | 30 | 82 |
-
-          **28/07 — 2 viagens · 2 km**
-
-          | Início | Dist. | Rodando | Parado | Méd | Máx |
-          |---|---|---|---|---|---|
-          | 17:17 | 1 km | 6 min | 2 min | 13 | 44 |
-          | 17:56 | 1 km | 6 min | 1 min | 17 | 43 |
