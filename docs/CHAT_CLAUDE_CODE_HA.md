@@ -28,7 +28,7 @@ arquivos já foram todos preparados; falta só você subir e conectar as peças.
 ### 1. Build e subida do bridge
 
 ```bash
-cd /mnt/data/docker
+cd CAMINHO_DO_REPOSITORIO
 docker compose build claude-bridge
 docker compose up -d claude-bridge
 docker compose logs -f claude-bridge   # deve mostrar "claude-bridge listening on :8099"
@@ -94,7 +94,7 @@ curl -s -X POST http://127.0.0.1:8099/chat \
 ### 2.1. Histórico compartilhado com o workspace
 
 Cada turno enviado pelo Home Assistant é gravado no host em
-`/mnt/data/docker/.agent-history/turns.jsonl`. O mapeamento entre o
+`.agent-history/turns.jsonl`. O mapeamento entre o
 `conversation_id` do Home Assistant e a sessão do CLI fica em
 `.agent-history/sessions.json`, portanto a conversa continua mesmo depois de
 restart ou rebuild do bridge.
@@ -103,8 +103,8 @@ Na primeira instalação, crie o diretório com acesso para o usuário do host e
 grupo do Docker usado pelo bridge:
 
 ```bash
-cd /mnt/data/docker
-install -d -m 2770 -g 987 .agent-history
+cd CAMINHO_DO_REPOSITORIO
+install -d -m 2770 -g "$(stat -c '%g' /var/run/docker.sock)" .agent-history
 ```
 
 O diretório contém conteúdo privado e está ignorado pelo Git. Para consultar
@@ -140,7 +140,7 @@ Espere ~30-60s o HA voltar (`docker compose logs -f homeassistant` até ver
 
 ### 4. Configurar a integração pela UI
 
-1. `http://192.168.0.205:8123` → **Configurações → Dispositivos e Serviços**
+1. `http://IP_DO_HOST:8123` → **Configurações → Dispositivos e Serviços**
 2. **+ Adicionar Integração** → buscar **"Claude Code Chat"**
 3. Preencher:
    - **bridge_url**: `http://127.0.0.1:8099/chat` (já vem preenchido)
@@ -152,10 +152,16 @@ Espere ~30-60s o HA voltar (`docker compose logs -f homeassistant` até ver
 4. Depois de criada, vá em **Configurações → Entidades**, busque por "Claude
    Code" e anote o `entity_id` exato gerado (esperado:
    `conversation.claude_code_full_access`, mas confirme). Se vier diferente,
-   ajuste o `entity:` do segundo card em
+   ajuste o `entity:` do card **Claude Code (Full Access)** em
    `homeassistant/dashboards/chat.yaml`.
 
 ### 5. Criar o pipeline "Claude Code (Full Access)"
+
+Este pipeline e somente do Claude Code. O Codex atual usa a aba dedicada
+**Codex** do dashboard `Chat`, por meio do card
+`homeassistant/www/codex-chat-card.js` e dos comandos WebSocket registrados
+pela integracao. Nao crie um segundo tile/pipeline do Codex: isso duplicaria
+duas interfaces para a mesma conversa persistente.
 
 Edite o storage do Assist (troque `<ENTITY_ID>` pelo valor confirmado no
 passo 4):
@@ -203,6 +209,10 @@ com acesso real, ex.:
 
 A resposta deve bater com a realidade do host (mesma lista de `docker ps`).
 
+Para o Codex, abra **Chat → Codex**, envie a mesma pergunta e confirme que o
+historico reaparece depois de recarregar a pagina. A aba **Assistentes** mantem
+somente Claude padrao, Home Assistant e Claude Code (Full Access).
+
 ## Arquivos envolvidos
 
 - `claude-bridge/Dockerfile`, `claude-bridge/server.js`, `claude-bridge/package.json`
@@ -211,4 +221,5 @@ A resposta deve bater com a realidade do host (mesma lista de `docker ps`).
 - `docker-compose.yml` (serviço `claude-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)
 - `homeassistant/dashboards/chat.yaml` (card novo)
+- `homeassistant/www/codex-chat-card.js` (aba Codex com historico)
 - `homeassistant/.storage/assist_pipeline.pipelines` (pipeline novo, editado no passo 5)

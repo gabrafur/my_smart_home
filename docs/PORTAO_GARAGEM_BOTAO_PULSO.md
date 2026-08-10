@@ -7,8 +7,8 @@ pulso duplicado.
 
 ## Por que isso é delicado
 
-`switch.rele_acionador_portao` (Tuya `TS0001`, `_TZ3000_c8wtsv3p`, IEEE
-`0xa4c138c06568e60a`) é um **contato seco ligado na botoeira (BT)** da central do
+`switch.rele_acionador_portao` (Tuya `TS0001`, `_TZ3000_c8wtsv3p`) é um
+**contato seco ligado na botoeira (BT)** da central do
 portão. Ele **não é um switch comum**: cada `ON` entrega um pulso físico e a
 central executa a próxima ação do ciclo dela — abrir, fechar, parar ou inverter.
 Dois `ON` = duas ações no motor.

@@ -1,0 +1,54 @@
+# Documentação
+
+[Português (principal)](README.md) · [English](README.en.md)
+
+Este índice separa os documentos de referência atual dos registros históricos.
+Os nomes de entidades e dispositivos encontrados nos guias de funcionalidades
+são identificadores da configuração versionada; endereços, credenciais,
+coordenadas, MACs e identificadores físicos reais devem aparecer somente como
+placeholders.
+
+## Comece aqui
+
+| Documento | Quando usar | Inglês |
+| --- | --- | --- |
+| [Instalação e restauração](INSTALACAO_RESTAURACAO_SMART_HOME.md) | Clone novo, recuperação ou migração de host | [English](INSTALLATION_RESTORE.en.md) |
+| [Containers](CONTAINERS.md) | Imagens, portas, volumes, dependências e operação | [English](CONTAINERS.en.md) |
+| [Auditoria de segurança](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publicação, rotação e histórico Git | resumo no [índice em inglês](README.en.md) |
+| [Bluetooth e Matter](BLUETOOTH_MATTER.md) | D-Bus, rede do host e comissionamento | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
+| [Saúde do Raspberry Pi](RASPBERRY_PI_SYSTEM_HEALTH.md) | Métricas e alertas do host | resumo no [índice em inglês](README.en.md) |
+| [Bridge no Home Assistant](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex na interface | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
+
+## Funcionalidades
+
+- [Iluminação externa no Node-RED](ILUMINACAO_EXTERNA_NODERED.md)
+- [Iluminação de segurança no Node-RED](ILUMINACAO_SEGURANCA_NODERED.md)
+- [Desarme do alarme na chegada](ALARME_DESARME_CHEGADA_NODERED.md)
+- [Integração Moni Mobile / Intelbras](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
+- [Integração Hyundai/Kia](CRETA_KIA_UVO_INTEGRATION.md)
+- [Portão: relé local](PORTAO_GARAGEM_RELE_LOCAL.md)
+- [Portão: botão de pulso](PORTAO_GARAGEM_BOTAO_PULSO.md)
+- [Controle de energia](CONTROLE_ENERGIA_HOME_ASSISTANT.md)
+- [Wake-on-LAN da TV](WAKE_ON_LAN_TV_SALA.md)
+
+## Registros históricos
+
+- [Auditoria do repositório público](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
+- [Handoff da limpeza do histórico](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
+
+Esses arquivos preservam datas e incidentes para explicar decisões. Uma seção
+histórica pode mencionar uma versão antiga ou um comportamento corrigido, mas
+deve marcá-lo explicitamente como histórico e apontar para o estado atual.
+
+## Política de manutenção
+
+- Português do Brasil é o idioma principal.
+- README, índice, containers e instalação/restauração têm versão completa em
+  inglês.
+- Mudanças de porta, volume, variável, imagem ou procedimento devem atualizar
+  as duas versões do guia correspondente na mesma alteração.
+- Exemplos usam `IP_DO_HOST`, `IP_DO_COORDENADOR`, `USUARIO_MQTT` ou endereços
+  reservados para documentação; nunca valores reais da residência.
+- Todo link relativo e todo par bilíngue obrigatório é verificado por
+  `node scripts/docs-check.mjs`.
+- Antes de publicar, rode também `scripts/security-scan.sh`.

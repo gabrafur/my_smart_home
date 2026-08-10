@@ -1,191 +1,172 @@
-# my_smart_home
+# Casa inteligente autogerenciada
 
-Event-driven home automation platform running on a single Raspberry Pi
-(DietPi), self-hosted and self-managed. Everything here is the real
-configuration and source behind a household stack that controls lighting, a
-garage gate, an alarm panel, power outlets, media devices and a connected car —
-deployed with Docker Compose, integrated over MQTT/Zigbee, and extended with
-custom Python and JavaScript components.
+[Português (principal)](README.md) · [English](README.en.md)
 
-**This repository is the reviewable part of that system, not a copy of the
-house.** Runtime state — the Home Assistant entity/device registries, session
-and auth stores, databases, Zigbee network keys, credentials and geographic
-coordinates — is deliberately excluded (see [Security posture](#security-posture)).
-What is versioned is the part worth reading: declarative configuration,
-automation logic, integrations and operational tooling.
+Plataforma de automação residencial orientada a eventos, executada em um
+Raspberry Pi com Docker Compose. O repositório contém a configuração
+declarativa, os fluxos, integrações locais e ferramentas operacionais de Home
+Assistant, Node-RED, Mosquitto, Zigbee2MQTT, AppDaemon, Matter Server,
+Portainer e um bridge opcional para agentes de código.
 
----
+Este repositório é público e representa somente a parte revisável do sistema.
+Credenciais, coordenadas, registros de dispositivos, bancos, chaves Zigbee e
+estado de emparelhamento nunca devem entrar no Git.
 
-## Architecture
+> Um clone novo permite construir e iniciar a plataforma, mas não reproduz a
+> residência original. Para recuperar dispositivos, identidades e históricos,
+> também é necessário um backup privado dos arquivos listados no guia de
+> [instalação e restauração](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md).
+
+## Arquitetura
 
 ```mermaid
 flowchart LR
-    subgraph Devices["Physical layer"]
-        ZB["Zigbee devices<br/>(relay, sensors, buttons)"]
-        WIFI["Wi-Fi / IP devices<br/>(TV, outlets, vacuum)"]
-        BLE["Bluetooth / Matter"]
+    subgraph Devices[Dispositivos]
+        ZB[Zigbee]
+        IP[Wi-Fi / IP]
+        BLE[Bluetooth / Matter]
     end
 
-    subgraph Pi["Raspberry Pi — Docker Compose"]
-        Z2M["Zigbee2MQTT"]
-        MQ["Mosquitto<br/>MQTT broker"]
-        HA["Home Assistant<br/>state machine + UI"]
-        NR["Node-RED<br/>event flows"]
-        AD["AppDaemon<br/>Python apps"]
-        MS["Matter server"]
-        PT["Portainer"]
+    subgraph Host[Raspberry Pi / Docker Compose]
+        Z2M[Zigbee2MQTT]
+        MQ[Mosquitto]
+        HA[Home Assistant]
+        NR[Node-RED]
+        AD[AppDaemon]
+        MAT[Matter Server]
+        PT[Portainer]
+        BR[Bridge de agentes]
     end
 
-    subgraph Cloud["External (optional, degrades gracefully)"]
-        CAR["Connected-car API"]
-        ALARM["Alarm provider"]
-    end
-
-    ZB <--> Z2M --> MQ
-    MQ <--> HA
-    WIFI <--> HA
-    BLE <--> MS --> HA
+    ZB <--> Z2M --> MQ <--> HA
+    IP <--> HA
+    BLE <--> MAT <--> HA
     HA <--> NR
     HA <--> AD
-    CAR -.-> HA
-    ALARM -.-> HA
-
-    subgraph Clients["Access — LAN / VPN only"]
-        APP["Mobile app"]
-        WEB["Dashboards"]
-    end
-
-    APP --> HA
-    WEB --> HA
-    WEB --> NR
-    WEB --> PT
+    BR <--> HA
 ```
 
-### Components and why each exists
+| Serviço | Função | Exposição padrão |
+| --- | --- | --- |
+| Home Assistant | Estado, integrações, UI e automações YAML | rede do host, porta 8123 |
+| Mosquitto | Broker MQTT local | `${HOST_LAN_IP}:1883` |
+| Zigbee2MQTT | Coordenador Zigbee e ponte MQTT | `${HOST_LAN_IP}:8080` |
+| Node-RED | Fluxos event-driven e lógica com estado | `${HOST_LAN_IP}:1880` |
+| AppDaemon | Aplicações Python | rede do host; UI em `127.0.0.1:5050` |
+| Matter Server | Controlador Matter legado em container | rede do host; WebSocket em `127.0.0.1:5580` |
+| Portainer | Operação manual dos containers | `${HOST_LAN_IP}:9000` |
+| `claude-bridge` | Claude Code/Codex dentro do HA | somente `127.0.0.1:8099` |
 
-| Component | Role |
-| --- | --- |
-| **Home Assistant** | The state machine and integration hub. Declarative config split into `homeassistant/packages/*.yaml`, one file per feature area, plus custom dashboards. |
-| **Node-RED** | Where multi-step, stateful event logic lives — arrival detection, debouncing, gate pulses, notification fan-out. Flows are versioned as JSON in `nodered/flows.json` and organized into tabs per feature. |
-| **Mosquitto** | MQTT broker; the bus between Zigbee2MQTT and Home Assistant. |
-| **Zigbee2MQTT** | Talks to the Zigbee coordinator and publishes devices to MQTT — no vendor hub, no vendor cloud. |
-| **AppDaemon** | Python runtime for logic that is easier to express as code than as YAML or as a flow. |
-| **Matter server / Bluetooth** | Local device protocols; requires host D-Bus and `NET_ADMIN`/`NET_RAW` (see `docs/BLUETOOTH_MATTER.md`). |
-| **Portainer** | Container visibility and manual intervention when a service misbehaves. |
-| **claude-bridge** | A small Node HTTP service that exposes the Claude Code CLI to Home Assistant's conversation pipeline, so the stack can be queried and modified from inside the house UI. |
+Se `HOST_LAN_IP` não estiver definido, os serviços publicados ficam presos a
+`127.0.0.1`. Não há publicação intencional em `0.0.0.0`.
 
-## Design principles
+## Início rápido
 
-**Local first.** Automations execute on the Pi. The garage gate was
-deliberately migrated from a vendor cloud scene to a local Zigbee relay pulse —
-the cloud round-trip was the dominant source of latency. Cloud integrations
-(connected car, alarm provider) are treated as *optional inputs*: flows are
-written so that missing or stale cloud data degrades behaviour instead of
-breaking it.
+Requisitos mínimos:
 
-**Event-driven, not polling-first.** Zone crossings, device state changes and
-MQTT messages drive the flows. Where polling is unavoidable (a vehicle API with
-rate limits and a 12 V battery to protect), the cadence is adaptive — faster as
-an arrival gets closer, throttled at night.
-
-**Failure modes are designed, not discovered.** Real incidents are analysed and
-the fix is written down: a frozen phone tracker that reported a stale position
-for two days, an iOS geofence that reported nothing between two boundaries, a
-vehicle API that returned 503 for days. The reasoning lives in `docs/`, and the
-guards live in the flows.
-
-**Configuration is code.** No unversioned clicking-in-the-UI as the source of
-truth: feature areas are YAML packages, flows are JSON, integrations are Python,
-and tooling is Node scripts committed alongside them.
-
-## Custom integrations and tooling
-
-Written for this stack, not vendored:
-
-- **Python** — Home Assistant custom components: an alarm-panel integration
-  built from a reverse-engineered protocol, a conversation agent, power
-  control and Raspberry Pi health sensors (`homeassistant/custom_components/`,
-  `homeassistant/tools/`).
-- **JavaScript / Node** — flow validation and programmatic flow editing
-  (`nodered/tools/`), MQTT credential rotation across all four consumers,
-  a digest-pinned image update sweep, and the Claude Code HTTP bridge
-  (`scripts/`, `claude-bridge/`).
-
-## Operations
-
-- **Reproducible deploys** — every image in `docker-compose.yml` is pinned by
-  digest, not by tag, so a restore rebuilds the same stack.
-- **Guarded updates** — `scripts/docker-auto-update.mjs` runs a scheduled image
-  sweep and watches for Home Assistant integration updates, so upgrades are a
-  reviewed event rather than a surprise.
-- **Observability** — a Raspberry Pi health package tracks temperature, CPU,
-  load, memory, swap and storage, and notifies before a threshold becomes an
-  outage (`docs/RASPBERRY_PI_SYSTEM_HEALTH.md`).
-- **Backups** — a nightly job commits and pushes configuration changes, with a
-  secret-scanning gate that aborts the commit if a staged diff looks like it
-  contains credentials.
-- **Disaster recovery** — `docs/INSTALACAO_RESTAURACAO_SMART_HOME.md` is a full
-  rebuild runbook for a bare Raspberry Pi, from OS install to running stack.
-
-## Security posture
-
-The repository is public on purpose; the house is not.
-
-**Never versioned** (`.gitignore` is the authority):
-
-| Excluded | Why |
-| --- | --- |
-| `homeassistant/.storage/` | Auth/session stores, but also device and entity registries — MAC/BSSID addresses, per-device unique ids, pairing identifiers, resident records. Ignored wholesale, with no per-file exceptions. |
-| `homeassistant/secrets.yaml`, `.env`, `.local-secrets/` | Credentials, API tokens, alarm codes, and the home coordinates. |
-| `zigbee2mqtt/configuration.yaml`, `coordinator_backup.json` | Zigbee network key and MQTT credentials. |
-| `nodered/flows_cred.json`, `mosquitto/config/password.txt` | Node-RED and broker credentials. |
-| `portainer/`, `matter-server/`, `*.db` | Application databases, certificates and fabric credentials. |
-
-**Indirection instead of literals.** Values that must exist in config but must
-not exist in git are referenced, not embedded: Home Assistant YAML uses
-`!secret`, and Node-RED function nodes read geographic constants from the
-container environment. The arrival flow is written so that a missing
-coordinate degrades to Home Assistant's own zone state rather than computing
-distances from an invalid value.
-
-**Automated enforcement.** `scripts/security-scan.sh` audits *tracked files
-only*, checks that the ignore rules still cover the private state, matches
-common token/key/coordinate/MAC patterns, and never prints a candidate
-secret's value. It runs in CI on every push and pull request
-(`.github/workflows/security-scan.yml`, `permissions: contents: read`) and can
-be run locally against a staged diff:
+- Linux com Docker Engine 23 ou superior e o plugin `docker compose`;
+- arquitetura `linux/arm64` ou `linux/amd64` suportada pelas imagens;
+- Node.js no host para os scripts de preparação e validação;
+- D-Bus e rede do host para Bluetooth/Matter;
+- `vcgencmd` no caminho `/usr/bin/vcgencmd` para as métricas específicas do
+  Raspberry Pi.
 
 ```bash
-scripts/security-scan.sh            # all tracked files
-scripts/security-scan.sh --staged   # pre-commit
+git clone URL_DO_REPOSITORIO smart-home
+cd smart-home
+cp .env.example .env
 ```
 
-**History.** The scan and the ignore rules govern the current tree. Files
-removed from tracking still exist in earlier commits; see
-[`docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md`](docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
-for what is in the history and the options for cleaning it.
+Edite `.env`, principalmente `HOST_LAN_IP`, e grave o GID real do socket
+Docker se for usar o bridge:
 
-## Remote access
+```bash
+stat -c '%g' /var/run/docker.sock
+```
 
-No public port-forwarding. Every LAN-bound service is published only on the
-host's LAN address and is reachable from outside solely over a VPN overlay
-(Tailscale, with ZeroTier documented as a fallback). If the host IP variable is
-missing, Docker Compose binds to `127.0.0.1` rather than `0.0.0.0` — a
-deliberate guard against accidental exposure.
+Prepare os arquivos privados descritos no guia de instalação. Em seguida:
 
-## Documentation
+```bash
+node scripts/setup-node-red-security.mjs
+docker compose config --quiet
+npm --prefix nodered ci
+npm --prefix nodered run flows:validate
+docker compose build claude-bridge
+docker compose up -d
+docker compose ps
+```
 
-One write-up per feature: the design, the constraints, the failure that
-motivated it, and the reasoning behind non-obvious decisions.
+O Mosquitto exige `mosquitto/config/password.txt`; o Zigbee2MQTT exige uma
+cópia preenchida de `zigbee2mqtt/configuration.example.yaml`; e o AppDaemon
+exige `.local-secrets/appdaemon-secrets.yaml`. O procedimento seguro, inclusive para uma
+instalação sem backup anterior, está em
+[INSTALACAO_RESTAURACAO_SMART_HOME.md](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md).
 
-- [Installation / restore runbook](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md) — full rebuild for a fresh Pi
-- [Garage gate — local Zigbee relay](docs/PORTAO_GARAGEM_RELE_LOCAL.md) — replacing a cloud scene with a local relay pulse
-- [Security lighting (Node-RED)](docs/ILUMINACAO_SEGURANCA_NODERED.md) · [External lighting (Node-RED)](docs/ILUMINACAO_EXTERNA_NODERED.md)
-- [Alarm panel integration](docs/INTEGRACAO_MONI_MOBILE_INTELBRAS.md) — reverse-engineered protocol, scope deliberately limited to arm/disarm
-- [Connected-car integration](docs/CRETA_KIA_UVO_INTEGRATION.md) — endpoint/parser fix for a multi-day upstream outage
-- [Raspberry Pi health monitoring](docs/RASPBERRY_PI_SYSTEM_HEALTH.md) · [Energy control](docs/CONTROLE_ENERGIA_HOME_ASSISTANT.md)
-- [Bluetooth / Matter](docs/BLUETOOTH_MATTER.md) · [Wake-on-LAN](docs/WAKE_ON_LAN_TV_SALA.md)
-- [Claude Code in the Home Assistant UI](docs/CHAT_CLAUDE_CODE_HA.md)
-- [Public-repo security audit](docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
+## Reprodutibilidade e atualização
 
-Most write-ups are in Portuguese, matching the language the system is operated in.
+As imagens externas estão fixadas por digest. O script
+`scripts/docker-auto-update.mjs` consulta os canais escolhidos, atualiza os
+digests no Compose, valida a configuração e recria a stack somente quando há
+mudança. O Dockerfile do bridge também fixa a imagem-base e as versões dos
+CLIs instalados.
+
+O `matter_server` ainda usa o controlador Python 8.1 existente porque o volume
+contém a fabric da instalação. Esse projeto entrou em manutenção e o caminho
+atual do ecossistema é o servidor baseado em matter.js. A troca exige backup e
+teste de migração; portanto ela está documentada como migração deliberada, não
+como atualização silenciosa. Consulte [Containers](docs/CONTAINERS.md).
+
+## Segurança
+
+O `.gitignore` é a autoridade para estado privado. Entre os itens excluídos:
+
+- `.env`, `.local-secrets/` e qualquer `secrets.yaml` real;
+- `homeassistant/.storage/`, `.cloud/`, bancos e backups;
+- `nodered/flows_cred.json` e arquivos de sessão;
+- `mosquitto/config/password.txt`;
+- `zigbee2mqtt/configuration.yaml`, chave de rede e backup do coordenador;
+- dados do Portainer e da fabric Matter.
+
+O Compose passa a cada serviço somente as variáveis de que ele precisa. Em
+especial, tokens do bridge não são mais injetados no Node-RED. Rode a auditoria
+antes de publicar:
+
+```bash
+scripts/security-scan.sh
+scripts/security-scan.sh --staged
+```
+
+O scanner examina somente arquivos rastreados e nunca imprime o valor de um
+possível segredo. A análise do histórico e as ações de rotação estão em
+[AUDITORIA_SEGURANCA_REPO_PUBLICO.md](docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md).
+
+## Validação
+
+```bash
+docker compose config --quiet
+npm --prefix nodered run flows:validate
+npm --prefix nodered run flows:test-alarm-arrival
+npm --prefix nodered run flows:test-security
+npm --prefix claude-bridge test
+scripts/security-scan.sh
+node scripts/docs-check.mjs
+```
+
+`depends_on` ordena a criação, mas não confirma que uma dependência está
+pronta. Depois de subir a stack, confira `docker compose ps` e os logs de cada
+serviço.
+
+## Documentação
+
+- [Índice da documentação](docs/README.md)
+- [Instalação e restauração](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md)
+- [Containers, volumes, portas e dependências](docs/CONTAINERS.md)
+- [Bluetooth e Matter](docs/BLUETOOTH_MATTER.md)
+- [Segurança do repositório público](docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
+- [Saúde do Raspberry Pi](docs/RASPBERRY_PI_SYSTEM_HEALTH.md)
+- [Bridge de agentes no Home Assistant](docs/CHAT_CLAUDE_CODE_HA.md)
+
+Os guias operacionais detalhados são mantidos em português do Brasil, idioma
+principal da instalação. O README, o índice, o guia de containers e o runbook
+de instalação têm versões completas em inglês. O índice em inglês resume e
+encaminha os documentos de funcionalidades específicas.

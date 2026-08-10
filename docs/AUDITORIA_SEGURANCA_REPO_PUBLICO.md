@@ -4,7 +4,13 @@ Este repositorio e publico e espelha a configuracao de uma casa real. Este
 documento registra o que foi removido do rastreamento, o que ainda existe no
 historico do Git, e o que fazer a respeito.
 
-Data da auditoria: **2026-08-07**.
+Auditoria original: **2026-08-07**. Revisão da árvore atual e da documentação:
+**2026-08-10**.
+
+> As contagens de commits/blobs e os achados da seção 3 são um snapshot da
+> auditoria original, preservado como evidência histórica. Para o estado atual,
+> as autoridades são `.gitignore`, `scripts/security-scan.sh` e
+> `scripts/docs-check.mjs`.
 
 ## 1. Modelo de ameaca
 
@@ -18,7 +24,7 @@ O que importa proteger, em ordem de severidade:
 | Nome de morador | Terceiros nao escolheram publicar o proprio nome. | Nao |
 | Hostname/IP de tailnet, `user_id` do HA | Identificam a rede privada e a conta administradora. | Parcialmente |
 
-## 2. Estado atual (branch `main`)
+## 2. Estado da árvore atual
 
 ### Removido do rastreamento (arquivos preservados em disco)
 
@@ -38,12 +44,12 @@ O que importa proteger, em ordem de severidade:
 | Onde estava | Agora |
 | --- | --- |
 | Coordenada de casa em `homeassistant/packages/zonas_presenca.yaml` | `!secret home_latitude` / `!secret home_longitude` |
-| Coordenada de casa e do portao em `nodered/flows.json` | `env.get("HOME_LAT")` etc., vindas do `.env` via `env_file` do servico `nodered` |
+| Coordenada de casa e do portao em `nodered/flows.json` | `env.get("HOME_LAT")` etc.; o Compose passa somente essas variáveis ao Node-RED |
 | Instalador antigo `nodered/tools/install-security-light-flow.mjs` | Desativado; `nodered/flows.json` e a fonte de verdade validada por replay |
-| Coordenada em `appdaemon/appdaemon.yaml` | Arredondada para 2 casas (~1 km), precisao de sobra para o calculo solar |
+| Coordenada em `appdaemon/appdaemon.yaml` | Configuração movida para `templates/appdaemon/appdaemon.yaml`; valores reais ficam em `.local-secrets/appdaemon-secrets.yaml` |
 | MAC da TV em `homeassistant/automations.yaml` | `!secret tv_sala_mac` |
 | `user_id` do HA em `custom_components/claude_code_chat/config_flow.py` | Campo obrigatorio no config flow, sem default |
-| Tailnet/hostname/IP Tailscale em `docs/INSTALACAO_RESTAURACAO_SMART_HOME.md` | Placeholders (`SEU-TAILNET`, `raspberry-pi`, `100.x.y.z`) |
+| IPs privados e dados de rede na documentação | Placeholders como `IP_DO_HOST` ou endereços reservados para documentação |
 
 O comportamento em runtime nao muda: o `check_config` do Home Assistant
 confirma que `!secret` resolve para os mesmos valores, e o fluxo do Node-RED
@@ -64,7 +70,7 @@ dados abaixo continuam recuperaveis com `git log`/`git show` em commits
 anteriores, e — como o repositorio ja e publico — devem ser considerados
 **ja expostos**.
 
-### Varredura completa (82 commits, 680 blobs unicos)
+### Snapshot da varredura completa (82 commits, 680 blobs unicos)
 
 Nenhum padrao de **credencial** foi encontrado no historico:
 
@@ -118,10 +124,10 @@ Se a decisao for limpar, a ferramenta correta e o
 
 ```bash
 # 0. Backup COMPLETO antes de qualquer coisa
-git clone --mirror git@github.com:gabrafur/my_smart_home.git backup-antes-da-limpeza.git
+git clone --mirror URL_DO_REPOSITORIO backup-antes-da-limpeza.git
 
 # 1. Trabalhar em um clone fresco, nunca no repositorio de producao do Pi
-git clone git@github.com:gabrafur/my_smart_home.git limpeza && cd limpeza
+git clone URL_DO_REPOSITORIO limpeza && cd limpeza
 
 # 2. Remover caminhos que nunca deveriam ter sido versionados
 git filter-repo \
@@ -152,7 +158,7 @@ scripts/security-scan.sh
 git log --oneline | head
 
 # 5. Publicar (destrutivo)
-git remote add origin git@github.com:gabrafur/my_smart_home.git
+git remote add origin URL_DO_REPOSITORIO
 git push --force --all
 git push --force --tags
 ```
@@ -175,13 +181,14 @@ force-push nem risco de reconciliacao.
 | `git ls-files 'homeassistant/.storage/*'` | vazio |
 | `git check-ignore` para `.storage/`, `.ha_ws_token`, `secrets.yaml`, `.env`, `flows_cred.json`, `password.txt`, `coordinator_backup.json`, `portainer/`, `.local-secrets/` | todos ignorados |
 | `git check-ignore` para `.env.example`, `zigbee2mqtt/configuration.example.yaml` | nao ignorados (correto) |
-| JSON rastreado (`git ls-files '*.json'`) | valido |
-| YAML rastreado (24 arquivos, tags `!secret`/`!include` registradas) | valido |
+| JSON rastreado (`git ls-files '*.json'`) | valido no snapshot |
+| YAML rastreado, com tags `!secret`/`!include` registradas | valido no snapshot |
 | `docker compose config --quiet` | ok |
 | `homeassistant --script check_config` | ok; `!secret` resolve para os mesmos valores de antes |
 | Sintaxe dos function nodes do Node-RED | ok |
 | Fluxo `sec_prepare_arrival_context` / `sec_refresh_anyone_away` com e sem env | identico com env; degrada para estado de zona sem env |
 | `python3 -m ast` em `config_flow.py` | ok |
+| `node scripts/docs-check.mjs` | links, pares bilingues, serviços e placeholders validados |
 
 ## 6. Pendencias que dependem de decisao
 

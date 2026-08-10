@@ -89,3 +89,16 @@ jobs:
           cp .env.example .env
           docker compose config --quiet
           rm -f .env
+
+      - name: Validar documentacao
+        run: node scripts/docs-check.mjs
+
+      - name: Validar fluxos Node-RED
+        run: |
+          npm --prefix nodered ci
+          npm --prefix nodered run flows:validate
+          npm --prefix nodered run flows:test-alarm-arrival
+          npm --prefix nodered run flows:test-security
+
+      - name: Testar bridge
+        run: npm --prefix claude-bridge test

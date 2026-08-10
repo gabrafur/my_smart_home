@@ -5,7 +5,7 @@
 - Hardware: Raspberry Pi 5 Model B Rev 1.1
 - Sistema operacional do host: Debian GNU/Linux 13 (trixie)
 - Instalacao do Home Assistant: Home Assistant Core em Docker, imagem `ghcr.io/home-assistant/home-assistant`, com `network_mode: host`
-- Configuracao: `/mnt/data/docker/homeassistant`, carregada por `/config` no container
+- Configuracao: `homeassistant/` no checkout, carregada por `/config` no container
 - Supervisor: nao identificado; a instalacao atual nao e Home Assistant OS/Supervised
 - MQTT: configurado via Mosquitto e integracao MQTT ja registrada
 - System Monitor/Glances: nao encontrados em `configuration.yaml`, pacotes ou `core.config_entries`
@@ -67,4 +67,6 @@ Nao foi adicionado um `devices:` no `docker-compose.yml` porque um device inexis
 
 O proprio Home Assistant nao consegue enviar alerta se o Raspberry Pi inteiro cair, porque ele esta executando no mesmo host. Esta solucao detecta reinicio quando o Home Assistant volta e monitora conectividade enquanto esta em execucao.
 
-Para alerta real de indisponibilidade do Raspberry Pi, use um monitor externo, por exemplo roteador, Uptime Kuma, outro Home Assistant ou outro host pingando `192.168.0.205`.
+Para alerta real de indisponibilidade do Raspberry Pi, use um monitor externo,
+por exemplo roteador, Uptime Kuma, outro Home Assistant ou outro host pingando
+`IP_DO_HOST`.

@@ -50,7 +50,7 @@ arvore do HEAD preservada
 Comandos:
 
 ```bash
-cd /mnt/data/docker
+cd CAMINHO_DO_REPOSITORIO
 scripts/scrub-coordinates-history.sh
 scripts/scrub-coordinates-history.sh --push
 ```
@@ -80,7 +80,7 @@ Configuracao efetiva:
 Validacao reproduzivel:
 
 ```bash
-cd /mnt/data/docker/nodered
+cd CAMINHO_DO_REPOSITORIO/nodered
 npm run flows:validate
 npm run flows:test-security
 ```

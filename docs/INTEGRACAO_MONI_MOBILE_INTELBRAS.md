@@ -54,7 +54,7 @@ python3 tools/moni_mobile_proxy/moni_proxy.py --listen-port 7000
 Em outro terminal, suba o DNS temporario:
 
 ```bash
-python3 tools/moni_mobile_proxy/moni_dns_override.py --ip 192.168.0.205
+python3 tools/moni_mobile_proxy/moni_dns_override.py --ip IP_DO_HOST
 ```
 
 No iPhone, na rede Wi-Fi atual:
@@ -62,7 +62,7 @@ No iPhone, na rede Wi-Fi atual:
 1. Abra os detalhes da rede Wi-Fi.
 2. Em DNS, escolha configuracao manual.
 3. Remova servidores existentes temporariamente.
-4. Adicione `192.168.0.205`.
+4. Adicione `IP_DO_HOST`.
 5. No Moni Mobile, deixe o endereco como `alarmsystem.dyndns.biz` e a porta como `7000`.
 
 Ao terminar o teste, volte o DNS do iPhone para automatico.
