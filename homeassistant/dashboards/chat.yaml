@@ -1,5 +1,13 @@
 title: Chat
 views:
+  - title: Codex
+    path: codex
+    icon: mdi:robot-outline
+    panel: true
+    cards:
+      - type: custom:codex-chat-card
+        title: Codex
+        history_limit: 200
   - title: Assistentes
     icon: mdi:chat-processing
     cards:

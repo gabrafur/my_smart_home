@@ -21,6 +21,19 @@ from .const import DEFAULT_NAME, REQUEST_TIMEOUT_SECONDS
 _LOGGER = logging.getLogger(__name__)
 
 
+def _persistent_conversation_id(
+    agent: str, user_input: conversation.ConversationInput
+) -> str:
+    """Return a stable bridge conversation id for each HA user and agent.
+
+    The Assist dialog creates a fresh conversation id when it is reopened. Using
+    that id in the bridge fragments the persisted transcript and CLI session.
+    The authenticated HA user id is stable, so it keeps backend conversations
+    continuous without mixing users or agents.
+    """
+    return f"home-assistant:{agent}:{user_input.context.user_id}"
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ClaudeCodeChatConfigEntry,
@@ -82,7 +95,7 @@ class ClaudeCodeConversationEntity(
         payload = {
             "message": user_input.text,
             "display_message": user_input.text,
-            "conversation_id": user_input.conversation_id,
+            "conversation_id": _persistent_conversation_id("claude", user_input),
             "agent": "claude",
         }
         headers = {"Authorization": f"Bearer {data.bridge_token}"}
@@ -166,7 +179,7 @@ class CodexConversationEntity(
         payload = {
             "message": message,
             "display_message": prompt,
-            "conversation_id": user_input.conversation_id,
+            "conversation_id": _persistent_conversation_id("codex", user_input),
             "agent": "codex",
         }
         headers = {"Authorization": f"Bearer {data.bridge_token}"}

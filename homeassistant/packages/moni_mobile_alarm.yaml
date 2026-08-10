@@ -9,12 +9,12 @@ alarm_control_panel:
 
 script:
   moni_mobile_atualizar_estado:
-    alias: Moni Mobile - atualizar estado
+    alias: Moni Mobile Acionar Alarme
     mode: single
     sequence:
-      - service: homeassistant.update_entity
-        target:
-          entity_id: alarm_control_panel.alarme_moni_mobile
+      - event: node_red_moni_mobile_arm
+        event_data:
+          source: script.moni_mobile_atualizar_estado
 
   moni_mobile_armar_via_carplay:
     alias: Alarme Casa - Armar via CarPlay
