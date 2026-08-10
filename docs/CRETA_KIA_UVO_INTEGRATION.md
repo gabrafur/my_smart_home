@@ -488,14 +488,13 @@ de patch sao o caminho rapido) e verifique `0x 503` antes de considerar pronto.
 ## Dashboard de viagens (2026-08-02)
 
 Dashboard Lovelace `creta-viagens` (titulo "Creta", `dashboards/creta.yaml`,
-registrado em `configuration.yaml` — url_path com hifen, ver
-[[reference-ha-lovelace-constraints]]): status ao vivo (combustivel, autonomia,
-odometro, bateria 12V, motor, travas, localizacao, timestamps), viagens de hoje
-renderizadas dinamicamente do `sensor.garagem_creta_day_trip_info` (card
-markdown com template Jinja sobre o atributo `trips`), grafico de historico de
-7 dias (motor + combustivel) e um card estatico com o historico de viagens
-recuperado de 28/07 a 01/08 (puxado do `/tripinfo` em 2026-08-02, ver secao
-abaixo). O sensor de trip e de **dia unico** e nao persiste entre restarts —
+registrado em `configuration.yaml`): resumo em tiles (combustivel, autonomia,
+odometro, bateria 12V, motor, travas e localizacao), timestamps de atualizacao,
+viagens de hoje renderizadas dinamicamente do
+`sensor.garagem_creta_day_trip_info` e grafico de 7 dias (motor + combustivel).
+O card estatico que continha viagens historicas reais foi removido do YAML: ele
+ficava obsoleto e publicava dados de deslocamento sem necessidade operacional.
+O sensor de trip e de **dia unico** e nao persiste entre restarts —
 some depois de reiniciar o HA ate a proxima chegada do Creta ou um press manual
 de `button.garagem_creta_refresh_trip_info`; por isso o card de "hoje" tem
 fallback "sem viagens ainda".
@@ -505,5 +504,5 @@ fallback "sem viagens ainda".
 (so `off`/`unavailable`) — mesma limitacao de polling ja documentada no topo
 deste arquivo. O "quando o carro rodou" real vem do `/tripinfo` (mesma fonte do
 app Bluelink), que devolve viagens de dias passados **inclusive dos dias em que
-o status estava em 503**. Foi de la que veio o historico recuperado no card do
-dashboard.
+o status estava em 503**. Esses dados serviram para diagnostico em 2026-08-02,
+mas nao permanecem gravados no dashboard versionado.

@@ -13,7 +13,7 @@ Tuya nos EUA** (`apigw.tuyaus.com`) — daí o round-trip de segundos.
 
 O acionador RF é um blaster **Tuya UFO-R2-RF-V2** (`controlador_garagem`,
 categoria `wnykq`) com a "Porta da garagem" como **sub-device RF** (`rf_garage_door`).
-Investigação (chaves locais extraídas, rede confirmada — bridge em `192.168.0.157`,
+Investigação (chaves locais extraídas, rede confirmada — bridge em `IP_DA_BRIDGE`,
 protocolo v3.3):
 
 - o bridge **não responde a leitura de status local** (`No response`);

@@ -48,10 +48,10 @@ homeassistant/.ssh/ha_power_ed25519.pub
 
 No Windows, habilite o OpenSSH Server e autorize essa chave para o usuario
 configurado em `pc_power_user`. Nesta instalacao, o PC esta configurado como
-`gabra@192.168.0.153:22`. Depois valide a partir do Raspberry:
+`USUARIO_WINDOWS@IP_DO_PC:22`. Depois valide a partir do Raspberry:
 
 ```bash
-docker exec homeassistant ssh -i /config/.ssh/ha_power_ed25519 -p 22 -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new gabra@192.168.0.153 hostname
+docker exec homeassistant ssh -i /config/.ssh/ha_power_ed25519 -p 22 -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new USUARIO_WINDOWS@IP_DO_PC hostname
 ```
 
 Quando esse teste responder, os scripts `script.pc_reiniciar` e

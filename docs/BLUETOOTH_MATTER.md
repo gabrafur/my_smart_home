@@ -37,8 +37,14 @@ hciconfig -a
   antigas ate ser recriado — `docker compose up -d homeassistant` (nao basta
   `restart`).
 - `matter_server`: roda em `network_mode: host` com `/run/dbus` montado. Ele
-  so aparece em `docker ps` depois de `docker compose up -d matter_server` —
-  o `depends_on` nao sobe o container sozinho na primeira vez.
+  e criado automaticamente como dependencia ao subir o Home Assistant pelo
+  Compose, mas `depends_on` nao espera o servidor ficar pronto.
+
+O container atual usa Python Matter Server 8.1 por compatibilidade com a fabric
+existente. Esse upstream esta em modo de manutencao e o sucessor e baseado em
+matter.js. O uso standalone nao e o caminho oficialmente suportado pelo Home
+Assistant; nao migre nem apague `matter-server/` sem backup e teste. Consulte
+[`CONTAINERS.md`](CONTAINERS.md).
 
 ## Finalizando a configuracao dentro do Home Assistant
 
@@ -53,7 +59,7 @@ Via API (com um Long-Lived Access Token, guardado em
 `.local-secrets/ha-long-lived-token.txt`, nunca commitado):
 
 ```bash
-TOKEN=$(cat /mnt/data/docker/.local-secrets/ha-long-lived-token.txt)
+TOKEN=$(cat .local-secrets/ha-long-lived-token.txt)
 
 # Bluetooth
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \

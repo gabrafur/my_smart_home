@@ -6,12 +6,12 @@ A integração `samsungtv` do Home Assistant enviava magic packets de
 Wake-On-LAN automaticamente ("implicit Wake-On-LAN") sempre que
 `media_player.turn_on` era chamado para uma Samsung TV cujo endereço MAC
 era conhecido. Esse comportamento implícito foi descontinuado a partir da
-versão 2026.2 e será removido na versão **2026.8.0** (repair issue
+versão 2026.2 e removido na linha 2026.8 (repair issue
 `implicit_wake_on_lan` no core do Home Assistant).
 
 Sem uma automação explícita, a TV Sala (`media_player.samsung_qn90ba_50_qn50qn90bagxzd`)
-deixaria de ligar sozinha via comandos que usam `media_player.turn_on`
-(dashboards, Alexa/Google Home, automações) a partir de 2026.8.0.
+deixou de poder depender desse efeito colateral para comandos que usam
+`media_player.turn_on` (dashboards, Alexa/Google Home e automações).
 
 ## Solução aplicada
 
@@ -46,8 +46,8 @@ deixaria de ligar sozinha via comandos que usam `media_player.turn_on`
 
 ## Por que este trigger
 
-O fórum da comunidade Home Assistant confirma que a própria integração
-`samsungtv` expõe um trigger dedicado `samsungtv.turn_on`, disparado
+Na configuração atual, a própria integração `samsungtv` expõe o trigger
+dedicado `samsungtv.turn_on`, disparado
 sempre que algo pede para ligar a entidade `media_player` — é o
 substituto direto e suportado do comportamento implícito antigo (ao
 contrário de um trigger de `state`, que não dispararia porque a TV
@@ -67,6 +67,6 @@ foi rodado após a edição e não reportou erros.
 ## Referências
 
 - Device MAC confirmado em `.storage/core.config_entries` (entry da
-  integração `samsungtv`, host `192.168.0.203`).
+  integração `samsungtv`, host `IP_DA_TV`).
 - https://www.home-assistant.io/integrations/wake_on_lan/
-- https://community.home-assistant.io/t/samsung-implicit-wake-on-lan-deprecation/985971
+- https://www.home-assistant.io/integrations/samsungtv/
