@@ -25,6 +25,7 @@ function runFunction(id, msg, flowValues = {}) {
       },
     },
     Date,
+    Math,
     Set,
     Array,
     Number,
@@ -55,15 +56,32 @@ assert.deepEqual(node("alarm_arrival_is_armed").rules, [
 assert.deepEqual(node("alarm_arrival_disarm_command_in").wires, [
   ["alarm_set_desired_disarm"],
 ]);
-assert.equal(
-  flows.filter(
-    (item) =>
-      item.z === "alarm_arrival_disarm_tab" &&
-      item.type === "api-call-service",
-  ).length,
-  0,
-  "new tab must reuse the existing guarded retry chain",
+const arrivalActions = flows.filter(
+  (item) =>
+    item.z === "alarm_arrival_disarm_tab" &&
+    item.type === "api-call-service",
 );
+assert.deepEqual(
+  arrivalActions.map((item) => item.id),
+  ["alarm_arrival_notify_confirmation"],
+);
+assert.equal(arrivalActions[0].action, "notify.send_message");
+assert.deepEqual(arrivalActions[0].entityId, [
+  "notify.iphone_de_gabriel_furlan",
+  "notify.iphone_de_valeria",
+]);
+assert.match(arrivalActions[0].data, /confirm_action/);
+assert.match(arrivalActions[0].data, /cancel_action/);
+assert.equal(
+  node("alarm_arrival_confirmation_event").eventType,
+  "mobile_app_notification_action",
+);
+assert.deepEqual(node("alarm_arrival_cooldown").wires, [
+  ["alarm_arrival_notify_confirmation"],
+]);
+assert.deepEqual(node("alarm_arrival_validate_confirmation").wires, [
+  ["alarm_arrival_to_disarm_out"],
+]);
 
 const valid = runFunction("alarm_arrival_validate", {
   payload: {
@@ -92,12 +110,18 @@ const first = runFunction(
   { arrival_source: "gabriel", arrival_stage: "approach" },
   {},
 );
-assert.equal(first.result.alarm_disarm_automatic, true);
+assert.equal(first.result.alarm_disarm_automatic, undefined);
+assert.match(first.result.confirm_action, /^ALARME_DESARMAR_/);
+assert.match(first.result.cancel_action, /^ALARME_MANTER_ARMADO_/);
+assert.ok(first.flowValues.alarm_arrival_last_confirmation_at >= now);
 assert.equal(
-  first.result.alarm_disarm_reason,
-  "chegada_gabriel_approach",
+  first.flowValues.alarm_arrival_pending_confirmation.confirmAction,
+  first.result.confirm_action,
 );
-assert.ok(first.flowValues.alarm_arrival_last_disarm_request_at >= now);
+assert.ok(
+  first.flowValues.alarm_arrival_pending_confirmation.expiresAt >=
+    now + 5 * 60 * 1000 - 100,
+);
 
 const duplicate = runFunction(
   "alarm_arrival_cooldown",
@@ -106,4 +130,65 @@ const duplicate = runFunction(
 );
 assert.equal(duplicate.result, null);
 
-console.log("Automatic alarm disarm-on-arrival flow tests passed.");
+const unrelated = runFunction(
+  "alarm_arrival_validate_confirmation",
+  { payload: { action: "OUTRA_ACAO" } },
+  first.flowValues,
+);
+assert.equal(unrelated.result, null);
+assert.ok(unrelated.flowValues.alarm_arrival_pending_confirmation);
+
+const confirmed = runFunction(
+  "alarm_arrival_validate_confirmation",
+  {
+    payload: {
+      action: first.result.confirm_action,
+      device_id: "telefone_teste",
+    },
+  },
+  first.flowValues,
+);
+assert.equal(confirmed.result.alarm_disarm_automatic, true);
+assert.equal(confirmed.result.alarm_disarm_confirmed, true);
+assert.equal(
+  confirmed.result.alarm_disarm_reason,
+  "chegada_confirmada_gabriel_approach",
+);
+assert.equal(confirmed.result.alarm_disarm_confirmed_by, "telefone_teste");
+assert.equal(confirmed.flowValues.alarm_arrival_pending_confirmation, null);
+
+const cancelledValues = {
+  alarm_arrival_pending_confirmation: {
+    confirmAction: "CONFIRMAR_TESTE",
+    cancelAction: "CANCELAR_TESTE",
+    expiresAt: Date.now() + 60_000,
+    source: "valeria",
+    stage: "home",
+  },
+};
+const cancelled = runFunction(
+  "alarm_arrival_validate_confirmation",
+  { payload: { data: { action: "CANCELAR_TESTE" } } },
+  cancelledValues,
+);
+assert.equal(cancelled.result, null);
+assert.equal(cancelled.flowValues.alarm_arrival_pending_confirmation, null);
+
+const expiredValues = {
+  alarm_arrival_pending_confirmation: {
+    confirmAction: "CONFIRMACAO_EXPIRADA",
+    cancelAction: "CANCELAMENTO_EXPIRADO",
+    expiresAt: Date.now() - 1,
+    source: "creta",
+    stage: "approach",
+  },
+};
+const expired = runFunction(
+  "alarm_arrival_validate_confirmation",
+  { payload: { action: "CONFIRMACAO_EXPIRADA" } },
+  expiredValues,
+);
+assert.equal(expired.result, null);
+assert.equal(expired.flowValues.alarm_arrival_pending_confirmation, null);
+
+console.log("Confirmed alarm disarm-on-arrival flow tests passed.");

@@ -24,6 +24,7 @@ placeholders.
 ## Funcionalidades
 
 - [Iluminação externa no Node-RED](ILUMINACAO_EXTERNA_NODERED.md)
+- [Alarme da casa no Node-RED](ALARME_CASA_NODERED.md)
 - [Iluminação de segurança no Node-RED](ILUMINACAO_SEGURANCA_NODERED.md)
 - [Desarme do alarme na chegada](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Integração Moni Mobile / Intelbras](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
