@@ -155,9 +155,10 @@ ready. Check `docker compose ps` and service logs after startup.
 - [English documentation index](docs/README.en.md)
 - [Installation and restore](docs/INSTALLATION_RESTORE.en.md)
 - [Containers, volumes, ports, and dependencies](docs/CONTAINERS.en.md)
+- [Zigbee network health alerts](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 - [Portuguese feature documentation](docs/README.md)
 
 Brazilian Portuguese is the primary operational language. The repository
-overview, documentation index, container guide, and installation runbook have
-complete English versions; the English index summarizes and routes to the
-feature-specific Portuguese guides.
+overview, documentation index, container guide, installation runbook, and
+features marked as bilingual have complete English versions; the English
+index summarizes and routes to the remaining Portuguese feature guides.

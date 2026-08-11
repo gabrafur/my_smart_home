@@ -164,9 +164,10 @@ serviço.
 - [Bluetooth e Matter](docs/BLUETOOTH_MATTER.md)
 - [Segurança do repositório público](docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Saúde do Raspberry Pi](docs/RASPBERRY_PI_SYSTEM_HEALTH.md)
+- [Alertas de saúde da rede Zigbee](docs/ZIGBEE_HEALTH_NOTIFICATIONS.md)
 - [Bridge de agentes no Home Assistant](docs/CHAT_CLAUDE_CODE_HA.md)
 
-Os guias operacionais detalhados são mantidos em português do Brasil, idioma
-principal da instalação. O README, o índice, o guia de containers e o runbook
-de instalação têm versões completas em inglês. O índice em inglês resume e
-encaminha os documentos de funcionalidades específicas.
+Os guias operacionais detalhados usam português do Brasil como idioma
+principal. O README, o índice, o guia de containers, o runbook de instalação e
+os recursos marcados como bilíngues têm versões completas em inglês. O índice
+em inglês resume e encaminha os demais documentos específicos.

@@ -16,6 +16,7 @@ physical identifiers must appear only as placeholders.
 | [Public-repository security audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publishing, rotation, and Git history | Portuguese detailed record |
 | [Bluetooth and Matter](BLUETOOTH_MATTER.md) | D-Bus, host networking, and commissioning | summarized in [Containers](CONTAINERS.en.md) |
 | [Raspberry Pi health](RASPBERRY_PI_SYSTEM_HEALTH.md) | Host metrics and alerts | Portuguese detailed guide |
+| [Zigbee health alerts](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Bridge and device failure/recovery alerts | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Home Assistant agent bridge](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex in the UI | summarized in [Containers](CONTAINERS.en.md) |
 
 ## Feature guides
@@ -51,8 +52,8 @@ to the current state.
 ## Maintenance policy
 
 - Brazilian Portuguese is the primary language.
-- The README, index, container guide, and installation/restore runbook have
-  complete English versions.
+- The README, index, container guide, installation/restore runbook, and
+  explicitly bilingual features have complete English versions.
 - Port, volume, variable, image, or procedure changes must update both language
   versions in the same change.
 - Examples use placeholders or documentation-reserved addresses, never real

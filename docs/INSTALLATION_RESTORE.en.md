@@ -190,6 +190,20 @@ Changing them can require pairing every device again.
 need a stable address; USB adapters should use `/dev/serial/by-id/...` and a
 Compose `devices:` mapping.
 
+The `zigbee_health_notifications.yaml` package assumes the `zigbee2mqtt` base
+topic and requires availability in the private configuration:
+
+```yaml
+availability:
+  enabled: true
+```
+
+Also confirm `binary_sensor.zigbee2mqtt_bridge_connection_state` and replace
+the package's `notify.*` targets with phones from the new installation. When no
+valid push target exists, persistent notifications still work because push
+uses `continue_on_error`. See the
+[Zigbee health alert guide](ZIGBEE_HEALTH_NOTIFICATIONS.en.md).
+
 ## 9. Node dependencies
 
 ```bash
@@ -271,8 +285,8 @@ docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.S
 Test MQTT without putting a password in shell history; use an interactive
 prompt or a protected file. Confirm that anonymous auth is rejected,
 authenticated publish/subscribe works, Zigbee2MQTT is online, Node-RED requires
-login, HA receives MQTT entities, AppDaemon loads, and the bridge health
-endpoint is loopback-only.
+login, HA receives MQTT entities, Zigbee alerts load without false startup
+recoveries, AppDaemon loads, and the bridge health endpoint is loopback-only.
 
 Automations that move a gate, disarm an alarm, start a vehicle, or cut power
 require a controlled on-site test. Never include physical actuators in a generic

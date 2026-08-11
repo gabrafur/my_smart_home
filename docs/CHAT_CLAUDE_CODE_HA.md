@@ -129,6 +129,34 @@ Isso compartilha o conteúdo e a continuidade das conversas. A interface do
 Codex não importa essas conversas automaticamente para a lista nativa de chats;
 quando solicitado, o agente lê o transcript compartilhado como contexto.
 
+### 2.2. Fila, recuperação e timeout
+
+O bridge serializa requisições que usam o mesmo par `agent:conversation_id`.
+Conversas diferentes continuam em paralelo, mas dois prompts simultâneos na
+mesma conversa não disputam a mesma sessão do CLI.
+
+Antes de iniciar o CLI, o turno é gravado como `pending`. O resultado reutiliza
+o mesmo `id`, e a leitura do histórico mantém apenas a versão mais recente desse
+turno. Em uma execução normal não aparece uma segunda entrada; se um restart
+interromper o CLI, o prompt permanece visível como pendente para diagnóstico.
+
+O limite coordenado é de **15 minutos**:
+
+- o Compose fixa `BRIDGE_TIMEOUT_MS=900000`;
+- o custom component usa `REQUEST_TIMEOUT_SECONDS = 900`;
+- o fallback interno do bridge também é de 15 minutos.
+
+Não configure um valor menor apenas no `.env`: o Compose o ignora de propósito
+para impedir que uma configuração privada antiga restaure o timeout anterior de
+cinco minutos. Para mudar o limite, altere Compose, bridge e custom component na
+mesma revisão.
+
+Ao expirar, o bridge encerra todo o grupo de processos do CLI e descarta a
+sessão persistida daquela conversa, evitando retomar uma execução incompleta.
+Se o Codex reportar conflito de escrita ao retomar uma thread, o bridge remove a
+sessão conflitante e tenta uma vez em uma sessão nova. O prompt e o erro final
+continuam registrados em `.agent-history/turns.jsonl`.
+
 ### 3. Restart do Home Assistant (para carregar o custom_component)
 
 ```bash
