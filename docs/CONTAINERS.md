@@ -36,10 +36,11 @@ Todas as imagens externas, inclusive a base do bridge, usam digest. Tags como
 `scripts/docker-auto-update.mjs`; não são usadas para recriar containers
 diretamente.
 
-O bridge usa Node.js 22 Bookworm Slim e fixa as versões do Claude Code e Codex
-no Dockerfile. Pacotes Debian continuam vindo do repositório oficial durante o
-build, portanto o build é determinístico para as partes críticas, mas não é uma
-reprodução byte a byte de um snapshot APT.
+O bridge usa Node.js 22 Bookworm Slim, inclui Git/SSH para o remoto do
+agendador e fixa as versões do Claude Code e Codex no Dockerfile. Pacotes
+Debian continuam vindo do repositório oficial durante o build, portanto o build
+é determinístico para as partes críticas, mas não é uma reprodução byte a byte
+de um snapshot APT.
 
 ### Estado do Matter
 
