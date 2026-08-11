@@ -36,10 +36,10 @@ Tags such as `stable` and `latest` are used only as channels checked by
 `scripts/docker-auto-update.mjs`; containers are never recreated from a
 mutable tag directly.
 
-The bridge uses Node.js 22 Bookworm Slim and pins the Claude Code and Codex CLI
-versions in its Dockerfile. Debian packages still come from the official APT
-repository during builds, so critical components are pinned but builds are not
-byte-for-byte APT snapshots.
+The bridge uses Node.js 22 Bookworm Slim, includes Git/SSH for the scheduler's
+remote, and pins the Claude Code and Codex CLI versions in its Dockerfile.
+Debian packages still come from the official APT repository during builds, so
+critical components are pinned but builds are not byte-for-byte APT snapshots.
 
 ### Matter status
 
