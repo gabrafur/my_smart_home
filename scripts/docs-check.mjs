@@ -17,6 +17,7 @@ const requiredPairs = [
   ["docs/README.md", "docs/README.en.md"],
   ["docs/CONTAINERS.md", "docs/CONTAINERS.en.md"],
   ["docs/INSTALACAO_RESTAURACAO_SMART_HOME.md", "docs/INSTALLATION_RESTORE.en.md"],
+  ["docs/REVISAO_DOCUMENTACAO_SEMANAL.md", "docs/WEEKLY_DOCUMENTATION_REVIEW.en.md"],
   ["docs/ZIGBEE_HEALTH_NOTIFICATIONS.md", "docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md"],
 ];
 

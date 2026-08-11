@@ -112,7 +112,10 @@ Edite o arquivo e ajuste:
 - `DOCKER_GID`: resultado de `stat -c '%g' /var/run/docker.sock`;
 - `TZ`: fuso IANA;
 - coordenadas do fluxo Node-RED somente se a automação de chegada for usada;
-- tokens do bridge somente se esse recurso for habilitado.
+- tokens do bridge somente se esse recurso for habilitado;
+- para a revisão semanal, `REPO_UID`/`REPO_GID` do proprietário do checkout e
+  os caminhos absolutos de uma chave SSH exclusiva com push restrito ao
+  repositório e de seu `known_hosts`.
 
 Gere o token compartilhado do bridge sem imprimir o `.env` depois:
 
@@ -133,6 +136,11 @@ node scripts/setup-node-red-security.mjs
 O script aceita clone novo: gera `credentialSecret`, hash bcrypt e senha de
 admin se não houver runtime anterior. A senha legível fica somente em
 `.local-secrets/node-red-admin-password.txt`.
+
+Quando os arquivos SSH padrão existem, o mesmo script preenche seus caminhos e
+o UID/GID do checkout sem copiar credenciais para o repositório. Antes de
+ativar o agendador, autentique também o Codex no volume do bridge. O procedimento
+completo está em [Revisão semanal da documentação](REVISAO_DOCUMENTACAO_SEMANAL.md).
 
 ## 6. Home Assistant e AppDaemon
 
@@ -285,6 +293,8 @@ LAN.
 6. Crie o usuário do Portainer ou restaure seu volume.
 7. Configure o bridge apenas se necessário; ele possui acesso ao workspace e
    ao socket Docker e deve ser tratado como serviço administrativo.
+8. Se habilitar a revisão semanal, confirme no log a próxima data e rode o
+   preflight `--check` descrito no guia do agendador.
 
 Algumas entidades referenciadas pelos YAML/flows não existirão em uma casa
 diferente. Desabilite packages e abas não utilizados ou adapte os entity IDs.
@@ -306,7 +316,8 @@ interativo do cliente ou um arquivo protegido. Confirme:
 - editor Node-RED exige login;
 - Home Assistant recebe entidades MQTT;
 - AppDaemon carrega sem erro de segredo;
-- bridge responde a `/health` somente em loopback.
+- bridge responde a `/health` somente em loopback;
+- agendador documental mostra a próxima execução e passa no preflight.
 
 Automação que movimenta portão, desarma alarme, liga veículo ou corta energia
 exige teste controlado presencial. Não use um smoke test genérico para atuadores
@@ -323,6 +334,7 @@ Com os serviços parados ou usando snapshots consistentes, preserve:
 - `zigbee2mqtt/configuration.yaml`, `database.db` e
   `coordinator_backup.json`;
 - `matter-server/` e `portainer/`.
+- credencial SSH exclusiva do agendador, armazenada fora do checkout.
 
 Criptografe antes de enviar para armazenamento externo, teste a restauração e
 guarde a chave fora do Raspberry Pi. Git, mesmo privado, não é local adequado
@@ -370,6 +382,8 @@ Problemas comuns:
 - **Home Assistant pede novo login:** `.storage/auth*` não foi restaurado;
 - **Matter não descobre:** verifique IPv6, mDNS, D-Bus e rede do host;
 - **`vcgencmd` ausente:** adapte o Compose para hardware não Raspberry Pi.
+- **agendador recusou execução:** confirme árvore limpa, branch, autenticação
+  Codex, chave Git com push e UID/GID do checkout.
 
 ## 17. Checklist final
 
@@ -382,3 +396,5 @@ Problemas comuns:
 - segredos e volumes privados continuam ignorados;
 - backup criptografado foi testado;
 - ações físicas críticas foram validadas presencialmente.
+- agendador documental está parado ou tem credenciais restritas e preflight
+  aprovado.

@@ -110,7 +110,9 @@ Edit:
 - `DOCKER_GID`: output of `stat -c '%g' /var/run/docker.sock`;
 - `TZ`: an IANA time zone;
 - arrival-flow coordinates only when that automation is used;
-- bridge tokens only when the feature is enabled.
+- bridge tokens only when the feature is enabled;
+- for the weekly review, the checkout owner's `REPO_UID`/`REPO_GID` and
+  absolute paths to a dedicated repository-scoped push key and `known_hosts`.
 
 Generate the shared bridge token, then paste it into
 `CLAUDE_BRIDGE_TOKEN` without printing `.env` afterward:
@@ -132,6 +134,11 @@ node scripts/setup-node-red-security.mjs
 The script supports a fresh clone: it creates the credential secret, bcrypt
 hash, and admin password when no previous runtime exists. The readable password
 is stored only in `.local-secrets/node-red-admin-password.txt`.
+
+When conventional SSH files exist, the same helper fills their paths and the
+checkout UID/GID without copying credentials into the repository. Authenticate
+Codex in the bridge volume before enabling the scheduler. See the complete
+[weekly documentation review guide](WEEKLY_DOCUMENTATION_REVIEW.en.md).
 
 ## 6. Home Assistant and AppDaemon
 
@@ -271,6 +278,8 @@ access. The bridge stays on loopback even when other services are on the LAN.
 6. Create the Portainer user or restore its volume.
 7. Configure the agent bridge only when needed; it has workspace and Docker
    socket access and is an administrative service.
+8. When enabling the weekly review, confirm its next run in the log and run the
+   scheduler guide's `--check` preflight.
 
 Entities referenced by the supplied YAML/flows may not exist in another home.
 Disable unused packages/tabs or adapt entity IDs.
@@ -287,6 +296,7 @@ prompt or a protected file. Confirm that anonymous auth is rejected,
 authenticated publish/subscribe works, Zigbee2MQTT is online, Node-RED requires
 login, HA receives MQTT entities, Zigbee alerts load without false startup
 recoveries, AppDaemon loads, and the bridge health endpoint is loopback-only.
+The documentation scheduler should report its next run and pass preflight.
 
 Automations that move a gate, disarm an alarm, start a vehicle, or cut power
 require a controlled on-site test. Never include physical actuators in a generic
@@ -298,6 +308,7 @@ With services stopped or using consistent snapshots, preserve `.env`, local
 secrets, Home Assistant `.storage/` and selected databases, Node-RED
 credentials, Mosquitto password/data, Zigbee2MQTT configuration/database/
 coordinator backup, and the Matter and Portainer directories.
+Also preserve the scheduler's dedicated SSH credential outside the checkout.
 
 Encrypt before external storage, test restoration, and keep the key away from
 the Raspberry Pi. Git, even private Git, is not the right storage for this data.
@@ -334,6 +345,8 @@ Common causes:
 - **Home Assistant asks for a new login:** `.storage/auth*` was not restored;
 - **Matter discovery fails:** inspect IPv6, mDNS, D-Bus, and host networking;
 - **`vcgencmd` missing:** adapt Compose for non-Raspberry Pi hardware.
+- **scheduler refuses to run:** check the clean tree, branch, Codex login, Git
+  key push access, and checkout UID/GID.
 
 ## 17. Final checklist
 
@@ -343,3 +356,5 @@ Common causes:
 - anonymous MQTT is disabled;
 - private state remains ignored and has a tested encrypted backup;
 - safety-critical physical actions were validated on site.
+- the documentation scheduler is stopped or uses restricted credentials and
+  has passed preflight.
