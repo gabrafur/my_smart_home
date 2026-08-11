@@ -7,8 +7,8 @@ do alarme. A iluminacao externa permanece no flow `iluminacao_externa`.
 ## Entradas
 
 - O device DuloNode "Alarme Casa" recebe comandos Alexa PowerController
-  ON/OFF. O hub Dulo continua compartilhado na aba de iluminacao e chega aqui
-  por `alarm_dulo_hub_link_out` -> `alarm_dulo_hub_link_in`.
+  ON/OFF. O hub Dulo fica na aba `integracoes_compartilhadas` e chega aqui por
+  `alarm_dulo_hub_link_out` -> `alarm_dulo_hub_link_in`.
 - O evento `node_red_moni_mobile_arm` solicita armamento.
 - `alarm_arrival_disarm_command_in` recebe somente pedidos confirmados pela
   notificacao acionavel do flow `alarme_desarme_chegada`.
@@ -51,6 +51,9 @@ aba de iluminacao.
 - 2026-08-11: o controle foi retirado da antiga aba
   `iluminacao_externa_alarme` e passou para `alarme_casa`. O hub Dulo ficou
   compartilhado por links e cada aba passou a ter seu proprio node de aviso.
+- 2026-08-11: o `DuloNodeHub` foi movido para a aba
+  `integracoes_compartilhadas`, permitindo que qualquer flow o consuma por
+  pares `link out`/`link in` sem acoplamento a uma automacao especifica.
 - 2026-08-02: os guards de `flow.alarm_desired` passaram a impedir que um
   retry antigo reverta o ultimo comando do usuario.
 - 2026-07-09: estados transitorios `unknown`/`unavailable` deixaram de contar

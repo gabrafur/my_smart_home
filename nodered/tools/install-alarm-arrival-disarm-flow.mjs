@@ -5,6 +5,7 @@ const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 
 const SECURITY_TAB_ID = "2fd40fd570e6f37a";
+const SHARED_TAB_ID = "shared_integrations_tab";
 const ALARM_TAB_ID = "alarm_house_tab";
 const NEW_TAB_ID = "alarm_arrival_disarm_tab";
 const HA_SERVER_ID = "4126427d5e161a03";
@@ -41,6 +42,40 @@ function addWire(node, output, targetId) {
   if (!node.wires[output].includes(targetId)) {
     node.wires[output].push(targetId);
   }
+}
+
+function orderFlowsForNodeRed(items) {
+  const preferredTabs = [
+    "29d64664bf8cbde8",
+    SHARED_TAB_ID,
+    "ce258dec9814b96b",
+    SECURITY_TAB_ID,
+    ALARM_TAB_ID,
+    NEW_TAB_ID,
+  ];
+  const tabRank = new Map(preferredTabs.map((id, index) => [id, index]));
+  const tabs = items
+    .filter((item) => item.type === "tab")
+    .sort(
+      (left, right) =>
+        (tabRank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+        (tabRank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+    );
+  const groups = items.filter((item) => item.type === "group");
+  const configs = items.filter(
+    (item) => !item.z && item.type !== "tab" && item.type !== "group",
+  );
+  const tabNodes = tabs.flatMap((tab) =>
+    items.filter((item) => item.z === tab.id && item.type !== "group"),
+  );
+  const included = new Set([...tabs, ...groups, ...configs, ...tabNodes]);
+  return [
+    ...tabs,
+    ...groups,
+    ...configs,
+    ...tabNodes,
+    ...items.filter((item) => !included.has(item)),
+  ];
 }
 
 requireNode(SECURITY_TAB_ID);
@@ -184,7 +219,7 @@ return msg;`,
     checkall: "true",
     repair: false,
     outputs: 1,
-    x: 850,
+    x: 860,
     y: 220,
     wires: [["alarm_arrival_cooldown"]],
   },
@@ -237,7 +272,7 @@ return msg;`,
     initialize: "",
     finalize: "",
     libs: [],
-    x: 1100,
+    x: 1120,
     y: 220,
     wires: [["alarm_arrival_notify_confirmation"]],
   },
@@ -267,7 +302,7 @@ return msg;`,
     blockInputOverrides: true,
     domain: "notify",
     service: "send_message",
-    x: 1380,
+    x: 1450,
     y: 220,
     wires: [[]],
   },
@@ -374,5 +409,5 @@ return msg;`,
   },
 );
 
-fs.writeFileSync(flowsPath, `${JSON.stringify(keptFlows, null, 4)}\n`);
+fs.writeFileSync(flowsPath, JSON.stringify(orderFlowsForNodeRed(keptFlows), null, 4));
 console.log("Installed automatic alarm disarm-on-arrival flow.");
