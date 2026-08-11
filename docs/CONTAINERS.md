@@ -92,11 +92,21 @@ token de agente seja copiado para o ambiente do Node-RED sem necessidade.
 | `DOCKER_GID` | bridge | sim para comandos Docker |
 | `CLAUDE_BRIDGE_TOKEN` | bridge e integração HA | sim para usar o endpoint |
 | `CLAUDE_CODE_OAUTH_TOKEN` | CLI Claude no bridge | opcional se autenticado pelo volume |
-| `BRIDGE_TIMEOUT_MS` | bridge | não; padrão 300000 ms |
 | `HA_LONG_LIVED_TOKEN` | script no host | opcional; prefira arquivo em `.local-secrets/` |
 
 O `ANTHROPIC_API_KEY` é explicitamente esvaziado dentro do bridge para evitar
 que a CLI escolha por acidente a cobrança por API quando a instalação usa OAuth.
+
+O timeout das conversas é de **900 segundos** tanto no bridge quanto no custom
+component do Home Assistant. O Compose fixa `BRIDGE_TIMEOUT_MS=900000` para que
+um valor antigo no `.env` não reintroduza a janela anterior de cinco minutos.
+Se esse limite mudar, atualize os dois lados na mesma alteração.
+
+Requisições da mesma combinação `agent:conversation_id` são serializadas; as
+demais continuam paralelas. O bridge persiste o turno como `pending` antes de
+iniciar o CLI, encerra o grupo inteiro de processos no timeout e recupera um
+conflito de thread do Codex com uma única tentativa em sessão nova. Os detalhes
+estão no [guia do bridge](CHAT_CLAUDE_CODE_HA.md).
 
 ## Dependências entre serviços
 
@@ -143,6 +153,9 @@ docker compose logs --tail=100 portainer claude-bridge
   container.
 - Mosquitto: publicação e assinatura autenticadas em um tópico de teste.
 - Zigbee2MQTT: `zigbee2mqtt/bridge/state` retorna `online`.
+- Alertas Zigbee: disponibilidade está habilitada, a entidade da ponte existe e
+  o ciclo offline/online é validado conforme o
+  [guia específico](ZIGBEE_HEALTH_NOTIFICATIONS.md).
 - Node-RED: editor exige autenticação e os testes de fluxo passam.
 - Matter: integração HA conecta em `ws://127.0.0.1:5580/ws`.
 - AppDaemon: log não contém erro de segredo ou carregamento de app.
@@ -188,3 +201,4 @@ digest pode não funcionar depois que uma aplicação migra seu banco.
 - [Integração Matter do Home Assistant](https://www.home-assistant.io/integrations/matter/)
 - [Python Matter Server em Docker](https://github.com/matter-js/python-matter-server/blob/main/docs/docker.md)
 - [Configuração Zigbee2MQTT](https://www.zigbee2mqtt.io/guide/configuration/)
+- [Disponibilidade de dispositivos Zigbee2MQTT](https://www.zigbee2mqtt.io/guide/configuration/device-availability.html)

@@ -5,7 +5,7 @@ documento registra o que foi removido do rastreamento, o que ainda existe no
 historico do Git, e o que fazer a respeito.
 
 Auditoria original: **2026-08-07**. Revisão da árvore atual e da documentação:
-**2026-08-10**.
+**2026-08-11**.
 
 > As contagens de commits/blobs e os achados da seção 3 são um snapshot da
 > auditoria original, preservado como evidência histórica. Para o estado atual,
@@ -50,10 +50,14 @@ O que importa proteger, em ordem de severidade:
 | MAC da TV em `homeassistant/automations.yaml` | `!secret tv_sala_mac` |
 | `user_id` do HA em `custom_components/claude_code_chat/config_flow.py` | Campo obrigatorio no config flow, sem default |
 | IPs privados e dados de rede na documentação | Placeholders como `IP_DO_HOST` ou endereços reservados para documentação |
+| IP privado no alerta de falha Zigbee | Mensagem agora aponta para `serial.port`, sem publicar o endereço do coordenador |
 
-O comportamento em runtime nao muda: o `check_config` do Home Assistant
-confirma que `!secret` resolve para os mesmos valores, e o fluxo do Node-RED
-foi testado com e sem as variaveis de ambiente (ver secao 5).
+Nas indirections de coordenadas e MAC, o comportamento em runtime nao muda: o
+`check_config` do Home Assistant confirma que `!secret` resolve os valores, e o
+fluxo do Node-RED foi testado com e sem as variaveis de ambiente (ver secao 5).
+Na revisão de 2026-08-11, as recuperações Zigbee passaram a existir somente
+depois da falha correspondente, evitando alertas falsos causados por mensagens
+MQTT retidas durante o startup.
 
 ### Degradacao proposital no Node-RED
 
@@ -177,7 +181,8 @@ force-push nem risco de reconciliacao.
 | Validacao | Resultado |
 | --- | --- |
 | `scripts/security-scan.sh` (arquivos rastreados) | limpo, exit 0 |
-| `scripts/security-scan.sh` com segredos plantados (teste negativo) | detectou AWS, GitHub token, JWT, URL com credencial, MAC, coordenada, segredo atribuido; exit 1 |
+| `scripts/security-scan.sh` com segredos plantados (teste negativo) | detectou AWS, GitHub token, JWT, URL com credencial, MAC, coordenada e segredo atribuido; exit 1 |
+| Regra `ipv4-privado` do scanner | nenhum endereço residencial na árvore atual; exceção restrita à constante vendorizada do LocalTuya |
 | `git ls-files 'homeassistant/.storage/*'` | vazio |
 | `git check-ignore` para `.storage/`, `.ha_ws_token`, `secrets.yaml`, `.env`, `flows_cred.json`, `password.txt`, `coordinator_backup.json`, `portainer/`, `.local-secrets/` | todos ignorados |
 | `git check-ignore` para `.env.example`, `zigbee2mqtt/configuration.example.yaml` | nao ignorados (correto) |

@@ -199,6 +199,21 @@ usado literalmente. Adaptadores de rede precisam de IP/hostname estável;
 adaptadores USB devem preferir `/dev/serial/by-id/...` e um mapping `devices:`
 no Compose.
 
+O package de alertas `zigbee_health_notifications.yaml` assume o base topic
+`zigbee2mqtt` e requer a disponibilidade habilitada no arquivo privado:
+
+```yaml
+availability:
+  enabled: true
+```
+
+Confirme também a entidade
+`binary_sensor.zigbee2mqtt_bridge_connection_state` e substitua os destinos
+`notify.*` do package pelos telefones da nova instalação. Sem destinos válidos,
+as notificações persistentes continuam funcionando porque o push usa
+`continue_on_error`. Veja o guia de
+[alertas de saúde Zigbee](ZIGBEE_HEALTH_NOTIFICATIONS.md).
+
 ## 9. Dependências Node
 
 ```bash
@@ -287,6 +302,7 @@ interativo do cliente ou um arquivo protegido. Confirme:
 - autenticação anônima recusada;
 - publicação e assinatura autenticadas;
 - `zigbee2mqtt/bridge/state` online;
+- alertas Zigbee carregados, sem falsas recuperações no startup;
 - editor Node-RED exige login;
 - Home Assistant recebe entidades MQTT;
 - AppDaemon carrega sem erro de segredo;
