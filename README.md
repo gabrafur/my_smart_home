@@ -36,6 +36,7 @@ flowchart LR
         MAT[Matter Server]
         PT[Portainer]
         BR[Bridge de agentes]
+        DOC[Revisão documental semanal]
     end
 
     ZB <--> Z2M --> MQ <--> HA
@@ -44,6 +45,7 @@ flowchart LR
     HA <--> NR
     HA <--> AD
     BR <--> HA
+    DOC --> GIT[Remoto Git]
 ```
 
 | Serviço | Função | Exposição padrão |
@@ -56,6 +58,7 @@ flowchart LR
 | Matter Server | Controlador Matter legado em container | rede do host; WebSocket em `127.0.0.1:5580` |
 | Portainer | Operação manual dos containers | `${HOST_LAN_IP}:9000` |
 | `claude-bridge` | Claude Code/Codex dentro do HA | somente `127.0.0.1:8099` |
+| `docs-review-scheduler` | revisão e atualização documental semanal | nenhuma porta publicada |
 
 Se `HOST_LAN_IP` não estiver definido, os serviços publicados ficam presos a
 `127.0.0.1`. Não há publicação intencional em `0.0.0.0`.
@@ -101,6 +104,9 @@ cópia preenchida de `zigbee2mqtt/configuration.example.yaml`; e o AppDaemon
 exige `.local-secrets/appdaemon-secrets.yaml`. O procedimento seguro, inclusive para uma
 instalação sem backup anterior, está em
 [INSTALACAO_RESTAURACAO_SMART_HOME.md](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md).
+O agendador documental fica no profile opcional `automation` e só deve ser
+ativado depois do preparo descrito em
+[REVISAO_DOCUMENTACAO_SEMANAL.md](docs/REVISAO_DOCUMENTACAO_SEMANAL.md).
 
 ## Reprodutibilidade e atualização
 
@@ -150,6 +156,7 @@ npm --prefix nodered run flows:test-security
 npm --prefix claude-bridge test
 scripts/security-scan.sh
 node scripts/docs-check.mjs
+node scripts/weekly-docs-review.mjs --self-test
 ```
 
 `depends_on` ordena a criação, mas não confirma que uma dependência está
@@ -166,6 +173,7 @@ serviço.
 - [Saúde do Raspberry Pi](docs/RASPBERRY_PI_SYSTEM_HEALTH.md)
 - [Alertas de saúde da rede Zigbee](docs/ZIGBEE_HEALTH_NOTIFICATIONS.md)
 - [Bridge de agentes no Home Assistant](docs/CHAT_CLAUDE_CODE_HA.md)
+- [Revisão semanal da documentação](docs/REVISAO_DOCUMENTACAO_SEMANAL.md)
 
 Os guias operacionais detalhados usam português do Brasil como idioma
 principal. O README, o índice, o guia de containers, o runbook de instalação e

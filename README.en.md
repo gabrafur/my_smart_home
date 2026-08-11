@@ -36,6 +36,7 @@ flowchart LR
         MAT[Matter Server]
         PT[Portainer]
         BR[Agent bridge]
+        DOC[Weekly documentation review]
     end
 
     ZB <--> Z2M --> MQ <--> HA
@@ -44,6 +45,7 @@ flowchart LR
     HA <--> NR
     HA <--> AD
     BR <--> HA
+    DOC --> GIT[Git remote]
 ```
 
 | Service | Purpose | Default exposure |
@@ -56,6 +58,7 @@ flowchart LR
 | Matter Server | Legacy containerized Matter controller | host network; WebSocket on `127.0.0.1:5580` |
 | Portainer | Manual container operations | `${HOST_LAN_IP}:9000` |
 | `claude-bridge` | Claude Code/Codex from Home Assistant | `127.0.0.1:8099` only |
+| `docs-review-scheduler` | weekly documentation review and updates | no published port |
 
 If `HOST_LAN_IP` is unset, published services bind to `127.0.0.1`. Nothing is
 intentionally published on `0.0.0.0`.
@@ -99,6 +102,9 @@ Mosquitto requires `mosquitto/config/password.txt`; Zigbee2MQTT requires a
 filled copy of `zigbee2mqtt/configuration.example.yaml`; and AppDaemon requires
 `.local-secrets/appdaemon-secrets.yaml`. The safe procedure for both fresh installations and
 restores is in [INSTALLATION_RESTORE.en.md](docs/INSTALLATION_RESTORE.en.md).
+The documentation scheduler belongs to the optional `automation` profile and
+must only be enabled after following
+[WEEKLY_DOCUMENTATION_REVIEW.en.md](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md).
 
 ## Reproducibility and updates
 
@@ -145,6 +151,7 @@ npm --prefix nodered run flows:test-security
 npm --prefix claude-bridge test
 scripts/security-scan.sh
 node scripts/docs-check.mjs
+node scripts/weekly-docs-review.mjs --self-test
 ```
 
 `depends_on` orders container creation; it does not prove that a dependency is
@@ -155,6 +162,7 @@ ready. Check `docker compose ps` and service logs after startup.
 - [English documentation index](docs/README.en.md)
 - [Installation and restore](docs/INSTALLATION_RESTORE.en.md)
 - [Containers, volumes, ports, and dependencies](docs/CONTAINERS.en.md)
+- [Weekly documentation review](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md)
 - [Zigbee network health alerts](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 - [Portuguese feature documentation](docs/README.md)
 

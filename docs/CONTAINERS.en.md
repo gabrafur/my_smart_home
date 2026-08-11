@@ -18,6 +18,7 @@ host requirements, and private files that cannot be inferred from YAML alone.
 | `nodered` | digest-pinned image | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` after credentials are configured |
 | `zigbee2mqtt` | digest-pinned image | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, database, coordinator backup |
 | `claude-bridge` | local build | `127.0.0.1:8099` only | auth volumes and workspace | `.env` bridge token and optional OAuth token |
+| `docs-review-scheduler` | same local bridge build | no published port | workspace and Codex auth volume | narrow-scope SSH key and `known_hosts` outside Git |
 
 Published ports use `HOST_LAN_IP`; when it is absent, they bind to loopback.
 Home Assistant, AppDaemon, and Matter use host networking because they require
@@ -75,8 +76,10 @@ The socket GID differs between hosts. Set `DOCKER_GID` to:
 stat -c '%g' /var/run/docker.sock
 ```
 
-Compose adds that supplementary group to the bridge at runtime instead of
-baking a host-specific GID into the image.
+Compose adds that supplementary group to the bridge at runtime. The scheduler
+does not receive the socket, clears every supplementary group after a short
+bootstrap, and assumes the non-root UID/GID that owns the checkout. No
+host-specific GID is baked into the image.
 
 ## Variables by service
 
@@ -93,6 +96,8 @@ agent token from being copied into Node-RED when Node-RED does not need it.
 | `CLAUDE_BRIDGE_TOKEN` | bridge and HA integration | yes to use the endpoint |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude CLI | optional if auth volume is used |
 | `HA_LONG_LIVED_TOKEN` | host update script | optional; prefer `.local-secrets/` |
+| `WEEKLY_DOCS_REVIEW_*` | documentation scheduler | time/branch have defaults; SSH paths are required |
+| `REPO_UID`, `REPO_GID` | documentation scheduler | yes; non-root checkout owner |
 
 `ANTHROPIC_API_KEY` is explicitly blanked inside the bridge so the CLI cannot
 accidentally choose API billing when OAuth is intended.
@@ -119,6 +124,7 @@ flowchart TD
     HA --> NR
     HA --> AD[appdaemon]
     HA --> BR[claude-bridge / integration]
+    SCH[docs-review-scheduler] --> GIT[Git remote]
 ```
 
 `depends_on` is not a health check. Home Assistant and Node-RED may need extra
@@ -134,6 +140,10 @@ docker compose build --pull claude-bridge
 docker compose up -d
 docker compose ps
 ```
+
+The default `up -d` does not include `docs-review-scheduler`, which belongs to
+the optional `automation` profile. Enable it only after preparing credentials
+as described in the [weekly review guide](WEEKLY_DOCUMENTATION_REVIEW.en.md).
 
 The bridge build needs internet access for APT and npm. Pulling needs Docker Hub
 and GHCR. On ARM64 and AMD64, manifest digests resolve the matching platform.
@@ -159,6 +169,9 @@ docker compose logs --tail=100 portainer claude-bridge
 - AppDaemon: logs show no secret or app-loading errors.
 - Portainer: onboarding or restored state is available only on LAN/VPN.
 - Bridge: loopback `GET /health` and one authenticated test request.
+- Scheduler: logs show the next run and `--check` verifies a clean tree, branch,
+  and remote authentication; see the
+  [weekly review guide](WEEKLY_DOCUMENTATION_REVIEW.en.md).
 
 ## Backup and restore
 
@@ -172,6 +185,7 @@ Git covers configuration, not runtime state. Privately and securely back up:
   `coordinator_backup.json`;
 - `.local-secrets/appdaemon-secrets.yaml`;
 - the `matter-server/` and `portainer/` directories.
+- the scheduler's dedicated SSH credential, stored outside the checkout.
 
 Do not commit that backup, even encrypted, without an explicit key-management
 and retention policy.
@@ -200,3 +214,4 @@ image digest may fail after an application migrates its database.
 - [Python Matter Server in Docker](https://github.com/matter-js/python-matter-server/blob/main/docs/docker.md)
 - [Zigbee2MQTT configuration](https://www.zigbee2mqtt.io/guide/configuration/)
 - [Zigbee2MQTT device availability](https://www.zigbee2mqtt.io/guide/configuration/device-availability.html)
+- [Codex Scheduled tasks](https://learn.chatgpt.com/docs/automations)

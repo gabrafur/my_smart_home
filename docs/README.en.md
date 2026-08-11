@@ -13,6 +13,7 @@ physical identifiers must appear only as placeholders.
 | --- | --- | --- |
 | [Installation and restore](INSTALLATION_RESTORE.en.md) | Fresh clones, recovery, and host migration | [Português](INSTALACAO_RESTAURACAO_SMART_HOME.md) |
 | [Containers](CONTAINERS.en.md) | Images, ports, volumes, dependencies, and operations | [Português](CONTAINERS.md) |
+| [Weekly documentation review](WEEKLY_DOCUMENTATION_REVIEW.en.md) | Schedule, scope, credentials, and recovery | [Português](REVISAO_DOCUMENTACAO_SEMANAL.md) |
 | [Public-repository security audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publishing, rotation, and Git history | Portuguese detailed record |
 | [Bluetooth and Matter](BLUETOOTH_MATTER.md) | D-Bus, host networking, and commissioning | summarized in [Containers](CONTAINERS.en.md) |
 | [Raspberry Pi health](RASPBERRY_PI_SYSTEM_HEALTH.md) | Host metrics and alerts | Portuguese detailed guide |
@@ -52,7 +53,7 @@ to the current state.
 ## Maintenance policy
 
 - Brazilian Portuguese is the primary language.
-- The README, index, container guide, installation/restore runbook, and
+- The README, index, container guide, installation/restore runbook, weekly review, and
   explicitly bilingual features have complete English versions.
 - Port, volume, variable, image, or procedure changes must update both language
   versions in the same change.

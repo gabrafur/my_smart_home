@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
@@ -77,13 +78,29 @@ const socketGid = fs.existsSync("/var/run/docker.sock")
 if (!entries.get("DOCKER_GID") || entries.get("DOCKER_GID") === "999") {
     entries.set("DOCKER_GID", socketGid);
 }
+const repoStat = fs.statSync(repoRoot);
+entries.set("REPO_UID", String(repoStat.uid));
+entries.set("REPO_GID", String(repoStat.gid));
+const defaultSshKey = path.join(os.homedir(), ".ssh", "id_ed25519");
+const defaultKnownHosts = path.join(os.homedir(), ".ssh", "known_hosts");
+if (!entries.get("WEEKLY_DOCS_REVIEW_SSH_KEY") && fs.existsSync(defaultSshKey)) {
+    entries.set("WEEKLY_DOCS_REVIEW_SSH_KEY", defaultSshKey);
+}
+if (!entries.get("WEEKLY_DOCS_REVIEW_KNOWN_HOSTS") && fs.existsSync(defaultKnownHosts)) {
+    entries.set("WEEKLY_DOCS_REVIEW_KNOWN_HOSTS", defaultKnownHosts);
+}
 entries.set(
     "NODE_RED_CREDENTIAL_SECRET",
     isPlaceholder(entries.get("NODE_RED_CREDENTIAL_SECRET"))
         ? readCredentialSecret()
         : entries.get("NODE_RED_CREDENTIAL_SECRET"),
 );
-entries.set("NODE_RED_ADMIN_PASSWORD_HASH", bcryptHash(password));
+entries.set(
+    "NODE_RED_ADMIN_PASSWORD_HASH",
+    isPlaceholder(entries.get("NODE_RED_ADMIN_PASSWORD_HASH"))
+        ? bcryptHash(password)
+        : entries.get("NODE_RED_ADMIN_PASSWORD_HASH"),
+);
 
 fs.mkdirSync(secretsDir, { recursive: true, mode: 0o700 });
 fs.writeFileSync(envPath, stringifyEnv(entries), { mode: 0o600 });

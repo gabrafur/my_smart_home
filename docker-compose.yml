@@ -150,6 +150,34 @@ services:
       retries: 3
       start_period: 10s
 
+  docs-review-scheduler:
+    # Separate process, same pinned agent toolchain. It has no published port
+    # and runs Codex only at the configured weekly UTC window.
+    build:
+      context: ./claude-bridge
+    container_name: docs-review-scheduler
+    profiles: ["automation"]
+    restart: always
+    user: "0:0"
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - codex-bridge-auth:/scheduler-auth/codex:ro
+      - ${WEEKLY_DOCS_REVIEW_SSH_KEY:-/dev/null}:/scheduler-auth/id_ed25519:ro
+      - ${WEEKLY_DOCS_REVIEW_KNOWN_HOSTS:-/dev/null}:/scheduler-auth/known_hosts:ro
+    environment:
+      - TZ=${TZ:-America/Sao_Paulo}
+      - WEEKLY_DOCS_REVIEW_DAY_UTC=${WEEKLY_DOCS_REVIEW_DAY_UTC:-1}
+      - WEEKLY_DOCS_REVIEW_HOUR_UTC=${WEEKLY_DOCS_REVIEW_HOUR_UTC:-6}
+      - WEEKLY_DOCS_REVIEW_MINUTE_UTC=${WEEKLY_DOCS_REVIEW_MINUTE_UTC:-0}
+      - WEEKLY_DOCS_REVIEW_BRANCH=${WEEKLY_DOCS_REVIEW_BRANCH:-main}
+      - WEEKLY_DOCS_REVIEW_REMOTE=${WEEKLY_DOCS_REVIEW_REMOTE:-origin}
+      - WEEKLY_DOCS_REVIEW_TIMEOUT_MS=${WEEKLY_DOCS_REVIEW_TIMEOUT_MS:-10800000}
+      - REPO_UID=${REPO_UID:-1000}
+      - REPO_GID=${REPO_GID:-1000}
+    entrypoint: ["/bin/sh", "/workspace/scripts/weekly-docs-review-entrypoint.sh"]
+    command: ["node", "scripts/weekly-docs-review.mjs"]
+
 volumes:
   claude-bridge-auth:
   codex-bridge-auth:

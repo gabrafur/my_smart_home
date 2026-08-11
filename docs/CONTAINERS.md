@@ -18,6 +18,7 @@ pré-requisitos e arquivos privados que não podem ser deduzidos apenas do YAML.
 | `nodered` | imagem por digest | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` quando houver credenciais já configuradas |
 | `zigbee2mqtt` | imagem por digest | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, banco e backup do coordenador |
 | `claude-bridge` | build local | somente `127.0.0.1:8099` | volumes de autenticação e workspace | `.env` com token do bridge e, opcionalmente, OAuth |
+| `docs-review-scheduler` | mesmo build local do bridge | nenhuma porta publicada | workspace e volume de autenticação Codex | chave SSH de escopo restrito e `known_hosts` fora do Git |
 
 As portas publicadas usam `HOST_LAN_IP`. A ausência da variável faz o bind em
 loopback. Home Assistant, AppDaemon e Matter usam rede do host porque dependem
@@ -75,8 +76,9 @@ O GID do socket varia por host. Preencha `DOCKER_GID` com:
 stat -c '%g' /var/run/docker.sock
 ```
 
-O Compose adiciona esse grupo ao processo do bridge em runtime, sem gravar um
-GID específico na imagem.
+O Compose adiciona esse grupo ao bridge em runtime. O agendador não recebe o
+socket, descarta todos os grupos suplementares após um bootstrap curto e assume
+o UID/GID não-root que possui o checkout. Nenhum GID fica gravado na imagem.
 
 ## Variáveis por serviço
 
@@ -93,6 +95,8 @@ token de agente seja copiado para o ambiente do Node-RED sem necessidade.
 | `CLAUDE_BRIDGE_TOKEN` | bridge e integração HA | sim para usar o endpoint |
 | `CLAUDE_CODE_OAUTH_TOKEN` | CLI Claude no bridge | opcional se autenticado pelo volume |
 | `HA_LONG_LIVED_TOKEN` | script no host | opcional; prefira arquivo em `.local-secrets/` |
+| `WEEKLY_DOCS_REVIEW_*` | agendador documental | horário/branch têm padrão; caminhos SSH são obrigatórios |
+| `REPO_UID`, `REPO_GID` | agendador documental | sim; proprietário não-root do checkout |
 
 O `ANTHROPIC_API_KEY` é explicitamente esvaziado dentro do bridge para evitar
 que a CLI escolha por acidente a cobrança por API quando a instalação usa OAuth.
@@ -119,6 +123,7 @@ flowchart TD
     HA --> NR
     HA --> AD[appdaemon]
     HA --> BR[claude-bridge / integração]
+    SCH[docs-review-scheduler] --> GIT[remoto Git]
 ```
 
 `depends_on` não é health check. Após `docker compose up -d`, Home Assistant e
@@ -134,6 +139,10 @@ docker compose build --pull claude-bridge
 docker compose up -d
 docker compose ps
 ```
+
+O `up -d` padrão não inclui `docs-review-scheduler`, que pertence ao profile
+opcional `automation`. Ative-o somente após preparar suas credenciais conforme
+o [guia da revisão semanal](REVISAO_DOCUMENTACAO_SEMANAL.md).
 
 O build do bridge precisa de internet para APT e npm. O pull precisa alcançar
 Docker Hub e GHCR. Em ARM64 e AMD64, o digest de manifesto resolve a variante
@@ -161,6 +170,9 @@ docker compose logs --tail=100 portainer claude-bridge
 - AppDaemon: log não contém erro de segredo ou carregamento de app.
 - Portainer: onboarding ou estado restaurado aparece somente na LAN/VPN.
 - Bridge: `GET /health` em loopback e uma chamada autenticada de teste.
+- Agendador: log mostra a próxima execução e `--check` confirma árvore limpa,
+  branch e autenticação remota; veja a
+  [revisão semanal](REVISAO_DOCUMENTACAO_SEMANAL.md).
 
 ## Backup e restauração
 
@@ -174,6 +186,7 @@ O Git cobre configuração, não estado. Faça backup privado e criptografado de
   `coordinator_backup.json`;
 - `.local-secrets/appdaemon-secrets.yaml`;
 - diretórios `matter-server/` e `portainer/`.
+- credencial SSH exclusiva do agendador, armazenada fora do checkout.
 
 Não coloque esse arquivo de backup no repositório, mesmo criptografado, sem uma
 política explícita de chaves e retenção.
@@ -202,3 +215,4 @@ digest pode não funcionar depois que uma aplicação migra seu banco.
 - [Python Matter Server em Docker](https://github.com/matter-js/python-matter-server/blob/main/docs/docker.md)
 - [Configuração Zigbee2MQTT](https://www.zigbee2mqtt.io/guide/configuration/)
 - [Disponibilidade de dispositivos Zigbee2MQTT](https://www.zigbee2mqtt.io/guide/configuration/device-availability.html)
+- [Scheduled tasks do Codex](https://learn.chatgpt.com/docs/automations)

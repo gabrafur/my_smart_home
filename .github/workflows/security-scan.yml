@@ -91,7 +91,10 @@ jobs:
           rm -f .env
 
       - name: Validar documentacao
-        run: node scripts/docs-check.mjs
+        run: |
+          node scripts/docs-check.mjs
+          node scripts/weekly-docs-review.mjs --self-test
+          sh -n scripts/weekly-docs-review-entrypoint.sh
 
       - name: Validar fluxos Node-RED
         run: |

@@ -14,6 +14,7 @@ placeholders.
 | --- | --- | --- |
 | [Instalação e restauração](INSTALACAO_RESTAURACAO_SMART_HOME.md) | Clone novo, recuperação ou migração de host | [English](INSTALLATION_RESTORE.en.md) |
 | [Containers](CONTAINERS.md) | Imagens, portas, volumes, dependências e operação | [English](CONTAINERS.en.md) |
+| [Revisão semanal da documentação](REVISAO_DOCUMENTACAO_SEMANAL.md) | Agendamento, escopo, credenciais e recuperação | [English](WEEKLY_DOCUMENTATION_REVIEW.en.md) |
 | [Auditoria de segurança](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publicação, rotação e histórico Git | resumo no [índice em inglês](README.en.md) |
 | [Bluetooth e Matter](BLUETOOTH_MATTER.md) | D-Bus, rede do host e comissionamento | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
 | [Saúde do Raspberry Pi](RASPBERRY_PI_SYSTEM_HEALTH.md) | Métricas e alertas do host | resumo no [índice em inglês](README.en.md) |
@@ -44,7 +45,7 @@ deve marcá-lo explicitamente como histórico e apontar para o estado atual.
 ## Política de manutenção
 
 - Português do Brasil é o idioma principal.
-- README, índice, containers, instalação/restauração e recursos marcados como
+- README, índice, containers, instalação/restauração, revisão semanal e recursos marcados como
   bilíngues têm versão completa em inglês.
 - Mudanças de porta, volume, variável, imagem ou procedimento devem atualizar
   as duas versões do guia correspondente na mesma alteração.
