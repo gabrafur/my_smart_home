@@ -1,124 +1,74 @@
 # Iluminacao externa (Node-RED)
 
-Flow `iluminacao_externa` (`nodered/flows.json`, tab `ce258dec9814b96b`).
+Flow `iluminacao_externa` (`nodered/flows.json`, tab
+`ce258dec9814b96b`). O controle do alarme foi separado para o flow
+`alarme_casa`; esta aba contem apenas o controle das luzes e a reacao ao evento
+"alarme armado".
 
 ## Objetivo
 
 Controlar `switch.lampada_varanda`, `switch.lampadas_garagem` e
-`switch.refletores_jardim` por comando manual, por do sol, e desligar tudo
-automaticamente quando o alarme (`alarm_control_panel.alarme_moni_mobile`,
-integracao `moni_mobile`) e armado. O mesmo flow tambem expoe o device
-"Alarme Casa" (armar/desarmar) para Alexa via `node-red-contrib-dulonode`.
+`switch.refletores_jardim` por comando manual ou por do sol, desligando tudo
+quando o flow `alarme_casa` informa um armamento real.
 
-## Entidades usadas
+## Entradas e conexoes entre flows
 
-- `switch.lampada_varanda`, `switch.lampadas_garagem`, `switch.refletores_jardim`
-- `sun.sun` (por do sol)
-- `alarm_control_panel.alarme_moni_mobile`
+- O `DuloNodeHub` fica na aba `integracoes_compartilhadas`, independente dos
+  flows consumidores.
+- `light_dulo_hub_link_out` -> `light_dulo_hub_link_in` encaminha as mensagens
+  do hub ao device "Iluminacao Externa" nesta aba.
+- `alarm_dulo_hub_link_out` -> `alarm_dulo_hub_link_in` encaminha as mensagens
+  do mesmo hub ao device "Alarme Casa", na aba `alarme_casa`. O DuloNode
+  reconhece oficialmente esse caminho por `link out`/`link in`, portanto nao e
+  necessario duplicar o hub.
+- `ext_alarm_armed_lighting_in` recebe de `alarm_armed_lighting_out` somente
+  uma mudanca real para `armed_away` e aciona `Definir OFF ao armar`.
 
 ## Logica
 
-1. Comando manual (device DuloNode) ou por do sol define ON/OFF e alimenta
-   `Distribuir para tópicos Zigbee2MQTT` (publica nos 3 topicos MQTT) e o
-   caminho de confirmacao (`Aguardar confirmação das luzes` -> `Confirmar
-   estados no Home Assistant` -> `Montar aviso confirmado` -> `Avisar Alexa`).
-2. `Alarme armado` (`server-state-changed`, `ifState: armed_away`,
-   `outputOnlyOnStateChange: false`) dispara sempre que o estado atual da
-   entidade do alarme e `armed_away` — inclusive em atualizacoes de poll sem
-   mudanca real, porque a integracao `moni_mobile` usa polling
-   (`_attr_should_poll = True`).
-3. `Somente se alarme mudou` (function) filtra esses disparos para so deixar
-   passar quando o alarme realmente mudou de estado, comparando
-   `old_state`/`new_state` do evento (com fallback em cache no flow context,
-   chave `last_alarm_state:<entity_id>`, para quando o evento nao traz
-   `old_state`).
-4. Se passou pelo filtro, `Definir OFF ao armar` forca as 3 lampadas para
-   `OFF` e ajusta o texto do aviso.
-5. O caminho de confirmacao aguarda alguns segundos, confere o estado real
-   das 3 entidades no Home Assistant e so entao chama `Avisar Alexa`
-   (`notify.alexa_media_echo_dot_de_gabriel`) com o resultado (sucesso ou
-   lista do que falhou).
+1. Um comando manual ON/OFF ou o evento de por do sol prepara o payload para
+   os tres topicos Zigbee2MQTT.
+2. O por do sol so prossegue quando
+   `alarm_control_panel.alarme_moni_mobile` esta `disarmed`; assim ele nao
+   religa as luzes depois que a casa foi armada.
+3. `Bloquear se rede Zigbee offline` consulta o estado mantido a partir de
+   `zigbee2mqtt/bridge/state` e da conexao do broker MQTT. Se a bridge ou o
+   broker estiver offline, nenhum comando e publicado, nenhuma repeticao e
+   criada e a Alexa informa a falha.
+4. Quando a rede esta disponivel, `Distribuir para topicos Zigbee2MQTT`
+   publica em:
+   - `zigbee2mqtt/lampada_varanda/set`;
+   - `zigbee2mqtt/lampadas_garagem/set`;
+   - `zigbee2mqtt/refletores_jardim/set`.
+5. `Confirmar somente o comando mais recente` aguarda cinco segundos. Um novo
+   comando cancela a confirmacao anterior para impedir avisos obsoletos.
+6. `Confirmar estados no Home Assistant` le as tres entidades. Estados
+   `unknown` ou `unavailable` sao tratados como falha de comunicacao Zigbee;
+   a Alexa informa quais pontos ficaram indisponiveis e o comando nao e
+   repetido. Divergencias ON/OFF tambem sao anunciadas sem retry.
 
-## Armar/Desarmar Alarme (device "Alarme Casa")
+## Avisos
 
-O device DuloNode "Alarme Casa" (`de18d31309e8a0ca`) recebe comandos
-Alexa PowerController ON/OFF e chama `alarm_control_panel.alarm_arm_away`
-(node `Armar Alarme`, `70eb073f8191e69e`) ou `alarm_control_panel.alarm_disarm`
-(node `Desarmar Alarme`, `8261c7cfb6756ca8`) na entidade
-`alarm_control_panel.alarme_moni_mobile`.
-
-- **Retry ate conseguir**, para armar e para desarmar: a integracao
-  `moni_mobile` fala com um servidor TCP proprietario remoto que
-  frequentemente falha o handshake/confirmacao (`HomeAssistantError:
-  Servidor Moni Mobile nao confirmou o arme/desarme`, etc.).
-  - Armar: `arm_alarm_catch` -> `arm_alarm_retry_decision` ->
-    `arm_alarm_retry_delay` -> volta para `Armar Alarme`.
-  - Desarmar: `disarm_alarm_catch` -> `disarm_alarm_retry_decision` ->
-    `disarm_alarm_retry_delay` -> volta para `Desarmar Alarme`.
-  - Ambos os `catch` sao escopados so ao node correspondente, esperam
-    ~10-15s (com jitter) e tentam de novo, indefinidamente, ate a chamada
-    ter sucesso. Avisam no Alexa (via `Avisar Alexa`) na primeira falha e
-    depois a cada 5 tentativas, para nao spammar mas manter o usuario
-    informado que o alarme ainda nao foi armado/desarmado.
-  - **Guard de estado desejado** (contra retry obsoleto): todo comando
-    inicial passa antes por um `change` que grava `flow.alarm_desired`
-    (`alarm_set_desired_arm` = `"arm"`, `alarm_set_desired_disarm` =
-    `"disarm"`) — tanto o switch do device quanto os injects manuais. Cada
-    `..._retry_delay`, ao reentrar, passa por um `function` guard
-    (`alarm_guard_arm` / `alarm_guard_disarm`) que so deixa a rechamada seguir
-    se `flow.alarm_desired` ainda for a acao daquele loop; caso contrario
-    aborta (retorna `null`, com `node.warn` + status). Sem isso, com o device
-    offline os loops de armar e desarmar rodavam sem coordenacao: se o usuario
-    armasse (loop de retry iniciado) e depois desarmasse com sucesso, um retry
-    de armar pendente podia **re-armar por cima** do desarme. O guard fica so
-    no caminho de retry (nao no comando inicial), entao o setter sempre reflete
-    a ultima intencao real do usuario.
-- **Aviso de sucesso**: tanto `Armar Alarme` quanto `Desarmar Alarme`, ao
-  terminar com sucesso, seguem para um node `change` que define
-  `notify_text` ("Alarme armado com sucesso." / "Alarme desarmado com
-  sucesso.") e chama `Avisar Alexa`.
+Os avisos desta aba usam o node `Avisar Alexa`
+(`notify.alexa_media_echo_dot_de_gabriel`). O flow `alarme_casa` possui um
+node de aviso proprio, evitando fios diretos entre abas.
 
 ## Historico relevante
 
-- 2026-08-02: adicionado o guard de estado desejado (nodes
-  `alarm_set_desired_*` e `alarm_guard_*`, ver secao "Armar/Desarmar
-  Alarme"). Antes, com o device
-  offline, loops de retry de armar e desarmar concorriam sem coordenacao e um
-  retry obsoleto podia reverter o ultimo comando do usuario (ex.: re-armar
-  apos um desarme bem-sucedido). Agora cada rechamada de retry so prossegue se
-  ainda condizer com `flow.alarm_desired`.
+- 2026-08-11: o flow foi separado de `alarme_casa`; a comunicacao entre as
+  abas passou a usar links explicitos.
+- 2026-08-11: adicionados bloqueio por bridge/broker Zigbee offline, aviso da
+  Alexa sem retry, confirmacao apenas do comando mais recente e verificacao de
+  que o alarme esta desarmado antes de ligar no por do sol.
 
-- 2026-07-09: a entidade `moni_mobile` por vezes reporta `unknown` por
-  alguns segundos durante o processo de armar (glitch de parsing do
-  protocolo TCP proprietario, ver
-  [INTEGRACAO_MONI_MOBILE_INTELBRAS.md](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)).
-  Isso criava uma sequencia real `disarmed -> unknown -> armed_away`; a
-  transicao `unknown -> armed_away` era tratada como mudanca genuina pelo
-  filtro antigo e reenviava o aviso "luzes desligadas" no Alexa mais de uma
-  vez por armamento. Corrigido em `Somente se alarme mudou`: estados
-  `unknown`/`unavailable` agora sao ignorados (nao repassam mensagem, nao
-  atualizam o cache), e quando o `old_state` do proprio evento e `unknown`,
-  a comparacao usa o ultimo estado real salvo no flow context em vez do
-  glitch. Assim `armed_away -> unknown -> armed_away` nao dispara um segundo
-  aviso.
+## Testes e manutencao
 
-- 2026-07-09: `Armar Alarme` falhava com frequencia
-  (`HomeAssistantError: Servidor Moni Mobile nao confirmou o arme`) sem
-  nenhuma tentativa automatica de repeticao, deixando a casa sem alarme
-  armado ate alguem notar e tentar de novo manualmente. Adicionado retry
-  indefinido (`arm_alarm_catch`/`arm_alarm_retry_decision`/
-  `arm_alarm_retry_delay`, ver secao acima) e avisos no Alexa de
-  sucesso/falha para `Armar Alarme` e `Desarmar Alarme`. Testado ao vivo:
-  injecao manual disparou `Armar Alarme` e a entidade confirmou
-  `armed_away` na primeira tentativa.
+```bash
+cd nodered
+npm run flows:validate
+npm run flows:test-external-lighting
+npm run flows:test-alarm-house
+```
 
-- 2026-07-10: mesmo retry indefinido aplicado a `Desarmar Alarme`
-  (`disarm_alarm_catch`/`disarm_alarm_retry_decision`/
-  `disarm_alarm_retry_delay`), espelhando a logica de `Armar Alarme`, ja
-  que o mesmo servidor `moni_mobile` falha o handshake tanto ao armar
-  quanto ao desarmar.
-
-## Manutencao
-
-Sempre que este flow for alterado (logica de confirmacao, filtro do alarme,
-entidades envolvidas), atualizar esta doc na mesma mudanca.
+Depois de alterar `flows.json`, faca Deploy no editor ou reinicie o container
+Node-RED de forma segura.
