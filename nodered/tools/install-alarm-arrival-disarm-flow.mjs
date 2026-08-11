@@ -5,7 +5,7 @@ const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 
 const SECURITY_TAB_ID = "2fd40fd570e6f37a";
-const ALARM_TAB_ID = "ce258dec9814b96b";
+const ALARM_TAB_ID = "alarm_house_tab";
 const NEW_TAB_ID = "alarm_arrival_disarm_tab";
 const HA_SERVER_ID = "4126427d5e161a03";
 const ARRIVAL_DETECTOR_ID = "sec_detect_arriving_source";
@@ -20,6 +20,9 @@ const managedIds = new Set([
   "alarm_arrival_read_state",
   "alarm_arrival_is_armed",
   "alarm_arrival_cooldown",
+  "alarm_arrival_notify_confirmation",
+  "alarm_arrival_confirmation_event",
+  "alarm_arrival_validate_confirmation",
   "alarm_arrival_to_disarm_out",
   "alarm_arrival_disarm_command_in",
 ]);
@@ -58,7 +61,7 @@ keptFlows.push(
     type: "tab",
     label: "alarme_desarme_chegada",
     disabled: false,
-    info: "Desarma o alarme quando Gabriel, Valéria ou o Creta estão chegando em casa.",
+    info: "Solicita confirmação por notificação acionável antes de desarmar o alarme quando Gabriel, Valéria ou o Creta estão chegando.",
     env: [],
   },
   {
@@ -86,8 +89,8 @@ keptFlows.push(
     id: "alarm_arrival_comment",
     type: "comment",
     z: NEW_TAB_ID,
-    name: "Gabriel / Valéria / Creta chegando -> se armado, reutiliza o desarme com retry",
-    info: "A chegada vem do fluxo iluminacao_seguranca, que valida zona, direção da travessia, distância, precisão do GPS e trackers congelados.",
+    name: "Chegada real -> notificação -> confirmação -> desarme com retry",
+    info: "A chegada vem do fluxo iluminacao_seguranca, que valida zona, direção da travessia, distância, precisão do GPS e trackers congelados. O desarme só é solicitado depois de uma ação válida na notificação do Home Assistant.",
     x: 420,
     y: 120,
     wires: [],
@@ -189,23 +192,44 @@ return msg;`,
     id: "alarm_arrival_cooldown",
     type: "function",
     z: NEW_TAB_ID,
-    name: "Evitar pedidos duplicados (60 s)",
+    name: "Preparar confirmação (5 min)",
     func: `const COOLDOWN_MS = 60 * 1000;
-const LAST_REQUEST_KEY = "alarm_arrival_last_disarm_request_at";
+const CONFIRMATION_TTL_MS = 5 * 60 * 1000;
+const LAST_REQUEST_KEY = "alarm_arrival_last_confirmation_at";
+const PENDING_KEY = "alarm_arrival_pending_confirmation";
 const now = Date.now();
 const lastRequest = Number(flow.get(LAST_REQUEST_KEY) || 0);
+const pending = flow.get(PENDING_KEY);
 
 // Gabriel/Valeria e Creta podem cruzar o anel quase juntos. Um unico pedido
-// basta: a cadeia compartilhada continuara tentando ate o alarme confirmar.
-if (now - lastRequest < COOLDOWN_MS) {
-    node.status({ fill: "grey", shape: "ring", text: "duplicado bloqueado" });
+// de confirmação basta. A primeira resposta válida encerra a solicitação.
+if (pending?.expiresAt > now || now - lastRequest < COOLDOWN_MS) {
+    node.status({ fill: "grey", shape: "ring", text: "confirmação já pendente" });
     return null;
 }
 
+if (pending) {
+    flow.set(PENDING_KEY, null);
+}
+
+const token = (now.toString(36) + "_" + Math.random().toString(36).slice(2, 10)).toUpperCase();
+const confirmAction = "ALARME_DESARMAR_" + token;
+const cancelAction = "ALARME_MANTER_ARMADO_" + token;
+const labels = { gabriel: "Gabriel", valeria: "Valéria", creta: "Creta" };
+
+flow.set(PENDING_KEY, {
+    confirmAction,
+    cancelAction,
+    expiresAt: now + CONFIRMATION_TTL_MS,
+    source: msg.arrival_source,
+    stage: msg.arrival_stage
+});
 flow.set(LAST_REQUEST_KEY, now);
-msg.alarm_disarm_automatic = true;
-msg.alarm_disarm_reason = \`chegada_\${msg.arrival_source}_\${msg.arrival_stage}\`;
-node.status({ fill: "green", shape: "dot", text: msg.alarm_disarm_reason });
+msg.confirm_action = confirmAction;
+msg.cancel_action = cancelAction;
+msg.notification_title = "Confirmar desarme do alarme";
+msg.notification_message = (labels[msg.arrival_source] || msg.arrival_source) + " está chegando. Deseja desarmar o alarme da casa?";
+node.status({ fill: "yellow", shape: "dot", text: "aguardando confirmação" });
 return msg;`,
     outputs: 1,
     timeout: 0,
@@ -215,17 +239,127 @@ return msg;`,
     libs: [],
     x: 1100,
     y: 220,
+    wires: [["alarm_arrival_notify_confirmation"]],
+  },
+  {
+    id: "alarm_arrival_notify_confirmation",
+    type: "api-call-service",
+    z: NEW_TAB_ID,
+    name: "Pedir confirmação no Home Assistant",
+    server: HA_SERVER_ID,
+    version: 7,
+    debugenabled: false,
+    action: "notify.send_message",
+    floorId: [],
+    areaId: [],
+    deviceId: [],
+    entityId: [
+      "notify.iphone_de_gabriel_furlan",
+      "notify.iphone_de_valeria",
+    ],
+    labelId: [],
+    data: `{"title": notification_title, "message": notification_message, "data": {"tag": "alarm_arrival_confirmation", "actions": [{"action": confirm_action, "title": "Desarmar"}, {"action": cancel_action, "title": "Manter armado"}]}}`,
+    dataType: "jsonata",
+    mergeContext: "",
+    mustacheAltTags: false,
+    outputProperties: [],
+    queue: "none",
+    blockInputOverrides: true,
+    domain: "notify",
+    service: "send_message",
+    x: 1380,
+    y: 220,
+    wires: [[]],
+  },
+  {
+    id: "alarm_arrival_confirmation_event",
+    type: "server-events",
+    z: NEW_TAB_ID,
+    name: "Resposta da notificação",
+    server: HA_SERVER_ID,
+    version: 3,
+    exposeAsEntityConfig: "",
+    eventType: "mobile_app_notification_action",
+    eventData: "",
+    waitForRunning: true,
+    outputProperties: [
+      {
+        property: "payload",
+        propertyType: "msg",
+        value: "",
+        valueType: "eventData",
+      },
+    ],
+    x: 250,
+    y: 420,
+    wires: [["alarm_arrival_validate_confirmation"]],
+  },
+  {
+    id: "alarm_arrival_validate_confirmation",
+    type: "function",
+    z: NEW_TAB_ID,
+    name: "Validar confirmação pendente",
+    func: `const PENDING_KEY = "alarm_arrival_pending_confirmation";
+const pending = flow.get(PENDING_KEY);
+const candidates = [
+    msg.payload?.event?.data,
+    msg.payload?.data,
+    msg.payload,
+    msg.data?.event?.data,
+    msg.data?.data,
+    msg.data
+];
+const eventData = candidates.find(value => value && typeof value === "object" && value.action);
+const action = eventData?.action;
+
+if (!pending || !action) {
+    return null;
+}
+
+if (Date.now() > Number(pending.expiresAt || 0)) {
+    flow.set(PENDING_KEY, null);
+    node.status({ fill: "grey", shape: "ring", text: "confirmação expirada" });
+    return null;
+}
+
+if (action === pending.cancelAction) {
+    flow.set(PENDING_KEY, null);
+    node.status({ fill: "blue", shape: "ring", text: "alarme mantido armado" });
+    return null;
+}
+
+if (action !== pending.confirmAction) {
+    return null;
+}
+
+flow.set(PENDING_KEY, null);
+msg.arrival_source = pending.source;
+msg.arrival_stage = pending.stage;
+msg.alarm_disarm_automatic = true;
+msg.alarm_disarm_confirmed = true;
+msg.alarm_disarm_reason = "chegada_confirmada_" + pending.source + "_" + pending.stage;
+msg.alarm_disarm_confirmed_by = eventData.device_id || "home_assistant";
+node.status({ fill: "green", shape: "dot", text: "desarme confirmado" });
+return msg;`,
+    outputs: 1,
+    timeout: 0,
+    noerr: 0,
+    initialize: "",
+    finalize: "",
+    libs: [],
+    x: 520,
+    y: 420,
     wires: [["alarm_arrival_to_disarm_out"]],
   },
   {
     id: "alarm_arrival_to_disarm_out",
     type: "link out",
     z: NEW_TAB_ID,
-    name: "Pedir desarme com retry",
+    name: "Desarmar após confirmação",
     mode: "link",
     links: ["alarm_arrival_disarm_command_in"],
-    x: 1325,
-    y: 220,
+    x: 785,
+    y: 420,
     wires: [],
   },
   {

@@ -6,7 +6,10 @@
     "scripts": {
         "flows:backup": "node tools/backup-flows.mjs",
         "flows:install-alarm-arrival": "node tools/install-alarm-arrival-disarm-flow.mjs",
+        "flows:split-alarm-house": "node tools/split-alarm-house-flow.mjs",
         "flows:test-alarm-arrival": "node tools/test-alarm-arrival-disarm-flow.mjs",
+        "flows:test-alarm-house": "node tools/test-alarm-house-flow.mjs",
+        "flows:test-external-lighting": "node tools/test-external-lighting-alarm-flow.mjs",
         "flows:test-security": "node tools/test-security-light-flow.mjs",
         "flows:validate": "node tools/validate-flows.mjs",
         "flows:summary": "node tools/summarize-flows.mjs"
