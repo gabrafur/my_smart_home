@@ -78,8 +78,9 @@ stat -c '%g' /var/run/docker.sock
 
 Compose adds that supplementary group to the bridge at runtime. The scheduler
 does not receive the socket, clears every supplementary group after a short
-bootstrap, and assumes the non-root UID/GID that owns the checkout. No
-host-specific GID is baked into the image.
+bootstrap, and assumes the non-root UID/GID that owns the checkout. When
+needed, it creates a local no-login identity so OpenSSH can resolve that UID.
+No host-specific GID is baked into the image.
 
 ## Variables by service
 

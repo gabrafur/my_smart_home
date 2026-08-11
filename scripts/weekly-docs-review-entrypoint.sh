@@ -19,6 +19,15 @@ if [ "$repo_uid" -eq 0 ] || [ "$repo_gid" -eq 0 ]; then
   exit 1
 fi
 
+if ! getent group "$repo_gid" >/dev/null; then
+  groupadd --gid "$repo_gid" docs-review-runtime
+fi
+if ! getent passwd "$repo_uid" >/dev/null; then
+  useradd --uid "$repo_uid" --gid "$repo_gid" \
+    --home-dir "$runtime_home" --no-create-home \
+    --shell /usr/sbin/nologin docs-review-runtime
+fi
+
 if [ ! -s "$source_codex_dir/auth.json" ]; then
   echo "Codex auth volume is missing auth.json; authenticate claude-bridge first" >&2
   exit 1
