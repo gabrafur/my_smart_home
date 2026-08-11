@@ -133,7 +133,9 @@ services:
       - TZ=${TZ:-America/Sao_Paulo}
       - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN:-}
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
-      - BRIDGE_TIMEOUT_MS=${BRIDGE_TIMEOUT_MS:-300000}
+      # Keep this explicit: an older value in the private .env must not reduce
+      # the request window and reintroduce five-minute chat timeouts.
+      - BRIDGE_TIMEOUT_MS=900000
       # Auth comes from the CLAUDE_CODE_OAUTH_TOKEN in .env (generated once via
       # `claude setup-token`, tied to the subscription plan), not API-key
       # billing - unset any ANTHROPIC_API_KEY inherited from .env so the CLI

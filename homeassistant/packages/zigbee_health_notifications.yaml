@@ -1,0 +1,141 @@
+# Alertas globais da rede Zigbee. A notificacao persistente aparece para todos
+# os usuarios do Home Assistant; os dois aplicativos cadastrados tambem recebem
+# push. Os topicos com curinga incluem automaticamente novos dispositivos Z2M.
+
+automation:
+  - id: zigbee_network_failure_notification
+    alias: Zigbee - falha da rede
+    description: Alerta quando o Zigbee2MQTT perde a antena ou fica offline.
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.zigbee2mqtt_bridge_connection_state
+        to: "off"
+        for:
+          seconds: 30
+      - trigger: state
+        entity_id: binary_sensor.zigbee2mqtt_bridge_connection_state
+        to: "unavailable"
+        for:
+          seconds: 30
+      - trigger: homeassistant
+        event: start
+    actions:
+      - delay:
+          seconds: "{{ 30 if trigger.platform == 'homeassistant' else 0 }}"
+      - condition: template
+        value_template: >-
+          {{ states('binary_sensor.zigbee2mqtt_bridge_connection_state')
+             in ['off', 'unavailable', 'unknown'] }}
+      - variables:
+          message: >-
+            A rede Zigbee esta indisponivel. O Zigbee2MQTT perdeu a conexao com
+            a antena/coordenador ou parou de funcionar. Os dispositivos Zigbee
+            podem nao responder. Verifique a energia e a rede da antena SLZB em
+            192.168.0.197. Detectado em {{ now().strftime('%d/%m/%Y %H:%M:%S') }}.
+      - action: persistent_notification.create
+        data:
+          title: "Falha na rede Zigbee"
+          message: "{{ message }}"
+          notification_id: zigbee_network_failure
+      - action: notify.send_message
+        continue_on_error: true
+        target:
+          entity_id:
+            - notify.iphone_de_gabriel_furlan
+            - notify.iphone_de_valeria
+        data:
+          title: "Falha na rede Zigbee"
+          message: "{{ message }}"
+
+  - id: zigbee_network_recovery_notification
+    alias: Zigbee - rede recuperada
+    description: Informa quando a ponte Zigbee volta a operar.
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.zigbee2mqtt_bridge_connection_state
+        to: "on"
+        for:
+          minutes: 1
+    actions:
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: zigbee_network_failure
+      - variables:
+          message: >-
+            A rede Zigbee voltou a funcionar e permaneceu conectada por 1 minuto.
+            Recuperada em {{ now().strftime('%d/%m/%Y %H:%M:%S') }}.
+      - action: persistent_notification.create
+        data:
+          title: "Rede Zigbee recuperada"
+          message: "{{ message }}"
+          notification_id: zigbee_network_recovered
+      - action: notify.send_message
+        continue_on_error: true
+        target:
+          entity_id:
+            - notify.iphone_de_gabriel_furlan
+            - notify.iphone_de_valeria
+        data:
+          title: "Rede Zigbee recuperada"
+          message: "{{ message }}"
+
+  - id: zigbee_component_failure_notification
+    alias: Zigbee - componente indisponivel
+    description: Alerta sobre qualquer dispositivo Zigbee2MQTT que ficar offline.
+    mode: queued
+    max: 20
+    triggers:
+      - trigger: mqtt
+        topic: zigbee2mqtt/+/availability
+        payload: "offline"
+        value_template: "{{ value_json.state | default(value) }}"
+    actions:
+      - variables:
+          component: "{{ trigger.topic.split('/')[1] }}"
+          notification_key: "{{ component | slugify }}"
+          message: >-
+            O componente Zigbee "{{ component }}" ficou indisponivel em
+            {{ now().strftime('%d/%m/%Y %H:%M:%S') }}. Verifique alimentacao,
+            alcance, bateria e a malha Zigbee.
+      - action: persistent_notification.create
+        data:
+          title: "Componente Zigbee indisponivel"
+          message: "{{ message }}"
+          notification_id: "zigbee_component_{{ notification_key }}"
+      - action: notify.send_message
+        continue_on_error: true
+        target:
+          entity_id:
+            - notify.iphone_de_gabriel_furlan
+            - notify.iphone_de_valeria
+        data:
+          title: "Componente Zigbee indisponivel"
+          message: "{{ message }}"
+
+  - id: zigbee_component_recovery_notification
+    alias: Zigbee - componente recuperado
+    description: Remove o alerta individual quando o dispositivo volta online.
+    mode: queued
+    max: 20
+    triggers:
+      - trigger: mqtt
+        topic: zigbee2mqtt/+/availability
+        payload: "online"
+        value_template: "{{ value_json.state | default(value) }}"
+    actions:
+      - variables:
+          component: "{{ trigger.topic.split('/')[1] }}"
+          notification_key: "{{ component | slugify }}"
+          message: >-
+            O componente Zigbee "{{ component }}" voltou a ficar disponivel em
+            {{ now().strftime('%d/%m/%Y %H:%M:%S') }}.
+      - action: persistent_notification.dismiss
+        data:
+          notification_id: "zigbee_component_{{ notification_key }}"
+      - action: persistent_notification.create
+        data:
+          title: "Componente Zigbee recuperado"
+          message: "{{ message }}"
+          notification_id: "zigbee_component_recovered_{{ notification_key }}"
