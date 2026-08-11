@@ -8,11 +8,19 @@
         "env": []
     },
     {
+        "id": "shared_integrations_tab",
+        "type": "tab",
+        "label": "integracoes_compartilhadas",
+        "disabled": false,
+        "info": "Hospeda hubs e integrações reutilizados por vários flows. Os consumidores devem ser conectados por link out/link in.",
+        "env": []
+    },
+    {
         "id": "ce258dec9814b96b",
         "type": "tab",
         "label": "iluminacao_externa",
         "disabled": false,
-        "info": "Controla a iluminação externa e reage ao evento de alarme armado recebido da aba alarme_casa."
+        "info": "Controla a iluminação externa, recebe o hub Dulo compartilhado por link e reage ao evento de alarme armado recebido da aba alarme_casa."
     },
     {
         "id": "2fd40fd570e6f37a",
@@ -20,6 +28,22 @@
         "label": "iluminacao_seguranca",
         "disabled": false,
         "info": "",
+        "env": []
+    },
+    {
+        "id": "alarm_house_tab",
+        "type": "tab",
+        "label": "alarme_casa",
+        "disabled": false,
+        "info": "Arma/desarma o alarme Moni Mobile, controla retries e publica o evento de alarme armado para outros flows.",
+        "env": []
+    },
+    {
+        "id": "alarm_arrival_disarm_tab",
+        "type": "tab",
+        "label": "alarme_desarme_chegada",
+        "disabled": false,
+        "info": "Solicita confirmação por notificação acionável antes de desarmar o alarme quando Gabriel, Valéria ou o Creta estão chegando.",
         "env": []
     },
     {
@@ -477,46 +501,45 @@
         ]
     },
     {
-        "id": "moni_mobile_arm_event",
-        "type": "server-events",
-        "z": "alarm_house_tab",
-        "name": "Rotina Moni Mobile Acionar Alarme",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "exposeAsEntityConfig": "",
-        "eventType": "node_red_moni_mobile_arm",
-        "eventData": "",
-        "waitForRunning": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "eventData"
-            }
-        ],
-        "x": 330,
-        "y": 220,
+        "id": "70e147e6b7df9826",
+        "type": "DuloNodeHub",
+        "z": "shared_integrations_tab",
+        "name": "",
+        "installation": "standalone",
+        "x": 250,
+        "y": 120,
         "wires": [
             [
-                "alarm_set_desired_arm"
+                "light_dulo_hub_link_out",
+                "alarm_dulo_hub_link_out"
             ]
         ]
     },
     {
-        "id": "70e147e6b7df9826",
-        "type": "DuloNodeHub",
-        "z": "ce258dec9814b96b",
-        "name": "",
-        "installation": "standalone",
-        "x": 80,
-        "y": 300,
-        "wires": [
-            [
-                "2dd5071569184cb4",
-                "alarm_dulo_hub_link_out"
-            ]
-        ]
+        "id": "alarm_dulo_hub_link_out",
+        "type": "link out",
+        "z": "shared_integrations_tab",
+        "name": "Hub Dulo -> Alarme Casa",
+        "mode": "link",
+        "links": [
+            "alarm_dulo_hub_link_in"
+        ],
+        "x": 555,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "light_dulo_hub_link_out",
+        "type": "link out",
+        "z": "shared_integrations_tab",
+        "name": "Hub Dulo -> Iluminação Externa",
+        "mode": "link",
+        "links": [
+            "light_dulo_hub_link_in"
+        ],
+        "x": 555,
+        "y": 100,
+        "wires": []
     },
     {
         "id": "2dd5071569184cb4",
@@ -524,8 +547,8 @@
         "z": "ce258dec9814b96b",
         "name": "Iluminação Externa",
         "deviceType": "light",
-        "x": 370,
-        "y": 100,
+        "x": 350,
+        "y": 60,
         "wires": [
             [
                 "1002cd64ca2b5824"
@@ -545,7 +568,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 190,
+        "x": 140,
         "y": 200,
         "wires": [
             [
@@ -633,8 +656,8 @@
         "ignoreCurrentStateUnknown": false,
         "ignoreCurrentStateUnavailable": false,
         "outputProperties": [],
-        "x": 660,
-        "y": 220,
+        "x": 240,
+        "y": 360,
         "wires": [
             [
                 "ext_sunset_alarm_check"
@@ -665,8 +688,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 850,
-        "y": 220,
+        "x": 490,
+        "y": 280,
         "wires": [
             [
                 "943c87e6b17f0d68"
@@ -816,8 +839,8 @@
                 "tot": "str"
             }
         ],
-        "x": 870,
-        "y": 300,
+        "x": 880,
+        "y": 360,
         "wires": [
             [
                 "ext_zigbee_command_gate"
@@ -866,7 +889,7 @@
                 "tot": "str"
             }
         ],
-        "x": 860,
+        "x": 800,
         "y": 220,
         "wires": [
             [
@@ -911,8 +934,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1190,
-        "y": 100,
+        "x": 1470,
+        "y": 80,
         "wires": [
             [
                 "205cde805aa5e22c"
@@ -948,8 +971,8 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "alexa_media_echo_dot_de_gabriel",
-        "x": 2030,
-        "y": 360,
+        "x": 2050,
+        "y": 220,
         "wires": [
             []
         ]
@@ -962,8 +985,8 @@
         "scope": [
             "ext_zigbee_bridge_state_in"
         ],
-        "x": 190,
-        "y": 240,
+        "x": 160,
+        "y": 280,
         "wires": [
             [
                 "ext_zigbee_bridge_state_store"
@@ -984,8 +1007,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1460,
-        "y": 40,
+        "x": 1740,
+        "y": 20,
         "wires": []
     },
     {
@@ -1002,8 +1025,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1470,
-        "y": 100,
+        "x": 1750,
+        "y": 80,
         "wires": []
     },
     {
@@ -1020,8 +1043,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1460,
-        "y": 160,
+        "x": 1740,
+        "y": 140,
         "wires": []
     },
     {
@@ -1036,8 +1059,8 @@
         "initialize": "",
         "finalize": "const timer = context.get('confirmationTimer');\nif (timer) {\n    clearTimeout(timer);\n}\ncontext.set('confirmationTimer', null);",
         "libs": [],
-        "x": 1230,
-        "y": 260,
+        "x": 1450,
+        "y": 380,
         "wires": [
             [
                 "ext_check_states"
@@ -1074,8 +1097,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1530,
-        "y": 260,
+        "x": 1810,
+        "y": 380,
         "wires": [
             [
                 "ext_build_alexa_message"
@@ -1099,403 +1122,6 @@
         "wires": [
             [
                 "9d81b75a18d482f1"
-            ]
-        ]
-    },
-    {
-        "id": "alarm_real_change_filter",
-        "type": "function",
-        "z": "alarm_house_tab",
-        "name": "Somente se alarme mudou",
-        "func": "const getState = (value) => {\n    if (value === undefined || value === null) return undefined;\n    if (typeof value === \"string\") return value;\n    if (typeof value === \"object\" && value.state !== undefined) return value.state;\n    return undefined;\n};\n\n// \"unknown\"/\"unavailable\" sao glitches momentaneos da integracao moni_mobile\n// (falha de parsing no protocolo TCP) e nao devem contar como estado real,\n// nem entrar no historico usado para detectar mudanca.\nconst isUnknown = (state) =>\n    state === undefined ||\n    state === null ||\n    state === \"\" ||\n    state === \"unknown\" ||\n    state === \"unavailable\";\n\nconst data = msg.data?.event ?? msg.data ?? {};\n\nconst oldStateRaw =\n    getState(data.old_state) ??\n    getState(msg.old_state);\n\nconst newState =\n    getState(data.new_state) ??\n    getState(msg.new_state) ??\n    getState(msg.payload);\n\nconst entityId =\n    data.entity_id ??\n    msg.topic ??\n    \"alarm_control_panel.alarme_moni_mobile\";\n\nconst cacheKey = `last_alarm_state:${entityId}`;\n\nif (!newState) {\n    node.status({\n        fill: \"red\",\n        shape: \"ring\",\n        text: \"sem estado novo\"\n    });\n    return null;\n}\n\nif (isUnknown(newState)) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `ignorado: ${newState}`\n    });\n    return null;\n}\n\n// Se o old_state vindo do evento for \"unknown\", usa o ultimo estado real\n// salvo no flow context em vez de tratar o glitch como estado anterior.\nconst lastState = !isUnknown(oldStateRaw) ? oldStateRaw : flow.get(cacheKey);\n\nflow.set(cacheKey, newState);\n\nif (lastState === newState) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `bloqueado: ${lastState} -> ${newState}`\n    });\n    return null;\n}\n\nmsg.previous_alarm_state = lastState ?? \"desconhecido\";\nmsg.current_alarm_state = newState;\nmsg.alarm_state_changed = true;\n\nnode.status({\n    fill: \"green\",\n    shape: \"dot\",\n    text: `${lastState ?? \"?\"} -> ${newState}`\n});\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 590,
-        "y": 780,
-        "wires": [
-            [
-                "alarm_armed_lighting_out"
-            ]
-        ]
-    },
-    {
-        "id": "de18d31309e8a0ca",
-        "type": "DuloNodeDevice",
-        "z": "alarm_house_tab",
-        "name": "Alarme Casa",
-        "deviceType": "switch",
-        "x": 320,
-        "y": 100,
-        "wires": [
-            [
-                "922ddf470a08d43f"
-            ]
-        ]
-    },
-    {
-        "id": "922ddf470a08d43f",
-        "type": "switch",
-        "z": "alarm_house_tab",
-        "name": "Comando manual ON/OFF",
-        "property": "payload.components.PowerController.powerState",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "ON",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "OFF",
-                "vt": "str"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 560,
-        "y": 100,
-        "wires": [
-            [
-                "alarm_set_desired_arm"
-            ],
-            [
-                "alarm_set_desired_disarm"
-            ]
-        ]
-    },
-    {
-        "id": "70eb073f8191e69e",
-        "type": "api-call-service",
-        "z": "alarm_house_tab",
-        "name": "Armar Alarme",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": true,
-        "action": "alarm_control_panel.alarm_arm_away",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "alarm_control_panel.alarme_moni_mobile"
-        ],
-        "labelId": [],
-        "data": "{\"code\":\"0011\"}",
-        "dataType": "json",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "alarm_control_panel",
-        "service": "alarm_arm_away",
-        "x": 910,
-        "y": 200,
-        "wires": [
-            [
-                "arm_alarm_notify_success"
-            ]
-        ]
-    },
-    {
-        "id": "8261c7cfb6756ca8",
-        "type": "api-call-service",
-        "z": "alarm_house_tab",
-        "name": "Desarmar Alarme",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": true,
-        "action": "alarm_control_panel.alarm_disarm",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "alarm_control_panel.alarme_moni_mobile"
-        ],
-        "labelId": [],
-        "data": "{\"code\":\"0011\"}",
-        "dataType": "json",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "alarm_control_panel",
-        "service": "alarm_disarm",
-        "x": 700,
-        "y": 500,
-        "wires": [
-            [
-                "disarm_alarm_notify_success"
-            ]
-        ]
-    },
-    {
-        "id": "arm_alarm_catch",
-        "type": "catch",
-        "z": "alarm_house_tab",
-        "name": "erro ao armar alarme",
-        "scope": [
-            "70eb073f8191e69e"
-        ],
-        "uncaught": false,
-        "x": 650,
-        "y": 300,
-        "wires": [
-            [
-                "arm_alarm_retry_decision"
-            ]
-        ]
-    },
-    {
-        "id": "arm_alarm_retry_decision",
-        "type": "function",
-        "z": "alarm_house_tab",
-        "name": "tentar novamente ate conseguir",
-        "func": "const attempt = Number(msg.arm_alarm_retry_count || 0) + 1;\nmsg.arm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao armar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'Não foi possível armar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando armar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 940,
-        "y": 300,
-        "wires": [
-            [
-                "arm_alarm_retry_delay"
-            ],
-            [
-                "alarm_notify_alexa"
-            ]
-        ]
-    },
-    {
-        "id": "arm_alarm_retry_delay",
-        "type": "delay",
-        "z": "alarm_house_tab",
-        "name": "aguardar antes de tentar novamente",
-        "pauseType": "delay",
-        "timeout": "10",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 1210,
-        "y": 340,
-        "wires": [
-            [
-                "alarm_guard_arm"
-            ]
-        ]
-    },
-    {
-        "id": "e380ce19c7f96420",
-        "type": "server-state-changed",
-        "z": "alarm_house_tab",
-        "name": "Alarme armado",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 2,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "alarm_control_panel.alarme_moni_mobile"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "armed_away",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": false,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": false,
-        "ignoreCurrentStateUnavailable": false,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "entityState"
-            },
-            {
-                "property": "data",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "eventData"
-            },
-            {
-                "property": "topic",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "triggerId"
-            }
-        ],
-        "x": 320,
-        "y": 780,
-        "wires": [
-            [
-                "alarm_real_change_filter"
-            ],
-            []
-        ]
-    },
-    {
-        "id": "arm_alarm_notify_success",
-        "type": "change",
-        "z": "alarm_house_tab",
-        "name": "Definir aviso alarme armado",
-        "rules": [
-            {
-                "t": "set",
-                "p": "notify_text",
-                "pt": "msg",
-                "to": "Alarme armado com sucesso.",
-                "tot": "str"
-            }
-        ],
-        "x": 1160,
-        "y": 200,
-        "wires": [
-            [
-                "moni_mobile_update_after_arm"
-            ]
-        ]
-    },
-    {
-        "id": "moni_mobile_update_after_arm",
-        "type": "api-call-service",
-        "z": "alarm_house_tab",
-        "name": "Atualizar estado Moni Mobile",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "homeassistant.update_entity",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"entity_id\":[\"alarm_control_panel.alarme_moni_mobile\"]}",
-        "dataType": "json",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "homeassistant",
-        "service": "update_entity",
-        "x": 1450,
-        "y": 200,
-        "wires": [
-            [
-                "alarm_notify_alexa"
-            ]
-        ]
-    },
-    {
-        "id": "disarm_alarm_notify_success",
-        "type": "change",
-        "z": "alarm_house_tab",
-        "name": "Definir aviso alarme desarmado",
-        "rules": [
-            {
-                "t": "set",
-                "p": "notify_text",
-                "pt": "msg",
-                "to": "Alarme desarmado com sucesso.",
-                "tot": "str"
-            }
-        ],
-        "x": 960,
-        "y": 500,
-        "wires": [
-            [
-                "alarm_notify_alexa"
-            ]
-        ]
-    },
-    {
-        "id": "disarm_alarm_catch",
-        "type": "catch",
-        "z": "alarm_house_tab",
-        "name": "erro ao desarmar alarme",
-        "scope": [
-            "8261c7cfb6756ca8"
-        ],
-        "uncaught": false,
-        "x": 430,
-        "y": 600,
-        "wires": [
-            [
-                "disarm_alarm_retry_decision"
-            ]
-        ]
-    },
-    {
-        "id": "disarm_alarm_retry_decision",
-        "type": "function",
-        "z": "alarm_house_tab",
-        "name": "tentar novamente ate conseguir",
-        "func": "const attempt = Number(msg.disarm_alarm_retry_count || 0) + 1;\nmsg.disarm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao desarmar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'Não foi possível desarmar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando desarmar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 720,
-        "y": 600,
-        "wires": [
-            [
-                "disarm_alarm_retry_delay"
-            ],
-            [
-                "alarm_notify_alexa"
-            ]
-        ]
-    },
-    {
-        "id": "disarm_alarm_retry_delay",
-        "type": "delay",
-        "z": "alarm_house_tab",
-        "name": "aguardar antes de tentar novamente",
-        "pauseType": "delay",
-        "timeout": "10",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 990,
-        "y": 660,
-        "wires": [
-            [
-                "alarm_guard_disarm"
             ]
         ]
     },
@@ -1529,64 +1155,6 @@
         ]
     },
     {
-        "id": "4043829dac0a9fee",
-        "type": "inject",
-        "z": "alarm_house_tab",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 330,
-        "y": 280,
-        "wires": [
-            [
-                "alarm_set_desired_arm"
-            ]
-        ]
-    },
-    {
-        "id": "0543222ad4ed094d",
-        "type": "inject",
-        "z": "alarm_house_tab",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 130,
-        "y": 560,
-        "wires": [
-            [
-                "alarm_set_desired_disarm"
-            ]
-        ]
-    },
-    {
         "id": "2d743b91576b7e80",
         "type": "inject",
         "z": "ce258dec9814b96b",
@@ -1616,96 +1184,34 @@
         ]
     },
     {
-        "id": "alarm_set_desired_arm",
-        "type": "change",
-        "z": "alarm_house_tab",
-        "name": "marcar desejado: armar",
-        "rules": [
-            {
-                "t": "set",
-                "p": "alarm_desired",
-                "pt": "flow",
-                "to": "arm",
-                "tot": "str"
-            }
+        "id": "light_dulo_hub_link_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "name": "Hub Dulo compartilhado",
+        "links": [
+            "light_dulo_hub_link_out"
         ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 650,
-        "y": 200,
+        "x": 155,
+        "y": 100,
         "wires": [
             [
-                "70eb073f8191e69e"
+                "2dd5071569184cb4"
             ]
         ]
     },
     {
-        "id": "alarm_set_desired_disarm",
-        "type": "change",
-        "z": "alarm_house_tab",
-        "name": "marcar desejado: desarmar",
-        "rules": [
-            {
-                "t": "set",
-                "p": "alarm_desired",
-                "pt": "flow",
-                "to": "disarm",
-                "tot": "str"
-            }
+        "id": "ext_alarm_armed_lighting_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "name": "Alarme armado",
+        "links": [
+            "alarm_armed_lighting_out"
         ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 430,
-        "y": 500,
+        "x": 655,
+        "y": 300,
         "wires": [
             [
-                "8261c7cfb6756ca8"
-            ]
-        ]
-    },
-    {
-        "id": "alarm_guard_arm",
-        "type": "function",
-        "z": "alarm_house_tab",
-        "name": "ainda quer armar?",
-        "func": "const desired = flow.get(\"alarm_desired\");\n// Aborta a tentativa de armar se o comando mais recente ja foi desarmar,\n// evitando que um loop de retry (device offline) re-arme por cima de um\n// desarme bem-sucedido feito nesse meio tempo.\nif (desired !== \"arm\") {\n    node.status({ fill: \"blue\", shape: \"ring\", text: `retry armar cancelado (desejado: ${desired || \"?\"})` });\n    node.warn(\"Retry de ARMAR cancelado: comando mais recente foi desarmar.\");\n    return null;\n}\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1460,
-        "y": 340,
-        "wires": [
-            [
-                "70eb073f8191e69e"
-            ]
-        ]
-    },
-    {
-        "id": "alarm_guard_disarm",
-        "type": "function",
-        "z": "alarm_house_tab",
-        "name": "ainda quer desarmar?",
-        "func": "const desired = flow.get(\"alarm_desired\");\n// Espelho de alarm_guard_arm: aborta o retry de desarmar se o comando\n// mais recente ja foi armar.\nif (desired !== \"disarm\") {\n    node.status({ fill: \"blue\", shape: \"ring\", text: `retry desarmar cancelado (desejado: ${desired || \"?\"})` });\n    node.warn(\"Retry de DESARMAR cancelado: comando mais recente foi armar.\");\n    return null;\n}\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1260,
-        "y": 660,
-        "wires": [
-            [
-                "8261c7cfb6756ca8"
+                "ext_alarm_armed_off"
             ]
         ]
     },
@@ -2867,25 +2373,593 @@
         ]
     },
     {
-        "id": "alarm_house_tab",
-        "type": "tab",
-        "label": "alarme_casa",
-        "disabled": false,
-        "info": "Arma/desarma o alarme Moni Mobile, controla retries e publica o evento de alarme armado para outros flows.",
-        "env": []
-    },
-    {
-        "id": "alarm_dulo_hub_link_out",
+        "id": "sec_arrival_disarm_out",
         "type": "link out",
-        "z": "ce258dec9814b96b",
-        "name": "Hub Dulo -> Alarme Casa",
+        "z": "2fd40fd570e6f37a",
+        "name": "Chegada real -> desarme automatico",
         "mode": "link",
         "links": [
-            "alarm_dulo_hub_link_in"
+            "alarm_arrival_in"
         ],
-        "x": 165,
-        "y": 340,
+        "x": 1375,
+        "y": 360,
         "wires": []
+    },
+    {
+        "id": "moni_mobile_arm_event",
+        "type": "server-events",
+        "z": "alarm_house_tab",
+        "name": "Rotina Moni Mobile Acionar Alarme",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "exposeAsEntityConfig": "",
+        "eventType": "node_red_moni_mobile_arm",
+        "eventData": "",
+        "waitForRunning": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 330,
+        "y": 220,
+        "wires": [
+            [
+                "alarm_set_desired_arm"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_real_change_filter",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "name": "Somente se alarme mudou",
+        "func": "const getState = (value) => {\n    if (value === undefined || value === null) return undefined;\n    if (typeof value === \"string\") return value;\n    if (typeof value === \"object\" && value.state !== undefined) return value.state;\n    return undefined;\n};\n\n// \"unknown\"/\"unavailable\" sao glitches momentaneos da integracao moni_mobile\n// (falha de parsing no protocolo TCP) e nao devem contar como estado real,\n// nem entrar no historico usado para detectar mudanca.\nconst isUnknown = (state) =>\n    state === undefined ||\n    state === null ||\n    state === \"\" ||\n    state === \"unknown\" ||\n    state === \"unavailable\";\n\nconst data = msg.data?.event ?? msg.data ?? {};\n\nconst oldStateRaw =\n    getState(data.old_state) ??\n    getState(msg.old_state);\n\nconst newState =\n    getState(data.new_state) ??\n    getState(msg.new_state) ??\n    getState(msg.payload);\n\nconst entityId =\n    data.entity_id ??\n    msg.topic ??\n    \"alarm_control_panel.alarme_moni_mobile\";\n\nconst cacheKey = `last_alarm_state:${entityId}`;\n\nif (!newState) {\n    node.status({\n        fill: \"red\",\n        shape: \"ring\",\n        text: \"sem estado novo\"\n    });\n    return null;\n}\n\nif (isUnknown(newState)) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `ignorado: ${newState}`\n    });\n    return null;\n}\n\n// Se o old_state vindo do evento for \"unknown\", usa o ultimo estado real\n// salvo no flow context em vez de tratar o glitch como estado anterior.\nconst lastState = !isUnknown(oldStateRaw) ? oldStateRaw : flow.get(cacheKey);\n\nflow.set(cacheKey, newState);\n\nif (lastState === newState) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `bloqueado: ${lastState} -> ${newState}`\n    });\n    return null;\n}\n\nmsg.previous_alarm_state = lastState ?? \"desconhecido\";\nmsg.current_alarm_state = newState;\nmsg.alarm_state_changed = true;\n\nnode.status({\n    fill: \"green\",\n    shape: \"dot\",\n    text: `${lastState ?? \"?\"} -> ${newState}`\n});\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 780,
+        "wires": [
+            [
+                "alarm_armed_lighting_out"
+            ]
+        ]
+    },
+    {
+        "id": "de18d31309e8a0ca",
+        "type": "DuloNodeDevice",
+        "z": "alarm_house_tab",
+        "name": "Alarme Casa",
+        "deviceType": "switch",
+        "x": 320,
+        "y": 100,
+        "wires": [
+            [
+                "922ddf470a08d43f"
+            ]
+        ]
+    },
+    {
+        "id": "922ddf470a08d43f",
+        "type": "switch",
+        "z": "alarm_house_tab",
+        "name": "Comando manual ON/OFF",
+        "property": "payload.components.PowerController.powerState",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "OFF",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 560,
+        "y": 100,
+        "wires": [
+            [
+                "alarm_set_desired_arm"
+            ],
+            [
+                "alarm_set_desired_disarm"
+            ]
+        ]
+    },
+    {
+        "id": "70eb073f8191e69e",
+        "type": "api-call-service",
+        "z": "alarm_house_tab",
+        "name": "Armar Alarme",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": true,
+        "action": "alarm_control_panel.alarm_arm_away",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "alarm_control_panel.alarme_moni_mobile"
+        ],
+        "labelId": [],
+        "data": "{\"code\":\"0011\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "alarm_control_panel",
+        "service": "alarm_arm_away",
+        "x": 910,
+        "y": 200,
+        "wires": [
+            [
+                "arm_alarm_notify_success"
+            ]
+        ]
+    },
+    {
+        "id": "8261c7cfb6756ca8",
+        "type": "api-call-service",
+        "z": "alarm_house_tab",
+        "name": "Desarmar Alarme",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": true,
+        "action": "alarm_control_panel.alarm_disarm",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "alarm_control_panel.alarme_moni_mobile"
+        ],
+        "labelId": [],
+        "data": "{\"code\":\"0011\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "alarm_control_panel",
+        "service": "alarm_disarm",
+        "x": 700,
+        "y": 500,
+        "wires": [
+            [
+                "disarm_alarm_notify_success"
+            ]
+        ]
+    },
+    {
+        "id": "arm_alarm_catch",
+        "type": "catch",
+        "z": "alarm_house_tab",
+        "name": "erro ao armar alarme",
+        "scope": [
+            "70eb073f8191e69e"
+        ],
+        "uncaught": false,
+        "x": 650,
+        "y": 300,
+        "wires": [
+            [
+                "arm_alarm_retry_decision"
+            ]
+        ]
+    },
+    {
+        "id": "arm_alarm_retry_decision",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "name": "tentar novamente ate conseguir",
+        "func": "const attempt = Number(msg.arm_alarm_retry_count || 0) + 1;\nmsg.arm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao armar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'Não foi possível armar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando armar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 300,
+        "wires": [
+            [
+                "arm_alarm_retry_delay"
+            ],
+            [
+                "alarm_notify_alexa"
+            ]
+        ]
+    },
+    {
+        "id": "arm_alarm_retry_delay",
+        "type": "delay",
+        "z": "alarm_house_tab",
+        "name": "aguardar antes de tentar novamente",
+        "pauseType": "delay",
+        "timeout": "10",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1190,
+        "y": 400,
+        "wires": [
+            [
+                "alarm_guard_arm"
+            ]
+        ]
+    },
+    {
+        "id": "e380ce19c7f96420",
+        "type": "server-state-changed",
+        "z": "alarm_house_tab",
+        "name": "Alarme armado",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 2,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "alarm_control_panel.alarme_moni_mobile"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "armed_away",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "triggerId"
+            }
+        ],
+        "x": 320,
+        "y": 780,
+        "wires": [
+            [
+                "alarm_real_change_filter"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "arm_alarm_notify_success",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "name": "Definir aviso alarme armado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "Alarme armado com sucesso.",
+                "tot": "str"
+            }
+        ],
+        "x": 1160,
+        "y": 200,
+        "wires": [
+            [
+                "moni_mobile_update_after_arm"
+            ]
+        ]
+    },
+    {
+        "id": "moni_mobile_update_after_arm",
+        "type": "api-call-service",
+        "z": "alarm_house_tab",
+        "name": "Atualizar estado Moni Mobile",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "homeassistant.update_entity",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"entity_id\":[\"alarm_control_panel.alarme_moni_mobile\"]}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "homeassistant",
+        "service": "update_entity",
+        "x": 1450,
+        "y": 200,
+        "wires": [
+            [
+                "alarm_notify_alexa"
+            ]
+        ]
+    },
+    {
+        "id": "disarm_alarm_notify_success",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "name": "Definir aviso alarme desarmado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "notify_text",
+                "pt": "msg",
+                "to": "Alarme desarmado com sucesso.",
+                "tot": "str"
+            }
+        ],
+        "x": 960,
+        "y": 500,
+        "wires": [
+            [
+                "alarm_notify_alexa"
+            ]
+        ]
+    },
+    {
+        "id": "disarm_alarm_catch",
+        "type": "catch",
+        "z": "alarm_house_tab",
+        "name": "erro ao desarmar alarme",
+        "scope": [
+            "8261c7cfb6756ca8"
+        ],
+        "uncaught": false,
+        "x": 430,
+        "y": 600,
+        "wires": [
+            [
+                "disarm_alarm_retry_decision"
+            ]
+        ]
+    },
+    {
+        "id": "disarm_alarm_retry_decision",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "name": "tentar novamente ate conseguir",
+        "func": "const attempt = Number(msg.disarm_alarm_retry_count || 0) + 1;\nmsg.disarm_alarm_retry_count = attempt;\nconst errorMessage = msg.error?.message || msg.error?.source?.name || 'erro desconhecido';\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: `tentativa ${attempt}: ${errorMessage}` });\nnode.warn(`Erro ao desarmar o alarme (tentativa ${attempt}): ${errorMessage}. Nova tentativa em instantes.`);\n\n// Avisa no primeiro erro e depois a cada 5 tentativas para nao spammar o Alexa\n// enquanto o dispositivo moni_mobile estiver offline.\nif (attempt === 1 || attempt % 5 === 0) {\n    msg.notify_text = attempt === 1\n        ? 'Não foi possível desarmar o alarme: dispositivo offline. Tentando novamente...'\n        : `Ainda tentando desarmar o alarme (tentativa ${attempt}). Dispositivo continua offline.`;\n    return [msg, msg];\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 600,
+        "wires": [
+            [
+                "disarm_alarm_retry_delay"
+            ],
+            [
+                "alarm_notify_alexa"
+            ]
+        ]
+    },
+    {
+        "id": "disarm_alarm_retry_delay",
+        "type": "delay",
+        "z": "alarm_house_tab",
+        "name": "aguardar antes de tentar novamente",
+        "pauseType": "delay",
+        "timeout": "10",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 990,
+        "y": 660,
+        "wires": [
+            [
+                "alarm_guard_disarm"
+            ]
+        ]
+    },
+    {
+        "id": "4043829dac0a9fee",
+        "type": "inject",
+        "z": "alarm_house_tab",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 330,
+        "y": 280,
+        "wires": [
+            [
+                "alarm_set_desired_arm"
+            ]
+        ]
+    },
+    {
+        "id": "0543222ad4ed094d",
+        "type": "inject",
+        "z": "alarm_house_tab",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 560,
+        "wires": [
+            [
+                "alarm_set_desired_disarm"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_set_desired_arm",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "name": "marcar desejado: armar",
+        "rules": [
+            {
+                "t": "set",
+                "p": "alarm_desired",
+                "pt": "flow",
+                "to": "arm",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 650,
+        "y": 200,
+        "wires": [
+            [
+                "70eb073f8191e69e"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_set_desired_disarm",
+        "type": "change",
+        "z": "alarm_house_tab",
+        "name": "marcar desejado: desarmar",
+        "rules": [
+            {
+                "t": "set",
+                "p": "alarm_desired",
+                "pt": "flow",
+                "to": "disarm",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 430,
+        "y": 500,
+        "wires": [
+            [
+                "8261c7cfb6756ca8"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_guard_arm",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "name": "ainda quer armar?",
+        "func": "const desired = flow.get(\"alarm_desired\");\n// Aborta a tentativa de armar se o comando mais recente ja foi desarmar,\n// evitando que um loop de retry (device offline) re-arme por cima de um\n// desarme bem-sucedido feito nesse meio tempo.\nif (desired !== \"arm\") {\n    node.status({ fill: \"blue\", shape: \"ring\", text: `retry armar cancelado (desejado: ${desired || \"?\"})` });\n    node.warn(\"Retry de ARMAR cancelado: comando mais recente foi desarmar.\");\n    return null;\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1460,
+        "y": 340,
+        "wires": [
+            [
+                "70eb073f8191e69e"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_guard_disarm",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "name": "ainda quer desarmar?",
+        "func": "const desired = flow.get(\"alarm_desired\");\n// Espelho de alarm_guard_arm: aborta o retry de desarmar se o comando\n// mais recente ja foi armar.\nif (desired !== \"disarm\") {\n    node.status({ fill: \"blue\", shape: \"ring\", text: `retry desarmar cancelado (desejado: ${desired || \"?\"})` });\n    node.warn(\"Retry de DESARMAR cancelado: comando mais recente foi armar.\");\n    return null;\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1260,
+        "y": 660,
+        "wires": [
+            [
+                "8261c7cfb6756ca8"
+            ]
+        ]
     },
     {
         "id": "alarm_dulo_hub_link_in",
@@ -2917,22 +2991,6 @@
         "wires": []
     },
     {
-        "id": "ext_alarm_armed_lighting_in",
-        "type": "link in",
-        "z": "ce258dec9814b96b",
-        "name": "Alarme armado",
-        "links": [
-            "alarm_armed_lighting_out"
-        ],
-        "x": 655,
-        "y": 300,
-        "wires": [
-            [
-                "ext_alarm_armed_off"
-            ]
-        ]
-    },
-    {
         "id": "alarm_notify_alexa",
         "type": "api-call-service",
         "z": "alarm_house_tab",
@@ -2962,25 +3020,20 @@
         ]
     },
     {
-        "id": "alarm_arrival_disarm_tab",
-        "type": "tab",
-        "label": "alarme_desarme_chegada",
-        "disabled": false,
-        "info": "Solicita confirmação por notificação acionável antes de desarmar o alarme quando Gabriel, Valéria ou o Creta estão chegando.",
-        "env": []
-    },
-    {
-        "id": "sec_arrival_disarm_out",
-        "type": "link out",
-        "z": "2fd40fd570e6f37a",
-        "name": "Chegada real -> desarme automatico",
-        "mode": "link",
+        "id": "alarm_arrival_disarm_command_in",
+        "type": "link in",
+        "z": "alarm_house_tab",
+        "name": "Desarme automatico por chegada",
         "links": [
-            "alarm_arrival_in"
+            "alarm_arrival_to_disarm_out"
         ],
-        "x": 1375,
-        "y": 360,
-        "wires": []
+        "x": 355,
+        "y": 680,
+        "wires": [
+            [
+                "alarm_set_desired_disarm"
+            ]
+        ]
     },
     {
         "id": "alarm_arrival_in",
@@ -3083,7 +3136,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 850,
+        "x": 860,
         "y": 220,
         "wires": [
             [
@@ -3103,7 +3156,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1100,
+        "x": 1120,
         "y": 220,
         "wires": [
             [
@@ -3137,7 +3190,7 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "send_message",
-        "x": 1380,
+        "x": 1450,
         "y": 220,
         "wires": [
             []
@@ -3202,21 +3255,5 @@
         "x": 785,
         "y": 420,
         "wires": []
-    },
-    {
-        "id": "alarm_arrival_disarm_command_in",
-        "type": "link in",
-        "z": "alarm_house_tab",
-        "name": "Desarme automatico por chegada",
-        "links": [
-            "alarm_arrival_to_disarm_out"
-        ],
-        "x": 355,
-        "y": 680,
-        "wires": [
-            [
-                "alarm_set_desired_disarm"
-            ]
-        ]
     }
 ]

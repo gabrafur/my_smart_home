@@ -13,11 +13,14 @@ quando o flow `alarme_casa` informa um armamento real.
 
 ## Entradas e conexoes entre flows
 
-- O `DuloNodeHub` compartilhado continua nesta aba e liga diretamente ao
-  device "Iluminacao Externa".
-- `alarm_dulo_hub_link_out` encaminha as mensagens do mesmo hub para o device
-  "Alarme Casa", na aba `alarme_casa`. O DuloNode reconhece oficialmente esse
-  caminho por `link out`/`link in`, portanto nao e necessario duplicar o hub.
+- O `DuloNodeHub` fica na aba `integracoes_compartilhadas`, independente dos
+  flows consumidores.
+- `light_dulo_hub_link_out` -> `light_dulo_hub_link_in` encaminha as mensagens
+  do hub ao device "Iluminacao Externa" nesta aba.
+- `alarm_dulo_hub_link_out` -> `alarm_dulo_hub_link_in` encaminha as mensagens
+  do mesmo hub ao device "Alarme Casa", na aba `alarme_casa`. O DuloNode
+  reconhece oficialmente esse caminho por `link out`/`link in`, portanto nao e
+  necessario duplicar o hub.
 - `ext_alarm_armed_lighting_in` recebe de `alarm_armed_lighting_out` somente
   uma mudanca real para `armed_away` e aciona `Definir OFF ao armar`.
 

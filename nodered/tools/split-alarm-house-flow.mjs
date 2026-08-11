@@ -6,6 +6,7 @@ const byId = new Map(flows.map((node) => [node.id, node]));
 
 const LIGHT_TAB_ID = "ce258dec9814b96b";
 const ALARM_TAB_ID = "alarm_house_tab";
+const SHARED_TAB_ID = "shared_integrations_tab";
 const SHARED_HUB_ID = "70e147e6b7df9826";
 const LIGHT_DEVICE_ID = "2dd5071569184cb4";
 const ALARM_DEVICE_ID = "de18d31309e8a0ca";
@@ -13,12 +14,15 @@ const LIGHT_ALEXA_NOTIFY_ID = "9d81b75a18d482f1";
 const ALARM_ALEXA_NOTIFY_ID = "alarm_notify_alexa";
 
 const managedIds = new Set([
+  SHARED_TAB_ID,
   ALARM_TAB_ID,
   ALARM_ALEXA_NOTIFY_ID,
   "alarm_dulo_hub_link_out",
   "alarm_dulo_hub_link_in",
   "alarm_armed_lighting_out",
   "ext_alarm_armed_lighting_in",
+  "light_dulo_hub_link_out",
+  "light_dulo_hub_link_in",
 ]);
 
 const alarmNodeIds = [
@@ -58,7 +62,7 @@ const positions = {
   moni_mobile_update_after_arm: [1450, 200],
   arm_alarm_catch: [650, 300],
   arm_alarm_retry_decision: [940, 300],
-  arm_alarm_retry_delay: [1210, 340],
+  arm_alarm_retry_delay: [1190, 400],
   alarm_guard_arm: [1460, 340],
   alarm_arrival_disarm_command_in: [130, 500],
   alarm_set_desired_disarm: [430, 500],
@@ -87,9 +91,43 @@ function setPosition(node) {
   if (position) [node.x, node.y] = position;
 }
 
+function orderFlowsForNodeRed(items) {
+  const preferredTabs = [
+    "29d64664bf8cbde8",
+    SHARED_TAB_ID,
+    LIGHT_TAB_ID,
+    "2fd40fd570e6f37a",
+    ALARM_TAB_ID,
+    "alarm_arrival_disarm_tab",
+  ];
+  const tabRank = new Map(preferredTabs.map((id, index) => [id, index]));
+  const tabs = items
+    .filter((item) => item.type === "tab")
+    .sort(
+      (left, right) =>
+        (tabRank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+        (tabRank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+    );
+  const groups = items.filter((item) => item.type === "group");
+  const configs = items.filter(
+    (item) => !item.z && item.type !== "tab" && item.type !== "group",
+  );
+  const tabNodes = tabs.flatMap((tab) =>
+    items.filter((item) => item.z === tab.id && item.type !== "group"),
+  );
+  const included = new Set([...tabs, ...groups, ...configs, ...tabNodes]);
+  return [
+    ...tabs,
+    ...groups,
+    ...configs,
+    ...tabNodes,
+    ...items.filter((item) => !included.has(item)),
+  ];
+}
+
 const lightTab = requireNode(LIGHT_TAB_ID);
 lightTab.label = "iluminacao_externa";
-lightTab.info = "Controla a iluminação externa e reage ao evento de alarme armado recebido da aba alarme_casa.";
+lightTab.info = "Controla a iluminação externa, recebe o hub Dulo compartilhado por link e reage ao evento de alarme armado recebido da aba alarme_casa.";
 
 for (const id of alarmNodeIds) {
   const node = requireNode(id);
@@ -98,7 +136,10 @@ for (const id of alarmNodeIds) {
 }
 
 const hub = requireNode(SHARED_HUB_ID);
-hub.wires = [[LIGHT_DEVICE_ID, "alarm_dulo_hub_link_out"]];
+hub.z = SHARED_TAB_ID;
+hub.x = 250;
+hub.y = 120;
+hub.wires = [["light_dulo_hub_link_out", "alarm_dulo_hub_link_out"]];
 
 requireNode("alarm_real_change_filter").wires = [["alarm_armed_lighting_out"]];
 
@@ -137,6 +178,14 @@ const alarmAlexaNotify = {
 const keptFlows = flows.filter((node) => !managedIds.has(node.id));
 keptFlows.push(
   {
+    id: SHARED_TAB_ID,
+    type: "tab",
+    label: "integracoes_compartilhadas",
+    disabled: false,
+    info: "Hospeda hubs e integrações reutilizados por vários flows. Os consumidores devem ser conectados por link out/link in.",
+    env: [],
+  },
+  {
     id: ALARM_TAB_ID,
     type: "tab",
     label: "alarme_casa",
@@ -147,13 +196,34 @@ keptFlows.push(
   {
     id: "alarm_dulo_hub_link_out",
     type: "link out",
-    z: LIGHT_TAB_ID,
+    z: SHARED_TAB_ID,
     name: "Hub Dulo -> Alarme Casa",
     mode: "link",
     links: ["alarm_dulo_hub_link_in"],
-    x: 165,
-    y: 340,
+    x: 555,
+    y: 160,
     wires: [],
+  },
+  {
+    id: "light_dulo_hub_link_out",
+    type: "link out",
+    z: SHARED_TAB_ID,
+    name: "Hub Dulo -> Iluminação Externa",
+    mode: "link",
+    links: ["light_dulo_hub_link_in"],
+    x: 555,
+    y: 100,
+    wires: [],
+  },
+  {
+    id: "light_dulo_hub_link_in",
+    type: "link in",
+    z: LIGHT_TAB_ID,
+    name: "Hub Dulo compartilhado",
+    links: ["light_dulo_hub_link_out"],
+    x: 155,
+    y: 100,
+    wires: [[LIGHT_DEVICE_ID]],
   },
   {
     id: "alarm_dulo_hub_link_in",
@@ -189,5 +259,5 @@ keptFlows.push(
   alarmAlexaNotify,
 );
 
-fs.writeFileSync(flowsPath, `${JSON.stringify(keptFlows, null, 4)}\n`);
+fs.writeFileSync(flowsPath, JSON.stringify(orderFlowsForNodeRed(keptFlows), null, 4));
 console.log("Separated alarme_casa from iluminacao_externa.");

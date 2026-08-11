@@ -7,6 +7,7 @@ const flows = JSON.parse(
 const byId = new Map(flows.map((node) => [node.id, node]));
 const LIGHT_TAB_ID = "ce258dec9814b96b";
 const ALARM_TAB_ID = "alarm_house_tab";
+const SHARED_TAB_ID = "shared_integrations_tab";
 
 function node(id) {
   const result = byId.get(id);
@@ -16,6 +17,8 @@ function node(id) {
 
 assert.equal(new Set(flows.map((item) => item.id)).size, flows.length);
 assert.equal(node(LIGHT_TAB_ID).label, "iluminacao_externa");
+assert.equal(node(SHARED_TAB_ID).type, "tab");
+assert.equal(node(SHARED_TAB_ID).label, "integracoes_compartilhadas");
 assert.equal(node(ALARM_TAB_ID).type, "tab");
 assert.equal(node(ALARM_TAB_ID).label, "alarme_casa");
 
@@ -58,9 +61,22 @@ for (const id of [
   assert.equal(node(id).z, LIGHT_TAB_ID, `${id} ficou fora da aba de iluminação`);
 }
 
+assert.equal(node("70e147e6b7df9826").z, SHARED_TAB_ID);
 assert.deepEqual(node("70e147e6b7df9826").wires, [
-  ["2dd5071569184cb4", "alarm_dulo_hub_link_out"],
+  ["light_dulo_hub_link_out", "alarm_dulo_hub_link_out"],
 ]);
+assert.equal(node("light_dulo_hub_link_out").z, SHARED_TAB_ID);
+assert.deepEqual(node("light_dulo_hub_link_out").links, [
+  "light_dulo_hub_link_in",
+]);
+assert.equal(node("light_dulo_hub_link_in").z, LIGHT_TAB_ID);
+assert.deepEqual(node("light_dulo_hub_link_in").links, [
+  "light_dulo_hub_link_out",
+]);
+assert.deepEqual(node("light_dulo_hub_link_in").wires, [
+  ["2dd5071569184cb4"],
+]);
+assert.equal(node("alarm_dulo_hub_link_out").z, SHARED_TAB_ID);
 assert.deepEqual(node("alarm_dulo_hub_link_out").links, [
   "alarm_dulo_hub_link_in",
 ]);

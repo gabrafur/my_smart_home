@@ -9,6 +9,7 @@ const haServerId = "4126427d5e161a03";
 const mqttBrokerId = "721c47f31046b8bc";
 const distributorId = "88e6fc3e56fa347c";
 const alexaId = "9d81b75a18d482f1";
+const sharedTabId = "shared_integrations_tab";
 
 const commandNodes = [
   {
@@ -52,6 +53,40 @@ function upsertSetRule(node, property, value, valueType = "str") {
     to: value,
     tot: valueType,
   });
+}
+
+function orderFlowsForNodeRed(items) {
+  const preferredTabs = [
+    "29d64664bf8cbde8",
+    sharedTabId,
+    tabId,
+    "2fd40fd570e6f37a",
+    "alarm_house_tab",
+    "alarm_arrival_disarm_tab",
+  ];
+  const tabRank = new Map(preferredTabs.map((id, index) => [id, index]));
+  const tabs = items
+    .filter((item) => item.type === "tab")
+    .sort(
+      (left, right) =>
+        (tabRank.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+        (tabRank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+    );
+  const groups = items.filter((item) => item.type === "group");
+  const configs = items.filter(
+    (item) => !item.z && item.type !== "tab" && item.type !== "group",
+  );
+  const tabNodes = tabs.flatMap((tab) =>
+    items.filter((item) => item.z === tab.id && item.type !== "group"),
+  );
+  const included = new Set([...tabs, ...groups, ...configs, ...tabNodes]);
+  return [
+    ...tabs,
+    ...groups,
+    ...configs,
+    ...tabNodes,
+    ...items.filter((item) => !included.has(item)),
+  ];
 }
 
 for (const command of commandNodes) {
@@ -141,7 +176,7 @@ node.status({
     text: \`Zigbee \${state}\`
 });
 return null;`,
-    outputs: 1,
+    outputs: 0,
     timeout: 0,
     noerr: 0,
     initialize: "",
@@ -149,7 +184,7 @@ return null;`,
     libs: [],
     x: 450,
     y: 200,
-    wires: [[]],
+    wires: [],
   },
   {
     id: "ext_zigbee_broker_status",
@@ -253,8 +288,8 @@ if (timer) {
 }
 context.set('confirmationTimer', null);`,
     libs: [],
-    x: 1140,
-    y: 300,
+    x: 1230,
+    y: 260,
     wires: [["ext_check_states"]],
   },
   {
@@ -288,8 +323,8 @@ context.set('confirmationTimer', null);`,
     override_payload: "msg",
     entity_location: "data",
     override_data: "msg",
-    x: 1410,
-    y: 300,
+    x: 1530,
+    y: 260,
     wires: [["ext_build_alexa_message"]],
   },
   {
@@ -338,11 +373,11 @@ return msg;`,
     initialize: "",
     finalize: "",
     libs: [],
-    x: 1670,
-    y: 300,
+    x: 1810,
+    y: 260,
     wires: [[alexaId]],
   },
 );
 
-fs.writeFileSync(flowsPath, `${JSON.stringify(keptFlows, null, 4)}\n`);
+fs.writeFileSync(flowsPath, JSON.stringify(orderFlowsForNodeRed(keptFlows), null, 4));
 console.log("Updated iluminacao_externa confirmation flow.");
