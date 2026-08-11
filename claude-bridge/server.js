@@ -10,7 +10,7 @@ const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN;
 const WORKDIR = process.env.WORKDIR || '/workspace';
 const HISTORY_DIR = process.env.HISTORY_DIR || path.join(WORKDIR, '.agent-history');
 const TIMEOUT_MS = Number(
-  process.env.BRIDGE_TIMEOUT_MS || process.env.CLAUDE_TIMEOUT_MS || 5 * 60 * 1000,
+  process.env.BRIDGE_TIMEOUT_MS || process.env.CLAUDE_TIMEOUT_MS || 15 * 60 * 1000,
 );
 
 if (!BRIDGE_TOKEN) {
@@ -19,6 +19,17 @@ if (!BRIDGE_TOKEN) {
 }
 
 const history = new SharedHistoryStore(HISTORY_DIR);
+const sessionQueues = new Map();
+
+function enqueueSession(sessionKey, task) {
+  if (!sessionKey) return task();
+  const previous = sessionQueues.get(sessionKey) || Promise.resolve();
+  const current = previous.catch(() => {}).then(task);
+  sessionQueues.set(sessionKey, current);
+  return current.finally(() => {
+    if (sessionQueues.get(sessionKey) === current) sessionQueues.delete(sessionKey);
+  });
+}
 
 function clampLimit(value, fallback, maximum) {
   const parsed = Number.parseInt(value, 10);
@@ -35,9 +46,10 @@ function saveSession(key, sessionId) {
 
 function recordTurn(turn) {
   try {
-    history.appendTurn(turn);
+    return history.appendTurn(turn);
   } catch (err) {
     console.error(`Failed to append shared history: ${err.message}`);
+    return null;
   }
 }
 
@@ -68,12 +80,21 @@ function spawnCli(command, args) {
   const child = spawn(command, args, {
     cwd: WORKDIR,
     env: process.env,
+    detached: true,
   });
 
   // Both prompts are command-line arguments. Closing stdin immediately avoids
   // CLIs waiting for piped input in this non-interactive HTTP service.
   child.stdin.end();
   return child;
+}
+
+function killCli(child) {
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    child.kill('SIGKILL');
+  }
 }
 
 function runClaude(message, sessionId) {
@@ -89,7 +110,7 @@ function runClaude(message, sessionId) {
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
-      child.kill('SIGKILL');
+      killCli(child);
       reject(new Error(`claude timed out after ${TIMEOUT_MS}ms`));
     }, TIMEOUT_MS);
 
@@ -160,7 +181,7 @@ function runCodex(message, sessionId) {
     let stdout = '';
     let stderr = '';
     const timer = setTimeout(() => {
-      child.kill('SIGKILL');
+      killCli(child);
       reject(new Error(`codex timed out after ${TIMEOUT_MS}ms`));
     }, TIMEOUT_MS);
 
@@ -190,6 +211,11 @@ function runCodex(message, sessionId) {
 
 const server = http.createServer((req, res) => {
   const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  if (req.method === 'GET' && requestUrl.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok' }));
+    return;
+  }
   if (req.method === 'GET' && requestUrl.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok' }));
@@ -271,17 +297,42 @@ const server = http.createServer((req, res) => {
     }
 
     const sessionKey = conversationId ? `${agent}:${conversationId}` : null;
-    const priorSessionId = history.getSession(sessionKey);
-
+    const pendingTurn = recordTurn({
+      agent,
+      conversationId,
+      sessionId: history.getSession(sessionKey),
+      prompt: historyPrompt,
+      reply: '',
+      status: 'pending',
+    });
     try {
-      const result = agent === 'codex'
-        ? await runCodex(message, priorSessionId)
-        : await runClaude(message, priorSessionId);
-      if (sessionKey && result.session_id) {
-        saveSession(sessionKey, result.session_id);
-      }
+      const { result, priorSessionId } = await enqueueSession(sessionKey, async () => {
+        let priorSessionId = history.getSession(sessionKey);
+        try {
+          const result = agent === 'codex'
+            ? await runCodex(message, priorSessionId)
+            : await runClaude(message, priorSessionId);
+          if (sessionKey && result.session_id) saveSession(sessionKey, result.session_id);
+          return { result, priorSessionId };
+        } catch (err) {
+          const sessionConflict = agent === 'codex'
+            && priorSessionId
+            && /thread-store conflict|active writer|thread\/resume failed/i.test(err.message);
+          if (!sessionConflict) {
+            if (/timed out/i.test(err.message)) history.deleteSession(sessionKey);
+            throw err;
+          }
+          console.warn(`Discarding conflicted Codex session ${priorSessionId} and retrying`);
+          history.deleteSession(sessionKey);
+          priorSessionId = null;
+          const result = await runCodex(message, null);
+          if (sessionKey && result.session_id) saveSession(sessionKey, result.session_id);
+          return { result, priorSessionId };
+        }
+      });
       const reply = result.result || result.response || JSON.stringify(result);
       recordTurn({
+        id: pendingTurn?.id,
         agent,
         conversationId,
         sessionId: result.session_id || priorSessionId,
@@ -296,9 +347,10 @@ const server = http.createServer((req, res) => {
       const agentName = agent === 'codex' ? 'Codex' : 'Claude Code';
       const reply = `Erro ao executar ${agentName}: ${err.message}`;
       recordTurn({
+        id: pendingTurn?.id,
         agent,
         conversationId,
-        sessionId: priorSessionId,
+        sessionId: history.getSession(sessionKey),
         prompt: historyPrompt,
         reply,
         status: 'error',

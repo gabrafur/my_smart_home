@@ -47,9 +47,18 @@ class SharedHistoryStore {
     fs.renameSync(temporaryPath, this.sessionsPath);
   }
 
-  appendTurn({ agent, conversationId, sessionId, prompt, reply, status }) {
+  deleteSession(key) {
+    if (!key || !this.sessions.delete(key)) return;
+
+    const temporaryPath = `${this.sessionsPath}.${process.pid}.tmp`;
+    const serialized = `${JSON.stringify(Object.fromEntries(this.sessions), null, 2)}\n`;
+    fs.writeFileSync(temporaryPath, serialized, { mode: 0o660 });
+    fs.renameSync(temporaryPath, this.sessionsPath);
+  }
+
+  appendTurn({ id = null, agent, conversationId, sessionId, prompt, reply, status }) {
     const turn = {
-      id: randomUUID(),
+      id: id || randomUUID(),
       timestamp: new Date().toISOString(),
       agent,
       conversation_id: conversationId,
@@ -72,13 +81,19 @@ class SharedHistoryStore {
     }
 
     const turns = [];
+    const indexesById = new Map();
     for (const line of contents.split(/\r?\n/)) {
       if (!line.trim()) continue;
       try {
         const turn = JSON.parse(line);
         if (agent && turn.agent !== agent) continue;
         if (conversationId && turn.conversation_id !== conversationId) continue;
-        turns.push(turn);
+        if (turn.id && indexesById.has(turn.id)) {
+          turns[indexesById.get(turn.id)] = turn;
+        } else {
+          if (turn.id) indexesById.set(turn.id, turns.length);
+          turns.push(turn);
+        }
       } catch {
         // A partially written final line must not make all prior history unreadable.
       }
