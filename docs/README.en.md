@@ -26,6 +26,7 @@ The following detailed operational guides are maintained in Brazilian
 Portuguese because that is the system's primary operating language:
 
 - [External lighting in Node-RED](ILUMINACAO_EXTERNA_NODERED.md)
+- [House alarm in Node-RED](ALARME_CASA_NODERED.md)
 - [Security lighting in Node-RED](ILUMINACAO_SEGURANCA_NODERED.md)
 - [Alarm disarm on arrival](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Moni Mobile / Intelbras integration](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
