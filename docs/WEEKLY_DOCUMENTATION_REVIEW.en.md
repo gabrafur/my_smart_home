@@ -42,7 +42,8 @@ Additional boundaries include:
 - Codex auth and the SSH key are read-only source mounts and are copied into a
   private temporary directory;
 - a short root bootstrap followed by execution as the non-root UID/GID that
-  owns the checkout, with no supplementary groups;
+  owns the checkout, with no supplementary groups; when that UID is absent
+  from the image, a no-login local identity is created inside the container;
 - required branch, clean Git tree, and remote authentication checks before a
   run starts;
 - the shared `.git-backup.lock`, preventing overlap with update/backup scripts;

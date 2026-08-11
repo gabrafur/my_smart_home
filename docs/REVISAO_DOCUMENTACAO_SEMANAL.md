@@ -42,7 +42,8 @@ As barreiras adicionais são:
 - autenticação Codex e chave SSH montadas como somente leitura na origem e
   copiadas para um diretório temporário privado;
 - bootstrap curto como `root`, seguido de execução com o UID/GID não-root que
-  possui o checkout e sem grupos suplementares;
+  possui o checkout e sem grupos suplementares; se esse UID ainda não existir
+  na imagem, uma identidade local sem shell é criada apenas no container;
 - branch obrigatória, árvore Git limpa e autenticação remota verificadas antes
   de iniciar;
 - lock compartilhado `.git-backup.lock`, evitando concorrência com os scripts

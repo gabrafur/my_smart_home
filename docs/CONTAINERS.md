@@ -79,7 +79,9 @@ stat -c '%g' /var/run/docker.sock
 
 O Compose adiciona esse grupo ao bridge em runtime. O agendador não recebe o
 socket, descarta todos os grupos suplementares após um bootstrap curto e assume
-o UID/GID não-root que possui o checkout. Nenhum GID fica gravado na imagem.
+o UID/GID não-root que possui o checkout. Se necessário, cria uma identidade
+local sem shell para o OpenSSH resolver esse UID. Nenhum GID fica gravado na
+imagem.
 
 ## Variáveis por serviço
 
