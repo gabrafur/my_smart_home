@@ -180,6 +180,7 @@ segredo-atribuido	(pass(word|wd)?|secret|token|api_?key|auth)["']?[[:space:]]*[:
 mac-address	\b([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\b
 coordenada-precisa	(latitude|longitude|_LAT|_LON)["']?[[:space:]]*[:=][[:space:]]*-?[0-9]{1,3}\.[0-9]{5,}
 coordenada-nua	-?[0-9]{1,3}\.[0-9]{6,}
+ipv4-privado	\b(10(\.[0-9]{1,3}){3}|192\.168(\.[0-9]{1,3}){2}|172\.(1[6-9]|2[0-9]|3[01])(\.[0-9]{1,3}){2})\b
 url-com-credencial	[a-z][a-z0-9+.-]*://[^/[:space:]:@"']+:[^/[:space:]@"']+@
 EOF
 )
@@ -194,6 +195,12 @@ while IFS=$'\t' read -r rule regex; do
     [[ -z "$hit" ]] && continue
     file="${hit%%:*}"; rest="${hit#*:}"
     line="${rest%%:*}"; text="${rest#*:}"
+    # Constante de protocolo da biblioteca vendorizada LocalTuya; nao e um
+    # endereco da instalacao. Mantenha a excecao restrita a regra e arquivo.
+    if [[ "$rule" == "ipv4-privado" \
+      && "$file" == "homeassistant/custom_components/localtuya/pytuya/__init__.py" ]]; then
+      continue
+    fi
     # package-lock e vendored HACS geram ruido estrutural sem valor de auditoria
     case "$file" in
       # ruido estrutural sem valor de auditoria: lockfile, frontend gerado do
