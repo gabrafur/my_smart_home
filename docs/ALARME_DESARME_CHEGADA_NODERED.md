@@ -7,9 +7,9 @@ depois que alguem toca em `Desarmar`.
 
 ## Origem da chegada
 
-O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas a saida
-positiva de `sec_detect_arriving_source`, no flow `iluminacao_seguranca`.
-Esse detector ja valida:
+O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas contratos
+`security.arrival.v1` publicados por `localizacao_pessoas` e
+`contexto_creta`. Esses flows de dominio ja validam:
 
 - origem `gabriel`, `valeria` ou `creta`;
 - entrada no anel `zone.chegando` vinda de fora (`arrival_stage: approach`),
@@ -18,6 +18,17 @@ Esse detector ja valida:
   congelados;
 - o ciclo de afastamento individual, para nao tratar quem ja estava em casa
   como uma nova chegada.
+
+O contrato v1 agora também traz `event_at` (epoch UTC em milissegundos). Os
+produtores persistem dedupe por 10 minutos, portanto um restart não republica
+a mesma chegada e não recria uma confirmação. Snapshots stale ou ainda não
+ready não geram `security.arrival.v1`; `unknown` nunca é interpretado como
+ausência ou chegada.
+
+O aviso de aproximação da Valéria é separado do comando de desarme. Se o
+contexto do Creta ainda estiver pendente, o coordenador mantém o candidato por
+até 10 min e o libera uma única vez quando puder enriquecê-lo; isso evita perda
+ou duplicação durante a ordem variável do startup.
 
 ## Condicoes e desarme
 
@@ -45,14 +56,18 @@ Esse detector ja valida:
 O flow nao contem nem duplica o codigo de acionamento do alarme. Ele apenas
 valida a chegada e a confirmacao humana antes de chamar a cadeia compartilhada.
 
+Limitação: a própria confirmação pendente e seus tokens continuam em flow
+context volátil. Depois de restart ela expira sem ser retomada; o usuário deve
+aguardar uma nova chegada real. Persistir credenciais/tokens de notificação não
+faz parte do recovery dos quatro flows de segurança.
+
 ## Manutencao
 
-Para reinstalar de forma idempotente e validar:
+O `nodered/flows.json` versionado e a fonte de verdade. Para validar:
 
 ```bash
 cd nodered
 npm run flows:backup
-npm run flows:install-alarm-arrival
 npm run flows:validate
 npm run flows:test-alarm-arrival
 ```

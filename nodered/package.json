@@ -5,7 +5,8 @@
     "private": true,
     "scripts": {
         "flows:backup": "node tools/backup-flows.mjs",
-        "flows:install-alarm-arrival": "node tools/install-alarm-arrival-disarm-flow.mjs",
+        "flows:refactor-security": "node tools/refactor-security-context-flows.mjs",
+        "flows:render-security": "node tools/render-flow-layout.mjs localizacao_pessoas contexto_creta contexto_chegadas iluminacao_seguranca",
         "flows:split-alarm-house": "node tools/split-alarm-house-flow.mjs",
         "flows:test-alarm-arrival": "node tools/test-alarm-arrival-disarm-flow.mjs",
         "flows:test-alarm-house": "node tools/test-alarm-house-flow.mjs",
@@ -13,6 +14,8 @@
         "flows:test-raspberry-cooling": "node tools/test-raspberry-pi-cooling-flow.mjs",
         "flows:test-security": "node tools/test-security-light-flow.mjs",
         "flows:test-storage": "node tools/test-storage-health-flow.mjs",
+        "flows:test-security-recovery": "node tools/test-security-recovery-flow.mjs",
+        "flows:test-security-adversarial": "node tools/test-security-recovery-adversarial.mjs",
         "flows:validate": "node tools/validate-flows.mjs",
         "flows:summary": "node tools/summarize-flows.mjs"
     },

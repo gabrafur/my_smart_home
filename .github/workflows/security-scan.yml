@@ -103,8 +103,12 @@ jobs:
         run: |
           npm --prefix nodered ci
           npm --prefix nodered run flows:validate
+          node --check nodered/settings.js
           npm --prefix nodered run flows:test-alarm-arrival
           npm --prefix nodered run flows:test-security
+          npm --prefix nodered run flows:test-security-recovery
+          npm --prefix nodered run flows:test-security-adversarial
+          npm --prefix nodered run flows:test-raspberry-cooling
           npm --prefix nodered run flows:test-storage
 
       - name: Testar bridge
