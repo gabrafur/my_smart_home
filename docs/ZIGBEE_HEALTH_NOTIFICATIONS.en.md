@@ -105,17 +105,18 @@ availability:
 
 ## Persistence and restarts
 
-`nodered/settings.js` uses `localfilesystem` as the default context store with
-a 15-second flush, while `memoryOnly` holds execution locks and raw observations
-that retained MQTT recreates. `nodered/status` has retained birth, clean-close,
-and last-will values, making the HA entities unavailable when Node-RED leaves
-MQTT.
+`nodered/settings.js` keeps `default`/`memoryOnly` volatile. Infrastructure
+monitors explicitly select the named `persistent` `localfilesystem` store, with
+a 30-second flush, for incidents, timestamps, counters, and deduplication.
+Execution locks and raw observations recreated by retained MQTT remain in
+memory. `nodered/status` has retained birth, clean-close, and last-will values,
+making the HA entities unavailable when Node-RED leaves MQTT.
 
 An online startup does not announce recovery. An offline startup is detected
 normally. A restart during a persisted incident does not duplicate failure and
 can later confirm recovery. Retained discovery/state rebuilds entities after an
 HA restart. Zigbee2MQTT startup transients must cross the 30-second threshold.
-The residual risk is an abrupt crash within the 15-second context flush window,
+The residual risk is an abrupt crash within the 30-second context flush window,
 which can lose the latest transition and, in the narrow notification-before-
 flush case, repeat an alert.
 

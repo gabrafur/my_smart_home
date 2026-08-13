@@ -83,9 +83,9 @@ return null;`;
 function verificationCode(phase, checks) {
   return `
 const counts = flow.get("runtime_counts") || { persistent: 0, mobile: 0, dismiss: 0, ids: {}, states: [] };
-const internet = flow.get("internet_monitor_state_v1");
-const zigbee = flow.get("zigbee_network_monitor_state_v1");
-const components = flow.get("zigbee_component_incidents_v1") || {};
+const internet = flow.get("internet_monitor_state_v1", "persistent");
+const zigbee = flow.get("zigbee_network_monitor_state_v1", "persistent");
+const components = flow.get("zigbee_component_incidents_v1", "persistent") || {};
 const pingOutputs = flow.get("runtime_ping_outputs") || 0;
 const metrics = global.get("pingMetrics");
 const failures = [];
@@ -232,8 +232,9 @@ module.exports = {
   runtimeState: { enabled: false, ui: false },
   telemetry: { enabled: false, updateNotification: false },
   contextStorage: {
-    default: { module: "localfilesystem", config: { flushInterval: 1 } },
-    memoryOnly: { module: "memory" }
+    default: "memoryOnly",
+    memoryOnly: { module: "memory" },
+    persistent: { module: "localfilesystem", config: { flushInterval: 1 } }
   },
   functionGlobalContext: { childProcess, pingMetrics },
   logging: { console: { level: "info", metrics: false, audit: false } },

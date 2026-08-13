@@ -11,9 +11,9 @@ function getFunction(id) {
   return new Function("msg", "flow", "node", "global", node.func);
 }
 
-function context(defaultStore = new Map(), memoryStore = new Map()) {
+function context(defaultStore = new Map(), memoryStore = new Map(), persistentStore = defaultStore) {
   return {
-    stores: { default: defaultStore, memoryOnly: memoryStore },
+    stores: { default: defaultStore, memoryOnly: memoryStore, persistent: persistentStore },
     get(key, store = "default") {
       return this.stores[store].get(key);
     },
@@ -47,6 +47,9 @@ function pingResult(okCount, now) {
 
 const internet = getFunction("internet_evaluate");
 const internetFlow = context();
+assert.match(flows.find((item) => item.id === "internet_evaluate").func, /persistent/);
+assert.match(flows.find((item) => item.id === "zigbee_network_evaluate").func, /persistent/);
+assert.match(flows.find((item) => item.id === "zigbee_component_evaluate").func, /persistent/);
 let now = Date.UTC(2026, 7, 13, 12, 0, 0);
 
 // Healthy baseline and one external host failing: still online, no recovery.

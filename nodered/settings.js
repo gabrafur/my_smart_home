@@ -371,20 +371,26 @@ module.exports = {
      * provided here will enable file-based context that flushes to disk every 30 seconds.
      * Refer to the documentation for further options: https://nodered.org/docs/api/context/
      */
+    // Keep derived snapshots and ordinary flow state in memory. Recovery-aware
+    // security and infrastructure nodes opt in to the named persistent store
+    // explicitly, so the filesystem never becomes a second source of physical
+    // truth. Execution locks and retained-rebuilt observations stay volatile.
     contextStorage: {
-        // Incident state survives Node-RED restarts. The runtime writes the
-        // cache below /data/context (the bind-mounted nodered directory).
-        default: {
+        default: "memoryOnly",
+        memoryOnly: {
+            module: "memory"
+        },
+        persistent: {
             module: "localfilesystem",
             config: {
-                flushInterval: 15,
-            },
-        },
-        // Execution locks must never survive a deploy/restart: a stale lock
-        // would otherwise stop connectivity checks indefinitely.
-        memoryOnly: {
-            module: "memory",
-        },
+                // settings.js is mounted at /data/settings.js in Docker, so
+                // this resolves to /data/context inside the persistent volume.
+                dir: __dirname,
+                base: "context",
+                cache: true,
+                flushInterval: 30
+            }
+        }
     },
 
     /** `global.keys()` returns a list of all properties set in global context.

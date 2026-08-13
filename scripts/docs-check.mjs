@@ -63,7 +63,13 @@ for (const file of markdownFiles) {
 }
 
 const compose = fs.readFileSync(path.join(repoRoot, "docker-compose.yml"), "utf8");
-const servicesBlock = compose.split(/^volumes:[ \t]*$/m, 1)[0].replace(/^services:[ \t]*\n/, "");
+const servicesStart = compose.search(/^services:[ \t]*$/m);
+if (servicesStart === -1) {
+  errors.push("docker-compose.yml: missing top-level services block");
+}
+const afterServices = servicesStart === -1 ? "" : compose.slice(servicesStart).replace(/^services:[ \t]*\n/, "");
+const nextTopLevel = afterServices.search(/^[a-zA-Z][a-zA-Z0-9_-]*:[ \t]*$/m);
+const servicesBlock = nextTopLevel === -1 ? afterServices : afterServices.slice(0, nextTopLevel);
 const services = [...servicesBlock.matchAll(/^ {2}([a-zA-Z0-9_-]+):[ \t]*$/gm)].map((match) => match[1]);
 for (const guide of ["docs/CONTAINERS.md", "docs/CONTAINERS.en.md"]) {
   const content = fs.readFileSync(path.join(repoRoot, guide), "utf8");

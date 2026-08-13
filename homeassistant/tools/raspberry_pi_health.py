@@ -172,10 +172,16 @@ def disk_metrics() -> dict:
             "disk_used_gb": None,
             "disk_free_gb": None,
             "disk_used_percent": None,
+            "disk_inodes_total": None,
+            "disk_inodes_free": None,
+            "disk_inodes_used_percent": None,
         }
     total = stats.f_frsize * stats.f_blocks
     free = stats.f_frsize * stats.f_bavail
     used = total - free
+    inode_total = stats.f_files
+    inode_free = stats.f_favail
+    inode_used = inode_total - inode_free
     gib = 1024**3
     return {
         "disk_path": str(CONFIG_PATH),
@@ -183,6 +189,9 @@ def disk_metrics() -> dict:
         "disk_used_gb": round(used / gib, 2),
         "disk_free_gb": round(free / gib, 2),
         "disk_used_percent": round((used / total) * 100, 1) if total else None,
+        "disk_inodes_total": inode_total or None,
+        "disk_inodes_free": inode_free if inode_total else None,
+        "disk_inodes_used_percent": round((inode_used / inode_total) * 100, 1) if inode_total else None,
     }
 
 
@@ -385,7 +394,7 @@ def health_from(metrics: dict) -> tuple[str, list[str]]:
     above("cpu_usage_percent", 85, 95, "cpu")
     above("memory_used_percent", 80, 90, "memory")
     above("swap_used_percent", 25, 50, "swap")
-    above("disk_used_percent", 80, 90, "storage")
+    above("disk_used_percent", 70, 90, "storage")
 
     cores = metrics.get("cpu_cores") or 4
     load_5m = metrics.get("load_5m")
