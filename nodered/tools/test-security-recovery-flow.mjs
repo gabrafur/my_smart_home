@@ -72,7 +72,8 @@ function readyFlow(extra = {}) {
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: NOW, gabriel: { current_home: true, primary_home: true }, valeria: { current_home: true, primary_home: true } },
     creta_context_v1: { ready: true, updated_at: NOW, home: true, in_use: true },
-    sun_ready: true, sun_below_horizon: true, light_reconciled: true,
+    sun_ready: true, sun_below_horizon: true, light_reconciled: true, security_light_ready: true,
+    security_light_physical_observed_at: NOW,
     security_light_physical_state: "on", security_light_lifecycle_v1: lifecycle(),
     ...extra,
   });

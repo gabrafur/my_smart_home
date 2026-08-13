@@ -45,6 +45,9 @@ const geoEnv = environment({ HOME_LAT: "0", HOME_LON: "0", GATE_LAT: "0", GATE_L
 function activeLightFlow(extra = {}) {
   const now = Date.now();
   return memoryFlow({
+    people_context_v1: { ready: true, updated_at: now, gabriel: { current_home: true }, valeria: { current_home: true } },
+    creta_context_v1: { ready: true, updated_at: now, home: true, in_use: true },
+    sun_ready: true,
     security_light_physical_state: "on",
     security_light_lifecycle_v1: {
       version: 1,
@@ -53,7 +56,10 @@ function activeLightFlow(extra = {}) {
       force_off_at: now + 15 * 60 * 1000,
       updated_at: now,
     },
+    light_reconciled: true,
+    security_light_ready: true,
     ...extra,
+    security_light_physical_observed_at: Date.now(),
   });
 }
 
@@ -64,6 +70,8 @@ function readyLightFlow(extra = {}) {
     sun_ready: true,
     sun_below_horizon: true,
     light_reconciled: true,
+    security_light_ready: true,
+    security_light_physical_observed_at: Date.now(),
     security_light_physical_state: "off",
     security_light_lifecycle_v1: { version: 1, active_by_arrival: false, updated_at: Date.now() },
     ...extra,
@@ -188,7 +196,7 @@ scenario("11 Creta travado ao chegar nao apaga imediatamente", () => {
 scenario("12 Creta destravado em casa apaga apos filtro do evento", () => {
   const eventNode = byId.get("creta_unlock_event");
   assert.equal(eventNode.for, "5");
-  const decision = run("light_evaluate_off", { payload: { active: true, event: "turn_off", creta_engine_on: false, creta_unlocked: true } }, activeLightFlow(), geoEnv);
+  const decision = run("light_evaluate_off", { payload: { active: true, event: "turn_off", creta_ready: true, creta_engine_on: false, creta_unlocked: true } }, activeLightFlow(), geoEnv);
   assert.equal(decision[0].payload.off_reason, "creta_desligado_e_destravado");
 });
 
