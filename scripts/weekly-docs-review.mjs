@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const promptPath = path.join(repoRoot, "scripts", "weekly-docs-review.prompt.md");
 const lockPath = path.join(repoRoot, ".git-backup.lock");
+const statusPath = process.env.WEEKLY_DOCS_REVIEW_STATUS_PATH || "";
 const maxRuntimeMs = integerEnv("WEEKLY_DOCS_REVIEW_TIMEOUT_MS", 3 * 60 * 60 * 1000, 60_000, 24 * 60 * 60 * 1000);
 const schedule = {
   day: integerEnv("WEEKLY_DOCS_REVIEW_DAY_UTC", 1, 0, 6),
@@ -17,7 +18,9 @@ const schedule = {
 };
 
 let scheduledTimer;
+let heartbeatTimer;
 let activeChild;
+let status = readStatus();
 
 function log(message) {
   process.stdout.write(`[${new Date().toISOString()}] ${message}\n`);
@@ -30,6 +33,52 @@ function integerEnv(name, fallback, minimum, maximum) {
     throw new Error(`${name} must be an integer from ${minimum} to ${maximum}`);
   }
   return value;
+}
+
+function readStatus() {
+  if (!statusPath) return {};
+  try {
+    return JSON.parse(fs.readFileSync(statusPath, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function updateStatus(patch) {
+  if (!statusPath) return;
+  const nextStatus = {
+    schema_version: 1,
+    run_count: 0,
+    success_count: 0,
+    failure_count: 0,
+    skipped_count: 0,
+    ...status,
+    ...patch,
+    updated_at: new Date().toISOString(),
+  };
+  const temporaryPath = `${statusPath}.${process.pid}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(statusPath), { recursive: true });
+    fs.writeFileSync(temporaryPath, `${JSON.stringify(nextStatus)}\n`, { mode: 0o644 });
+    fs.renameSync(temporaryPath, statusPath);
+    status = nextStatus;
+  } catch (error) {
+    log(`cannot update Home Assistant status file: ${error.message}`);
+    try {
+      fs.rmSync(temporaryPath, { force: true });
+    } catch {
+      // The next update will retry. Status failures must not stop the scheduler.
+    }
+  }
+}
+
+function preflightReason(error) {
+  const message = String(error?.message || "");
+  if (message.startsWith("expected branch")) return "unexpected_branch";
+  if (message.includes("working tree is not clean")) return "dirty_worktree";
+  if (message.startsWith("prompt not found")) return "prompt_missing";
+  if (message.startsWith("cannot authenticate")) return "remote_authentication_failed";
+  return "preflight_failed";
 }
 
 export function nextWeeklyRun(now, { day, hour, minute }) {
@@ -103,6 +152,13 @@ export async function runReview() {
     preflight();
   } catch (error) {
     log(`weekly review skipped: ${error.message}`);
+    updateStatus({
+      state: "skipped",
+      last_finished: new Date().toISOString(),
+      last_result: "skipped",
+      last_reason: preflightReason(error),
+      skipped_count: Number(status.skipped_count || 0) + 1,
+    });
     return false;
   }
 
@@ -111,6 +167,13 @@ export async function runReview() {
     prompt = fs.readFileSync(promptPath, "utf8");
   } catch (error) {
     log(`weekly review skipped: cannot read prompt: ${error.message}`);
+    updateStatus({
+      state: "skipped",
+      last_finished: new Date().toISOString(),
+      last_result: "skipped",
+      last_reason: "prompt_unreadable",
+      skipped_count: Number(status.skipped_count || 0) + 1,
+    });
     return false;
   }
   const args = [
@@ -127,8 +190,20 @@ export async function runReview() {
     "-",
   ];
 
+  const startedAt = new Date().toISOString();
   log("weekly documentation review started");
+  updateStatus({
+    state: "running",
+    next_run: null,
+    last_started: startedAt,
+    last_reason: null,
+    last_exit_code: null,
+    last_signal: null,
+    run_count: Number(status.run_count || 0) + 1,
+  });
   return new Promise((resolve) => {
+    let timedOut = false;
+    let settled = false;
     const child = spawn("flock", args, {
       cwd: repoRoot,
       detached: true,
@@ -142,24 +217,61 @@ export async function runReview() {
     child.stdin.end(prompt);
 
     const timeout = setTimeout(() => {
+      timedOut = true;
       log(`weekly review exceeded ${maxRuntimeMs} ms; terminating process group`);
       killProcessGroup(child);
     }, maxRuntimeMs);
 
     child.once("error", (error) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
       activeChild = undefined;
       log(`weekly review failed to start: ${error.message}`);
+      updateStatus({
+        state: "failed",
+        last_finished: new Date().toISOString(),
+        last_result: "failed",
+        last_reason: "process_start_failed",
+        failure_count: Number(status.failure_count || 0) + 1,
+      });
       resolve(false);
     });
     child.once("close", (code, signal) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timeout);
       activeChild = undefined;
       if (code === 0) {
         log("weekly documentation review finished successfully");
+        let lastCommit = null;
+        try {
+          lastCommit = gitOutput(["rev-parse", "--short=12", "HEAD"]);
+        } catch {
+          // The successful result remains valid even if metadata collection fails.
+        }
+        updateStatus({
+          state: "success",
+          last_finished: new Date().toISOString(),
+          last_result: "success",
+          last_reason: null,
+          last_exit_code: 0,
+          last_signal: null,
+          last_commit: lastCommit,
+          success_count: Number(status.success_count || 0) + 1,
+        });
         resolve(true);
       } else {
         log(`weekly review failed: exit=${code ?? "null"} signal=${signal ?? "none"}`);
+        updateStatus({
+          state: "failed",
+          last_finished: new Date().toISOString(),
+          last_result: "failed",
+          last_reason: timedOut ? "timeout" : "process_failed",
+          last_exit_code: code,
+          last_signal: signal,
+          failure_count: Number(status.failure_count || 0) + 1,
+        });
         resolve(false);
       }
     });
@@ -170,15 +282,31 @@ function scheduleNext() {
   const next = nextWeeklyRun(new Date(), schedule);
   const delay = next.getTime() - Date.now();
   log(`next weekly documentation review: ${next.toISOString()}`);
+  updateStatus({
+    state: "waiting",
+    next_run: next.toISOString(),
+    schedule_utc: `day=${schedule.day} ${String(schedule.hour).padStart(2, "0")}:${String(schedule.minute).padStart(2, "0")}`,
+  });
   scheduledTimer = setTimeout(async () => {
     try {
       await runReview();
     } catch (error) {
       log(`weekly review failed unexpectedly: ${error.message}`);
+      updateStatus({
+        state: "failed",
+        last_finished: new Date().toISOString(),
+        last_result: "failed",
+        last_reason: "unexpected_error",
+        failure_count: Number(status.failure_count || 0) + 1,
+      });
     } finally {
       scheduleNext();
     }
   }, delay);
+}
+
+function startHeartbeat() {
+  heartbeatTimer = setInterval(() => updateStatus({}), 60_000);
 }
 
 function selfTest() {
@@ -200,7 +328,9 @@ function selfTest() {
 
 function shutdown(signal) {
   log(`received ${signal}; stopping scheduler`);
+  updateStatus({ state: "stopped", next_run: null, last_reason: signal.toLowerCase() });
   if (scheduledTimer) clearTimeout(scheduledTimer);
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (activeChild) killProcessGroup(activeChild);
   process.exit(0);
 }
@@ -224,4 +354,5 @@ if (process.argv.includes("--self-test")) {
   process.exitCode = (await runReview()) ? 0 : 1;
 } else {
   scheduleNext();
+  startHeartbeat();
 }

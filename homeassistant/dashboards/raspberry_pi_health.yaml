@@ -21,6 +21,33 @@ views:
           - entity: sensor.raspberry_pi_metrics_raw
             name: Coleta bruta
 
+      - type: entities
+        title: Revisão documental semanal
+        show_header_toggle: false
+        entities:
+          - entity: sensor.revisao_semanal_da_documentacao
+            name: Estado atual
+          - type: attribute
+            entity: sensor.revisao_semanal_da_documentacao
+            attribute: next_run
+            name: Próxima execução (UTC)
+          - type: attribute
+            entity: sensor.revisao_semanal_da_documentacao
+            attribute: last_result
+            name: Último resultado
+          - type: attribute
+            entity: sensor.revisao_semanal_da_documentacao
+            attribute: last_finished
+            name: Última conclusão (UTC)
+          - type: attribute
+            entity: sensor.revisao_semanal_da_documentacao
+            attribute: last_reason
+            name: Motivo
+          - type: attribute
+            entity: sensor.revisao_semanal_da_documentacao
+            attribute: last_commit
+            name: Commit final
+
       - type: grid
         title: Indicadores principais
         columns: 3

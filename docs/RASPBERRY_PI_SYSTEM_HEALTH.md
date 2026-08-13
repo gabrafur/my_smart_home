@@ -19,6 +19,11 @@
 - Registro do dashboard: `homeassistant/configuration.yaml`
 - Mounts de host no container: `docker-compose.yml`
 
+O mesmo dashboard também apresenta
+`sensor.revisao_semanal_da_documentacao`, alimentado pelo status local e não
+sensível do `docs-review-scheduler`. Os detalhes da entidade estão no guia de
+[revisão semanal da documentação](REVISAO_DOCUMENTACAO_SEMANAL.md).
+
 O coletor roda a cada 60 segundos via `command_line` e entrega um JSON unico. Os sensores derivados usam `template`, evitando varias chamadas shell separadas.
 
 ## Metricas monitoradas

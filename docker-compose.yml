@@ -40,6 +40,7 @@ services:
       - /sys:/host/sys:ro
       - /usr/bin/vcgencmd:/usr/bin/vcgencmd:ro
       - /run/dbus:/run/dbus:ro
+      - ./.local-state/docs-review:/run/docs-review:ro
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
       - PI_HEALTH_PROC_ROOT=/host/proc
@@ -162,6 +163,7 @@ services:
     working_dir: /workspace
     volumes:
       - .:/workspace
+      - ./.local-state/docs-review:/run/docs-review
       - codex-bridge-auth:/scheduler-auth/codex:ro
       - ${WEEKLY_DOCS_REVIEW_SSH_KEY:-/dev/null}:/scheduler-auth/id_ed25519:ro
       - ${WEEKLY_DOCS_REVIEW_KNOWN_HOSTS:-/dev/null}:/scheduler-auth/known_hosts:ro
@@ -173,6 +175,7 @@ services:
       - WEEKLY_DOCS_REVIEW_BRANCH=${WEEKLY_DOCS_REVIEW_BRANCH:-main}
       - WEEKLY_DOCS_REVIEW_REMOTE=${WEEKLY_DOCS_REVIEW_REMOTE:-origin}
       - WEEKLY_DOCS_REVIEW_TIMEOUT_MS=${WEEKLY_DOCS_REVIEW_TIMEOUT_MS:-10800000}
+      - WEEKLY_DOCS_REVIEW_STATUS_PATH=/run/docs-review/status.json
       - REPO_UID=${REPO_UID:-1000}
       - REPO_GID=${REPO_GID:-1000}
     entrypoint: ["/bin/sh", "/workspace/scripts/weekly-docs-review-entrypoint.sh"]

@@ -11,6 +11,30 @@ when something changed, and pushes to `origin/main` without force push.
 The schedule is deliberately UTC-based, so daylight-saving changes cannot move
 it. The service log reports the next run.
 
+## Home Assistant entity
+
+The `homeassistant/packages/weekly_documentation_review.yaml` package creates
+`sensor.revisao_semanal_da_documentacao`; the **Raspberry Pi - System Health**
+dashboard shows its state and key attributes. It polls every 60 seconds.
+The scheduler also writes a one-minute heartbeat; after three minutes without
+an update, the entity changes to `indisponível`.
+
+| Displayed state | Meaning |
+| --- | --- |
+| `aguardando` | service is active and waiting for `next_run` |
+| `executando` | Codex is reviewing the repository |
+| `sucesso` | a manual run completed; the continuous service returns to `aguardando` while preserving `last_result` |
+| `falha` | the process did not start, failed, or timed out |
+| `ignorado` | preflight rejected the branch, tree, or authentication |
+| `parado` | the scheduler received a shutdown signal |
+| `indisponível` | Home Assistant could not read the status file |
+
+Attributes include the next run, previous start and finish, result, normalized
+reason, final commit, and counters. The shared
+`.local-state/docs-review/status.json` file contains only this metadata, is
+Git-ignored, and is mounted read-only in Home Assistant. Full logs and arbitrary
+error messages are never copied into the entity.
+
 ## Review scope
 
 The versioned prompt at `scripts/weekly-docs-review.prompt.md` requires the
@@ -136,6 +160,10 @@ A dirty tree, unexpected branch, or authentication failure skips that week's
 run with an explicit log message. If a review fails after editing, its changes
 remain in the checkout for human inspection; later runs keep refusing to start
 until the tree is clean again. Never discard those changes automatically.
+
+The service checkout must remain on `main`. On another branch the scheduler
+itself remains healthy and waiting, but the run is recorded as
+`skipped`/`unexpected_branch` to avoid mixing with interactive work.
 
 This is a local schedule and depends on the Docker host being powered on. The
 official [Scheduled tasks documentation](https://learn.chatgpt.com/docs/automations)
