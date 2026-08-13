@@ -191,7 +191,7 @@ force-push nem risco de reconciliacao.
 | `docker compose config --quiet` | ok |
 | `homeassistant --script check_config` | ok; `!secret` resolve para os mesmos valores de antes |
 | Sintaxe dos function nodes do Node-RED | ok |
-| Fluxo `sec_prepare_arrival_context` / `sec_refresh_anyone_away` com e sem env | identico com env; degrada para estado de zona sem env |
+| Flows antigos `sec_prepare_arrival_context` / `sec_refresh_anyone_away` com e sem env (substituídos por `localizacao_pessoas` e `contexto_creta`) | idêntico com env; degrada para estado de zona sem env |
 | `python3 -m ast` em `config_flow.py` | ok |
 | `node scripts/docs-check.mjs` | links, pares bilingues, serviços e placeholders validados |
 

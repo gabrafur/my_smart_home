@@ -23,14 +23,6 @@
         "info": "Controla a iluminação externa, recebe o hub Dulo compartilhado por link e reage ao evento de alarme armado recebido da aba alarme_casa."
     },
     {
-        "id": "2fd40fd570e6f37a",
-        "type": "tab",
-        "label": "iluminacao_seguranca",
-        "disabled": false,
-        "info": "",
-        "env": []
-    },
-    {
         "id": "alarm_house_tab",
         "type": "tab",
         "label": "alarme_casa",
@@ -45,184 +37,6 @@
         "disabled": false,
         "info": "Solicita confirmação por notificação acionável antes de desarmar o alarme quando Gabriel, Valéria ou o Creta estão chegando.",
         "env": []
-    },
-    {
-        "id": "grp_sec_gatilhos",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "1. Gatilhos de evento",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "sec_gabriel_location_changed",
-            "sec_valeria_location_changed",
-            "sec_creta_location_changed",
-            "sec_sun_changed",
-            "sec_creta_lock_context_changed",
-            "sec_engine_off_changed",
-            "sec_creta_locked_changed"
-        ],
-        "x": 34,
-        "y": 99,
-        "w": 292,
-        "h": 442
-    },
-    {
-        "id": "grp_sec_contexto",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "2. Contexto (distancias, trava creta_in_use)",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "sec_prepare_arrival_context"
-        ],
-        "x": 344,
-        "y": 271.5,
-        "w": 312,
-        "h": 97
-    },
-    {
-        "id": "grp_sec_deteccao",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "3. Deteccao de chegada",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "sec_update_arming_context",
-            "sec_update_arming_location",
-            "sec_detect_arriving_source",
-            "sec_notify_valeria_approaching",
-            "sec_creta_trip_refresh_gate",
-            "sec_refresh_creta_trip_info",
-            "sec_approach_wake_gate",
-            "sec_arrival_disarm_out"
-        ],
-        "x": 654,
-        "y": 99,
-        "w": 882,
-        "h": 442
-    },
-    {
-        "id": "grp_sec_acender",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "4. Acender (escuro + Creta em uso + inativo)",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#c98a2b",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "sec_check_dark",
-            "sec_check_engine_on",
-            "sec_check_reflector_inactive",
-            "sec_mark_reflector_active",
-            "sec_reflector_turn_on",
-            "29a4e3c0935e2805",
-            "sec_auto_off_delay",
-            "sec_auto_off_event"
-        ],
-        "x": 1624,
-        "y": 79,
-        "w": 1322,
-        "h": 322
-    },
-    {
-        "id": "grp_sec_apagar",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "5. Apagar (5 condicoes independentes)",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#b5563f",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "sec_evaluate_turn_off",
-            "sec_arrival_off_grace",
-            "sec_turn_off_if_active",
-            "sec_reflector_turn_off"
-        ],
-        "x": 644,
-        "y": 619,
-        "w": 2592,
-        "h": 162
-    },
-    {
-        "id": "grp_sec_refresh",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "6. Atualizacao de localizacao e do Creta",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#6b6b6b",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "sec_refresh_every_10min",
-            "sec_refresh_context_snapshot",
-            "sec_refresh_anyone_away",
-            "sec_request_gabriel_location",
-            "sec_request_valeria_location",
-            "sec_force_refresh_creta",
-            "sec_creta_refresh_ack",
-            "sec_refresh_creta_entities"
-        ],
-        "x": 64,
-        "y": 879,
-        "w": 1462,
-        "h": 262
-    },
-    {
-        "id": "grp_sec_testes",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "7. Testes manuais",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#8a8a8a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "249963a6cd6c247a",
-            "965afc02b5d9e809"
-        ],
-        "x": 44,
-        "y": 1259,
-        "w": 252,
-        "h": 142
     },
     {
         "id": "4126427d5e161a03",
@@ -1217,1177 +1031,6 @@
         ]
     },
     {
-        "id": "249963a6cd6c247a",
-        "type": "inject",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_testes",
-        "name": "Teste de mensagem",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "{\"message\":\"Teste manual: Valéria está chegando.\"}",
-        "payloadType": "json",
-        "x": 180,
-        "y": 1300,
-        "wires": [
-            [
-                "sec_notify_valeria_approaching"
-            ]
-        ]
-    },
-    {
-        "id": "29a4e3c0935e2805",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Avisar: Refletor ligado",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "notify.send_message",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "notify.iphone_de_gabriel_furlan",
-            "notify.iphone_de_valeria"
-        ],
-        "labelId": [],
-        "data": "{\"title\":\"Casa inteligente\",\"message\":\"O refletor da garagem foi ligado.\"}",
-        "dataType": "json",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
-        "x": 2800,
-        "y": 200,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_comment_arrival_light",
-        "type": "comment",
-        "z": "2fd40fd570e6f37a",
-        "name": "Refletor: so com o Creta em uso + aproximacao, a noite",
-        "info": "LIGA somente quando AS DUAS coisas valem:\n  1. Creta em uso (trava creta_in_use, mantida em\n     sec_prepare_arrival_context - ver por que nao e a leitura ao vivo\n     de binary_sensor.creta_engine no comentario de la), e\n  2. evidencia de aproximacao por QUALQUER fonte: localizacao do Creta,\n     do Gabriel ou da Valeria (anel zone.chegando, 1500 m; entrada na\n     zone.home como rede de seguranca).\nProximidade de pessoa sozinha NAO acende.\n\nDESLIGA por qualquer uma destas, de forma independente:\n  1. Creta desligado E destravado ....... imediato\n  2. chegada do Gabriel confirmada ...... apos 90 s\n  3. chegada da Valeria confirmada ...... apos 90 s\n  4. chegada do Creta confirmada ........ apos 90 s\n  5. 15 min ligado ...................... backstop\nA carencia de 90 s existe para a luz nao morrer no trajeto carro->porta.\n\nAnti-religamento: 5 min de silencio apos qualquer desligamento.\n\nVer docs/ILUMINACAO_SEGURANCA_NODERED.md.",
-        "x": 180,
-        "y": 80,
-        "wires": []
-    },
-    {
-        "id": "sec_gabriel_location_changed",
-        "type": "server-state-changed",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_gatilhos",
-        "name": "Localizacao Gabriel",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "device_tracker.iphone_de_gabriel_furlan",
-                "device_tracker.iphonegabrielfurlan"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"trigger_entity\": $entity().entity_id,\n    \"trigger_state\": $entity().state,\n    \"trigger_prev_state\": $prevEntity().state,\n    \"source\": \"gabriel\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 180,
-        "y": 140,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ]
-        ]
-    },
-    {
-        "id": "sec_valeria_location_changed",
-        "type": "server-state-changed",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_gatilhos",
-        "name": "Localizacao Valeria",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "device_tracker.iphone_de_valeria",
-                "device_tracker.iphone_de_valeria_2"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"trigger_entity\": $entity().entity_id,\n    \"trigger_state\": $entity().state,\n    \"trigger_prev_state\": $prevEntity().state,\n    \"source\": \"valeria\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 180,
-        "y": 200,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ]
-        ]
-    },
-    {
-        "id": "sec_creta_location_changed",
-        "type": "server-state-changed",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_gatilhos",
-        "name": "Localizacao Creta",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "device_tracker.creta_location"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"trigger_entity\": $entity().entity_id,\n    \"trigger_state\": $entity().state,\n    \"trigger_prev_state\": $prevEntity().state,\n    \"source\": \"creta\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 180,
-        "y": 260,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ]
-        ]
-    },
-    {
-        "id": "sec_sun_changed",
-        "type": "server-state-changed",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_gatilhos",
-        "name": "Por do sol / amanhecer",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "sun.sun"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"context_update\",\n    \"source\": \"sun\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 180,
-        "y": 320,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ]
-        ]
-    },
-    {
-        "id": "sec_creta_lock_context_changed",
-        "type": "server-state-changed",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_gatilhos",
-        "name": "Trava porta Creta atualizou",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "lock.creta_door_lock"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"context_update\",\n    \"source\": \"creta_lock\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 180,
-        "y": 380,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ]
-        ]
-    },
-    {
-        "id": "sec_engine_off_changed",
-        "type": "server-state-changed",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_gatilhos",
-        "name": "Creta desligou (se em casa)",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "binary_sensor.creta_engine"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "off",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "5",
-        "forType": "num",
-        "forUnits": "seconds",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"turn_off\",\n    \"reason\": \"creta_engine_off\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 180,
-        "y": 440,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ]
-        ]
-    },
-    {
-        "id": "sec_creta_locked_changed",
-        "type": "server-state-changed",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_gatilhos",
-        "name": "Creta destravou (se em casa)",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "lock.creta_door_lock"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "unlocked",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "5",
-        "forType": "num",
-        "forUnits": "seconds",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"turn_off\",\n    \"reason\": \"creta_unlocked\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 180,
-        "y": 500,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ]
-        ]
-    },
-    {
-        "id": "sec_refresh_comment",
-        "type": "comment",
-        "z": "2fd40fd570e6f37a",
-        "name": "Atualiza localizacoes (30 s) e Creta (1-5 min fora / 10 min em casa) e reavalia chegada",
-        "info": "Reavalia o contexto a cada 30 s (tick do inject \"A cada 30 s\").\n\niPhones: request_location_update a cada 30-60 s enquanto alguem esta fora.\n\nCreta (force-refresh Kia/Hyundai, sujeito a rate limit e a bateria 12V):\n- alguem fora + Creta <= 1500 m de casa: a cada 1 min;\n- alguem fora, mais longe: a cada 5 min;\n- ninguem fora (carro em casa): piso de 10 min, so' das 07h as 22h\n  (de madrugada nao acorda o carro parado, p/ poupar a bateria 12V).\n\nO gatilho REAL de \"chegando de carro\" e' a LOCALIZACAO do Creta\n(device_tracker.creta_location), nao o binary_sensor.creta_engine, que e'\npouco confiavel durante a viagem no backend BR.",
-        "x": 180,
-        "y": 900,
-        "wires": []
-    },
-    {
-        "id": "sec_refresh_every_10min",
-        "type": "inject",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "A cada 30 s",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "30",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "30",
-        "topic": "refresh_security_entities",
-        "payload": "",
-        "payloadType": "date",
-        "x": 180,
-        "y": 980,
-        "wires": [
-            [
-                "sec_refresh_context_snapshot"
-            ]
-        ]
-    },
-    {
-        "id": "sec_refresh_context_snapshot",
-        "type": "api-current-state",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "Reavaliar armado atual",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "outputs": 1,
-        "halt_if": "",
-        "halt_if_type": "str",
-        "halt_if_compare": "is",
-        "entity_id": "sun.sun",
-        "state_type": "str",
-        "blockInputOverrides": false,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "(\n  {\n    \"event\": \"context_update\",\n    \"source\": \"refresh\",\n    \"sun\": $entities(\"sun.sun\"),\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\"),\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
-                "valueType": "jsonata"
-            }
-        ],
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "override_topic": false,
-        "state_location": "payload",
-        "override_payload": "msg",
-        "entity_location": "data",
-        "override_data": "msg",
-        "x": 440,
-        "y": 980,
-        "wires": [
-            [
-                "sec_refresh_anyone_away"
-            ]
-        ]
-    },
-    {
-        "id": "sec_refresh_anyone_away",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "Gabriel/Valeria/Creta fora?",
-        "func": "// Ponto(s) de referencia geografica: vem do ambiente do container (.env ->\n// `env_file` do servico nodered no docker-compose), NUNCA hardcoded aqui -\n// este repositorio e publico e a coordenada de casa e' o endereco da familia.\n// Sem essas variaveis o fluxo degrada DE PROPOSITO para o estado de zona do\n// Home Assistant (\"home\"/\"not_home\"), que ja e' o fallback usado quando o GPS\n// nao e' confiavel; nunca calcula distancia com coordenada invalida.\nconst HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\nconst ARM_DISTANCE_M = 100;\nconst MAX_GPS_ACCURACY_M = 100;\n\n// Cadencia de refresh acelera conforme carro/pessoa se aproxima de casa.\nconst IPHONE_REFRESH_INTERVAL_MS = 60 * 1000;       // longe: 1 min\nconst IPHONE_NEAR_REFRESH_INTERVAL_MS = 30 * 1000;  // perto: 30 s\nconst IPHONE_NEARBY_DISTANCE_M = 2000;\nconst IPHONE_LAST_REFRESH_KEY = \"sec_iphone_last_refresh_ts\";\n\nconst KIA_REFRESH_INTERVAL_MS = 15 * 60 * 1000;     // alinhado ao piso real do coordinator\nconst KIA_NEAR_REFRESH_INTERVAL_MS = 15 * 60 * 1000; // aproximacao pontual usa sec_approach_wake_gate\nconst KIA_NEARBY_DISTANCE_M = 1500;\nconst KIA_LAST_REFRESH_KEY = \"sec_kia_last_force_refresh_ts\";\nconst KIA_BASELINE_INTERVAL_MS = 15 * 60 * 1000;    // em casa: respeita o piso real de wake do backend BR\nconst KIA_BASELINE_HOUR_START = 7;                  // baseline so' das 07h ...\nconst KIA_BASELINE_HOUR_FINISH = 22;                // ... as 22h (poupa a bateria 12V de madrugada)\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 +\n        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *\n        Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\n\nfunction distanceFromHome(entity) {\n    if (!HOME_KNOWN) return null;\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasGpsAccuracy = Number.isFinite(gpsAccuracy);\n    const reliableCoordinates = hasCoordinates && (!hasGpsAccuracy || gpsAccuracy <= MAX_GPS_ACCURACY_M);\n    return reliableCoordinates ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null;\n}\n\nfunction reliableCoords(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasGpsAccuracy = Number.isFinite(gpsAccuracy);\n    return hasCoordinates && (!hasGpsAccuracy || gpsAccuracy <= MAX_GPS_ACCURACY_M) ? { lat, lon } : null;\n}\n\nfunction mergeWithIcloudFallback(primary, fallback) {\n    // The companion-app tracker (primary) can get stuck reporting a stale\n    // \"home\" fix if iOS suspends background updates. The iCloud (Find My)\n    // tracker polls independently, so when both have reliable coordinates,\n    // trust whichever one is farther from home.\n    const primaryCoords = reliableCoords(primary);\n    const fallbackCoords = reliableCoords(fallback);\n    if (HOME_KNOWN && primaryCoords && fallbackCoords) {\n        const primaryDistance = distanceMeters(HOME_LAT, HOME_LON, primaryCoords.lat, primaryCoords.lon);\n        const fallbackDistance = distanceMeters(HOME_LAT, HOME_LON, fallbackCoords.lat, fallbackCoords.lon);\n        return fallbackDistance > primaryDistance ? fallback : primary;\n    }\n    if (primaryCoords) return primary;\n    if (fallbackCoords) return fallback;\n    if (primary?.state === \"home\" && fallback?.state === \"not_home\") return fallback;\n    return primary;\n}\n\nfunction isAway(entity) {\n    const distance = distanceFromHome(entity);\n    if (distance !== null) {\n        return distance > ARM_DISTANCE_M;\n    }\n    return entity?.state === \"not_home\";\n}\n\nconst gabriel = mergeWithIcloudFallback(msg.payload?.gabriel, msg.payload?.gabriel_icloud);\nconst valeria = mergeWithIcloudFallback(msg.payload?.valeria, msg.payload?.valeria_icloud);\n\nconst awayEntities = [];\nfor (const [name, entity] of Object.entries({\n    gabriel,\n    valeria,\n    creta: msg.payload?.creta,\n})) {\n    if (isAway(entity)) {\n        awayEntities.push(name);\n    }\n}\n\nmsg.payload.refresh_allowed = awayEntities.length > 0;\nmsg.payload.refresh_away_entities = awayEntities;\n\nconst now = Date.now();\nconst anyoneAway = awayEntities.length > 0;\n\n// Cadencia dos iPhones: acelera para 30s quando a pessoa mais proxima que\n// ainda esta fora chega a <= IPHONE_NEARBY_DISTANCE_M de casa. O tick base\n// agora e' de 30s, entao o intervalo e' controlado por tempo (nao pelo\n// periodo do inject) para nao depender da cadencia do disparo.\nconst personDistances = [gabriel, valeria]\n    .map((entity) => distanceFromHome(entity))\n    .filter((distance) => distance !== null);\nconst nearestPerson = personDistances.length ? Math.min(...personDistances) : null;\nconst personNearby = nearestPerson !== null && nearestPerson <= IPHONE_NEARBY_DISTANCE_M;\nconst iphoneInterval = personNearby ? IPHONE_NEAR_REFRESH_INTERVAL_MS : IPHONE_REFRESH_INTERVAL_MS;\nconst lastIphoneRefresh = flow.get(IPHONE_LAST_REFRESH_KEY) ?? 0;\nconst shouldRefreshIphones = anyoneAway && (now - lastIphoneRefresh) >= iphoneInterval;\nif (shouldRefreshIphones) {\n    // request_location_update nao tem rate limit conhecido, entao marcar aqui\n    // (otimista) e' aceitavel: se o HA estiver fora, perde-se no maximo um\n    // ciclo e o proximo tick tenta de novo.\n    flow.set(IPHONE_LAST_REFRESH_KEY, now);\n}\n\n// Cadencia periodica do Creta: 15 min em qualquer distancia, igual ao piso\n// BR_WAKE_MIN_INTERVAL_S do coordinator. A entrada na zone.chegando continua\n// tendo um wake pontual por sec_approach_wake_gate; o tick de 30 s permanece\n// apenas para a cadencia adaptativa dos iPhones.\nconst cretaDistance = distanceFromHome(msg.payload?.creta);\nconst cretaNearby = cretaDistance !== null && cretaDistance <= KIA_NEARBY_DISTANCE_M;\nconst cretaAway = awayEntities.includes(\"creta\");\nconst lastKiaRefresh = flow.get(KIA_LAST_REFRESH_KEY) ?? 0;\n\n// Cadencia do force-refresh do Creta:\n//  - alguem fora:                  15 min (longe ou perto).\n//  - entrada no anel de chegada:    wake pontual por sec_approach_wake_gate.\n//  - ninguem fora (carro em casa): 15 min, so das 07h as 22h\n//    (nao acorda o carro parado de madrugada; poupa a bateria 12V).\nconst kiaHour = new Date().getHours();\nconst kiaDaytime = kiaHour >= KIA_BASELINE_HOUR_START && kiaHour < KIA_BASELINE_HOUR_FINISH;\nlet kiaInterval;\nlet kiaEnabled;\nif (anyoneAway) {\n    kiaInterval = (cretaAway && cretaNearby) ? KIA_NEAR_REFRESH_INTERVAL_MS : KIA_REFRESH_INTERVAL_MS;\n    kiaEnabled = true;\n} else {\n    kiaInterval = KIA_BASELINE_INTERVAL_MS;\n    kiaEnabled = kiaDaytime;\n}\nconst shouldRefreshKia = kiaEnabled && (now - lastKiaRefresh) >= kiaInterval;\n\n// KIA_LAST_REFRESH_KEY continua sendo gravado so por sec_creta_refresh_ack,\n// apos o button.press realmente ter sucesso. Marcar aqui de forma otimista\n// \"consumia\" o cooldown mesmo com o HA inacessivel (ex.: reiniciando),\n// bloqueando retries ate o proximo intervalo em vez de tentar no proximo tick.\n\nreturn [\n    msg,\n    shouldRefreshIphones ? msg : null,\n    shouldRefreshKia ? msg : null,\n];",
-        "outputs": 3,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 720,
-        "y": 980,
-        "wires": [
-            [
-                "sec_prepare_arrival_context"
-            ],
-            [
-                "sec_request_gabriel_location",
-                "sec_request_valeria_location"
-            ],
-            [
-                "sec_force_refresh_creta",
-                "sec_refresh_creta_entities"
-            ]
-        ]
-    },
-    {
-        "id": "sec_force_refresh_creta",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "Forcar refresh Creta",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "button.press",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "button.creta_force_refresh"
-        ],
-        "labelId": [],
-        "data": "",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "button",
-        "service": "press",
-        "x": 1060,
-        "y": 1040,
-        "wires": [
-            [
-                "sec_creta_refresh_ack"
-            ]
-        ]
-    },
-    {
-        "id": "sec_creta_refresh_ack",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "Confirmar refresh Creta (sucesso)",
-        "func": "// Only reached when button.press on button.creta_force_refresh actually\n// succeeded. Marking the cooldown here (instead of optimistically before\n// dispatch) means a failed call - e.g. HA unreachable mid-restart - leaves\n// the cooldown untouched, so the next 1-minute tick retries immediately.\nflow.set(\"sec_kia_last_force_refresh_ts\", Date.now());\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1360,
-        "y": 1040,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_refresh_creta_entities",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "Atualizar Creta",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "homeassistant.update_entity",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"entity_id\":[\"device_tracker.creta_location\",\"binary_sensor.creta_engine\",\"lock.creta_door_lock\",\"device_tracker.iphone_de_gabriel_furlan\",\"device_tracker.iphone_de_valeria\"]}",
-        "dataType": "json",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "homeassistant",
-        "service": "update_entity",
-        "x": 1060,
-        "y": 1100,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_request_gabriel_location",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "Atualizar iPhone Gabriel",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "notify.send_message",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "notify.iphone_de_gabriel_furlan"
-        ],
-        "labelId": [],
-        "data": "{\"message\":\"request_location_update\"}",
-        "dataType": "json",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
-        "x": 1060,
-        "y": 920,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_request_valeria_location",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_refresh",
-        "name": "Atualizar iPhone Valeria",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "notify.send_message",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "notify.iphone_de_valeria"
-        ],
-        "labelId": [],
-        "data": "{\"message\":\"request_location_update\"}",
-        "dataType": "json",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
-        "x": 1060,
-        "y": 980,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_prepare_arrival_context",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_contexto",
-        "name": "Preparar estados e distancias",
-        "func": "// Ponto(s) de referencia geografica: vem do ambiente do container (.env ->\n// `env_file` do servico nodered no docker-compose), NUNCA hardcoded aqui -\n// este repositorio e publico e a coordenada de casa e' o endereco da familia.\n// Sem essas variaveis o fluxo degrada DE PROPOSITO para o estado de zona do\n// Home Assistant (\"home\"/\"not_home\"), que ja e' o fallback usado quando o GPS\n// nao e' confiavel; nunca calcula distancia com coordenada invalida.\nconst HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\n// Portao/entrada, ~168m de HOME_LAT/HOME_LON: usado para acender o\n// refletor um pouco antes da chegada em casa (ver sec_detect_arriving_source).\nconst GATE_LAT = Number(env.get(\"GATE_LAT\"));\nconst GATE_LON = Number(env.get(\"GATE_LON\"));\nconst GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);\nconst event = msg.payload?.event;\n\nconst ACTIVE_KEY = \"refletor_portao_carros_active_by_arrival\";\nconst ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst ARM_DISTANCE_M = 100;\nconst ARRIVAL_DISTANCE_M = 300;\nconst MAX_GPS_ACCURACY_M = 100;\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 +\n        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *\n        Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\n\nfunction reliableCoords(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasGpsAccuracy = Number.isFinite(gpsAccuracy);\n    return hasCoordinates && (!hasGpsAccuracy || gpsAccuracy <= MAX_GPS_ACCURACY_M) ? { lat, lon } : null;\n}\n\nfunction mergeWithIcloudFallback(primary, fallback) {\n    // Same rationale as sec_refresh_anyone_away: prefer whichever tracker\n    // (companion app vs iCloud/Find My) reports the greater distance from\n    // home, since a stuck companion-app fix is the common failure mode.\n    const primaryCoords = reliableCoords(primary);\n    const fallbackCoords = reliableCoords(fallback);\n    if (HOME_KNOWN && primaryCoords && fallbackCoords) {\n        const primaryDistance = distanceMeters(HOME_LAT, HOME_LON, primaryCoords.lat, primaryCoords.lon);\n        const fallbackDistance = distanceMeters(HOME_LAT, HOME_LON, fallbackCoords.lat, fallbackCoords.lon);\n        return fallbackDistance > primaryDistance ? fallback : primary;\n    }\n    if (primaryCoords) return primary;\n    if (fallbackCoords) return fallback;\n    if (primary?.state === \"home\" && fallback?.state === \"not_home\") return fallback;\n    return primary;\n}\n\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasGpsAccuracy = Number.isFinite(gpsAccuracy);\n    const reliableCoordinates = hasCoordinates && (!hasGpsAccuracy || gpsAccuracy <= MAX_GPS_ACCURACY_M);\n\n    return {\n        entity_id: entity?.entity_id,\n        state: entity?.state,\n        latitude: hasCoordinates ? lat : null,\n        longitude: hasCoordinates ? lon : null,\n        gps_accuracy: hasGpsAccuracy ? gpsAccuracy : null,\n        location_reliable: reliableCoordinates,\n        distance_m: (HOME_KNOWN && reliableCoordinates) ? Math.round(distanceMeters(HOME_LAT, HOME_LON, lat, lon)) : null,\n        gate_distance_m: (GATE_KNOWN && reliableCoordinates) ? Math.round(distanceMeters(GATE_LAT, GATE_LON, lat, lon)) : null,\n    };\n}\n\n// \"Ja em casa AGORA\" segundo o tracker em tempo real (mobile_app para as\n// pessoas; o unico tracker do Creta): dentro de ARM_DISTANCE_M do ponto HOME.\n// NAO usa o ponto do portao nem o raio de chegada de 300m de proposito - e'\n// o sinal de que a entidade ja esta em casa, nao apenas se aproximando.\nfunction isHomePrimary(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const gpsAccuracy = Number(attrs.gps_accuracy);\n    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasGpsAccuracy = Number.isFinite(gpsAccuracy);\n    const reliableCoordinates = hasCoordinates && (!hasGpsAccuracy || gpsAccuracy <= MAX_GPS_ACCURACY_M);\n    if (HOME_KNOWN && reliableCoordinates) {\n        return distanceMeters(HOME_LAT, HOME_LON, lat, lon) <= ARM_DISTANCE_M;\n    }\n    if (hasGpsAccuracy && gpsAccuracy > MAX_GPS_ACCURACY_M) {\n        return false;\n    }\n    return entity?.state === \"home\";\n}\n\nfunction homeForMs(entity) {\n    const changedAt = Date.parse(entity?.last_changed ?? \"\");\n    return Number.isFinite(changedAt) ? Date.now() - changedAt : null;\n}\n\nfunction isHome(item) {\n    if (item.distance_m !== null) {\n        return item.distance_m <= ARRIVAL_DISTANCE_M;\n    }\n    if (item.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) {\n        return false;\n    }\n    return item.state === \"home\";\n}\n\nconst gabriel = position(mergeWithIcloudFallback(msg.payload?.gabriel, msg.payload?.gabriel_icloud));\nconst valeria = position(mergeWithIcloudFallback(msg.payload?.valeria, msg.payload?.valeria_icloud));\nconst creta = position(msg.payload?.creta);\n\n// primary_home usa SO o tracker em tempo real (nao o merge com iCloud). Serve\n// para nunca acender o refletor quando a pessoa/carro ja esta em casa e o\n// tracker secundario (iCloud) so agora esta \"alcancando\" o estado real com\n// atraso - ver sec_detect_arriving_source.\ngabriel.primary_home = isHomePrimary(msg.payload?.gabriel);\nvaleria.primary_home = isHomePrimary(msg.payload?.valeria);\ncreta.primary_home = isHomePrimary(msg.payload?.creta);\n\n// Ha quanto tempo o tracker em tempo real esta no estado atual. E' o que\n// separa \"chegou agora\" de \"esta em casa ha um tempao e o tracker\n// secundario (iCloud) so agora alcancou\" - ver sec_detect_arriving_source.\n// null quando last_changed nao vier: la o tratamento e' fail-open (acende),\n// porque o modo de falha caro e' a luz NAO acender na chegada.\n// Corroboracao entre os DOIS trackers da pessoa. Se QUALQUER um deles diz\n// \"em casa\", ela nao esta se aproximando - nao ha como chegar de onde ja se\n// esta. Serve contra tracker CONGELADO: em 07/08/2026 o mobile_app da Valeria\n// passou 2 dias inteiros reportando a MESMA posicao (644 m) enquanto o iCloud\n// mostrava 25-40 m (casa, correto). Como 644 m cai dentro do anel de 1500 m,\n// a reavaliacao de zona gerou um not_home -> chegando que, a noite, teria\n// acendido o refletor e disparado o push \"Valeria esta chegando\".\ngabriel.any_tracker_home = isHomePrimary(msg.payload?.gabriel) || isHomePrimary(msg.payload?.gabriel_icloud);\nvaleria.any_tracker_home = isHomePrimary(msg.payload?.valeria) || isHomePrimary(msg.payload?.valeria_icloud);\ncreta.any_tracker_home = isHomePrimary(msg.payload?.creta);\n\ngabriel.primary_home_for_ms = homeForMs(msg.payload?.gabriel);\nvaleria.primary_home_for_ms = homeForMs(msg.payload?.valeria);\ncreta.primary_home_for_ms = homeForMs(msg.payload?.creta);\n\nconst sunBelow = msg.payload?.sun?.state === \"below_horizon\";\nconst engineOn = msg.payload?.creta_engine?.state === \"on\";\nconst lockState = msg.payload?.creta_lock?.state;\nconst cretaUnlocked = lockState === \"unlocked\";\n\n// ---- Trava \"Creta em uso\" -------------------------------------------------\n// O refletor so pode acender com o Creta ligado, mas binary_sensor.creta_engine\n// so ganha dado novo quando algum refresh acorda o carro (ver\n// docs/CRETA_KIA_UVO_INTEGRATION.md): em 5 dias ele registrou ZERO transicoes,\n// incluindo uma viagem comprovada. Exigir engine==\"on\" ao vivo no instante da\n// travessia do anel deixaria o refletor sem acender quase sempre.\n//\n// Entao o gate usa um estado TRAVADO: liga em \"em uso\" quando o motor e visto\n// ligado, e so solta quando ha evidencia real de fim de uso. Enquanto o carro\n// roda longe de casa (dado velho, travado pelo proprio Kia), a trava se mantem.\nconst CRETA_IN_USE_KEY = \"creta_in_use\";\nlet cretaInUse = flow.get(CRETA_IN_USE_KEY) === true;\nif (engineOn) {\n    cretaInUse = true;\n}\n// Solta so com o motor desligado E (porta destravada = alguem saiu, OU carro\n// em casa = viagem terminou). A ordem importa: na SAIDA o carro esta em casa\n// mas com o motor ligado, e nesse caso a trava tem que permanecer.\nif (!engineOn && (cretaUnlocked || isHomePrimary(msg.payload?.creta))) {\n    cretaInUse = false;\n}\nflow.set(CRETA_IN_USE_KEY, cretaInUse);\n\nmsg.payload = {\n    event,\n    source: msg.payload?.source,\n    // Transicao de zona da entidade que disparou. E' o que permite acender\n    // ANTES da chegada (entrada na zone.chegando) e distinguir chegada de\n    // saida - ver sec_detect_arriving_source.\n    trigger_entity: msg.payload?.trigger_entity,\n    trigger_state: msg.payload?.trigger_state,\n    trigger_prev_state: msg.payload?.trigger_prev_state,\n    reason: msg.payload?.reason,\n    sun_below_horizon: sunBelow,\n    gabriel,\n    valeria,\n    creta,\n    creta_home: isHome(creta),\n    creta_engine_on: engineOn,\n    creta_lock: lockState,\n    creta_unlocked: cretaUnlocked,\n    creta_in_use: cretaInUse,\n    active: flow.get(ACTIVE_KEY) === true,\n    armed: flow.get(ARMED_KEY) ?? {},\n    arriving: [],\n};\n\nif (event === \"turn_off\") {\n    return [msg, null, null];\n}\nif (event === \"context_update\") {\n    return [null, msg, null];\n}\nif (event === \"location_update\") {\n    return [null, null, msg];\n}\nreturn [null, null, null];",
-        "outputs": 3,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 320,
-        "wires": [
-            [
-                "sec_evaluate_turn_off"
-            ],
-            [
-                "sec_update_arming_context"
-            ],
-            [
-                "sec_update_arming_location",
-                "sec_evaluate_turn_off"
-            ]
-        ]
-    },
-    {
-        "id": "sec_turn_off_if_active",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_apagar",
-        "name": "Desligar se refletor ativo",
-        "func": "const ACTIVE_KEY = \"refletor_portao_carros_active_by_arrival\";\nconst ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst ACTIVATED_AT_KEY = \"refletor_activated_at\";\nconst SUPPRESS_KEY = \"refletor_suppressed_until\";\n\n// Janela de silencio pos-desligamento. Sem ela, o proximo evento de\n// localizacao logo apos o desligamento reacenderia o refletor - exatamente o\n// \"religar logo depois de apagar\" que o usuario pediu para evitar.\nconst RELIGHT_SUPPRESSION_MS = 5 * 60 * 1000;\n\nconst active = msg.payload?.active ?? flow.get(ACTIVE_KEY) === true;\n\nif (!active) {\n    return null;\n}\n\nflow.set(ACTIVE_KEY, false);\nflow.set(ARMED_KEY, {});\nflow.set(ACTIVATED_AT_KEY, null);\nflow.set(SUPPRESS_KEY, Date.now() + RELIGHT_SUPPRESSION_MS);\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2800,
-        "y": 660,
-        "wires": [
-            [
-                "sec_reflector_turn_off"
-            ]
-        ]
-    },
-    {
-        "id": "sec_update_arming_context",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Atualizar armado por contexto",
-        "func": "const ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst ARM_DISTANCE_M = 100;\nconst MAX_GPS_ACCURACY_M = 100;\n\nfunction isAway(item) {\n    if (item && item.distance_m !== null) {\n        return item.distance_m > ARM_DISTANCE_M;\n    }\n    return item?.state === \"not_home\";\n}\n\n// \"Em casa\" para efeito de LIMPAR o armado usa o mesmo limiar de 100 m do\n// armar (nao os 300 m do raio de chegada), de proposito: com 300 m havia\n// sobreposicao (100-300 m armava e limpava no mesmo passo, resultado liquido\n// = desarmado), e um context_update com a pessoa se aproximando nessa faixa\n// apagava o armado antes da deteccao de chegada disparar. Assim armar (>100 m)\n// e limpar (<=100 m) sao complementares, sem zona morta. A decisao de \"Creta\n// em casa\" que desliga o refletor continua usando 300 m em\n// sec_prepare_arrival_context (creta_home), independente disto.\nfunction isHome(item) {\n    if (item && item.distance_m !== null) {\n        return item.distance_m <= ARM_DISTANCE_M;\n    }\n    if (item?.gps_accuracy !== null && item?.gps_accuracy > MAX_GPS_ACCURACY_M) {\n        return false;\n    }\n    return item?.state === \"home\";\n}\n\nfunction updateAwayArming(armed, people) {\n    for (const [name, item] of Object.entries(people)) {\n        if (isAway(item)) {\n            armed[name] = true;\n        }\n    }\n}\n\nfunction clearCurrentHomeArming(armed, people) {\n    for (const [name, item] of Object.entries(people)) {\n        if (isHome(item)) {\n            armed[name] = false;\n        }\n    }\n}\n\nconst armedEntities = msg.payload.armed ?? {};\nconst trackedPeople = {\n    gabriel: msg.payload.gabriel,\n    valeria: msg.payload.valeria,\n    creta: msg.payload.creta,\n};\n\nupdateAwayArming(armedEntities, trackedPeople);\nclearCurrentHomeArming(armedEntities, trackedPeople);\nflow.set(ARMED_KEY, armedEntities);\n\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 890,
-        "y": 140,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_update_arming_location",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Atualizar armado por localizacao",
-        "func": "const ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst VALERIA_APPROACH_NOTIFY_KEY = \"valeria_approaching_gabriel_notified\";\nconst VALERIA_AWAY_CYCLE_KEY = \"valeria_approaching_confirmed_away_cycle\";\nconst ARM_DISTANCE_M = 100;\nconst VALERIA_APPROACH_RESET_DISTANCE_M = 1000;\n// \"De carro\": o Creta tambem precisa estar chegando junto (estava fora/armado\n// e agora aparece a <= esta distancia de casa). Usa a POSICAO do Creta, nao o\n// binary_sensor.creta_engine - o polling do kia_uvo quase nunca pega o motor\n// \"on\" (ver docs/CRETA_KIA_UVO_INTEGRATION.md). Limiar mais folgado que o da\n// Valeria para tolerar o lag de GPS da integracao Kia.\nconst CRETA_ARRIVING_DISTANCE_M = 1500;\n\nfunction isAway(item) {\n    if (item && item.distance_m !== null) {\n        return item.distance_m > ARM_DISTANCE_M;\n    }\n    return item?.state === \"not_home\";\n}\n\nconst armedEntities = msg.payload.armed ?? {};\nfor (const [name, item] of Object.entries({\n    gabriel: msg.payload.gabriel,\n    valeria: msg.payload.valeria,\n    creta: msg.payload.creta,\n})) {\n    if (isAway(item)) {\n        armedEntities[name] = true;\n    }\n}\n\nmsg.payload.armed = armedEntities;\nflow.set(ARMED_KEY, armedEntities);\n\nconst valeria = msg.payload.valeria;\nconst creta = msg.payload.creta;\nlet notify = null;\n\n// Aviso \"Valeria chegando\" (push para Gabriel).\n//\n// ANTES nao funcionava NUNCA: exigia valeria.distance_m entre 50 e 700 m, e\n// leitura nessa faixa nao existe - o iOS so reporta travessia de zona, e ate\n// 07/08/2026 a unica zona era a home (100 m). Media no recorder: 0 pontos na\n// faixa em 2 dias. Exigia ainda o Creta a <=1000 m (nuvem Kia, que fica dias\n// sem atualizar), somando um segundo jeito de nunca disparar.\n//\n// AGORA dispara na travessia do anel zone.chegando, o mesmo sinal do\n// pre-acendimento do refletor. O Creta virou METADADO (muda so o texto), nao\n// condicao - senao a falta de dado da Kia voltaria a engolir o aviso.\nconst APPROACH_ZONE = \"chegando\";\nconst triggerState = msg.payload.trigger_state;\nconst triggerPrevState = msg.payload.trigger_prev_state;\nconst isValeriaEvent = msg.payload.source === \"valeria\";\n\n// O tracker secundario pode ficar congelado em home durante uma viagem. Nesse\n// caso, a sequencia de SAIDA vista pelo tracker que disparou (home -> chegando\n// -> not_home) e evidencia mais nova do que o home velho do outro tracker.\n// Guardar o ciclo de ausencia permite aceitar a volta real sem reabrir o falso\n// positivo de 07/08/2026: naquela ocasiao houve apenas uma reclassificacao\n// not_home -> chegando de uma coordenada congelada, sem uma saida observada.\nif (\n    isValeriaEvent &&\n    triggerState === \"not_home\" &&\n    (triggerPrevState === APPROACH_ZONE || triggerPrevState === \"home\")\n) {\n    flow.set(VALERIA_AWAY_CYCLE_KEY, true);\n}\nconst confirmedAwayCycle = flow.get(VALERIA_AWAY_CYCLE_KEY) === true;\n\nconst approachEntry =\n    triggerState === APPROACH_ZONE &&\n    triggerPrevState !== APPROACH_ZONE &&\n    triggerPrevState !== \"home\" &&\n    (valeria?.any_tracker_home !== true || confirmedAwayCycle);\n\n// Rearma o aviso quando ela sai do anel (ou, como reserva, se aparecer bem\n// longe), para o proximo retorno avisar de novo.\nif (\n    triggerState === \"not_home\" ||\n    (valeria?.distance_m !== null && valeria.distance_m > VALERIA_APPROACH_RESET_DISTANCE_M)\n) {\n    flow.set(VALERIA_APPROACH_NOTIFY_KEY, false);\n}\nif (isValeriaEvent && triggerState === \"home\") {\n    flow.set(VALERIA_AWAY_CYCLE_KEY, false);\n}\n\nif (\n    isValeriaEvent &&\n    approachEntry &&\n    flow.get(VALERIA_APPROACH_NOTIFY_KEY) !== true\n) {\n    flow.set(VALERIA_APPROACH_NOTIFY_KEY, true);\n\n    // \"de carro\" so quando ha evidencia positiva: Creta estava fora (armado)\n    // e aparece perto junto com ela.\n    const byCar =\n        armedEntities.creta === true &&\n        creta?.distance_m !== null &&\n        creta.distance_m <= CRETA_ARRIVING_DISTANCE_M;\n\n    notify = {\n        payload: {\n            message: byCar\n                ? \"Valéria está chegando de carro.\"\n                : \"Valéria está chegando.\",\n            by_car: byCar,\n            valeria_distance_m: valeria?.distance_m ?? null,\n            creta_distance_m: creta?.distance_m ?? null,\n        },\n    };\n}\n\nreturn [msg, notify];\n",
-        "outputs": 2,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 810,
-        "y": 320,
-        "wires": [
-            [
-                "sec_detect_arriving_source"
-            ],
-            [
-                "sec_notify_valeria_approaching"
-            ]
-        ]
-    },
-    {
-        "id": "sec_notify_valeria_approaching",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Avisar Gabriel: Valeria chegando (entrou no anel)",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "notify.send_message",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "notify.iphone_de_gabriel_furlan"
-        ],
-        "labelId": [],
-        "data": "{\"title\": \"Casa inteligente\", \"message\": payload.message}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
-        "x": 970,
-        "y": 420,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_detect_arriving_source",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Chegou? (entrou no anel de 1500m, ou ja em casa)",
-        "func": "const ARMED_KEY = \"refletor_portao_carros_arrival_armed_entities\";\nconst ARRIVAL_DISTANCE_M = 300;\nconst MAX_GPS_ACCURACY_M = 100;\n\nfunction isHome(item) {\n    // Ponto do portao/entrada conta como chegada tambem: fica mais perto da\n    // rota de acesso do que HOME_LAT/HOME_LON e acende o refletor um pouco\n    // antes de chegar em casa de fato.\n    if (item && item.gate_distance_m !== null && item.gate_distance_m <= ARRIVAL_DISTANCE_M) {\n        return true;\n    }\n    if (item && item.distance_m !== null) {\n        return item.distance_m <= ARRIVAL_DISTANCE_M;\n    }\n    if (item?.gps_accuracy !== null && item?.gps_accuracy > MAX_GPS_ACCURACY_M) {\n        return false;\n    }\n    return item?.state === \"home\";\n}\n\n// Anel de aproximacao (zone.chegando, raio 1500 m - ver\n// homeassistant/packages/zonas_presenca.yaml). Entrar nele e' o gatilho de\n// PRE-ACENDIMENTO: da ~2-3 min de antecedencia, que e' o requisito do\n// usuario. O raio nao esta hardcoded aqui de proposito - so o nome da zona.\nconst APPROACH_ZONE = \"chegando\";\nconst triggerState = msg.payload.trigger_state;\nconst triggerPrevState = msg.payload.trigger_prev_state;\n\nconst trackedPeople = {\n    gabriel: msg.payload.gabriel,\n    valeria: msg.payload.valeria,\n    creta: msg.payload.creta,\n};\nconst source = msg.payload.source;\nconst sourcePosition = trackedPeople[source];\nconst armedEntities = msg.payload.armed ?? {};\n\n// Entrada no anel vindo de FORA. Sair de casa tambem cruza o anel\n// (home -> chegando), por isso o estado anterior importa.\n//\n// any_tracker_home barra tracker congelado: se o outro tracker da pessoa diz\n// que ela esta em casa, isto nao e aproximacao (ver sec_prepare_arrival_context).\nconst approachEntry =\n    triggerState === APPROACH_ZONE &&\n    triggerPrevState !== APPROACH_ZONE &&\n    triggerPrevState !== \"home\" &&\n    sourcePosition?.any_tracker_home !== true;\n\n// SAIDA de casa nunca e' chegada. A travessia home -> (chegando|not_home)\n// acontece a ~100 m, dentro do raio de 300 m do isHome() abaixo, e sem este\n// corte o refletor acenderia toda vez que alguem SAI no escuro. Mantem o\n// armado (a pessoa esta indo embora) e nao dispara.\nif (triggerPrevState === \"home\") {\n    flow.set(ARMED_KEY, armedEntities);\n    return null;\n}\n\nif (!sourcePosition || (!approachEntry && !isHome(sourcePosition))) {\n    flow.set(ARMED_KEY, armedEntities);\n    return null;\n}\n\n// Anti-\"catch-up\" do tracker secundario: quando o iCloud so agora alcanca o\n// estado real de quem ja esta em casa ha um tempao, isto nao e' chegada nova.\n//\n// ATENCAO - este guard ja foi absoluto (\"primary_home === true -> return null\")\n// e nisso matou 100% das chegadas: os trackers NUNCA reportam na faixa de\n// 100-300 m (verificado no recorder, 2 dias, 0 pontos na faixa para os tres\n// trackers; o Creta pulou de 486 m para 32 m numa leitura so). Ou seja, a\n// unica leitura que existe dentro do raio de chegada ja e' com primary_home\n// true - era exatamente o evento que fazia o refletor acender.\n//\n// Agora o corte e' por TEMPO: so descarta se o tracker em tempo real ja\n// estava em casa ha mais que a carencia. Chegada de verdade cai em segundos\n// (acende); catch-up do iCloud chega bem depois (o iCloud so faz poll a cada\n// ~30 min, ver docs/ILUMINACAO_SEGURANCA_NODERED.md) e e' descartado.\nconst PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;\nconst homeForMs = sourcePosition.primary_home_for_ms;\n\nif (\n    !approachEntry &&\n    sourcePosition.primary_home === true &&\n    typeof homeForMs === \"number\" &&\n    homeForMs > PRIMARY_HOME_GRACE_MS\n) {\n    armedEntities[source] = false;\n    msg.payload.armed = armedEntities;\n    flow.set(ARMED_KEY, armedEntities);\n    return null;\n}\n\nif (armedEntities[source]) {\n    msg.payload.arriving = [source];\n    msg.payload.arrival_source_type = source === \"creta\" ? \"creta\" : \"person\";\n    // \"approach\" = pre-acendimento (entrou no anel); \"home\" = rede de\n    // seguranca, ja chegou (usada quando a travessia do anel nao ocorreu,\n    // p.ex. quem estava parado dentro dele).\n    msg.payload.arrival_stage = approachEntry ? \"approach\" : \"home\";\n}\n// O pre-acendimento NAO consome o armado. Se a pessoa parar dentro do anel\n// (mercado a 1 km) e o backstop de 15 min apagar o refletor antes dela\n// chegar, nao havera nova travessia da borda - e' a entrada na zone.home que\n// precisa reacender, e para isso ela tem que continuar armada. Quem\n// desarma no fim e o proprio sec_update_arming_context, quando ela chega a\n// <=100 m de casa.\nif (!approachEntry) {\n    armedEntities[source] = false;\n}\nmsg.payload.armed = armedEntities;\nflow.set(ARMED_KEY, armedEntities);\n\nreturn msg.payload.arriving.length > 0 ? msg : null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1210,
-        "y": 280,
-        "wires": [
-            [
-                "sec_check_dark",
-                "sec_creta_trip_refresh_gate",
-                "sec_approach_wake_gate",
-                "sec_arrival_disarm_out"
-            ]
-        ]
-    },
-    {
-        "id": "sec_creta_trip_refresh_gate",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Creta chegou (fim de viagem)?",
-        "func": "// Same arrival event as sec_check_dark/sec_notify_valeria_approaching, but\n// only lets Creta arrivals through - this is the trigger to refresh the\n// day-trip-log sensor (a completed trip is exactly what just happened).\n// Deliberately NOT tied to the 1-5min location refresh cadence: /tripinfo\n// is a separate API call, only worth making once per actual arrival.\nreturn msg.payload?.arrival_source_type === \"creta\" ? msg : null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1100,
-        "y": 500,
-        "wires": [
-            [
-                "sec_refresh_creta_trip_info"
-            ]
-        ]
-    },
-    {
-        "id": "sec_refresh_creta_trip_info",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Atualizar viagens do dia (Creta)",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "button.press",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "button.garagem_creta_refresh_trip_info"
-        ],
-        "labelId": [],
-        "data": "",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "button",
-        "service": "press",
-        "x": 1380,
-        "y": 500,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_check_dark",
-        "type": "switch",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Esta escuro?",
-        "property": "payload.sun_below_horizon",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 1720,
-        "y": 200,
-        "wires": [
-            [
-                "sec_check_engine_on"
-            ]
-        ]
-    },
-    {
-        "id": "sec_check_engine_on",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Creta em uso? (gate obrigatorio)",
-        "func": "// GATE OBRIGATORIO: o refletor so acende se o Creta estiver em uso.\n// Proximidade de pessoa sozinha NAO acende - foi pedido explicito do usuario.\n// A trava creta_in_use e mantida em sec_prepare_arrival_context; ela existe\n// porque binary_sensor.creta_engine fica velho entre refreshes (ver la).\nconst SUPPRESS_KEY = \"refletor_suppressed_until\";\n\nif (msg.payload?.creta_in_use !== true) {\n    return null;\n}\n\n// Anti-religamento: depois de qualquer desligamento, uma janela de silencio\n// impede que o proximo evento de aproximacao reacenda o refletor em seguida.\nconst suppressedUntil = flow.get(SUPPRESS_KEY) ?? 0;\nif (Date.now() < suppressedUntil) {\n    return null;\n}\n\nmsg.payload.creta_gate = msg.payload.creta_engine_on === true\n    ? \"engine_on\"\n    : \"creta_in_use_latched\";\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2000,
-        "y": 200,
-        "wires": [
-            [
-                "sec_check_reflector_inactive"
-            ]
-        ]
-    },
-    {
-        "id": "sec_check_reflector_inactive",
-        "type": "switch",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Refletor ainda inativo?",
-        "property": "payload.active",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "false"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 1,
-        "x": 2280,
-        "y": 200,
-        "wires": [
-            [
-                "sec_mark_reflector_active"
-            ]
-        ]
-    },
-    {
-        "id": "sec_mark_reflector_active",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Marcar ativo por chegada",
-        "func": "const ACTIVE_KEY = \"refletor_portao_carros_active_by_arrival\";\nconst ACTIVATED_AT_KEY = \"refletor_activated_at\";\n\nflow.set(ACTIVE_KEY, true);\nflow.set(ACTIVATED_AT_KEY, Date.now());\nmsg.payload.reason = \"creta_arriving_after_dark\";\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2540,
-        "y": 200,
-        "wires": [
-            [
-                "sec_reflector_turn_on",
-                "sec_auto_off_delay",
-                "29a4e3c0935e2805"
-            ]
-        ]
-    },
-    {
-        "id": "sec_reflector_turn_on",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Ligar refletor_portao_carros",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "switch.turn_on",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "switch.refletor_portao_carros"
-        ],
-        "labelId": [],
-        "data": "",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "switch",
-        "service": "turn_on",
-        "x": 2800,
-        "y": 120,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "sec_auto_off_delay",
-        "type": "delay",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Desligar apos 15 min",
-        "pauseType": "delay",
-        "timeout": "15",
-        "timeoutUnits": "minutes",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 2800,
-        "y": 280,
-        "wires": [
-            [
-                "sec_auto_off_event"
-            ]
-        ]
-    },
-    {
-        "id": "sec_auto_off_event",
-        "type": "change",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_acender",
-        "name": "Timeout seguranca",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{\"event\":\"turn_off\",\"reason\":\"timeout_15min\",\"creta\":{\"state\":\"home\",\"attributes\":{}}}",
-                "tot": "json"
-            }
-        ],
-        "x": 2800,
-        "y": 360,
-        "wires": [
-            [
-                "sec_turn_off_if_active"
-            ]
-        ]
-    },
-    {
-        "id": "sec_reflector_turn_off",
-        "type": "api-call-service",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_apagar",
-        "name": "Desligar refletor_portao_carros",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "switch.turn_off",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "switch.refletor_portao_carros"
-        ],
-        "labelId": [],
-        "data": "",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "switch",
-        "service": "turn_off",
-        "x": 3080,
-        "y": 660,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "965afc02b5d9e809",
-        "type": "inject",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_testes",
-        "name": "Teste",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 180,
-        "y": 1360,
-        "wires": [
-            [
-                "29a4e3c0935e2805",
-                "sec_reflector_turn_on"
-            ]
-        ]
-    },
-    {
-        "id": "sec_evaluate_turn_off",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_apagar",
-        "name": "Desligar? (condicoes independentes)",
-        "func": "// Cada condicao abaixo e SUFICIENTE sozinha para apagar o refletor.\n//\n//   1. Creta desligado E destravado  -> imediato (alguem saiu do carro)\n//   2. chegada do Gabriel confirmada -> apos carencia\n//   3. chegada da Valeria confirmada -> apos carencia\n//   4. chegada do Creta confirmada   -> apos carencia\n//   5. 15 min ligado                 -> nao passa por aqui, e o backstop do\n//                                       node sec_auto_off_delay\n//\n// CARENCIA (out1): as chegadas so apagam ~90 s depois que o refletor acendeu.\n// Sem isso a luz morreria justo no trajeto carro->porta, que e o proposito\n// dela: a chegada e detectada ANTES de estacionar/desligar/destravar.\nconst ACTIVATED_AT_KEY = \"refletor_activated_at\";\nconst ARRIVAL_OFF_GRACE_MS = 90 * 1000;\n\nif (msg.payload?.active !== true) {\n    return null;\n}\n\n// (1) fim de uso do carro: imediato.\nif (msg.payload.creta_engine_on === false && msg.payload.creta_unlocked === true) {\n    msg.payload.off_reason = \"creta_desligado_e_destravado\";\n    return [msg, null];\n}\n\n// (2)(3)(4) \"chegada confirmada\" e a TRANSICAO para a zone.home da entidade que\n// disparou o evento - nao o estado \"esta em casa\". Usar o estado quebraria:\n// o tracker do app da Valeria passou 2 dias congelado com o iCloud dela\n// marcando casa, o que deixaria a condicao permanentemente verdadeira e\n// apagaria o refletor 90 s depois de cada acendimento.\nconst arrived =\n    msg.payload.trigger_state === \"home\" &&\n    msg.payload.trigger_prev_state !== undefined &&\n    msg.payload.trigger_prev_state !== \"home\";\n\nif (!arrived) {\n    return null;\n}\n\nmsg.payload.off_reason = `chegada_confirmada_${msg.payload.source ?? \"?\"}`;\n\nconst activatedAt = flow.get(ACTIVATED_AT_KEY);\nconst elapsed = typeof activatedAt === \"number\" ? Date.now() - activatedAt : ARRIVAL_OFF_GRACE_MS;\nmsg.delay = Math.max(0, ARRIVAL_OFF_GRACE_MS - elapsed);\nreturn [null, msg];",
-        "outputs": 2,
-        "x": 820,
-        "y": 660,
-        "wires": [
-            [
-                "sec_turn_off_if_active"
-            ],
-            [
-                "sec_arrival_off_grace"
-            ]
-        ]
-    },
-    {
-        "id": "sec_arrival_off_grace",
-        "type": "delay",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_apagar",
-        "name": "Carencia de 90s antes de apagar",
-        "pauseType": "delayv",
-        "timeout": "90",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 1120,
-        "y": 740,
-        "wires": [
-            [
-                "sec_turn_off_if_active"
-            ]
-        ]
-    },
-    {
-        "id": "sec_approach_wake_gate",
-        "type": "function",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Aproximacao -> acordar Creta",
-        "func": "// Na travessia do anel, pede um refresh real ao carro para que o gate de\n// \"Creta em uso\" decida com o dado mais fresco possivel. Reutiliza o node\n// sec_force_refresh_creta que ja existe (e o cooldown de 15 min do\n// coordinator protege contra excesso - ver docs/CRETA_KIA_UVO_INTEGRATION.md).\n// So na aproximacao: e um evento raro, algumas vezes por dia.\nif (msg.payload?.arrival_stage !== \"approach\") {\n    return null;\n}\nreturn msg;",
-        "outputs": 1,
-        "x": 1380,
-        "y": 420,
-        "wires": [
-            [
-                "sec_force_refresh_creta"
-            ]
-        ]
-    },
-    {
-        "id": "sec_arrival_disarm_out",
-        "type": "link out",
-        "z": "2fd40fd570e6f37a",
-        "g": "grp_sec_deteccao",
-        "name": "Chegada real -> desarme automatico",
-        "mode": "link",
-        "links": [
-            "alarm_arrival_in"
-        ],
-        "x": 1425,
-        "y": 360,
-        "wires": []
-    },
-    {
         "id": "moni_mobile_arm_event",
         "type": "server-events",
         "z": "alarm_house_tab",
@@ -3043,7 +1686,8 @@
         "z": "alarm_arrival_disarm_tab",
         "name": "Chegada detectada",
         "links": [
-            "sec_arrival_disarm_out"
+            "people_arrival_out",
+            "creta_arrival_out"
         ],
         "x": 155,
         "y": 220,
@@ -3058,7 +1702,7 @@
         "type": "comment",
         "z": "alarm_arrival_disarm_tab",
         "name": "Chegada real -> notificação -> confirmação -> desarme com retry",
-        "info": "A chegada vem do fluxo iluminacao_seguranca, que valida zona, direção da travessia, distância, precisão do GPS e trackers congelados. O desarme só é solicitado depois de uma ação válida na notificação do Home Assistant.",
+        "info": "A chegada vem dos contratos security.arrival.v1 publicados por localizacao_pessoas e contexto_creta. Esses domínios validam zona, direção, distância, precisão e trackers congelados; o desarme só é solicitado após confirmação no Home Assistant.",
         "x": 420,
         "y": 120,
         "wires": []
@@ -3257,6 +1901,2360 @@
         "x": 785,
         "y": 420,
         "wires": []
+    },
+    {
+        "id": "security_people_tab",
+        "type": "tab",
+        "label": "localizacao_pessoas",
+        "disabled": false,
+        "info": "Normaliza os trackers dos iPhones, detecta chegada de pessoas e publica security.people-context.v1.",
+        "env": []
+    },
+    {
+        "id": "grp_people_events",
+        "type": "group",
+        "z": "security_people_tab",
+        "name": "1. Eventos dos iPhones",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "people_comment",
+            "people_gabriel_event",
+            "people_valeria_event",
+            "people_snapshot_in",
+            "people_snapshot"
+        ],
+        "x": 34,
+        "y": 59,
+        "w": 382,
+        "h": 302
+    },
+    {
+        "id": "grp_people_context",
+        "type": "group",
+        "z": "security_people_tab",
+        "name": "2. Normalização, presença e chegada",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "people_normalize",
+            "people_context_out",
+            "people_arrival_out",
+            "people_notify_candidate_out"
+        ],
+        "x": 454,
+        "y": 99,
+        "w": 702,
+        "h": 222
+    },
+    {
+        "id": "grp_people_refresh",
+        "type": "group",
+        "z": "security_people_tab",
+        "name": "3. Refresh adaptativo dos iPhones",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "people_refresh_in",
+            "people_refresh_decide",
+            "people_refresh_gabriel",
+            "people_refresh_valeria",
+            "people_creta_sync_in",
+            "people_update_entities"
+        ],
+        "x": 34,
+        "y": 419,
+        "w": 922,
+        "h": 242
+    },
+    {
+        "id": "people_comment",
+        "type": "comment",
+        "z": "security_people_tab",
+        "g": "grp_people_events",
+        "name": "Contrato: GPS bruto entra; contexto normalizado sai",
+        "info": "Estados unknown/unavailable nunca viram chegada. HOME_LAT/HOME_LON e GATE_LAT/GATE_LON vêm do ambiente; sem coordenadas, usa-se o estado de zona como fallback.",
+        "x": 210,
+        "y": 100,
+        "wires": [],
+        "width": 330
+    },
+    {
+        "id": "people_gabriel_event",
+        "type": "server-state-changed",
+        "z": "security_people_tab",
+        "g": "grp_people_events",
+        "name": "iPhone Gabriel mudou de zona",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "device_tracker.iphone_de_gabriel_furlan",
+                "device_tracker.iphonegabrielfurlan"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"source\": \"gabriel\",\n    \"trigger_entity\": $entity().entity_id,\n    \"trigger_state\": $entity().state,\n    \"trigger_prev_state\": $prevEntity().state,\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 210,
+        "y": 180,
+        "wires": [
+            [
+                "people_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "people_valeria_event",
+        "type": "server-state-changed",
+        "z": "security_people_tab",
+        "g": "grp_people_events",
+        "name": "iPhone Valéria mudou de zona",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "device_tracker.iphone_de_valeria",
+                "device_tracker.iphone_de_valeria_2"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"source\": \"valeria\",\n    \"trigger_entity\": $entity().entity_id,\n    \"trigger_state\": $entity().state,\n    \"trigger_prev_state\": $prevEntity().state,\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 210,
+        "y": 240,
+        "wires": [
+            [
+                "people_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "people_snapshot_in",
+        "type": "link in",
+        "z": "security_people_tab",
+        "g": "grp_people_events",
+        "name": "Solicitar snapshot de pessoas",
+        "links": [
+            "context_snapshot_request_out"
+        ],
+        "x": 95,
+        "y": 300,
+        "wires": [
+            [
+                "people_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "people_snapshot",
+        "type": "api-current-state",
+        "z": "security_people_tab",
+        "g": "grp_people_events",
+        "name": "Ler trackers de Gabriel e Valéria",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "device_tracker.iphone_de_gabriel_furlan",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"context_snapshot\",\n    \"source\": \"refresh\",\n    \"refresh_cycle_id\": payload.refresh_cycle_id,\n    \"gabriel\": $entities(\"device_tracker.iphone_de_gabriel_furlan\"),\n    \"gabriel_icloud\": $entities(\"device_tracker.iphonegabrielfurlan\"),\n    \"valeria\": $entities(\"device_tracker.iphone_de_valeria\"),\n    \"valeria_icloud\": $entities(\"device_tracker.iphone_de_valeria_2\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 270,
+        "y": 300,
+        "wires": [
+            [
+                "people_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "people_normalize",
+        "type": "function",
+        "z": "security_people_tab",
+        "g": "grp_people_context",
+        "name": "Normalizar pessoas e detectar transições",
+        "func": "const HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst GATE_LAT = Number(env.get(\"GATE_LAT\"));\nconst GATE_LON = Number(env.get(\"GATE_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\nconst GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);\nconst ARM_DISTANCE_M = 100;\nconst ARRIVAL_DISTANCE_M = 300;\nconst MAX_GPS_ACCURACY_M = 100;\nconst APPROACH_ZONE = \"chegando\";\nconst PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;\nconst LOCATION_FRESH_MS = 15 * 60 * 1000;\nconst RECOVERY_KEY = \"security_people_recovery_v1\";\nconst PERSISTENT = \"persistent\";\nconst DEDUPE_TTL_MS = 10 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst ARMED_KEY = \"people_arrival_armed\";\nconst VALERIA_NOTIFY_KEY = \"valeria_approaching_gabriel_notified\";\nconst VALERIA_AWAY_CYCLE_KEY = \"valeria_approaching_confirmed_away_cycle\";\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\nfunction reliableCoords(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const accuracy = Number(attrs.gps_accuracy);\n    const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasAccuracy = Number.isFinite(accuracy);\n    return hasCoords && (!hasAccuracy || accuracy <= MAX_GPS_ACCURACY_M) ? { lat, lon } : null;\n}\nfunction primaryHome(entity) {\n    const coords = reliableCoords(entity);\n    if (HOME_KNOWN && coords) return distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon) <= ARM_DISTANCE_M;\n    const accuracy = Number(entity?.attributes?.gps_accuracy);\n    if (Number.isFinite(accuracy) && accuracy > MAX_GPS_ACCURACY_M) return false;\n    return entity?.state === \"home\";\n}\nfunction homeForMs(entity) {\n    const changedAt = Date.parse(entity?.last_changed ?? \"\");\n    return Number.isFinite(changedAt) ? Date.now() - changedAt : null;\n}\nfunction mergeTrackers(primary, fallback) {\n    const primaryFresh = freshTracker(primary);\n    const fallbackFresh = freshTracker(fallback);\n    if (primaryFresh !== fallbackFresh) return primaryFresh ? primary : fallback;\n    const primaryCoords = reliableCoords(primary);\n    const fallbackCoords = reliableCoords(fallback);\n    if (HOME_KNOWN && primaryCoords && fallbackCoords) {\n        const primaryDistance = distanceMeters(HOME_LAT, HOME_LON, primaryCoords.lat, primaryCoords.lon);\n        const fallbackDistance = distanceMeters(HOME_LAT, HOME_LON, fallbackCoords.lat, fallbackCoords.lon);\n        return fallbackDistance > primaryDistance ? fallback : primary;\n    }\n    if (primaryCoords) return primary;\n    if (fallbackCoords) return fallback;\n    if (primary?.state === \"home\" && fallback?.state === \"not_home\") return fallback;\n    return primary;\n}\nfunction observedAt(entity) {\n    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? \"\");\n    return Number.isFinite(value) ? value : null;\n}\nfunction freshTracker(entity) {\n    const value = observedAt(entity);\n    return value !== null && value <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - value <= LOCATION_FRESH_MS;\n}\nfunction position(primary, fallback) {\n    const selected = mergeTrackers(primary, fallback);\n    const attrs = selected?.attributes ?? {};\n    const coords = reliableCoords(selected);\n    const accuracy = Number(attrs.gps_accuracy);\n    const state = selected?.state;\n    const validState = typeof state === \"string\" && ![\"unknown\", \"unavailable\", \"\"].includes(state);\n    const updatedAt = observedAt(selected);\n    const stale = updatedAt === null || Date.now() - updatedAt > LOCATION_FRESH_MS || updatedAt > Date.now() + FUTURE_TOLERANCE_MS;\n    return {\n        entity_id: selected?.entity_id,\n        state,\n        latitude: coords?.lat ?? null,\n        longitude: coords?.lon ?? null,\n        gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n        location_reliable: Boolean(coords),\n        state_valid: validState && !stale && (Boolean(coords) || [\"home\", \"not_home\", APPROACH_ZONE].includes(state)),\n        updated_at: updatedAt, stale, ready: validState && !stale,\n        distance_m: HOME_KNOWN && coords ? Math.round(distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon)) : null,\n        gate_distance_m: GATE_KNOWN && coords ? Math.round(distanceMeters(GATE_LAT, GATE_LON, coords.lat, coords.lon)) : null,\n        current_home: validState && !stale ? primaryHome(selected) : null,\n        primary_home: primaryHome(primary),\n        any_tracker_home: primaryHome(primary) || primaryHome(fallback),\n        primary_home_for_ms: homeForMs(primary),\n    };\n}\nfunction isAway(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m > ARM_DISTANCE_M;\n    return item?.state === \"not_home\";\n}\nfunction isArmingHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m <= ARM_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\nfunction isArrivalHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.gate_distance_m !== null && item.gate_distance_m <= ARRIVAL_DISTANCE_M) return true;\n    if (item?.distance_m !== null) return item.distance_m <= ARRIVAL_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\nfunction validObject(value) {\n    return value && typeof value === \"object\" && !Array.isArray(value);\n}\n\nconst gabriel = position(msg.payload?.gabriel, msg.payload?.gabriel_icloud);\nconst valeria = position(msg.payload?.valeria, msg.payload?.valeria_icloud);\nconst people = { gabriel, valeria };\nconst source = msg.payload?.source;\nconst sourcePosition = people[source];\nconst triggerState = msg.payload?.trigger_state;\nconst triggerPrevState = msg.payload?.trigger_prev_state;\nconst isLocationEvent = msg.payload?.event === \"location_update\";\nlet recovery = flow.get(RECOVERY_KEY, PERSISTENT);\nif (!validObject(recovery) || recovery.version !== 1) {\n    if (recovery !== undefined) node.warn(\"localizacao_pessoas: recovery persistido invalido; descartado\");\n    recovery = { version: 1 };\n}\nif (!validObject(recovery.recent_arrivals)) recovery.recent_arrivals = {};\nfor (const [itemKey, timestamp] of Object.entries(recovery.recent_arrivals)) {\n    if (!Number.isFinite(timestamp) || timestamp > Date.now() + FUTURE_TOLERANCE_MS || Date.now() - timestamp > DEDUPE_TTL_MS) delete recovery.recent_arrivals[itemKey];\n}\nif (flow.get(VALERIA_NOTIFY_KEY) === undefined && typeof recovery.valeria_notified === \"boolean\") flow.set(VALERIA_NOTIFY_KEY, recovery.valeria_notified);\nif (flow.get(VALERIA_AWAY_CYCLE_KEY) === undefined && typeof recovery.valeria_away_cycle === \"boolean\") flow.set(VALERIA_AWAY_CYCLE_KEY, recovery.valeria_away_cycle);\nlet armed = flow.get(ARMED_KEY);\nif (!validObject(armed)) armed = validObject(recovery.arrival_armed) ? recovery.arrival_armed : {};\narmed = { gabriel: armed.gabriel === true, valeria: armed.valeria === true };\n\nfor (const [name, item] of Object.entries(people)) {\n    if (isAway(item)) armed[name] = true;\n}\n\nlet notification = null;\nif (isLocationEvent && source === \"valeria\") {\n    if (triggerState === \"not_home\" && (triggerPrevState === APPROACH_ZONE || triggerPrevState === \"home\")) flow.set(VALERIA_AWAY_CYCLE_KEY, true);\n    const confirmedAwayCycle = flow.get(VALERIA_AWAY_CYCLE_KEY) === true;\n    const approachForNotification = valeria.ready === true && triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== \"home\" && (valeria.any_tracker_home !== true || confirmedAwayCycle);\n    if (triggerState === \"not_home\" || (valeria.distance_m !== null && valeria.distance_m > 1000)) flow.set(VALERIA_NOTIFY_KEY, false);\n    if (triggerState === \"home\") flow.set(VALERIA_AWAY_CYCLE_KEY, false);\n    const eventAt = valeria.updated_at ?? Date.now();\n    const notificationKey = [\"valeria\", triggerState ?? \"?\", eventAt].join(\":\");\n    const previousAt = Number(recovery.last_valeria_notification_at ?? 0);\n    const notificationDuplicate = recovery.last_valeria_notification_key === notificationKey && previousAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - previousAt < DEDUPE_TTL_MS;\n    if (approachForNotification && flow.get(VALERIA_NOTIFY_KEY) !== true && !notificationDuplicate) {\n        flow.set(VALERIA_NOTIFY_KEY, true);\n        recovery.last_valeria_notification_key = notificationKey;\n        recovery.last_valeria_notification_at = Date.now();\n        notification = { payload: { contract: \"security.person-arrival-notification.v1\", kind: \"valeria_approach_notification\", notification_key: notificationKey, event_at: eventAt, valeria_distance_m: valeria.distance_m } };\n    }\n}\n\nlet arrival = null;\nif (isLocationEvent && sourcePosition?.ready === true) {\n    const approachEntry = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== \"home\" && sourcePosition.any_tracker_home !== true;\n    const leavingHome = triggerPrevState === \"home\";\n    const staleCatchUp = !approachEntry && sourcePosition.primary_home === true && typeof sourcePosition.primary_home_for_ms === \"number\" && sourcePosition.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;\n    if (!leavingHome && !staleCatchUp && (approachEntry || isArrivalHome(sourcePosition)) && armed[source]) {\n        arrival = { payload: {\n            contract: \"security.arrival.v1\", kind: \"arrival\", source, arriving: [source],\n            arrival_source_type: \"person\", arrival_stage: approachEntry ? \"approach\" : \"home\", event_at: sourcePosition.updated_at ?? Date.now(),\n        } };\n    }\n    if (!approachEntry && isArrivalHome(sourcePosition)) armed[source] = false;\n}\n\nif (!isLocationEvent) {\n    for (const [name, item] of Object.entries(people)) {\n        if (isArmingHome(item)) armed[name] = false;\n    }\n}\nif (arrival) {\n    const eventAt = sourcePosition?.updated_at ?? Date.now();\n    const key = [source, arrival.payload.arrival_stage, triggerState ?? \"?\", eventAt].join(\":\");\n    if (recovery.recent_arrivals[key]) arrival = null;\n    else recovery.recent_arrivals[key] = Date.now();\n}\nflow.set(ARMED_KEY, armed);\nrecovery.arrival_armed = { ...armed };\nrecovery.valeria_notified = flow.get(VALERIA_NOTIFY_KEY) === true;\nrecovery.valeria_away_cycle = flow.get(VALERIA_AWAY_CYCLE_KEY) === true;\nrecovery.updated_at = Date.now();\nflow.set(RECOVERY_KEY, recovery, PERSISTENT);\n\nconst distances = Object.values(people).map((item) => item.distance_m).filter((value) => value !== null);\nconst peopleContext = {\n    gabriel, valeria,\n    anyone_away: gabriel.ready && valeria.ready ? Object.values(people).some(isAway) : null,\n    nearest_distance_m: distances.length ? Math.min(...distances) : null,\n    state_valid: gabriel.state_valid && valeria.state_valid,\n    ready: gabriel.ready && valeria.ready, stale: gabriel.stale || valeria.stale,\n    updated_at: Math.max(...[gabriel.updated_at, valeria.updated_at].filter(Number.isFinite), 0),\n    arrival_armed: { ...armed },\n};\nflow.set(\"people_context_v1\", peopleContext);\nconst previousReady = flow.get(\"security_people_ready_logged\");\nif (previousReady !== peopleContext.ready) {\n    node.log?.(\"localizacao_pessoas: contexto \" + (peopleContext.ready ? \"ready\" : \"pending/stale\"));\n    flow.set(\"security_people_ready_logged\", peopleContext.ready);\n}\n\nmsg.payload = {\n    contract: \"security.people-context.v1\", kind: \"people_context\", context: peopleContext,\n    trigger_entity: msg.payload?.trigger_entity, trigger_state: triggerState,\n    trigger_prev_state: triggerPrevState,\n    confirmed_home_transition: isLocationEvent && sourcePosition?.ready === true && triggerState === \"home\" && triggerPrevState !== undefined && triggerPrevState !== \"home\",\n    refresh_cycle_id: msg.payload?.refresh_cycle_id,\n    updated_at: peopleContext.updated_at, valid: peopleContext.state_valid, ready: peopleContext.ready, stale: peopleContext.stale,\n    source: source ?? \"people\", reason: peopleContext.ready ? \"current_entities\" : \"entity_stale_or_unavailable\",\n};\nreturn [msg, arrival, notification];",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 200,
+        "wires": [
+            [
+                "people_context_out"
+            ],
+            [
+                "people_arrival_out"
+            ],
+            [
+                "people_notify_candidate_out"
+            ]
+        ]
+    },
+    {
+        "id": "people_context_out",
+        "type": "link out",
+        "z": "security_people_tab",
+        "g": "grp_people_context",
+        "name": "Publicar contexto de pessoas v1",
+        "mode": "link",
+        "links": [
+            "context_people_in",
+            "light_people_context_in"
+        ],
+        "x": 1085,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "people_arrival_out",
+        "type": "link out",
+        "z": "security_people_tab",
+        "g": "grp_people_context",
+        "name": "Publicar chegada de pessoa v1",
+        "mode": "link",
+        "links": [
+            "light_arrival_in",
+            "alarm_arrival_in"
+        ],
+        "x": 1085,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "people_notify_candidate_out",
+        "type": "link out",
+        "z": "security_people_tab",
+        "g": "grp_people_context",
+        "name": "Publicar candidato de aviso da Valéria",
+        "mode": "link",
+        "links": [
+            "context_person_event_in"
+        ],
+        "x": 1085,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "people_refresh_in",
+        "type": "link in",
+        "z": "security_people_tab",
+        "g": "grp_people_refresh",
+        "name": "Política conjunta de refresh",
+        "links": [
+            "context_refresh_command_out"
+        ],
+        "x": 95,
+        "y": 490,
+        "wires": [
+            [
+                "people_refresh_decide"
+            ]
+        ]
+    },
+    {
+        "id": "people_refresh_decide",
+        "type": "function",
+        "z": "security_people_tab",
+        "g": "grp_people_refresh",
+        "name": "Atualizar iPhones agora?",
+        "func": "const peopleContext = flow.get(\"people_context_v1\");\nif (!peopleContext || peopleContext.ready !== true || msg.payload?.kind !== \"refresh_command\") return null;\nconst anyoneAway = msg.payload.anyone_away === true;\nconst interval = peopleContext.nearest_distance_m !== null && peopleContext.nearest_distance_m <= 2000 ? 30 * 1000 : 60 * 1000;\nconst key = \"security_people_last_refresh_at\";\nlet last = Number(flow.get(key, \"persistent\") ?? 0);\nif (!Number.isFinite(last) || last > Date.now() + 60 * 1000) last = 0;\nif (!anyoneAway || Date.now() - last < interval) return null;\nflow.set(key, Date.now(), \"persistent\");\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 280,
+        "y": 490,
+        "wires": [
+            [
+                "people_refresh_gabriel",
+                "people_refresh_valeria"
+            ]
+        ]
+    },
+    {
+        "id": "people_refresh_gabriel",
+        "type": "api-call-service",
+        "z": "security_people_tab",
+        "g": "grp_people_refresh",
+        "name": "Solicitar localização do iPhone Gabriel",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.send_message",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "notify.iphone_de_gabriel_furlan"
+        ],
+        "labelId": [],
+        "data": "{\"message\":\"request_location_update\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "send_message",
+        "x": 650,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "people_refresh_valeria",
+        "type": "api-call-service",
+        "z": "security_people_tab",
+        "g": "grp_people_refresh",
+        "name": "Solicitar localização do iPhone Valéria",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.send_message",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "notify.iphone_de_valeria"
+        ],
+        "labelId": [],
+        "data": "{\"message\":\"request_location_update\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "send_message",
+        "x": 650,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "people_creta_sync_in",
+        "type": "link in",
+        "z": "security_people_tab",
+        "g": "grp_people_refresh",
+        "name": "Sincronizar trackers após refresh do Creta",
+        "links": [
+            "creta_refresh_people_sync_out"
+        ],
+        "x": 180,
+        "y": 600,
+        "wires": [
+            [
+                "people_update_entities"
+            ]
+        ]
+    },
+    {
+        "id": "people_update_entities",
+        "type": "api-call-service",
+        "z": "security_people_tab",
+        "g": "grp_people_refresh",
+        "name": "Atualizar entidades dos iPhones",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "homeassistant.update_entity",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"entity_id\":[\"device_tracker.iphone_de_gabriel_furlan\",\"device_tracker.iphone_de_valeria\"]}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "homeassistant",
+        "service": "update_entity",
+        "x": 650,
+        "y": 600,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "security_creta_tab",
+        "type": "tab",
+        "label": "contexto_creta",
+        "disabled": false,
+        "info": "Normaliza estado/localização do Creta, mantém creta_in_use, detecta chegada e controla refresh/viagens.",
+        "env": []
+    },
+    {
+        "id": "grp_creta_events",
+        "type": "group",
+        "z": "security_creta_tab",
+        "name": "1. Eventos e snapshot do Creta",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "creta_comment",
+            "creta_location_event",
+            "creta_lock_event",
+            "creta_engine_off_event",
+            "creta_unlock_event",
+            "creta_snapshot_in",
+            "creta_snapshot"
+        ],
+        "x": 34,
+        "y": 59,
+        "w": 442,
+        "h": 422
+    },
+    {
+        "id": "grp_creta_context",
+        "type": "group",
+        "z": "security_creta_tab",
+        "name": "2. Estado do veículo, viagem e chegada",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "creta_normalize",
+            "creta_context_out",
+            "creta_arrival_out",
+            "creta_arrival_actions_out"
+        ],
+        "x": 514,
+        "y": 99,
+        "w": 682,
+        "h": 282
+    },
+    {
+        "id": "grp_creta_actions",
+        "type": "group",
+        "z": "security_creta_tab",
+        "name": "3. Refresh do veículo e viagens",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "creta_refresh_in",
+            "creta_refresh_decide",
+            "creta_refresh_people_sync_out",
+            "creta_arrival_actions_in",
+            "creta_arrival_actions",
+            "creta_force_refresh",
+            "creta_refresh_ack",
+            "creta_update_entities",
+            "creta_trip_refresh"
+        ],
+        "x": 34,
+        "y": 539,
+        "w": 1122,
+        "h": 282
+    },
+    {
+        "id": "creta_comment",
+        "type": "comment",
+        "z": "security_creta_tab",
+        "g": "grp_creta_events",
+        "name": "Contrato: entidades do veículo entram; contexto Creta v1 sai",
+        "info": "creta_in_use é uma trava de domínio: liga quando o motor é visto ligado e só solta com motor desligado mais carro em casa ou porta destravada.",
+        "x": 240,
+        "y": 100,
+        "wires": [],
+        "width": 380
+    },
+    {
+        "id": "creta_location_event",
+        "type": "server-state-changed",
+        "z": "security_creta_tab",
+        "g": "grp_creta_events",
+        "name": "Creta mudou de zona",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "device_tracker.creta_location"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\n    \"event\": \"location_update\",\n    \"source\": \"creta\",\n    \"trigger_entity\": $entity().entity_id,\n    \"trigger_state\": $entity().state,\n    \"trigger_prev_state\": $prevEntity().state,\n    \"creta\": $entities(\"device_tracker.creta_location\"),\n    \"creta_engine\": $entities(\"binary_sensor.creta_engine\"),\n    \"creta_lock\": $entities(\"lock.creta_door_lock\")\n  }\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 230,
+        "y": 180,
+        "wires": [
+            [
+                "creta_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "creta_lock_event",
+        "type": "server-state-changed",
+        "z": "security_creta_tab",
+        "g": "grp_creta_events",
+        "name": "Estado da trava do Creta mudou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "lock.creta_door_lock"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\"event\":\"context_update\",\"source\":\"creta\",\"creta\":$entities(\"device_tracker.creta_location\"),\"creta_engine\":$entities(\"binary_sensor.creta_engine\"),\"creta_lock\":$entities(\"lock.creta_door_lock\")}\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 230,
+        "y": 240,
+        "wires": [
+            [
+                "creta_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "creta_engine_off_event",
+        "type": "server-state-changed",
+        "z": "security_creta_tab",
+        "g": "grp_creta_events",
+        "name": "Motor desligado por 5 s",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.creta_engine"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "off",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "5",
+        "forType": "num",
+        "forUnits": "seconds",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\"event\":\"turn_off\",\"reason\":\"creta_engine_off\",\"source\":\"creta\",\"creta\":$entities(\"device_tracker.creta_location\"),\"creta_engine\":$entities(\"binary_sensor.creta_engine\"),\"creta_lock\":$entities(\"lock.creta_door_lock\")}\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 230,
+        "y": 300,
+        "wires": [
+            [
+                "creta_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "creta_unlock_event",
+        "type": "server-state-changed",
+        "z": "security_creta_tab",
+        "g": "grp_creta_events",
+        "name": "Porta destravada por 5 s",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "lock.creta_door_lock"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "unlocked",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "5",
+        "forType": "num",
+        "forUnits": "seconds",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\"event\":\"turn_off\",\"reason\":\"creta_unlocked\",\"source\":\"creta\",\"creta\":$entities(\"device_tracker.creta_location\"),\"creta_engine\":$entities(\"binary_sensor.creta_engine\"),\"creta_lock\":$entities(\"lock.creta_door_lock\")}\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 230,
+        "y": 360,
+        "wires": [
+            [
+                "creta_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "creta_snapshot_in",
+        "type": "link in",
+        "z": "security_creta_tab",
+        "g": "grp_creta_events",
+        "name": "Solicitar snapshot do Creta",
+        "links": [
+            "context_snapshot_request_out"
+        ],
+        "x": 95,
+        "y": 420,
+        "wires": [
+            [
+                "creta_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "creta_snapshot",
+        "type": "api-current-state",
+        "z": "security_creta_tab",
+        "g": "grp_creta_events",
+        "name": "Ler localização, motor e trava",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "device_tracker.creta_location",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\"event\":\"context_snapshot\",\"source\":\"refresh\",\"refresh_cycle_id\":payload.refresh_cycle_id,\"creta\":$entities(\"device_tracker.creta_location\"),\"creta_engine\":$entities(\"binary_sensor.creta_engine\"),\"creta_lock\":$entities(\"lock.creta_door_lock\")}\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 290,
+        "y": 420,
+        "wires": [
+            [
+                "creta_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "creta_normalize",
+        "type": "function",
+        "z": "security_creta_tab",
+        "g": "grp_creta_context",
+        "name": "Normalizar Creta e detectar transições",
+        "func": "const HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst GATE_LAT = Number(env.get(\"GATE_LAT\"));\nconst GATE_LON = Number(env.get(\"GATE_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\nconst GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);\nconst ARM_DISTANCE_M = 100;\nconst ARRIVAL_DISTANCE_M = 300;\nconst MAX_GPS_ACCURACY_M = 100;\nconst APPROACH_ZONE = \"chegando\";\nconst PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;\nconst LOCATION_FRESH_MS = 30 * 60 * 1000;\nconst SIGNAL_FRESH_MS = 5 * 60 * 1000;\nconst RECOVERY_TTL_MS = 24 * 60 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst RECOVERY_KEY = \"security_creta_recovery_v1\";\nconst PERSISTENT = \"persistent\";\nconst ARMED_KEY = \"creta_arrival_armed\";\nconst IN_USE_KEY = \"creta_in_use\";\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\nfunction reliableCoords(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const accuracy = Number(attrs.gps_accuracy);\n    const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasAccuracy = Number.isFinite(accuracy);\n    return hasCoords && (!hasAccuracy || accuracy <= MAX_GPS_ACCURACY_M) ? { lat, lon } : null;\n}\nfunction primaryHome(entity) {\n    const coords = reliableCoords(entity);\n    if (HOME_KNOWN && coords) return distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon) <= ARM_DISTANCE_M;\n    const accuracy = Number(entity?.attributes?.gps_accuracy);\n    if (Number.isFinite(accuracy) && accuracy > MAX_GPS_ACCURACY_M) return false;\n    return entity?.state === \"home\";\n}\nfunction homeForMs(entity) {\n    const changedAt = Date.parse(entity?.last_changed ?? \"\");\n    return Number.isFinite(changedAt) ? Date.now() - changedAt : null;\n}\nfunction observedAt(entity) {\n    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? \"\");\n    return Number.isFinite(value) ? value : null;\n}\nfunction fresh(entity, ttl) {\n    const value = observedAt(entity);\n    return value !== null && value <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - value <= ttl;\n}\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const coords = reliableCoords(entity);\n    const accuracy = Number(attrs.gps_accuracy);\n    const state = entity?.state;\n    const validState = typeof state === \"string\" && ![\"unknown\", \"unavailable\", \"\"].includes(state);\n    const updatedAt = observedAt(entity);\n    const stale = !fresh(entity, LOCATION_FRESH_MS);\n    return {\n        entity_id: entity?.entity_id, state,\n        latitude: coords?.lat ?? null, longitude: coords?.lon ?? null,\n        gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n        location_reliable: Boolean(coords),\n        state_valid: validState && !stale && (Boolean(coords) || [\"home\", \"not_home\", APPROACH_ZONE].includes(state)),\n        updated_at: updatedAt, stale, ready: validState && !stale,\n        distance_m: HOME_KNOWN && coords ? Math.round(distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon)) : null,\n        gate_distance_m: GATE_KNOWN && coords ? Math.round(distanceMeters(GATE_LAT, GATE_LON, coords.lat, coords.lon)) : null,\n        primary_home: primaryHome(entity), primary_home_for_ms: homeForMs(entity),\n    };\n}\nfunction isAway(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m > ARM_DISTANCE_M;\n    return item?.state === \"not_home\";\n}\nfunction isArmingHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m <= ARM_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\nfunction isArrivalHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.gate_distance_m !== null && item.gate_distance_m <= ARRIVAL_DISTANCE_M) return true;\n    if (item?.distance_m !== null) return item.distance_m <= ARRIVAL_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\n\nconst creta = position(msg.payload?.creta);\nconst engineState = msg.payload?.creta_engine?.state;\nconst lockState = msg.payload?.creta_lock?.state;\nconst engineFresh = fresh(msg.payload?.creta_engine, SIGNAL_FRESH_MS);\nconst lockFresh = fresh(msg.payload?.creta_lock, SIGNAL_FRESH_MS);\nconst engineOn = engineFresh && engineState === \"on\";\nconst unlocked = lockFresh && lockState === \"unlocked\";\nlet recovery = flow.get(RECOVERY_KEY, PERSISTENT);\nconst recoveryIsObject = recovery && typeof recovery === \"object\" && !Array.isArray(recovery);\nconst inUseTypeValid = recovery?.in_use === undefined || typeof recovery.in_use === \"boolean\";\nconst confirmedAt = Number(recovery?.last_confirmed_at ?? 0);\nconst confirmedAtValid = recovery?.in_use === undefined || Number.isFinite(recovery.last_confirmed_at) && confirmedAt > 0;\nconst confirmedAtCurrent = recovery?.in_use === undefined || confirmedAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - confirmedAt <= RECOVERY_TTL_MS;\nif (!recoveryIsObject || recovery.version !== 1 || !inUseTypeValid || !confirmedAtValid || !confirmedAtCurrent) {\n    if (recovery !== undefined) node.warn(\"contexto_creta: recovery persistido invalido ou expirado; descartado\");\n    recovery = { version: 1 };\n}\nif (recovery.trip_active !== undefined && typeof recovery.trip_active !== \"boolean\") recovery.trip_active = false;\nif (recovery.in_use !== true) {\n    recovery.trip_active = false;\n    recovery.trip_started_at = null;\n}\nif (recovery.arrival_armed !== undefined && typeof recovery.arrival_armed !== \"boolean\") recovery.arrival_armed = false;\nif (recovery.trip_started_at !== undefined && recovery.trip_started_at !== null && (!Number.isFinite(recovery.trip_started_at) || recovery.trip_started_at > Date.now() + FUTURE_TOLERANCE_MS)) recovery.trip_started_at = null;\nif (typeof recovery.in_use === \"boolean\" && flow.get(\"security_creta_recovery_logged\") !== true) {\n    node.log?.(\"contexto_creta: estado persistido carregado; aguardando revalidacao pelas entidades atuais\");\n    flow.set(\"security_creta_recovery_logged\", true);\n}\nlet inUse = null;\nlet inUseReason = \"insufficient_current_evidence\";\nif (engineOn) {\n    inUse = true;\n    inUseReason = \"fresh_engine_on\";\n} else if (creta.ready && isArrivalHome(creta) && engineFresh && engineState === \"off\") {\n    inUse = false;\n    inUseReason = \"fresh_home_engine_off\";\n} else if (recovery.in_use === true && creta.ready && isAway(creta)) {\n    inUse = true;\n    inUseReason = \"persisted_trip_revalidated_by_fresh_away_location\";\n} else if (engineFresh && engineState === \"off\" && lockFresh && unlocked && creta.ready) {\n    inUse = false;\n    inUseReason = \"fresh_engine_off_unlocked\";\n}\nflow.set(IN_USE_KEY, inUse);\n\nlet armed = flow.get(ARMED_KEY);\nif (typeof armed !== \"boolean\") armed = recovery.arrival_armed === true;\nif (isAway(creta)) armed = true;\nconst isLocationEvent = msg.payload?.event === \"location_update\";\nconst triggerState = msg.payload?.trigger_state;\nconst triggerPrevState = msg.payload?.trigger_prev_state;\nlet arrival = null;\nif (isLocationEvent && creta.ready === true) {\n    const approachEntry = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== \"home\";\n    const leavingHome = triggerPrevState === \"home\";\n    const staleCatchUp = !approachEntry && creta.primary_home === true && typeof creta.primary_home_for_ms === \"number\" && creta.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;\n    if (!leavingHome && !staleCatchUp && (approachEntry || isArrivalHome(creta)) && armed) {\n        arrival = { payload: {\n            contract: \"security.arrival.v1\", kind: \"arrival\", source: \"creta\", arriving: [\"creta\"],\n            arrival_source_type: \"creta\", arrival_stage: approachEntry ? \"approach\" : \"home\",\n            request_creta_wake: approachEntry, event_at: creta.updated_at ?? Date.now(),\n        } };\n    }\n    if (!approachEntry && isArrivalHome(creta)) armed = false;\n} else if (isArmingHome(creta)) {\n    armed = false;\n}\nif (arrival) {\n    const eventAt = creta.updated_at ?? Date.now();\n    const key = [\"creta\", arrival.payload.arrival_stage, triggerState ?? \"?\", eventAt].join(\":\");\n    const previousAt = Number(recovery.last_arrival_at ?? 0);\n    const duplicate = recovery.last_arrival_key === key && previousAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - previousAt < 10 * 60 * 1000;\n    if (duplicate) arrival = null;\n    else {\n        recovery.last_arrival_key = key;\n        recovery.last_arrival_at = Date.now();\n    }\n}\nflow.set(ARMED_KEY, armed);\nrecovery.arrival_armed = armed;\nif (inUse !== null) {\n    recovery.in_use = inUse;\n    recovery.last_confirmed_at = Date.now();\n}\nrecovery.in_use_reason = inUseReason;\nif (inUse !== null) recovery.trip_active = inUse === true && isAway(creta);\nif (recovery.trip_active && !Number.isFinite(recovery.trip_started_at)) recovery.trip_started_at = Date.now();\nif (inUse === false) recovery.trip_started_at = null;\nrecovery.updated_at = Date.now();\nflow.set(RECOVERY_KEY, recovery, PERSISTENT);\n\nconst vehicleContext = {\n    location: creta,\n    distance_home_m: creta.distance_m,\n    home: creta.ready ? isArrivalHome(creta) : null, away: creta.ready ? isAway(creta) : null, approaching_home: arrival?.payload?.arrival_stage === \"approach\",\n    arrived_home: arrival?.payload?.arrival_stage === \"home\",\n    engine_on: engineOn, engine_state_valid: engineFresh && [\"on\", \"off\"].includes(engineState), engine_stale: !engineFresh,\n    lock_state: lockState, unlocked, lock_state_valid: lockFresh && [\"locked\", \"unlocked\"].includes(lockState), lock_stale: !lockFresh,\n    in_use: inUse, in_use_pending: inUse === null, in_use_reason: inUseReason,\n    trip_active: inUse === true && recovery.trip_active === true, trip_started_at: recovery.trip_started_at ?? null,\n    state_valid: creta.state_valid, ready: creta.ready && inUse !== null, stale: creta.stale || !engineFresh,\n    updated_at: Math.max(...[creta.updated_at, observedAt(msg.payload?.creta_engine), observedAt(msg.payload?.creta_lock)].filter(Number.isFinite), 0), arrival_armed: armed,\n};\nflow.set(\"creta_context_v1\", vehicleContext);\nconst previousReady = flow.get(\"security_creta_ready_logged\");\nif (previousReady !== vehicleContext.ready) {\n    node.log?.(\"contexto_creta: contexto \" + (vehicleContext.ready ? \"ready (\" + vehicleContext.in_use_reason + \")\" : \"pending/stale\"));\n    flow.set(\"security_creta_ready_logged\", vehicleContext.ready);\n}\nmsg.payload = {\n    contract: \"security.creta-context.v1\", kind: \"creta_context\", context: vehicleContext,\n    event: msg.payload?.event, reason: msg.payload?.reason ?? (vehicleContext.ready ? vehicleContext.in_use_reason : \"vehicle_context_pending\"), source: \"creta\",\n    trigger_entity: msg.payload?.trigger_entity, trigger_state: triggerState, trigger_prev_state: triggerPrevState,\n    confirmed_home_transition: isLocationEvent && creta.ready === true && triggerState === \"home\" && triggerPrevState !== undefined && triggerPrevState !== \"home\",\n    refresh_cycle_id: msg.payload?.refresh_cycle_id,\n    updated_at: vehicleContext.updated_at, valid: vehicleContext.state_valid, ready: vehicleContext.ready, stale: vehicleContext.stale,\n    readiness_reason: vehicleContext.ready ? vehicleContext.in_use_reason : \"vehicle_context_pending\",\n};\nreturn [msg, arrival];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 220,
+        "wires": [
+            [
+                "creta_context_out"
+            ],
+            [
+                "creta_arrival_out",
+                "creta_arrival_actions_out"
+            ]
+        ]
+    },
+    {
+        "id": "creta_context_out",
+        "type": "link out",
+        "z": "security_creta_tab",
+        "g": "grp_creta_context",
+        "name": "Publicar contexto do Creta v1",
+        "mode": "link",
+        "links": [
+            "context_creta_in",
+            "light_creta_context_in"
+        ],
+        "x": 1125,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "creta_arrival_out",
+        "type": "link out",
+        "z": "security_creta_tab",
+        "g": "grp_creta_context",
+        "name": "Publicar chegada do Creta v1",
+        "mode": "link",
+        "links": [
+            "light_arrival_in",
+            "alarm_arrival_in"
+        ],
+        "x": 1125,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "creta_arrival_actions_out",
+        "type": "link out",
+        "z": "security_creta_tab",
+        "g": "grp_creta_context",
+        "name": "Chegada -> ações do veículo",
+        "mode": "link",
+        "links": [
+            "creta_arrival_actions_in"
+        ],
+        "x": 1125,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "creta_refresh_in",
+        "type": "link in",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Política conjunta de refresh",
+        "links": [
+            "context_refresh_command_out"
+        ],
+        "x": 95,
+        "y": 640,
+        "wires": [
+            [
+                "creta_refresh_decide"
+            ]
+        ]
+    },
+    {
+        "id": "creta_refresh_decide",
+        "type": "function",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Forçar refresh do Creta agora?",
+        "func": "const vehicleContext = flow.get(\"creta_context_v1\");\nif (!vehicleContext || msg.payload?.kind !== \"refresh_command\") return null;\nconst INTERVAL_MS = 15 * 60 * 1000;\nconst BASE_RETRY_MS = 60 * 1000;\nconst key = \"security_creta_refresh_v1\";\nlet state = flow.get(key, \"persistent\");\nif (!state || typeof state !== \"object\") state = { attempts: 0, last_success_at: 0, next_allowed_at: 0 };\nconst now = Date.now();\nstate.attempts = Number.isFinite(state.attempts) ? Math.max(0, Math.min(5, state.attempts)) : 0;\nif (!Number.isFinite(state.last_success_at) || state.last_success_at > now + 60 * 1000) state.last_success_at = 0;\nif (!Number.isFinite(state.next_allowed_at) || state.next_allowed_at > now + INTERVAL_MS) state.next_allowed_at = 0;\nconst hour = new Date(now).getHours();\nconst enabled = msg.payload.anyone_away === true || (hour >= 7 && hour < 22);\nif (!enabled || now < state.next_allowed_at || now - Number(state.last_success_at || 0) < INTERVAL_MS) return null;\nstate.attempts = Math.min(5, Number(state.attempts || 0) + 1);\nstate.next_allowed_at = now + Math.min(INTERVAL_MS, BASE_RETRY_MS * (2 ** (state.attempts - 1)));\nstate.last_attempt_at = now;\nif (state.attempts > 1) node.warn(\"contexto_creta: retry Bluelink \" + state.attempts + \" com backoff ate \" + new Date(state.next_allowed_at).toISOString());\nflow.set(key, state, \"persistent\");\nmsg.payload.retry_attempt = state.attempts;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nreturn [msg, msg];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 640,
+        "wires": [
+            [
+                "creta_force_refresh",
+                "creta_update_entities"
+            ],
+            [
+                "creta_refresh_people_sync_out"
+            ]
+        ]
+    },
+    {
+        "id": "creta_refresh_people_sync_out",
+        "type": "link out",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Refresh Creta -> sincronizar trackers",
+        "mode": "link",
+        "links": [
+            "people_creta_sync_in"
+        ],
+        "x": 520,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "creta_arrival_actions_in",
+        "type": "link in",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Receber chegada para ações",
+        "links": [
+            "creta_arrival_actions_out"
+        ],
+        "x": 95,
+        "y": 760,
+        "wires": [
+            [
+                "creta_arrival_actions"
+            ]
+        ]
+    },
+    {
+        "id": "creta_arrival_actions",
+        "type": "function",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Acordar carro e fechar viagem",
+        "func": "if (msg.payload?.kind !== \"arrival\" || msg.payload?.arrival_source_type !== \"creta\") return null;\nconst key = \"security_creta_trip_action_v1\";\nconst eventKey = [msg.payload.source, msg.payload.arrival_stage, msg.payload.event_at ?? msg.payload.trigger_state ?? \"?\"].join(\":\");\nconst previous = flow.get(key, \"persistent\");\nconst previousAt = Number(previous?.at ?? 0);\nif (previous?.event_key === eventKey && previousAt <= Date.now() + 60 * 1000 && Date.now() - previousAt < 10 * 60 * 1000) return null;\nflow.set(key, { version: 1, event_key: eventKey, at: Date.now() }, \"persistent\");\nconst wake = msg.payload.request_creta_wake === true ? msg : null;\nreturn [wake, msg];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 760,
+        "wires": [
+            [
+                "creta_force_refresh"
+            ],
+            [
+                "creta_trip_refresh"
+            ]
+        ]
+    },
+    {
+        "id": "creta_force_refresh",
+        "type": "api-call-service",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Forçar refresh do Creta",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "button.press",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "button.creta_force_refresh"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "button",
+        "service": "press",
+        "x": 600,
+        "y": 600,
+        "wires": [
+            [
+                "creta_refresh_ack"
+            ]
+        ]
+    },
+    {
+        "id": "creta_refresh_ack",
+        "type": "function",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Confirmar refresh bem-sucedido",
+        "func": "const key = \"security_creta_refresh_v1\";\nflow.set(key, { attempts: 0, last_success_at: Date.now(), next_allowed_at: Date.now() + 15 * 60 * 1000 }, \"persistent\");\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 900,
+        "y": 600,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "creta_update_entities",
+        "type": "api-call-service",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Atualizar entidades do Creta",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "homeassistant.update_entity",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"entity_id\":[\"device_tracker.creta_location\",\"binary_sensor.creta_engine\",\"lock.creta_door_lock\"]}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "homeassistant",
+        "service": "update_entity",
+        "x": 600,
+        "y": 700,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "creta_trip_refresh",
+        "type": "api-call-service",
+        "z": "security_creta_tab",
+        "g": "grp_creta_actions",
+        "name": "Atualizar viagens do dia após chegada",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "button.press",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "button.garagem_creta_refresh_trip_info"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "button",
+        "service": "press",
+        "x": 650,
+        "y": 780,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "security_context_tab",
+        "type": "tab",
+        "label": "contexto_chegadas",
+        "disabled": false,
+        "info": "Coordena snapshots e política conjunta sem interpretar GPS; enriquece apenas o aviso da Valéria.",
+        "env": []
+    },
+    {
+        "id": "grp_context_tick",
+        "type": "group",
+        "z": "security_context_tab",
+        "name": "1. Ciclo periódico",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "context_comment",
+            "context_tick",
+            "context_coordinator",
+            "context_snapshot_request_out"
+        ],
+        "x": 34,
+        "y": 59,
+        "w": 862,
+        "h": 222
+    },
+    {
+        "id": "grp_context_inputs",
+        "type": "group",
+        "z": "security_context_tab",
+        "name": "2. Contratos de domínio",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "context_people_in",
+            "context_creta_in",
+            "context_person_event_in"
+        ],
+        "x": 34,
+        "y": 339,
+        "w": 362,
+        "h": 222
+    },
+    {
+        "id": "grp_context_outputs",
+        "type": "group",
+        "z": "security_context_tab",
+        "name": "3. Comandos e notificações",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "context_refresh_command_out",
+            "context_notify_valeria",
+            "context_test_notification"
+        ],
+        "x": 674,
+        "y": 339,
+        "w": 482,
+        "h": 222
+    },
+    {
+        "id": "context_comment",
+        "type": "comment",
+        "z": "security_context_tab",
+        "g": "grp_context_tick",
+        "name": "Orquestração sem GPS bruto",
+        "info": "O ciclo espera os dois snapshots do mesmo refresh_cycle_id. Só então calcula anyone_away e publica um comando; cada domínio mantém seu próprio cooldown.",
+        "x": 230,
+        "y": 100,
+        "wires": [],
+        "width": 390
+    },
+    {
+        "id": "context_tick",
+        "type": "inject",
+        "z": "security_context_tab",
+        "g": "grp_context_tick",
+        "name": "Reavaliar contextos a cada 30 s",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "security_context_refresh",
+        "payload": "{\"kind\":\"refresh_tick\"}",
+        "payloadType": "json",
+        "x": 230,
+        "y": 200,
+        "wires": [
+            [
+                "context_coordinator"
+            ]
+        ]
+    },
+    {
+        "id": "context_coordinator",
+        "type": "function",
+        "z": "security_context_tab",
+        "g": "grp_context_tick",
+        "name": "Coordenar snapshot e refresh",
+        "func": "const kind = msg.payload?.kind;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst NOTIFICATION_TTL_MS = 10 * 60 * 1000;\nconst PENDING_NOTIFICATION_KEY = \"security_pending_valeria_notification_v1\";\nconst PERSISTENT = \"persistent\";\n\nfunction enrichNotification(payload, creta) {\n    const byCar = creta?.ready === true && creta.arrival_armed === true && creta.distance_home_m !== null && creta.distance_home_m <= 1500;\n    return { ...payload, by_car: byCar, creta_distance_m: creta?.ready === true ? creta.distance_home_m ?? null : null, message: byCar ? \"Valéria está chegando de carro.\" : \"Valéria está chegando.\" };\n}\nfunction validPending(pending, now) {\n    return pending && pending.version === 1 && pending.payload?.kind === \"valeria_approach_notification\" && typeof pending.payload.notification_key === \"string\" && pending.payload.notification_key.length > 0 && Number.isFinite(pending.payload.event_at) && Number.isFinite(pending.queued_at) && pending.queued_at <= now + FUTURE_TOLERANCE_MS && now - pending.queued_at <= NOTIFICATION_TTL_MS;\n}\n\nif (kind === \"refresh_tick\") {\n    const cycle = Date.now();\n    flow.set(\"refresh_pending\", { cycle, people: false, creta: false, emitted: false, started_at: cycle });\n    msg.payload = { contract: \"security.snapshot-request.v1\", kind: \"snapshot_request\", refresh_cycle_id: cycle, origin: \"contexto_chegadas\", reason: \"startup_or_periodic_reconciliation\", requested_at: cycle };\n    return [msg, null, null];\n}\nif (kind === \"people_context\" || kind === \"creta_context\") {\n    const domain = kind === \"people_context\" ? \"people\" : \"creta\";\n    const key = domain + \"_context_v1\";\n    const previous = flow.get(key);\n    const incomingAt = Number(msg.payload.updated_at ?? msg.payload.context?.updated_at ?? 0);\n    const previousAt = Number(previous?.updated_at ?? 0);\n    if (incomingAt > Date.now() + FUTURE_TOLERANCE_MS || previous && incomingAt && previousAt && incomingAt < previousAt) {\n        node.warn(\"contexto_chegadas: snapshot \" + domain + \" fora de ordem ou no futuro; descartado\");\n        return null;\n    }\n    let cached = previous;\n    let accepted = false;\n    if (!previous || incomingAt && (!previousAt || incomingAt > previousAt)) {\n        flow.set(key, msg.payload.context);\n        cached = msg.payload.context;\n        accepted = true;\n    } else if (!incomingAt) {\n        node.warn(\"contexto_chegadas: snapshot \" + domain + \" sem timestamp; cache atual preservado\");\n    } else if (incomingAt === previousAt && JSON.stringify(previous) !== JSON.stringify(msg.payload.context)) {\n        node.warn(\"contexto_chegadas: conflito no mesmo timestamp para \" + domain + \"; primeiro snapshot preservado\");\n    }\n\n    let refresh = null;\n    const pending = flow.get(\"refresh_pending\");\n    if (pending && msg.payload.refresh_cycle_id === pending.cycle) {\n        pending[domain] = accepted ? msg.payload.ready === true : cached?.ready === true;\n        if (pending.people && pending.creta && !pending.emitted) {\n            pending.emitted = true;\n            const people = flow.get(\"people_context_v1\");\n            const creta = flow.get(\"creta_context_v1\");\n            refresh = { payload: {\n                contract: \"security.refresh-command.v1\", kind: \"refresh_command\", refresh_cycle_id: pending.cycle,\n                anyone_away: people?.anyone_away === true || creta?.away === true,\n                origin: \"contexto_chegadas\", reason: \"paired_ready_snapshots\", issued_at: Date.now(), ready: true,\n            } };\n        }\n        flow.set(\"refresh_pending\", pending);\n    }\n\n    let notification = null;\n    let queued = flow.get(PENDING_NOTIFICATION_KEY, PERSISTENT);\n    if (queued && !validPending(queued, Date.now())) {\n        flow.set(PENDING_NOTIFICATION_KEY, null, PERSISTENT);\n        queued = null;\n        node.warn(\"contexto_chegadas: aviso pendente da Valéria inválido ou expirado; descartado\");\n    }\n    const creta = flow.get(\"creta_context_v1\");\n    if (domain === \"creta\" && creta?.ready === true && queued) {\n        flow.set(PENDING_NOTIFICATION_KEY, null, PERSISTENT);\n        notification = { payload: enrichNotification(queued.payload, creta) };\n        node.log?.(\"contexto_chegadas: aviso pendente da Valéria liberado após readiness do Creta\");\n    }\n    return refresh || notification ? [null, refresh, notification] : null;\n}\nif (kind === \"valeria_approach_notification\") {\n    const creta = flow.get(\"creta_context_v1\");\n    if (creta?.ready === true) {\n        flow.set(PENDING_NOTIFICATION_KEY, null, PERSISTENT);\n        msg.payload = enrichNotification(msg.payload, creta);\n        return [null, null, msg];\n    }\n    const queuedAt = Date.now();\n    const existing = flow.get(PENDING_NOTIFICATION_KEY, PERSISTENT);\n    if (!validPending(existing, queuedAt) || existing.payload.notification_key !== msg.payload.notification_key) {\n        flow.set(PENDING_NOTIFICATION_KEY, { version: 1, queued_at: queuedAt, payload: { ...msg.payload } }, PERSISTENT);\n        node.log?.(\"contexto_chegadas: aviso da Valéria aguardando readiness do Creta\");\n    }\n    return null;\n}\nreturn null;",
+        "outputs": 3,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 200,
+        "wires": [
+            [
+                "context_snapshot_request_out"
+            ],
+            [
+                "context_refresh_command_out"
+            ],
+            [
+                "context_notify_valeria"
+            ]
+        ]
+    },
+    {
+        "id": "context_snapshot_request_out",
+        "type": "link out",
+        "z": "security_context_tab",
+        "g": "grp_context_tick",
+        "name": "Solicitar snapshots dos domínios",
+        "mode": "link",
+        "links": [
+            "people_snapshot_in",
+            "creta_snapshot_in"
+        ],
+        "x": 800,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "context_people_in",
+        "type": "link in",
+        "z": "security_context_tab",
+        "g": "grp_context_inputs",
+        "name": "Receber contexto de pessoas v1",
+        "links": [
+            "people_context_out"
+        ],
+        "x": 180,
+        "y": 400,
+        "wires": [
+            [
+                "context_coordinator"
+            ]
+        ]
+    },
+    {
+        "id": "context_creta_in",
+        "type": "link in",
+        "z": "security_context_tab",
+        "g": "grp_context_inputs",
+        "name": "Receber contexto do Creta v1",
+        "links": [
+            "creta_context_out"
+        ],
+        "x": 180,
+        "y": 460,
+        "wires": [
+            [
+                "context_coordinator"
+            ]
+        ]
+    },
+    {
+        "id": "context_person_event_in",
+        "type": "link in",
+        "z": "security_context_tab",
+        "g": "grp_context_inputs",
+        "name": "Receber candidato de aviso da Valéria",
+        "links": [
+            "people_notify_candidate_out"
+        ],
+        "x": 180,
+        "y": 520,
+        "wires": [
+            [
+                "context_coordinator"
+            ]
+        ]
+    },
+    {
+        "id": "context_refresh_command_out",
+        "type": "link out",
+        "z": "security_context_tab",
+        "g": "grp_context_outputs",
+        "name": "Publicar política conjunta de refresh",
+        "mode": "link",
+        "links": [
+            "people_refresh_in",
+            "creta_refresh_in"
+        ],
+        "x": 900,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "context_notify_valeria",
+        "type": "api-call-service",
+        "z": "security_context_tab",
+        "g": "grp_context_outputs",
+        "name": "Avisar Gabriel: Valéria se aproxima",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.send_message",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "notify.iphone_de_gabriel_furlan"
+        ],
+        "labelId": [],
+        "data": "{\"title\": \"Casa inteligente\", \"message\": payload.message}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "send_message",
+        "x": 850,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "context_test_notification",
+        "type": "inject",
+        "z": "security_context_tab",
+        "g": "grp_context_outputs",
+        "name": "Teste manual: aviso de aproximação",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"message\":\"Teste manual: Valéria está chegando.\"}",
+        "payloadType": "json",
+        "x": 820,
+        "y": 540,
+        "wires": [
+            [
+                "context_notify_valeria"
+            ]
+        ]
+    },
+    {
+        "id": "2fd40fd570e6f37a",
+        "type": "tab",
+        "label": "iluminacao_seguranca",
+        "disabled": false,
+        "info": "Orquestra exclusivamente a decisão e o ciclo de vida do refletor a partir de contratos de alto nível.",
+        "env": []
+    },
+    {
+        "id": "grp_light_inputs",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "1. Contextos e eventos de alto nível",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_comment",
+            "light_people_context_in",
+            "light_creta_context_in",
+            "light_arrival_in",
+            "light_sun_event",
+            "light_sun_ready"
+        ],
+        "x": 34,
+        "y": 59,
+        "w": 402,
+        "h": 402
+    },
+    {
+        "id": "grp_light_decision",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "2. Atualizar estado e decidir",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_merge_context",
+            "light_prepare_arrival",
+            "light_check_dark",
+            "light_check_creta_in_use",
+            "light_check_inactive",
+            "light_reconcile_signal_out"
+        ],
+        "x": 474,
+        "y": 99,
+        "w": 1002,
+        "h": 242
+    },
+    {
+        "id": "grp_light_on",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "3. Ligar, notificar e proteger por timeout",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_mark_active",
+            "light_turn_on",
+            "light_notify_on",
+            "light_auto_off",
+            "light_timeout",
+            "light_timeout_route_out",
+            "light_manual_action_in"
+        ],
+        "x": 1514,
+        "y": 59,
+        "w": 922,
+        "h": 342
+    },
+    {
+        "id": "grp_light_off",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "4. Cinco condições independentes de desligamento",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c27c4c",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_timeout_route_in",
+            "light_evaluate_off",
+            "light_off_grace",
+            "light_turn_off_if_active",
+            "light_turn_off",
+            "light_recovery_off_in"
+        ],
+        "x": 474,
+        "y": 459,
+        "w": 1282,
+        "h": 262
+    },
+    {
+        "id": "grp_light_tests",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "5. Testes manuais",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#777777",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_manual_test",
+            "light_manual_action_out"
+        ],
+        "x": 1834,
+        "y": 499,
+        "w": 522,
+        "h": 122
+    },
+    {
+        "id": "light_comment",
+        "type": "comment",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_inputs",
+        "name": "Contrato da iluminação",
+        "info": "Esta aba não lê GPS, trackers, motor ou trava diretamente. Ela consome security.people-context.v1, security.creta-context.v1 e security.arrival.v1.",
+        "x": 230,
+        "y": 100,
+        "wires": [],
+        "width": 340
+    },
+    {
+        "id": "light_people_context_in",
+        "type": "link in",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_inputs",
+        "name": "Contexto de pessoas v1",
+        "links": [
+            "people_context_out"
+        ],
+        "x": 95,
+        "y": 200,
+        "wires": [
+            [
+                "light_merge_context"
+            ]
+        ]
+    },
+    {
+        "id": "light_creta_context_in",
+        "type": "link in",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_inputs",
+        "name": "Contexto do Creta v1",
+        "links": [
+            "creta_context_out"
+        ],
+        "x": 95,
+        "y": 260,
+        "wires": [
+            [
+                "light_merge_context"
+            ]
+        ]
+    },
+    {
+        "id": "light_arrival_in",
+        "type": "link in",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_inputs",
+        "name": "Chegada processada v1",
+        "links": [
+            "people_arrival_out",
+            "creta_arrival_out"
+        ],
+        "x": 95,
+        "y": 320,
+        "wires": [
+            [
+                "light_prepare_arrival"
+            ]
+        ]
+    },
+    {
+        "id": "light_sun_event",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_inputs",
+        "name": "Luminosidade mudou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sun.sun"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\"contract\":\"security.sun-context.v1\",\"kind\":\"sun_context\",\"sun_below_horizon\":$entity().state=\"below_horizon\",\"source\":\"sun\"}\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 220,
+        "y": 380,
+        "wires": [
+            [
+                "light_sun_ready"
+            ]
+        ]
+    },
+    {
+        "id": "light_merge_context",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_decision",
+        "name": "Atualizar contexto de alto nível",
+        "func": "const kind = msg.payload?.kind;\nconst incomingAt = Number(msg.payload?.updated_at ?? msg.payload?.context?.updated_at ?? 0);\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nfunction updateCache(key) {\n    const old = flow.get(key);\n    const oldAt = Number(old?.updated_at ?? 0);\n    if (incomingAt > Date.now() + FUTURE_TOLERANCE_MS || old && incomingAt && oldAt && incomingAt < oldAt) {\n        node.warn(\"iluminacao_seguranca: snapshot fora de ordem ou no futuro; descartado\");\n        return false;\n    }\n    if (!old || incomingAt && (!oldAt || incomingAt > oldAt)) {\n        flow.set(key, msg.payload.context);\n        return true;\n    }\n    if (!incomingAt) node.warn(\"iluminacao_seguranca: snapshot sem timestamp; cache atual preservado\");\n    else if (incomingAt === oldAt && JSON.stringify(old) !== JSON.stringify(msg.payload.context)) node.warn(\"iluminacao_seguranca: snapshot conflitante no mesmo timestamp; primeiro preservado\");\n    return false;\n}\nlet contextAccepted = true;\nif (kind === \"people_context\") contextAccepted = updateCache(\"people_context_v1\");\nif (kind === \"creta_context\") contextAccepted = updateCache(\"creta_context_v1\");\nif (kind === \"sun_context\") flow.set(\"sun_below_horizon\", msg.payload.sun_below_horizon === true);\nconst reconcile = { payload: { kind: \"reconcile_signal\", reason: \"context_update\" } };\nif ((kind === \"people_context\" || kind === \"creta_context\") && !contextAccepted) return [null, reconcile];\nconst creta = flow.get(\"creta_context_v1\") ?? {};\nconst lifecycle = flow.get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nmsg.payload = {\n    event: msg.payload?.event ?? \"context_update\", reason: msg.payload?.reason, source: msg.payload?.source,\n    trigger_state: msg.payload?.trigger_state, trigger_prev_state: msg.payload?.trigger_prev_state,\n    confirmed_home_transition: msg.payload?.confirmed_home_transition === true,\n    creta_ready: creta.ready === true, creta_engine_on: creta.engine_on, creta_unlocked: creta.unlocked,\n    creta_in_use: creta.in_use, active: lifecycle.active_by_arrival === true,\n};\nreturn [msg, reconcile];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 180,
+        "wires": [
+            [
+                "light_evaluate_off"
+            ],
+            [
+                "light_reconcile_signal_out"
+            ]
+        ]
+    },
+    {
+        "id": "light_prepare_arrival",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_decision",
+        "name": "Montar decisão de acendimento",
+        "func": "if (msg.payload?.kind !== \"arrival\") return null;\nconst creta = flow.get(\"creta_context_v1\") ?? {};\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst lifecycle = flow.get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nconst physical = flow.get(\"security_light_physical_state\");\nconst physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) && physicalObservedAt <= Date.now() + 60 * 1000 && Date.now() - physicalObservedAt <= 2 * 60 * 1000;\nconst ready = people.ready === true && creta.ready === true && flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true && physicalFresh;\nif (!ready || physical !== \"off\") {\n    node.warn(\"iluminacao_seguranca: chegada bloqueada; contextos ou estado fisico ainda nao estao ready\");\n    return null;\n}\nconst eventAt = Number(msg.payload.event_at ?? msg.payload.updated_at ?? Date.now());\nmsg.payload.arrival_key = [msg.payload.source, msg.payload.arrival_stage, eventAt].join(\":\");\nmsg.payload.sun_below_horizon = flow.get(\"sun_below_horizon\") === true;\nmsg.payload.creta_in_use = creta.in_use;\nmsg.payload.creta_engine_on = creta.engine_on;\nmsg.payload.active = lifecycle.active_by_arrival === true || physical === \"on\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 280,
+        "wires": [
+            [
+                "light_check_dark"
+            ]
+        ]
+    },
+    {
+        "id": "light_check_dark",
+        "type": "switch",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_decision",
+        "name": "Ambiente está escuro?",
+        "property": "payload.sun_below_horizon",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 800,
+        "y": 280,
+        "wires": [
+            [
+                "light_check_creta_in_use"
+            ]
+        ]
+    },
+    {
+        "id": "light_check_creta_in_use",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_decision",
+        "name": "Creta está em uso?",
+        "func": "if (msg.payload?.creta_in_use !== true) return null;\nconst lifecycle = flow.get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nconst until = Number(lifecycle.cooldown_until ?? 0);\nif (Number.isFinite(until) && Date.now() < until) return null;\nmsg.payload.creta_gate = msg.payload.creta_engine_on === true ? \"engine_on\" : \"creta_in_use_revalidated\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 280,
+        "wires": [
+            [
+                "light_check_inactive"
+            ]
+        ]
+    },
+    {
+        "id": "light_check_inactive",
+        "type": "switch",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_decision",
+        "name": "Refletor está inativo?",
+        "property": "payload.active",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "false"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 1320,
+        "y": 280,
+        "wires": [
+            [
+                "light_mark_active"
+            ]
+        ]
+    },
+    {
+        "id": "light_mark_active",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_on",
+        "name": "Marcar refletor ativo por chegada",
+        "func": "const now = Date.now();\nconst lifecycle = flow.get(\"security_light_lifecycle_v1\", \"persistent\") ?? { version: 1 };\nconst physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) && physicalObservedAt <= now + 60 * 1000 && now - physicalObservedAt <= 2 * 60 * 1000;\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst creta = flow.get(\"creta_context_v1\") ?? {};\nconst ready = people.ready === true && creta.ready === true && flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true && physicalFresh;\nif (!ready || flow.get(\"security_light_physical_state\") !== \"off\" || lifecycle.active_by_arrival === true) return null;\nconst arrivalKey = msg.payload?.arrival_key;\nconst lastArrivalAt = Number(lifecycle.last_arrival_at ?? 0);\nif (arrivalKey && lifecycle.last_arrival_key === arrivalKey && lastArrivalAt <= now + 60 * 1000 && now - lastArrivalAt < 10 * 60 * 1000) return null;\nlifecycle.version = 1;\nlifecycle.active_by_arrival = true;\nlifecycle.on_since = now;\nlifecycle.force_off_at = now + 15 * 60 * 1000;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.last_arrival_key = arrivalKey ?? null;\nlifecycle.last_arrival_at = now;\nlifecycle.updated_at = now;\nflow.set(\"security_light_lifecycle_v1\", lifecycle, \"persistent\");\nmsg.delay = 15 * 60 * 1000;\nmsg.payload.deadline_type = \"backstop\";\nmsg.payload.deadline_at = lifecycle.force_off_at;\nmsg.payload.reason = \"creta_arriving_after_dark\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1700,
+        "y": 200,
+        "wires": [
+            [
+                "light_turn_on",
+                "light_auto_off",
+                "light_notify_on"
+            ]
+        ]
+    },
+    {
+        "id": "light_turn_on",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_on",
+        "name": "Ligar refletor do portão",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_on",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.refletor_portao_carros"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_on",
+        "x": 2050,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "light_notify_on",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_on",
+        "name": "Avisar moradores: refletor ligado",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.send_message",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "notify.iphone_de_gabriel_furlan",
+            "notify.iphone_de_valeria"
+        ],
+        "labelId": [],
+        "data": "{\"title\":\"Casa inteligente\",\"message\":\"O refletor da garagem foi ligado.\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "send_message",
+        "x": 2050,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "light_auto_off",
+        "type": "delay",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_on",
+        "name": "Aguardar backstop de 15 min",
+        "pauseType": "delayv",
+        "timeout": "15",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 2050,
+        "y": 280,
+        "wires": [
+            [
+                "light_timeout"
+            ]
+        ]
+    },
+    {
+        "id": "light_timeout",
+        "type": "change",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_on",
+        "name": "Solicitar desligamento por timeout",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload.event",
+                "pt": "msg",
+                "to": "turn_off",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload.reason",
+                "pt": "msg",
+                "to": "timeout_15min",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload.deadline_type",
+                "pt": "msg",
+                "to": "backstop",
+                "tot": "str"
+            }
+        ],
+        "x": 2050,
+        "y": 360,
+        "wires": [
+            [
+                "light_timeout_route_out"
+            ]
+        ]
+    },
+    {
+        "id": "light_timeout_route_out",
+        "type": "link out",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_on",
+        "name": "Timeout -> desligamento",
+        "mode": "link",
+        "links": [
+            "light_timeout_route_in"
+        ],
+        "x": 2350,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "light_manual_action_in",
+        "type": "link in",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_on",
+        "name": "Receber teste manual",
+        "links": [
+            "light_manual_action_out"
+        ],
+        "x": 1850,
+        "y": 80,
+        "wires": [
+            [
+                "light_turn_on",
+                "light_notify_on"
+            ]
+        ]
+    },
+    {
+        "id": "light_timeout_route_in",
+        "type": "link in",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_off",
+        "name": "Receber timeout de 15 min",
+        "links": [
+            "light_timeout_route_out"
+        ],
+        "x": 650,
+        "y": 500,
+        "wires": [
+            [
+                "light_turn_off_if_active"
+            ]
+        ]
+    },
+    {
+        "id": "light_evaluate_off",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_off",
+        "name": "Alguma condição de desligamento ocorreu?",
+        "func": "const GRACE_MS = 90 * 1000;\nconst lifecycle = flow.get(\"security_light_lifecycle_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst creta = flow.get(\"creta_context_v1\") ?? {};\nconst physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) && physicalObservedAt <= now + 60 * 1000 && now - physicalObservedAt <= 2 * 60 * 1000;\nconst ready = people.ready === true && creta.ready === true && flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true && physicalFresh;\nif (lifecycle.active_by_arrival !== true || !ready) return null;\nconst vehicleEventCanStop = msg.payload.event === \"turn_off\" || msg.payload.event === \"location_update\";\nif (vehicleEventCanStop && msg.payload.creta_ready === true && msg.payload.creta_engine_on === false && msg.payload.creta_unlocked === true) {\n    msg.payload.off_reason = \"creta_desligado_e_destravado\";\n    msg.payload.deadline_type = \"immediate\";\n    return [msg, null];\n}\nif (msg.payload.confirmed_home_transition !== true) return null;\nlifecycle.pending_off_at = Math.max(Number(lifecycle.on_since ?? now) + GRACE_MS, now);\nlifecycle.pending_off_reason = \"chegada_confirmada_\" + (msg.payload.source ?? \"?\");\nlifecycle.pending_off_source = msg.payload.source ?? null;\nlifecycle.updated_at = now;\nflow.set(\"security_light_lifecycle_v1\", lifecycle, \"persistent\");\nmsg.payload.off_reason = lifecycle.pending_off_reason;\nmsg.payload.deadline_type = \"pending_off\";\nmsg.payload.deadline_at = lifecycle.pending_off_at;\nmsg.delay = Math.max(0, lifecycle.pending_off_at - now);\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 580,
+        "wires": [
+            [
+                "light_turn_off_if_active"
+            ],
+            [
+                "light_off_grace"
+            ]
+        ]
+    },
+    {
+        "id": "light_off_grace",
+        "type": "delay",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_off",
+        "name": "Respeitar carência de 90 s",
+        "pauseType": "delayv",
+        "timeout": "90",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 850,
+        "y": 620,
+        "wires": [
+            [
+                "light_turn_off_if_active"
+            ]
+        ]
+    },
+    {
+        "id": "light_turn_off_if_active",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_off",
+        "name": "Desativar somente se foi ligado por chegada",
+        "func": "const key = \"security_light_lifecycle_v1\";\nconst lifecycle = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst type = msg.payload?.deadline_type ?? \"immediate\";\nif (msg.payload?.recovered === true) {\n    const scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\n    delete scheduled[type];\n    flow.set(\"security_light_recovery_scheduled\", scheduled);\n}\nconst physical = flow.get(\"security_light_physical_state\");\nconst physicalObservedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(physicalObservedAt) && physicalObservedAt <= now + 60 * 1000 && now - physicalObservedAt <= 2 * 60 * 1000;\nconst peopleContext = flow.get(\"people_context_v1\") ?? {};\nconst cretaContext = flow.get(\"creta_context_v1\") ?? {};\nconst ready = peopleContext.ready === true && cretaContext.ready === true && flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true && physicalFresh;\nif (lifecycle.active_by_arrival !== true || !ready || physical !== \"on\") return null;\nif (type === \"backstop\" && now < Number(lifecycle.force_off_at ?? Infinity)) return null;\nif (type === \"pending_off\") {\n    if (now < Number(lifecycle.pending_off_at ?? Infinity)) return null;\n    const source = lifecycle.pending_off_source;\n    const people = flow.get(\"people_context_v1\") ?? {};\n    const creta = flow.get(\"creta_context_v1\") ?? {};\n    const stillHome = source === \"creta\" ? creta.ready === true && creta.home === true : people.ready === true && people[source]?.current_home === true;\n    if (!stillHome) {\n        lifecycle.pending_off_at = null;\n        lifecycle.pending_off_reason = null;\n        lifecycle.pending_off_source = null;\n        lifecycle.updated_at = now;\n        flow.set(key, lifecycle, \"persistent\");\n        node.warn(\"iluminacao_seguranca: desligamento pendente cancelado apos revalidacao\");\n        return null;\n    }\n}\nlifecycle.active_by_arrival = false;\nlifecycle.on_since = null;\nlifecycle.force_off_at = null;\nlifecycle.pending_off_at = null;\nlifecycle.pending_off_reason = null;\nlifecycle.pending_off_source = null;\nlifecycle.cooldown_until = now + 5 * 60 * 1000;\nlifecycle.updated_at = now;\nflow.set(key, lifecycle, \"persistent\");\nmsg.payload.off_reason = msg.payload.off_reason ?? msg.payload.reason ?? type;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 560,
+        "wires": [
+            [
+                "light_turn_off"
+            ]
+        ]
+    },
+    {
+        "id": "light_turn_off",
+        "type": "api-call-service",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_off",
+        "name": "Desligar refletor do portão",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "switch.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.refletor_portao_carros"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "switch",
+        "service": "turn_off",
+        "x": 1450,
+        "y": 560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "light_manual_test",
+        "type": "inject",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_tests",
+        "name": "Teste manual: ligar refletor e avisar",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2000,
+        "y": 560,
+        "wires": [
+            [
+                "light_manual_action_out"
+            ]
+        ]
+    },
+    {
+        "id": "light_manual_action_out",
+        "type": "link out",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_tests",
+        "name": "Teste -> ações do refletor",
+        "mode": "link",
+        "links": [
+            "light_manual_action_in"
+        ],
+        "x": 2280,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "light_sun_ready",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_inputs",
+        "name": "Validar leitura de luminosidade",
+        "func": "const value = msg.payload?.sun_below_horizon;\nflow.set(\"sun_ready\", typeof value === \"boolean\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 420,
+        "wires": [
+            [
+                "light_merge_context"
+            ]
+        ]
+    },
+    {
+        "id": "grp_light_recovery",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "0. Startup / Reconciliação",
+        "style": {
+            "label": true
+        },
+        "x": 34,
+        "y": 739,
+        "w": 1422,
+        "h": 242,
+        "nodes": [
+            "light_startup",
+            "light_read_physical",
+            "light_physical_event",
+            "light_reconcile",
+            "light_recovery_delay",
+            "light_recovery_off_out",
+            "light_reconcile_signal_in"
+        ]
+    },
+    {
+        "id": "light_startup",
+        "type": "inject",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_recovery",
+        "name": "Reconciliar refletor a cada 60 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "payload": "{\"kind\":\"startup\"}",
+        "payloadType": "json",
+        "x": 180,
+        "y": 800,
+        "wires": [
+            [
+                "light_read_physical"
+            ]
+        ]
+    },
+    {
+        "id": "light_read_physical",
+        "type": "api-current-state",
+        "z": "2fd40fd570e6f37a",
+        "name": "Consultar estado físico atual do refletor",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "disarmed",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.refletor_portao_carros",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "({\"kind\":\"light_physical\",\"state\":$entity().state,\"updated_at\":$toMillis($entity().last_updated),\"source\":\"physical_query\"})",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 450,
+        "y": 800,
+        "wires": [
+            [
+                "light_reconcile"
+            ]
+        ],
+        "g": "grp_light_recovery"
+    },
+    {
+        "id": "light_physical_event",
+        "type": "server-state-changed",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_recovery",
+        "name": "Estado físico do refletor mudou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "switch.refletor_portao_carros"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "({\"kind\":\"light_physical\",\"state\":$entity().state,\"updated_at\":$toMillis($entity().last_updated),\"source\":\"state_event\"})",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 300,
+        "y": 900,
+        "wires": [
+            [
+                "light_reconcile"
+            ]
+        ]
+    },
+    {
+        "id": "light_reconcile",
+        "type": "function",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_recovery",
+        "name": "Revalidar lifecycle e estado físico",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 860,
+        "wires": [
+            [
+                "light_recovery_delay"
+            ]
+        ],
+        "func": "const key = \"security_light_lifecycle_v1\";\nconst now = Date.now();\nconst PHYSICAL_FRESH_MS = 2 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nlet lifecycle = flow.get(key, \"persistent\");\nconst physicalSignal = msg.payload?.kind === \"light_physical\";\nif (physicalSignal && flow.get(\"security_light_startup_logged\") !== true) {\n    node.log?.(\"iluminacao_seguranca: startup/reconciliacao física iniciada\");\n    flow.set(\"security_light_startup_logged\", true);\n}\nif (!lifecycle || lifecycle.version !== 1 || !Number.isFinite(lifecycle.updated_at) || lifecycle.updated_at > now + FUTURE_TOLERANCE_MS || now - lifecycle.updated_at > 24 * 60 * 60 * 1000) {\n    if (lifecycle) node.warn(\"iluminacao_seguranca: lifecycle persistido invalido ou expirado; descartado\");\n    lifecycle = { version: 1, active_by_arrival: false, updated_at: now };\n}\nif (lifecycle.active_by_arrival !== true) lifecycle.active_by_arrival = false;\nif (lifecycle.active_by_arrival === true && (!Number.isFinite(lifecycle.on_since) || lifecycle.on_since > now + FUTURE_TOLERANCE_MS || !Number.isFinite(lifecycle.force_off_at) || lifecycle.force_off_at < lifecycle.on_since || lifecycle.force_off_at > lifecycle.on_since + 16 * 60 * 1000)) {\n    node.warn(\"iluminacao_seguranca: lifecycle ativo sem deadline coerente; tratado como origem desconhecida\");\n    lifecycle.active_by_arrival = false;\n    lifecycle.on_since = null;\n    lifecycle.force_off_at = null;\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n}\nif (lifecycle.active_by_arrival === true && lifecycle.pending_off_at !== undefined && lifecycle.pending_off_at !== null && (!Number.isFinite(lifecycle.pending_off_at) || lifecycle.pending_off_at < lifecycle.on_since || lifecycle.pending_off_at > lifecycle.force_off_at)) {\n    node.warn(\"iluminacao_seguranca: deadline de carencia invalido; descartado\");\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n}\nif (lifecycle.cooldown_until !== undefined && lifecycle.cooldown_until !== null && (!Number.isFinite(lifecycle.cooldown_until) || lifecycle.cooldown_until <= now || lifecycle.cooldown_until > now + 30 * 60 * 1000)) lifecycle.cooldown_until = null;\nif (physicalSignal) {\n    const state = msg.payload.state;\n    const entityUpdatedAt = Number(msg.payload.updated_at ?? 0);\n    const previousAt = Number(flow.get(\"security_light_physical_updated_at\") ?? 0);\n    if (entityUpdatedAt > now + FUTURE_TOLERANCE_MS || entityUpdatedAt && previousAt && entityUpdatedAt < previousAt) {\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: leitura fisica fora de ordem ou no futuro; descartada\");\n        return null;\n    }\n    if (entityUpdatedAt && previousAt && entityUpdatedAt === previousAt && flow.get(\"security_light_physical_state\") !== undefined && flow.get(\"security_light_physical_state\") !== state) {\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: conflito de estado fisico no mesmo timestamp; primeiro preservado\");\n        return null;\n    }\n    if ([\"on\", \"off\"].includes(state)) {\n        flow.set(\"security_light_physical_state\", state);\n        if (entityUpdatedAt) flow.set(\"security_light_physical_updated_at\", entityUpdatedAt);\n        flow.set(\"security_light_physical_observed_at\", now);\n        flow.set(\"light_reconciled\", true);\n        if (state === \"off\" && lifecycle.active_by_arrival === true) {\n            lifecycle.active_by_arrival = false;\n            lifecycle.on_since = null;\n            lifecycle.force_off_at = null;\n            lifecycle.pending_off_at = null;\n            lifecycle.pending_off_reason = null;\n            lifecycle.pending_off_source = null;\n            lifecycle.cooldown_until = now + 5 * 60 * 1000;\n            lifecycle.updated_at = now;\n            node.warn(\"iluminacao_seguranca: contexto ON corrigido porque o refletor fisico esta OFF\");\n        }\n    } else {\n        flow.set(\"security_light_physical_state\", state ?? \"unknown\");\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: refletor indisponivel; efeitos fisicos bloqueados\");\n    }\n}\nflow.set(key, lifecycle, \"persistent\");\nconst observedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(observedAt) && observedAt <= now + FUTURE_TOLERANCE_MS && now - observedAt <= PHYSICAL_FRESH_MS;\nif (!physicalFresh) flow.set(\"light_reconciled\", false);\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst creta = flow.get(\"creta_context_v1\") ?? {};\nconst ready = people.ready === true && creta.ready === true && flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true && physicalFresh;\nconst wasReady = flow.get(\"security_light_ready\");\nflow.set(\"security_light_ready\", ready);\nif (wasReady !== ready) node.log?.(\"iluminacao_seguranca: readiness \" + (ready ? \"completo\" : \"pendente\"));\nif (!ready || flow.get(\"security_light_physical_state\") !== \"on\" || lifecycle.active_by_arrival !== true) return null;\nconst deadlines = [];\nif (Number.isFinite(lifecycle.force_off_at)) deadlines.push({ type: \"backstop\", at: lifecycle.force_off_at, reason: \"recovered_backstop\" });\nif (Number.isFinite(lifecycle.pending_off_at)) deadlines.push({ type: \"pending_off\", at: lifecycle.pending_off_at, reason: lifecycle.pending_off_reason ?? \"recovered_pending_off\" });\nif (!deadlines.length) return null;\nconst scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\nconst current = Object.fromEntries(deadlines.map((deadline) => [deadline.type, deadline.at]));\nfor (const type of Object.keys(scheduled)) if (scheduled[type] !== current[type]) delete scheduled[type];\nconst messages = [];\nfor (const deadline of deadlines) {\n    if (scheduled[deadline.type] === deadline.at) continue;\n    scheduled[deadline.type] = deadline.at;\n    messages.push({ payload: { event: \"turn_off\", reason: deadline.reason, deadline_type: deadline.type, recovered: true }, delay: Math.max(0, deadline.at - now) });\n}\nflow.set(\"security_light_recovery_scheduled\", scheduled);\nif (messages.length) node.log?.(\"iluminacao_seguranca: \" + messages.length + \" deadline(s) reconstruido(s)\");\nreturn messages.length ? [messages] : null;"
+    },
+    {
+        "id": "light_recovery_delay",
+        "type": "delay",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_recovery",
+        "name": "Retomar deadline restante",
+        "pauseType": "delayv",
+        "timeout": "1",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1040,
+        "y": 860,
+        "wires": [
+            [
+                "light_recovery_off_out"
+            ]
+        ]
+    },
+    {
+        "id": "light_recovery_off_out",
+        "type": "link out",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_recovery",
+        "name": "Recovery -> revalidar desligamento",
+        "mode": "link",
+        "links": [
+            "light_recovery_off_in"
+        ],
+        "x": 1330,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "light_recovery_off_in",
+        "type": "link in",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_off",
+        "name": "Receber deadline recuperado",
+        "links": [
+            "light_recovery_off_out"
+        ],
+        "x": 680,
+        "y": 660,
+        "wires": [
+            [
+                "light_turn_off_if_active"
+            ]
+        ]
+    },
+    {
+        "id": "light_reconcile_signal_out",
+        "type": "link out",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_decision",
+        "name": "Contexto -> reconciliação",
+        "mode": "link",
+        "links": [
+            "light_reconcile_signal_in"
+        ],
+        "x": 930,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "light_reconcile_signal_in",
+        "type": "link in",
+        "z": "2fd40fd570e6f37a",
+        "g": "grp_light_recovery",
+        "name": "Receber contexto para reconciliação",
+        "links": [
+            "light_reconcile_signal_out"
+        ],
+        "x": 480,
+        "y": 940,
+        "wires": [
+            [
+                "light_reconcile"
+            ]
+        ]
     },
     {
         "id": "raspberry_pi_cooling_tab",
