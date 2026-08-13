@@ -228,6 +228,18 @@ assert.equal(new Set(hierarchical.map((item) => item.id)).size, hierarchical.len
 assert.match(hierarchical[0].message, /andar1\/cozinha\/sensor/);
 assert.match(hierarchical[1].message, /externo\/portao\/sensor/);
 
+// Home Assistant 2026.x prefixes device names unless discovery explicitly
+// supplies default_entity_id. Keep the dashboard's four entity IDs stable.
+const discoveryMessages = [
+  ...run(getFunction("internet_discovery"), context(), {})[0],
+  ...run(getFunction("zigbee_discovery"), context(), {})[0],
+];
+const discoveryByTopic = new Map(discoveryMessages.map((message) => [message.topic, JSON.parse(message.payload)]));
+assert.equal(discoveryByTopic.get("homeassistant/binary_sensor/internet_connection/config")?.default_entity_id, "binary_sensor.internet_connection");
+assert.equal(discoveryByTopic.get("homeassistant/sensor/internet_connection_state/config")?.default_entity_id, "sensor.internet_connection_state");
+assert.equal(discoveryByTopic.get("homeassistant/binary_sensor/zigbee_network/config")?.default_entity_id, "binary_sensor.zigbee_network");
+assert.equal(discoveryByTopic.get("homeassistant/sensor/zigbee_network_state/config")?.default_entity_id, "sensor.zigbee_network_state");
+
 // Structural review: unique ids, valid wires, shared notifier and left-to-right layout.
 const ids = flows.map((item) => item.id);
 assert.equal(new Set(ids).size, ids.length, "IDs de nodes devem ser únicos");

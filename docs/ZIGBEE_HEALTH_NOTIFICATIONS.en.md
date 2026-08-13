@@ -150,3 +150,26 @@ require a controlled on-site window. ICMP filtering by all three targets remains
 possible. During the WAN outage, the local persistent alert can be created
 immediately. Without active Local Push, the mobile push depends on WAN and may
 be dropped; Home Assistant does not guarantee later delivery.
+
+## Partial physical-validation record (2026-08-13)
+
+| Scenario | Test type | Observed result | Evidence summary | Status |
+| --- | --- | --- | --- | --- |
+| Physical WAN cut | Physical | Not completed | An attempt was invalidated by a host restart and loss of the temporary observer; the user cancelled the repeat to preserve the Codex session's connectivity. | PENDING |
+| Real WAN recovery | Physical | Not run | There is no corresponding valid physical outage. | PENDING |
+| Real router restart | Physical | Not run | A new window that permits loss of external connectivity is required. | PENDING |
+| Real Zigbee2MQTT restart | Physical | Startup transient remained below the threshold, with no incident | `bridge/state` went offline at 19:52:24 UTC and returned online at 19:52:37 UTC (about 13 seconds); the monitor entered `checking`, restored retained state, and remained online for more than 90 seconds without an alert or false recovery. | PASS |
+| Delivery to Gabriel's iPhone | Physical/manual | Not observed | No confirmed physical incident crossed its threshold. | PENDING |
+| Delivery to Valéria's iPhone | Physical/manual | Not observed | No confirmed physical incident crossed its threshold. | PENDING |
+| Notification ordering | Physical/manual | Not observed | Requires a valid WAN outage and manual observations from both phones. | PENDING |
+
+The physical deployment also showed that Home Assistant 2026.x prefixed the
+device name in suggested entity IDs despite `object_id`. All four discovery
+payloads now declare `default_entity_id`; after republishing, the real entities
+were registered exactly as `binary_sensor.internet_connection`,
+`sensor.internet_connection_state`, `binary_sensor.zigbee_network`, and
+`sensor.zigbee_network_state`. An automated test protects these IDs.
+
+This is a partial record. The `PENDING` entries above are not passes, and the
+pull request must remain a draft until an observable physical window completes
+WAN, router, and mobile-delivery validation.
