@@ -12,6 +12,30 @@ valida o resultado, cria um commit somente quando houver mudança e envia para
 O horário é deliberadamente definido em UTC, portanto não muda com horário de
 verão. A próxima execução aparece no log do serviço.
 
+## Entidade no Home Assistant
+
+O package `homeassistant/packages/weekly_documentation_review.yaml` cria
+`sensor.revisao_semanal_da_documentacao` e o dashboard **Raspberry Pi - System
+Health** mostra seu estado e os principais atributos. A coleta ocorre a cada 60
+segundos. O agendador também atualiza um heartbeat a cada minuto; após três
+minutos sem atualização, a entidade muda para `indisponível`.
+
+| Estado exibido | Significado |
+| --- | --- |
+| `aguardando` | serviço ativo, esperando `next_run` |
+| `executando` | Codex está revisando o repositório |
+| `sucesso` | execução manual concluída; no serviço contínuo volta a `aguardando` preservando `last_result` |
+| `falha` | processo não iniciou, falhou ou excedeu o timeout |
+| `ignorado` | o preflight recusou branch, árvore ou autenticação |
+| `parado` | o agendador recebeu sinal de encerramento |
+| `indisponível` | o Home Assistant não conseguiu ler o status |
+
+Os atributos incluem próxima execução, início e fim anteriores, resultado,
+motivo padronizado, commit final e contadores. O arquivo compartilhado
+`.local-state/docs-review/status.json` contém somente esses metadados, é
+ignorado pelo Git e é montado como somente leitura no Home Assistant. Logs e
+mensagens arbitrárias de erro não são copiados para a entidade.
+
 ## O que a rotina revisa
 
 O prompt versionado em `scripts/weekly-docs-review.prompt.md` exige:
@@ -138,6 +162,10 @@ ignorada com uma mensagem explícita. Se uma revisão falhar depois de editar,
 as mudanças ficam no checkout para inspeção humana; as semanas seguintes
 continuarão recusando execução até a árvore voltar a ficar limpa. Nunca descarte
 essas mudanças automaticamente.
+
+O checkout usado pelo serviço deve permanecer em `main`. Em outra branch, a
+rotina continua saudável e aguardando, mas o run será registrado como
+`skipped`/`unexpected_branch` para não misturar trabalho interativo.
 
 O agendamento é local e depende de o host Docker estar ligado. A documentação
 oficial de [Scheduled tasks](https://learn.chatgpt.com/docs/automations)

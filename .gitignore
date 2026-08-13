@@ -18,6 +18,7 @@
 .env.*
 !.env.example
 .local-secrets/
+.local-state/
 .agent-history/
 .agents/
 .codex/

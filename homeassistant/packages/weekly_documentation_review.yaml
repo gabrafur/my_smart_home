@@ -1,0 +1,42 @@
+command_line:
+  - sensor:
+      name: Revisão semanal da documentação
+      unique_id: weekly_documentation_review
+      icon: mdi:file-document-refresh-outline
+      command: >-
+        cat /run/docs-review/status.json 2>/dev/null ||
+        printf '{"state":"unavailable","last_reason":"status_file_unavailable"}'
+      command_timeout: 5
+      scan_interval: 60
+      value_template: >-
+        {% set labels = {
+          'waiting': 'aguardando',
+          'running': 'executando',
+          'success': 'sucesso',
+          'failed': 'falha',
+          'skipped': 'ignorado',
+          'stopped': 'parado',
+          'unavailable': 'indisponível'
+        } %}
+        {% set updated = as_timestamp(value_json.updated_at | default(''), 0) %}
+        {% if updated == 0 or as_timestamp(now()) - updated > 180 %}
+          indisponível
+        {% else %}
+          {{ labels.get(value_json.state | default('unavailable'), 'indisponível') }}
+        {% endif %}
+      json_attributes:
+        - schema_version
+        - updated_at
+        - next_run
+        - schedule_utc
+        - last_started
+        - last_finished
+        - last_result
+        - last_reason
+        - last_exit_code
+        - last_signal
+        - last_commit
+        - run_count
+        - success_count
+        - failure_count
+        - skipped_count

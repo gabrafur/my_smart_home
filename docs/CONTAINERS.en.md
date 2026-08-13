@@ -12,13 +12,13 @@ host requirements, and private files that cannot be inferred from YAML alone.
 | --- | --- | --- | --- | --- |
 | `portainer` | digest-pinned image | `${HOST_LAN_IP}:9000` | `./portainer:/data` | full volume to restore user and state |
 | `mosquitto` | digest-pinned image | `${HOST_LAN_IP}:1883` | `./mosquitto/{config,data,log}` | `config/password.txt` |
-| `homeassistant` | digest-pinned image | host network, UI 8123 | `./homeassistant:/config` | `secrets.yaml`, `.storage/`, optional databases |
+| `homeassistant` | digest-pinned image | host network, UI 8123 | `./homeassistant:/config`, read-only documentation status | `secrets.yaml`, `.storage/`, optional databases |
 | `matter_server` | digest-pinned image | host network, WebSocket on `127.0.0.1:5580` | `./matter-server:/data` | full Matter fabric volume |
 | `appdaemon` | digest-pinned image | host network, UI on `127.0.0.1:5050` only | runtime in `./appdaemon`, config in `./templates/appdaemon` | `.local-secrets/appdaemon-secrets.yaml` |
 | `nodered` | digest-pinned image | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` after credentials are configured |
 | `zigbee2mqtt` | digest-pinned image | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, database, coordinator backup |
 | `claude-bridge` | local build | `127.0.0.1:8099` only | auth volumes and workspace | `.env` bridge token and optional OAuth token |
-| `docs-review-scheduler` | same local bridge build | no published port | workspace and Codex auth volume | narrow-scope SSH key and `known_hosts` outside Git |
+| `docs-review-scheduler` | same local bridge build | no published port | workspace, Codex auth, and `.local-state/docs-review` | narrow-scope SSH key and `known_hosts` outside Git |
 
 Published ports use `HOST_LAN_IP`; when it is absent, they bind to loopback.
 Home Assistant, AppDaemon, and Matter use host networking because they require
@@ -145,6 +145,10 @@ docker compose ps
 The default `up -d` does not include `docs-review-scheduler`, which belongs to
 the optional `automation` profile. Enable it only after preparing credentials
 as described in the [weekly review guide](WEEKLY_DOCUMENTATION_REVIEW.en.md).
+
+Home Assistant receives `.local-state/docs-review` read-only to expose the
+routine's sensor. This operational status is regenerable, Git-ignored, and does
+not belong in private backups.
 
 The bridge build needs internet access for APT and npm. Pulling needs Docker Hub
 and GHCR. On ARM64 and AMD64, manifest digests resolve the matching platform.

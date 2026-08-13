@@ -12,13 +12,13 @@ pré-requisitos e arquivos privados que não podem ser deduzidos apenas do YAML.
 | --- | --- | --- | --- | --- |
 | `portainer` | imagem por digest | `${HOST_LAN_IP}:9000` | `./portainer:/data` | volume inteiro para restaurar usuário e estado |
 | `mosquitto` | imagem por digest | `${HOST_LAN_IP}:1883` | `./mosquitto/{config,data,log}` | `config/password.txt` |
-| `homeassistant` | imagem por digest | `network_mode: host`, UI 8123 | `./homeassistant:/config` | `secrets.yaml`, `.storage/`, bancos opcionais |
+| `homeassistant` | imagem por digest | `network_mode: host`, UI 8123 | `./homeassistant:/config`, status documental somente leitura | `secrets.yaml`, `.storage/`, bancos opcionais |
 | `matter_server` | imagem por digest | `network_mode: host`, WebSocket em `127.0.0.1:5580` | `./matter-server:/data` | volume inteiro da fabric |
 | `appdaemon` | imagem por digest | `network_mode: host`, UI somente em `127.0.0.1:5050` | runtime em `./appdaemon`, config em `./templates/appdaemon` | `.local-secrets/appdaemon-secrets.yaml` |
 | `nodered` | imagem por digest | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` quando houver credenciais já configuradas |
 | `zigbee2mqtt` | imagem por digest | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, banco e backup do coordenador |
 | `claude-bridge` | build local | somente `127.0.0.1:8099` | volumes de autenticação e workspace | `.env` com token do bridge e, opcionalmente, OAuth |
-| `docs-review-scheduler` | mesmo build local do bridge | nenhuma porta publicada | workspace e volume de autenticação Codex | chave SSH de escopo restrito e `known_hosts` fora do Git |
+| `docs-review-scheduler` | mesmo build local do bridge | nenhuma porta publicada | workspace, autenticação Codex e `.local-state/docs-review` | chave SSH de escopo restrito e `known_hosts` fora do Git |
 
 As portas publicadas usam `HOST_LAN_IP`. A ausência da variável faz o bind em
 loopback. Home Assistant, AppDaemon e Matter usam rede do host porque dependem
@@ -146,6 +146,10 @@ docker compose ps
 O `up -d` padrão não inclui `docs-review-scheduler`, que pertence ao profile
 opcional `automation`. Ative-o somente após preparar suas credenciais conforme
 o [guia da revisão semanal](REVISAO_DOCUMENTACAO_SEMANAL.md).
+
+O Home Assistant recebe `.local-state/docs-review` como somente leitura para
+expor o sensor da rotina. Esse status operacional é regenerável, ignorado pelo
+Git e não precisa entrar no backup privado.
 
 O build do bridge precisa de internet para APT e npm. O pull precisa alcançar
 Docker Hub e GHCR. Em ARM64 e AMD64, o digest de manifesto resolve a variante
