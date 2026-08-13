@@ -1,6 +1,13 @@
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
 
   portainer:
+    logging: *default-logging
     image: portainer/portainer-ce@sha256:f6bc23d1695530a609563fd65c180aaafec0fc02e019d5fc63d16b6fbe83addd
     container_name: portainer
     restart: always
@@ -11,6 +18,7 @@ services:
       - ./portainer:/data
 
   mosquitto:
+    logging: *default-logging
     image: eclipse-mosquitto@sha256:6f8d8a947c506f8a2290ec65cd4bd2bc7cb4d43fb5f6271f861cb013e2ef9797
     container_name: mosquitto
     restart: always
@@ -22,6 +30,7 @@ services:
       - ./mosquitto/log:/mosquitto/log
 
   homeassistant:
+    logging: *default-logging
     image: ghcr.io/home-assistant/home-assistant@sha256:6340a3de3917a9b19368e767310a96dd090f6a19aca8aeadf87fd1145cec9682
     container_name: homeassistant
     restart: always
@@ -48,6 +57,7 @@ services:
       - PI_HEALTH_OS_RELEASE=/host/etc/os-release
 
   matter_server:
+    logging: *default-logging
     # Legacy Python controller retained for the existing fabric. It is pinned
     # because the upstream `stable` tag is mutable; see docs/CONTAINERS.md.
     image: ghcr.io/home-assistant-libs/python-matter-server@sha256:170aa093ce91c76cde4cc390918307590f0f5558fcec93f913af3cb019e6562a
@@ -70,6 +80,7 @@ services:
       - TZ=${TZ:-America/Sao_Paulo}
 
   appdaemon:
+    logging: *default-logging
     image: acockburn/appdaemon@sha256:cabcb3a4e739db2572ecb8dc3cee685300ab27274efda83a6d8ce4d3988dc647
     container_name: appdaemon
     restart: always
@@ -82,6 +93,7 @@ services:
       - TZ=${TZ:-America/Sao_Paulo}
 
   nodered:
+    logging: *default-logging
     image: nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6
     container_name: nodered
     restart: always
@@ -103,6 +115,7 @@ services:
       - GATE_LON=${GATE_LON:-}
 
   zigbee2mqtt:
+    logging: *default-logging
     image: koenkk/zigbee2mqtt@sha256:4fb4db4d49a217bed6d0204f454ce809febc565bbe051b85c556ee2bcef73d8c
     container_name: zigbee2mqtt
     restart: always
@@ -116,6 +129,7 @@ services:
       - TZ=${TZ:-America/Sao_Paulo}
 
   claude-bridge:
+    logging: *default-logging
     build:
       context: ./claude-bridge
     container_name: claude-bridge
@@ -152,6 +166,7 @@ services:
       start_period: 10s
 
   docs-review-scheduler:
+    logging: *default-logging
     # Separate process, same pinned agent toolchain. It has no published port
     # and runs Codex only at the configured weekly UTC window.
     build:
