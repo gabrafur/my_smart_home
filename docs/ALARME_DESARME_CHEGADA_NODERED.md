@@ -19,6 +19,12 @@ O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas contratos
 - o ciclo de afastamento individual, para nao tratar quem ja estava em casa
   como uma nova chegada.
 
+O contrato v1 agora também traz `event_at` (epoch UTC em milissegundos). Os
+produtores persistem dedupe por 10 minutos, portanto um restart não republica
+a mesma chegada e não recria uma confirmação. Snapshots stale ou ainda não
+ready não geram `security.arrival.v1`; `unknown` nunca é interpretado como
+ausência ou chegada.
+
 ## Condicoes e desarme
 
 1. `Validar chegada real` faz uma segunda validacao da origem, lista
@@ -44,6 +50,11 @@ O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas contratos
 
 O flow nao contem nem duplica o codigo de acionamento do alarme. Ele apenas
 valida a chegada e a confirmacao humana antes de chamar a cadeia compartilhada.
+
+Limitação: a própria confirmação pendente e seus tokens continuam em flow
+context volátil. Depois de restart ela expira sem ser retomada; o usuário deve
+aguardar uma nova chegada real. Persistir credenciais/tokens de notificação não
+faz parte do recovery dos quatro flows de segurança.
 
 ## Manutencao
 
