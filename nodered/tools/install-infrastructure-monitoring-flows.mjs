@@ -179,18 +179,26 @@ function internetPingCycle() {
   node.status({ fill: "blue", shape: "dot", text: "testando 3 destinos" });
 
   const ping = (target) => new Promise((resolve) => {
-    childProcess.execFile(
-      "/bin/ping",
-      ["-n", "-c", "1", "-W", "2", target.address],
-      { timeout: 3000, windowsHide: true },
-      (error, stdout, stderr) => resolve({
+    const finish = (error, stdout = "", stderr = "") => resolve({
         ...target,
         ok: !error,
         duration_ms: Date.now() - startedAt,
         error: error ? String(error.code || error.message || stderr || "ping failed") : null,
         output: String(stdout || "").trim().slice(-160),
-      }),
-    );
+    });
+    try {
+      childProcess.execFile(
+        "/bin/ping",
+        ["-n", "-c", "1", "-W", "2", target.address],
+        { timeout: 3000, windowsHide: true },
+        finish,
+      );
+    } catch (error) {
+      // Treat a synchronous spawn failure as a failed target. Resolving (not
+      // rejecting) keeps Promise.all waiting for every already-started ping,
+      // so the no-overlap lock cannot be released while processes remain.
+      finish(error);
+    }
   });
 
   Promise.all(targets.map(ping))
@@ -522,6 +530,15 @@ function zigbeeComponentState() {
   const component = String(msg.topic).slice("zigbee2mqtt/".length, -"/availability".length);
   if (!component) return null;
   const slug = component.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  // Separator/accent normalization is not injective. Keep the readable slug,
+  // but append a stable hash of the exact friendly name so distinct MQTT
+  // topics cannot overwrite or dismiss each other's persistent notification.
+  let hash = 0x811c9dc5;
+  for (const byte of Buffer.from(component, "utf8")) {
+    hash ^= byte;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  const notificationKey = `${slug || "component"}_${hash.toString(16).padStart(8, "0")}`;
   const incidents = flow.get(KEY) || {};
   const current = incidents[component] || { offline: false };
   const now = Number(msg.monitor_now || Date.now());
@@ -533,7 +550,7 @@ function zigbeeComponentState() {
     flow.set(KEY, incidents);
     return [{
       notification: {
-        id: `zigbee_component_${slug}`,
+        id: `zigbee_component_${notificationKey}`,
         title: "Componente Zigbee indisponível",
         message: `O componente Zigbee “${component}” ficou indisponível em ${new Date(now).toLocaleString("pt-BR")}. Verifique alimentação, alcance, bateria e a malha Zigbee.`,
       },
@@ -545,8 +562,8 @@ function zigbeeComponentState() {
   if (!current.offline) return null;
   return [null, {
     notification: {
-      id: `zigbee_component_recovered_${slug}`,
-      dismiss_id: `zigbee_component_${slug}`,
+      id: `zigbee_component_recovered_${notificationKey}`,
+      dismiss_id: `zigbee_component_${notificationKey}`,
       title: "Componente Zigbee recuperado",
       message: `O componente Zigbee “${component}” voltou a ficar disponível em ${new Date(now).toLocaleString("pt-BR")}.`,
     },
@@ -628,7 +645,7 @@ next.push(
     id: NOTIFY_SUBFLOW,
     type: "subflow",
     name: "Notificar todos os dispositivos móveis",
-    info: "Cria uma notificação persistente no Home Assistant e envia o mesmo alerta para os iPhones de Gabriel e Valéria. Opcionalmente remove o alerta de falha indicado por msg.notification.dismiss_id.",
+    info: "Contrato de entrada:\n\nmsg.notification = {\n  id: string obrigatório,\n  title: string obrigatório,\n  message: string obrigatório,\n  dismiss_id?: string\n}\n\nCria/atualiza uma notificação persistente e envia um push aos iPhones de Gabriel e Valéria. Em recuperação, dismiss_id remove o alerta persistente da falha anterior. O subflow não decide estado, retry ou deduplicação; essas responsabilidades pertencem ao monitor chamador.",
     category: "infraestrutura",
     in: [{ x: 60, y: 80, wires: [{ id: "infra_notify_route" }] }],
     out: [],

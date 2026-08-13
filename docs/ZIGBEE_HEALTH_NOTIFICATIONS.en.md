@@ -17,7 +17,30 @@ failure/recovery, notification, and retained MQTT publication. The shared
 Assistant notification and sends the same message to
 `notify.iphone_de_gabriel_furlan` and `notify.iphone_de_valeria`. Recovery also
 dismisses the prior failure alert. Home Assistant calls use the connector's
-`all` queue during short HA restarts.
+`all` queue during short HA restarts. That connector queue does not retain a
+mobile push merely because the WAN is down.
+
+The input contract, also shown in the subflow's visual documentation, is
+`msg.notification = { id, title, message, dismiss_id? }`. The first three
+strings are required. The subflow only validates and distributes the message;
+state, retry, and deduplication remain in the calling monitor.
+
+### Mobile push during a WAN outage
+
+Node-RED can still call Home Assistant over the LAN, and the independent
+persistent-notification branch creates the local alert. If a phone has an active
+Home Assistant Companion Local Push/WebSocket connection on the LAN, local
+delivery can work without WAN. Otherwise Mobile App delivery requires the
+external push service and internet access. Home Assistant waits briefly for a
+local acknowledgement before remote fallback; a failed remote request is logged
+but is not kept in a durable queue for retry when WAN returns.
+
+Recovery is a new notification. A down push that failed inside Home Assistant
+is not later resent, so normally only recovery reaches the remote channel. If an
+external provider had already accepted the down message, or the phone delays its
+display, user-visible ordering still cannot be guaranteed. The Mobile App
+contract provides no display acknowledgement or ordering control, so this is a
+documented limitation rather than a custom retry mechanism.
 
 ## Internet monitor
 
@@ -62,6 +85,10 @@ friendly names containing `/`. The first offline value opens one persisted
 incident; duplicate offline values are ignored; the first later online value
 produces one recovery; retained online at startup is silent.
 
+Notification identifiers combine a readable slug with a stable hash of the
+complete friendly name. Hierarchical names remain readable and distinct names
+that normalize to the same slug cannot overwrite each other's alerts.
+
 The legacy implementation alerted immediately after Zigbee2MQTT itself marked
 a component offline. This was intentionally preserved. Its known weakness is
 the lack of another grace period beyond Zigbee2MQTT availability timeouts
@@ -92,22 +119,34 @@ The residual risk is an abrupt crash within the 15-second context flush window,
 which can lose the latest transition and, in the narrow notification-before-
 flush case, repeat an alert.
 
+The worst case also includes restoring the previous incident state after a
+crash immediately following a transition. A just-opened incident can then be
+confirmed/notified again, or a just-closed incident can temporarily reappear,
+until new observations repair state. A shorter flush reduces but cannot remove
+that window.
+
 ## Validation and limitations
 
 ```bash
 npm --prefix nodered run flows:validate
 npm --prefix nodered run flows:test-infrastructure
+npm --prefix nodered run flows:test-infrastructure-runtime
 docker exec homeassistant \
   python3 -m homeassistant --script check_config --config /config
 ```
 
-Automated tests cover quorum, consecutive failures, deduplication, oscillation,
-recovery, duration, second outages, persisted restart behavior, Zigbee startup,
-30/60-second thresholds, and component cycles. A safe end-to-end component
-test can publish retained offline then online values to
+Static automated tests cover quorum, consecutive failures, deduplication,
+oscillation, recovery, duration, second outages, persisted restart behavior,
+Zigbee startup, 30/60-second thresholds, and component cycles. The isolated
+runtime test loads the exact Function bodies into Node-RED containers, exercises
+flapping and ping concurrency/error paths, and performs real container restarts
+against `localfilesystem`; it never connects to production MQTT or Home
+Assistant. A safe end-to-end component test can publish retained offline then
+online values to
 `zigbee2mqtt/teste_monitor/availability` and clear the retained value afterward.
 
 Physical WAN cuts, router/coordinator restarts, and delivery to both phones
 require a controlled on-site window. ICMP filtering by all three targets remains
 possible. During the WAN outage, the local persistent alert can be created
-immediately while the mobile push may only arrive after connectivity returns.
+immediately. Without active Local Push, the mobile push depends on WAN and may
+be dropped; Home Assistant does not guarantee later delivery.
