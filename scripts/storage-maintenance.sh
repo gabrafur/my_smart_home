@@ -54,7 +54,7 @@ docker ps -a --filter status=exited --format '  {{.ID}} {{.Names}} {{.Status}} {
 
 if [[ "$MODE" == "apply" ]]; then
   STEP="build-cache-prune"
-  docker builder prune --force --filter "until=$MIN_AGE"
+  docker builder prune --all --force --filter "until=$MIN_AGE"
 
   STEP="dangling-image-prune"
   docker image prune --force --filter "until=$MIN_AGE"

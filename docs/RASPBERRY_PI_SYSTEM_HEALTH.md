@@ -129,8 +129,8 @@ Flows, credenciais, context storage, `node_modules` e outros temporarios nao
 entram no escopo. O container continua sem Docker socket, mount do host ou
 `sudo`.
 
-No host, `scripts/storage-maintenance.sh` remove somente build cache e imagens
-dangling com mais de 168 horas. O script valida argumentos, e idempotente,
+No host, `scripts/storage-maintenance.sh` remove somente build cache sem uso
+(`builder prune --all`) e imagens dangling com mais de 168 horas. O script valida argumentos, e idempotente,
 registra metricas antes/depois e usa dry-run por padrao:
 
 ```bash
