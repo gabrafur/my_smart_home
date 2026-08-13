@@ -155,7 +155,7 @@ sempre em epoch Unix UTC, milissegundos:
 | trackers de Gabriel e Valéria | 15 min | pessoa `stale`, snapshot não ready; nunca vira `false` |
 | localização do Creta | 30 min | localização `stale`; não confirma `home`/`away` para recovery |
 | motor e trava | 5 min | sinal inválido/stale; `off` não é interpretado como evidência atual |
-| snapshots derivados | monotônico por `updated_at` | snapshot antigo é descartado |
+| snapshots derivados | monotônico por `updated_at` | antigo e futuro >60 s são descartados; conflito no mesmo timestamp preserva o primeiro |
 
 O estado pertence exclusivamente a `contexto_creta`:
 
@@ -173,6 +173,14 @@ O gate não usa apenas a leitura ao vivo do motor porque o backend brasileiro
 pode manter esse sensor antigo durante uma viagem. A iluminação recebe apenas
 `context.in_use` e não sabe como a trava foi calculada.
 
+`security.creta-context.v1` foi mantido em `v1` após a auditoria dos
+consumidores reais do repositório. A ampliação de `in_use` de booleano para
+`true | false | null` não é puramente aditiva, mas todos os consumidores estão
+no mesmo conjunto de flows e usam comparação estrita com `true`; nenhum
+consumidor externo ou legado foi encontrado. `null` bloqueia o gate e não é
+interpretado como `false`. Uma fronteira externa futura deverá publicar uma
+nova versão em vez de assumir essa compatibilidade interna.
+
 ## Acendimento
 
 `iluminacao_seguranca` liga o refletor somente quando todas as condições são
@@ -185,9 +193,10 @@ verdadeiras:
 5. o refletor físico está `off` e não foi marcado como ativo por chegada;
 6. não há supressão pós-desligamento ativa.
 
-Ao ligar, grava no store `persistent` o lifecycle
+Depois de todos os gates, a ação grava no store `persistent` o lifecycle
 `security_light_lifecycle_v1`: `active_by_arrival`, `on_since`,
-`force_off_at`, dedupe recente e `updated_at`.
+`force_off_at`, dedupe recente e `updated_at`. Eventos barrados por claridade,
+readiness ou estado do Creta não consomem o dedupe do refletor.
 
 Também chama `switch.turn_on`, avisa os moradores e inicia o backstop de 15
 minutos.
@@ -220,7 +229,9 @@ depende exclusivamente de um `delay` residente em memória.
 - O timestamp dos iPhones é otimista, preservando o comportamento anterior.
 - O refresh do Creta persiste tentativa, próxima tentativa e último sucesso.
   Falhas usam backoff exponencial de 1, 2, 4, 8 e no máximo 15 min; sucesso
-  limpa tentativas e aplica o intervalo normal de 15 min.
+  limpa tentativas e aplica o intervalo normal de 15 min. Depois do quinto
+  estágio, o contador satura e as novas tentativas continuam limitadas a uma a
+  cada 15 min; não há rajada no restart porque `next_allowed_at` é persistido.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
   Creta continua sincronizando os dois trackers de iPhone, mas agora por um
   contrato explícito `contexto_creta -> localizacao_pessoas`; nenhuma entidade
@@ -239,6 +250,8 @@ nomeado `persistent` (`localfilesystem`). Somente intenção e histórico limita
 optam por ele; entidades atuais do HA continuam sendo a verdade física. O
 inventário completo está em
 [`SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md`](SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md).
+No container, o caminho é explicitamente `/data/context`, coberto pelo volume
+`./nodered:/data`; cache e flush de 30 s são declarados no próprio settings.
 
 ```mermaid
 flowchart TD
@@ -252,8 +265,9 @@ flowchart TD
     C -->|sim| D[Publicar contexts ready e retomar deadlines]
 ```
 
-O grupo visual `0. Startup / Reconciliação` lê
-`switch.refletor_portao_carros` e também acompanha mudanças físicas:
+O grupo visual `0. Startup / Reconciliação` consulta
+`switch.refletor_portao_carros` no startup e a cada 60 s, além de acompanhar
+mudanças físicas:
 
 - físico `off` + lifecycle ativo: corrige o lifecycle, sem enviar serviço;
 - físico `on` + lifecycle inativo: presume origem manual/desconhecida e não
@@ -261,6 +275,11 @@ O grupo visual `0. Startup / Reconciliação` lê
 - físico `on` + lifecycle válido por chegada: restaura carência e backstop;
 - `unknown`/`unavailable`: marca `light_reconciled: false` e bloqueia ligar ou
   desligar.
+
+Uma leitura física precisa ter sido observada nos últimos 2 min. Se um deadline
+recuperado vencer durante indisponibilidade, ele é bloqueado e fica elegível
+para novo agendamento assim que uma consulta física confiável reconciliar o
+estado; o deadline absoluto original não é estendido.
 
 O tick inicial ocorre após 2 s e converge assim que o HA responde. Se HA e
 Node-RED reiniciarem juntos, snapshots parciais não liberam side effects. Se
@@ -276,6 +295,9 @@ reconstroem o mesmo estado. Lifecycle corrompido, futuro absurdo ou com mais de
   revalidação e limita retry por backoff.
 - Snapshot incompleto/antigo: não sobrescreve snapshot mais novo e não vira
   booleano falso.
+- Snapshots com o mesmo timestamp e payload divergente preservam o primeiro e
+  geram aviso; um snapshot realmente posterior `ready: false` prevalece para
+  derrubar readiness de forma conservadora.
 - Refletor ligado manualmente: preservado; somente lifecycle comprovadamente
   criado pela automação permite desligamento automático.
 - Viagem ou chegada: dedupe com TTL de 10 min evita replay após restart; dados
