@@ -6,6 +6,12 @@ input_boolean:
     name: Resfriamento de emergencia do Raspberry Pi
     icon: mdi:air-conditioner
 
+input_text:
+  raspberry_pi_emergency_cooling_previous_climate:
+    name: Estado anterior do ar no resfriamento do Raspberry Pi
+    icon: mdi:restore
+    max: 255
+
 command_line:
   - sensor:
       name: Raspberry Pi Metrics Raw
