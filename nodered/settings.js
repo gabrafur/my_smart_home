@@ -371,11 +371,21 @@ module.exports = {
      * provided here will enable file-based context that flushes to disk every 30 seconds.
      * Refer to the documentation for further options: https://nodered.org/docs/api/context/
      */
-    //contextStorage: {
-    //    default: {
-    //        module:"localfilesystem"
-    //    },
-    //},
+    contextStorage: {
+        // Incident state survives Node-RED restarts. The runtime writes the
+        // cache below /data/context (the bind-mounted nodered directory).
+        default: {
+            module: "localfilesystem",
+            config: {
+                flushInterval: 15,
+            },
+        },
+        // Execution locks must never survive a deploy/restart: a stale lock
+        // would otherwise stop connectivity checks indefinitely.
+        memoryOnly: {
+            module: "memory",
+        },
+    },
 
     /** `global.keys()` returns a list of all properties set in global context.
      * This allows them to be displayed in the Context Sidebar within the editor.
@@ -557,7 +567,9 @@ module.exports = {
      *    global.get("os")
      */
     functionGlobalContext: {
-        // os:require('os'),
+        // Used only by the infrastructure internet monitor. The flow calls
+        // /bin/ping with a fixed executable and fixed IP arguments.
+        childProcess: require("child_process"),
     },
 
     /** The maximum number of messages nodes will buffer internally as part of their

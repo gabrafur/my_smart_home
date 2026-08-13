@@ -207,20 +207,19 @@ usado literalmente. Adaptadores de rede precisam de IP/hostname estável;
 adaptadores USB devem preferir `/dev/serial/by-id/...` e um mapping `devices:`
 no Compose.
 
-O package de alertas `zigbee_health_notifications.yaml` assume o base topic
-`zigbee2mqtt` e requer a disponibilidade habilitada no arquivo privado:
+O flow `monitoramento_zigbee` assume o base topic `zigbee2mqtt` e requer a
+disponibilidade habilitada no arquivo privado:
 
 ```yaml
 availability:
   enabled: true
 ```
 
-Confirme também a entidade
-`binary_sensor.zigbee2mqtt_bridge_connection_state` e substitua os destinos
-`notify.*` do package pelos telefones da nova instalação. Sem destinos válidos,
-as notificações persistentes continuam funcionando porque o push usa
-`continue_on_error`. Veja o guia de
-[alertas de saúde Zigbee](ZIGBEE_HEALTH_NOTIFICATIONS.md).
+Confirme também os destinos do subflow `Notificar todos os dispositivos móveis`
+e execute `npm --prefix nodered run flows:test-infrastructure`. As entidades
+`binary_sensor.internet_connection` e `binary_sensor.zigbee_network` são
+descobertas por MQTT depois do Node-RED iniciar. Veja o guia de
+[monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md).
 
 ## 9. Dependências Node
 
@@ -228,6 +227,7 @@ as notificações persistentes continuam funcionando porque o push usa
 npm --prefix nodered ci
 npm --prefix nodered run flows:validate
 npm --prefix nodered run flows:test-alarm-arrival
+npm --prefix nodered run flows:test-infrastructure
 npm --prefix nodered run flows:test-security
 npm --prefix claude-bridge test
 ```

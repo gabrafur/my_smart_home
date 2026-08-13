@@ -267,20 +267,20 @@
         "keepalive": 60,
         "cleansession": true,
         "autoUnsubscribe": true,
-        "birthTopic": "",
-        "birthQos": "0",
-        "birthRetain": "false",
-        "birthPayload": "",
+        "birthTopic": "nodered/status",
+        "birthQos": "1",
+        "birthRetain": "true",
+        "birthPayload": "online",
         "birthMsg": {},
-        "closeTopic": "",
-        "closeQos": "0",
-        "closeRetain": "false",
-        "closePayload": "",
+        "closeTopic": "nodered/status",
+        "closeQos": "1",
+        "closeRetain": "true",
+        "closePayload": "offline",
         "closeMsg": {},
-        "willTopic": "",
-        "willQos": "0",
-        "willRetain": "false",
-        "willPayload": "",
+        "willTopic": "nodered/status",
+        "willQos": "1",
+        "willRetain": "true",
+        "willPayload": "offline",
         "willMsg": {},
         "userProps": "",
         "sessionExpiry": ""
@@ -3256,6 +3256,893 @@
         ],
         "x": 785,
         "y": 420,
+        "wires": []
+    },
+    {
+        "id": "infra_notify_all_mobiles",
+        "type": "subflow",
+        "name": "Notificar todos os dispositivos móveis",
+        "info": "Cria uma notificação persistente no Home Assistant e envia o mesmo alerta para os iPhones de Gabriel e Valéria. Opcionalmente remove o alerta de falha indicado por msg.notification.dismiss_id.",
+        "category": "infraestrutura",
+        "in": [
+            {
+                "x": 60,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "infra_notify_route"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "infra_notify_route",
+        "type": "function",
+        "z": "infra_notify_all_mobiles",
+        "name": "Validar e distribuir",
+        "func": "const notification = msg.notification;\n  if (!notification || !notification.title || !notification.message || !notification.id) {\n    node.warn(\"Notificação de infraestrutura descartada: título, mensagem ou id ausente.\");\n    return null;\n  }\n  const dismiss = notification.dismiss_id ? msg : null;\n  return [msg, msg, dismiss];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 220,
+        "y": 80,
+        "wires": [
+            [
+                "infra_notify_persistent"
+            ],
+            [
+                "infra_notify_mobile"
+            ],
+            [
+                "infra_notify_dismiss"
+            ]
+        ]
+    },
+    {
+        "id": "infra_notify_persistent",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Criar/atualizar alerta persistente",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\": notification.title, \"message\": notification.message, \"notification_id\": notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 520,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "infra_notify_mobile",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Push Gabriel + Valéria",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.send_message",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "notify.iphone_de_gabriel_furlan",
+            "notify.iphone_de_valeria"
+        ],
+        "labelId": [],
+        "data": "{\"title\": notification.title, \"message\": notification.message}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "send_message",
+        "x": 500,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "infra_notify_dismiss",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Remover alerta anterior",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\": notification.dismiss_id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 500,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "monitoramento_internet_tab",
+        "type": "tab",
+        "label": "monitoramento_internet",
+        "disabled": false,
+        "info": "Monitora conectividade externa por ping a três IPs independentes, confirma queda/recuperação e publica estado no Home Assistant via MQTT discovery.",
+        "env": []
+    },
+    {
+        "id": "grp_internet_triggers",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "1. Gatilhos",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_cycle",
+            "internet_discovery_tick"
+        ],
+        "x": 44,
+        "y": 79,
+        "w": 252,
+        "h": 302
+    },
+    {
+        "id": "grp_internet_ping",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "2. Testar conectividade",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_ping"
+        ],
+        "x": 324,
+        "y": 79,
+        "w": 252,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_state",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "3. Confirmação e estado",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_evaluate"
+        ],
+        "x": 604,
+        "y": 79,
+        "w": 282,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_notify",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "4. Queda / retorno / notify",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_notify_down",
+            "internet_notify_recovery"
+        ],
+        "x": 914,
+        "y": 59,
+        "w": 342,
+        "h": 222
+    },
+    {
+        "id": "grp_internet_publish",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "5. Entidades do Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_discovery",
+            "internet_mqtt_publish"
+        ],
+        "x": 604,
+        "y": 319,
+        "w": 652,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_tests",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "6. Testes",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_test_note"
+        ],
+        "x": 44,
+        "y": 519,
+        "w": 1212,
+        "h": 102
+    },
+    {
+        "id": "internet_cycle",
+        "type": "inject",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_triggers",
+        "name": "A cada 30 s + startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 5,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 160,
+        "wires": [
+            [
+                "internet_ping"
+            ]
+        ]
+    },
+    {
+        "id": "internet_discovery_tick",
+        "type": "inject",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_triggers",
+        "name": "Publicar discovery no startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 320,
+        "wires": [
+            [
+                "internet_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "internet_ping",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_ping",
+        "name": "Ping 1.1.1.1 + 8.8.8.8 + 9.9.9.9",
+        "func": "const STORE = \"memoryOnly\";\n  const LOCK = \"internet_ping_cycle_running\";\n  const childProcess = global.get(\"childProcess\");\n  const targets = [\n    { name: \"cloudflare\", address: \"1.1.1.1\" },\n    { name: \"google\", address: \"8.8.8.8\" },\n    { name: \"quad9\", address: \"9.9.9.9\" },\n  ];\n\n  if (!childProcess || typeof childProcess.execFile !== \"function\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"child_process indisponível\" });\n    node.error(\"settings.js não expôs childProcess no contexto global.\");\n    return null;\n  }\n  if (flow.get(LOCK, STORE) === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"ciclo anterior ainda ativo\" });\n    return null;\n  }\n\n  flow.set(LOCK, true, STORE);\n  const startedAt = Date.now();\n  node.status({ fill: \"blue\", shape: \"dot\", text: \"testando 3 destinos\" });\n\n  const ping = (target) => new Promise((resolve) => {\n    childProcess.execFile(\n      \"/bin/ping\",\n      [\"-n\", \"-c\", \"1\", \"-W\", \"2\", target.address],\n      { timeout: 3000, windowsHide: true },\n      (error, stdout, stderr) => resolve({\n        ...target,\n        ok: !error,\n        duration_ms: Date.now() - startedAt,\n        error: error ? String(error.code || error.message || stderr || \"ping failed\") : null,\n        output: String(stdout || \"\").trim().slice(-160),\n      }),\n    );\n  });\n\n  Promise.all(targets.map(ping))\n    .then((results) => {\n      const ok = results.filter((result) => result.ok).length;\n      node.status({\n        fill: ok >= 2 ? \"green\" : \"red\",\n        shape: ok >= 2 ? \"dot\" : \"ring\",\n        text: `${ok}/3 responderam`,\n      });\n      node.send({\n        topic: \"infrastructure/internet/ping-cycle\",\n        payload: {\n          checked_at: new Date().toISOString(),\n          duration_ms: Date.now() - startedAt,\n          results,\n        },\n      });\n    })\n    .catch((error) => {\n      node.error(`Falha inesperada no ciclo de ping: ${error.message}`);\n    })\n    .finally(() => {\n      flow.set(LOCK, false, STORE);\n      node.done();\n    });\n  return undefined;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "flow.set('internet_ping_cycle_running', false, 'memoryOnly');",
+        "libs": [],
+        "x": 450,
+        "y": 160,
+        "wires": [
+            [
+                "internet_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "internet_evaluate",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_state",
+        "name": "Máquina de estados (3 falhas / 2 sucessos)",
+        "func": "const KEY = \"internet_monitor_state_v1\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const results = Array.isArray(msg.payload?.results) ? msg.payload.results : [];\n  const targetsTotal = 3;\n  const targetsOk = results.filter((result) => result && result.ok === true).length;\n  const reachable = targetsOk >= 2;\n  let state = flow.get(KEY) || {\n    phase: \"checking\",\n    incident_open: false,\n    consecutive_failures: 0,\n    consecutive_successes: 0,\n    failure_started_at: null,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n    last_valid_ping: null,\n  };\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (reachable) {\n    state.last_valid_ping = nowIso;\n    state.consecutive_failures = 0;\n    state.failure_started_at = null;\n    if (state.incident_open) {\n      state.consecutive_successes = Number(state.consecutive_successes || 0) + 1;\n      state.phase = \"recovering\";\n      if (state.consecutive_successes >= 2) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        const durationSeconds = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.consecutive_successes = 0;\n        state.last_recovery_at = nowIso;\n        state.last_outage_duration_s = durationSeconds;\n        const durationText = durationSeconds === null\n          ? \"\"\n          : ` após ${Math.max(1, Math.round(durationSeconds / 60))} minuto(s) de indisponibilidade`;\n        recoveryNotification = {\n          notification: {\n            id: \"internet_connection_recovered\",\n            dismiss_id: \"internet_connection_failure\",\n            title: \"Internet restabelecida\",\n            message: `A conexão com a internet voltou às ${new Date(now).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}${durationText}.`,\n          },\n        };\n      }\n    } else {\n      // Establishing a healthy baseline is not a recovery event.\n      state.phase = \"online\";\n      state.consecutive_successes = 1;\n    }\n  } else {\n    state.consecutive_successes = 0;\n    state.consecutive_failures = Number(state.consecutive_failures || 0) + 1;\n    if (!state.failure_started_at) state.failure_started_at = nowIso;\n    if (state.incident_open) {\n      state.phase = \"offline\";\n    } else if (state.consecutive_failures >= 3) {\n      state.phase = \"offline\";\n      state.incident_open = true;\n      state.outage_started_at = state.failure_started_at;\n      state.last_outage_at = state.failure_started_at;\n      downNotification = {\n        notification: {\n          id: \"internet_connection_failure\",\n          title: \"Internet indisponível\",\n          message: `A conexão com a internet foi perdida às ${new Date(state.failure_started_at).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}. Menos de 2 dos 3 destinos externos responderam em 3 ciclos consecutivos.`,\n        },\n      };\n    } else {\n      state.phase = \"checking\";\n    }\n  }\n\n  state.last_checked_at = msg.payload?.checked_at || nowIso;\n  state.targets_ok = targetsOk;\n  state.targets_total = targetsTotal;\n  state.required_responses = 2;\n  flow.set(KEY, state);\n\n  const attributes = {\n    state: state.phase,\n    checked_at: state.last_checked_at,\n    targets_ok: targetsOk,\n    targets_total: targetsTotal,\n    required_responses: 2,\n    consecutive_failures: state.consecutive_failures,\n    consecutive_successes: state.consecutive_successes,\n    last_valid_ping: state.last_valid_ping,\n    last_outage: state.last_outage_at,\n    last_recovery: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n    targets: results.map((result) => ({ name: result.name, address: result.address, ok: result.ok })),\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/internet/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/internet/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/internet/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${targetsOk}/3`,\n  });\n  return [downNotification, recoveryNotification, publications];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 745,
+        "y": 160,
+        "wires": [
+            [
+                "internet_notify_down"
+            ],
+            [
+                "internet_notify_recovery"
+            ],
+            [
+                "internet_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "internet_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_notify",
+        "name": "Notificar queda (uma vez)",
+        "env": [],
+        "x": 1085,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "internet_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_notify",
+        "name": "Notificar retorno confirmado",
+        "env": [],
+        "x": 1085,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "internet_discovery",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_publish",
+        "name": "Discovery: internet",
+        "func": "const device = {\n    identifiers: [\"node_red_infrastructure_monitoring\"],\n    name: \"Monitoramento de infraestrutura\",\n    manufacturer: \"Node-RED\",\n    model: \"Flows de disponibilidade\",\n  };\n  const availability = {\n    availability_topic: \"nodered/status\",\n    payload_available: \"online\",\n    payload_not_available: \"offline\",\n  };\n  return [[\n    {\n      topic: \"homeassistant/binary_sensor/internet_connection/config\",\n      payload: JSON.stringify({\n        name: \"Conexão com a internet\",\n        object_id: \"internet_connection\",\n        unique_id: \"node_red_internet_connection\",\n        device_class: \"connectivity\",\n        state_topic: \"nodered/infrastructure/internet/connection\",\n        json_attributes_topic: \"nodered/infrastructure/internet/attributes\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        ...availability,\n        device,\n      }),\n    },\n    {\n      topic: \"homeassistant/sensor/internet_connection_state/config\",\n      payload: JSON.stringify({\n        name: \"Estado da conexão com a internet\",\n        object_id: \"internet_connection_state\",\n        unique_id: \"node_red_internet_connection_state\",\n        icon: \"mdi:wan\",\n        entity_category: \"diagnostic\",\n        state_topic: \"nodered/infrastructure/internet/state\",\n        json_attributes_topic: \"nodered/infrastructure/internet/attributes\",\n        ...availability,\n        device,\n      }),\n    },\n  ]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 400,
+        "wires": [
+            [
+                "internet_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "internet_mqtt_publish",
+        "type": "mqtt out",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_publish",
+        "name": "Publicar estado retained",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1080,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "internet_test_note",
+        "type": "comment",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_tests",
+        "name": "Testes automatizados fora do caminho de produção",
+        "info": "Execute `npm run flows:test-infrastructure`. O teste cobre 1 host falhando, DNS irrelevante (IPs), 3 falhas, dedupe, oscilação, 2 sucessos, duração, segunda queda e restart. O ciclo real nunca aceita mensagens de teste e mantém no máximo três processos ping simultâneos.",
+        "x": 420,
+        "y": 570,
+        "wires": []
+    },
+    {
+        "id": "monitoramento_zigbee_tab",
+        "type": "tab",
+        "label": "monitoramento_zigbee",
+        "disabled": false,
+        "info": "Centraliza falha/recuperação da ponte Zigbee2MQTT e dos componentes, com estado persistente, dedupe e notificações compartilhadas.",
+        "env": []
+    },
+    {
+        "id": "grp_zigbee_triggers",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "1. Estado / heartbeat Zigbee",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_bridge_state",
+            "zigbee_broker_status",
+            "zigbee_tick",
+            "zigbee_component_availability",
+            "zigbee_discovery_tick"
+        ],
+        "x": 44,
+        "y": 79,
+        "w": 292,
+        "h": 482
+    },
+    {
+        "id": "grp_zigbee_detect",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "2. Avaliar saúde",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_store_observation",
+            "zigbee_component_evaluate"
+        ],
+        "x": 364,
+        "y": 79,
+        "w": 272,
+        "h": 482
+    },
+    {
+        "id": "grp_zigbee_state",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "3. Confirmar falha / recuperação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_network_evaluate"
+        ],
+        "x": 664,
+        "y": 79,
+        "w": 292,
+        "h": 202
+    },
+    {
+        "id": "grp_zigbee_notify",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "4. Notificação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_network_notify_down",
+            "zigbee_network_notify_recovery",
+            "zigbee_component_notify_down",
+            "zigbee_component_notify_recovery"
+        ],
+        "x": 984,
+        "y": 59,
+        "w": 352,
+        "h": 502
+    },
+    {
+        "id": "grp_zigbee_publish",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "5. Entidades do Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_discovery",
+            "zigbee_mqtt_publish"
+        ],
+        "x": 664,
+        "y": 359,
+        "w": 292,
+        "h": 202
+    },
+    {
+        "id": "grp_zigbee_tests",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "6. Testes",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_test_note"
+        ],
+        "x": 44,
+        "y": 599,
+        "w": 1292,
+        "h": 102
+    },
+    {
+        "id": "zigbee_bridge_state",
+        "type": "mqtt in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "zigbee2mqtt/bridge/state",
+        "topic": "zigbee2mqtt/bridge/state",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 140,
+        "wires": [
+            [
+                "zigbee_store_observation"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_broker_status",
+        "type": "status",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Conexão MQTT",
+        "scope": [
+            "zigbee_bridge_state"
+        ],
+        "x": 180,
+        "y": 200,
+        "wires": [
+            [
+                "zigbee_store_observation"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_tick",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Avaliar a cada 10 s",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 5,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 260,
+        "wires": [
+            [
+                "zigbee_network_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_availability",
+        "type": "mqtt in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "zigbee2mqtt/.../availability",
+        "topic": "zigbee2mqtt/#",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 400,
+        "wires": [
+            [
+                "zigbee_component_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_discovery_tick",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Publicar discovery no startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 500,
+        "wires": [
+            [
+                "zigbee_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_store_observation",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Normalizar e guardar observação",
+        "func": "const KEY = \"zigbee_bridge_observation\";\n  const STORE = \"memoryOnly\";\n  const now = Number(msg.monitor_now || Date.now());\n  let observed;\n\n  if (msg.status) {\n    const text = String(msg.status.text || \"\").toLowerCase();\n    if (msg.status.fill === \"red\" || /disconnected|offline|error/.test(text)) observed = \"offline\";\n    else return null;\n  } else {\n    let value = msg.payload;\n    if (Buffer.isBuffer(value)) value = value.toString(\"utf8\");\n    if (typeof value === \"string\") {\n      try {\n        const parsed = JSON.parse(value);\n        value = parsed?.state ?? parsed;\n      } catch {\n        // Zigbee2MQTT also publishes plain online/offline strings.\n      }\n    }\n    if (value && typeof value === \"object\") value = value.state;\n    observed = String(value || \"\").toLowerCase();\n  }\n  if (!new Set([\"online\", \"offline\"]).has(observed)) return null;\n\n  const previous = flow.get(KEY, STORE);\n  flow.set(KEY, {\n    state: observed,\n    changed_at: previous?.state === observed ? previous.changed_at : now,\n  }, STORE);\n  msg.monitor_now = now;\n  return msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "flow.set('zigbee_bridge_observation', { state: 'unknown', changed_at: Date.now() }, 'memoryOnly');",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 170,
+        "wires": [
+            [
+                "zigbee_network_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_evaluate",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Dedupe por componente",
+        "func": "const KEY = \"zigbee_component_incidents_v1\";\n  if (!String(msg.topic || \"\").endsWith(\"/availability\")) return null;\n  let value = msg.payload;\n  if (Buffer.isBuffer(value)) value = value.toString(\"utf8\");\n  if (typeof value === \"string\") {\n    try {\n      const parsed = JSON.parse(value);\n      value = parsed?.state ?? parsed;\n    } catch {\n      // Plain online/offline is valid.\n    }\n  }\n  if (value && typeof value === \"object\") value = value.state;\n  const availability = String(value || \"\").toLowerCase();\n  if (!new Set([\"online\", \"offline\"]).has(availability)) return null;\n\n  const component = String(msg.topic).slice(\"zigbee2mqtt/\".length, -\"/availability\".length);\n  if (!component) return null;\n  const slug = component.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\n  const incidents = flow.get(KEY) || {};\n  const current = incidents[component] || { offline: false };\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n\n  if (availability === \"offline\") {\n    if (current.offline) return null;\n    incidents[component] = { offline: true, outage_started_at: nowIso, last_seen_at: nowIso };\n    flow.set(KEY, incidents);\n    return [{\n      notification: {\n        id: `zigbee_component_${slug}`,\n        title: \"Componente Zigbee indisponível\",\n        message: `O componente Zigbee “${component}” ficou indisponível em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique alimentação, alcance, bateria e a malha Zigbee.`,\n      },\n    }, null];\n  }\n\n  incidents[component] = { ...current, offline: false, recovered_at: nowIso, last_seen_at: nowIso };\n  flow.set(KEY, incidents);\n  if (!current.offline) return null;\n  return [null, {\n    notification: {\n      id: `zigbee_component_recovered_${slug}`,\n      dismiss_id: `zigbee_component_${slug}`,\n      title: \"Componente Zigbee recuperado\",\n      message: `O componente Zigbee “${component}” voltou a ficar disponível em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n    },\n  }];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 400,
+        "wires": [
+            [
+                "zigbee_component_notify_down"
+            ],
+            [
+                "zigbee_component_notify_recovery"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_network_evaluate",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_state",
+        "name": "30 s queda / 60 s retorno",
+        "func": "const KEY = \"zigbee_network_monitor_state_v1\";\n  const OBSERVATION_KEY = \"zigbee_bridge_observation\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const observation = flow.get(OBSERVATION_KEY, \"memoryOnly\") || { state: \"unknown\", changed_at: now };\n  const rawState = observation.state;\n  const stableForMs = Math.max(0, now - Number(observation.changed_at || now));\n  let state = flow.get(KEY) || {\n    phase: \"checking\",\n    incident_open: false,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n  };\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (rawState === \"online\") {\n    if (state.incident_open) {\n      state.phase = \"recovering\";\n      if (stableForMs >= 60_000) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        state.last_outage_duration_s = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.last_recovery_at = nowIso;\n        recoveryNotification = {\n          notification: {\n            id: \"zigbee_network_recovered\",\n            dismiss_id: \"zigbee_network_failure\",\n            title: \"Rede Zigbee recuperada\",\n            message: `A rede Zigbee voltou a funcionar e permaneceu conectada por 1 minuto. Recuperada em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n          },\n        };\n      }\n    } else {\n      // Retained online at startup establishes baseline without false recovery.\n      state.phase = \"online\";\n    }\n  } else if (state.incident_open) {\n    state.phase = \"offline\";\n  } else if (stableForMs >= 30_000) {\n    state.phase = \"offline\";\n    state.incident_open = true;\n    state.outage_started_at = new Date(Number(observation.changed_at || now)).toISOString();\n    state.last_outage_at = state.outage_started_at;\n    downNotification = {\n      notification: {\n        id: \"zigbee_network_failure\",\n        title: \"Falha na rede Zigbee\",\n        message: `A rede Zigbee está indisponível. O Zigbee2MQTT perdeu a conexão com a antena/coordenador ou parou de funcionar. Detectado em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n      },\n    };\n  } else {\n    state.phase = \"checking\";\n  }\n\n  state.raw_state = rawState;\n  state.last_checked_at = nowIso;\n  state.stable_for_s = Math.floor(stableForMs / 1000);\n  flow.set(KEY, state);\n  const attributes = {\n    state: state.phase,\n    raw_state: rawState,\n    stable_for_s: state.stable_for_s,\n    checked_at: nowIso,\n    last_outage: state.last_outage_at,\n    last_recovery: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n    failure_confirmation_s: 30,\n    recovery_confirmation_s: 60,\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${rawState}`,\n  });\n  return [downNotification, recoveryNotification, publications];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 170,
+        "wires": [
+            [
+                "zigbee_network_notify_down"
+            ],
+            [
+                "zigbee_network_notify_recovery"
+            ],
+            [
+                "zigbee_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_network_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar queda da rede",
+        "env": [],
+        "x": 1160,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "zigbee_network_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar retorno da rede",
+        "env": [],
+        "x": 1160,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar componente offline",
+        "env": [],
+        "x": 1160,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar componente online",
+        "env": [],
+        "x": 1160,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "zigbee_discovery",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_publish",
+        "name": "Discovery: Zigbee",
+        "func": "const device = {\n    identifiers: [\"node_red_infrastructure_monitoring\"],\n    name: \"Monitoramento de infraestrutura\",\n    manufacturer: \"Node-RED\",\n    model: \"Flows de disponibilidade\",\n  };\n  const availability = {\n    availability_topic: \"nodered/status\",\n    payload_available: \"online\",\n    payload_not_available: \"offline\",\n  };\n  return [[\n    {\n      topic: \"homeassistant/binary_sensor/zigbee_network/config\",\n      payload: JSON.stringify({\n        name: \"Rede Zigbee\",\n        object_id: \"zigbee_network\",\n        unique_id: \"node_red_zigbee_network\",\n        device_class: \"connectivity\",\n        state_topic: \"nodered/infrastructure/zigbee/connection\",\n        json_attributes_topic: \"nodered/infrastructure/zigbee/attributes\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        ...availability,\n        device,\n      }),\n    },\n    {\n      topic: \"homeassistant/sensor/zigbee_network_state/config\",\n      payload: JSON.stringify({\n        name: \"Estado da rede Zigbee\",\n        object_id: \"zigbee_network_state\",\n        unique_id: \"node_red_zigbee_network_state\",\n        icon: \"mdi:zigbee\",\n        entity_category: \"diagnostic\",\n        state_topic: \"nodered/infrastructure/zigbee/state\",\n        json_attributes_topic: \"nodered/infrastructure/zigbee/attributes\",\n        ...availability,\n        device,\n      }),\n    },\n  ]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 790,
+        "y": 440,
+        "wires": [
+            [
+                "zigbee_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_mqtt_publish",
+        "type": "mqtt out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_publish",
+        "name": "Publicar estado retained",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 810,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "zigbee_test_note",
+        "type": "comment",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_tests",
+        "name": "Testes automatizados fora do caminho de produção",
+        "info": "Execute `npm run flows:test-infrastructure`. O teste cobre startup, falha momentânea, 30 s offline, dedupe, 60 s de recuperação, restart persistente, componente offline/online e nova queda. Teste MQTT ponta a ponta deve usar um componente fictício retained, conforme a documentação.",
+        "x": 450,
+        "y": 650,
         "wires": []
     }
 ]

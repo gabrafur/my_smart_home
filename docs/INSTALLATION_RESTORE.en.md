@@ -197,19 +197,19 @@ Changing them can require pairing every device again.
 need a stable address; USB adapters should use `/dev/serial/by-id/...` and a
 Compose `devices:` mapping.
 
-The `zigbee_health_notifications.yaml` package assumes the `zigbee2mqtt` base
-topic and requires availability in the private configuration:
+The `monitoramento_zigbee` flow assumes the `zigbee2mqtt` base topic and
+requires availability in the private configuration:
 
 ```yaml
 availability:
   enabled: true
 ```
 
-Also confirm `binary_sensor.zigbee2mqtt_bridge_connection_state` and replace
-the package's `notify.*` targets with phones from the new installation. When no
-valid push target exists, persistent notifications still work because push
-uses `continue_on_error`. See the
-[Zigbee health alert guide](ZIGBEE_HEALTH_NOTIFICATIONS.en.md).
+Also confirm the targets in the `Notificar todos os dispositivos móveis`
+subflow and run `npm --prefix nodered run flows:test-infrastructure`.
+`binary_sensor.internet_connection` and `binary_sensor.zigbee_network` are
+discovered through MQTT after Node-RED starts. See the
+[infrastructure monitoring guide](ZIGBEE_HEALTH_NOTIFICATIONS.en.md).
 
 ## 9. Node dependencies
 
@@ -217,6 +217,7 @@ uses `continue_on_error`. See the
 npm --prefix nodered ci
 npm --prefix nodered run flows:validate
 npm --prefix nodered run flows:test-alarm-arrival
+npm --prefix nodered run flows:test-infrastructure
 npm --prefix nodered run flows:test-security
 npm --prefix claude-bridge test
 ```
@@ -294,8 +295,8 @@ docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.S
 Test MQTT without putting a password in shell history; use an interactive
 prompt or a protected file. Confirm that anonymous auth is rejected,
 authenticated publish/subscribe works, Zigbee2MQTT is online, Node-RED requires
-login, HA receives MQTT entities, Zigbee alerts load without false startup
-recoveries, AppDaemon loads, and the bridge health endpoint is loopback-only.
+login, HA receives MQTT entities, infrastructure monitors load without false
+startup recoveries, AppDaemon loads, and the bridge health endpoint is loopback-only.
 The documentation scheduler should report its next run and pass preflight.
 
 Automations that move a gate, disarm an alarm, start a vehicle, or cut power
