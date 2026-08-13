@@ -166,8 +166,8 @@ docker compose logs --tail=100 portainer claude-bridge
 - Home Assistant: `http://HOST_IP:8123` plus its in-container config check.
 - Mosquitto: authenticated publish/subscribe on a test topic.
 - Zigbee2MQTT: `zigbee2mqtt/bridge/state` reports `online`.
-- Zigbee alerts: availability is enabled, the bridge entity exists, and an
-  offline/online cycle is checked as described by the
+- Infrastructure monitoring: Zigbee availability is enabled and the Zigbee and
+  Internet cycles are checked in Node-RED as described by the
   [dedicated guide](ZIGBEE_HEALTH_NOTIFICATIONS.en.md).
 - Node-RED: editor authentication is required and flow tests pass.
 - Matter: the HA integration connects to `ws://127.0.0.1:5580/ws`.
