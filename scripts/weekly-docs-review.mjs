@@ -38,7 +38,11 @@ function integerEnv(name, fallback, minimum, maximum) {
 function readStatus() {
   if (!statusPath) return {};
   try {
-    return JSON.parse(fs.readFileSync(statusPath, "utf8"));
+    const parsed = JSON.parse(fs.readFileSync(statusPath, "utf8"));
+    if (["sigterm", "sigint"].includes(parsed.last_reason)) {
+      parsed.last_reason = null;
+    }
+    return parsed;
   } catch {
     return {};
   }
@@ -328,7 +332,7 @@ function selfTest() {
 
 function shutdown(signal) {
   log(`received ${signal}; stopping scheduler`);
-  updateStatus({ state: "stopped", next_run: null, last_reason: signal.toLowerCase() });
+  updateStatus({ state: "stopped", next_run: null });
   if (scheduledTimer) clearTimeout(scheduledTimer);
   if (heartbeatTimer) clearInterval(heartbeatTimer);
   if (activeChild) killProcessGroup(activeChild);
