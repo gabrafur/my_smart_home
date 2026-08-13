@@ -7,9 +7,9 @@ depois que alguem toca em `Desarmar`.
 
 ## Origem da chegada
 
-O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas a saida
-positiva de `sec_detect_arriving_source`, no flow `iluminacao_seguranca`.
-Esse detector ja valida:
+O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas contratos
+`security.arrival.v1` publicados por `localizacao_pessoas` e
+`contexto_creta`. Esses flows de dominio ja validam:
 
 - origem `gabriel`, `valeria` ou `creta`;
 - entrada no anel `zone.chegando` vinda de fora (`arrival_stage: approach`),
@@ -47,12 +47,11 @@ valida a chegada e a confirmacao humana antes de chamar a cadeia compartilhada.
 
 ## Manutencao
 
-Para reinstalar de forma idempotente e validar:
+O `nodered/flows.json` versionado e a fonte de verdade. Para validar:
 
 ```bash
 cd nodered
 npm run flows:backup
-npm run flows:install-alarm-arrival
 npm run flows:validate
 npm run flows:test-alarm-arrival
 ```
