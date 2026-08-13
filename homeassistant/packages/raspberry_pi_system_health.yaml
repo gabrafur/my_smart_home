@@ -6,6 +6,12 @@ input_boolean:
     name: Resfriamento de emergencia do Raspberry Pi
     icon: mdi:air-conditioner
 
+input_text:
+  raspberry_pi_emergency_cooling_previous_climate:
+    name: Estado anterior do ar no resfriamento do Raspberry Pi
+    icon: mdi:restore
+    max: 255
+
 command_line:
   - sensor:
       name: Raspberry Pi Metrics Raw
@@ -500,84 +506,6 @@ template:
           ip_address: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_ip') }}"
 
 automation:
-  - id: raspberry_pi_emergency_cooling_start
-    alias: Raspberry Pi - iniciar resfriamento de emergencia
-    description: Liga o ar-condicionado do escritorio no maximo quando a CPU do Raspberry Pi superaquece.
-    mode: single
-    triggers:
-      - trigger: numeric_state
-        entity_id: sensor.raspberry_pi_cpu_temperature
-        above: 81.9
-        for:
-          minutes: 2
-      - trigger: homeassistant
-        event: start
-    conditions:
-      - condition: numeric_state
-        entity_id: sensor.raspberry_pi_cpu_temperature
-        above: 81.9
-    actions:
-      - action: input_boolean.turn_on
-        target:
-          entity_id: input_boolean.raspberry_pi_emergency_cooling
-      - action: climate.set_hvac_mode
-        target:
-          entity_id: climate.ar_condicionado_escritorio
-        data:
-          hvac_mode: cool
-      - action: climate.set_temperature
-        target:
-          entity_id: climate.ar_condicionado_escritorio
-        data:
-          temperature: 16
-          hvac_mode: cool
-      - action: climate.set_fan_mode
-        target:
-          entity_id: climate.ar_condicionado_escritorio
-        data:
-          fan_mode: high
-      - action: persistent_notification.create
-        data:
-          title: Raspberry Pi - resfriamento de emergencia
-          message: >-
-            A CPU chegou a {{ states('sensor.raspberry_pi_cpu_temperature') }} °C.
-            O ar-condicionado do escritorio foi ligado em 16 °C, modo frio e ventilacao maxima.
-            Ele sera desligado depois que a CPU permanecer abaixo de 70 °C por 10 minutos.
-          notification_id: raspberry_pi_emergency_cooling
-
-  - id: raspberry_pi_emergency_cooling_stop
-    alias: Raspberry Pi - encerrar resfriamento de emergencia
-    description: Desliga o ar-condicionado depois que a temperatura do Raspberry Pi estabiliza no normal.
-    mode: single
-    triggers:
-      - trigger: numeric_state
-        entity_id: sensor.raspberry_pi_cpu_temperature
-        below: 70
-        for:
-          minutes: 10
-    conditions:
-      - condition: state
-        entity_id: input_boolean.raspberry_pi_emergency_cooling
-        state: "on"
-    actions:
-      - action: climate.turn_off
-        target:
-          entity_id: climate.ar_condicionado_escritorio
-      - action: input_boolean.turn_off
-        target:
-          entity_id: input_boolean.raspberry_pi_emergency_cooling
-      - action: persistent_notification.dismiss
-        data:
-          notification_id: raspberry_pi_emergency_cooling
-      - action: persistent_notification.create
-        data:
-          title: Raspberry Pi - temperatura normalizada
-          message: >-
-            A CPU permaneceu abaixo de 70 °C por 10 minutos e esta em
-            {{ states('sensor.raspberry_pi_cpu_temperature') }} °C.
-            O ar-condicionado do escritorio foi desligado.
-          notification_id: raspberry_pi_emergency_cooling_recovered
-
   - id: raspberry_pi_health_problem_notification
     alias: Raspberry Pi - alerta de saude
     mode: queued

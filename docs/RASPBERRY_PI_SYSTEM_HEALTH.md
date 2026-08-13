@@ -18,6 +18,7 @@
 - Dashboard: `homeassistant/dashboards/raspberry_pi_health.yaml`
 - Registro do dashboard: `homeassistant/configuration.yaml`
 - Mounts de host no container: `docker-compose.yml`
+- Resfriamento de emergencia: aba `resfriamento_raspberry_pi` em `nodered/flows.json`
 
 O mesmo dashboard também apresenta
 `sensor.revisao_semanal_da_documentacao`, alimentado pelo status local e não
@@ -52,6 +53,37 @@ Os limites foram ajustados para Raspberry Pi 5:
 - Hardware: warning se houve evento de undervoltage/throttling desde o boot; critical se a condicao estiver ativa
 
 Os alertas disparam em transicao para problema e as recuperacoes disparam quando voltam ao normal. Isso evita spam enquanto a condicao permanece ativa.
+
+## Resfriamento de emergencia
+
+O Node-RED liga `climate.ar_condicionado_escritorio` em modo frio, 16 °C e
+ventilacao alta quando `sensor.raspberry_pi_cpu_temperature` permanece acima
+de 81,9 °C por 2 minutos. No startup, temperatura e ownership sao reconciliados
+nos dois sentidos: uma CPU ainda quente garante o controle de emergencia; se o
+helper estiver ligado e a CPU ja estiver abaixo de 70 °C, uma nova janela de
+normalizacao de 10 minutos e iniciada. A faixa entre 70 °C e 81,9 °C nao provoca
+comandos destrutivos.
+
+Antes de controlar o equipamento, o fluxo valida que o climate esta disponivel
+e salva seu modo, temperatura e ventilacao em
+`input_text.raspberry_pi_emergency_cooling_previous_climate`. O helper
+`input_boolean.raspberry_pi_emergency_cooling` so e ligado depois que os tres
+comandos de emergencia concluem com sucesso. Assim, ele representa ownership
+efetivo e nunca e usado para desligar um ar que o fluxo nao controlou.
+
+Depois de 10 minutos abaixo de 70 °C, o estado anterior e restaurado: se o ar
+estava desligado, volta a desligado; se estava em uso, modo HVAC, temperatura e
+fan mode sao reaplicados. O fluxo confirma o estado restaurado antes de liberar
+o ownership. O snapshot fica no Home Assistant para sobreviver a restart do
+Node-RED. Falhas de inicio ou restauracao usam no maximo tres
+tentativas, separadas por 60 segundos e precedidas por nova validacao da
+temperatura. Depois disso, o fluxo falha de forma segura e cria uma notificacao
+persistente de ID estavel; nao ha loop de retry sem limite.
+
+Se uma instalacao atualizar enquanto o helper antigo ja estiver ligado, mas o
+novo snapshot ainda nao existir, o encerramento usa `climate.turn_off` como
+fallback compativel com o comportamento anterior e registra essa condicao na
+notificacao de recuperacao.
 
 ## Limitacoes conhecidas
 
