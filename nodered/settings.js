@@ -380,7 +380,15 @@ module.exports = {
             module: "memory"
         },
         persistent: {
-            module: "localfilesystem"
+            module: "localfilesystem",
+            config: {
+                // settings.js is mounted at /data/settings.js in Docker, so
+                // this resolves to /data/context inside the persistent volume.
+                dir: __dirname,
+                base: "context",
+                cache: true,
+                flushInterval: 30
+            }
         }
     },
 
