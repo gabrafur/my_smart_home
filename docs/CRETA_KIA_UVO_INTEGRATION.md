@@ -249,6 +249,11 @@ localização em 30 minutos. Motor stale `off` durante uma viagem não encerra o
 lifecycle; localização fresca fora de casa pode revalidar o estado persistido.
 Sem evidência suficiente o contrato publica `in_use: null`/pending.
 
+O parser do recovery rejeita tipos inesperados (por exemplo,
+`in_use: "false"`), versões antigas, confirmação futura acima de 60 s e
+confirmação sem timestamp. A confirmação expira após 24 h sem revalidação; a
+limpeza publica contexto pending e não dispara ações físicas.
+
 O refresh Bluelink persiste `attempts`, `next_allowed_at` e
 `last_success_at`. Falhas usam backoff de 1, 2, 4, 8 e no máximo 15 minutos;
 sucesso limpa tentativas e volta ao cooldown normal de 15 minutos. Isso evita

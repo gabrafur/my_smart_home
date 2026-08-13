@@ -25,6 +25,11 @@ a mesma chegada e não recria uma confirmação. Snapshots stale ou ainda não
 ready não geram `security.arrival.v1`; `unknown` nunca é interpretado como
 ausência ou chegada.
 
+O aviso de aproximação da Valéria é separado do comando de desarme. Se o
+contexto do Creta ainda estiver pendente, o coordenador mantém o candidato por
+até 10 min e o libera uma única vez quando puder enriquecê-lo; isso evita perda
+ou duplicação durante a ordem variável do startup.
+
 ## Condicoes e desarme
 
 1. `Validar chegada real` faz uma segunda validacao da origem, lista
