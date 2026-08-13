@@ -371,11 +371,26 @@ module.exports = {
      * provided here will enable file-based context that flushes to disk every 30 seconds.
      * Refer to the documentation for further options: https://nodered.org/docs/api/context/
      */
-    //contextStorage: {
-    //    default: {
-    //        module:"localfilesystem"
-    //    },
-    //},
+    // Keep derived snapshots and ordinary flow state in memory. Recovery-aware
+    // function nodes opt in to the named persistent store explicitly, so the
+    // filesystem never becomes a second source of physical truth.
+    contextStorage: {
+        default: "memoryOnly",
+        memoryOnly: {
+            module: "memory"
+        },
+        persistent: {
+            module: "localfilesystem",
+            config: {
+                // settings.js is mounted at /data/settings.js in Docker, so
+                // this resolves to /data/context inside the persistent volume.
+                dir: __dirname,
+                base: "context",
+                cache: true,
+                flushInterval: 30
+            }
+        }
+    },
 
     /** `global.keys()` returns a list of all properties set in global context.
      * This allows them to be displayed in the Context Sidebar within the editor.
