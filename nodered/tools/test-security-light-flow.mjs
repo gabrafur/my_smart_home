@@ -42,6 +42,34 @@ function entity(state, distanceM = null, lastChanged = new Date().toISOString(),
 
 const geoEnv = environment({ HOME_LAT: "0", HOME_LON: "0", GATE_LAT: "0", GATE_LON: "0" });
 
+function activeLightFlow(extra = {}) {
+  const now = Date.now();
+  return memoryFlow({
+    security_light_physical_state: "on",
+    security_light_lifecycle_v1: {
+      version: 1,
+      active_by_arrival: true,
+      on_since: now,
+      force_off_at: now + 15 * 60 * 1000,
+      updated_at: now,
+    },
+    ...extra,
+  });
+}
+
+function readyLightFlow(extra = {}) {
+  return memoryFlow({
+    people_context_v1: { ready: true, updated_at: Date.now() },
+    creta_context_v1: { ready: true, in_use: true, engine_on: true, updated_at: Date.now() },
+    sun_ready: true,
+    sun_below_horizon: true,
+    light_reconciled: true,
+    security_light_physical_state: "off",
+    security_light_lifecycle_v1: { version: 1, active_by_arrival: false, updated_at: Date.now() },
+    ...extra,
+  });
+}
+
 function peopleInput({
   event = "location_update", source = "gabriel", previous = "not_home", current = "chegando",
   gabriel = entity(source === "gabriel" ? current : "home", source === "gabriel" ? 1_400 : 20),
@@ -65,7 +93,8 @@ function cretaInput({
     event, source: "creta", trigger_state: current, trigger_prev_state: previous,
     reason: event === "turn_off" ? "creta_engine_off" : undefined,
     creta: entity(current, distance, changed, accuracy),
-    creta_engine: { state: engine }, creta_lock: { state: lock }, refresh_cycle_id: cycle,
+    creta_engine: { state: engine, last_updated: changed },
+    creta_lock: { state: lock, last_updated: changed }, refresh_cycle_id: cycle,
   } };
 }
 
@@ -152,14 +181,14 @@ scenario("10 Creta desligado ao chegar", () => {
 });
 
 scenario("11 Creta travado ao chegar nao apaga imediatamente", () => {
-  const decision = run("light_evaluate_off", { payload: { active: true, event: "location_update", creta_engine_on: false, creta_unlocked: false } }, memoryFlow(), geoEnv);
+  const decision = run("light_evaluate_off", { payload: { active: true, event: "location_update", creta_engine_on: false, creta_unlocked: false } }, activeLightFlow(), geoEnv);
   assert.equal(decision, null);
 });
 
 scenario("12 Creta destravado em casa apaga apos filtro do evento", () => {
   const eventNode = byId.get("creta_unlock_event");
   assert.equal(eventNode.for, "5");
-  const decision = run("light_evaluate_off", { payload: { active: true, event: "turn_off", creta_engine_on: false, creta_unlocked: true } }, memoryFlow(), geoEnv);
+  const decision = run("light_evaluate_off", { payload: { active: true, event: "turn_off", creta_engine_on: false, creta_unlocked: true } }, activeLightFlow(), geoEnv);
   assert.equal(decision[0].payload.off_reason, "creta_desligado_e_destravado");
 });
 
@@ -170,13 +199,13 @@ scenario("13 refletor ja ligado antes da chegada", () => {
 });
 
 scenario("14 ambiente ainda claro", () => {
-  const flow = memoryFlow({ sun_below_horizon: false, creta_context_v1: { in_use: true } });
+  const flow = readyLightFlow({ sun_below_horizon: false });
   const prepared = run("light_prepare_arrival", arrival(), flow, geoEnv);
   assert.equal(prepared.payload.sun_below_horizon, false);
 });
 
 scenario("15 ambiente escuro", () => {
-  const flow = memoryFlow({ sun_below_horizon: true, creta_context_v1: { in_use: true, engine_on: true } });
+  const flow = readyLightFlow();
   const prepared = run("light_prepare_arrival", arrival(), flow, geoEnv);
   assert.equal(prepared.payload.sun_below_horizon, true);
   assert(run("light_check_creta_in_use", prepared, flow, geoEnv));
@@ -186,11 +215,11 @@ scenario("16 timeout de 15 minutos", () => {
   const delay = byId.get("light_auto_off");
   assert.equal(delay.timeout, "15");
   assert.equal(delay.timeoutUnits, "minutes");
-  assert.equal(byId.get("light_timeout").rules[0].to.includes("timeout_15min"), true);
+  assert.equal(byId.get("light_timeout").rules.some((rule) => rule.to === "timeout_15min"), true);
 });
 
 scenario("17 desligamento respeita carencia de 90 segundos", () => {
-  const flow = memoryFlow({ refletor_activated_at: Date.now() });
+  const flow = activeLightFlow();
   const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source: "gabriel" } }, flow, geoEnv);
   assert(decision[1].delay > 89_000 && decision[1].delay <= 90_000);
   assert.equal(byId.get("light_off_grace").pauseType, "delayv");
@@ -198,7 +227,7 @@ scenario("17 desligamento respeita carencia de 90 segundos", () => {
 
 scenario("18 cinco condicoes independentes de desligamento", () => {
   for (const source of ["gabriel", "valeria", "creta"]) {
-    const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source } }, memoryFlow(), geoEnv);
+    const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source } }, activeLightFlow(), geoEnv);
     assert.equal(decision[1].payload.off_reason, `chegada_confirmada_${source}`);
   }
   assert.equal(byId.get("light_auto_off").timeout, "15");
@@ -227,23 +256,24 @@ scenario("21 localizacao do Creta unknown/unavailable", () => {
 
 scenario("22 Home Assistant reiniciado: ciclo volta a pedir snapshots", () => {
   assert.equal(byId.get("context_tick").once, true);
-  assert.equal(byId.get("context_tick").onceDelay, "30");
+  assert.equal(byId.get("context_tick").onceDelay, "2");
   assert.equal(byId.get("light_sun_event").outputInitially, true);
 });
 
 scenario("23 Node-RED reiniciado: gates falham de forma segura", () => {
-  assert.equal(run("light_prepare_arrival", arrival(), memoryFlow(), geoEnv).payload.creta_in_use, false);
+  assert.equal(run("light_prepare_arrival", arrival(), memoryFlow(), geoEnv), null);
   assert.equal(run("light_check_creta_in_use", { payload: {} }, memoryFlow(), geoEnv), null);
 });
 
-scenario("24 restart durante viagem preserva risco conhecido", () => {
+scenario("24 restart durante viagem fica pendente sem evidência persistida", () => {
   const result = run("creta_normalize", cretaInput({ event: "context_snapshot", current: "not_home", distance: 5_000, engine: "off" }), memoryFlow(), geoEnv)[0];
-  assert.equal(result.payload.context.in_use, false);
+  assert.equal(result.payload.context.in_use, null);
+  assert.equal(result.payload.context.in_use_pending, true);
   assert.equal(result.payload.context.away, true);
 });
 
-scenario("25 restart com refletor ligado preserva risco conhecido", () => {
-  const merged = run("light_merge_context", { payload: { kind: "sun_context", sun_below_horizon: true } }, memoryFlow(), geoEnv);
+scenario("25 restart sem reconciliação não presume refletor ativo", () => {
+  const merged = run("light_merge_context", { payload: { kind: "sun_context", sun_below_horizon: true } }, memoryFlow(), geoEnv)[0];
   assert.equal(merged.payload.active, false);
 });
 
@@ -258,24 +288,24 @@ scenario("27 dois eventos quase simultaneos geram um comando por ciclo", () => {
   const flow = memoryFlow();
   const request = run("context_coordinator", { payload: { kind: "refresh_tick" } }, flow, geoEnv)[0];
   const cycle = request.payload.refresh_cycle_id;
-  assert.equal(run("context_coordinator", { payload: { kind: "people_context", context: { anyone_away: false }, refresh_cycle_id: cycle } }, flow, geoEnv), null);
-  const completed = run("context_coordinator", { payload: { kind: "creta_context", context: { away: true }, refresh_cycle_id: cycle } }, flow, geoEnv);
+  assert.equal(run("context_coordinator", { payload: { kind: "people_context", context: { anyone_away: false }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv), null);
+  const completed = run("context_coordinator", { payload: { kind: "creta_context", context: { away: true }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv);
   assert.equal(completed[1].payload.anyone_away, true);
-  assert.equal(run("context_coordinator", { payload: { kind: "creta_context", context: { away: true }, refresh_cycle_id: cycle } }, flow, geoEnv), null);
+  assert.equal(run("context_coordinator", { payload: { kind: "creta_context", context: { away: true }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv), null);
 });
 
 scenario("28 refresh do Creta falhando permite retry", () => {
   const flow = memoryFlow({ creta_context_v1: { away: true } });
   const command = { payload: { kind: "refresh_command", anyone_away: true } };
   assert(run("creta_refresh_decide", structuredClone(command), flow, geoEnv));
-  assert(run("creta_refresh_decide", structuredClone(command), flow, geoEnv));
-  assert.equal(flow.get("creta_last_force_refresh_ts"), undefined);
+  assert.equal(run("creta_refresh_decide", structuredClone(command), flow, geoEnv), null);
+  assert.equal(flow.get("security_creta_refresh_v1").attempts, 1);
 });
 
 scenario("29 refresh posterior do Creta com sucesso confirma cooldown", () => {
   const flow = memoryFlow({ creta_context_v1: { away: true } });
   run("creta_refresh_ack", { payload: {} }, flow, geoEnv);
-  assert.equal(typeof flow.get("creta_last_force_refresh_ts"), "number");
+  assert.equal(typeof flow.get("security_creta_refresh_v1").last_success_at, "number");
   assert.equal(run("creta_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
 });
 
