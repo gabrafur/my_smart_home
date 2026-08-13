@@ -21,10 +21,11 @@ real do carro, enquanto o app Bluelink mostrava certo. Investigacao:
   coordinator so faz uma leitura *ao vivo* forcada automaticamente **uma vez
   por dia** (`DEFAULT_FORCE_REFRESH_INTERVAL = 1440` min); todo o resto do
   tempo le o cache do servidor da Hyundai (`update_all_vehicles_with_cached_state`).
-  As leituras ao vivo "extras" vem do `button.creta_force_refresh`
-  (`nodered/flows.json`, node `sec_force_refresh_creta`), disparado a cada 5
-  min (1 min quando o Creta esta perto de casa) **apenas enquanto alguem
-  esta "fora"** — ver "Atualizacao de localizacao" em
+  As leituras ao vivo "extras" vêm do `button.creta_force_refresh`
+  (`nodered/flows.json`, flow `contexto_creta`, node
+  `creta_force_refresh`). A política conjunta em `contexto_chegadas` pede o
+  refresh periódico a cada 15 min quando alguém está fora, ou entre 07h e
+  22h quando todos estão em casa — ver "Refresh" em
   ILUMINACAO_SEGURANCA_NODERED.md.
 - Verificado ao vivo: um `button.press` manual em `button.creta_force_refresh`
   de fato busca dado fresco (timestamp `sensor.creta_last_updated_at`
@@ -116,8 +117,8 @@ comando de wake foi aceito pelo backend.
 - **Piso de 15 min entre wakes reais** (`BR_WAKE_MIN_INTERVAL_S`). Acordar o
   carro puxa a bateria de 12 V e conta contra o rate limit — e' por isso que o
   options flow trava o force interval proprio da integracao em 90 min. Quem
-  aperta o botao direto (o flow `iluminacao_seguranca` no Node-RED, a cada
-  15 min, alem do wake pontual na entrada da zona) tambem passa por esse piso.
+  aperta o botão direto (o flow `contexto_creta` no Node-RED, a cada 15 min,
+  além do wake pontual na entrada da zona) também passa por esse piso.
   Dentro do cooldown a chamada degrada para a leitura em cache.
 - O `sleep(25)` e o valor medido pelo upstream EU. Um refinamento possivel e
   trocar por `check_action_status(vehicle_id, msgId, ...)`, que ja e usado
@@ -220,8 +221,8 @@ que referencie o botao/sensor de trip info.
 Chamar isso no mesmo ritmo do refresh de localizacao (1-5 min enquanto
 "fora") multiplicaria as chamadas a API da Hyundai sem necessidade — dados
 de viagem so mudam quando uma viagem termina, nao a cada minuto durante
-ela. Em vez disso, `nodered/flows.json` (`sec_creta_trip_refresh_gate` →
-`sec_refresh_creta_trip_info`) pressiona esse botao automaticamente **uma
+ela. Em vez disso, `nodered/flows.json` (`creta_arrival_actions` →
+`creta_trip_refresh`) pressiona esse botão automaticamente **uma
 vez, exatamente quando o Creta chega em casa** (mesmo evento de "chegada"
 que liga o refletor de seguranca, filtrado para `arrival_source_type ===
 "creta"`) — o momento natural em que uma viagem acabou de ser concluida e
@@ -236,10 +237,9 @@ dado que `binary_sensor.creta_engine` nunca capturou.
 
 ## Manutencao
 
-Sempre que mexer no fluxo de chegada (`sec_detect_arriving_source` e afins)
-em ILUMINACAO_SEGURANCA_NODERED.md, lembrar que `sec_creta_trip_refresh_gate`
-depende de `msg.payload.arrival_source_type` continuar sendo setado do
-jeito que esta hoje.
+Sempre que mexer na chegada de `contexto_creta`, lembrar que
+`creta_arrival_actions` depende de `security.arrival.v1` continuar publicando
+`arrival_source_type: creta` e `arrival_stage`.
 
 ## Update do fork removeu e depois reportou o sensor de trip-log (2026-07-19)
 
@@ -254,7 +254,7 @@ dos pneus, `drive_mode`, fix do device_class de bateria em EV/PHEV;
 (`sensor.garagem_creta_day_trip_info`).
 
 **Reportado de volta no mesmo dia**, ja que `nodered/flows.json`
-(`sec_refresh_creta_trip_info`) continua dependendo dessa entidade.
+(`creta_trip_refresh`) continua dependendo dessa entidade.
 `VehicleManager.update_day_trip_info` e `Vehicle.day_trip_info` continuam
 com a mesma assinatura na versao nova da lib (confirmado via
 `inspect.signature` dentro do container), entao o reporte foi um
