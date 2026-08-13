@@ -239,7 +239,20 @@ dado que `binary_sensor.creta_engine` nunca capturou.
 
 Sempre que mexer na chegada de `contexto_creta`, lembrar que
 `creta_arrival_actions` depende de `security.arrival.v1` continuar publicando
-`arrival_source_type: creta` e `arrival_stage`.
+`arrival_source_type: creta`, `arrival_stage` e `event_at`.
+
+Desde a etapa de recovery, a chegada e a atualização de trip info têm dedupe
+persistente de 10 minutos. O lifecycle da viagem (`trip_active`,
+`trip_started_at`) e o último `creta_in_use` confirmado sobrevivem ao restart,
+mas nunca substituem as entidades atuais: motor/trava expiram em 5 minutos e
+localização em 30 minutos. Motor stale `off` durante uma viagem não encerra o
+lifecycle; localização fresca fora de casa pode revalidar o estado persistido.
+Sem evidência suficiente o contrato publica `in_use: null`/pending.
+
+O refresh Bluelink persiste `attempts`, `next_allowed_at` e
+`last_success_at`. Falhas usam backoff de 1, 2, 4, 8 e no máximo 15 minutos;
+sucesso limpa tentativas e volta ao cooldown normal de 15 minutos. Isso evita
+storm após restart e não registra viagem falsa durante indisponibilidade.
 
 ## Update do fork removeu e depois reportou o sensor de trip-log (2026-07-19)
 

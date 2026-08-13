@@ -28,6 +28,7 @@ Portuguese because that is the system's primary operating language:
 - [External lighting in Node-RED](ILUMINACAO_EXTERNA_NODERED.md)
 - [House alarm in Node-RED](ALARME_CASA_NODERED.md)
 - [Arrival context and security lighting in Node-RED](ILUMINACAO_SEGURANCA_NODERED.md)
+- [Security flow state and recovery inventory (Portuguese)](SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md)
 - [Alarm disarm on arrival](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Moni Mobile / Intelbras integration](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
 - [Hyundai/Kia integration](CRETA_KIA_UVO_INTEGRATION.md)
