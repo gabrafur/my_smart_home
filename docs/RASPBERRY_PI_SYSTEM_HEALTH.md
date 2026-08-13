@@ -18,6 +18,7 @@
 - Dashboard: `homeassistant/dashboards/raspberry_pi_health.yaml`
 - Registro do dashboard: `homeassistant/configuration.yaml`
 - Mounts de host no container: `docker-compose.yml`
+- Resfriamento de emergencia: aba `resfriamento_raspberry_pi` em `nodered/flows.json`
 
 O mesmo dashboard também apresenta
 `sensor.revisao_semanal_da_documentacao`, alimentado pelo status local e não
@@ -52,6 +53,20 @@ Os limites foram ajustados para Raspberry Pi 5:
 - Hardware: warning se houve evento de undervoltage/throttling desde o boot; critical se a condicao estiver ativa
 
 Os alertas disparam em transicao para problema e as recuperacoes disparam quando voltam ao normal. Isso evita spam enquanto a condicao permanece ativa.
+
+## Resfriamento de emergencia
+
+O Node-RED liga `climate.ar_condicionado_escritorio` em modo frio, 16 °C e
+ventilacao alta quando `sensor.raspberry_pi_cpu_temperature` permanece acima
+de 81,9 °C por 2 minutos. A temperatura tambem e reavaliada quando o Node-RED
+inicia, cobrindo reinicios durante um superaquecimento.
+
+O ar-condicionado e desligado depois que a CPU permanece abaixo de 70 °C por
+10 minutos, mas apenas quando
+`input_boolean.raspberry_pi_emergency_cooling` indica que foi este fluxo que
+iniciou o resfriamento. O helper continua no Home Assistant para preservar
+essa informacao e impedir que o fluxo desligue um ar-condicionado ligado por
+outro motivo.
 
 ## Limitacoes conhecidas
 

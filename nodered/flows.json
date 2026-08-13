@@ -3257,5 +3257,602 @@
         "x": 785,
         "y": 420,
         "wires": []
+    },
+    {
+        "id": "raspberry_pi_cooling_tab",
+        "type": "tab",
+        "label": "resfriamento_raspberry_pi",
+        "disabled": false,
+        "info": "Liga o ar-condicionado do escritório quando a CPU do Raspberry Pi permanece acima de 81,9 °C por 2 minutos. Ao iniciar, reavalia imediatamente a temperatura. Desliga somente quando o próprio fluxo iniciou o resfriamento e a CPU permanece abaixo de 70 °C por 10 minutos.",
+        "env": []
+    },
+    {
+        "id": "grp_rpi_cooling_triggers",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "1. Detectar superaquecimento",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_hot",
+            "rpi_cooling_startup",
+            "rpi_cooling_startup_check"
+        ],
+        "x": 44,
+        "y": 79,
+        "w": 532,
+        "h": 242
+    },
+    {
+        "id": "grp_rpi_cooling_start",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "2. Iniciar resfriamento de emergência",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#d9822b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_mark_active",
+            "rpi_cooling_set_mode",
+            "rpi_cooling_set_temperature",
+            "rpi_cooling_set_fan",
+            "rpi_cooling_notify_started"
+        ],
+        "x": 604,
+        "y": 79,
+        "w": 1342,
+        "h": 162
+    },
+    {
+        "id": "grp_rpi_cooling_stop",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "3. Encerrar após normalização",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_normal",
+            "rpi_cooling_active_check",
+            "rpi_cooling_turn_off",
+            "rpi_cooling_mark_inactive",
+            "rpi_cooling_dismiss_started",
+            "rpi_cooling_notify_recovered"
+        ],
+        "x": 44,
+        "y": 359,
+        "w": 1902,
+        "h": 162
+    },
+    {
+        "id": "rpi_cooling_hot",
+        "type": "server-state-changed",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "CPU > 81,9 °C por 2 min",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 2,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.raspberry_pi_cpu_temperature"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "num",
+        "ifState": "81.9",
+        "ifStateType": "num",
+        "ifStateOperator": "gt",
+        "outputOnlyOnStateChange": false,
+        "for": "2",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "triggerId"
+            }
+        ],
+        "x": 190,
+        "y": 140,
+        "wires": [
+            [
+                "rpi_cooling_mark_active"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_startup",
+        "type": "inject",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Reavaliar no startup",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 260,
+        "wires": [
+            [
+                "rpi_cooling_startup_check"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_startup_check",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "CPU ainda > 81,9 °C?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "81.9",
+        "halt_if_type": "num",
+        "halt_if_compare": "gt",
+        "entity_id": "sensor.raspberry_pi_cpu_temperature",
+        "state_type": "num",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 450,
+        "y": 260,
+        "wires": [
+            [
+                "rpi_cooling_mark_active"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_mark_active",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Marcar resfriamento ativo",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_boolean.turn_on",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_boolean.raspberry_pi_emergency_cooling"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_boolean",
+        "service": "turn_on",
+        "x": 750,
+        "y": 160,
+        "wires": [
+            [
+                "rpi_cooling_set_mode"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_set_mode",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Modo frio",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_hvac_mode",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"hvac_mode\":\"cool\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_hvac_mode",
+        "x": 1030,
+        "y": 160,
+        "wires": [
+            [
+                "rpi_cooling_set_temperature"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_set_temperature",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Temperatura 16 °C",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_temperature",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"temperature\":16,\"hvac_mode\":\"cool\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_temperature",
+        "x": 1250,
+        "y": 160,
+        "wires": [
+            [
+                "rpi_cooling_set_fan"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_set_fan",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Ventilação máxima",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_fan_mode",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"fan_mode\":\"high\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_fan_mode",
+        "x": 1470,
+        "y": 160,
+        "wires": [
+            [
+                "rpi_cooling_notify_started"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_notify_started",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Notificar resfriamento",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":\"Raspberry Pi - resfriamento de emergencia\",\"message\":\"A CPU chegou a \" & $string($entities(\"sensor.raspberry_pi_cpu_temperature\").state) & \" °C. O ar-condicionado do escritorio foi ligado em 16 °C, modo frio e ventilacao maxima. Ele sera desligado depois que a CPU permanecer abaixo de 70 °C por 10 minutos.\",\"notification_id\":\"raspberry_pi_emergency_cooling\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1730,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_normal",
+        "type": "server-state-changed",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "CPU < 70 °C por 10 min",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 2,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.raspberry_pi_cpu_temperature"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "num",
+        "ifState": "70",
+        "ifStateType": "num",
+        "ifStateOperator": "lt",
+        "outputOnlyOnStateChange": false,
+        "for": "10",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "triggerId"
+            }
+        ],
+        "x": 190,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_active_check"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_active_check",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Foi ativado pelo fluxo?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "on",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_boolean.raspberry_pi_emergency_cooling",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 490,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_turn_off"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_turn_off",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Desligar ar-condicionado",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "turn_off",
+        "x": 780,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_mark_inactive"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_mark_inactive",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Limpar resfriamento ativo",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_boolean.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_boolean.raspberry_pi_emergency_cooling"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_boolean",
+        "service": "turn_off",
+        "x": 1060,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_dismiss_started"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_dismiss_started",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Remover alerta anterior",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\":\"raspberry_pi_emergency_cooling\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 1340,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_notify_recovered"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_notify_recovered",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Notificar normalização",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":\"Raspberry Pi - temperatura normalizada\",\"message\":\"A CPU permaneceu abaixo de 70 °C por 10 minutos e esta em \" & $string($entities(\"sensor.raspberry_pi_cpu_temperature\").state) & \" °C. O ar-condicionado do escritorio foi desligado.\",\"notification_id\":\"raspberry_pi_emergency_cooling_recovered\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1630,
+        "y": 440,
+        "wires": [
+            []
+        ]
     }
 ]
