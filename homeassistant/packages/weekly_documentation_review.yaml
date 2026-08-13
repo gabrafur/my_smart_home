@@ -40,3 +40,7 @@ command_line:
         - success_count
         - failure_count
         - skipped_count
+
+shell_command:
+  solicitar_revisao_documental_manual: >-
+    touch /run/docs-review-trigger/manual-trigger

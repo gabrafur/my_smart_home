@@ -50,6 +50,16 @@ views:
           - entity: sensor.raspberry_pi_metrics_raw
             name: Coleta bruta
 
+      - type: button
+        name: Rodar revisão documental agora
+        icon: mdi:file-document-refresh-outline
+        show_state: false
+        tap_action:
+          action: perform-action
+          perform_action: shell_command.solicitar_revisao_documental_manual
+          confirmation:
+            text: A revisão pode editar, criar commit e enviar alterações. Deseja continuar?
+
       - type: entities
         title: Revisão documental semanal
         show_header_toggle: false
@@ -213,15 +223,15 @@ views:
             name: Livre
           - entity: sensor.raspberry_pi_storage_inodes_usage
             name: Inodes usados
-          - entity: sensor.raspberry_storage_status
+          - entity: sensor.raspberry_pi_raspberry_storage_status
             name: Status Node-RED
-          - entity: sensor.raspberry_storage_growth_24h
+          - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
             name: Crescimento em 24 h
-          - entity: sensor.raspberry_storage_growth_7d
+          - entity: sensor.raspberry_pi_raspberry_storage_growth_7d
             name: Crescimento em 7 dias
-          - entity: sensor.raspberry_storage_last_maintenance
+          - entity: sensor.raspberry_pi_raspberry_storage_last_maintenance
             name: Ultima manutencao segura
-          - entity: sensor.raspberry_storage_last_reclaimed
+          - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed
             name: Recuperado na ultima manutencao
           - entity: binary_sensor.raspberry_pi_storage_warning
             name: Armazenamento em atencao
@@ -234,7 +244,7 @@ views:
         entities:
           - entity: sensor.raspberry_pi_storage_usage
             name: Uso
-          - entity: sensor.raspberry_storage_growth_24h
+          - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
             name: Crescimento 24 h
 
       - type: history-graph

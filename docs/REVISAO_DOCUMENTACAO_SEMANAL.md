@@ -16,9 +16,15 @@ verão. A próxima execução aparece no log do serviço.
 
 O package `homeassistant/packages/weekly_documentation_review.yaml` cria
 `sensor.revisao_semanal_da_documentacao` e o dashboard **Raspberry Pi - System
-Health** mostra seu estado e os principais atributos. A coleta ocorre a cada 60
+Health** mostra seu estado, os principais atributos e o botão **Rodar revisão
+agora**. A coleta ocorre a cada 60
 segundos. O agendador também atualiza um heartbeat a cada minuto; após três
 minutos sem atualização, a entidade muda para `indisponível`.
+
+O botão cria um arquivo de gatilho em um diretório local dedicado, compartilhado
+somente com o agendador. O watcher consome o gatilho em até dois segundos e usa
+o mesmo preflight da execução semanal. Solicitações feitas enquanto já existe
+uma revisão em andamento são agrupadas, sem iniciar um segundo processo.
 
 | Estado exibido | Significado |
 | --- | --- |

@@ -70,31 +70,69 @@ for (const groupId of [
 ]) {
   const group = get(groupId, "group");
   for (const memberId of group.nodes) assert.equal(get(memberId).g, groupId);
+  assert(group.w <= 2100, `${groupId} excede a largura organizada do canvas`);
 }
 for (const item of flows.filter(
   (candidate) => candidate.z === "raspberry_pi_cooling_tab" && candidate.type !== "group",
 )) {
   assert(item.g, `${item.id} precisa pertencer a um grupo da aba`);
   assert(get(item.g, "group").nodes.includes(item.id), `${item.id} ausente do grupo ${item.g}`);
+  for (const targetId of (item.wires ?? []).flat()) {
+    const target = get(targetId);
+    assert(target.x >= item.x - 30, `${item.id} possui fio de retorno para ${targetId}`);
+    assert(
+      Math.hypot(target.x - item.x, target.y - item.y) <= 500,
+      `${item.id} possui fio longo para ${targetId}; use link nodes para manter o canvas legivel`,
+    );
+  }
 }
 
 assert.equal(get("raspberry_pi_cooling_tab", "tab").label, "resfriamento_raspberry_pi");
+assert.deepEqual(get("rpi_cooling_start_gate").wires[0], ["rpi_cooling_acquire_out"]);
+assert.deepEqual(get("rpi_cooling_acquire_out", "link out").links, ["rpi_cooling_acquire_in"]);
+assert.deepEqual(get("rpi_cooling_acquire_in", "link in").wires[0], ["rpi_cooling_read_climate"]);
+assert.deepEqual(get("rpi_cooling_stop_read_climate").wires[0], ["rpi_cooling_restore_path_out"]);
+assert.deepEqual(get("rpi_cooling_restore_path_out", "link out").links, [
+  "rpi_cooling_restore_path_in",
+]);
+assert.deepEqual(get("rpi_cooling_restore_path_in", "link in").wires[0], [
+  "rpi_cooling_restore_decision",
+]);
 
 // Os thresholds e duracoes originais permanecem intactos.
 const hot = get("rpi_cooling_hot", "server-state-changed");
 assert.deepEqual(hot.entities.entity, ["sensor.raspberry_pi_cpu_temperature"]);
 assert.equal(hot.ifStateOperator, "gt");
 assert.equal(hot.ifState, "81.9");
+assert.equal(hot.stateType, "str");
+assert.equal(hot.ifStateType, "num");
 assert.equal(hot.for, "2");
 assert.equal(hot.forUnits, "minutes");
 
 const normal = get("rpi_cooling_normal", "server-state-changed");
 assert.equal(normal.ifStateOperator, "lt");
+assert.equal(normal.stateType, "str");
+assert.equal(normal.ifStateType, "num");
 assert.equal(normal.ifState, "70");
 assert.equal(normal.for, "10");
 assert.equal(normal.forUnits, "minutes");
 assert.equal(normal.ignoreCurrentStateUnknown, false);
 assert.equal(normal.ignoreCurrentStateUnavailable, false);
+
+// O estado bruto permanece string; somente o operando do comparador e numerico.
+// Conversao via stateType/state_type=num e descontinuada no HA websocket 0.80.x.
+for (const id of [
+  "rpi_cooling_hot",
+  "rpi_cooling_startup_snapshot",
+  "rpi_cooling_retry_temperature_check",
+  "rpi_cooling_normal",
+  "rpi_cooling_retry_normal_check",
+]) {
+  const item = get(id);
+  assert.equal(item.stateType ?? item.state_type, "str", `${id} nao deve usar state type numerico`);
+}
+assert.equal(get("rpi_cooling_retry_temperature_check").halt_if_type, "num");
+assert.equal(get("rpi_cooling_retry_normal_check").halt_if_type, "num");
 
 // Startup: quente inicia/reconcilia; frio com ownership retoma a janela; faixa intermediaria preserva.
 for (const owner of ["off", "on"]) {
@@ -149,8 +187,18 @@ for (const input of [
 const startupTimer = get("rpi_cooling_restart_recovery_timer", "trigger");
 assert.equal(startupTimer.duration, "10");
 assert.equal(startupTimer.units, "min");
-assert.deepEqual(normal.wires[1], ["rpi_cooling_reset_restart_timer"]);
-assert.deepEqual(startupTimer.wires[0], ["rpi_cooling_retry_normal_check"]);
+assert.deepEqual(normal.wires[1], ["rpi_cooling_reset_timer_out"]);
+assert.deepEqual(get("rpi_cooling_reset_timer_out", "link out").links, ["rpi_cooling_reset_timer_in"]);
+assert.deepEqual(get("rpi_cooling_reset_timer_in", "link in").wires[0], [
+  "rpi_cooling_reset_restart_timer",
+]);
+assert.deepEqual(startupTimer.wires[0], ["rpi_cooling_recovery_window_out"]);
+assert.deepEqual(get("rpi_cooling_recovery_window_out", "link out").links, [
+  "rpi_cooling_recovery_window_in",
+]);
+assert.deepEqual(get("rpi_cooling_recovery_window_in", "link in").wires[0], [
+  "rpi_cooling_retry_normal_check",
+]);
 
 // Idempotencia: evento comum nao reaplica comandos quando ja existe ownership;
 // startup pode reconciliar, e um lock impede duas sequencias concorrentes.
@@ -230,7 +278,9 @@ assert.deepEqual(get("rpi_cooling_persist_snapshot").wires[0], ["rpi_cooling_beg
 assert.deepEqual(get("rpi_cooling_begin_control").wires[0], ["rpi_cooling_set_mode"]);
 assert.deepEqual(get("rpi_cooling_set_mode").wires[0], ["rpi_cooling_set_temperature"]);
 assert.deepEqual(get("rpi_cooling_set_temperature").wires[0], ["rpi_cooling_set_fan"]);
-assert.deepEqual(get("rpi_cooling_set_fan").wires[0], ["rpi_cooling_verify_delay"]);
+assert.deepEqual(get("rpi_cooling_set_fan").wires[0], ["rpi_cooling_start_verify_out"]);
+assert.deepEqual(get("rpi_cooling_start_verify_out", "link out").links, ["rpi_cooling_start_verify_in"]);
+assert.deepEqual(get("rpi_cooling_start_verify_in", "link in").wires[0], ["rpi_cooling_verify_delay"]);
 assert.deepEqual(get("rpi_cooling_verify_delay").wires[0], ["rpi_cooling_read_controlled_climate"]);
 assert.deepEqual(get("rpi_cooling_read_controlled_climate").wires[0], ["rpi_cooling_verify_controlled_climate"]);
 assert.deepEqual(get("rpi_cooling_verify_controlled_climate").wires[0], ["rpi_cooling_control_succeeded"]);
@@ -287,8 +337,8 @@ for (const invalid of [
   assert(result[1]);
   assert.equal(flow.get("rpi_emergency_cooling_operation"), null);
   assert.deepEqual(get("rpi_cooling_control_succeeded").wires[1], [
-    "rpi_cooling_notify_started",
-    "rpi_cooling_dismiss_failure",
+    "rpi_cooling_reconcile_notice_out",
+    "rpi_cooling_reconcile_dismiss_failure_out",
   ]);
 }
 
@@ -326,6 +376,9 @@ for (const retryId of ["rpi_cooling_start_retry_delay", "rpi_cooling_startup_ret
   assert.equal(retry.timeoutUnits, "seconds");
 }
 assert.deepEqual(get("rpi_cooling_start_retry_delay").wires[0], ["rpi_cooling_retry_temperature_check"]);
+assert.deepEqual(get("rpi_cooling_retry_temperature_check").wires[0], [
+  "rpi_cooling_retry_owner_out",
+]);
 
 // Encerramento: helper off bloqueia o caminho destrutivo por wiring; lock evita concorrencia.
 assert.deepEqual(get("rpi_cooling_active_check").wires, [["rpi_cooling_stop_gate"], []]);
@@ -389,13 +442,22 @@ assertAction("rpi_cooling_restore_off", "climate.turn_off", "climate.ar_condicio
 assert.equal(get("rpi_cooling_restore_mode").dataType, "jsonata");
 assert.equal(get("rpi_cooling_restore_temperature").dataType, "jsonata");
 assert.equal(get("rpi_cooling_restore_fan").dataType, "jsonata");
-assert.deepEqual(get("rpi_cooling_restore_off").wires[0], ["rpi_cooling_restore_verify_delay"]);
-assert.deepEqual(get("rpi_cooling_restore_fan").wires[0], ["rpi_cooling_restore_verify_delay"]);
-assert.deepEqual(get("rpi_cooling_restore_fan_decision").wires[1], ["rpi_cooling_restore_verify_delay"]);
+assert.deepEqual(get("rpi_cooling_restore_off").wires[0], ["rpi_cooling_restore_off_verify_out"]);
+assert.deepEqual(get("rpi_cooling_restore_off_verify_out", "link out").links, [
+  "rpi_cooling_restore_verify_in",
+]);
+assert.deepEqual(get("rpi_cooling_restore_fan").wires[0], ["rpi_cooling_restore_verify_out"]);
+assert.deepEqual(get("rpi_cooling_restore_fan_decision").wires[1], ["rpi_cooling_restore_verify_out"]);
+assert.deepEqual(get("rpi_cooling_restore_verify_out", "link out").links, [
+  "rpi_cooling_restore_verify_in",
+]);
+assert.deepEqual(get("rpi_cooling_restore_verify_in", "link in").wires[0], [
+  "rpi_cooling_restore_verify_delay",
+]);
 assert.equal(get("rpi_cooling_restore_verify_delay", "delay").timeout, "5");
 assert.deepEqual(get("rpi_cooling_verify_restored_climate").wires, [
   ["rpi_cooling_restore_finished"],
-  ["rpi_cooling_stop_failure"],
+  ["rpi_cooling_stop_failure_verify_out"],
 ]);
 {
   const restoredOff = run("rpi_cooling_verify_restored_climate", {
@@ -461,15 +523,23 @@ assertAction(
   assert.equal(finalFailure[0], null);
   assert(finalFailure[1]);
 }
-assert.deepEqual(get("rpi_cooling_stop_retry_delay").wires[0], ["rpi_cooling_retry_normal_check"]);
+assert.deepEqual(get("rpi_cooling_stop_retry_delay").wires[0], ["rpi_cooling_stop_retry_out"]);
+assert.deepEqual(get("rpi_cooling_stop_retry_out", "link out").links, ["rpi_cooling_stop_retry_in"]);
+assert.deepEqual(get("rpi_cooling_stop_retry_in", "link in").wires[0], [
+  "rpi_cooling_retry_normal_check",
+]);
 
 // Observabilidade usa IDs estaveis, evitando acumulo; catches cobrem chamadas criticas.
 assert.match(get("rpi_cooling_notify_started").data, /raspberry_pi_emergency_cooling/);
 assert.match(get("rpi_cooling_notify_failure").data, /raspberry_pi_emergency_cooling_failure/);
 assert.match(get("rpi_cooling_notify_recovered").data, /raspberry_pi_emergency_cooling_recovered/);
 assert.match(get("rpi_cooling_dismiss_recovered").data, /raspberry_pi_emergency_cooling_recovered/);
-assert.deepEqual(get("rpi_cooling_control_succeeded").wires[2], ["rpi_cooling_dismiss_recovered"]);
-assert.deepEqual(get("rpi_cooling_start_finalized").wires[2], ["rpi_cooling_dismiss_recovered"]);
+assert.deepEqual(get("rpi_cooling_control_succeeded").wires[2], [
+  "rpi_cooling_reconcile_dismiss_recovered_out",
+]);
+assert.deepEqual(get("rpi_cooling_start_finalized").wires[2], [
+  "rpi_cooling_start_dismiss_recovered_out",
+]);
 const startCatch = new Set(get("rpi_cooling_start_catch", "catch").scope);
 for (const id of [
   "rpi_cooling_read_climate",
