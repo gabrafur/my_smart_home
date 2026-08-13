@@ -100,6 +100,58 @@ assert.doesNotMatch(pingNode.func, /https?:|\.com|\.net|dns/i);
 assert.match(pingNode.func, /internet_ping_cycle_running/);
 assert.match(pingNode.func, /memoryOnly/);
 
+// Exercise the asynchronous lock with the real Function-node code. A second
+// input is ignored while three target callbacks are pending, and a synchronous
+// spawn exception must not release the lock before the other callbacks finish.
+const pingFunction = getFunction("internet_ping");
+async function testPingLock({ throwFirst = false } = {}) {
+  const pingFlow = context();
+  let calls = 0;
+  let active = 0;
+  let peak = 0;
+  let sends = 0;
+  let done = 0;
+  const fakeChildProcess = {
+    execFile(_file, _args, _options, callback) {
+      calls += 1;
+      if (throwFirst && calls === 1) throw new Error("simulated synchronous spawn failure");
+      active += 1;
+      peak = Math.max(peak, active);
+      setTimeout(() => {
+        active -= 1;
+        callback(null, "ok", "");
+      }, 25);
+    },
+  };
+  const asyncNode = {
+    status() {}, warn() {}, error() {},
+    send() { sends += 1; },
+    done() { done += 1; },
+  };
+  const asyncGlobal = { get(key) { return key === "childProcess" ? fakeChildProcess : undefined; } };
+
+  pingFunction({}, pingFlow, asyncNode, asyncGlobal);
+  assert.equal(pingFlow.get("internet_ping_cycle_running", "memoryOnly"), true);
+  assert.equal(pingFunction({}, pingFlow, asyncNode, asyncGlobal), null);
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(pingFlow.get("internet_ping_cycle_running", "memoryOnly"), true);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.equal(pingFlow.get("internet_ping_cycle_running", "memoryOnly"), false);
+  assert.equal(calls, 3);
+  assert.ok(peak <= 3);
+  assert.equal(sends, 1);
+  assert.equal(done, 1);
+
+  pingFunction({}, pingFlow, asyncNode, asyncGlobal);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  assert.equal(calls, 6);
+  assert.equal(sends, 2);
+  assert.equal(done, 2);
+  assert.equal(active, 0);
+}
+await testPingLock();
+await testPingLock({ throwFirst: true });
+
 const observeZigbee = getFunction("zigbee_store_observation");
 const zigbee = getFunction("zigbee_network_evaluate");
 const zigbeeComponent = getFunction("zigbee_component_evaluate");
@@ -159,6 +211,22 @@ result = run(zigbeeComponent, zigbeeFlow, { topic: componentTopic, payload: "onl
 assert.equal(result, null);
 result = run(zigbeeComponent, zigbeeFlow, { topic: componentTopic, payload: "offline", monitor_now: now + 5_000 });
 assert.ok(result[0], "nova queda do componente após recuperação deve alertar");
+
+// Hierarchical friendly names keep the complete path and cannot collide after slugification.
+const hierarchicalFlow = context();
+const hierarchical = [
+  "andar1/cozinha/sensor",
+  "externo/portao/sensor",
+  // This name deliberately has the same readable slug as the first one.
+  "andar1-cozinha/sensor",
+].map((component, index) => run(zigbeeComponent, hierarchicalFlow, {
+  topic: `zigbee2mqtt/${component}/availability`,
+  payload: "offline",
+  monitor_now: now + 10_000 + index,
+})[0].notification);
+assert.equal(new Set(hierarchical.map((item) => item.id)).size, hierarchical.length);
+assert.match(hierarchical[0].message, /andar1\/cozinha\/sensor/);
+assert.match(hierarchical[1].message, /externo\/portao\/sensor/);
 
 // Structural review: unique ids, valid wires, shared notifier and left-to-right layout.
 const ids = flows.map((item) => item.id);
