@@ -244,6 +244,29 @@ validação física de corte da internet, reinício do roteador, restart real do
 Zigbee2MQTT e entrega do push nos dois celulares exige janela controlada no
 local.
 
+## Registro parcial da validação física (2026-08-13)
+
+| Cenário | Tipo de teste | Resultado observado | Evidência resumida | Status |
+| --- | --- | --- | --- | --- |
+| Corte físico da WAN | Físico | Não executado até o fim | Uma tentativa foi invalidada por um restart do host e perda do observador temporário; a repetição foi cancelada pelo usuário para preservar a conectividade da sessão do Codex. | PENDENTE |
+| Retorno real da WAN | Físico | Não executado | Não existe queda física válida correspondente. | PENDENTE |
+| Restart real do roteador | Físico | Não executado | Exige nova janela que permita perder a conectividade externa. | PENDENTE |
+| Restart real do Zigbee2MQTT | Físico | Startup transitório abaixo do threshold, sem incidente | `bridge/state` ficou offline às 19:52:24 UTC e voltou online às 19:52:37 UTC (cerca de 13 s); o monitor passou por `checking`, recompôs o estado retained e permaneceu online por mais de 90 s, sem alerta ou falsa recuperação. | PASS |
+| Entrega no iPhone de Gabriel | Físico/manual | Não observada | Nenhum incidente físico confirmado ultrapassou o threshold. | PENDENTE |
+| Entrega no iPhone de Valéria | Físico/manual | Não observada | Nenhum incidente físico confirmado ultrapassou o threshold. | PENDENTE |
+| Ordem das notificações | Físico/manual | Não observada | Depende de uma queda WAN válida e da anotação manual dos dois aparelhos. | PENDENTE |
+
+O deploy físico também mostrou que o Home Assistant 2026.x prefixava o nome do
+dispositivo nos IDs sugeridos apesar de `object_id`. Os quatro payloads de
+discovery agora declaram `default_entity_id`; após republicação, as entidades
+reais foram registradas exatamente como `binary_sensor.internet_connection`,
+`sensor.internet_connection_state`, `binary_sensor.zigbee_network` e
+`sensor.zigbee_network_state`. Um teste automatizado protege esses IDs.
+
+Este registro é parcial. Os itens `PENDENTE` acima não são `PASS`, e a pull
+request deve continuar Draft até uma janela física com observabilidade
+persistente concluir WAN, roteador e entrega móvel.
+
 ## Checklist operacional dos testes físicos pendentes
 
 Execute um teste por vez, com acesso local ao equipamento e um limite de cinco

@@ -359,6 +359,7 @@ function internetDiscovery() {
       payload: JSON.stringify({
         name: "Conexão com a internet",
         object_id: "internet_connection",
+        default_entity_id: "binary_sensor.internet_connection",
         unique_id: "node_red_internet_connection",
         device_class: "connectivity",
         state_topic: "nodered/infrastructure/internet/connection",
@@ -374,6 +375,7 @@ function internetDiscovery() {
       payload: JSON.stringify({
         name: "Estado da conexão com a internet",
         object_id: "internet_connection_state",
+        default_entity_id: "sensor.internet_connection_state",
         unique_id: "node_red_internet_connection_state",
         icon: "mdi:wan",
         entity_category: "diagnostic",
@@ -588,6 +590,7 @@ function zigbeeDiscovery() {
       payload: JSON.stringify({
         name: "Rede Zigbee",
         object_id: "zigbee_network",
+        default_entity_id: "binary_sensor.zigbee_network",
         unique_id: "node_red_zigbee_network",
         device_class: "connectivity",
         state_topic: "nodered/infrastructure/zigbee/connection",
@@ -603,6 +606,7 @@ function zigbeeDiscovery() {
       payload: JSON.stringify({
         name: "Estado da rede Zigbee",
         object_id: "zigbee_network_state",
+        default_entity_id: "sensor.zigbee_network_state",
         unique_id: "node_red_zigbee_network_state",
         icon: "mdi:zigbee",
         entity_category: "diagnostic",
