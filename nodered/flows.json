@@ -114,11 +114,12 @@
             "sec_notify_valeria_approaching",
             "sec_creta_trip_refresh_gate",
             "sec_refresh_creta_trip_info",
-            "sec_approach_wake_gate"
+            "sec_approach_wake_gate",
+            "sec_arrival_disarm_out"
         ],
-        "x": 664,
+        "x": 654,
         "y": 99,
-        "w": 872,
+        "w": 882,
         "h": 442
     },
     {
@@ -1936,7 +1937,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 820,
+        "x": 890,
         "y": 140,
         "wires": [
             []
@@ -1955,8 +1956,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 820,
-        "y": 300,
+        "x": 810,
+        "y": 320,
         "wires": [
             [
                 "sec_detect_arriving_source"
@@ -2011,8 +2012,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1100,
-        "y": 300,
+        "x": 1210,
+        "y": 280,
         "wires": [
             [
                 "sec_check_dark",
@@ -2376,12 +2377,13 @@
         "id": "sec_arrival_disarm_out",
         "type": "link out",
         "z": "2fd40fd570e6f37a",
+        "g": "grp_sec_deteccao",
         "name": "Chegada real -> desarme automatico",
         "mode": "link",
         "links": [
             "alarm_arrival_in"
         ],
-        "x": 1375,
+        "x": 1425,
         "y": 360,
         "wires": []
     },
