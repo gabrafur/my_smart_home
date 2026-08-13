@@ -8,6 +8,7 @@ source_codex_dir="/scheduler-auth/codex"
 source_key="/scheduler-auth/id_ed25519"
 source_known_hosts="/scheduler-auth/known_hosts"
 status_dir="/run/docs-review"
+trigger_dir="/run/docs-review-trigger"
 
 case "$repo_uid:$repo_gid" in
   *[!0-9:]*|:*|*:)
@@ -44,7 +45,7 @@ fi
 
 install -d -m 700 -o "$repo_uid" -g "$repo_gid" \
   "$runtime_home" "$runtime_home/.codex" "$runtime_home/.ssh"
-install -d -m 755 -o "$repo_uid" -g "$repo_gid" "$status_dir"
+install -d -m 755 -o "$repo_uid" -g "$repo_gid" "$status_dir" "$trigger_dir"
 cp -R "$source_codex_dir/." "$runtime_home/.codex/"
 install -m 600 -o "$repo_uid" -g "$repo_gid" \
   "$source_key" "$runtime_home/.ssh/id_ed25519"

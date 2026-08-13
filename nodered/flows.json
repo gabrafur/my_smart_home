@@ -86,6 +86,44 @@
         "info": "Monitoramento de armazenamento, tendencia, alertas e housekeeping seguro sem Docker socket ou sudo."
     },
     {
+        "id": "monitoramento_internet_tab",
+        "type": "tab",
+        "label": "monitoramento_internet",
+        "disabled": false,
+        "info": "Monitora conectividade externa por ping a três IPs independentes, confirma queda/recuperação e publica estado no Home Assistant via MQTT discovery.",
+        "env": []
+    },
+    {
+        "id": "monitoramento_zigbee_tab",
+        "type": "tab",
+        "label": "monitoramento_zigbee",
+        "disabled": false,
+        "info": "Centraliza falha/recuperação da ponte Zigbee2MQTT e dos componentes, com estado persistente, dedupe e notificações compartilhadas.",
+        "env": []
+    },
+    {
+        "id": "infra_notify_all_mobiles",
+        "type": "subflow",
+        "name": "Notificar todos os dispositivos móveis",
+        "info": "Contrato de entrada:\n\nmsg.notification = {\n  id: string obrigatório,\n  title: string obrigatório,\n  message: string obrigatório,\n  dismiss_id?: string\n}\n\nCria/atualiza uma notificação persistente e envia um push aos iPhones de Gabriel e Valéria. Em recuperação, dismiss_id remove o alerta persistente da falha anterior. O subflow não decide estado, retry ou deduplicação; essas responsabilidades pertencem ao monitor chamador.",
+        "category": "infraestrutura",
+        "in": [
+            {
+                "x": 60,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "infra_notify_route"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
         "id": "grp_people_events",
         "type": "group",
         "z": "security_people_tab",
@@ -482,12 +520,21 @@
             "rpi_cooling_read_owner",
             "rpi_cooling_start_gate",
             "rpi_cooling_restart_recovery_timer",
-            "rpi_cooling_reset_restart_timer"
+            "rpi_cooling_reset_restart_timer",
+            "rpi_cooling_acquire_out",
+            "rpi_cooling_hot_owner_out",
+            "rpi_cooling_startup_owner_out",
+            "rpi_cooling_owner_in",
+            "rpi_cooling_trigger_failure_out",
+            "rpi_cooling_startup_rollback_out",
+            "rpi_cooling_recovery_window_out",
+            "rpi_cooling_reset_timer_in",
+            "rpi_cooling_retry_startup_in"
         ],
-        "x": 24,
-        "y": 99,
-        "w": 1622,
-        "h": 242
+        "x": 40,
+        "y": 60,
+        "w": 2100,
+        "h": 300
     },
     {
         "id": "grp_rpi_cooling_start",
@@ -521,12 +568,31 @@
             "rpi_cooling_start_retry_delay",
             "rpi_cooling_startup_retry_delay",
             "rpi_cooling_retry_temperature_check",
-            "rpi_cooling_cancel_start"
+            "rpi_cooling_cancel_start",
+            "rpi_cooling_acquire_in",
+            "rpi_cooling_start_verify_out",
+            "rpi_cooling_start_verify_in",
+            "rpi_cooling_start_failure_main_out",
+            "rpi_cooling_start_failure_verify_out",
+            "rpi_cooling_start_failure_in",
+            "rpi_cooling_start_rollback_out",
+            "rpi_cooling_retry_owner_out",
+            "rpi_cooling_retry_startup_out",
+            "rpi_cooling_start_notice_out",
+            "rpi_cooling_start_dismiss_failure_out",
+            "rpi_cooling_start_dismiss_recovered_out",
+            "rpi_cooling_start_clear_out",
+            "rpi_cooling_start_notify_failure_out",
+            "rpi_cooling_reconcile_notice_out",
+            "rpi_cooling_reconcile_dismiss_failure_out",
+            "rpi_cooling_reconcile_dismiss_recovered_out",
+            "rpi_cooling_cancel_rollback_out",
+            "rpi_cooling_cancel_clear_out"
         ],
-        "x": 34,
-        "y": 351.5,
-        "w": 3132,
-        "h": 289.5
+        "x": 40,
+        "y": 390,
+        "w": 2100,
+        "h": 420
     },
     {
         "id": "grp_rpi_cooling_stop",
@@ -566,12 +632,29 @@
             "rpi_cooling_stop_catch",
             "rpi_cooling_stop_failure",
             "rpi_cooling_stop_retry_delay",
-            "rpi_cooling_cancel_stop"
+            "rpi_cooling_cancel_stop",
+            "rpi_cooling_restore_path_out",
+            "rpi_cooling_restore_path_in",
+            "rpi_cooling_restore_verify_out",
+            "rpi_cooling_restore_verify_in",
+            "rpi_cooling_stop_external_in",
+            "rpi_cooling_recovery_window_in",
+            "rpi_cooling_reset_timer_out",
+            "rpi_cooling_stop_retry_out",
+            "rpi_cooling_stop_retry_in",
+            "rpi_cooling_stop_failure_verify_out",
+            "rpi_cooling_stop_failure_in",
+            "rpi_cooling_restore_off_verify_out",
+            "rpi_cooling_stop_clear_out",
+            "rpi_cooling_stop_dismiss_started_out",
+            "rpi_cooling_stop_dismiss_failure_out",
+            "rpi_cooling_stop_notify_recovered_out",
+            "rpi_cooling_stop_notify_failure_out"
         ],
-        "x": 44,
-        "y": 659,
-        "w": 4522,
-        "h": 302
+        "x": 40,
+        "y": 840,
+        "w": 2100,
+        "h": 610
     },
     {
         "id": "grp_rpi_cooling_observability",
@@ -593,12 +676,19 @@
             "rpi_cooling_notify_failure",
             "rpi_cooling_dismiss_started",
             "rpi_cooling_dismiss_failure",
-            "rpi_cooling_dismiss_recovered"
+            "rpi_cooling_dismiss_recovered",
+            "rpi_cooling_clear_snapshot_in",
+            "rpi_cooling_start_notice_in",
+            "rpi_cooling_notify_recovered_in",
+            "rpi_cooling_notify_failure_in",
+            "rpi_cooling_dismiss_started_in",
+            "rpi_cooling_dismiss_failure_in",
+            "rpi_cooling_dismiss_recovered_in"
         ],
-        "x": 134,
-        "y": 1019,
-        "w": 1972,
-        "h": 122
+        "x": 40,
+        "y": 1480,
+        "w": 2100,
+        "h": 160
     },
     {
         "id": "storage_group_config",
@@ -684,6 +774,270 @@
         "h": 239.5
     },
     {
+        "id": "grp_internet_triggers",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "1. Gatilhos",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_cycle",
+            "internet_discovery_tick"
+        ],
+        "x": 34,
+        "y": 119,
+        "w": 312,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_ping",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "2. Testar conectividade",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_ping"
+        ],
+        "x": 354,
+        "y": 119,
+        "w": 312,
+        "h": 82
+    },
+    {
+        "id": "grp_internet_state",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "3. Confirmação e estado",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_evaluate"
+        ],
+        "x": 694,
+        "y": 111.5,
+        "w": 392,
+        "h": 97
+    },
+    {
+        "id": "grp_internet_notify",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "4. Queda / retorno / notify",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_notify_down",
+            "internet_notify_recovery"
+        ],
+        "x": 1124,
+        "y": 99,
+        "w": 292,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_publish",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "5. Entidades do Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_discovery",
+            "internet_mqtt_publish"
+        ],
+        "x": 774,
+        "y": 359,
+        "w": 572,
+        "h": 82
+    },
+    {
+        "id": "grp_internet_tests",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "6. Testes",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_test_note"
+        ],
+        "x": 274,
+        "y": 439,
+        "w": 432,
+        "h": 82
+    },
+    {
+        "id": "grp_zigbee_triggers",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "1. Estado / heartbeat Zigbee",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_bridge_state",
+            "zigbee_broker_status",
+            "zigbee_tick",
+            "zigbee_component_availability",
+            "zigbee_discovery_tick"
+        ],
+        "x": 24,
+        "y": 99,
+        "w": 312,
+        "h": 442
+    },
+    {
+        "id": "grp_zigbee_detect",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "2. Avaliar saúde",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_store_observation",
+            "zigbee_component_evaluate"
+        ],
+        "x": 374,
+        "y": 139,
+        "w": 332,
+        "h": 312
+    },
+    {
+        "id": "grp_zigbee_state",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "3. Confirmar falha / recuperação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_network_evaluate"
+        ],
+        "x": 754,
+        "y": 151.5,
+        "w": 272,
+        "h": 97
+    },
+    {
+        "id": "grp_zigbee_notify",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "4. Notificação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_network_notify_down",
+            "zigbee_network_notify_recovery",
+            "zigbee_component_notify_down",
+            "zigbee_component_notify_recovery"
+        ],
+        "x": 1084,
+        "y": 139,
+        "w": 292,
+        "h": 422
+    },
+    {
+        "id": "grp_zigbee_publish",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "5. Entidades do Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_discovery",
+            "zigbee_mqtt_publish"
+        ],
+        "x": 754,
+        "y": 399,
+        "w": 272,
+        "h": 142
+    },
+    {
+        "id": "grp_zigbee_tests",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "6. Testes",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_test_note"
+        ],
+        "x": 354,
+        "y": 579,
+        "w": 432,
+        "h": 82
+    },
+    {
         "id": "4126427d5e161a03",
         "type": "server",
         "name": "Home Assistant",
@@ -743,6 +1097,122 @@
         "willMsg": {},
         "userProps": "",
         "sessionExpiry": ""
+    },
+    {
+        "id": "infra_notify_route",
+        "type": "function",
+        "z": "infra_notify_all_mobiles",
+        "name": "Validar e distribuir",
+        "func": "const notification = msg.notification;\n  if (!notification || !notification.title || !notification.message || !notification.id) {\n    node.warn(\"Notificação de infraestrutura descartada: título, mensagem ou id ausente.\");\n    return null;\n  }\n  const dismiss = notification.dismiss_id ? msg : null;\n  return [msg, msg, dismiss];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 220,
+        "y": 80,
+        "wires": [
+            [
+                "infra_notify_persistent"
+            ],
+            [
+                "infra_notify_mobile"
+            ],
+            [
+                "infra_notify_dismiss"
+            ]
+        ]
+    },
+    {
+        "id": "infra_notify_persistent",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Criar/atualizar alerta persistente",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\": notification.title, \"message\": notification.message, \"notification_id\": notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 520,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "infra_notify_mobile",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Push Gabriel + Valéria",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.send_message",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "notify.iphone_de_gabriel_furlan",
+            "notify.iphone_de_valeria"
+        ],
+        "labelId": [],
+        "data": "{\"title\": notification.title, \"message\": notification.message}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "send_message",
+        "x": 500,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "infra_notify_dismiss",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Remover alerta anterior",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\": notification.dismiss_id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 500,
+        "y": 120,
+        "wires": [
+            []
+        ]
     },
     {
         "id": "45296e246a57590d",
@@ -4544,7 +5014,7 @@
             }
         ],
         "x": 180,
-        "y": 140,
+        "y": 120,
         "wires": [
             [
                 "rpi_cooling_prepare_hot"
@@ -4566,10 +5036,10 @@
         "finalize": "",
         "libs": [],
         "x": 430,
-        "y": 140,
+        "y": 120,
         "wires": [
             [
-                "rpi_cooling_read_owner"
+                "rpi_cooling_hot_owner_out"
             ]
         ]
     },
@@ -4688,13 +5158,13 @@
         "y": 220,
         "wires": [
             [
-                "rpi_cooling_read_owner"
+                "rpi_cooling_startup_owner_out"
             ],
             [
                 "rpi_cooling_restart_recovery_timer"
             ],
             [
-                "rpi_cooling_stop_read_climate"
+                "rpi_cooling_startup_rollback_out"
             ]
         ]
     },
@@ -4729,8 +5199,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1250,
-        "y": 140,
+        "x": 1600,
+        "y": 160,
         "wires": [
             [
                 "rpi_cooling_start_gate"
@@ -4750,14 +5220,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1500,
-        "y": 140,
+        "x": 1840,
+        "y": 160,
         "wires": [
             [
-                "rpi_cooling_read_climate"
+                "rpi_cooling_acquire_out"
             ],
             [
-                "rpi_cooling_start_failure"
+                "rpi_cooling_trigger_failure_out"
             ]
         ]
     },
@@ -4779,11 +5249,11 @@
         "bytopic": "all",
         "topic": "topic",
         "outputs": 1,
-        "x": 1280,
+        "x": 1450,
         "y": 260,
         "wires": [
             [
-                "rpi_cooling_retry_normal_check"
+                "rpi_cooling_recovery_window_out"
             ]
         ]
     },
@@ -4800,8 +5270,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 470,
-        "y": 300,
+        "x": 1250,
+        "y": 310,
         "wires": [
             [
                 "rpi_cooling_restart_recovery_timer"
@@ -4851,8 +5321,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 190,
-        "y": 440,
+        "x": 230,
+        "y": 450,
         "wires": [
             [
                 "rpi_cooling_validate_climate"
@@ -4872,8 +5342,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 470,
-        "y": 440,
+        "x": 500,
+        "y": 450,
         "wires": [
             [
                 "rpi_cooling_persist_snapshot"
@@ -4882,7 +5352,7 @@
                 "rpi_cooling_begin_control"
             ],
             [
-                "rpi_cooling_start_failure"
+                "rpi_cooling_start_failure_main_out"
             ]
         ]
     },
@@ -4912,8 +5382,8 @@
         "blockInputOverrides": true,
         "domain": "input_text",
         "service": "set_value",
-        "x": 750,
-        "y": 400,
+        "x": 770,
+        "y": 410,
         "wires": [
             [
                 "rpi_cooling_begin_control"
@@ -4933,8 +5403,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 980,
-        "y": 440,
+        "x": 950,
+        "y": 450,
         "wires": [
             [
                 "rpi_cooling_set_mode"
@@ -4967,8 +5437,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_hvac_mode",
-        "x": 1210,
-        "y": 440,
+        "x": 1230,
+        "y": 450,
         "wires": [
             [
                 "rpi_cooling_set_temperature"
@@ -5001,8 +5471,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_temperature",
-        "x": 1420,
-        "y": 440,
+        "x": 1430,
+        "y": 450,
         "wires": [
             [
                 "rpi_cooling_set_fan"
@@ -5035,11 +5505,11 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_fan_mode",
-        "x": 1630,
-        "y": 440,
+        "x": 1640,
+        "y": 450,
         "wires": [
             [
-                "rpi_cooling_verify_delay"
+                "rpi_cooling_start_verify_out"
             ]
         ]
     },
@@ -5061,8 +5531,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1840,
-        "y": 440,
+        "x": 250,
+        "y": 570,
         "wires": [
             [
                 "rpi_cooling_read_controlled_climate"
@@ -5106,8 +5576,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 2070,
-        "y": 440,
+        "x": 500,
+        "y": 570,
         "wires": [
             [
                 "rpi_cooling_verify_controlled_climate"
@@ -5127,14 +5597,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2340,
-        "y": 440,
+        "x": 780,
+        "y": 570,
         "wires": [
             [
                 "rpi_cooling_control_succeeded"
             ],
             [
-                "rpi_cooling_start_failure"
+                "rpi_cooling_start_failure_verify_out"
             ]
         ]
     },
@@ -5151,18 +5621,18 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2600,
-        "y": 440,
+        "x": 1060,
+        "y": 570,
         "wires": [
             [
                 "rpi_cooling_mark_active"
             ],
             [
-                "rpi_cooling_notify_started",
-                "rpi_cooling_dismiss_failure"
+                "rpi_cooling_reconcile_notice_out",
+                "rpi_cooling_reconcile_dismiss_failure_out"
             ],
             [
-                "rpi_cooling_dismiss_recovered"
+                "rpi_cooling_reconcile_dismiss_recovered_out"
             ]
         ]
     },
@@ -5192,8 +5662,8 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_on",
-        "x": 2820,
-        "y": 400,
+        "x": 1310,
+        "y": 530,
         "wires": [
             [
                 "rpi_cooling_start_finalized"
@@ -5213,17 +5683,17 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3060,
-        "y": 400,
+        "x": 1570,
+        "y": 530,
         "wires": [
             [
-                "rpi_cooling_notify_started"
+                "rpi_cooling_start_notice_out"
             ],
             [
-                "rpi_cooling_dismiss_failure"
+                "rpi_cooling_start_dismiss_failure_out"
             ],
             [
-                "rpi_cooling_dismiss_recovered"
+                "rpi_cooling_start_dismiss_recovered_out"
             ]
         ]
     },
@@ -5246,11 +5716,11 @@
             "rpi_cooling_startup_snapshot"
         ],
         "uncaught": false,
-        "x": 220,
-        "y": 560,
+        "x": 95,
+        "y": 760,
         "wires": [
             [
-                "rpi_cooling_start_failure"
+                "rpi_cooling_start_failure_in"
             ]
         ]
     },
@@ -5267,8 +5737,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 520,
-        "y": 560,
+        "x": 300,
+        "y": 700,
         "wires": [
             [
                 "rpi_cooling_start_retry_delay"
@@ -5277,13 +5747,13 @@
                 "rpi_cooling_startup_retry_delay"
             ],
             [
-                "rpi_cooling_stop_read_climate"
+                "rpi_cooling_start_rollback_out"
             ],
             [
-                "rpi_cooling_clear_snapshot"
+                "rpi_cooling_start_clear_out"
             ],
             [
-                "rpi_cooling_notify_failure"
+                "rpi_cooling_start_notify_failure_out"
             ]
         ]
     },
@@ -5305,8 +5775,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 820,
-        "y": 520,
+        "x": 770,
+        "y": 660,
         "wires": [
             [
                 "rpi_cooling_retry_temperature_check"
@@ -5331,11 +5801,11 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 820,
-        "y": 600,
+        "x": 770,
+        "y": 740,
         "wires": [
             [
-                "rpi_cooling_startup_snapshot"
+                "rpi_cooling_retry_startup_out"
             ]
         ]
     },
@@ -5370,11 +5840,11 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1090,
-        "y": 520,
+        "x": 1070,
+        "y": 660,
         "wires": [
             [
-                "rpi_cooling_read_owner"
+                "rpi_cooling_retry_owner_out"
             ],
             [
                 "rpi_cooling_cancel_start"
@@ -5395,13 +5865,13 @@
         "finalize": "",
         "libs": [],
         "x": 1370,
-        "y": 540,
+        "y": 760,
         "wires": [
             [
-                "rpi_cooling_stop_read_climate"
+                "rpi_cooling_cancel_rollback_out"
             ],
             [
-                "rpi_cooling_clear_snapshot"
+                "rpi_cooling_cancel_clear_out"
             ]
         ]
     },
@@ -5457,13 +5927,13 @@
             }
         ],
         "x": 180,
-        "y": 760,
+        "y": 920,
         "wires": [
             [
                 "rpi_cooling_prepare_stop"
             ],
             [
-                "rpi_cooling_reset_restart_timer"
+                "rpi_cooling_reset_timer_out"
             ]
         ]
     },
@@ -5498,8 +5968,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 430,
-        "y": 820,
+        "x": 300,
+        "y": 920,
         "wires": [
             [
                 "rpi_cooling_prepare_stop"
@@ -5522,8 +5992,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 710,
-        "y": 760,
+        "x": 520,
+        "y": 920,
         "wires": [
             [
                 "rpi_cooling_active_check"
@@ -5561,8 +6031,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 950,
-        "y": 760,
+        "x": 760,
+        "y": 920,
         "wires": [
             [
                 "rpi_cooling_stop_gate"
@@ -5583,8 +6053,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1200,
-        "y": 760,
+        "x": 1000,
+        "y": 920,
         "wires": [
             [
                 "rpi_cooling_stop_read_climate"
@@ -5634,11 +6104,11 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1460,
-        "y": 760,
+        "x": 1260,
+        "y": 920,
         "wires": [
             [
-                "rpi_cooling_restore_decision"
+                "rpi_cooling_restore_path_out"
             ]
         ]
     },
@@ -5655,8 +6125,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1750,
-        "y": 760,
+        "x": 260,
+        "y": 1070,
         "wires": [
             [
                 "rpi_cooling_restore_off"
@@ -5695,11 +6165,11 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "turn_off",
-        "x": 2040,
-        "y": 700,
+        "x": 540,
+        "y": 1030,
         "wires": [
             [
-                "rpi_cooling_restore_verify_delay"
+                "rpi_cooling_restore_off_verify_out"
             ]
         ]
     },
@@ -5729,8 +6199,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_hvac_mode",
-        "x": 2040,
-        "y": 780,
+        "x": 540,
+        "y": 1110,
         "wires": [
             [
                 "rpi_cooling_restore_temperature_decision"
@@ -5750,8 +6220,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2280,
-        "y": 780,
+        "x": 790,
+        "y": 1110,
         "wires": [
             [
                 "rpi_cooling_restore_temperature"
@@ -5787,8 +6257,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_temperature",
-        "x": 2520,
-        "y": 740,
+        "x": 1040,
+        "y": 1070,
         "wires": [
             [
                 "rpi_cooling_restore_fan_decision"
@@ -5808,14 +6278,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2760,
-        "y": 780,
+        "x": 1290,
+        "y": 1110,
         "wires": [
             [
                 "rpi_cooling_restore_fan"
             ],
             [
-                "rpi_cooling_restore_verify_delay"
+                "rpi_cooling_restore_verify_out"
             ]
         ]
     },
@@ -5845,11 +6315,11 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_fan_mode",
-        "x": 2990,
-        "y": 740,
+        "x": 1530,
+        "y": 1070,
         "wires": [
             [
-                "rpi_cooling_restore_verify_delay"
+                "rpi_cooling_restore_verify_out"
             ]
         ]
     },
@@ -5871,8 +6341,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 3230,
-        "y": 760,
+        "x": 260,
+        "y": 1210,
         "wires": [
             [
                 "rpi_cooling_read_restored_climate"
@@ -5916,8 +6386,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 3480,
-        "y": 760,
+        "x": 520,
+        "y": 1210,
         "wires": [
             [
                 "rpi_cooling_verify_restored_climate"
@@ -5937,14 +6407,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3730,
-        "y": 760,
+        "x": 790,
+        "y": 1210,
         "wires": [
             [
                 "rpi_cooling_restore_finished"
             ],
             [
-                "rpi_cooling_stop_failure"
+                "rpi_cooling_stop_failure_verify_out"
             ]
         ]
     },
@@ -5961,8 +6431,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3970,
-        "y": 760,
+        "x": 1060,
+        "y": 1210,
         "wires": [
             [
                 "rpi_cooling_mark_inactive"
@@ -5998,8 +6468,8 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_off",
-        "x": 4200,
-        "y": 820,
+        "x": 1320,
+        "y": 1250,
         "wires": [
             [
                 "rpi_cooling_rollback_finalized"
@@ -6019,11 +6489,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4450,
-        "y": 820,
+        "x": 1590,
+        "y": 1250,
         "wires": [
             [
-                "rpi_cooling_clear_snapshot"
+                "rpi_cooling_stop_clear_out"
             ]
         ]
     },
@@ -6053,8 +6523,8 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_off",
-        "x": 4200,
-        "y": 720,
+        "x": 1320,
+        "y": 1170,
         "wires": [
             [
                 "rpi_cooling_stop_finalized"
@@ -6074,20 +6544,20 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4440,
-        "y": 720,
+        "x": 1590,
+        "y": 1170,
         "wires": [
             [
-                "rpi_cooling_clear_snapshot"
+                "rpi_cooling_stop_clear_out"
             ],
             [
-                "rpi_cooling_dismiss_started"
+                "rpi_cooling_stop_dismiss_started_out"
             ],
             [
-                "rpi_cooling_dismiss_failure"
+                "rpi_cooling_stop_dismiss_failure_out"
             ],
             [
-                "rpi_cooling_notify_recovered"
+                "rpi_cooling_stop_notify_recovered_out"
             ]
         ]
     },
@@ -6110,11 +6580,11 @@
             "rpi_cooling_retry_normal_check"
         ],
         "uncaught": false,
-        "x": 220,
-        "y": 920,
+        "x": 95,
+        "y": 1440,
         "wires": [
             [
-                "rpi_cooling_stop_failure"
+                "rpi_cooling_stop_failure_in"
             ]
         ]
     },
@@ -6131,14 +6601,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 920,
+        "x": 300,
+        "y": 1390,
         "wires": [
             [
                 "rpi_cooling_stop_retry_delay"
             ],
             [
-                "rpi_cooling_notify_failure"
+                "rpi_cooling_stop_notify_failure_out"
             ]
         ]
     },
@@ -6160,11 +6630,11 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 780,
-        "y": 900,
+        "x": 610,
+        "y": 1390,
         "wires": [
             [
-                "rpi_cooling_retry_normal_check"
+                "rpi_cooling_stop_retry_out"
             ]
         ]
     },
@@ -6181,8 +6651,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 760,
-        "y": 840,
+        "x": 610,
+        "y": 980,
         "wires": [
             []
         ]
@@ -6213,8 +6683,8 @@
         "blockInputOverrides": true,
         "domain": "input_text",
         "service": "set_value",
-        "x": 260,
-        "y": 1100,
+        "x": 230,
+        "y": 1560,
         "wires": [
             []
         ]
@@ -6243,8 +6713,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 510,
-        "y": 1060,
+        "x": 500,
+        "y": 1560,
         "wires": [
             []
         ]
@@ -6273,8 +6743,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 780,
-        "y": 1060,
+        "x": 770,
+        "y": 1560,
         "wires": [
             []
         ]
@@ -6303,8 +6773,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 1060,
-        "y": 1060,
+        "x": 1040,
+        "y": 1560,
         "wires": [
             []
         ]
@@ -6333,8 +6803,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "dismiss",
-        "x": 1370,
-        "y": 1060,
+        "x": 1320,
+        "y": 1560,
         "wires": [
             []
         ]
@@ -6363,8 +6833,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "dismiss",
-        "x": 1640,
-        "y": 1060,
+        "x": 1600,
+        "y": 1560,
         "wires": [
             []
         ]
@@ -6393,8 +6863,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "dismiss",
-        "x": 1920,
-        "y": 1060,
+        "x": 1930,
+        "y": 1560,
         "wires": [
             []
         ]
@@ -6857,281 +7327,6 @@
         "wires": []
     },
     {
-        "id": "infra_notify_all_mobiles",
-        "type": "subflow",
-        "name": "Notificar todos os dispositivos móveis",
-        "info": "Contrato de entrada:\n\nmsg.notification = {\n  id: string obrigatório,\n  title: string obrigatório,\n  message: string obrigatório,\n  dismiss_id?: string\n}\n\nCria/atualiza uma notificação persistente e envia um push aos iPhones de Gabriel e Valéria. Em recuperação, dismiss_id remove o alerta persistente da falha anterior. O subflow não decide estado, retry ou deduplicação; essas responsabilidades pertencem ao monitor chamador.",
-        "category": "infraestrutura",
-        "in": [
-            {
-                "x": 60,
-                "y": 80,
-                "wires": [
-                    {
-                        "id": "infra_notify_route"
-                    }
-                ]
-            }
-        ],
-        "out": [],
-        "env": [],
-        "meta": {},
-        "color": "#DDAA99"
-    },
-    {
-        "id": "infra_notify_route",
-        "type": "function",
-        "z": "infra_notify_all_mobiles",
-        "name": "Validar e distribuir",
-        "func": "const notification = msg.notification;\n  if (!notification || !notification.title || !notification.message || !notification.id) {\n    node.warn(\"Notificação de infraestrutura descartada: título, mensagem ou id ausente.\");\n    return null;\n  }\n  const dismiss = notification.dismiss_id ? msg : null;\n  return [msg, msg, dismiss];",
-        "outputs": 3,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 220,
-        "y": 80,
-        "wires": [
-            [
-                "infra_notify_persistent"
-            ],
-            [
-                "infra_notify_mobile"
-            ],
-            [
-                "infra_notify_dismiss"
-            ]
-        ]
-    },
-    {
-        "id": "infra_notify_persistent",
-        "type": "api-call-service",
-        "z": "infra_notify_all_mobiles",
-        "name": "Criar/atualizar alerta persistente",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\": notification.title, \"message\": notification.message, \"notification_id\": notification.id}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 520,
-        "y": 40,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "infra_notify_mobile",
-        "type": "api-call-service",
-        "z": "infra_notify_all_mobiles",
-        "name": "Push Gabriel + Valéria",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "notify.send_message",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "notify.iphone_de_gabriel_furlan",
-            "notify.iphone_de_valeria"
-        ],
-        "labelId": [],
-        "data": "{\"title\": notification.title, \"message\": notification.message}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
-        "x": 500,
-        "y": 80,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "infra_notify_dismiss",
-        "type": "api-call-service",
-        "z": "infra_notify_all_mobiles",
-        "name": "Remover alerta anterior",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.dismiss",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"notification_id\": notification.dismiss_id}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "dismiss",
-        "x": 500,
-        "y": 120,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "monitoramento_internet_tab",
-        "type": "tab",
-        "label": "monitoramento_internet",
-        "disabled": false,
-        "info": "Monitora conectividade externa por ping a três IPs independentes, confirma queda/recuperação e publica estado no Home Assistant via MQTT discovery.",
-        "env": []
-    },
-    {
-        "id": "grp_internet_triggers",
-        "type": "group",
-        "z": "monitoramento_internet_tab",
-        "name": "1. Gatilhos",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "internet_cycle",
-            "internet_discovery_tick"
-        ],
-        "x": 44,
-        "y": 79,
-        "w": 252,
-        "h": 302
-    },
-    {
-        "id": "grp_internet_ping",
-        "type": "group",
-        "z": "monitoramento_internet_tab",
-        "name": "2. Testar conectividade",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "internet_ping"
-        ],
-        "x": 324,
-        "y": 79,
-        "w": 252,
-        "h": 162
-    },
-    {
-        "id": "grp_internet_state",
-        "type": "group",
-        "z": "monitoramento_internet_tab",
-        "name": "3. Confirmação e estado",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "internet_evaluate"
-        ],
-        "x": 604,
-        "y": 79,
-        "w": 282,
-        "h": 162
-    },
-    {
-        "id": "grp_internet_notify",
-        "type": "group",
-        "z": "monitoramento_internet_tab",
-        "name": "4. Queda / retorno / notify",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#b5563f",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "internet_notify_down",
-            "internet_notify_recovery"
-        ],
-        "x": 914,
-        "y": 59,
-        "w": 342,
-        "h": 222
-    },
-    {
-        "id": "grp_internet_publish",
-        "type": "group",
-        "z": "monitoramento_internet_tab",
-        "name": "5. Entidades do Home Assistant",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#c98a2b",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "internet_discovery",
-            "internet_mqtt_publish"
-        ],
-        "x": 604,
-        "y": 319,
-        "w": 652,
-        "h": 162
-    },
-    {
-        "id": "grp_internet_tests",
-        "type": "group",
-        "z": "monitoramento_internet_tab",
-        "name": "6. Testes",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#8a8a8a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "internet_test_note"
-        ],
-        "x": 44,
-        "y": 519,
-        "w": 1212,
-        "h": 102
-    },
-    {
         "id": "internet_cycle",
         "type": "inject",
         "z": "monitoramento_internet_tab",
@@ -7153,7 +7348,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 170,
+        "x": 180,
         "y": 160,
         "wires": [
             [
@@ -7183,8 +7378,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 170,
-        "y": 320,
+        "x": 200,
+        "y": 240,
         "wires": [
             [
                 "internet_discovery"
@@ -7204,7 +7399,7 @@
         "initialize": "",
         "finalize": "flow.set('internet_ping_cycle_running', false, 'memoryOnly');",
         "libs": [],
-        "x": 450,
+        "x": 510,
         "y": 160,
         "wires": [
             [
@@ -7225,7 +7420,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 745,
+        "x": 890,
         "y": 160,
         "wires": [
             [
@@ -7246,7 +7441,7 @@
         "g": "grp_internet_notify",
         "name": "Notificar queda (uma vez)",
         "env": [],
-        "x": 1085,
+        "x": 1270,
         "y": 140,
         "wires": []
     },
@@ -7257,7 +7452,7 @@
         "g": "grp_internet_notify",
         "name": "Notificar retorno confirmado",
         "env": [],
-        "x": 1085,
+        "x": 1270,
         "y": 220,
         "wires": []
     },
@@ -7274,7 +7469,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 760,
+        "x": 890,
         "y": 400,
         "wires": [
             [
@@ -7297,7 +7492,7 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1080,
+        "x": 1210,
         "y": 400,
         "wires": []
     },
@@ -7308,152 +7503,9 @@
         "g": "grp_internet_tests",
         "name": "Testes automatizados fora do caminho de produção",
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre 1 host falhando, DNS irrelevante (IPs), 3 falhas, dedupe, oscilação, 2 sucessos, duração, segunda queda e restart. O ciclo real nunca aceita mensagens de teste e mantém no máximo três processos ping simultâneos.",
-        "x": 420,
-        "y": 570,
+        "x": 490,
+        "y": 480,
         "wires": []
-    },
-    {
-        "id": "monitoramento_zigbee_tab",
-        "type": "tab",
-        "label": "monitoramento_zigbee",
-        "disabled": false,
-        "info": "Centraliza falha/recuperação da ponte Zigbee2MQTT e dos componentes, com estado persistente, dedupe e notificações compartilhadas.",
-        "env": []
-    },
-    {
-        "id": "grp_zigbee_triggers",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "1. Estado / heartbeat Zigbee",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "zigbee_bridge_state",
-            "zigbee_broker_status",
-            "zigbee_tick",
-            "zigbee_component_availability",
-            "zigbee_discovery_tick"
-        ],
-        "x": 44,
-        "y": 79,
-        "w": 292,
-        "h": 482
-    },
-    {
-        "id": "grp_zigbee_detect",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "2. Avaliar saúde",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "zigbee_store_observation",
-            "zigbee_component_evaluate"
-        ],
-        "x": 364,
-        "y": 79,
-        "w": 272,
-        "h": 482
-    },
-    {
-        "id": "grp_zigbee_state",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "3. Confirmar falha / recuperação",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "zigbee_network_evaluate"
-        ],
-        "x": 664,
-        "y": 79,
-        "w": 292,
-        "h": 202
-    },
-    {
-        "id": "grp_zigbee_notify",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "4. Notificação",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#b5563f",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "zigbee_network_notify_down",
-            "zigbee_network_notify_recovery",
-            "zigbee_component_notify_down",
-            "zigbee_component_notify_recovery"
-        ],
-        "x": 984,
-        "y": 59,
-        "w": 352,
-        "h": 502
-    },
-    {
-        "id": "grp_zigbee_publish",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "5. Entidades do Home Assistant",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#c98a2b",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "zigbee_discovery",
-            "zigbee_mqtt_publish"
-        ],
-        "x": 664,
-        "y": 359,
-        "w": 292,
-        "h": 202
-    },
-    {
-        "id": "grp_zigbee_tests",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "6. Testes",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#8a8a8a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "zigbee_test_note"
-        ],
-        "x": 44,
-        "y": 599,
-        "w": 1292,
-        "h": 102
     },
     {
         "id": "zigbee_bridge_state",
@@ -7589,8 +7641,8 @@
         "initialize": "flow.set('zigbee_bridge_observation', { state: 'unknown', changed_at: Date.now() }, 'memoryOnly');",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 170,
+        "x": 540,
+        "y": 180,
         "wires": [
             [
                 "zigbee_network_evaluate"
@@ -7610,8 +7662,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 400,
+        "x": 540,
+        "y": 410,
         "wires": [
             [
                 "zigbee_component_notify_down"
@@ -7634,8 +7686,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 810,
-        "y": 170,
+        "x": 890,
+        "y": 200,
         "wires": [
             [
                 "zigbee_network_notify_down"
@@ -7655,8 +7707,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar queda da rede",
         "env": [],
-        "x": 1160,
-        "y": 140,
+        "x": 1230,
+        "y": 180,
         "wires": []
     },
     {
@@ -7666,8 +7718,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar retorno da rede",
         "env": [],
-        "x": 1160,
-        "y": 220,
+        "x": 1230,
+        "y": 260,
         "wires": []
     },
     {
@@ -7677,8 +7729,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente offline",
         "env": [],
-        "x": 1160,
-        "y": 400,
+        "x": 1230,
+        "y": 440,
         "wires": []
     },
     {
@@ -7688,8 +7740,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente online",
         "env": [],
-        "x": 1160,
-        "y": 480,
+        "x": 1230,
+        "y": 520,
         "wires": []
     },
     {
@@ -7705,7 +7757,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 790,
+        "x": 870,
         "y": 440,
         "wires": [
             [
@@ -7728,7 +7780,7 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 810,
+        "x": 890,
         "y": 500,
         "wires": []
     },
@@ -7739,8 +7791,807 @@
         "g": "grp_zigbee_tests",
         "name": "Testes automatizados fora do caminho de produção",
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre startup, falha momentânea, 30 s offline, dedupe, 60 s de recuperação, restart persistente, componente offline/online e nova queda. Teste MQTT ponta a ponta deve usar um componente fictício retained, conforme a documentação.",
-        "x": 450,
-        "y": 650,
+        "x": 570,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_acquire_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Continuar: assumir controle",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_acquire_in"
+        ],
+        "x": 2070,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_acquire_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Assumir controle",
+        "links": [
+            "rpi_cooling_acquire_out"
+        ],
+        "x": 95,
+        "y": 450,
+        "wires": [
+            [
+                "rpi_cooling_read_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_start_verify_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Continuar: confirmar controle",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_start_verify_in"
+        ],
+        "x": 1945,
+        "y": 450,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_verify_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Confirmar controle",
+        "links": [
+            "rpi_cooling_start_verify_out"
+        ],
+        "x": 95,
+        "y": 570,
+        "wires": [
+            [
+                "rpi_cooling_verify_delay"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_path_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Continuar: restaurar estado",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_restore_path_in"
+        ],
+        "x": 1515,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_restore_path_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restaurar estado anterior",
+        "links": [
+            "rpi_cooling_restore_path_out"
+        ],
+        "x": 95,
+        "y": 1070,
+        "wires": [
+            [
+                "rpi_cooling_restore_decision"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_verify_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Continuar: confirmar restauração",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_restore_verify_in"
+        ],
+        "x": 1750,
+        "y": 1110,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_restore_verify_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Confirmar restauração",
+        "links": [
+            "rpi_cooling_restore_verify_out",
+            "rpi_cooling_restore_off_verify_out"
+        ],
+        "x": 95,
+        "y": 1210,
+        "wires": [
+            [
+                "rpi_cooling_restore_verify_delay"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_hot_owner_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Temperatura alta -> ownership",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_owner_in"
+        ],
+        "x": 680,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_startup_owner_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Startup quente -> ownership",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_owner_in"
+        ],
+        "x": 1240,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_owner_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Verificar ownership",
+        "links": [
+            "rpi_cooling_hot_owner_out",
+            "rpi_cooling_startup_owner_out",
+            "rpi_cooling_retry_owner_out"
+        ],
+        "x": 1450,
+        "y": 160,
+        "wires": [
+            [
+                "rpi_cooling_read_owner"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_trigger_failure_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Falha ao verificar ownership",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_start_failure_in"
+        ],
+        "x": 2070,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_failure_main_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Falha antes do controle",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_start_failure_in"
+        ],
+        "x": 790,
+        "y": 490,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_failure_verify_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Controle não confirmado",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_start_failure_in"
+        ],
+        "x": 1070,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_failure_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Tratar falha de início",
+        "links": [
+            "rpi_cooling_trigger_failure_out",
+            "rpi_cooling_start_failure_main_out",
+            "rpi_cooling_start_failure_verify_out"
+        ],
+        "x": 95,
+        "y": 700,
+        "wires": [
+            [
+                "rpi_cooling_start_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_startup_rollback_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Startup -> rollback",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_stop_external_in"
+        ],
+        "x": 1240,
+        "y": 310,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_rollback_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Início -> rollback",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_stop_external_in"
+        ],
+        "x": 520,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_external_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Retomar restauração/rollback",
+        "links": [
+            "rpi_cooling_startup_rollback_out",
+            "rpi_cooling_start_rollback_out",
+            "rpi_cooling_cancel_rollback_out"
+        ],
+        "x": 1080,
+        "y": 980,
+        "wires": [
+            [
+                "rpi_cooling_stop_read_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_recovery_window_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Janela retomada concluída",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_recovery_window_in"
+        ],
+        "x": 1720,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_recovery_window_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Revalidar janela retomada",
+        "links": [
+            "rpi_cooling_recovery_window_out"
+        ],
+        "x": 95,
+        "y": 920,
+        "wires": [
+            [
+                "rpi_cooling_retry_normal_check"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_reset_timer_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Cancelar janela retomada",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_reset_timer_in"
+        ],
+        "x": 430,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_reset_timer_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Cancelar timer de recuperação",
+        "links": [
+            "rpi_cooling_reset_timer_out"
+        ],
+        "x": 1050,
+        "y": 310,
+        "wires": [
+            [
+                "rpi_cooling_reset_restart_timer"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_retry_owner_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Retry -> verificar ownership",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_owner_in"
+        ],
+        "x": 1370,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_retry_startup_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Retry -> reconciliar startup",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_retry_startup_in"
+        ],
+        "x": 1070,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_retry_startup_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Repetir leitura de startup",
+        "links": [
+            "rpi_cooling_retry_startup_out"
+        ],
+        "x": 680,
+        "y": 300,
+        "wires": [
+            [
+                "rpi_cooling_startup_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_retry_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Retry -> revalidar temperatura",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_stop_retry_in"
+        ],
+        "x": 920,
+        "y": 1390,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_retry_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Repetir validação de saída",
+        "links": [
+            "rpi_cooling_stop_retry_out"
+        ],
+        "x": 95,
+        "y": 1040,
+        "wires": [
+            [
+                "rpi_cooling_retry_normal_check"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_failure_verify_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restauração não confirmada",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_stop_failure_in"
+        ],
+        "x": 1080,
+        "y": 1270,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_failure_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Tratar falha de restauração",
+        "links": [
+            "rpi_cooling_stop_failure_verify_out"
+        ],
+        "x": 95,
+        "y": 1390,
+        "wires": [
+            [
+                "rpi_cooling_stop_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_off_verify_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Off -> confirmar restauração",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_restore_verify_in"
+        ],
+        "x": 820,
+        "y": 1060,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_notice_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Publicar início",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_start_notice_in"
+        ],
+        "x": 1840,
+        "y": 530,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_dismiss_failure_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Limpar falha anterior",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_dismiss_failure_in"
+        ],
+        "x": 1840,
+        "y": 570,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_dismiss_recovered_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Limpar recuperação anterior",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_dismiss_recovered_in"
+        ],
+        "x": 1840,
+        "y": 610,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_clear_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Limpar snapshot",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_clear_snapshot_in"
+        ],
+        "x": 520,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_start_notify_failure_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Publicar falha",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_notify_failure_in"
+        ],
+        "x": 520,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_clear_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Limpar snapshot",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_clear_snapshot_in"
+        ],
+        "x": 1840,
+        "y": 1170,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_dismiss_started_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Limpar alerta ativo",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_dismiss_started_in"
+        ],
+        "x": 1840,
+        "y": 1210,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_dismiss_failure_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Limpar falha anterior",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_dismiss_failure_in"
+        ],
+        "x": 1840,
+        "y": 1250,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_notify_recovered_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Publicar normalização",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_notify_recovered_in"
+        ],
+        "x": 1840,
+        "y": 1290,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_stop_notify_failure_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Publicar falha",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_notify_failure_in"
+        ],
+        "x": 550,
+        "y": 1430,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_clear_snapshot_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Limpar snapshot",
+        "links": [
+            "rpi_cooling_start_clear_out",
+            "rpi_cooling_stop_clear_out",
+            "rpi_cooling_cancel_clear_out"
+        ],
+        "x": 95,
+        "y": 1560,
+        "wires": [
+            [
+                "rpi_cooling_clear_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_start_notice_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Início",
+        "links": [
+            "rpi_cooling_start_notice_out",
+            "rpi_cooling_reconcile_notice_out"
+        ],
+        "x": 365,
+        "y": 1560,
+        "wires": [
+            [
+                "rpi_cooling_notify_started"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_notify_recovered_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Normalização",
+        "links": [
+            "rpi_cooling_stop_notify_recovered_out"
+        ],
+        "x": 635,
+        "y": 1560,
+        "wires": [
+            [
+                "rpi_cooling_notify_recovered"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_notify_failure_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Falha",
+        "links": [
+            "rpi_cooling_start_notify_failure_out",
+            "rpi_cooling_stop_notify_failure_out"
+        ],
+        "x": 905,
+        "y": 1560,
+        "wires": [
+            [
+                "rpi_cooling_notify_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_dismiss_started_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Limpar ativo",
+        "links": [
+            "rpi_cooling_stop_dismiss_started_out"
+        ],
+        "x": 1185,
+        "y": 1560,
+        "wires": [
+            [
+                "rpi_cooling_dismiss_started"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_dismiss_failure_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Limpar falha",
+        "links": [
+            "rpi_cooling_start_dismiss_failure_out",
+            "rpi_cooling_stop_dismiss_failure_out",
+            "rpi_cooling_reconcile_dismiss_failure_out"
+        ],
+        "x": 1465,
+        "y": 1560,
+        "wires": [
+            [
+                "rpi_cooling_dismiss_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_dismiss_recovered_in",
+        "type": "link in",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Limpar recuperação",
+        "links": [
+            "rpi_cooling_start_dismiss_recovered_out",
+            "rpi_cooling_reconcile_dismiss_recovered_out"
+        ],
+        "x": 1755,
+        "y": 1560,
+        "wires": [
+            [
+                "rpi_cooling_dismiss_recovered"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_reconcile_notice_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Reconciliação -> publicar início",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_start_notice_in"
+        ],
+        "x": 1270,
+        "y": 550,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_reconcile_dismiss_failure_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Reconciliação -> limpar falha",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_dismiss_failure_in"
+        ],
+        "x": 1270,
+        "y": 590,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_reconcile_dismiss_recovered_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Reconciliação -> limpar recuperação",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_dismiss_recovered_in"
+        ],
+        "x": 1270,
+        "y": 630,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_cancel_rollback_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Cancelamento -> rollback",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_stop_external_in"
+        ],
+        "x": 1640,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "rpi_cooling_cancel_clear_out",
+        "type": "link out",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Cancelamento -> limpar snapshot",
+        "mode": "link",
+        "links": [
+            "rpi_cooling_clear_snapshot_in"
+        ],
+        "x": 1640,
+        "y": 780,
         "wires": []
     }
 ]

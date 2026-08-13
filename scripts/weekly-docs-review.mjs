@@ -10,6 +10,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const promptPath = path.join(repoRoot, "scripts", "weekly-docs-review.prompt.md");
 const lockPath = path.join(repoRoot, ".git-backup.lock");
 const statusPath = process.env.WEEKLY_DOCS_REVIEW_STATUS_PATH || "";
+const triggerPath = process.env.WEEKLY_DOCS_REVIEW_TRIGGER_PATH || "";
 const maxRuntimeMs = integerEnv("WEEKLY_DOCS_REVIEW_TIMEOUT_MS", 3 * 60 * 60 * 1000, 60_000, 24 * 60 * 60 * 1000);
 const schedule = {
   day: integerEnv("WEEKLY_DOCS_REVIEW_DAY_UTC", 1, 0, 6),
@@ -19,7 +20,9 @@ const schedule = {
 
 let scheduledTimer;
 let heartbeatTimer;
+let triggerTimer;
 let activeChild;
+let reviewInProgress = false;
 let status = readStatus();
 
 function log(message) {
@@ -282,18 +285,37 @@ export async function runReview() {
   });
 }
 
+async function runManagedReview(source) {
+  if (reviewInProgress) {
+    log(`${source} documentation review request ignored: a review is already running`);
+    return false;
+  }
+  reviewInProgress = true;
+  try {
+    log(`${source} documentation review requested`);
+    return await runReview();
+  } finally {
+    reviewInProgress = false;
+  }
+}
+
+function waitingStatus() {
+  const next = nextWeeklyRun(new Date(), schedule);
+  return {
+    state: "waiting",
+    next_run: next.toISOString(),
+    schedule_utc: `day=${schedule.day} ${String(schedule.hour).padStart(2, "0")}:${String(schedule.minute).padStart(2, "0")}`,
+  };
+}
+
 function scheduleNext() {
   const next = nextWeeklyRun(new Date(), schedule);
   const delay = next.getTime() - Date.now();
   log(`next weekly documentation review: ${next.toISOString()}`);
-  updateStatus({
-    state: "waiting",
-    next_run: next.toISOString(),
-    schedule_utc: `day=${schedule.day} ${String(schedule.hour).padStart(2, "0")}:${String(schedule.minute).padStart(2, "0")}`,
-  });
+  updateStatus(waitingStatus());
   scheduledTimer = setTimeout(async () => {
     try {
-      await runReview();
+      await runManagedReview("scheduled");
     } catch (error) {
       log(`weekly review failed unexpectedly: ${error.message}`);
       updateStatus({
@@ -307,6 +329,37 @@ function scheduleNext() {
       scheduleNext();
     }
   }, delay);
+}
+
+function startManualTriggerWatcher() {
+  if (!triggerPath) return;
+  triggerTimer = setInterval(async () => {
+    if (!fs.existsSync(triggerPath)) return;
+    try {
+      fs.rmSync(triggerPath);
+    } catch (error) {
+      log(`cannot consume manual review trigger: ${error.message}`);
+      return;
+    }
+    if (reviewInProgress) {
+      log("manual documentation review request coalesced: a review is already running");
+      return;
+    }
+    try {
+      await runManagedReview("manual");
+    } catch (error) {
+      log(`manual review failed unexpectedly: ${error.message}`);
+      updateStatus({
+        state: "failed",
+        last_finished: new Date().toISOString(),
+        last_result: "failed",
+        last_reason: "unexpected_error",
+        failure_count: Number(status.failure_count || 0) + 1,
+      });
+    } finally {
+      updateStatus(waitingStatus());
+    }
+  }, 2_000);
 }
 
 function startHeartbeat() {
@@ -335,6 +388,7 @@ function shutdown(signal) {
   updateStatus({ state: "stopped", next_run: null });
   if (scheduledTimer) clearTimeout(scheduledTimer);
   if (heartbeatTimer) clearInterval(heartbeatTimer);
+  if (triggerTimer) clearInterval(triggerTimer);
   if (activeChild) killProcessGroup(activeChild);
   process.exit(0);
 }
@@ -359,4 +413,5 @@ if (process.argv.includes("--self-test")) {
 } else {
   scheduleNext();
   startHeartbeat();
+  startManualTriggerWatcher();
 }

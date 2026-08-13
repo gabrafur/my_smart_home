@@ -86,11 +86,16 @@ A aba `Storage Health` em `nodered/flows.json` reutiliza
 `sensor.raspberry_pi_storage_free`. Nao cria copias dessas entidades. Via MQTT
 discovery publica somente dados novos:
 
-- `sensor.raspberry_storage_status`;
-- `sensor.raspberry_storage_growth_24h`;
-- `sensor.raspberry_storage_growth_7d`;
-- `sensor.raspberry_storage_last_maintenance`;
-- `sensor.raspberry_storage_last_reclaimed`.
+- `sensor.raspberry_pi_raspberry_storage_status`;
+- `sensor.raspberry_pi_raspberry_storage_growth_24h`;
+- `sensor.raspberry_pi_raspberry_storage_growth_7d`;
+- `sensor.raspberry_pi_raspberry_storage_last_maintenance`;
+- `sensor.raspberry_pi_raspberry_storage_last_reclaimed`.
+
+O prefixo inicial `raspberry_pi_` e acrescentado pelo Home Assistant ao nome
+das entidades MQTT porque elas pertencem ao dispositivo `Raspberry Pi`. O
+dashboard usa os IDs efetivamente registrados, evitando cartões de entidade
+não encontrada.
 
 Os limites ficam em um unico function node (`Configurar thresholds`): normal
 abaixo de 70%, warning de 70% a 79,9%, high de 80% a 89,9% e critical a partir
