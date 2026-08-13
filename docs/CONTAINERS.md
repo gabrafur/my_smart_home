@@ -169,8 +169,8 @@ docker compose logs --tail=100 portainer claude-bridge
   container.
 - Mosquitto: publicação e assinatura autenticadas em um tópico de teste.
 - Zigbee2MQTT: `zigbee2mqtt/bridge/state` retorna `online`.
-- Alertas Zigbee: disponibilidade está habilitada, a entidade da ponte existe e
-  o ciclo offline/online é validado conforme o
+- Monitoramento de infraestrutura: disponibilidade Zigbee está habilitada e os
+  ciclos Zigbee e Internet são validados no Node-RED conforme o
   [guia específico](ZIGBEE_HEALTH_NOTIFICATIONS.md).
 - Node-RED: editor exige autenticação e os testes de fluxo passam.
 - Matter: integração HA conecta em `ws://127.0.0.1:5580/ws`.

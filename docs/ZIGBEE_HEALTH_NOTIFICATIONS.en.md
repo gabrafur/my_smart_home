@@ -1,121 +1,113 @@
-# Zigbee network health alerts
+# Infrastructure monitoring in Node-RED
 
 [Português (primary)](ZIGBEE_HEALTH_NOTIFICATIONS.md) ·
 [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 
-This guide documents
-`homeassistant/packages/zigbee_health_notifications.yaml`. The package alerts
-on Zigbee2MQTT bridge failures and on any component whose availability is
-published over MQTT.
+The `monitoramento_zigbee` and `monitoramento_internet` flows in
+`nodered/flows.json` are the source of availability decisions. Home Assistant
+exposes retained MQTT-discovery entities and runs notification services; it no
+longer detects, confirms, or closes these incidents. The former
+`homeassistant/packages/zigbee_health_notifications.yaml` package was removed.
 
-## Prerequisites
+## Shared architecture and notifications
 
-- the MQTT integration loaded in Home Assistant;
-- Zigbee2MQTT Home Assistant integration enabled;
-- `mqtt.base_topic: zigbee2mqtt` in the private configuration;
-- device availability enabled:
+Both tabs read left to right: trigger, collection, state/confirmation,
+failure/recovery, notification, and retained MQTT publication. The shared
+`Notificar todos os dispositivos móveis` subflow creates a persistent Home
+Assistant notification and sends the same message to
+`notify.iphone_de_gabriel_furlan` and `notify.iphone_de_valeria`. Recovery also
+dismisses the prior failure alert. Home Assistant calls use the connector's
+`all` queue during short HA restarts.
+
+## Internet monitor
+
+Every 30 seconds one locked cycle pings three literal IP addresses in parallel:
+
+- `1.1.1.1` (Cloudflare);
+- `8.8.8.8` (Google);
+- `9.9.9.9` (Quad9).
+
+At least two replies are required, so DNS and one failed provider do not cause
+an outage. Fixed `/bin/ping` arguments, a three-second timeout, and a volatile
+execution lock limit concurrency to three processes and prevent overlapping
+cycles.
+
+The addresses were checked against the official
+[Cloudflare 1.1.1.1](https://developers.cloudflare.com/1.1.1.1/),
+[Google Public DNS](https://developers.google.com/speed/public-dns/), and
+[Quad9](https://docs.quad9.net/services/) documentation.
+
+The states are `online`, `checking`, `offline`, and `recovering`. Three failed
+cycles confirm an outage; two successful cycles confirm recovery. A failure
+during recovery returns to offline without another alert. With the current
+cadence, confirmation takes about 60–90 seconds and recovery 30–60 seconds.
+Checks continue every 30 seconds while offline. One incident produces one down
+and one recovery notification, and recovery includes the approximate duration.
+
+MQTT discovery exposes `binary_sensor.internet_connection` and
+`sensor.internet_connection_state`, including counters, responding targets,
+last valid ping, last outage, last recovery, and outage duration as attributes.
+
+## Zigbee monitor
+
+Bridge health comes directly from `zigbee2mqtt/bridge/state` plus MQTT broker
+connection status. The previous criteria are preserved: 30 seconds offline
+confirms failure and 60 seconds continuously online confirms recovery. A
+retained online value at startup establishes a baseline without a recovery
+alert. States are exposed through `binary_sensor.zigbee_network` and
+`sensor.zigbee_network_state`.
+
+Retained `zigbee2mqtt/.../availability` messages cover components, including
+friendly names containing `/`. The first offline value opens one persisted
+incident; duplicate offline values are ignored; the first later online value
+produces one recovery; retained online at startup is silent.
+
+The legacy implementation alerted immediately after Zigbee2MQTT itself marked
+a component offline. This was intentionally preserved. Its known weakness is
+the lack of another grace period beyond Zigbee2MQTT availability timeouts
+(commonly 10 minutes for active and 25 hours for passive devices). A short
+per-device confirmation delay can be considered separately because it changes
+alert latency.
+
+Zigbee2MQTT still requires:
 
 ```yaml
 availability:
   enabled: true
 ```
 
-Zigbee2MQTT disables availability by default. With its default settings, an
-active device is marked offline after 10 minutes without communication and a
-passive, typically battery-powered, device after 25 hours. These timers belong
-to Zigbee2MQTT, not to the Home Assistant package.
+## Persistence and restarts
 
-The package also expects
-`binary_sensor.zigbee2mqtt_bridge_connection_state`, normally created by MQTT
-discovery. Adapt the entity ID when an installation uses a different name.
+`nodered/settings.js` uses `localfilesystem` as the default context store with
+a 15-second flush, while `memoryOnly` holds execution locks and raw observations
+that retained MQTT recreates. `nodered/status` has retained birth, clean-close,
+and last-will values, making the HA entities unavailable when Node-RED leaves
+MQTT.
 
-## Behavior
+An online startup does not announce recovery. An offline startup is detected
+normally. A restart during a persisted incident does not duplicate failure and
+can later confirm recovery. Retained discovery/state rebuilds entities after an
+HA restart. Zigbee2MQTT startup transients must cross the 30-second threshold.
+The residual risk is an abrupt crash within the 15-second context flush window,
+which can lose the latest transition and, in the narrow notification-before-
+flush case, repeat an alert.
 
-### Network failure
-
-`zigbee_network_failure_notification` waits for 30 seconds of `off` or
-`unavailable`. It also checks the state 30 seconds after Home Assistant starts.
-On failure, it:
-
-1. creates or updates `zigbee_network_failure` in persistent notifications;
-2. attempts push delivery to the configured `notify.*` entities;
-3. waits until the bridge has remained `on` for one minute;
-4. dismisses the failure and reports recovery.
-
-Recovery belongs to the same run that recorded the failure. Starting Home
-Assistant while the bridge is already online therefore does not produce a
-false “network recovered” message.
-
-### Component failure
-
-`zigbee_component_failure_notification` watches for `offline` messages under
-`zigbee2mqtt/.../availability`. Its wildcard automatically covers new devices
-and hierarchical friendly names such as `kitchen/light`.
-
-For every offline component, the automation creates an alert, attempts push
-delivery, and waits for `online` on that exact topic before reporting recovery.
-Up to 100 waits may run in parallel; this bounds resource use if the setup is
-incorrect.
-
-Availability topics are retained by the broker. Tying recovery to a run that
-started with `offline` is deliberate: reloading automations does not turn
-retained online states into false recovery alerts, while actually offline
-devices recreate their warning.
-
-## Notifications and portability
-
-Persistent notifications are visible to all Home Assistant users. Pushes use
-the `notify.*` targets listed in the package; replace them with entities from
-the cloned installation.
-
-Push actions set `continue_on_error: true`, so a missing phone cannot prevent
-persistent alerts from being created, updated, or dismissed. Entity names are
-operational identifiers. Coordinator addresses, MQTT credentials, and physical
-device identifiers must not be added to this public file.
-
-## Installation and restore
-
-1. Restore or create `zigbee2mqtt/configuration.yaml` from the example.
-2. Confirm `homeassistant.enabled`, the base topic, and `availability.enabled`.
-3. Adapt the bridge sensor and `notify.*` targets in the package.
-4. Validate the Home Assistant configuration.
-5. Restart Home Assistant or reload automations.
-6. Confirm that Zigbee2MQTT publishes device `online`/`offline` states.
-
-The package has no database of its own. Relevant persistent state remains in
-the private Zigbee2MQTT configuration and database. After a restart, retained
-MQTT messages recreate waits for devices that are still offline.
-
-## Safe validation
+## Validation and limitations
 
 ```bash
+npm --prefix nodered run flows:validate
+npm --prefix nodered run flows:test-infrastructure
 docker exec homeassistant \
   python3 -m homeassistant --script check_config --config /config
-docker compose logs --tail=100 homeassistant zigbee2mqtt mosquitto
 ```
 
-For an end-to-end test, use an authenticated MQTT client and a fictional
-device topic below `zigbee2mqtt/.../availability`: publish
-`{"state":"offline"}` and then `{"state":"online"}` as retained messages,
-and delete the test topic afterwards. Do not interrupt a real coordinator just
-to test a notification.
+Automated tests cover quorum, consecutive failures, deduplication, oscillation,
+recovery, duration, second outages, persisted restart behavior, Zigbee startup,
+30/60-second thresholds, and component cycles. A safe end-to-end component
+test can publish retained offline then online values to
+`zigbee2mqtt/teste_monitor/availability` and clear the retained value afterward.
 
-## Troubleshooting
-
-- **No component alert:** check `availability.enabled`, the base topic, and
-  Home Assistant's MQTT connection.
-- **Network alert is always active:** check the bridge entity and
-  `zigbee2mqtt/bridge/state`.
-- **Persistent alert works but push does not:** replace the `notify.*` targets
-  and test `notify.send_message` in Developer Tools.
-- **Many devices are offline after long maintenance:** retained offline states
-  are expected; let passive devices wake before changing their timeouts.
-- **A name is truncated:** use the current package, which preserves friendly
-  names containing `/`.
-
-## Official references
-
-- [Zigbee2MQTT device availability](https://www.zigbee2mqtt.io/guide/configuration/device-availability.html)
-- [Zigbee2MQTT MQTT topics](https://www.zigbee2mqtt.io/guide/usage/mqtt_topics_and_messages.html)
-- [Home Assistant MQTT triggers](https://www.home-assistant.io/docs/automation/trigger/#mqtt-trigger)
-- [`notify.send_message`](https://www.home-assistant.io/actions/notify.send_message/)
+Physical WAN cuts, router/coordinator restarts, and delivery to both phones
+require a controlled on-site window. ICMP filtering by all three targets remains
+possible. During the WAN outage, the local persistent alert can be created
+immediately while the mobile push may only arrive after connectivity returns.

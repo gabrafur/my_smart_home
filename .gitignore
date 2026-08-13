@@ -68,6 +68,7 @@ nodered/.flows_cred.json*
 nodered/.sessions.json
 nodered/.config.users.json*
 nodered/.config.runtime.json*
+nodered/context/
 nodered/backups/
 nodered/flows.json.bak*
 

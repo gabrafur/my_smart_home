@@ -5,6 +5,35 @@ views:
     icon: mdi:raspberry-pi
     cards:
       - type: entities
+        title: Disponibilidade da infraestrutura
+        show_header_toggle: false
+        entities:
+          - entity: binary_sensor.internet_connection
+            name: Internet
+          - entity: sensor.internet_connection_state
+            name: Estado detalhado da internet
+          - type: attribute
+            entity: sensor.internet_connection_state
+            attribute: last_outage
+            name: Última queda da internet
+          - type: attribute
+            entity: sensor.internet_connection_state
+            attribute: last_recovery
+            name: Última recuperação da internet
+          - entity: binary_sensor.zigbee_network
+            name: Rede Zigbee
+          - entity: sensor.zigbee_network_state
+            name: Estado detalhado do Zigbee
+          - type: attribute
+            entity: sensor.zigbee_network_state
+            attribute: last_outage
+            name: Última queda do Zigbee
+          - type: attribute
+            entity: sensor.zigbee_network_state
+            attribute: last_recovery
+            name: Última recuperação do Zigbee
+
+      - type: entities
         title: Status geral
         show_header_toggle: false
         entities:

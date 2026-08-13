@@ -152,6 +152,7 @@ possível segredo. A análise do histórico e as ações de rotação estão em
 docker compose config --quiet
 npm --prefix nodered run flows:validate
 npm --prefix nodered run flows:test-alarm-arrival
+npm --prefix nodered run flows:test-infrastructure
 npm --prefix nodered run flows:test-security
 npm --prefix claude-bridge test
 scripts/security-scan.sh
@@ -171,7 +172,7 @@ serviço.
 - [Bluetooth e Matter](docs/BLUETOOTH_MATTER.md)
 - [Segurança do repositório público](docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Saúde do Raspberry Pi](docs/RASPBERRY_PI_SYSTEM_HEALTH.md)
-- [Alertas de saúde da rede Zigbee](docs/ZIGBEE_HEALTH_NOTIFICATIONS.md)
+- [Monitoramento de Zigbee e Internet no Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.md)
 - [Bridge de agentes no Home Assistant](docs/CHAT_CLAUDE_CODE_HA.md)
 - [Revisão semanal da documentação](docs/REVISAO_DOCUMENTACAO_SEMANAL.md)
 
