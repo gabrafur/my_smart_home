@@ -27,6 +27,136 @@ sensível do `docs-review-scheduler`. Os detalhes da entidade estão no guia de
 
 O coletor roda a cada 60 segundos via `command_line` e entrega um JSON unico. Os sensores derivados usam `template`, evitando varias chamadas shell separadas.
 
+## Storage Health e manutencao preventiva
+
+### Diagnostico de 2026-08-13
+
+O salto observado no grafico de aproximadamente 36% para 51% foi correlacionado
+com artefatos de desenvolvimento criados entre 8 e 13 de agosto. A medicao antes
+da correcao foi:
+
+| Componente | Espaco atual/inicial | Evidencia de crescimento | Diagnostico | Acao |
+| --- | ---: | --- | --- | --- |
+| Docker build cache | 5,033 GB; 2,159 GB recuperaveis | camadas de 1,11 GB criadas ha 5 dias e varias camadas de 1,1 GB/287 MB criadas ha 2-3 dias | causa raiz principal: builds repetidos das imagens locais sem limite de cache | `docker builder prune` controlado; rotina preventiva com idade minima de 168 h |
+| Imagens Docker | 11,53 GB; 1,384 GB inicialmente recuperaveis | imagens intermediarias sem tag, incluindo uma camada unica de 1,115 GB criada ha 2 dias | fator da causa raiz: imagens intermediarias deixadas pelos builds | `docker image prune` somente para dangling; imagens tagged preservadas |
+| Ferramentas remotas de IDE em `/home/gabriel` | 9,32 GB; VS Code Server 5,85 GB e Cursor Server 1,37 GB | novas copias de servidores/extensoes em 7, 11 e 13 de agosto | fator contribuinte fora da stack; versoes antigas podem acumular | somente diagnostico; revisao manual para nao interromper sessoes da IDE |
+| Home Assistant | 319 MB | DB 111 MB + WAL ~4 MB; 3 backups diarios totalizando 141 MB | crescimento compativel com Recorder/backups, nao explica o salto | nenhuma exclusao; manter Recorder em 30 dias e acompanhar |
+| Node-RED persistente | 151 MB | 91,6 MB de cache npm, 53,4 MB de modulos, 3,9 MB de backups | normal; flows/contexto nao apresentaram crescimento anormal | housekeeping allowlisted para backups antigos e logs npm antigos |
+| Zigbee2MQTT / Mosquitto | 573 KB / 418 KB persistentes | Zigbee2MQTT emitiu ~6,4 MB de stdout em 7 dias; demais logs abaixo de 50 KB | nao causaram o salto | rotacao Docker preventiva; manter `info` |
+| Journald | volatil; `/var/log` e tmpfs de 50 MB | usuario operacional nao tem permissao para ler o journal global | nao ha evidencia de consumo persistente; cobertura incompleta | revisao manual com `sudo journalctl --disk-usage`; nenhum vacuum automatico |
+
+O `docker system df -v` mostrou volumes locais com apenas 44,73 MB e nenhum
+byte recuperavel. Por isso nenhum volume foi removido. Containers escreviam
+apenas 125,4 MB em suas camadas gravaveis e nenhum apresentava restart loop.
+Os logs JSON estavam sem rotacao, mas a contagem de bytes emitidos demonstrou
+que eles nao eram a causa imediata.
+
+Tambem foi encontrado um fator operacional: `scripts/docker-auto-update.mjs`
+falhava ao analisar o servico `matter_server` quando havia comentarios antes da
+propriedade `image`. Como a limpeza ficava depois dessa etapa, uma falha impedia
+o housekeeping. O parser agora delimita os servicos por linhas, e a manutencao
+segura roda em `finally` mesmo quando pull, validacao ou recreate falham.
+
+### Remediacao imediata
+
+Foram executados apenas mecanismos oficiais que nao removem volumes nem recursos
+em uso:
+
+```text
+ANTES
+Filesystem: /dev/root em /
+Uso: 29.419.827.200 bytes (50%)
+Livre: 30.486.360.064 bytes
+
+DEPOIS
+Filesystem: /dev/root em /
+Uso: 26.145.202.176 bytes (44%)
+Livre: 33.760.985.088 bytes
+
+ESPACO RECUPERADO: 3.274.625.024 bytes (3,05 GiB)
+```
+
+O total foi 2,159 GB de cache de build e 1,115 GB de imagens dangling. Bancos,
+backups, containers, imagens tagged, volumes e caches da IDE foram preservados.
+
+### Flow Storage Health
+
+A aba `Storage Health` em `nodered/flows.json` reutiliza
+`sensor.raspberry_pi_storage_usage`, `sensor.raspberry_pi_storage_used` e
+`sensor.raspberry_pi_storage_free`. Nao cria copias dessas entidades. Via MQTT
+discovery publica somente dados novos:
+
+- `sensor.raspberry_storage_status`;
+- `sensor.raspberry_storage_growth_24h`;
+- `sensor.raspberry_storage_growth_7d`;
+- `sensor.raspberry_storage_last_maintenance`;
+- `sensor.raspberry_storage_last_reclaimed`.
+
+Os limites ficam em um unico function node (`Configurar thresholds`): normal
+abaixo de 70%, warning de 70% a 79,9%, high de 80% a 89,9% e critical a partir
+de 90%. A histerese e de 3 pontos percentuais. Alertas repetidos usam cooldown
+de 12 horas, falhas de coleta/manutencao usam 6 horas, escaladas alertam
+imediatamente e a volta a normal gera notificacao de recuperacao.
+
+Uma amostra compacta e persistida a cada 15 minutos por no maximo oito dias.
+Ela permite calcular 24 h e 7 dias sem gravacao por minuto. O alerta de tendencia
+dispara a partir de +5 pontos percentuais/24 h ou +10 pontos/7 dias, tambem com
+cooldown. Sao aceitas apenas amostras dentro de duas horas da janela desejada;
+uma amostra velha nao e usada como se fosse de 24 horas.
+
+### Frequencias e observabilidade
+
+- health check leve: 15 minutos, usando estados ja coletados pelo Home Assistant;
+- housekeeping Node-RED: diariamente as 04:17;
+- inspecao profunda restrita a `/data`: domingo as 03:43;
+- manutencao host: ao fim da atualizacao diaria de containers, inclusive quando
+  uma etapa anterior falha.
+
+Cada manutencao registra inicio, termino, modo, bytes antes/depois, bytes
+recuperados e candidatos. Falhas registram a etapa e o codigo, interrompem o
+script e geram alerta com cooldown. O dashboard existente ganhou status,
+inodes, tendencias, ultima manutencao e espaco recuperado.
+
+### SAFE AUTO-MAINTENANCE
+
+O Node-RED executa `/data/tools/storage-maintenance.sh --apply`, que so pode
+remover arquivos regulares nestes caminhos allowlisted:
+
+- backups de flows em `/data/backups/codex-flows` com mais de 30 dias;
+- logs npm em `/data/.npm/_logs` com mais de 14 dias.
+
+Flows, credenciais, context storage, `node_modules` e outros temporarios nao
+entram no escopo. O container continua sem Docker socket, mount do host ou
+`sudo`.
+
+No host, `scripts/storage-maintenance.sh` remove somente build cache sem uso
+(`builder prune --all`) e imagens dangling com mais de 168 horas. O script valida argumentos, e idempotente,
+registra metricas antes/depois e usa dry-run por padrao:
+
+```bash
+scripts/storage-maintenance.sh --dry-run
+scripts/storage-maintenance.sh --apply --min-age 168
+```
+
+### MANUAL / REQUIRES REVIEW
+
+Continuam deliberadamente manuais:
+
+- remocao de qualquer volume ou container;
+- `docker system prune -a`, `docker image prune -a` e qualquer prune com volumes;
+- remocao de imagens tagged mantidas para rollback;
+- limpeza de servidores/extensoes VS Code/Cursor em `/home/gabriel`;
+- purge/repack do Recorder e exclusao de backups do Home Assistant;
+- vacuum ou mudanca de retencao do journald;
+- qualquer `du` completo em `/`.
+
+Para troubleshooting, comece por `df -h`, `df -i`, `docker system df -v`,
+`docker ps -a`, tamanho dos logs retornados por `docker inspect .LogPath`, banco
+e backups do Home Assistant. Com privilegio administrativo, complemente com
+`journalctl --disk-usage` e `du -x -d2 /var/lib/docker`. Nunca use a manutencao
+manual para mascarar crescimento sem primeiro identificar quando e por que ele
+ocorreu.
+
 ## Metricas monitoradas
 
 - Temperatura da CPU por `/sys`
@@ -49,7 +179,7 @@ Os limites foram ajustados para Raspberry Pi 5:
 - Load 5m: warning `>= 1.2x cores por 10 min`; critical `>= 2x cores por 10 min`
 - Memoria: warning `>= 80% por 10 min`; critical `>= 90% por 5 min`
 - Swap: warning `>= 25% por 10 min`; critical `>= 50% por 5 min`
-- Armazenamento: warning `>= 80% por 5 min`; critical `>= 90% por 2 min`
+- Armazenamento: warning `>= 70% por 5 min`; high `>= 80%` no Node-RED; critical `>= 90% por 2 min`
 - Hardware: warning se houve evento de undervoltage/throttling desde o boot; critical se a condicao estiver ativa
 
 Os alertas disparam em transicao para problema e as recuperacoes disparam quando voltam ao normal. Isso evita spam enquanto a condicao permanece ativa.

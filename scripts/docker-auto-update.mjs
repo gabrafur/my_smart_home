@@ -77,27 +77,41 @@ function repoDigest(repo, tag) {
   return digest;
 }
 
+export function replaceServiceImage(compose, service, nextDigest) {
+  const lines = compose.split("\n");
+  const serviceIndex = lines.findIndex((line) => line === `  ${service}:`);
+  if (serviceIndex === -1) {
+    throw new Error(`Could not find compose service ${service}`);
+  }
+  let serviceEnd = lines.length;
+  for (let index = serviceIndex + 1; index < lines.length; index += 1) {
+    if (/^  [a-zA-Z0-9_-]+:\s*$/.test(lines[index])) {
+      serviceEnd = index;
+      break;
+    }
+  }
+  const imageIndex = lines.findIndex(
+    (line, index) => index > serviceIndex && index < serviceEnd && /^    image:\s*\S+/.test(line),
+  );
+  if (imageIndex === -1) {
+    throw new Error(`Could not find image property for service ${service}`);
+  }
+  const current = lines[imageIndex].match(/^    image:\s*(\S+)/)?.[1];
+  lines[imageIndex] = lines[imageIndex].replace(/^(    image:\s*)\S+/, `$1${nextDigest}`);
+  return { compose: lines.join("\n"), current };
+}
+
 function updateComposeDigests() {
   let compose = fs.readFileSync(composePath, "utf8");
   const changes = [];
 
   for (const channel of imageChannels) {
     const nextDigest = repoDigest(channel.repo, channel.tag);
-    const servicePattern = new RegExp(`(^\\s{2}${channel.service}:\\n[\\s\\S]*?)(?=^\\s{2}[a-zA-Z0-9_-]+:|\\s*$)`, "m");
-    const serviceMatch = compose.match(servicePattern);
-    if (!serviceMatch) {
-      throw new Error(`Could not find compose image line for service ${channel.service}`);
-    }
-
-    const block = serviceMatch[1];
-    const current = block.match(/^\s{4}image:\s*(\S+)/m)?.[1];
-    if (!current) {
-      throw new Error(`Could not find image property for service ${channel.service}`);
-    }
+    const replacement = replaceServiceImage(compose, channel.service, nextDigest);
+    const { current } = replacement;
     if (current !== nextDigest) {
       changes.push(`${channel.service}: ${current} -> ${nextDigest}`);
-      const updatedBlock = block.replace(/^(\s{4}image:\s*)\S+/m, `$1${nextDigest}`);
-      compose = compose.replace(block, updatedBlock);
+      compose = replacement.compose;
     }
   }
 
@@ -132,17 +146,25 @@ function validateAfterComposeEdit() {
 }
 
 function dailyUpdate() {
-  run("bash", ["scripts/git-backup.sh"], { mutates: true });
-  const changed = updateComposeDigests();
-  validateAfterComposeEdit();
-
-  if (changed) {
-    run("docker", ["compose", "up", "-d"], { mutates: true });
-    run("docker", ["compose", "ps"]);
+  try {
     run("bash", ["scripts/git-backup.sh"], { mutates: true });
-  }
+    const changed = updateComposeDigests();
+    validateAfterComposeEdit();
 
-  run("docker", ["image", "prune", "-f"], { mutates: true });
+    if (changed) {
+      run("docker", ["compose", "up", "-d"], { mutates: true });
+      run("docker", ["compose", "ps"]);
+      run("bash", ["scripts/git-backup.sh"], { mutates: true });
+    }
+  } finally {
+    // Cleanup must still run when a pull, parse, validation or recreate step
+    // fails. The helper never removes volumes, containers or tagged images.
+    run(
+      "bash",
+      ["scripts/storage-maintenance.sh", dryRun ? "--dry-run" : "--apply", "--min-age", "168"],
+      { mutates: !dryRun },
+    );
+  }
   log("daily docker update finished");
 }
 
@@ -261,10 +283,13 @@ async function haUpdates() {
   log("ha-updates finished");
 }
 
-await withLock(async () => {
-  if (mode === "ha-updates") {
-    await haUpdates();
-  } else {
-    dailyUpdate();
-  }
-});
+const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
+if (invokedPath === fileURLToPath(import.meta.url)) {
+  await withLock(async () => {
+    if (mode === "ha-updates") {
+      await haUpdates();
+    } else {
+      dailyUpdate();
+    }
+  });
+}
