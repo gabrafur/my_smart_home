@@ -3259,6 +3259,2062 @@
         "wires": []
     },
     {
+        "id": "raspberry_pi_cooling_tab",
+        "type": "tab",
+        "label": "resfriamento_raspberry_pi",
+        "disabled": false,
+        "info": "Controla o resfriamento de emergência do Raspberry Pi. Inicia após 2 minutos acima de 81,9 °C; reconcilia ownership e temperatura no startup; encerra após 10 minutos abaixo de 70 °C; preserva o estado anterior do climate em helper persistente; limita falhas a três tentativas espaçadas por 60 segundos.",
+        "env": []
+    },
+    {
+        "id": "grp_rpi_cooling_triggers",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "1. Detectar e reconciliar",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_hot",
+            "rpi_cooling_prepare_hot",
+            "rpi_cooling_startup",
+            "rpi_cooling_prepare_startup",
+            "rpi_cooling_startup_snapshot",
+            "rpi_cooling_reconcile_startup",
+            "rpi_cooling_read_owner",
+            "rpi_cooling_start_gate",
+            "rpi_cooling_restart_recovery_timer",
+            "rpi_cooling_reset_restart_timer"
+        ],
+        "x": 44,
+        "y": 79,
+        "w": 1642,
+        "h": 282
+    },
+    {
+        "id": "grp_rpi_cooling_start",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "2. Assumir controle com segurança",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#d9822b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_read_climate",
+            "rpi_cooling_validate_climate",
+            "rpi_cooling_persist_snapshot",
+            "rpi_cooling_begin_control",
+            "rpi_cooling_set_mode",
+            "rpi_cooling_set_temperature",
+            "rpi_cooling_set_fan",
+            "rpi_cooling_verify_delay",
+            "rpi_cooling_read_controlled_climate",
+            "rpi_cooling_verify_controlled_climate",
+            "rpi_cooling_control_succeeded",
+            "rpi_cooling_mark_active",
+            "rpi_cooling_start_finalized",
+            "rpi_cooling_start_catch",
+            "rpi_cooling_start_failure",
+            "rpi_cooling_start_retry_delay",
+            "rpi_cooling_startup_retry_delay",
+            "rpi_cooling_retry_temperature_check",
+            "rpi_cooling_cancel_start"
+        ],
+        "x": 44,
+        "y": 379,
+        "w": 3262,
+        "h": 282
+    },
+    {
+        "id": "grp_rpi_cooling_stop",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "3. Restaurar após normalização",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_normal",
+            "rpi_cooling_retry_normal_check",
+            "rpi_cooling_prepare_stop",
+            "rpi_cooling_active_check",
+            "rpi_cooling_stop_gate",
+            "rpi_cooling_stop_read_climate",
+            "rpi_cooling_restore_decision",
+            "rpi_cooling_restore_off",
+            "rpi_cooling_restore_mode",
+            "rpi_cooling_restore_temperature_decision",
+            "rpi_cooling_restore_temperature",
+            "rpi_cooling_restore_fan_decision",
+            "rpi_cooling_restore_fan",
+            "rpi_cooling_restore_verify_delay",
+            "rpi_cooling_read_restored_climate",
+            "rpi_cooling_verify_restored_climate",
+            "rpi_cooling_restore_finished",
+            "rpi_cooling_rollback_release_owner",
+            "rpi_cooling_rollback_finalized",
+            "rpi_cooling_mark_inactive",
+            "rpi_cooling_stop_finalized",
+            "rpi_cooling_stop_catch",
+            "rpi_cooling_stop_failure",
+            "rpi_cooling_stop_retry_delay",
+            "rpi_cooling_cancel_stop"
+        ],
+        "x": 44,
+        "y": 679,
+        "w": 4612,
+        "h": 302
+    },
+    {
+        "id": "grp_rpi_cooling_observability",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "4. Estado persistente e observabilidade",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a6db1",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_clear_snapshot",
+            "rpi_cooling_notify_started",
+            "rpi_cooling_notify_recovered",
+            "rpi_cooling_notify_failure",
+            "rpi_cooling_dismiss_started",
+            "rpi_cooling_dismiss_failure",
+            "rpi_cooling_dismiss_recovered"
+        ],
+        "x": 44,
+        "y": 1019,
+        "w": 2052,
+        "h": 122
+    },
+    {
+        "id": "rpi_cooling_hot",
+        "type": "server-state-changed",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "CPU > 81,9 °C por 2 min",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 2,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.raspberry_pi_cpu_temperature"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "num",
+        "ifState": "81.9",
+        "ifStateType": "num",
+        "ifStateOperator": "gt",
+        "outputOnlyOnStateChange": false,
+        "for": "2",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "triggerId"
+            }
+        ],
+        "x": 180,
+        "y": 140,
+        "wires": [
+            [
+                "rpi_cooling_prepare_hot"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_prepare_hot",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Preparar início por temperatura",
+        "func": "msg.operation = \"start\";\nmsg.attempt = Number(msg.attempt || 1);\nmsg.start_source = msg.start_source || \"temperature_threshold\";\nmsg.trigger_temperature = Number(msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 140,
+        "wires": [
+            [
+                "rpi_cooling_read_owner"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_startup",
+        "type": "inject",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Reconciliar no startup",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "30",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 220,
+        "wires": [
+            [
+                "rpi_cooling_prepare_startup"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_prepare_startup",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Preparar reconciliação",
+        "func": "msg.operation = \"startup\";\nmsg.attempt = Number(msg.attempt || 1);\nmsg.start_source = \"startup_reconciliation\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 220,
+        "wires": [
+            [
+                "rpi_cooling_startup_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_startup_snapshot",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Ler temperatura + ownership",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.raspberry_pi_cpu_temperature",
+        "state_type": "num",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "cpu_temperature",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "cooling_owner",
+                "propertyType": "msg",
+                "value": "$entities(\"input_boolean.raspberry_pi_emergency_cooling\").state",
+                "valueType": "jsonata"
+            },
+            {
+                "property": "stored_snapshot",
+                "propertyType": "msg",
+                "value": "$entities(\"input_text.raspberry_pi_emergency_cooling_previous_climate\").state",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 700,
+        "y": 220,
+        "wires": [
+            [
+                "rpi_cooling_reconcile_startup"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_reconcile_startup",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Classificar estado no startup",
+        "func": "const temperature = Number(msg.cpu_temperature);\nconst owner = msg.cooling_owner;\nlet pendingSnapshot = null;\n\nif (typeof msg.stored_snapshot === \"string\" && msg.stored_snapshot.trim()) {\n    try {\n        const parsed = JSON.parse(msg.stored_snapshot);\n        if (parsed && typeof parsed.state === \"string\") pendingSnapshot = parsed;\n    } catch (error) {\n        node.warn(\"Snapshot pendente inválido no startup: \" + error.message);\n    }\n}\n\nif (!Number.isFinite(temperature)) {\n    node.warn(\"Reconciliação ignorada: temperatura da CPU inválida.\");\n    return null;\n}\n\nmsg.trigger_temperature = temperature;\nif (temperature > 81.9) {\n    msg.operation = \"start\";\n    msg.start_source = \"startup_reconciliation\";\n    if (owner === \"off\" && pendingSnapshot) msg.previous_climate = pendingSnapshot;\n    return [msg, null];\n}\n\nif (owner === \"on\" && temperature < 70) {\n    msg.operation = \"stop\";\n    msg.stop_source = \"startup_reconciliation\";\n    return [null, msg];\n}\n\nif (owner === \"off\" && temperature < 70 && pendingSnapshot) {\n    msg.operation = \"rollback\";\n    msg.stop_source = \"startup_incomplete_acquisition\";\n    msg.previous_climate = pendingSnapshot;\n    flow.set(\"rpi_emergency_cooling_operation\", \"rollback\");\n    node.warn(\"Retomando rollback de uma aquisição interrompida antes do ownership.\");\n    return [null, null, msg];\n}\n\nnode.status({ fill: \"grey\", shape: \"ring\", text: owner === \"on\" ? \"aguardando faixa segura\" : \"sem ação\" });\nreturn null;",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 990,
+        "y": 220,
+        "wires": [
+            [
+                "rpi_cooling_read_owner"
+            ],
+            [
+                "rpi_cooling_restart_recovery_timer"
+            ],
+            [
+                "rpi_cooling_stop_read_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_read_owner",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Ler ownership atual",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_boolean.raspberry_pi_emergency_cooling",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "cooling_owner",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 1250,
+        "y": 140,
+        "wires": [
+            [
+                "rpi_cooling_start_gate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_start_gate",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Idempotência + lock de início",
+        "func": "const LOCK_KEY = \"rpi_emergency_cooling_operation\";\nconst owner = msg.cooling_owner;\n\nif (owner === \"on\" && msg.start_source !== \"startup_reconciliation\") {\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"já controlado pelo fluxo\" });\n    return null;\n}\n\nif (!['on', 'off'].includes(owner)) {\n    msg.failure_reason = \"helper de ownership em estado \" + String(owner || \"desconhecido\");\n    return [null, msg];\n}\n\nif (flow.get(LOCK_KEY)) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"operação já em andamento\" });\n    return null;\n}\n\nflow.set(LOCK_KEY, \"start\");\nmsg.operation = \"start\";\nmsg.start_mode = owner === \"on\" ? \"reconcile\" : \"acquire\";\nmsg.attempt = Number(msg.attempt || 1);\nnode.status({ fill: \"yellow\", shape: \"dot\", text: msg.start_mode === \"reconcile\" ? \"reconciliando\" : \"assumindo controle\" });\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1500,
+        "y": 140,
+        "wires": [
+            [
+                "rpi_cooling_read_climate"
+            ],
+            [
+                "rpi_cooling_start_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restart_recovery_timer",
+        "type": "trigger",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Retomar janela de 10 min",
+        "op1": "",
+        "op2": "",
+        "op1type": "nul",
+        "op2type": "payl",
+        "duration": "10",
+        "extend": false,
+        "overrideDelay": false,
+        "units": "min",
+        "reset": "",
+        "bytopic": "all",
+        "topic": "topic",
+        "outputs": 1,
+        "x": 1280,
+        "y": 260,
+        "wires": [
+            [
+                "rpi_cooling_retry_normal_check"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_reset_restart_timer",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_triggers",
+        "name": "Cancelar janela retomada",
+        "func": "msg.reset = true;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 300,
+        "wires": [
+            [
+                "rpi_cooling_restart_recovery_timer"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_read_climate",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Ler climate antes de controlar",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "climate.ar_condicionado_escritorio",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "climate_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "climate_entity",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            },
+            {
+                "property": "stored_snapshot",
+                "propertyType": "msg",
+                "value": "$entities(\"input_text.raspberry_pi_emergency_cooling_previous_climate\").state",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 190,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_validate_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_validate_climate",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Validar disponibilidade + snapshot",
+        "func": "const state = msg.climate_state;\nconst entity = msg.climate_entity;\n\nif (!entity || ['unknown', 'unavailable', undefined, null, ''].includes(state)) {\n    msg.failure_reason = \"climate indisponível (estado \" + String(state || \"ausente\") + \")\";\n    node.status({ fill: \"red\", shape: \"ring\", text: \"climate indisponível\" });\n    return [null, null, msg];\n}\n\nif (msg.start_mode === \"acquire\" && !msg.previous_climate && typeof msg.stored_snapshot === \"string\" && msg.stored_snapshot.trim()) {\n    try {\n        const parsed = JSON.parse(msg.stored_snapshot);\n        if (parsed && typeof parsed.state === \"string\") msg.previous_climate = parsed;\n    } catch (error) {\n        node.warn(\"Snapshot persistente inválido; capturando estado atual: \" + error.message);\n    }\n}\n\nif (msg.start_mode === \"acquire\" && !msg.previous_climate) {\n    const temperature = Number(entity.attributes?.temperature);\n    const fanMode = entity.attributes?.fan_mode;\n    msg.previous_climate = {\n        state,\n        temperature: Number.isFinite(temperature) ? temperature : null,\n        fan_mode: typeof fanMode === \"string\" && fanMode ? fanMode : null,\n        captured_at: new Date().toISOString()\n    };\n}\n\nreturn msg.start_mode === \"acquire\" ? [msg, null, null] : [null, msg, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_persist_snapshot"
+            ],
+            [
+                "rpi_cooling_begin_control"
+            ],
+            [
+                "rpi_cooling_start_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_persist_snapshot",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Persistir estado anterior",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_text.set_value",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_text.raspberry_pi_emergency_cooling_previous_climate"
+        ],
+        "labelId": [],
+        "data": "{\"value\": $string(previous_climate)}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_text",
+        "service": "set_value",
+        "x": 750,
+        "y": 400,
+        "wires": [
+            [
+                "rpi_cooling_begin_control"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_begin_control",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Registrar etapa de controle",
+        "func": "msg.control_started = true;\nif (msg.start_mode === \"acquire\") msg.snapshot_persisted = true;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 980,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_set_mode"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_set_mode",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Modo frio",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_hvac_mode",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"hvac_mode\":\"cool\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_hvac_mode",
+        "x": 1210,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_set_temperature"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_set_temperature",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Temperatura 16 °C",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_temperature",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"temperature\":16,\"hvac_mode\":\"cool\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_temperature",
+        "x": 1420,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_set_fan"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_set_fan",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Ventilação máxima",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_fan_mode",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"fan_mode\":\"high\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_fan_mode",
+        "x": 1630,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_verify_delay"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_verify_delay",
+        "type": "delay",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Aguardar estado confirmar",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1840,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_read_controlled_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_read_controlled_climate",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Confirmar estado aplicado",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "climate.ar_condicionado_escritorio",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "controlled_climate_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "controlled_climate_entity",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 2070,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_verify_controlled_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_verify_controlled_climate",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Validar modo + temperatura + fan",
+        "func": "const entity = msg.controlled_climate_entity;\nconst state = msg.controlled_climate_state;\nconst temperature = Number(entity?.attributes?.temperature);\nconst fanMode = entity?.attributes?.fan_mode;\nconst valid = entity && state === \"cool\" && Number.isFinite(temperature) && Math.abs(temperature - 16) < 0.01 && fanMode === \"high\";\n\nif (!valid) {\n    msg.failure_reason = \"climate não confirmou cool/16 °C/high (estado=\" + String(state) + \", temperatura=\" + String(entity?.attributes?.temperature) + \", fan=\" + String(fanMode) + \")\";\n    node.status({ fill: \"red\", shape: \"ring\", text: \"estado de emergência não confirmado\" });\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2340,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_control_succeeded"
+            ],
+            [
+                "rpi_cooling_start_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_control_succeeded",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Controle concluído",
+        "func": "if (msg.start_mode === \"reconcile\") {\n    flow.set(\"rpi_emergency_cooling_operation\", null);\n    node.status({ fill: \"green\", shape: \"dot\", text: \"reconciliado sem duplicar alerta\" });\n    return [null, msg, msg];\n}\nreturn [msg, null, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2600,
+        "y": 440,
+        "wires": [
+            [
+                "rpi_cooling_mark_active"
+            ],
+            [
+                "rpi_cooling_notify_started",
+                "rpi_cooling_dismiss_failure"
+            ],
+            [
+                "rpi_cooling_dismiss_recovered"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_mark_active",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Assumir ownership após sucesso",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_boolean.turn_on",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_boolean.raspberry_pi_emergency_cooling"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_boolean",
+        "service": "turn_on",
+        "x": 2820,
+        "y": 400,
+        "wires": [
+            [
+                "rpi_cooling_start_finalized"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_start_finalized",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Finalizar início",
+        "func": "flow.set(\"rpi_emergency_cooling_operation\", null);\nmsg.started_at = new Date().toISOString();\nnode.status({ fill: \"green\", shape: \"dot\", text: \"resfriamento controlado\" });\nreturn [msg, msg, msg];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3060,
+        "y": 400,
+        "wires": [
+            [
+                "rpi_cooling_notify_started"
+            ],
+            [
+                "rpi_cooling_dismiss_failure"
+            ],
+            [
+                "rpi_cooling_dismiss_recovered"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_start_catch",
+        "type": "catch",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Falha antes/durante controle",
+        "scope": [
+            "rpi_cooling_read_owner",
+            "rpi_cooling_read_climate",
+            "rpi_cooling_persist_snapshot",
+            "rpi_cooling_set_mode",
+            "rpi_cooling_set_temperature",
+            "rpi_cooling_set_fan",
+            "rpi_cooling_read_controlled_climate",
+            "rpi_cooling_mark_active",
+            "rpi_cooling_retry_temperature_check",
+            "rpi_cooling_startup_snapshot"
+        ],
+        "uncaught": false,
+        "x": 220,
+        "y": 560,
+        "wires": [
+            [
+                "rpi_cooling_start_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_start_failure",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Falhar seguro / retry limitado",
+        "func": "const LOCK_KEY = \"rpi_emergency_cooling_operation\";\nflow.set(LOCK_KEY, null);\nconst operation = msg.operation || \"start\";\nconst attempt = Math.max(1, Number(msg.attempt || 1));\nconst reason = msg.failure_reason || msg.error?.message || \"falha desconhecida\";\nmsg.failure_reason = reason;\nmsg.failure_operation = operation;\nnode.warn(\"Resfriamento do Raspberry Pi: \" + reason + \" (tentativa \" + attempt + \"/3)\");\n\nif (attempt < 3) {\n    msg.attempt = attempt + 1;\n    delete msg.error;\n    return operation === \"startup\" ? [null, msg, null, null, null] : [msg, null, null, null, null];\n}\n\nmsg.attempt = attempt;\nconst rollback = operation === \"start\" && msg.start_mode === \"acquire\" && msg.control_started && msg.previous_climate;\nconst clearSnapshot = operation === \"start\" && msg.start_mode === \"acquire\" && msg.snapshot_persisted && !rollback;\nif (rollback) msg.operation = \"rollback\";\nif (rollback) flow.set(LOCK_KEY, \"rollback\");\nreturn [null, null, rollback ? msg : null, clearSnapshot ? msg : null, msg];",
+        "outputs": 5,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 520,
+        "y": 560,
+        "wires": [
+            [
+                "rpi_cooling_start_retry_delay"
+            ],
+            [
+                "rpi_cooling_startup_retry_delay"
+            ],
+            [
+                "rpi_cooling_stop_read_climate"
+            ],
+            [
+                "rpi_cooling_clear_snapshot"
+            ],
+            [
+                "rpi_cooling_notify_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_start_retry_delay",
+        "type": "delay",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Retry de início em 60 s",
+        "pauseType": "delay",
+        "timeout": "60",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 820,
+        "y": 520,
+        "wires": [
+            [
+                "rpi_cooling_retry_temperature_check"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_startup_retry_delay",
+        "type": "delay",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Retry de startup em 60 s",
+        "pauseType": "delay",
+        "timeout": "60",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 820,
+        "y": 600,
+        "wires": [
+            [
+                "rpi_cooling_startup_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_retry_temperature_check",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "CPU ainda > 81,9 °C?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "81.9",
+        "halt_if_type": "num",
+        "halt_if_compare": "gt",
+        "entity_id": "sensor.raspberry_pi_cpu_temperature",
+        "state_type": "num",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "trigger_temperature",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 1090,
+        "y": 520,
+        "wires": [
+            [
+                "rpi_cooling_read_owner"
+            ],
+            [
+                "rpi_cooling_cancel_start"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_cancel_start",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_start",
+        "name": "Cancelar início fora do limite",
+        "func": "flow.set(\"rpi_emergency_cooling_operation\", null);\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"retry cancelado: CPU normalizou\" });\nconst rollback = msg.start_mode === \"acquire\" && msg.control_started && msg.previous_climate;\nif (rollback) {\n    msg.operation = \"rollback\";\n    flow.set(\"rpi_emergency_cooling_operation\", \"rollback\");\n}\nreturn [rollback ? msg : null, !rollback && msg.snapshot_persisted ? msg : null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1370,
+        "y": 540,
+        "wires": [
+            [
+                "rpi_cooling_stop_read_climate"
+            ],
+            [
+                "rpi_cooling_clear_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_normal",
+        "type": "server-state-changed",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "CPU < 70 °C por 10 min",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 2,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.raspberry_pi_cpu_temperature"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "num",
+        "ifState": "70",
+        "ifStateType": "num",
+        "ifStateOperator": "lt",
+        "outputOnlyOnStateChange": false,
+        "for": "10",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "triggerId"
+            }
+        ],
+        "x": 180,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_prepare_stop"
+            ],
+            [
+                "rpi_cooling_reset_restart_timer"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_retry_normal_check",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Confirmar CPU ainda < 70 °C",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "70",
+        "halt_if_type": "num",
+        "halt_if_compare": "lt",
+        "entity_id": "sensor.raspberry_pi_cpu_temperature",
+        "state_type": "num",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "trigger_temperature",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 430,
+        "y": 820,
+        "wires": [
+            [
+                "rpi_cooling_prepare_stop"
+            ],
+            [
+                "rpi_cooling_cancel_stop"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_prepare_stop",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Preparar encerramento",
+        "func": "msg.operation = \"stop\";\nmsg.attempt = Number(msg.attempt || 1);\nmsg.stop_source = msg.stop_source || \"temperature_window\";\nmsg.trigger_temperature = Number(msg.trigger_temperature ?? msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_active_check"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_active_check",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Foi ativado pelo fluxo?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "on",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_boolean.raspberry_pi_emergency_cooling",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "cooling_owner",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 950,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_stop_gate"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_gate",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Idempotência + lock de saída",
+        "func": "const LOCK_KEY = \"rpi_emergency_cooling_operation\";\nif (flow.get(LOCK_KEY)) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"operação já em andamento\" });\n    return null;\n}\nflow.set(LOCK_KEY, \"stop\");\nmsg.operation = \"stop\";\nmsg.attempt = Number(msg.attempt || 1);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_stop_read_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_read_climate",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Ler climate + estado anterior",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "climate.ar_condicionado_escritorio",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "climate_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "climate_entity",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            },
+            {
+                "property": "stored_snapshot",
+                "propertyType": "msg",
+                "value": "$entities(\"input_text.raspberry_pi_emergency_cooling_previous_climate\").state",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 1460,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_restore_decision"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_decision",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Validar e decidir restauração",
+        "func": "if (!msg.climate_entity || ['unknown', 'unavailable', undefined, null, ''].includes(msg.climate_state)) {\n    msg.failure_reason = \"climate indisponível durante \" + (msg.operation === \"rollback\" ? \"rollback\" : \"encerramento\");\n    return [null, null, msg];\n}\n\nlet restore = msg.previous_climate;\nif (!restore && typeof msg.stored_snapshot === \"string\" && msg.stored_snapshot.trim()) {\n    try { restore = JSON.parse(msg.stored_snapshot); } catch (error) { msg.snapshot_error = error.message; }\n}\n\nif (!restore || typeof restore.state !== \"string\" || ['unknown', 'unavailable', ''].includes(restore.state)) {\n    if (msg.operation === \"rollback\") {\n        msg.failure_reason = \"snapshot inválido para rollback\";\n        return [null, null, msg];\n    }\n    restore = { state: \"off\", temperature: null, fan_mode: null };\n    msg.restore_fallback = true;\n    node.warn(\"Snapshot anterior ausente/inválido; encerramento seguro com climate.turn_off.\");\n}\n\nmsg.restore = restore;\nreturn restore.state === \"off\" ? [msg, null, null] : [null, msg, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1750,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_restore_off"
+            ],
+            [
+                "rpi_cooling_restore_mode"
+            ],
+            [
+                "rpi_cooling_stop_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_off",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restaurar: desligado",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "turn_off",
+        "x": 2040,
+        "y": 700,
+        "wires": [
+            [
+                "rpi_cooling_restore_verify_delay"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_mode",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restaurar HVAC mode",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_hvac_mode",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"hvac_mode\": restore.state}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_hvac_mode",
+        "x": 2040,
+        "y": 780,
+        "wires": [
+            [
+                "rpi_cooling_restore_temperature_decision"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_temperature_decision",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restaurar temperatura?",
+        "func": "const temperature = Number(msg.restore?.temperature);\nreturn Number.isFinite(temperature) ? [msg, null] : [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2280,
+        "y": 780,
+        "wires": [
+            [
+                "rpi_cooling_restore_temperature"
+            ],
+            [
+                "rpi_cooling_restore_fan_decision"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_temperature",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restaurar temperatura",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_temperature",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"temperature\": restore.temperature, \"hvac_mode\": restore.state}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_temperature",
+        "x": 2520,
+        "y": 740,
+        "wires": [
+            [
+                "rpi_cooling_restore_fan_decision"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_fan_decision",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restaurar fan mode?",
+        "func": "const fanMode = msg.restore?.fan_mode;\nreturn typeof fanMode === \"string\" && fanMode && !['unknown', 'unavailable'].includes(fanMode)\n    ? [msg, null]\n    : [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2760,
+        "y": 780,
+        "wires": [
+            [
+                "rpi_cooling_restore_fan"
+            ],
+            [
+                "rpi_cooling_restore_verify_delay"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_fan",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restaurar fan mode",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "climate.set_fan_mode",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "climate.ar_condicionado_escritorio"
+        ],
+        "labelId": [],
+        "data": "{\"fan_mode\": restore.fan_mode}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "climate",
+        "service": "set_fan_mode",
+        "x": 2990,
+        "y": 740,
+        "wires": [
+            [
+                "rpi_cooling_restore_verify_delay"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_verify_delay",
+        "type": "delay",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Aguardar restauração confirmar",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 3230,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_read_restored_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_read_restored_climate",
+        "type": "api-current-state",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Confirmar estado restaurado",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "climate.ar_condicionado_escritorio",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "restored_climate_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "restored_climate_entity",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 3480,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_verify_restored_climate"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_verify_restored_climate",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Validar estado restaurado",
+        "func": "const entity = msg.restored_climate_entity;\nconst state = msg.restored_climate_state;\nconst restore = msg.restore;\n\nif (!entity || ['unknown', 'unavailable', undefined, null, ''].includes(state) || !restore) {\n    msg.failure_reason = \"climate indisponível ao confirmar restauração\";\n    return [null, msg];\n}\n\nlet valid = state === restore.state;\nconst expectedTemperature = Number(restore.temperature);\nconst actualTemperature = Number(entity.attributes?.temperature);\nif (restore.state !== \"off\" && Number.isFinite(expectedTemperature)) {\n    valid = valid && Number.isFinite(actualTemperature) && Math.abs(actualTemperature - expectedTemperature) < 0.01;\n}\n\nconst expectedFan = restore.fan_mode;\nif (restore.state !== \"off\" && typeof expectedFan === \"string\" && expectedFan && !['unknown', 'unavailable'].includes(expectedFan)) {\n    valid = valid && entity.attributes?.fan_mode === expectedFan;\n}\n\nif (!valid) {\n    msg.failure_reason = \"climate não confirmou o estado anterior (modo=\" + String(state) + \", temperatura=\" + String(entity.attributes?.temperature) + \", fan=\" + String(entity.attributes?.fan_mode) + \")\";\n    node.status({ fill: \"red\", shape: \"ring\", text: \"restauração não confirmada\" });\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3730,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_restore_finished"
+            ],
+            [
+                "rpi_cooling_stop_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_restore_finished",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Restauração concluída",
+        "func": "if (msg.operation === \"rollback\") {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"rollback concluído; liberando ownership\" });\n    return [null, msg];\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3970,
+        "y": 760,
+        "wires": [
+            [
+                "rpi_cooling_mark_inactive"
+            ],
+            [
+                "rpi_cooling_rollback_release_owner"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_rollback_release_owner",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Rollback: garantir ownership off",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_boolean.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_boolean.raspberry_pi_emergency_cooling"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_boolean",
+        "service": "turn_off",
+        "x": 4200,
+        "y": 820,
+        "wires": [
+            [
+                "rpi_cooling_rollback_finalized"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_rollback_finalized",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Finalizar rollback",
+        "func": "flow.set(\"rpi_emergency_cooling_operation\", null);\nnode.status({ fill: \"yellow\", shape: \"dot\", text: \"rollback concluído\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4450,
+        "y": 820,
+        "wires": [
+            [
+                "rpi_cooling_clear_snapshot"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_mark_inactive",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Liberar ownership após restaurar",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_boolean.turn_off",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_boolean.raspberry_pi_emergency_cooling"
+        ],
+        "labelId": [],
+        "data": "",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_boolean",
+        "service": "turn_off",
+        "x": 4200,
+        "y": 720,
+        "wires": [
+            [
+                "rpi_cooling_stop_finalized"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_finalized",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Finalizar normalização",
+        "func": "flow.set(\"rpi_emergency_cooling_operation\", null);\nmsg.normalized_at = new Date().toISOString();\nnode.status({ fill: \"green\", shape: \"dot\", text: msg.restore?.state === \"off\" ? \"desligado\" : \"estado anterior restaurado\" });\nreturn [msg, msg, msg, msg];",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4440,
+        "y": 720,
+        "wires": [
+            [
+                "rpi_cooling_clear_snapshot"
+            ],
+            [
+                "rpi_cooling_dismiss_started"
+            ],
+            [
+                "rpi_cooling_dismiss_failure"
+            ],
+            [
+                "rpi_cooling_notify_recovered"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_catch",
+        "type": "catch",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Falha ao restaurar/encerrar",
+        "scope": [
+            "rpi_cooling_active_check",
+            "rpi_cooling_stop_read_climate",
+            "rpi_cooling_restore_off",
+            "rpi_cooling_restore_mode",
+            "rpi_cooling_restore_temperature",
+            "rpi_cooling_restore_fan",
+            "rpi_cooling_read_restored_climate",
+            "rpi_cooling_mark_inactive",
+            "rpi_cooling_rollback_release_owner",
+            "rpi_cooling_retry_normal_check"
+        ],
+        "uncaught": false,
+        "x": 220,
+        "y": 920,
+        "wires": [
+            [
+                "rpi_cooling_stop_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_failure",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Manter ownership / retry limitado",
+        "func": "flow.set(\"rpi_emergency_cooling_operation\", null);\nconst attempt = Math.max(1, Number(msg.attempt || 1));\nconst reason = msg.failure_reason || msg.error?.message || \"falha desconhecida\";\nmsg.failure_reason = reason;\nmsg.failure_operation = msg.operation || \"stop\";\nnode.warn(\"Encerramento do resfriamento: \" + reason + \" (tentativa \" + attempt + \"/3)\");\n\nif (msg.operation === \"stop\" && attempt < 3) {\n    msg.attempt = attempt + 1;\n    delete msg.error;\n    return [msg, null];\n}\n\nmsg.attempt = attempt;\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 920,
+        "wires": [
+            [
+                "rpi_cooling_stop_retry_delay"
+            ],
+            [
+                "rpi_cooling_notify_failure"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_stop_retry_delay",
+        "type": "delay",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Retry de saída em 60 s",
+        "pauseType": "delay",
+        "timeout": "60",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 780,
+        "y": 900,
+        "wires": [
+            [
+                "rpi_cooling_retry_normal_check"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_cooling_cancel_stop",
+        "type": "function",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_stop",
+        "name": "Cancelar saída fora do limite",
+        "func": "flow.set(\"rpi_emergency_cooling_operation\", null);\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"saída cancelada: CPU voltou a subir\" });\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 840,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_clear_snapshot",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Limpar estado anterior",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_text.set_value",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_text.raspberry_pi_emergency_cooling_previous_climate"
+        ],
+        "labelId": [],
+        "data": "{\"value\":\"\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_text",
+        "service": "set_value",
+        "x": 260,
+        "y": 1100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_notify_started",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Notificar início",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":\"Raspberry Pi - resfriamento de emergencia\",\"message\":\"A CPU chegou a \" & $string(trigger_temperature) & \" °C. O ar-condicionado do escritorio foi controlado em 16 °C, modo frio e ventilacao maxima. Origem: \" & start_source & \". Ele sera restaurado depois que a CPU permanecer abaixo de 70 °C por 10 minutos.\",\"notification_id\":\"raspberry_pi_emergency_cooling\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 510,
+        "y": 1060,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_notify_recovered",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Notificar normalização",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":\"Raspberry Pi - temperatura normalizada\",\"message\":\"A CPU permaneceu abaixo de 70 °C por 10 minutos e esta em \" & $string(trigger_temperature) & \" °C. \" & (restore.state = \"off\" ? \"O ar-condicionado foi desligado, como estava antes da emergência.\" : \"O estado anterior do ar-condicionado foi restaurado (modo \" & restore.state & \", \" & $string(restore.temperature) & \" °C, ventilação \" & $string(restore.fan_mode) & \").\") & (restore_fallback ? \" O snapshot estava indisponível; foi aplicado o fallback seguro de desligamento.\" : \"\") & \" Origem: \" & stop_source & \".\",\"notification_id\":\"raspberry_pi_emergency_cooling_recovered\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 780,
+        "y": 1060,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_notify_failure",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Notificar falha (ID estável)",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":\"Raspberry Pi - falha no resfriamento automático\",\"message\":\"Operação \" & failure_operation & \" falhou após \" & $string(attempt) & \" tentativa(s): \" & failure_reason & \". Temperatura observada: \" & $string(trigger_temperature) & \" °C. Ownership: \" & $string(cooling_owner) & \". Verifique o Node-RED e \" & \"climate.ar_condicionado_escritorio\" & \".\",\"notification_id\":\"raspberry_pi_emergency_cooling_failure\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1060,
+        "y": 1060,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_dismiss_started",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Remover alerta de emergência",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\":\"raspberry_pi_emergency_cooling\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 1370,
+        "y": 1060,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_dismiss_failure",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Remover alerta de falha",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\":\"raspberry_pi_emergency_cooling_failure\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 1640,
+        "y": 1060,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "rpi_cooling_dismiss_recovered",
+        "type": "api-call-service",
+        "z": "raspberry_pi_cooling_tab",
+        "g": "grp_rpi_cooling_observability",
+        "name": "Remover alerta de recuperação anterior",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\":\"raspberry_pi_emergency_cooling_recovered\"}",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 1920,
+        "y": 1060,
+        "wires": [
+            []
+        ]
+    },
+    {
         "id": "storage_health_tab",
         "type": "tab",
         "label": "Storage Health",
