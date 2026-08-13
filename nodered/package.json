@@ -12,6 +12,7 @@
         "flows:test-alarm-house": "node tools/test-alarm-house-flow.mjs",
         "flows:test-external-lighting": "node tools/test-external-lighting-alarm-flow.mjs",
         "flows:test-security": "node tools/test-security-light-flow.mjs",
+        "flows:test-security-recovery": "node tools/test-security-recovery-flow.mjs",
         "flows:validate": "node tools/validate-flows.mjs",
         "flows:summary": "node tools/summarize-flows.mjs"
     },
