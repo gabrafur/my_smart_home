@@ -39,6 +39,651 @@
         "env": []
     },
     {
+        "id": "security_people_tab",
+        "type": "tab",
+        "label": "localizacao_pessoas",
+        "disabled": false,
+        "info": "Normaliza os trackers dos iPhones, detecta chegada de pessoas e publica security.people-context.v1.",
+        "env": []
+    },
+    {
+        "id": "security_creta_tab",
+        "type": "tab",
+        "label": "contexto_creta",
+        "disabled": false,
+        "info": "Normaliza estado/localização do Creta, mantém creta_in_use, detecta chegada e controla refresh/viagens.",
+        "env": []
+    },
+    {
+        "id": "security_context_tab",
+        "type": "tab",
+        "label": "contexto_chegadas",
+        "disabled": false,
+        "info": "Coordena snapshots e política conjunta sem interpretar GPS; enriquece apenas o aviso da Valéria.",
+        "env": []
+    },
+    {
+        "id": "2fd40fd570e6f37a",
+        "type": "tab",
+        "label": "iluminacao_seguranca",
+        "disabled": false,
+        "info": "Orquestra exclusivamente a decisão e o ciclo de vida do refletor a partir de contratos de alto nível.",
+        "env": []
+    },
+    {
+        "id": "raspberry_pi_cooling_tab",
+        "type": "tab",
+        "label": "resfriamento_raspberry_pi",
+        "disabled": false,
+        "info": "Controla o resfriamento de emergência do Raspberry Pi. Inicia após 2 minutos acima de 81,9 °C; reconcilia ownership e temperatura no startup; encerra após 10 minutos abaixo de 70 °C; preserva o estado anterior do climate em helper persistente; limita falhas a três tentativas espaçadas por 60 segundos.",
+        "env": []
+    },
+    {
+        "id": "storage_health_tab",
+        "type": "tab",
+        "label": "storage_health",
+        "disabled": false,
+        "info": "Monitoramento de armazenamento, tendencia, alertas e housekeeping seguro sem Docker socket ou sudo."
+    },
+    {
+        "id": "grp_people_events",
+        "type": "group",
+        "z": "security_people_tab",
+        "name": "1. Eventos dos iPhones",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "people_comment",
+            "people_gabriel_event",
+            "people_valeria_event",
+            "people_snapshot_in",
+            "people_snapshot"
+        ],
+        "x": -6,
+        "y": 59,
+        "w": 432,
+        "h": 282
+    },
+    {
+        "id": "grp_people_context",
+        "type": "group",
+        "z": "security_people_tab",
+        "name": "2. Normalização, presença e chegada",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "people_normalize",
+            "people_context_out",
+            "people_arrival_out",
+            "people_notify_candidate_out"
+        ],
+        "x": 464,
+        "y": 119,
+        "w": 662,
+        "h": 202
+    },
+    {
+        "id": "grp_people_refresh",
+        "type": "group",
+        "z": "security_people_tab",
+        "name": "3. Refresh adaptativo dos iPhones",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "people_refresh_in",
+            "people_refresh_decide",
+            "people_refresh_gabriel",
+            "people_refresh_valeria",
+            "people_creta_sync_in",
+            "people_update_entities"
+        ],
+        "x": 54,
+        "y": 419,
+        "w": 772,
+        "h": 222
+    },
+    {
+        "id": "grp_creta_events",
+        "type": "group",
+        "z": "security_creta_tab",
+        "name": "1. Eventos e snapshot do Creta",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "creta_comment",
+            "creta_location_event",
+            "creta_lock_event",
+            "creta_engine_off_event",
+            "creta_unlock_event",
+            "creta_snapshot_in",
+            "creta_snapshot"
+        ],
+        "x": -6,
+        "y": 59,
+        "w": 492,
+        "h": 402
+    },
+    {
+        "id": "grp_creta_context",
+        "type": "group",
+        "z": "security_creta_tab",
+        "name": "2. Estado do veículo, viagem e chegada",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "creta_normalize",
+            "creta_context_out",
+            "creta_arrival_out",
+            "creta_arrival_actions_out"
+        ],
+        "x": 524,
+        "y": 119,
+        "w": 642,
+        "h": 222
+    },
+    {
+        "id": "grp_creta_actions",
+        "type": "group",
+        "z": "security_creta_tab",
+        "name": "3. Refresh do veículo e viagens",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "creta_refresh_in",
+            "creta_refresh_decide",
+            "creta_refresh_people_sync_out",
+            "creta_arrival_actions_in",
+            "creta_arrival_actions",
+            "creta_force_refresh",
+            "creta_refresh_ack",
+            "creta_update_entities",
+            "creta_trip_refresh"
+        ],
+        "x": 54,
+        "y": 559,
+        "w": 1002,
+        "h": 262
+    },
+    {
+        "id": "grp_context_tick",
+        "type": "group",
+        "z": "security_context_tab",
+        "name": "1. Ciclo periódico",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "context_comment",
+            "context_tick",
+            "context_coordinator",
+            "context_snapshot_request_out"
+        ],
+        "x": 44,
+        "y": 59,
+        "w": 797,
+        "h": 189.5
+    },
+    {
+        "id": "grp_context_inputs",
+        "type": "group",
+        "z": "security_context_tab",
+        "name": "2. Contratos de domínio",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "context_people_in",
+            "context_creta_in",
+            "context_person_event_in"
+        ],
+        "x": 139,
+        "y": 359,
+        "w": 157,
+        "h": 202
+    },
+    {
+        "id": "grp_context_outputs",
+        "type": "group",
+        "z": "security_context_tab",
+        "name": "3. Comandos e notificações",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "context_refresh_command_out",
+            "context_notify_valeria",
+            "context_test_notification"
+        ],
+        "x": 634,
+        "y": 359,
+        "w": 382,
+        "h": 222
+    },
+    {
+        "id": "grp_light_inputs",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "1. Contextos e eventos de alto nível",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_comment",
+            "light_people_context_in",
+            "light_creta_context_in",
+            "light_arrival_in",
+            "light_sun_event",
+            "light_sun_ready"
+        ],
+        "x": 4,
+        "y": 59,
+        "w": 352,
+        "h": 402
+    },
+    {
+        "id": "grp_light_decision",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "2. Atualizar estado e decidir",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_merge_context",
+            "light_prepare_arrival",
+            "light_check_dark",
+            "light_check_creta_in_use",
+            "light_check_inactive",
+            "light_reconcile_signal_out"
+        ],
+        "x": 404,
+        "y": 139,
+        "w": 1042,
+        "h": 182
+    },
+    {
+        "id": "grp_light_on",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "3. Ligar, notificar e proteger por timeout",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_mark_active",
+            "light_turn_on",
+            "light_notify_on",
+            "light_auto_off",
+            "light_timeout",
+            "light_timeout_route_out",
+            "light_manual_action_in"
+        ],
+        "x": 1534,
+        "y": 39,
+        "w": 857,
+        "h": 362
+    },
+    {
+        "id": "grp_light_off",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "4. Cinco condições independentes de desligamento",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c27c4c",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_timeout_route_in",
+            "light_evaluate_off",
+            "light_off_grace",
+            "light_turn_off_if_active",
+            "light_turn_off",
+            "light_recovery_off_in"
+        ],
+        "x": 424,
+        "y": 459,
+        "w": 1162,
+        "h": 242
+    },
+    {
+        "id": "grp_light_tests",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "5. Testes manuais",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#777777",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "light_manual_test",
+            "light_manual_action_out"
+        ],
+        "x": 1814,
+        "y": 519,
+        "w": 507,
+        "h": 82
+    },
+    {
+        "id": "grp_light_recovery",
+        "type": "group",
+        "z": "2fd40fd570e6f37a",
+        "name": "0. Startup / Reconciliação",
+        "style": {
+            "label": true
+        },
+        "nodes": [
+            "light_startup",
+            "light_read_physical",
+            "light_physical_event",
+            "light_reconcile",
+            "light_recovery_delay",
+            "light_recovery_off_out",
+            "light_reconcile_signal_in"
+        ],
+        "x": 4,
+        "y": 759,
+        "w": 1362,
+        "h": 222
+    },
+    {
+        "id": "grp_rpi_cooling_triggers",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "1. Detectar e reconciliar",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_hot",
+            "rpi_cooling_prepare_hot",
+            "rpi_cooling_startup",
+            "rpi_cooling_prepare_startup",
+            "rpi_cooling_startup_snapshot",
+            "rpi_cooling_reconcile_startup",
+            "rpi_cooling_read_owner",
+            "rpi_cooling_start_gate",
+            "rpi_cooling_restart_recovery_timer",
+            "rpi_cooling_reset_restart_timer"
+        ],
+        "x": 24,
+        "y": 99,
+        "w": 1622,
+        "h": 242
+    },
+    {
+        "id": "grp_rpi_cooling_start",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "2. Assumir controle com segurança",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#d9822b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_read_climate",
+            "rpi_cooling_validate_climate",
+            "rpi_cooling_persist_snapshot",
+            "rpi_cooling_begin_control",
+            "rpi_cooling_set_mode",
+            "rpi_cooling_set_temperature",
+            "rpi_cooling_set_fan",
+            "rpi_cooling_verify_delay",
+            "rpi_cooling_read_controlled_climate",
+            "rpi_cooling_verify_controlled_climate",
+            "rpi_cooling_control_succeeded",
+            "rpi_cooling_mark_active",
+            "rpi_cooling_start_finalized",
+            "rpi_cooling_start_catch",
+            "rpi_cooling_start_failure",
+            "rpi_cooling_start_retry_delay",
+            "rpi_cooling_startup_retry_delay",
+            "rpi_cooling_retry_temperature_check",
+            "rpi_cooling_cancel_start"
+        ],
+        "x": 34,
+        "y": 351.5,
+        "w": 3132,
+        "h": 289.5
+    },
+    {
+        "id": "grp_rpi_cooling_stop",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "3. Restaurar após normalização",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_normal",
+            "rpi_cooling_retry_normal_check",
+            "rpi_cooling_prepare_stop",
+            "rpi_cooling_active_check",
+            "rpi_cooling_stop_gate",
+            "rpi_cooling_stop_read_climate",
+            "rpi_cooling_restore_decision",
+            "rpi_cooling_restore_off",
+            "rpi_cooling_restore_mode",
+            "rpi_cooling_restore_temperature_decision",
+            "rpi_cooling_restore_temperature",
+            "rpi_cooling_restore_fan_decision",
+            "rpi_cooling_restore_fan",
+            "rpi_cooling_restore_verify_delay",
+            "rpi_cooling_read_restored_climate",
+            "rpi_cooling_verify_restored_climate",
+            "rpi_cooling_restore_finished",
+            "rpi_cooling_rollback_release_owner",
+            "rpi_cooling_rollback_finalized",
+            "rpi_cooling_mark_inactive",
+            "rpi_cooling_stop_finalized",
+            "rpi_cooling_stop_catch",
+            "rpi_cooling_stop_failure",
+            "rpi_cooling_stop_retry_delay",
+            "rpi_cooling_cancel_stop"
+        ],
+        "x": 44,
+        "y": 659,
+        "w": 4522,
+        "h": 302
+    },
+    {
+        "id": "grp_rpi_cooling_observability",
+        "type": "group",
+        "z": "raspberry_pi_cooling_tab",
+        "name": "4. Estado persistente e observabilidade",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a6db1",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "rpi_cooling_clear_snapshot",
+            "rpi_cooling_notify_started",
+            "rpi_cooling_notify_recovered",
+            "rpi_cooling_notify_failure",
+            "rpi_cooling_dismiss_started",
+            "rpi_cooling_dismiss_failure",
+            "rpi_cooling_dismiss_recovered"
+        ],
+        "x": 134,
+        "y": 1019,
+        "w": 1972,
+        "h": 122
+    },
+    {
+        "id": "storage_group_config",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "1. Configuracao central e MQTT discovery",
+        "style": {
+            "label": true,
+            "color": "#7d6ba8"
+        },
+        "nodes": [
+            "storage_comment_architecture",
+            "storage_init",
+            "storage_set_config",
+            "storage_discovery",
+            "storage_mqtt_discovery"
+        ],
+        "x": -16,
+        "y": 39,
+        "w": 1042,
+        "h": 152
+    },
+    {
+        "id": "storage_group_health",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "2. Health check leve (15 min) e tendencia",
+        "style": {
+            "label": true,
+            "color": "#3fadb5"
+        },
+        "nodes": [
+            "storage_health_tick",
+            "storage_read_ha",
+            "storage_evaluate",
+            "storage_mqtt_state"
+        ],
+        "x": 34,
+        "y": 249,
+        "w": 1192,
+        "h": 109.5
+    },
+    {
+        "id": "storage_group_alerts",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "3. Alertas com histerese, cooldown e recovery",
+        "style": {
+            "label": true,
+            "color": "#e6a23c"
+        },
+        "nodes": [
+            "storage_notify"
+        ],
+        "x": 1314,
+        "y": 269,
+        "w": 294,
+        "h": 82
+    },
+    {
+        "id": "storage_group_maintenance",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "4. Housekeeping allowlisted e inspecao semanal",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a"
+        },
+        "nodes": [
+            "storage_daily_maintenance",
+            "storage_exec_maintenance",
+            "storage_parse_maintenance",
+            "storage_store_maintenance_stderr",
+            "storage_maintenance_complete",
+            "storage_weekly_inspection",
+            "storage_exec_inspection",
+            "storage_parse_inspection",
+            "storage_maintenance_mqtt"
+        ],
+        "x": 24,
+        "y": 429,
+        "w": 1212,
+        "h": 239.5
+    },
+    {
         "id": "4126427d5e161a03",
         "type": "server",
         "name": "Home Assistant",
@@ -81,20 +726,20 @@
         "keepalive": 60,
         "cleansession": true,
         "autoUnsubscribe": true,
-        "birthTopic": "",
-        "birthQos": "0",
-        "birthRetain": "false",
-        "birthPayload": "",
+        "birthTopic": "nodered/status",
+        "birthQos": "1",
+        "birthRetain": "true",
+        "birthPayload": "online",
         "birthMsg": {},
-        "closeTopic": "",
-        "closeQos": "0",
-        "closeRetain": "false",
-        "closePayload": "",
+        "closeTopic": "nodered/status",
+        "closeQos": "1",
+        "closeRetain": "true",
+        "closePayload": "offline",
         "closeMsg": {},
-        "willTopic": "",
-        "willQos": "0",
-        "willRetain": "false",
-        "willPayload": "",
+        "willTopic": "nodered/status",
+        "willQos": "1",
+        "willRetain": "true",
+        "willPayload": "offline",
         "willMsg": {},
         "userProps": "",
         "sessionExpiry": ""
@@ -1903,89 +2548,6 @@
         "wires": []
     },
     {
-        "id": "security_people_tab",
-        "type": "tab",
-        "label": "localizacao_pessoas",
-        "disabled": false,
-        "info": "Normaliza os trackers dos iPhones, detecta chegada de pessoas e publica security.people-context.v1.",
-        "env": []
-    },
-    {
-        "id": "grp_people_events",
-        "type": "group",
-        "z": "security_people_tab",
-        "name": "1. Eventos dos iPhones",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "people_comment",
-            "people_gabriel_event",
-            "people_valeria_event",
-            "people_snapshot_in",
-            "people_snapshot"
-        ],
-        "x": 34,
-        "y": 59,
-        "w": 382,
-        "h": 302
-    },
-    {
-        "id": "grp_people_context",
-        "type": "group",
-        "z": "security_people_tab",
-        "name": "2. Normalização, presença e chegada",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "people_normalize",
-            "people_context_out",
-            "people_arrival_out",
-            "people_notify_candidate_out"
-        ],
-        "x": 454,
-        "y": 99,
-        "w": 702,
-        "h": 222
-    },
-    {
-        "id": "grp_people_refresh",
-        "type": "group",
-        "z": "security_people_tab",
-        "name": "3. Refresh adaptativo dos iPhones",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "people_refresh_in",
-            "people_refresh_decide",
-            "people_refresh_gabriel",
-            "people_refresh_valeria",
-            "people_creta_sync_in",
-            "people_update_entities"
-        ],
-        "x": 34,
-        "y": 419,
-        "w": 922,
-        "h": 242
-    },
-    {
         "id": "people_comment",
         "type": "comment",
         "z": "security_people_tab",
@@ -1994,8 +2556,7 @@
         "info": "Estados unknown/unavailable nunca viram chegada. HOME_LAT/HOME_LON e GATE_LAT/GATE_LON vêm do ambiente; sem coordenadas, usa-se o estado de zona como fallback.",
         "x": 210,
         "y": 100,
-        "wires": [],
-        "width": 330
+        "wires": []
     },
     {
         "id": "people_gabriel_event",
@@ -2371,94 +2932,6 @@
         ]
     },
     {
-        "id": "security_creta_tab",
-        "type": "tab",
-        "label": "contexto_creta",
-        "disabled": false,
-        "info": "Normaliza estado/localização do Creta, mantém creta_in_use, detecta chegada e controla refresh/viagens.",
-        "env": []
-    },
-    {
-        "id": "grp_creta_events",
-        "type": "group",
-        "z": "security_creta_tab",
-        "name": "1. Eventos e snapshot do Creta",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "creta_comment",
-            "creta_location_event",
-            "creta_lock_event",
-            "creta_engine_off_event",
-            "creta_unlock_event",
-            "creta_snapshot_in",
-            "creta_snapshot"
-        ],
-        "x": 34,
-        "y": 59,
-        "w": 442,
-        "h": 422
-    },
-    {
-        "id": "grp_creta_context",
-        "type": "group",
-        "z": "security_creta_tab",
-        "name": "2. Estado do veículo, viagem e chegada",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "creta_normalize",
-            "creta_context_out",
-            "creta_arrival_out",
-            "creta_arrival_actions_out"
-        ],
-        "x": 514,
-        "y": 99,
-        "w": 682,
-        "h": 282
-    },
-    {
-        "id": "grp_creta_actions",
-        "type": "group",
-        "z": "security_creta_tab",
-        "name": "3. Refresh do veículo e viagens",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "creta_refresh_in",
-            "creta_refresh_decide",
-            "creta_refresh_people_sync_out",
-            "creta_arrival_actions_in",
-            "creta_arrival_actions",
-            "creta_force_refresh",
-            "creta_refresh_ack",
-            "creta_update_entities",
-            "creta_trip_refresh"
-        ],
-        "x": 34,
-        "y": 539,
-        "w": 1122,
-        "h": 282
-    },
-    {
         "id": "creta_comment",
         "type": "comment",
         "z": "security_creta_tab",
@@ -2467,8 +2940,7 @@
         "info": "creta_in_use é uma trava de domínio: liga quando o motor é visto ligado e só solta com motor desligado mais carro em casa ou porta destravada.",
         "x": 240,
         "y": 100,
-        "wires": [],
-        "width": 380
+        "wires": []
     },
     {
         "id": "creta_location_event",
@@ -2996,84 +3468,6 @@
         ]
     },
     {
-        "id": "security_context_tab",
-        "type": "tab",
-        "label": "contexto_chegadas",
-        "disabled": false,
-        "info": "Coordena snapshots e política conjunta sem interpretar GPS; enriquece apenas o aviso da Valéria.",
-        "env": []
-    },
-    {
-        "id": "grp_context_tick",
-        "type": "group",
-        "z": "security_context_tab",
-        "name": "1. Ciclo periódico",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "context_comment",
-            "context_tick",
-            "context_coordinator",
-            "context_snapshot_request_out"
-        ],
-        "x": 34,
-        "y": 59,
-        "w": 862,
-        "h": 222
-    },
-    {
-        "id": "grp_context_inputs",
-        "type": "group",
-        "z": "security_context_tab",
-        "name": "2. Contratos de domínio",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "context_people_in",
-            "context_creta_in",
-            "context_person_event_in"
-        ],
-        "x": 34,
-        "y": 339,
-        "w": 362,
-        "h": 222
-    },
-    {
-        "id": "grp_context_outputs",
-        "type": "group",
-        "z": "security_context_tab",
-        "name": "3. Comandos e notificações",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "context_refresh_command_out",
-            "context_notify_valeria",
-            "context_test_notification"
-        ],
-        "x": 674,
-        "y": 339,
-        "w": 482,
-        "h": 222
-    },
-    {
         "id": "context_comment",
         "type": "comment",
         "z": "security_context_tab",
@@ -3082,8 +3476,7 @@
         "info": "O ciclo espera os dois snapshots do mesmo refresh_cycle_id. Só então calcula anyone_away e publica um comando; cada domínio mantém seu próprio cooldown.",
         "x": 230,
         "y": 100,
-        "wires": [],
-        "width": 390
+        "wires": []
     },
     {
         "id": "context_tick",
@@ -3128,7 +3521,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
+        "x": 570,
         "y": 200,
         "wires": [
             [
@@ -3286,151 +3679,15 @@
         ]
     },
     {
-        "id": "2fd40fd570e6f37a",
-        "type": "tab",
-        "label": "iluminacao_seguranca",
-        "disabled": false,
-        "info": "Orquestra exclusivamente a decisão e o ciclo de vida do refletor a partir de contratos de alto nível.",
-        "env": []
-    },
-    {
-        "id": "grp_light_inputs",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "1. Contextos e eventos de alto nível",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "light_comment",
-            "light_people_context_in",
-            "light_creta_context_in",
-            "light_arrival_in",
-            "light_sun_event",
-            "light_sun_ready"
-        ],
-        "x": 34,
-        "y": 59,
-        "w": 402,
-        "h": 402
-    },
-    {
-        "id": "grp_light_decision",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "2. Atualizar estado e decidir",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "light_merge_context",
-            "light_prepare_arrival",
-            "light_check_dark",
-            "light_check_creta_in_use",
-            "light_check_inactive",
-            "light_reconcile_signal_out"
-        ],
-        "x": 474,
-        "y": 99,
-        "w": 1002,
-        "h": 242
-    },
-    {
-        "id": "grp_light_on",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "3. Ligar, notificar e proteger por timeout",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "light_mark_active",
-            "light_turn_on",
-            "light_notify_on",
-            "light_auto_off",
-            "light_timeout",
-            "light_timeout_route_out",
-            "light_manual_action_in"
-        ],
-        "x": 1514,
-        "y": 59,
-        "w": 922,
-        "h": 342
-    },
-    {
-        "id": "grp_light_off",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "4. Cinco condições independentes de desligamento",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#c27c4c",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "light_timeout_route_in",
-            "light_evaluate_off",
-            "light_off_grace",
-            "light_turn_off_if_active",
-            "light_turn_off",
-            "light_recovery_off_in"
-        ],
-        "x": 474,
-        "y": 459,
-        "w": 1282,
-        "h": 262
-    },
-    {
-        "id": "grp_light_tests",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "5. Testes manuais",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#777777",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "light_manual_test",
-            "light_manual_action_out"
-        ],
-        "x": 1834,
-        "y": 499,
-        "w": 522,
-        "h": 122
-    },
-    {
         "id": "light_comment",
         "type": "comment",
         "z": "2fd40fd570e6f37a",
         "g": "grp_light_inputs",
         "name": "Contrato da iluminação",
         "info": "Esta aba não lê GPS, trackers, motor ou trava diretamente. Ela consome security.people-context.v1, security.creta-context.v1 e security.arrival.v1.",
-        "x": 230,
+        "x": 180,
         "y": 100,
-        "wires": [],
-        "width": 340
+        "wires": []
     },
     {
         "id": "light_people_context_in",
@@ -3441,7 +3698,7 @@
         "links": [
             "people_context_out"
         ],
-        "x": 95,
+        "x": 45,
         "y": 200,
         "wires": [
             [
@@ -3458,7 +3715,7 @@
         "links": [
             "creta_context_out"
         ],
-        "x": 95,
+        "x": 45,
         "y": 260,
         "wires": [
             [
@@ -3476,7 +3733,7 @@
             "people_arrival_out",
             "creta_arrival_out"
         ],
-        "x": 95,
+        "x": 45,
         "y": 320,
         "wires": [
             [
@@ -3523,8 +3780,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 220,
-        "y": 380,
+        "x": 200,
+        "y": 340,
         "wires": [
             [
                 "light_sun_ready"
@@ -3887,8 +4144,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 850,
-        "y": 620,
+        "x": 1020,
+        "y": 640,
         "wires": [
             [
                 "light_turn_off_if_active"
@@ -3908,8 +4165,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1100,
-        "y": 560,
+        "x": 1130,
+        "y": 540,
         "wires": [
             [
                 "light_turn_off"
@@ -3943,7 +4200,7 @@
         "domain": "switch",
         "service": "turn_off",
         "x": 1450,
-        "y": 560,
+        "y": 540,
         "wires": [
             []
         ]
@@ -4005,34 +4262,12 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 250,
+        "x": 200,
         "y": 420,
         "wires": [
             [
                 "light_merge_context"
             ]
-        ]
-    },
-    {
-        "id": "grp_light_recovery",
-        "type": "group",
-        "z": "2fd40fd570e6f37a",
-        "name": "0. Startup / Reconciliação",
-        "style": {
-            "label": true
-        },
-        "x": 34,
-        "y": 739,
-        "w": 1422,
-        "h": 242,
-        "nodes": [
-            "light_startup",
-            "light_read_physical",
-            "light_physical_event",
-            "light_reconcile",
-            "light_recovery_delay",
-            "light_recovery_off_out",
-            "light_reconcile_signal_in"
         ]
     },
     {
@@ -4065,6 +4300,7 @@
         "id": "light_read_physical",
         "type": "api-current-state",
         "z": "2fd40fd570e6f37a",
+        "g": "grp_light_recovery",
         "name": "Consultar estado físico atual do refletor",
         "server": "4126427d5e161a03",
         "version": 3,
@@ -4091,14 +4327,14 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 450,
+        "x": 520,
         "y": 800,
         "wires": [
             [
                 "light_reconcile"
-            ]
-        ],
-        "g": "grp_light_recovery"
+            ],
+            []
+        ]
     },
     {
         "id": "light_physical_event",
@@ -4153,20 +4389,20 @@
         "z": "2fd40fd570e6f37a",
         "g": "grp_light_recovery",
         "name": "Revalidar lifecycle e estado físico",
+        "func": "const key = \"security_light_lifecycle_v1\";\nconst now = Date.now();\nconst PHYSICAL_FRESH_MS = 2 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nlet lifecycle = flow.get(key, \"persistent\");\nconst physicalSignal = msg.payload?.kind === \"light_physical\";\nif (physicalSignal && flow.get(\"security_light_startup_logged\") !== true) {\n    node.log?.(\"iluminacao_seguranca: startup/reconciliacao física iniciada\");\n    flow.set(\"security_light_startup_logged\", true);\n}\nif (!lifecycle || lifecycle.version !== 1 || !Number.isFinite(lifecycle.updated_at) || lifecycle.updated_at > now + FUTURE_TOLERANCE_MS || now - lifecycle.updated_at > 24 * 60 * 60 * 1000) {\n    if (lifecycle) node.warn(\"iluminacao_seguranca: lifecycle persistido invalido ou expirado; descartado\");\n    lifecycle = { version: 1, active_by_arrival: false, updated_at: now };\n}\nif (lifecycle.active_by_arrival !== true) lifecycle.active_by_arrival = false;\nif (lifecycle.active_by_arrival === true && (!Number.isFinite(lifecycle.on_since) || lifecycle.on_since > now + FUTURE_TOLERANCE_MS || !Number.isFinite(lifecycle.force_off_at) || lifecycle.force_off_at < lifecycle.on_since || lifecycle.force_off_at > lifecycle.on_since + 16 * 60 * 1000)) {\n    node.warn(\"iluminacao_seguranca: lifecycle ativo sem deadline coerente; tratado como origem desconhecida\");\n    lifecycle.active_by_arrival = false;\n    lifecycle.on_since = null;\n    lifecycle.force_off_at = null;\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n}\nif (lifecycle.active_by_arrival === true && lifecycle.pending_off_at !== undefined && lifecycle.pending_off_at !== null && (!Number.isFinite(lifecycle.pending_off_at) || lifecycle.pending_off_at < lifecycle.on_since || lifecycle.pending_off_at > lifecycle.force_off_at)) {\n    node.warn(\"iluminacao_seguranca: deadline de carencia invalido; descartado\");\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n}\nif (lifecycle.cooldown_until !== undefined && lifecycle.cooldown_until !== null && (!Number.isFinite(lifecycle.cooldown_until) || lifecycle.cooldown_until <= now || lifecycle.cooldown_until > now + 30 * 60 * 1000)) lifecycle.cooldown_until = null;\nif (physicalSignal) {\n    const state = msg.payload.state;\n    const entityUpdatedAt = Number(msg.payload.updated_at ?? 0);\n    const previousAt = Number(flow.get(\"security_light_physical_updated_at\") ?? 0);\n    if (entityUpdatedAt > now + FUTURE_TOLERANCE_MS || entityUpdatedAt && previousAt && entityUpdatedAt < previousAt) {\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: leitura fisica fora de ordem ou no futuro; descartada\");\n        return null;\n    }\n    if (entityUpdatedAt && previousAt && entityUpdatedAt === previousAt && flow.get(\"security_light_physical_state\") !== undefined && flow.get(\"security_light_physical_state\") !== state) {\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: conflito de estado fisico no mesmo timestamp; primeiro preservado\");\n        return null;\n    }\n    if ([\"on\", \"off\"].includes(state)) {\n        flow.set(\"security_light_physical_state\", state);\n        if (entityUpdatedAt) flow.set(\"security_light_physical_updated_at\", entityUpdatedAt);\n        flow.set(\"security_light_physical_observed_at\", now);\n        flow.set(\"light_reconciled\", true);\n        if (state === \"off\" && lifecycle.active_by_arrival === true) {\n            lifecycle.active_by_arrival = false;\n            lifecycle.on_since = null;\n            lifecycle.force_off_at = null;\n            lifecycle.pending_off_at = null;\n            lifecycle.pending_off_reason = null;\n            lifecycle.pending_off_source = null;\n            lifecycle.cooldown_until = now + 5 * 60 * 1000;\n            lifecycle.updated_at = now;\n            node.warn(\"iluminacao_seguranca: contexto ON corrigido porque o refletor fisico esta OFF\");\n        }\n    } else {\n        flow.set(\"security_light_physical_state\", state ?? \"unknown\");\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: refletor indisponivel; efeitos fisicos bloqueados\");\n    }\n}\nflow.set(key, lifecycle, \"persistent\");\nconst observedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(observedAt) && observedAt <= now + FUTURE_TOLERANCE_MS && now - observedAt <= PHYSICAL_FRESH_MS;\nif (!physicalFresh) flow.set(\"light_reconciled\", false);\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst creta = flow.get(\"creta_context_v1\") ?? {};\nconst ready = people.ready === true && creta.ready === true && flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true && physicalFresh;\nconst wasReady = flow.get(\"security_light_ready\");\nflow.set(\"security_light_ready\", ready);\nif (wasReady !== ready) node.log?.(\"iluminacao_seguranca: readiness \" + (ready ? \"completo\" : \"pendente\"));\nif (!ready || flow.get(\"security_light_physical_state\") !== \"on\" || lifecycle.active_by_arrival !== true) return null;\nconst deadlines = [];\nif (Number.isFinite(lifecycle.force_off_at)) deadlines.push({ type: \"backstop\", at: lifecycle.force_off_at, reason: \"recovered_backstop\" });\nif (Number.isFinite(lifecycle.pending_off_at)) deadlines.push({ type: \"pending_off\", at: lifecycle.pending_off_at, reason: lifecycle.pending_off_reason ?? \"recovered_pending_off\" });\nif (!deadlines.length) return null;\nconst scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\nconst current = Object.fromEntries(deadlines.map((deadline) => [deadline.type, deadline.at]));\nfor (const type of Object.keys(scheduled)) if (scheduled[type] !== current[type]) delete scheduled[type];\nconst messages = [];\nfor (const deadline of deadlines) {\n    if (scheduled[deadline.type] === deadline.at) continue;\n    scheduled[deadline.type] = deadline.at;\n    messages.push({ payload: { event: \"turn_off\", reason: deadline.reason, deadline_type: deadline.type, recovered: true }, delay: Math.max(0, deadline.at - now) });\n}\nflow.set(\"security_light_recovery_scheduled\", scheduled);\nif (messages.length) node.log?.(\"iluminacao_seguranca: \" + messages.length + \" deadline(s) reconstruido(s)\");\nreturn messages.length ? [messages] : null;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 700,
-        "y": 860,
+        "x": 760,
+        "y": 880,
         "wires": [
             [
                 "light_recovery_delay"
             ]
-        ],
-        "func": "const key = \"security_light_lifecycle_v1\";\nconst now = Date.now();\nconst PHYSICAL_FRESH_MS = 2 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nlet lifecycle = flow.get(key, \"persistent\");\nconst physicalSignal = msg.payload?.kind === \"light_physical\";\nif (physicalSignal && flow.get(\"security_light_startup_logged\") !== true) {\n    node.log?.(\"iluminacao_seguranca: startup/reconciliacao física iniciada\");\n    flow.set(\"security_light_startup_logged\", true);\n}\nif (!lifecycle || lifecycle.version !== 1 || !Number.isFinite(lifecycle.updated_at) || lifecycle.updated_at > now + FUTURE_TOLERANCE_MS || now - lifecycle.updated_at > 24 * 60 * 60 * 1000) {\n    if (lifecycle) node.warn(\"iluminacao_seguranca: lifecycle persistido invalido ou expirado; descartado\");\n    lifecycle = { version: 1, active_by_arrival: false, updated_at: now };\n}\nif (lifecycle.active_by_arrival !== true) lifecycle.active_by_arrival = false;\nif (lifecycle.active_by_arrival === true && (!Number.isFinite(lifecycle.on_since) || lifecycle.on_since > now + FUTURE_TOLERANCE_MS || !Number.isFinite(lifecycle.force_off_at) || lifecycle.force_off_at < lifecycle.on_since || lifecycle.force_off_at > lifecycle.on_since + 16 * 60 * 1000)) {\n    node.warn(\"iluminacao_seguranca: lifecycle ativo sem deadline coerente; tratado como origem desconhecida\");\n    lifecycle.active_by_arrival = false;\n    lifecycle.on_since = null;\n    lifecycle.force_off_at = null;\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n}\nif (lifecycle.active_by_arrival === true && lifecycle.pending_off_at !== undefined && lifecycle.pending_off_at !== null && (!Number.isFinite(lifecycle.pending_off_at) || lifecycle.pending_off_at < lifecycle.on_since || lifecycle.pending_off_at > lifecycle.force_off_at)) {\n    node.warn(\"iluminacao_seguranca: deadline de carencia invalido; descartado\");\n    lifecycle.pending_off_at = null;\n    lifecycle.pending_off_reason = null;\n    lifecycle.pending_off_source = null;\n}\nif (lifecycle.cooldown_until !== undefined && lifecycle.cooldown_until !== null && (!Number.isFinite(lifecycle.cooldown_until) || lifecycle.cooldown_until <= now || lifecycle.cooldown_until > now + 30 * 60 * 1000)) lifecycle.cooldown_until = null;\nif (physicalSignal) {\n    const state = msg.payload.state;\n    const entityUpdatedAt = Number(msg.payload.updated_at ?? 0);\n    const previousAt = Number(flow.get(\"security_light_physical_updated_at\") ?? 0);\n    if (entityUpdatedAt > now + FUTURE_TOLERANCE_MS || entityUpdatedAt && previousAt && entityUpdatedAt < previousAt) {\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: leitura fisica fora de ordem ou no futuro; descartada\");\n        return null;\n    }\n    if (entityUpdatedAt && previousAt && entityUpdatedAt === previousAt && flow.get(\"security_light_physical_state\") !== undefined && flow.get(\"security_light_physical_state\") !== state) {\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: conflito de estado fisico no mesmo timestamp; primeiro preservado\");\n        return null;\n    }\n    if ([\"on\", \"off\"].includes(state)) {\n        flow.set(\"security_light_physical_state\", state);\n        if (entityUpdatedAt) flow.set(\"security_light_physical_updated_at\", entityUpdatedAt);\n        flow.set(\"security_light_physical_observed_at\", now);\n        flow.set(\"light_reconciled\", true);\n        if (state === \"off\" && lifecycle.active_by_arrival === true) {\n            lifecycle.active_by_arrival = false;\n            lifecycle.on_since = null;\n            lifecycle.force_off_at = null;\n            lifecycle.pending_off_at = null;\n            lifecycle.pending_off_reason = null;\n            lifecycle.pending_off_source = null;\n            lifecycle.cooldown_until = now + 5 * 60 * 1000;\n            lifecycle.updated_at = now;\n            node.warn(\"iluminacao_seguranca: contexto ON corrigido porque o refletor fisico esta OFF\");\n        }\n    } else {\n        flow.set(\"security_light_physical_state\", state ?? \"unknown\");\n        flow.set(\"light_reconciled\", false);\n        node.warn(\"iluminacao_seguranca: refletor indisponivel; efeitos fisicos bloqueados\");\n    }\n}\nflow.set(key, lifecycle, \"persistent\");\nconst observedAt = Number(flow.get(\"security_light_physical_observed_at\") ?? 0);\nconst physicalFresh = Number.isFinite(observedAt) && observedAt <= now + FUTURE_TOLERANCE_MS && now - observedAt <= PHYSICAL_FRESH_MS;\nif (!physicalFresh) flow.set(\"light_reconciled\", false);\nconst people = flow.get(\"people_context_v1\") ?? {};\nconst creta = flow.get(\"creta_context_v1\") ?? {};\nconst ready = people.ready === true && creta.ready === true && flow.get(\"sun_ready\") === true && flow.get(\"light_reconciled\") === true && physicalFresh;\nconst wasReady = flow.get(\"security_light_ready\");\nflow.set(\"security_light_ready\", ready);\nif (wasReady !== ready) node.log?.(\"iluminacao_seguranca: readiness \" + (ready ? \"completo\" : \"pendente\"));\nif (!ready || flow.get(\"security_light_physical_state\") !== \"on\" || lifecycle.active_by_arrival !== true) return null;\nconst deadlines = [];\nif (Number.isFinite(lifecycle.force_off_at)) deadlines.push({ type: \"backstop\", at: lifecycle.force_off_at, reason: \"recovered_backstop\" });\nif (Number.isFinite(lifecycle.pending_off_at)) deadlines.push({ type: \"pending_off\", at: lifecycle.pending_off_at, reason: lifecycle.pending_off_reason ?? \"recovered_pending_off\" });\nif (!deadlines.length) return null;\nconst scheduled = flow.get(\"security_light_recovery_scheduled\") ?? {};\nconst current = Object.fromEntries(deadlines.map((deadline) => [deadline.type, deadline.at]));\nfor (const type of Object.keys(scheduled)) if (scheduled[type] !== current[type]) delete scheduled[type];\nconst messages = [];\nfor (const deadline of deadlines) {\n    if (scheduled[deadline.type] === deadline.at) continue;\n    scheduled[deadline.type] = deadline.at;\n    messages.push({ payload: { event: \"turn_off\", reason: deadline.reason, deadline_type: deadline.type, recovered: true }, delay: Math.max(0, deadline.at - now) });\n}\nflow.set(\"security_light_recovery_scheduled\", scheduled);\nif (messages.length) node.log?.(\"iluminacao_seguranca: \" + messages.length + \" deadline(s) reconstruido(s)\");\nreturn messages.length ? [messages] : null;"
+        ]
     },
     {
         "id": "light_recovery_delay",
@@ -4186,8 +4422,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1040,
-        "y": 860,
+        "x": 1060,
+        "y": 880,
         "wires": [
             [
                 "light_recovery_off_out"
@@ -4204,8 +4440,8 @@
         "links": [
             "light_recovery_off_in"
         ],
-        "x": 1330,
-        "y": 860,
+        "x": 1325,
+        "y": 880,
         "wires": []
     },
     {
@@ -4257,155 +4493,6 @@
         ]
     },
     {
-        "id": "raspberry_pi_cooling_tab",
-        "type": "tab",
-        "label": "resfriamento_raspberry_pi",
-        "disabled": false,
-        "info": "Controla o resfriamento de emergência do Raspberry Pi. Inicia após 2 minutos acima de 81,9 °C; reconcilia ownership e temperatura no startup; encerra após 10 minutos abaixo de 70 °C; preserva o estado anterior do climate em helper persistente; limita falhas a três tentativas espaçadas por 60 segundos.",
-        "env": []
-    },
-    {
-        "id": "grp_rpi_cooling_triggers",
-        "type": "group",
-        "z": "raspberry_pi_cooling_tab",
-        "name": "1. Detectar e reconciliar",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "rpi_cooling_hot",
-            "rpi_cooling_prepare_hot",
-            "rpi_cooling_startup",
-            "rpi_cooling_prepare_startup",
-            "rpi_cooling_startup_snapshot",
-            "rpi_cooling_reconcile_startup",
-            "rpi_cooling_read_owner",
-            "rpi_cooling_start_gate",
-            "rpi_cooling_restart_recovery_timer",
-            "rpi_cooling_reset_restart_timer"
-        ],
-        "x": 44,
-        "y": 79,
-        "w": 1642,
-        "h": 282
-    },
-    {
-        "id": "grp_rpi_cooling_start",
-        "type": "group",
-        "z": "raspberry_pi_cooling_tab",
-        "name": "2. Assumir controle com segurança",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#d9822b",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "rpi_cooling_read_climate",
-            "rpi_cooling_validate_climate",
-            "rpi_cooling_persist_snapshot",
-            "rpi_cooling_begin_control",
-            "rpi_cooling_set_mode",
-            "rpi_cooling_set_temperature",
-            "rpi_cooling_set_fan",
-            "rpi_cooling_verify_delay",
-            "rpi_cooling_read_controlled_climate",
-            "rpi_cooling_verify_controlled_climate",
-            "rpi_cooling_control_succeeded",
-            "rpi_cooling_mark_active",
-            "rpi_cooling_start_finalized",
-            "rpi_cooling_start_catch",
-            "rpi_cooling_start_failure",
-            "rpi_cooling_start_retry_delay",
-            "rpi_cooling_startup_retry_delay",
-            "rpi_cooling_retry_temperature_check",
-            "rpi_cooling_cancel_start"
-        ],
-        "x": 44,
-        "y": 379,
-        "w": 3262,
-        "h": 282
-    },
-    {
-        "id": "grp_rpi_cooling_stop",
-        "type": "group",
-        "z": "raspberry_pi_cooling_tab",
-        "name": "3. Restaurar após normalização",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "rpi_cooling_normal",
-            "rpi_cooling_retry_normal_check",
-            "rpi_cooling_prepare_stop",
-            "rpi_cooling_active_check",
-            "rpi_cooling_stop_gate",
-            "rpi_cooling_stop_read_climate",
-            "rpi_cooling_restore_decision",
-            "rpi_cooling_restore_off",
-            "rpi_cooling_restore_mode",
-            "rpi_cooling_restore_temperature_decision",
-            "rpi_cooling_restore_temperature",
-            "rpi_cooling_restore_fan_decision",
-            "rpi_cooling_restore_fan",
-            "rpi_cooling_restore_verify_delay",
-            "rpi_cooling_read_restored_climate",
-            "rpi_cooling_verify_restored_climate",
-            "rpi_cooling_restore_finished",
-            "rpi_cooling_rollback_release_owner",
-            "rpi_cooling_rollback_finalized",
-            "rpi_cooling_mark_inactive",
-            "rpi_cooling_stop_finalized",
-            "rpi_cooling_stop_catch",
-            "rpi_cooling_stop_failure",
-            "rpi_cooling_stop_retry_delay",
-            "rpi_cooling_cancel_stop"
-        ],
-        "x": 44,
-        "y": 679,
-        "w": 4612,
-        "h": 302
-    },
-    {
-        "id": "grp_rpi_cooling_observability",
-        "type": "group",
-        "z": "raspberry_pi_cooling_tab",
-        "name": "4. Estado persistente e observabilidade",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#8a6db1",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "rpi_cooling_clear_snapshot",
-            "rpi_cooling_notify_started",
-            "rpi_cooling_notify_recovered",
-            "rpi_cooling_notify_failure",
-            "rpi_cooling_dismiss_started",
-            "rpi_cooling_dismiss_failure",
-            "rpi_cooling_dismiss_recovered"
-        ],
-        "x": 44,
-        "y": 1019,
-        "w": 2052,
-        "h": 122
-    },
-    {
         "id": "rpi_cooling_hot",
         "type": "server-state-changed",
         "z": "raspberry_pi_cooling_tab",
@@ -4423,7 +4510,7 @@
             "regex": []
         },
         "outputInitially": false,
-        "stateType": "num",
+        "stateType": "str",
         "ifState": "81.9",
         "ifStateType": "num",
         "ifStateOperator": "gt",
@@ -4546,7 +4633,7 @@
         "halt_if_type": "str",
         "halt_if_compare": "is",
         "entity_id": "sensor.raspberry_pi_cpu_temperature",
-        "state_type": "num",
+        "state_type": "str",
         "blockInputOverrides": true,
         "outputProperties": [
             {
@@ -5265,7 +5352,7 @@
         "halt_if_type": "num",
         "halt_if_compare": "gt",
         "entity_id": "sensor.raspberry_pi_cpu_temperature",
-        "state_type": "num",
+        "state_type": "str",
         "blockInputOverrides": true,
         "outputProperties": [
             {
@@ -5336,7 +5423,7 @@
             "regex": []
         },
         "outputInitially": false,
-        "stateType": "num",
+        "stateType": "str",
         "ifState": "70",
         "ifStateType": "num",
         "ifStateOperator": "lt",
@@ -5393,7 +5480,7 @@
         "halt_if_type": "num",
         "halt_if_compare": "lt",
         "entity_id": "sensor.raspberry_pi_cpu_temperature",
-        "state_type": "num",
+        "state_type": "str",
         "blockInputOverrides": true,
         "outputProperties": [
             {
@@ -6313,96 +6400,6 @@
         ]
     },
     {
-        "id": "storage_health_tab",
-        "type": "tab",
-        "label": "Storage Health",
-        "disabled": false,
-        "info": "Monitoramento de armazenamento, tendencia, alertas e housekeeping seguro sem Docker socket ou sudo."
-    },
-    {
-        "id": "storage_group_config",
-        "type": "group",
-        "z": "storage_health_tab",
-        "name": "1. Configuracao central e MQTT discovery",
-        "style": {
-            "label": true,
-            "color": "#7d6ba8"
-        },
-        "nodes": [
-            "storage_comment_architecture",
-            "storage_init",
-            "storage_set_config",
-            "storage_discovery",
-            "storage_mqtt_discovery"
-        ],
-        "x": 34,
-        "y": 39,
-        "w": 1012,
-        "h": 162
-    },
-    {
-        "id": "storage_group_health",
-        "type": "group",
-        "z": "storage_health_tab",
-        "name": "2. Health check leve (15 min) e tendencia",
-        "style": {
-            "label": true,
-            "color": "#3fadb5"
-        },
-        "nodes": [
-            "storage_health_tick",
-            "storage_read_ha",
-            "storage_evaluate",
-            "storage_mqtt_state"
-        ],
-        "x": 34,
-        "y": 239,
-        "w": 1212,
-        "h": 142
-    },
-    {
-        "id": "storage_group_alerts",
-        "type": "group",
-        "z": "storage_health_tab",
-        "name": "3. Alertas com histerese, cooldown e recovery",
-        "style": {
-            "label": true,
-            "color": "#e6a23c"
-        },
-        "nodes": [
-            "storage_notify"
-        ],
-        "x": 1274,
-        "y": 239,
-        "w": 312,
-        "h": 142
-    },
-    {
-        "id": "storage_group_maintenance",
-        "type": "group",
-        "z": "storage_health_tab",
-        "name": "4. Housekeeping allowlisted e inspecao semanal",
-        "style": {
-            "label": true,
-            "color": "#4d9a6a"
-        },
-        "nodes": [
-            "storage_daily_maintenance",
-            "storage_exec_maintenance",
-            "storage_parse_maintenance",
-            "storage_store_maintenance_stderr",
-            "storage_maintenance_complete",
-            "storage_weekly_inspection",
-            "storage_exec_inspection",
-            "storage_parse_inspection",
-            "storage_maintenance_mqtt"
-        ],
-        "x": 34,
-        "y": 419,
-        "w": 1552,
-        "h": 262
-    },
-    {
         "id": "storage_comment_architecture",
         "type": "comment",
         "z": "storage_health_tab",
@@ -6857,6 +6854,893 @@
         "broker": "721c47f31046b8bc",
         "x": 1090,
         "y": 470,
+        "wires": []
+    },
+    {
+        "id": "infra_notify_all_mobiles",
+        "type": "subflow",
+        "name": "Notificar todos os dispositivos móveis",
+        "info": "Contrato de entrada:\n\nmsg.notification = {\n  id: string obrigatório,\n  title: string obrigatório,\n  message: string obrigatório,\n  dismiss_id?: string\n}\n\nCria/atualiza uma notificação persistente e envia um push aos iPhones de Gabriel e Valéria. Em recuperação, dismiss_id remove o alerta persistente da falha anterior. O subflow não decide estado, retry ou deduplicação; essas responsabilidades pertencem ao monitor chamador.",
+        "category": "infraestrutura",
+        "in": [
+            {
+                "x": 60,
+                "y": 80,
+                "wires": [
+                    {
+                        "id": "infra_notify_route"
+                    }
+                ]
+            }
+        ],
+        "out": [],
+        "env": [],
+        "meta": {},
+        "color": "#DDAA99"
+    },
+    {
+        "id": "infra_notify_route",
+        "type": "function",
+        "z": "infra_notify_all_mobiles",
+        "name": "Validar e distribuir",
+        "func": "const notification = msg.notification;\n  if (!notification || !notification.title || !notification.message || !notification.id) {\n    node.warn(\"Notificação de infraestrutura descartada: título, mensagem ou id ausente.\");\n    return null;\n  }\n  const dismiss = notification.dismiss_id ? msg : null;\n  return [msg, msg, dismiss];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 220,
+        "y": 80,
+        "wires": [
+            [
+                "infra_notify_persistent"
+            ],
+            [
+                "infra_notify_mobile"
+            ],
+            [
+                "infra_notify_dismiss"
+            ]
+        ]
+    },
+    {
+        "id": "infra_notify_persistent",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Criar/atualizar alerta persistente",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\": notification.title, \"message\": notification.message, \"notification_id\": notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 520,
+        "y": 40,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "infra_notify_mobile",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Push Gabriel + Valéria",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.send_message",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "notify.iphone_de_gabriel_furlan",
+            "notify.iphone_de_valeria"
+        ],
+        "labelId": [],
+        "data": "{\"title\": notification.title, \"message\": notification.message}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "send_message",
+        "x": 500,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "infra_notify_dismiss",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Remover alerta anterior",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\": notification.dismiss_id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 500,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "monitoramento_internet_tab",
+        "type": "tab",
+        "label": "monitoramento_internet",
+        "disabled": false,
+        "info": "Monitora conectividade externa por ping a três IPs independentes, confirma queda/recuperação e publica estado no Home Assistant via MQTT discovery.",
+        "env": []
+    },
+    {
+        "id": "grp_internet_triggers",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "1. Gatilhos",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_cycle",
+            "internet_discovery_tick"
+        ],
+        "x": 44,
+        "y": 79,
+        "w": 252,
+        "h": 302
+    },
+    {
+        "id": "grp_internet_ping",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "2. Testar conectividade",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_ping"
+        ],
+        "x": 324,
+        "y": 79,
+        "w": 252,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_state",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "3. Confirmação e estado",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_evaluate"
+        ],
+        "x": 604,
+        "y": 79,
+        "w": 282,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_notify",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "4. Queda / retorno / notify",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_notify_down",
+            "internet_notify_recovery"
+        ],
+        "x": 914,
+        "y": 59,
+        "w": 342,
+        "h": 222
+    },
+    {
+        "id": "grp_internet_publish",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "5. Entidades do Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_discovery",
+            "internet_mqtt_publish"
+        ],
+        "x": 604,
+        "y": 319,
+        "w": 652,
+        "h": 162
+    },
+    {
+        "id": "grp_internet_tests",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "6. Testes",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "internet_test_note"
+        ],
+        "x": 44,
+        "y": 519,
+        "w": 1212,
+        "h": 102
+    },
+    {
+        "id": "internet_cycle",
+        "type": "inject",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_triggers",
+        "name": "A cada 30 s + startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 5,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 160,
+        "wires": [
+            [
+                "internet_ping"
+            ]
+        ]
+    },
+    {
+        "id": "internet_discovery_tick",
+        "type": "inject",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_triggers",
+        "name": "Publicar discovery no startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 320,
+        "wires": [
+            [
+                "internet_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "internet_ping",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_ping",
+        "name": "Ping 1.1.1.1 + 8.8.8.8 + 9.9.9.9",
+        "func": "const STORE = \"memoryOnly\";\n  const LOCK = \"internet_ping_cycle_running\";\n  const childProcess = global.get(\"childProcess\");\n  const targets = [\n    { name: \"cloudflare\", address: \"1.1.1.1\" },\n    { name: \"google\", address: \"8.8.8.8\" },\n    { name: \"quad9\", address: \"9.9.9.9\" },\n  ];\n\n  if (!childProcess || typeof childProcess.execFile !== \"function\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"child_process indisponível\" });\n    node.error(\"settings.js não expôs childProcess no contexto global.\");\n    return null;\n  }\n  if (flow.get(LOCK, STORE) === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"ciclo anterior ainda ativo\" });\n    return null;\n  }\n\n  flow.set(LOCK, true, STORE);\n  const startedAt = Date.now();\n  node.status({ fill: \"blue\", shape: \"dot\", text: \"testando 3 destinos\" });\n\n  const ping = (target) => new Promise((resolve) => {\n    const finish = (error, stdout = \"\", stderr = \"\") => resolve({\n        ...target,\n        ok: !error,\n        duration_ms: Date.now() - startedAt,\n        error: error ? String(error.code || error.message || stderr || \"ping failed\") : null,\n        output: String(stdout || \"\").trim().slice(-160),\n    });\n    try {\n      childProcess.execFile(\n        \"/bin/ping\",\n        [\"-n\", \"-c\", \"1\", \"-W\", \"2\", target.address],\n        { timeout: 3000, windowsHide: true },\n        finish,\n      );\n    } catch (error) {\n      // Treat a synchronous spawn failure as a failed target. Resolving (not\n      // rejecting) keeps Promise.all waiting for every already-started ping,\n      // so the no-overlap lock cannot be released while processes remain.\n      finish(error);\n    }\n  });\n\n  Promise.all(targets.map(ping))\n    .then((results) => {\n      const ok = results.filter((result) => result.ok).length;\n      node.status({\n        fill: ok >= 2 ? \"green\" : \"red\",\n        shape: ok >= 2 ? \"dot\" : \"ring\",\n        text: `${ok}/3 responderam`,\n      });\n      node.send({\n        topic: \"infrastructure/internet/ping-cycle\",\n        payload: {\n          checked_at: new Date().toISOString(),\n          duration_ms: Date.now() - startedAt,\n          results,\n        },\n      });\n    })\n    .catch((error) => {\n      node.error(`Falha inesperada no ciclo de ping: ${error.message}`);\n    })\n    .finally(() => {\n      flow.set(LOCK, false, STORE);\n      node.done();\n    });\n  return undefined;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "flow.set('internet_ping_cycle_running', false, 'memoryOnly');",
+        "libs": [],
+        "x": 450,
+        "y": 160,
+        "wires": [
+            [
+                "internet_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "internet_evaluate",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_state",
+        "name": "Máquina de estados (3 falhas / 2 sucessos)",
+        "func": "const KEY = \"internet_monitor_state_v1\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const results = Array.isArray(msg.payload?.results) ? msg.payload.results : [];\n  const targetsTotal = 3;\n  const targetsOk = results.filter((result) => result && result.ok === true).length;\n  const reachable = targetsOk >= 2;\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    consecutive_failures: 0,\n    consecutive_successes: 0,\n    failure_started_at: null,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n    last_valid_ping: null,\n  };\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (reachable) {\n    state.last_valid_ping = nowIso;\n    state.consecutive_failures = 0;\n    state.failure_started_at = null;\n    if (state.incident_open) {\n      state.consecutive_successes = Number(state.consecutive_successes || 0) + 1;\n      state.phase = \"recovering\";\n      if (state.consecutive_successes >= 2) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        const durationSeconds = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.consecutive_successes = 0;\n        state.last_recovery_at = nowIso;\n        state.last_outage_duration_s = durationSeconds;\n        const durationText = durationSeconds === null\n          ? \"\"\n          : ` após ${Math.max(1, Math.round(durationSeconds / 60))} minuto(s) de indisponibilidade`;\n        recoveryNotification = {\n          notification: {\n            id: \"internet_connection_recovered\",\n            dismiss_id: \"internet_connection_failure\",\n            title: \"Internet restabelecida\",\n            message: `A conexão com a internet voltou às ${new Date(now).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}${durationText}.`,\n          },\n        };\n      }\n    } else {\n      // Establishing a healthy baseline is not a recovery event.\n      state.phase = \"online\";\n      state.consecutive_successes = 1;\n    }\n  } else {\n    state.consecutive_successes = 0;\n    state.consecutive_failures = Number(state.consecutive_failures || 0) + 1;\n    if (!state.failure_started_at) state.failure_started_at = nowIso;\n    if (state.incident_open) {\n      state.phase = \"offline\";\n    } else if (state.consecutive_failures >= 3) {\n      state.phase = \"offline\";\n      state.incident_open = true;\n      state.outage_started_at = state.failure_started_at;\n      state.last_outage_at = state.failure_started_at;\n      downNotification = {\n        notification: {\n          id: \"internet_connection_failure\",\n          title: \"Internet indisponível\",\n          message: `A conexão com a internet foi perdida às ${new Date(state.failure_started_at).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}. Menos de 2 dos 3 destinos externos responderam em 3 ciclos consecutivos.`,\n        },\n      };\n    } else {\n      state.phase = \"checking\";\n    }\n  }\n\n  state.last_checked_at = msg.payload?.checked_at || nowIso;\n  state.targets_ok = targetsOk;\n  state.targets_total = targetsTotal;\n  state.required_responses = 2;\n  flow.set(KEY, state, \"persistent\");\n\n  const attributes = {\n    state: state.phase,\n    checked_at: state.last_checked_at,\n    targets_ok: targetsOk,\n    targets_total: targetsTotal,\n    required_responses: 2,\n    consecutive_failures: state.consecutive_failures,\n    consecutive_successes: state.consecutive_successes,\n    last_valid_ping: state.last_valid_ping,\n    last_outage: state.last_outage_at,\n    last_recovery: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n    targets: results.map((result) => ({ name: result.name, address: result.address, ok: result.ok })),\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/internet/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/internet/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/internet/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${targetsOk}/3`,\n  });\n  return [downNotification, recoveryNotification, publications];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 745,
+        "y": 160,
+        "wires": [
+            [
+                "internet_notify_down"
+            ],
+            [
+                "internet_notify_recovery"
+            ],
+            [
+                "internet_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "internet_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_notify",
+        "name": "Notificar queda (uma vez)",
+        "env": [],
+        "x": 1085,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "internet_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_notify",
+        "name": "Notificar retorno confirmado",
+        "env": [],
+        "x": 1085,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "internet_discovery",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_publish",
+        "name": "Discovery: internet",
+        "func": "const device = {\n    identifiers: [\"node_red_infrastructure_monitoring\"],\n    name: \"Monitoramento de infraestrutura\",\n    manufacturer: \"Node-RED\",\n    model: \"Flows de disponibilidade\",\n  };\n  const availability = {\n    availability_topic: \"nodered/status\",\n    payload_available: \"online\",\n    payload_not_available: \"offline\",\n  };\n  return [[\n    {\n      topic: \"homeassistant/binary_sensor/internet_connection/config\",\n      payload: JSON.stringify({\n        name: \"Conexão com a internet\",\n        object_id: \"internet_connection\",\n        default_entity_id: \"binary_sensor.internet_connection\",\n        unique_id: \"node_red_internet_connection\",\n        device_class: \"connectivity\",\n        state_topic: \"nodered/infrastructure/internet/connection\",\n        json_attributes_topic: \"nodered/infrastructure/internet/attributes\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        ...availability,\n        device,\n      }),\n    },\n    {\n      topic: \"homeassistant/sensor/internet_connection_state/config\",\n      payload: JSON.stringify({\n        name: \"Estado da conexão com a internet\",\n        object_id: \"internet_connection_state\",\n        default_entity_id: \"sensor.internet_connection_state\",\n        unique_id: \"node_red_internet_connection_state\",\n        icon: \"mdi:wan\",\n        entity_category: \"diagnostic\",\n        state_topic: \"nodered/infrastructure/internet/state\",\n        json_attributes_topic: \"nodered/infrastructure/internet/attributes\",\n        ...availability,\n        device,\n      }),\n    },\n  ]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 400,
+        "wires": [
+            [
+                "internet_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "internet_mqtt_publish",
+        "type": "mqtt out",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_publish",
+        "name": "Publicar estado retained",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1080,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "internet_test_note",
+        "type": "comment",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_tests",
+        "name": "Testes automatizados fora do caminho de produção",
+        "info": "Execute `npm run flows:test-infrastructure`. O teste cobre 1 host falhando, DNS irrelevante (IPs), 3 falhas, dedupe, oscilação, 2 sucessos, duração, segunda queda e restart. O ciclo real nunca aceita mensagens de teste e mantém no máximo três processos ping simultâneos.",
+        "x": 420,
+        "y": 570,
+        "wires": []
+    },
+    {
+        "id": "monitoramento_zigbee_tab",
+        "type": "tab",
+        "label": "monitoramento_zigbee",
+        "disabled": false,
+        "info": "Centraliza falha/recuperação da ponte Zigbee2MQTT e dos componentes, com estado persistente, dedupe e notificações compartilhadas.",
+        "env": []
+    },
+    {
+        "id": "grp_zigbee_triggers",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "1. Estado / heartbeat Zigbee",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_bridge_state",
+            "zigbee_broker_status",
+            "zigbee_tick",
+            "zigbee_component_availability",
+            "zigbee_discovery_tick"
+        ],
+        "x": 44,
+        "y": 79,
+        "w": 292,
+        "h": 482
+    },
+    {
+        "id": "grp_zigbee_detect",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "2. Avaliar saúde",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_store_observation",
+            "zigbee_component_evaluate"
+        ],
+        "x": 364,
+        "y": 79,
+        "w": 272,
+        "h": 482
+    },
+    {
+        "id": "grp_zigbee_state",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "3. Confirmar falha / recuperação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_network_evaluate"
+        ],
+        "x": 664,
+        "y": 79,
+        "w": 292,
+        "h": 202
+    },
+    {
+        "id": "grp_zigbee_notify",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "4. Notificação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_network_notify_down",
+            "zigbee_network_notify_recovery",
+            "zigbee_component_notify_down",
+            "zigbee_component_notify_recovery"
+        ],
+        "x": 984,
+        "y": 59,
+        "w": 352,
+        "h": 502
+    },
+    {
+        "id": "grp_zigbee_publish",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "5. Entidades do Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_discovery",
+            "zigbee_mqtt_publish"
+        ],
+        "x": 664,
+        "y": 359,
+        "w": 292,
+        "h": 202
+    },
+    {
+        "id": "grp_zigbee_tests",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "6. Testes",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "zigbee_test_note"
+        ],
+        "x": 44,
+        "y": 599,
+        "w": 1292,
+        "h": 102
+    },
+    {
+        "id": "zigbee_bridge_state",
+        "type": "mqtt in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "zigbee2mqtt/bridge/state",
+        "topic": "zigbee2mqtt/bridge/state",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 140,
+        "wires": [
+            [
+                "zigbee_store_observation"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_broker_status",
+        "type": "status",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Conexão MQTT",
+        "scope": [
+            "zigbee_bridge_state"
+        ],
+        "x": 180,
+        "y": 200,
+        "wires": [
+            [
+                "zigbee_store_observation"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_tick",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Avaliar a cada 10 s",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 5,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 260,
+        "wires": [
+            [
+                "zigbee_network_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_availability",
+        "type": "mqtt in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "zigbee2mqtt/.../availability",
+        "topic": "zigbee2mqtt/#",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 400,
+        "wires": [
+            [
+                "zigbee_component_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_discovery_tick",
+        "type": "inject",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Publicar discovery no startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 500,
+        "wires": [
+            [
+                "zigbee_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_store_observation",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Normalizar e guardar observação",
+        "func": "const KEY = \"zigbee_bridge_observation\";\n  const STORE = \"memoryOnly\";\n  const now = Number(msg.monitor_now || Date.now());\n  let observed;\n\n  if (msg.status) {\n    const text = String(msg.status.text || \"\").toLowerCase();\n    if (msg.status.fill === \"red\" || /disconnected|offline|error/.test(text)) observed = \"offline\";\n    else return null;\n  } else {\n    let value = msg.payload;\n    if (Buffer.isBuffer(value)) value = value.toString(\"utf8\");\n    if (typeof value === \"string\") {\n      try {\n        const parsed = JSON.parse(value);\n        value = parsed?.state ?? parsed;\n      } catch {\n        // Zigbee2MQTT also publishes plain online/offline strings.\n      }\n    }\n    if (value && typeof value === \"object\") value = value.state;\n    observed = String(value || \"\").toLowerCase();\n  }\n  if (!new Set([\"online\", \"offline\"]).has(observed)) return null;\n\n  const previous = flow.get(KEY, STORE);\n  flow.set(KEY, {\n    state: observed,\n    changed_at: previous?.state === observed ? previous.changed_at : now,\n  }, STORE);\n  msg.monitor_now = now;\n  return msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "flow.set('zigbee_bridge_observation', { state: 'unknown', changed_at: Date.now() }, 'memoryOnly');",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 170,
+        "wires": [
+            [
+                "zigbee_network_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_component_evaluate",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_detect",
+        "name": "Dedupe por componente",
+        "func": "const KEY = \"zigbee_component_incidents_v1\";\n  if (!String(msg.topic || \"\").endsWith(\"/availability\")) return null;\n  let value = msg.payload;\n  if (Buffer.isBuffer(value)) value = value.toString(\"utf8\");\n  if (typeof value === \"string\") {\n    try {\n      const parsed = JSON.parse(value);\n      value = parsed?.state ?? parsed;\n    } catch {\n      // Plain online/offline is valid.\n    }\n  }\n  if (value && typeof value === \"object\") value = value.state;\n  const availability = String(value || \"\").toLowerCase();\n  if (!new Set([\"online\", \"offline\"]).has(availability)) return null;\n\n  const component = String(msg.topic).slice(\"zigbee2mqtt/\".length, -\"/availability\".length);\n  if (!component) return null;\n  const slug = component.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\n  // Separator/accent normalization is not injective. Keep the readable slug,\n  // but append a stable hash of the exact friendly name so distinct MQTT\n  // topics cannot overwrite or dismiss each other's persistent notification.\n  let hash = 0x811c9dc5;\n  for (const byte of Buffer.from(component, \"utf8\")) {\n    hash ^= byte;\n    hash = Math.imul(hash, 0x01000193) >>> 0;\n  }\n  const notificationKey = `${slug || \"component\"}_${hash.toString(16).padStart(8, \"0\")}`;\n  const incidents = flow.get(KEY, \"persistent\") || {};\n  const current = incidents[component] || { offline: false };\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n\n  if (availability === \"offline\") {\n    if (current.offline) return null;\n    incidents[component] = { offline: true, outage_started_at: nowIso, last_seen_at: nowIso };\n    flow.set(KEY, incidents, \"persistent\");\n    return [{\n      notification: {\n        id: `zigbee_component_${notificationKey}`,\n        title: \"Componente Zigbee indisponível\",\n        message: `O componente Zigbee “${component}” ficou indisponível em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique alimentação, alcance, bateria e a malha Zigbee.`,\n      },\n    }, null];\n  }\n\n  incidents[component] = { ...current, offline: false, recovered_at: nowIso, last_seen_at: nowIso };\n  flow.set(KEY, incidents, \"persistent\");\n  if (!current.offline) return null;\n  return [null, {\n    notification: {\n      id: `zigbee_component_recovered_${notificationKey}`,\n      dismiss_id: `zigbee_component_${notificationKey}`,\n      title: \"Componente Zigbee recuperado\",\n      message: `O componente Zigbee “${component}” voltou a ficar disponível em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n    },\n  }];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 400,
+        "wires": [
+            [
+                "zigbee_component_notify_down"
+            ],
+            [
+                "zigbee_component_notify_recovery"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_network_evaluate",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_state",
+        "name": "30 s queda / 60 s retorno",
+        "func": "const KEY = \"zigbee_network_monitor_state_v1\";\n  const OBSERVATION_KEY = \"zigbee_bridge_observation\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const observation = flow.get(OBSERVATION_KEY, \"memoryOnly\") || { state: \"unknown\", changed_at: now };\n  const rawState = observation.state;\n  const stableForMs = Math.max(0, now - Number(observation.changed_at || now));\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n  };\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (rawState === \"online\") {\n    if (state.incident_open) {\n      state.phase = \"recovering\";\n      if (stableForMs >= 60_000) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        state.last_outage_duration_s = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.last_recovery_at = nowIso;\n        recoveryNotification = {\n          notification: {\n            id: \"zigbee_network_recovered\",\n            dismiss_id: \"zigbee_network_failure\",\n            title: \"Rede Zigbee recuperada\",\n            message: `A rede Zigbee voltou a funcionar e permaneceu conectada por 1 minuto. Recuperada em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n          },\n        };\n      }\n    } else {\n      // Retained online at startup establishes baseline without false recovery.\n      state.phase = \"online\";\n    }\n  } else if (state.incident_open) {\n    state.phase = \"offline\";\n  } else if (stableForMs >= 30_000) {\n    state.phase = \"offline\";\n    state.incident_open = true;\n    state.outage_started_at = new Date(Number(observation.changed_at || now)).toISOString();\n    state.last_outage_at = state.outage_started_at;\n    downNotification = {\n      notification: {\n        id: \"zigbee_network_failure\",\n        title: \"Falha na rede Zigbee\",\n        message: `A rede Zigbee está indisponível. O Zigbee2MQTT perdeu a conexão com a antena/coordenador ou parou de funcionar. Detectado em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n      },\n    };\n  } else {\n    state.phase = \"checking\";\n  }\n\n  state.raw_state = rawState;\n  state.last_checked_at = nowIso;\n  state.stable_for_s = Math.floor(stableForMs / 1000);\n  flow.set(KEY, state, \"persistent\");\n  const attributes = {\n    state: state.phase,\n    raw_state: rawState,\n    stable_for_s: state.stable_for_s,\n    checked_at: nowIso,\n    last_outage: state.last_outage_at,\n    last_recovery: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n    failure_confirmation_s: 30,\n    recovery_confirmation_s: 60,\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${rawState}`,\n  });\n  return [downNotification, recoveryNotification, publications];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 170,
+        "wires": [
+            [
+                "zigbee_network_notify_down"
+            ],
+            [
+                "zigbee_network_notify_recovery"
+            ],
+            [
+                "zigbee_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_network_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar queda da rede",
+        "env": [],
+        "x": 1160,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "zigbee_network_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar retorno da rede",
+        "env": [],
+        "x": 1160,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar componente offline",
+        "env": [],
+        "x": 1160,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "zigbee_component_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_notify",
+        "name": "Notificar componente online",
+        "env": [],
+        "x": 1160,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "zigbee_discovery",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_publish",
+        "name": "Discovery: Zigbee",
+        "func": "const device = {\n    identifiers: [\"node_red_infrastructure_monitoring\"],\n    name: \"Monitoramento de infraestrutura\",\n    manufacturer: \"Node-RED\",\n    model: \"Flows de disponibilidade\",\n  };\n  const availability = {\n    availability_topic: \"nodered/status\",\n    payload_available: \"online\",\n    payload_not_available: \"offline\",\n  };\n  return [[\n    {\n      topic: \"homeassistant/binary_sensor/zigbee_network/config\",\n      payload: JSON.stringify({\n        name: \"Rede Zigbee\",\n        object_id: \"zigbee_network\",\n        default_entity_id: \"binary_sensor.zigbee_network\",\n        unique_id: \"node_red_zigbee_network\",\n        device_class: \"connectivity\",\n        state_topic: \"nodered/infrastructure/zigbee/connection\",\n        json_attributes_topic: \"nodered/infrastructure/zigbee/attributes\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        ...availability,\n        device,\n      }),\n    },\n    {\n      topic: \"homeassistant/sensor/zigbee_network_state/config\",\n      payload: JSON.stringify({\n        name: \"Estado da rede Zigbee\",\n        object_id: \"zigbee_network_state\",\n        default_entity_id: \"sensor.zigbee_network_state\",\n        unique_id: \"node_red_zigbee_network_state\",\n        icon: \"mdi:zigbee\",\n        entity_category: \"diagnostic\",\n        state_topic: \"nodered/infrastructure/zigbee/state\",\n        json_attributes_topic: \"nodered/infrastructure/zigbee/attributes\",\n        ...availability,\n        device,\n      }),\n    },\n  ]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 790,
+        "y": 440,
+        "wires": [
+            [
+                "zigbee_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_mqtt_publish",
+        "type": "mqtt out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_publish",
+        "name": "Publicar estado retained",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 810,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "zigbee_test_note",
+        "type": "comment",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_tests",
+        "name": "Testes automatizados fora do caminho de produção",
+        "info": "Execute `npm run flows:test-infrastructure`. O teste cobre startup, falha momentânea, 30 s offline, dedupe, 60 s de recuperação, restart persistente, componente offline/online e nova queda. Teste MQTT ponta a ponta deve usar um componente fictício retained, conforme a documentação.",
+        "x": 450,
+        "y": 650,
         "wires": []
     }
 ]

@@ -372,8 +372,9 @@ module.exports = {
      * Refer to the documentation for further options: https://nodered.org/docs/api/context/
      */
     // Keep derived snapshots and ordinary flow state in memory. Recovery-aware
-    // function nodes opt in to the named persistent store explicitly, so the
-    // filesystem never becomes a second source of physical truth.
+    // security and infrastructure nodes opt in to the named persistent store
+    // explicitly, so the filesystem never becomes a second source of physical
+    // truth. Execution locks and retained-rebuilt observations stay volatile.
     contextStorage: {
         default: "memoryOnly",
         memoryOnly: {
@@ -572,7 +573,9 @@ module.exports = {
      *    global.get("os")
      */
     functionGlobalContext: {
-        // os:require('os'),
+        // Used only by the infrastructure internet monitor. The flow calls
+        // /bin/ping with a fixed executable and fixed IP arguments.
+        childProcess: require("child_process"),
     },
 
     /** The maximum number of messages nodes will buffer internally as part of their

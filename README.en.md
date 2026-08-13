@@ -147,6 +147,7 @@ The scanner checks tracked files only and never prints a suspected secret.
 docker compose config --quiet
 npm --prefix nodered run flows:validate
 npm --prefix nodered run flows:test-alarm-arrival
+npm --prefix nodered run flows:test-infrastructure
 npm --prefix nodered run flows:test-security
 npm --prefix claude-bridge test
 scripts/security-scan.sh
@@ -163,7 +164,7 @@ ready. Check `docker compose ps` and service logs after startup.
 - [Installation and restore](docs/INSTALLATION_RESTORE.en.md)
 - [Containers, volumes, ports, and dependencies](docs/CONTAINERS.en.md)
 - [Weekly documentation review](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md)
-- [Zigbee network health alerts](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
+- [Zigbee and Internet monitoring in Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 - [Portuguese feature documentation](docs/README.md)
 
 Brazilian Portuguese is the primary operational language. The repository

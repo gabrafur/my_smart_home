@@ -11,6 +11,8 @@
         "flows:test-alarm-arrival": "node tools/test-alarm-arrival-disarm-flow.mjs",
         "flows:test-alarm-house": "node tools/test-alarm-house-flow.mjs",
         "flows:test-external-lighting": "node tools/test-external-lighting-alarm-flow.mjs",
+        "flows:test-infrastructure": "node tools/test-infrastructure-monitoring-flows.mjs",
+        "flows:test-infrastructure-runtime": "node tools/test-infrastructure-monitoring-runtime.mjs",
         "flows:test-raspberry-cooling": "node tools/test-raspberry-pi-cooling-flow.mjs",
         "flows:test-security": "node tools/test-security-light-flow.mjs",
         "flows:test-storage": "node tools/test-storage-health-flow.mjs",
