@@ -4,6 +4,14 @@ import fs from "node:fs";
 
 const flowUrl = new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
+// This is a one-time migration from the legacy combined tab. Once recovery
+// state exists, regenerating from the embedded pre-recovery templates would
+// silently remove hardening. Make repeat execution idempotent and safe.
+const recoveryAware = flows.some((node) => node.id === "people_normalize" && node.func?.includes("security_people_recovery_v1"));
+if (recoveryAware) {
+  console.log("Flows de segurança já incluem recovery; nenhuma alteração aplicada.");
+  process.exit(0);
+}
 const old = new Map(flows.map((node) => [node.id, structuredClone(node)]));
 const SECURITY_TAB = "2fd40fd570e6f37a";
 const PEOPLE_TAB = "security_people_tab";

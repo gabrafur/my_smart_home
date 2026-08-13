@@ -26,6 +26,7 @@ placeholders.
 - [Iluminação externa no Node-RED](ILUMINACAO_EXTERNA_NODERED.md)
 - [Alarme da casa no Node-RED](ALARME_CASA_NODERED.md)
 - [Contexto de chegada e iluminação de segurança no Node-RED](ILUMINACAO_SEGURANCA_NODERED.md)
+- [Inventário de estado e recovery dos flows de segurança](SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md)
 - [Desarme do alarme na chegada](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Integração Moni Mobile / Intelbras](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
 - [Integração Hyundai/Kia](CRETA_KIA_UVO_INTEGRATION.md)
