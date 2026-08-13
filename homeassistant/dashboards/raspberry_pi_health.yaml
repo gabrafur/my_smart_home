@@ -211,10 +211,31 @@ views:
             name: Usado
           - entity: sensor.raspberry_pi_storage_free
             name: Livre
+          - entity: sensor.raspberry_pi_storage_inodes_usage
+            name: Inodes usados
+          - entity: sensor.raspberry_storage_status
+            name: Status Node-RED
+          - entity: sensor.raspberry_storage_growth_24h
+            name: Crescimento em 24 h
+          - entity: sensor.raspberry_storage_growth_7d
+            name: Crescimento em 7 dias
+          - entity: sensor.raspberry_storage_last_maintenance
+            name: Ultima manutencao segura
+          - entity: sensor.raspberry_storage_last_reclaimed
+            name: Recuperado na ultima manutencao
           - entity: binary_sensor.raspberry_pi_storage_warning
             name: Armazenamento em atencao
           - entity: binary_sensor.raspberry_pi_storage_critical
             name: Armazenamento critico
+
+      - type: history-graph
+        title: Armazenamento - 24 horas
+        hours_to_show: 24
+        entities:
+          - entity: sensor.raspberry_pi_storage_usage
+            name: Uso
+          - entity: sensor.raspberry_storage_growth_24h
+            name: Crescimento 24 h
 
       - type: history-graph
         title: Armazenamento - 30 dias

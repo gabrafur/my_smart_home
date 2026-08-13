@@ -236,7 +236,7 @@ function internetStateMachine() {
   const targetsTotal = 3;
   const targetsOk = results.filter((result) => result && result.ok === true).length;
   const reachable = targetsOk >= 2;
-  let state = flow.get(KEY) || {
+  let state = flow.get(KEY, "persistent") || {
     phase: "checking",
     incident_open: false,
     consecutive_failures: 0,
@@ -312,7 +312,7 @@ function internetStateMachine() {
   state.targets_ok = targetsOk;
   state.targets_total = targetsTotal;
   state.required_responses = 2;
-  flow.set(KEY, state);
+  flow.set(KEY, state, "persistent");
 
   const attributes = {
     state: state.phase,
@@ -431,7 +431,7 @@ function zigbeeStateMachine() {
   const observation = flow.get(OBSERVATION_KEY, "memoryOnly") || { state: "unknown", changed_at: now };
   const rawState = observation.state;
   const stableForMs = Math.max(0, now - Number(observation.changed_at || now));
-  let state = flow.get(KEY) || {
+  let state = flow.get(KEY, "persistent") || {
     phase: "checking",
     incident_open: false,
     outage_started_at: null,
@@ -487,7 +487,7 @@ function zigbeeStateMachine() {
   state.raw_state = rawState;
   state.last_checked_at = nowIso;
   state.stable_for_s = Math.floor(stableForMs / 1000);
-  flow.set(KEY, state);
+  flow.set(KEY, state, "persistent");
   const attributes = {
     state: state.phase,
     raw_state: rawState,
@@ -541,7 +541,7 @@ function zigbeeComponentState() {
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   const notificationKey = `${slug || "component"}_${hash.toString(16).padStart(8, "0")}`;
-  const incidents = flow.get(KEY) || {};
+  const incidents = flow.get(KEY, "persistent") || {};
   const current = incidents[component] || { offline: false };
   const now = Number(msg.monitor_now || Date.now());
   const nowIso = new Date(now).toISOString();
@@ -549,7 +549,7 @@ function zigbeeComponentState() {
   if (availability === "offline") {
     if (current.offline) return null;
     incidents[component] = { offline: true, outage_started_at: nowIso, last_seen_at: nowIso };
-    flow.set(KEY, incidents);
+    flow.set(KEY, incidents, "persistent");
     return [{
       notification: {
         id: `zigbee_component_${notificationKey}`,
@@ -560,7 +560,7 @@ function zigbeeComponentState() {
   }
 
   incidents[component] = { ...current, offline: false, recovered_at: nowIso, last_seen_at: nowIso };
-  flow.set(KEY, incidents);
+  flow.set(KEY, incidents, "persistent");
   if (!current.offline) return null;
   return [null, {
     notification: {

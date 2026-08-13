@@ -182,10 +182,11 @@ availability:
 
 `nodered/settings.js` define dois armazenamentos de contexto:
 
-- `default`: `localfilesystem`, com flush a cada 15 segundos, para incidentes,
-  horários, contadores e deduplicação;
-- `memoryOnly`: memória volátil, exclusivamente para locks de execução e a
-  observação bruta recebida novamente por MQTT retained.
+- `default`/`memoryOnly`: memória volátil para o estado derivado comum, locks de
+  execução e observações brutas recebidas novamente por MQTT retained;
+- `persistent`: `localfilesystem`, com flush a cada 30 segundos. Os monitores
+  optam explicitamente por esse store para incidentes, horários, contadores e
+  deduplicação.
 
 O estado `nodered/status` também usa birth, close e last will retained. Assim,
 as entidades ficam indisponíveis quando o Node-RED sai do broker.
@@ -202,7 +203,7 @@ Comportamentos esperados:
   alertar e online por 60 segundos para recuperar;
 - roteador reinicia: pings continuam na cadência normal.
 
-Uma interrupção abrupta nos até 15 segundos entre gravações pode perder a
+Uma interrupção abrupta nos até 30 segundos entre gravações pode perder a
 última transição de contexto. Esse é o risco residual do cache em arquivo; não
 há banco externo. MQTT retained e os limiares reduzem falsos positivos no
 startup, mas um crash exatamente após uma notificação e antes do flush pode

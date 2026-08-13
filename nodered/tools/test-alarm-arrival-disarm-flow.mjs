@@ -39,13 +39,9 @@ function runFunction(id, msg, flowValues = {}) {
 
 assert.equal(node("alarm_arrival_disarm_tab").type, "tab");
 assert.equal(node("alarm_arrival_disarm_tab").label, "alarme_desarme_chegada");
-assert.ok(
-  node("sec_detect_arriving_source").wires[0].includes(
-    "sec_arrival_disarm_out",
-  ),
-);
-assert.deepEqual(node("sec_arrival_disarm_out").links, ["alarm_arrival_in"]);
-assert.deepEqual(node("alarm_arrival_in").links, ["sec_arrival_disarm_out"]);
+assert.deepEqual(node("people_arrival_out").links, ["light_arrival_in", "alarm_arrival_in"]);
+assert.deepEqual(node("creta_arrival_out").links, ["light_arrival_in", "alarm_arrival_in"]);
+assert.deepEqual(node("alarm_arrival_in").links, ["people_arrival_out", "creta_arrival_out"]);
 assert.equal(
   node("alarm_arrival_read_state").entity_id,
   "alarm_control_panel.alarme_moni_mobile",
