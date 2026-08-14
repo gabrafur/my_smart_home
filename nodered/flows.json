@@ -143,7 +143,7 @@
             "people_snapshot_in",
             "people_snapshot"
         ],
-        "x": -6,
+        "x": 194,
         "y": 59,
         "w": 432,
         "h": 282
@@ -167,7 +167,7 @@
             "people_arrival_out",
             "people_notify_candidate_out"
         ],
-        "x": 464,
+        "x": 714,
         "y": 119,
         "w": 662,
         "h": 202
@@ -220,7 +220,7 @@
             "creta_snapshot_in",
             "creta_snapshot"
         ],
-        "x": -6,
+        "x": 94,
         "y": 59,
         "w": 492,
         "h": 402
@@ -244,8 +244,8 @@
             "creta_arrival_out",
             "creta_arrival_actions_out"
         ],
-        "x": 524,
-        "y": 119,
+        "x": 654,
+        "y": 139,
         "w": 642,
         "h": 222
     },
@@ -2989,7 +2989,7 @@
         "g": "grp_people_events",
         "name": "Contrato: GPS bruto entra; contexto normalizado sai",
         "info": "Estados unknown/unavailable nunca viram chegada. HOME_LAT/HOME_LON e GATE_LAT/GATE_LON vêm do ambiente; sem coordenadas, usa-se o estado de zona como fallback.",
-        "x": 210,
+        "x": 410,
         "y": 100,
         "wires": []
     },
@@ -3033,7 +3033,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
+        "x": 410,
         "y": 180,
         "wires": [
             [
@@ -3081,7 +3081,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 210,
+        "x": 410,
         "y": 240,
         "wires": [
             [
@@ -3098,7 +3098,7 @@
         "links": [
             "context_snapshot_request_out"
         ],
-        "x": 95,
+        "x": 295,
         "y": 300,
         "wires": [
             [
@@ -3137,7 +3137,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 270,
+        "x": 470,
         "y": 300,
         "wires": [
             [
@@ -3158,7 +3158,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 650,
+        "x": 900,
         "y": 200,
         "wires": [
             [
@@ -3183,7 +3183,7 @@
             "context_people_in",
             "light_people_context_in"
         ],
-        "x": 1085,
+        "x": 1335,
         "y": 160,
         "wires": []
     },
@@ -3198,7 +3198,7 @@
             "light_arrival_in",
             "alarm_arrival_in"
         ],
-        "x": 1085,
+        "x": 1335,
         "y": 220,
         "wires": []
     },
@@ -3212,7 +3212,7 @@
         "links": [
             "context_person_event_in"
         ],
-        "x": 1085,
+        "x": 1335,
         "y": 280,
         "wires": []
     },
@@ -3373,7 +3373,7 @@
         "g": "grp_creta_events",
         "name": "Contrato: entidades do veículo entram; contexto Creta v1 sai",
         "info": "creta_in_use é uma trava de domínio: liga quando o motor é visto ligado e só solta com motor desligado mais carro em casa ou porta destravada.",
-        "x": 240,
+        "x": 340,
         "y": 100,
         "wires": []
     },
@@ -3416,7 +3416,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 230,
+        "x": 330,
         "y": 180,
         "wires": [
             [
@@ -3463,7 +3463,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 230,
+        "x": 330,
         "y": 240,
         "wires": [
             [
@@ -3510,7 +3510,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 230,
+        "x": 330,
         "y": 300,
         "wires": [
             [
@@ -3557,7 +3557,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 230,
+        "x": 330,
         "y": 360,
         "wires": [
             [
@@ -3574,7 +3574,7 @@
         "links": [
             "context_snapshot_request_out"
         ],
-        "x": 95,
+        "x": 195,
         "y": 420,
         "wires": [
             [
@@ -3613,7 +3613,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 290,
+        "x": 390,
         "y": 420,
         "wires": [
             [
@@ -3634,8 +3634,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 700,
-        "y": 220,
+        "x": 830,
+        "y": 240,
         "wires": [
             [
                 "creta_context_out"
@@ -3657,8 +3657,8 @@
             "context_creta_in",
             "light_creta_context_in"
         ],
-        "x": 1125,
-        "y": 160,
+        "x": 1255,
+        "y": 180,
         "wires": []
     },
     {
@@ -3672,8 +3672,8 @@
             "light_arrival_in",
             "alarm_arrival_in"
         ],
-        "x": 1125,
-        "y": 220,
+        "x": 1255,
+        "y": 240,
         "wires": []
     },
     {
@@ -3686,8 +3686,8 @@
         "links": [
             "creta_arrival_actions_in"
         ],
-        "x": 1125,
-        "y": 300,
+        "x": 1255,
+        "y": 320,
         "wires": []
     },
     {
@@ -4284,7 +4284,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 800,
+        "x": 840,
         "y": 280,
         "wires": [
             [
@@ -4305,7 +4305,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1040,
+        "x": 1090,
         "y": 280,
         "wires": [
             [
