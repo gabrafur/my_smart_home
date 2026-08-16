@@ -41,7 +41,7 @@
     {
         "id": "storage_health_tab",
         "type": "tab",
-        "label": "Storage Health",
+        "label": "storage_health",
         "disabled": false,
         "info": "Monitoramento de armazenamento, tendencia, alertas e housekeeping seguro sem Docker socket ou sudo."
     },
@@ -102,6 +102,14 @@
         "env": []
     },
     {
+        "id": "codex_alertas_tab",
+        "type": "tab",
+        "label": "alertas_codex",
+        "disabled": false,
+        "info": "Alertas de uso do Codex: lógica, teste manual e deduplicação no Node-RED; painel e configurações no Home Assistant.",
+        "env": []
+    },
+    {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
         "name": "Notificar todos os dispositivos móveis",
@@ -139,10 +147,10 @@
             "storage_discovery",
             "storage_mqtt_discovery"
         ],
-        "x": 34,
+        "x": -16,
         "y": 39,
-        "w": 1012,
-        "h": 162
+        "w": 1042,
+        "h": 152
     },
     {
         "id": "storage_group_health",
@@ -161,9 +169,9 @@
             "storage_mqtt_state"
         ],
         "x": 34,
-        "y": 239,
-        "w": 1212,
-        "h": 182
+        "y": 249,
+        "w": 1192,
+        "h": 142
     },
     {
         "id": "storage_group_alerts",
@@ -177,10 +185,10 @@
         "nodes": [
             "storage_notify"
         ],
-        "x": 1274,
-        "y": 239,
-        "w": 312,
-        "h": 142
+        "x": 1314,
+        "y": 269,
+        "w": 294,
+        "h": 82
     },
     {
         "id": "storage_group_maintenance",
@@ -202,10 +210,10 @@
             "storage_parse_inspection",
             "storage_maintenance_mqtt"
         ],
-        "x": 34,
-        "y": 419,
-        "w": 1552,
-        "h": 262
+        "x": 24,
+        "y": 429,
+        "w": 1212,
+        "h": 239.5
     },
     {
         "id": "grp_internet_triggers",
@@ -1079,6 +1087,34 @@
         "y": 759,
         "w": 1362,
         "h": 222
+    },
+    {
+        "id": "codex_alertas_group",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Alertas Codex → iPhone de Gabriel",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#5d6f96",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "codex_alert_state",
+            "codex_alert_manual_test",
+            "codex_alert_daily",
+            "codex_alert_logic",
+            "codex_alert_push",
+            "codex_alert_text",
+            "codex_alert_time",
+            "codex_alert_persistent"
+        ],
+        "x": 40,
+        "y": 40,
+        "w": 1520,
+        "h": 280
     },
     {
         "id": "4126427d5e161a03",
@@ -5186,33 +5222,6 @@
         ]
     },
     {
-        "id": "storage_manual_health",
-        "type": "server-events",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Executar pelo painel HA",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "eventType": "storage_health_manual_run",
-        "eventData": "",
-        "waitForRunning": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "eventData"
-            }
-        ],
-        "x": 190,
-        "y": 350,
-        "wires": [
-            [
-                "storage_read_ha"
-            ]
-        ]
-    },
-    {
         "id": "storage_read_ha",
         "type": "api-current-state",
         "z": "storage_health_tab",
@@ -7558,6 +7567,109 @@
         ]
     },
     {
+        "id": "creta_api_error_catch_v1",
+        "type": "catch",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Erros das chamadas do Creta",
+        "scope": [
+            "8907830bb7f6c40c",
+            "77cf2dfe4ff36964",
+            "16396e34ff530ac7"
+        ],
+        "uncaught": false,
+        "x": 920,
+        "y": 880,
+        "wires": [
+            [
+                "creta_api_error_log_v1"
+            ]
+        ]
+    },
+    {
+        "id": "creta_api_error_log_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Registrar erro da API do Creta",
+        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst key = \"security_creta_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nstate.state = \"backoff\";\nstate.reason = \"api_error\";\nstate.failure_at = now;\nstate.failure_source = source;\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nflow.set(key, state, \"persistent\");\nnode.error(\"CRETA_API_ERROR source=\" + source + \" message=\" + message);\nreturn null;",
+        "outputs": 0,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1190,
+        "y": 880,
+        "wires": []
+    },
+    {
+        "id": "creta_refresh_telemetry_tick_v1",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Publicar refresh a cada 5 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 350,
+        "y": 860,
+        "wires": [
+            [
+                "creta_refresh_telemetry_v1"
+            ]
+        ]
+    },
+    {
+        "id": "creta_refresh_telemetry_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Espelhar estado real do refresh",
+        "func": "const raw = flow.get(\"security_creta_refresh_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nlet state = raw.state ?? \"idle\";\nlet deadline = null;\n\nif (raw.awaiting_evidence === true) {\n    deadline = Number(raw.next_retry_at ?? raw.next_allowed_at ?? 0) || null;\n    if (state !== \"refreshing\" || now - Number(raw.last_attempt_at ?? 0) >= 30 * 1000) {\n        state = \"backoff\";\n    }\n} else if (Number(raw.cooldown_until ?? raw.next_allowed_at ?? 0) > now) {\n    deadline = Number(raw.cooldown_until ?? raw.next_allowed_at);\n    state = \"cooldown\";\n} else if (state === \"cooldown\") {\n    state = \"idle\";\n}\n\nconst remainingSeconds = deadline && deadline > now\n    ? Math.max(0, Math.ceil((deadline - now) / 1000))\n    : 0;\nconst iso = (value) => Number(value) > 0\n    ? new Date(Number(value)).toISOString()\n    : null;\n\nconst status = {\n    state,\n    reason: raw.reason ?? raw.recovery_reason ?? null,\n    attempt: Number(raw.attempts ?? 0),\n    last_request_at: iso(raw.last_request_at ?? raw.last_attempt_at),\n    last_success_at: iso(raw.last_success_at),\n    next_retry_at: raw.awaiting_evidence === true\n        ? iso(raw.next_retry_at ?? raw.next_allowed_at)\n        : null,\n    cooldown_until: raw.awaiting_evidence !== true\n        ? iso(raw.cooldown_until ?? raw.next_allowed_at)\n        : null,\n    remaining_seconds: remainingSeconds,\n    awaiting_evidence: raw.awaiting_evidence === true,\n    manual_force: raw.manual_force === true,\n    updated_at: new Date(now).toISOString()\n};\n\nconst discovery = {\n    name: \"Refresh Coordinator\",\n    unique_id: \"creta_refresh_coordinator\",\n    object_id: \"creta_refresh_coordinator\",\n    state_topic: \"homeassistant/creta/refresh/state\",\n    value_template: \"{{ value_json.state }}\",\n    json_attributes_topic: \"homeassistant/creta/refresh/state\",\n    icon: \"mdi:car-clock\",\n    device: {\n        identifiers: [\"creta_bluelink\"],\n        name: \"Creta\",\n        manufacturer: \"Hyundai\"\n    }\n};\n\nreturn [[\n    {\n        topic: \"homeassistant/sensor/creta_refresh_coordinator/config\",\n        payload: JSON.stringify(discovery),\n        retain: true,\n        qos: 1\n    },\n    {\n        topic: \"homeassistant/creta/refresh/state\",\n        payload: JSON.stringify(status),\n        retain: true,\n        qos: 1\n    }\n]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 635,
+        "y": 860,
+        "wires": [
+            [
+                "creta_refresh_mqtt_v1"
+            ]
+        ]
+    },
+    {
+        "id": "creta_refresh_mqtt_v1",
+        "type": "mqtt out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Publicar diagnóstico do refresh",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "application/json",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 925,
+        "y": 860,
+        "wires": []
+    },
+    {
         "id": "93177ddacd3cb498",
         "type": "comment",
         "z": "62bb822e033d1623",
@@ -7798,6 +7910,74 @@
             "f3bc2e5083769579"
         ],
         "x": 250,
+        "y": 300,
+        "wires": [
+            [
+                "5b3d363c0035297b"
+            ]
+        ]
+    },
+    {
+        "id": "creta_manual_refresh_button_v1",
+        "type": "server-state-changed",
+        "z": "62bb822e033d1623",
+        "g": "790bea5f55d43bd0",
+        "name": "Forçar atualização pelo dashboard",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_button.creta_force_refresh_now"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": true,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"event_type\":\"manual_refresh\"}",
+                "valueType": "json"
+            }
+        ],
+        "x": 215,
+        "y": 300,
+        "wires": [
+            [
+                "creta_manual_refresh_request_v1"
+            ]
+        ]
+    },
+    {
+        "id": "creta_manual_refresh_request_v1",
+        "type": "function",
+        "z": "62bb822e033d1623",
+        "g": "790bea5f55d43bd0",
+        "name": "Solicitar manual_force ao coordenador",
+        "func": "if (msg.payload?.event_type === \"test\") return null;\n\nconst requestedAt = Date.now();\nnode.log?.(\"CRETA_REFRESH_REQUESTED origin=dashboard reason=manual_force\");\n\nreturn {\n    payload: {\n        kind: \"refresh_tick\",\n        origin: \"creta_dashboard\",\n        reason: \"manual_force\",\n        force_recovery: true,\n        require_lighting_ready: false,\n        requested_at: requestedAt\n    }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 515,
         "y": 300,
         "wires": [
             [
@@ -9298,213 +9478,6 @@
         "x": 480,
         "y": 540,
         "wires": []
-    },
-    {
-        "id": "creta_api_error_catch_v1",
-        "type": "catch",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Erros das chamadas do Creta",
-        "scope": [
-            "8907830bb7f6c40c",
-            "77cf2dfe4ff36964",
-            "16396e34ff530ac7"
-        ],
-        "uncaught": false,
-        "x": 920,
-        "y": 880,
-        "wires": [
-            [
-                "creta_api_error_log_v1"
-            ]
-        ]
-    },
-    {
-        "id": "creta_api_error_log_v1",
-        "type": "function",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Registrar erro da API do Creta",
-        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst key = \"security_creta_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nstate.state = \"backoff\";\nstate.reason = \"api_error\";\nstate.failure_at = now;\nstate.failure_source = source;\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nflow.set(key, state, \"persistent\");\nnode.error(\"CRETA_API_ERROR source=\" + source + \" message=\" + message);\nreturn null;",
-        "outputs": 0,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1190,
-        "y": 880,
-        "wires": []
-    },
-    {
-        "id": "creta_manual_refresh_button_v1",
-        "type": "server-state-changed",
-        "z": "62bb822e033d1623",
-        "g": "790bea5f55d43bd0",
-        "name": "Forçar atualização pelo dashboard",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "input_button.creta_force_refresh_now"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": true,
-        "ignorePrevStateUnknown": true,
-        "ignorePrevStateUnavailable": true,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "{\"event_type\":\"manual_refresh\"}",
-                "valueType": "json"
-            }
-        ],
-        "x": 215,
-        "y": 300,
-        "wires": [
-            [
-                "creta_manual_refresh_request_v1"
-            ]
-        ]
-    },
-    {
-        "id": "creta_manual_refresh_request_v1",
-        "type": "function",
-        "z": "62bb822e033d1623",
-        "g": "790bea5f55d43bd0",
-        "name": "Solicitar manual_force ao coordenador",
-        "func": "if (msg.payload?.event_type === \"test\") return null;\n\nconst requestedAt = Date.now();\nnode.log?.(\"CRETA_REFRESH_REQUESTED origin=dashboard reason=manual_force\");\n\nreturn {\n    payload: {\n        kind: \"refresh_tick\",\n        origin: \"creta_dashboard\",\n        reason: \"manual_force\",\n        force_recovery: true,\n        require_lighting_ready: false,\n        requested_at: requestedAt\n    }\n};",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 515,
-        "y": 300,
-        "wires": [
-            [
-                "5b3d363c0035297b"
-            ]
-        ]
-    },
-    {
-        "id": "creta_refresh_telemetry_tick_v1",
-        "type": "inject",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Publicar refresh a cada 5 s",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "5",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "3",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 350,
-        "y": 860,
-        "wires": [
-            [
-                "creta_refresh_telemetry_v1"
-            ]
-        ]
-    },
-    {
-        "id": "creta_refresh_telemetry_v1",
-        "type": "function",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Espelhar estado real do refresh",
-        "func": "const raw = flow.get(\"security_creta_refresh_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nlet state = raw.state ?? \"idle\";\nlet deadline = null;\n\nif (raw.awaiting_evidence === true) {\n    deadline = Number(raw.next_retry_at ?? raw.next_allowed_at ?? 0) || null;\n    if (state !== \"refreshing\" || now - Number(raw.last_attempt_at ?? 0) >= 30 * 1000) {\n        state = \"backoff\";\n    }\n} else if (Number(raw.cooldown_until ?? raw.next_allowed_at ?? 0) > now) {\n    deadline = Number(raw.cooldown_until ?? raw.next_allowed_at);\n    state = \"cooldown\";\n} else if (state === \"cooldown\") {\n    state = \"idle\";\n}\n\nconst remainingSeconds = deadline && deadline > now\n    ? Math.max(0, Math.ceil((deadline - now) / 1000))\n    : 0;\nconst iso = (value) => Number(value) > 0\n    ? new Date(Number(value)).toISOString()\n    : null;\n\nconst status = {\n    state,\n    reason: raw.reason ?? raw.recovery_reason ?? null,\n    attempt: Number(raw.attempts ?? 0),\n    last_request_at: iso(raw.last_request_at ?? raw.last_attempt_at),\n    last_success_at: iso(raw.last_success_at),\n    next_retry_at: raw.awaiting_evidence === true\n        ? iso(raw.next_retry_at ?? raw.next_allowed_at)\n        : null,\n    cooldown_until: raw.awaiting_evidence !== true\n        ? iso(raw.cooldown_until ?? raw.next_allowed_at)\n        : null,\n    remaining_seconds: remainingSeconds,\n    awaiting_evidence: raw.awaiting_evidence === true,\n    manual_force: raw.manual_force === true,\n    updated_at: new Date(now).toISOString()\n};\n\nconst discovery = {\n    name: \"Refresh Coordinator\",\n    unique_id: \"creta_refresh_coordinator\",\n    object_id: \"creta_refresh_coordinator\",\n    state_topic: \"homeassistant/creta/refresh/state\",\n    value_template: \"{{ value_json.state }}\",\n    json_attributes_topic: \"homeassistant/creta/refresh/state\",\n    icon: \"mdi:car-clock\",\n    device: {\n        identifiers: [\"creta_bluelink\"],\n        name: \"Creta\",\n        manufacturer: \"Hyundai\"\n    }\n};\n\nreturn [[\n    {\n        topic: \"homeassistant/sensor/creta_refresh_coordinator/config\",\n        payload: JSON.stringify(discovery),\n        retain: true,\n        qos: 1\n    },\n    {\n        topic: \"homeassistant/creta/refresh/state\",\n        payload: JSON.stringify(status),\n        retain: true,\n        qos: 1\n    }\n]];",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 635,
-        "y": 860,
-        "wires": [
-            [
-                "creta_refresh_mqtt_v1"
-            ]
-        ]
-    },
-    {
-        "id": "creta_refresh_mqtt_v1",
-        "type": "mqtt out",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Publicar diagnóstico do refresh",
-        "topic": "",
-        "qos": "1",
-        "retain": "true",
-        "respTopic": "",
-        "contentType": "application/json",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "721c47f31046b8bc",
-        "x": 925,
-        "y": 860,
-        "wires": []
-    },
-    {
-        "id": "codex_alertas_tab",
-        "type": "tab",
-        "label": "alertas_codex",
-        "disabled": false,
-        "info": "Alertas de uso do Codex: lógica, teste manual e deduplicação no Node-RED; painel e configurações no Home Assistant.",
-        "env": []
-    },
-    {
-        "id": "codex_alertas_group",
-        "type": "group",
-        "z": "codex_alertas_tab",
-        "name": "Alertas Codex → iPhone de Gabriel",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#5d6f96",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "codex_alert_state",
-            "codex_alert_manual_test",
-            "codex_alert_daily",
-            "codex_alert_logic",
-            "codex_alert_push",
-            "codex_alert_text",
-            "codex_alert_time",
-            "codex_alert_persistent"
-        ],
-        "x": 40,
-        "y": 40,
-        "w": 1520,
-        "h": 280
     },
     {
         "id": "codex_alert_state",
