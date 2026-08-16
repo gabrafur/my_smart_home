@@ -466,11 +466,12 @@ When the Local AI preflight for the current conversation is `LOCAL_AI_AVAILABLE`
 make this routing decision automatically. Do not ask the user to enable Local AI,
 repeat a special prompt, select a model, or run a helper command.
 
-Before placing a large, non-sensitive body of text into the OpenAI/Codex context,
-use `./scripts/local-ai/local-ai` to produce a bounded structured first
-pass when it will reduce the context materially. Treat roughly 1,500 OpenAI
-tokens (about 6,000 ordinary text characters) as the normal lower bound, unless
-the content is already clearly structured and small enough to inspect directly.
+Before placing a medium or large, non-sensitive body of text into the
+OpenAI/Codex context, use `./scripts/local-ai/local-ai` to produce a bounded
+structured first pass when it will reduce the context materially. Treat roughly
+800 OpenAI tokens (about 3,200 ordinary text characters) as the normal lower
+bound. Keep skipping small or already well-structured material that deterministic
+tools can inspect directly.
 
 Choose the helper task from the evidence at hand:
 
@@ -547,10 +548,19 @@ It is not a claim that local inference tokens equal OpenAI tokens or money saved
 
 ## Project memory
 
-`MEMORY.md` in this repository root is the canonical long-term project-memory
-entry point. Read it with this file before non-trivial work. Keep it concise,
-verified against the versioned configuration and documentation, and free of
-secrets or time-limited authorizations.
+`.codex/memories/<assunto>/<nome-descritivo>.md` is the canonical location for
+important long-term project memories. Before non-trivial work, read
+`.codex/memories/projeto/indice.md` with this file and then consult only the
+relevant topic. `MEMORY.md` at the repository root is a versioned compatibility
+index.
+
+- Name every topic file descriptively in kebab-case; never use the generic
+  filename `memoria.md`.
+- For an important decision in a new topic, create a new Markdown file and add
+  it to the project index. Update an existing file only when the topic is the
+  same.
+- Keep memories concise, verified against the versioned configuration and
+  documentation, and free of secrets or time-limited authorizations.
 
 Prompts sent to Claude Code or Codex through Home Assistant are stored at
 `.agent-history/turns.jsonl`. The directory contains private runtime data and

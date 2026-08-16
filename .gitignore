@@ -21,7 +21,11 @@
 .local-state/
 .agent-history/
 .agents/
-.codex/
+# Preserve Codex runtime state as private while versioning the project memory.
+.codex/*
+!.codex/memories/
+!.codex/memories/**/
+!.codex/memories/**/*.md
 .claude/
 CLAUDE.md
 .DS_Store
