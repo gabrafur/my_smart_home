@@ -485,3 +485,208 @@ make validate-public
 ```
 
 Não copie mensagens arbitrárias que possam conter dados privados.
+
+## Memória versionada dos agentes
+
+Trate a memória de IA versionada como parte da arquitetura e da documentação do projeto, não como informação secundária.
+
+Revise obrigatoriamente:
+
+```text
+AGENTS.md
+MEMORY.md
+memories/**
+```
+
+e qualquer outro diretório ou arquivo versionado que posteriormente passe a ser declarado como memória, contexto persistente, instrução de agente, ADR para agentes ou conhecimento canônico do projeto.
+
+### Autoridade
+
+A ordem de autoridade deve ser:
+
+1. código e configuração executável atual;
+2. testes e contratos executáveis;
+3. documentação operacional atual;
+4. decisões arquiteturais vigentes;
+5. memória versionada dos agentes.
+
+A memória nunca deve contradizer as fontes acima.
+
+Quando houver divergência:
+
+* não altere código apenas para tornar a memória verdadeira;
+* corrija ou remova a memória obsoleta;
+* preserve uma decisão histórica somente quando ela estiver explicitamente marcada como histórica;
+* registre a fonte atual que substituiu a informação anterior.
+
+### Coerência da memória
+
+Para cada mudança relevante, verifique se ela altera conhecimento reutilizável sobre:
+
+* arquitetura;
+* convenções;
+* Git e workflow;
+* Home Assistant;
+* Node-RED;
+* integrações;
+* entidades e papéis lógicos;
+* segurança;
+* privacidade;
+* restauração;
+* observabilidade;
+* testes;
+* CI/CD;
+* Local AI;
+* Codex ou outros agentes;
+* limitações conhecidas;
+* decisões técnicas;
+* procedimentos que um agente futuro precisaria conhecer.
+
+Se alterar, atualize o arquivo temático apropriado em `memories/`.
+
+Não transforme `MEMORY.md` em um arquivo extenso. Ele deve continuar sendo um índice canônico e conciso apontando para memórias temáticas.
+
+### Qualidade
+
+Remova da memória:
+
+* informações temporárias já encerradas;
+* resultados de uma única execução sem valor futuro;
+* instruções substituídas;
+* versões antigas apresentadas como atuais;
+* caminhos ou nomes que deixaram de existir;
+* duplicação desnecessária da documentação;
+* hipóteses que nunca foram confirmadas;
+* conclusões contraditas posteriormente por testes ou investigação.
+
+Preserve:
+
+* decisões arquiteturais;
+* invariantes;
+* contratos;
+* convenções;
+* riscos recorrentes;
+* razões para comportamentos não óbvios;
+* procedimentos de recovery;
+* armadilhas confirmadas;
+* lições de incidentes que evitem regressões.
+
+### Privacidade das memórias
+
+Aplique às memórias versionadas exatamente a mesma política de privacidade aplicada ao restante do repositório.
+
+Não permita nelas:
+
+* nomes privados de moradores;
+* relações familiares desnecessárias;
+* endereços;
+* coordenadas;
+* IPs privados;
+* MACs;
+* IDs físicos;
+* IDs privados de contas;
+* horários e trajetos residenciais;
+* credenciais;
+* tokens;
+* logs reais;
+* transcripts privados;
+* informações que permitam reconstruir rotinas da residência.
+
+Use os mesmos papéis lógicos adotados pelo restante do repositório, como:
+
+```text
+resident_primary
+resident_secondary
+mobile_primary
+mobile_secondary
+vehicle_primary
+garage_gate
+exterior_light
+security_panel
+```
+
+### Memória privada de runtime
+
+Não leia, indexe, copie, resuma, publique ou versione automaticamente conteúdos de runtime privados, incluindo:
+
+```text
+.agent-history/
+.claude/
+.codex/
+.local-secrets/
+```
+
+ou diretórios equivalentes, exceto quando um arquivo específico estiver explicitamente declarado como público e rastreado pelo Git.
+
+O histórico privado de conversas não é fonte documental para a rotina automática.
+
+Se alguma informação importante existir somente em histórico privado, reporte:
+
+```text
+knowledge_not_versioned
+```
+
+sem copiar seu conteúdo, indicando que ela deve ser transformada manualmente em uma decisão ou memória pública sanitizada.
+
+### Validação
+
+Crie ou evolua uma validação automatizada para verificar que:
+
+* todos os arquivos apontados por `MEMORY.md` existem;
+* não existem memórias temáticas órfãs;
+* links internos estão válidos;
+* caminhos e comandos referenciados continuam existindo;
+* termos privados proibidos não aparecem;
+* memória e documentação não possuem contradições mecanicamente detectáveis;
+* nenhum diretório privado de runtime está rastreado.
+
+Essa validação deve fazer parte de:
+
+```bash
+make validate-public
+```
+## Revisão semanal da memória de IA
+
+Além da documentação humana, revise explicitamente a memória versionada dos agentes.
+
+Compare os commits da semana com:
+
+```text
+AGENTS.md
+MEMORY.md
+memories/**
+```
+
+Para cada mudança relevante da semana, pergunte:
+
+1. um agente novo receberia uma informação incorreta lendo a memória atual?
+2. surgiu uma decisão reutilizável que ainda não foi registrada?
+3. alguma limitação ou workaround deixou de existir?
+4. alguma investigação recente invalidou uma conclusão antiga?
+5. algum nome, caminho, entidade, script, teste ou comando mencionado foi alterado?
+6. alguma memória passou a expor informação que agora é considerada privada?
+7. existe informação duplicada que deveria permanecer apenas na documentação canônica?
+
+Atualize somente conhecimento reutilizável e confirmado.
+
+Não registre na memória:
+
+* o resumo de todos os commits da semana;
+* detalhes efêmeros;
+* logs;
+* resultados transitórios;
+* autorizações temporárias;
+* informações que já estão adequadamente representadas por código ou testes e não precisam de contexto adicional.
+
+Se a memória estiver correta, não altere apenas para gerar atividade.
+
+No relatório semanal, registre:
+
+```text
+AI memory reviewed: yes
+AI memory files checked: <quantidade>
+AI memory files changed: <quantidade>
+Stale knowledge removed: <quantidade>
+New reusable decisions recorded: <quantidade>
+Privacy findings in AI memory: <quantidade>
+```
