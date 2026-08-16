@@ -45,6 +45,15 @@ command_line:
 
 template:
   - sensor:
+      - name: Codex RTX Ultima Atualizacao
+        unique_id: codex_rtx_ultima_atualizacao
+        device_class: timestamp
+        state: "{{ states.sensor.codex_rtx_live_raw.last_updated.isoformat() }}"
+        availability: >-
+          {{ states('sensor.codex_rtx_live_raw') not in ['unknown', 'unavailable'] }}
+        attributes:
+          amostra_da_rtx: "{{ state_attr('sensor.codex_rtx_live_raw', 'sampled_at') }}"
+
       - name: Codex RTX ao Vivo
         unique_id: codex_rtx_ao_vivo
         icon: >-
@@ -658,3 +667,14 @@ input_datetime:
     icon: mdi:clock-check-outline
     has_date: true
     has_time: true
+
+script:
+  codex_atualizar_rtx_agora:
+    alias: Codex - atualizar painel RTX agora
+    mode: single
+    sequence:
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.codex_rtx_live_raw
+            - sensor.codex_usage_raw

@@ -236,6 +236,22 @@ views:
           {% endif %}
 
       - type: grid
+        title: Atualização
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_rtx_ultima_atualizacao
+            name: Última atualização
+          - type: button
+            name: Atualizar agora
+            icon: mdi:refresh
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: script.codex_atualizar_rtx_agora
+
+      - type: grid
         title: RTX ao vivo
         columns: 2
         square: false

@@ -170,6 +170,11 @@ cada segundo. A disponibilidade só é tratada como atual quando o preflight do
 bridge tem no máximo dois minutos; fora disso, o painel mostra
 **desatualizado** em vez de afirmar que a RTX está pronta.
 
+O card **Última atualização** informa quando o Home Assistant recebeu a última
+observação do endpoint ao vivo. O botão **Atualizar agora** pede uma nova coleta
+dos sensores RTX e de uso ao bridge; ele não executa um modelo local nem cria
+uma tarefa artificial na GPU.
+
 Na aba **Codex**, os seletores permitem usar `gpt-5.6-luna`,
 `gpt-5.6-terra` ou `gpt-5.6-sol` e um nível compatível de reasoning. O valor
 inicial é sempre `gpt-5.6-terra` com reasoning `medium`; o usuário pode mudar
