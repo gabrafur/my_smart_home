@@ -144,6 +144,10 @@ false`, não geram chegada e não limpam o armado anterior.
   fail-open para não perder uma chegada real.
 - A chegada do Creta atualiza o histórico de viagens do dia; no estágio
   `approach`, também tenta um wake pontual do veículo.
+- Atualizações de atributos do tracker também são observadas sem exigir troca
+  de zona. Um deslocamento acumulado de pelo menos 250 m (ou maior que a soma
+  das precisões GPS) solicita refresh do contexto, mas nunca autoriza sozinho
+  a iluminação ou outra ação física.
 
 ## Freshness e `creta_in_use`
 
@@ -226,6 +230,10 @@ depende exclusivamente de um `delay` residente em memória.
   entre 07h e 22h.
 - Entrada no anel: wake pontual do Creta, ainda protegido pelo cooldown do
   coordinator Kia/Hyundai.
+- Mudança de zona ou deslocamento GPS significativo: solicita refresh imediato
+  e marca motor/contexto como potencialmente stale. A posição de referência é
+  persistida somente para dedupe; logs registram tipo de movimento e distância
+  arredondada, nunca latitude/longitude.
 - O timestamp dos iPhones é otimista, preservando o comportamento anterior.
 - O refresh do Creta persiste tentativa, próxima tentativa e último sucesso.
   Falhas usam backoff exponencial de 1, 2, 4, 8 e no máximo 15 min; sucesso
@@ -329,9 +337,11 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa os 30 cenários de regressão solicitados, incluindo
+`flows:test-security` executa 31 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
-de refresh. `flows:test-security-recovery` acrescenta 40 cenários com relógio
-controlado para restart, reconciliação e deadlines. São replays offline dos
+de refresh, inclusive movimento dentro da mesma zona.
+`flows:test-security-recovery` acrescenta 40 cenários de restart e recuperação;
+`flows:test-security-adversarial`, mais 23 casos adversariais com relógio
+controlado para reconciliação e deadlines. São replays offline dos
 `function nodes` e uma validação estrutural;
 não substitui um teste de campo com os iPhones, o veículo e a API Bluelink.
