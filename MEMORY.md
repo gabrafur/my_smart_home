@@ -1,19 +1,21 @@
-# Memória do projeto
+# Índice de memórias do projeto
 
-Este é o índice canônico de memória de longo prazo do repositório. Leia-o com
-`AGENTS.md` antes de trabalho não trivial e, em seguida, consulte somente o
-arquivo temático pertinente. A configuração e a documentação versionadas têm
-precedência sobre estas anotações.
+Este é o índice de compatibilidade para a memória de longo prazo do
+repositório. A fonte canônica está em
+`.codex/memories/projeto/indice.md`. Leia esse índice com `AGENTS.md` antes de
+trabalho não trivial e, em seguida, consulte somente o arquivo temático
+pertinente. A configuração e a documentação versionadas têm precedência sobre
+estas anotações.
 
 ## Índice
 
 | Assunto | Arquivo | Quando consultar |
 | --- | --- | --- |
-| Práticas de trabalho e Git | [`memories/workflow.md`](memories/workflow.md) | Alterações, testes, commits ou push |
-| Automações e interface | [`memories/automations.md`](memories/automations.md) | Node-RED, Home Assistant, painéis, alarme ou portão |
-| Integrações e operação | [`memories/integrations.md`](memories/integrations.md) | Creta, MQTT, Bluetooth, Matter ou energia |
-| Codex e Local AI | [`memories/codex-local-ai.md`](memories/codex-local-ai.md) | Helper local, RTX, hook, telemetria ou painéis Codex/RTX |
-| Segurança e dados locais | [`memories/security.md`](memories/security.md) | Credenciais, arquivos privados ou acesso ao host |
+| Práticas de trabalho e Git | [`.codex/memories/praticas-de-trabalho/praticas-de-trabalho.md`](.codex/memories/praticas-de-trabalho/praticas-de-trabalho.md) | Alterações, testes, commits ou push |
+| Automações e interface | [`.codex/memories/automacoes/automacoes-e-interface.md`](.codex/memories/automacoes/automacoes-e-interface.md) | Node-RED, Home Assistant, painéis, alarme ou portão |
+| Integrações e operação | [`.codex/memories/integracoes/integracoes-e-operacao.md`](.codex/memories/integracoes/integracoes-e-operacao.md) | Creta, MQTT, Bluetooth, Matter ou energia |
+| Codex e Local AI | [`.codex/memories/codex-local-ai/codex-e-local-ai.md`](.codex/memories/codex-local-ai/codex-e-local-ai.md) | Helper local, RTX, hook, telemetria ou painéis Codex/RTX |
+| Segurança e dados locais | [`.codex/memories/seguranca/seguranca-e-dados-locais.md`](.codex/memories/seguranca/seguranca-e-dados-locais.md) | Credenciais, arquivos privados ou acesso ao host |
 
 ## Manutenção
 
