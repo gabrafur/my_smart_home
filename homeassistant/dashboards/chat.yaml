@@ -13,33 +13,36 @@ views:
     icon: mdi:chart-donut
     cards:
       - type: markdown
-        content: >-
+        content: |
           # Uso do Codex monitorado neste host
 
           {% set totals = state_attr('sensor.codex_usage_raw', 'totals') or {} %}
           {% set limite = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
+          {% set reset_em = limite.get('resets_at') %}
           {% if states('sensor.codex_usage_raw') == 'ok' %}
-          **{{ totals.get('total_tokens', 0) | int }} tokens** registrados em
-          **{{ totals.get('sessions', 0) | int }} sessões** do bridge e do
-          ambiente Codex local monitorado.
+          **Uso monitorado:** {{ '{:,.0f}'.format(totals.get('total_tokens', 0) | int).replace(',', '.') }} tokens em
+          {{ totals.get('sessions', 0) | int }} sessões do bridge e do Codex local.
 
           {% if states('sensor.codex_dados_de_limite') == 'atual' and is_number(states('sensor.codex_limite_disponivel')) %}
-          **{{ states('sensor.codex_limite_disponivel') | round(0) }}% disponível**
-          na janela atual do plano {{ states('sensor.codex_plano') | title }}.
+          **Plano {{ states('sensor.codex_plano') | title }}:**
+          {{ states('sensor.codex_limite_disponivel') | round(0) }}% disponível
+          ({{ states('sensor.codex_limite_usado') | round(0) }}% usado).
           {% elif limite.get('remaining_percent') is number %}
-          **Última leitura do limite: {{ limite.get('remaining_percent') | round(0) }}% disponível**
-          ({{ limite.get('used_percent') | round(0) }}% usado). Ela está desatualizada desde
-          {{ states('sensor.codex_ultima_atualizacao_do_limite') }} e, por isso, não é tratada
-          como saldo atual nem usada em alertas.
+          **Última leitura do limite:** {{ limite.get('remaining_percent') | round(0) }}% disponível
+          ({{ limite.get('used_percent') | round(0) }}% usado). Este dado está desatualizado e
+          não é usado em alertas nem projeções.
           {% else %}
-          Ainda não há uma leitura de limite do plano neste bridge.
+          Ainda não há uma leitura do limite do plano.
+          {% endif %}
+
+          {% if reset_em %}
+          **Próximo reset:** {{ as_timestamp(reset_em) | timestamp_custom('%d/%m às %H:%M', true) }}.
           {% endif %}
           {% else %}
           Aguardando a primeira métrica do Codex CLI.
           {% endif %}
 
-          A rotina local detecta sessões alteradas em até 2 segundos, sem chamada à API
-          nem consumo do plano. Conteúdo das conversas não é exposto no painel.
+          _Atualização local em até 2 segundos, sem chamada à API nem consumo do plano._
 
       - type: grid
         title: Última leitura do limite do plano
@@ -83,6 +86,9 @@ views:
             name: Última atividade registrada
           - entity: sensor.codex_usage_raw
             name: Estado da coleta
+          - entity: script.codex_atualizar_uso_agora
+            name: Atualizar agora
+            icon: mdi:refresh
 
       - type: markdown
         content: >-
