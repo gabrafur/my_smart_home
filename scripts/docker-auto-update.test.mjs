@@ -3,7 +3,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { replaceServiceImage } from "./docker-auto-update.mjs";
+import {
+  replaceServiceImage,
+  updateIsProtected,
+} from "./docker-auto-update.mjs";
 
 test("replaces an image even when comments precede it", () => {
   const compose = `services:
@@ -35,4 +38,15 @@ test("does not cross into the next service", () => {
     () => replaceServiceImage(compose, "build_only", "example/build:new"),
     /Could not find image property/,
   );
+});
+
+test("routes Hyundai Kia updates to analysis instead of blind install", () => {
+  assert.equal(updateIsProtected({
+    entity_id: "update.kia_uvo_hyundai_bluelink_update",
+    attributes: { friendly_name: "Kia Uvo / Hyundai Bluelink" },
+  }), true);
+  assert.equal(updateIsProtected({
+    entity_id: "update.hacs_update",
+    attributes: { friendly_name: "HACS" },
+  }), false);
 });
