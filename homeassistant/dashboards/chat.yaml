@@ -14,13 +14,14 @@ views:
     cards:
       - type: markdown
         content: >-
-          # Uso do Codex neste bridge
+          # Uso do Codex monitorado neste host
 
           {% set totals = state_attr('sensor.codex_usage_raw', 'totals') or {} %}
           {% set limite = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
           {% if states('sensor.codex_usage_raw') == 'ok' %}
           **{{ totals.get('total_tokens', 0) | int }} tokens** registrados em
-          **{{ totals.get('sessions', 0) | int }} sessões** deste bridge.
+          **{{ totals.get('sessions', 0) | int }} sessões** do bridge e do
+          ambiente Codex local monitorado.
 
           {% if states('sensor.codex_dados_de_limite') == 'atual' and is_number(states('sensor.codex_limite_disponivel')) %}
           **{{ states('sensor.codex_limite_disponivel') | round(0) }}% disponível**
@@ -37,7 +38,8 @@ views:
           Aguardando a primeira métrica do Codex CLI.
           {% endif %}
 
-          Tokens e atividade do bridge atualizam em até 2 segundos pela rede interna.
+          A rotina local detecta sessões alteradas em até 2 segundos, sem chamada à API
+          nem consumo do plano. Conteúdo das conversas não é exposto no painel.
 
       - type: grid
         title: Última leitura do limite do plano

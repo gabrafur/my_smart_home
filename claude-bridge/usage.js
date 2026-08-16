@@ -335,7 +335,76 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   };
 }
 
-function scanCodexUsage(sessionsDirectory, now = new Date()) {
+function scanCodexUsageFile(filePath) {
+  const totals = emptyTokens();
+  const daily = new Map();
+  let latestEvent = null;
+  let latestRateEvent = null;
+  let latestCreditEvent = null;
+  let eventCount = 0;
+
+  let contents;
+  try {
+    contents = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+
+  let previousTotal = emptyTokens();
+  let hasUsage = false;
+  for (const line of contents.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let event;
+    try {
+      event = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (event.type !== 'event_msg' || event.payload?.type !== 'token_count') continue;
+
+    const timestamp = new Date(event.timestamp);
+    if (Number.isNaN(timestamp.valueOf())) continue;
+    eventCount += 1;
+    hasUsage = true;
+
+    const current = event.payload.info?.total_token_usage || {};
+    const delta = emptyTokens();
+    for (const key of Object.keys(delta)) {
+      const currentValue = Math.max(0, Number(current[key]) || 0);
+      const previousValue = Math.max(0, Number(previousTotal[key]) || 0);
+      delta[key] = currentValue >= previousValue ? currentValue - previousValue : currentValue;
+    }
+    addTokens(totals, delta);
+    const day = timestamp.toISOString().slice(0, 10);
+    const dayUsage = daily.get(day) || emptyTokens();
+    addTokens(dayUsage, delta);
+    daily.set(day, dayUsage);
+    previousTotal = { ...previousTotal, ...current };
+
+    const candidate = { timestamp, rateLimits: event.payload.rate_limits };
+    if (!latestEvent || timestamp > latestEvent.timestamp) latestEvent = candidate;
+    if (
+      event.payload.rate_limits?.primary
+      && (!latestRateEvent || timestamp > latestRateEvent.timestamp)
+    ) latestRateEvent = candidate;
+    if (
+      event.payload.rate_limits?.credits
+      && (!latestCreditEvent || timestamp > latestCreditEvent.timestamp)
+    ) latestCreditEvent = candidate;
+  }
+
+  return {
+    totals,
+    daily,
+    latestEvent,
+    latestRateEvent,
+    latestCreditEvent,
+    sessionCount: hasUsage ? 1 : 0,
+    eventCount,
+  };
+}
+
+function buildCodexUsage(fileSummaries, now = new Date()) {
   const totals = emptyTokens();
   const recentTokens = emptyTokens();
   const daily = new Map();
@@ -345,60 +414,30 @@ function scanCodexUsage(sessionsDirectory, now = new Date()) {
   let sessionCount = 0;
   let eventCount = 0;
 
-  for (const filePath of listJsonlFiles(sessionsDirectory)) {
-    let contents;
-    try {
-      contents = fs.readFileSync(filePath, 'utf8');
-    } catch {
-      continue;
+  for (const summary of fileSummaries) {
+    if (!summary) continue;
+    addTokens(totals, summary.totals);
+    sessionCount += summary.sessionCount;
+    eventCount += summary.eventCount;
+    if (!latestEvent || summary.latestEvent?.timestamp > latestEvent.timestamp) {
+      latestEvent = summary.latestEvent || latestEvent;
     }
-
-    let previousTotal = emptyTokens();
-    let hasUsage = false;
-    for (const line of contents.split(/\r?\n/)) {
-      if (!line.trim()) continue;
-      let event;
-      try {
-        event = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (event.type !== 'event_msg' || event.payload?.type !== 'token_count') continue;
-
-      const timestamp = new Date(event.timestamp);
-      if (Number.isNaN(timestamp.valueOf())) continue;
-      eventCount += 1;
-      hasUsage = true;
-
-      const current = event.payload.info?.total_token_usage || {};
-      const delta = emptyTokens();
-      for (const key of Object.keys(delta)) {
-        const currentValue = Math.max(0, Number(current[key]) || 0);
-        const previousValue = Math.max(0, Number(previousTotal[key]) || 0);
-        delta[key] = currentValue >= previousValue ? currentValue - previousValue : currentValue;
-      }
-      addTokens(totals, delta);
-      if (timestamp.valueOf() >= now.valueOf() - 7 * 86_400_000) {
-        addTokens(recentTokens, delta);
-      }
-      const day = timestamp.toISOString().slice(0, 10);
+    if (!latestRateEvent || summary.latestRateEvent?.timestamp > latestRateEvent.timestamp) {
+      latestRateEvent = summary.latestRateEvent || latestRateEvent;
+    }
+    if (!latestCreditEvent || summary.latestCreditEvent?.timestamp > latestCreditEvent.timestamp) {
+      latestCreditEvent = summary.latestCreditEvent || latestCreditEvent;
+    }
+    for (const [day, usage] of summary.daily.entries()) {
       const dayUsage = daily.get(day) || emptyTokens();
-      addTokens(dayUsage, delta);
+      addTokens(dayUsage, usage);
       daily.set(day, dayUsage);
-      previousTotal = { ...previousTotal, ...current };
-
-      const candidate = { timestamp, rateLimits: event.payload.rate_limits };
-      if (!latestEvent || timestamp > latestEvent.timestamp) latestEvent = candidate;
-      if (
-        event.payload.rate_limits?.primary
-        && (!latestRateEvent || timestamp > latestRateEvent.timestamp)
-      ) latestRateEvent = candidate;
-      if (
-        event.payload.rate_limits?.credits
-        && (!latestCreditEvent || timestamp > latestCreditEvent.timestamp)
-      ) latestCreditEvent = candidate;
     }
-    if (hasUsage) sessionCount += 1;
+  }
+
+  for (const [day, usage] of daily.entries()) {
+    const timestamp = new Date(`${day}T00:00:00.000Z`);
+    if (timestamp.valueOf() >= now.valueOf() - 7 * 86_400_000) addTokens(recentTokens, usage);
   }
 
   const rateSource = latestRateEvent || latestEvent;
@@ -433,20 +472,55 @@ function scanCodexUsage(sessionsDirectory, now = new Date()) {
   };
 }
 
+function scanCodexUsage(sessionsDirectory, now = new Date()) {
+  const directories = Array.isArray(sessionsDirectory) ? sessionsDirectory : [sessionsDirectory];
+  const files = [...new Set(directories.flatMap((directory) => listJsonlFiles(directory)))];
+  return buildCodexUsage(files.map(scanCodexUsageFile), now);
+}
+
 class CodexUsageReader {
   constructor(sessionsDirectory, localAiTelemetryPath = null, localAiStatusPath = null, cacheMs = 5_000) {
-    this.sessionsDirectory = sessionsDirectory;
+    this.sessionsDirectories = Array.isArray(sessionsDirectory) ? sessionsDirectory : [sessionsDirectory];
     this.localAiTelemetryPath = localAiTelemetryPath;
     this.localAiStatusPath = localAiStatusPath;
     this.cacheMs = cacheMs;
     this.cachedAt = 0;
     this.cached = null;
+    this.usageFiles = new Map();
+  }
+
+  readCodexUsage(now) {
+    const files = [...new Set(
+      this.sessionsDirectories.flatMap((directory) => listJsonlFiles(directory)),
+    )];
+    const present = new Set(files);
+    for (const filePath of files) {
+      let stat;
+      try {
+        stat = fs.statSync(filePath);
+      } catch {
+        continue;
+      }
+      const fingerprint = `${stat.size}:${stat.mtimeMs}`;
+      const previous = this.usageFiles.get(filePath);
+      if (!previous || previous.fingerprint !== fingerprint || !previous.summary) {
+        this.usageFiles.set(filePath, {
+          fingerprint,
+          summary: scanCodexUsageFile(filePath),
+        });
+      }
+    }
+    for (const filePath of this.usageFiles.keys()) {
+      if (!present.has(filePath)) this.usageFiles.delete(filePath);
+    }
+    return buildCodexUsage([...this.usageFiles.values()].map((entry) => entry.summary), now);
   }
 
   read() {
     if (this.cached && Date.now() - this.cachedAt < this.cacheMs) return this.cached;
+    const now = new Date();
     this.cached = {
-      ...scanCodexUsage(this.sessionsDirectory),
+      ...this.readCodexUsage(now),
       local_ai: scanLocalAiTelemetry(this.localAiTelemetryPath, this.localAiStatusPath),
     };
     this.cachedAt = Date.now();

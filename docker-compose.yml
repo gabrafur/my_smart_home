@@ -145,6 +145,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - claude-bridge-auth:/home/node/.claude
       - codex-bridge-auth:/home/node/.codex
+      # Read-only telemetry source for Codex sessions started outside the
+      # Home Assistant chat. Only aggregated token metadata leaves the bridge.
+      - ${CODEX_HOST_SESSIONS_DIR:-/home/gabriel/.codex/sessions}:/host-codex-sessions:ro
       # Keep Home Assistant's Codex process on the same automatic Local AI
       # routing policy used by this workspace and the IDE extension.
       - ./AGENTS.md:/home/node/.codex/AGENTS.md:ro
@@ -154,6 +157,7 @@ services:
       # Machine-local Ollama routing persists in the Codex auth volume, rather
       # than in the image or repository.
       - LOCAL_AI_CONFIG=/home/node/.codex/local-ai.json
+      - CODEX_SESSIONS_DIRS=/home/node/.codex/sessions,/host-codex-sessions
       - TZ=${TZ:-America/Sao_Paulo}
       - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN:-}
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
