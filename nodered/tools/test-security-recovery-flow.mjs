@@ -3,6 +3,22 @@ import fs from "node:fs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((item) => [item.id, item]));
+const aliasesByName = {
+  people_normalize: "Normalizar pessoas e detectar transições",
+  creta_normalize: "Normalizar Creta e detectar transições",
+  creta_refresh_decide: "Forçar refresh do Creta agora?",
+  context_coordinator: "Coordenar snapshot e refresh",
+  light_merge_context: "Atualizar contexto de alto nível",
+  light_prepare_arrival: "Montar decisão de acendimento",
+  light_check_creta_in_use: "Creta está em uso?",
+  light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
+  light_reconcile: "Revalidar lifecycle e estado físico",
+};
+for (const [alias, name] of Object.entries(aliasesByName)) {
+  const node = flows.find((item) => item.name === name);
+  assert(node, `node ausente pelo nome: ${name}`);
+  byId.set(alias, node);
+}
 const NOW = Date.parse("2026-08-13T12:00:00.000Z");
 const originalNow = Date.now;
 Date.now = () => NOW;
@@ -266,7 +282,15 @@ scenario("28 Creta unknown no startup", () => {
 });
 
 scenario("29 chegada recebida antes de readiness completo", () => {
-  assert.equal(run("light_prepare_arrival", arrival(), memoryFlow()), null);
+  const [physicalAction, pendingArrival, recovery] = run(
+    "light_prepare_arrival",
+    arrival(),
+    memoryFlow(),
+  );
+  assert.equal(physicalAction, null);
+  assert.equal(pendingArrival.payload.pending_arrival_queued, true);
+  assert.equal(recovery.payload.kind, "refresh_tick");
+  assert.equal(recovery.payload.require_lighting_ready, true);
 });
 
 scenario("30 snapshots duplicados no startup", () => {
@@ -296,9 +320,22 @@ scenario("32 retry repetido de Bluelink", () => {
 });
 
 scenario("33 recuperação posterior do Bluelink", () => {
-  const flow = memoryFlow({ security_creta_refresh_v1: { attempts: 4, next_allowed_at: NOW } });
-  run("creta_refresh_ack", { payload: {} }, flow);
+  const flow = memoryFlow({
+    security_creta_refresh_v1: {
+      attempts: 4,
+      next_allowed_at: NOW,
+      last_attempt_at: NOW - 1_000,
+      awaiting_evidence: true,
+      baseline_observed_at: {
+        location: NOW - 2_000,
+        engine: NOW - 2_000,
+        lock: NOW - 2_000,
+      },
+    },
+  });
+  run("creta_normalize", cretaInput(), flow);
   assert.equal(flow.get("security_creta_refresh_v1").attempts, 0);
+  assert.equal(flow.get("security_creta_refresh_v1").awaiting_evidence, false);
 });
 
 scenario("34 viagem ativa com motor stale off", () => {

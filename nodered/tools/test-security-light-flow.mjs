@@ -367,6 +367,30 @@ scenario("30 tick de 30 segundos sem mudanca nao cria loop", () => {
   }
 });
 
-assert.equal(passed.length, 30);
+scenario("31 movimento na mesma zona solicita refresh sem autorizar iluminação", () => {
+  assert.equal(byId.get("46c2142f93cfc3e1").outputOnlyOnStateChange, false);
+  const flow = memoryFlow();
+  const staleAt = new Date(Date.now() - 10 * 60_000).toISOString();
+  const first = cretaInput({
+    previous: "not_home", current: "not_home", distance: 5_000,
+    engine: "off", changed: staleAt,
+  });
+  first.payload.creta_engine.last_updated = staleAt;
+  assert.equal(run("creta_normalize", first, flow, geoEnv)[2], null);
+
+  const second = cretaInput({
+    previous: "not_home", current: "not_home", distance: 5_400,
+    engine: "off", changed: new Date().toISOString(),
+  });
+  second.payload.creta_engine.last_updated = staleAt;
+  const [context, arrivalEvent, refresh] = run("creta_normalize", second, flow, geoEnv);
+  assert.equal(arrivalEvent, null);
+  assert.equal(context.payload.context.in_use, null);
+  assert.equal(refresh.payload.reason, "creta_location_changed_engine_stale");
+  assert.equal(refresh.payload.force_recovery, true);
+  assert.equal(refresh.payload.require_lighting_ready, true);
+});
+
+assert.equal(passed.length, 31);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);
