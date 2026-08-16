@@ -187,7 +187,7 @@ Espere ~30-60s o HA voltar (`docker compose logs -f homeassistant` até ver
 
 Este pipeline e somente do Claude Code. O Codex atual usa a aba dedicada
 **Codex** do dashboard `Chat`, por meio do card
-`homeassistant/www/codex-chat-card.js` e dos comandos WebSocket registrados
+`homeassistant/www/codex-chat-card-v2.js` e dos comandos WebSocket registrados
 pela integracao. Nao crie um segundo tile/pipeline do Codex: isso duplicaria
 duas interfaces para a mesma conversa persistente.
 
@@ -247,8 +247,13 @@ A aba **Chat → Uso do Codex** acompanha as métricas emitidas pelo Codex CLI a
 no volume `codex-bridge-auth`. O endpoint local `GET /usage` do bridge devolve
 somente o resumo sanitizado de limite, créditos e tokens; prompts e respostas
 não fazem parte da resposta. O sensor `Codex Usage Raw`, definido em
-`homeassistant/packages/codex_usage.yaml`, consulta esse endpoint a cada 10
+`homeassistant/packages/codex_usage.yaml`, consulta esse endpoint a cada dois
 segundos.
+
+O card é carregado por `frontend.extra_module_url` com um sufixo de versão.
+Os arquivos em `/local` recebem cache longo do navegador; quando o card for
+alterado, atualize esse sufixo na mesma implantação para que clientes não
+reutilizem um módulo antigo que falhou ao carregar.
 
 Depois de alterar ou instalar esses arquivos, reconstrua o bridge e reinicie o
 Home Assistant:
@@ -281,8 +286,9 @@ A mesma aba possui controles de alertas para o iPhone de Gabriel. O painel
 mantém apenas os sensores e as preferências; a avaliação, o cooldown e o push
 são executados pelo fluxo **Alertas Codex** do Node-RED. Os limites de atenção,
 crítico, eficiência mínima de cache e saldo baixo de créditos podem ser
-ajustados no próprio painel. O botão de teste exige confirmação antes de enviar
-o push; instalar ou reiniciar a configuração não dispara essa notificação.
+ajustados no próprio painel. O teste manual de push fica no nó de injeção
+**Testar push no iPhone** desse fluxo; instalar ou reiniciar a configuração não
+dispara essa notificação.
 
 ## Arquivos envolvidos
 
@@ -295,5 +301,5 @@ o push; instalar ou reiniciar a configuração não dispara essa notificação.
 - `homeassistant/dashboards/chat.yaml` (card novo)
 - `homeassistant/packages/codex_usage.yaml`, `homeassistant/tools/codex_usage.py`,
   `homeassistant/tools/codex_rtx_live.py`
-- `homeassistant/www/codex-chat-card.js` (aba Codex com historico)
+- `homeassistant/www/codex-chat-card-v2.js` (aba Codex com historico)
 - `homeassistant/.storage/assist_pipeline.pipelines` (pipeline novo, editado no passo 5)
