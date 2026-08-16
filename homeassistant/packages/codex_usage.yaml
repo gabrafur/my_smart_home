@@ -693,6 +693,14 @@ input_datetime:
     has_time: true
 
 script:
+  codex_atualizar_uso_agora:
+    alias: Codex - atualizar uso agora
+    mode: single
+    sequence:
+      - action: homeassistant.update_entity
+        target:
+          entity_id: sensor.codex_usage_raw
+
   codex_atualizar_rtx_agora:
     alias: Codex - atualizar painel RTX agora
     mode: single
