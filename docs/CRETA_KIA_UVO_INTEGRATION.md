@@ -24,6 +24,8 @@ Creta como entidades Home Assistant. Documentado tambem em
   alias historico de autonomia de combustivel. Tambem permanece uma correcao
   estreita para `Location.TimeStamp`: a API 4.26.1 ainda rotula esse relogio UTC
   como horario regional e desloca somente a entidade de localizacao em +3 h.
+  O stub reservado `OffPeakTime: {Mode: 1}` dos modelos a combustao tambem e
+  ignorado para nao criar horarios EV ficticios em 00:00 nem warning por poll.
 - O botao de force refresh conserva um piso de **15 minutos entre wakes reais**.
   Dentro desse intervalo ele faz apenas leitura do cache. O scheduler normal da
   integracao continua com seu intervalo proprio de 90 minutos.

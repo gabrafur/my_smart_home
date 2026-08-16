@@ -542,6 +542,13 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     dte["Unit"],
                 )
                 dte["Unit"] = 1
+            reservation = parser_state.get("Green", {}).get("Reservation", {})
+            off_peak = reservation.get("OffPeakTime")
+            if off_peak == {"Mode": 1}:
+                # BR ICE vehicles expose this reserved stub. Treating it as a
+                # real EV schedule creates phantom 00:00 time entities and a
+                # warning on every poll in API 4.26.1.
+                reservation.pop("OffPeakTime")
             original(api_self, vehicle, parser_state)
             # BR sends Location.TimeStamp in the same UTC wall clock used by
             # Vehicle.Date. ApiImplType1 currently labels the components with
