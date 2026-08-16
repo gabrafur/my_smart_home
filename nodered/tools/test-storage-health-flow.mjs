@@ -58,8 +58,11 @@ const evaluate = (flow, used, now = NOW, free = 20) => health(
 );
 
 assert.equal(node("storage_health_tick").repeat, "900");
-assert.equal(node("storage_exec_maintenance").command, "/data/tools/storage-maintenance.sh --apply");
-assert.equal(node("storage_exec_inspection").command, "/data/tools/storage-maintenance.sh --dry-run --deep");
+assert.equal(node("storage_manual_health").type, "server-events");
+assert.equal(node("storage_manual_health").eventType, "storage_health_manual_run");
+assert.deepEqual(node("storage_manual_health").wires, [["storage_read_ha"]]);
+assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
+assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maintenance.sh --dry-run --deep");
 assert.equal(node("storage_notify").action, "notify.send_message");
 assert.deepEqual(node("storage_notify").entityId, ["notify.iphone_de_gabriel_furlan", "notify.iphone_de_valeria"]);
 assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.sock"));
@@ -78,6 +81,10 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   assert.equal(flow.get("storage_health_state_v1").severity, "normal");
   assert.equal(alert, null);
   assert.equal(mqtt.find((message) => message.topic.endsWith("/status")).payload, "normal");
+  assert.equal(mqtt.find((message) => message.topic.endsWith("growth_24h_available")).payload, "offline");
+  assert.equal(mqtt.find((message) => message.topic.endsWith("growth_7d_available")).payload, "offline");
+  assert.equal(mqtt.some((message) => message.topic.endsWith("/growth_24h")), false);
+  assert.equal(mqtt.some((message) => message.topic.endsWith("/growth_7d")), false);
 }
 
 {
@@ -133,6 +140,10 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   const state = flow.get("storage_health_state_v1");
   assert.equal(state.growth24h, null, "a seven-day-old sample cannot masquerade as a 24h sample");
   assert.equal(state.growth7d, 11);
+  assert.equal(
+    evaluate(flow, 46, NOW + 15 * 60 * 1000)[0].find((message) => message.topic.endsWith("/growth_7d")).payload,
+    "11",
+  );
 }
 
 {
@@ -161,7 +172,7 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
 }
 
 {
-  const script = path.resolve(here, "storage-maintenance.sh");
+  const script = path.resolve(here, "..", "..", "scripts", "storage-health-maintenance.sh");
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "storage-maintenance-test-"));
   const backups = path.join(fixture, "backups", "codex-flows");
   const logs = path.join(fixture, ".npm", "_logs");
@@ -173,7 +184,11 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   fs.writeFileSync(freshBackup, "fresh");
   const oldDate = new Date(NOW - 40 * 24 * 60 * 60 * 1000);
   fs.utimesSync(oldBackup, oldDate, oldDate);
-  const env = { ...process.env, STORAGE_MAINTENANCE_DATA_ROOT: fixture };
+  const env = {
+    ...process.env,
+    STORAGE_MAINTENANCE_DATA_ROOT: fixture,
+    STORAGE_MAINTENANCE_LOCK_DIR: path.join(fixture, "lock"),
+  };
   const dryRun = spawnSync(script, ["--dry-run", "--deep"], { encoding: "utf8", env });
   assert.equal(dryRun.status, 0, dryRun.stderr);
   assert.match(dryRun.stdout, /CANDIDATE\|action=old_flow_backup/);
@@ -187,6 +202,21 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   assert.match(empty.stdout, /RESULT\|status=success/);
   const refused = spawnSync(script, ["--dry-run"], { encoding: "utf8", env: { ...process.env, STORAGE_MAINTENANCE_DATA_ROOT: "/" } });
   assert.notEqual(refused.status, 0, "DATA_ROOT=/ must be refused");
+  const invalidRetention = spawnSync(script, ["--dry-run"], {
+    encoding: "utf8",
+    env: { ...env, STORAGE_BACKUP_RETENTION_DAYS: "1:2:3" },
+  });
+  assert.notEqual(invalidRetention.status, 0, "malformed retention values must be refused");
+  fs.mkdirSync(path.join(fixture, "lock"));
+  const locked = spawnSync(script, ["--dry-run"], { encoding: "utf8", env });
+  assert.equal(locked.status, 0, locked.stderr);
+  assert.match(locked.stdout, /RESULT\|status=skipped\|.*reason=already_running/);
+  fs.rmdirSync(path.join(fixture, "lock"));
+  fs.chmodSync(backups, 0o000);
+  const unreadable = spawnSync(script, ["--dry-run"], { encoding: "utf8", env });
+  fs.chmodSync(backups, 0o700);
+  assert.notEqual(unreadable.status, 0, "unreadable allowlisted paths must fail");
+  assert.doesNotMatch(unreadable.stdout, /RESULT\|status=success/, "permission errors must not report success");
   fs.rmSync(fixture, { recursive: true, force: true });
 }
 

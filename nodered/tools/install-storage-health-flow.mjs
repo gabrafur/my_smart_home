@@ -23,6 +23,7 @@ const ownedIds = new Set([
   "storage_discovery",
   "storage_mqtt_discovery",
   "storage_health_tick",
+  "storage_manual_health",
   "storage_read_ha",
   "storage_evaluate",
   "storage_mqtt_state",
@@ -92,11 +93,11 @@ const definitions = [
     },
     {
         topic: "homeassistant/sensor/raspberry_storage_growth_24h/config",
-        payload: { name: "Raspberry Storage Growth 24h", unique_id: "raspberry_storage_growth_24h", object_id: "raspberry_storage_growth_24h", state_topic: "smart_home/raspberry/storage/growth_24h", unit_of_measurement: "pp", state_class: "measurement", icon: "mdi:chart-line", device }
+        payload: { name: "Raspberry Storage Growth 24h", unique_id: "raspberry_storage_growth_24h", object_id: "raspberry_storage_growth_24h", state_topic: "smart_home/raspberry/storage/growth_24h", availability_topic: "smart_home/raspberry/storage/growth_24h_available", payload_available: "online", payload_not_available: "offline", unit_of_measurement: "pp", state_class: "measurement", icon: "mdi:chart-line", device }
     },
     {
         topic: "homeassistant/sensor/raspberry_storage_growth_7d/config",
-        payload: { name: "Raspberry Storage Growth 7d", unique_id: "raspberry_storage_growth_7d", object_id: "raspberry_storage_growth_7d", state_topic: "smart_home/raspberry/storage/growth_7d", unit_of_measurement: "pp", state_class: "measurement", icon: "mdi:chart-line", device }
+        payload: { name: "Raspberry Storage Growth 7d", unique_id: "raspberry_storage_growth_7d", object_id: "raspberry_storage_growth_7d", state_topic: "smart_home/raspberry/storage/growth_7d", availability_topic: "smart_home/raspberry/storage/growth_7d_available", payload_available: "online", payload_not_available: "offline", unit_of_measurement: "pp", state_class: "measurement", icon: "mdi:chart-line", device }
     },
     {
         topic: "homeassistant/sensor/raspberry_storage_last_maintenance/config",
@@ -220,11 +221,20 @@ const attributes = {
     thresholds,
     hysteresis_percentage_points: h
 };
+function growthMessages(window, value) {
+    const availabilityTopic = "smart_home/raspberry/storage/growth_" + window + "_available";
+    if (value === null) return [{ topic: availabilityTopic, payload: "offline", retain: true }];
+    return [
+        { topic: "smart_home/raspberry/storage/growth_" + window, payload: String(value), retain: true },
+        { topic: availabilityTopic, payload: "online", retain: true }
+    ];
+}
+
 const mqtt = [
     { topic: "smart_home/raspberry/storage/status", payload: severity, retain: true },
     { topic: "smart_home/raspberry/storage/attributes", payload: JSON.stringify(attributes), retain: true },
-    { topic: "smart_home/raspberry/storage/growth_24h", payload: growth24h === null ? "unknown" : String(growth24h), retain: true },
-    { topic: "smart_home/raspberry/storage/growth_7d", payload: growth7d === null ? "unknown" : String(growth7d), retain: true }
+    ...growthMessages("24h", growth24h),
+    ...growthMessages("7d", growth7d)
 ];
 return [mqtt, alert, { payload: { event: "health_check", severity, previous, used, freeGiB, growth24h, growth7d, at: new Date(now).toISOString() } }];`;
 
@@ -258,7 +268,7 @@ return { payload: { title: "Raspberry Pi - falha na manutencao", message: "A man
 const nodes = [
   { id: TAB, type: "tab", label: "Storage Health", disabled: false, info: "Monitoramento de armazenamento, tendencia, alertas e housekeeping seguro sem Docker socket ou sudo." },
   { id: "storage_group_config", type: "group", z: TAB, name: "1. Configuracao central e MQTT discovery", style: { label: true, color: "#7d6ba8" }, nodes: ["storage_comment_architecture", "storage_init", "storage_set_config", "storage_discovery", "storage_mqtt_discovery"], x: 34, y: 39, w: 1012, h: 162 },
-  { id: "storage_group_health", type: "group", z: TAB, name: "2. Health check leve (15 min) e tendencia", style: { label: true, color: "#3fadb5" }, nodes: ["storage_health_tick", "storage_read_ha", "storage_evaluate", "storage_mqtt_state"], x: 34, y: 239, w: 1212, h: 142 },
+  { id: "storage_group_health", type: "group", z: TAB, name: "2. Health check leve (15 min) e tendencia", style: { label: true, color: "#3fadb5" }, nodes: ["storage_health_tick", "storage_manual_health", "storage_read_ha", "storage_evaluate", "storage_mqtt_state"], x: 34, y: 239, w: 1212, h: 182 },
   { id: "storage_group_alerts", type: "group", z: TAB, name: "3. Alertas com histerese, cooldown e recovery", style: { label: true, color: "#e6a23c" }, nodes: ["storage_notify"], x: 1274, y: 239, w: 312, h: 142 },
   { id: "storage_group_maintenance", type: "group", z: TAB, name: "4. Housekeeping allowlisted e inspecao semanal", style: { label: true, color: "#4d9a6a" }, nodes: ["storage_daily_maintenance", "storage_exec_maintenance", "storage_parse_maintenance", "storage_store_maintenance_stderr", "storage_maintenance_complete", "storage_weekly_inspection", "storage_exec_inspection", "storage_parse_inspection", "storage_maintenance_mqtt"], x: 34, y: 419, w: 1552, h: 262 },
   { id: "storage_comment_architecture", type: "comment", z: TAB, g: "storage_group_config", name: "Reusa sensores HA existentes; MQTT cria somente status/tendencia/manutencao. Node-RED nao recebe Docker socket nem sudo.", info: "", x: 450, y: 80, wires: [] },
@@ -267,21 +277,39 @@ const nodes = [
   functionNode("storage_discovery", "storage_group_config", "Publicar discovery", discovery, 1, 650, 150, [["storage_mqtt_discovery"]]),
   { id: "storage_mqtt_discovery", type: "mqtt out", z: TAB, g: "storage_group_config", name: "HA MQTT discovery", topic: "", qos: "1", retain: "true", respTopic: "", contentType: "application/json", userProps: "", correl: "", expiry: "", broker: MQTT, x: 900, y: 150, wires: [] },
   { id: "storage_health_tick", type: "inject", z: TAB, g: "storage_group_health", name: "A cada 15 min", props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "900", crontab: "", once: true, onceDelay: "10", topic: "", payload: "", payloadType: "date", x: 160, y: 310, wires: [["storage_read_ha"]] },
+  { id: "storage_manual_health", type: "server-events", z: TAB, g: "storage_group_health", name: "Executar pelo painel HA", server: SERVER, version: 3, eventType: "storage_health_manual_run", eventData: "", waitForRunning: true, outputProperties: [{ property: "payload", propertyType: "msg", value: "", valueType: "eventData" }], x: 190, y: 350, wires: [["storage_read_ha"]] },
   { id: "storage_read_ha", type: "api-current-state", z: TAB, g: "storage_group_health", name: "Ler storage existente no HA", server: SERVER, version: 3, outputs: 1, halt_if: "", halt_if_type: "str", halt_if_compare: "is", entity_id: "sensor.raspberry_pi_storage_usage", state_type: "str", blockInputOverrides: true, outputProperties: [{ property: "payload", propertyType: "msg", value: "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at\n}", valueType: "jsonata" }], for: "0", forType: "num", forUnits: "minutes", override_topic: false, state_location: "payload", override_payload: "msg", entity_location: "data", override_data: "msg", x: 430, y: 310, wires: [["storage_evaluate"]] },
   functionNode("storage_evaluate", "storage_group_health", "Thresholds + histerese + tendencia", evaluate, 3, 740, 310, [["storage_mqtt_state"], ["storage_notify"], []]),
   { id: "storage_mqtt_state", type: "mqtt out", z: TAB, g: "storage_group_health", name: "Publicar storage health", topic: "", qos: "1", retain: "true", respTopic: "", contentType: "", userProps: "", correl: "", expiry: "", broker: MQTT, x: 1100, y: 290, wires: [] },
   { id: "storage_notify", type: "api-call-service", z: TAB, g: "storage_group_alerts", name: "Avisar moradores", server: SERVER, version: 7, debugenabled: false, action: "notify.send_message", floorId: [], areaId: [], deviceId: [], entityId: ["notify.iphone_de_gabriel_furlan", "notify.iphone_de_valeria"], labelId: [], data: "{\"title\": payload.title, \"message\": payload.message}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "notify", service: "send_message", x: 1430, y: 310, wires: [[]] },
   { id: "storage_daily_maintenance", type: "inject", z: TAB, g: "storage_group_maintenance", name: "Diario 04:17", props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "17 04 * * *", once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date", x: 150, y: 500, wires: [["storage_exec_maintenance"]] },
-  { id: "storage_exec_maintenance", type: "exec", z: TAB, g: "storage_group_maintenance", command: "/data/tools/storage-maintenance.sh --apply", addpay: "", append: "", useSpawn: "false", timer: "120", winHide: false, oldrc: false, name: "Housekeeping Node-RED allowlisted", x: 460, y: 500, wires: [["storage_parse_maintenance"], ["storage_store_maintenance_stderr"], ["storage_maintenance_complete"]] },
+  { id: "storage_exec_maintenance", type: "exec", z: TAB, g: "storage_group_maintenance", command: "/opt/storage-health-maintenance.sh --apply", addpay: "", append: "", useSpawn: "false", timer: "120", winHide: false, oldrc: false, name: "Housekeeping Node-RED allowlisted", x: 460, y: 500, wires: [["storage_parse_maintenance"], ["storage_store_maintenance_stderr"], ["storage_maintenance_complete"]] },
   functionNode("storage_parse_maintenance", "storage_group_maintenance", "Registrar resultado", parseMaintenance, 1, 790, 470, [["storage_maintenance_mqtt"]]),
   functionNode("storage_store_maintenance_stderr", "storage_group_maintenance", "Guardar erro da etapa", "flow.set(\"storage_maintenance_last_stderr\", String(msg.payload ?? \"\").slice(0, 1000)); return null;", 0, 790, 530, []),
   functionNode("storage_maintenance_complete", "storage_group_maintenance", "Validar termino / cooldown", maintenanceComplete, 1, 1090, 530, [["storage_notify"]]),
   { id: "storage_weekly_inspection", type: "inject", z: TAB, g: "storage_group_maintenance", name: "Domingo 03:43", props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "43 03 * * 0", once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date", x: 160, y: 620, wires: [["storage_exec_inspection"]] },
-  { id: "storage_exec_inspection", type: "exec", z: TAB, g: "storage_group_maintenance", command: "/data/tools/storage-maintenance.sh --dry-run --deep", addpay: "", append: "", useSpawn: "false", timer: "120", winHide: false, oldrc: false, name: "Inspecao profunda /data", x: 460, y: 620, wires: [["storage_parse_inspection"], ["storage_store_maintenance_stderr"], ["storage_maintenance_complete"]] },
+  { id: "storage_exec_inspection", type: "exec", z: TAB, g: "storage_group_maintenance", command: "/opt/storage-health-maintenance.sh --dry-run --deep", addpay: "", append: "", useSpawn: "false", timer: "120", winHide: false, oldrc: false, name: "Inspecao profunda /data", x: 460, y: 620, wires: [["storage_parse_inspection"], ["storage_store_maintenance_stderr"], ["storage_maintenance_complete"]] },
   functionNode("storage_parse_inspection", "storage_group_maintenance", "Logar inspecao", "const lines = String(msg.payload ?? \"\").split(/\\r?\\n/).filter((line) => line.startsWith(\"INSPECT|\")); if (lines.length) node.log(\"storage_inspection: \" + lines.join(\" \")); return null;", 0, 770, 620, []),
   { id: "storage_maintenance_mqtt", type: "mqtt out", z: TAB, g: "storage_group_maintenance", name: "Publicar manutencao", topic: "", qos: "1", retain: "true", respTopic: "", contentType: "", userProps: "", correl: "", expiry: "", broker: MQTT, x: 1090, y: 470, wires: [] },
 ];
 
-const retained = flows.filter((node) => !ownedIds.has(node.id));
-fs.writeFileSync(flowsPath, `${JSON.stringify([...retained, ...nodes], null, 4)}\n`);
+const replacements = new Map(nodes.map((node) => [node.id, node]));
+const installed = new Set();
+const updated = [];
+let lastOwnedIndex = -1;
+for (const node of flows) {
+  if (!ownedIds.has(node.id)) {
+    updated.push(node);
+    continue;
+  }
+  const replacement = replacements.get(node.id);
+  if (replacement) {
+    updated.push(replacement);
+    installed.add(node.id);
+    lastOwnedIndex = updated.length - 1;
+  }
+}
+const missing = nodes.filter((node) => !installed.has(node.id));
+updated.splice(lastOwnedIndex + 1, 0, ...missing);
+fs.writeFileSync(flowsPath, `${JSON.stringify(updated, null, 4)}\n`);
 console.log(`Installed ${nodes.length} Storage Health nodes in ${flowsPath}`);
