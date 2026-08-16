@@ -130,6 +130,17 @@ hook; uma alteração exige nova revisão. Consulte a documentação oficial de
 O helper não grava prompt, diff, código-fonte, resposta do modelo nem
 credenciais. Em `.agent-history/` (ignorado pelo Git) ele preserva somente
 metadados: tarefa, modelo, duração, contagens, status e amostras de GPU/VRAM.
+Se a primeira resposta local não formar o JSON exigido, o helper faz no máximo
+uma segunda tentativa mais compacta. As duas gerações pertencem ao mesmo job e
+seus tokens locais são somados; nova falha encerra a tarefa normalmente para o
+Codex aplicar o fallback, sem criar loops.
+
+Em logs longos, uma etapa determinística preserva início, fim, `ERROR`,
+`EXCEPTION`, `FAIL`, `ASSERT`, `WARN`, `CRITICAL`, `FATAL`, `TIMEOUT` e uma linha
+de contexto ao redor de cada sinal, substituindo apenas trechos rotineiros por
+marcadores de contagem. A economia continua usando o tamanho do contexto bruto
+como baseline; a telemetria também registra quantas linhas rotineiras foram
+omitidas e quantos caracteres chegaram ao modelo local.
 
 O bridge renova o preflight de saúde a cada minuto (e ao iniciar), usando o
 mesmo hook privado já aprovado. Isso impede que uma falha transitória de rede
@@ -191,9 +202,12 @@ apps é configurado nele; isso evita a inicialização do MCP ambiental
 
 No painel RTX, **chamadas Local AI** e **tokens OpenAI economizados** ficam em
 gráficos separados: chamadas contam tentativas de tarefas; tokens economizados
-são a estimativa da diferença entre o contexto recebido pelo helper e o resumo
-retornado. Portanto, não são unidades comparáveis nem um registro de cobrança
-oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
+são a estimativa assinada da diferença entre o contexto recebido pelo helper e
+o resumo efetivamente retornado ao Codex. Falhas e benchmarks diagnósticos não
+entram nessa economia; uma saída maior que a entrada reduz o acumulado. O
+overhead do envelope de ferramenta/API da OpenAI não é mensurável pelo helper e
+fica explicitamente marcado como não mensurado, portanto o valor não é um
+registro de cobrança oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
 detalhes de endpoint para permanecer abaixo do limite de atributos do Home
 Assistant e preservar a telemetria no Recorder.
 

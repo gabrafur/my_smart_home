@@ -66,13 +66,14 @@ def _event_totals() -> dict[str, float | int]:
         "local_output_tokens": 0,
         "context_input_tokens": 0,
         "context_output_tokens": 0,
+        "context_overhead_tokens": 0,
         "openai_context_tokens_avoided": 0,
     }
 
 
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
@@ -91,6 +92,52 @@ def _safe_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
     return loaded if isinstance(loaded, dict) else fallback
 
 
+def _counts_as_context_replacement(event: dict[str, Any]) -> bool:
+    """Count only successful analyses intended to replace raw OpenAI context."""
+    explicit = event.get("context_replacement")
+    if explicit is not None:
+        return explicit is True
+    # Schema v1 predates the explicit flag. Its normal analysis jobs were
+    # context replacements, while benchmark cases were diagnostics only.
+    return event.get("status") == "success" and not str(event.get("task") or "").startswith("benchmark:")
+
+
+def _migrate_complete_v1_history(state: dict[str, Any]) -> None:
+    """Rebuild v1 aggregates when every recorded job is still in latest_jobs."""
+    if int(state.get("schema_version") or 1) >= 2:
+        return
+    latest = state.get("latest_jobs")
+    calls = int((state.get("totals") or {}).get("calls") or 0)
+    if not isinstance(latest, list) or calls > len(latest):
+        # Never invent a partial historical total. A future explicit migration
+        # can use the append-only event log if the bounded recent list is incomplete.
+        return
+    unique: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for event in latest:
+        if not isinstance(event, dict):
+            continue
+        event_id = str(event.get("id") or "")
+        if not event_id or event_id in seen:
+            continue
+        seen.add(event_id)
+        unique.append(event)
+    if len(unique) != calls:
+        return
+    state["totals"] = _event_totals()
+    state["daily"] = {}
+    state["models"] = {}
+    for event in unique:
+        _add_totals(state, event)
+        day = str(event.get("finished_at") or event.get("started_at") or utc_now())[:10]
+        daily_entry = state["daily"].setdefault(day, {"totals": _event_totals()})
+        _add_totals(daily_entry, event)
+        model = str(event.get("model") or "unknown")
+        model_entry = state["models"].setdefault(model, {"totals": _event_totals()})
+        _add_totals(model_entry, event)
+    state["schema_version"] = 2
+
+
 @contextlib.contextmanager
 def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -99,6 +146,7 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
         os.chmod(lock_path, 0o600)
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         state = _safe_json(path, _initial_state())
+        _migrate_complete_v1_history(state)
         try:
             yield state
         finally:
@@ -144,13 +192,21 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
         "duration_seconds",
         "local_input_tokens",
         "local_output_tokens",
-        "context_input_tokens",
-        "context_output_tokens",
-        "openai_context_tokens_avoided",
     ):
         value = _number(event.get(key))
         if value is not None and value > 0:
             totals[key] = round(float(totals.get(key, 0)) + float(value), 3)
+    if successful and _counts_as_context_replacement(event):
+        for key in ("context_input_tokens", "context_output_tokens", "context_overhead_tokens"):
+            value = _number(event.get(key))
+            if value is not None and value > 0:
+                totals[key] = round(float(totals.get(key, 0)) + float(value), 3)
+        avoided = _number(event.get("openai_context_tokens_avoided"))
+        if avoided is not None and avoided != 0:
+            totals["openai_context_tokens_avoided"] = round(
+                float(totals.get("openai_context_tokens_avoided", 0)) + float(avoided),
+                3,
+            )
 
 
 class TelemetryRecorder:

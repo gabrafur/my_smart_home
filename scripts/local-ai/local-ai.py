@@ -11,6 +11,7 @@ import argparse
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -45,6 +46,25 @@ TASK_LIST_FIELDS = {
     "review-diff": {"findings", "suspected_files", "risks", "recommended_actions"},
     "summarize-log": {"errors", "suspected_files", "recommended_actions"},
 }
+
+
+def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
+    """Use a bounded schema where free-form JSON proved too easy to overrun."""
+    if task != "summarize-log":
+        return "json"
+    max_items = 2 if compact else 8
+    return {
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string"},
+            "errors": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+            "suspected_files": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+            "recommended_actions": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+        },
+        "required": ["summary", "errors", "suspected_files", "recommended_actions", "confidence"],
+        "additionalProperties": False,
+    }
 
 
 def user_settings() -> dict[str, Any]:
@@ -164,6 +184,32 @@ def clean_and_bound(text: str, limit: int) -> tuple[str, bool]:
     head = remaining // 2
     tail = remaining - head
     return text[:head] + marker + text[-tail:], True
+
+
+def preprocess_for_task(task: str, text: str) -> tuple[str, int]:
+    """Deterministically remove routine noise from long logs before inference."""
+    lines = text.splitlines()
+    if task != "summarize-log" or len(lines) < 80:
+        return text, 0
+    signal = re.compile(
+        r"\b(error|exception|traceback|fail(?:ed|ure)?|assert(?:ion)?|warn(?:ing)?|critical|fatal|timeout)\b",
+        re.IGNORECASE,
+    )
+    keep = set(range(min(5, len(lines))))
+    keep.update(range(max(0, len(lines) - 5), len(lines)))
+    for index, line in enumerate(lines):
+        if signal.search(line):
+            keep.update(range(max(0, index - 1), min(len(lines), index + 2)))
+    if len(keep) >= len(lines):
+        return text, 0
+    selected: list[str] = []
+    previous = -1
+    for index in sorted(keep):
+        if previous >= 0 and index > previous + 1:
+            selected.append(f"[... {index - previous - 1} routine log lines omitted deterministically ...]")
+        selected.append(lines[index])
+        previous = index
+    return "\n".join(selected), len(lines) - len(keep)
 
 
 def read_input(path: str | None, limit: int) -> tuple[str, bool, bool]:
@@ -296,6 +342,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         raise RuntimeError("Local AI is disabled by LOCAL_AI_ENABLED=0 or machine configuration")
     instruction = prompt_for(args.task)
     text, truncated, raw_limited = read_input(args.input_file, args.input_max_chars)
+    model_text, deterministic_omitted_lines = preprocess_for_task(args.task, text)
     endpoint = resolved_endpoint(args.endpoint, settings)
     retry_budget = RevalidationBudget()
     request_call = lambda target, path, payload=None: request_with_one_revalidation(
@@ -326,7 +373,8 @@ def run_analysis(args: argparse.Namespace) -> int:
         "Return concise valid JSON only: no Markdown fences, no prose outside JSON. "
         f"Keep the response below {args.max_output_chars} characters.\n\n"
         f"TASK INSTRUCTIONS:\n{instruction}\n\n"
-        f"INPUT (truncated={str(truncated).lower()}, raw_limit_hit={str(raw_limited).lower()}):\n{text}"
+        f"INPUT (truncated={str(truncated).lower()}, raw_limit_hit={str(raw_limited).lower()}, "
+        f"routine_lines_omitted={deterministic_omitted_lines}):\n{model_text}"
     )
     before_gpu = gpu_snapshot()
     context_input_tokens, token_method = count_openai_context_tokens(text, settings)
@@ -344,6 +392,9 @@ def run_analysis(args: argparse.Namespace) -> int:
         "context_input_tokens": context_input_tokens,
         "token_count_method": token_method,
         "input_truncated": truncated,
+        "deterministic_omitted_lines": deterministic_omitted_lines,
+        "model_input_chars": len(model_text),
+        "context_replacement": True,
     }
     recorder.started(event)
     sampler = RemoteGpuSampler(
@@ -354,37 +405,65 @@ def run_analysis(args: argparse.Namespace) -> int:
     sampler.start()
     started = time.monotonic()
     try:
-        response = request_call(endpoint, "/api/generate", {
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json",
-            "options": {"num_ctx": args.context_tokens, "num_predict": args.output_tokens, "temperature": 0.1},
-        })
+        responses: list[dict[str, Any]] = []
+        parsed: Any = None
+        output = ""
+        for attempt in range(2):
+            attempt_prompt = prompt if attempt == 0 else (
+                "Your previous response was invalid or too long. Return the same schema as compact valid JSON. "
+                "Use at most two concise entries in each list and omit routine noise.\n\n" + prompt
+            )
+            response = request_call(endpoint, "/api/generate", {
+                "model": model,
+                "prompt": attempt_prompt,
+                "stream": False,
+                "format": response_format(args.task, compact=attempt == 1),
+                "options": {
+                    "num_ctx": args.context_tokens,
+                    "num_predict": max(args.output_tokens, 1200) if attempt == 1 else args.output_tokens,
+                    "temperature": 0.1,
+                },
+            })
+            responses.append(response)
+            output = str(response.get("response", "")).strip()
+            if len(output) > args.max_output_chars:
+                output = output[:args.max_output_chars]
+                print("local-ai: output truncated to configured limit", file=sys.stderr)
+            try:
+                parsed = json.loads(output)
+                validate_structured_response(args.task, parsed)
+                break
+            except (json.JSONDecodeError, RuntimeError):
+                if attempt == 1:
+                    raise
+                print("local-ai: retrying one compact structured response", file=sys.stderr)
         elapsed = time.monotonic() - started
-        output = str(response.get("response", "")).strip()
-        if len(output) > args.max_output_chars:
-            output = output[:args.max_output_chars]
-            print("local-ai: output truncated to configured limit", file=sys.stderr)
-        parsed = json.loads(output)
-        validate_structured_response(args.task, parsed)
-        eval_count = response.get("eval_count")
-        eval_duration = response.get("eval_duration")
-        token_rate = round(eval_count / (eval_duration / 1_000_000_000), 2) if isinstance(eval_count, int) and eval_duration else None
+        eval_count = sum(int(item.get("eval_count") or 0) for item in responses)
+        eval_duration = sum(int(item.get("eval_duration") or 0) for item in responses)
+        prompt_eval_count = sum(int(item.get("prompt_eval_count") or 0) for item in responses)
+        token_rate = round(eval_count / (eval_duration / 1_000_000_000), 2) if eval_count and eval_duration else None
         context_output_tokens, _ = count_openai_context_tokens(output, settings)
         event.update({
             "status": "success",
             "finished_at": utc_now(),
             "duration_seconds": round(elapsed, 3),
-            "local_input_tokens": response.get("prompt_eval_count"),
+            "local_input_tokens": prompt_eval_count,
             "local_output_tokens": eval_count,
+            "local_attempts": len(responses),
             "tokens_per_second": token_rate,
             "context_output_chars": len(output),
             "context_output_bytes": len(output.encode("utf-8")),
             "context_output_tokens": context_output_tokens,
-            "openai_context_tokens_avoided": max(0, context_input_tokens - context_output_tokens),
+            # API/tool-envelope overhead is model- and transport-dependent and is
+            # not measurable from this helper. Keep it explicit rather than
+            # presenting a fabricated exact value. The result is therefore an
+            # estimated content-context delta, not an official billing metric.
+            "context_overhead_tokens": 0,
+            "context_overhead_method": "not_measured",
+            "context_savings_estimated": True,
+            "openai_context_tokens_avoided": context_input_tokens - context_output_tokens,
             "context_reduction_percent": round(
-                max(0, (1 - context_output_tokens / context_input_tokens) * 100) if context_input_tokens else 0,
+                ((context_input_tokens - context_output_tokens) / context_input_tokens) * 100 if context_input_tokens else 0,
                 1,
             ),
         })
@@ -462,6 +541,7 @@ def benchmark(args: argparse.Namespace) -> int:
             "chat_name": current_chat_name(),
             "context_input_chars": len(source), "context_input_bytes": len(source.encode("utf-8")),
             "context_input_tokens": context_input_tokens, "token_count_method": token_method,
+            "context_replacement": False,
         }
         recorder.started(event)
         sampler = RemoteGpuSampler(
@@ -494,8 +574,9 @@ def benchmark(args: argparse.Namespace) -> int:
                 "local_input_tokens": response.get("prompt_eval_count"), "local_output_tokens": eval_count,
                 "tokens_per_second": token_rate, "context_output_chars": len(output),
                 "context_output_bytes": len(output.encode("utf-8")), "context_output_tokens": context_output_tokens,
-                "openai_context_tokens_avoided": max(0, context_input_tokens - context_output_tokens),
-                "context_reduction_percent": round(max(0, (1 - context_output_tokens / context_input_tokens) * 100) if context_input_tokens else 0, 1),
+                "context_overhead_tokens": 0, "context_overhead_method": "not_applicable",
+                "context_savings_estimated": False, "openai_context_tokens_avoided": 0,
+                "context_reduction_percent": 0,
             })
             results.append({"task": task, "status": "success", "latency_seconds": round(elapsed, 3), "tokens_per_second": token_rate, "eval_tokens": eval_count})
         except Exception as error:
