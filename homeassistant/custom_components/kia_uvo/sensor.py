@@ -527,6 +527,11 @@ async def async_setup_entry(
                 coordinator, coordinator.vehicle_manager.vehicles[vehicle_id]
             )
         )
+        entities.append(
+            RemoteCommandStatusEntity(
+                coordinator, coordinator.vehicle_manager.vehicles[vehicle_id]
+            )
+        )
     async_add_entities(entities)
     return True
 
@@ -715,6 +720,38 @@ class EstimatedFuelEfficiencyEntity(SensorEntity, HyundaiKiaConnectEntity):
     @property
     def unique_id(self):
         return f"{DOMAIN}-estimated-fuel-efficiency-{self.vehicle.id}"
+
+
+class RemoteCommandStatusEntity(SensorEntity, HyundaiKiaConnectEntity):
+    """Diagnostic feedback for the most recent physical vehicle command."""
+
+    _attr_icon = "mdi:car-emergency"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, vehicle: Vehicle):
+        super().__init__(coordinator, vehicle)
+        self._attr_name = "Remote Command Status"
+
+    @property
+    def native_value(self):
+        return self.coordinator.remote_command_status.get(
+            self.vehicle.id, {"state": "idle"}
+        )["state"]
+
+    @property
+    def extra_state_attributes(self):
+        return self.coordinator.remote_command_status.get(
+            self.vehicle.id,
+            {
+                "state": "idle",
+                "command": None,
+                "updated_at": None,
+            },
+        )
+
+    @property
+    def unique_id(self):
+        return f"{DOMAIN}-remote-command-status-{self.vehicle.id}"
 
 
 class DailyDrivingStatsEntity(SensorEntity, HyundaiKiaConnectEntity):

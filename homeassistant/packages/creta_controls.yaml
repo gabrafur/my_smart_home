@@ -1,0 +1,26 @@
+input_button:
+  creta_force_refresh_now:
+    name: Forçar atualização do Creta agora
+    icon: mdi:car-connected
+
+command_line:
+  - sensor:
+      name: Integração Creta
+      unique_id: creta_integration_maintenance
+      command: >-
+        sh -c 'test -r /config/.storage/kia_uvo_safe_update &&
+        cat /config/.storage/kia_uvo_safe_update ||
+        echo "{\"state\":\"unknown\",\"installed_version\":null,\"latest_version\":null}"'
+      value_template: "{{ value_json.state | default('unknown') }}"
+      json_attributes:
+        - installed_version
+        - latest_version
+        - upstream_commit
+        - patch_state
+        - conflicts
+        - tests
+        - checked_at
+        - applied_at
+        - rollback_at
+        - message
+      scan_interval: 60

@@ -7,7 +7,7 @@ const aliasesByName = {
   people_normalize: "Normalizar pessoas e detectar transições",
   people_refresh_decide: "Atualizar iPhones agora?",
   creta_normalize: "Normalizar Creta e detectar transições",
-  creta_refresh_decide: "Forçar refresh do Creta agora?",
+  creta_refresh_decide: "Coordenar refresh do Creta",
   creta_arrival_actions: "Acordar carro e fechar viagem",
   creta_trip_refresh: "Atualizar viagens do dia após chegada",
   creta_unlock_event: "Porta destravada por 5 s",

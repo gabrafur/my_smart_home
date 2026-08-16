@@ -6,7 +6,7 @@ const byId = new Map(flows.map((item) => [item.id, item]));
 const aliasesByName = {
   people_normalize: "Normalizar pessoas e detectar transições",
   creta_normalize: "Normalizar Creta e detectar transições",
-  creta_refresh_decide: "Forçar refresh do Creta agora?",
+  creta_refresh_decide: "Coordenar refresh do Creta",
   context_coordinator: "Coordenar snapshot e refresh",
   light_merge_context: "Atualizar contexto de alto nível",
   light_prepare_arrival: "Montar decisão de acendimento",
