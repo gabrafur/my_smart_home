@@ -15,8 +15,11 @@ const PORT = process.env.PORT || 8099;
 const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN;
 const WORKDIR = process.env.WORKDIR || '/workspace';
 const HISTORY_DIR = process.env.HISTORY_DIR || path.join(WORKDIR, '.agent-history');
-const CODEX_SESSIONS_DIR = process.env.CODEX_SESSIONS_DIR
-  || path.join(os.homedir(), '.codex', 'sessions');
+const CODEX_SESSIONS_DIRS = (process.env.CODEX_SESSIONS_DIRS || process.env.CODEX_SESSIONS_DIR
+  || path.join(os.homedir(), '.codex', 'sessions'))
+  .split(',')
+  .map((directory) => directory.trim())
+  .filter(Boolean);
 const TIMEOUT_MS = Number(
   process.env.BRIDGE_TIMEOUT_MS || process.env.CLAUDE_TIMEOUT_MS || 15 * 60 * 1000,
 );
@@ -32,7 +35,7 @@ if (!BRIDGE_TOKEN) {
 
 const history = new SharedHistoryStore(HISTORY_DIR);
 const codexUsage = new CodexUsageReader(
-  CODEX_SESSIONS_DIR,
+  CODEX_SESSIONS_DIRS,
   process.env.LOCAL_AI_TELEMETRY_PATH || path.join(HISTORY_DIR, 'local-ai-telemetry.json'),
   process.env.LOCAL_AI_STATUS_PATH || path.join(HISTORY_DIR, 'local-ai-status.json'),
   1_000,

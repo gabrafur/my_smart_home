@@ -25,7 +25,10 @@ command_line:
       name: Codex Usage Raw
       unique_id: codex_usage_raw
       command: "python3 /config/tools/codex_usage.py"
-      command_timeout: 2
+      # The bridge normally answers from its incremental index in well under
+      # two seconds. Allow a longer first read after a bridge restart, when it
+      # must index the local session history once.
+      command_timeout: 10
       # The bridge itself caches for one second. Two-second polling keeps the
       # panel close to real time without putting load on the Codex CLI.
       scan_interval: 2

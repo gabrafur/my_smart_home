@@ -4,7 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { scanCodexUsage, scanLocalAiTelemetry } = require('./usage');
+const { CodexUsageReader, scanCodexUsage, scanLocalAiTelemetry } = require('./usage');
 
 function tokenEvent(timestamp, total, usedPercent, balance = '0') {
   return JSON.stringify({
@@ -73,6 +73,34 @@ test('returns a stable empty response when there are no sessions', (t) => {
   assert.deepEqual(usage.daily, []);
   assert.equal(usage.analytics.cache_hit_percent, null);
   assert.equal(usage.analytics.forecast.status, 'insuficiente');
+});
+
+test('merges multiple session directories and refreshes only a changed session file', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-reader-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const bridgeDirectory = path.join(directory, 'bridge');
+  const hostDirectory = path.join(directory, 'host');
+  fs.mkdirSync(bridgeDirectory, { recursive: true });
+  fs.mkdirSync(hostDirectory, { recursive: true });
+  const bridgeFile = path.join(bridgeDirectory, 'bridge.jsonl');
+  const hostFile = path.join(hostDirectory, 'host.jsonl');
+  fs.writeFileSync(bridgeFile, tokenEvent('2026-08-16T10:00:00Z', {
+    input_tokens: 10, total_tokens: 10,
+  }, 10));
+  fs.writeFileSync(hostFile, tokenEvent('2026-08-16T10:01:00Z', {
+    input_tokens: 20, total_tokens: 20,
+  }, 11));
+
+  const reader = new CodexUsageReader([bridgeDirectory, hostDirectory], null, null, 0);
+  assert.equal(reader.read().totals.total_tokens, 30);
+
+  fs.appendFileSync(hostFile, `\n${tokenEvent('2026-08-16T10:02:00Z', {
+    input_tokens: 25, total_tokens: 25,
+  }, 12)}`);
+  const refreshed = reader.read();
+  assert.equal(refreshed.totals.total_tokens, 35);
+  assert.equal(refreshed.totals.sessions, 2);
+  assert.equal(reader.usageFiles.size, 2);
 });
 
 test('summarizes idempotent Local AI telemetry without treating local tokens as saved tokens', (t) => {
