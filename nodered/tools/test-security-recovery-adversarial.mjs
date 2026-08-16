@@ -3,6 +3,39 @@ import fs from "node:fs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
+const aliasesByName = {
+  people_normalize: "Normalizar pessoas e detectar transições",
+  people_refresh_decide: "Atualizar iPhones agora?",
+  creta_normalize: "Normalizar Creta e detectar transições",
+  creta_refresh_decide: "Forçar refresh do Creta agora?",
+  creta_arrival_actions: "Acordar carro e fechar viagem",
+  creta_trip_refresh: "Atualizar viagens do dia após chegada",
+  creta_unlock_event: "Porta destravada por 5 s",
+  context_coordinator: "Coordenar snapshot e refresh",
+  context_tick: "Reavaliar contextos a cada 30 s",
+  light_merge_context: "Atualizar contexto de alto nível",
+  light_prepare_arrival: "Montar decisão de acendimento",
+  light_check_creta_in_use: "Creta está em uso?",
+  light_mark_active: "Marcar refletor ativo por chegada",
+  light_evaluate_off: "Alguma condição de desligamento ocorreu?",
+  light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
+  light_reconcile: "Revalidar lifecycle e estado físico",
+  light_auto_off: "Aguardar backstop de 15 min",
+  light_check_inactive: "Refletor disponível para acender?",
+  light_off_grace: "Respeitar carência de 90 s",
+  light_sun_event: "Luminosidade mudou",
+  light_timeout: "Solicitar desligamento por timeout",
+};
+for (const [alias, name] of Object.entries(aliasesByName)) {
+  const node = flows.find((item) => item.name === name);
+  assert(node, `node ausente pelo nome: ${name}`);
+  byId.set(alias, node);
+}
+
+
+function wireNames(alias, output = 0) {
+  return (byId.get(alias).wires[output] ?? []).map((id) => byId.get(id)?.name ?? id);
+}
 const BASE_NOW = Date.parse("2026-08-13T12:00:00.000Z");
 let clock = BASE_NOW;
 const originalNow = Date.now;
@@ -84,7 +117,7 @@ function lifecycle(overrides = {}) {
 function readyLight(overrides = {}) {
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: clock, gabriel: { current_home: true } },
-    creta_context_v1: { ready: true, updated_at: clock, home: true, in_use: true },
+    creta_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, updated_at: clock, home: true, in_use: true },
     sun_ready: true,
     sun_below_horizon: true,
     light_reconciled: true,
@@ -158,13 +191,11 @@ scenario("08 deadline extremamente futuro remove ownership", () => {
   assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, false);
 });
 
-scenario("09 mesmo timestamp com payload diferente preserva o primeiro", () => {
-  const diagnostics = [];
+scenario("09 mesmo timestamp aceita a interpretação derivada mais recente", () => {
   const first = { ready: true, updated_at: 200, in_use: true };
   const flow = memoryFlow({ creta_context_v1: first });
-  run("context_coordinator", { payload: { kind: "creta_context", updated_at: 200, ready: true, context: { ready: true, updated_at: 200, in_use: false } } }, flow, diagnostics);
-  assert.equal(flow.get("creta_context_v1").in_use, true);
-  assert(diagnostics.some(({ text }) => text.includes("mesmo timestamp")));
+  run("context_coordinator", { payload: { kind: "creta_context", updated_at: 200, ready: true, context: { ready: true, updated_at: 200, in_use: false } } }, flow);
+  assert.equal(flow.get("creta_context_v1").in_use, false);
 });
 
 scenario("10 state de versao anterior e descartado conservadoramente", () => {
@@ -194,7 +225,7 @@ scenario("12 dedupe do refletor so e gravado depois dos gates", () => {
     security_light_lifecycle_v1: { version: 1, active_by_arrival: false, updated_at: clock },
   });
   const arrival = { payload: { kind: "arrival", source: "gabriel", arrival_stage: "approach", event_at: clock } };
-  const prepared = run("light_prepare_arrival", structuredClone(arrival), flow);
+  const prepared = run("light_prepare_arrival", structuredClone(arrival), flow)[0];
   assert.equal(flow.get("security_light_lifecycle_v1").last_arrival_key, undefined);
   const action = run("light_mark_active", prepared, flow);
   assert(action);
@@ -234,11 +265,12 @@ scenario("15 backoff Bluelink segue 1 2 4 8 15 minutos", () => {
 });
 
 scenario("16 side effects criticos estao ligados aos gates corretos", () => {
-  assert.deepEqual(byId.get("light_mark_active").wires[0], ["light_turn_on", "light_auto_off", "light_notify_on"]);
-  assert.deepEqual(byId.get("light_turn_off_if_active").wires[0], ["light_turn_off"]);
-  assert.deepEqual(byId.get("creta_arrival_actions").wires, [["creta_force_refresh"], ["creta_trip_refresh"]]);
-  assert.deepEqual(byId.get("creta_refresh_decide").wires[0], ["creta_force_refresh", "creta_update_entities"]);
-  assert.deepEqual(byId.get("context_coordinator").wires[2], ["context_notify_valeria"]);
+  assert.deepEqual(wireNames("light_mark_active"), ["Ligar refletor do portão", "Aguardar backstop de 15 min", "Avisar moradores: refletor ligado"]);
+  assert.deepEqual(wireNames("light_turn_off_if_active"), ["Desligar refletor do portão"]);
+  assert.deepEqual(wireNames("creta_arrival_actions", 0), ["Forçar refresh do Creta"]);
+  assert.deepEqual(wireNames("creta_arrival_actions", 1), ["Atualizar viagens do dia após chegada"]);
+  assert.deepEqual(wireNames("creta_refresh_decide"), ["Forçar refresh do Creta", "Atualizar entidades do Creta"]);
+  assert.deepEqual(wireNames("context_coordinator", 2), ["Avisar Gabriel: Valéria se aproxima"]);
 });
 
 scenario("17 store nomeado nao muda o default global", () => {
