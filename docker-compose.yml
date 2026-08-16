@@ -143,6 +143,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - claude-bridge-auth:/home/node/.claude
       - codex-bridge-auth:/home/node/.codex
+      # Keep Home Assistant's Codex process on the same automatic Local AI
+      # routing policy used by this workspace and the IDE extension.
+      - ./AGENTS.md:/home/node/.codex/AGENTS.md:ro
     environment:
       - WORKDIR=/workspace
       - HISTORY_DIR=/workspace/.agent-history

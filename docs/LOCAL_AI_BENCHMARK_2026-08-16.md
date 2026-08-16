@@ -1,6 +1,7 @@
 # Benchmark Local AI — 2026-08-16
 
-Endpoint testado: `http://192.168.0.153:11435` (Ollama remoto). GPU: NVIDIA
+Endpoint testado: `http://GPU_HOST:11435` (Ollama remoto; endereço real fica
+na configuração privada). GPU: NVIDIA
 GeForce RTX 4070, 12.282 MiB de VRAM. A suíte `local-ai-bounded-v1` usa quatro
 casos sintéticos e não sensíveis: revisão de diff, saída de testes, trechos de
 arquivos e resumo de log. Um caso só conta como sucesso se o JSON obedecer ao

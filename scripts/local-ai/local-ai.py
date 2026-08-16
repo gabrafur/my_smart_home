@@ -83,6 +83,12 @@ def local_ai_enabled(settings: dict[str, Any]) -> bool:
     return settings.get("enabled") is not False
 
 
+def current_chat_id() -> str | None:
+    """Expose only a short, non-content identifier for concurrent Codex jobs."""
+    value = os.getenv("CODEX_THREAD_ID") or os.getenv("CODEX_SESSION_ID")
+    return value[:8] if value else None
+
+
 def positive_int(value: str) -> int:
     parsed = int(value)
     if parsed < 1:
@@ -322,6 +328,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         "model": model,
         "endpoint": endpoint,
         "status": "running",
+        "chat_id": current_chat_id(),
         "context_input_chars": len(text),
         "context_input_bytes": len(text.encode("utf-8")),
         "context_input_tokens": context_input_tokens,
@@ -329,7 +336,11 @@ def run_analysis(args: argparse.Namespace) -> int:
         "input_truncated": truncated,
     }
     recorder.started(event)
-    sampler = RemoteGpuSampler(settings.get("gpu_probe"), float(settings.get("gpu_sample_interval_seconds", 1.5)))
+    sampler = RemoteGpuSampler(
+        settings.get("gpu_probe"),
+        float(settings.get("gpu_sample_interval_seconds", 1.5)),
+        on_sample=lambda sample: recorder.sampled(str(event["id"]), sample),
+    )
     sampler.start()
     started = time.monotonic()
     try:
@@ -437,12 +448,16 @@ def benchmark(args: argparse.Namespace) -> int:
         context_input_tokens, token_method = count_openai_context_tokens(source, settings)
         event: dict[str, Any] = {
             "id": new_event_id(), "started_at": utc_now(), "task": f"benchmark:{task}",
-            "model": model, "endpoint": endpoint, "status": "running",
+            "model": model, "endpoint": endpoint, "status": "running", "chat_id": current_chat_id(),
             "context_input_chars": len(source), "context_input_bytes": len(source.encode("utf-8")),
             "context_input_tokens": context_input_tokens, "token_count_method": token_method,
         }
         recorder.started(event)
-        sampler = RemoteGpuSampler(settings.get("gpu_probe"), float(settings.get("gpu_sample_interval_seconds", 1.5)))
+        sampler = RemoteGpuSampler(
+            settings.get("gpu_probe"),
+            float(settings.get("gpu_sample_interval_seconds", 1.5)),
+            on_sample=lambda sample, event_id=str(event["id"]): recorder.sampled(event_id, sample),
+        )
         sampler.start()
         memory_before = _mem_available_kib()
         started = time.monotonic()

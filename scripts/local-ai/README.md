@@ -13,14 +13,17 @@ choice of a large model that may CPU-offload on a 12 GB GPU.
 
 The command must run on the machine that can reach Ollama. In this workspace,
 Codex reads its machine-local configuration from `~/.config/codex/local-ai.json`
-(or `LOCAL_AI_CONFIG`); the current remote endpoint is
-`http://192.168.0.153:11435`. A portable clone must supply its own machine-local
-configuration rather than depending on this endpoint. For a temporary override,
-use:
+(or `LOCAL_AI_CONFIG`). A portable clone must supply its own machine-local
+configuration rather than depending on a repository endpoint. For a temporary
+override, use:
 
 ```bash
 export LOCAL_AI_ENDPOINT=http://<ollama-gpu-host>:11435
 ```
+
+The current operational topology, security boundary, verification evidence, and
+fork-reproduction steps are documented in
+[`docs/LOCAL_AI_RTX_4070.md`](../../docs/LOCAL_AI_RTX_4070.md).
 
 `AGENTS.md` is recognized by both Codex and Cline, so it is the single routing
 policy for this repository; a duplicate `.clinerules/` file would add context

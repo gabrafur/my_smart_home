@@ -1,10 +1,31 @@
 command_line:
   - sensor:
+      name: Codex RTX Live Raw
+      unique_id: codex_rtx_live_raw
+      command: "python3 /config/tools/codex_rtx_live.py"
+      command_timeout: 2
+      scan_interval: 1
+      value_template: "{{ value_json.state }}"
+      json_attributes:
+        - task
+        - model
+        - started_at
+        - sampled_at
+        - gpu_util_percent
+        - vram_mib
+        - vram_total_mib
+        - power_watts
+        - gpu
+        - active_chats
+        - error
+  - sensor:
       name: Codex Usage Raw
       unique_id: codex_usage_raw
       command: "python3 /config/tools/codex_usage.py"
       command_timeout: 10
-      scan_interval: 60
+      # Local AI jobs can be short. Poll the private bridge frequently enough to
+      # show the running state or the completed RTX sample in the dashboard.
+      scan_interval: 10
       value_template: "{{ value_json.status }}"
       json_attributes:
         - collected_at
@@ -20,6 +41,50 @@ command_line:
 
 template:
   - sensor:
+      - name: Codex RTX ao Vivo
+        unique_id: codex_rtx_ao_vivo
+        icon: >-
+          {% if this.state == 'em uso' %}mdi:memory
+          {% elif this.state == 'disponível' %}mdi:memory
+          {% else %}mdi:memory-off
+          {% endif %}
+        state: >-
+          {% set live = states('sensor.codex_rtx_live_raw') %}
+          {% if live == 'in_use' %}em uso
+          {% elif live == 'available' %}disponível
+          {% elif live == 'error' %}sem sinal
+          {% else %}indisponível
+          {% endif %}
+        attributes:
+          tarefa: "{{ state_attr('sensor.codex_rtx_live_raw', 'task') }}"
+          modelo: "{{ state_attr('sensor.codex_rtx_live_raw', 'model') }}"
+          amostrado_em: "{{ state_attr('sensor.codex_rtx_live_raw', 'sampled_at') }}"
+          chats_ativos: "{{ state_attr('sensor.codex_rtx_live_raw', 'active_chats') or [] }}"
+
+      - name: Codex RTX GPU Agora
+        unique_id: codex_rtx_gpu_agora
+        icon: mdi:chip
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'gpu_util_percent') }}"
+        availability: "{{ states('sensor.codex_rtx_live_raw') == 'in_use' and state_attr('sensor.codex_rtx_live_raw', 'gpu_util_percent') is number }}"
+
+      - name: Codex RTX VRAM Agora
+        unique_id: codex_rtx_vram_agora
+        icon: mdi:memory
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'vram_mib') }}"
+        availability: "{{ states('sensor.codex_rtx_live_raw') == 'in_use' and state_attr('sensor.codex_rtx_live_raw', 'vram_mib') is number }}"
+
+      - name: Codex RTX Potencia Agora
+        unique_id: codex_rtx_potencia_agora
+        icon: mdi:lightning-bolt
+        unit_of_measurement: "W"
+        state_class: measurement
+        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'power_watts') }}"
+        availability: "{{ states('sensor.codex_rtx_live_raw') == 'in_use' and state_attr('sensor.codex_rtx_live_raw', 'power_watts') is number }}"
+
       - name: Codex Limite Usado
         unique_id: codex_limite_usado
         icon: mdi:gauge
