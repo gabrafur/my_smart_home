@@ -109,6 +109,12 @@ dispara a partir de +5 pontos percentuais/24 h ou +10 pontos/7 dias, tambem com
 cooldown. Sao aceitas apenas amostras dentro de duas horas da janela desejada;
 uma amostra velha nao e usada como se fosse de 24 horas.
 
+Enquanto ainda nao houver amostras suficientes, cada sensor de tendencia fica
+**indisponivel** por seu topico MQTT de disponibilidade. O fluxo nao publica
+`unknown` no topico de estado: esses sensores sao medidas numericas e o Home
+Assistant rejeita texto como valor de uma medicao. Quando a janela passa a ter
+uma amostra valida, o fluxo publica o numero e marca o sensor como disponivel.
+
 ### Frequencias e observabilidade
 
 - health check leve: 15 minutos, usando estados ja coletados pelo Home Assistant;
@@ -122,9 +128,21 @@ recuperados e candidatos. Falhas registram a etapa e o codigo, interrompem o
 script e geram alerta com cooldown. O dashboard existente ganhou status,
 inodes, tendencias, ultima manutencao e espaco recuperado.
 
+O botão **Executar Storage Health** do dashboard emite o evento Home Assistant
+`storage_health_manual_run`. O Node-RED o encaminha diretamente para a leitura
+dos sensores existentes e a avaliação de limites/tendência, sem executar
+`storage-maintenance.sh --apply` nem a inspeção profunda. Assim o acionamento
+manual atualiza o diagnóstico e os alertas sem disparar limpeza de arquivos.
+
+O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
+e uma no celular. Os históricos ficam no fim da página, redistribuídos com os
+demais grupos de saúde do sistema.
+
 ### SAFE AUTO-MAINTENANCE
 
-O Node-RED executa `/data/tools/storage-maintenance.sh --apply`, que so pode
+O Node-RED executa `/opt/storage-health-maintenance.sh --apply`, montado em
+somente leitura a partir de `scripts/storage-health-maintenance.sh`, que usa
+lock atômico, falha quando não consegue inspecionar os diretórios permitidos e so pode
 remover arquivos regulares nestes caminhos allowlisted:
 
 - backups de flows em `/data/backups/codex-flows` com mais de 30 dias;

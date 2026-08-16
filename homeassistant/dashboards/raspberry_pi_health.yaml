@@ -3,316 +3,336 @@ views:
   - title: System Health
     path: raspberry-pi-health
     icon: mdi:raspberry-pi
-    cards:
-      - type: entities
-        title: Disponibilidade da infraestrutura
-        show_header_toggle: false
-        entities:
-          - entity: binary_sensor.internet_connection
-            name: Internet
-          - entity: sensor.internet_connection_state
-            name: Estado detalhado da internet
-          - type: attribute
-            entity: sensor.internet_connection_state
-            attribute: last_outage
-            name: Última queda da internet
-          - type: attribute
-            entity: sensor.internet_connection_state
-            attribute: last_recovery
-            name: Última recuperação da internet
-          - entity: binary_sensor.zigbee_network
-            name: Rede Zigbee
-          - entity: sensor.zigbee_network_state
-            name: Estado detalhado do Zigbee
-          - type: attribute
-            entity: sensor.zigbee_network_state
-            attribute: last_outage
-            name: Última queda do Zigbee
-          - type: attribute
-            entity: sensor.zigbee_network_state
-            attribute: last_recovery
-            name: Última recuperação do Zigbee
-
-      - type: entities
-        title: Status geral
-        show_header_toggle: false
-        entities:
-          - entity: sensor.raspberry_pi_health
-            name: Saude geral
-          - entity: sensor.raspberry_pi_uptime
-            name: Uptime
-          - entity: sensor.raspberry_pi_last_boot
-            name: Ultima inicializacao
-          - entity: binary_sensor.raspberry_pi_network_link
-            name: Conectividade
-          - entity: sensor.raspberry_pi_ip_address
-            name: IP atual
-          - entity: sensor.raspberry_pi_metrics_raw
-            name: Coleta bruta
-
-      - type: button
-        name: Rodar revisão documental agora
-        icon: mdi:file-document-refresh-outline
-        show_state: false
-        tap_action:
-          action: perform-action
-          perform_action: shell_command.solicitar_revisao_documental_manual
-          confirmation:
-            text: A revisão pode editar, criar commit e enviar alterações. Deseja continuar?
-
-      - type: entities
-        title: Revisão documental semanal
-        show_header_toggle: false
-        entities:
-          - entity: sensor.revisao_semanal_da_documentacao
-            name: Estado atual
-          - type: attribute
-            entity: sensor.revisao_semanal_da_documentacao
-            attribute: next_run
-            name: Próxima execução (UTC)
-          - type: attribute
-            entity: sensor.revisao_semanal_da_documentacao
-            attribute: last_result
-            name: Último resultado
-          - type: attribute
-            entity: sensor.revisao_semanal_da_documentacao
-            attribute: last_finished
-            name: Última conclusão (UTC)
-          - type: attribute
-            entity: sensor.revisao_semanal_da_documentacao
-            attribute: last_reason
-            name: Motivo
-          - type: attribute
-            entity: sensor.revisao_semanal_da_documentacao
-            attribute: last_commit
-            name: Commit final
+    type: sections
+    max_columns: 3
+    dense_section_placement: true
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Visão geral
+            icon: mdi:raspberry-pi
+          - type: entities
+            title: Status geral
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_health
+                name: Saude geral
+              - entity: sensor.raspberry_pi_uptime
+                name: Uptime
+              - entity: sensor.raspberry_pi_last_boot
+                name: Ultima inicializacao
+              - entity: binary_sensor.raspberry_pi_network_link
+                name: Conectividade
+              - entity: sensor.raspberry_pi_ip_address
+                name: IP atual
+              - entity: sensor.raspberry_pi_metrics_raw
+                name: Coleta bruta
+          - type: grid
+            title: Indicadores principais
+            columns: 3
+            square: false
+            cards:
+              - type: gauge
+                entity: sensor.raspberry_pi_cpu_temperature
+                name: Temperatura
+                min: 30
+                max: 90
+                severity: { green: 0, yellow: 75, red: 82 }
+              - type: gauge
+                entity: sensor.raspberry_pi_cpu_usage
+                name: CPU
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 85, red: 95 }
+              - type: gauge
+                entity: sensor.raspberry_pi_memory_usage
+                name: Memoria
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 80, red: 90 }
+              - type: gauge
+                entity: sensor.raspberry_pi_swap_usage
+                name: Swap
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 25, red: 50 }
+              - type: gauge
+                entity: sensor.raspberry_pi_storage_usage
+                name: Armazenamento
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 80, red: 90 }
+              - type: gauge
+                entity: sensor.raspberry_pi_load_5m
+                name: Load 5m
+                min: 0
+                max: 16
+                severity: { green: 0, yellow: 4.8, red: 8 }
+          - type: grid
+            title: Acoes manuais
+            columns: 2
+            square: false
+            cards:
+              - type: button
+                name: Executar Storage Health
+                icon: mdi:harddisk
+                show_state: false
+                tap_action:
+                  action: perform-action
+                  perform_action: event.fire
+                  data:
+                    event_type: storage_health_manual_run
+              - type: button
+                name: Rodar revisão documental
+                icon: mdi:file-document-refresh-outline
+                show_state: false
+                tap_action:
+                  action: perform-action
+                  perform_action: shell_command.solicitar_revisao_documental_manual
+                  confirmation:
+                    text: A revisão pode editar, criar commit e enviar alterações. Deseja continuar?
 
       - type: grid
-        title: Indicadores principais
-        columns: 3
-        square: false
         cards:
-          - type: gauge
-            entity: sensor.raspberry_pi_cpu_temperature
-            name: Temperatura
-            min: 30
-            max: 90
-            severity:
-              green: 0
-              yellow: 75
-              red: 82
-          - type: gauge
-            entity: sensor.raspberry_pi_cpu_usage
-            name: CPU
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 85
-              red: 95
-          - type: gauge
-            entity: sensor.raspberry_pi_memory_usage
-            name: Memoria
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 80
-              red: 90
-          - type: gauge
-            entity: sensor.raspberry_pi_swap_usage
-            name: Swap
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 25
-              red: 50
-          - type: gauge
-            entity: sensor.raspberry_pi_storage_usage
-            name: Armazenamento
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 80
-              red: 90
-          - type: gauge
-            entity: sensor.raspberry_pi_load_5m
-            name: Load 5m
-            min: 0
-            max: 16
-            severity:
-              green: 0
-              yellow: 4.8
-              red: 8
+          - type: heading
+            heading: Armazenamento e infraestrutura
+            icon: mdi:server
+          - type: entities
+            title: Armazenamento
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_storage_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_storage_used
+                name: Usado
+              - entity: sensor.raspberry_pi_storage_free
+                name: Livre
+              - entity: sensor.raspberry_pi_storage_inodes_usage
+                name: Inodes usados
+              - entity: sensor.raspberry_pi_raspberry_storage_status
+                name: Status Node-RED
+              - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
+                name: Crescimento em 24 h
+              - entity: sensor.raspberry_pi_raspberry_storage_growth_7d
+                name: Crescimento em 7 dias
+              - entity: sensor.raspberry_pi_raspberry_storage_last_maintenance
+                name: Ultima manutencao segura
+              - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed
+                name: Recuperado na ultima manutencao
+              - entity: binary_sensor.raspberry_pi_storage_warning
+                name: Armazenamento em atencao
+              - entity: binary_sensor.raspberry_pi_storage_critical
+                name: Armazenamento critico
+          - type: entities
+            title: Disponibilidade da infraestrutura
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.internet_connection
+                name: Internet
+              - entity: sensor.internet_connection_state
+                name: Estado detalhado da internet
+              - type: attribute
+                entity: sensor.internet_connection_state
+                attribute: last_outage
+                name: Última queda da internet
+              - type: attribute
+                entity: sensor.internet_connection_state
+                attribute: last_recovery
+                name: Última recuperação da internet
+              - entity: binary_sensor.zigbee_network
+                name: Rede Zigbee
+              - entity: sensor.zigbee_network_state
+                name: Estado detalhado do Zigbee
+              - type: attribute
+                entity: sensor.zigbee_network_state
+                attribute: last_outage
+                name: Última queda do Zigbee
+              - type: attribute
+                entity: sensor.zigbee_network_state
+                attribute: last_recovery
+                name: Última recuperação do Zigbee
+          - type: entities
+            title: Revisão documental semanal
+            show_header_toggle: false
+            entities:
+              - entity: sensor.revisao_semanal_da_documentacao
+                name: Estado atual
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: next_run
+                name: Próxima execução (UTC)
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_result
+                name: Último resultado
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_finished
+                name: Última conclusão (UTC)
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_reason
+                name: Motivo
+              - type: attribute
+                entity: sensor.revisao_semanal_da_documentacao
+                attribute: last_commit
+                name: Commit final
 
-      - type: entities
-        title: CPU
-        show_header_toggle: false
-        entities:
-          - entity: sensor.raspberry_pi_cpu_usage
-            name: Uso atual
-          - entity: sensor.raspberry_pi_cpu_temperature
-            name: Temperatura
-          - entity: sensor.raspberry_pi_load_1m
-            name: Load 1m
-          - entity: sensor.raspberry_pi_load_5m
-            name: Load 5m
-          - entity: sensor.raspberry_pi_load_15m
-            name: Load 15m
-          - entity: sensor.raspberry_pi_cpu_frequency
-            name: Frequencia
-          - entity: binary_sensor.raspberry_pi_cpu_warning
-            name: CPU alta persistente
-          - entity: binary_sensor.raspberry_pi_cpu_critical
-            name: CPU critica persistente
+      - type: grid
+        cards:
+          - type: heading
+            heading: Processamento
+            icon: mdi:memory
+          - type: entities
+            title: CPU
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_cpu_usage
+                name: Uso atual
+              - entity: sensor.raspberry_pi_cpu_temperature
+                name: Temperatura
+              - entity: sensor.raspberry_pi_load_1m
+                name: Load 1m
+              - entity: sensor.raspberry_pi_load_5m
+                name: Load 5m
+              - entity: sensor.raspberry_pi_load_15m
+                name: Load 15m
+              - entity: sensor.raspberry_pi_cpu_frequency
+                name: Frequencia
+              - entity: binary_sensor.raspberry_pi_cpu_warning
+                name: CPU alta persistente
+              - entity: binary_sensor.raspberry_pi_cpu_critical
+                name: CPU critica persistente
+          - type: entities
+            title: Memoria
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_memory_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_memory_used
+                name: Usada
+              - entity: sensor.raspberry_pi_memory_available
+                name: Disponivel
+              - entity: sensor.raspberry_pi_swap_usage
+                name: Swap
+              - entity: sensor.raspberry_pi_swap_used
+                name: Swap usada
+              - entity: binary_sensor.raspberry_pi_memory_warning
+                name: Memoria em atencao
+              - entity: binary_sensor.raspberry_pi_memory_critical
+                name: Memoria critica
+              - entity: binary_sensor.raspberry_pi_swap_warning
+                name: Swap em atencao
+              - entity: binary_sensor.raspberry_pi_swap_critical
+                name: Swap critica
 
-      - type: history-graph
-        title: CPU e temperatura - 24 h
-        hours_to_show: 24
-        entities:
-          - entity: sensor.raspberry_pi_cpu_usage
-            name: CPU
-          - entity: sensor.raspberry_pi_cpu_temperature
-            name: Temperatura
-          - entity: sensor.raspberry_pi_load_5m
-            name: Load 5m
+      - type: grid
+        cards:
+          - type: heading
+            heading: Hardware e rede
+            icon: mdi:lan
+          - type: entities
+            title: Hardware Raspberry Pi
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.raspberry_pi_hardware_warning
+                name: Throttling/energia desde o boot
+              - entity: binary_sensor.raspberry_pi_hardware_critical
+                name: Throttling/energia ativo
+              - entity: sensor.raspberry_pi_throttled_hex
+                name: vcgencmd get_throttled
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: vcgencmd_available
+                name: vcgencmd disponivel
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: vcgencmd_error
+                name: Erro vcgencmd
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: under_voltage_now
+                name: Undervoltage agora
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: throttled_now
+                name: Throttling agora
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: soft_temperature_limit_now
+                name: Limite termico agora
+          - type: entities
+            title: Rede
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.raspberry_pi_network_link
+                name: Link
+              - entity: sensor.raspberry_pi_ip_address
+                name: IP
+              - entity: sensor.raspberry_pi_network_rx
+                name: Download
+              - entity: sensor.raspberry_pi_network_tx
+                name: Upload
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: network_interface
+                name: Interface
+              - type: attribute
+                entity: sensor.raspberry_pi_metrics_raw
+                attribute: network_operstate
+                name: Estado
 
-      - type: entities
-        title: Memoria
-        show_header_toggle: false
-        entities:
-          - entity: sensor.raspberry_pi_memory_usage
-            name: Uso
-          - entity: sensor.raspberry_pi_memory_used
-            name: Usada
-          - entity: sensor.raspberry_pi_memory_available
-            name: Disponivel
-          - entity: sensor.raspberry_pi_swap_usage
-            name: Swap
-          - entity: sensor.raspberry_pi_swap_used
-            name: Swap usada
-          - entity: binary_sensor.raspberry_pi_memory_warning
-            name: Memoria em atencao
-          - entity: binary_sensor.raspberry_pi_memory_critical
-            name: Memoria critica
-          - entity: binary_sensor.raspberry_pi_swap_warning
-            name: Swap em atencao
-          - entity: binary_sensor.raspberry_pi_swap_critical
-            name: Swap critica
+      - type: grid
+        cards:
+          - type: heading
+            heading: Histórico de desempenho
+            icon: mdi:chart-line
+          - type: history-graph
+            title: CPU e temperatura · 24 h
+            hours_to_show: 24
+            entities:
+              - entity: sensor.raspberry_pi_cpu_usage
+                name: CPU
+              - entity: sensor.raspberry_pi_cpu_temperature
+                name: Temperatura
+              - entity: sensor.raspberry_pi_load_5m
+                name: Load 5m
+          - type: history-graph
+            title: Memoria e swap · 7 dias
+            hours_to_show: 168
+            entities:
+              - entity: sensor.raspberry_pi_memory_usage
+                name: Memoria
+              - entity: sensor.raspberry_pi_swap_usage
+                name: Swap
 
-      - type: history-graph
-        title: Memoria e swap - 7 dias
-        hours_to_show: 168
-        entities:
-          - entity: sensor.raspberry_pi_memory_usage
-            name: Memoria
-          - entity: sensor.raspberry_pi_swap_usage
-            name: Swap
-
-      - type: entities
-        title: Armazenamento
-        show_header_toggle: false
-        entities:
-          - entity: sensor.raspberry_pi_storage_usage
-            name: Uso
-          - entity: sensor.raspberry_pi_storage_used
-            name: Usado
-          - entity: sensor.raspberry_pi_storage_free
-            name: Livre
-          - entity: sensor.raspberry_pi_storage_inodes_usage
-            name: Inodes usados
-          - entity: sensor.raspberry_pi_raspberry_storage_status
-            name: Status Node-RED
-          - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
-            name: Crescimento em 24 h
-          - entity: sensor.raspberry_pi_raspberry_storage_growth_7d
-            name: Crescimento em 7 dias
-          - entity: sensor.raspberry_pi_raspberry_storage_last_maintenance
-            name: Ultima manutencao segura
-          - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed
-            name: Recuperado na ultima manutencao
-          - entity: binary_sensor.raspberry_pi_storage_warning
-            name: Armazenamento em atencao
-          - entity: binary_sensor.raspberry_pi_storage_critical
-            name: Armazenamento critico
-
-      - type: history-graph
-        title: Armazenamento - 24 horas
-        hours_to_show: 24
-        entities:
-          - entity: sensor.raspberry_pi_storage_usage
-            name: Uso
-          - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
-            name: Crescimento 24 h
-
-      - type: history-graph
-        title: Armazenamento - 30 dias
-        hours_to_show: 720
-        entities:
-          - entity: sensor.raspberry_pi_storage_usage
-            name: Uso
-          - entity: sensor.raspberry_pi_storage_free
-            name: Livre
-
-      - type: entities
-        title: Hardware Raspberry Pi
-        show_header_toggle: false
-        entities:
-          - entity: binary_sensor.raspberry_pi_hardware_warning
-            name: Throttling/energia desde o boot
-          - entity: binary_sensor.raspberry_pi_hardware_critical
-            name: Throttling/energia ativo
-          - entity: sensor.raspberry_pi_throttled_hex
-            name: vcgencmd get_throttled
-          - type: attribute
-            entity: sensor.raspberry_pi_metrics_raw
-            attribute: vcgencmd_available
-            name: vcgencmd disponivel
-          - type: attribute
-            entity: sensor.raspberry_pi_metrics_raw
-            attribute: vcgencmd_error
-            name: Erro vcgencmd
-          - type: attribute
-            entity: sensor.raspberry_pi_metrics_raw
-            attribute: under_voltage_now
-            name: Undervoltage agora
-          - type: attribute
-            entity: sensor.raspberry_pi_metrics_raw
-            attribute: throttled_now
-            name: Throttling agora
-          - type: attribute
-            entity: sensor.raspberry_pi_metrics_raw
-            attribute: soft_temperature_limit_now
-            name: Limite termico agora
-
-      - type: entities
-        title: Rede
-        show_header_toggle: false
-        entities:
-          - entity: binary_sensor.raspberry_pi_network_link
-            name: Link
-          - entity: sensor.raspberry_pi_ip_address
-            name: IP
-          - entity: sensor.raspberry_pi_network_rx
-            name: Download
-          - entity: sensor.raspberry_pi_network_tx
-            name: Upload
-          - type: attribute
-            entity: sensor.raspberry_pi_metrics_raw
-            attribute: network_interface
-            name: Interface
-          - type: attribute
-            entity: sensor.raspberry_pi_metrics_raw
-            attribute: network_operstate
-            name: Estado
-
-      - type: history-graph
-        title: Rede - 24 h
-        hours_to_show: 24
-        entities:
-          - entity: sensor.raspberry_pi_network_rx
-            name: Download
-          - entity: sensor.raspberry_pi_network_tx
-            name: Upload
+      - type: grid
+        cards:
+          - type: heading
+            heading: Histórico de armazenamento e rede
+            icon: mdi:chart-timeline-variant
+          - type: history-graph
+            title: Armazenamento · 24 horas
+            hours_to_show: 24
+            entities:
+              - entity: sensor.raspberry_pi_storage_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
+                name: Crescimento 24 h
+          - type: history-graph
+            title: Armazenamento · 30 dias
+            hours_to_show: 720
+            entities:
+              - entity: sensor.raspberry_pi_storage_usage
+                name: Uso
+              - entity: sensor.raspberry_pi_storage_free
+                name: Livre
+          - type: history-graph
+            title: Rede · 24 h
+            hours_to_show: 24
+            entities:
+              - entity: sensor.raspberry_pi_network_rx
+                name: Download
+              - entity: sensor.raspberry_pi_network_tx
+                name: Upload
