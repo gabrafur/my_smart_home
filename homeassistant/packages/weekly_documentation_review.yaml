@@ -43,4 +43,4 @@ command_line:
 
 shell_command:
   solicitar_revisao_documental_manual: >-
-    touch /run/docs-review-trigger/manual-trigger
+    /bin/sh /config/request-weekly-docs-review.sh

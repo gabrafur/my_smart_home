@@ -9,6 +9,11 @@ atualiza documentação e os ajustes mínimos necessários para mantê-la verdad
 valida o resultado, cria um commit somente quando houver mudança e envia para
 `origin/main` sem force push.
 
+O botão **Rodar revisão documental** do Home Assistant chama
+`scripts/request-weekly-docs-review.sh`, montado como somente leitura no
+container. O launcher somente cria o gatilho compartilhado; a execução, lock e
+coalescência continuam sob responsabilidade do `docs-review-scheduler`.
+
 O horário é deliberadamente definido em UTC, portanto não muda com horário de
 verão. A próxima execução aparece no log do serviço.
 

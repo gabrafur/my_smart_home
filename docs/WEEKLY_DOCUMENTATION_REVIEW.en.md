@@ -8,6 +8,11 @@ login already stored in the bridge volume, updates documentation and the
 minimum changes needed to keep it truthful, validates the result, commits only
 when something changed, and pushes to `origin/main` without force push.
 
+The Home Assistant **Run documentation review** button invokes
+`scripts/request-weekly-docs-review.sh`, mounted read-only in the container.
+The launcher only creates the shared trigger; execution, locking, and
+coalescing remain the responsibility of `docs-review-scheduler`.
+
 The schedule is deliberately UTC-based, so daylight-saving changes cannot move
 it. The service log reports the next run.
 
