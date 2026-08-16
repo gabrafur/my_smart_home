@@ -145,15 +145,22 @@ function copyComponent(source, destination) {
 }
 
 function makeComponentWritable() {
+  const image = command(
+    "docker",
+    ["inspect", "-f", "{{.Image}}", "homeassistant"],
+    { capture: true },
+  ).trim();
   command("docker", [
-    "exec",
-    "-u",
-    "0",
-    "homeassistant",
+    "run",
+    "--rm",
+    "--entrypoint",
     "chown",
+    "-v",
+    `${componentDir}:/target`,
+    image,
     "-R",
     `${process.getuid?.() ?? 1001}:${process.getgid?.() ?? 1001}`,
-    "/config/custom_components/kia_uvo",
+    "/target",
   ]);
 }
 
@@ -423,12 +430,13 @@ async function apply(targetVersion) {
         entity_id: updateEntity.entity_id,
         version: prepared.target,
       });
-      makeComponentWritable();
     }
+    command("docker", ["compose", "stop", "homeassistant"]);
+    makeComponentWritable();
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(prepared.mergedRoot, componentDir);
     command("python3", ["-m", "compileall", "-q", componentDir]);
-    command("docker", ["compose", "restart", "homeassistant"]);
+    command("docker", ["compose", "start", "homeassistant"]);
     const runtimeTests = await waitForHomeAssistant(token);
     const libraryVersion = command(
       "docker",
@@ -462,8 +470,8 @@ async function apply(targetVersion) {
     console.log(JSON.stringify(status, null, 2));
     return status;
   } catch (error) {
-    makeComponentWritable();
     command("docker", ["compose", "stop", "homeassistant"]);
+    makeComponentWritable();
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(path.join(backupDir, "kia_uvo"), componentDir);
     command("docker", [
