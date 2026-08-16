@@ -23,7 +23,7 @@ RUN mkdir -p /home/node/.claude /home/node/.codex && \
     chown -R node:node /home/node/.claude /home/node/.codex
 
 WORKDIR /app
-COPY server.js history.js package.json ./
+COPY server.js history.js usage.js package.json ./
 RUN chown -R node:node /app
 
 USER node
