@@ -41,8 +41,9 @@ const status = {
 };
 
 const discovery = {
-    name: "Creta Refresh Coordinator",
+    name: "Refresh Coordinator",
     unique_id: "creta_refresh_coordinator",
+    object_id: "creta_refresh_coordinator",
     state_topic: "homeassistant/creta/refresh/state",
     value_template: "{{ value_json.state }}",
     json_attributes_topic: "homeassistant/creta/refresh/state",

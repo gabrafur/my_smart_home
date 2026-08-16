@@ -169,6 +169,9 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     msg: {},
   });
   assert.equal(result[0].length, 2);
+  const discovery = JSON.parse(result[0][0].payload);
+  assert.equal(discovery.name, "Refresh Coordinator");
+  assert.equal(discovery.object_id, "creta_refresh_coordinator");
   const payload = JSON.parse(result[0][1].payload);
   assert.equal(payload.state, "backoff");
   assert.equal(payload.attempt, 3);
