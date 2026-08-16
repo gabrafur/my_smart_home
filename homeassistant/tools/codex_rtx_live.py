@@ -23,10 +23,17 @@ def main() -> None:
         sample = sample if isinstance(sample, dict) else {}
         preflight = local.get("preflight")
         preflight = preflight if isinstance(preflight, dict) else {}
+        freshness = local.get("freshness")
+        freshness = freshness if isinstance(freshness, dict) else {}
+        preflight_freshness = freshness.get("preflight")
+        preflight_freshness = preflight_freshness if isinstance(preflight_freshness, dict) else {}
+        preflight_current = preflight_freshness.get("current") is True
         if job:
             state = "in_use"
         elif local.get("available"):
             state = "available"
+        elif not preflight_current:
+            state = "stale"
         else:
             state = str(preflight.get("state") or "unavailable").lower().replace("local_ai_", "")
         result = {
@@ -40,9 +47,13 @@ def main() -> None:
             "vram_total_mib": sample.get("vram_total_mib") or preflight.get("vram_total_mib"),
             "power_watts": sample.get("power_watts"),
             "gpu": preflight.get("gpu"),
+            "preflight_checked_at": preflight.get("checked_at"),
+            "preflight_age_seconds": preflight_freshness.get("age_seconds"),
+            "preflight_current": preflight_current,
             "active_chats": [
                 {
                     "chat_id": item.get("chat_id") or "desconhecido",
+                    "chat_name": item.get("chat_name"),
                     "task": item.get("task"),
                     "model": item.get("model"),
                     "started_at": item.get("started_at"),
