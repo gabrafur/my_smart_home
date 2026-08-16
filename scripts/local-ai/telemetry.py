@@ -168,7 +168,7 @@ class TelemetryRecorder:
             return
         public = {
             key: event.get(key)
-            for key in ("id", "started_at", "task", "model", "endpoint", "status", "chat_id")
+            for key in ("id", "started_at", "task", "model", "endpoint", "status", "chat_id", "chat_name")
         }
         try:
             with _locked_state(self.state_path) as state:

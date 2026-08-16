@@ -51,6 +51,7 @@ services:
       - /run/dbus:/run/dbus:ro
       - ./.local-state/docs-review:/run/docs-review:ro
       - ./.local-state/docs-review-trigger:/run/docs-review-trigger
+      - ./scripts/request-weekly-docs-review.sh:/config/request-weekly-docs-review.sh:ro
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
       - PI_HEALTH_PROC_ROOT=/host/proc
@@ -105,6 +106,7 @@ services:
       - "${HOST_LAN_IP:-127.0.0.1}:1880:1880"
     volumes:
       - ./nodered:/data
+      - ./scripts/storage-health-maintenance.sh:/opt/storage-health-maintenance.sh:ro
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
       - NODE_RED_ADMIN_USER=${NODE_RED_ADMIN_USER:-admin}

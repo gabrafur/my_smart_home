@@ -89,6 +89,15 @@ def current_chat_id() -> str | None:
     return value[:8] if value else None
 
 
+def current_chat_name() -> str | None:
+    """Use an optional caller-provided label without deriving it from prompt content."""
+    value = os.getenv("CODEX_CHAT_NAME") or os.getenv("CODEX_THREAD_NAME")
+    if not value:
+        return None
+    normalized = " ".join(value.split())
+    return normalized[:80] or None
+
+
 def positive_int(value: str) -> int:
     parsed = int(value)
     if parsed < 1:
@@ -329,6 +338,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         "endpoint": endpoint,
         "status": "running",
         "chat_id": current_chat_id(),
+        "chat_name": current_chat_name(),
         "context_input_chars": len(text),
         "context_input_bytes": len(text.encode("utf-8")),
         "context_input_tokens": context_input_tokens,
@@ -449,6 +459,7 @@ def benchmark(args: argparse.Namespace) -> int:
         event: dict[str, Any] = {
             "id": new_event_id(), "started_at": utc_now(), "task": f"benchmark:{task}",
             "model": model, "endpoint": endpoint, "status": "running", "chat_id": current_chat_id(),
+            "chat_name": current_chat_name(),
             "context_input_chars": len(source), "context_input_bytes": len(source.encode("utf-8")),
             "context_input_tokens": context_input_tokens, "token_count_method": token_method,
         }
