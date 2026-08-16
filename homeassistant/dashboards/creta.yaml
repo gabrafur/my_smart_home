@@ -3,120 +3,199 @@ views:
   - title: Creta
     path: creta
     icon: mdi:car
-    cards:
-      - type: markdown
-        content: >-
-          ## 🚗 Creta
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Visão geral
+            icon: mdi:car-connected
+          - type: markdown
+            content: >-
+              {% set engine = is_state('binary_sensor.creta_engine', 'on') %}
+              {% set location = states('device_tracker.creta_location') %}
+              {% set updated = states('sensor.creta_last_updated_at') %}
+              {% set updated_ts = as_timestamp(updated, none) %}
+              {% set age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
 
-          Status atual do veículo e viagens registradas pelo Bluelink.
+              # {{ 'Em uso' if engine else 'Estacionado' }}
+
+              **Local:** {{ state_attr('device_tracker.creta_location', 'friendly_name') if location in ['unknown', 'unavailable'] else location | replace('_', ' ') | title }}
+
+              {% if age_min is none %}
+              🔴 **Sem telemetria válida** · aguardando dados do Bluelink.
+              {% elif age_min <= 15 %}
+              🟢 **Dados recentes** · atualizados há {{ age_min | int }} min.
+              {% elif age_min <= 90 %}
+              🟡 **Dados em cache** · última leitura há {{ age_min | int }} min.
+              {% else %}
+              🔴 **Dados antigos** · última leitura há {{ age_min | int }} min.
+              {% endif %}
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.creta_fuel_level
+                name: Combustível
+                icon: mdi:gas-station
+              - type: tile
+                entity: sensor.garagem_creta_total_driving_range
+                name: Autonomia
+                icon: mdi:map-marker-distance
+              - type: tile
+                entity: sensor.garagem_creta_odometer
+                name: Odômetro
+                icon: mdi:speedometer
+              - type: tile
+                entity: sensor.garagem_creta_estimated_fuel_efficiency
+                name: Consumo estimado
+                icon: mdi:chart-line
+          - type: grid
+            columns: 3
+            square: false
+            cards:
+              - type: tile
+                entity: binary_sensor.creta_engine
+                name: Motor
+                icon: mdi:engine
+              - type: tile
+                entity: lock.creta_door_lock
+                name: Travas
+              - type: tile
+                entity: binary_sensor.creta_fuel_low_level
+                name: Reserva
+                icon: mdi:fuel
 
       - type: grid
-        title: Resumo
-        columns: 2
-        square: false
         cards:
-          - type: tile
-            entity: sensor.creta_fuel_level
-            name: Combustível
-            icon: mdi:gas-station
-          - type: tile
-            entity: sensor.creta_fuel_driving_range
-            name: Autonomia
-            icon: mdi:map-marker-distance
-          - type: tile
-            entity: sensor.garagem_creta_odometer
-            name: Odômetro
-            icon: mdi:speedometer
-          - type: tile
-            entity: sensor.creta_car_battery_level
-            name: Bateria 12V
+          - type: heading
+            heading: Localização
+            icon: mdi:map-marker
+          - type: map
+            entities:
+              - entity: device_tracker.creta_location
+            hours_to_show: 12
+            default_zoom: 15
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: device_tracker.creta_location
+                name: Zona atual
+              - entity: sensor.creta_location_last_updated
+                name: Localização recebida em
+              - entity: sensor.creta_last_updated_at
+                name: Telemetria do veículo em
+              - entity: sensor.creta_last_scanned_at
+                name: Última consulta à nuvem
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Viagens recentes
+            icon: mdi:map-marker-path
+          - type: markdown
+            content: >-
+              {% set trips = state_attr('sensor.garagem_creta_recent_trip_info', 'trips') or [] %}
+              {% set efficiency = state_attr('sensor.garagem_creta_recent_trip_info', 'fuel_efficiency') or {} %}
+              {% if trips %}
+              **{{ trips | length }} viagem(ns) nos últimos dois dias**
+
+              {% if efficiency.km_per_l is defined and efficiency.km_per_l is not none %}
+              ⛽ **{{ efficiency.km_per_l }} km/L estimados** em {{ efficiency.estimated_distance }} km analisados.
+              {% else %}
+              ⏳ **Consumo aguardando amostras confiáveis.** A estimativa só aparece quando combustível e odômetro cercam a mesma viagem.
+              {% endif %}
+
+              {% for trip in trips %}
+              ---
+              **{{ trip.date[6:8] }}/{{ trip.date[4:6] }} · {{ trip.start_time[:2] }}:{{ trip.start_time[2:4] }}{% if trip.end_time %}–{{ trip.end_time }}{% endif %}**
+
+              {{ trip.distance }} km · {{ trip.duration_min }} min · média {{ trip.avg_speed }} km/h{% if trip.estimated_km_per_l is defined %} · **{{ trip.estimated_km_per_l }} km/L**{% endif %}
+              {% endfor %}
+              {% else %}
+              **Nenhuma viagem disponível para hoje e ontem.**
+
+              O histórico é consultado automaticamente ao iniciar a integração, quando o odômetro avança e ao concluir uma chegada. Não é necessário atualizar manualmente.
+              {% endif %}
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Bateria 12 V e confiabilidade
             icon: mdi:car-battery
-          - type: tile
-            entity: sensor.garagem_creta_estimated_fuel_efficiency
-            name: Consumo estimado
-            icon: mdi:gas-station
+          - type: markdown
+            content: >-
+              {% set battery = states('sensor.creta_car_battery_level') %}
+              {% if battery not in ['unknown', 'unavailable'] %}
+              ## {{ battery }}%
+
+              Leitura aceita como confiável pelo protocolo do veículo.
+              {% else %}
+              ## Aguardando leitura confiável
+
+              O Bluelink enviou a medição com indicador de baixa confiabilidade. O painel mantém o valor como desconhecido para não apresentar o nível bruto como se fosse confirmado.
+              {% endif %}
+          - type: entities
+            title: Estado de portas e alertas
+            show_header_toggle: false
+            entities:
+              - entity: binary_sensor.creta_front_left_door
+                name: Porta dianteira esquerda
+              - entity: binary_sensor.creta_front_right_door
+                name: Porta dianteira direita
+              - entity: binary_sensor.creta_back_left_door
+                name: Porta traseira esquerda
+              - entity: binary_sensor.creta_back_right_door
+                name: Porta traseira direita
+              - entity: binary_sensor.creta_trunk
+                name: Porta-malas
+              - entity: binary_sensor.creta_tire_pressure_all
+                name: Alerta de pneus
 
       - type: grid
-        title: Estado atual
-        columns: 3
-        square: false
         cards:
-          - type: tile
-            entity: binary_sensor.creta_engine
-            name: Motor
-            icon: mdi:engine
-          - type: tile
-            entity: lock.creta_door_lock
-            name: Travas
-          - type: tile
-            entity: device_tracker.creta_location
-            name: Localização
-            icon: mdi:map-marker-outline
+          - type: heading
+            heading: Histórico
+            icon: mdi:chart-timeline-variant
+          - type: history-graph
+            title: Motor e combustível · 48 horas
+            hours_to_show: 48
+            entities:
+              - entity: binary_sensor.creta_engine
+                name: Motor
+              - entity: sensor.creta_fuel_level
+                name: Combustível
+          - type: history-graph
+            title: Consumo estimado · 7 dias
+            hours_to_show: 168
+            entities:
+              - entity: sensor.garagem_creta_estimated_fuel_efficiency
+                name: km/L estimados
 
-      - type: markdown
-        title: Bateria 12 V
-        content: >
-          {% set battery = states('sensor.creta_car_battery_level') %}
-          {% if battery not in ['unknown', 'unavailable'] %}
-          **{{ battery }}%** · leitura fornecida pelo Bluelink.
-          {% else %}
-          **Leitura indisponível** · o Bluelink marcou a medição da bateria 12 V
-          como não confiável. O valor bruto não é exibido para não mascarar a
-          indisponibilidade; atualize o estado do carro após ele acordar.
-          {% endif %}
+      - type: grid
+        cards:
+          - type: heading
+            heading: Diagnóstico
+            icon: mdi:stethoscope
+          - type: markdown
+            content: >-
+              **Atualização automática orientada a eventos**
 
-      - type: markdown
-        title: Viagens recentes — hoje e ontem
-        content: >
-          {% set trips = state_attr('sensor.garagem_creta_recent_trip_info',
-          'trips') %}
-          {% if trips %}
-          {% set total = trips | sum(attribute='distance') %}
-          **{{ trips | length }} viagem(ns) · {{ total }} km no total nos últimos 2 dias**
-          {% set efficiency = state_attr('sensor.garagem_creta_recent_trip_info', 'fuel_efficiency') %}
-          {% if efficiency and efficiency.km_per_l is not none %}
-          **Consumo médio estimado: {{ efficiency.km_per_l }} km/L** · {{ efficiency.estimated_distance }} km com {{ efficiency.estimated_liters }} L estimados.
-          {% else %}
-          _Consumo médio: aguardando leituras de combustível e odômetro que cerquem uma viagem._
-          {% endif %}
+              Mudanças de zona ou deslocamentos GPS significativos solicitam uma nova leitura. O coordenador evita chamadas simultâneas, aplica backoff de **1, 2, 4, 8 e 15 minutos** e nunca acorda o veículo mais de uma vez dentro de 15 minutos.
 
-          {% for t in trips %}
-          **{{ t.date[6:8] }}/{{ t.date[4:6] }} · {{ t.start_time[:2] }}:{{ t.start_time[2:4] }}{% if t.end_time %}–{{ t.end_time }}{% endif %} · {{ t.distance }} km**<br>
-          {{ t.duration_min }} min no total · {{ t.drive_time_min }} min rodando · {{ t.idle_time_min }} min parado ·
-          {{ t.avg_speed }} km/h em média · máxima de {{ t.max_speed }} km/h
-          {% if t.estimated_km_per_l is defined %}<br>**Consumo estimado: {{ t.estimated_km_per_l }} km/L** ({{ t.estimated_liters }} L estimados){% endif %}
-
-          {% endfor %}
-          {% else %}
-          _Nenhuma viagem registrada nos últimos 2 dias._ As viagens são atualizadas quando
-          o Creta chega em casa ou pelo botão abaixo.
-          {% endif %}
-
-      - type: entities
-        title: Atualização dos dados
-        show_header_toggle: false
-        entities:
-          - entity: button.garagem_creta_refresh_trip_info
-            name: Atualizar viagens manualmente
-          - entity: button.creta_force_refresh
-            name: Forçar atualização de status
-          - entity: sensor.creta_last_updated_at
-            name: Dados recebidos em
-          - entity: sensor.creta_last_scanned_at
-            name: Última consulta ao Bluelink
-
-      - type: history-graph
-        title: Histórico — motor e combustível (2 dias)
-        hours_to_show: 48
-        entities:
-          - entity: binary_sensor.creta_engine
-            name: Motor
-          - entity: sensor.creta_fuel_level
-            name: Combustível
-
-      - type: history-graph
-        title: Consumo estimado por atualização
-        hours_to_show: 48
-        entities:
-          - entity: sensor.garagem_creta_estimated_fuel_efficiency
-            name: Consumo estimado (km/L)
+              A consulta ao cache pode avançar sem acordar o carro; o refresh só é considerado concluído quando um timestamp observado realmente muda.
+          - type: entities
+            show_header_toggle: false
+            entities:
+              - entity: sensor.creta_last_updated_at
+                name: Estado confirmado em
+              - entity: sensor.creta_last_scanned_at
+                name: Consulta executada em
+              - entity: sensor.creta_location_last_updated
+                name: Posição confirmada em
+              - entity: sensor.garagem_creta_recent_trip_info
+                name: Viagens carregadas
+              - entity: sensor.garagem_creta_estimated_fuel_efficiency
+                name: Base de consumo
