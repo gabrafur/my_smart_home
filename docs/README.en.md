@@ -19,6 +19,7 @@ physical identifiers must appear only as placeholders.
 | [Raspberry Pi health](RASPBERRY_PI_SYSTEM_HEALTH.md) | Host metrics and alerts | Portuguese detailed guide |
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Home Assistant agent bridge](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex in the UI | summarized in [Containers](CONTAINERS.en.md) |
+| [Codex + Local AI with RTX 4070](LOCAL_AI_RTX_4070.md) | Local inference, network, telemetry, and fork reproduction | detailed Portuguese guide |
 
 ## Feature guides
 

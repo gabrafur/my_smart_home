@@ -165,6 +165,7 @@ ready. Check `docker compose ps` and service logs after startup.
 - [Containers, volumes, ports, and dependencies](docs/CONTAINERS.en.md)
 - [Weekly documentation review](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md)
 - [Zigbee and Internet monitoring in Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
+- [Codex + Local AI with RTX 4070 (Portuguese)](docs/LOCAL_AI_RTX_4070.md)
 - [Portuguese feature documentation](docs/README.md)
 
 Brazilian Portuguese is the primary operational language. The repository

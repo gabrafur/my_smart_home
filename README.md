@@ -174,6 +174,7 @@ serviço.
 - [Saúde do Raspberry Pi](docs/RASPBERRY_PI_SYSTEM_HEALTH.md)
 - [Monitoramento de Zigbee e Internet no Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.md)
 - [Bridge de agentes no Home Assistant](docs/CHAT_CLAUDE_CODE_HA.md)
+- [Codex + Local AI com RTX 4070](docs/LOCAL_AI_RTX_4070.md)
 - [Revisão semanal da documentação](docs/REVISAO_DOCUMENTACAO_SEMANAL.md)
 
 Os guias operacionais detalhados usam português do Brasil como idioma

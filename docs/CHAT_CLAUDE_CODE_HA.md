@@ -243,11 +243,12 @@ somente Claude padrao, Home Assistant e Claude Code (Full Access).
 
 ### Painel de uso do Codex
 
-A aba **Chat → Uso** acompanha as métricas emitidas pelo Codex CLI autenticado
+A aba **Chat → Uso do Codex** acompanha as métricas emitidas pelo Codex CLI autenticado
 no volume `codex-bridge-auth`. O endpoint local `GET /usage` do bridge devolve
 somente o resumo sanitizado de limite, créditos e tokens; prompts e respostas
 não fazem parte da resposta. O sensor `Codex Usage Raw`, definido em
-`homeassistant/packages/codex_usage.yaml`, consulta esse endpoint a cada minuto.
+`homeassistant/packages/codex_usage.yaml`, consulta esse endpoint a cada 10
+segundos.
 
 Depois de alterar ou instalar esses arquivos, reconstrua o bridge e reinicie o
 Home Assistant:
@@ -264,39 +265,17 @@ painel mostra o horário dessa métrica para deixar eventual defasagem visível.
 
 #### Local AI / RTX 4070
 
-Depois da confirmação do roteador de modelo (`continue`), o hook global do
-Codex pode executar uma única verificação curta do Ollama remoto. A
-configuração da máquina fica fora do repositório em
-`~/.config/codex/local-ai.json`; neste ambiente, o endpoint padrão é
-`http://192.168.0.153:11435` e o modelo padrão permanece
-`qwen2.5-coder:7b`. Variáveis de ambiente têm precedência:
-`LOCAL_AI_ENABLED=0`, `LOCAL_AI_ENDPOINT`, `LOCAL_AI_MODEL` e
-`LOCAL_AI_FORCE`.
+O uso de inferência local fica na aba separada **Chat → RTX 4070**, não na aba
+de uso do Codex. O endpoint local `GET /local-ai/live` fornece somente o job
+ativo e a amostra de GPU; `Codex RTX Live Raw` o consulta aproximadamente uma
+vez por segundo. A página mostra tarefa, modelo, GPU, VRAM, potência e os
+identificadores curtos dos chats ativos, sem título ou conteúdo de conversa.
 
 O helper `scripts/local-ai/local-ai` só recebe tarefas delimitadas de primeira
-passagem (logs, diff, classificação ou resumo). Ele nunca persiste prompt,
-diff, resposta ou credenciais: em `.agent-history/` ficam apenas metadados de
-execução, como modelo, duração, GPU/VRAM, processador e contagens. O painel
-mostra esses dados junto do estado do preflight. “Tokens OpenAI evitados” é a
-diferença entre o contexto original e o JSON resumido; é explicitamente uma
-estimativa quando o tokenizer OpenAI não estiver instalado, e não uma medição
-de cobrança.
-
-Para testar sem envolver uma conversa, use:
-
-```bash
-~/.local/bin/local-ai-preflight --json --revalidate
-scripts/local-ai/local-ai status
-```
-
-Uma falha local não tenta reparar infraestrutura nem bloqueia o Codex: a
-política segue com ferramentas determinísticas e o modelo principal. A primeira
-falha de rede em uma chamada do helper pode revalidar o preflight uma vez; não
-há tentativas em loop.
-
-O Codex exige uma revisão explícita de hooks não gerenciados: abra `/hooks` e
-aprove o hook Local AI uma vez após instalá-lo (ou após ele mudar). Até essa
-confirmação, o Codex continua normalmente sem executar o preflight automático.
+passagem e conserva somente telemetria privada por metadados em
+`.agent-history/`. O guia [Codex + Local AI com RTX
+4070](LOCAL_AI_RTX_4070.md) descreve a rede, o preflight, a política de
+delegação, a aprovação do hook, os comandos de teste e a reprodução em um fork.
 
 A mesma aba possui controles de alertas para o iPhone de Gabriel. O painel
 mantém apenas os sensores e as preferências; a avaliação, o cooldown e o push
@@ -314,6 +293,7 @@ o push; instalar ou reiniciar a configuração não dispara essa notificação.
 - `docker-compose.yml` (serviço `claude-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)
 - `homeassistant/dashboards/chat.yaml` (card novo)
-- `homeassistant/packages/codex_usage.yaml`, `homeassistant/tools/codex_usage.py`
+- `homeassistant/packages/codex_usage.yaml`, `homeassistant/tools/codex_usage.py`,
+  `homeassistant/tools/codex_rtx_live.py`
 - `homeassistant/www/codex-chat-card.js` (aba Codex com historico)
 - `homeassistant/.storage/assist_pipeline.pipelines` (pipeline novo, editado no passo 5)

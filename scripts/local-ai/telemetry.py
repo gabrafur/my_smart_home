@@ -168,7 +168,7 @@ class TelemetryRecorder:
             return
         public = {
             key: event.get(key)
-            for key in ("id", "started_at", "task", "model", "endpoint", "status")
+            for key in ("id", "started_at", "task", "model", "endpoint", "status", "chat_id")
         }
         try:
             with _locked_state(self.state_path) as state:
@@ -206,13 +206,36 @@ class TelemetryRecorder:
         except (OSError, KeyError, TypeError):
             pass
 
+    def sampled(self, event_id: str, sample: dict[str, Any]) -> None:
+        """Publish the latest non-sensitive GPU sample for a job still in progress."""
+        if not self.enabled or self.state_path is None:
+            return
+        live_sample = {
+            key: sample.get(key)
+            for key in ("at", "gpu_util_percent", "vram_mib", "vram_total_mib", "power_watts")
+        }
+        try:
+            with _locked_state(self.state_path) as state:
+                job = state.setdefault("active_jobs", {}).get(str(event_id))
+                if isinstance(job, dict):
+                    job["live_gpu"] = live_sample
+                    state["updated_at"] = utc_now()
+        except (OSError, TypeError):
+            pass
+
 
 class RemoteGpuSampler:
     """Sample WSL GPU state only while a Local AI request is in progress."""
 
-    def __init__(self, probe: dict[str, Any] | None, interval_seconds: float = 1.5):
+    def __init__(
+        self,
+        probe: dict[str, Any] | None,
+        interval_seconds: float = 1.5,
+        on_sample: callable | None = None,
+    ):
         self.probe = probe if isinstance(probe, dict) and probe.get("enabled", True) else None
         self.interval_seconds = max(1.0, interval_seconds)
+        self.on_sample = on_sample
         self.snapshots: list[dict[str, Any]] = []
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -251,13 +274,19 @@ class RemoteGpuSampler:
         values = [_number(piece) for piece in pieces[:4]]
         if values[0] is None or values[1] is None:
             return
-        self.snapshots.append({
+        snapshot = {
             "at": utc_now(),
             "gpu_util_percent": values[0],
             "vram_mib": values[1],
             "vram_total_mib": values[2],
             "power_watts": values[3],
-        })
+        }
+        self.snapshots.append(snapshot)
+        if self.on_sample:
+            try:
+                self.on_sample(snapshot)
+            except Exception:
+                pass
 
     def _processor(self, model: str | None) -> str | None:
         if not model:

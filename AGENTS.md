@@ -437,7 +437,9 @@ The configured endpoint is the only default, while explicit CLI options and `LOC
 
 `LOCAL_AI_FORCE=1` is diagnostic only and does not authorize unsuitable delegation.
 
-`local-ai-preflight --json` is the manual health check.
+The machine-local preflight command configured in `LOCAL_AI_CONFIG` is the
+manual health check. `./scripts/local-ai/local-ai status` is the portable
+repository health check.
 
 Keep deterministic tools first, including:
 
@@ -450,7 +452,7 @@ Keep deterministic tools first, including:
 * SQL;
 * project scripts.
 
-Use Local AI only when bounded first-pass work will materially compress a large context or cheaply classify it, such as:
+Use `./scripts/local-ai/local-ai` for Local AI tasks. Use Local AI only when bounded first-pass work will materially compress a large context or cheaply classify it, such as:
 
 * long logs or test output;
 * large diffs;
@@ -465,7 +467,7 @@ make this routing decision automatically. Do not ask the user to enable Local AI
 repeat a special prompt, select a model, or run a helper command.
 
 Before placing a large, non-sensitive body of text into the OpenAI/Codex context,
-use `/home/gabriel/.local/bin/local-ai` to produce a bounded structured first
+use `./scripts/local-ai/local-ai` to produce a bounded structured first
 pass when it will reduce the context materially. Treat roughly 1,500 OpenAI
 tokens (about 6,000 ordinary text characters) as the normal lower bound, unless
 the content is already clearly structured and small enough to inspect directly.

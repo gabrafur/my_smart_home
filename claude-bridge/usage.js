@@ -222,12 +222,13 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const preflight = readJson(statusPath, {});
   const totals = { ...emptyLocalAiTotals(), ...(state.totals || {}) };
   const activeJobs = Object.values(state.active_jobs || {});
-  const currentJob = activeJobs
+  const recentActiveJobs = activeJobs
     .filter((job) => {
       const started = new Date(job.started_at);
       return !Number.isNaN(started.valueOf()) && now.valueOf() - started.valueOf() < 30 * 60_000;
     })
-    .sort((left, right) => String(right.started_at).localeCompare(String(left.started_at)))[0] || null;
+    .sort((left, right) => String(right.started_at).localeCompare(String(left.started_at)));
+  const currentJob = recentActiveJobs[0] || null;
   const preflightState = typeof preflight.state === 'string' ? preflight.state : 'LOCAL_AI_UNKNOWN';
   const stateName = currentJob ? 'LOCAL_AI_IN_USE' : preflightState;
   const models = Object.entries(state.models || {})
@@ -249,6 +250,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
       model: preflight.model || null,
     },
     current_job: currentJob,
+    active_jobs: recentActiveJobs,
     totals: { ...totals, ...localAiDerived(totals) },
     periods: {
       today: summarizePeriod(state.daily, now, 1),
@@ -355,7 +357,7 @@ function scanCodexUsage(sessionsDirectory, now = new Date()) {
 }
 
 class CodexUsageReader {
-  constructor(sessionsDirectory, localAiTelemetryPath = null, localAiStatusPath = null, cacheMs = 30_000) {
+  constructor(sessionsDirectory, localAiTelemetryPath = null, localAiStatusPath = null, cacheMs = 5_000) {
     this.sessionsDirectory = sessionsDirectory;
     this.localAiTelemetryPath = localAiTelemetryPath;
     this.localAiStatusPath = localAiStatusPath;
@@ -372,6 +374,10 @@ class CodexUsageReader {
     };
     this.cachedAt = Date.now();
     return this.cached;
+  }
+
+  readLocalAiLive() {
+    return scanLocalAiTelemetry(this.localAiTelemetryPath, this.localAiStatusPath);
   }
 }
 
