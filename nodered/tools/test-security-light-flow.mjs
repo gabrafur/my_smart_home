@@ -3,6 +3,38 @@ import fs from "node:fs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
+const aliasesByName = {
+  people_normalize: "Normalizar pessoas e detectar transições",
+  people_refresh_decide: "Atualizar iPhones agora?",
+  creta_normalize: "Normalizar Creta e detectar transições",
+  creta_refresh_decide: "Forçar refresh do Creta agora?",
+  creta_arrival_actions: "Acordar carro e fechar viagem",
+  creta_trip_refresh: "Atualizar viagens do dia após chegada",
+  creta_unlock_event: "Porta destravada por 5 s",
+  context_coordinator: "Coordenar snapshot e refresh",
+  context_tick: "Reavaliar contextos a cada 30 s",
+  light_merge_context: "Atualizar contexto de alto nível",
+  light_prepare_arrival: "Montar decisão de acendimento",
+  light_check_creta_in_use: "Creta está em uso?",
+  light_mark_active: "Marcar refletor ativo por chegada",
+  light_evaluate_off: "Alguma condição de desligamento ocorreu?",
+  light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
+  light_reconcile: "Revalidar lifecycle e estado físico",
+  light_auto_off: "Aguardar backstop de 15 min",
+  light_check_inactive: "Refletor disponível para acender?",
+  light_off_grace: "Respeitar carência de 90 s",
+  light_sun_event: "Luminosidade mudou",
+  light_timeout: "Solicitar desligamento por timeout",
+};
+for (const [alias, name] of Object.entries(aliasesByName)) {
+  const node = flows.find((item) => item.name === name);
+  assert(node, `node ausente pelo nome: ${name}`);
+  byId.set(alias, node);
+}
+
+function wireNames(alias, output = 0) {
+  return (byId.get(alias).wires[output] ?? []).map((id) => byId.get(id)?.name ?? id);
+}
 const passed = [];
 
 function memoryFlow(initial = {}) {
@@ -46,7 +78,7 @@ function activeLightFlow(extra = {}) {
   const now = Date.now();
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: now, gabriel: { current_home: true }, valeria: { current_home: true } },
-    creta_context_v1: { ready: true, updated_at: now, home: true, in_use: true },
+    creta_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, updated_at: now, home: true, in_use: true },
     sun_ready: true,
     security_light_physical_state: "on",
     security_light_lifecycle_v1: {
@@ -66,7 +98,7 @@ function activeLightFlow(extra = {}) {
 function readyLightFlow(extra = {}) {
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: Date.now() },
-    creta_context_v1: { ready: true, in_use: true, engine_on: true, updated_at: Date.now() },
+    creta_context_v1: { ready: true, lighting_ready: true, in_use: true, engine_on: true, engine_state_valid: true, updated_at: Date.now() },
     sun_ready: true,
     sun_below_horizon: true,
     light_reconciled: true,
@@ -201,20 +233,19 @@ scenario("12 Creta destravado em casa apaga apos filtro do evento", () => {
 });
 
 scenario("13 refletor ja ligado antes da chegada", () => {
-  const inactive = byId.get("light_check_inactive");
-  assert.equal(inactive.property, "payload.active");
-  assert.equal(inactive.rules[0].t, "false");
+  const output = run("light_check_inactive", { payload: {} }, activeLightFlow(), geoEnv);
+  assert.deepEqual(output, [null, null]);
 });
 
 scenario("14 ambiente ainda claro", () => {
   const flow = readyLightFlow({ sun_below_horizon: false });
-  const prepared = run("light_prepare_arrival", arrival(), flow, geoEnv);
+  const prepared = run("light_prepare_arrival", arrival(), flow, geoEnv)[0];
   assert.equal(prepared.payload.sun_below_horizon, false);
 });
 
 scenario("15 ambiente escuro", () => {
   const flow = readyLightFlow();
-  const prepared = run("light_prepare_arrival", arrival(), flow, geoEnv);
+  const prepared = run("light_prepare_arrival", arrival(), flow, geoEnv)[0];
   assert.equal(prepared.payload.sun_below_horizon, true);
   assert(run("light_check_creta_in_use", prepared, flow, geoEnv));
 });
@@ -269,12 +300,16 @@ scenario("22 Home Assistant reiniciado: ciclo volta a pedir snapshots", () => {
 });
 
 scenario("23 Node-RED reiniciado: gates falham de forma segura", () => {
-  assert.equal(run("light_prepare_arrival", arrival(), memoryFlow(), geoEnv), null);
+  const decision = run("light_prepare_arrival", arrival(), memoryFlow(), geoEnv);
+  assert.equal(decision[0], null);
+  assert(decision[1]);
   assert.equal(run("light_check_creta_in_use", { payload: {} }, memoryFlow(), geoEnv), null);
 });
 
 scenario("24 restart durante viagem fica pendente sem evidência persistida", () => {
-  const result = run("creta_normalize", cretaInput({ event: "context_snapshot", current: "not_home", distance: 5_000, engine: "off" }), memoryFlow(), geoEnv)[0];
+  const input = cretaInput({ event: "context_snapshot", current: "not_home", distance: 5_000, engine: "off" });
+  input.payload.creta_engine.last_updated = new Date(Date.now() - 10 * 60_000).toISOString();
+  const result = run("creta_normalize", input, memoryFlow(), geoEnv)[0];
   assert.equal(result.payload.context.in_use, null);
   assert.equal(result.payload.context.in_use_pending, true);
   assert.equal(result.payload.context.away, true);
@@ -310,18 +345,21 @@ scenario("28 refresh do Creta falhando permite retry", () => {
   assert.equal(flow.get("security_creta_refresh_v1").attempts, 1);
 });
 
-scenario("29 refresh posterior do Creta com sucesso confirma cooldown", () => {
+scenario("29 refresh posterior do Creta só confirma com evidência nova", () => {
   const flow = memoryFlow({ creta_context_v1: { away: true } });
-  run("creta_refresh_ack", { payload: {} }, flow, geoEnv);
+  run("creta_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv);
+  run("creta_normalize", cretaInput({ locationOffset: 0, engineOffset: 0 }), flow, geoEnv);
   assert.equal(typeof flow.get("security_creta_refresh_v1").last_success_at, "number");
+  assert.equal(flow.get("security_creta_refresh_v1").awaiting_evidence, false);
   assert.equal(run("creta_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
 });
 
 scenario("30 tick de 30 segundos sem mudanca nao cria loop", () => {
   assert.equal(byId.get("context_tick").repeat, "30");
-  const flow = memoryFlow({ people_context_v1: { nearest_distance_m: 5_000 }, people_last_refresh_ts: Date.now() });
+  const flow = memoryFlow({ people_context_v1: { nearest_distance_m: 5_000 }, security_people_last_refresh_at: Date.now() });
   assert.equal(run("people_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
-  const securityTabs = new Set(["security_people_tab", "security_creta_tab", "security_context_tab", "2fd40fd570e6f37a"]);
+  const labels = new Set(["localizacao_pessoas", "contexto_creta", "contexto_chegadas", "iluminacao_seguranca"]);
+  const securityTabs = new Set(flows.filter((item) => item.type === "tab" && labels.has(item.label)).map((item) => item.id));
   for (const node of flows.filter((item) => securityTabs.has(item.z))) {
     for (const targetId of (node.wires ?? []).flat()) {
       assert.equal(byId.get(targetId).z, node.z, `wire entre tabs: ${node.id} -> ${targetId}`);
