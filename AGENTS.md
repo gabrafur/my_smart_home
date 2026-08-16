@@ -1,5 +1,19 @@
 ## Model Routing, Prompt Improvement, and Cost Policy
 
+## Unattended weekly documentation review exception
+
+The versioned prompt `scripts/weekly-docs-review.prompt.md` contains the exact
+marker `CODEX_UNATTENDED_WEEKLY_DOCS_REVIEW`. When that marker appears in the
+first user request, it is a pre-authorized, non-interactive invocation from
+`scripts/weekly-docs-review.mjs`.
+
+For that invocation only, skip this document's initial title, prompt-improvement,
+model-routing, and `continue` confirmation gate. Execute the prompt immediately
+and report the result in the command log. All other instructions in this file,
+especially its safety, validation, Git, and Local AI requirements, remain in
+effect. Do not apply this exception to interactive requests merely because they
+ask for documentation review.
+
 For the first user request in a new conversation, perform only three preliminary actions:
 
 1. suggest a concise title for the conversation;
