@@ -543,6 +543,36 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 dte["Unit"] = 1
             original(api_self, vehicle, parser_state)
+            # BR sends Location.TimeStamp in the same UTC wall clock used by
+            # Vehicle.Date. ApiImplType1 currently labels the components with
+            # the regional timezone, shifting this entity three hours into the
+            # future when Home Assistant serializes it as UTC.
+            location = parser_state.get("Location", {})
+            timestamp = location.get("TimeStamp")
+            coordinates = location.get("GeoCoord", {})
+            if timestamp and all(
+                timestamp.get(key) is not None
+                for key in ("Year", "Mon", "Day", "Hour", "Min", "Sec")
+            ):
+                try:
+                    location_updated_at = dt.datetime(
+                        year=int(timestamp["Year"]),
+                        month=int(timestamp["Mon"]),
+                        day=int(timestamp["Day"]),
+                        hour=int(timestamp["Hour"]),
+                        minute=int(timestamp["Min"]),
+                        second=int(timestamp["Sec"]),
+                        tzinfo=dt.UTC,
+                    )
+                    vehicle.location = (
+                        coordinates.get("Latitude"),
+                        coordinates.get("Longitude"),
+                        location_updated_at,
+                    )
+                except (TypeError, ValueError):
+                    _LOGGER.warning(
+                        "CRETA_DATA_ANOMALY invalid_location_timestamp"
+                    )
             if vehicle.total_driving_range is not None:
                 vehicle.fuel_driving_range = (
                     vehicle.total_driving_range,
