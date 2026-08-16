@@ -18,7 +18,7 @@ const hacsContainerPath = "/config/.storage/hacs.repositories";
 const statusContainerPath = "/config/.storage/kia_uvo_safe_update";
 const backupRoot = path.join(
   repoRoot,
-  ".local-state/kia-uvo-updater/backups",
+  ".kia-uvo-updater-state/backups",
 );
 const REQUIRED_MARKERS = [
   ["coordinator.py", "BR_WAKE_MIN_INTERVAL_S = 15 * 60"],
