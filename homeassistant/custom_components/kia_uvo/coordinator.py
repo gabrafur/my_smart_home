@@ -66,6 +66,7 @@ _LOGGER = logging.getLogger(__name__)
 # aperta button.*_force_refresh direto (o flow iluminacao_seguranca no
 # Node-RED) contorna esse piso, entao mantemos um aqui, que ninguem contorna.
 BR_WAKE_MIN_INTERVAL_S = 15 * 60
+REMOTE_LOCATE_MIN_INTERVAL_S = 60
 FUEL_TANK_LITERS = 50.0
 MIN_FUEL_DROP_PERCENT = 2.0
 MAX_READING_GAP = timedelta(hours=4)
@@ -83,6 +84,8 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         # existing entity continues to mean "today".
         self.recent_trip_info: dict[str, dict[str, Any]] = {}
         self.fuel_efficiency: dict[str, dict[str, Any]] = {}
+        self.remote_command_status: dict[str, dict[str, Any]] = {}
+        self._last_remote_locate_at: dict[str, dt.datetime] = {}
         self._last_trip_refresh_odometer: dict[str, float] = {}
         self._trip_history_initialized: set[str] = set()
         self._br_last_button_wake_at: dt.datetime | None = None
@@ -462,6 +465,9 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         odometer_readings = numeric(odometer_entity_id)
         estimated_liters = 0.0
         estimated_distance = 0.0
+        considered_trips: list[dict[str, Any]] = []
+        used_fuel_samples: set[dt.datetime] = set()
+        used_odometer_samples: set[dt.datetime] = set()
         for trip in self.recent_trip_info[vehicle_id]["trips"]:
             if not trip["started_at"] or trip["duration_min"] is None:
                 continue
@@ -503,23 +509,57 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             trip["estimated_liters"] = round(liters, 2)
             trip["estimated_km_per_l"] = km_per_liter
             trip["consumption_source"] = "estimado por nível de combustível e odômetro"
+            considered_trips.append(
+                {
+                    "started_at": started.isoformat(),
+                    "ended_at": ended.isoformat(),
+                    "distance_km": round(trip_distance, 1),
+                    "estimated_liters": round(liters, 2),
+                }
+            )
+            used_fuel_samples.update((before_fuel[0], after_fuel[0]))
+            used_odometer_samples.update((before_odo[0], after_odo[0]))
             estimated_liters += liters
             estimated_distance += trip_distance
 
         average = round(estimated_distance / estimated_liters, 1) if estimated_liters else None
+        recent_info = self.recent_trip_info[vehicle_id]
         self.fuel_efficiency[vehicle_id] = {
             "km_per_l": average,
+            "data_sufficient": average is not None,
             "estimated_distance": round(estimated_distance, 1),
             "estimated_liters": round(estimated_liters, 2),
             "tank_liters": FUEL_TANK_LITERS,
+            "period_start": recent_info.get("period_start"),
+            "period_end": recent_info.get("period_end"),
+            "recorder_search_start": start.isoformat(),
+            "recorder_search_end": dt_util.utcnow().isoformat(),
+            "trip_window_start": (
+                min(item["started_at"] for item in considered_trips)
+                if considered_trips
+                else None
+            ),
+            "trip_window_end": (
+                max(item["ended_at"] for item in considered_trips)
+                if considered_trips
+                else None
+            ),
+            "trips_available": len(recent_info.get("trips", [])),
+            "trips_considered": len(considered_trips),
+            "fuel_samples_available": len(fuel_readings),
+            "fuel_samples_used": len(used_fuel_samples),
+            "odometer_samples_available": len(odometer_readings),
+            "odometer_samples_used": len(used_odometer_samples),
+            "minimum_fuel_drop_percent": MIN_FUEL_DROP_PERCENT,
+            "maximum_sample_gap_hours": MAX_READING_GAP.total_seconds() / 3600,
             "method": "Estimativa: distância da viagem ÷ (queda percentual × 50 L)",
         }
         self.recent_trip_info[vehicle_id]["fuel_efficiency"] = self.fuel_efficiency[vehicle_id]
 
     def _install_br_parser_compatibility(self) -> None:
-        """Preserve local BR parsing compatibility on top of API 4.26.1.
+        """Preserve local BR parsing compatibility on top of API 4.26.5.
 
-        API 4.26.1 natively handles the Creta's CCS2 endpoint, parser, wake and
+        API 4.26.5 natively handles the Creta's CCS2 endpoint, parser, wake and
         UTC timestamp. The remaining local workaround is intentionally narrow:
         tolerate the intermittent invalid DTE unit and preserve the historical
         fuel-range entity alias used by this installation.
@@ -547,7 +587,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             if off_peak == {"Mode": 1}:
                 # BR ICE vehicles expose this reserved stub. Treating it as a
                 # real EV schedule creates phantom 00:00 time entities and a
-                # warning on every poll in API 4.26.1.
+                # warning on every poll in API 4.26.5.
                 reservation.pop("OffPeakTime")
             original(api_self, vehicle, parser_state)
             # BR sends Location.TimeStamp in the same UTC wall clock used by
@@ -644,6 +684,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         error_label: str,
         *,
         force_refresh: bool = False,
+        raise_confirmation_error: bool = False,
     ):
         """Send a vehicle action, wait for completion, and refresh data.
 
@@ -678,11 +719,30 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                 else:
                     await self.async_await_action_and_refresh(vehicle_id, action_id)
-            except Exception:
+            except Exception as err:
                 _LOGGER.exception(
                     "Action '%s' was sent but confirmation polling failed",
                     error_label,
                 )
+                if raise_confirmation_error:
+                    raise HomeAssistantError(
+                        f"Vehicle accepted the {error_label} request, but "
+                        "confirmation polling failed."
+                    ) from err
+            return action_id
+
+    def _set_remote_command_status(
+        self, vehicle_id: str, state: str, **attributes: Any
+    ) -> None:
+        """Publish non-sensitive feedback for a remote vehicle command."""
+        previous = self.remote_command_status.get(vehicle_id, {})
+        self.remote_command_status[vehicle_id] = {
+            **previous,
+            "state": state,
+            "updated_at": dt_util.utcnow().isoformat(),
+            **attributes,
+        }
+        self.async_set_updated_data(self.data)
 
     async def async_lock_vehicle(self, vehicle_id: str):
         await self._async_send_action(
@@ -883,11 +943,74 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def async_start_hazard_lights_and_horn(self, vehicle_id: str):
-        await self._async_send_action(
+        now = dt_util.utcnow()
+        previous = self._last_remote_locate_at.get(vehicle_id)
+        if previous and (now - previous).total_seconds() < REMOTE_LOCATE_MIN_INTERVAL_S:
+            remaining = max(
+                1,
+                round(
+                    REMOTE_LOCATE_MIN_INTERVAL_S - (now - previous).total_seconds()
+                ),
+            )
+            self._set_remote_command_status(
+                vehicle_id,
+                "cooldown",
+                command="hazard_lights_and_horn",
+                duration_seconds=30,
+                retry_after_seconds=remaining,
+                failure_stage="local_rate_limit",
+            )
+            _LOGGER.warning(
+                "CRETA_REMOTE_LOCATE_FAILED stage=local_rate_limit retry_after_s=%d",
+                remaining,
+            )
+            raise HomeAssistantError(
+                f"Vehicle locate was requested recently. Try again in {remaining}s."
+            )
+
+        self._last_remote_locate_at[vehicle_id] = now
+        self._set_remote_command_status(
             vehicle_id,
-            lambda: self.vehicle_manager.start_hazard_lights_and_horn(vehicle_id),
-            "start hazard lights and horn",
+            "requesting",
+            command="hazard_lights_and_horn",
+            duration_seconds=30,
+            requested_at=now.isoformat(),
+            retry_after_seconds=None,
+            failure_stage=None,
         )
+        _LOGGER.info("CRETA_REMOTE_LOCATE_REQUESTED command=hazard_lights_and_horn")
+        try:
+            await self._async_send_action(
+                vehicle_id,
+                lambda: self.vehicle_manager.start_hazard_lights_and_horn(vehicle_id),
+                "start hazard lights and horn",
+                raise_confirmation_error=True,
+            )
+        except Exception as err:
+            self._set_remote_command_status(
+                vehicle_id,
+                "failed",
+                command="hazard_lights_and_horn",
+                duration_seconds=30,
+                failed_at=dt_util.utcnow().isoformat(),
+                failure_stage="request_or_confirmation",
+                error_type=type(err).__name__,
+            )
+            _LOGGER.exception(
+                "CRETA_REMOTE_LOCATE_FAILED stage=request_or_confirmation"
+            )
+            raise
+
+        self._set_remote_command_status(
+            vehicle_id,
+            "accepted",
+            command="hazard_lights_and_horn",
+            duration_seconds=30,
+            accepted_at=dt_util.utcnow().isoformat(),
+            failure_stage=None,
+            error_type=None,
+        )
+        _LOGGER.info("CRETA_REMOTE_LOCATE_ACCEPTED command=hazard_lights_and_horn")
 
     async def async_start_valet_mode(self, vehicle_id: str):
         await self._async_send_action(

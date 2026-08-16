@@ -48,10 +48,28 @@ views:
                 entity: sensor.garagem_creta_odometer
                 name: Odômetro
                 icon: mdi:speedometer
-              - type: tile
-                entity: sensor.garagem_creta_estimated_fuel_efficiency
-                name: Consumo estimado
-                icon: mdi:chart-line
+              - type: markdown
+                content: >-
+                  {% set entity = states.sensor.garagem_creta_estimated_fuel_efficiency %}
+                  {% set value = entity.state if entity else 'unknown' %}
+                  {% set start = entity.attributes.trip_window_start if entity else none %}
+                  {% set end = entity.attributes.trip_window_end if entity else none %}
+                  {% set trips = entity.attributes.trips_considered | default(0) if entity else 0 %}
+                  **Consumo estimado**
+
+                  {% if value not in ['unknown', 'unavailable', 'none'] %}
+                  ## {{ value }} km/L
+
+                  {% if start and end %}
+                  {{ as_datetime(start).astimezone().strftime('%d/%m %H:%M') }}–{{ as_datetime(end).astimezone().strftime('%d/%m %H:%M') }} · {{ trips }} viagem(ns)
+                  {% else %}
+                  {{ trips }} viagem(ns) com amostras confiáveis
+                  {% endif %}
+                  {% else %}
+                  ## Dados insuficientes
+
+                  Janela pesquisada: hoje e ontem.
+                  {% endif %}
           - type: grid
             columns: 3
             square: false
@@ -67,6 +85,53 @@ views:
                 entity: binary_sensor.creta_fuel_low_level
                 name: Reserva
                 icon: mdi:fuel
+          - type: heading
+            heading: Atualização dos dados
+            icon: mdi:cloud-sync
+          - type: markdown
+            content: >-
+              {% set refresh = states.sensor.creta_refresh_coordinator %}
+              {% set state = refresh.state if refresh else 'unavailable' %}
+              {% set remaining = state_attr('sensor.creta_refresh_coordinator', 'remaining_seconds') | int(0) %}
+              {% set attempt = state_attr('sensor.creta_refresh_coordinator', 'attempt') | int(0) %}
+              {% set last_vehicle = states('sensor.creta_last_updated_at') %}
+              {% set last_scan = states('sensor.creta_last_scanned_at') %}
+              {% set reason = state_attr('sensor.creta_refresh_coordinator', 'reason') %}
+
+              {% if state == 'refreshing' %}
+              ## ↻ Consultando Bluelink
+              Tentativa {{ attempt }} · {{ reason | default('atualização automática', true) | replace('_', ' ') }}
+              {% elif state == 'backoff' %}
+              ## 🟡 Aguardando nova tentativa
+              Tentativa {{ attempt }} · em {{ remaining }} s
+              {% elif state == 'cooldown' %}
+              ## 🟢 Atualizado
+              Próximo refresh em {{ (remaining / 60) | round(0, 'floor') | int }} min {{ remaining % 60 }} s
+              {% elif state == 'waiting' %}
+              ## ⚪ Aguardando movimento
+              O próximo refresh será solicitado por movimento ou mudança de zona.
+              {% elif state in ['unknown', 'unavailable'] %}
+              ## 🔴 Coordenador indisponível
+              Aguardando a telemetria do Node-RED.
+              {% else %}
+              ## ⚪ Pronto
+              Próxima decisão automática em até 30 s.
+              {% endif %}
+
+              **Últimos dados:** {{ relative_time(as_datetime(last_vehicle)) if last_vehicle not in ['unknown', 'unavailable'] else 'sem leitura válida' }}<br>
+              **Última consulta Bluelink:** {{ relative_time(as_datetime(last_scan)) if last_scan not in ['unknown', 'unavailable'] else 'sem leitura válida' }}
+          - type: button
+            entity: input_button.creta_force_refresh_now
+            name: Forçar atualização agora
+            icon: mdi:refresh
+            show_state: false
+            tap_action:
+              action: perform-action
+              perform_action: input_button.press
+              target:
+                entity_id: input_button.creta_force_refresh_now
+            hold_action:
+              action: none
 
       - type: grid
         cards:
@@ -199,3 +264,49 @@ views:
                 name: Viagens carregadas
               - entity: sensor.garagem_creta_estimated_fuel_efficiency
                 name: Base de consumo
+              - entity: sensor.creta_refresh_coordinator
+                name: Coordenador de refresh
+              - entity: sensor.garagem_creta_remote_command_status
+                name: Último comando remoto
+              - entity: sensor.integracao_creta
+                name: Manutenção da integração
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Comandos do veículo
+            icon: mdi:car-key
+          - type: markdown
+            content: >-
+              {% set command = states('sensor.garagem_creta_remote_command_status') %}
+              {% if command == 'requesting' %}
+              ## ↻ Localizando veículo...
+
+              Aguardando confirmação do Bluelink.
+              {% elif command == 'accepted' %}
+              ## 🟢 Comando aceito pelo Bluelink
+
+              Buzina e luzes acionadas por aproximadamente 30 segundos.
+              {% elif command in ['failed', 'cooldown'] %}
+              ## 🔴 Não foi possível acionar o veículo
+
+              Consulte os detalhes do último comando antes de tentar novamente.
+              {% else %}
+              **Localizar veículo**
+
+              O comando oficial aciona buzina e luzes por aproximadamente 30 segundos.
+              {% endif %}
+          - type: button
+            entity: button.creta_start_hazard_lights_and_horn
+            name: Localizar veículo · segure para acionar
+            icon: mdi:car-emergency
+            show_state: false
+            tap_action:
+              action: none
+            hold_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.creta_start_hazard_lights_and_horn
+              confirmation:
+                text: Acionar a buzina e as luzes do Creta por aproximadamente 30 segundos?

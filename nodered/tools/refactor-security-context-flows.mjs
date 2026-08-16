@@ -567,7 +567,7 @@ nodes.push(linkOut("creta_context_out", CRETA_TAB, "grp_creta_context", "Publica
 nodes.push(linkOut("creta_arrival_out", CRETA_TAB, "grp_creta_context", "Publicar chegada do Creta v1", ["light_arrival_in", "alarm_arrival_in"], 1125, 220));
 nodes.push(linkOut("creta_arrival_actions_out", CRETA_TAB, "grp_creta_context", "Chegada -> ações do veículo", ["creta_arrival_actions_in"], 1125, 300));
 nodes.push(linkIn("creta_refresh_in", CRETA_TAB, "grp_creta_actions", "Política conjunta de refresh", ["context_refresh_command_out"], 95, 640, [["creta_refresh_decide"]]));
-nodes.push(functionNode("creta_refresh_decide", CRETA_TAB, "grp_creta_actions", "Forçar refresh do Creta agora?", cretaRefresh, 2, 300, 640, [["creta_force_refresh", "creta_update_entities"], ["creta_refresh_people_sync_out"]]));
+nodes.push(functionNode("creta_refresh_decide", CRETA_TAB, "grp_creta_actions", "Coordenar refresh do Creta", cretaRefresh, 2, 300, 640, [["creta_force_refresh", "creta_update_entities"], ["creta_refresh_people_sync_out"]]));
 nodes.push(linkOut("creta_refresh_people_sync_out", CRETA_TAB, "grp_creta_actions", "Refresh Creta -> sincronizar trackers", ["people_creta_sync_in"], 520, 660));
 nodes.push(linkIn("creta_arrival_actions_in", CRETA_TAB, "grp_creta_actions", "Receber chegada para ações", ["creta_arrival_actions_out"], 95, 760, [["creta_arrival_actions"]]));
 nodes.push(functionNode("creta_arrival_actions", CRETA_TAB, "grp_creta_actions", "Acordar carro e fechar viagem", `const wake = msg.payload?.request_creta_wake === true ? msg : null;\nreturn [wake, msg];`, 2, 300, 760, [["creta_force_refresh"], ["creta_trip_refresh"]]));
