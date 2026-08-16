@@ -23,7 +23,98 @@ views:
           Aguardando a primeira métrica do Codex CLI.
           {% endif %}
 
-          Atualização automática a cada minuto, somente pela rede interna.
+          Atualização automática em até 10 segundos, somente pela rede interna.
+
+      - type: markdown
+        content: >-
+          ## Local AI / RTX 4070
+
+          {% set status = states('sensor.codex_local_ai_status') %}
+          {% set rtx = states('sensor.codex_rtx_4070') %}
+          {% set ollama = states('sensor.codex_ollama_local') %}
+          {% if status in ['disponível', 'em uso', 'degradado'] %}
+          **Local AI: {{ status }}** — RTX 4070 {{ rtx }}, Ollama {{ ollama }},
+          modelo **{{ states('sensor.codex_modelo_local') }}**.
+          {% else %}
+          **Local AI: {{ status }}** — o Codex continuará com ferramentas locais e OpenAI.
+          {% endif %}
+
+          “Tokens OpenAI evitados” mede somente a redução de contexto entre o
+          input processado localmente e o resumo enviado adiante. É identificado como
+          estimativa quando não houver tokenizer compatível disponível.
+
+      - type: grid
+        title: Contribuição da RTX
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_local_ai_status
+            name: Local AI
+          - type: tile
+            entity: sensor.codex_rtx_4070
+            name: RTX 4070
+          - type: tile
+            entity: sensor.codex_ollama_local
+            name: Ollama
+          - type: tile
+            entity: sensor.codex_modelo_local
+            name: Modelo local
+
+      - type: grid
+        title: Tokens OpenAI evitados — estimativa de contexto
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_tokens_openai_evitados_hoje_estimados
+            name: Hoje
+          - type: tile
+            entity: sensor.codex_tokens_openai_evitados_semana_estimados
+            name: Esta semana
+          - type: tile
+            entity: sensor.codex_tokens_openai_evitados_mes_estimados
+            name: Este mês
+          - type: tile
+            entity: sensor.codex_tokens_openai_evitados_estimados
+            name: Total
+
+      - type: entities
+        title: Local AI — uso e último job
+        show_header_toggle: false
+        entities:
+          - entity: sensor.codex_chamadas_local_ai_hoje
+            name: Chamadas hoje
+          - entity: sensor.codex_chamadas_local_ai_com_sucesso
+            name: Chamadas concluídas
+          - entity: sensor.codex_falhas_local_ai
+            name: Falhas locais
+          - entity: sensor.codex_fallbacks_local_ai_informados
+            name: Fallbacks informados
+          - entity: sensor.codex_reducao_de_contexto_local_ai
+            name: Redução média de contexto
+          - entity: sensor.codex_ultimo_job_local_ai
+            name: Último job (atributos têm tarefa, GPU e VRAM)
+
+      - type: markdown
+        content: >-
+          {% set task = state_attr('sensor.codex_ultimo_job_local_ai', 'tarefa') %}
+          {% if task %}
+          ### Último job de GPU do Codex
+
+          **{{ task }}** · {{ state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') }} ·
+          {{ state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s') }} s ·
+          {{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_por_segundo') }} tok/s
+
+          GPU pico: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'pico_gpu_percentual') }}%** ·
+          VRAM pico: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'pico_vram_mib') }} MiB** ·
+          Contexto OpenAI evitado: **~{{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados') }} tokens** ·
+          {{ state_attr('sensor.codex_ultimo_job_local_ai', 'processador') or 'processador não amostrado' }}.
+          {% else %}
+          ### Último job de GPU do Codex
+
+          Nenhuma inferência local foi registrada ainda.
+          {% endif %}
 
       - type: markdown
         content: >-
@@ -173,6 +264,15 @@ views:
         entities:
           - entity: sensor.codex_limite_usado
             name: Usado
+
+      - type: history-graph
+        title: Contexto OpenAI evitado — últimos 7 dias
+        hours_to_show: 168
+        entities:
+          - entity: sensor.codex_tokens_openai_evitados_estimados
+            name: Tokens evitados (estimados)
+          - entity: sensor.codex_chamadas_local_ai
+            name: Chamadas Local AI
 
       - type: markdown
         content: >-

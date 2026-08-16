@@ -102,6 +102,14 @@
         "env": []
     },
     {
+        "id": "codex_alertas_tab",
+        "type": "tab",
+        "label": "alertas_codex",
+        "disabled": false,
+        "info": "Alertas de uso do Codex: lógica e deduplicação no Node-RED; painel e configurações no Home Assistant.",
+        "env": []
+    },
+    {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
         "name": "Notificar todos os dispositivos móveis",
@@ -1071,6 +1079,34 @@
         "y": 759,
         "w": 1362,
         "h": 222
+    },
+    {
+        "id": "codex_alertas_group",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Alertas Codex → iPhone de Gabriel",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#5d6f96",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "codex_alert_state",
+            "codex_alert_test",
+            "codex_alert_daily",
+            "codex_alert_logic",
+            "codex_alert_push",
+            "codex_alert_text",
+            "codex_alert_time",
+            "codex_alert_persistent"
+        ],
+        "x": 24,
+        "y": 59,
+        "w": 1042,
+        "h": 262
     },
     {
         "id": "4126427d5e161a03",
@@ -8807,7 +8843,7 @@
         "domain": "notify",
         "service": "mobile_app_iphone_de_gabriel_furlan",
         "x": 900,
-        "y": 600,
+        "y": 580,
         "wires": [
             []
         ]
@@ -8836,7 +8872,7 @@
         "domain": "notify",
         "service": "mobile_app_iphone_de_valeria",
         "x": 900,
-        "y": 660,
+        "y": 640,
         "wires": [
             []
         ]
@@ -8854,8 +8890,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 870,
-        "y": 720,
+        "x": 880,
+        "y": 700,
         "wires": []
     },
     {
@@ -8881,7 +8917,7 @@
         "z": "1f468eaeef0733dd",
         "name": "Chegada real -> notificação -> confirmação -> desarme com retry",
         "info": "A chegada vem dos contratos security.arrival.v1 publicados por localizacao_pessoas e contexto_creta. Eventos reais seguem para leitura do estado do alarme e, se armado, solicitam confirmação antes do desarme. Eventos sintéticos (_location_test/test_mode) são desviados para a trilha de TESTE e nunca alcançam o desarme real. RESETAR testes de Pessoas ou Creta é recebido ativamente nesta aba, limpa imediatamente apenas a pendência de TESTE, invalida actions antigas por timestamp e remove a notificação de TESTE dos dois iPhones. A pendência real do alarme usa outra chave e não é alterada.",
-        "x": 490,
+        "x": 270,
         "y": 40,
         "wires": []
     },
@@ -9110,8 +9146,8 @@
         "blockInputOverrides": true,
         "domain": "notify",
         "service": "mobile_app_iphone_de_valeria",
-        "x": 1530,
-        "y": 250,
+        "x": 1560,
+        "y": 180,
         "wires": [
             []
         ]
@@ -9137,8 +9173,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 620,
-        "y": 240,
+        "x": 720,
+        "y": 220,
         "wires": [
             [
                 "99644e301cd49e45"
@@ -9157,8 +9193,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1130,
-        "y": 220,
+        "x": 1150,
+        "y": 200,
         "wires": [
             [
                 "3b95712a74512929",
@@ -9179,8 +9215,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 870,
-        "y": 440,
+        "x": 950,
+        "y": 400,
         "wires": []
     },
     {
@@ -9236,42 +9272,6 @@
         "x": 480,
         "y": 540,
         "wires": []
-    },
-    {
-        "id": "codex_alertas_tab",
-        "type": "tab",
-        "label": "alertas_codex",
-        "disabled": false,
-        "info": "Alertas de uso do Codex: lógica e deduplicação no Node-RED; painel e configurações no Home Assistant.",
-        "env": []
-    },
-    {
-        "id": "codex_alertas_group",
-        "type": "group",
-        "z": "codex_alertas_tab",
-        "name": "Alertas Codex → iPhone de Gabriel",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#5d6f96",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "codex_alert_state",
-            "codex_alert_test",
-            "codex_alert_daily",
-            "codex_alert_logic",
-            "codex_alert_push",
-            "codex_alert_text",
-            "codex_alert_time",
-            "codex_alert_persistent"
-        ],
-        "x": 40,
-        "y": 40,
-        "w": 1520,
-        "h": 280
     },
     {
         "id": "codex_alert_state",
