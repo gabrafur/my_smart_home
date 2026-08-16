@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Repository-local command. Add this directory to PATH to call it as `local-ai`.
+set -euo pipefail
+exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/local-ai.sh" "$@"
