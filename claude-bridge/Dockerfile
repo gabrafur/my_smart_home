@@ -9,7 +9,7 @@ RUN apt-get update && \
       > /etc/apt/sources.list.d/docker.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-      docker-ce-cli docker-compose-plugin git openssh-client && \
+      docker-ce-cli docker-compose-plugin git openssh-client python3 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g \
@@ -23,7 +23,7 @@ RUN mkdir -p /home/node/.claude /home/node/.codex && \
     chown -R node:node /home/node/.claude /home/node/.codex
 
 WORKDIR /app
-COPY server.js history.js usage.js package.json ./
+COPY server.js history.js usage.js codex-options.js package.json ./
 RUN chown -R node:node /app
 
 USER node

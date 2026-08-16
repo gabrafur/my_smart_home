@@ -100,6 +100,7 @@ exemplo em `~/.config/codex/local-ai.json`:
   "enabled": true,
   "endpoint": "http://GPU_HOST:11435",
   "model": "qwen2.5-coder:7b",
+  "medium_analysis_min_tokens": 800,
   "preflight_command": "/caminho/privado/local-ai-preflight"
 }
 ```
@@ -111,8 +112,9 @@ variáveis `LOCAL_AI_ENABLED=0`, `LOCAL_AI_ENDPOINT`, `LOCAL_AI_MODEL` e
 autoriza delegação inadequada.
 
 Após a confirmação normal do roteamento de modelo, a política pode executar um
-preflight curto uma vez por conversa. Em tarefas elegíveis com material grande
-(referência: aproximadamente 6.000 caracteres), ela usa
+preflight curto uma vez por conversa. Em tarefas elegíveis com material médio ou
+grande (padrão: `medium_analysis_min_tokens: 800`, aproximadamente 3.200
+caracteres), ela usa
 `./scripts/local-ai/local-ai` para `review-diff`, `summarize-log`,
 `analyze-tests`, `inspect-files` ou `classify-error`. Dados secretos,
 decisões de segurança, migrações, operações destrutivas e revisão final nunca
@@ -129,11 +131,22 @@ O helper não grava prompt, diff, código-fonte, resposta do modelo nem
 credenciais. Em `.agent-history/` (ignorado pelo Git) ele preserva somente
 metadados: tarefa, modelo, duração, contagens, status e amostras de GPU/VRAM.
 
+O bridge renova o preflight de saúde a cada minuto (e ao iniciar), usando o
+mesmo hook privado já aprovado. Isso impede que uma falha transitória de rede
+deixe a aba RTX presa em **indisponível** depois de o Ollama voltar. A checagem
+só consulta endpoint/GPU e não inicia modelo, não gera carga artificial e não
+reinicia nem reconfigura o host remoto.
+
+A imagem `claude-bridge` inclui `python3`, pois o helper versionado
+`./scripts/local-ai/local-ai` é Python. Assim, uma tarefa elegível enviada pelo
+chat do Home Assistant consegue executar a primeira passagem na RTX, em vez de
+falhar localmente por ausência do interpretador.
+
 O bridge expõe dois endpoints locais sem conteúdo de conversa:
 
 | Endpoint | Dados | Atualização usada no HA |
 | --- | --- | --- |
-| `GET /usage` | uso/limites do Codex e histórico agregado Local AI | 10 s |
+| `GET /usage` | uso/limites do Codex e histórico agregado Local AI | 2 s |
 | `GET /local-ai/live` | job atual, amostra instantânea e chats ativos | 1 s |
 
 No dashboard **Chat** há duas abas separadas:
@@ -141,10 +154,61 @@ No dashboard **Chat** há duas abas separadas:
 - **Uso do Codex** (`/chat-assistants/uso-codex`): limite, créditos, cache e
   tokens do Codex, sem cards RTX.
 - **RTX 4070** (`/chat-assistants/uso-rtx`): estado em tempo real, GPU, VRAM,
-  potência, modelo/tarefa e chats que usam a RTX.
+  potência, modelo/tarefa, tokens OpenAI economizados por compactação e chats
+  que usam a RTX.
+
+Na aba **Uso do Codex**, a coleta do bridge atualiza a cada dois segundos. O
+percentual do limite do plano só é apresentado como atual por até dois minutos
+depois de um evento de limite do Codex CLI; após isso, o painel o marca como
+**desatualizado** e não o usa em alertas ou projeções. O último valor conhecido
+continua visível, identificado como leitura histórica. Os totais de tokens
+ainda representam somente as sessões preservadas no container do bridge, não
+outras máquinas ou clientes Codex.
+
+Na aba **RTX 4070**, o job e a amostra de GPU/VRAM/potência são consultados a
+cada segundo. A disponibilidade só é tratada como atual quando o preflight do
+bridge tem no máximo dois minutos; fora disso, o painel mostra
+**desatualizado** em vez de afirmar que a RTX está pronta.
+
+Na aba **Codex**, os seletores permitem usar `gpt-5.6-luna`,
+`gpt-5.6-terra` ou `gpt-5.6-sol` e um nível compatível de reasoning. O valor
+inicial é sempre `gpt-5.6-terra` com reasoning `medium`; o usuário pode mudar
+os dois seletores para uma tarefa quando necessário. Cada combinação mantém
+uma sessão Codex separada para não retomar contexto com outro modelo. O bridge
+desativa o recurso `apps` somente para essas execuções, pois nenhum conector de
+apps é configurado nele; isso evita a inicialização do MCP ambiental
+`codex_apps` com credencial expirada sem afetar o Codex fora do bridge.
+
+No painel RTX, **chamadas Local AI** e **tokens OpenAI economizados** ficam em
+gráficos separados: chamadas contam tentativas de tarefas; tokens economizados
+são a estimativa da diferença entre o contexto recebido pelo helper e o resumo
+retornado. Portanto, não são unidades comparáveis nem um registro de cobrança
+oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
+detalhes de endpoint para permanecer abaixo do limite de atributos do Home
+Assistant e preservar a telemetria no Recorder.
+
+Os indicadores de GPU, VRAM e potência exibem **ociosa** quando a RTX está
+disponível sem inferência em andamento. Os valores numéricos aparecem somente
+com uma amostra ativa, evitando que o painel apresente `Unavailable` ou um
+valor de repouso inventado como se fosse medido.
 
 Os chats aparecem como identificadores curtos (`Codex #…`), não títulos ou
-prompts. Isso dá correlação operacional sem vazar conteúdo da conversa.
+prompts. Quando o chamador fornece `CODEX_CHAT_NAME` ou `CODEX_THREAD_NAME`,
+o painel exibe esse nome no lugar do identificador; ele nunca deriva um nome a
+partir do conteúdo da conversa. Isso dá correlação operacional sem vazar
+conteúdo da conversa.
+
+O painel também registra a **taxa de falhas Local AI**: chamadas com status
+`failed` divididas pelo total de tarefas solicitadas à RTX. O gráfico mostra a
+taxa acumulada que o sensor observou ao longo do tempo, com linhas para o
+total e para cada modelo monitorado. Novos modelos exigem uma entidade estável
+adicional para aparecerem no gráfico nativo do Home Assistant.
+
+Os grids do painel usam duas colunas para que estado, GPU, VRAM e potência
+permaneçam legíveis também em telas estreitas. A aba organiza as informações em
+blocos de estado ao vivo, infraestrutura, economia de contexto, resumo do uso,
+diagnóstico recente e gráficos; disponibilidade não é repetida em um card de
+texto separado.
 
 ## Verificação e diagnóstico
 

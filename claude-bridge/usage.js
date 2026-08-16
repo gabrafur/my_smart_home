@@ -42,6 +42,22 @@ function isoFromEpoch(value) {
   return new Date(epoch * 1000).toISOString();
 }
 
+const LIVE_USAGE_MAX_AGE_MS = 2 * 60 * 1000;
+const LIVE_GPU_SAMPLE_MAX_AGE_MS = 10 * 1000;
+const ACTIVE_JOB_START_GRACE_MS = 10 * 1000;
+
+function freshness(timestamp, now, maxAgeMs = LIVE_USAGE_MAX_AGE_MS) {
+  if (!(timestamp instanceof Date) || Number.isNaN(timestamp.valueOf())) {
+    return { current: false, age_seconds: null, max_age_seconds: Math.round(maxAgeMs / 1000) };
+  }
+  const ageMs = Math.max(0, now.valueOf() - timestamp.valueOf());
+  return {
+    current: ageMs <= maxAgeMs,
+    age_seconds: Math.round(ageMs / 1000),
+    max_age_seconds: Math.round(maxAgeMs / 1000),
+  };
+}
+
 function sanitizeRateLimits(rateLimits) {
   if (!rateLimits) return null;
   const primary = rateLimits.primary || null;
@@ -176,12 +192,14 @@ function addLocalAiTotals(target, source) {
 function localAiDerived(totals) {
   const calls = Number(totals.calls) || 0;
   const successful = Number(totals.successful_calls) || 0;
+  const failed = Number(totals.failed_calls) || 0;
   const input = Number(totals.context_input_tokens) || 0;
   const output = Number(totals.context_output_tokens) || 0;
   const duration = Number(totals.duration_seconds) || 0;
   return {
     context_reduction_percent: input > 0 ? round(Math.max(0, (1 - output / input) * 100), 1) : null,
     success_rate_percent: calls > 0 ? round((successful / calls) * 100, 1) : null,
+    failure_rate_percent: calls > 0 ? round((failed / calls) * 100, 1) : null,
     average_duration_seconds: successful > 0 ? round(duration / successful, 2) : null,
   };
 }
@@ -217,6 +235,39 @@ function summarizeMonth(daily, now) {
   return { ...totals, ...localAiDerived(totals) };
 }
 
+function sanitizeLocalAiJob(job) {
+  if (!job || typeof job !== 'object') return {};
+  // The dashboard needs only operational metadata. Keeping this compact avoids
+  // Home Assistant's 16 KiB state-attribute limit and never exposes endpoint
+  // details through its state machine or Recorder.
+  const fields = [
+    'id', 'status', 'task', 'model', 'chat_id', 'chat_name', 'started_at', 'finished_at',
+    'duration_seconds', 'error_type', 'fallback_reported',
+    'context_input_tokens', 'context_output_tokens',
+    'openai_context_tokens_avoided', 'context_reduction_percent',
+    'tokens_per_second', 'gpu_telemetry_available', 'gpu_peak_percent',
+    'vram_peak_mib', 'gpu_power_peak_watts', 'processor',
+    'cpu_offload_detected',
+  ];
+  const sanitized = Object.fromEntries(
+    fields.filter((field) => Object.hasOwn(job, field)).map((field) => [field, job[field]]),
+  );
+  // This is operational data only, but unlike the aggregate peaks it is the
+  // actual sample for the running job. The one-second RTX card needs it to
+  // show GPU, VRAM and power while work is in progress.
+  if (job.live_gpu && typeof job.live_gpu === 'object') {
+    const liveGpuFields = [
+      'at', 'gpu_util_percent', 'vram_mib', 'vram_total_mib', 'power_watts',
+    ];
+    sanitized.live_gpu = Object.fromEntries(
+      liveGpuFields
+        .filter((field) => Object.hasOwn(job.live_gpu, field))
+        .map((field) => [field, job.live_gpu[field]]),
+    );
+  }
+  return sanitized;
+}
+
 function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const state = readJson(telemetryPath, {});
   const preflight = readJson(statusPath, {});
@@ -225,19 +276,38 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const recentActiveJobs = activeJobs
     .filter((job) => {
       const started = new Date(job.started_at);
-      return !Number.isNaN(started.valueOf()) && now.valueOf() - started.valueOf() < 30 * 60_000;
+      if (Number.isNaN(started.valueOf())) return false;
+      const ageMs = Math.max(0, now.valueOf() - started.valueOf());
+      if (ageMs >= 30 * 60_000) return false;
+      // The helper refreshes this sample every 1.5 seconds. A record with no
+      // recent sample is a crashed/abandoned job, not evidence that the RTX is
+      // still working. Keep a short grace period while the sampler starts.
+      return ageMs <= ACTIVE_JOB_START_GRACE_MS
+        || freshness(new Date(job.live_gpu?.at), now, LIVE_GPU_SAMPLE_MAX_AGE_MS).current;
     })
     .sort((left, right) => String(right.started_at).localeCompare(String(left.started_at)));
-  const currentJob = recentActiveJobs[0] || null;
+  const sanitizedActiveJobs = recentActiveJobs.map(sanitizeLocalAiJob);
+  const currentJob = sanitizedActiveJobs[0] || null;
   const preflightState = typeof preflight.state === 'string' ? preflight.state : 'LOCAL_AI_UNKNOWN';
-  const stateName = currentJob ? 'LOCAL_AI_IN_USE' : preflightState;
+  const preflightFreshness = freshness(new Date(preflight.checked_at), now);
+  const preflightAvailable = preflightFreshness.current
+    && (preflightState === 'LOCAL_AI_AVAILABLE' || preflightState === 'LOCAL_AI_DEGRADED');
+  // A running job takes precedence because it is independently recorded by
+  // the telemetry writer. Without one, never report a stale health check as
+  // an available RTX.
+  const stateName = currentJob
+    ? 'LOCAL_AI_IN_USE'
+    : preflightFreshness.current ? preflightState : 'LOCAL_AI_UNAVAILABLE';
   const models = Object.entries(state.models || {})
     .map(([model, value]) => ({ model, ...(value.totals || {}), ...localAiDerived(value.totals || {}) }))
     .sort((left, right) => Number(right.calls || 0) - Number(left.calls || 0));
 
   return {
     state: stateName,
-    available: preflightState === 'LOCAL_AI_AVAILABLE' || preflightState === 'LOCAL_AI_DEGRADED',
+    available: preflightAvailable,
+    freshness: {
+      preflight: preflightFreshness,
+    },
     preflight: {
       state: preflightState,
       checked_at: preflight.checked_at || null,
@@ -246,11 +316,10 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
       vram_free_mib: preflight.vram_free_mib ?? null,
       vram_total_mib: preflight.vram_total_mib ?? null,
       ollama: preflight.ollama === true,
-      endpoint: preflight.endpoint || null,
       model: preflight.model || null,
     },
     current_job: currentJob,
-    active_jobs: recentActiveJobs,
+    active_jobs: sanitizedActiveJobs,
     totals: { ...totals, ...localAiDerived(totals) },
     periods: {
       today: summarizePeriod(state.daily, now, 1),
@@ -258,7 +327,11 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
       month: summarizeMonth(state.daily, now),
     },
     models,
-    latest_jobs: Array.isArray(state.latest_jobs) ? state.latest_jobs.slice(-20).reverse() : [],
+    // Five jobs cover the current job plus recent diagnostics, while staying
+    // well below the attribute-size limit enforced by Home Assistant.
+    latest_jobs: Array.isArray(state.latest_jobs)
+      ? state.latest_jobs.slice(-5).reverse().map(sanitizeLocalAiJob)
+      : [],
   };
 }
 
@@ -347,6 +420,10 @@ function scanCodexUsage(sessionsDirectory, now = new Date()) {
     rate_limit_updated_at: latestRateEvent?.timestamp.toISOString() || null,
     plan_type: sanitized?.plan_type || null,
     rate_limit: sanitized,
+    freshness: {
+      activity: freshness(latestEvent?.timestamp, now),
+      rate_limit: freshness(latestRateEvent?.timestamp, now),
+    },
     totals: { ...totals, sessions: sessionCount, events: eventCount },
     analytics,
     daily: [...daily.entries()]

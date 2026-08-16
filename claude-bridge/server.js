@@ -5,6 +5,11 @@ const os = require('os');
 const path = require('path');
 const { SharedHistoryStore } = require('./history');
 const { CodexUsageReader } = require('./usage');
+const {
+  codexExecOptions,
+  codexSessionKey,
+  validateCodexOptions,
+} = require('./codex-options');
 
 const PORT = process.env.PORT || 8099;
 const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN;
@@ -14,6 +19,10 @@ const CODEX_SESSIONS_DIR = process.env.CODEX_SESSIONS_DIR
   || path.join(os.homedir(), '.codex', 'sessions');
 const TIMEOUT_MS = Number(
   process.env.BRIDGE_TIMEOUT_MS || process.env.CLAUDE_TIMEOUT_MS || 15 * 60 * 1000,
+);
+const LOCAL_AI_HEALTH_REFRESH_MS = Math.min(
+  Math.max(Number(process.env.LOCAL_AI_HEALTH_REFRESH_MS || 60_000), 30_000),
+  5 * 60 * 1000,
 );
 
 if (!BRIDGE_TOKEN) {
@@ -26,6 +35,7 @@ const codexUsage = new CodexUsageReader(
   CODEX_SESSIONS_DIR,
   process.env.LOCAL_AI_TELEMETRY_PATH || path.join(HISTORY_DIR, 'local-ai-telemetry.json'),
   process.env.LOCAL_AI_STATUS_PATH || path.join(HISTORY_DIR, 'local-ai-status.json'),
+  1_000,
 );
 const sessionQueues = new Map();
 
@@ -95,6 +105,66 @@ function spawnCli(command, args) {
   // CLIs waiting for piped input in this non-interactive HTTP service.
   child.stdin.end();
   return child;
+}
+
+function localAiPreflightCommand() {
+  const fallback = path.join(os.homedir(), '.codex', 'hooks', 'local-ai-preflight.mjs');
+  const configPath = process.env.LOCAL_AI_CONFIG;
+  if (!configPath) return fs.existsSync(fallback) ? fallback : null;
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const command = typeof config.preflight_command === 'string'
+      ? config.preflight_command.trim()
+      : '';
+    if (command && path.isAbsolute(command) && fs.existsSync(command)) return command;
+    if (fs.existsSync(fallback)) {
+      console.warn('Configured Local AI preflight command is unavailable; using installed Codex hook');
+      return fallback;
+    }
+    return null;
+  } catch (err) {
+    console.warn(`Local AI health refresh is not configured: ${err.message}`);
+    return null;
+  }
+}
+
+let localAiHealthRefreshRunning = false;
+
+function refreshLocalAiHealth() {
+  if (localAiHealthRefreshRunning) return;
+  const command = localAiPreflightCommand();
+  if (!command) return;
+
+  localAiHealthRefreshRunning = true;
+  // The configured command is the private, reviewed Node hook. It performs
+  // only the existing endpoint/GPU health check and writes status telemetry in
+  // WORKDIR; it never starts a model or repairs remote infrastructure.
+  const child = spawn(process.execPath, [command, '--json', '--revalidate'], {
+    cwd: WORKDIR,
+    env: process.env,
+  });
+  // The hook reads stdin to support Codex hook events. This standalone health
+  // refresh has no event payload, so close the pipe to let it complete.
+  child.stdin.end();
+  let stdout = '';
+  child.stdout.on('data', (chunk) => { stdout += chunk; });
+  child.on('error', (err) => {
+    localAiHealthRefreshRunning = false;
+    console.warn(`Local AI health refresh failed to start: ${err.message}`);
+  });
+  child.on('close', (code) => {
+    localAiHealthRefreshRunning = false;
+    try {
+      const status = JSON.parse(stdout);
+      if (code === 0 && typeof status.state === 'string') {
+        console.log(`Local AI health refreshed: ${status.state}`);
+        return;
+      }
+    } catch {
+      // Keep the prior telemetry if the private hook produced no valid status.
+    }
+    console.warn('Local AI health refresh did not return a valid status');
+  });
 }
 
 function killCli(child) {
@@ -178,9 +248,16 @@ function parseCodexJsonLines(stdout) {
   return { sessionId, reply };
 }
 
-function runCodex(message, sessionId) {
+function runCodex(message, sessionId, options) {
   return new Promise((resolve, reject) => {
-    const accessArgs = ['--json', '--dangerously-bypass-approvals-and-sandbox'];
+    // Apps are not configured in this bridge. Explicitly disabling the Codex
+    // apps feature prevents an ambient, expired codex_apps OAuth token from
+    // being initialized on every Home Assistant request.
+    const accessArgs = [
+      ...codexExecOptions(options),
+      '--json',
+      '--dangerously-bypass-approvals-and-sandbox',
+    ];
     const args = sessionId
       ? ['exec', 'resume', sessionId, ...accessArgs, message]
       : ['exec', ...accessArgs, message];
@@ -331,7 +408,23 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    const sessionKey = conversationId ? `${agent}:${conversationId}` : null;
+    let codexOptions = {};
+    if (agent === 'codex') {
+      try {
+        codexOptions = validateCodexOptions({
+          model: payload.model,
+          reasoningEffort: payload.reasoning_effort,
+        });
+      } catch (err) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+        return;
+      }
+    }
+
+    const sessionKey = agent === 'codex'
+      ? codexSessionKey(conversationId, codexOptions)
+      : (conversationId ? `${agent}:${conversationId}` : null);
     const pendingTurn = recordTurn({
       agent,
       conversationId,
@@ -345,7 +438,7 @@ const server = http.createServer((req, res) => {
         let priorSessionId = history.getSession(sessionKey);
         try {
           const result = agent === 'codex'
-            ? await runCodex(message, priorSessionId)
+            ? await runCodex(message, priorSessionId, codexOptions)
             : await runClaude(message, priorSessionId);
           if (sessionKey && result.session_id) saveSession(sessionKey, result.session_id);
           return { result, priorSessionId };
@@ -360,7 +453,7 @@ const server = http.createServer((req, res) => {
           console.warn(`Discarding conflicted Codex session ${priorSessionId} and retrying`);
           history.deleteSession(sessionKey);
           priorSessionId = null;
-          const result = await runCodex(message, null);
+          const result = await runCodex(message, null, codexOptions);
           if (sessionKey && result.session_id) saveSession(sessionKey, result.session_id);
           return { result, priorSessionId };
         }
@@ -376,7 +469,13 @@ const server = http.createServer((req, res) => {
         status: 'success',
       });
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ reply }));
+      res.end(JSON.stringify({
+        reply,
+        ...(agent === 'codex' ? {
+          model: codexOptions.model || null,
+          reasoning_effort: codexOptions.reasoningEffort || null,
+        } : {}),
+      }));
     } catch (err) {
       console.error(err);
       const agentName = agent === 'codex' ? 'Codex' : 'Claude Code';
@@ -398,6 +497,8 @@ const server = http.createServer((req, res) => {
 
 ensureClaudeWorkspaceTrust();
 history.initialize();
+refreshLocalAiHealth();
+setInterval(refreshLocalAiHealth, LOCAL_AI_HEALTH_REFRESH_MS).unref();
 
 server.listen(PORT, () => {
   console.log(
