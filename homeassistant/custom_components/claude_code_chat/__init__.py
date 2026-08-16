@@ -16,6 +16,14 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import CONF_ALLOWED_USER_ID, CONF_BRIDGE_TOKEN, CONF_BRIDGE_URL, DOMAIN, REQUEST_TIMEOUT_SECONDS
 
 PLATFORMS = (Platform.CONVERSATION,)
+CODEX_MODELS = {
+    "gpt-5.6-luna": {"low", "medium", "high", "xhigh", "max"},
+    "gpt-5.6-terra": {"low", "medium", "high", "xhigh", "max", "ultra"},
+    "gpt-5.6-sol": {"low", "medium", "high", "xhigh", "max", "ultra"},
+}
+CODEX_REASONING_EFFORTS = set().union(*CODEX_MODELS.values())
+DEFAULT_CODEX_MODEL = "gpt-5.6-terra"
+DEFAULT_CODEX_REASONING_EFFORT = "medium"
 
 
 @dataclass
@@ -64,7 +72,14 @@ async def websocket_history(hass: HomeAssistant, connection: websocket_api.Activ
     connection.send_result(msg["id"], payload)
 
 
-@websocket_api.websocket_command({vol.Required("type"): "claude_code_chat/process", vol.Required("text"): str})
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "claude_code_chat/process",
+        vol.Required("text"): str,
+        vol.Optional("model", default=DEFAULT_CODEX_MODEL): str,
+        vol.Optional("reasoning_effort", default=DEFAULT_CODEX_REASONING_EFFORT): str,
+    }
+)
 @websocket_api.async_response
 async def websocket_process(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     """Send a message to Codex and persist it in the shared transcript."""
@@ -79,8 +94,24 @@ async def websocket_process(hass: HomeAssistant, connection: websocket_api.Activ
     if not prompt:
         connection.send_error(msg["id"], "empty_message", "Mensagem vazia")
         return
+    model = msg.get("model")
+    reasoning_effort = msg.get("reasoning_effort")
+    if model not in CODEX_MODELS:
+        connection.send_error(msg["id"], "invalid_model", "Modelo Codex não suportado")
+        return
+    allowed_efforts = CODEX_MODELS.get(model, CODEX_REASONING_EFFORTS)
+    if reasoning_effort not in allowed_efforts:
+        connection.send_error(msg["id"], "invalid_reasoning", "Reasoning não suportado para o modelo escolhido")
+        return
     wrapped_prompt = ("Você está atendendo pelo assistente Codex dentro do Home Assistant. Responda diretamente ao usuário, em português quando o pedido estiver em português. Quando precisar consultar o ambiente, use as ferramentas disponíveis e devolva a resposta final no chat.\n\n" f"Pedido do usuário: {prompt}")
-    payload = {"message": wrapped_prompt, "display_message": prompt, "conversation_id": f"home-assistant:codex:{connection.user.id}", "agent": "codex"}
+    payload = {
+        "message": wrapped_prompt,
+        "display_message": prompt,
+        "conversation_id": f"home-assistant:codex:{connection.user.id}",
+        "agent": "codex",
+    }
+    payload["model"] = model
+    payload["reasoning_effort"] = reasoning_effort
     try:
         async with async_get_clientsession(hass).post(data.bridge_url, json=payload, headers={"Authorization": f"Bearer {data.bridge_token}"}, timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT_SECONDS)) as response:
             response.raise_for_status()
@@ -88,7 +119,14 @@ async def websocket_process(hass: HomeAssistant, connection: websocket_api.Activ
     except Exception as err:  # noqa: BLE001
         connection.send_error(msg["id"], "bridge_error", str(err))
         return
-    connection.send_result(msg["id"], {"reply": result.get("reply", "Sem resposta.")})
+    connection.send_result(
+        msg["id"],
+        {
+            "reply": result.get("reply", "Sem resposta."),
+            "model": result.get("model"),
+            "reasoning_effort": result.get("reasoning_effort"),
+        },
+    )
 
 
 async def async_setup_entry(
