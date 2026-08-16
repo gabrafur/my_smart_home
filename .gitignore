@@ -19,6 +19,7 @@
 !.env.example
 .local-secrets/
 .local-state/
+.kia-uvo-updater-state/
 .agent-history/
 .agents/
 # Preserve Codex runtime state as private while versioning the project memory.
