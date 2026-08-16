@@ -225,6 +225,11 @@ function haRequest(method, requestPath, token, body) {
 // friendly_name, so it holds even if the exact entity_id changes.
 const PROTECTED_UPDATE_PATTERNS = ["kia_uvo", "hyundai", "bluelink", "uvo"];
 
+export function updateIsProtected(entity) {
+  const name = `${entity.entity_id ?? ""} ${entity.attributes?.friendly_name || ""}`.toLowerCase();
+  return PROTECTED_UPDATE_PATTERNS.some((pattern) => name.includes(pattern));
+}
+
 function updateLooksSafe(entity) {
   if (!entity.entity_id.startsWith("update.")) {
     return false;
@@ -236,7 +241,7 @@ function updateLooksSafe(entity) {
   if (name.includes("firmware") || name.includes("slzb")) {
     return false;
   }
-  if (PROTECTED_UPDATE_PATTERNS.some((pattern) => name.includes(pattern))) {
+  if (updateIsProtected(entity)) {
     return false;
   }
   return true;
@@ -263,6 +268,29 @@ async function haUpdates() {
   }
 
   const states = await haRequest("GET", "/api/states", token);
+  const protectedPending = states.filter(
+    (entity) =>
+      entity.entity_id.startsWith("update.") &&
+      entity.state === "on" &&
+      updateIsProtected(entity),
+  );
+  for (const entity of protectedPending) {
+    const latest = entity.attributes?.latest_version;
+    log(
+      `CRETA_INTEGRATION_UPDATE_AVAILABLE entity=${entity.entity_id} latest=${latest ?? "unknown"}; analyzing only`,
+    );
+    if (!dryRun) {
+      run(
+        process.execPath,
+        [
+          "scripts/kia-uvo-safe-update.mjs",
+          "check",
+          ...(latest ? ["--target", latest] : []),
+        ],
+        { env: { HA_LONG_LIVED_TOKEN: token } },
+      );
+    }
+  }
   const pending = states.filter(updateLooksSafe);
   if (pending.length === 0) {
     log("ha-updates: no safe integration updates pending");
