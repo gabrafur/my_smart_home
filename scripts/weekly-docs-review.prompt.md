@@ -1,5 +1,11 @@
 # Rotina semanal de documentação
 
+<!-- CODEX_UNATTENDED_WEEKLY_DOCS_REVIEW -->
+
+Esta é uma execução agendada, pré-autorizada e não interativa. Execute esta
+rotina imediatamente, sem sugerir título, reescrever o prompt, recomendar modelo
+ou solicitar `continue`. Siga todos os limites de segurança e requisitos abaixo.
+
 Revise profundamente este repositório e mantenha a documentação coerente com
 todos os commits e mudanças da última semana.
 
