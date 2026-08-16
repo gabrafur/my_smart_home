@@ -509,6 +509,16 @@ async def async_setup_entry(
                 coordinator, coordinator.vehicle_manager.vehicles[vehicle_id]
             )
         )
+        entities.append(
+            RecentTripInfoEntity(
+                coordinator, coordinator.vehicle_manager.vehicles[vehicle_id]
+            )
+        )
+        entities.append(
+            EstimatedFuelEfficiencyEntity(
+                coordinator, coordinator.vehicle_manager.vehicles[vehicle_id]
+            )
+        )
     async_add_entities(entities)
     return True
 
@@ -646,6 +656,57 @@ class DayTripInfoEntity(SensorEntity, HyundaiKiaConnectEntity):
     @property
     def unique_id(self):
         return f"{DOMAIN}-day-trip-info-{self.vehicle.id}"
+
+
+class RecentTripInfoEntity(SensorEntity, HyundaiKiaConnectEntity):
+    """Two-day trip window assembled from the official per-day endpoint."""
+
+    _attr_icon = "mdi:calendar-range"
+
+    def __init__(self, coordinator, vehicle: Vehicle):
+        super().__init__(coordinator, vehicle)
+        self._attr_name = "Recent Trip Info"
+
+    @property
+    def state(self):
+        info = self.coordinator.recent_trip_info.get(self.vehicle.id)
+        return len(info["trips"]) if info else None
+
+    @property
+    def state_attributes(self):
+        return self.coordinator.recent_trip_info.get(
+            self.vehicle.id,
+            {"days": [], "trips": []},
+        )
+
+    @property
+    def unique_id(self):
+        return f"{DOMAIN}-recent-trip-info-{self.vehicle.id}"
+
+
+class EstimatedFuelEfficiencyEntity(SensorEntity, HyundaiKiaConnectEntity):
+    """Estimated fuel efficiency from reliable recorder windows only."""
+
+    _attr_icon = "mdi:gas-station"
+    _attr_native_unit_of_measurement = "km/L"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator, vehicle: Vehicle):
+        super().__init__(coordinator, vehicle)
+        self._attr_name = "Estimated Fuel Efficiency"
+
+    @property
+    def native_value(self):
+        info = self.coordinator.fuel_efficiency.get(self.vehicle.id)
+        return info["km_per_l"] if info else None
+
+    @property
+    def extra_state_attributes(self):
+        return self.coordinator.fuel_efficiency.get(self.vehicle.id, {})
+
+    @property
+    def unique_id(self):
+        return f"{DOMAIN}-estimated-fuel-efficiency-{self.vehicle.id}"
 
 
 class DailyDrivingStatsEntity(SensorEntity, HyundaiKiaConnectEntity):
