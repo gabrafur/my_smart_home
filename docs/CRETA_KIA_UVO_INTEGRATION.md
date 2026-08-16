@@ -9,6 +9,56 @@ Creta como entidades Home Assistant. Documentado tambem em
 [docs/ILUMINACAO_SEGURANCA_NODERED.md](ILUMINACAO_SEGURANCA_NODERED.md)
 (uso das entidades `creta_*` no fluxo de chegada/seguranca).
 
+## Estado atual (2026-08-16)
+
+- Componente sincronizado com o upstream `kia_uvo` **3.10.0** e
+  `hyundai_kia_connect_api` **4.26.1**.
+- A biblioteca 4.26.1 incorporou o suporte nativo ao Creta brasileiro:
+  `/ccs2/carstatus/latest`, parser CCS2, wake real por
+  `/ccs2/carstatus`, rejeicao de snapshot que nao avancou e interpretacao do
+  campo `Date` como UTC. Os monkey patches locais que duplicavam essas funcoes
+  foram removidos.
+- Permanecem locais somente as extensoes necessarias nesta instalacao:
+  viagens de hoje e ontem, estimativa conservadora de consumo, refresh do
+  tripinfo por movimento do odometro, tolerancia ao `DTE.Unit` anomalo e o
+  alias historico de autonomia de combustivel.
+- O botao de force refresh conserva um piso de **15 minutos entre wakes reais**.
+  Dentro desse intervalo ele faz apenas leitura do cache. O scheduler normal da
+  integracao continua com seu intervalo proprio de 90 minutos.
+- O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
+  odometro avanca e na chegada do Creta. O dashboard nao depende mais de press
+  manual para voltar a exibir viagens depois de restart.
+- Bateria 12 V `unknown` pode ser um estado correto: quando
+  `SensorReliability=1`, o valor bruto e deliberadamente descartado pela
+  biblioteca e o painel informa que aguarda uma leitura confiavel.
+
+### Fluxo de dados e contratos
+
+```text
+Bluelink BR -> hyundai_kia_connect_api 4.26.1 -> coordinator kia_uvo
+             -> entidades Home Assistant -> contexto_creta (Node-RED)
+             -> security.creta-context.v1 -> chegada/iluminacao
+```
+
+`contexto_creta` reage a mudanca de zona e a deslocamento GPS acumulado de no
+minimo 250 m, descontando a precisao reportada. A coordenada fica somente no
+contexto persistente e nunca vai para logs. Movimento solicita atualizacao dos
+dados, mas **nao** autoriza sozinho qualquer acao fisica: iluminacao continua
+exigindo motor/contexto frescos.
+
+O refresh grava baseline dos timestamps de localizacao, motor e trava. Uma
+tentativa so vira sucesso quando pelo menos um deles avanca e o alvo de
+readiness e atingido. Sem evidencia, o mesmo recovery segue backoff de
+1, 2, 4, 8 e 15 minutos; o contador satura sem criar rajadas ou loops.
+Eventos operacionais usam `CRETA_LOCATION_CHANGED`,
+`CRETA_MOVEMENT_DETECTED`, `CRETA_REFRESH_REQUESTED`,
+`CRETA_REFRESH_RETRY`, `CRETA_NEW_DATA_RECEIVED`, `CRETA_TRIP_UPDATED` e
+`CRETA_API_ERROR`, sempre sem coordenadas ou credenciais.
+
+As secoes datadas abaixo preservam o historico da investigacao. Onde falarem
+em `_force_ccs2_status_endpoint()` ou `_install_br_wake_force_refresh()`, leia
+como solucao anterior, substituida pelo suporte upstream descrito acima.
+
 ## Por que o historico de `binary_sensor.creta_engine` nao bate com o app Bluelink
 
 **2026-07-10:** usuario reportou que o historico do motor nao refletia o uso
@@ -62,7 +112,7 @@ dreno da bateria de 12V (ja documentado em ILUMINACAO_SEGURANCA_NODERED.md).
 > motivo (um evento de estacionamento, ou o proprio app aberto no celular),
 > e o timestamp avancou sem que o nosso force tivesse causado isso.
 
-## Force refresh nunca acordava o carro (2026-08-07)
+## Historico: force refresh nunca acordava o carro (2026-08-07)
 
 **Sintoma:** usuario ligou o carro e reportou que `binary_sensor.creta_engine`
 nao mexia — nem no HA, nem no proprio app Bluelink.
@@ -503,24 +553,21 @@ guard `PROTECTED_UPDATE_PATTERNS` (02/08); (2) HACS `auto_update` por-repo — j
 fizer isso de proposito, **reaplique CCS2 + trip-log logo em seguida** (os scripts
 de patch sao o caminho rapido) e verifique `0x 503` antes de considerar pronto.
 
-## Dashboard de viagens (2026-08-02)
+## Dashboard do Creta (atualizado em 2026-08-16)
 
-Dashboard Lovelace `creta-viagens` (titulo "Creta", `dashboards/creta.yaml`,
-registrado em `configuration.yaml`): resumo em tiles (combustivel, autonomia,
-odometro, bateria 12V, motor, travas e localizacao), timestamps de atualizacao,
-viagens de hoje renderizadas dinamicamente do
-`sensor.garagem_creta_day_trip_info` e grafico de 7 dias (motor + combustivel).
-O card estatico que continha viagens historicas reais foi removido do YAML: ele
-ficava obsoleto e publicava dados de deslocamento sem necessidade operacional.
-O sensor de trip e de **dia unico** e nao persiste entre restarts —
-some depois de reiniciar o HA ate a proxima chegada do Creta ou um press manual
-de `button.garagem_creta_refresh_trip_info`; por isso o card de "hoje" tem
-fallback "sem viagens ainda".
+O dashboard Lovelace `creta-viagens` (titulo "Creta",
+`homeassistant/dashboards/creta.yaml`) usa o layout nativo responsivo
+`type: sections`, sem dependencia nova. Ele separa visao geral, localizacao,
+viagens, bateria 12 V, historico e diagnostico.
 
-**Por que o motor nao tem historico proprio pra recuperar:** o
-`binary_sensor.creta_engine` nunca registrou um unico `on` na janela do recorder
-(so `off`/`unavailable`) — mesma limitacao de polling ja documentada no topo
-deste arquivo. O "quando o carro rodou" real vem do `/tripinfo` (mesma fonte do
-app Bluelink), que devolve viagens de dias passados **inclusive dos dias em que
-o status estava em 503**. Esses dados serviram para diagnostico em 2026-08-02,
-mas nao permanecem gravados no dashboard versionado.
+As viagens renderizadas vem de
+`sensor.garagem_creta_recent_trip_info` e cobrem hoje e ontem. O consumo em
+km/L so aparece quando o recorder possui leituras confiaveis de combustivel e
+odometro antes e depois da viagem; caso contrario o card explicita que aguarda
+amostras, em vez de fabricar uma media. O dashboard nao oferece botoes de
+refresh: atualizacao e responsabilidade do fluxo automatico orientado a
+eventos e do coordinator.
+
+O estado do motor no recorder continua sendo telemetria amostrada, nao um log
+de ignicao garantido. Para saber quando o carro rodou, o `/tripinfo` permanece
+a fonte autoritativa compartilhada com o app Bluelink.
