@@ -113,6 +113,9 @@ com o iCloud atrasado.
 - `lock.creta_door_lock`
 - `button.creta_force_refresh`
 - `button.garagem_creta_refresh_trip_info`
+- `input_button.creta_force_refresh_now` (solicitacao manual pelo mesmo
+  coordenador; nao chama Bluelink diretamente)
+- `sensor.creta_refresh_coordinator` (espelho MQTT do estado/deadlines reais)
 - entidades do dispositivo atualizadas pelo serviço `homeassistant.update_entity`
 
 ### Iluminação

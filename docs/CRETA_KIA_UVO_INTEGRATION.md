@@ -11,9 +11,12 @@ Creta como entidades Home Assistant. Documentado tambem em
 
 ## Estado atual (2026-08-16)
 
-- Componente sincronizado com o upstream `kia_uvo` **3.10.0** e
-  `hyundai_kia_connect_api` **4.26.1**.
-- A biblioteca 4.26.1 incorporou o suporte nativo ao Creta brasileiro:
+- Componente sincronizado com o upstream `kia_uvo` **3.10.1** e
+  `hyundai_kia_connect_api` **4.26.5**. O diff oficial 3.10.0 -> 3.10.1
+  altera somente essa dependencia. Entre 4.26.1 e 4.26.5 nao houve mudanca
+  no backend Brasil nem no comando horn/light; entraram correcoes EU, USA e
+  do sentinel de agenda CCS2.
+- A biblioteca 4.26.x incorporou o suporte nativo ao Creta brasileiro:
   `/ccs2/carstatus/latest`, parser CCS2, wake real por
   `/ccs2/carstatus`, rejeicao de snapshot que nao avancou e interpretacao do
   campo `Date` como UTC. Os monkey patches locais que duplicavam essas funcoes
@@ -22,13 +25,15 @@ Creta como entidades Home Assistant. Documentado tambem em
   viagens de hoje e ontem, estimativa conservadora de consumo, refresh do
   tripinfo por movimento do odometro, tolerancia ao `DTE.Unit` anomalo e o
   alias historico de autonomia de combustivel. Tambem permanece uma correcao
-  estreita para `Location.TimeStamp`: a API 4.26.1 ainda rotula esse relogio UTC
+  estreita para `Location.TimeStamp`: a API 4.26.5 ainda rotula esse relogio UTC
   como horario regional e desloca somente a entidade de localizacao em +3 h.
   O stub reservado `OffPeakTime: {Mode: 1}` dos modelos a combustao tambem e
   ignorado para nao criar horarios EV ficticios em 00:00 nem warning por poll.
 - O botao de force refresh conserva um piso de **15 minutos entre wakes reais**.
-  Dentro desse intervalo ele faz apenas leitura do cache. O scheduler normal da
-  integracao continua com seu intervalo proprio de 90 minutos.
+  Dentro desse intervalo ele faz apenas leitura do cache. Com `options: {}` o
+  scheduler nativo consulta cache a cada 30 minutos e so considera wake proprio
+  apos 1440 minutos; a politica Node-RED pede wake a cada 15 minutos quando
+  habilitada.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
   odometro avanca e na chegada do Creta. O dashboard nao depende mais de press
   manual para voltar a exibir viagens depois de restart.
@@ -39,7 +44,7 @@ Creta como entidades Home Assistant. Documentado tambem em
 ### Fluxo de dados e contratos
 
 ```text
-Bluelink BR -> hyundai_kia_connect_api 4.26.1 -> coordinator kia_uvo
+Bluelink BR -> hyundai_kia_connect_api 4.26.5 -> coordinator kia_uvo
              -> entidades Home Assistant -> contexto_creta (Node-RED)
              -> security.creta-context.v1 -> chegada/iluminacao
 ```
@@ -58,6 +63,16 @@ Eventos operacionais usam `CRETA_LOCATION_CHANGED`,
 `CRETA_MOVEMENT_DETECTED`, `CRETA_REFRESH_REQUESTED`,
 `CRETA_REFRESH_RETRY`, `CRETA_NEW_DATA_RECEIVED`, `CRETA_TRIP_UPDATED` e
 `CRETA_API_ERROR`, sempre sem coordenadas ou credenciais.
+
+O mesmo estado persistente `security_creta_refresh_v1` agora alimenta
+`contexto_creta.refresh` e o sensor MQTT
+`sensor.creta_refresh_coordinator`. Os campos publicados sao `state`,
+`reason`, `attempt`, `last_request_at`, `last_success_at`, `next_retry_at` e
+`cooldown_until`. O ticker MQTT de 5 s somente calcula o tempo restante a
+partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
+`input_button.creta_force_refresh_now` entra no ciclo normal de snapshot com
+`reason=manual_force`: pode quebrar cooldown de sucesso, mas nunca o backoff de
+uma tentativa em voo nem o piso de 15 minutos do coordinator Python.
 
 As secoes datadas abaixo preservam o historico da investigacao. Onde falarem
 em `_force_ccs2_status_endpoint()` ou `_install_br_wake_force_refresh()`, leia
@@ -557,20 +572,57 @@ guard `PROTECTED_UPDATE_PATTERNS` (02/08); (2) HACS `auto_update` por-repo — j
 fizer isso de proposito, **reaplique CCS2 + trip-log logo em seguida** (os scripts
 de patch sao o caminho rapido) e verifique `0x 503` antes de considerar pronto.
 
-## Dashboard do Creta (atualizado em 2026-08-16)
+## Dashboard, comandos e manutencao segura (atualizado em 2026-08-16)
 
 O dashboard Lovelace `creta-viagens` (titulo "Creta",
 `homeassistant/dashboards/creta.yaml`) usa o layout nativo responsivo
 `type: sections`, sem dependencia nova. Ele separa visao geral, localizacao,
-viagens, bateria 12 V, historico e diagnostico.
+viagens, bateria 12 V, historico, comandos fisicos e diagnostico. A area
+"Atualizacao dos dados" mostra o estado real do coordenador, a ultima consulta,
+o deadline de retry/cooldown e o botao `Forcar atualizacao agora`.
 
 As viagens renderizadas vem de
 `sensor.garagem_creta_recent_trip_info` e cobrem hoje e ontem. O consumo em
 km/L so aparece quando o recorder possui leituras confiaveis de combustivel e
 odometro antes e depois da viagem; caso contrario o card explicita que aguarda
-amostras, em vez de fabricar uma media. O dashboard nao oferece botoes de
-refresh: atualizacao e responsabilidade do fluxo automatico orientado a
-eventos e do coordinator.
+amostras, em vez de fabricar uma media. Os atributos detalham janela de hoje e
+ontem, busca de recorder de tres dias, viagens disponiveis/consideradas,
+amostras usadas, distancia, litros estimados, queda minima de 2% e gap maximo
+de quatro horas. O card principal mostra o intervalo efetivamente usado.
+
+`button.creta_start_hazard_lights_and_horn` chama exclusivamente o endpoint
+oficial Brasil `/ccs2/control/hornlight` com `command=on`. A API nao oferece
+duracao configuravel; a integracao documenta cerca de 30 segundos. O
+coordinator reaproveita `_action_lock`, aguarda `check_action_status` por ate
+60 s, publica `sensor.garagem_creta_remote_command_status` e registra somente
+`CRETA_REMOTE_LOCATE_REQUESTED`, `ACCEPTED` ou `FAILED`, sem IDs, tokens ou
+coordenadas. Ha cooldown local de 60 s. No Lovelace, tap nao executa nada: e
+necessario segurar e confirmar explicitamente.
+
+### HACS e futuras versoes
+
+O aviso `Installed v3.9.0 / Latest v3.10.1` tinha causa concreta: o codigo foi
+sincronizado e commitado manualmente, mas o registro
+`hacs.repositories[356385629]` continuou com `installed_commit=52f943d` e
+`version_installed=v3.9.0`. O manifesto local ja estava em 3.10.0. Alterar so o
+manifesto nao e suficiente para corrigir o HACS; a instalacao oficial deve ser
+executada uma vez e o overlay local reaplicado.
+
+`scripts/kia-uvo-safe-update.mjs` representa o delta como **base upstream
+versionada + commits do proprio repositorio**. Em `check` ele baixa base e
+alvo para diretorio temporario, gera o delta local, aplica com `git apply` no
+alvo, compila e verifica marcadores. Conflito para antes de tocar na instalacao.
+Em `apply`, que exige token e comando explicitos, cria backup do componente e
+dos metadados HACS, chama o servico oficial `update.install`, reaplica o staging,
+reinicia somente o Home Assistant e valida entidades/biblioteca/HACS. Qualquer
+falha restaura componente e metadata e reinicia a versao anterior.
+
+O modo `ha-updates` de `scripts/docker-auto-update.mjs` continua proibido de
+instalar Kia/Hyundai cegamente. Quando a entidade protegida fica `on`, ele
+registra `CRETA_INTEGRATION_UPDATE_AVAILABLE` e chama apenas `check`. O estado
+fica em `/config/.storage/kia_uvo_safe_update` e aparece como
+`sensor.integracao_creta`; `apply` permanece uma decisao explicita apos revisar
+compatibilidade.
 
 O estado do motor no recorder continua sendo telemetria amostrada, nao um log
 de ignicao garantido. Para saber quando o carro rodou, o `/tripinfo` permanece
