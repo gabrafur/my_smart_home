@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""Best-effort, private telemetry for bounded Local AI calls.
+
+The recorder deliberately stores metadata only: it never persists source input,
+model output, credentials, prompts, or raw command output.  It is safe for the
+inference to succeed even when the recorder or GPU probe is unavailable.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import fcntl
+import json
+import os
+import re
+import subprocess
+import threading
+import time
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Iterator
+
+
+MAX_EVENT_LOG_BYTES = 2_000_000
+MAX_RECENT_JOBS = 40
+MAX_SEEN_IDS = 10_000
+PRIVATE_METADATA_MODE = 0o640  # owner + bridge group; never world-readable
+
+
+def utc_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def new_event_id() -> str:
+    return str(uuid.uuid4())
+
+
+def private_telemetry_path(script_root: Path) -> Path | None:
+    configured = os.getenv("LOCAL_AI_TELEMETRY_PATH")
+    if configured:
+        return Path(configured).expanduser()
+    project_root = script_root.parent.parent
+    history = project_root / ".agent-history"
+    return history / "local-ai-telemetry.json" if history.is_dir() else None
+
+
+def _number(value: Any) -> float | int | None:
+    try:
+        numeric = float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    if not numeric == numeric:  # NaN
+        return None
+    return int(numeric) if numeric.is_integer() else numeric
+
+
+def _event_totals() -> dict[str, float | int]:
+    return {
+        "calls": 0,
+        "successful_calls": 0,
+        "failed_calls": 0,
+        "fallbacks_reported": 0,
+        "duration_seconds": 0.0,
+        "local_input_tokens": 0,
+        "local_output_tokens": 0,
+        "context_input_tokens": 0,
+        "context_output_tokens": 0,
+        "openai_context_tokens_avoided": 0,
+    }
+
+
+def _initial_state() -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "updated_at": None,
+        "totals": _event_totals(),
+        "daily": {},
+        "models": {},
+        "seen_event_ids": [],
+        "active_jobs": {},
+        "latest_jobs": [],
+    }
+
+
+def _safe_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return fallback
+    return loaded if isinstance(loaded, dict) else fallback
+
+
+@contextlib.contextmanager
+def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    with open(lock_path, "a+", encoding="utf-8") as lock:
+        os.chmod(lock_path, 0o600)
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        state = _safe_json(path, _initial_state())
+        try:
+            yield state
+        finally:
+            temporary = path.with_suffix(path.suffix + ".tmp")
+            temporary.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            os.chmod(temporary, PRIVATE_METADATA_MODE)
+            temporary.replace(path)
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def _append_event(path: Path, event: dict[str, Any]) -> None:
+    events_path = path.with_name("local-ai-events.jsonl")
+    events_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    line = json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n"
+    with open(events_path, "a", encoding="utf-8") as destination:
+        os.chmod(events_path, PRIVATE_METADATA_MODE)
+        fcntl.flock(destination.fileno(), fcntl.LOCK_EX)
+        destination.write(line)
+        destination.flush()
+        os.fsync(destination.fileno())
+        fcntl.flock(destination.fileno(), fcntl.LOCK_UN)
+    try:
+        if events_path.stat().st_size > MAX_EVENT_LOG_BYTES:
+            lines = events_path.read_text(encoding="utf-8").splitlines()[-400:]
+            temporary = events_path.with_suffix(".jsonl.tmp")
+            temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            os.chmod(temporary, PRIVATE_METADATA_MODE)
+            temporary.replace(events_path)
+    except OSError:
+        pass
+
+
+def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
+    totals = target.setdefault("totals", _event_totals())
+    totals["calls"] = int(totals.get("calls", 0)) + 1
+    successful = event.get("status") == "success"
+    totals["successful_calls" if successful else "failed_calls"] = int(
+        totals.get("successful_calls" if successful else "failed_calls", 0),
+    ) + 1
+    if event.get("fallback_reported") is True:
+        totals["fallbacks_reported"] = int(totals.get("fallbacks_reported", 0)) + 1
+    for key in (
+        "duration_seconds",
+        "local_input_tokens",
+        "local_output_tokens",
+        "context_input_tokens",
+        "context_output_tokens",
+        "openai_context_tokens_avoided",
+    ):
+        value = _number(event.get(key))
+        if value is not None and value > 0:
+            totals[key] = round(float(totals.get(key, 0)) + float(value), 3)
+
+
+class TelemetryRecorder:
+    """Persist idempotent aggregate and recent-job data without blocking inference."""
+
+    def __init__(self, state_path: Path | None):
+        self.state_path = state_path
+
+    @property
+    def enabled(self) -> bool:
+        return self.state_path is not None and os.getenv("LOCAL_AI_TELEMETRY_ENABLED", "1") != "0"
+
+    def started(self, event: dict[str, Any]) -> None:
+        if not self.enabled or self.state_path is None:
+            return
+        public = {
+            key: event.get(key)
+            for key in ("id", "started_at", "task", "model", "endpoint", "status")
+        }
+        try:
+            with _locked_state(self.state_path) as state:
+                state.setdefault("active_jobs", {})[str(event["id"])] = public
+                state["updated_at"] = utc_now()
+            _append_event(self.state_path, public)
+        except (OSError, KeyError, TypeError):
+            pass
+
+    def finished(self, event: dict[str, Any]) -> None:
+        if not self.enabled or self.state_path is None:
+            return
+        try:
+            with _locked_state(self.state_path) as state:
+                event_id = str(event["id"])
+                state.setdefault("active_jobs", {}).pop(event_id, None)
+                seen = [str(value) for value in state.setdefault("seen_event_ids", [])]
+                if event_id not in seen:
+                    _add_totals(state, event)
+                    day = str(event.get("finished_at") or event.get("started_at") or utc_now())[:10]
+                    daily = state.setdefault("daily", {})
+                    daily_entry = daily.setdefault(day, {"totals": _event_totals()})
+                    _add_totals(daily_entry, event)
+                    model = str(event.get("model") or "unknown")
+                    models = state.setdefault("models", {})
+                    model_entry = models.setdefault(model, {"totals": _event_totals()})
+                    _add_totals(model_entry, event)
+                    seen.append(event_id)
+                    state["seen_event_ids"] = seen[-MAX_SEEN_IDS:]
+                    latest = state.setdefault("latest_jobs", [])
+                    latest.append(event)
+                    state["latest_jobs"] = latest[-MAX_RECENT_JOBS:]
+                state["updated_at"] = utc_now()
+            _append_event(self.state_path, event)
+        except (OSError, KeyError, TypeError):
+            pass
+
+
+class RemoteGpuSampler:
+    """Sample WSL GPU state only while a Local AI request is in progress."""
+
+    def __init__(self, probe: dict[str, Any] | None, interval_seconds: float = 1.5):
+        self.probe = probe if isinstance(probe, dict) and probe.get("enabled", True) else None
+        self.interval_seconds = max(1.0, interval_seconds)
+        self.snapshots: list[dict[str, Any]] = []
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def _ssh_command(self, remote_command: str) -> list[str] | None:
+        if not self.probe:
+            return None
+        required = ("container", "ssh_user", "ssh_host", "ssh_key_path", "wsl_nvidia_smi")
+        if any(not self.probe.get(key) for key in required):
+            return None
+        return [
+            "docker", "exec", str(self.probe["container"]), "ssh",
+            "-i", str(self.probe["ssh_key_path"]),
+            "-p", str(self.probe.get("ssh_port", 22)),
+            "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
+            f"{self.probe['ssh_user']}@{self.probe['ssh_host']}", remote_command,
+        ]
+
+    def _sample_once(self) -> None:
+        nvidia = self.probe.get("wsl_nvidia_smi") if self.probe else None
+        command = self._ssh_command(
+            f"wsl.exe -e {nvidia} --query-gpu=utilization.gpu,memory.used,memory.total,power.draw --format=csv,noheader,nounits",
+        )
+        if not command:
+            return
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=6, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            return
+        if result.returncode != 0:
+            return
+        line = next((item.strip() for item in result.stdout.splitlines() if "," in item), "")
+        pieces = [piece.strip() for piece in line.split(",")]
+        if len(pieces) < 4:
+            return
+        values = [_number(piece) for piece in pieces[:4]]
+        if values[0] is None or values[1] is None:
+            return
+        self.snapshots.append({
+            "at": utc_now(),
+            "gpu_util_percent": values[0],
+            "vram_mib": values[1],
+            "vram_total_mib": values[2],
+            "power_watts": values[3],
+        })
+
+    def _processor(self, model: str | None) -> str | None:
+        if not model:
+            return None
+        command = self._ssh_command("wsl.exe -e ollama ps")
+        if not command:
+            return None
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=6, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if result.returncode != 0:
+            return None
+        for line in result.stdout.splitlines():
+            if model in line:
+                match = re.search(r"(\d+%\s+(?:GPU|CPU)(?:\s*\+\s*\d+%\s*CPU)?)", line)
+                return match.group(1) if match else line.strip()[-80:]
+        return None
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            self._sample_once()
+            self._stop.wait(self.interval_seconds)
+
+    def start(self) -> None:
+        if not self.probe:
+            return
+        self._thread = threading.Thread(target=self._run, name="local-ai-gpu-sampler", daemon=True)
+        self._thread.start()
+
+    def stop(self, model: str | None = None) -> dict[str, Any]:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=7)
+        processor = self._processor(model)
+        if not self.snapshots:
+            return {"gpu_telemetry_available": False, "processor": processor}
+        peak_gpu = max((sample.get("gpu_util_percent") or 0 for sample in self.snapshots), default=0)
+        peak_vram = max((sample.get("vram_mib") or 0 for sample in self.snapshots), default=0)
+        peak_power = max((sample.get("power_watts") or 0 for sample in self.snapshots), default=0)
+        return {
+            "gpu_telemetry_available": True,
+            "gpu_samples": len(self.snapshots),
+            "gpu_peak_percent": peak_gpu,
+            "vram_peak_mib": peak_vram,
+            "gpu_power_peak_watts": peak_power,
+            "gpu_used": peak_gpu >= 5 or bool(processor and "GPU" in processor),
+            "processor": processor,
+            "cpu_offload_detected": bool(processor and "CPU" in processor),
+            "gpu_last_util_percent": self.snapshots[-1].get("gpu_util_percent"),
+            "gpu_last_vram_mib": self.snapshots[-1].get("vram_mib"),
+        }
