@@ -7,6 +7,7 @@ import {
   replaceServiceImage,
   updateIsProtected,
 } from "./docker-auto-update.mjs";
+import { updateMatchesTarget } from "./kia-uvo-safe-update.mjs";
 
 test("replaces an image even when comments precede it", () => {
   const compose = `services:
@@ -49,4 +50,17 @@ test("routes Hyundai Kia updates to analysis instead of blind install", () => {
     entity_id: "update.hacs_update",
     attributes: { friendly_name: "HACS" },
   }), false);
+});
+
+test("recognizes an already installed Kia UVO target", () => {
+  const entity = {
+    attributes: { installed_version: "v3.10.1" },
+  };
+  const hacs = { version_installed: "v3.10.1" };
+  assert.equal(updateMatchesTarget(entity, hacs, "3.10.1"), true);
+  assert.equal(updateMatchesTarget(entity, hacs, "v3.10.2"), false);
+  assert.equal(
+    updateMatchesTarget(entity, { version_installed: "v3.9.0" }, "v3.10.1"),
+    false,
+  );
 });

@@ -34,6 +34,12 @@ function normalizeVersion(value) {
   return String(value).startsWith("v") ? String(value) : `v${value}`;
 }
 
+export function updateMatchesTarget(entity, hacs, targetVersion) {
+  const target = normalizeVersion(targetVersion);
+  return normalizeVersion(entity?.attributes?.installed_version) === target &&
+    normalizeVersion(hacs?.version_installed) === target;
+}
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
@@ -136,6 +142,19 @@ function copyComponent(source, destination) {
       !candidate.includes(`${path.sep}__pycache__`) &&
       !candidate.endsWith(".pyc"),
   });
+}
+
+function makeComponentWritable() {
+  command("docker", [
+    "exec",
+    "-u",
+    "0",
+    "homeassistant",
+    "chown",
+    "-R",
+    `${process.getuid?.() ?? 1001}:${process.getgid?.() ?? 1001}`,
+    "/config/custom_components/kia_uvo",
+  ]);
 }
 
 function runDiff(oldDir, localDir, cwd) {
@@ -378,6 +397,12 @@ async function apply(targetVersion) {
       `${entity.entity_id} ${entity.attributes?.friendly_name ?? ""}`,
     ));
   if (!updateEntity) throw new Error("HACS Kia UVO update entity was not found");
+  const hacsBefore = readHacsRecord();
+  const alreadyInstalled = updateMatchesTarget(
+    updateEntity,
+    hacsBefore,
+    prepared.target,
+  );
 
   const stamp = new Date().toISOString().replaceAll(":", "-");
   const backupDir = path.join(backupRoot, stamp);
@@ -393,10 +418,13 @@ async function apply(targetVersion) {
     message: `Backup criado em ${path.relative(repoRoot, backupDir)}.`,
   }));
   try {
-    await haRequest("POST", "/api/services/update/install", token, {
-      entity_id: updateEntity.entity_id,
-      version: prepared.target,
-    });
+    if (!alreadyInstalled) {
+      await haRequest("POST", "/api/services/update/install", token, {
+        entity_id: updateEntity.entity_id,
+        version: prepared.target,
+      });
+      makeComponentWritable();
+    }
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(prepared.mergedRoot, componentDir);
     command("python3", ["-m", "compileall", "-q", componentDir]);
@@ -434,6 +462,7 @@ async function apply(targetVersion) {
     console.log(JSON.stringify(status, null, 2));
     return status;
   } catch (error) {
+    makeComponentWritable();
     command("docker", ["compose", "stop", "homeassistant"]);
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(path.join(backupDir, "kia_uvo"), componentDir);
