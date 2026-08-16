@@ -241,13 +241,42 @@ Para o Codex, abra **Chat → Codex**, envie a mesma pergunta e confirme que o
 historico reaparece depois de recarregar a pagina. A aba **Assistentes** mantem
 somente Claude padrao, Home Assistant e Claude Code (Full Access).
 
+### Painel de uso do Codex
+
+A aba **Chat → Uso** acompanha as métricas emitidas pelo Codex CLI autenticado
+no volume `codex-bridge-auth`. O endpoint local `GET /usage` do bridge devolve
+somente o resumo sanitizado de limite, créditos e tokens; prompts e respostas
+não fazem parte da resposta. O sensor `Codex Usage Raw`, definido em
+`homeassistant/packages/codex_usage.yaml`, consulta esse endpoint a cada minuto.
+
+Depois de alterar ou instalar esses arquivos, reconstrua o bridge e reinicie o
+Home Assistant:
+
+```bash
+docker compose build claude-bridge
+docker compose up -d claude-bridge
+docker compose restart homeassistant
+```
+
+Os tokens exibidos abrangem somente as sessões ainda presentes nesse volume.
+O saldo e a janela de limite refletem a última métrica que o CLI recebeu; o
+painel mostra o horário dessa métrica para deixar eventual defasagem visível.
+
+A mesma aba possui controles de alertas para o iPhone de Gabriel. O painel
+mantém apenas os sensores e as preferências; a avaliação, o cooldown e o push
+são executados pelo fluxo **Alertas Codex** do Node-RED. Os limites de atenção,
+crítico, eficiência mínima de cache e saldo baixo de créditos podem ser
+ajustados no próprio painel. O botão de teste exige confirmação antes de enviar
+o push; instalar ou reiniciar a configuração não dispara essa notificação.
+
 ## Arquivos envolvidos
 
 - `claude-bridge/Dockerfile`, `claude-bridge/server.js`, `claude-bridge/package.json`
-- `claude-bridge/history.js`, `scripts/agent-history.mjs`, `AGENTS.md`
+- `claude-bridge/history.js`, `claude-bridge/usage.js`, `scripts/agent-history.mjs`, `AGENTS.md`
 - `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_BRIDGE_TOKEN`) e `.env.example`
 - `docker-compose.yml` (serviço `claude-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)
 - `homeassistant/dashboards/chat.yaml` (card novo)
+- `homeassistant/packages/codex_usage.yaml`, `homeassistant/tools/codex_usage.py`
 - `homeassistant/www/codex-chat-card.js` (aba Codex com historico)
 - `homeassistant/.storage/assist_pipeline.pipelines` (pipeline novo, editado no passo 5)

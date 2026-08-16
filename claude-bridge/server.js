@@ -4,11 +4,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { SharedHistoryStore } = require('./history');
+const { CodexUsageReader } = require('./usage');
 
 const PORT = process.env.PORT || 8099;
 const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN;
 const WORKDIR = process.env.WORKDIR || '/workspace';
 const HISTORY_DIR = process.env.HISTORY_DIR || path.join(WORKDIR, '.agent-history');
+const CODEX_SESSIONS_DIR = process.env.CODEX_SESSIONS_DIR
+  || path.join(os.homedir(), '.codex', 'sessions');
 const TIMEOUT_MS = Number(
   process.env.BRIDGE_TIMEOUT_MS || process.env.CLAUDE_TIMEOUT_MS || 15 * 60 * 1000,
 );
@@ -19,6 +22,11 @@ if (!BRIDGE_TOKEN) {
 }
 
 const history = new SharedHistoryStore(HISTORY_DIR);
+const codexUsage = new CodexUsageReader(
+  CODEX_SESSIONS_DIR,
+  process.env.LOCAL_AI_TELEMETRY_PATH || path.join(HISTORY_DIR, 'local-ai-telemetry.json'),
+  process.env.LOCAL_AI_STATUS_PATH || path.join(HISTORY_DIR, 'local-ai-status.json'),
+);
 const sessionQueues = new Map();
 
 function enqueueSession(sessionKey, task) {
@@ -214,6 +222,20 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && requestUrl.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok' }));
+    return;
+  }
+  if (req.method === 'GET' && requestUrl.pathname === '/usage') {
+    try {
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      });
+      res.end(JSON.stringify(codexUsage.read()));
+    } catch (err) {
+      console.error(`Failed to read Codex usage: ${err.message}`);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'error', error: 'failed to read Codex usage' }));
+    }
     return;
   }
   const supportedRoute = (

@@ -8,6 +8,186 @@ views:
       - type: custom:codex-chat-card
         title: Codex
         history_limit: 200
+  - title: Uso
+    path: uso-codex
+    icon: mdi:chart-donut
+    cards:
+      - type: markdown
+        content: >-
+          # Uso do Codex
+
+          {% if is_number(states('sensor.codex_limite_disponivel')) %}
+          **{{ states('sensor.codex_limite_disponivel') | round(0) }}% disponível**
+          na janela atual do plano {{ states('sensor.codex_plano') | title }}.
+          {% else %}
+          Aguardando a primeira métrica do Codex CLI.
+          {% endif %}
+
+          Atualização automática a cada minuto, somente pela rede interna.
+
+      - type: markdown
+        content: >-
+          ## Autonomia
+
+          {% set previsao = states('sensor.codex_previsao_ate_o_reset') %}
+          {% if previsao == 'aguenta' %}
+          ✅ **No ritmo atual, o limite aguenta até o reset**, com
+          aproximadamente **{{ states('sensor.codex_folga_projetada_no_reset') }}% de folga**.
+          {% elif previsao == 'atenção' %}
+          ⚠️ **Deve aguentar, mas com pouca folga.** A projeção chega a
+          {{ states('sensor.codex_uso_projetado_no_reset') }}% no reset.
+          {% elif previsao == 'não aguenta' %}
+          🔴 **O ritmo atual pode esgotar o limite antes do reset.**
+          {% else %}
+          ⏳ Ainda não há tempo suficiente nesta janela para uma projeção confiável.
+          {% endif %}
+
+          Confiança da estimativa: **{{ state_attr('sensor.codex_previsao_ate_o_reset', 'confianca') | default('baixa', true) }}**.
+
+      - type: grid
+        title: Eficiência e projeção
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            entity: sensor.codex_eficiencia_de_cache
+            name: Eficiência de cache
+            min: 0
+            max: 100
+            severity:
+              red: 0
+              yellow: 30
+              green: 60
+          - type: gauge
+            entity: sensor.codex_uso_projetado_no_reset
+            name: Uso projetado no reset
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 90
+              red: 100
+
+      - type: entities
+        title: Velocidade de consumo
+        show_header_toggle: false
+        entities:
+          - entity: sensor.codex_previsao_ate_o_reset
+            name: Aguenta até o reset?
+          - entity: sensor.codex_velocidade_7_dias
+            name: Média de tokens — 7 dias
+          - entity: sensor.codex_ritmo_do_limite
+            name: Ritmo médio do limite
+          - entity: sensor.codex_folga_projetada_no_reset
+            name: Folga projetada
+
+      - type: entities
+        title: Alertas no iPhone de Gabriel
+        show_header_toggle: false
+        entities:
+          - entity: sensor.codex_nivel_de_alerta
+            name: Situação atual
+          - entity: input_boolean.codex_alertas_iphone
+          - entity: input_boolean.codex_resumo_diario_iphone
+          - entity: input_number.codex_alerta_aviso_percentual
+          - entity: input_number.codex_alerta_critico_percentual
+          - entity: input_number.codex_alerta_cache_minimo
+          - entity: input_number.codex_alerta_saldo_creditos
+          - entity: input_text.codex_ultimo_alerta_iphone
+          - entity: input_datetime.codex_ultimo_alerta_iphone_em
+
+      - type: button
+        name: Testar push no iPhone de Gabriel
+        icon: mdi:bell-ring-outline
+        show_state: false
+        tap_action:
+          action: perform-action
+          perform_action: input_button.press
+          target:
+            entity_id: input_button.codex_testar_alerta_iphone
+          confirmation:
+            text: Enviar agora uma notificação de teste ao iPhone de Gabriel?
+
+      - type: grid
+        title: Limite do plano
+        columns: 2
+        square: false
+        cards:
+          - type: gauge
+            entity: sensor.codex_limite_usado
+            name: Usado
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 70
+              red: 90
+          - type: gauge
+            entity: sensor.codex_limite_disponivel
+            name: Disponível
+            min: 0
+            max: 100
+            severity:
+              red: 0
+              yellow: 10
+              green: 30
+
+      - type: entities
+        title: Saldo e renovação
+        show_header_toggle: false
+        entities:
+          - entity: sensor.codex_creditos_extras
+            name: Créditos extras
+          - entity: sensor.codex_plano
+            name: Plano
+          - entity: sensor.codex_proximo_reset
+            name: Próximo reset
+          - entity: sensor.codex_ultima_atualizacao_do_limite
+            name: Atualização do limite
+          - entity: sensor.codex_ultima_metrica
+            name: Última atividade registrada
+          - entity: sensor.codex_usage_raw
+            name: Estado da coleta
+
+      - type: grid
+        title: Consumo registrado neste bridge
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_tokens_totais
+            name: Tokens totais
+          - type: tile
+            entity: sensor.codex_tokens_em_cache
+            name: Tokens em cache
+          - type: tile
+            entity: sensor.codex_tokens_de_saida
+            name: Tokens de saída
+          - type: tile
+            entity: sensor.codex_sessoes_monitoradas
+            name: Sessões monitoradas
+
+      - type: history-graph
+        title: Uso do limite — últimos 7 dias
+        hours_to_show: 168
+        entities:
+          - entity: sensor.codex_limite_usado
+            name: Usado
+
+      - type: markdown
+        content: >-
+          **Como ler estes números**
+
+          O limite do plano e o saldo extra vêm dos eventos locais do Codex CLI.
+          Os tokens somam apenas as sessões preservadas pelo bridge deste host;
+          usos feitos em outros computadores podem não aparecer nessa soma.
+
+          “Eficiência de cache” mede quantos tokens de entrada foram reaproveitados;
+          ela reduz trabalho repetido, mas não mede a qualidade semântica das respostas.
+          A autonomia é uma projeção linear do ritmo médio da janela atual e pode
+          mudar se o uso acelerar.
+
+          O saldo oficial da conta continua disponível em **Codex → Settings → Usage**.
   - title: Assistentes
     path: assistentes
     icon: mdi:account-group-outline

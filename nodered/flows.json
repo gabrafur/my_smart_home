@@ -9236,5 +9236,334 @@
         "x": 480,
         "y": 540,
         "wires": []
+    },
+    {
+        "id": "codex_alertas_tab",
+        "type": "tab",
+        "label": "alertas_codex",
+        "disabled": false,
+        "info": "Alertas de uso do Codex: lógica e deduplicação no Node-RED; painel e configurações no Home Assistant.",
+        "env": []
+    },
+    {
+        "id": "codex_alertas_group",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Alertas Codex → iPhone de Gabriel",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#5d6f96",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "codex_alert_state",
+            "codex_alert_test",
+            "codex_alert_daily",
+            "codex_alert_logic",
+            "codex_alert_push",
+            "codex_alert_text",
+            "codex_alert_time",
+            "codex_alert_persistent"
+        ],
+        "x": 40,
+        "y": 40,
+        "w": 1520,
+        "h": 280
+    },
+    {
+        "id": "codex_alert_state",
+        "type": "server-state-changed",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Estados e limites do Codex",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_boolean.codex_alertas_iphone",
+                "input_boolean.codex_resumo_diario_iphone",
+                "input_number.codex_alerta_aviso_percentual",
+                "input_number.codex_alerta_critico_percentual",
+                "input_number.codex_alerta_cache_minimo",
+                "input_number.codex_alerta_saldo_creditos",
+                "sensor.codex_previsao_ate_o_reset",
+                "sensor.codex_limite_usado",
+                "sensor.codex_eficiencia_de_cache",
+                "sensor.codex_creditos_extras",
+                "sensor.codex_uso_projetado_no_reset",
+                "sensor.codex_folga_projetada_no_reset",
+                "sensor.codex_ritmo_do_limite",
+                "sensor.codex_limite_disponivel",
+                "sensor.codex_proximo_reset"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"entity_id\":$entity().entity_id,\"state\":$entity().state,\"previous\":$prevEntity().state}",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 190,
+        "y": 120,
+        "wires": [
+            [
+                "codex_alert_logic"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_test",
+        "type": "server-state-changed",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Botão: testar push",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_button.codex_testar_alerta_iphone"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"type\":\"manual_test\"}",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 190,
+        "y": 120,
+        "wires": [
+            [
+                "codex_alert_logic"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_daily",
+        "type": "inject",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Resumo diário — 20:00",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "codex.daily_summary",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 20 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "codex.daily_summary",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 240,
+        "wires": [
+            [
+                "codex_alert_logic"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_logic",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Avaliar alertas, cooldown e resumo",
+        "func": "\nconst REQUIRED = [\"input_boolean.codex_alertas_iphone\",\"input_boolean.codex_resumo_diario_iphone\",\"input_number.codex_alerta_aviso_percentual\",\"input_number.codex_alerta_critico_percentual\",\"input_number.codex_alerta_cache_minimo\",\"input_number.codex_alerta_saldo_creditos\",\"sensor.codex_previsao_ate_o_reset\",\"sensor.codex_limite_usado\",\"sensor.codex_eficiencia_de_cache\",\"sensor.codex_creditos_extras\",\"sensor.codex_uso_projetado_no_reset\",\"sensor.codex_folga_projetada_no_reset\",\"sensor.codex_ritmo_do_limite\",\"sensor.codex_limite_disponivel\",\"sensor.codex_proximo_reset\"];\nconst KEY = \"codex_alertas_state_v1\";\nlet state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nconst event = msg.payload || {};\n\nfunction num(value, fallback = 0) {\n  const parsed = Number(value);\n  return Number.isFinite(parsed) ? parsed : fallback;\n}\n\nfunction build(title, message, kind) {\n  const now = Date.now();\n  const cooldownMs = kind === \"critical\" ? 60 * 60 * 1000 : 6 * 60 * 60 * 1000;\n  if (now - Number(state.sent[kind] || 0) < cooldownMs) return null;\n  state.sent[kind] = now;\n  return { title, message, kind, at: new Date(now).toISOString() };\n}\n\nfunction summary() {\n  if (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\"\n      || state.values[\"input_boolean.codex_resumo_diario_iphone\"] !== \"on\") return null;\n  return build(\n    \"Codex — resumo diário\",\n    \"Uso: \" + (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; \" +\n      \"projeção no reset: \" + (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%; \" +\n      \"folga: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%; \" +\n      \"cache: \" + (state.values[\"sensor.codex_eficiencia_de_cache\"] || \"?\") + \"%; \" +\n      \"previsão: \" + (state.values[\"sensor.codex_previsao_ate_o_reset\"] || \"?\") + \".\",\n    \"daily\",\n  );\n}\n\nif (msg.topic === \"codex.daily_summary\") {\n  const alert = state.ready ? summary() : null;\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nif (event.type === \"manual_test\") {\n  const alert = build(\n    \"Codex — teste de alertas\",\n    \"✅ O Node-RED está conectado ao iPhone de Gabriel. Uso atual: \" +\n      (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; projeção no reset: \" +\n      (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%.\",\n    \"test\",\n  );\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nconst entity = event.entity_id;\nif (!entity || !REQUIRED.includes(entity)) return null;\nconst previous = state.values[entity];\nstate.values[entity] = String(event.state ?? \"\");\nif (!state.ready) {\n  state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: state.ready ? \"green\" : \"yellow\", shape: \"dot\", text: state.ready ? \"monitorando\" : \"sincronizando\" });\n  return null;\n}\n\nif (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\") {\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: \"grey\", shape: \"ring\", text: \"alertas desativados\" });\n  return null;\n}\n\nlet alert = null;\nif (entity === \"sensor.codex_previsao_ate_o_reset\") {\n  if ([\"atenção\", \"não aguenta\"].includes(event.state) && previous !== event.state) {\n    const critical = event.state === \"não aguenta\";\n    alert = build(\n      critical ? \"Codex — risco de esgotamento\" : \"Codex — pouca folga até o reset\",\n      (critical ? \"🔴\" : \"⚠️\") + \" Ritmo atual: \" +\n        (state.values[\"sensor.codex_ritmo_do_limite\"] || \"?\") + \"%/dia. Uso projetado no reset: \" +\n        (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%. Reset: \" +\n        (state.values[\"sensor.codex_proximo_reset\"] || \"?\") + \".\",\n      critical ? \"critical\" : \"forecast_warning\",\n    );\n  } else if (event.state === \"aguenta\" && [\"atenção\", \"não aguenta\"].includes(previous)) {\n    alert = build(\"Codex — autonomia recuperada\", \"✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"recovery\");\n  }\n} else if (entity === \"sensor.codex_limite_usado\") {\n  const used = num(event.state); const old = num(previous, -1);\n  const warning = num(state.values[\"input_number.codex_alerta_aviso_percentual\"], 70);\n  const critical = num(state.values[\"input_number.codex_alerta_critico_percentual\"], 90);\n  if (used >= critical && old < critical) alert = build(\"Codex — limite crítico\", \"🚨 Uso chegou a \" + used + \"%. Restam \" + (state.values[\"sensor.codex_limite_disponivel\"] || \"?\") + \"% até o reset.\", \"critical\");\n  else if (used >= warning && old < warning) alert = build(\"Codex — limite em atenção\", \"⚠️ Uso chegou a \" + used + \"%. Folga projetada no reset: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"usage_warning\");\n} else if (entity === \"sensor.codex_eficiencia_de_cache\") {\n  const value = num(event.state); const old = num(previous, 101); const minimum = num(state.values[\"input_number.codex_alerta_cache_minimo\"], 60);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — eficiência de cache baixa\", \"⚠️ A eficiência caiu para \" + value + \"%. Limite configurado: \" + minimum + \"%.\", \"cache_low\");\n} else if (entity === \"sensor.codex_creditos_extras\") {\n  const value = num(event.state); const old = num(previous, -1); const minimum = num(state.values[\"input_number.codex_alerta_saldo_creditos\"], 10);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — créditos extras baixos\", \"⚠️ O saldo caiu para \" + value + \" créditos.\", \"credits_low\");\n}\n\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: alert ? \"red\" : \"green\", shape: alert ? \"ring\" : \"dot\", text: alert ? \"alerta: \" + alert.kind : \"monitorando\" });\nreturn alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 160,
+        "wires": [
+            [
+                "codex_alert_push"
+            ],
+            [
+                "codex_alert_text"
+            ],
+            [
+                "codex_alert_time"
+            ],
+            [
+                "codex_alert_persistent"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_push",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Push iPhone Gabriel",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "notify.mobile_app_iphone_de_gabriel_furlan",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":alert.title,\"message\":alert.message}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "notify",
+        "service": "mobile_app_iphone_de_gabriel_furlan",
+        "x": 920,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "codex_alert_text",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Registrar último alerta",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_text.set_value",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_text.codex_ultimo_alerta_iphone"
+        ],
+        "labelId": [],
+        "data": "{\"value\": alert.title & \": \" & alert.message}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "input_text",
+        "service": "set_value",
+        "x": 940,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "codex_alert_time",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Registrar horário",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_datetime.set_datetime",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_datetime.codex_ultimo_alerta_iphone_em"
+        ],
+        "labelId": [],
+        "data": "{\"datetime\": alert.at}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "input_datetime",
+        "service": "set_datetime",
+        "x": 920,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "codex_alert_persistent",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Notificação persistente",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"codex_alert_\" & alert.kind}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 930,
+        "y": 280,
+        "wires": [
+            []
+        ]
     }
 ]
