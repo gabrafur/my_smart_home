@@ -40,6 +40,14 @@ export function updateMatchesTarget(entity, hacs, targetVersion) {
     normalizeVersion(hacs?.version_installed) === target;
 }
 
+export function preferFullCommit(currentCommit, reportedCommit) {
+  if (!currentCommit) return reportedCommit ?? null;
+  if (!reportedCommit) return currentCommit;
+  if (currentCommit.startsWith(reportedCommit)) return currentCommit;
+  if (reportedCommit.startsWith(currentCommit)) return reportedCommit;
+  return reportedCommit;
+}
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
@@ -457,7 +465,10 @@ async function apply(targetVersion) {
     }
     const config = readJson(statePath);
     config.base_version = prepared.target;
-    config.base_commit = hacsAfter?.installed_commit ?? hacsAfter?.last_commit ?? null;
+    config.base_commit = preferFullCommit(
+      config.base_commit,
+      hacsAfter?.installed_commit ?? hacsAfter?.last_commit ?? null,
+    );
     writeJson(statePath, config);
     const status = statusFor(prepared, "applied", {
       applied_at: new Date().toISOString(),

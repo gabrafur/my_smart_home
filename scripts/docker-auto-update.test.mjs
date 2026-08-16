@@ -7,7 +7,10 @@ import {
   replaceServiceImage,
   updateIsProtected,
 } from "./docker-auto-update.mjs";
-import { updateMatchesTarget } from "./kia-uvo-safe-update.mjs";
+import {
+  preferFullCommit,
+  updateMatchesTarget,
+} from "./kia-uvo-safe-update.mjs";
 
 test("replaces an image even when comments precede it", () => {
   const compose = `services:
@@ -63,4 +66,10 @@ test("recognizes an already installed Kia UVO target", () => {
     updateMatchesTarget(entity, { version_installed: "v3.9.0" }, "v3.10.1"),
     false,
   );
+});
+
+test("preserves the full upstream commit when HACS reports a prefix", () => {
+  const full = "2c602560746318fd001db8fe52347e9398f181ed";
+  assert.equal(preferFullCommit(full, "2c60256"), full);
+  assert.equal(preferFullCommit("2c60256", full), full);
 });
