@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import datetime as dt
 import logging
 import time
@@ -13,6 +14,7 @@ from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.recorder import history
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_PIN,
@@ -23,6 +25,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 from hyundai_kia_connect_api import (
     ClimateRequestOptions,
@@ -70,6 +73,9 @@ BR_WAKE_SETTLE_SECONDS = 25
 # aperta button.*_force_refresh direto (o flow iluminacao_seguranca no
 # Node-RED) contorna esse piso, entao mantemos um aqui, que ninguem contorna.
 BR_WAKE_MIN_INTERVAL_S = 15 * 60
+FUEL_TANK_LITERS = 50.0
+MIN_FUEL_DROP_PERCENT = 2.0
+MAX_READING_GAP = timedelta(hours=4)
 
 
 class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
@@ -79,6 +85,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         """Initialize."""
         self.platforms: set[str] = set()
         self._action_lock = asyncio.Lock()
+        # The Brazilian API exposes one calendar day per request. Keep the
+        # dashboard window separate from vehicle.day_trip_info so that the
+        # existing entity continues to mean "today".
+        self.recent_trip_info: dict[str, dict[str, Any]] = {}
+        self.fuel_efficiency: dict[str, dict[str, Any]] = {}
+        self._last_trip_refresh_odometer: dict[str, float] = {}
 
         self.vehicle_manager = VehicleManager(
             region=config_entry.data.get(CONF_REGION),
@@ -211,7 +223,36 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 self.vehicle_manager.update_all_vehicles_with_cached_state
             )
 
+        await self._async_refresh_trip_info_on_new_distance()
+
         return self.data
+
+    async def _async_refresh_trip_info_on_new_distance(self) -> None:
+        """Refresh trip history when vehicle telemetry confirms new driving.
+
+        Polling itself must not repeatedly hit the rate-limited /tripinfo
+        endpoint. Odometer movement is the authoritative signal that a new
+        trip can exist, including trips that do not end at home.
+        """
+        for vehicle_id, vehicle in self.vehicle_manager.vehicles.items():
+            odometer = getattr(vehicle, "_odometer", None)
+            value = odometer[0] if isinstance(odometer, tuple) else odometer
+            try:
+                current = float(value)
+            except (TypeError, ValueError):
+                continue
+            previous = self._last_trip_refresh_odometer.get(vehicle_id)
+            self._last_trip_refresh_odometer[vehicle_id] = current
+            # Establish a baseline at startup; the next genuine movement
+            # triggers the refresh without causing an API burst on reload.
+            if previous is None or current <= previous + 0.05:
+                continue
+            _LOGGER.debug(
+                "%s - odometer advanced %.2f km; refreshing trip history",
+                DOMAIN,
+                current - previous,
+            )
+            await self.async_refresh_day_trip_info(vehicle_id)
 
     async def async_update_all(self) -> None:
         """Update vehicle data."""
@@ -238,7 +279,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data(self.data)
 
     async def async_refresh_day_trip_info(self, vehicle_id: str) -> None:
-        """Fetch today's trip log (start time, duration, distance per trip).
+        """Fetch today's trip log and the preceding calendar day.
 
         This hits a different endpoint (/tripinfo) than the regular status
         poll. The BR backend only ever reports live "engine" state at
@@ -250,11 +291,188 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         app regardless of polling luck.
         """
         await self.async_check_and_refresh_token()
-        yyyymmdd_string = dt_util.now().strftime("%Y%m%d")
+        today = dt_util.now().date()
+        requested_days = (today, today - dt.timedelta(days=1))
+        vehicle = self.vehicle_manager.vehicles[vehicle_id]
+        days: list[dict[str, Any]] = []
+
+        for trip_date in requested_days:
+            yyyymmdd_string = trip_date.strftime("%Y%m%d")
+            # The upstream BR client retains the preceding result when the
+            # API returns no trips. Clear it first to avoid displaying stale
+            # trips under the other date.
+            vehicle.day_trip_info = None
+            await self.hass.async_add_executor_job(
+                self.vehicle_manager.update_day_trip_info,
+                vehicle_id,
+                yyyymmdd_string,
+            )
+            info = vehicle.day_trip_info
+            trips: list[dict[str, Any]] = []
+            if info is not None:
+                for trip in info.trip_list:
+                    start = str(trip.hhmmss or "")
+                    drive_time = trip.drive_time
+                    idle_time = trip.idle_time
+                    duration = (
+                        drive_time + idle_time
+                        if isinstance(drive_time, (int, float))
+                        and isinstance(idle_time, (int, float))
+                        else None
+                    )
+                    end_time = None
+                    if len(start) == 6 and duration is not None:
+                        try:
+                            started_at = dt.datetime.strptime(
+                                f"{yyyymmdd_string}{start}", "%Y%m%d%H%M%S"
+                            )
+                            end_time = (
+                                started_at + dt.timedelta(minutes=duration)
+                            ).strftime("%H:%M")
+                        except ValueError:
+                            pass
+                    started_at_iso = None
+                    if len(start) == 6:
+                        try:
+                            started_at_iso = dt.datetime.strptime(
+                                f"{yyyymmdd_string}{start}", "%Y%m%d%H%M%S"
+                            ).isoformat()
+                        except ValueError:
+                            pass
+                    trips.append(
+                        {
+                            "date": yyyymmdd_string,
+                            "start_time": start,
+                            "end_time": end_time,
+                            "drive_time_min": drive_time,
+                            "idle_time_min": idle_time,
+                            "duration_min": duration,
+                            "distance": trip.distance,
+                            "avg_speed": trip.avg_speed,
+                            "max_speed": trip.max_speed,
+                            "started_at": started_at_iso,
+                        }
+                    )
+            days.append(
+                {
+                    "date": yyyymmdd_string,
+                    "total_distance": info.summary.distance if info and info.summary else 0,
+                    "total_drive_time_min": info.summary.drive_time if info and info.summary else 0,
+                    "total_idle_time_min": info.summary.idle_time if info and info.summary else 0,
+                    "trips": trips,
+                }
+            )
+
+        self.recent_trip_info[vehicle_id] = {
+            "period_start": requested_days[-1].strftime("%Y%m%d"),
+            "period_end": requested_days[0].strftime("%Y%m%d"),
+            "days": days,
+            "trips": sorted(
+                (trip for day in days for trip in day["trips"]),
+                key=lambda trip: (trip["date"], trip["start_time"]),
+                reverse=True,
+            ),
+            "total_distance": sum(day["total_distance"] or 0 for day in days),
+            "total_drive_time_min": sum(day["total_drive_time_min"] or 0 for day in days),
+        }
+        await self._async_update_fuel_efficiency(vehicle_id)
+        # Restore the established contract of sensor.*_day_trip_info after the
+        # second request (yesterday): it must continue to represent today.
         await self.hass.async_add_executor_job(
-            self.vehicle_manager.update_day_trip_info, vehicle_id, yyyymmdd_string
+            self.vehicle_manager.update_day_trip_info,
+            vehicle_id,
+            today.strftime("%Y%m%d"),
         )
         self.async_set_updated_data(self.data)
+
+    async def _async_update_fuel_efficiency(self, vehicle_id: str) -> None:
+        """Estimate km/L only where recorder readings safely bracket a trip."""
+        vehicle = self.vehicle_manager.vehicles[vehicle_id]
+        registry = er.async_get(self.hass)
+        fuel_entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{DOMAIN}_{vehicle.id}_fuel_level"
+        )
+        odometer_entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{DOMAIN}_{vehicle.id}__odometer"
+        )
+        if not fuel_entity_id or not odometer_entity_id:
+            return
+
+        start = dt_util.utcnow() - timedelta(days=3)
+        entity_ids = [fuel_entity_id, odometer_entity_id]
+        states = await self.hass.async_add_executor_job(
+            lambda: history.get_significant_states(
+                self.hass,
+                start,
+                entity_ids=entity_ids,
+                no_attributes=True,
+            )
+        )
+
+        def numeric(entity_id: str) -> list[tuple[dt.datetime, float]]:
+            result = []
+            for state in states.get(entity_id, []):
+                try:
+                    result.append((state.last_updated, float(state.state)))
+                except (TypeError, ValueError):
+                    continue
+            return result
+
+        fuel_readings = numeric(fuel_entity_id)
+        odometer_readings = numeric(odometer_entity_id)
+        estimated_liters = 0.0
+        estimated_distance = 0.0
+        for trip in self.recent_trip_info[vehicle_id]["trips"]:
+            if not trip["started_at"] or trip["duration_min"] is None:
+                continue
+            # tripinfo returns the vehicle's local wall-clock time. Recorder
+            # timestamps are UTC, so convert via Home Assistant's configured
+            # timezone before comparing the two histories.
+            started = dt_util.as_utc(
+                dt.datetime.fromisoformat(trip["started_at"]).replace(
+                    tzinfo=self.hass.config.time_zone
+                )
+            )
+            ended = started + timedelta(minutes=trip["duration_min"])
+            before_fuel = next((item for item in reversed(fuel_readings) if item[0] <= started), None)
+            after_fuel = next((item for item in fuel_readings if item[0] >= ended), None)
+            before_odo = next((item for item in reversed(odometer_readings) if item[0] <= started), None)
+            after_odo = next((item for item in odometer_readings if item[0] >= ended), None)
+            if not all((before_fuel, after_fuel, before_odo, after_odo)):
+                continue
+            if any(
+                abs(sample[0] - boundary) > MAX_READING_GAP
+                for sample, boundary in ((before_fuel, started), (after_fuel, ended), (before_odo, started), (after_odo, ended))
+            ):
+                continue
+            fuel_drop = before_fuel[1] - after_fuel[1]
+            odometer_distance = after_odo[1] - before_odo[1]
+            trip_distance = float(trip["distance"] or 0)
+            if (
+                fuel_drop < MIN_FUEL_DROP_PERCENT
+                or odometer_distance < 0
+                or abs(odometer_distance - trip_distance) > max(2.0, trip_distance * 0.2)
+            ):
+                continue
+            liters = fuel_drop * FUEL_TANK_LITERS / 100
+            if liters <= 0 or trip_distance <= 0:
+                continue
+            km_per_liter = round(trip_distance / liters, 1)
+            trip["estimated_liters"] = round(liters, 2)
+            trip["estimated_km_per_l"] = km_per_liter
+            trip["consumption_source"] = "estimado por nível de combustível e odômetro"
+            estimated_liters += liters
+            estimated_distance += trip_distance
+
+        average = round(estimated_distance / estimated_liters, 1) if estimated_liters else None
+        self.fuel_efficiency[vehicle_id] = {
+            "km_per_l": average,
+            "estimated_distance": round(estimated_distance, 1),
+            "estimated_liters": round(estimated_liters, 2),
+            "tank_liters": FUEL_TANK_LITERS,
+            "method": "Estimativa: distância da viagem ÷ (queda percentual × 50 L)",
+        }
+        self.recent_trip_info[vehicle_id]["fuel_efficiency"] = self.fuel_efficiency[vehicle_id]
 
     def _force_ccs2_status_endpoint(self) -> None:
         """Force the CCS2 status endpoint, overriding Hyundai's stale flag.
@@ -299,7 +517,17 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             # float(None) reading Drivetrain.FuelSystem.DTE.Total, which only
             # exists under state.Vehicle.
             inner = (resmsg or {}).get("state", {}).get("Vehicle", {})
-            ApiImplType1._update_vehicle_properties_ccs2(api_self, vehicle, inner)
+            # The BR endpoint intermittently returns 70 for DTE.Unit although
+            # this vehicle otherwise reports the metric enum 1. ApiImplType1
+            # indexes its unit map directly, so that malformed value used to
+            # make *every* vehicle entity unavailable. Keep vehicle.data raw,
+            # but normalize only the parser input after logging the anomaly.
+            parser_state = copy.deepcopy(inner)
+            dte = parser_state.get("Drivetrain", {}).get("FuelSystem", {}).get("DTE", {})
+            if dte.get("Unit") not in (0, 1, None):
+                _LOGGER.warning("%s - invalid BR CCS2 DTE.Unit=%s; parsing as km", DOMAIN, dte["Unit"])
+                dte["Unit"] = 1
+            ApiImplType1._update_vehicle_properties_ccs2(api_self, vehicle, parser_state)
             # ApiImplType1's parser sets total_driving_range but never
             # fuel_driving_range (a BR-flat-parser-only field our sensor.py
             # SENSOR_DESCRIPTIONS already keys off of, entity
