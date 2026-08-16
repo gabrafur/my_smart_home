@@ -146,6 +146,9 @@ services:
     environment:
       - WORKDIR=/workspace
       - HISTORY_DIR=/workspace/.agent-history
+      # Machine-local Ollama routing persists in the Codex auth volume, rather
+      # than in the image or repository.
+      - LOCAL_AI_CONFIG=/home/node/.codex/local-ai.json
       - TZ=${TZ:-America/Sao_Paulo}
       - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN:-}
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}

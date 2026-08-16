@@ -262,6 +262,42 @@ Os tokens exibidos abrangem somente as sessões ainda presentes nesse volume.
 O saldo e a janela de limite refletem a última métrica que o CLI recebeu; o
 painel mostra o horário dessa métrica para deixar eventual defasagem visível.
 
+#### Local AI / RTX 4070
+
+Depois da confirmação do roteador de modelo (`continue`), o hook global do
+Codex pode executar uma única verificação curta do Ollama remoto. A
+configuração da máquina fica fora do repositório em
+`~/.config/codex/local-ai.json`; neste ambiente, o endpoint padrão é
+`http://192.168.0.153:11435` e o modelo padrão permanece
+`qwen2.5-coder:7b`. Variáveis de ambiente têm precedência:
+`LOCAL_AI_ENABLED=0`, `LOCAL_AI_ENDPOINT`, `LOCAL_AI_MODEL` e
+`LOCAL_AI_FORCE`.
+
+O helper `scripts/local-ai/local-ai` só recebe tarefas delimitadas de primeira
+passagem (logs, diff, classificação ou resumo). Ele nunca persiste prompt,
+diff, resposta ou credenciais: em `.agent-history/` ficam apenas metadados de
+execução, como modelo, duração, GPU/VRAM, processador e contagens. O painel
+mostra esses dados junto do estado do preflight. “Tokens OpenAI evitados” é a
+diferença entre o contexto original e o JSON resumido; é explicitamente uma
+estimativa quando o tokenizer OpenAI não estiver instalado, e não uma medição
+de cobrança.
+
+Para testar sem envolver uma conversa, use:
+
+```bash
+~/.local/bin/local-ai-preflight --json --revalidate
+scripts/local-ai/local-ai status
+```
+
+Uma falha local não tenta reparar infraestrutura nem bloqueia o Codex: a
+política segue com ferramentas determinísticas e o modelo principal. A primeira
+falha de rede em uma chamada do helper pode revalidar o preflight uma vez; não
+há tentativas em loop.
+
+O Codex exige uma revisão explícita de hooks não gerenciados: abra `/hooks` e
+aprove o hook Local AI uma vez após instalá-lo (ou após ele mudar). Até essa
+confirmação, o Codex continua normalmente sem executar o preflight automático.
+
 A mesma aba possui controles de alertas para o iPhone de Gabriel. O painel
 mantém apenas os sensores e as preferências; a avaliação, o cooldown e o push
 são executados pelo fluxo **Alertas Codex** do Node-RED. Os limites de atenção,
@@ -273,6 +309,7 @@ o push; instalar ou reiniciar a configuração não dispara essa notificação.
 
 - `claude-bridge/Dockerfile`, `claude-bridge/server.js`, `claude-bridge/package.json`
 - `claude-bridge/history.js`, `claude-bridge/usage.js`, `scripts/agent-history.mjs`, `AGENTS.md`
+- `scripts/local-ai/` (helper delimitado, prompts, testes e telemetria privada)
 - `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_BRIDGE_TOKEN`) e `.env.example`
 - `docker-compose.yml` (serviço `claude-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)
