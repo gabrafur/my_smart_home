@@ -6,7 +6,6 @@ import asyncio
 import copy
 import datetime as dt
 import logging
-import time
 import traceback
 import types
 from collections.abc import Callable
@@ -41,8 +40,6 @@ from hyundai_kia_connect_api.exceptions import (
     AuthenticationError,
     UnsupportedControlError,
 )
-from hyundai_kia_connect_api.ApiImplType1 import ApiImplType1
-
 from .const import (
     CONF_BRAND,
     CONF_ENABLE_GEOLOCATION_ENTITY,
@@ -58,14 +55,10 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_USE_EMAIL_WITH_GEOCODE_API,
     DOMAIN,
+    OffPeakChargingMode,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-# Segundos de espera entre acordar o veiculo e ler o snapshot ja fresco.
-# 25 s e o valor medido em campo pelo upstream (KiaUvoApiEU) para um CCS2
-# alcancavel; abaixo disso o /latest ainda devolve o estado antigo.
-BR_WAKE_SETTLE_SECONDS = 25
 
 # Piso de seguranca entre dois wakes reais. Acordar o carro puxa a bateria de
 # 12 V e conta contra o rate limit da Hyundai - e' por isso que o options flow
@@ -91,6 +84,8 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.recent_trip_info: dict[str, dict[str, Any]] = {}
         self.fuel_efficiency: dict[str, dict[str, Any]] = {}
         self._last_trip_refresh_odometer: dict[str, float] = {}
+        self._trip_history_initialized: set[str] = set()
+        self._br_last_button_wake_at: dt.datetime | None = None
 
         self.vehicle_manager = VehicleManager(
             region=config_entry.data.get(CONF_REGION),
@@ -182,8 +177,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 f"Token refresh failed, will retry in 60s: {err}",
                 retry_after=60,
             ) from err
-        self._force_ccs2_status_endpoint()
-        self._install_br_wake_force_refresh()
+        self._install_br_parser_compatibility()
         current_hour = dt_util.now().hour
 
         if (
@@ -243,13 +237,20 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 continue
             previous = self._last_trip_refresh_odometer.get(vehicle_id)
             self._last_trip_refresh_odometer[vehicle_id] = current
-            # Establish a baseline at startup; the next genuine movement
-            # triggers the refresh without causing an API burst on reload.
+            if vehicle_id not in self._trip_history_initialized:
+                self._trip_history_initialized.add(vehicle_id)
+                try:
+                    await self.async_refresh_day_trip_info(vehicle_id)
+                except Exception:
+                    _LOGGER.exception(
+                        "CRETA_API_ERROR trip history initialization failed"
+                    )
+                continue
             if previous is None or current <= previous + 0.05:
                 continue
-            _LOGGER.debug(
-                "%s - odometer advanced %.2f km; refreshing trip history",
-                DOMAIN,
+            _LOGGER.info(
+                "CRETA_MOVEMENT_DETECTED odometer_delta_km=%.2f; "
+                "refreshing trip history",
                 current - previous,
             )
             await self.async_refresh_day_trip_info(vehicle_id)
@@ -273,9 +274,42 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
     async def async_force_refresh_vehicle(self, vehicle_id: str) -> None:
         """Force refresh a single vehicle's state."""
         await self.async_check_and_refresh_token()
-        await self.hass.async_add_executor_job(
-            self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+        vehicle = self.vehicle_manager.vehicles[vehicle_id]
+        api = self.vehicle_manager.api
+        now = dt_util.utcnow()
+        recent_candidates = [self._br_last_button_wake_at, vehicle.last_updated_at]
+        recent = max(
+            (
+                timestamp
+                for timestamp in recent_candidates
+                if timestamp is not None and timestamp.tzinfo is not None
+            ),
+            default=None,
         )
+        cooldown_active = (
+            type(api).__name__ == "HyundaiBlueLinkApiBR"
+            and recent is not None
+            and (now - dt_util.as_utc(recent)).total_seconds()
+            < BR_WAKE_MIN_INTERVAL_S
+        )
+        if cooldown_active:
+            age = (now - dt_util.as_utc(recent)).total_seconds()
+            _LOGGER.info(
+                "CRETA_REFRESH_SUPPRESSED cooldown_active=true age_seconds=%.0f "
+                "minimum_seconds=%d",
+                age,
+                BR_WAKE_MIN_INTERVAL_S,
+            )
+            await self.hass.async_add_executor_job(
+                self.vehicle_manager.update_vehicle_with_cached_state, vehicle_id
+            )
+        else:
+            _LOGGER.info("CRETA_REFRESH_REQUESTED source=force_refresh_button")
+            if type(api).__name__ == "HyundaiBlueLinkApiBR":
+                self._br_last_button_wake_at = now
+            await self.hass.async_add_executor_job(
+                self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+            )
         self.async_set_updated_data(self.data)
 
     async def async_refresh_day_trip_info(self, vehicle_id: str) -> None:
@@ -383,6 +417,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             vehicle_id,
             today.strftime("%Y%m%d"),
         )
+        _LOGGER.info(
+            "CRETA_TRIP_UPDATED days=%d trips=%d total_distance_km=%.1f",
+            len(days),
+            len(self.recent_trip_info[vehicle_id]["trips"]),
+            self.recent_trip_info[vehicle_id]["total_distance"],
+        )
         self.async_set_updated_data(self.data)
 
     async def _async_update_fuel_efficiency(self, vehicle_id: str) -> None:
@@ -428,10 +468,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             # tripinfo returns the vehicle's local wall-clock time. Recorder
             # timestamps are UTC, so convert via Home Assistant's configured
             # timezone before comparing the two histories.
+            local_tz = (
+                dt_util.get_time_zone(self.hass.config.time_zone)
+                or dt_util.DEFAULT_TIME_ZONE
+            )
             started = dt_util.as_utc(
-                dt.datetime.fromisoformat(trip["started_at"]).replace(
-                    tzinfo=self.hass.config.time_zone
-                )
+                dt.datetime.fromisoformat(trip["started_at"]).replace(tzinfo=local_tz)
             )
             ended = started + timedelta(minutes=trip["duration_min"])
             before_fuel = next((item for item in reversed(fuel_readings) if item[0] <= started), None)
@@ -474,148 +516,39 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         }
         self.recent_trip_info[vehicle_id]["fuel_efficiency"] = self.fuel_efficiency[vehicle_id]
 
-    def _force_ccs2_status_endpoint(self) -> None:
-        """Force the CCS2 status endpoint, overriding Hyundai's stale flag.
+    def _install_br_parser_compatibility(self) -> None:
+        """Preserve local BR parsing compatibility on top of API 4.26.1.
 
-        The BR backend's /spa/vehicles list response includes a per-vehicle
-        ccuCCS2ProtocolSupport flag that HyundaiBlueLinkApiBR._get_vehicle_state
-        uses to pick between /status/latest (flag=0) and /ccs2/carstatus/latest
-        (flag=1). For this Creta the flag has been reporting 0 the whole time,
-        but /status/latest has returned a hard 503 (resCode 5031,
-        "Unavailable remote control - Service Temporary Unavailable") since
-        2026-07-14, while manually probing /ccs2/carstatus/latest with the
-        same token on 2026-07-19 returned 200 with fresh vehicle data. i.e.
-        Hyundai migrated this vehicle's backend to CCS2 without updating the
-        capability flag their own vehicle-list endpoint reports. Force it
-        every update instead of relying on the (wrong) upstream flag.
-
-        The /ccs2/carstatus/latest response is a deeply nested schema
-        (resMsg.state.Vehicle.Cabin.Door.Row1.Driver.Open, etc.), completely
-        different from the flat /status/latest shape (resMsg.doorOpen.frontLeft)
-        that HyundaiBlueLinkApiBR._update_vehicle_properties expects. Flipping
-        the URL alone made the API call succeed but left every field parsed
-        from the wrong shape (silently defaulting to None/False via .get()) -
-        confirmed live: sensor.creta_fuel_level stayed "unavailable" even
-        after status/latest 503s stopped. ApiImplType1 (used by other
-        Hyundai/Kia regions that are CCS2-native) already ships a complete,
-        battle-tested parser for this exact schema
-        (_update_vehicle_properties_ccs2 - only self-dependency is
-        self.data_timezone, which HyundaiBlueLinkApiBR also defines, so it's
-        safe to bind onto our api instance). Rebinding
-        api._update_vehicle_properties means update_vehicle_with_cached_state
-        / force_refresh_vehicle_state (which call self._update_vehicle_properties
-        internally, unaware of the swap) transparently get correct parsing.
+        API 4.26.1 natively handles the Creta's CCS2 endpoint, parser, wake and
+        UTC timestamp. The remaining local workaround is intentionally narrow:
+        tolerate the intermittent invalid DTE unit and preserve the historical
+        fuel-range entity alias used by this installation.
         """
         api = self.vehicle_manager.api
-        for vehicle in self.vehicle_manager.vehicles.values():
-            vehicle.ccu_ccs2_protocol_support = True
-        def _parse_ccs2(api_self, vehicle, resmsg):
-            # HyundaiBlueLinkApiBR._get_vehicle_state returns response["resMsg"]
-            # as-is, but ApiImplType1._update_vehicle_properties_ccs2 (as called
-            # by KiaUvoApiEU/AU) expects resMsg["state"]["Vehicle"] - one level
-            # deeper. Confirmed live: calling it with the bare resMsg crashed on
-            # float(None) reading Drivetrain.FuelSystem.DTE.Total, which only
-            # exists under state.Vehicle.
-            inner = (resmsg or {}).get("state", {}).get("Vehicle", {})
-            # The BR endpoint intermittently returns 70 for DTE.Unit although
-            # this vehicle otherwise reports the metric enum 1. ApiImplType1
-            # indexes its unit map directly, so that malformed value used to
-            # make *every* vehicle entity unavailable. Keep vehicle.data raw,
-            # but normalize only the parser input after logging the anomaly.
-            parser_state = copy.deepcopy(inner)
-            dte = parser_state.get("Drivetrain", {}).get("FuelSystem", {}).get("DTE", {})
+        if type(api).__name__ != "HyundaiBlueLinkApiBR":
+            return
+        original = type(api)._update_vehicle_properties_ccs2
+
+        def _parse_ccs2(api_self, vehicle, state):
+            parser_state = copy.deepcopy(state)
+            dte = (
+                parser_state.get("Drivetrain", {})
+                .get("FuelSystem", {})
+                .get("DTE", {})
+            )
             if dte.get("Unit") not in (0, 1, None):
-                _LOGGER.warning("%s - invalid BR CCS2 DTE.Unit=%s; parsing as km", DOMAIN, dte["Unit"])
+                _LOGGER.warning(
+                    "CRETA_DATA_ANOMALY invalid_dte_unit=%s normalized_to=km",
+                    dte["Unit"],
+                )
                 dte["Unit"] = 1
-            ApiImplType1._update_vehicle_properties_ccs2(api_self, vehicle, parser_state)
-            # ApiImplType1's parser sets total_driving_range but never
-            # fuel_driving_range (a BR-flat-parser-only field our sensor.py
-            # SENSOR_DESCRIPTIONS already keys off of, entity
-            # sensor.creta_fuel_driving_range) - confirmed by diffing every
-            # "vehicle.X =" assignment between the two parsers, the only gap.
-            # Alias it instead of touching sensor.py, so the existing
-            # entity_id keeps working unchanged.
+            original(api_self, vehicle, parser_state)
             if vehicle.total_driving_range is not None:
                 vehicle.fuel_driving_range = (
                     vehicle.total_driving_range,
                     vehicle.total_driving_range_unit,
                 )
-
-        api._update_vehicle_properties = types.MethodType(_parse_ccs2, api)
-
-    def _install_br_wake_force_refresh(self) -> None:
-        """Faz o force refresh realmente ACORDAR o carro no backend BR.
-
-        HyundaiBlueLinkApiBR.force_refresh_vehicle_state se anuncia como
-        "wakes up the vehicle", mas so faz GET /ccs2/carstatus/latest - o
-        snapshot em CACHE - com um header REFRESH: true que o backend BR
-        ignora.
-
-        Medido ao vivo em 2026-08-07: a chamada voltou em 160 ms (um poll real
-        do veiculo leva 10-30 s) e binary_sensor.creta_engine ficou "off"
-        durante 4 minutos de motor comprovadamente ligado, enquanto
-        sensor.creta_last_scanned_at avancava - ou seja, reliamos estado velho
-        da nuvem. Ao apertar o refresh no app Bluelink, o backend fez o poll de
-        verdade e o nosso ciclo seguinte leu engine=on. O sensor nunca esteve
-        quebrado; estava sem dado.
-
-        KiaUvoApiEU._force_refresh_vehicle_state_ccs2 ja implementa a sequencia
-        correta para veiculos CCS2; a classe BR simplesmente nunca a recebeu.
-        Portada aqui: GET /ccs2/carstatus (sem /latest) acorda o carro, espera
-        ele reportar, e so entao le o /latest ja fresco. O corpo do wake e um
-        envelope de comando assincrono, nao o estado, entao e descartado - mas
-        os erros propagam, para que um wake falho nunca caia em aplicar um
-        snapshot velho (mesma razao do upstream EU).
-        """
-        api = self.vehicle_manager.api
-        if type(api).__name__ != "HyundaiBlueLinkApiBR":
-            return
-        if not hasattr(self, "_br_last_wake_at"):
-            self._br_last_wake_at = None
-
-        # Parte SEMPRE da funcao da classe, nunca do atributo ja instalado na
-        # instancia: _async_update_data roda isto a cada ciclo, e envolver o
-        # wrapper anterior empilharia mais um sleep de 25 s por ciclo.
-        original = type(api)._get_vehicle_state
-        coordinator = self
-
-        def _get_vehicle_state_waking(
-            api_self, token, vehicle, force_refresh: bool = False
-        ):
-            if not force_refresh:
-                return original(api_self, token, vehicle, force_refresh=False)
-
-            now = dt_util.utcnow()
-            last = coordinator._br_last_wake_at
-            if (
-                last is not None
-                and (now - last).total_seconds() < BR_WAKE_MIN_INTERVAL_S
-            ):
-                _LOGGER.debug(
-                    "%s - wake em cooldown (ultimo ha %.0fs, piso %ds); "
-                    "lendo o snapshot em cache",
-                    DOMAIN,
-                    (now - last).total_seconds(),
-                    BR_WAKE_MIN_INTERVAL_S,
-                )
-                return original(api_self, token, vehicle, force_refresh=False)
-
-            headers = api_self._get_authenticated_headers(token)
-            wake_url = api_self._build_api_url(
-                f"/spa/vehicles/{vehicle.id}/ccs2/carstatus"
-            )
-            _LOGGER.debug("%s - acordando o veiculo: %s", DOMAIN, wake_url)
-            _wake_resp = api_self.session.get(wake_url, headers=headers)
-            _LOGGER.debug(
-                "%s - resposta do wake [%s]: %s",
-                DOMAIN, _wake_resp.status_code, _wake_resp.text[:600],
-            )
-            _wake_resp.json()
-            coordinator._br_last_wake_at = now
-            time.sleep(BR_WAKE_SETTLE_SECONDS)
-            return original(api_self, token, vehicle, force_refresh=False)
-
-        api._get_vehicle_state = types.MethodType(_get_vehicle_state_waking, api)
+        api._update_vehicle_properties_ccs2 = types.MethodType(_parse_ccs2, api)
 
     async def async_check_and_refresh_token(self):
         """Refresh token if needed via library."""
@@ -841,6 +774,32 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         vehicle = self.vehicle_manager.vehicles[vehicle_id]
         options = self._build_schedule_options_from_vehicle(vehicle)
         options.off_peak_charge_only_enabled = enabled
+        await self.async_schedule_charging_and_climate(vehicle_id, options)
+
+    async def async_set_off_peak_charging(
+        self,
+        vehicle_id: str,
+        *,
+        mode: OffPeakChargingMode | None = None,
+        start: dt.time | None = None,
+        end: dt.time | None = None,
+    ) -> None:
+        """Set the off-peak charging mode and/or window."""
+        vehicle = self.vehicle_manager.vehicles[vehicle_id]
+        options = self._build_schedule_options_from_vehicle(vehicle)
+        if mode is not None:
+            if mode is OffPeakChargingMode.OFF:
+                options.charging_enabled = False
+            elif mode is OffPeakChargingMode.TIME:
+                options.charging_enabled = True
+                options.off_peak_charge_only_enabled = True
+            elif mode is OffPeakChargingMode.TARGET:
+                options.charging_enabled = True
+                options.off_peak_charge_only_enabled = False
+        if start is not None:
+            options.off_peak_start_time = start
+        if end is not None:
+            options.off_peak_end_time = end
         await self.async_schedule_charging_and_climate(vehicle_id, options)
 
     async def async_set_departure_enabled(
