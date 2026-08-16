@@ -13,7 +13,7 @@ from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.components.recorder import history
+from homeassistant.components.recorder import get_instance, history
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_PIN,
@@ -440,7 +440,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
         start = dt_util.utcnow() - timedelta(days=3)
         entity_ids = [fuel_entity_id, odometer_entity_id]
-        states = await self.hass.async_add_executor_job(
+        states = await get_instance(self.hass).async_add_executor_job(
             lambda: history.get_significant_states(
                 self.hass,
                 start,
