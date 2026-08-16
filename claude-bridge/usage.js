@@ -177,6 +177,7 @@ function emptyLocalAiTotals() {
     local_output_tokens: 0,
     context_input_tokens: 0,
     context_output_tokens: 0,
+    context_overhead_tokens: 0,
     openai_context_tokens_avoided: 0,
   };
 }
@@ -184,7 +185,9 @@ function emptyLocalAiTotals() {
 function addLocalAiTotals(target, source) {
   for (const key of Object.keys(emptyLocalAiTotals())) {
     const value = Number(source?.[key]);
-    if (Number.isFinite(value) && value > 0) target[key] += value;
+    if (Number.isFinite(value) && (value > 0 || (key === 'openai_context_tokens_avoided' && value !== 0))) {
+      target[key] += value;
+    }
   }
   return target;
 }
@@ -194,13 +197,13 @@ function localAiDerived(totals) {
   const successful = Number(totals.successful_calls) || 0;
   const failed = Number(totals.failed_calls) || 0;
   const input = Number(totals.context_input_tokens) || 0;
-  const output = Number(totals.context_output_tokens) || 0;
+  const avoided = Number(totals.openai_context_tokens_avoided) || 0;
   const duration = Number(totals.duration_seconds) || 0;
   return {
-    context_reduction_percent: input > 0 ? round(Math.max(0, (1 - output / input) * 100), 1) : null,
+    context_reduction_percent: input > 0 ? round((avoided / input) * 100, 1) : null,
     success_rate_percent: calls > 0 ? round((successful / calls) * 100, 1) : null,
     failure_rate_percent: calls > 0 ? round((failed / calls) * 100, 1) : null,
-    average_duration_seconds: successful > 0 ? round(duration / successful, 2) : null,
+    average_duration_seconds: calls > 0 ? round(duration / calls, 2) : null,
   };
 }
 
@@ -244,8 +247,11 @@ function sanitizeLocalAiJob(job) {
     'id', 'status', 'task', 'model', 'chat_id', 'chat_name', 'started_at', 'finished_at',
     'duration_seconds', 'error_type', 'fallback_reported',
     'context_input_tokens', 'context_output_tokens',
+    'context_overhead_tokens', 'context_overhead_method', 'context_savings_estimated',
+    'token_count_method', 'context_replacement',
+    'deterministic_omitted_lines', 'model_input_chars',
     'openai_context_tokens_avoided', 'context_reduction_percent',
-    'tokens_per_second', 'gpu_telemetry_available', 'gpu_peak_percent',
+    'tokens_per_second', 'local_attempts', 'gpu_telemetry_available', 'gpu_peak_percent',
     'vram_peak_mib', 'gpu_power_peak_watts', 'processor',
     'cpu_offload_detected',
   ];

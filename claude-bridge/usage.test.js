@@ -112,7 +112,7 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
     totals: {
       calls: 3, successful_calls: 2, failed_calls: 1, fallbacks_reported: 1,
       duration_seconds: 20, local_input_tokens: 1500, local_output_tokens: 260,
-      context_input_tokens: 1200, context_output_tokens: 180,
+      context_input_tokens: 1200, context_output_tokens: 180, context_overhead_tokens: 0,
       openai_context_tokens_avoided: 1020,
     },
     daily: {
@@ -145,6 +145,7 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.equal(usage.totals.openai_context_tokens_avoided, 1020);
   assert.equal(usage.totals.context_reduction_percent, 85);
   assert.equal(usage.totals.failure_rate_percent, 33.3);
+  assert.equal(usage.totals.average_duration_seconds, 6.67);
   assert.equal(usage.periods.today.openai_context_tokens_avoided, 600);
   assert.equal(usage.current_job.task, 'review-diff');
   assert.equal(usage.current_job.endpoint, undefined);
@@ -191,4 +192,23 @@ test('does not keep an abandoned Local AI job marked as in use', (t) => {
   const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
   assert.equal(usage.current_job, null);
   assert.equal(usage.state, 'LOCAL_AI_AVAILABLE');
+});
+
+test('preserves a signed negative context delta instead of reporting false savings', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-negative-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    totals: {
+      calls: 1, successful_calls: 1, context_input_tokens: 100,
+      context_output_tokens: 120, openai_context_tokens_avoided: -20,
+    },
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-16T12:00:00.000Z',
+  }));
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(usage.totals.openai_context_tokens_avoided, -20);
+  assert.equal(usage.totals.context_reduction_percent, -20);
 });

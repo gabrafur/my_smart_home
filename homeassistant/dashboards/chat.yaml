@@ -360,8 +360,14 @@ views:
 
           GPU pico: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'pico_gpu_percentual') }}%** ·
           VRAM pico: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'pico_vram_mib') }} MiB** ·
-          Contexto OpenAI evitado: **~{{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados') }} tokens** ·
+          Contexto: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_entrada') }} →
+          {{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_saida') }} tokens** ·
+          redução **~{{ state_attr('sensor.codex_ultimo_job_local_ai', 'reducao_contexto_percentual') }}%** ·
+          contexto OpenAI evitado **~{{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados') }} tokens** ·
           {{ state_attr('sensor.codex_ultimo_job_local_ai', 'processador') or 'processador não amostrado' }}.
+
+          Overhead do envelope OpenAI: **não mensurado**; a economia é uma estimativa de
+          conteúdo pelo método `{{ state_attr('sensor.codex_ultimo_job_local_ai', 'metodo_contagem_tokens') }}`.
           {% elif task and status == 'failed' %}
           ## Último job de GPU
 

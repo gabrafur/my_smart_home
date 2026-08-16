@@ -526,11 +526,11 @@ template:
       - name: Codex Tokens OpenAI Economizados Estimados
         unique_id: codex_tokens_openai_evitados_estimados
         icon: mdi:content-save-outline
-        state_class: total_increasing
+        state_class: total
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('openai_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
-          metodologia: "tokens do contexto compactado; estimativa quando o tokenizer OpenAI não está instalado"
+          metodologia: "delta entre contexto bruto e resumo efetivamente retornado; exclui falhas e benchmarks; overhead do envelope OpenAI não mensurável"
 
       - name: Codex Tokens OpenAI Economizados Hoje Estimados
         unique_id: codex_tokens_openai_evitados_hoje_estimados
@@ -578,6 +578,9 @@ template:
           tokens_por_segundo: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('tokens_per_second') if jobs else none }}
+          tentativas_locais: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('local_attempts') if jobs else none }}
           pico_gpu_percentual: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('gpu_peak_percent') if jobs else none }}
@@ -587,6 +590,24 @@ template:
           tokens_openai_evitados_estimados: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('openai_context_tokens_avoided') if jobs else none }}
+          tokens_contexto_entrada: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('context_input_tokens') if jobs else none }}
+          tokens_contexto_saida: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('context_output_tokens') if jobs else none }}
+          overhead_tokens: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('context_overhead_tokens') if jobs else none }}
+          metodo_overhead: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('context_overhead_method') if jobs else none }}
+          metodo_contagem_tokens: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('token_count_method') if jobs else none }}
+          reducao_contexto_percentual: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('context_reduction_percent') if jobs else none }}
           erro_tipo: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('error_type') if jobs else none }}
