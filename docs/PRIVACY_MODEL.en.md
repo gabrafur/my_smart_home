@@ -52,9 +52,12 @@ make privacy-check-staged
 
 The first command scans only Git-tracked content; the second scans only staged
 content. An untracked file can never make the published tree valid. The scanner
-covers identity-bearing entities, private networks, coordinates, MACs,
-VIN/serial patterns, residential topics, event-related timestamps, state/backup
-artifacts, images outside the public asset area, and image metadata.
+covers identity-bearing entities, contextual name, email and phone fields,
+account identifiers, private hostnames/SSIDs, private networks, addresses,
+coordinates, MACs/BSSIDs, VIN/serial patterns, residential topics,
+event-related timestamps, state/backup artifacts, images outside the public
+asset area, and image metadata. Synthetic values and logical roles have explicit
+negative fixtures instead of implicit exceptions.
 
 An optional private denylist may be supplied through `PRIVACY_DENYLIST_FILE`.
 It is Git-ignored and its values are never printed. Privacy and security scanner

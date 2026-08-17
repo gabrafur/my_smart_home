@@ -18,11 +18,19 @@ const rules = [
   ["residential-device-topic", "routine", /\bzigbee2mqtt\/(?!bridge(?:\/|$)|example_|<)[a-z0-9_-]+\/(?:set|get|state)\b/g],
   ["event-timestamp", "routine", /\b(?:arrival|presence|trip|trajectory|event|payload|log)[^\n]{0,80}\b20\d{2}-\d{2}-\d{2}[t ][0-2]\d:[0-5]\d/gi],
   ["real-log-line", "runtime-data", /^\s*(?:START|RESULT|CANDIDATE|INSPECT)\|.*(?:path|at|before_bytes|after_bytes)=/gim],
+  ["private-email", "identity", /\b[a-z0-9._%+-]+@(?!example\.(?:com|org|net|invalid)\b)(?!users\.noreply\.github\.com\b)[a-z0-9.-]+\.[a-z]{2,}\b/gi],
+  ["private-phone", "identity", /\b(?:phone|telephone|telefone|mobile_number|msisdn)\s*[:=]\s*["']?\+?\d[\d ()-]{7,}\d/gi],
+  ["private-hostname", "network", /\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:local|lan|internal)(?=$|[/:,\s"'}\]])/gi],
+  ["private-ssid", "network", /\bssid\s*[:=]\s*["']?(?!CHANGE_ME\b|example\b|synthetic\b|<)[^\s,"'}]{3,}/gi],
+  ["private-address", "location", /\b(?:home_address|street_address|postal_address)\s*[:=]\s*["']?(?!example\b|synthetic\b|<)[^\n,"'}]{5,}/gi],
+  ["private-name-field", "identity", /\b(?:owner_name|resident_name|first_name|last_name|surname|family_name)\s*[:=]\s*["']?(?!example\b|synthetic\b|resident_(?:primary|secondary)\b|<)[^\n,"'}]{2,}/gi],
+  ["private-account-id", "identity", /\b(?:account_id|user_id)\s*[:=]\s*["']?(?!example\b|synthetic\b|resident_(?:primary|secondary)\b|<)[a-z0-9][a-z0-9_-]{7,}/gi],
 ];
 const ignoredText = [
   /^homeassistant\/custom_components\/(?:alexa_media|hacs|kia_uvo|localtuya|tuya_vacuum_maps)\//,
   /^nodered\/package-lock\.json$/,
   /^scripts\/privacy-check(?:\.test)?\.mjs$/,
+  /^scripts\/security-scan(?:\.test)?\.(?:mjs|sh)$/,
 ];
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
@@ -30,9 +38,9 @@ const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|
 const privateCodexPath = /^\.codex\/(?!(?:hooks\.json$|memories(?:\/|$)))/;
 const sensitiveArtifactPath = /(?:^|\/)(?:secrets\.ya?ml|password\.txt|coordinator_backup\.json|\.env)(?:$|\/)|\.(?:bak|backup|db|sqlite\d*|log|tar|tgz|zip)$/i;
 
-function git(args, input) {
+function git(args, input, root = repoRoot) {
   const result = spawnSync("git", args, {
-    cwd: repoRoot,
+    cwd: root,
     encoding: args.includes("-z") ? "buffer" : "utf8",
     input,
     stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
@@ -41,19 +49,19 @@ function git(args, input) {
   return result.stdout;
 }
 
-function fileList(mode) {
+function fileList(mode, root = repoRoot) {
   const output = mode === "staged"
-    ? git(["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"])
-    : git(["ls-files", "--cached", "-z"]);
+    ? git(["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"], undefined, root)
+    : git(["ls-files", "--cached", "-z"], undefined, root);
   return output.toString("utf8").split("\0").filter(Boolean);
 }
 
-function contentFor(file, mode) {
-  if (mode === "staged" || !fs.existsSync(path.join(repoRoot, file))) {
-    const result = spawnSync("git", ["show", `:${file}`], { cwd: repoRoot, encoding: "buffer" });
+function contentFor(file, mode, root = repoRoot) {
+  if (mode === "staged" || !fs.existsSync(path.join(root, file))) {
+    const result = spawnSync("git", ["show", `:${file}`], { cwd: root, encoding: "buffer" });
     return result.status === 0 ? result.stdout : Buffer.alloc(0);
   }
-  return fs.readFileSync(path.join(repoRoot, file));
+  return fs.readFileSync(path.join(root, file));
 }
 
 function lineNumber(text, offset) {
@@ -98,6 +106,9 @@ export function scanEntries(entries, { denylist = [] } = {}) {
       for (const match of text.matchAll(pattern)) {
         if (rule === "mac-address" && match[0].toUpperCase() === "AA:AA:AA:AA:AA:AA") continue;
         if (rule === "private-ipv4" && /(?:example|synthetic|sint[eé]tic)/i.test(text.slice(Math.max(0, match.index - 80), match.index))) continue;
+        if (rule === "private-hostname" && /(?:example|synthetic|sint[eé]tic)/i.test(text.slice(Math.max(0, match.index - 80), match.index))) continue;
+        if (["private-name-field", "private-account-id"].includes(rule) &&
+            /(?:\b(?:example|synthetic)|\b(?:resident_(?:primary|secondary)|mobile_(?:primary|secondary)|vehicle_primary|garage_gate|exterior_light|security_panel)\b)/i.test(text.slice(Math.max(0, (match.index ?? 0) - 32), (match.index ?? 0) + 160))) continue;
         report(rule, file, lineNumber(text, match.index ?? 0), category);
       }
     }
@@ -115,6 +126,12 @@ export function scanEntries(entries, { denylist = [] } = {}) {
   return findings;
 }
 
+export function scanGitRepository(root, mode = "tracked", options = {}) {
+  if (!["tracked", "staged"].includes(mode)) throw new Error("unsupported privacy scan mode");
+  const entries = fileList(mode, root).map((file) => ({ file, buffer: contentFor(file, mode, root) }));
+  return { entries, findings: scanEntries(entries, options) };
+}
+
 function loadDenylist() {
   const configured = process.env.PRIVACY_DENYLIST_FILE;
   if (!configured) return [];
@@ -125,13 +142,13 @@ function loadDenylist() {
 function main() {
   const mode = process.argv.includes("--staged") ? "staged" : "tracked";
   let entries;
+  let findings;
   try {
-    entries = fileList(mode).map((file) => ({ file, buffer: contentFor(file, mode) }));
+    ({ entries, findings } = scanGitRepository(repoRoot, mode, { denylist: loadDenylist() }));
   } catch {
     console.error("rule=scanner-error file=<repository> line=0 category=tooling");
     process.exit(2);
   }
-  const findings = scanEntries(entries, { denylist: loadDenylist() });
   for (const item of findings) {
     console.error(`rule=${item.rule} file=${item.file} line=${item.line} category=${item.category}`);
   }

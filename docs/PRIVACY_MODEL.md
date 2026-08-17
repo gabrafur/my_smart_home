@@ -54,9 +54,12 @@ make privacy-check-staged
 
 O primeiro comando examina somente o conteúdo rastreado pelo Git; o segundo,
 somente o conteúdo staged. Arquivos untracked nunca tornam a árvore publicada
-válida. O scanner cobre identidades em entidades, rede privada, coordenadas,
-MACs, VIN/serial, tópicos residenciais, timestamps associados a eventos,
-artefatos de estado/backup, imagens fora da área pública e metadados de imagem.
+válida. O scanner cobre identidades em entidades, campos contextuais de nome,
+e-mail e telefone, identificadores de conta, hostnames/SSIDs privados, rede
+privada, endereços, coordenadas, MACs/BSSIDs, VIN/serial, tópicos residenciais,
+timestamps associados a eventos, artefatos de estado/backup, imagens fora da
+área pública e metadados de imagem. Valores sintéticos e papéis lógicos têm
+fixtures negativas explícitas para evitar exceções implícitas.
 
 Uma denylist privada pode ser fornecida por `PRIVACY_DENYLIST_FILE`. Ela é
 opcional, ignorada pelo Git e nunca tem seus valores impressos. Achados de
