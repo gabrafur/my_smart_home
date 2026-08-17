@@ -255,9 +255,12 @@ não fazem parte da resposta. O sensor `Codex Usage Raw`, definido em
 `homeassistant/packages/codex_usage.yaml`, consulta esse endpoint a cada dois
 segundos.
 
-O card é carregado por `frontend.extra_module_url` com um sufixo de versão.
-Os arquivos em `/local` recebem cache longo do navegador; quando o card for
-alterado, atualize esse sufixo na mesma implantação para que clientes não
+O card é carregado pelo registro canônico `lovelace.resources`, com
+`resource_mode: yaml`, antes de o dashboard tentar instanciá-lo. O parâmetro
+`v` contém os 12 primeiros caracteres do SHA-256 do arquivo e o teste
+`homeassistant/tests/test_codex_chat_resource.py` impede que arquivo e versão
+divirjam. Os arquivos em `/local` recebem cache longo do navegador; quando o
+card for alterado, atualize esse hash na mesma implantação para que clientes não
 reutilizem um módulo antigo que falhou ao carregar.
 
 Depois de alterar ou instalar esses arquivos, reconstrua o bridge e reinicie o

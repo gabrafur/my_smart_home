@@ -9,10 +9,6 @@ wake_on_lan:
 # Load frontend themes from the themes folder
 frontend:
   themes: !include_dir_merge_named themes
-  extra_module_url:
-    # /local assets are cached for weeks. Change the immutable version whenever
-    # the custom card is deployed so clients cannot retain a failed old module.
-    - /local/codex-chat-card-v2.js?v=20260816-3
 
 
 homeassistant:
@@ -24,6 +20,13 @@ public_bindings:
   path: /run/private-bindings/private-bindings.json
 
 lovelace:
+  # Load custom cards through Lovelace's resource registry so the dashboard
+  # waits for the module before instantiating the card. The version is the first
+  # 12 characters of the asset's SHA-256 and is enforced by a regression test.
+  resource_mode: yaml
+  resources:
+    - url: /local/codex-chat-card-v2.js?v=14b6190188f8
+      type: module
   dashboards:
     chat-assistants:
       mode: yaml
