@@ -411,6 +411,12 @@ contexto e memória, decisões detalhadas, acumulados, diagnóstico e gráficos.
 Métricas prioritárias aparecem uma vez no topo; os blocos inferiores preservam
 detalhes e histórico sem repetir os mesmos indicadores.
 
+A view usa o layout nativo `sections`, com até três colunas e
+`dense_section_placement: false`. Esse é o contrato visual padrão: no desktop,
+as seções numeradas de 1 a 11 seguem da esquerda para a direita e depois de cima
+para baixo; em telas estreitas, a responsividade nativa preserva a mesma ordem
+em uma coluna. O teste `test_chat_rtx_dashboard_layout.py` protege essa sequência.
+
 ## Verificação e diagnóstico
 
 No host Codex, confirme a conectividade sem alterar estado:
