@@ -103,18 +103,19 @@ uma alegação de relevância semântica não mensurada.
 ## Local AI do projeto
 
 Prefira ferramentas determinísticas (`rg`, Git, parsers, testes, linters, type
-checkers, SQL e scripts do projeto) a qualquer LLM. O helper local deste
-repositório é `./scripts/local-ai/local-ai`; a configuração privada define o
-endpoint. `./scripts/local-ai/local-ai status` é o health check portátil.
+checkers, SQL e scripts do projeto) a qualquer LLM. O MCP global
+`local-ai-rtx` é a interface canônica e padrão para a primeira passagem local;
+use `local_ai_status`, `local_ai_route` e, quando elegível,
+`local_ai_compress_context`. O helper `./scripts/local-ai/local-ai` permanece
+somente para diagnósticos e testes locais do projeto.
 
-Neste projeto, material médio/grande não sensível começa em aproximadamente
-800 tokens estimados para a decisão de roteamento; logs/testes/erros usam
-800–900 e diff/triagem de arquivos/memória 1.200, sempre sujeitos a
-compressibilidade e economia esperada. Tome a decisão antes de imprimir ou
-anexar o corpo bruto ao contexto principal. Chamada normal registra
-`LOCAL_AI_USED` ou `LOCAL_AI_UNNECESSARY_CALL`; uma oportunidade elegível,
-disponível e deliberadamente ignorada exige
-`local-ai route <task> --input-chars <n> --outcome skipped`.
+Neste projeto, para documentação, memória pública, arquivos candidatos, diffs,
+logs, saídas de teste ou scanner e erros repetidos, selecione primeiro o menor
+material relevante. A partir de aproximadamente 1.200 tokens estimados, chame
+`local_ai_route` antes de enviar texto ao contexto principal e comprima somente
+rotas elegíveis, sempre sujeitas a compressibilidade e economia esperada. Use
+`summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
+`analyze-tests`, `summarize-log` ou `classify-error`, conforme o material.
 
 Não use a RTX para atualizar painel, descobrir palavra em arquivo, dados
 estruturados que uma ferramenta resolve, segredos, decisões finais,
