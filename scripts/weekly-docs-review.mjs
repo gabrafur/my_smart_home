@@ -302,9 +302,7 @@ export async function runReview() {
 
     gitOutput(["add", "--", ...changed], worktree);
     runChecked("make", ["validate-public"], worktree);
-    runChecked("scripts/security-scan.sh", ["--staged"], worktree);
-    runChecked("make", ["privacy-check-staged"], worktree);
-    runChecked("git", ["diff", "--cached", "--check"], worktree);
+    runChecked("make", ["validate-staged"], worktree);
     gitOutput(["commit", "-m", "docs: weekly public-repository review"], worktree);
     const reviewCommit = gitOutput(["rev-parse", "HEAD"], worktree);
 
@@ -443,7 +441,7 @@ function selfTest() {
   assert.equal(isAllowedReviewPath("docs/assets/generated/diagram.svg"), true);
   assert.equal(isAllowedReviewPath("nodered/flows.json"), false);
   assert.equal(isAllowedReviewPath("scripts/security-scan.sh"), false);
-  assert.equal(isAllowedReviewPath(".github/workflows/security-scan.yml"), false);
+  assert.equal(isAllowedReviewPath(".github/workflows/public-validation.yml"), false);
   console.log("weekly documentation scheduler self-test passed");
 }
 

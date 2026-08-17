@@ -26,6 +26,9 @@ placeholders.
 | [Memória versionada dos agentes](MEMORIA_VERSIONADA_AGENTES.md) | Autoridade, privacidade, manutenção e validação da memória de IA | guia detalhado em português |
 | [Modelo de privacidade](PRIVACY_MODEL.md) | Papéis públicos, sanitização, scanner e memória pública | [English](PRIVACY_MODEL.en.md) |
 | [Fronteira pública e privada](PUBLIC_PRIVATE_BOUNDARY.md) | Bindings, bootstrap, degradação segura e compatibilidade | [English](PUBLIC_PRIVATE_BOUNDARY.en.md) |
+| [Estratégia de testes](ESTRATEGIA_DE_TESTES.md) | Níveis, descoberta, CI e limites sem residência real | [English](TESTING_STRATEGY.en.md) |
+| [Proveniência de dependências](DEPENDENCY_PROVENANCE.md) | Locks, digests e dependências da validação | guia em português |
+| [Configuração do GitHub](GITHUB_REPOSITORY_SETTINGS.md) | Proteção recomendada de `main` e check obrigatório | guia em português |
 
 ## Funcionalidades
 
@@ -36,6 +39,7 @@ placeholders.
 - [Desarme do alarme na chegada](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Integração Moni Mobile / Intelbras](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
 - [Integração Hyundai/Kia](VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md)
+- [Runbook de atualização Hyundai/Kia](VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md)
 - [Portão: relé local](PORTAO_GARAGEM_RELE_LOCAL.md)
 - [Portão: botão de pulso](PORTAO_GARAGEM_BOTAO_PULSO.md)
 - [Controle de energia](CONTROLE_ENERGIA_HOME_ASSISTANT.md)

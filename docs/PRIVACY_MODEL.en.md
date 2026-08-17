@@ -1,5 +1,7 @@
 # Privacy model
 
+[English](PRIVACY_MODEL.en.md) · [Português](PRIVACY_MODEL.md)
+
 This repository publishes restorable architecture, contracts, and examples
 without publishing a household's identity or routine. Code and documentation
 use logical roles; the real installation supplies local Git-ignored bindings.

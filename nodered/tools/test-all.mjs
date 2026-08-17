@@ -6,10 +6,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const toolsDirectory = path.dirname(fileURLToPath(import.meta.url));
-const excluded = new Set([
-  "test-all.mjs",
-  "test-infrastructure-monitoring-runtime.mjs",
-]);
+const excluded = new Set(["test-all.mjs"]);
 const tests = fs.readdirSync(toolsDirectory)
   .filter((file) => file.startsWith("test-") && file.endsWith(".mjs") && !excluded.has(file))
   .sort();

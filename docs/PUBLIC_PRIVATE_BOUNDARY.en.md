@@ -1,5 +1,7 @@
 # Public/private boundary
 
+[English](PUBLIC_PRIVATE_BOUNDARY.en.md) · [Português](PUBLIC_PRIVATE_BOUNDARY.md)
+
 This boundary makes the public architecture restorable without coupling its
 logic to a specific household.
 

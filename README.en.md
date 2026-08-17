@@ -148,19 +148,11 @@ The scanner checks tracked files only and never prints a suspected secret.
 
 ```bash
 make validate-public
-make backup-plan
-make restore-test
-make bootstrap-test
-make demo-test
-docker compose config --quiet
-npm --prefix nodered run flows:validate
-npm --prefix nodered run test:all
-npm --prefix ia-bridge test
 ```
 
-`make validate-public` checks documentation, versioned agent memory, privacy,
-restore manifest/schema, bootstrap, demo, modules, and the weekly-review
-contract without reading private runtime state.
+This is the single complete public verification command. Specialized targets
+remain available for diagnosis and are described in the
+[testing strategy](docs/TESTING_STRATEGY.en.md).
 
 `depends_on` orders container creation; it does not prove that a dependency is
 ready. Check `docker compose ps` and service logs after startup.
@@ -176,6 +168,7 @@ ready. Check `docker compose ps` and service logs after startup.
 - [Zigbee and Internet monitoring in Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 - [Codex + Local AI with RTX 4070 (Portuguese)](docs/LOCAL_AI_RTX_4070.md)
 - [Versioned agent memory (Portuguese)](docs/MEMORIA_VERSIONADA_AGENTES.md)
+- [Testing strategy](docs/TESTING_STRATEGY.en.md)
 - [Portuguese feature documentation](docs/README.md)
 
 Brazilian Portuguese is the primary operational language. The repository

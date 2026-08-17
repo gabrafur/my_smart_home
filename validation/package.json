@@ -1,0 +1,9 @@
+{
+  "name": "public-repository-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned parser dependencies for deterministic public validation",
+  "dependencies": {
+    "yaml": "2.9.0"
+  }
+}

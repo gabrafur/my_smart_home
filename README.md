@@ -153,19 +153,11 @@ possível segredo. A análise do histórico e as ações de rotação estão em
 
 ```bash
 make validate-public
-make backup-plan
-make restore-test
-make bootstrap-test
-make demo-test
-docker compose config --quiet
-npm --prefix nodered run flows:validate
-npm --prefix nodered run test:all
-npm --prefix ia-bridge test
 ```
 
-`make validate-public` verifica documentação, memória versionada dos agentes,
-privacidade, manifesto/schema de restore, bootstrap, demo, módulos e o contrato
-da revisão semanal sem acessar estado privado de runtime.
+Esse é o único comando de verificação pública completa. Alvos especializados
+continuam disponíveis para diagnóstico e estão descritos na
+[estratégia de testes](docs/ESTRATEGIA_DE_TESTES.md).
 
 `depends_on` ordena a criação, mas não confirma que uma dependência está
 pronta. Depois de subir a stack, confira `docker compose ps` e os logs de cada
@@ -186,6 +178,7 @@ serviço.
 - [Codex + Local AI com RTX 4070](docs/LOCAL_AI_RTX_4070.md)
 - [Memória versionada dos agentes](docs/MEMORIA_VERSIONADA_AGENTES.md)
 - [Revisão semanal da documentação](docs/REVISAO_DOCUMENTACAO_SEMANAL.md)
+- [Estratégia de testes](docs/ESTRATEGIA_DE_TESTES.md)
 
 Os guias operacionais detalhados usam português do Brasil como idioma
 principal. O README, o índice, o guia de containers, o runbook de instalação e
