@@ -111,14 +111,15 @@ variáveis `LOCAL_AI_ENABLED=0`, `LOCAL_AI_ENDPOINT`, `LOCAL_AI_MODEL` e
 `LOCAL_AI_FORCE` permitem controle local; `LOCAL_AI_FORCE` é diagnóstico e não
 autoriza delegação inadequada.
 
-Após a confirmação normal do roteamento de modelo, a política pode executar um
-preflight curto uma vez por conversa. Em tarefas elegíveis com material médio ou
-grande (padrão: `medium_analysis_min_tokens: 800`, aproximadamente 3.200
-caracteres), ela usa
-`./scripts/local-ai/local-ai` para `review-diff`, `summarize-log`,
-`analyze-tests`, `inspect-files` ou `classify-error`. Dados secretos,
-decisões de segurança, migrações, operações destrutivas e revisão final nunca
-são enviados ao modelo local.
+No início de cada conversa, a política chama `local_ai_status` uma vez. Em
+tarefas elegíveis com material selecionado de cerca de 1.200 tokens ou mais,
+ela usa o MCP global `local-ai-rtx`: primeiro `local_ai_route` e, somente para
+uma rota elegível e benéfica, `local_ai_compress_context`. Os tipos são
+`summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
+`analyze-tests`, `summarize-log` e `classify-error`. O helper
+`./scripts/local-ai/local-ai` continua disponível apenas para diagnósticos e
+testes locais. Dados secretos, decisões de segurança, migrações, operações
+destrutivas e revisão final nunca são enviados ao modelo local.
 
 O hook é privado e precisa ser aprovado no Codex em `/hooks` depois de sua
 instalação ou de qualquer alteração. A aprovação é vinculada ao conteúdo do
