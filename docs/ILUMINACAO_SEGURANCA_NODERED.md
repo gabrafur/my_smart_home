@@ -96,7 +96,8 @@ seu cooldown. Snapshots com `updated_at` anterior ao cache são ignorados.
 - `device_tracker.mobile_primary` (fallback iCloud)
 - `device_tracker.mobile_primary`
 - `device_tracker.mobile_primary` (fallback iCloud)
-- serviços `notify.mobile_primary` e `mobile_app.request_location_update`
+- ações móveis allowlisted via `public_bindings.call`, incluindo push e
+  `request_location_update`
 
 Quando ambos os trackers estão frescos e têm coordenadas confiáveis,
 conserva-se o fallback anterior: vence o tracker que reporta a maior distância

@@ -129,11 +129,17 @@
       "entities": {
         "alarm_control_panel.security_panel": {
           "target_entity_id": "alarm_control_panel.example_security_panel",
-          "state_mode": "passthrough",
-          "allowed_services": [
-            "alarm_control_panel.alarm_arm_away",
-            "alarm_control_panel.alarm_disarm"
-          ]
+          "state_mode": "passthrough"
+        }
+      },
+      "services": {
+        "arm_away": {
+          "target_service": "alarm_control_panel.alarm_arm_away",
+          "target_public_entity_id": "alarm_control_panel.security_panel"
+        },
+        "disarm": {
+          "target_service": "alarm_control_panel.alarm_disarm",
+          "target_public_entity_id": "alarm_control_panel.security_panel"
         }
       }
     }

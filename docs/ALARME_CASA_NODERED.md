@@ -16,8 +16,8 @@ do alarme. A iluminacao externa permanece no flow `iluminacao_externa`.
 
 ## Armar e desarmar
 
-O comando de armar chama `alarm_control_panel.alarm_arm_away`; o de desarmar
-chama `alarm_control_panel.alarm_disarm`.
+Os comandos de armar e desarmar usam as ações allowlisted `arm_away` e
+`disarm` do papel `security_panel` por `public_bindings.call`.
 
 - Antes da chamada, `alarm_set_desired_arm` ou
   `alarm_set_desired_disarm` grava a ultima intencao em

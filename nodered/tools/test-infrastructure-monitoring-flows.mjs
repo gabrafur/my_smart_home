@@ -260,6 +260,22 @@ for (const item of flows.filter((entry) => entry.type === "group" && ["monitoram
   }
 }
 assert.equal(flows.filter((item) => item.type === "subflow:infra_notify_all_mobiles").length, 6);
+for (const [id, role, action] of [
+  ["infra_notify_mobile", "mobile_primary", "notify_3"],
+  ["infra_notify_mobile_secondary", "mobile_secondary", "notify_2"],
+]) {
+  const notifier = flows.find((item) => item.id === id);
+  assert.equal(notifier?.action, "public_bindings.call");
+  assert.equal(notifier?.domain, "public_bindings");
+  assert.equal(notifier?.service, "call");
+  assert.deepEqual(notifier?.entityId, []);
+  assert.match(notifier?.data ?? "", new RegExp(`"role":"${role}"`));
+  assert.match(notifier?.data ?? "", new RegExp(`"action":"${action}"`));
+}
+assert.deepEqual(flows.find((item) => item.id === "infra_notify_route")?.wires[1], [
+  "infra_notify_mobile",
+  "infra_notify_mobile_secondary",
+]);
 assert.ok(flows.find((item) => item.id === "internet_ping").x < flows.find((item) => item.id === "internet_evaluate").x);
 assert.ok(flows.find((item) => item.id === "zigbee_store_observation").x < flows.find((item) => item.id === "zigbee_network_evaluate").x);
 

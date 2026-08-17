@@ -660,7 +660,7 @@ next.push(
   functionNode({
     id: "infra_notify_route", z: NOTIFY_SUBFLOW, name: "Validar e distribuir", fn: notificationRouter,
     outputs: 3, x: 220, y: 80,
-    wires: [["infra_notify_persistent"], ["infra_notify_mobile"], ["infra_notify_dismiss"]],
+    wires: [["infra_notify_persistent"], ["infra_notify_mobile", "infra_notify_mobile_secondary"], ["infra_notify_dismiss"]],
   }),
   {
     id: "infra_notify_persistent", type: "api-call-service", z: NOTIFY_SUBFLOW,
@@ -672,12 +672,19 @@ next.push(
   },
   {
     id: "infra_notify_mobile", type: "api-call-service", z: NOTIFY_SUBFLOW,
-    name: "Push resident_primary + resident_secondary", server: HA_SERVER, version: 7, debugenabled: false,
-    action: "notify.send_message", floorId: [], areaId: [], deviceId: [],
-    entityId: ["notify.mobile_primary_2", "notify.mobile_secondary"], labelId: [],
-    data: "{\"title\": notification.title, \"message\": notification.message}", dataType: "jsonata",
+    name: "Push resident_primary", server: HA_SERVER, version: 7, debugenabled: false,
+    action: "public_bindings.call", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
+    data: "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":notification.title,\"message\":notification.message}}", dataType: "jsonata",
     mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all",
-    blockInputOverrides: true, domain: "notify", service: "send_message", x: 500, y: 80, wires: [[]],
+    blockInputOverrides: true, domain: "public_bindings", service: "call", x: 500, y: 70, wires: [[]],
+  },
+  {
+    id: "infra_notify_mobile_secondary", type: "api-call-service", z: NOTIFY_SUBFLOW,
+    name: "Push resident_secondary", server: HA_SERVER, version: 7, debugenabled: false,
+    action: "public_bindings.call", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
+    data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":notification.title,\"message\":notification.message}}", dataType: "jsonata",
+    mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all",
+    blockInputOverrides: true, domain: "public_bindings", service: "call", x: 500, y: 100, wires: [[]],
   },
   {
     id: "infra_notify_dismiss", type: "api-call-service", z: NOTIFY_SUBFLOW,
@@ -685,7 +692,7 @@ next.push(
     action: "persistent_notification.dismiss", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
     data: "{\"notification_id\": notification.dismiss_id}", dataType: "jsonata", mergeContext: "",
     mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true,
-    domain: "persistent_notification", service: "dismiss", x: 500, y: 120, wires: [[]],
+    domain: "persistent_notification", service: "dismiss", x: 500, y: 130, wires: [[]],
   },
 );
 

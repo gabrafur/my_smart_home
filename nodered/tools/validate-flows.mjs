@@ -23,6 +23,20 @@ for (const node of flows) {
 }
 
 for (const node of flows) {
+  if (node.type === "api-call-service") {
+    const directNotifyEntities = (node.entityId ?? []).filter((entityId) => entityId.startsWith("notify."));
+    if (directNotifyEntities.length > 0 || node.action === "notify.send_message") {
+      throw new Error(`Notificação direta fora de public_bindings.call: ${node.id}`);
+    }
+    if (node.action === "public_bindings.call") {
+      if (node.domain !== "public_bindings" || node.service !== "call" || (node.entityId ?? []).length !== 0) {
+        throw new Error(`Metadados inconsistentes de public_bindings.call: ${node.id}`);
+      }
+      if (!/"role":"[a-z0-9_]+"/.test(node.data) || !/"action":"[a-z0-9_]+"/.test(node.data)) {
+        throw new Error(`Contrato incompleto de public_bindings.call: ${node.id}`);
+      }
+    }
+  }
   for (const target of (node.wires ?? []).flat()) {
     const targetNode = byId.get(target);
     if (!targetNode) throw new Error(`Wire ${node.id} -> ${target} aponta para node ausente`);
