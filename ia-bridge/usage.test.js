@@ -206,7 +206,7 @@ test('does not report a stale Local AI preflight as available', (t) => {
   const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
   assert.equal(usage.freshness.preflight.current, false);
   assert.equal(usage.available, false);
-  assert.equal(usage.state, 'LOCAL_AI_UNAVAILABLE');
+  assert.equal(usage.state, 'LOCAL_AI_UNKNOWN');
 });
 
 test('does not keep an abandoned Local AI job marked as in use', (t) => {
@@ -288,6 +288,70 @@ test('reports routing coverage, weighted savings, and compact last decisions', (
   assert.equal(usage.routing.latest_decisions[0].endpoint, undefined);
 });
 
+test('keeps retrospective routing audit separate from operational daily totals', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-routing-audit-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    routing: { totals: { tasks: 2, missed_opportunities: 0 } },
+    daily: { '2026-08-17': { routing: { tasks: 2, missed_opportunities: 0 } } },
+  }));
+  fs.writeFileSync(path.join(directory, 'local-ai-routing-audit.json'), JSON.stringify({
+    schema_version: 1,
+    audited_at: '2026-08-17T15:00:00Z',
+    window_days: 7,
+    conversations_audited: 18,
+    candidates: 13,
+    correctly_used: 2,
+    historical_missed_opportunities: 11,
+    historical_unavailable: 0,
+    unnecessary_calls: 1,
+    deterministic: 3,
+    too_small: 2,
+    not_appropriate: 0,
+    retrospective_today_conversations: 18,
+    retrospective_today_candidates: 15,
+    retrospective_today_correctly_used: 2,
+    retrospective_today_missed_opportunities: 13,
+    adjustments: ['post_tool_routing_hook'],
+    private_prompt: 'must not expose',
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-17T15:00:00.000Z',
+  }));
+
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-17T15:00:00Z'));
+  assert.equal(usage.routing.periods.today.tasks, 2);
+  assert.equal(usage.routing.periods.today.missed_opportunities, 0);
+  assert.equal(usage.routing.audit.conversations_audited, 18);
+  assert.equal(usage.routing.audit.historical_missed_opportunities, 11);
+  assert.equal(usage.routing.audit.retrospective_today_missed_opportunities, 13);
+  assert.equal(usage.routing.audit.private_prompt, undefined);
+});
+
+test('separates confirmed RTX unavailability from unknown availability', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-routing-availability-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    routing: { totals: {
+      unavailable_tasks: 4, availability_unknown_tasks: 3, confirmed_unavailable_tasks: 1,
+    } },
+    daily: { '2026-08-17': { routing: {
+      unavailable_tasks: 3, availability_unknown_tasks: 3, confirmed_unavailable_tasks: 0,
+    } } },
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-17T15:00:00.000Z',
+  }));
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-17T15:00:00Z'));
+  assert.equal(usage.routing.periods.today.confirmed_unavailable_tasks, 0);
+  assert.equal(usage.routing.periods.today.availability_unknown_tasks, 3);
+  assert.equal(usage.routing.periods.today.unclassified_unavailable_tasks, 0);
+});
+
 test('labels an unmeasured used decision as failed when its matching Local AI job failed', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-routing-failure-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -308,6 +372,7 @@ test('labels an unmeasured used decision as failed when its matching Local AI jo
   }));
 
   const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(usage.routing.latest_decisions[0].decision, 'LOCAL_AI_FAILED');
   assert.equal(usage.routing.latest_decisions[0].reason, 'local_ai_call_failed');
 });
 

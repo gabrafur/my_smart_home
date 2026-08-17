@@ -27,6 +27,7 @@ bindings/private/
 .agents/
 # Preserve Codex runtime state as private while versioning the project memory.
 .codex/*
+!.codex/hooks.json
 !.codex/memories/
 !.codex/memories/**/
 !.codex/memories/**/*.md

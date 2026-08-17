@@ -368,13 +368,19 @@ views:
             cards:
               - type: tile
                 entity: sensor.codex_oportunidades_rtx_perdidas_hoje
-                name: Oportunidades perdidas
+                name: Perdas registradas (operacional)
               - type: tile
                 entity: sensor.codex_local_ai_indisponivel_hoje
-                name: RTX indisponível
+                name: RTX indisponível (confirmado)
+              - type: tile
+                entity: sensor.codex_disponibilidade_rtx_desconhecida_hoje
+                name: Estado RTX desconhecido
               - type: tile
                 entity: sensor.codex_chamadas_local_ai_desnecessarias_hoje
                 name: Chamadas desnecessárias
+              - type: tile
+                entity: sensor.codex_falhas_de_roteamento_local_ai_hoje
+                name: Falhas após roteamento
               - type: tile
                 entity: sensor.codex_tokens_potenciais_evitaveis_hoje_estimados
                 name: Potencial estimado
@@ -384,6 +390,36 @@ views:
               - type: tile
                 entity: sensor.codex_tarefas_local_ai_elegiveis_hoje
                 name: Tarefas elegíveis
+              - type: tile
+                entity: sensor.codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje
+                name: Elegíveis e disponíveis
+              - type: tile
+                entity: sensor.codex_auditoria_retrospectiva_de_roteamento_rtx
+                name: Conversas auditadas
+              - type: tile
+                entity: sensor.codex_oportunidades_rtx_perdidas_hoje_na_auditoria
+                name: Perdas detectadas na auditoria hoje
+              - type: markdown
+                content: >-
+                  **Hoje:** os nove primeiros cards usam somente decisões
+                  operacionais registradas do dia UTC e são atualizados pelo
+                  feed de uso após cada decisão. O primeiro card não cobre
+                  conversas anteriores em que o roteador nem sequer foi
+                  chamado. “Potencial estimado” mede redução estimada
+                  de contexto, não cobrança nem economia financeira oficial.
+
+                  **Auditoria retrospectiva:** {{
+                  states('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx')
+                  }} conversas · {{
+                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'candidatas')
+                  }} candidatas · {{
+                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'oportunidades_historicas')
+                  }} oportunidades históricas · última auditoria {{
+                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'auditado_em')
+                  or 'não registrada' }}. Destas, {{
+                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'oportunidades_de_hoje_na_auditoria')
+                  }} ocorreram em conversas de hoje. Esses valores não entram
+                  nos cards diários nem nos totais operacionais.
 
       - type: grid
         cards:

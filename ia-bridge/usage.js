@@ -220,8 +220,11 @@ function emptyRoutingTotals() {
     eligible_tasks: 0,
     eligible_and_available_tasks: 0,
     used_tasks: 0,
+    failed_tasks: 0,
     skipped_tasks: 0,
     unavailable_tasks: 0,
+    availability_unknown_tasks: 0,
+    confirmed_unavailable_tasks: 0,
     not_beneficial_tasks: 0,
     missed_opportunities: 0,
     unnecessary_calls: 0,
@@ -285,6 +288,9 @@ function routingDerived(totals) {
   const used = Number(totals.used_tasks) || 0;
   const potential = Number(totals.potential_tokens_avoidable) || 0;
   const actual = Number(totals.actual_tokens_avoided) || 0;
+  const unavailable = Number(totals.unavailable_tasks) || 0;
+  const availabilityUnknown = Number(totals.availability_unknown_tasks) || 0;
+  const confirmedUnavailable = Number(totals.confirmed_unavailable_tasks) || 0;
   return {
     rtx_delegation_rate_percent: eligibleAvailable > 0
       ? round((used / eligibleAvailable) * 100, 1)
@@ -292,6 +298,7 @@ function routingDerived(totals) {
     weighted_context_savings_coverage_percent: potential > 0
       ? round(Math.min(100, Math.max(0, actual) / potential * 100), 1)
       : null,
+    unclassified_unavailable_tasks: Math.max(0, unavailable - availabilityUnknown - confirmedUnavailable),
   };
 }
 
@@ -444,6 +451,31 @@ function sanitizeMemoryDecision(decision) {
   );
 }
 
+function sanitizeRoutingAudit(audit) {
+  if (!audit || typeof audit !== 'object') return null;
+  const numericFields = [
+    'schema_version', 'window_days', 'conversations_audited', 'candidates',
+    'correctly_used', 'historical_missed_opportunities', 'historical_unavailable',
+    'unnecessary_calls', 'deterministic', 'too_small', 'not_appropriate',
+    'retrospective_today_conversations', 'retrospective_today_candidates',
+    'retrospective_today_correctly_used', 'retrospective_today_missed_opportunities',
+  ];
+  const result = {};
+  for (const field of numericFields) {
+    const value = Number(audit[field]);
+    if (Number.isFinite(value) && value >= 0) result[field] = value;
+  }
+  if (typeof audit.audited_at === 'string' && !Number.isNaN(new Date(audit.audited_at).valueOf())) {
+    result.audited_at = audit.audited_at;
+  }
+  result.adjustments = Array.isArray(audit.adjustments)
+    ? audit.adjustments
+      .filter((value) => typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(value))
+      .slice(0, 12)
+    : [];
+  return Number.isFinite(result.conversations_audited) ? result : null;
+}
+
 function reconcileRoutingDecisions(decisions, jobs) {
   return decisions.map((decision) => {
     if (
@@ -459,13 +491,19 @@ function reconcileRoutingDecisions(decisions, jobs) {
         && !Number.isNaN(finished.valueOf())
         && Math.abs(finished.valueOf() - timestamp.valueOf()) <= 60_000;
     });
-    return matchingFailure ? { ...decision, reason: 'local_ai_call_failed' } : decision;
+    return matchingFailure
+      ? { ...decision, decision: 'LOCAL_AI_FAILED', reason: 'local_ai_call_failed' }
+      : decision;
   });
 }
 
 function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const state = readJson(telemetryPath, {});
   const preflight = readJson(statusPath, {});
+  const auditPath = telemetryPath
+    ? path.join(path.dirname(telemetryPath), 'local-ai-routing-audit.json')
+    : null;
+  const routingAudit = sanitizeRoutingAudit(auditPath ? readJson(auditPath, null) : null);
   const totals = { ...emptyLocalAiTotals(), ...(state.totals || {}) };
   const routingTotals = { ...emptyRoutingTotals(), ...(state.routing?.totals || {}) };
   const memoryTotals = { ...emptyMemoryTotals(), ...(state.memory?.totals || {}) };
@@ -494,7 +532,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   // an available RTX.
   const stateName = currentJob
     ? 'LOCAL_AI_IN_USE'
-    : preflightFreshness.current ? preflightState : 'LOCAL_AI_UNAVAILABLE';
+    : preflightFreshness.current ? preflightState : 'LOCAL_AI_UNKNOWN';
   const models = Object.entries(state.models || {})
     .map(([model, value]) => ({ model, ...(value.totals || {}), ...localAiDerived(value.totals || {}) }))
     .sort((left, right) => Number(right.calls || 0) - Number(left.calls || 0));
@@ -540,6 +578,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
         month: summarizeRoutingMonth(state.daily, now),
       },
       latest_decisions: reconcileRoutingDecisions(latestDecisions, latestJobs),
+      audit: routingAudit,
     },
     memory: {
       totals: { ...memoryTotals, ...memoryDerived(memoryTotals) },

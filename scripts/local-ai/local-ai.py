@@ -45,6 +45,9 @@ TASK_REQUIRED_FIELDS = {
         "summary", "current_state", "decisions", "constraints", "known_bugs", "root_causes",
         "configuration_values", "unresolved_issues", "warnings", "source_facts", "confidence",
     },
+    "summarize-document": {
+        "summary", "key_points", "decisions", "constraints", "open_questions", "confidence",
+    },
     "summarize-log": {"summary", "errors", "suspected_files", "recommended_actions", "confidence"},
 }
 TASK_LIST_FIELDS = {
@@ -56,6 +59,7 @@ TASK_LIST_FIELDS = {
         "current_state", "decisions", "constraints", "known_bugs", "root_causes",
         "configuration_values", "unresolved_issues", "warnings", "source_facts",
     },
+    "summarize-document": {"key_points", "decisions", "constraints", "open_questions"},
     "summarize-log": {"errors", "suspected_files", "recommended_actions"},
 }
 
@@ -117,6 +121,19 @@ def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
         return {
             "type": "object", "properties": properties,
             "required": ["summary", *text_lists, "source_facts", "confidence"],
+            "additionalProperties": False,
+        }
+    if task == "summarize-document":
+        max_items = 2 if compact else 8
+        list_fields = ("key_points", "decisions", "constraints", "open_questions")
+        return {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string"},
+                **{name: {"type": "array", "maxItems": max_items, "items": {"type": "string"}} for name in list_fields},
+                "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            },
+            "required": ["summary", *list_fields, "confidence"],
             "additionalProperties": False,
         }
     if task != "summarize-log":
@@ -185,6 +202,17 @@ def current_chat_name() -> str | None:
         return None
     normalized = " ".join(value.split())
     return normalized[:80] or None
+
+
+def current_invocation_source() -> str:
+    """Return bounded provenance without inferring anything from user content."""
+    source = os.getenv("LOCAL_AI_INVOCATION_SOURCE", "cli").strip().lower()
+    return source if source in {"cli", "mcp"} else "cli"
+
+
+def telemetry_recorder(settings: dict[str, Any] | None = None) -> TelemetryRecorder:
+    configured_path = settings.get("telemetry_path") if isinstance(settings, dict) else None
+    return TelemetryRecorder(private_telemetry_path(ROOT, str(configured_path) if configured_path else None))
 
 
 def positive_int(value: str) -> int:
@@ -332,12 +360,11 @@ def routing_availability(recorder: TelemetryRecorder, override: str | None) -> s
         status = json.loads(recorder.state_path.with_name("local-ai-status.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return "unknown"
-    checked_at = status.get("checked_at")
-    try:
-        checked = datetime.fromisoformat(str(checked_at).replace("Z", "+00:00"))
-        if (datetime.now(UTC) - checked).total_seconds() > 120:
-            return "unknown"
-    except (TypeError, ValueError):
+    # The project hook records one lazy availability check at the first eligible
+    # candidate. Routing may happen much later, so age alone must not turn that
+    # conversation-scoped result into a false LOCAL_AI_UNAVAILABLE decision.
+    # The inference path still has one bounded revalidation before fallback.
+    if not status.get("checked_at"):
         return "unknown"
     state = str(status.get("state") or "")
     if state in {"LOCAL_AI_AVAILABLE", "LOCAL_AI_DEGRADED"}:
@@ -428,7 +455,7 @@ def record_memory_outcome(
 
 def run_memory_audit(args: argparse.Namespace) -> int:
     """Persist a reproducible observable-startup snapshot; no model or history access."""
-    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    recorder = telemetry_recorder(user_settings())
     startup = instruction_chain(PROJECT_ROOT, args.cwd)
     inventory = public_memory_inventory(PROJECT_ROOT)
     recorder.startup_context(startup, int(inventory["repository_memory_tokens_available"]))
@@ -438,7 +465,7 @@ def run_memory_audit(args: argparse.Namespace) -> int:
 
 def run_memory_route(args: argparse.Namespace) -> int:
     """Record a deterministic skip/direct/fallback memory decision without inference."""
-    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    recorder = telemetry_recorder(user_settings())
     status = routing_availability(recorder, args.availability)
     retrieved = max(0, args.retrieved_tokens)
     direct_budget = int(TASK_PROFILES["summarize-memory"].min_input_tokens)
@@ -476,7 +503,7 @@ def run_memory_route(args: argparse.Namespace) -> int:
 
 def run_route(args: argparse.Namespace) -> int:
     """Record a skipped decision or preview a candidate with no inference call."""
-    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    recorder = telemetry_recorder(user_settings())
     chars = routing_input_chars(args.input_file, args.input_chars)
     availability = routing_availability(recorder, args.availability)
     assessment = assess_routing(
@@ -585,6 +612,7 @@ def count_openai_context_tokens(text: str, settings: dict[str, Any]) -> tuple[in
 
 
 def command_status(endpoint: str, settings: dict[str, Any]) -> int:
+    recorder = telemetry_recorder(settings)
     result: dict[str, Any] = {
         "endpoint": endpoint,
         "enabled": local_ai_enabled(settings),
@@ -593,6 +621,7 @@ def command_status(endpoint: str, settings: dict[str, Any]) -> int:
         "nvidia_smi_on_path": shutil.which("nvidia-smi") is not None,
         "cuda_visible": Path("/dev/nvidiactl").exists(),
         "gpu": gpu_snapshot(),
+        "telemetry_enabled": recorder.enabled,
     }
     try:
         result["models"] = [{"name": m["name"], "size_bytes": m.get("size")} for m in tags(endpoint)]
@@ -626,7 +655,7 @@ def run_analysis(args: argparse.Namespace) -> int:
     request_call = lambda target, path, payload=None: request_with_one_revalidation(
         target, path, payload, settings, retry_budget,
     )
-    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    recorder = telemetry_recorder(settings)
     routing_recorded = False
     try:
         models = tags(endpoint, request_call)
@@ -686,6 +715,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         "status": "running",
         "chat_id": current_chat_id(),
         "chat_name": current_chat_name(),
+        "invocation_source": current_invocation_source(),
         "context_input_chars": len(raw_text),
         "context_input_bytes": len(raw_text.encode("utf-8")),
         "context_input_tokens": context_input_tokens,
@@ -816,7 +846,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             record_routing_outcome(
                 recorder,
                 routing_assessment,
-                outcome="used",
+                outcome="failed",
                 model=model,
                 reason="local_ai_call_failed",
             )
@@ -878,14 +908,14 @@ def benchmark(args: argparse.Namespace) -> int:
     model = configured_model(args.model, settings) or select_model(models)
     if not model:
         raise RuntimeError("choose --model explicitly; no safe default model is installed")
-    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    recorder = telemetry_recorder(settings)
     results: list[dict[str, Any]] = []
     for task, source in benchmark_cases():
         context_input_tokens, token_method = count_openai_context_tokens(source, settings)
         event: dict[str, Any] = {
             "id": new_event_id(), "started_at": utc_now(), "task": f"benchmark:{task}",
             "model": model, "endpoint": endpoint, "status": "running", "chat_id": current_chat_id(),
-            "chat_name": current_chat_name(),
+            "chat_name": current_chat_name(), "invocation_source": current_invocation_source(),
             "context_input_chars": len(source), "context_input_bytes": len(source.encode("utf-8")),
             "context_input_tokens": context_input_tokens, "token_count_method": token_method,
             "context_replacement": False,
