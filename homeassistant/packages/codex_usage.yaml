@@ -120,6 +120,7 @@ template:
       - name: Codex Limite Usado
         unique_id: codex_limite_usado
         unit_of_measurement: "%"
+        state_class: measurement
         state: >-
           {% set limit = state_attr('sensor.codex_usage_raw', 'rate_limit') %}
           {{ limit.get('used_percent') if limit else none }}
@@ -132,6 +133,7 @@ template:
       - name: Codex Limite Disponivel
         unique_id: codex_limite_disponivel
         unit_of_measurement: "%"
+        state_class: measurement
         state: >-
           {% set limit = state_attr('sensor.codex_usage_raw', 'rate_limit') %}
           {{ limit.get('remaining_percent') if limit else none }}
