@@ -35,6 +35,21 @@ services:
     container_name: homeassistant
     restart: always
     network_mode: host
+    # Keep cloud-backed integrations working even when the host resolver is
+    # populated after Docker creates this long-running container.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - import socket; socket.getaddrinfo('home-assistant.io', 443); socket.create_connection(('127.0.0.1', 8123), 5).close()
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     cap_add:
       - NET_ADMIN
       - NET_RAW

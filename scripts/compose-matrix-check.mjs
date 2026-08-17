@@ -24,6 +24,16 @@ function services(profiles = false) {
   return result.stdout.trim().split(/\r?\n/).filter(Boolean).sort();
 }
 
+function composeConfig() {
+  const args = [
+    "compose", "--env-file", ".env.example", "-f", "docker-compose.yml",
+    "-f", "compose.modules.yml", "config", "--format", "json",
+  ];
+  const result = spawnSync("docker", args, { cwd: repoRoot, encoding: "utf8" });
+  if (result.status !== 0) throw new Error(result.stderr.trim() || "docker compose config failed");
+  return JSON.parse(result.stdout);
+}
+
 const core = services();
 const full = services(true);
 const coreExpected = [...manifest.core].sort();
@@ -32,5 +42,15 @@ if (JSON.stringify(core) !== JSON.stringify(coreExpected)) {
 }
 if (JSON.stringify(full) !== JSON.stringify(allExpected)) {
   throw new Error(`full Compose matrix drift: expected ${allExpected.join(", ")}; got ${full.join(", ")}`);
+}
+
+const homeAssistant = composeConfig().services?.homeassistant;
+const resolvers = homeAssistant?.dns ?? [];
+if (new Set(resolvers).size < 2) {
+  throw new Error("homeassistant must have at least two explicit, distinct DNS resolvers");
+}
+const healthcheck = homeAssistant?.healthcheck?.test ?? [];
+if (!healthcheck.join(" ").includes("getaddrinfo")) {
+  throw new Error("homeassistant healthcheck must verify DNS resolution");
 }
 console.log(`Compose matrix check passed: core=${core.length}, full=${full.length} services.`);
