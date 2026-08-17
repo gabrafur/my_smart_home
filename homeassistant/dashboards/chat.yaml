@@ -25,6 +25,7 @@ views:
               {% from 'formatting.jinja' import format_number_ptbr %}
               {% set totals = state_attr('sensor.codex_usage_raw', 'totals') or {} %}
               {% set limite = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
+              {% set consulta = state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {} %}
               {% set reset_em = limite.get('resets_at') %}
               {% set janela = limite.get('window_type', 'desconhecida') %}
               {% if states('sensor.codex_usage_raw') == 'ok' %}
@@ -33,7 +34,9 @@ views:
 
               **{{ format_number_ptbr(states('sensor.codex_limite_usado')) }}% usado** na janela
               {{ 'semanal' if janela == 'weekly' else janela }} do plano
+              {% if states('sensor.codex_plano') not in ['unknown', 'unavailable', 'desconhecido'] %}
               {{ states('sensor.codex_plano') | title }}.
+              {% endif %}
               {% elif limite.get('remaining_percent') is number %}
               # Leitura desatualizada
 
@@ -50,6 +53,10 @@ views:
               {% endif %}
               {% if is_number(states('sensor.codex_atualizacao_do_limite_em')) %}
               **Próxima consulta:** em {{ format_number_ptbr(states('sensor.codex_atualizacao_do_limite_em')) }} segundos.
+              {% endif %}
+              {% if consulta.get('last_error') %}
+
+              _A consulta automática ao Codex está temporariamente indisponível; estes são os últimos dados recebidos._
               {% endif %}
               {% else %}
               # Coleta indisponível

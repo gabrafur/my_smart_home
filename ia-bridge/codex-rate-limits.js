@@ -138,16 +138,15 @@ class CodexRateLimitsPoller {
   }
 
   readEvent(now = new Date()) {
-    if (!this.snapshot?.rateLimits || !this.updatedAt) return null;
     return {
       timestamp: this.updatedAt,
-      rateLimits: this.snapshot.rateLimits,
+      rateLimits: this.snapshot?.rateLimits || null,
       refreshMetadata: {
         mode: 'codex_app_server',
         consumes_model_credits: false,
         refresh_interval_seconds: Math.round(this.refreshMs / 1000),
         last_attempt_at: this.lastAttemptAt?.toISOString() || null,
-        updated_at: this.updatedAt.toISOString(),
+        updated_at: this.updatedAt?.toISOString() || null,
         next_refresh_at: this.nextRefreshAt?.toISOString() || null,
         seconds_until_refresh: this.nextRefreshAt
           ? Math.max(0, Math.ceil((this.nextRefreshAt - now) / 1000))

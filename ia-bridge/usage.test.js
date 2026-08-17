@@ -6,7 +6,7 @@ const test = require('node:test');
 
 const { CodexUsageReader, scanCodexUsage, scanLocalAiTelemetry } = require('./usage');
 
-function tokenEvent(timestamp, total, usedPercent, balance = '0') {
+function tokenEvent(timestamp, total, usedPercent, balance = '0', plan = 'plus') {
   return JSON.stringify({
     timestamp,
     type: 'event_msg',
@@ -15,7 +15,7 @@ function tokenEvent(timestamp, total, usedPercent, balance = '0') {
       info: { total_token_usage: total },
       rate_limits: {
         limit_id: 'codex',
-        plan_type: 'plus',
+        ...(plan ? { plan_type: plan } : {}),
         primary: {
           used_percent: usedPercent,
           window_minutes: 10080,
@@ -110,6 +110,44 @@ test('overlays a live plan-limit snapshot without requiring a model turn', (t) =
   assert.equal(usage.rate_limit_refresh.seconds_until_refresh, 30);
   assert.equal(usage.rate_limit_refresh.consumes_model_credits, false);
   assert.equal(usage.freshness.rate_limit.current, true);
+});
+
+test('keeps the last known plan when the newest rate snapshot omits it', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-plan-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const file = path.join(directory, 'usage.jsonl');
+  fs.writeFileSync(file, [
+    tokenEvent('2026-08-16T10:00:00Z', { total_tokens: 10 }, 10, '0', 'prolite'),
+    tokenEvent('2026-08-16T10:01:00Z', { total_tokens: 20 }, 11, '0', null),
+  ].join('\n'));
+
+  const usage = scanCodexUsage(directory, new Date('2026-08-16T10:02:00Z'));
+  assert.equal(usage.rate_limit.used_percent, 11);
+  assert.equal(usage.plan_type, 'prolite');
+  assert.equal(usage.rate_limit.plan_type, 'prolite');
+});
+
+test('prefers the account-wide live limit over a newer model-specific session snapshot', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-account-limit-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(directory, 'usage.jsonl'),
+    tokenEvent('2026-08-16T10:01:00Z', { total_tokens: 10 }, 0, '0', 'spark'));
+  const reader = new CodexUsageReader(directory, null, null, 0);
+
+  const usage = reader.read({
+    timestamp: new Date('2026-08-16T10:00:00Z'),
+    rateLimits: {
+      limit_id: 'codex',
+      plan_type: 'prolite',
+      primary: { used_percent: 77, window_minutes: 10080, resets_at: 1786897800 },
+    },
+    refreshMetadata: { mode: 'codex_app_server', consumes_model_credits: false },
+  });
+
+  assert.equal(usage.rate_limit.used_percent, 77);
+  assert.equal(usage.rate_limit.remaining_percent, 23);
+  assert.equal(usage.plan_type, 'prolite');
+  assert.equal(usage.rate_limit_updated_at, '2026-08-16T10:00:00.000Z');
 });
 
 test('merges multiple session directories and refreshes only a changed session file', (t) => {

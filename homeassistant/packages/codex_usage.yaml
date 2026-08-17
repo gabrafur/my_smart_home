@@ -214,8 +214,11 @@ template:
           {% endif %}
         state: >-
           {% set freshness = state_attr('sensor.codex_usage_raw', 'freshness') or {} %}
+          {% set refresh = state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {} %}
+          {% set limit = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
           {% if states('sensor.codex_usage_raw') != 'ok' %}sem dados
-          {% elif freshness.get('rate_limit', {}).get('current', false) %}atual
+          {% elif not limit.get('primary') and limit.get('used_percent') is not number %}sem dados
+          {% elif freshness.get('rate_limit', {}).get('current', false) and not refresh.get('last_error') %}atual
           {% else %}desatualizado
           {% endif %}
         attributes:

@@ -97,6 +97,11 @@ function sanitizeRateLimits(rateLimits) {
   };
 }
 
+function planType(rateLimits) {
+  const value = rateLimits?.plan_type;
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
 function round(value, digits = 2) {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
@@ -604,6 +609,7 @@ function scanCodexUsageFile(filePath) {
   const daily = new Map();
   let latestEvent = null;
   let latestRateEvent = null;
+  let latestPlanEvent = null;
   let latestCreditEvent = null;
   let eventCount = 0;
   const rateEvents = [];
@@ -652,6 +658,10 @@ function scanCodexUsageFile(filePath) {
       event.payload.rate_limits?.primary
       && (!latestRateEvent || timestamp > latestRateEvent.timestamp)
     ) latestRateEvent = candidate;
+    if (
+      planType(event.payload.rate_limits)
+      && (!latestPlanEvent || timestamp > latestPlanEvent.timestamp)
+    ) latestPlanEvent = candidate;
     if (event.payload.rate_limits?.primary) rateEvents.push(candidate);
     if (
       event.payload.rate_limits?.credits
@@ -664,6 +674,7 @@ function scanCodexUsageFile(filePath) {
     daily,
     latestEvent,
     latestRateEvent,
+    latestPlanEvent,
     latestCreditEvent,
     sessionCount: hasUsage ? 1 : 0,
     eventCount,
@@ -677,6 +688,7 @@ function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) 
   const daily = new Map();
   let latestEvent = null;
   let latestRateEvent = null;
+  let latestPlanEvent = null;
   let latestCreditEvent = null;
   let sessionCount = 0;
   let eventCount = 0;
@@ -696,6 +708,9 @@ function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) 
     }
     if (!latestRateEvent || summary.latestRateEvent?.timestamp > latestRateEvent.timestamp) {
       latestRateEvent = summary.latestRateEvent || latestRateEvent;
+    }
+    if (!latestPlanEvent || summary.latestPlanEvent?.timestamp > latestPlanEvent.timestamp) {
+      latestPlanEvent = summary.latestPlanEvent || latestPlanEvent;
     }
     if (!latestCreditEvent || summary.latestCreditEvent?.timestamp > latestCreditEvent.timestamp) {
       latestCreditEvent = summary.latestCreditEvent || latestCreditEvent;
@@ -717,6 +732,9 @@ function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) 
       if (!latestRateEvent || liveRateEvent.timestamp > latestRateEvent.timestamp) {
         latestRateEvent = liveRateEvent;
       }
+      if (planType(liveRateEvent.rateLimits) && (
+        !latestPlanEvent || liveRateEvent.timestamp > latestPlanEvent.timestamp
+      )) latestPlanEvent = liveRateEvent;
       if (
         liveRateEvent.rateLimits.credits
         && (!latestCreditEvent || liveRateEvent.timestamp > latestCreditEvent.timestamp)
@@ -729,8 +747,19 @@ function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) 
     if (timestamp.valueOf() >= now.valueOf() - 7 * 86_400_000) addTokens(recentTokens, usage);
   }
 
-  const rateSource = latestRateEvent || latestEvent;
+  // The app-server's account endpoint is the canonical general allowance.
+  // Session token events can instead carry the currently selected model's
+  // allowance (for example, Codex-Spark), so a newer model event must never
+  // replace an available account-level snapshot in this dashboard feed.
+  const hasLiveRateLimit = liveRateEvent?.rateLimits
+    && liveRateEvent.timestamp instanceof Date
+    && !Number.isNaN(liveRateEvent.timestamp.valueOf());
+  const rateSource = hasLiveRateLimit ? liveRateEvent : (latestRateEvent || latestEvent);
   const sanitized = sanitizeRateLimits(rateSource?.rateLimits);
+  const lastKnownPlanType = planType(latestPlanEvent?.rateLimits);
+  if (sanitized && !sanitized.plan_type && lastKnownPlanType) {
+    sanitized.plan_type = lastKnownPlanType;
+  }
   const creditSnapshot = sanitizeRateLimits(latestCreditEvent?.rateLimits)?.credits;
   if (sanitized && creditSnapshot) sanitized.credits = creditSnapshot;
 
@@ -746,13 +775,13 @@ function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) 
     status: latestEvent || latestRateEvent ? 'ok' : 'no_data',
     collected_at: now.toISOString(),
     source_updated_at: latestEvent?.timestamp.toISOString() || null,
-    rate_limit_updated_at: latestRateEvent?.timestamp.toISOString() || null,
+    rate_limit_updated_at: rateSource?.timestamp.toISOString() || null,
     plan_type: sanitized?.plan_type || null,
     rate_limit: sanitized,
     rate_limit_refresh: liveRateEvent?.refreshMetadata || null,
     freshness: {
       activity: freshness(latestEvent?.timestamp, now),
-      rate_limit: freshness(latestRateEvent?.timestamp, now, RATE_LIMIT_MAX_AGE_MS),
+      rate_limit: freshness(rateSource?.timestamp, now, RATE_LIMIT_MAX_AGE_MS),
     },
     totals: { ...totals, sessions: sessionCount, events: eventCount },
     analytics,
