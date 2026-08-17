@@ -35,3 +35,14 @@ test('poller exposes refresh timing without model-credit consumption', async () 
   assert.equal(event.refreshMetadata.consumes_model_credits, false);
   assert.ok(event.refreshMetadata.seconds_until_refresh > 0);
 });
+
+test('poller exposes the last refresh error even before a successful snapshot', async () => {
+  const poller = new CodexRateLimitsPoller({
+    query: async () => { throw new Error('backend unavailable'); },
+  });
+  await poller.refresh();
+  const event = poller.readEvent();
+  assert.equal(event.rateLimits, null);
+  assert.equal(event.refreshMetadata.mode, 'codex_app_server');
+  assert.equal(event.refreshMetadata.last_error, 'backend unavailable');
+});
