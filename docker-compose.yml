@@ -99,6 +99,7 @@ services:
     image: nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6
     container_name: nodered
     restart: always
+    command: ["/bin/sh", "/data/tools/start-node-red.sh"]
     depends_on:
       - mosquitto
       - homeassistant
@@ -203,6 +204,14 @@ services:
     container_name: docs-review-scheduler
     profiles: ["automation"]
     restart: always
+    # This is a live smart-home host. Repository maintenance must remain below
+    # SSH and residential workloads and be killed before it can exhaust them.
+    cpus: "1.0"
+    cpu_shares: 256
+    mem_limit: 1536m
+    mem_reservation: 256m
+    pids_limit: 256
+    oom_score_adj: 500
     user: "0:0"
     working_dir: /workspace
     volumes:
