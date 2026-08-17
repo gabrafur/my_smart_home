@@ -37,6 +37,11 @@ obrigatórios.
 - normaliza presença e estados booleanos quando configurado;
 - encaminha ações allowlisted pelo serviço `public_bindings.call`.
 
+Uma ação pode apontar diretamente para `target_entity_id` ou reutilizar uma
+entidade do mesmo papel por `target_public_entity_id`. A segunda forma mantém o
+alvo privado em um único binding e é adequada para pares seguros como
+`switch.turn_on` / `switch.turn_off`.
+
 Arquivo ausente, versão inválida, papel desabilitado ou ação não configurada
 resultam em ausência de proxy/ação. O adapter falha fechado e não revela o alvo
 privado em atributos públicos.

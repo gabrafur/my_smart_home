@@ -68,6 +68,13 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       if (service?.target_entity_id && !entityIdPattern.test(service.target_entity_id)) {
         issues.push(issue("service-target-entity", location, "binding"));
       }
+      if (service?.target_public_entity_id) {
+        if (!entityIdPattern.test(service.target_public_entity_id)) {
+          issues.push(issue("service-target-public-entity", location, "binding"));
+        } else if (!Object.hasOwn(binding.entities ?? {}, service.target_public_entity_id)) {
+          issues.push(issue("service-target-public-binding", location, "binding"));
+        }
+      }
     }
     for (const [key, topic] of Object.entries(binding.topics ?? {})) {
       const location = `$.roles.${role}.topics.${key}`;

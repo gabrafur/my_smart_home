@@ -103,7 +103,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             return
         domain, service = binding["target_service"].split(".", 1)
         data = dict(call.data.get("data", {}))
-        if binding.get("target_entity_id"):
+        target_public_id = binding.get("target_public_entity_id")
+        if target_public_id:
+            entity_binding = entities.get(target_public_id)
+            if entity_binding is None or entity_binding[0] != call.data["role"]:
+                return
+            data["entity_id"] = entity_binding[1]["target_entity_id"]
+        elif binding.get("target_entity_id"):
             data["entity_id"] = binding["target_entity_id"]
         await hass.services.async_call(domain, service, data, blocking=True)
 
