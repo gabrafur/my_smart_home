@@ -28,9 +28,12 @@ quando o flow `alarme_casa` informa um armamento real.
 
 1. Um comando manual ON/OFF ou o evento de por do sol prepara o payload para
    os tres topicos Zigbee2MQTT.
-2. O por do sol so prossegue quando
-   `alarm_control_panel.alarme_moni_mobile` esta `disarmed`; assim ele nao
+2. O por do sol so prossegue quando o binding publico
+   `alarm_control_panel.security_panel` esta `disarmed`; assim ele nao
    religa as luzes depois que a casa foi armada.
+   O estado atual de `sun.sun` tambem e avaliado na conexao com o Home
+   Assistant. Se o host reiniciar depois do por do sol, a automacao recupera a
+   intencao sem depender de uma nova transicao solar.
 3. `Bloquear se rede Zigbee offline` consulta o estado mantido a partir de
    `zigbee2mqtt/bridge/state` e da conexao do broker MQTT. Se a bridge ou o
    broker estiver offline, nenhum comando e publicado, nenhuma repeticao e
@@ -49,9 +52,9 @@ quando o flow `alarme_casa` informa um armamento real.
 
 ## Avisos
 
-Os avisos desta aba usam o node `Avisar Alexa`
-(`notify.alexa_media_echo_dot_de_resident_primary`). O flow `alarme_casa` possui um
-node de aviso proprio, evitando fios diretos entre abas.
+Os avisos desta aba usam o node `Avisar Alexa`, resolvido pela acao allowlisted
+`mobile_primary/notify` em `public_bindings.call`. O flow `alarme_casa` possui
+um node de aviso proprio, evitando fios diretos entre abas.
 
 ## Historico relevante
 
@@ -60,6 +63,8 @@ node de aviso proprio, evitando fios diretos entre abas.
 - 2026-08-11: adicionados bloqueio por bridge/broker Zigbee offline, aviso da
   Alexa sem retry, confirmacao apenas do comando mais recente e verificacao de
   que o alarme esta desarmado antes de ligar no por do sol.
+- 2026-08-17: a inicializacao passou a reavaliar o estado atual do sol, e o
+  DuloNodeHub recebeu retry exponencial para falhas transitorias de DNS no boot.
 
 ## Testes e manutencao
 

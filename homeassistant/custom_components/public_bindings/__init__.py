@@ -10,6 +10,7 @@ import voluptuous as vol
 
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 
 DOMAIN = "public_bindings"
@@ -100,14 +101,15 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     async def call_binding(call: ServiceCall) -> None:
         binding = services.get((call.data["role"], call.data["action"]))
         if binding is None:
-            return
+            raise HomeAssistantError("Public binding action is unavailable")
         domain, service = binding["target_service"].split(".", 1)
-        data = dict(call.data.get("data", {}))
+        data = dict(binding.get("data", {}))
+        data.update(call.data.get("data", {}))
         target_public_id = binding.get("target_public_entity_id")
         if target_public_id:
             entity_binding = entities.get(target_public_id)
             if entity_binding is None or entity_binding[0] != call.data["role"]:
-                return
+                raise HomeAssistantError("Public binding target is unavailable")
             data["entity_id"] = entity_binding[1]["target_entity_id"]
         elif binding.get("target_entity_id"):
             data["entity_id"] = binding["target_entity_id"]

@@ -2,7 +2,7 @@
 
 O flow `alarme_desarme_chegada` solicita confirmacao por uma notificacao
 acionavel do Home Assistant quando uma chegada real de resident_primary, resident_secondary ou do
-vehicle_primary e detectada. O `alarm_control_panel.alarme_moni_mobile` so e desarmado
+vehicle_primary e detectada. O binding publico `alarm_control_panel.security_panel` so e desarmado
 depois que alguem toca em `Desarmar`.
 
 ## Origem da chegada

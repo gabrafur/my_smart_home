@@ -68,6 +68,11 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       if (!service || typeof service !== "object" || !servicePattern.test(service.target_service ?? "")) {
         issues.push(issue("target-service", location, "binding"));
       }
+      if (service?.data !== undefined && (
+        !service.data || typeof service.data !== "object" || Array.isArray(service.data)
+      )) {
+        issues.push(issue("service-data", location, "binding"));
+      }
       if (service?.target_entity_id && !entityIdPattern.test(service.target_entity_id)) {
         issues.push(issue("service-target-entity", location, "binding"));
       }
@@ -115,6 +120,23 @@ export function checkFile(file, options) {
   return validateBindings(document, options);
 }
 
+export function validateFlowBindingCalls(document, flows) {
+  const issues = [];
+  for (const node of flows) {
+    if (node?.action !== "public_bindings.call" || typeof node.data !== "string") continue;
+    const role = /["']role["']\s*:\s*["']([a-z0-9_]+)["']/.exec(node.data)?.[1];
+    const action = /["']action["']\s*:\s*["']([a-z0-9_]+)["']/.exec(node.data)?.[1];
+    if (!role || !action) {
+      issues.push(issue("consumer-contract", `nodered:${node.id ?? "unknown"}`, "binding"));
+      continue;
+    }
+    if (!document.roles?.[role]?.services?.[action]) {
+      issues.push(issue("consumer-service", `${role}/${action}`, "binding"));
+    }
+  }
+  return issues;
+}
+
 function main() {
   const privateIndex = process.argv.indexOf("--private");
   const explicitPrivate = privateIndex >= 0 ? process.argv[privateIndex + 1] : null;
@@ -126,6 +148,11 @@ function main() {
     process.exit(1);
   }
   const issues = checkFile(file, { requireAllRoles: !explicitPrivate });
+  if (issues.length === 0) {
+    const document = JSON.parse(fs.readFileSync(file, "utf8"));
+    const flows = JSON.parse(fs.readFileSync(path.join(repoRoot, "nodered", "flows.json"), "utf8"));
+    issues.push(...validateFlowBindingCalls(document, flows));
+  }
   if (issues.length) {
     for (const item of issues) {
       console.error(`rule=${item.rule} file=${explicitPrivate ? "<private-bindings>" : "bindings/private-bindings.example.json"} line=0 category=${item.category}`);

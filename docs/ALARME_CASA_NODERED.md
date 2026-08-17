@@ -1,7 +1,7 @@
 # Alarme da casa (Node-RED)
 
 Flow `alarme_casa` (`nodered/flows.json`, tab `alarm_house_tab`). Ele concentra
-o controle do `alarm_control_panel.alarme_moni_mobile`, os retries e os avisos
+o controle do binding publico `alarm_control_panel.security_panel`, os retries e os avisos
 do alarme. A iluminacao externa permanece no flow `iluminacao_externa`.
 
 ## Entradas

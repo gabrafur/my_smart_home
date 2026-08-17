@@ -44,6 +44,11 @@ for (const node of flows.filter((candidate) => candidate.z === tabId)) {
 }
 
 const sunset = getNode("24743bc9f254d1c1");
+assert.equal(
+  sunset.outputInitially,
+  true,
+  "o estado atual do sol deve ser reavaliado depois de um restart",
+);
 assert.deepEqual(sunset.wires, [["ext_sunset_alarm_check"], []]);
 
 const sunsetAlarmCheck = getNode("ext_sunset_alarm_check");
