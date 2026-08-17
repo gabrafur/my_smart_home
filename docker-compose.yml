@@ -159,6 +159,11 @@ services:
       context: ./ia-bridge
     container_name: ai-bridge
     restart: always
+    # Docker's embedded resolver keeps service discovery on 127.0.0.11 and
+    # forwards public lookups to these explicit upstream resolvers.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     group_add:
       # Numeric group that owns /var/run/docker.sock on the host.
       - "${DOCKER_GID:-999}"
@@ -204,7 +209,7 @@ services:
     ports:
       - "127.0.0.1:8099:8099"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8099/health"]
+      test: ["CMD-SHELL", "getent hosts chatgpt.com >/dev/null && curl -fsS http://127.0.0.1:8099/health >/dev/null"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -46,6 +46,15 @@ class CodexChatResourceTest(unittest.TestCase):
         self.assertIn("type: custom:codex-chat-card-v2", dashboard)
         self.assertTrue(CARD.is_file())
 
+    def test_messages_are_copyable_and_work_reports_elapsed_time(self):
+        card = CARD.read_text(encoding="utf-8")
+
+        self.assertIn("user-select:text", card)
+        self.assertIn("-webkit-touch-callout:default", card)
+        self.assertIn("loadingMessage()", card)
+        self.assertIn("Ainda trabalhando", card)
+        self.assertIn("gpt-5.6-luna", card)
+
 
 if __name__ == "__main__":
     unittest.main()
