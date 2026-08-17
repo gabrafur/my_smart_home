@@ -11,6 +11,9 @@ const aliasesByName = {
   vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
   vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
   vehicle_primary_unlock_event: "Porta destravada por 5 s",
+  vehicle_primary_engine_on_event: "Motor ligado por 5 s",
+  vehicle_primary_engine_off_event: "Motor desligado por 5 s",
+  vehicle_primary_location_event: "Localização do vehicle_primary atualizada",
   context_coordinator: "Coordenar snapshot e refresh",
   context_tick: "Reavaliar contextos a cada 30 s",
   light_merge_context: "Atualizar contexto de alto nível",
@@ -170,6 +173,41 @@ scenario("02 vehicle_primary ligado e longe de casa", () => {
   const result = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "not_home", distance: 5_000, engine: "on" }), memoryFlow(), geoEnv)[0];
   assert.equal(result.payload.context.in_use, true);
   assert.equal(result.payload.context.away, true);
+});
+
+scenario("02a eventos de motor ON e OFF são simétricos com filtro de 5 s", () => {
+  const engineOn = byId.get("vehicle_primary_engine_on_event");
+  const engineOff = byId.get("vehicle_primary_engine_off_event");
+  for (const [node, state, event] of [
+    [engineOn, "on", "turn_on"],
+    [engineOff, "off", "turn_off"],
+  ]) {
+    assert.deepEqual(node.entities.entity, ["binary_sensor.vehicle_primary_engine"]);
+    assert.equal(node.ifState, state);
+    assert.equal(node.for, "5");
+    assert.equal(node.forUnits, "seconds");
+    assert.match(node.outputProperties[0].value, new RegExp(`\\"event\\":\\"${event}\\"`));
+    assert.deepEqual(wireNames(node.name === "Motor ligado por 5 s" ? "vehicle_primary_engine_on_event" : "vehicle_primary_engine_off_event"), ["Normalizar vehicle_primary e detectar transições"]);
+  }
+});
+
+scenario("02b localização preserva home, chegando e not_home; away é derivado", () => {
+  const locationEvent = byId.get("vehicle_primary_location_event");
+  assert.deepEqual(locationEvent.entities.entity, ["device_tracker.vehicle_primary"]);
+  assert.equal(locationEvent.outputOnlyOnStateChange, false);
+
+  const home = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "context_snapshot", current: "home", distance: null }), memoryFlow(), geoEnv)[0];
+  const approaching = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "chegando", distance: null, engine: "on" }), memoryFlow(), geoEnv);
+  const away = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "not_home", distance: null, engine: "on" }), memoryFlow(), geoEnv)[0];
+  assert.equal(home.payload.context.home, true);
+  assert.equal(home.payload.context.away, false);
+  assert.equal(approaching[0].payload.context.location.state, "chegando");
+  assert.equal(approaching[0].payload.context.location.state_valid, true);
+  assert.equal(approaching[0].payload.context.home, false);
+  assert.equal(approaching[0].payload.context.away, false);
+  assert.equal(away.payload.context.location.state, "not_home");
+  assert.equal(away.payload.context.home, false);
+  assert.equal(away.payload.context.away, true);
 });
 
 scenario("03 vehicle_primary ligado e aproximando-se", () => {
@@ -391,6 +429,6 @@ scenario("31 movimento na mesma zona solicita refresh sem autorizar iluminação
   assert.equal(refresh.payload.require_lighting_ready, true);
 });
 
-assert.equal(passed.length, 31);
+assert.equal(passed.length, 33);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

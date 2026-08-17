@@ -55,6 +55,9 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       if (entity.state_mode && !["passthrough", "home_away", "boolean"].includes(entity.state_mode)) {
         issues.push(issue("state-mode", location, "binding"));
       }
+      if (publicId.startsWith("device_tracker.") && entity.state_mode !== "passthrough") {
+        issues.push(issue("location-state-mode", location, "binding"));
+      }
       for (const service of entity.allowed_services ?? []) {
         if (!servicePattern.test(service)) issues.push(issue("allowed-service", location, "binding"));
       }

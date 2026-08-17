@@ -39,6 +39,28 @@ test("requires role-based public IDs and valid private targets", () => {
   assert.ok(result.some((item) => item.rule === "target-entity-id"));
 });
 
+test("preserves named Home Assistant zones on public device trackers", () => {
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      vehicle_primary: {
+        entities: {
+          "device_tracker.vehicle_primary": {
+            target_entity_id: "device_tracker.example_vehicle_primary",
+            state_mode: "home_away",
+          },
+        },
+      },
+    },
+  };
+  const rules = validateBindings(document).map((item) => item.rule);
+  assert.ok(rules.includes("location-state-mode"));
+
+  document.roles.vehicle_primary.entities["device_tracker.vehicle_primary"].state_mode = "passthrough";
+  assert.deepEqual(validateBindings(document), []);
+});
+
 test("validates optional MQTT bindings without exposing their values", () => {
   const document = {
     schema_version: 1,
