@@ -62,6 +62,36 @@ TASK_LIST_FIELDS = {
 
 def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
     """Use a bounded schema where free-form JSON proved too easy to overrun."""
+    if task == "review-diff":
+        max_items = 2 if compact else 8
+        return {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string"},
+                "findings": {
+                    "type": "array", "maxItems": max_items,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "file": {"type": "string"},
+                            "severity": {"type": "string", "enum": ["low", "medium", "high"]},
+                            "reason": {"type": "string"},
+                        },
+                        "required": ["file", "severity", "reason"],
+                        "additionalProperties": False,
+                    },
+                },
+                "suspected_files": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+                "risks": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+                "recommended_actions": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+                "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            },
+            "required": [
+                "summary", "findings", "suspected_files", "risks",
+                "recommended_actions", "confidence",
+            ],
+            "additionalProperties": False,
+        }
     if task == "summarize-memory":
         max_items = 2 if compact else 8
         text_lists = [
