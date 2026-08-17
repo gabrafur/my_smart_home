@@ -1,0 +1,16 @@
+{% macro format_number_ptbr(value, decimals=0) -%}
+  {%- if not is_number(value) -%}
+    {{- value -}}
+  {%- elif decimals | int == 0 -%}
+    {{- "{:,.0f}".format(value | float) | replace(",", ".") -}}
+  {%- else -%}
+    {%- if decimals | int == 1 -%}
+      {%- set formatted = "{:,.1f}".format(value | float) -%}
+    {%- elif decimals | int == 2 -%}
+      {%- set formatted = "{:,.2f}".format(value | float) -%}
+    {%- else -%}
+      {%- set formatted = "{:,.3f}".format(value | float) -%}
+    {%- endif -%}
+    {{- formatted | replace(".", "#") | replace(",", ".") | replace("#", ",") -}}
+  {%- endif -%}
+{%- endmacro %}

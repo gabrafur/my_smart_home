@@ -245,6 +245,7 @@ template:
       - name: Codex Tokens Totais
         unique_id: codex_tokens_totais
         icon: mdi:counter
+        unit_of_measurement: "tokens"
         state_class: total_increasing
         state: >-
           {% set totals = state_attr('sensor.codex_usage_raw', 'totals') %}
@@ -256,6 +257,7 @@ template:
       - name: Codex Tokens em Cache
         unique_id: codex_tokens_em_cache
         icon: mdi:cached
+        unit_of_measurement: "tokens"
         state_class: total_increasing
         state: >-
           {% set totals = state_attr('sensor.codex_usage_raw', 'totals') %}
@@ -267,6 +269,7 @@ template:
       - name: Codex Tokens de Saida
         unique_id: codex_tokens_de_saida
         icon: mdi:arrow-up-bold-hexagon-outline
+        unit_of_measurement: "tokens"
         state_class: total_increasing
         state: >-
           {% set totals = state_attr('sensor.codex_usage_raw', 'totals') %}
@@ -278,6 +281,8 @@ template:
       - name: Codex Sessoes Monitoradas
         unique_id: codex_sessoes_monitoradas
         icon: mdi:folder-multiple-outline
+        unit_of_measurement: "sessões"
+        state_class: measurement
         state: >-
           {% set totals = state_attr('sensor.codex_usage_raw', 'totals') %}
           {{ totals.get('sessions') if totals else none }}
@@ -536,6 +541,7 @@ template:
       - name: Codex Chamadas Local AI
         unique_id: codex_chamadas_local_ai
         icon: mdi:counter
+        unit_of_measurement: "chamadas"
         state_class: total_increasing
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -543,12 +549,15 @@ template:
       - name: Codex Chamadas Local AI Hoje
         unique_id: codex_chamadas_local_ai_hoje
         icon: mdi:calendar-today
+        unit_of_measurement: "chamadas"
+        state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Chamadas Local AI com Sucesso
         unique_id: codex_chamadas_local_ai_com_sucesso
         icon: mdi:check-circle-outline
+        unit_of_measurement: "chamadas"
         state_class: total_increasing
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('successful_calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -556,6 +565,7 @@ template:
       - name: Codex Falhas Local AI
         unique_id: codex_falhas_local_ai
         icon: mdi:alert-circle-outline
+        unit_of_measurement: "falhas"
         state_class: total_increasing
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('failed_calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -635,6 +645,7 @@ template:
       - name: Codex Fallbacks Local AI Informados
         unique_id: codex_fallbacks_local_ai_informados
         icon: mdi:source-branch-sync
+        unit_of_measurement: "fallbacks"
         state_class: total_increasing
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('fallbacks_reported', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -642,6 +653,7 @@ template:
       - name: Codex Decisoes de Roteamento Hoje
         unique_id: codex_decisoes_de_roteamento_hoje
         icon: mdi:source-branch
+        unit_of_measurement: "decisões"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -651,6 +663,7 @@ template:
       - name: Codex Tarefas Local AI Elegiveis Hoje
         unique_id: codex_tarefas_local_ai_elegiveis_hoje
         icon: mdi:memory
+        unit_of_measurement: "tarefas"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('eligible_tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -660,6 +673,7 @@ template:
       - name: Codex Tarefas Local AI Elegiveis e Disponiveis Hoje
         unique_id: codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje
         icon: mdi:memory-arrow-down
+        unit_of_measurement: "tarefas"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('eligible_and_available_tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -669,6 +683,7 @@ template:
       - name: Codex RTX Usos Hoje
         unique_id: codex_rtx_usos_hoje
         icon: mdi:gpu
+        unit_of_measurement: "usos"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('used_tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -676,6 +691,7 @@ template:
       - name: Codex Oportunidades RTX Perdidas Hoje
         unique_id: codex_oportunidades_rtx_perdidas_hoje
         icon: mdi:alert-circle-outline
+        unit_of_measurement: "oportunidades"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('missed_opportunities', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -685,6 +701,7 @@ template:
       - name: Codex Local AI Indisponivel Hoje
         unique_id: codex_local_ai_indisponivel_hoje
         icon: mdi:cloud-off-outline
+        unit_of_measurement: "tarefas"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('confirmed_unavailable_tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -696,6 +713,7 @@ template:
       - name: Codex Disponibilidade RTX Desconhecida Hoje
         unique_id: codex_disponibilidade_rtx_desconhecida_hoje
         icon: mdi:help-network-outline
+        unit_of_measurement: "tarefas"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('availability_unknown_tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -706,6 +724,7 @@ template:
       - name: Codex Chamadas Local AI Desnecessarias Hoje
         unique_id: codex_chamadas_local_ai_desnecessarias_hoje
         icon: mdi:flash-off
+        unit_of_measurement: "chamadas"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('unnecessary_calls', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -715,6 +734,7 @@ template:
       - name: Codex Falhas de Roteamento Local AI Hoje
         unique_id: codex_falhas_de_roteamento_local_ai_hoje
         icon: mdi:alert-octagon-outline
+        unit_of_measurement: "falhas"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('failed_tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -768,6 +788,7 @@ template:
       - name: Codex Tokens Potenciais Evitaveis Estimados
         unique_id: codex_tokens_potenciais_evitaveis_estimados
         icon: mdi:content-save-alert-outline
+        unit_of_measurement: "tokens"
         state_class: total
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('potential_tokens_avoidable', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -777,6 +798,7 @@ template:
       - name: Codex Tokens Potenciais Evitaveis Hoje Estimados
         unique_id: codex_tokens_potenciais_evitaveis_hoje_estimados
         icon: mdi:calendar-today
+        unit_of_measurement: "tokens"
         state_class: measurement
         state: >-
           {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
@@ -790,6 +812,8 @@ template:
       - name: Codex Auditoria Retrospectiva de Roteamento RTX
         unique_id: codex_auditoria_retrospectiva_de_roteamento_rtx
         icon: mdi:clipboard-search-outline
+        unit_of_measurement: "conversas"
+        state_class: measurement
         state: >-
           {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
           {{ audit.get('conversations_audited', 0) }}
@@ -832,6 +856,8 @@ template:
       - name: Codex Oportunidades RTX Perdidas Hoje na Auditoria
         unique_id: codex_oportunidades_rtx_perdidas_hoje_na_auditoria
         icon: mdi:clipboard-alert-outline
+        unit_of_measurement: "oportunidades"
+        state_class: measurement
         state: >-
           {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
           {{ audit.get('retrospective_today_missed_opportunities', 0) }}
@@ -944,6 +970,7 @@ template:
       - name: Codex Recuperacoes de Memoria Hoje
         unique_id: codex_recuperacoes_de_memoria_hoje
         icon: mdi:database-search-outline
+        unit_of_measurement: "recuperações"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('retrieval_calls', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -951,6 +978,7 @@ template:
       - name: Codex Skips de Memoria Hoje
         unique_id: codex_skips_de_memoria_hoje
         icon: mdi:database-off-outline
+        unit_of_measurement: "skips"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('retrieval_skips', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -958,6 +986,7 @@ template:
       - name: Codex Sobrecargas de Memoria Hoje
         unique_id: codex_sobrecargas_de_memoria_hoje
         icon: mdi:alert-outline
+        unit_of_measurement: "sobrecargas"
         state_class: measurement
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('memory_overload_incidents', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -992,6 +1021,7 @@ template:
       - name: Codex Tokens OpenAI Economizados Estimados
         unique_id: codex_tokens_openai_evitados_estimados
         icon: mdi:content-save-outline
+        unit_of_measurement: "tokens"
         state_class: total
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('openai_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
@@ -1001,18 +1031,24 @@ template:
       - name: Codex Tokens OpenAI Economizados Hoje Estimados
         unique_id: codex_tokens_openai_evitados_hoje_estimados
         icon: mdi:calendar-today-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('openai_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens OpenAI Economizados Semana Estimados
         unique_id: codex_tokens_openai_evitados_semana_estimados
         icon: mdi:calendar-week
+        unit_of_measurement: "tokens"
+        state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('week') or {}).get('openai_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens OpenAI Economizados Mes Estimados
         unique_id: codex_tokens_openai_evitados_mes_estimados
         icon: mdi:calendar-month
+        unit_of_measurement: "tokens"
+        state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('month') or {}).get('openai_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
