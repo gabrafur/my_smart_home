@@ -1,6 +1,6 @@
 .PHONY: validate-public validate-dependencies validate-compose validate-json validate-yaml \
 	validate-shell validate-docs validate-assets validate-security validate-privacy \
-	validate-memory validate-node-red validate-bridge validate-local-ai validate-scripts \
+	validate-memory validate-node-red validate-bridge validate-local-ai validate-homeassistant validate-scripts \
 	validate-scheduler validate-auto-update validate-modules validate-restore \
 	validate-bootstrap validate-demo validate-git validate-staged privacy-check \
 	privacy-check-staged bindings-check backup-plan backup-verify restore-plan \
@@ -10,6 +10,7 @@
 PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
 	validate-yaml validate-shell validate-docs validate-assets validate-security \
 	validate-privacy validate-memory validate-node-red validate-bridge validate-local-ai \
+	validate-homeassistant \
 	validate-scripts validate-scheduler validate-auto-update validate-modules \
 	validate-restore validate-bootstrap validate-demo validate-git
 
@@ -69,6 +70,9 @@ validate-bridge:
 
 validate-local-ai:
 	python3 -m unittest discover -s scripts/local-ai -p 'test_*.py'
+
+validate-homeassistant:
+	python3 -m unittest discover -s homeassistant/tests -p 'test_*.py'
 
 validate-scripts:
 	node scripts/test-all.mjs
