@@ -657,9 +657,9 @@
             "203ccb69e0a6d24b",
             "cc920126e5845a43"
         ],
-        "x": 94,
+        "x": 84,
         "y": 19,
-        "w": 432,
+        "w": 502,
         "h": 282
     },
     {
@@ -708,7 +708,7 @@
         ],
         "x": 624,
         "y": 279,
-        "w": 692,
+        "w": 732,
         "h": 222
     },
     {
@@ -735,9 +735,9 @@
             "eaccc19a46e6d28a",
             "b74adbc594080fbf"
         ],
-        "x": 94,
+        "x": 24,
         "y": 339,
-        "w": 782,
+        "w": 852,
         "h": 582
     },
     {
@@ -6147,7 +6147,7 @@
         "links": [
             "3514854bb1279cbb"
         ],
-        "x": 195,
+        "x": 125,
         "y": 260,
         "wires": [
             [
@@ -6186,7 +6186,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 370,
+        "x": 360,
         "y": 260,
         "wires": [
             [
@@ -7665,6 +7665,36 @@
         "x": 925,
         "y": 860,
         "wires": []
+    },
+    {
+        "id": "vehicle_primary_manual_refresh_blocked_notification_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Avisar refresh manual bloqueado",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":notification.title,\"message\":notification.message,\"notification_id\":notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1010,
+        "y": 900,
+        "wires": [
+            []
+        ]
     },
     {
         "id": "93177ddacd3cb498",
@@ -9746,36 +9776,6 @@
         "service": "create",
         "x": 930,
         "y": 280,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "vehicle_primary_manual_refresh_blocked_notification_v1",
-        "type": "api-call-service",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Avisar refresh manual bloqueado",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\":notification.title,\"message\":notification.message,\"notification_id\":notification.id}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "none",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 1010,
-        "y": 900,
         "wires": [
             []
         ]

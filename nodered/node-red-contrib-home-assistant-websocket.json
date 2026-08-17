@@ -1,6 +1,12 @@
 {
   "nodes": {},
   "issues": {
-    "hidden": []
+    "hidden": [
+      "ext_sunset_alarm_check",
+      "70eb073f8191e69e",
+      "8261c7cfb6756ca8",
+      "e380ce19c7f96420",
+      "af0496cef18e47ca"
+    ]
   }
 }
