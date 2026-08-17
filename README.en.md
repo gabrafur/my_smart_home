@@ -70,16 +70,19 @@ Minimum requirements:
 - Linux with Docker Engine 23 or newer and the `docker compose` plugin;
 - an image-supported `linux/arm64` or `linux/amd64` host;
 - Node.js on the host for setup and validation scripts;
+- GNU Make for the project's canonical commands;
 - host networking and D-Bus for Bluetooth/Matter;
 - `/usr/bin/vcgencmd` for Raspberry Pi-specific health metrics.
 
 ```bash
 git clone REPOSITORY_URL smart-home
 cd smart-home
-cp .env.example .env
+make bootstrap-test
+make bootstrap
 ```
 
-Edit `.env`, especially `HOST_LAN_IP`, and record the Docker socket GID if the
+Bootstrap creates only missing private templates and reports gaps without
+printing values. Edit `.env`, especially `HOST_LAN_IP`, and record the Docker socket GID if the
 agent bridge will be enabled:
 
 ```bash
@@ -145,16 +148,19 @@ The scanner checks tracked files only and never prints a suspected secret.
 
 ```bash
 make validate-public
+make backup-plan
+make restore-test
+make bootstrap-test
+make demo-test
 docker compose config --quiet
 npm --prefix nodered run flows:validate
-npm --prefix nodered run flows:test-alarm-arrival
-npm --prefix nodered run flows:test-infrastructure
-npm --prefix nodered run flows:test-security
+npm --prefix nodered run test:all
 npm --prefix claude-bridge test
 ```
 
-`make validate-public` checks documentation, versioned agent memory, public-file
-privacy, and the weekly-review contract without reading private runtime state.
+`make validate-public` checks documentation, versioned agent memory, privacy,
+restore manifest/schema, bootstrap, demo, modules, and the weekly-review
+contract without reading private runtime state.
 
 `depends_on` orders container creation; it does not prove that a dependency is
 ready. Check `docker compose ps` and service logs after startup.
@@ -163,6 +169,8 @@ ready. Check `docker compose ps` and service logs after startup.
 
 - [English documentation index](docs/README.en.md)
 - [Installation and restore](docs/INSTALLATION_RESTORE.en.md)
+- [Deterministic restore contract](docs/RESTORE_CONTRACT.en.md)
+- [Bootstrap, modules, and synthetic demo](docs/BOOTSTRAP_DEMO.en.md)
 - [Containers, volumes, ports, and dependencies](docs/CONTAINERS.en.md)
 - [Weekly documentation review](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md)
 - [Zigbee and Internet monitoring in Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)

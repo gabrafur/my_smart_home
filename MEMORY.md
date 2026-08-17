@@ -18,6 +18,7 @@ estas anotações.
 | Segurança e dados locais | [`.codex/memories/seguranca/seguranca-e-dados-locais.md`](.codex/memories/seguranca/seguranca-e-dados-locais.md) | Credenciais, arquivos privados ou acesso ao host |
 | Governança da memória | [`.codex/memories/projeto/governanca-da-memoria.md`](.codex/memories/projeto/governanca-da-memoria.md) | Criar, revisar, validar ou anonimizar memória de agentes |
 | Privacidade e bindings | [`.codex/memories/privacidade/papeis-bindings-e-fronteira-publica.md`](.codex/memories/privacidade/papeis-bindings-e-fronteira-publica.md) | Papéis públicos, bindings privados, scanner ou restauração sanitizada |
+| Restore, bootstrap e demo | [`.codex/memories/restore/contrato-restore-bootstrap-demo.md`](.codex/memories/restore/contrato-restore-bootstrap-demo.md) | Bundle, recovery, clone novo, módulos, demo ou contexto da IA |
 
 ## Manutenção
 

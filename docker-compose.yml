@@ -40,7 +40,6 @@ services:
       - NET_RAW
     depends_on:
       - mosquitto
-      - matter_server
     volumes:
       - ./homeassistant:/config
       - ./bindings/private:/run/private-bindings:ro

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/my-smart-home/private-state-manifest.schema.json",
+  "title": "Private smart-home state manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract", "bundle", "items"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "contract": { "const": "private-state-v1" },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metadata_file", "manifest_file", "checksums_file", "components_directory", "encryption_required"],
+      "properties": {
+        "metadata_file": { "const": "bundle.json" },
+        "manifest_file": { "const": "manifest.yaml" },
+        "checksums_file": { "const": "checksums.json" },
+        "components_directory": { "const": "components" },
+        "encryption_required": { "type": "boolean" }
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/privateStateItem" }
+    }
+  },
+  "$defs": {
+    "privateStateItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_name", "component", "module", "kind", "source", "destination",
+        "required", "required_when_module_enabled", "criticality", "owner", "group",
+        "permissions", "consistency_mode", "service_must_be_stopped", "dependencies",
+        "restore_order", "fresh_install_behavior", "restore_behavior", "checksum_policy",
+        "validation", "git_policy"
+      ],
+      "properties": {
+        "logical_name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "component": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "module": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+        "kind": { "enum": ["file", "directory", "external-file", "external-volume"] },
+        "source": { "type": "string", "minLength": 1 },
+        "destination": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "required_when_module_enabled": { "type": "boolean" },
+        "criticality": { "enum": ["critical", "high", "medium", "low"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "group": { "type": "string", "minLength": 1 },
+        "permissions": { "type": "string", "pattern": "^0[0-7]{3}$" },
+        "consistency_mode": { "enum": ["atomic-file-copy", "offline-copy", "application-export", "external-snapshot"] },
+        "service_must_be_stopped": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "dependencies": { "type": "array", "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }, "uniqueItems": true },
+        "restore_order": { "type": "integer", "minimum": 1 },
+        "fresh_install_behavior": { "type": "string", "minLength": 1 },
+        "restore_behavior": { "type": "string", "minLength": 1 },
+        "checksum_policy": { "const": "sha256-every-file" },
+        "validation": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "git_policy": { "const": "ignored-private-state" }
+      }
+    }
+  }
+}

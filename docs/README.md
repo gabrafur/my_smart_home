@@ -13,6 +13,8 @@ placeholders.
 | Documento | Quando usar | Inglês |
 | --- | --- | --- |
 | [Instalação e restauração](INSTALACAO_RESTAURACAO_SMART_HOME.md) | Clone novo, recuperação ou migração de host | [English](INSTALLATION_RESTORE.en.md) |
+| [Contrato determinístico de restore](RESTORE_CONTRACT.md) | Manifesto, bundle, plan/verify/apply e contexto da IA | [English](RESTORE_CONTRACT.en.md) |
+| [Bootstrap, módulos e demo](BOOTSTRAP_DEMO.md) | Clone mínimo, features opcionais e cenário sintético | [English](BOOTSTRAP_DEMO.en.md) |
 | [Containers](CONTAINERS.md) | Imagens, portas, volumes, dependências e operação | [English](CONTAINERS.en.md) |
 | [Revisão semanal da documentação](REVISAO_DOCUMENTACAO_SEMANAL.md) | Agendamento, escopo, credenciais e recuperação | [English](WEEKLY_DOCUMENTATION_REVIEW.en.md) |
 | [Auditoria de segurança](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publicação, rotação e histórico Git | resumo no [índice em inglês](README.en.md) |

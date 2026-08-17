@@ -21,6 +21,8 @@ const requiredPairs = [
   ["docs/ZIGBEE_HEALTH_NOTIFICATIONS.md", "docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md"],
   ["docs/PRIVACY_MODEL.md", "docs/PRIVACY_MODEL.en.md"],
   ["docs/PUBLIC_PRIVATE_BOUNDARY.md", "docs/PUBLIC_PRIVATE_BOUNDARY.en.md"],
+  ["docs/RESTORE_CONTRACT.md", "docs/RESTORE_CONTRACT.en.md"],
+  ["docs/BOOTSTRAP_DEMO.md", "docs/BOOTSTRAP_DEMO.en.md"],
 ];
 
 const errors = [];

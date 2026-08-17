@@ -6,6 +6,22 @@ This runbook rebuilds the stack on a Linux host from versioned content and,
 when available, a private backup. It assumes no specific username, IP address,
 or absolute checkout path.
 
+## Canonical deterministic workflow
+
+The private-state inventory, bundle format, checksums, order, and rollback are
+defined in [RESTORE_CONTRACT.en.md](RESTORE_CONTRACT.en.md). For fresh clones,
+modules, and the demo, see [BOOTSTRAP_DEMO.en.md](BOOTSTRAP_DEMO.en.md).
+
+```bash
+make backup-plan
+make restore-test
+make bootstrap-test
+make demo-test
+```
+
+With an external bundle, run `restore-plan` and `restore-verify` before asking
+for authorization for any apply. These commands do not start containers.
+
 ## 1. What a clone can restore
 
 There are two possible outcomes:

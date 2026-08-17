@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "core": ["homeassistant", "nodered", "mosquitto"],
+  "modules": [
+    {
+      "name": "core",
+      "optional": false,
+      "profile": null,
+      "services": ["homeassistant", "nodered", "mosquitto"],
+      "depends_on": [],
+      "configuration": ["homeassistant/configuration.yaml", "nodered/flows.json", "mosquitto/config/mosquitto.conf"],
+      "degradation": "not applicable; this is the minimum platform"
+    },
+    {
+      "name": "zigbee",
+      "optional": true,
+      "profile": "zigbee",
+      "services": ["zigbee2mqtt"],
+      "depends_on": ["core"],
+      "configuration": ["zigbee2mqtt/configuration.example.yaml"],
+      "degradation": "Zigbee entities and health signals remain unavailable; core continues"
+    },
+    {
+      "name": "vehicle",
+      "optional": true,
+      "profile": null,
+      "services": [],
+      "depends_on": ["core"],
+      "configuration": ["homeassistant/packages/vehicle_primary_controls.yaml", "homeassistant/custom_components/kia_uvo"],
+      "degradation": "vehicle states remain unavailable and dependent automations fail closed"
+    },
+    {
+      "name": "alarm",
+      "optional": true,
+      "profile": null,
+      "services": [],
+      "depends_on": ["core"],
+      "configuration": ["homeassistant/custom_components/moni_mobile", "bindings/private-bindings.example.json"],
+      "degradation": "security panel actions are unavailable; no synthetic success is assumed"
+    },
+    {
+      "name": "alexa",
+      "optional": true,
+      "profile": null,
+      "services": [],
+      "depends_on": ["core"],
+      "configuration": ["homeassistant/custom_components/alexa_media"],
+      "degradation": "voice/media entities are absent without blocking core"
+    },
+    {
+      "name": "localtuya",
+      "optional": true,
+      "profile": null,
+      "services": [],
+      "depends_on": ["core"],
+      "configuration": ["homeassistant/custom_components/localtuya"],
+      "degradation": "LocalTuya entities are absent without blocking core"
+    },
+    {
+      "name": "matter",
+      "optional": true,
+      "profile": "matter",
+      "services": ["matter_server"],
+      "depends_on": ["core"],
+      "configuration": ["matter-server"],
+      "degradation": "Matter devices are not commissioned; core continues"
+    },
+    {
+      "name": "portainer",
+      "optional": true,
+      "profile": "portainer",
+      "services": ["portainer"],
+      "depends_on": [],
+      "configuration": ["portainer"],
+      "degradation": "container management UI is absent; Docker Compose remains authoritative"
+    },
+    {
+      "name": "appdaemon",
+      "optional": true,
+      "profile": "appdaemon",
+      "services": ["appdaemon"],
+      "depends_on": ["core"],
+      "configuration": ["templates/appdaemon/appdaemon.yaml", "templates/appdaemon/secrets.yaml.example"],
+      "degradation": "AppDaemon applications are absent; core automations continue"
+    },
+    {
+      "name": "local-ai",
+      "optional": true,
+      "profile": null,
+      "services": [],
+      "depends_on": [],
+      "configuration": ["scripts/local-ai"],
+      "degradation": "agent requests use the primary model without local compression"
+    },
+    {
+      "name": "agent-bridge",
+      "optional": true,
+      "profile": "agent-bridge",
+      "services": ["claude-bridge"],
+      "depends_on": ["core"],
+      "configuration": ["claude-bridge", "prompts/restore-smart-home.prompt.md"],
+      "degradation": "Home Assistant agent chat is unavailable; home automation continues"
+    },
+    {
+      "name": "raspberry-specific",
+      "optional": true,
+      "profile": null,
+      "services": [],
+      "depends_on": ["core"],
+      "configuration": ["homeassistant/packages/raspberry_pi_system_health.yaml", "scripts/storage-health-maintenance.sh"],
+      "degradation": "board-specific temperature, throttling and maintenance sensors are absent"
+    },
+    {
+      "name": "automation",
+      "optional": true,
+      "profile": "automation",
+      "services": ["docs-review-scheduler"],
+      "depends_on": ["agent-bridge"],
+      "configuration": ["scripts/weekly-docs-review.mjs", "scripts/weekly-docs-review.prompt.md"],
+      "degradation": "weekly documentation review is not scheduled"
+    }
+  ]
+}

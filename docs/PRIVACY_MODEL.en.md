@@ -28,6 +28,11 @@ the private binding described in
 - public product and integration names when technically required;
 - sanitized canonical memories in `.codex/memories/`, indexed by `MEMORY.md`.
 
+`restore/private-state-manifest.yaml` contains logical names and portable paths
+only. Bundles, private payloads/checksums, and encryption keys stay outside Git;
+the executable contract is in
+[RESTORE_CONTRACT.en.md](RESTORE_CONTRACT.en.md).
+
 Resident names, family relationships, addresses, coordinates, private IPs,
 MACs, physical IDs, account identifiers, real trackers/notifiers, routines,
 routes, real payloads or logs, credentials, and tokens are not public.

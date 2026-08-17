@@ -129,6 +129,19 @@ rotas elegíveis, sempre sujeitas a compressibilidade e economia esperada. Use
 `summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
 `analyze-tests`, `summarize-log` ou `classify-error`, conforme o material.
 
+Para contratos, schemas, documentação bilíngue e mudanças que atravessam muitos
+arquivos, gere primeiro um inventário determinístico derivado (arquivos, campos,
+comandos, módulos, headings e nomes de testes) e roteie esse inventário com
+`summarize-document` ou `inspect-files`. Esse formato também é elegível quando
+o código bruto seria repetitivo: a saída local serve para crosswalk inicial,
+checagem de cobertura documental e triagem de pendências.
+
+Não considere uma compressão bem-sucedida apenas porque a inferência terminou.
+Se o JSON omitir requisitos, arquivos ou riscos críticos esperados, descarte-o
+e use a evidência determinística; registre a chamada, mas não alegue preservação
+de informação. Prefira inventário derivado a blocos extensos de código, pois o
+modelo local demonstrou retenção melhor nesse formato.
+
 Não use a RTX para atualizar painel, descobrir palavra em arquivo, dados
 estruturados que uma ferramenta resolve, segredos, decisões finais,
 migrações, operações destrutivas ou ações de produção. Se Local AI falhar,
