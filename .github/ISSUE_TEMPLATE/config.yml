@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report / Relato de segurança
+    url: https://github.com/gabrafur/my_smart_home/security/advisories/new
+    about: Never disclose vulnerabilities or household data in a public issue.

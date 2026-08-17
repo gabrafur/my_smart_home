@@ -1,0 +1,33 @@
+name: Feature request / Proposta de melhoria
+description: Propose a bounded, privacy-preserving improvement.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Need / Necessidade
+      description: Describe the generic problem, not a private household routine.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal / Proposta
+      description: Include public/private boundaries and optional dependencies.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance evidence / Evidência de aceite
+      description: Tests, documentation, or synthetic scenario that would prove completion.
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundaries / Limites
+      options:
+        - label: The proposal uses logical roles and sanitized examples only.
+          required: true
+        - label: External effects and human approval requirements are identified.
+          required: true
