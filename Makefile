@@ -1,12 +1,100 @@
-.PHONY: validate-public privacy-check privacy-check-staged bindings-check \
-	backup-plan backup-verify restore-plan restore-verify restore-test restore-apply \
-	bootstrap bootstrap-test demo demo-test modules-check context-recovery-check
+.PHONY: validate-public validate-dependencies validate-compose validate-json validate-yaml \
+	validate-shell validate-docs validate-assets validate-security validate-privacy \
+	validate-memory validate-node-red validate-bridge validate-local-ai validate-scripts \
+	validate-scheduler validate-auto-update validate-modules validate-restore \
+	validate-bootstrap validate-demo validate-git validate-staged privacy-check \
+	privacy-check-staged bindings-check backup-plan backup-verify restore-plan \
+	restore-verify restore-test restore-apply bootstrap bootstrap-test demo demo-test \
+	modules-check context-recovery-check
+
+PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
+	validate-yaml validate-shell validate-docs validate-assets validate-security \
+	validate-privacy validate-memory validate-node-red validate-bridge validate-local-ai \
+	validate-scripts validate-scheduler validate-auto-update validate-modules \
+	validate-restore validate-bootstrap validate-demo validate-git
 
 BACKUP_DIR ?=
 DESTINATION ?=
 CONFIRM ?=
 ALLOW_NON_CANARY ?=
 MODULES ?= core
+
+validate-public:
+	@$(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
+
+validate-dependencies:
+	npm --prefix validation ci --ignore-scripts --no-audit --no-fund
+
+validate-compose:
+	docker compose --env-file .env.example -f docker-compose.yml -f compose.modules.yml config --quiet
+	docker compose --env-file .env.example -f docker-compose.yml -f compose.modules.yml --profile '*' config --quiet
+	node scripts/compose-matrix-check.mjs
+
+validate-json:
+	node scripts/structured-files-check.mjs json
+
+validate-yaml:
+	node scripts/structured-files-check.mjs yaml
+
+validate-shell:
+	@set -eu; git ls-files '*.sh' | while IFS= read -r file; do \
+		case "$$(head -n 1 "$$file")" in *bash*) bash -n "$$file" ;; *) sh -n "$$file" ;; esac; \
+	done; echo "Shell syntax check passed."
+
+validate-docs:
+	node scripts/docs-check.mjs
+
+validate-assets:
+	node scripts/assets-check.mjs
+
+validate-security:
+	bash scripts/security-scan.sh
+
+validate-privacy:
+	node scripts/privacy-check.mjs
+	node scripts/public-bindings-check.mjs
+
+validate-memory:
+	node scripts/public-memory-check.mjs
+	node scripts/ai-context-recovery.mjs --worktree
+
+validate-node-red:
+	npm --prefix nodered ci --ignore-scripts --no-audit --no-fund
+	npm --prefix nodered run flows:validate
+	node --check nodered/settings.js
+	npm --prefix nodered run test:all
+
+validate-bridge:
+	npm --prefix ia-bridge test
+
+validate-local-ai:
+	python3 -m unittest discover -s scripts/local-ai -p 'test_*.py'
+
+validate-scripts:
+	node scripts/test-all.mjs
+
+validate-scheduler:
+	node scripts/weekly-docs-review.mjs --self-test
+
+validate-auto-update:
+	node --test scripts/docker-auto-update.test.mjs
+
+validate-modules:
+	node scripts/modules-check.mjs
+
+validate-restore: restore-test
+
+validate-bootstrap: bootstrap-test
+
+validate-demo: demo-test
+
+validate-git:
+	git diff --check
+
+validate-staged:
+	bash scripts/security-scan.sh --staged
+	node scripts/privacy-check.mjs --staged
+	git diff --cached --check
 
 privacy-check:
 	node scripts/privacy-check.mjs
@@ -35,7 +123,7 @@ restore-verify:
 
 restore-test:
 	node scripts/restore.mjs manifest-validate
-	node --test scripts/restore.test.mjs
+	node --test scripts/restore.test.mjs scripts/restore-prompt.test.mjs
 
 restore-apply:
 	@test -n "$(BACKUP_DIR)" || (echo "BACKUP_DIR is required" >&2; exit 2)
@@ -59,23 +147,3 @@ modules-check:
 
 context-recovery-check:
 	node scripts/ai-context-recovery.mjs --worktree
-
-validate-public:
-	node scripts/restore.mjs manifest-validate
-	node --test scripts/restore.test.mjs
-	node --test scripts/bootstrap.test.mjs
-	node --test scripts/demo.test.mjs
-	node --test scripts/ai-context-recovery.test.mjs
-	node --test scripts/restore-prompt.test.mjs
-	node --test scripts/modules-check.test.mjs
-	node scripts/modules-check.mjs
-	node --test scripts/public-bindings-check.test.mjs
-	node scripts/public-bindings-check.mjs
-	node --test scripts/privacy-check.test.mjs
-	node scripts/privacy-check.mjs
-	node --test scripts/public-memory-check.test.mjs
-	node scripts/public-memory-check.mjs
-	node scripts/docs-check.mjs
-	node scripts/weekly-docs-review.mjs --self-test
-	node scripts/ai-context-recovery.mjs --worktree
-	bash scripts/security-scan.sh

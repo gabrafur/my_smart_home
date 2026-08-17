@@ -1,5 +1,7 @@
 # Modelo de privacidade
 
+[Português (principal)](PRIVACY_MODEL.md) · [English](PRIVACY_MODEL.en.md)
+
 Este repositório publica arquitetura, contratos e exemplos restauráveis sem
 publicar a identidade ou a rotina de uma residência. Código e documentação usam
 papéis lógicos; a instalação real fornece bindings locais ignorados pelo Git.

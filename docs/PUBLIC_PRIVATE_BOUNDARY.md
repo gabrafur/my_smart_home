@@ -1,5 +1,7 @@
 # Fronteira pública e privada
 
+[Português (principal)](PUBLIC_PRIVATE_BOUNDARY.md) · [English](PUBLIC_PRIVATE_BOUNDARY.en.md)
+
 Esta fronteira permite restaurar a arquitetura pública sem acoplar a lógica a
 uma residência específica.
 

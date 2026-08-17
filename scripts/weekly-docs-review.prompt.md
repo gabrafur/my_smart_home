@@ -250,17 +250,13 @@ Execute:
 
 ```bash
 make validate-public
-scripts/security-scan.sh
-make privacy-check
-git diff --check
 ```
 
-O scheduler fará o stage e executará também, fora do agente:
+O scheduler fará o stage e executará também, fora do agente, o alvo canônico
+para o índice:
 
 ```bash
-scripts/security-scan.sh --staged
-make privacy-check-staged
-git diff --cached --check
+make validate-staged
 ```
 
 As validações não podem:

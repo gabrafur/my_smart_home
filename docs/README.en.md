@@ -25,6 +25,9 @@ physical identifiers must appear only as placeholders.
 | [Versioned agent memory](MEMORIA_VERSIONADA_AGENTES.md) | Authority, privacy, maintenance, and validation of AI memory | detailed Portuguese guide |
 | [Privacy model](PRIVACY_MODEL.en.md) | Public roles, sanitization, scanning, and public memory | [Português](PRIVACY_MODEL.md) |
 | [Public/private boundary](PUBLIC_PRIVATE_BOUNDARY.en.md) | Bindings, bootstrap, safe degradation, and compatibility | [Português](PUBLIC_PRIVATE_BOUNDARY.md) |
+| [Testing strategy](TESTING_STRATEGY.en.md) | Levels, discovery, CI, and no-household boundaries | [Português](ESTRATEGIA_DE_TESTES.md) |
+| [Dependency provenance](DEPENDENCY_PROVENANCE.md) | Locks, digests, and validation dependencies | detailed Portuguese guide |
+| [GitHub repository settings](GITHUB_REPOSITORY_SETTINGS.md) | Recommended `main` protection and required check | detailed Portuguese guide |
 
 ## Feature guides
 
@@ -38,6 +41,7 @@ Portuguese because that is the system's primary operating language:
 - [Alarm disarm on arrival](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Moni Mobile / Intelbras integration](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
 - [Hyundai/Kia integration](VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md)
+- [Hyundai/Kia safe-update runbook (Portuguese)](VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md)
 - [Garage gate: local relay](PORTAO_GARAGEM_RELE_LOCAL.md)
 - [Garage gate: pulse button](PORTAO_GARAGEM_BOTAO_PULSO.md)
 - [Power control](CONTROLE_ENERGIA_HOME_ASSISTANT.md)
