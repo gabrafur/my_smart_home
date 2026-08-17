@@ -98,7 +98,7 @@
       "profile": "agent-bridge",
       "services": ["claude-bridge"],
       "depends_on": ["core"],
-      "configuration": ["claude-bridge", "prompts/restore-smart-home.prompt.md"],
+      "configuration": ["ia-bridge", "prompts/restore-smart-home.prompt.md"],
       "degradation": "Home Assistant agent chat is unavailable; home automation continues"
     },
     {

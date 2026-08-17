@@ -233,7 +233,7 @@ discovered through MQTT after Node-RED starts. See the
 npm --prefix nodered ci
 npm --prefix nodered run flows:validate
 npm --prefix nodered run test:all
-npm --prefix claude-bridge test
+npm --prefix ia-bridge test
 ```
 
 `node_modules/` is not versioned and is rebuilt with `npm ci`.

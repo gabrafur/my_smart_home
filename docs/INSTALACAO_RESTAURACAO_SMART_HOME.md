@@ -243,7 +243,7 @@ descobertas por MQTT depois do Node-RED iniciar. Veja o guia de
 npm --prefix nodered ci
 npm --prefix nodered run flows:validate
 npm --prefix nodered run test:all
-npm --prefix claude-bridge test
+npm --prefix ia-bridge test
 ```
 
 O volume `./nodered:/data` inclui o projeto. `node_modules/` não é versionado e

@@ -160,7 +160,7 @@ make demo-test
 docker compose config --quiet
 npm --prefix nodered run flows:validate
 npm --prefix nodered run test:all
-npm --prefix claude-bridge test
+npm --prefix ia-bridge test
 ```
 
 `make validate-public` verifica documentação, memória versionada dos agentes,

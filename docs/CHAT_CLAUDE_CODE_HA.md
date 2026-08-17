@@ -8,6 +8,10 @@ Docker no host: **Claude Code (Full Access)** e **Codex**. O serviço
 `claude-bridge` executa o CLI selecionado em modo não interativo e mantém as
 sessões separadas por conversa.
 
+O código-fonte fica em `ia-bridge/`. O serviço e o container continuam com o
+identificador `claude-bridge` para preservar DNS interno, volumes de
+autenticação, restauração e instalações existentes.
+
 **Restrito a um único usuário do HA** (o `user_id` do administrador, lido de
 `/config/.storage/auth`). Qualquer outra conta recebe recusa automática do
 agente. O id fica no config entry da integração, nunca no código — este
@@ -292,8 +296,8 @@ dispara essa notificação.
 
 ## Arquivos envolvidos
 
-- `claude-bridge/Dockerfile`, `claude-bridge/server.js`, `claude-bridge/package.json`
-- `claude-bridge/history.js`, `claude-bridge/usage.js`, `scripts/agent-history.mjs`, `AGENTS.md`
+- `ia-bridge/Dockerfile`, `ia-bridge/server.js`, `ia-bridge/package.json`
+- `ia-bridge/history.js`, `ia-bridge/usage.js`, `scripts/agent-history.mjs`, `AGENTS.md`
 - `scripts/local-ai/` (helper delimitado, prompts, testes e telemetria privada)
 - `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_BRIDGE_TOKEN`) e `.env.example`
 - `docker-compose.yml` (serviço `claude-bridge`)
