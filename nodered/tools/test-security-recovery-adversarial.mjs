@@ -269,7 +269,7 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
   assert.deepEqual(wireNames("light_turn_off_if_active"), ["Desligar refletor do portão"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 0), ["Forçar refresh do vehicle_primary"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 1), ["Atualizar viagens do dia após chegada"]);
-  assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Forçar refresh do vehicle_primary", "Atualizar entidades do vehicle_primary"]);
+  assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Forçar refresh do vehicle_primary"]);
   assert.deepEqual(wireNames("context_coordinator", 2), ["Avisar resident_primary: resident_secondary se aproxima"]);
 });
 

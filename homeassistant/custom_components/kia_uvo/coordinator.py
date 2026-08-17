@@ -66,6 +66,9 @@ _LOGGER = logging.getLogger(__name__)
 # aperta button.*_force_refresh direto (o flow iluminacao_seguranca no
 # Node-RED) contorna esse piso, entao mantemos um aqui, que ninguem contorna.
 BR_WAKE_MIN_INTERVAL_S = 15 * 60
+TRIP_INFO_BACKGROUND_TIMEOUT_S = 120
+TRIP_INFO_RETRY_DELAY_S = 60
+TRIP_INFO_MAX_AGE = timedelta(hours=6)
 REMOTE_LOCATE_MIN_INTERVAL_S = 60
 FUEL_TANK_LITERS = 50.0
 MIN_FUEL_DROP_PERCENT = 2.0
@@ -88,6 +91,8 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self._last_remote_locate_at: dict[str, dt.datetime] = {}
         self._last_trip_refresh_odometer: dict[str, float] = {}
         self._trip_history_initialized: set[str] = set()
+        self._trip_refresh_tasks: dict[str, asyncio.Task] = {}
+        self._last_trip_refresh_success_at: dict[str, dt.datetime] = {}
         self._br_last_button_wake_at: dt.datetime | None = None
 
         self.vehicle_manager = VehicleManager(
@@ -242,22 +247,82 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             previous = self._last_trip_refresh_odometer.get(vehicle_id)
             self._last_trip_refresh_odometer[vehicle_id] = current
             if vehicle_id not in self._trip_history_initialized:
+                # The coordinator's first refresh runs before Home Assistant
+                # creates any Kia entities. The BR /tripinfo endpoint can take
+                # minutes or stall independently of vehicle status, so never
+                # make entity availability depend on this optional history.
+                # Record the odometer baseline and load today/yesterday in a
+                # managed background task. Entity setup remains independent
+                # from /tripinfo latency, while the dashboard is populated
+                # after every integration start.
                 self._trip_history_initialized.add(vehicle_id)
-                try:
-                    await self.async_refresh_day_trip_info(vehicle_id)
-                except Exception:
-                    _LOGGER.exception(
-                        "CRETA_API_ERROR trip history initialization failed"
-                    )
+                self._schedule_trip_info_refresh(vehicle_id, "startup")
                 continue
-            if previous is None or current <= previous + 0.05:
-                continue
-            _LOGGER.info(
-                "CRETA_MOVEMENT_DETECTED odometer_delta_km=%.2f; "
-                "refreshing trip history",
-                current - previous,
+            moved = previous is not None and current > previous + 0.05
+            last_success = self._last_trip_refresh_success_at.get(vehicle_id)
+            periodic_due = (
+                last_success is None
+                or dt_util.utcnow() - last_success >= TRIP_INFO_MAX_AGE
             )
-            await self.async_refresh_day_trip_info(vehicle_id)
+            if not moved and not periodic_due:
+                continue
+            if moved:
+                _LOGGER.info(
+                    "CRETA_MOVEMENT_DETECTED odometer_delta_km=%.2f; "
+                    "scheduling trip history refresh",
+                    current - previous,
+                )
+            self._schedule_trip_info_refresh(
+                vehicle_id,
+                "odometer_movement" if moved else "periodic_fallback",
+            )
+
+    def _schedule_trip_info_refresh(self, vehicle_id: str, reason: str) -> None:
+        """Schedule a deduplicated trip refresh without blocking status data."""
+        current = self._trip_refresh_tasks.get(vehicle_id)
+        if current is not None and not current.done():
+            return
+        task = self.hass.async_create_background_task(
+            self._async_refresh_trip_info_with_retry(vehicle_id, reason),
+            f"kia_uvo trip info refresh ({reason})",
+        )
+        self._trip_refresh_tasks[vehicle_id] = task
+
+    async def _async_refresh_trip_info_with_retry(
+        self, vehicle_id: str, reason: str
+    ) -> None:
+        """Refresh trip history in the background with one bounded retry."""
+        try:
+            for attempt in (1, 2):
+                if attempt > 1:
+                    await asyncio.sleep(TRIP_INFO_RETRY_DELAY_S)
+                try:
+                    async with asyncio.timeout(TRIP_INFO_BACKGROUND_TIMEOUT_S):
+                        await self.async_refresh_day_trip_info(vehicle_id)
+                    self._last_trip_refresh_success_at[vehicle_id] = dt_util.utcnow()
+                    _LOGGER.info(
+                        "CRETA_TRIP_BACKGROUND_REFRESHED reason=%s attempt=%d",
+                        reason,
+                        attempt,
+                    )
+                    return
+                except TimeoutError:
+                    _LOGGER.warning(
+                        "CRETA_TRIP_BACKGROUND_TIMEOUT reason=%s attempt=%d",
+                        reason,
+                        attempt,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as err:
+                    _LOGGER.warning(
+                        "CRETA_TRIP_BACKGROUND_FAILED reason=%s attempt=%d: %s",
+                        reason,
+                        attempt,
+                        err,
+                    )
+        finally:
+            self._trip_refresh_tasks.pop(vehicle_id, None)
 
     async def async_update_all(self) -> None:
         """Update vehicle data."""

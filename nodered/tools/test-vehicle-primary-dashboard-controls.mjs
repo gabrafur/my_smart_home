@@ -105,7 +105,13 @@ const now = Date.parse("2026-08-17T03:00:00Z");
       },
     },
   });
-  assert.equal(second.result, null);
+  assert.ok(Array.isArray(second.result));
+  assert.equal(second.result[0], null);
+  assert.equal(second.result[1], null);
+  assert.equal(second.result[2].notification.id, "vehicle_primary_refresh_blocked");
+  assert.match(second.result[2].notification.message, /nova consulta não foi enviada/i);
+  assert.match(second.result[2].notification.message, /59 s/);
+  assert.ok(second.logs.some((line) => line.includes("VEHICLE_PRIMARY_REFRESH_SUPPRESSED")));
   assert.equal(second.store.get("security_vehicle_primary_refresh_v1").attempts, 1);
   assert.equal(second.store.get("security_vehicle_primary_refresh_v1").state, "backoff");
 }
@@ -168,11 +174,18 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     },
     msg: {},
   });
-  assert.equal(result[0].length, 2);
-  const discovery = JSON.parse(result[0][0].payload);
+  assert.equal(result[0].length, 3);
+  assert.equal(result[0][0].topic, "homeassistant/sensor/vehicle_primary_refresh_coordinator_source/config");
+  assert.equal(result[0][0].payload, "");
+  const discovery = JSON.parse(result[0][1].payload);
   assert.equal(discovery.name, "Refresh Coordinator");
   assert.equal(discovery.object_id, "vehicle_primary_refresh_coordinator");
-  const payload = JSON.parse(result[0][1].payload);
+  assert.equal(discovery.unique_id, "vehicle_primary_refresh_coordinator");
+  assert.equal(
+    result[0][1].topic,
+    "homeassistant/sensor/vehicle_primary_refresh_coordinator/config",
+  );
+  const payload = JSON.parse(result[0][2].payload);
   assert.equal(payload.state, "backoff");
   assert.equal(payload.attempt, 3);
   assert.equal(payload.remaining_seconds, 58);
@@ -185,6 +198,7 @@ for (const expected of [
   "vehicle_primary_refresh_telemetry_tick_v1",
   "vehicle_primary_refresh_telemetry_v1",
   "vehicle_primary_refresh_mqtt_v1",
+  "vehicle_primary_manual_refresh_blocked_notification_v1",
 ]) {
   assert.equal(ids.filter((id) => id === expected).length, 1, expected);
 }
@@ -193,4 +207,55 @@ const normalizer = flows.find((node) => node.id === "092625f2eb5cc156");
 assert.match(normalizer.func, /refresh_state_contract_v1/);
 assert.match(normalizer.func, /vehicleContext\.refresh/);
 
-console.log("vehicle_primary dashboard controls: 6 cenários aprovados.");
+const refreshDecision = flows.find((node) => node.id === "b33e117e55bdb5ed");
+assert.equal(refreshDecision.outputs, 3);
+assert.deepEqual(refreshDecision.wires[0], ["8907830bb7f6c40c"]);
+assert.deepEqual(
+  refreshDecision.wires[2],
+  ["vehicle_primary_manual_refresh_blocked_notification_v1"],
+);
+
+const blockedNotification = flows.find(
+  (node) => node.id === "vehicle_primary_manual_refresh_blocked_notification_v1",
+);
+assert.equal(blockedNotification.action, "persistent_notification.create");
+assert.equal(blockedNotification.dataType, "jsonata");
+
+for (const [id, action] of [
+  ["8907830bb7f6c40c", "force_refresh"],
+  ["16396e34ff530ac7", "refresh_trip_info"],
+]) {
+  const node = flows.find((item) => item.id === id);
+  assert.equal(node.action, "public_bindings.call");
+  assert.deepEqual(JSON.parse(node.data), { role: "vehicle_primary", action });
+  assert.deepEqual(node.entityId, []);
+}
+assert.equal(flows.some((node) => node.id === "77cf2dfe4ff36964"), false);
+assert.equal(flows.some((node) => node.id === "684feca0f1585885"), false);
+assert.doesNotMatch(JSON.stringify(flows), /77cf2dfe4ff36964|684feca0f1585885/);
+
+const exampleBindings = JSON.parse(
+  fs.readFileSync(new URL("../../bindings/private-bindings.example.json", import.meta.url)),
+);
+const vehicleServices = exampleBindings.roles.vehicle_primary.services;
+assert.deepEqual(vehicleServices.force_refresh, {
+  target_service: "button.press",
+  target_public_entity_id: "button.vehicle_primary_force_refresh",
+});
+assert.deepEqual(vehicleServices.refresh_trip_info, {
+  target_service: "button.press",
+  target_public_entity_id: "button.garagem_vehicle_primary_refresh_trip_info",
+});
+
+for (const node of flows.filter((item) => item.type === "api-call-service")) {
+  const serialized = JSON.stringify(node);
+  if (node.action === "button.press" || node.action === "homeassistant.update_entity") {
+    assert.doesNotMatch(
+      serialized,
+      /button\.vehicle_primary|button\.garagem_vehicle_primary|device_tracker\.vehicle_primary|binary_sensor\.vehicle_primary|lock\.vehicle_primary/,
+      `ação direta em alias sintético: ${node.name}`,
+    );
+  }
+}
+
+console.log("vehicle_primary dashboard controls: 7 cenários aprovados.");

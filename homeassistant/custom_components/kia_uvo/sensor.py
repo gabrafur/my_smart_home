@@ -624,10 +624,10 @@ class DayTripInfoEntity(SensorEntity, HyundaiKiaConnectEntity):
     """Today's trip log from the /tripinfo endpoint (same source as the Bluelink app's trip history).
 
     State is the number of trips recorded today; individual trips (start
-    time, drive/idle time, distance, speeds) are in state_attributes. Empty
-    until button.*_refresh_trip_info is pressed at least once - unlike the
-    regular status poll, this isn't fetched automatically to avoid extra
-    load on the rate-limited Kia/Hyundai API.
+    time, drive/idle time, distance, speeds) are in state_attributes. The
+    coordinator loads it in the background at startup, after odometer movement
+    and at a bounded six-hour fallback interval. The explicit refresh button
+    remains available without tying entity setup to this rate-limited endpoint.
     """
 
     _attr_translation_key = "day_trip_info"

@@ -82,8 +82,29 @@ views:
       - type: grid
         cards:
           - type: heading
-            heading: Localização e viagens
-            icon: mdi:map-marker
+            heading: Último estacionamento e viagens
+            icon: mdi:map-marker-check
+          - type: markdown
+            content: >-
+              {% set engine = is_state('binary_sensor.vehicle_primary_engine', 'on') %}
+              {% set location_updated = states('sensor.vehicle_primary_location_last_updated') %}
+              {% set location_ts = as_timestamp(location_updated, none) %}
+              {% set age_min = ((as_timestamp(now()) - location_ts) / 60) | round(0) if location_ts else none %}
+              {% if engine %}
+              ⚠️ **Veículo em uso**
+
+              O mapa mostra o **último estacionamento confirmado**{% if age_min is not none %}, há {{ age_min | int }} min{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
+              {% elif age_min is none %}
+              🔴 **Estacionamento ainda não confirmado**
+
+              A posição será exibida depois que o Bluelink confirmar o veículo estacionado.
+              {% elif age_min <= 15 %}
+              🟢 **Último estacionamento confirmado há {{ age_min | int }} min**
+              {% else %}
+              🟡 **Último estacionamento confirmado há {{ age_min | int }} min**
+
+              Esta é a última posição estacionada informada pelo Bluelink, não uma localização GPS em tempo real.
+              {% endif %}
           - type: map
             entities:
               - entity: device_tracker.vehicle_primary
@@ -134,7 +155,7 @@ views:
                   action: none
               - type: tile
                 entity: button.vehicle_primary_start_hazard_lights_and_horn
-                name: Localizar
+                name: Localizar (segure)
                 icon: mdi:car-emergency
                 hide_state: true
                 tap_action:
@@ -147,6 +168,16 @@ views:
                     action: locate
                   confirmation:
                     text: Acionar a buzina e as luzes do Creta por aproximadamente 30 segundos?
+          - type: markdown
+            content: >-
+              {% set command = states('sensor.garagem_vehicle_primary_remote_command_status') %}
+              **Localizar por luz e buzina**
+
+              {% if command == 'requesting' %}↻ Comando em andamento.
+              {% elif command == 'accepted' %}🟢 Comando aceito pelo veículo.
+              {% elif command in ['failed', 'cooldown'] %}🔴 O último comando falhou ou ainda está em cooldown.
+              {% else %}Segure o botão **Localizar (segure)** e confirme para acionar luzes e buzina.
+              {% endif %}
           - type: grid
             columns: 2
             square: false
@@ -206,21 +237,18 @@ views:
               {% set refresh = states.sensor.vehicle_primary_refresh_coordinator %}
               {% set refresh_state = refresh.state if refresh else 'unavailable' %}
               {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
-              {% set command = states('sensor.garagem_vehicle_primary_remote_command_status') %}
+              {% set attempt = state_attr('sensor.vehicle_primary_refresh_coordinator', 'attempt') | int(0) %}
+
+              **Atualização dos dados**
 
               {% if refresh_state == 'refreshing' %}↻ **Atualizando dados**
-              {% elif refresh_state == 'backoff' %}🟡 **Nova tentativa em {{ remaining }} s**
+              {% elif refresh_state == 'backoff' %}🟡 O Bluelink ainda não confirmou uma leitura nova.
+
+              **Nova tentativa automática em {{ remaining }} s**{% if attempt > 0 %} · tentativa {{ attempt }}{% endif %}
               {% elif refresh_state == 'cooldown' %}🟢 **Dados atualizados**
               {% elif refresh_state == 'waiting' %}⚪ **Aguardando movimento**
               {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Atualização indisponível**
               {% else %}⚪ **Atualização pronta**
-              {% endif %}
-
-              {% if command == 'requesting' %}↻ **Localizando veículo**
-              {% elif command == 'accepted' %}🟢 **Localização acionada**
-              {% elif command in ['failed', 'cooldown'] %}🔴 **Falha no último comando**
-              {% else %}
-              Segure **Localizar** para acionar luzes e buzina.
               {% endif %}
           - type: tile
             entity: sensor.vehicle_primary_car_battery_level
@@ -328,7 +356,7 @@ views:
               - entity: sensor.vehicle_primary_last_scanned_at
                 name: Consulta executada em
               - entity: sensor.vehicle_primary_location_last_updated
-                name: Posição confirmada em
+                name: Último estacionamento confirmado
               - entity: sensor.garagem_vehicle_primary_recent_trip_info
                 name: Viagens carregadas
               - entity: sensor.garagem_vehicle_primary_estimated_fuel_efficiency
