@@ -63,8 +63,17 @@ assert.deepEqual(node("storage_manual_health").entities.entity, ["input_button.s
 assert.deepEqual(node("storage_manual_health").wires, [["storage_exec_maintenance", "storage_read_ha"]]);
 assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maintenance.sh --dry-run --deep");
-assert.equal(node("storage_notify").action, "notify.send_message");
-assert.deepEqual(node("storage_notify").entityId, ["notify.mobile_primary_2", "notify.mobile_secondary"]);
+for (const [id, role, action] of [
+  ["storage_notify", "mobile_primary", "notify_3"],
+  ["storage_notify_secondary", "mobile_secondary", "notify_2"],
+]) {
+  assert.equal(node(id).action, "public_bindings.call");
+  assert.equal(node(id).domain, "public_bindings");
+  assert.equal(node(id).service, "call");
+  assert.deepEqual(node(id).entityId, []);
+  assert.match(node(id).data, new RegExp(`\"role\":\"${role}\"`));
+  assert.match(node(id).data, new RegExp(`\"action\":\"${action}\"`));
+}
 assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.sock"));
 
 {

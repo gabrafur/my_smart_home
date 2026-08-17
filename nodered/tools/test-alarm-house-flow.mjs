@@ -120,6 +120,19 @@ assert.deepEqual(JSON.parse(updateMoniMobile.data), {
   entity_id: ["alarm_control_panel.security_panel"],
 });
 
+for (const [id, action] of [
+  ["70eb073f8191e69e", "arm_away"],
+  ["8261c7cfb6756ca8", "disarm"],
+]) {
+  const command = node(id);
+  assert.equal(command.action, "public_bindings.call");
+  assert.equal(command.domain, "public_bindings");
+  assert.equal(command.service, "call");
+  assert.deepEqual(command.entityId, []);
+  assert.match(command.data, /"role":"security_panel"/);
+  assert.match(command.data, new RegExp(`"action":"${action}"`));
+}
+
 for (const item of flows.filter((candidate) => candidate.type === "function")) {
   new Function(
     "msg",

@@ -183,12 +183,13 @@
             "color": "#e6a23c"
         },
         "nodes": [
-            "storage_notify"
+            "storage_notify",
+            "storage_notify_secondary"
         ],
         "x": 1314,
-        "y": 269,
-        "w": 294,
-        "h": 82
+        "y": 249,
+        "w": 314,
+        "h": 142
     },
     {
         "id": "storage_group_maintenance",
@@ -1010,7 +1011,9 @@
             "225a9b23f78894c9",
             "d2cc7a5873776be0",
             "04007cc1732f60c9",
-            "d710ac9de2f98569"
+            "d710ac9de2f98569",
+            "light_notify_on_secondary",
+            "light_notify_unavailable_secondary"
         ],
         "x": 1534,
         "y": 39,
@@ -1196,7 +1199,8 @@
                 "infra_notify_persistent"
             ],
             [
-                "infra_notify_mobile"
+                "infra_notify_mobile",
+                "infra_notify_mobile_secondary"
             ],
             [
                 "infra_notify_dismiss"
@@ -1236,30 +1240,56 @@
         "id": "infra_notify_mobile",
         "type": "api-call-service",
         "z": "infra_notify_all_mobiles",
-        "name": "Push resident_primary + resident_secondary",
+        "name": "Push resident_primary",
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "notify.send_message",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "notify.mobile_primary_2",
-            "notify.mobile_secondary"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"title\": notification.title, \"message\": notification.message}",
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":notification.title,\"message\":notification.message}}",
         "dataType": "jsonata",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "all",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 500,
-        "y": 80,
+        "y": 70,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "infra_notify_mobile_secondary",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Push resident_secondary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":notification.title,\"message\":notification.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 500,
+        "y": 100,
         "wires": [
             []
         ]
@@ -1288,7 +1318,7 @@
         "domain": "persistent_notification",
         "service": "dismiss",
         "x": 500,
-        "y": 120,
+        "y": 130,
         "wires": [
             []
         ]
@@ -1981,8 +2011,8 @@
         "outputProperties": [],
         "queue": "all",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "alexa_media_echo_dot_de_resident_primary",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 2070,
         "y": 340,
         "wires": [
@@ -2347,23 +2377,21 @@
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": true,
-        "action": "alarm_control_panel.security_panel",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "alarm_control_panel.security_panel"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"code\":\"0011\"}",
+        "data": "{\"role\":\"security_panel\",\"action\":\"arm_away\",\"data\":{\"code\":\"0011\"}}",
         "dataType": "json",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "alarm_control_panel",
-        "service": "alarm_arm_away",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 910,
         "y": 200,
         "wires": [
@@ -2380,23 +2408,21 @@
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": true,
-        "action": "alarm_control_panel.security_panel",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "alarm_control_panel.security_panel"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"code\":\"0011\"}",
+        "data": "{\"role\":\"security_panel\",\"action\":\"disarm\",\"data\":{\"code\":\"0011\"}}",
         "dataType": "json",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "alarm_control_panel",
-        "service": "alarm_disarm",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 700,
         "y": 500,
         "wires": [
@@ -2871,8 +2897,8 @@
         "outputProperties": [],
         "queue": "all",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "alexa_media_echo_dot_de_resident_primary",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 1770,
         "y": 360,
         "wires": [
@@ -5296,7 +5322,8 @@
                 "storage_mqtt_state"
             ],
             [
-                "storage_notify"
+                "storage_notify",
+                "storage_notify_secondary"
             ],
             []
         ]
@@ -5325,30 +5352,57 @@
         "type": "api-call-service",
         "z": "storage_health_tab",
         "g": "storage_group_alerts",
-        "name": "Avisar moradores",
+        "name": "Avisar resident_primary",
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "notify.send_message",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "notify.mobile_primary_2",
-            "notify.mobile_secondary"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"title\": payload.title, \"message\": payload.message}",
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":payload.title,\"message\":payload.message}}",
         "dataType": "jsonata",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "all",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
-        "x": 1430,
-        "y": 310,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1460,
+        "y": 290,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "storage_notify_secondary",
+        "type": "api-call-service",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Avisar resident_secondary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.title,\"message\":payload.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1460,
+        "y": 350,
         "wires": [
             []
         ]
@@ -5465,7 +5519,8 @@
         "y": 530,
         "wires": [
             [
-                "storage_notify"
+                "storage_notify",
+                "storage_notify_secondary"
             ]
         ]
     },
@@ -6313,23 +6368,21 @@
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "notify.send_message",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "notify.mobile_primary_2"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"message\":\"request_location_update\"}",
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"message\":\"request_location_update\"}}",
         "dataType": "json",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 1140,
         "y": 320,
         "wires": [
@@ -6345,23 +6398,21 @@
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "notify.send_message",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "notify.mobile_secondary"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"message\":\"request_location_update\"}",
+        "data": "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"message\":\"request_location_update\"}}",
         "dataType": "json",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 1140,
         "y": 380,
         "wires": [
@@ -7872,23 +7923,21 @@
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "notify.send_message",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "notify.mobile_primary_2"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"title\": \"Casa inteligente\", \"message\": payload.message}",
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":\"Casa inteligente\",\"message\":payload.message}}",
         "dataType": "jsonata",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 860,
         "y": 460,
         "wires": [
@@ -8244,7 +8293,8 @@
             ],
             [
                 "04007cc1732f60c9",
-                "d710ac9de2f98569"
+                "d710ac9de2f98569",
+                "light_notify_unavailable_secondary"
             ]
         ]
     },
@@ -8267,7 +8317,8 @@
             [
                 "f863fcd77744a4da",
                 "9f047ccb2ce2c3aa",
-                "2818bf202b397612"
+                "2818bf202b397612",
+                "light_notify_on_secondary"
             ]
         ]
     },
@@ -8308,30 +8359,57 @@
         "type": "api-call-service",
         "z": "6b7552efb85343f4",
         "g": "95e7527bc7a0a9a1",
-        "name": "Avisar moradores: refletor ligado",
+        "name": "Avisar resident_primary: refletor ligado",
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "notify.send_message",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "notify.mobile_primary_2",
-            "notify.mobile_secondary"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE\" : \"Casa inteligente\",\"message\":payload.test_mode=true ? \"[TESTE] O refletor da garagem foi ligado.\" : \"O refletor da garagem foi ligado.\"}",
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE\" : \"Casa inteligente\",\"message\":payload.test_mode=true ? \"[TESTE] O refletor da garagem foi ligado.\" : \"O refletor da garagem foi ligado.\"}}",
         "dataType": "jsonata",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 2050,
         "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "light_notify_on_secondary",
+        "type": "api-call-service",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Avisar resident_secondary: refletor ligado",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE\" : \"Casa inteligente\",\"message\":payload.test_mode=true ? \"[TESTE] O refletor da garagem foi ligado.\" : \"O refletor da garagem foi ligado.\"}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 2050,
+        "y": 240,
         "wires": [
             []
         ]
@@ -8427,7 +8505,8 @@
         "wires": [
             [
                 "f863fcd77744a4da",
-                "2818bf202b397612"
+                "2818bf202b397612",
+                "light_notify_on_secondary"
             ]
         ]
     },
@@ -8878,30 +8957,57 @@
         "type": "api-call-service",
         "z": "6b7552efb85343f4",
         "g": "95e7527bc7a0a9a1",
-        "name": "Avisar: refletor indisponível — seria ligado",
+        "name": "Avisar resident_primary: refletor indisponível",
         "server": "4126427d5e161a03",
         "version": 7,
         "debugenabled": false,
-        "action": "notify.send_message",
+        "action": "public_bindings.call",
         "floorId": [],
         "areaId": [],
         "deviceId": [],
-        "entityId": [
-            "notify.mobile_primary_2",
-            "notify.mobile_secondary"
-        ],
+        "entityId": [],
         "labelId": [],
-        "data": "{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE — erro no refletor\" : \"Casa inteligente — erro no refletor\",\"message\":payload.message}",
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE — erro no refletor\" : \"Casa inteligente — erro no refletor\",\"message\":payload.message}}",
         "dataType": "jsonata",
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "send_message",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 1720,
         "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "light_notify_unavailable_secondary",
+        "type": "api-call-service",
+        "z": "6b7552efb85343f4",
+        "g": "95e7527bc7a0a9a1",
+        "name": "Avisar resident_secondary: refletor indisponível",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE — erro no refletor\" : \"Casa inteligente — erro no refletor\",\"message\":payload.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1720,
+        "y": 320,
         "wires": [
             []
         ]
@@ -9073,8 +9179,8 @@
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "mobile_app_iphone_de_resident_primary_furlan",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 900,
         "y": 580,
         "wires": [
@@ -9102,8 +9208,8 @@
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "mobile_app_iphone_de_resident_secondary",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 900,
         "y": 640,
         "wires": [
@@ -9282,8 +9388,8 @@
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "mobile_app_iphone_de_resident_primary_furlan",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 1560,
         "y": 120,
         "wires": [
@@ -9377,8 +9483,8 @@
         "outputProperties": [],
         "queue": "none",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "mobile_app_iphone_de_resident_secondary",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 1560,
         "y": 180,
         "wires": [
@@ -9678,8 +9784,8 @@
         "outputProperties": [],
         "queue": "all",
         "blockInputOverrides": true,
-        "domain": "notify",
-        "service": "mobile_app_iphone_de_resident_primary_furlan",
+        "domain": "public_bindings",
+        "service": "call",
         "x": 920,
         "y": 100,
         "wires": [

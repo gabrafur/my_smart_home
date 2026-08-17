@@ -25,8 +25,8 @@ O subflow `Notificar todos os dispositivos móveis` é reutilizado pelos dois
 monitores. Para cada evento ele:
 
 1. cria ou atualiza uma notificação persistente no Home Assistant;
-2. envia push para `notify.mobile_primary` e
-   `notify.mobile_primary`;
+2. envia push para os papéis lógicos `mobile_primary` e `mobile_secondary`
+   pelo serviço `public_bindings.call`;
 3. em uma recuperação, remove o alerta persistente da falha anterior.
 
 O contrato de entrada, também documentado visualmente no subflow, é:

@@ -265,7 +265,12 @@ scenario("15 backoff Bluelink segue 1 2 4 8 15 minutos", () => {
 });
 
 scenario("16 side effects criticos estao ligados aos gates corretos", () => {
-  assert.deepEqual(wireNames("light_mark_active"), ["Ligar refletor do portão", "Aguardar backstop de 15 min", "Avisar moradores: refletor ligado"]);
+  assert.deepEqual(wireNames("light_mark_active"), [
+    "Ligar refletor do portão",
+    "Aguardar backstop de 15 min",
+    "Avisar resident_primary: refletor ligado",
+    "Avisar resident_secondary: refletor ligado",
+  ]);
   assert.deepEqual(wireNames("light_turn_off_if_active"), ["Desligar refletor do portão"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 0), ["Forçar refresh do vehicle_primary"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 1), ["Atualizar viagens do dia após chegada"]);

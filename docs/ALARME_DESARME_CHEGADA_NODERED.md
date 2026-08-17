@@ -41,7 +41,8 @@ ou duplicação durante a ordem variável do startup.
    absorve eventos quase simultaneos, por exemplo resident_secondary e vehicle_primary entrando
    juntos no anel.
 5. `Pedir confirmacao no Home Assistant` envia a notificacao aos entities
-   `notify.mobile_primary` e `notify.mobile_primary`, com os
+   os papéis `mobile_primary` e `mobile_secondary` via
+   `public_bindings.call`, com os
    botoes `Desarmar` e `Manter armado`.
 6. `Resposta da notificacao` escuta
    `mobile_app_notification_action`. `Validar confirmacao pendente` aceita

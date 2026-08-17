@@ -566,15 +566,22 @@ automation:
           title: "Raspberry Pi - {{ severity | upper }}"
           message: "{{ message }}"
           notification_id: "raspberry_pi_health_{{ trigger.entity_id | replace('.', '_') }}"
-      - action: notify.send_message
+      - action: public_bindings.call
         continue_on_error: true
-        target:
-          entity_id:
-            - notify.mobile_primary_2
-            - notify.mobile_secondary
         data:
-          title: "Raspberry Pi - {{ severity | upper }}"
-          message: "{{ message }}"
+          role: mobile_primary
+          action: notify_3
+          data:
+            title: "Raspberry Pi - {{ severity | upper }}"
+            message: "{{ message }}"
+      - action: public_bindings.call
+        continue_on_error: true
+        data:
+          role: mobile_secondary
+          action: notify_2
+          data:
+            title: "Raspberry Pi - {{ severity | upper }}"
+            message: "{{ message }}"
 
   - id: raspberry_pi_health_recovery_notification
     alias: Raspberry Pi - recuperacao de saude
@@ -614,15 +621,22 @@ automation:
           title: "Raspberry Pi - recuperado"
           message: "{{ message }}"
           notification_id: "raspberry_pi_health_recovered_{{ trigger.entity_id | replace('.', '_') }}"
-      - action: notify.send_message
+      - action: public_bindings.call
         continue_on_error: true
-        target:
-          entity_id:
-            - notify.mobile_primary_2
-            - notify.mobile_secondary
         data:
-          title: "Raspberry Pi - recuperado"
-          message: "{{ message }}"
+          role: mobile_primary
+          action: notify_3
+          data:
+            title: "Raspberry Pi - recuperado"
+            message: "{{ message }}"
+      - action: public_bindings.call
+        continue_on_error: true
+        data:
+          role: mobile_secondary
+          action: notify_2
+          data:
+            title: "Raspberry Pi - recuperado"
+            message: "{{ message }}"
 
   - id: raspberry_pi_home_assistant_started
     alias: Raspberry Pi - Home Assistant iniciado

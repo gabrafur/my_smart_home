@@ -15,7 +15,8 @@ Both tabs read left to right: trigger, collection, state/confirmation,
 failure/recovery, notification, and retained MQTT publication. The shared
 `Notificar todos os dispositivos móveis` subflow creates a persistent Home
 Assistant notification and sends the same message to
-`notify.mobile_primary` and `notify.mobile_primary`. Recovery also
+the logical roles `mobile_primary` and `mobile_secondary` through
+`public_bindings.call`. Recovery also
 dismisses the prior failure alert. Home Assistant calls use the connector's
 `all` queue during short HA restarts. That connector queue does not retain a
 mobile push merely because the WAN is down.
