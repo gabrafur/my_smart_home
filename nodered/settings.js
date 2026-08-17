@@ -40,13 +40,22 @@ const nodeRedAdminPasswordHash = process.env.NODE_RED_ADMIN_PASSWORD_HASH;
 function readPublicBindings() {
     const bindingsDirectory = process.env.PUBLIC_BINDINGS_DIR || "/run/private-bindings";
     const merged = { schema_version: 1, roles: {} };
+    let files;
 
     try {
-        const files = fs.readdirSync(bindingsDirectory)
+        files = fs.readdirSync(bindingsDirectory)
             .filter((file) => file.endsWith(".json"))
             .sort();
+    } catch (error) {
+        if (error?.code === "ENOENT") return merged;
+        throw new Error(
+            `Node-RED cannot list private bindings in ${bindingsDirectory} (${error?.code || "unknown error"})`,
+            { cause: error },
+        );
+    }
 
-        for (const file of files) {
+    for (const file of files) {
+        try {
             const candidate = JSON.parse(fs.readFileSync(path.join(bindingsDirectory, file), "utf8"));
             if (candidate?.schema_version !== 1 || !candidate.roles || typeof candidate.roles !== "object") {
                 continue;
@@ -56,6 +65,12 @@ function readPublicBindings() {
                 if (!binding || typeof binding !== "object" || Array.isArray(binding)) {
                     continue;
                 }
+                const hasMqttTopics = Object.hasOwn(binding, "mqtt_topics");
+                const normalizedMqttTopics = hasMqttTopics && Array.isArray(binding.mqtt_topics)
+                    ? binding.mqtt_topics.map((topic) => (
+                        typeof topic === "string" ? { topic } : topic
+                    ))
+                    : undefined;
                 merged.roles[role] = {
                     ...(merged.roles[role] || {}),
                     ...binding,
@@ -71,11 +86,15 @@ function readPublicBindings() {
                         ...(merged.roles[role]?.topics || {}),
                         ...(binding.topics || {}),
                     },
+                    ...(hasMqttTopics ? { mqtt_topics: normalizedMqttTopics } : {}),
                 };
             }
+        } catch (error) {
+            throw new Error(
+                `Node-RED cannot read private binding document ${file} (${error?.code || "invalid JSON"})`,
+                { cause: error },
+            );
         }
-    } catch (_error) {
-        return merged;
     }
 
     return merged;
@@ -87,6 +106,9 @@ function exposeBindingTopic(envName, role, key) {
     const value = publicBindings.roles?.[role]?.topics?.[key];
     if (!process.env[envName] && typeof value === "string" && value.length > 0) {
         process.env[envName] = value;
+    }
+    if (!process.env[envName]) {
+        console.warn(`[bindings] ${envName} is unresolved; dependent MQTT nodes will remain inactive`);
     }
 }
 

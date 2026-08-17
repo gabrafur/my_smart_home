@@ -17,11 +17,7 @@ const binding = {
       },
     },
     exterior_light: {
-      mqtt_topics: [{
-        topic: "zigbee2mqtt/example_exterior_light/set",
-        payload_on: "ON",
-        payload_off: "OFF",
-      }],
+      mqtt_topics: ["zigbee2mqtt/example_exterior_light/set"],
     },
   },
 };
@@ -37,12 +33,19 @@ try {
   );
   assert.deepEqual(
     settings.functionGlobalContext.publicBindings.roles.exterior_light.mqtt_topics,
-    binding.roles.exterior_light.mqtt_topics,
+    [{ topic: binding.roles.exterior_light.mqtt_topics[0] }],
   );
-  assert.equal(
-    process.env.BINDING_GARAGE_GATE_COMMAND_TOPIC,
-    binding.roles.garage_gate.topics.command,
-  );
+  for (const [environmentSuffix, bindingKey] of [
+    ["RELAY_STATE", "relay_state"],
+    ["ACTION", "action"],
+    ["COMMAND", "command"],
+    ["STATE", "state"],
+  ]) {
+    assert.equal(
+      process.env[`BINDING_GARAGE_GATE_${environmentSuffix}_TOPIC`],
+      binding.roles.garage_gate.topics[bindingKey],
+    );
+  }
   console.log("Node-RED public binding loader test passed.");
 } finally {
   delete process.env.PUBLIC_BINDINGS_DIR;

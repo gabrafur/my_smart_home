@@ -90,6 +90,10 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
     }
     for (const [index, topic] of (binding.mqtt_topics ?? []).entries()) {
       const location = `$.roles.${role}.mqtt_topics.${index}`;
+      if (typeof topic === "string") {
+        if (topic.length === 0) issues.push(issue("mqtt-topic", location, "binding"));
+        continue;
+      }
       if (!topic || typeof topic !== "object" || typeof topic.topic !== "string" || topic.topic.length === 0) {
         issues.push(issue("mqtt-topic", location, "binding"));
       }

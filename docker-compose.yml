@@ -102,6 +102,11 @@ services:
     depends_on:
       - mosquitto
       - homeassistant
+    # Os bindings privados permanecem 0640 no host. O grupo suplementar
+    # permite que o processo node-red (UID/GID 1000 na imagem) leia o volume
+    # somente leitura sem tornar os arquivos acessiveis a todos os usuarios.
+    group_add:
+      - "${PRIVATE_BINDINGS_GID:-1001}"
     ports:
       - "${HOST_LAN_IP:-127.0.0.1}:1880:1880"
     volumes:
