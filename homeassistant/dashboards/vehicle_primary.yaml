@@ -14,6 +14,7 @@ views:
             icon: mdi:car-connected
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set engine = is_state('binary_sensor.vehicle_primary_engine', 'on') %}
               {% set updated = states('sensor.vehicle_primary_last_updated_at') %}
               {% set updated_ts = as_timestamp(updated, none) %}
@@ -24,11 +25,11 @@ views:
               {% if age_min is none %}
               🔴 Sem telemetria válida
               {% elif age_min <= 15 %}
-              🟢 Atualizado há {{ age_min | int }} min
+              🟢 Atualizado há {{ format_number_ptbr(age_min) }} min
               {% elif age_min <= 90 %}
-              🟡 Leitura de {{ age_min | int }} min atrás
+              🟡 Leitura de {{ format_number_ptbr(age_min) }} min atrás
               {% else %}
-              🔴 Leitura de {{ age_min | int }} min atrás
+              🔴 Leitura de {{ format_number_ptbr(age_min) }} min atrás
               {% endif %}
           - type: grid
             columns: 2
@@ -44,12 +45,14 @@ views:
                 icon: mdi:map-marker-distance
               - type: markdown
                 content: >-
+                  {% from 'formatting.jinja' import format_number_ptbr %}
                   {% set odometer = states('sensor.garagem_vehicle_primary_odometer') %}
                   **Odômetro**
 
-                  ## {{ ('{:,.0f}'.format(odometer | float) | replace(',', '.')) ~ ' km' if is_number(odometer) else 'Indisponível' }}
+                  ## {{ format_number_ptbr(odometer) ~ ' km' if is_number(odometer) else 'Indisponível' }}
               - type: markdown
                 content: >-
+                  {% from 'formatting.jinja' import format_number_ptbr %}
                   {% set entity = states.sensor.garagem_vehicle_primary_estimated_fuel_efficiency %}
                   {% set value = entity.state if entity else 'unknown' %}
                   {% set trips = entity.attributes.trips_considered | default(0) if entity else 0 %}
@@ -57,11 +60,11 @@ views:
                   **Consumo estimado**
 
                   {% if value not in ['unknown', 'unavailable', 'none'] %}
-                  ## {{ value }} km/L
-                  {{ trips }} viagem(ns) · até {{ window_days }} dias
+                  ## {{ format_number_ptbr(value, 2) }} km/L
+                  {{ format_number_ptbr(trips) }} viagem(ns) · até {{ format_number_ptbr(window_days) }} dias
                   {% else %}
                   ## Dados insuficientes
-                  Janela pesquisada: até {{ window_days }} dias
+                  Janela pesquisada: até {{ format_number_ptbr(window_days) }} dias
                   {% endif %}
           - type: grid
             columns: 3
@@ -86,6 +89,7 @@ views:
             icon: mdi:map-marker-check
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set engine = is_state('binary_sensor.vehicle_primary_engine', 'on') %}
               {% set location_updated = states('sensor.vehicle_primary_location_last_updated') %}
               {% set location_ts = as_timestamp(location_updated, none) %}
@@ -93,15 +97,15 @@ views:
               {% if engine %}
               ⚠️ **Veículo em uso**
 
-              O mapa mostra o **último estacionamento confirmado**{% if age_min is not none %}, há {{ age_min | int }} min{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
+              O mapa mostra o **último estacionamento confirmado**{% if age_min is not none %}, há {{ format_number_ptbr(age_min) }} min{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
               {% elif age_min is none %}
               🔴 **Estacionamento ainda não confirmado**
 
               A posição será exibida depois que o Bluelink confirmar o veículo estacionado.
               {% elif age_min <= 15 %}
-              🟢 **Último estacionamento confirmado há {{ age_min | int }} min**
+              🟢 **Último estacionamento confirmado há {{ format_number_ptbr(age_min) }} min**
               {% else %}
-              🟡 **Último estacionamento confirmado há {{ age_min | int }} min**
+              🟡 **Último estacionamento confirmado há {{ format_number_ptbr(age_min) }} min**
 
               Esta é a última posição estacionada informada pelo Bluelink, não uma localização GPS em tempo real.
               {% endif %}
@@ -112,17 +116,18 @@ views:
             default_zoom: 15
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set trips = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'trips') or [] %}
               {% set efficiency = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'fuel_efficiency') or {} %}
               {% if trips %}
-              **{{ trips | length }} viagem(ns) recentes**
+              **{{ format_number_ptbr(trips | length) }} viagem(ns) recentes**
 
               {% if efficiency.km_per_l is defined and efficiency.km_per_l is not none %}
-              ⛽ {{ efficiency.km_per_l }} km/L · {{ efficiency.estimated_distance }} km analisados
+              ⛽ {{ format_number_ptbr(efficiency.km_per_l, 2) }} km/L · {{ format_number_ptbr(efficiency.estimated_distance, 1) }} km analisados
               {% endif %}
 
               {% for trip in trips[:2] %}
-              **{{ trip.date[6:8] }}/{{ trip.date[4:6] }} {{ trip.start_time[:2] }}:{{ trip.start_time[2:4] }}** · {{ trip.distance }} km · {{ trip.duration_min }} min
+              **{{ trip.date[6:8] }}/{{ trip.date[4:6] }} {{ trip.start_time[:2] }}:{{ trip.start_time[2:4] }}** · {{ format_number_ptbr(trip.distance, 1) }} km · {{ format_number_ptbr(trip.duration_min) }} min
               {% endfor %}
 
               {% if trips | length > 2 %}
@@ -234,6 +239,7 @@ views:
                   action: none
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set refresh = states.sensor.vehicle_primary_refresh_coordinator %}
               {% set refresh_state = refresh.state if refresh else 'unavailable' %}
               {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
@@ -244,7 +250,7 @@ views:
               {% if refresh_state == 'refreshing' %}↻ **Atualizando dados**
               {% elif refresh_state == 'backoff' %}🟡 O Bluelink ainda não confirmou uma leitura nova.
 
-              **Nova tentativa automática em {{ remaining }} s**{% if attempt > 0 %} · tentativa {{ attempt }}{% endif %}
+              **Nova tentativa automática em {{ format_number_ptbr(remaining) }} s**{% if attempt > 0 %} · tentativa {{ format_number_ptbr(attempt) }}{% endif %}
               {% elif refresh_state == 'cooldown' %}🟢 **Dados atualizados**
               {% elif refresh_state == 'waiting' %}⚪ **Aguardando movimento**
               {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Atualização indisponível**
@@ -284,18 +290,19 @@ views:
             icon: mdi:map-marker-path
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set trips = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'trips') or [] %}
               {% set efficiency = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'fuel_efficiency') or {} %}
               {% if efficiency.data_sufficient | default(false) %}
-              ## {{ efficiency.km_per_l }} km/L estimados
+              ## {{ format_number_ptbr(efficiency.km_per_l, 2) }} km/L estimados
 
               Janela efetiva: {{ as_datetime(efficiency.trip_window_start).astimezone().strftime('%d/%m %H:%M') if efficiency.trip_window_start else 'indisponível' }}–{{ as_datetime(efficiency.trip_window_end).astimezone().strftime('%d/%m %H:%M') if efficiency.trip_window_end else 'indisponível' }}
 
-              {{ efficiency.trips_considered }} de {{ efficiency.trips_available }} viagem(ns) · {{ efficiency.estimated_distance }} km · {{ efficiency.estimated_liters }} L
+              {{ format_number_ptbr(efficiency.trips_considered) }} de {{ format_number_ptbr(efficiency.trips_available) }} viagem(ns) · {{ format_number_ptbr(efficiency.estimated_distance, 1) }} km · {{ format_number_ptbr(efficiency.estimated_liters, 2) }} L
               {% else %}
               ## Dados insuficientes
 
-              Janela pesquisada: até {{ efficiency.search_window_days | default(0) }} dias, conforme a retenção disponível do Recorder. A estimativa requer queda de combustível e odômetro antes/depois da mesma viagem.
+              Janela pesquisada: até {{ format_number_ptbr(efficiency.search_window_days | default(0)) }} dias, conforme a retenção disponível do Recorder. A estimativa requer queda de combustível e odômetro antes/depois da mesma viagem.
               {% endif %}
 
               {% if trips %}
@@ -303,12 +310,12 @@ views:
               ---
               **{{ trip.date[6:8] }}/{{ trip.date[4:6] }} · {{ trip.start_time[:2] }}:{{ trip.start_time[2:4] }}{% if trip.end_time %}–{{ trip.end_time }}{% endif %}**
 
-              {{ trip.distance }} km · {{ trip.duration_min }} min · média {{ trip.avg_speed }} km/h
+              {{ format_number_ptbr(trip.distance, 1) }} km · {{ format_number_ptbr(trip.duration_min) }} min · média {{ format_number_ptbr(trip.avg_speed, 1) }} km/h
 
               {% if trip.estimated_km_per_l is defined %}
-              ⛽ **{{ trip.estimated_km_per_l }} km/L** nesta viagem
+              ⛽ **{{ format_number_ptbr(trip.estimated_km_per_l, 2) }} km/L** nesta viagem
               {% elif efficiency.data_sufficient | default(false) %}
-              ⛽ **{{ efficiency.km_per_l }} km/L** · média da janela
+              ⛽ **{{ format_number_ptbr(efficiency.km_per_l, 2) }} km/L** · média da janela
               {% else %}
               ⛽ Consumo sem amostras suficientes
               {% endif %}

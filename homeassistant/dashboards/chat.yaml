@@ -22,21 +22,22 @@ views:
             icon: mdi:chart-donut
           - type: markdown
             content: |
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set totals = state_attr('sensor.codex_usage_raw', 'totals') or {} %}
               {% set limite = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
               {% set reset_em = limite.get('resets_at') %}
               {% set janela = limite.get('window_type', 'desconhecida') %}
               {% if states('sensor.codex_usage_raw') == 'ok' %}
               {% if states('sensor.codex_dados_de_limite') == 'atual' and is_number(states('sensor.codex_limite_disponivel')) %}
-              # {{ states('sensor.codex_limite_disponivel') | round(0) }}% disponível
+              # {{ format_number_ptbr(states('sensor.codex_limite_disponivel')) }}% disponível
 
-              **{{ states('sensor.codex_limite_usado') | round(0) }}% usado** na janela
+              **{{ format_number_ptbr(states('sensor.codex_limite_usado')) }}% usado** na janela
               {{ 'semanal' if janela == 'weekly' else janela }} do plano
               {{ states('sensor.codex_plano') | title }}.
               {% elif limite.get('remaining_percent') is number %}
               # Leitura desatualizada
 
-              Último valor conhecido: **{{ limite.get('remaining_percent') | round(0) }}% disponível**.
+              Último valor conhecido: **{{ format_number_ptbr(limite.get('remaining_percent')) }}% disponível**.
               Confira Codex → Settings → Usage & billing para o saldo atual.
               {% else %}
               # Aguardando dados
@@ -48,7 +49,7 @@ views:
               **Reset:** {{ as_timestamp(reset_em) | timestamp_custom('%d/%m às %H:%M', true) }}
               {% endif %}
               {% if is_number(states('sensor.codex_atualizacao_do_limite_em')) %}
-              **Próxima consulta:** em {{ states('sensor.codex_atualizacao_do_limite_em') | int }} segundos.
+              **Próxima consulta:** em {{ format_number_ptbr(states('sensor.codex_atualizacao_do_limite_em')) }} segundos.
               {% endif %}
               {% else %}
               # Coleta indisponível
@@ -239,7 +240,8 @@ views:
   - title: RTX 4070
     path: uso-rtx
     icon: mdi:expansion-card-variant
-    # Contrato visual: 1→11, esquerda→direita, depois próxima linha.
+    # Uma seção contínua por coluna evita que cards altos criem lacunas nas
+    # outras colunas. A ordem interna preserva todas as informações existentes.
     type: sections
     max_columns: 3
     dense_section_placement: false
@@ -247,7 +249,7 @@ views:
       - type: grid
         cards:
           - type: grid
-            title: 1 · Saúde da infraestrutura
+            title: Saúde da infraestrutura
             columns: 2
             square: false
             cards:
@@ -300,69 +302,8 @@ views:
               identificador curto é usado sem revelar conteúdo da conversa.
               {% endif %}
 
-      - type: grid
-        cards:
           - type: grid
-            title: 2 · Atividade ao vivo
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_rtx_ao_vivo
-                name: Estado
-              - type: tile
-                entity: sensor.codex_rtx_gpu_agora
-                name: GPU agora
-              - type: tile
-                entity: sensor.codex_rtx_vram_agora
-                name: VRAM agora
-              - type: tile
-                entity: sensor.codex_rtx_potencia_agora
-                name: Potência agora
-
-          - type: history-graph
-            title: Atividade e métricas — últimas 24 horas
-            hours_to_show: 24
-            entities:
-              - entity: binary_sensor.codex_rtx_em_uso
-                name: RTX em uso
-              - entity: sensor.codex_rtx_gpu_historico
-                name: GPU
-              - entity: sensor.codex_rtx_vram_historico
-                name: VRAM
-              - entity: sensor.codex_rtx_potencia_historico
-                name: Potência
-
-      - type: grid
-        cards:
-          - type: grid
-            title: 3 · Resultado e qualidade — hoje
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_hoje_estimados
-                name: Contexto evitado
-              - type: tile
-                entity: sensor.codex_reducao_de_contexto_local_ai_hoje
-                name: Redução de contexto
-              - type: tile
-                entity: sensor.codex_rtx_usos_hoje
-                name: RTX usada
-              - type: tile
-                entity: sensor.codex_taxa_de_falhas_local_ai_hoje
-                name: Taxa de falhas
-              - type: tile
-                entity: sensor.codex_taxa_de_delegacao_rtx_hoje
-                name: Taxa de delegação
-              - type: tile
-                entity: sensor.codex_cobertura_ponderada_de_economia_rtx_hoje
-                name: Cobertura de economia
-
-      - type: grid
-        cards:
-          - type: grid
-            title: 4 · Atenção de roteamento — hoje
+            title: Atenção de roteamento — hoje
             columns: 2
             square: false
             cards:
@@ -421,10 +362,174 @@ views:
                   }} ocorreram em conversas de hoje. Esses valores não entram
                   nos cards diários nem nos totais operacionais.
 
+          - type: entities
+            title: Decisão de roteamento
+            show_header_toggle: false
+            entities:
+              - entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
+                name: Decisão
+
+          - type: markdown
+            content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set task = state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'tarefa') %}
+              {% set decision = states('sensor.codex_ultima_decisao_de_roteamento_local_ai') %}
+              {% if task %}
+              ## Última decisão Local AI
+
+              **Tarefa:** {{ task }}
+
+              **Elegível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'elegivel') else 'NÃO' }}
+
+              **RTX disponível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'rtx_disponivel') else 'NÃO' }}
+
+              **Decisão:** {{ decision }}
+
+              **Motivo:** {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'motivo') }}
+
+              Entrada: ~{{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'input_tokens_estimados')) }} tokens ·
+              economia esperada: ~{{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_esperada_tokens')) }} tokens ·
+              economia real: {{ format_number_ptbr(state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens')) if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') is not none else 'não mensurada' }}.
+              {% else %}
+              ## Última decisão Local AI
+
+              Ainda não há uma decisão de roteamento registrada.
+              {% endif %}
+
+          - type: markdown
+            content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set routing = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {} %}
+              {% set missed = routing.get('latest_decisions', []) | selectattr('decision', 'eq', 'ROUTING_MISSED_OPPORTUNITY') | list %}
+              ## Oportunidades RTX perdidas
+
+              **Hoje:** {{ format_number_ptbr(states('sensor.codex_oportunidades_rtx_perdidas_hoje')) }} ·
+              potencial de contexto evitável acumulado: ~{{ format_number_ptbr((routing.get('totals') or {}).get('potential_tokens_avoidable', 0)) }} tokens.
+
+              {% if missed %}
+              {% for item in missed %}
+              - {{ item.get('task_type') }} · ~{{ format_number_ptbr(item.get('expected_tokens_saved')) }} tokens potenciais · {{ item.get('reason') }}
+              {% endfor %}
+              {% else %}
+              Nenhuma oportunidade perdida recente registrada.
+              {% endif %}
+
+          - type: entities
+            title: Diagnóstico detalhado
+            show_header_toggle: false
+            entities:
+              - entity: sensor.codex_ultima_falha_local_ai
+                name: Última falha recente
+              - entity: sensor.codex_ultimo_job_local_ai
+                name: Último job
+
+          - type: markdown
+            content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set task = state_attr('sensor.codex_ultimo_job_local_ai', 'tarefa') %}
+              {% set status = states('sensor.codex_ultimo_job_local_ai') %}
+              {% if task and status == 'em andamento' %}
+              ## Inferência em andamento
+
+              **{{ task }}** · {{ state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') }} ·
+              iniciada em {{ state_attr('sensor.codex_ultimo_job_local_ai', 'iniciado_em') }}.
+
+              GPU, VRAM e potência são atualizadas na seção **Atividade ao vivo**.
+              {% elif task and status == 'success' %}
+              ## Último job de GPU
+
+              **{{ task }}** · {{ state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') }} ·
+              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s'), 3) }} s ·
+              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_por_segundo'), 2) }} tok/s
+
+              GPU pico: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'pico_gpu_percentual')) }}%** ·
+              VRAM pico: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'pico_vram_mib')) }} MiB** ·
+              Contexto: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_entrada')) }} →
+              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_saida')) }} tokens** ·
+              redução **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'reducao_contexto_percentual'), 1) }}%** ·
+              contexto OpenAI evitado **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados')) }} tokens** ·
+              {{ state_attr('sensor.codex_ultimo_job_local_ai', 'processador') or 'processador não amostrado' }}.
+
+              Overhead do envelope OpenAI: **não mensurado**; a economia é uma estimativa de
+              conteúdo pelo método `{{ state_attr('sensor.codex_ultimo_job_local_ai', 'metodo_contagem_tokens') }}`.
+              {% elif task and status == 'failed' %}
+              ## Último job de GPU
+
+              A última execução de **{{ task }}** falhou em
+              {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s'), 3) }} s
+              ({{ state_attr('sensor.codex_ultimo_job_local_ai', 'erro_tipo') or 'tipo não informado' }}).
+              Nenhum token economizado é contabilizado para uma execução sem sucesso.
+              {% else %}
+              ## Último job de GPU
+
+              Nenhuma inferência local foi registrada ainda.
+              {% endif %}
+
       - type: grid
         cards:
           - type: grid
-            title: 5 · Última atividade
+            title: Atividade ao vivo
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.codex_rtx_ao_vivo
+                name: Estado
+              - type: tile
+                entity: sensor.codex_rtx_gpu_agora
+                name: GPU agora
+              - type: tile
+                entity: sensor.codex_rtx_vram_agora
+                name: VRAM agora
+              - type: tile
+                entity: sensor.codex_rtx_potencia_agora
+                name: Potência agora
+
+          - type: history-graph
+            title: RTX em uso — últimas 48 horas
+            hours_to_show: 48
+            grid_options:
+              columns: full
+              rows: auto
+            entities:
+              - entity: binary_sensor.codex_rtx_em_uso
+                name: RTX em uso
+
+          - type: statistics-graph
+            title: GPU — últimas 48 horas
+            chart_type: line
+            period: 5minute
+            days_to_show: 2
+            stat_types:
+              - max
+            entities:
+              - entity: sensor.codex_rtx_gpu_historico
+                name: GPU
+
+          - type: statistics-graph
+            title: VRAM — últimas 48 horas
+            chart_type: line
+            period: 5minute
+            days_to_show: 2
+            stat_types:
+              - max
+            entities:
+              - entity: sensor.codex_rtx_vram_historico
+                name: VRAM
+
+          - type: statistics-graph
+            title: Potência — últimas 48 horas
+            chart_type: line
+            period: 5minute
+            days_to_show: 2
+            stat_types:
+              - max
+            entities:
+              - entity: sensor.codex_rtx_potencia_historico
+                name: Potência
+
+          - type: grid
+            title: Última atividade
             columns: 2
             square: false
             cards:
@@ -441,10 +546,77 @@ views:
                 entity: sensor.codex_ultima_decisao_de_memoria
                 name: Última memória
 
+          - type: grid
+            title: Economia acumulada (estimativa)
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.codex_tokens_openai_evitados_hoje_estimados
+                name: Hoje
+              - type: tile
+                entity: sensor.codex_tokens_openai_evitados_semana_estimados
+                name: Esta semana
+              - type: tile
+                entity: sensor.codex_tokens_openai_evitados_mes_estimados
+                name: Este mês
+              - type: tile
+                entity: sensor.codex_tokens_openai_evitados_estimados
+                name: Total
+
+          - type: markdown
+            content: >-
+              **Chamadas** medem quantas tarefas locais foram tentadas; **tokens economizados**
+              estimam a redução entre o contexto enviado ao Local AI e seu resumo retornado.
+              São unidades diferentes e não devem ser comparadas no mesmo gráfico. A estimativa
+              não representa cobrança oficial da OpenAI.
+
+          - type: grid
+            title: Totais acumulados
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.codex_chamadas_local_ai
+                name: Chamadas
+              - type: tile
+                entity: sensor.codex_chamadas_local_ai_com_sucesso
+                name: Concluídas
+              - type: tile
+                entity: sensor.codex_falhas_local_ai
+                name: Falhas
+              - type: tile
+                entity: sensor.codex_fallbacks_local_ai_informados
+                name: Fallbacks
+
       - type: grid
         cards:
           - type: grid
-            title: 6 · Contexto e memória — hoje
+            title: Resultado e qualidade — hoje
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.codex_tokens_openai_evitados_hoje_estimados
+                name: Contexto evitado
+              - type: tile
+                entity: sensor.codex_reducao_de_contexto_local_ai_hoje
+                name: Redução de contexto
+              - type: tile
+                entity: sensor.codex_rtx_usos_hoje
+                name: RTX usada
+              - type: tile
+                entity: sensor.codex_taxa_de_falhas_local_ai_hoje
+                name: Taxa de falhas
+              - type: tile
+                entity: sensor.codex_taxa_de_delegacao_rtx_hoje
+                name: Taxa de delegação
+              - type: tile
+                entity: sensor.codex_cobertura_ponderada_de_economia_rtx_hoje
+                name: Cobertura de economia
+
+          - type: grid
+            title: Contexto e memória — hoje
             columns: 2
             square: false
             cards:
@@ -469,18 +641,19 @@ views:
 
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set memory = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {} %}
               {% set startup = memory.get('startup_context') or {} %}
               {% set today = (memory.get('periods') or {}).get('today') or {} %}
               ## Contexto inicial
 
-              **AGENTS / instructions observáveis:** ~{{ startup.get('observable_startup_context_tokens', 0) }} tokens
-              (global: ~{{ startup.get('global_agents_tokens', 0) }} · repositório: ~{{ startup.get('repo_agents_tokens', 0) }}).
+              **AGENTS / instructions observáveis:** ~{{ format_number_ptbr(startup.get('observable_startup_context_tokens', 0)) }} tokens
+              (global: ~{{ format_number_ptbr(startup.get('global_agents_tokens', 0)) }} · repositório: ~{{ format_number_ptbr(startup.get('repo_agents_tokens', 0)) }}).
 
-              **Memória pré-carregada:** {{ startup.get('repo_memory_tokens', 0) }} tokens ·
-              **memória recuperada:** ~{{ today.get('memory_tokens_retrieved', 0) }} tokens ·
-              **enviada ao GPT:** ~{{ today.get('memory_tokens_sent_to_primary_model', 0) }} tokens ·
-              **contexto evitado:** ~{{ today.get('memory_tokens_avoided', 0) }} tokens.
+              **Memória pré-carregada:** {{ format_number_ptbr(startup.get('repo_memory_tokens', 0)) }} tokens ·
+              **memória recuperada:** ~{{ format_number_ptbr(today.get('memory_tokens_retrieved', 0)) }} tokens ·
+              **enviada ao GPT:** ~{{ format_number_ptbr(today.get('memory_tokens_sent_to_primary_model', 0)) }} tokens ·
+              **contexto evitado:** ~{{ format_number_ptbr(today.get('memory_tokens_avoided', 0)) }} tokens.
 
               {% if startup.get('total_startup_context_tokens') is none %}
               O envelope interno do Codex e a memória privada automática não expõem contagem de tokens; este card mostra somente o contexto observável e indica estimativas quando aplicável.
@@ -495,18 +668,19 @@ views:
 
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
               {% set decision = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
               {% set memory = decision.get('memory') or {} %}
               {% set latest = (memory.get('latest_decisions') or [])[0] if memory.get('latest_decisions') else {} %}
               {% if latest %}
               ## Último roteamento de memória
 
-              **Tema:** {{ latest.get('topic') }} · **arquivos encontrados:** {{ latest.get('files_found') }}
+              **Tema:** {{ latest.get('topic') }} · **arquivos encontrados:** {{ format_number_ptbr(latest.get('files_found')) }}
 
-              Memória recuperada: ~{{ latest.get('memory_tokens_retrieved', 0) }} tokens ·
-              enviada ao Local AI: ~{{ latest.get('memory_tokens_sent_to_local_ai', 0) }} ·
-              enviada ao GPT: ~{{ latest.get('memory_tokens_sent_to_primary_model', 0) }} ·
-              contexto evitado: ~{{ latest.get('memory_tokens_avoided', 0) }}.
+              Memória recuperada: ~{{ format_number_ptbr(latest.get('memory_tokens_retrieved', 0)) }} tokens ·
+              enviada ao Local AI: ~{{ format_number_ptbr(latest.get('memory_tokens_sent_to_local_ai', 0)) }} ·
+              enviada ao GPT: ~{{ format_number_ptbr(latest.get('memory_tokens_sent_to_primary_model', 0)) }} ·
+              contexto evitado: ~{{ format_number_ptbr(latest.get('memory_tokens_avoided', 0)) }}.
 
               **Decisão:** {{ latest.get('decision') }} · {{ latest.get('reason') }}
               {% else %}
@@ -515,161 +689,8 @@ views:
               Memory retrieval: **SKIPPED** — ainda não há decisão registrada nesta telemetria.
               {% endif %}
 
-      - type: grid
-        cards:
-          - type: entities
-            title: 7 · Decisão de roteamento
-            show_header_toggle: false
-            entities:
-              - entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
-                name: Decisão
-
-          - type: markdown
-            content: >-
-              {% set task = state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'tarefa') %}
-              {% set decision = states('sensor.codex_ultima_decisao_de_roteamento_local_ai') %}
-              {% if task %}
-              ## Última decisão Local AI
-
-              **Tarefa:** {{ task }}
-
-              **Elegível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'elegivel') else 'NÃO' }}
-
-              **RTX disponível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'rtx_disponivel') else 'NÃO' }}
-
-              **Decisão:** {{ decision }}
-
-              **Motivo:** {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'motivo') }}
-
-              Entrada: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'input_tokens_estimados') }} tokens ·
-              economia esperada: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_esperada_tokens') }} tokens ·
-              economia real: {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') is not none else 'não mensurada' }}.
-              {% else %}
-              ## Última decisão Local AI
-
-              Ainda não há uma decisão de roteamento registrada.
-              {% endif %}
-
-          - type: markdown
-            content: >-
-              {% set routing = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {} %}
-              {% set missed = routing.get('latest_decisions', []) | selectattr('decision', 'eq', 'ROUTING_MISSED_OPPORTUNITY') | list %}
-              ## Oportunidades RTX perdidas
-
-              **Hoje:** {{ states('sensor.codex_oportunidades_rtx_perdidas_hoje') }} ·
-              potencial de contexto evitável acumulado: ~{{ ((routing.get('totals') or {}).get('potential_tokens_avoidable', 0)) }} tokens.
-
-              {% if missed %}
-              {% for item in missed %}
-              - {{ item.get('task_type') }} · ~{{ item.get('expected_tokens_saved') }} tokens potenciais · {{ item.get('reason') }}
-              {% endfor %}
-              {% else %}
-              Nenhuma oportunidade perdida recente registrada.
-              {% endif %}
-
-      - type: grid
-        cards:
-          - type: grid
-            title: 8 · Economia acumulada (estimativa)
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_hoje_estimados
-                name: Hoje
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_semana_estimados
-                name: Esta semana
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_mes_estimados
-                name: Este mês
-              - type: tile
-                entity: sensor.codex_tokens_openai_evitados_estimados
-                name: Total
-
-          - type: markdown
-            content: >-
-              **Chamadas** medem quantas tarefas locais foram tentadas; **tokens economizados**
-              estimam a redução entre o contexto enviado ao Local AI e seu resumo retornado.
-              São unidades diferentes e não devem ser comparadas no mesmo gráfico. A estimativa
-              não representa cobrança oficial da OpenAI.
-
-      - type: grid
-        cards:
-          - type: grid
-            title: 9 · Totais acumulados
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_chamadas_local_ai
-                name: Chamadas
-              - type: tile
-                entity: sensor.codex_chamadas_local_ai_com_sucesso
-                name: Concluídas
-              - type: tile
-                entity: sensor.codex_falhas_local_ai
-                name: Falhas
-              - type: tile
-                entity: sensor.codex_fallbacks_local_ai_informados
-                name: Fallbacks
-
-      - type: grid
-        cards:
-          - type: entities
-            title: 10 · Diagnóstico detalhado
-            show_header_toggle: false
-            entities:
-              - entity: sensor.codex_ultima_falha_local_ai
-                name: Última falha recente
-              - entity: sensor.codex_ultimo_job_local_ai
-                name: Último job
-
-          - type: markdown
-            content: >-
-              {% set task = state_attr('sensor.codex_ultimo_job_local_ai', 'tarefa') %}
-              {% set status = states('sensor.codex_ultimo_job_local_ai') %}
-              {% if task and status == 'em andamento' %}
-              ## Inferência em andamento
-
-              **{{ task }}** · {{ state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') }} ·
-              iniciada em {{ state_attr('sensor.codex_ultimo_job_local_ai', 'iniciado_em') }}.
-
-              GPU, VRAM e potência são atualizadas na seção **Atividade ao vivo**.
-              {% elif task and status == 'success' %}
-              ## Último job de GPU
-
-              **{{ task }}** · {{ state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') }} ·
-              {{ state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s') }} s ·
-              {{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_por_segundo') }} tok/s
-
-              GPU pico: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'pico_gpu_percentual') }}%** ·
-              VRAM pico: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'pico_vram_mib') }} MiB** ·
-              Contexto: **{{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_entrada') }} →
-              {{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_saida') }} tokens** ·
-              redução **~{{ state_attr('sensor.codex_ultimo_job_local_ai', 'reducao_contexto_percentual') }}%** ·
-              contexto OpenAI evitado **~{{ state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados') }} tokens** ·
-              {{ state_attr('sensor.codex_ultimo_job_local_ai', 'processador') or 'processador não amostrado' }}.
-
-              Overhead do envelope OpenAI: **não mensurado**; a economia é uma estimativa de
-              conteúdo pelo método `{{ state_attr('sensor.codex_ultimo_job_local_ai', 'metodo_contagem_tokens') }}`.
-              {% elif task and status == 'failed' %}
-              ## Último job de GPU
-
-              A última execução de **{{ task }}** falhou em
-              {{ state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s') }} s
-              ({{ state_attr('sensor.codex_ultimo_job_local_ai', 'erro_tipo') or 'tipo não informado' }}).
-              Nenhum token economizado é contabilizado para uma execução sem sucesso.
-              {% else %}
-              ## Último job de GPU
-
-              Nenhuma inferência local foi registrada ainda.
-              {% endif %}
-
-      - type: grid
-        cards:
           - type: history-graph
-            title: 11 · Economia — últimos 7 dias
+            title: Economia — últimos 7 dias
             hours_to_show: 168
             entities:
               - entity: sensor.codex_tokens_openai_evitados_estimados
