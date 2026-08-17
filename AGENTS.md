@@ -407,6 +407,21 @@ skip inference. Never create dummy GPU work merely to change dashboard state.
 The telemetry-backed dashboard is updated automatically whenever a local job is
 actually useful and runs.
 
+Use precise language for Local AI state. `local_ai_status`, RTX availability,
+`local_ai_route` and `LOCAL_AI_ELIGIBLE` do not prove that local inference ran.
+Say that the RTX was actually used only when `local_ai_compress_context`
+completed successfully and returned a non-empty `job_id` with
+`telemetry_recorded=true`, or when a canonical PostToolUse replacement carries
+equivalent `executed=true` and `success=true` metadata. Otherwise say only that
+the RTX was available, evaluated, eligible, skipped, unavailable or failed, as
+the observed state warrants.
+
+For the legacy MCP field `deterministic_preprocessing_available`, `true` means
+that deterministic work completely resolves the result and no LLM
+interpretation remains. Do not set it merely because deterministic collection
+or filtering happened. A large textual result that still needs interpretation
+may be eligible for Local AI post-processing after deterministic collection.
+
 Return only concise, relevant, structured results to the selected GPT-5.6 model.
 
 Treat Local AI as non-authoritative.

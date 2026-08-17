@@ -198,6 +198,16 @@ JSON grande, busca, listagem de arquivos, parsing e outros dados estruturados
 continuam determinísticos quando a ferramenta aplicável resolve o caso. Por
 isso, tamanho isolado nunca aciona a RTX.
 
+"Determinístico" descreve o resultado final, não apenas a coleta. Um valor
+escalar, uma resposta curta ou JSON já estruturado permanecem
+`DETERMINISTIC`. Já uma saída textual de busca, inventário ou listagem com pelo
+menos 12.000 caracteres pode seguir para pós-processamento local quando ainda
+precisa ser interpretada e satisfaz os limites normais de benefício. A RTX não
+substitui `rg`, `find`, Git ou `jq`; ela recebe somente o resultado selecionado
+dessas ferramentas. No campo MCP legado
+`deterministic_preprocessing_available`, `true` significa que o processamento
+determinístico é final e suficiente, não apenas que ele foi executado.
+
 Uma inferência concluída não prova retenção. Se o JSON condensado omitir
 requisitos, arquivos ou riscos críticos conhecidos, ele é descartado e o fluxo
 volta à evidência determinística sem alegar economia útil. A validação P1
@@ -238,7 +248,7 @@ controlada e sem chamada de rede:
 
 Não existe `UserPromptSubmit`: o envio do prompt não bloqueia, não chama a RTX e
 não exige a palavra `feito`. O hook de projeto `PostToolUse` trata somente
-saídas grandes de `Bash`: remove padrões de credenciais em memória, consulta o MCP
+saídas grandes de `Bash`: detecta padrões de credenciais em memória, consulta o MCP
 na primeira candidata elegível da conversa e substitui o corpo pelo JSON
 limitado somente quando a rota e a compressão têm sucesso. Saídas pequenas,
 consultas determinísticas, histórico privado e comandos que apontem para
@@ -248,11 +258,27 @@ o modelo principal. Anexos já incluídos no prompt continuam fora desse ponto d
 interceptação, portanto nunca devem ser enviados integralmente apenas para
 provocar roteamento.
 
-A redação cobre atribuições em texto ou JSON para senhas, chaves, cookies,
+O hook falha fechado quando detecta um padrão de segredo: nesse caso não cria o
+cliente MCP e mantém o resultado original para o fluxo principal. Ele não
+intercepta automaticamente outputs de outros MCPs, pois esses resultados podem
+pertencer a conectores privados e não carregam o mesmo contrato de comando do
+`Bash`; chamadas em code mode devem selecionar e rotear explicitamente apenas o
+trecho não sensível.
+
+A detecção cobre atribuições em texto ou JSON para senhas, chaves, cookies,
 tokens genéricos, `access_token`, `refresh_token`, `client_secret` e IDs/tokens
 de sessão. Comandos que apontem para `.env`, chaves privadas, armazenamento de
 autenticação ou histórico privado são rejeitados antes da criação do cliente
 MCP.
+
+Chamar MCP não equivale a usar a RTX. `local_ai_status` comprova somente
+disponibilidade; `local_ai_route` comprova avaliação; `LOCAL_AI_ELIGIBLE`
+comprova elegibilidade. Uso real exige `local_ai_compress_context` concluído,
+`job_id` não vazio, telemetria registrada e job terminal bem-sucedido. O
+contexto substituto do hook inclui essa metadata canônica para que a resposta
+final não confunda disponibilidade ou roteamento com inferência executada. A
+auditoria aceita esse marcador como evidência do job do hook e deduplica o
+mesmo `job_id` caso uma chamada MCP equivalente também esteja visível.
 
 ## Contexto de memória do repositório
 
@@ -459,6 +485,14 @@ ajustes, data e um recorte retrospectivo das conversas datadas de hoje. O bridge
 aplica uma allowlist antes de expor esses dados. Eles
 não alteram os totais operacionais, os agregados de hoje nem o histórico de
 jobs.
+
+A auditoria mede outputs observados; uma decisão de rota no mesmo chat não é
+correlação suficiente para encerrar outro output. Quando existe saída candidata
+sem inferência local bem-sucedida, o reason agregado é
+`candidate_output_without_successful_local_inference`. Assim, uma rota
+`DETERMINISTIC` só descreve o material que ela avaliou e não oculta outra saída
+extensa da mesma conversa. A auditoria continua sem persistir comandos ou
+conteúdo.
 
 O bridge expõe `local_ai.routing` dentro de `GET /usage`, com totais para hoje,
 semana, mês e total. As métricas são:

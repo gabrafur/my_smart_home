@@ -28,6 +28,13 @@ RTX disponível e helper não chamado; métricas de cobertura usam oportunidades
 e economia real, sem tratar estimativas como cobrança. Consulte
 `docs/LOCAL_AI_RTX_4070.md` para thresholds, retenção e a limitação do hook.
 
+Suficiência determinística significa que nenhuma interpretação por LLM ainda é
+necessária. Coleta determinística pode produzir texto grande que continua
+elegível para pós-processamento local; JSON estruturado, agregados escalares e
+resultados pequenos permanecem finais. Status, disponibilidade, rota e
+elegibilidade não provam uso da RTX: somente uma compressão concluída com
+`job_id`, telemetria registrada e job bem-sucedido autoriza essa afirmação.
+
 Para contratos, schemas, documentação bilíngue e mudanças multiarquivo,
 derive antes um inventário determinístico com arquivos, campos, comandos,
 módulos, headings e testes. Esse inventário é a entrada preferencial para
