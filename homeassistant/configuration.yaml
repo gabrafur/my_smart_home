@@ -31,9 +31,11 @@ lovelace:
       icon: mdi:chat-processing
       show_in_sidebar: true
       filename: dashboards/chat.yaml
-    vehicle_primary-viagens:
+    # Preserve the existing public route: changing this key changes the
+    # dashboard URL, so `/creta-viagens` would otherwise become a 404.
+    creta-viagens:
       mode: yaml
-      title: vehicle_primary
+      title: Creta
       icon: mdi:car
       show_in_sidebar: true
       filename: dashboards/vehicle_primary.yaml
