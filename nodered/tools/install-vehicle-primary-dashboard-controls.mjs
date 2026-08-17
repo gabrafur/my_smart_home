@@ -32,9 +32,53 @@ function addToGroup(groupId, ...ids) {
   group.nodes = [...new Set([...(group.nodes ?? []), ...ids])];
 }
 
+function removeNode(id) {
+  const index = flows.findIndex((node) => node.id === id);
+  if (index >= 0) flows.splice(index, 1);
+  byId.delete(id);
+  for (const node of flows) {
+    if (Array.isArray(node.nodes)) node.nodes = node.nodes.filter((item) => item !== id);
+    if (Array.isArray(node.scope)) node.scope = node.scope.filter((item) => item !== id);
+    if (Array.isArray(node.wires)) {
+      node.wires = node.wires.map((output) =>
+        Array.isArray(output) ? output.filter((item) => item !== id) : output,
+      );
+    }
+  }
+}
+
 const refreshDecision = required("b33e117e55bdb5ed");
 refreshDecision.name = "Coordenar refresh do vehicle_primary";
 refreshDecision.func = source("vehicle-primary-refresh-coordinator.js");
+refreshDecision.outputs = 3;
+refreshDecision.wires = [
+  ["8907830bb7f6c40c"],
+  ["eb4b8a519ab0bc28"],
+  ["vehicle_primary_manual_refresh_blocked_notification_v1"],
+];
+
+const forceRefresh = required("8907830bb7f6c40c");
+Object.assign(forceRefresh, {
+  action: "public_bindings.call",
+  entityId: [],
+  data: '{"role":"vehicle_primary","action":"force_refresh"}',
+  dataType: "json",
+  domain: "public_bindings",
+  service: "call",
+});
+
+const tripRefresh = required("16396e34ff530ac7");
+Object.assign(tripRefresh, {
+  action: "public_bindings.call",
+  entityId: [],
+  data: '{"role":"vehicle_primary","action":"refresh_trip_info"}',
+  dataType: "json",
+  domain: "public_bindings",
+  service: "call",
+});
+
+removeNode("77cf2dfe4ff36964");
+removeNode("684feca0f1585885");
 
 const normalizer = required("092625f2eb5cc156");
 if (!normalizer.func.includes("refresh_state_contract_v1")) {
@@ -166,6 +210,35 @@ upsert({
   wires: [],
 });
 
+upsert({
+  id: "vehicle_primary_manual_refresh_blocked_notification_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Avisar refresh manual bloqueado",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "persistent_notification.create",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"title":notification.title,"message":notification.message,"notification_id":notification.id}',
+  dataType: "jsonata",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "none",
+  blockInputOverrides: true,
+  domain: "persistent_notification",
+  service: "create",
+  x: 1010,
+  y: 900,
+  wires: [[]],
+});
+
 addToGroup(
   "790bea5f55d43bd0",
   "vehicle_primary_manual_refresh_button_v1",
@@ -176,6 +249,7 @@ addToGroup(
   "vehicle_primary_refresh_telemetry_tick_v1",
   "vehicle_primary_refresh_telemetry_v1",
   "vehicle_primary_refresh_mqtt_v1",
+  "vehicle_primary_manual_refresh_blocked_notification_v1",
 );
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 4)}\n`);

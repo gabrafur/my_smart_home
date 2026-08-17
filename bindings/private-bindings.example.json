@@ -49,12 +49,28 @@
             "source_type"
           ]
         },
+        "button.vehicle_primary_force_refresh": {
+          "target_entity_id": "button.example_vehicle_primary_force_refresh",
+          "state_mode": "passthrough"
+        },
+        "button.garagem_vehicle_primary_refresh_trip_info": {
+          "target_entity_id": "button.example_vehicle_primary_refresh_trip_info",
+          "state_mode": "passthrough"
+        },
         "switch.vehicle_primary_climate": {
           "target_entity_id": "switch.example_vehicle_primary_climate",
           "state_mode": "boolean"
         }
       },
       "services": {
+        "force_refresh": {
+          "target_service": "button.press",
+          "target_public_entity_id": "button.vehicle_primary_force_refresh"
+        },
+        "refresh_trip_info": {
+          "target_service": "button.press",
+          "target_public_entity_id": "button.garagem_vehicle_primary_refresh_trip_info"
+        },
         "climate_on": {
           "target_service": "switch.turn_on",
           "target_public_entity_id": "switch.vehicle_primary_climate"

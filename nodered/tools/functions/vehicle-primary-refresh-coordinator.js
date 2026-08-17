@@ -117,6 +117,26 @@ if (now < state.next_allowed_at) {
             ? `retry Bluelink em ${waitS}s`
             : `refresh vehicle_primary cooldown ${waitS}s`
     });
+    if (requestedReason === "manual_force" && waitingEvidence) {
+        const retryAt = new Date(state.next_allowed_at).toLocaleTimeString(
+            "pt-BR",
+            { hour: "2-digit", minute: "2-digit", second: "2-digit" }
+        );
+        msg.notification = {
+            title: "Atualização do Creta não enviada",
+            message:
+                "Já existe uma tentativa de atualização aguardando resposta " +
+                `do Bluelink. O clique foi recebido, mas uma nova consulta não ` +
+                `foi enviada para evitar excesso de chamadas. Próxima tentativa ` +
+                `automática em ${waitS} s, às ${retryAt}.`,
+            id: "vehicle_primary_refresh_blocked"
+        };
+        node.log?.(
+            "VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard " +
+            `reason=backoff remaining_seconds=${waitS}`
+        );
+        return [null, null, msg];
+    }
     return null;
 }
 
@@ -163,4 +183,4 @@ node.status({
         : `Bluelink #${state.attempts}: refresh real`
 });
 
-return [msg, msg];
+return [msg, msg, null];

@@ -72,7 +72,37 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
 `input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
 `reason=manual_force`: pode quebrar cooldown de sucesso, mas nunca o backoff de
-uma tentativa em voo nem o piso de 15 minutos do coordinator Python.
+uma tentativa em voo nem o piso de 15 minutos do coordinator Python. Se o clique
+manual for bloqueado por uma tentativa em backoff, o Home Assistant cria
+imediatamente uma notificação persistente informando que nenhuma nova consulta
+foi enviada e mostrando o tempo e o horário da próxima tentativa automática.
+
+O carregamento inicial da integração não espera por `/tripinfo`. Esse endpoint
+é opcional e pode responder muito lentamente no backend brasileiro; bloquear
+nele impediria a criação das entidades de status e faria o painel continuar
+mostrando estado restaurado antigo. No startup o odômetro-base é registrado e a
+carga de hoje/ontem é iniciada em segundo plano, com timeout de 120 segundos,
+uma nova tentativa após 60 segundos e deduplicação por veículo. Movimento do
+odômetro agenda outra carga, e existe uma reconciliação de segurança a cada seis
+horas mesmo que nenhum movimento tenha sido observado pelo Home Assistant. O
+botão específico de viagens continua disponível para atualização explícita.
+
+Os aliases `button.vehicle_primary_force_refresh` e
+`button.garagem_vehicle_primary_refresh_trip_info` publicados por
+`public_bindings` são estados sintéticos para leitura e não podem receber
+`button.press` diretamente. O Node-RED chama as ações allowlisted
+`vehicle_primary.force_refresh` e `vehicle_primary.refresh_trip_info` pelo
+serviço `public_bindings.call`, que resolve internamente as entidades privadas.
+Chamadas redundantes de `homeassistant.update_entity` nos aliases sintéticos
+foram removidas; a atualização chega pelos eventos das entidades-fonte após o
+serviço bloqueante terminar.
+
+O diagnóstico `sensor.vehicle_primary_refresh_coordinator` é uma entidade MQTT
+pública nativa, sem alias intermediário em `public_bindings`. Isso evita disputa
+de ID e sufixos dependentes da ordem de inicialização. A descoberta publica uma
+tombstone para o tópico-fonte transitório usado durante a migração. No painel,
+o backoff da atualização e o comando independente de luzes/buzina são exibidos
+em cards separados.
 
 As secoes datadas abaixo preservam o historico da investigacao. Onde falarem
 em `_force_ccs2_status_endpoint()` ou `_install_br_wake_force_refresh()`, leia
@@ -284,18 +314,18 @@ mas intencionalmente deixado assim em vez de mexer no entity registry ao
 vivo — usar o entity_id real (`garagem_vehicle_primary_*`) em qualquer automação nova
 que referencie o botao/sensor de trip info.
 
-### Por que nao busca automaticamente a cada poll
+### Quando o histórico é atualizado
 
 `/tripinfo` e uma chamada de API separada do status/localizacao normal.
-Chamar isso no mesmo ritmo do refresh de localizacao (1-5 min enquanto
-"fora") multiplicaria as chamadas a API da Hyundai sem necessidade — dados
-de viagem so mudam quando uma viagem termina, nao a cada minuto durante
-ela. Em vez disso, `nodered/flows.json` (`vehicle_primary_arrival_actions` →
-`vehicle_primary_trip_refresh`) pressiona esse botão automaticamente **uma
-vez, exatamente quando o vehicle_primary chega em casa** (mesmo evento de "chegada"
-que liga o refletor de seguranca, filtrado para `arrival_source_type ===
-"vehicle_primary"`) — o momento natural em que uma viagem acabou de ser concluida e
-vai aparecer no tripinfo do dia.
+Chamar isso no mesmo ritmo do refresh de localização multiplicaria as chamadas
+à API da Hyundai sem necessidade — dados de viagem só mudam quando uma viagem
+termina, não a cada minuto durante ela. A integração consulta hoje/ontem em
+segundo plano no startup, após avanço do odômetro e no máximo a cada seis horas
+como reconciliação. Além disso, `nodered/flows.json`
+(`vehicle_primary_arrival_actions` → `vehicle_primary_trip_refresh`) pressiona
+o botão automaticamente quando o veículo chega em casa, momento natural em que
+uma viagem encerrada deve aparecer no endpoint. Todas essas rotas preservam a
+deduplicação e não bloqueiam a disponibilidade das entidades de status.
 
 ### Testado ao vivo (2026-07-10)
 
@@ -580,6 +610,12 @@ O dashboard Lovelace `vehicle_primary-viagens` (titulo "vehicle_primary",
 viagens, bateria 12 V, historico, comandos fisicos e diagnostico. A area
 "Atualizacao dos dados" mostra o estado real do coordenador, a ultima consulta,
 o deadline de retry/cooldown e o botao `Forcar atualizacao agora`.
+
+O mapa e rotulado como **ultimo estacionamento**, pois a API Hyundai Bluelink
+Brasil rejeita `/location/park` enquanto o veiculo esta em movimento. Com o
+motor ligado, o painel avisa explicitamente que o ponto e o ultimo estacionamento
+confirmado e exibe sua idade; ele nunca apresenta esse timestamp como uma
+posicao GPS atual nem o avanca sem uma nova coordenada confirmada pelo backend.
 
 As viagens renderizadas vem de
 `sensor.garagem_vehicle_primary_recent_trip_info` e cobrem hoje e ontem. O consumo em

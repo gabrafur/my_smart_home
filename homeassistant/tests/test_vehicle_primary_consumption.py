@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from unittest.mock import patch
 
 from custom_components.kia_uvo.coordinator import HyundaiKiaConnectDataUpdateCoordinator
@@ -177,7 +177,76 @@ async def main() -> None:
     assert maximum_window["period_start"] == "19981231"
     assert maximum_window["period_end"] == "19990101"
 
-    print("vehicle_primary consumption estimate: 5 cenários aprovados.")
+    trip_refresh_calls = []
+
+    class FakeTask:
+        @staticmethod
+        def done():
+            return False
+
+    class BackgroundHass:
+        def async_create_background_task(self, coro, name):
+            trip_refresh_calls.append((name, coro))
+            return FakeTask()
+
+    async def refresh_trip_info(vehicle_id):
+        trip_refresh_calls.append(vehicle_id)
+
+    vehicle = SimpleNamespace(_odometer=(1000, "km"))
+    coordinator = SimpleNamespace(
+        hass=BackgroundHass(),
+        vehicle_manager=SimpleNamespace(vehicles={VEHICLE_ID: vehicle}),
+        _last_trip_refresh_odometer={},
+        _trip_history_initialized=set(),
+        _trip_refresh_tasks={},
+        _last_trip_refresh_success_at={},
+        async_refresh_day_trip_info=refresh_trip_info,
+    )
+    coordinator._schedule_trip_info_refresh = MethodType(
+        HyundaiKiaConnectDataUpdateCoordinator._schedule_trip_info_refresh,
+        coordinator,
+    )
+    coordinator._async_refresh_trip_info_with_retry = MethodType(
+        HyundaiKiaConnectDataUpdateCoordinator._async_refresh_trip_info_with_retry,
+        coordinator,
+    )
+    await HyundaiKiaConnectDataUpdateCoordinator._async_refresh_trip_info_on_new_distance(
+        coordinator
+    )
+    assert len(trip_refresh_calls) == 1
+    assert "startup" in trip_refresh_calls[0][0]
+    assert coordinator._last_trip_refresh_odometer[VEHICLE_ID] == 1000
+
+    # The fake scheduler must close the unexecuted coroutine cleanly.
+    trip_refresh_calls[0][1].close()
+    coordinator._trip_refresh_tasks.clear()
+    coordinator._last_trip_refresh_success_at[VEHICLE_ID] = dt.datetime.now(UTC)
+
+    vehicle._odometer = (1001, "km")
+    await HyundaiKiaConnectDataUpdateCoordinator._async_refresh_trip_info_on_new_distance(
+        coordinator
+    )
+    assert len(trip_refresh_calls) == 2
+    assert "odometer_movement" in trip_refresh_calls[1][0]
+    trip_refresh_calls[1][1].close()
+    coordinator._trip_refresh_tasks.clear()
+
+    # No movement and a recent successful load must not hit /tripinfo again.
+    await HyundaiKiaConnectDataUpdateCoordinator._async_refresh_trip_info_on_new_distance(
+        coordinator
+    )
+    assert len(trip_refresh_calls) == 2
+
+    # The six-hour fallback repairs missed movement or delayed backend data.
+    coordinator._last_trip_refresh_success_at[VEHICLE_ID] -= dt.timedelta(hours=7)
+    await HyundaiKiaConnectDataUpdateCoordinator._async_refresh_trip_info_on_new_distance(
+        coordinator
+    )
+    assert len(trip_refresh_calls) == 3
+    assert "periodic_fallback" in trip_refresh_calls[2][0]
+    trip_refresh_calls[2][1].close()
+
+    print("vehicle_primary consumption estimate: 8 cenários aprovados.")
 
 
 if __name__ == "__main__":

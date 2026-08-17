@@ -57,6 +57,12 @@ const discovery = {
 
 return [[
     {
+        topic: "homeassistant/sensor/vehicle_primary_refresh_coordinator_source/config",
+        payload: "",
+        retain: true,
+        qos: 1
+    },
+    {
         topic: "homeassistant/sensor/vehicle_primary_refresh_coordinator/config",
         payload: JSON.stringify(discovery),
         retain: true,

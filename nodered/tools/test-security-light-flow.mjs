@@ -250,7 +250,11 @@ scenario("09 vehicle_primary chegando encerra viagem e publica chegada", () => {
   assert.equal(detected.payload.arrival_source_type, "vehicle_primary");
   const actions = run("vehicle_primary_arrival_actions", detected, flow, geoEnv);
   assert.equal(actions[1], detected);
-  assert.equal(byId.get("vehicle_primary_trip_refresh").action, "button.press");
+  assert.equal(byId.get("vehicle_primary_trip_refresh").action, "public_bindings.call");
+  assert.deepEqual(JSON.parse(byId.get("vehicle_primary_trip_refresh").data), {
+    role: "vehicle_primary",
+    action: "refresh_trip_info",
+  });
 });
 
 scenario("10 vehicle_primary desligado ao chegar", () => {
