@@ -8,7 +8,13 @@ import { fileURLToPath } from "node:url";
 const defaultRepoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const memoryRoot = ".codex/memories";
 const canonicalIndex = `${memoryRoot}/projeto/indice.md`;
-const publicAgentSkill = ".agents/skills/rtx-context-optimizer/SKILL.md";
+const maxAgentInstructionBytes = 16 * 1024;
+const publicAgentFiles = new Set([
+  ".agents/skills/prompt-improver/SKILL.md",
+  ".agents/skills/prompt-improver/agents/openai.yaml",
+  ".agents/skills/rtx-context-optimizer/SKILL.md",
+  ".agents/skills/rtx-context-optimizer/agents/openai.yaml",
+]);
 const requiredFiles = [
   "AGENTS.md",
   "MEMORY.md",
@@ -24,6 +30,7 @@ const privateRuntimePrefixes = [
   ".local-secrets/",
 ];
 const repoPathPrefixes = [
+  ".agents/skills/",
   ".codex/",
   "docs/",
   "homeassistant/",
@@ -65,7 +72,7 @@ function isPublicMemoryFile(file) {
 
 function isPrivateRuntimeFile(file) {
   return (privateRuntimePrefixes.some((prefix) => file.startsWith(prefix))
-      && file !== publicAgentSkill)
+      && !publicAgentFiles.has(file))
     || (file.startsWith(".codex/")
       && file !== ".codex/hooks.json"
       && !isPublicMemoryFile(file));
@@ -265,6 +272,14 @@ export function checkPublicMemory({ repoRoot = defaultRepoRoot, trackedFiles } =
   }
 
   const agents = readTracked("AGENTS.md");
+  if (Buffer.byteLength(agents, "utf8") > maxAgentInstructionBytes) {
+    errors.push(`AGENTS.md: instruction preload exceeds ${maxAgentInstructionBytes} bytes`);
+  }
+  for (const skill of [...publicAgentFiles].filter((file) => file.endsWith("/SKILL.md"))) {
+    if (!agents.includes(skill)) {
+      errors.push(`AGENTS.md: canonical repository skill is not declared: ${skill}`);
+    }
+  }
   let previousAuthorityOffset = -1;
   for (const marker of authorityMarkers) {
     const offset = agents.indexOf(marker);

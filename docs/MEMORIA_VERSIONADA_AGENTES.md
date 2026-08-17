@@ -41,6 +41,13 @@ do prompt. A única peça sempre pequena o bastante para consulta inicial é o
 índice canônico `.codex/memories/projeto/indice.md`; `MEMORY.md` existe para
 compatibilidade e é conceitualmente redundante, não outra fonte canônica.
 
+Regras que precisam valer antes de qualquer recuperação permanecem no
+`AGENTS.md` da raiz. Procedimentos especializados e acionados sob demanda ficam
+nas skills públicas explicitamente autorizadas em `.agents/skills/`; eles não
+devem ser duplicados como memória temática. Assim, memória continua sendo
+conhecimento recuperável, enquanto instruções obrigatórias e workflows mantêm
+seus próprios mecanismos de descoberta.
+
 Para cada tarefa, o agente deve primeiro decidir se histórico do repositório é
 necessário. Em caso negativo, não carrega memória temática. Em caso positivo,
 usa primeiro busca determinística (`rg`, índice, nomes, headings e metadados),

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Melhorar prompt"
+  short_description: "Reescreve prompts técnicos com critérios claros"
+  default_prompt: "Use $prompt-improver para reescrever este pedido como um prompt técnico claro e copiável."

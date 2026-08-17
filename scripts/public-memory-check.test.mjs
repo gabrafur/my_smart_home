@@ -18,6 +18,9 @@ function createFixture() {
 3. documentação operacional atual;
 4. decisões arquiteturais vigentes;
 5. memória versionada dos agentes.
+
+\`.agents/skills/prompt-improver/SKILL.md\`
+\`.agents/skills/rtx-context-optimizer/SKILL.md\`
 `,
     "MEMORY.md": `# Índice
 
@@ -41,6 +44,8 @@ Consulte [o guia](../../../docs/MEMORIA_VERSIONADA_AGENTES.md) e rode \`make val
 `,
     "docs/FONTE.md": "# Fonte\n",
     "docs/MEMORIA_VERSIONADA_AGENTES.md": "# Governança da memória\n",
+    ".agents/skills/prompt-improver/SKILL.md": "---\nname: prompt-improver\ndescription: Improve prompts.\n---\n",
+    ".agents/skills/rtx-context-optimizer/SKILL.md": "---\nname: rtx-context-optimizer\ndescription: Optimize context.\n---\n",
     "scripts/weekly-docs-review.prompt.md": `# Revisão
 
 ## Memória versionada dos agentes
@@ -114,7 +119,11 @@ test("rejects tracked private runtime paths while allowing public Codex memory",
     ".agent-history/turns.jsonl",
     ".agents/runtime-state.json",
     ".agents/skills/other-skill/SKILL.md",
+    ".agents/skills/prompt-improver/SKILL.md",
+    ".agents/skills/prompt-improver/agents/openai.yaml",
+    ".agents/skills/prompt-improver/references/unapproved.md",
     ".agents/skills/rtx-context-optimizer/SKILL.md",
+    ".agents/skills/rtx-context-optimizer/agents/openai.yaml",
     ".codex/hooks.json",
     ".codex/session-state.json",
   );
@@ -123,7 +132,11 @@ test("rejects tracked private runtime paths while allowing public Codex memory",
   assert.ok(result.errors.some((error) => error.startsWith(".agent-history/turns.jsonl:")));
   assert.ok(result.errors.some((error) => error.startsWith(".agents/runtime-state.json:")));
   assert.ok(result.errors.some((error) => error.startsWith(".agents/skills/other-skill/SKILL.md:")));
+  assert.ok(result.errors.some((error) => error.startsWith(".agents/skills/prompt-improver/references/unapproved.md:")));
+  assert.ok(result.errors.every((error) => !error.startsWith(".agents/skills/prompt-improver/SKILL.md:")));
+  assert.ok(result.errors.every((error) => !error.startsWith(".agents/skills/prompt-improver/agents/openai.yaml:")));
   assert.ok(result.errors.every((error) => !error.startsWith(".agents/skills/rtx-context-optimizer/SKILL.md:")));
+  assert.ok(result.errors.every((error) => !error.startsWith(".agents/skills/rtx-context-optimizer/agents/openai.yaml:")));
   assert.ok(result.errors.every((error) => !error.startsWith(".codex/hooks.json:")));
   assert.ok(result.errors.some((error) => error.startsWith(".codex/session-state.json:")));
 });
@@ -159,6 +172,18 @@ memories/**
   assert.ok(result.errors.some((error) => error.includes("duplicate level-two heading")));
   assert.ok(result.errors.some((error) => error.includes("canonical memory glob is missing")));
   assert.ok(result.errors.some((error) => error.includes("obsolete memory glob")));
+});
+
+test("rejects oversized preload and missing canonical skill references", () => {
+  const fixture = createFixture();
+  const agentsPath = path.join(fixture.repoRoot, "AGENTS.md");
+  const agents = fs.readFileSync(agentsPath, "utf8")
+    .replace(".agents/skills/prompt-improver/SKILL.md", "prompt skill removed");
+  fs.writeFileSync(agentsPath, `${agents}\n${"x".repeat(17_000)}\n`);
+
+  const result = checkPublicMemory(fixture);
+  assert.ok(result.errors.some((error) => error.includes("instruction preload exceeds")));
+  assert.ok(result.errors.some((error) => error.includes("prompt-improver/SKILL.md")));
 });
 
 test("rejects a weekly prompt that treats MEMORY.md as canonical", () => {
