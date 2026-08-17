@@ -88,7 +88,10 @@ test("every local private-state destination is ignored and untracked", () => {
       cwd: repoRoot,
       stdio: "ignore",
     }));
-    execFileSync("git", ["check-ignore", "--quiet", "--no-index", "--", item.destination], {
+    const ignoreCandidate = item.kind === "directory"
+      ? path.posix.join(item.destination, ".public-validation-sentinel")
+      : item.destination;
+    execFileSync("git", ["check-ignore", "--quiet", "--no-index", "--", ignoreCandidate], {
       cwd: repoRoot,
       stdio: "ignore",
     });
