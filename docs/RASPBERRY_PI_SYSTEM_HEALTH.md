@@ -128,11 +128,11 @@ recuperados e candidatos. Falhas registram a etapa e o codigo, interrompem o
 script e geram alerta com cooldown. O dashboard existente ganhou status,
 inodes, tendencias, ultima manutencao e espaco recuperado.
 
-O botão **Executar Storage Health** do dashboard emite o evento Home Assistant
-`storage_health_manual_run`. O Node-RED o encaminha diretamente para a leitura
-dos sensores existentes e a avaliação de limites/tendência, sem executar
-`storage-maintenance.sh --apply` nem a inspeção profunda. Assim o acionamento
-manual atualiza o diagnóstico e os alertas sem disparar limpeza de arquivos.
+O botão **Executar Storage Health** do dashboard pede confirmação e emite o
+evento Home Assistant `storage_health_manual_run`. O Node-RED o encaminha para
+`/opt/storage-health-maintenance.sh --apply` e, em paralelo, atualiza a leitura
+dos sensores existentes e a avaliação de limites/tendência. A manutenção manual
+segue a mesma allowlist da execução diária; não executa a inspeção profunda.
 
 O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
 e uma no celular. Os históricos ficam no fim da página, redistribuídos com os

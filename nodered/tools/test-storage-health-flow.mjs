@@ -60,7 +60,7 @@ const evaluate = (flow, used, now = NOW, free = 20) => health(
 assert.equal(node("storage_health_tick").repeat, "900");
 assert.equal(node("storage_manual_health").type, "server-events");
 assert.equal(node("storage_manual_health").eventType, "storage_health_manual_run");
-assert.deepEqual(node("storage_manual_health").wires, [["storage_read_ha"]]);
+assert.deepEqual(node("storage_manual_health").wires, [["storage_exec_maintenance", "storage_read_ha"]]);
 assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maintenance.sh --dry-run --deep");
 assert.equal(node("storage_notify").action, "notify.send_message");
