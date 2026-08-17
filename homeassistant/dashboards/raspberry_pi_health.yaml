@@ -75,14 +75,15 @@ views:
             square: false
             cards:
               - type: button
+                entity: input_button.storage_health_manual_run
                 name: Executar Storage Health
                 icon: mdi:harddisk
                 show_state: false
                 tap_action:
                   action: perform-action
-                  perform_action: event.fire
-                  data:
-                    event_type: storage_health_manual_run
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.storage_health_manual_run
                   confirmation:
                     text: A manutenção remove backups de flows e logs npm expirados. Deseja continuar?
               - type: button
