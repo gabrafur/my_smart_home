@@ -12,183 +12,12 @@ Execute each user request directly. On the first user request of a conversation,
 
 ---
 
-## Prompt Improvement Policy
-
-When the user explicitly asks for prompt improvement, rewrite the original request while preserving its intent, scope, and supplied technical context.
-
-Improve the prompt where useful by clarifying:
-
-* objective;
-* current or observed behavior;
-* desired behavior;
-* investigation expectations;
-* scope;
-* constraints;
-* acceptance criteria;
-* validation steps;
-* regression checks;
-* safety expectations;
-* reversibility or rollback expectations;
-* documentation expectations;
-* expected final report.
-
-For debugging or investigation tasks, prefer an execution flow such as:
-
-1. understand the existing implementation and architecture;
-2. confirm or reproduce the reported behavior;
-3. trace the relevant data or execution path;
-4. identify the root cause;
-5. implement the smallest reliable correction;
-6. validate the correction;
-7. check for regressions;
-8. document findings and changes.
-
-For implementation tasks, make the desired result and validation criteria explicit.
-
-For infrastructure, Home Assistant, Node-RED, data engineering, CI/CD, Git, integrations, networking, containers, operating systems, or production-adjacent work, favor:
-
-* understanding the current architecture before modifying it;
-* root-cause fixes instead of symptom masking;
-* reuse of existing components and conventions;
-* incremental and reversible changes;
-* preservation of existing behavior unless explicitly requested otherwise;
-* validation after modifications;
-* testing the complete affected execution path when practical;
-* avoiding destructive operations when a safer alternative exists.
-
-Do not arbitrarily expand the task.
-
-Do not invent repository structure, filenames, entity IDs, branches, APIs, services, credentials, architecture, business rules, tools, infrastructure, or technical requirements that are not provided or reasonably implied.
-
-Do not convert optional ideas into mandatory requirements.
-
-When useful improvements beyond the original request are identified, keep them clearly separated as optional suggestions.
-
-Correct technical terminology when useful without changing the user's intended meaning.
-
-If the original request is already precise, improve it lightly instead of making it unnecessarily verbose.
-
-The improved prompt should be detailed enough that, after confirmation, it can be treated as the execution specification without needing to reinterpret the original request.
-
----
-
-## Copy-Safe Improved Prompt Output Policy
-
-The improved prompt must be easy to copy directly from the Codex response and paste into another Codex or ChatGPT conversation without losing its Markdown structure.
-
-When providing an improved prompt, output it inside exactly one fenced code block.
-
-The content inside that block must contain the actual Markdown source of the improved prompt, not rendered Markdown.
-
-This means that Markdown syntax such as:
-
-* `#` and `##` headings;
-* numbered lists;
-* bullet lists;
-* checklists;
-* indentation;
-* inline code;
-* paths;
-* commands;
-* code blocks;
-* URLs;
-* quoted values;
-
-must remain visible literally inside the copyable block.
-
-Do not use blockquotes (`>`) as the outer container for the improved prompt.
-
-Do not split the improved prompt across multiple outer code blocks merely for presentation.
-
-Do not put explanations, model recommendations, notes, or commentary inside the improved-prompt block unless they are intentionally part of the task specification.
-
-Do not escape normal Markdown characters merely to make the rendered response look different.
-
-Preserve meaningful blank lines and indentation.
-
-### Fence safety
-
-The outer fence used for the improved prompt must be longer than any consecutive backtick sequence contained inside the improved prompt.
-
-Prefer four backticks for the outer fence:
-
-````text
-# Objective
-
-Investigate the reported issue.
-
-## Validation
-
-Run the relevant tests.
-
-```bash
-pytest tests/
-```
-````
-
-If the improved prompt itself contains a four-backtick sequence, use five backticks for the outer fence instead.
-
-In general:
-
-> outer fence length = longest internal backtick sequence + at least one
-
-Use `markdown` or `text` as the outer code-block language when useful.
-
-The content copied from the block must be immediately usable as a new chat prompt without cleanup.
-
-### Prompt structure
-
-For substantial engineering tasks, prefer a structure similar to:
-
-# Objective
-
-Describe the result that must be achieved.
-
-# Context
-
-Preserve relevant information supplied by the user.
-
-# Current Behavior
-
-Describe the observed issue when applicable.
-
-# Desired Behavior
-
-Describe the expected outcome.
-
-# Investigation
-
-Explain what should be inspected or verified before modifications.
-
-# Implementation Requirements
-
-Describe required changes and constraints.
-
-# Validation
-
-Describe tests and checks that must demonstrate correctness.
-
-# Regression Checks
-
-Describe existing behavior that must remain functional.
-
-# Git / Delivery Requirements
-
-Include branch, commit, PR, or repository requirements only when relevant or requested.
-
-# Documentation
-
-Describe documentation expectations when relevant.
-
-# Final Report
-
-Describe what the executing agent should report when finished.
-
-Do not mechanically add every section.
-
-Use only sections that make the task clearer.
-
-For simple tasks, keep the improved prompt compact.
+## Prompt improvement
+
+Do not rewrite prompts automatically. When the user explicitly asks to improve,
+rewrite, structure, or make a prompt copy-safe, use the repository skill
+`.agents/skills/prompt-improver/SKILL.md`. Preserve the request's intent, scope,
+constraints, technical context, and optionality.
 
 ---
 
@@ -312,175 +141,26 @@ Do not impose an initial confirmation gate. Treat `continue` as ordinary user in
 
 ---
 
-## Local AI / RTX Context Compression Policy
+## Local AI / RTX context compression
 
-There is no global prompt hook and no Local AI pre-analysis before work starts.
-Availability is checked lazily through the global `local-ai-rtx` MCP server
-only when deterministic preprocessing identifies a large eligible candidate.
-This requires no user confirmation or special follow-up message.
+Use deterministic tools first. Do not run Local AI pre-analysis or status at
+conversation startup. When deterministic preprocessing leaves a large,
+non-sensitive, compressible candidate of roughly 1,200 tokens or more, use the
+repository skill `.agents/skills/rtx-context-optimizer/SKILL.md` and the global
+`local-ai-rtx` MCP server. Do not ask for confirmation merely to route eligible
+context.
 
-Do not run the full SSH/WSL/GPU availability check again in the same conversation unless:
+Never send secrets or private runtime to Local AI and never delegate final
+architecture, security, production, migration, destructive-operation, RCA, or
+PR approval decisions. Use only the configured endpoint; never silently use
+`127.0.0.1:11434`. On failure, revalidate and retry at most once, then continue
+with the selected primary model without repairing, restarting, installing, or
+reconfiguring Local AI infrastructure.
 
-* a Local AI request fails;
-* it times out;
-* the endpoint refuses a connection;
-* the selected local model becomes unavailable.
-
-At most once, revalidate and retry the failed local request.
-
-After that, fall back normally without loops or repair attempts.
-
-When available, machine-local configuration supplies the remote Ollama endpoint and default model.
-
-Never silently use `127.0.0.1:11434` in this environment.
-
-The configured endpoint is the only default, while explicit CLI options and `LOCAL_AI_ENDPOINT` / `LOCAL_AI_MODEL` remain overrides.
-
-`LOCAL_AI_ENABLED=0` disables Local AI for a session.
-
-`LOCAL_AI_FORCE=1` is diagnostic only and does not authorize unsuitable delegation.
-
-`/home/gabriel/.local/bin/local-ai-preflight --json` is the manual health check.
-
-Keep deterministic tools first, including:
-
-* `rg`;
-* Git;
-* parsers;
-* tests;
-* linters;
-* type checkers;
-* SQL;
-* project scripts.
-
-The global `local-ai-rtx` MCP server is the canonical Local AI interface. Use
-it as the default first-pass route only when bounded work will materially
-compress context or cheaply classify it, such as:
-
-* long logs or test output;
-* large diffs;
-* repetitive extraction;
-* relevant-file triage;
-* strict structured JSON generation.
-
-### Automatic local delegation
-
-Do not call `local_ai_status` at conversation start. At the first large,
-non-sensitive eligible candidate, call it lazily and make the routing decision
-automatically. Do not ask the user to enable Local AI, repeat a special prompt,
-select a model, or run a helper command.
-
-Before placing a large, non-sensitive body of text into the OpenAI/Codex context,
-use deterministic preprocessing and select only the relevant material. For a
-selected body of roughly 1,200 OpenAI tokens (about 4,800 ordinary text
-characters) or more, call `local_ai_route` with metadata. When it returns an
-eligible, materially beneficial route, call `local_ai_compress_context` and
-give the primary model only its bounded structured result. Skip inference when
-the material is already small or deterministic tools resolve it directly.
-
-Choose the MCP `task_type` from the evidence at hand:
-
-* `review-diff` for a substantial Git diff;
-* `summarize-log` for long logs, stack traces, or command output;
-* `analyze-tests` for substantial test failures;
-* `inspect-files` for a bounded set of candidate source files;
-* `classify-error` for repeated or noisy errors.
-* `summarize-document` for extensive README, contracts, installation guides,
-  and other public documentation;
-* `summarize-memory` only after deterministic retrieval selects relevant
-  public thematic memory.
-
-Pass only the relevant bounded input to the MCP, consume its concise JSON result,
-and continue the primary task from that result. Do not paste the full raw input
-into the primary-model context when the local result is sufficient. This is the
-default behavior for every eligible task and requires no extra wording from the
-user.
-
-When orchestrating `exec_command` through code mode, keep a potentially large
-raw result inside the orchestration call until routing completes. Do not emit it
-with `text(...)` first. Project-scoped `PostToolUse` hooks may enforce this as a
-guardrail, but the primary agent must still validate that the structured result
-preserved the needed facts.
-
-For short requests or evidence that deterministic tools can answer directly,
-skip inference. Never create dummy GPU work merely to change dashboard state.
-The telemetry-backed dashboard is updated automatically whenever a local job is
-actually useful and runs.
-
-Use precise language for Local AI state. `local_ai_status`, RTX availability,
-`local_ai_route` and `LOCAL_AI_ELIGIBLE` do not prove that local inference ran.
-Say that the RTX was actually used only when `local_ai_compress_context`
-completed successfully and returned a non-empty `job_id` with
-`telemetry_recorded=true`, or when a canonical PostToolUse replacement carries
-equivalent `executed=true` and `success=true` metadata. Otherwise say only that
-the RTX was available, evaluated, eligible, skipped, unavailable or failed, as
-the observed state warrants.
-
-For the legacy MCP field `deterministic_preprocessing_available`, `true` means
-that deterministic work completely resolves the result and no LLM
-interpretation remains. Do not set it merely because deterministic collection
-or filtering happened. A large textual result that still needs interpretation
-may be eligible for Local AI post-processing after deterministic collection.
-
-Return only concise, relevant, structured results to the selected GPT-5.6 model.
-
-Treat Local AI as non-authoritative.
-
-Do not delegate to Local AI:
-
-* final architecture decisions;
-* destructive or irreversible operations;
-* production decisions;
-* migrations;
-* final RCA;
-* final PR approval.
-
-If Local AI is unavailable, keep the selected Luna/Terra/Sol routing unchanged and continue normally.
-
-Never automatically:
-
-* install;
-* restart;
-* wake;
-* repair;
-* reconfigure;
-
-Local AI infrastructure.
-
-The Local AI helper records metadata-only private telemetry when present.
-
-It must not persist:
-
-* prompts;
-* source input;
-* model output;
-* secrets.
-
-`OpenAI tokens avoided` means the measured or explicitly estimated reduction between input context processed locally and the concise result passed onward.
-
-It is not a claim that local inference tokens equal OpenAI tokens or money saved.
-
-<!-- BEGIN CODEX LOCAL AI RTX -->
-## Global Local AI / RTX
-
-The global `local-ai-rtx` MCP server is the canonical Local AI interface. Do
-not classify Local AI as unavailable merely because a repository helper or
-shell command is inaccessible.
-
-For large non-sensitive logs, diffs, test output, documentation, file triage,
-or retrieved public memory:
-
-1. use deterministic preprocessing and select only relevant material;
-2. use `local_ai_route` with metadata;
-3. when its expected benefit is material, use `local_ai_compress_context`;
-4. give the primary model only the condensed relevant result.
-
-`local_ai_status` runs lazily at the first eligible candidate; call it again
-only before declaring Local AI unavailable after an observed failure.
-Local AI is optional and failures must fall back normally;
-they never justify changing the selected GPT-5.6 model or repairing GPU/Ollama
-infrastructure automatically.
-<!-- END CODEX LOCAL AI RTX -->
+Do not expose a large raw tool result before routing finishes. Claim actual RTX
+use only after successful compression returns the required execution and
+telemetry metadata. Local telemetry is metadata-only and must never persist
+prompts, source input, model output, or secrets.
 
 # Contratos específicos deste repositório
 
@@ -588,33 +268,11 @@ uma alegação de relevância semântica não mensurada.
 
 ## Local AI do projeto
 
-Prefira ferramentas determinísticas (`rg`, Git, parsers, testes, linters, type
-checkers, SQL e scripts do projeto) a qualquer LLM. O MCP global
-`local-ai-rtx` é a interface canônica e padrão para a primeira passagem local;
-use `local_ai_status`, `local_ai_route` e, quando elegível,
-`local_ai_compress_context`. O helper `./scripts/local-ai/local-ai` permanece
-somente para diagnósticos e testes locais do projeto.
-
-A skill canônica desse fluxo é
-`.agents/skills/rtx-context-optimizer/SKILL.md`. Ela é versionada e descoberta
-no escopo deste repositório; não mantenha outra cópia em
-`~/.agents/skills/`.
-
-Neste projeto, para documentação, memória pública, arquivos candidatos, diffs,
-logs, saídas de teste ou scanner e erros repetidos, selecione primeiro o menor
-material relevante. A partir de aproximadamente 1.200 tokens estimados, chame
-`local_ai_route` antes de enviar texto ao contexto principal e comprima somente
-rotas elegíveis, sempre sujeitas a compressibilidade e economia esperada. Use
-`summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
-`analyze-tests`, `summarize-log` ou `classify-error`, conforme o material.
-
-Não existe preflight global no envio do prompt. A primeira verificação de
-disponibilidade é preguiçosa: ocorre automaticamente somente quando uma saída
-grande e elegível aparece, antes de `local_ai_route`, e no máximo uma vez por
-conversa enquanto as chamadas funcionarem. O hook `PostToolUse` deste projeto é
-uma proteção complementar para saídas grandes de `Bash`; ele não exige ação do
-usuário. Em chamadas por code mode, não exponha deliberadamente o corpo bruto
-com `text(...)` antes de concluir o roteamento.
+O procedimento canônico fica em
+`.agents/skills/rtx-context-optimizer/SKILL.md`; não mantenha cópia em
+`~/.agents/skills/`. O MCP global `local-ai-rtx` é a interface de inferência e
+`./scripts/local-ai/local-ai` permanece somente para diagnóstico e testes do
+projeto.
 
 A revisão interativa do hook é uma etapa operacional obrigatória depois de um
 novo clone ou instalação, da reconstrução do contêiner que executa o Codex e de
@@ -624,24 +282,6 @@ mostrar `PostToolUse` com `Installed = 1` e `Active = 1`. Neste ambiente, abra o
 CLI com `docker compose exec -w /workspace ai-bridge codex`. A aprovação não
 pode ser automatizada nem substituída por opção de bypass; se estiver ausente,
 instrua o usuário a revisar e habilitar o hook interativamente.
-
-Para contratos, schemas, documentação bilíngue e mudanças que atravessam muitos
-arquivos, gere primeiro um inventário determinístico derivado (arquivos, campos,
-comandos, módulos, headings e nomes de testes) e roteie esse inventário com
-`summarize-document` ou `inspect-files`. Esse formato também é elegível quando
-o código bruto seria repetitivo: a saída local serve para crosswalk inicial,
-checagem de cobertura documental e triagem de pendências.
-
-Não considere uma compressão bem-sucedida apenas porque a inferência terminou.
-Se o JSON omitir requisitos, arquivos ou riscos críticos esperados, descarte-o
-e use a evidência determinística; registre a chamada, mas não alegue preservação
-de informação. Prefira inventário derivado a blocos extensos de código, pois o
-modelo local demonstrou retenção melhor nesse formato.
-
-Não use a RTX para atualizar painel, descobrir palavra em arquivo, dados
-estruturados que uma ferramenta resolve, segredos, decisões finais,
-migrações, operações destrutivas ou ações de produção. Se Local AI falhar,
-revalide e tente uma vez no máximo; depois siga pelo fallback normal sem loops.
 
 Consulte `docs/LOCAL_AI_RTX_4070.md` antes de alterar helper, hook, telemetria
 ou cards Codex/RTX. A publicação LAN tem porta proxy restrita e não deve ter

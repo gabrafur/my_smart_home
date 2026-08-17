@@ -8,10 +8,13 @@ Antes de alterar o helper, hook, telemetria ou as abas Codex/RTX, consulte
 `docs/LOCAL_AI_RTX_4070.md`. A publicação LAN usa uma porta proxy própria e
 restrita; não a amplie sem confirmar o escopo.
 
-As políticas gerais e específicas do Codex têm uma única fonte versionada:
-`AGENTS.md` no Git root. Não mantenha cópia em `~/.codex/AGENTS.md` nem monte o
-arquivo do projeto como instrução global no bridge; o workspace já fornece o
-mesmo arquivo pelo mecanismo de descoberta do repositório.
+As instruções obrigatórias do Codex têm uma única fonte de preload versionada:
+`AGENTS.md` no Git root. O procedimento detalhado e acionado sob demanda para
+este subsistema fica em
+`.agents/skills/rtx-context-optimizer/SKILL.md`; não o duplique como memória.
+Não mantenha cópia em `~/.codex/AGENTS.md` nem monte o arquivo do projeto como
+instrução global no bridge; o workspace já fornece o mesmo arquivo pelo
+mecanismo de descoberta do repositório.
 
 A economia exibida exclui falhas e benchmarks, admite delta negativo quando o
 resumo cresce e permanece estimada porque o overhead do envelope OpenAI não é

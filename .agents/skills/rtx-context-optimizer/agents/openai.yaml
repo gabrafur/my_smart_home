@@ -1,0 +1,4 @@
+interface:
+  display_name: "Otimizar contexto RTX"
+  short_description: "Comprime contexto grande com Local AI privada"
+  default_prompt: "Use $rtx-context-optimizer para reduzir este contexto grande e não sensível antes da análise principal."
