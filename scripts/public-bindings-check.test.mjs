@@ -75,6 +75,17 @@ test("validates optional MQTT bindings without exposing their values", () => {
   assert.ok(rules.includes("mqtt-payload"));
 });
 
+test("accepts a fixed-payload MQTT topic as a string", () => {
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      exterior_light: { mqtt_topics: ["example/topic"] },
+    },
+  };
+  assert.deepEqual(validateBindings(document), []);
+});
+
 test("resolves a service through an entity binding in the same role", () => {
   const document = {
     schema_version: 1,

@@ -48,7 +48,12 @@
         },
         "mqtt_topics": {
           "type": "array",
-          "items": { "$ref": "#/$defs/mqtt_topic_binding" },
+          "items": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              { "$ref": "#/$defs/mqtt_topic_binding" }
+            ]
+          },
           "uniqueItems": true
         }
       }

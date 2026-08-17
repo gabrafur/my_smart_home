@@ -16,6 +16,12 @@ Compose mounts `bindings/private/` at `/run/private-bindings`, read-only, in the
 Home Assistant and Node-RED containers. No binding depends on `.storage`, edits
 registries, or automatically migrates an `entity_id`.
 
+Keep private JSON documents at mode `0640` and set `PRIVATE_BINDINGS_GID` in
+`.env` to the files' owning GID. Node-RED receives that supplementary group for
+read-only access. If a document exists but is unreadable or contains invalid
+JSON, the runtime now fails explicitly at startup instead of starting with
+literal/inactive MQTT topics.
+
 Validate the public example or a private file without printing values:
 
 ```bash
@@ -25,8 +31,10 @@ node scripts/public-bindings-check.mjs --private bindings/private/private-bindin
 
 `entities`, `services`, `topics`, and `mqtt_topics` are optional per role.
 Entities require a target; services require a target service; MQTT topics
-require valid keys and payloads. The public example contains all eight required
-roles.
+may be strings when the flow itself sets the payload, or objects containing
+`topic`, `payload_on`, and `payload_off` when the binding also defines the
+command. The Node-RED loader normalizes strings to `{ topic }`. The public
+example contains all eight required roles.
 
 ## Home Assistant consumption
 
@@ -53,7 +61,8 @@ preserving safe degradation.
 
 1. Run `make bootstrap-test` and, when authorized, `make bootstrap`.
 2. Replace only placeholders with installation targets.
-3. Keep restrictive permissions and confirm that the files remain ignored.
+3. Keep files at `0640`, set `PRIVATE_BINDINGS_GID`, and confirm that they remain
+   ignored.
 4. Run the private checker and public scanners.
 5. Use `restore/private-state-manifest.yaml` as the private-backup authority and
    validate bundles with `restore-verify`.
