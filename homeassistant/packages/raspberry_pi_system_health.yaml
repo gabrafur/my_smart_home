@@ -6,6 +6,11 @@ input_boolean:
     name: Resfriamento de emergencia do Raspberry Pi
     icon: mdi:air-conditioner
 
+input_button:
+  storage_health_manual_run:
+    name: Executar Storage Health
+    icon: mdi:harddisk
+
 input_text:
   raspberry_pi_emergency_cooling_previous_climate:
     name: Estado anterior do ar no resfriamento do Raspberry Pi

@@ -5196,23 +5196,36 @@
     },
     {
         "id": "storage_manual_health",
-        "type": "server-events",
+        "type": "server-state-changed",
         "z": "storage_health_tab",
         "g": "storage_group_health",
         "name": "Executar pelo painel HA",
         "server": "4126427d5e161a03",
-        "version": 3,
-        "eventType": "storage_health_manual_run",
-        "eventData": "",
-        "waitForRunning": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "eventData"
-            }
-        ],
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_button.storage_health_manual_run"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": true,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [],
         "x": 190,
         "y": 350,
         "wires": [
