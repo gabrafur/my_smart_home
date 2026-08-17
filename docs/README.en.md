@@ -12,6 +12,8 @@ physical identifiers must appear only as placeholders.
 | Document | Use it for | Portuguese |
 | --- | --- | --- |
 | [Installation and restore](INSTALLATION_RESTORE.en.md) | Fresh clones, recovery, and host migration | [Português](INSTALACAO_RESTAURACAO_SMART_HOME.md) |
+| [Deterministic restore contract](RESTORE_CONTRACT.en.md) | Manifest, bundle, plan/verify/apply, and AI context | [Português](RESTORE_CONTRACT.md) |
+| [Bootstrap, modules, and demo](BOOTSTRAP_DEMO.en.md) | Minimum clone, optional features, and synthetic scenario | [Português](BOOTSTRAP_DEMO.md) |
 | [Containers](CONTAINERS.en.md) | Images, ports, volumes, dependencies, and operations | [Português](CONTAINERS.md) |
 | [Weekly documentation review](WEEKLY_DOCUMENTATION_REVIEW.en.md) | Schedule, scope, credentials, and recovery | [Português](REVISAO_DOCUMENTACAO_SEMANAL.md) |
 | [Public-repository security audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publishing, rotation, and Git history | Portuguese detailed record |

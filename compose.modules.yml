@@ -1,0 +1,11 @@
+services:
+  portainer:
+    profiles: ["portainer"]
+  matter_server:
+    profiles: ["matter"]
+  appdaemon:
+    profiles: ["appdaemon"]
+  zigbee2mqtt:
+    profiles: ["zigbee"]
+  claude-bridge:
+    profiles: ["agent-bridge"]

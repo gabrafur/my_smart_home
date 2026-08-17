@@ -6,6 +6,22 @@ Este runbook reconstrói a stack em um host Linux usando o conteúdo versionado
 e, quando disponível, um backup privado. Ele não pressupõe nome de usuário, IP
 ou caminho absoluto específico.
 
+## Fluxo determinístico canônico
+
+O inventário de estado privado, formato de bundle, checksums, ordem e rollback
+estão em [RESTORE_CONTRACT.md](RESTORE_CONTRACT.md). Para clone novo, módulos e
+demo, consulte [BOOTSTRAP_DEMO.md](BOOTSTRAP_DEMO.md).
+
+```bash
+make backup-plan
+make restore-test
+make bootstrap-test
+make demo-test
+```
+
+Com bundle externo, execute `restore-plan` e `restore-verify` antes de solicitar
+autorização para qualquer apply. Esses comandos não iniciam containers.
+
 ## 1. O que um clone consegue restaurar
 
 Há dois resultados possíveis:

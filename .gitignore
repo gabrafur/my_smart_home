@@ -20,6 +20,8 @@
 .local-secrets/
 .local-state/
 .kia-uvo-updater-state/
+restore/bundles/
+restore/private-bundles/
 bindings/private/
 .agent-history/
 .agents/

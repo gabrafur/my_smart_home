@@ -70,6 +70,7 @@ Requisitos mínimos:
 - Linux com Docker Engine 23 ou superior e o plugin `docker compose`;
 - arquitetura `linux/arm64` ou `linux/amd64` suportada pelas imagens;
 - Node.js no host para os scripts de preparação e validação;
+- GNU Make para os comandos canônicos do projeto;
 - D-Bus e rede do host para Bluetooth/Matter;
 - `vcgencmd` no caminho `/usr/bin/vcgencmd` para as métricas específicas do
   Raspberry Pi.
@@ -77,10 +78,12 @@ Requisitos mínimos:
 ```bash
 git clone URL_DO_REPOSITORIO smart-home
 cd smart-home
-cp .env.example .env
+make bootstrap-test
+make bootstrap
 ```
 
-Edite `.env`, principalmente `HOST_LAN_IP`, e grave o GID real do socket
+O bootstrap cria somente templates privados ausentes e informa lacunas sem
+imprimir valores. Edite `.env`, principalmente `HOST_LAN_IP`, e grave o GID real do socket
 Docker se for usar o bridge:
 
 ```bash
@@ -150,6 +153,10 @@ possível segredo. A análise do histórico e as ações de rotação estão em
 
 ```bash
 make validate-public
+make backup-plan
+make restore-test
+make bootstrap-test
+make demo-test
 docker compose config --quiet
 npm --prefix nodered run flows:validate
 npm --prefix nodered run test:all
@@ -157,8 +164,8 @@ npm --prefix claude-bridge test
 ```
 
 `make validate-public` verifica documentação, memória versionada dos agentes,
-privacidade dos arquivos públicos e o contrato da revisão semanal sem acessar
-estado privado de runtime.
+privacidade, manifesto/schema de restore, bootstrap, demo, módulos e o contrato
+da revisão semanal sem acessar estado privado de runtime.
 
 `depends_on` ordena a criação, mas não confirma que uma dependência está
 pronta. Depois de subir a stack, confira `docker compose ps` e os logs de cada
@@ -168,6 +175,8 @@ serviço.
 
 - [Índice da documentação](docs/README.md)
 - [Instalação e restauração](docs/INSTALACAO_RESTAURACAO_SMART_HOME.md)
+- [Contrato determinístico de restore](docs/RESTORE_CONTRACT.md)
+- [Bootstrap, módulos e demo sintética](docs/BOOTSTRAP_DEMO.md)
 - [Containers, volumes, portas e dependências](docs/CONTAINERS.md)
 - [Bluetooth e Matter](docs/BLUETOOTH_MATTER.md)
 - [Segurança do repositório público](docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md)

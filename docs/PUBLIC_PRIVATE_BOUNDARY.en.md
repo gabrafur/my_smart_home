@@ -51,15 +51,20 @@ preserving safe degradation.
 
 ## Bootstrap and restoration
 
-1. Copy `bindings/private-bindings.example.json` into the private directory.
+1. Run `make bootstrap-test` and, when authorized, `make bootstrap`.
 2. Replace only placeholders with installation targets.
 3. Keep restrictive permissions and confirm that the files remain ignored.
 4. Run the private checker and public scanners.
-5. Validate Compose with `.env.example` and `config --quiet`.
-6. Perform operational activation separately, with local approval and rollback.
+5. Use `restore/private-state-manifest.yaml` as the private-backup authority and
+   validate bundles with `restore-verify`.
+6. Validate Compose with `.env.example` and `config --quiet`.
+7. Perform operational activation separately, with local approval and rollback.
 
 Optional modules may remain `enabled: false` or unbound. Public logic does not
 assume that a vehicle, second resident, gate, or exterior lighting is available.
+
+The full contract is in [RESTORE_CONTRACT.en.md](RESTORE_CONTRACT.en.md), and
+module selection is documented in [BOOTSTRAP_DEMO.en.md](BOOTSTRAP_DEMO.en.md).
 
 ## Compatibility and future renaming
 

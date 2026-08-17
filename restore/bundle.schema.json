@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/my-smart-home/private-state-bundle.schema.json",
+  "title": "Private smart-home backup bundle metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "repository_commit", "repository_branch_or_release",
+    "created_at_utc", "host_architecture", "component_versions",
+    "container_image_digests", "enabled_modules", "components", "manifest_sha256", "checksums",
+    "verification_status", "encryption_method"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "repository_commit": { "type": "string", "pattern": "^(?:[0-9a-f]{40}|synthetic)$" },
+    "repository_branch_or_release": { "type": "string", "minLength": 1 },
+    "created_at_utc": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$" },
+    "host_architecture": { "type": "string", "minLength": 1 },
+    "component_versions": { "type": "object", "additionalProperties": { "type": "string" } },
+    "container_image_digests": { "type": "object", "additionalProperties": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" } },
+    "enabled_modules": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["logical_name", "payload_path", "kind", "bytes"],
+        "properties": {
+          "logical_name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "payload_path": { "type": "string", "pattern": "^components/[a-z][a-z0-9_]*/payload$" },
+          "kind": { "enum": ["file", "directory", "external-file", "external-volume"] },
+          "bytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "checksums": { "const": "checksums.json" },
+    "verification_status": { "enum": ["unverified", "verified", "synthetic-verified"] },
+    "encryption_method": { "type": "string", "enum": ["external-required", "external-age", "external-gpg", "none-synthetic"] }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "name": "public-smart-home-recovery-demo",
+  "initial_state": {
+    "presence": {
+      "resident_primary": "away",
+      "resident_secondary": "home"
+    },
+    "vehicle_primary": "away",
+    "security_panel": "armed_away",
+    "exterior_light": "off",
+    "ambient": "dark",
+    "storage": "healthy",
+    "internet": "online",
+    "zigbee": "online"
+  },
+  "events": [
+    { "step": 1, "type": "vehicle.approaching", "role": "vehicle_primary" },
+    { "step": 2, "type": "presence.arrival", "role": "resident_primary" },
+    { "step": 3, "type": "storage.pressure", "level": "warning" },
+    { "step": 4, "type": "health.changed", "subsystem": "internet", "state": "offline" },
+    { "step": 5, "type": "health.changed", "subsystem": "zigbee", "state": "offline" },
+    { "step": 6, "type": "health.changed", "subsystem": "internet", "state": "online" },
+    { "step": 7, "type": "health.changed", "subsystem": "zigbee", "state": "online" },
+    { "step": 8, "type": "storage.recovered" },
+    { "step": 9, "type": "lighting.timeout", "role": "exterior_light" }
+  ]
+}

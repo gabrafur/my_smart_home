@@ -121,6 +121,12 @@ uma rota elegível e benéfica, `local_ai_compress_context`. Os tipos são
 testes locais. Dados secretos, decisões de segurança, migrações, operações
 destrutivas e revisão final nunca são enviados ao modelo local.
 
+Contratos, schemas, documentação bilíngue e mudanças multiarquivo também podem
+usar a RTX depois de uma derivação determinística: envie um inventário com
+arquivos, campos, comandos, módulos, headings e nomes de testes, não o código
+bruto inteiro. Esse crosswalk é adequado para cobertura documental e triagem;
+arquitetura, segurança e aprovação final permanecem no modelo principal.
+
 O hook é privado e precisa ser aprovado no Codex em `/hooks` depois de sua
 instalação ou de qualquer alteração. A aprovação é vinculada ao conteúdo do
 hook; uma alteração exige nova revisão. Consulte a documentação oficial de
@@ -148,10 +154,18 @@ regressão.
 | `classify-error` | 800 tokens | 500 tokens | alta |
 | `analyze-tests` / `summarize-log` | 900 tokens | 600 tokens | alta |
 | `review-diff` / `inspect-files` | 1.200 tokens | 700 tokens | média |
+| `summarize-document` / `summarize-memory` pelo MCP | 1.200 tokens | 700 tokens | alta |
 
 JSON grande, busca, listagem de arquivos, parsing e outros dados estruturados
 continuam determinísticos quando a ferramenta aplicável resolve o caso. Por
 isso, tamanho isolado nunca aciona a RTX.
+
+Uma inferência concluída não prova retenção. Se o JSON condensado omitir
+requisitos, arquivos ou riscos críticos conhecidos, ele é descartado e o fluxo
+volta à evidência determinística sem alegar economia útil. A validação P1
+confirmou melhor retenção para inventários derivados de schemas, módulos,
+comandos e testes do que para blocos longos de código bruto; essa preferência é
+parte da política atual.
 
 As decisões terminais são `DETERMINISTIC`, `LOCAL_AI_USED`,
 `LOCAL_AI_UNAVAILABLE`, `LOCAL_AI_NOT_BENEFICIAL`, `LOCAL_AI_SKIPPED`,

@@ -23,6 +23,14 @@ RTX disponível e helper não chamado; métricas de cobertura usam oportunidades
 e economia real, sem tratar estimativas como cobrança. Consulte
 `docs/LOCAL_AI_RTX_4070.md` para thresholds, retenção e a limitação do hook.
 
+Para contratos, schemas, documentação bilíngue e mudanças multiarquivo,
+derive antes um inventário determinístico com arquivos, campos, comandos,
+módulos, headings e testes. Esse inventário é a entrada preferencial para
+`summarize-document` ou `inspect-files`: a validação P1 mostrou retenção melhor
+nesse formato do que em blocos longos de código bruto. Uma inferência concluída
+que omita requisitos, arquivos ou riscos críticos deve ser descartada e não
+conta como preservação útil de contexto.
+
 Memória pública do repositório é recuperada por índice e busca determinística,
 nunca carregada integralmente no startup. `local-ai memory-audit` mede somente
 o contexto observável e `summarize-memory` comprime recuperação ampla antes do

@@ -29,6 +29,11 @@ ao binding privado descrito em
 - memórias canônicas sanitizadas em `.codex/memories/`, indexadas por
   `MEMORY.md`.
 
+`restore/private-state-manifest.yaml` descreve somente nomes lógicos e caminhos
+portáveis. Bundles, payloads/checksums privados e chaves de criptografia ficam
+fora do Git; o contrato executável está em
+[RESTORE_CONTRACT.md](RESTORE_CONTRACT.md).
+
 Não são públicos nomes de moradores, relações familiares, endereços,
 coordenadas, IPs privados, MACs, IDs físicos, identificadores de conta,
 trackers/notificadores reais, rotinas, trajetos, payloads ou logs reais,

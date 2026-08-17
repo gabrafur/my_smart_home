@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "module": "core",
+      "source": ".env.example",
+      "destination": ".env",
+      "mode": "0600",
+      "generators": ["NODE_RED_CREDENTIAL_SECRET", "CLAUDE_BRIDGE_TOKEN"]
+    },
+    {
+      "module": "core",
+      "source": "homeassistant/secrets.yaml.example",
+      "destination": "homeassistant/secrets.yaml",
+      "mode": "0600",
+      "generators": []
+    },
+    {
+      "module": "core",
+      "source": "bindings/private-bindings.example.json",
+      "destination": "bindings/private/private-bindings.json",
+      "mode": "0600",
+      "generators": []
+    },
+    {
+      "module": "zigbee",
+      "source": "zigbee2mqtt/configuration.example.yaml",
+      "destination": "zigbee2mqtt/configuration.yaml",
+      "mode": "0600",
+      "generators": []
+    },
+    {
+      "module": "appdaemon",
+      "source": "templates/appdaemon/secrets.yaml.example",
+      "destination": ".local-secrets/appdaemon-secrets.yaml",
+      "mode": "0600",
+      "generators": []
+    }
+  ],
+  "gaps": [
+    {
+      "module": "core",
+      "logical_name": "mosquitto_credentials",
+      "reason": "requires an operator-selected MQTT password and mosquitto_passwd"
+    },
+    {
+      "module": "core",
+      "logical_name": "nodered_admin_password_hash",
+      "reason": "requires an operator-selected password and supported bcrypt generator"
+    },
+    {
+      "module": "core",
+      "logical_name": "installation_specific_placeholders",
+      "reason": "host address, IDs and optional coordinates cannot be inferred from a public clone"
+    },
+    {
+      "module": "agent-bridge",
+      "logical_name": "agent_authentication",
+      "reason": "requires interactive authentication through the installed agent interface"
+    }
+  ]
+}
