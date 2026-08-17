@@ -88,7 +88,7 @@ test("every local private-state destination is ignored and untracked", () => {
       cwd: repoRoot,
       stdio: "ignore",
     }));
-    execFileSync("git", ["check-ignore", "--quiet", "--", item.destination], {
+    execFileSync("git", ["check-ignore", "--quiet", "--no-index", "--", item.destination], {
       cwd: repoRoot,
       stdio: "ignore",
     });
