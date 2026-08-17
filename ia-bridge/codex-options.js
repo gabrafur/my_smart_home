@@ -47,11 +47,25 @@ function codexExecOptions(options) {
   return args;
 }
 
+function codexExecArgs(message, sessionId, options, workdir = '/workspace') {
+  const common = [
+    ...codexExecOptions(options),
+    '--json',
+    '--dangerously-bypass-approvals-and-sandbox',
+    '-C',
+    workdir,
+  ];
+  return sessionId
+    ? ['exec', ...common, 'resume', sessionId, message]
+    : ['exec', ...common, message];
+}
+
 module.exports = {
   CODEX_MODELS,
   DEFAULT_REASONING_EFFORTS,
   DEFAULT_CODEX_OPTIONS,
   validateCodexOptions,
   codexSessionKey,
+  codexExecArgs,
   codexExecOptions,
 };

@@ -1,10 +1,25 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  codexExecArgs,
   codexExecOptions,
   codexSessionKey,
   validateCodexOptions,
 } = require('./codex-options');
+
+test('pins new and resumed Codex sessions to the workspace for project hooks', () => {
+  const options = { model: 'gpt-5.6-luna', reasoningEffort: 'low' };
+  const expectedPrefix = [
+    'exec', '--disable', 'apps', '--model', 'gpt-5.6-luna',
+    '--config', 'model_reasoning_effort="low"', '--json',
+    '--dangerously-bypass-approvals-and-sandbox', '-C', '/workspace',
+  ];
+  assert.deepEqual(codexExecArgs('new prompt', null, options), [...expectedPrefix, 'new prompt']);
+  assert.deepEqual(
+    codexExecArgs('next prompt', 'session-123', options),
+    [...expectedPrefix, 'resume', 'session-123', 'next prompt'],
+  );
+});
 
 test('accepts supported GPT-5.6 model and reasoning combinations', () => {
   assert.deepEqual(

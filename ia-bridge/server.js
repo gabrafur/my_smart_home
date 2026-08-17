@@ -7,10 +7,15 @@ const { SharedHistoryStore } = require('./history');
 const { CodexUsageReader } = require('./usage');
 const { CodexRateLimitsPoller } = require('./codex-rate-limits');
 const {
-  codexExecOptions,
+  codexExecArgs,
   codexSessionKey,
   validateCodexOptions,
 } = require('./codex-options');
+const {
+  publicAgentError,
+  retryTransientNetwork,
+  safeErrorCategory,
+} = require('./agent-errors');
 
 const PORT = process.env.PORT || 8099;
 const BRIDGE_TOKEN = process.env.BRIDGE_TOKEN;
@@ -272,14 +277,7 @@ function runCodex(message, sessionId, options) {
     // Apps are not configured in this bridge. Explicitly disabling the Codex
     // apps feature prevents an ambient, expired codex_apps OAuth token from
     // being initialized on every Home Assistant request.
-    const accessArgs = [
-      ...codexExecOptions(options),
-      '--json',
-      '--dangerously-bypass-approvals-and-sandbox',
-    ];
-    const args = sessionId
-      ? ['exec', 'resume', sessionId, ...accessArgs, message]
-      : ['exec', ...accessArgs, message];
+    const args = codexExecArgs(message, sessionId, options, WORKDIR);
     const child = spawnCli('codex', args);
 
     let stdout = '';
@@ -456,9 +454,11 @@ const server = http.createServer((req, res) => {
       const { result, priorSessionId } = await enqueueSession(sessionKey, async () => {
         let priorSessionId = history.getSession(sessionKey);
         try {
-          const result = agent === 'codex'
-            ? await runCodex(message, priorSessionId, codexOptions)
-            : await runClaude(message, priorSessionId);
+          const result = await retryTransientNetwork(() => (
+            agent === 'codex'
+              ? runCodex(message, priorSessionId, codexOptions)
+              : runClaude(message, priorSessionId)
+          ));
           if (sessionKey && result.session_id) saveSession(sessionKey, result.session_id);
           return { result, priorSessionId };
         } catch (err) {
@@ -472,7 +472,9 @@ const server = http.createServer((req, res) => {
           console.warn(`Discarding conflicted Codex session ${priorSessionId} and retrying`);
           history.deleteSession(sessionKey);
           priorSessionId = null;
-          const result = await runCodex(message, null, codexOptions);
+          const result = await retryTransientNetwork(
+            () => runCodex(message, null, codexOptions),
+          );
           if (sessionKey && result.session_id) saveSession(sessionKey, result.session_id);
           return { result, priorSessionId };
         }
@@ -496,9 +498,9 @@ const server = http.createServer((req, res) => {
         } : {}),
       }));
     } catch (err) {
-      console.error(err);
       const agentName = agent === 'codex' ? 'Codex' : 'Claude Code';
-      const reply = `Erro ao executar ${agentName}: ${err.message}`;
+      console.error(`${agentName} execution failed: ${safeErrorCategory(err)}`);
+      const reply = publicAgentError(agentName, err);
       recordTurn({
         id: pendingTurn?.id,
         agent,
