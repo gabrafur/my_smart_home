@@ -1,4 +1,4 @@
-"""Regression tests for the vehicle_primary recorder-based consumption estimate."""
+"""Regression tests for the vehicle_primary range-based consumption estimate."""
 
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ HyundaiKiaConnectDataUpdateCoordinator = _load_coordinator_without_home_assistan
 
 VEHICLE_ID = "vehicle-1"
 FUEL_ENTITY = "sensor.vehicle_primary_fuel_level"
-ODOMETER_ENTITY = "sensor.vehicle_primary_odometer"
+RANGE_ENTITY = "sensor.vehicle_primary_fuel_driving_range"
 
 
 class FakeHass:
@@ -119,7 +119,7 @@ class FakeRecorder:
 
 
 class FakeRegistry:
-    """Resolve the two recorder entities required by the estimator."""
+    """Resolve the recorder entities required by the estimator."""
 
     @staticmethod
     def async_get_entity_id(platform, domain, unique_id):
@@ -128,7 +128,7 @@ class FakeRegistry:
             return FUEL_ENTITY
         if "recent-trip-info" in unique_id:
             return "sensor.vehicle_primary_recent_trip_info"
-        return ODOMETER_ENTITY
+        return RANGE_ENTITY
 
 
 def reading(at: str, value: float):
@@ -146,17 +146,24 @@ def trip_snapshot(*trips):
     return SimpleNamespace(attributes={"trips": list(trips)})
 
 
-def trip(started_at: str = "1999-01-01T10:00:00", distance: float = 50):
+def trip(
+    started_at: str = "1999-01-01T10:00:00",
+    distance: float = 50,
+    drive_time: float = 25,
+    idle_time: float = 5,
+):
     """Build the subset of a trip-info record used by the estimator."""
 
     return {
         "started_at": started_at,
-        "duration_min": 30,
+        "drive_time_min": drive_time,
+        "idle_time_min": idle_time,
+        "duration_min": drive_time + idle_time,
         "distance": distance,
     }
 
 
-async def estimate(trips, fuel_readings, odometer_readings, trip_snapshots=None):
+async def estimate(trips, fuel_readings, range_readings, trip_snapshots=None):
     """Run the production estimator with deterministic recorder history."""
 
     coordinator = SimpleNamespace(
@@ -175,7 +182,7 @@ async def estimate(trips, fuel_readings, odometer_readings, trip_snapshots=None)
     )
     states = {
         FUEL_ENTITY: fuel_readings,
-        ODOMETER_ENTITY: odometer_readings,
+        RANGE_ENTITY: range_readings,
         "sensor.vehicle_primary_recent_trip_info": trip_snapshots or [],
     }
     with (
@@ -197,70 +204,93 @@ async def estimate(trips, fuel_readings, odometer_readings, trip_snapshots=None)
 async def main() -> None:
     """Exercise accepted, missing, stale and inconsistent recorder windows."""
 
-    valid = await estimate(
-        [trip()],
-        [reading("1999-01-01T09:50:00", 80), reading("1999-01-01T10:40:00", 70)],
-        [reading("1999-01-01T09:50:00", 1000), reading("1999-01-01T10:40:00", 1050)],
-    )
+    fuel_readings = [
+        reading("1999-01-01T09:00:00", 80),
+        reading("1999-01-01T10:00:00", 77.5),
+        reading("1999-01-01T11:00:00", 75),
+        reading("1999-01-01T12:00:00", 72.5),
+        reading("1999-01-01T13:00:00", 70),
+    ]
+    range_readings = [
+        reading("1999-01-01T09:00:30", 400),
+        reading("1999-01-01T10:00:30", 387.5),
+        reading("1999-01-01T11:00:30", 375),
+        reading("1999-01-01T12:00:30", 362.5),
+        reading("1999-01-01T13:00:30", 350),
+    ]
+    valid = await estimate([trip()], fuel_readings, range_readings)
     assert valid["km_per_l"] == 10.0
     assert valid["data_sufficient"] is True
     assert valid["period_start"] == "19981231"
     assert valid["period_end"] == "19990101"
-    assert valid["trips_considered"] == 1
-    assert valid["fuel_samples_used"] == 2
-    assert valid["odometer_samples_used"] == 2
-    assert valid["estimated_distance"] == 50
-    assert valid["estimated_liters"] == 5
+    assert valid["samples_used"] == 5
+    assert valid["fuel_span_percent"] == 10
     assert valid["search_window_days"] == 30
     assert valid["_recent_trips"][0]["estimated_km_per_l"] == 10.0
     assert valid["_recent_trips"][0]["estimated_liters"] == 5.0
 
+    modeled = await estimate(
+        [
+            trip(distance=10, drive_time=20, idle_time=0)
+            | {"date": "19990101", "start_time": "100000"},
+            trip(
+                "1999-01-01T11:00:00",
+                distance=10,
+                drive_time=10,
+                idle_time=10,
+            )
+            | {"date": "19990101", "start_time": "110000"},
+        ],
+        fuel_readings,
+        range_readings,
+    )
+    modeled_trips = modeled["_recent_trips"]
+    assert modeled["trips_modeled"] == 2
+    assert modeled_trips[0]["estimated_km_per_l"] == 15.0
+    assert modeled_trips[1]["estimated_km_per_l"] == 7.5
+    assert round(sum(item["estimated_liters"] for item in modeled_trips), 2) == 2.0
+
     missing = await estimate(
         [trip()],
         [reading("1999-01-01T09:50:00", 80)],
-        [reading("1999-01-01T09:50:00", 1000)],
+        [reading("1999-01-01T09:50:00", 400)],
     )
     assert missing["data_sufficient"] is False
     assert missing["km_per_l"] is None
-    assert missing["trips_considered"] == 0
+    assert missing["samples_used"] == 1
 
     stale = await estimate(
         [trip()],
-        [reading("1999-01-01T04:00:00", 80), reading("1999-01-01T16:00:00", 70)],
-        [reading("1999-01-01T04:00:00", 1000), reading("1999-01-01T16:00:00", 1050)],
+        fuel_readings,
+        [
+            reading("1999-01-01T09:06:00", 400),
+            reading("1999-01-01T10:06:00", 387.5),
+            reading("1999-01-01T11:06:00", 375),
+            reading("1999-01-01T12:06:00", 362.5),
+            reading("1999-01-01T13:06:00", 350),
+        ],
     )
     assert stale["data_sufficient"] is False
-    assert stale["maximum_sample_gap_hours"] == 4
+    assert stale["maximum_sample_gap_minutes"] == 5
 
-    inconsistent = await estimate(
+    implausible = await estimate(
         [trip(distance=50)],
-        [reading("1999-01-01T09:50:00", 80), reading("1999-01-01T10:40:00", 70)],
-        [reading("1999-01-01T09:50:00", 1000), reading("1999-01-01T10:40:00", 1010)],
+        fuel_readings,
+        [reading(item.last_updated.isoformat(), 2000) for item in fuel_readings],
     )
-    assert inconsistent["data_sufficient"] is False
-    assert inconsistent["trips_considered"] == 0
+    assert implausible["data_sufficient"] is False
+    assert implausible["samples_used"] == 0
 
     maximum_window = await estimate(
         [trip(distance=25)],
-        [
-            reading("1998-12-31T09:50:00", 80),
-            reading("1998-12-31T10:40:00", 75),
-            reading("1999-01-01T09:50:00", 75),
-            reading("1999-01-01T10:40:00", 70),
-        ],
-        [
-            reading("1998-12-31T09:50:00", 950),
-            reading("1998-12-31T10:40:00", 975),
-            reading("1999-01-01T09:50:00", 975),
-            reading("1999-01-01T10:40:00", 1000),
-        ],
+        fuel_readings,
+        range_readings,
         [trip_snapshot(trip("1998-12-31T10:00:00", distance=25) | {
             "date": "19981231", "start_time": "100000"
         })],
     )
     assert maximum_window["km_per_l"] == 10.0
     assert maximum_window["trips_available"] == 2
-    assert maximum_window["trips_considered"] == 2
     assert maximum_window["period_start"] == "19981231"
     assert maximum_window["period_end"] == "19990101"
 
@@ -333,7 +363,7 @@ async def main() -> None:
     assert "periodic_fallback" in trip_refresh_calls[2][0]
     trip_refresh_calls[2][1].close()
 
-    print("vehicle_primary consumption estimate: 8 cenários aprovados.")
+    print("vehicle_primary consumption estimate: 9 cenários aprovados.")
 
 
 class VehiclePrimaryConsumptionTest(unittest.IsolatedAsyncioTestCase):

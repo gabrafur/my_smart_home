@@ -10,6 +10,7 @@ import traceback
 import types
 from collections.abc import Callable
 from datetime import timedelta
+from statistics import median
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -71,8 +72,13 @@ TRIP_INFO_RETRY_DELAY_S = 60
 TRIP_INFO_MAX_AGE = timedelta(hours=6)
 REMOTE_LOCATE_MIN_INTERVAL_S = 60
 FUEL_TANK_LITERS = 50.0
-MIN_FUEL_DROP_PERCENT = 2.0
-MAX_READING_GAP = timedelta(hours=4)
+MIN_EFFICIENCY_FUEL_PERCENT = 20.0
+MAX_EFFICIENCY_FUEL_PERCENT = 80.0
+MIN_EFFICIENCY_FUEL_SPAN_PERCENT = 10.0
+MIN_EFFICIENCY_SAMPLES = 5
+MAX_EFFICIENCY_SAMPLE_GAP = timedelta(minutes=5)
+MIN_PLAUSIBLE_KM_PER_L = 3.0
+MAX_PLAUSIBLE_KM_PER_L = 25.0
 
 
 class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
@@ -509,25 +515,32 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data(self.data)
 
     async def _async_update_fuel_efficiency(self, vehicle_id: str) -> None:
-        """Estimate km/L over the maximum history retained by Recorder."""
+        """Estimate km/L from the vehicle's range model over Recorder history.
+
+        Fuel level is an integer, non-linear gauge. A drop around a short trip
+        cannot be converted reliably to liters and can also include driving
+        outside that trip. Instead, use the median implied efficiency from
+        range and fuel readings captured by the same status update, excluding
+        the tank extremes where reserve/full-gauge behavior is least linear.
+        """
         vehicle = self.vehicle_manager.vehicles[vehicle_id]
         registry = er.async_get(self.hass)
         fuel_entity_id = registry.async_get_entity_id(
             "sensor", DOMAIN, f"{DOMAIN}_{vehicle.id}_fuel_level"
         )
-        odometer_entity_id = registry.async_get_entity_id(
-            "sensor", DOMAIN, f"{DOMAIN}_{vehicle.id}__odometer"
+        range_entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{DOMAIN}_{vehicle.id}__fuel_driving_range"
         )
         recent_trip_entity_id = registry.async_get_entity_id(
             "sensor", DOMAIN, f"{DOMAIN}-recent-trip-info-{vehicle.id}"
         )
-        if not fuel_entity_id or not odometer_entity_id:
+        if not fuel_entity_id or not range_entity_id:
             return
 
         recorder = get_instance(self.hass)
         lookback_days = max(1, recorder.keep_days)
         start = dt_util.utcnow() - timedelta(days=lookback_days)
-        entity_ids = [fuel_entity_id, odometer_entity_id]
+        entity_ids = [fuel_entity_id, range_entity_id]
         if recent_trip_entity_id:
             entity_ids.append(recent_trip_entity_id)
         states = await recorder.async_add_executor_job(
@@ -549,7 +562,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             return result
 
         fuel_readings = numeric(fuel_entity_id)
-        odometer_readings = numeric(odometer_entity_id)
+        range_readings = numeric(range_entity_id)
         # /tripinfo returns one day per request and is rate-limited. Each
         # current two-day response is already recorded with full attributes,
         # so merge those retained snapshots instead of issuing one API call
@@ -564,8 +577,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     trips_by_key[key] = dict(trip)
         for trip in self.recent_trip_info[vehicle_id]["trips"]:
             key = (trip.get("date"), trip.get("start_time") or trip.get("started_at"))
-            # Keep the current objects by reference so any reliable per-trip
-            # estimate is also exposed by the recent-trip sensor attributes.
+            # Keep current objects by reference for the recent-trip sensor.
             # Recorder snapshots remain copied above because they are
             # historical input and must not be mutated.
             trips_by_key[key] = trip
@@ -574,66 +586,82 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             key=lambda trip: (trip.get("date") or "", trip.get("start_time") or ""),
             reverse=True,
         )
-        estimated_liters = 0.0
-        estimated_distance = 0.0
-        considered_trips: list[dict[str, Any]] = []
-        used_fuel_samples: set[dt.datetime] = set()
-        used_odometer_samples: set[dt.datetime] = set()
         for trip in available_trips:
-            if not trip["started_at"] or trip["duration_min"] is None:
+            # Recorder can retain estimates produced by an older method.
+            # Never let those stale values leak back into the dashboard.
+            trip.pop("estimated_liters", None)
+            trip.pop("estimated_km_per_l", None)
+            trip.pop("consumption_source", None)
+        observations: list[tuple[dt.datetime, float, float, float]] = []
+        for fuel_at, fuel_percent in fuel_readings:
+            if not MIN_EFFICIENCY_FUEL_PERCENT <= fuel_percent <= MAX_EFFICIENCY_FUEL_PERCENT:
                 continue
-            # tripinfo returns the vehicle's local wall-clock time. Recorder
-            # timestamps are UTC, so convert via Home Assistant's configured
-            # timezone before comparing the two histories.
-            local_tz = (
-                dt_util.get_time_zone(self.hass.config.time_zone)
-                or dt_util.DEFAULT_TIME_ZONE
+            nearest_range = min(
+                range_readings,
+                key=lambda item: abs(item[0] - fuel_at),
+                default=None,
             )
-            started = dt_util.as_utc(
-                dt.datetime.fromisoformat(trip["started_at"]).replace(tzinfo=local_tz)
-            )
-            ended = started + timedelta(minutes=trip["duration_min"])
-            before_fuel = next((item for item in reversed(fuel_readings) if item[0] <= started), None)
-            after_fuel = next((item for item in fuel_readings if item[0] >= ended), None)
-            before_odo = next((item for item in reversed(odometer_readings) if item[0] <= started), None)
-            after_odo = next((item for item in odometer_readings if item[0] >= ended), None)
-            if not all((before_fuel, after_fuel, before_odo, after_odo)):
-                continue
-            if any(
-                abs(sample[0] - boundary) > MAX_READING_GAP
-                for sample, boundary in ((before_fuel, started), (after_fuel, ended), (before_odo, started), (after_odo, ended))
-            ):
-                continue
-            fuel_drop = before_fuel[1] - after_fuel[1]
-            odometer_distance = after_odo[1] - before_odo[1]
-            trip_distance = float(trip["distance"] or 0)
             if (
-                fuel_drop < MIN_FUEL_DROP_PERCENT
-                or odometer_distance < 0
-                or abs(odometer_distance - trip_distance) > max(2.0, trip_distance * 0.2)
+                nearest_range is None
+                or abs(nearest_range[0] - fuel_at) > MAX_EFFICIENCY_SAMPLE_GAP
             ):
                 continue
-            liters = fuel_drop * FUEL_TANK_LITERS / 100
-            if liters <= 0 or trip_distance <= 0:
+            remaining_liters = fuel_percent * FUEL_TANK_LITERS / 100
+            km_per_liter = nearest_range[1] / remaining_liters
+            if not MIN_PLAUSIBLE_KM_PER_L <= km_per_liter <= MAX_PLAUSIBLE_KM_PER_L:
                 continue
-            km_per_liter = round(trip_distance / liters, 1)
-            trip["estimated_liters"] = round(liters, 2)
-            trip["estimated_km_per_l"] = km_per_liter
-            trip["consumption_source"] = "estimado por nível de combustível e odômetro"
-            considered_trips.append(
-                {
-                    "started_at": started.isoformat(),
-                    "ended_at": ended.isoformat(),
-                    "distance_km": round(trip_distance, 1),
-                    "estimated_liters": round(liters, 2),
-                }
+            observations.append(
+                (fuel_at, fuel_percent, nearest_range[1], km_per_liter)
             )
-            used_fuel_samples.update((before_fuel[0], after_fuel[0]))
-            used_odometer_samples.update((before_odo[0], after_odo[0]))
-            estimated_liters += liters
-            estimated_distance += trip_distance
 
-        average = round(estimated_distance / estimated_liters, 1) if estimated_liters else None
+        fuel_span = (
+            max(item[1] for item in observations) - min(item[1] for item in observations)
+            if observations
+            else 0.0
+        )
+        data_sufficient = (
+            len(observations) >= MIN_EFFICIENCY_SAMPLES
+            and fuel_span >= MIN_EFFICIENCY_FUEL_SPAN_PERCENT
+        )
+        average = (
+            round(median(item[3] for item in observations), 1)
+            if data_sufficient
+            else None
+        )
+        modeled_trips: list[tuple[dict[str, Any], float, float]] = []
+        if average is not None:
+            for trip in self.recent_trip_info[vehicle_id]["trips"]:
+                try:
+                    distance = float(trip.get("distance") or 0)
+                    drive_time = float(trip.get("drive_time_min") or 0)
+                    idle_time = float(trip.get("idle_time_min") or 0)
+                except (TypeError, ValueError):
+                    continue
+                total_time = drive_time + idle_time
+                if distance <= 0 or drive_time <= 0 or total_time <= 0:
+                    continue
+                moving_fraction = drive_time / total_time
+                modeled_trips.append((trip, distance, moving_fraction))
+
+        # /tripinfo does not report liters. Allocate the fuel implied by the
+        # window average across the currently displayed trips according to
+        # distance and idle share. The allocation is normalized so their
+        # distance-weighted aggregate remains equal to the window estimate.
+        if modeled_trips:
+            total_distance = sum(item[1] for item in modeled_trips)
+            idle_adjusted_distance = sum(
+                distance / moving_fraction
+                for _trip, distance, moving_fraction in modeled_trips
+            )
+            moving_efficiency = average * idle_adjusted_distance / total_distance
+            for trip, distance, moving_fraction in modeled_trips:
+                trip_efficiency = moving_efficiency * moving_fraction
+                estimated_liters = distance / trip_efficiency
+                trip["estimated_liters"] = round(estimated_liters, 2)
+                trip["estimated_km_per_l"] = round(trip_efficiency, 1)
+                trip["consumption_source"] = (
+                    "modelo calibrado pela média da janela e proporção de marcha lenta"
+                )
         recent_info = self.recent_trip_info[vehicle_id]
         available_dates = sorted(
             {
@@ -648,34 +676,38 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self.fuel_efficiency[vehicle_id] = {
             "km_per_l": average,
-            "data_sufficient": average is not None,
-            "estimated_distance": round(estimated_distance, 1),
-            "estimated_liters": round(estimated_liters, 2),
+            "data_sufficient": data_sufficient,
             "tank_liters": FUEL_TANK_LITERS,
             "period_start": available_dates[0] if available_dates else recent_info.get("period_start"),
             "period_end": available_dates[-1] if available_dates else recent_info.get("period_end"),
             "recorder_search_start": start.isoformat(),
             "recorder_search_end": dt_util.utcnow().isoformat(),
             "search_window_days": lookback_days,
-            "trip_window_start": (
-                min(item["started_at"] for item in considered_trips)
-                if considered_trips
+            "sample_window_start": (
+                min(item[0] for item in observations).isoformat()
+                if observations
                 else None
             ),
-            "trip_window_end": (
-                max(item["ended_at"] for item in considered_trips)
-                if considered_trips
+            "sample_window_end": (
+                max(item[0] for item in observations).isoformat()
+                if observations
                 else None
             ),
             "trips_available": len(available_trips),
-            "trips_considered": len(considered_trips),
             "fuel_samples_available": len(fuel_readings),
-            "fuel_samples_used": len(used_fuel_samples),
-            "odometer_samples_available": len(odometer_readings),
-            "odometer_samples_used": len(used_odometer_samples),
-            "minimum_fuel_drop_percent": MIN_FUEL_DROP_PERCENT,
-            "maximum_sample_gap_hours": MAX_READING_GAP.total_seconds() / 3600,
-            "method": "Estimativa: distância da viagem ÷ (queda percentual × 50 L)",
+            "range_samples_available": len(range_readings),
+            "samples_used": len(observations),
+            "trips_modeled": len(modeled_trips),
+            "fuel_span_percent": round(fuel_span, 1),
+            "minimum_fuel_percent": MIN_EFFICIENCY_FUEL_PERCENT,
+            "maximum_fuel_percent": MAX_EFFICIENCY_FUEL_PERCENT,
+            "maximum_sample_gap_minutes": (
+                MAX_EFFICIENCY_SAMPLE_GAP.total_seconds() / 60
+            ),
+            "method": (
+                "Mediana da autonomia restante ÷ combustível estimado no tanque; "
+                "amostras entre 20% e 80%"
+            ),
         }
         self.recent_trip_info[vehicle_id]["fuel_efficiency"] = self.fuel_efficiency[vehicle_id]
 

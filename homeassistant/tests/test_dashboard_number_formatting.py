@@ -26,6 +26,7 @@ NUMERIC_EXPRESSION_MARKERS = (
     "trip.duration_min",
     "trip.avg_speed",
     "trip.estimated_km_per_l",
+    "trip.estimated_liters",
     "remaining }}",
     "attempt }}",
     "codex_limite_disponivel",
