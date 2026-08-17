@@ -35,6 +35,11 @@ seguem o bloqueio da [licença raiz](../THIRD_PARTY_NOTICES.md#repository-level-
 
 - `nodered/package-lock.json` fixa o grafo npm do Node-RED, inclusive
   `node-red-contrib-home-assistant-websocket` e `node-red-contrib-dulonode`.
+  Para o Dulonode 1.0.11, `nodered/tools/patch-dulonode-retry.mjs` aplica no
+  startup um patch local, minimo e idempotente que repete o deploy inicial
+  depois de falhas transitorias de DNS. O pacote instalado conserva sua
+  licenca e proveniencia upstream; o patch nao substitui os arquivos de
+  licenca do pacote.
 - `validation/package-lock.json` fixa `yaml@2.9.0`, usado apenas pela validação.
 - Os `requirements` dos manifests do Home Assistant são resolvidos pela
   instalação da integração; eles não são código-fonte vendorizado aqui.

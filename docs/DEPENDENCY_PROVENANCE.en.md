@@ -32,6 +32,10 @@ license declaration and follow the repository-level blocker in
 
 - `nodered/package-lock.json` pins the Node-RED npm graph, including the Home
   Assistant websocket and Dulonode packages.
+  For Dulonode 1.0.11, `nodered/tools/patch-dulonode-retry.mjs` applies a
+  minimal, idempotent local startup patch that retries the initial deployment
+  after transient DNS failures. The installed package retains its upstream
+  license and provenance; the patch does not replace the package license files.
 - `validation/package-lock.json` pins `yaml@2.9.0` for validation only.
 - Home Assistant manifest requirements are resolved during integration setup;
   their source is not vendored here.

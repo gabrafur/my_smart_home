@@ -28,13 +28,16 @@
         }
       },
       "services": {
-        "notify": { "target_service": "notify.example_mobile_primary" }
+        "notify": { "target_service": "notify.example_voice_assistant" },
+        "notify_3": { "target_service": "notify.example_mobile_primary" }
       }
     },
     "mobile_secondary": {
       "enabled": false,
       "entities": {},
-      "services": {}
+      "services": {
+        "notify_2": { "target_service": "notify.example_mobile_secondary" }
+      }
     },
     "vehicle_primary": {
       "enabled": true,
@@ -135,11 +138,13 @@
       "services": {
         "arm_away": {
           "target_service": "alarm_control_panel.alarm_arm_away",
-          "target_public_entity_id": "alarm_control_panel.security_panel"
+          "target_public_entity_id": "alarm_control_panel.security_panel",
+          "data": { "code": "0000" }
         },
         "disarm": {
           "target_service": "alarm_control_panel.alarm_disarm",
-          "target_public_entity_id": "alarm_control_panel.security_panel"
+          "target_public_entity_id": "alarm_control_panel.security_panel",
+          "data": { "code": "0000" }
         }
       }
     }

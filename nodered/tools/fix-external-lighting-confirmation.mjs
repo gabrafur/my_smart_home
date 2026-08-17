@@ -96,7 +96,10 @@ for (const command of commandNodes) {
   node.wires = [["ext_zigbee_command_gate"]];
 }
 
-requireNode("24743bc9f254d1c1").wires = [["ext_sunset_alarm_check"], []];
+Object.assign(requireNode("24743bc9f254d1c1"), {
+  outputInitially: true,
+  wires: [["ext_sunset_alarm_check"], []],
+});
 
 const managedIds = new Set([
   "ext_zigbee_bridge_state_in",

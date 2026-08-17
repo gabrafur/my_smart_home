@@ -131,6 +131,11 @@ for (const [id, action] of [
   assert.deepEqual(command.entityId, []);
   assert.match(command.data, /"role":"security_panel"/);
   assert.match(command.data, new RegExp(`"action":"${action}"`));
+  assert.deepEqual(
+    JSON.parse(command.data).data,
+    {},
+    `${id}: dados privados devem vir apenas do binding privado`,
+  );
 }
 
 for (const item of flows.filter((candidate) => candidate.type === "function")) {

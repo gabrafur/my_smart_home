@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { validateBindings } from "./public-bindings-check.mjs";
+import { validateBindings, validateFlowBindingCalls } from "./public-bindings-check.mjs";
 
 const roles = {
   resident_primary: {},
@@ -84,6 +84,30 @@ test("accepts a fixed-payload MQTT topic as a string", () => {
     },
   };
   assert.deepEqual(validateBindings(document), []);
+});
+
+test("requires every Node-RED binding call to exist in the contract", () => {
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      mobile_primary: {
+        services: {
+          notify: { target_service: "notify.example_mobile_primary" },
+        },
+      },
+    },
+  };
+  assert.deepEqual(validateFlowBindingCalls(document, [{
+    id: "notify-ok",
+    action: "public_bindings.call",
+    data: '{"role":"mobile_primary","action":"notify"}',
+  }]), []);
+  assert.equal(validateFlowBindingCalls(document, [{
+    id: "notify-missing",
+    action: "public_bindings.call",
+    data: '{"role":"mobile_primary","action":"missing"}',
+  }])[0]?.rule, "consumer-service");
 });
 
 test("resolves a service through an entity binding in the same role", () => {

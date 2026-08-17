@@ -115,12 +115,12 @@ publicBinding("32f1180d9ab2d2de", {
 publicBinding("70eb073f8191e69e", {
   role: "security_panel",
   action: "arm_away",
-  data: "{\"code\":\"0011\"}",
+  data: "{}",
 });
 publicBinding("8261c7cfb6756ca8", {
   role: "security_panel",
   action: "disarm",
-  data: "{\"code\":\"0011\"}",
+  data: "{}",
 });
 
 publicBinding("2818bf202b397612", {
