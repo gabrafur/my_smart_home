@@ -444,7 +444,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data(self.data)
 
     async def _async_update_fuel_efficiency(self, vehicle_id: str) -> None:
-        """Estimate km/L only where recorder readings safely bracket a trip."""
+        """Estimate km/L over the maximum history retained by Recorder."""
         vehicle = self.vehicle_manager.vehicles[vehicle_id]
         registry = er.async_get(self.hass)
         fuel_entity_id = registry.async_get_entity_id(
@@ -453,17 +453,24 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         odometer_entity_id = registry.async_get_entity_id(
             "sensor", DOMAIN, f"{DOMAIN}_{vehicle.id}__odometer"
         )
+        recent_trip_entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, f"{DOMAIN}-recent-trip-info-{vehicle.id}"
+        )
         if not fuel_entity_id or not odometer_entity_id:
             return
 
-        start = dt_util.utcnow() - timedelta(days=3)
+        recorder = get_instance(self.hass)
+        lookback_days = max(1, recorder.keep_days)
+        start = dt_util.utcnow() - timedelta(days=lookback_days)
         entity_ids = [fuel_entity_id, odometer_entity_id]
-        states = await get_instance(self.hass).async_add_executor_job(
+        if recent_trip_entity_id:
+            entity_ids.append(recent_trip_entity_id)
+        states = await recorder.async_add_executor_job(
             lambda: history.get_significant_states(
                 self.hass,
                 start,
                 entity_ids=entity_ids,
-                no_attributes=True,
+                no_attributes=False,
             )
         )
 
@@ -478,12 +485,36 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
         fuel_readings = numeric(fuel_entity_id)
         odometer_readings = numeric(odometer_entity_id)
+        # /tripinfo returns one day per request and is rate-limited. Each
+        # current two-day response is already recorded with full attributes,
+        # so merge those retained snapshots instead of issuing one API call
+        # per historical day. This automatically follows Recorder retention.
+        trips_by_key: dict[tuple[str | None, str | None], dict[str, Any]] = {}
+        if recent_trip_entity_id:
+            for state in states.get(recent_trip_entity_id, []):
+                for trip in state.attributes.get("trips", []):
+                    if not isinstance(trip, dict):
+                        continue
+                    key = (trip.get("date"), trip.get("start_time") or trip.get("started_at"))
+                    trips_by_key[key] = dict(trip)
+        for trip in self.recent_trip_info[vehicle_id]["trips"]:
+            key = (trip.get("date"), trip.get("start_time") or trip.get("started_at"))
+            # Keep the current objects by reference so any reliable per-trip
+            # estimate is also exposed by the recent-trip sensor attributes.
+            # Recorder snapshots remain copied above because they are
+            # historical input and must not be mutated.
+            trips_by_key[key] = trip
+        available_trips = sorted(
+            trips_by_key.values(),
+            key=lambda trip: (trip.get("date") or "", trip.get("start_time") or ""),
+            reverse=True,
+        )
         estimated_liters = 0.0
         estimated_distance = 0.0
         considered_trips: list[dict[str, Any]] = []
         used_fuel_samples: set[dt.datetime] = set()
         used_odometer_samples: set[dt.datetime] = set()
-        for trip in self.recent_trip_info[vehicle_id]["trips"]:
+        for trip in available_trips:
             if not trip["started_at"] or trip["duration_min"] is None:
                 continue
             # tripinfo returns the vehicle's local wall-clock time. Recorder
@@ -539,16 +570,28 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
         average = round(estimated_distance / estimated_liters, 1) if estimated_liters else None
         recent_info = self.recent_trip_info[vehicle_id]
+        available_dates = sorted(
+            {
+                date
+                for date in (
+                    *(trip.get("date") for trip in available_trips),
+                    recent_info.get("period_start"),
+                    recent_info.get("period_end"),
+                )
+                if date
+            }
+        )
         self.fuel_efficiency[vehicle_id] = {
             "km_per_l": average,
             "data_sufficient": average is not None,
             "estimated_distance": round(estimated_distance, 1),
             "estimated_liters": round(estimated_liters, 2),
             "tank_liters": FUEL_TANK_LITERS,
-            "period_start": recent_info.get("period_start"),
-            "period_end": recent_info.get("period_end"),
+            "period_start": available_dates[0] if available_dates else recent_info.get("period_start"),
+            "period_end": available_dates[-1] if available_dates else recent_info.get("period_end"),
             "recorder_search_start": start.isoformat(),
             "recorder_search_end": dt_util.utcnow().isoformat(),
+            "search_window_days": lookback_days,
             "trip_window_start": (
                 min(item["started_at"] for item in considered_trips)
                 if considered_trips
@@ -559,7 +602,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 if considered_trips
                 else None
             ),
-            "trips_available": len(recent_info.get("trips", [])),
+            "trips_available": len(available_trips),
             "trips_considered": len(considered_trips),
             "fuel_samples_available": len(fuel_readings),
             "fuel_samples_used": len(used_fuel_samples),

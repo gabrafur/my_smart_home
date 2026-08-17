@@ -585,8 +585,11 @@ As viagens renderizadas vem de
 `sensor.garagem_vehicle_primary_recent_trip_info` e cobrem hoje e ontem. O consumo em
 km/L so aparece quando o recorder possui leituras confiaveis de combustivel e
 odometro antes e depois da viagem; caso contrario o card explicita que aguarda
-amostras, em vez de fabricar uma media. Os atributos detalham janela de hoje e
-ontem, busca de recorder de tres dias, viagens disponiveis/consideradas,
+amostras, em vez de fabricar uma media. Para o calculo, snapshots historicos
+desse sensor sao mesclados por data e horario durante toda a retencao configurada
+do Recorder (30 dias nesta instalacao), sem chamadas adicionais ao endpoint
+rate-limited `/tripinfo`. Os atributos detalham a janela maxima pesquisada,
+viagens disponiveis/consideradas,
 amostras usadas, distancia, litros estimados, queda minima de 2% e gap maximo
 de quatro horas. O card principal mostra o intervalo efetivamente usado.
 

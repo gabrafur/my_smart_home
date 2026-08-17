@@ -89,6 +89,10 @@
         "target_entity_id": {
           "type": "string",
           "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+        },
+        "target_public_entity_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
         }
       }
     },

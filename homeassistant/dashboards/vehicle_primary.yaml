@@ -147,6 +147,60 @@ views:
                     action: locate
                   confirmation:
                     text: Acionar a buzina e as luzes do Creta por aproximadamente 30 segundos?
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: switch.vehicle_primary_climate
+                name: Ligar carro + ar
+                icon: mdi:car-seat-cooler
+                hide_state: true
+                tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: climate_on
+                  confirmation:
+                    text: O veículo está em P, com portas e porta-malas fechados e travados? Ligar o motor e o ar-condicionado remotamente?
+                icon_tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: climate_on
+                  confirmation:
+                    text: O veículo está em P, com portas e porta-malas fechados e travados? Ligar o motor e o ar-condicionado remotamente?
+                hold_action:
+                  action: none
+                icon_hold_action:
+                  action: none
+              - type: tile
+                entity: switch.vehicle_primary_climate
+                name: Desligar carro + ar
+                icon: mdi:car-off
+                hide_state: true
+                tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: climate_off
+                  confirmation:
+                    text: Desligar o motor e o ar-condicionado remotamente?
+                icon_tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: climate_off
+                  confirmation:
+                    text: Desligar o motor e o ar-condicionado remotamente?
+                hold_action:
+                  action: none
+                icon_hold_action:
+                  action: none
           - type: markdown
             content: >-
               {% set refresh = states.sensor.vehicle_primary_refresh_coordinator %}

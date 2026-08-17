@@ -42,6 +42,20 @@
         "device_tracker.vehicle_primary": {
           "target_entity_id": "device_tracker.example_vehicle_primary",
           "state_mode": "home_away"
+        },
+        "switch.vehicle_primary_climate": {
+          "target_entity_id": "switch.example_vehicle_primary_climate",
+          "state_mode": "boolean"
+        }
+      },
+      "services": {
+        "climate_on": {
+          "target_service": "switch.turn_on",
+          "target_public_entity_id": "switch.vehicle_primary_climate"
+        },
+        "climate_off": {
+          "target_service": "switch.turn_off",
+          "target_public_entity_id": "switch.vehicle_primary_climate"
         }
       }
     },

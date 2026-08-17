@@ -25,6 +25,8 @@ class FakeHass:
 class FakeRecorder:
     """Execute the recorder callback synchronously in the test loop."""
 
+    keep_days = 30
+
     async def async_add_executor_job(self, callback):
         return callback()
 
@@ -35,7 +37,11 @@ class FakeRegistry:
     @staticmethod
     def async_get_entity_id(platform, domain, unique_id):
         del platform, domain
-        return FUEL_ENTITY if unique_id.endswith("_fuel_level") else ODOMETER_ENTITY
+        if unique_id.endswith("_fuel_level"):
+            return FUEL_ENTITY
+        if "recent-trip-info" in unique_id:
+            return "sensor.vehicle_primary_recent_trip_info"
+        return ODOMETER_ENTITY
 
 
 def reading(at: str, value: float):
@@ -45,6 +51,12 @@ def reading(at: str, value: float):
         last_updated=dt.datetime.fromisoformat(at).replace(tzinfo=UTC),
         state=str(value),
     )
+
+
+def trip_snapshot(*trips):
+    """Build a recorder state containing retained recent-trip attributes."""
+
+    return SimpleNamespace(attributes={"trips": list(trips)})
 
 
 def trip(started_at: str = "1999-01-01T10:00:00", distance: float = 50):
@@ -57,7 +69,7 @@ def trip(started_at: str = "1999-01-01T10:00:00", distance: float = 50):
     }
 
 
-async def estimate(trips, fuel_readings, odometer_readings):
+async def estimate(trips, fuel_readings, odometer_readings, trip_snapshots=None):
     """Run the production estimator with deterministic recorder history."""
 
     coordinator = SimpleNamespace(
@@ -77,6 +89,7 @@ async def estimate(trips, fuel_readings, odometer_readings):
     states = {
         FUEL_ENTITY: fuel_readings,
         ODOMETER_ENTITY: odometer_readings,
+        "sensor.vehicle_primary_recent_trip_info": trip_snapshots or [],
     }
     with (
         patch("custom_components.kia_uvo.coordinator.er.async_get", return_value=FakeRegistry()),
@@ -89,7 +102,9 @@ async def estimate(trips, fuel_readings, odometer_readings):
         await HyundaiKiaConnectDataUpdateCoordinator._async_update_fuel_efficiency(
             coordinator, VEHICLE_ID
         )
-    return coordinator.fuel_efficiency[VEHICLE_ID]
+    return coordinator.fuel_efficiency[VEHICLE_ID] | {
+        "_recent_trips": coordinator.recent_trip_info[VEHICLE_ID]["trips"]
+    }
 
 
 async def main() -> None:
@@ -109,6 +124,9 @@ async def main() -> None:
     assert valid["odometer_samples_used"] == 2
     assert valid["estimated_distance"] == 50
     assert valid["estimated_liters"] == 5
+    assert valid["search_window_days"] == 30
+    assert valid["_recent_trips"][0]["estimated_km_per_l"] == 10.0
+    assert valid["_recent_trips"][0]["estimated_liters"] == 5.0
 
     missing = await estimate(
         [trip()],
@@ -135,7 +153,31 @@ async def main() -> None:
     assert inconsistent["data_sufficient"] is False
     assert inconsistent["trips_considered"] == 0
 
-    print("vehicle_primary consumption estimate: 4 cenários aprovados.")
+    maximum_window = await estimate(
+        [trip(distance=25)],
+        [
+            reading("1998-12-31T09:50:00", 80),
+            reading("1998-12-31T10:40:00", 75),
+            reading("1999-01-01T09:50:00", 75),
+            reading("1999-01-01T10:40:00", 70),
+        ],
+        [
+            reading("1998-12-31T09:50:00", 950),
+            reading("1998-12-31T10:40:00", 975),
+            reading("1999-01-01T09:50:00", 975),
+            reading("1999-01-01T10:40:00", 1000),
+        ],
+        [trip_snapshot(trip("1998-12-31T10:00:00", distance=25) | {
+            "date": "19981231", "start_time": "100000"
+        })],
+    )
+    assert maximum_window["km_per_l"] == 10.0
+    assert maximum_window["trips_available"] == 2
+    assert maximum_window["trips_considered"] == 2
+    assert maximum_window["period_start"] == "19981231"
+    assert maximum_window["period_end"] == "19990101"
+
+    print("vehicle_primary consumption estimate: 5 cenários aprovados.")
 
 
 if __name__ == "__main__":
