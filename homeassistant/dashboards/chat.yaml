@@ -200,12 +200,28 @@ views:
               Eles servem para analisar o uso local e **não são o saldo semanal do
               seu plano**. O limite oficial fica no topo do painel e é consultado
               automaticamente a cada 30 segundos.
-          - type: entities
-            title: Última atividade local
-            show_header_toggle: false
-            entities:
-              - entity: sensor.codex_ultima_metrica
-                name: Última conversa registrada nesta máquina
+          - type: markdown
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              ## Última atividade local
+
+              {% set registrada_em = state_attr('sensor.codex_usage_raw', 'source_updated_at') %}
+              {% set instante = as_timestamp(registrada_em, 0) | float(0) %}
+              {% set idade_segundos = [0, (as_timestamp(now()) - instante) | int(0)] | max if instante > 0 else none %}
+              **Última conversa registrada nesta máquina:**
+              {% if idade_segundos is none %}
+              ainda não há conversa registrada.
+              {% elif idade_segundos < 60 %}
+              agora mesmo.
+              {% elif idade_segundos < 3600 %}
+              {% set idade_minutos = (idade_segundos / 60) | int %}
+              há {{ format_number_ptbr(idade_minutos) }} minuto{{ '' if idade_minutos == 1 else 's' }}.
+              {% elif idade_segundos < 86400 %}
+              {% set idade_horas = (idade_segundos / 3600) | int %}
+              há {{ format_number_ptbr(idade_horas) }} hora{{ '' if idade_horas == 1 else 's' }}.
+              {% else %}
+              em {{ instante | timestamp_custom('%d/%m/%Y às %H:%M', true) }}.
+              {% endif %}
 
       - type: grid
         cards:
