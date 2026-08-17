@@ -52,8 +52,8 @@ agent to:
 - use official sources when versions or procedures may have changed;
 - validate Compose with both the real and example environments,
   documentation, the security scanner, Node-RED flows, and the bridge;
-- inspect the final and staged diffs before a commit prefixed with
-  `docs: weekly documentation review`;
+- inspect the final and staged diffs before the canonical
+  `docs: weekly public-repository review` commit;
 - avoid stack restarts, endpoint calls, notifications, and physical-device
   actions.
 
@@ -122,6 +122,7 @@ Never print `.env` values or credential contents in logs or support requests.
 
 ```bash
 node scripts/weekly-docs-review.mjs --self-test
+node --test scripts/weekly-docs-review.test.mjs
 docker compose --profile automation build docs-review-scheduler
 docker compose --profile automation up -d docs-review-scheduler
 docker compose --profile automation logs --tail=50 docs-review-scheduler
@@ -136,7 +137,11 @@ docker compose --profile automation run --rm docs-review-scheduler \
   node scripts/weekly-docs-review.mjs --check
 ```
 
-The preflight only passes with a clean tree. To request a complete manual run,
+The second command uses only temporary Git repositories and bare remotes to
+prove the allowlist, mixed-diff rejection, wrong-branch handling, remote
+advancement, validation/scanner failures, and no-empty-commit behavior; it
+never pushes to a real remote. The preflight only passes with a clean tree. To
+request a complete manual run,
 knowing it may edit, commit, and push:
 
 ```bash
@@ -162,9 +167,10 @@ git status --short
 ```
 
 A dirty tree, unexpected branch, or authentication failure skips that week's
-run with an explicit log message. If a review fails after editing, its changes
-remain in the checkout for human inspection; later runs keep refusing to start
-until the tree is clean again. Never discard those changes automatically.
+run with an explicit log message. Reviews run in a detached temporary worktree:
+on failure the scheduler records the reason and removes that worktree without
+merging anything into `main`. Pre-existing interactive changes in the primary
+checkout remain untouched and keep blocking later runs until the tree is clean.
 
 The service checkout must remain on `main`. On another branch the scheduler
 itself remains healthy and waiting, but the run is recorded as

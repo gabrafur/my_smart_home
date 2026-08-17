@@ -58,8 +58,8 @@ O prompt versionado em `scripts/weekly-docs-review.prompt.md` exige:
 - consultar fontes oficiais quando versões ou procedimentos puderem ter mudado;
 - validar Compose com e sem o arquivo de exemplo, documentação, scanner de
   segurança, fluxos Node-RED e bridge;
-- revisar o diff final e o conteúdo staged antes de um commit com prefixo
-  `docs: weekly documentation review`;
+- revisar o diff final e o conteúdo staged antes do commit canônico
+  `docs: weekly public-repository review`;
 - não reiniciar a stack residencial, não chamar endpoints, não enviar
   notificações e não acionar dispositivos físicos.
 
@@ -130,6 +130,7 @@ em logs ou incluídos em chamados de suporte.
 
 ```bash
 node scripts/weekly-docs-review.mjs --self-test
+node --test scripts/weekly-docs-review.test.mjs
 docker compose --profile automation build docs-review-scheduler
 docker compose --profile automation up -d docs-review-scheduler
 docker compose --profile automation logs --tail=50 docs-review-scheduler
@@ -143,7 +144,10 @@ docker compose --profile automation run --rm docs-review-scheduler \
   node scripts/weekly-docs-review.mjs --check
 ```
 
-Esse preflight só passa com árvore limpa. Para solicitar uma execução manual
+O segundo comando usa somente repositórios Git e remotos bare temporários para
+provar allowlist, diff misto, branch incorreta, avanço remoto, falhas de
+validação/scanners e ausência de commit vazio; ele nunca envia a um remoto
+real. O preflight só passa com árvore limpa. Para solicitar uma execução manual
 completa, sabendo que ela pode editar, commitar e enviar mudanças:
 
 ```bash
@@ -169,10 +173,11 @@ git status --short
 ```
 
 Uma árvore suja, branch diferente ou falha de autenticação faz a semana ser
-ignorada com uma mensagem explícita. Se uma revisão falhar depois de editar,
-as mudanças ficam no checkout para inspeção humana; as semanas seguintes
-continuarão recusando execução até a árvore voltar a ficar limpa. Nunca descarte
-essas mudanças automaticamente.
+ignorada com uma mensagem explícita. A revisão ocorre em worktree destacado e
+temporário: se ela falhar, o scheduler registra o motivo e remove esse worktree
+sem mesclar nada em `main`. Alterações interativas preexistentes no checkout
+principal permanecem intocadas e continuam bloqueando novas execuções até a
+árvore voltar a ficar limpa.
 
 O checkout usado pelo serviço deve permanecer em `main`. Em outra branch, a
 rotina continua saudável e aguardando, mas o run será registrado como

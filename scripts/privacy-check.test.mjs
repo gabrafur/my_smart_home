@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { scanEntries } from "./privacy-check.mjs";
+import { scanEntries, scanGitRepository } from "./privacy-check.mjs";
 
 function entry(file, text) {
   return { file, buffer: Buffer.from(text) };
@@ -43,6 +43,38 @@ test("detects private network, coordinate, MAC, topic and denylist categories", 
     "residential-device-topic",
     "private-denylist",
   ]));
+});
+
+test("detects contextual identity, contact, address and private-network categories", () => {
+  const result = scanEntries([entry("fixture.yaml", [
+    "owner_name: Private Fixture",
+    "email: private.fixture@private.invalid.test",
+    "phone: +55 11 99999-8888",
+    "host: automation.private.lan",
+    "ssid: PrivateFixtureWifi",
+    "home_address: Private Fixture Street 123",
+    "account_id: account987654321",
+  ].join("\n"))]);
+  assert.deepEqual(new Set(result.map((item) => item.rule)), new Set([
+    "private-name-field",
+    "private-email",
+    "private-phone",
+    "private-hostname",
+    "private-ssid",
+    "private-address",
+    "private-account-id",
+  ]));
+});
+
+test("allows documentation-only contact and logical placeholder values", () => {
+  const result = scanEntries([entry("fixture.yaml", [
+    "email: maintainer@example.com",
+    "email: fixture@example.invalid",
+    "ssid: CHANGE_ME",
+    "owner_name: resident_primary",
+    "account_id: synthetic",
+  ].join("\n"))]);
+  assert.deepEqual(result, []);
 });
 
 test("detects metadata in a synthetic PNG", () => {
@@ -95,8 +127,14 @@ test("Git tracked mode excludes untracked files and staged mode sees staged cont
   assert.equal(run(["add", "tracked.txt"]).status, 0);
   assert.equal(run(["commit", "-qm", "fixture", "--author", "Fixture <fixture@example.invalid>"]).status, 0);
   fs.writeFileSync(path.join(root, "untracked.txt"), "person.private_fixture\n");
-  assert.deepEqual(run(["ls-files"]).stdout.trim().split("\n"), ["tracked.txt"]);
+  assert.deepEqual(scanGitRepository(root, "tracked").findings, []);
   fs.writeFileSync(path.join(root, "staged.txt"), "person.private_staged\n");
   assert.equal(run(["add", "staged.txt"]).status, 0);
-  assert.match(run(["diff", "--cached", "--name-only"]).stdout, /staged\.txt/);
+  assert.equal(scanGitRepository(root, "staged").findings[0].file, "staged.txt");
+
+  fs.writeFileSync(path.join(root, "tracked.txt"), "person.private_tracked\n");
+  assert.equal(run(["add", "tracked.txt"]).status, 0);
+  fs.writeFileSync(path.join(root, "untracked.txt"), "safe synthetic fixture\n");
+  const trackedResult = scanGitRepository(root, "staged");
+  assert.ok(trackedResult.findings.some((item) => item.file === "tracked.txt"));
 });
