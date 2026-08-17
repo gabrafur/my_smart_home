@@ -682,7 +682,12 @@ function scanCodexUsageFile(filePath) {
   };
 }
 
-function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) {
+function buildCodexUsage(
+  fileSummaries,
+  now = new Date(),
+  liveRateEvent = null,
+  { accountLimitOnly = false } = {},
+) {
   const totals = emptyTokens();
   const recentTokens = emptyTokens();
   const daily = new Map();
@@ -754,10 +759,12 @@ function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) 
   const hasLiveRateLimit = liveRateEvent?.rateLimits
     && liveRateEvent.timestamp instanceof Date
     && !Number.isNaN(liveRateEvent.timestamp.valueOf());
-  const rateSource = hasLiveRateLimit ? liveRateEvent : (latestRateEvent || latestEvent);
+  const rateSource = hasLiveRateLimit
+    ? liveRateEvent
+    : accountLimitOnly ? null : (latestRateEvent || latestEvent);
   const sanitized = sanitizeRateLimits(rateSource?.rateLimits);
   const lastKnownPlanType = planType(latestPlanEvent?.rateLimits);
-  if (sanitized && !sanitized.plan_type && lastKnownPlanType) {
+  if (sanitized && !sanitized.plan_type && lastKnownPlanType && !accountLimitOnly) {
     sanitized.plan_type = lastKnownPlanType;
   }
   const creditSnapshot = sanitizeRateLimits(latestCreditEvent?.rateLimits)?.credits;
@@ -837,6 +844,7 @@ class CodexUsageReader {
       [...this.usageFiles.values()].map((entry) => entry.summary),
       now,
       liveRateEvent,
+      { accountLimitOnly: true },
     );
   }
 
