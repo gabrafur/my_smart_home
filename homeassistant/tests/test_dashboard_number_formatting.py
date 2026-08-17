@@ -126,6 +126,19 @@ class DashboardNumberFormattingTest(unittest.TestCase):
                         f"{path.name}:{line_number + 1}",
                     )
 
+    def test_codex_local_activity_is_rendered_in_portuguese_without_frontend_locale(self):
+        dashboard = (DASHBOARDS / "chat.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("## Última atividade local", dashboard)
+        self.assertIn("agora mesmo.", dashboard)
+        self.assertIn("há {{ format_number_ptbr(idade_minutos) }} minuto", dashboard)
+        self.assertIn("há {{ format_number_ptbr(idade_horas) }} hora", dashboard)
+        self.assertIn("timestamp_custom('%d/%m/%Y às %H:%M', true)", dashboard)
+        self.assertNotIn(
+            "entity: sensor.codex_ultima_metrica\n                name: Última conversa registrada nesta máquina",
+            dashboard,
+        )
+
     def test_native_dashboard_counters_keep_numeric_display_metadata(self):
         config = CODEX_PACKAGE.read_text(encoding="utf-8")
 
