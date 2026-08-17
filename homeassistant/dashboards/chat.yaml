@@ -284,7 +284,7 @@ views:
               🔴 **Local AI indisponível.** Consulte os cards de infraestrutura e o diagnóstico recente.
               {% endif %}
 
-              _Atualização automática: atividade em ~1 s, métricas em ~2 s e saúde em ~1 min._
+              _Atualização automática: atividade e métricas em ~2 s; saúde em ~1 min._
 
               {% set chats = state_attr('sensor.codex_rtx_ao_vivo', 'chats_ativos') or [] %}
               {% if chats %}
@@ -320,6 +320,19 @@ views:
                 entity: sensor.codex_rtx_potencia_agora
                 name: Potência agora
 
+          - type: history-graph
+            title: Atividade e métricas — últimas 24 horas
+            hours_to_show: 24
+            entities:
+              - entity: binary_sensor.codex_rtx_em_uso
+                name: RTX em uso
+              - entity: sensor.codex_rtx_gpu_historico
+                name: GPU
+              - entity: sensor.codex_rtx_vram_historico
+                name: VRAM
+              - entity: sensor.codex_rtx_potencia_historico
+                name: Potência
+
       - type: grid
         cards:
           - type: grid
@@ -331,19 +344,19 @@ views:
                 entity: sensor.codex_tokens_openai_evitados_hoje_estimados
                 name: Contexto evitado
               - type: tile
-                entity: sensor.codex_reducao_de_contexto_local_ai
+                entity: sensor.codex_reducao_de_contexto_local_ai_hoje
                 name: Redução de contexto
               - type: tile
                 entity: sensor.codex_rtx_usos_hoje
                 name: RTX usada
               - type: tile
-                entity: sensor.codex_taxa_de_falhas_local_ai
+                entity: sensor.codex_taxa_de_falhas_local_ai_hoje
                 name: Taxa de falhas
               - type: tile
-                entity: sensor.codex_taxa_de_delegacao_rtx
+                entity: sensor.codex_taxa_de_delegacao_rtx_hoje
                 name: Taxa de delegação
               - type: tile
-                entity: sensor.codex_cobertura_ponderada_de_economia_rtx
+                entity: sensor.codex_cobertura_ponderada_de_economia_rtx_hoje
                 name: Cobertura de economia
 
       - type: grid
@@ -363,7 +376,7 @@ views:
                 entity: sensor.codex_chamadas_local_ai_desnecessarias_hoje
                 name: Chamadas desnecessárias
               - type: tile
-                entity: sensor.codex_tokens_potenciais_evitaveis_estimados
+                entity: sensor.codex_tokens_potenciais_evitaveis_hoje_estimados
                 name: Potencial estimado
               - type: tile
                 entity: sensor.codex_decisoes_de_roteamento_hoje
@@ -381,7 +394,7 @@ views:
             cards:
               - type: tile
                 entity: sensor.codex_ultimo_job_local_ai
-                name: Último job
+                name: Job atual / último
               - type: tile
                 entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
                 name: Última decisão
@@ -412,7 +425,7 @@ views:
                 entity: sensor.codex_contexto_de_memoria_evitado_hoje
                 name: Contexto evitado
               - type: tile
-                entity: sensor.codex_compressao_de_memoria
+                entity: sensor.codex_compressao_de_memoria_hoje
                 name: Compressão de memória
               - type: tile
                 entity: sensor.codex_sobrecargas_de_memoria_hoje
@@ -580,7 +593,14 @@ views:
             content: >-
               {% set task = state_attr('sensor.codex_ultimo_job_local_ai', 'tarefa') %}
               {% set status = states('sensor.codex_ultimo_job_local_ai') %}
-              {% if task and status == 'success' %}
+              {% if task and status == 'em andamento' %}
+              ## Inferência em andamento
+
+              **{{ task }}** · {{ state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') }} ·
+              iniciada em {{ state_attr('sensor.codex_ultimo_job_local_ai', 'iniciado_em') }}.
+
+              GPU, VRAM e potência são atualizadas na seção **Atividade ao vivo**.
+              {% elif task and status == 'success' %}
               ## Último job de GPU
 
               **{{ task }}** · {{ state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') }} ·

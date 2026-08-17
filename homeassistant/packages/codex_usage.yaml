@@ -3,8 +3,11 @@ command_line:
       name: Codex RTX Live Raw
       unique_id: codex_rtx_live_raw
       command: "python3 /config/tools/codex_rtx_live.py"
-      command_timeout: 2
-      scan_interval: 1
+      # The helper has its own sub-second HTTP timeout. Keep enough headroom
+      # for short bridge scheduling delays; stable-signal handling below
+      # suppresses isolated transport failures from the visible status.
+      command_timeout: 3
+      scan_interval: 2
       value_template: "{{ value_json.state }}"
       json_attributes:
         - task
@@ -48,15 +51,40 @@ command_line:
 
 # These transport sensors update every one or two seconds and contain nested
 # attributes consumed immediately by template sensors. Persisting every raw
-# payload would add database churn without adding useful history; the derived
-# dashboard sensors remain recorded normally.
+# payload would add database churn without adding useful history. Live
+# presentation entities are excluded as well; dedicated numeric and binary
+# entities below retain only meaningful RTX history.
 recorder:
   exclude:
     entities:
       - sensor.codex_usage_raw
       - sensor.codex_rtx_live_raw
+      - binary_sensor.codex_rtx_sinal_estavel
+      - sensor.codex_rtx_ao_vivo
+      - sensor.codex_rtx_gpu_agora
+      - sensor.codex_rtx_vram_agora
+      - sensor.codex_rtx_potencia_agora
 
 template:
+  - binary_sensor:
+      - name: Codex RTX Sinal Estavel
+        unique_id: codex_rtx_sinal_estavel
+        icon: mdi:access-point-check
+        state: >-
+          {{ states('sensor.codex_rtx_live_raw') not in ['error', 'unknown', 'unavailable'] }}
+        delay_off:
+          seconds: 5
+
+      - name: Codex RTX em Uso
+        unique_id: codex_rtx_em_uso
+        device_class: running
+        icon: mdi:memory
+        state: "{{ states('sensor.codex_rtx_live_raw') == 'in_use' }}"
+        # A brief failed poll or the gap between a job ending and telemetry
+        # settling should not fragment one inference into several intervals.
+        delay_off:
+          seconds: 5
+
   - sensor:
       - name: Codex RTX ao Vivo
         unique_id: codex_rtx_ao_vivo
@@ -71,7 +99,9 @@ template:
           {% if live == 'in_use' %}em uso
           {% elif live == 'available' %}disponível
           {% elif live == 'stale' %}desatualizado
-          {% elif live == 'error' %}sem sinal
+          {% elif live in ['error', 'unknown', 'unavailable'] and is_state('binary_sensor.codex_rtx_sinal_estavel', 'on') %}
+            {{ this.state if this.state not in ['unknown', 'unavailable', 'sem sinal'] else 'verificando' }}
+          {% elif live in ['error', 'unknown', 'unavailable'] %}sem sinal
           {% else %}indisponível
           {% endif %}
         attributes:
@@ -117,6 +147,40 @@ template:
         attributes:
           amostra_ativa: "{{ states('sensor.codex_rtx_live_raw') == 'in_use' }}"
           watts: "{{ state_attr('sensor.codex_rtx_live_raw', 'power_watts') }}"
+
+      # Recorder-facing metrics are numeric and exist only while an actual GPU
+      # sample is present. The live tiles above can therefore keep friendly
+      # textual states without turning every value into a history category.
+      - name: Codex RTX GPU Historico
+        unique_id: codex_rtx_gpu_historico
+        icon: mdi:chip
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'gpu_util_percent') }}"
+        availability: >-
+          {{ states('sensor.codex_rtx_live_raw') == 'in_use'
+             and state_attr('sensor.codex_rtx_live_raw', 'gpu_util_percent') is number }}
+
+      - name: Codex RTX VRAM Historico
+        unique_id: codex_rtx_vram_historico
+        icon: mdi:memory
+        unit_of_measurement: MiB
+        state_class: measurement
+        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'vram_mib') }}"
+        availability: >-
+          {{ states('sensor.codex_rtx_live_raw') == 'in_use'
+             and state_attr('sensor.codex_rtx_live_raw', 'vram_mib') is number }}
+
+      - name: Codex RTX Potencia Historico
+        unique_id: codex_rtx_potencia_historico
+        icon: mdi:lightning-bolt
+        device_class: power
+        unit_of_measurement: W
+        state_class: measurement
+        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'power_watts') }}"
+        availability: >-
+          {{ states('sensor.codex_rtx_live_raw') == 'in_use'
+             and state_attr('sensor.codex_rtx_live_raw', 'power_watts') is number }}
 
       - name: Codex Limite Usado
         unique_id: codex_limite_usado
@@ -430,16 +494,7 @@ template:
         unique_id: codex_local_ai_status
         icon: mdi:robot-outline
         state: >-
-          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
-          {% set labels = {
-            'LOCAL_AI_AVAILABLE': 'disponível',
-            'LOCAL_AI_DEGRADED': 'degradado',
-            'LOCAL_AI_IN_USE': 'em uso',
-            'LOCAL_AI_UNAVAILABLE': 'indisponível',
-            'LOCAL_AI_DISABLED': 'desativado'
-          } %}
-          {{ labels.get(local.get('state'), 'aguardando preflight') }}
-        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+          {{ states('sensor.codex_rtx_ao_vivo') }}
         attributes:
           estado_tecnico: "{{ (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('state') }}"
           motivo: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('reason') }}"
@@ -450,20 +505,16 @@ template:
         unique_id: codex_rtx_4070
         icon: mdi:expansion-card-variant
         state: >-
-          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
-          {% set preflight = local.get('preflight') or {} %}
-          {% if local.get('state') == 'LOCAL_AI_IN_USE' %}
+          {% set live = states('sensor.codex_rtx_ao_vivo') %}
+          {% if live == 'em uso' %}
             em uso pelo Codex
-          {% elif local.get('state') == 'LOCAL_AI_AVAILABLE' and preflight.get('gpu') %}
+          {% elif live == 'disponível' %}
             disponível
-          {% elif local.get('state') == 'LOCAL_AI_DEGRADED' and preflight.get('ollama') %}
+          {% elif live == 'desatualizado' %}
             telemetria não confirmada
-          {% elif local.get('state') == 'LOCAL_AI_DISABLED' %}
-            desativada
           {% else %}
             indisponível
           {% endif %}
-        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
           gpu: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('gpu') }}"
           motivo: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('reason') }}"
@@ -519,6 +570,14 @@ template:
         state_class: measurement
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('failure_rate_percent') }}"
         availability: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('failure_rate_percent') is number }}"
+
+      - name: Codex Taxa de Falhas Local AI Hoje
+        unique_id: codex_taxa_de_falhas_local_ai_hoje
+        icon: mdi:calendar-today
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('failure_rate_percent') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('failure_rate_percent') is number }}"
 
       - name: Codex Taxa de Falhas Qwen 2.5 Coder 7B
         unique_id: codex_taxa_de_falhas_qwen_2_5_coder_7b
@@ -633,6 +692,20 @@ template:
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('rtx_delegation_rate_percent') }}"
         availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('rtx_delegation_rate_percent') is number }}"
 
+      - name: Codex Taxa de Delegacao RTX Hoje
+        unique_id: codex_taxa_de_delegacao_rtx_hoje
+        icon: mdi:calendar-today
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >-
+          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set today = (((local.get('routing') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ today.get('rtx_delegation_rate_percent') }}
+        availability: >-
+          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set today = (((local.get('routing') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ today.get('rtx_delegation_rate_percent') is number }}
+
       - name: Codex Cobertura Ponderada de Economia RTX
         unique_id: codex_cobertura_ponderada_de_economia_rtx
         icon: mdi:chart-areaspline
@@ -640,6 +713,20 @@ template:
         state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('weighted_context_savings_coverage_percent') }}"
         availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('weighted_context_savings_coverage_percent') is number }}"
+
+      - name: Codex Cobertura Ponderada de Economia RTX Hoje
+        unique_id: codex_cobertura_ponderada_de_economia_rtx_hoje
+        icon: mdi:calendar-today
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >-
+          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set today = (((local.get('routing') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ today.get('weighted_context_savings_coverage_percent') }}
+        availability: >-
+          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set today = (((local.get('routing') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ today.get('weighted_context_savings_coverage_percent') is number }}
 
       - name: Codex Tokens Potenciais Evitaveis Estimados
         unique_id: codex_tokens_potenciais_evitaveis_estimados
@@ -649,6 +736,18 @@ template:
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
           metodologia: "soma das economias estimadas de tarefas elegiveis e disponiveis; nao e cobranca oficial da OpenAI"
+
+      - name: Codex Tokens Potenciais Evitaveis Hoje Estimados
+        unique_id: codex_tokens_potenciais_evitaveis_hoje_estimados
+        icon: mdi:calendar-today
+        state_class: measurement
+        state: >-
+          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set today = (((local.get('routing') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ today.get('potential_tokens_avoidable', 0) }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          metodologia: "soma diária das economias estimadas de tarefas elegíveis e disponíveis; não é cobrança oficial da OpenAI"
 
       - name: Codex Ultima Decisao de Roteamento Local AI
         unique_id: codex_ultima_decisao_de_roteamento_local_ai
@@ -725,6 +824,20 @@ template:
         state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('totals') or {}).get('memory_compression_percent') }}"
         availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('totals') or {}).get('memory_compression_percent') is number }}"
+
+      - name: Codex Compressao de Memoria Hoje
+        unique_id: codex_compressao_de_memoria_hoje
+        icon: mdi:calendar-today
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >-
+          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set today = (((local.get('memory') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ today.get('memory_compression_percent') }}
+        availability: >-
+          {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set today = (((local.get('memory') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ today.get('memory_compression_percent') is number }}
 
       - name: Codex Recuperacoes de Memoria Hoje
         unique_id: codex_recuperacoes_de_memoria_hoje
@@ -809,20 +922,43 @@ template:
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('context_reduction_percent') }}"
         availability: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('context_reduction_percent') is number }}"
 
+      - name: Codex Reducao de Contexto Local AI Hoje
+        unique_id: codex_reducao_de_contexto_local_ai_hoje
+        icon: mdi:calendar-today
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('context_reduction_percent') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('context_reduction_percent') is number }}"
+
       - name: Codex Ultimo Job Local AI
         unique_id: codex_ultimo_job_local_ai
-        icon: mdi:history
+        icon: >-
+          {{ 'mdi:progress-clock' if is_state('sensor.codex_rtx_ao_vivo', 'em uso') else 'mdi:history' }}
         state: >-
+          {% if is_state('sensor.codex_rtx_ao_vivo', 'em uso') %}
+            em andamento
+          {% else %}
           {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
           {{ jobs[0].get('status') if jobs else 'sem uso registrado' }}
+          {% endif %}
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
           tarefa: >-
+            {% if is_state('sensor.codex_rtx_ao_vivo', 'em uso') %}
+              {{ state_attr('sensor.codex_rtx_ao_vivo', 'tarefa') }}
+            {% else %}
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('task') if jobs else none }}
+            {% endif %}
           modelo: >-
+            {% if is_state('sensor.codex_rtx_ao_vivo', 'em uso') %}
+              {{ state_attr('sensor.codex_rtx_ao_vivo', 'modelo') }}
+            {% else %}
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('model') if jobs else none }}
+            {% endif %}
+          iniciado_em: >-
+            {{ state_attr('sensor.codex_rtx_live_raw', 'started_at') if is_state('sensor.codex_rtx_ao_vivo', 'em uso') else none }}
           duracao_s: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('duration_seconds') if jobs else none }}
