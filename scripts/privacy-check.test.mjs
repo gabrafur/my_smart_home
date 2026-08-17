@@ -51,6 +51,18 @@ test("detects metadata in a synthetic PNG", () => {
   assert.ok(result.some((item) => item.rule === "image-metadata"));
 });
 
+test("allows the canonical synthetic social preview but rejects arbitrary image locations", () => {
+  const png = Buffer.from("\x89PNG\r\n\x1a\n");
+  assert.deepEqual(scanEntries([{ file: "docs/assets/github-social-preview.png", buffer: png }]), []);
+  const result = scanEntries([{ file: "docs/assets/household.png", buffer: png }]);
+  assert.equal(result[0].rule, "image-location");
+});
+
+test("does not treat SVG drawing coordinates as household coordinates", () => {
+  const result = scanEntries([entry("docs/assets/architecture.svg", "<svg><path d=\"M 10.123456 20.123456\"/></svg>")]);
+  assert.deepEqual(result, []);
+});
+
 test("rejects private runtime paths and state artifacts", () => {
   const result = scanEntries([
     { file: "homeassistant/.storage/synthetic", buffer: Buffer.from("{}") },

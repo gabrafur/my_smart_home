@@ -1,0 +1,57 @@
+flowchart TB
+  DEV[Devices and synthetic events]
+
+  subgraph PUBLIC[Public, reviewable repository]
+    direction TB
+    Z2M[Zigbee2MQTT]
+    MQTT[Mosquitto / MQTT]
+    HA[Home Assistant]
+    NR[Node-RED]
+    AD[AppDaemon]
+    AG[Optional agent bridge]
+    OBS[Observability and recovery]
+    CODE[Compose · config · tests · docs]
+  end
+
+  subgraph PRIVATE[Private, never committed]
+    direction LR
+    BIND[Private bindings and secrets]
+    STATE[Device registries and runtime state]
+  end
+
+  subgraph RECOVERY[Explicit recovery path]
+    direction LR
+    BUNDLE[Encrypted private restore bundle]
+    VERIFY[plan → verify → human-approved apply]
+  end
+
+  DEV --> Z2M
+  DEV --> HA
+  Z2M --> MQTT
+  MQTT <--> HA
+  HA <--> NR
+  HA <--> AD
+  HA <--> AG
+  NR --> OBS
+  HA --> OBS
+  CODE -. defines .-> Z2M
+  CODE -. defines .-> MQTT
+  CODE -. defines .-> HA
+  CODE -. defines .-> NR
+  BIND -. read-only .-> HA
+  BIND -. read-only .-> NR
+  STATE -. runtime .-> HA
+  BUNDLE --> VERIFY
+  VERIFY -. restores private state .-> PRIVATE
+
+  classDef core fill:#0b5f73,stroke:#5ee7f2,color:#fff,stroke-width:2px;
+  classDef optional fill:#3d356b,stroke:#b9a7ff,color:#fff,stroke-width:2px,stroke-dasharray:6 4;
+  classDef private fill:#5b3a18,stroke:#ffc76b,color:#fff,stroke-width:2px;
+  classDef recovery fill:#174f3b,stroke:#68e0a8,color:#fff,stroke-width:2px;
+  classDef public fill:#102b46,stroke:#7bb8ef,color:#fff,stroke-width:1px;
+
+  class MQTT,HA,NR core;
+  class Z2M,AD,AG optional;
+  class BIND,STATE private;
+  class BUNDLE,VERIFY recovery;
+  class DEV,OBS,CODE public;
