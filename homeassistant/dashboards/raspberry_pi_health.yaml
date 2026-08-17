@@ -85,7 +85,7 @@ views:
                   target:
                     entity_id: input_button.storage_health_manual_run
                   confirmation:
-                    text: A manutenção remove backups de flows e logs npm expirados. Deseja continuar?
+                    text: A manutenção remove caches Docker sem uso, preserva 2 GB de cache recente e limpa backups de flows e logs npm expirados. Deseja continuar?
               - type: button
                 name: Rodar revisão documental
                 icon: mdi:file-document-refresh-outline

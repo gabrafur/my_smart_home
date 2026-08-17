@@ -203,6 +203,7 @@
         "nodes": [
             "storage_daily_maintenance",
             "storage_exec_maintenance",
+            "storage_request_host_maintenance",
             "storage_parse_maintenance",
             "storage_store_maintenance_stderr",
             "storage_maintenance_complete",
@@ -214,7 +215,7 @@
         "x": 24,
         "y": 429,
         "w": 1212,
-        "h": 239.5
+        "h": 279.5
     },
     {
         "id": "grp_internet_triggers",
@@ -5259,6 +5260,7 @@
         "wires": [
             [
                 "storage_exec_maintenance",
+                "storage_request_host_maintenance",
                 "storage_read_ha"
             ]
         ]
@@ -5508,7 +5510,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_maintenance",
         "name": "Validar termino / cooldown",
-        "func": "const raw = msg.payload;\nconst code = Number(raw?.code ?? raw);\nif (code === 0) {\n    flow.set(\"storage_maintenance_last_stderr\", null);\n    node.status({ fill: \"green\", shape: \"dot\", text: \"sucesso\" });\n    return null;\n}\nconst config = flow.get(\"storage_health_config_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nconst last = Number(flow.get(\"storage_maintenance_last_error_notification\", \"persistent\") || 0);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"falhou rc=\" + code });\nnode.error(\"storage_maintenance: failed rc=\" + code + \" stderr=\" + String(flow.get(\"storage_maintenance_last_stderr\") ?? \"\"));\nif (now - last < (config.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000)) return null;\nflow.set(\"storage_maintenance_last_error_notification\", now, \"persistent\");\nreturn { payload: { title: \"Raspberry Pi - falha na manutencao\", message: \"A manutencao segura do Node-RED falhou (codigo \" + code + \"). Nenhuma etapa adicional foi executada; revise o log do node Storage Maintenance.\" } };",
+        "func": "const raw = msg.payload;\nconst code = Number(raw?.code ?? raw);\nif (code === 0) {\n    flow.set(\"storage_maintenance_last_stderr\", null);\n    node.status({ fill: \"green\", shape: \"dot\", text: \"sucesso\" });\n    return null;\n}\nconst config = flow.get(\"storage_health_config_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nconst last = Number(flow.get(\"storage_maintenance_last_error_notification\", \"persistent\") || 0);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"falhou rc=\" + code });\nnode.error(\"storage_maintenance: failed rc=\" + code + \" stderr=\" + String(flow.get(\"storage_maintenance_last_stderr\") ?? \"\"));\nif (now - last < (config.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000)) return null;\nflow.set(\"storage_maintenance_last_error_notification\", now, \"persistent\");\nreturn { payload: { title: \"Raspberry Pi - falha na manutencao\", message: \"A manutencao segura de storage falhou (codigo \" + code + \"). Nenhuma etapa adicional foi executada; revise o log do flow Storage Health.\" } };",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -5547,7 +5549,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 160,
-        "y": 620,
+        "y": 660,
         "wires": [
             [
                 "storage_exec_inspection"
@@ -5568,7 +5570,7 @@
         "oldrc": false,
         "name": "Inspecao profunda /data",
         "x": 460,
-        "y": 620,
+        "y": 660,
         "wires": [
             [
                 "storage_parse_inspection"
@@ -5616,6 +5618,31 @@
         "x": 1090,
         "y": 470,
         "wires": []
+    },
+    {
+        "id": "storage_request_host_maintenance",
+        "type": "exec",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "command": "/opt/request-host-storage-maintenance.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar limpeza Docker no host",
+        "x": 470,
+        "y": 570,
+        "wires": [
+            [],
+            [
+                "storage_store_maintenance_stderr"
+            ],
+            [
+                "storage_maintenance_complete"
+            ]
+        ]
     },
     {
         "id": "internet_cycle",

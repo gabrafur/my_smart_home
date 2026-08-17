@@ -150,6 +150,12 @@ class DashboardNumberFormattingTest(unittest.TestCase):
                 self.assertIn("unit_of_measurement:", block)
                 self.assertIn("state_class:", block)
 
+    def test_storage_health_confirmation_documents_bounded_cache(self):
+        dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("preserva 2 GB de cache recente", dashboard)
+        self.assertIn("entity_id: input_button.storage_health_manual_run", dashboard)
+
     def test_repository_rules_make_number_formatting_permanent(self):
         rules = AGENT_RULES.read_text(encoding="utf-8")
 

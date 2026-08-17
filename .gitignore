@@ -19,6 +19,7 @@
 !.env.example
 .local-secrets/
 .local-state/
+homeassistant/.storage-maintenance-trigger/
 .kia-uvo-updater-state/
 restore/bundles/
 restore/private-bundles/
