@@ -37,7 +37,7 @@ da correcao foi:
 
 | Componente | Espaco atual/inicial | Evidencia de crescimento | Diagnostico | Acao |
 | --- | ---: | --- | --- | --- |
-| Docker build cache | 5,033 GB; 2,159 GB recuperaveis | camadas de 1,11 GB criadas ha 5 dias e varias camadas de 1,1 GB/287 MB criadas ha 2-3 dias | causa raiz principal: builds repetidos das imagens locais sem limite de cache | `docker builder prune` controlado; rotina preventiva com idade minima de 168 h |
+| Docker build cache | 5,033 GB; 2,159 GB recuperaveis | camadas de 1,11 GB criadas ha 5 dias e varias camadas de 1,1 GB/287 MB criadas ha 2-3 dias | causa raiz principal: builds repetidos das imagens locais sem limite de cache | `docker builder prune` controlado; rotina preventiva com idade minima de 24 h |
 | Imagens Docker | 11,53 GB; 1,384 GB inicialmente recuperaveis | imagens intermediarias sem tag, incluindo uma camada unica de 1,115 GB criada ha 2 dias | fator da causa raiz: imagens intermediarias deixadas pelos builds | `docker image prune` somente para dangling; imagens tagged preservadas |
 | Ferramentas remotas de IDE em `/home/gabriel` | 9,32 GB; VS Code Server 5,85 GB e Cursor Server 1,37 GB | novas copias de servidores/extensoes em 7, 11 e 13 de agosto | fator contribuinte fora da stack; versoes antigas podem acumular | somente diagnostico; revisao manual para nao interromper sessoes da IDE |
 | Home Assistant | 319 MB | DB 111 MB + WAL ~4 MB; 3 backups diarios totalizando 141 MB | crescimento compativel com Recorder/backups, nao explica o salto | nenhuma exclusao; manter Recorder em 30 dias e acompanhar |
@@ -154,12 +154,12 @@ entram no escopo. O container continua sem Docker socket, mount do host ou
 `sudo`.
 
 No host, `scripts/storage-maintenance.sh` remove somente build cache sem uso
-(`builder prune --all`) e imagens dangling com mais de 168 horas. O script valida argumentos, e idempotente,
+(`builder prune --all`) e imagens dangling com mais de 24 horas. O script valida argumentos, e idempotente,
 registra metricas antes/depois e usa dry-run por padrao:
 
 ```bash
 scripts/storage-maintenance.sh --dry-run
-scripts/storage-maintenance.sh --apply --min-age 168
+scripts/storage-maintenance.sh --apply --min-age 24
 ```
 
 ### MANUAL / REQUIRES REVIEW

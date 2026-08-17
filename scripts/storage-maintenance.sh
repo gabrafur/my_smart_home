@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 MODE="dry-run"
-MIN_AGE="168h"
+MIN_AGE="24h"
 STEP="startup"
 
 usage() {

@@ -161,7 +161,7 @@ function dailyUpdate() {
     // fails. The helper never removes volumes, containers or tagged images.
     run(
       "bash",
-      ["scripts/storage-maintenance.sh", dryRun ? "--dry-run" : "--apply", "--min-age", "168"],
+      ["scripts/storage-maintenance.sh", dryRun ? "--dry-run" : "--apply", "--min-age", "24"],
       { mutates: !dryRun },
     );
   }
