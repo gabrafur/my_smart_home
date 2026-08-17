@@ -52,16 +52,19 @@ test('aggregates session deltas and keeps the newest limit snapshot', (t) => {
   assert.equal(usage.totals.sessions, 2);
   assert.equal(usage.rate_limit.used_percent, 30);
   assert.equal(usage.rate_limit.remaining_percent, 70);
+  assert.equal(usage.rate_limit.window_type, 'weekly');
+  assert.equal(usage.rate_limit.window_started_at, '2026-08-09T15:45:30.000Z');
   assert.equal(usage.rate_limit.credits.balance, '12.5');
   assert.equal(usage.daily[0].total_tokens, 235);
   assert.equal(usage.analytics.cache_hit_percent, 47.6);
   assert.equal(usage.analytics.tokens_per_day_7d, 34);
-  assert.equal(usage.analytics.forecast.status, 'aguenta');
-  assert.equal(usage.analytics.forecast.will_last, true);
-  assert.equal(usage.analytics.forecast.projected_used_at_reset, 33.1);
+  assert.equal(usage.analytics.forecast.status, 'risco');
+  assert.equal(usage.analytics.forecast.will_last, false);
+  assert.equal(usage.analytics.forecast.projected_used_at_reset, 100);
   assert.equal(usage.freshness.activity.current, false);
   assert.equal(usage.freshness.activity.age_seconds, 46800);
   assert.equal(usage.freshness.rate_limit.current, false);
+  assert.equal(usage.freshness.rate_limit.max_age_seconds, 900);
 });
 
 test('returns a stable empty response when there are no sessions', (t) => {
@@ -73,6 +76,40 @@ test('returns a stable empty response when there are no sessions', (t) => {
   assert.deepEqual(usage.daily, []);
   assert.equal(usage.analytics.cache_hit_percent, null);
   assert.equal(usage.analytics.forecast.status, 'insuficiente');
+});
+
+test('overlays a live plan-limit snapshot without requiring a model turn', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-live-limit-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const reader = new CodexUsageReader(directory, null, null, 0);
+  const timestamp = new Date();
+  const nextRefreshAt = new Date(timestamp.valueOf() + 30_000).toISOString();
+  const usage = reader.read({
+    timestamp,
+    rateLimits: {
+      limit_id: 'codex',
+      plan_type: 'prolite',
+      primary: { used_percent: 42, window_minutes: 10080, resets_at: 1787499010 },
+      credits: { has_credits: false, unlimited: false, balance: null },
+    },
+    refreshMetadata: {
+      mode: 'codex_app_server',
+      consumes_model_credits: false,
+      refresh_interval_seconds: 30,
+      next_refresh_at: nextRefreshAt,
+      seconds_until_refresh: 30,
+    },
+  });
+
+  assert.equal(usage.status, 'ok');
+  assert.equal(usage.source_updated_at, null);
+  assert.equal(usage.rate_limit_updated_at, timestamp.toISOString());
+  assert.equal(usage.plan_type, 'prolite');
+  assert.equal(usage.rate_limit.used_percent, 42);
+  assert.equal(usage.rate_limit.remaining_percent, 58);
+  assert.equal(usage.rate_limit_refresh.seconds_until_refresh, 30);
+  assert.equal(usage.rate_limit_refresh.consumes_model_credits, false);
+  assert.equal(usage.freshness.rate_limit.current, true);
 });
 
 test('merges multiple session directories and refreshes only a changed session file', (t) => {

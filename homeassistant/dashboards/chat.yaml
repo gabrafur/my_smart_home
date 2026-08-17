@@ -11,199 +11,224 @@ views:
   - title: Uso
     path: uso-codex
     icon: mdi:chart-donut
-    cards:
-      - type: markdown
-        content: |
-          # Uso do Codex monitorado neste host
+    type: sections
+    max_columns: 3
+    dense_section_placement: false
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Limite oficial do plano
+            icon: mdi:chart-donut
+          - type: markdown
+            content: |
+              {% set totals = state_attr('sensor.codex_usage_raw', 'totals') or {} %}
+              {% set limite = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
+              {% set reset_em = limite.get('resets_at') %}
+              {% set janela = limite.get('window_type', 'desconhecida') %}
+              {% if states('sensor.codex_usage_raw') == 'ok' %}
+              {% if states('sensor.codex_dados_de_limite') == 'atual' and is_number(states('sensor.codex_limite_disponivel')) %}
+              # {{ states('sensor.codex_limite_disponivel') | round(0) }}% disponível
 
-          {% set totals = state_attr('sensor.codex_usage_raw', 'totals') or {} %}
-          {% set limite = state_attr('sensor.codex_usage_raw', 'rate_limit') or {} %}
-          {% set reset_em = limite.get('resets_at') %}
-          {% if states('sensor.codex_usage_raw') == 'ok' %}
-          **Uso monitorado:** {{ '{:,.0f}'.format(totals.get('total_tokens', 0) | int).replace(',', '.') }} tokens em
-          {{ totals.get('sessions', 0) | int }} sessões do bridge e do Codex local.
+              **{{ states('sensor.codex_limite_usado') | round(0) }}% usado** na janela
+              {{ 'semanal' if janela == 'weekly' else janela }} do plano
+              {{ states('sensor.codex_plano') | title }}.
+              {% elif limite.get('remaining_percent') is number %}
+              # Leitura desatualizada
 
-          {% if states('sensor.codex_dados_de_limite') == 'atual' and is_number(states('sensor.codex_limite_disponivel')) %}
-          **Plano {{ states('sensor.codex_plano') | title }}:**
-          {{ states('sensor.codex_limite_disponivel') | round(0) }}% disponível
-          ({{ states('sensor.codex_limite_usado') | round(0) }}% usado).
-          {% elif limite.get('remaining_percent') is number %}
-          **Última leitura do limite:** {{ limite.get('remaining_percent') | round(0) }}% disponível
-          ({{ limite.get('used_percent') | round(0) }}% usado). Este dado está desatualizado e
-          não é usado em alertas nem projeções.
-          {% else %}
-          Ainda não há uma leitura do limite do plano.
-          {% endif %}
+              Último valor conhecido: **{{ limite.get('remaining_percent') | round(0) }}% disponível**.
+              Confira Codex → Settings → Usage & billing para o saldo atual.
+              {% else %}
+              # Aguardando dados
 
-          {% if reset_em %}
-          **Próximo reset:** {{ as_timestamp(reset_em) | timestamp_custom('%d/%m às %H:%M', true) }}.
-          {% endif %}
-          {% else %}
-          Aguardando a primeira métrica do Codex CLI.
-          {% endif %}
+              Ainda não há uma leitura do limite do plano.
+              {% endif %}
 
-          _Atualização local em até 2 segundos, sem chamada à API nem consumo do plano._
+              {% if reset_em %}
+              **Reset:** {{ as_timestamp(reset_em) | timestamp_custom('%d/%m às %H:%M', true) }}
+              {% endif %}
+              {% if is_number(states('sensor.codex_atualizacao_do_limite_em')) %}
+              **Próxima consulta:** em {{ states('sensor.codex_atualizacao_do_limite_em') | int }} segundos.
+              {% endif %}
+              {% else %}
+              # Coleta indisponível
+
+              Aguardando a primeira métrica do Codex CLI.
+              {% endif %}
+          - type: grid
+            title: Indicadores principais
+            columns: 2
+            square: false
+            cards:
+              - type: gauge
+                entity: sensor.codex_limite_usado
+                name: Usado · última leitura
+                min: 0
+                max: 100
+                severity: { green: 0, yellow: 70, red: 90 }
+              - type: gauge
+                entity: sensor.codex_limite_disponivel
+                name: Disponível · última leitura
+                min: 0
+                max: 100
+                severity: { red: 0, yellow: 10, green: 30 }
+              - type: gauge
+                entity: sensor.codex_eficiencia_de_cache
+                name: Eficiência de cache · local
+                min: 0
+                max: 100
+                severity: { red: 0, yellow: 30, green: 60 }
+              - type: conditional
+                conditions:
+                  - condition: numeric_state
+                    entity: sensor.codex_uso_projetado_no_reset
+                    above: -1
+                card:
+                  type: gauge
+                  entity: sensor.codex_uso_projetado_no_reset
+                  name: Uso projetado no reset
+                  min: 0
+                  max: 100
+                  severity: { green: 0, yellow: 90, red: 100 }
+              - type: conditional
+                conditions:
+                  - condition: state
+                    entity: sensor.codex_uso_projetado_no_reset
+                    state: unavailable
+                card:
+                  type: gauge
+                  entity: sensor.codex_progresso_da_janela_semanal
+                  name: Tempo decorrido na janela
+                  min: 0
+                  max: 100
+                  severity: { green: 0, yellow: 70, red: 90 }
+          - type: entities
+            title: Plano e atualização
+            show_header_toggle: false
+            entities:
+              - entity: sensor.codex_dados_de_limite
+                name: Estado da leitura
+              - entity: sensor.codex_plano
+                name: Plano
+              - entity: sensor.codex_creditos_extras
+                name: Créditos extras
+              - entity: sensor.codex_proximo_reset
+                name: Reset semanal
+              - entity: sensor.codex_ultima_atualizacao_do_limite
+                name: Leitura recebida em
+              - entity: sensor.codex_atualizacao_do_limite_em
+                name: Próxima consulta em
+              - entity: sensor.codex_proxima_atualizacao_do_limite
+                name: Próxima consulta às
+              - entity: script.codex_atualizar_uso_agora
+                name: Atualizar agora
+                icon: mdi:refresh
 
       - type: grid
-        title: Última leitura do limite do plano
-        columns: 2
-        square: false
         cards:
-          - type: gauge
-            entity: sensor.codex_limite_usado
-            name: Usado
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 70
-              red: 90
-          - type: gauge
-            entity: sensor.codex_limite_disponivel
-            name: Disponível
-            min: 0
-            max: 100
-            severity:
-              red: 0
-              yellow: 10
-              green: 30
+          - type: heading
+            heading: Análise e métricas locais
+            icon: mdi:chart-timeline-variant
+          - type: markdown
+            content: >-
+              Estes números descrevem somente as sessões preservadas neste host.
+              Eles ajudam a entender o trabalho local, mas **não representam o limite
+              oficial do plano**.
+          - type: conditional
+            conditions:
+              - condition: numeric_state
+                entity: sensor.codex_uso_projetado_no_reset
+                above: -1
+            card:
+              type: entities
+              title: Tendência da janela semanal
+              show_header_toggle: false
+              entities:
+                - entity: sensor.codex_previsao_ate_o_reset
+                  name: Aguenta até o reset?
+                - entity: sensor.codex_ritmo_do_limite
+                  name: Ritmo observado
+                - entity: sensor.codex_uso_projetado_no_reset
+                  name: Uso projetado no reset
+                - entity: sensor.codex_folga_projetada_no_reset
+                  name: Folga projetada
+          - type: conditional
+            conditions:
+              - condition: state
+                entity: sensor.codex_uso_projetado_no_reset
+                state: unavailable
+            card:
+              type: markdown
+              content: >-
+                **Tendência da janela semanal**
 
-      - type: entities
-        title: Saldo e renovação
-        show_header_toggle: false
-        entities:
-          - entity: sensor.codex_dados_de_limite
-            name: Dados do limite
-          - entity: sensor.codex_creditos_extras
-            name: Créditos extras
-          - entity: sensor.codex_plano
-            name: Plano
-          - entity: sensor.codex_proximo_reset
-            name: Próximo reset
-          - entity: sensor.codex_ultima_atualizacao_do_limite
-            name: Atualização do limite
-          - entity: sensor.codex_ultima_metrica
-            name: Última atividade registrada
-          - entity: sensor.codex_usage_raw
-            name: Estado da coleta
-          - entity: script.codex_atualizar_uso_agora
-            name: Atualizar agora
-            icon: mdi:refresh
-
-      - type: markdown
-        content: >-
-          ## Autonomia
-
-          {% set previsao = states('sensor.codex_previsao_ate_o_reset') %}
-          {% if states('sensor.codex_dados_de_limite') != 'atual' %}
-          ⏳ A projeção do limite aguarda uma leitura atual do Codex.
-          {% elif previsao == 'aguenta' %}
-          ✅ **No ritmo atual, o limite aguenta até o reset**, com
-          aproximadamente **{{ states('sensor.codex_folga_projetada_no_reset') }}% de folga**.
-          {% elif previsao == 'atenção' %}
-          ⚠️ **Deve aguentar, mas com pouca folga.** A projeção chega a
-          {{ states('sensor.codex_uso_projetado_no_reset') }}% no reset.
-          {% elif previsao == 'não aguenta' %}
-          🔴 **O ritmo atual pode esgotar o limite antes do reset.**
-          {% else %}
-          ⏳ Ainda não há tempo suficiente nesta janela para uma projeção confiável.
-          {% endif %}
-
-          Confiança da estimativa: **{{ state_attr('sensor.codex_previsao_ate_o_reset', 'confianca') | default('baixa', true) }}**.
+                ⏳ Projeção aguardando pelo menos uma hora de observações comparáveis
+                na mesma janela. Até lá, o quarto gauge mostra somente o tempo decorrido.
+          - type: grid
+            title: Consumo registrado
+            columns: 2
+            square: false
+            cards:
+              - type: tile
+                entity: sensor.codex_sessoes_monitoradas
+                name: Sessões
+              - type: tile
+                entity: sensor.codex_tokens_totais
+                name: Tokens totais
+              - type: tile
+                entity: sensor.codex_tokens_em_cache
+                name: Tokens em cache
+              - type: tile
+                entity: sensor.codex_tokens_de_saida
+                name: Tokens de saída
+              - type: tile
+                entity: sensor.codex_velocidade_7_dias
+                name: Média por hora · 7 dias
+          - type: entities
+            title: Coleta local
+            show_header_toggle: false
+            entities:
+              - entity: sensor.codex_ultima_metrica
+                name: Última atividade
+              - entity: sensor.codex_usage_raw
+                name: Estado do coletor
 
       - type: grid
-        title: Eficiência e projeção
-        columns: 2
-        square: false
         cards:
-          - type: gauge
-            entity: sensor.codex_eficiencia_de_cache
-            name: Eficiência de cache
-            min: 0
-            max: 100
-            severity:
-              red: 0
-              yellow: 30
-              green: 60
-          - type: gauge
-            entity: sensor.codex_uso_projetado_no_reset
-            name: Uso projetado no reset
-            min: 0
-            max: 100
-            severity:
-              green: 0
-              yellow: 90
-              red: 100
+          - type: heading
+            heading: Alertas e ajuda
+            icon: mdi:bell-outline
+          - type: entities
+            title: Alertas
+            show_header_toggle: false
+            entities:
+              - entity: sensor.codex_nivel_de_alerta
+                name: Situação atual
+              - entity: input_boolean.codex_alertas_iphone
+              - entity: input_boolean.codex_resumo_diario_iphone
+              - entity: input_number.codex_alerta_aviso_percentual
+              - entity: input_number.codex_alerta_critico_percentual
+              - entity: input_number.codex_alerta_saldo_creditos
+              - entity: input_text.codex_ultimo_alerta_iphone
+              - entity: input_datetime.codex_ultimo_alerta_iphone_em
+          - type: markdown
+            content: >-
+              **Como interpretar**
 
-      - type: entities
-        title: Velocidade de consumo
-        show_header_toggle: false
-        entities:
-          - entity: sensor.codex_previsao_ate_o_reset
-            name: Aguenta até o reset?
-          - entity: sensor.codex_velocidade_7_dias
-            name: Média de tokens — 7 dias
-          - entity: sensor.codex_ritmo_do_limite
-            name: Ritmo médio do limite
-          - entity: sensor.codex_folga_projetada_no_reset
-            name: Folga projetada
+              O limite do plano é semanal e não zera ao fim do dia. Leituras com
+              mais de quinze minutos ficam marcadas como desatualizadas e deixam de
+              alimentar alertas. Os gauges de uso preservam a última leitura conhecida,
+              identificada explicitamente como tal.
 
-      - type: grid
-        title: Consumo registrado neste bridge
-        columns: 2
-        square: false
-        cards:
-          - type: tile
-            entity: sensor.codex_tokens_totais
-            name: Tokens totais
-          - type: tile
-            entity: sensor.codex_tokens_em_cache
-            name: Tokens em cache
-          - type: tile
-            entity: sensor.codex_tokens_de_saida
-            name: Tokens de saída
-          - type: tile
-            entity: sensor.codex_sessoes_monitoradas
-            name: Sessões monitoradas
+              O quarto gráfico mostra uma projeção somente depois de observar pelo menos
+              uma hora da mesma janela. Antes disso, ele mostra apenas o tempo decorrido
+              na semana, que não depende de extrapolação.
 
-      - type: history-graph
-        title: Uso do limite — últimos 7 dias
-        hours_to_show: 168
-        entities:
-          - entity: sensor.codex_limite_usado
-            name: Usado
+              A eficiência de cache mede reaproveitamento de tokens de entrada; não
+              é saldo, cobrança nem qualidade das respostas. Usos feitos em outros
+              computadores podem não aparecer nas métricas locais.
 
-      - type: entities
-        title: Alertas e notificações
-        show_header_toggle: false
-        entities:
-          - entity: sensor.codex_nivel_de_alerta
-            name: Situação atual
-          - entity: input_boolean.codex_alertas_iphone
-          - entity: input_boolean.codex_resumo_diario_iphone
-          - entity: input_number.codex_alerta_aviso_percentual
-          - entity: input_number.codex_alerta_critico_percentual
-          - entity: input_number.codex_alerta_cache_minimo
-          - entity: input_number.codex_alerta_saldo_creditos
-          - entity: input_text.codex_ultimo_alerta_iphone
-          - entity: input_datetime.codex_ultimo_alerta_iphone_em
-
-      - type: markdown
-        content: >-
-          **Como ler estes números**
-
-          O limite do plano e o saldo extra vêm dos eventos locais do Codex CLI.
-          Uma leitura de limite com mais de dois minutos fica marcada como desatualizada;
-          ainda aparece como último valor conhecido, mas não alimenta alertas nem projeções.
-          Os tokens somam apenas as sessões preservadas pelo bridge deste host;
-          usos feitos em outros computadores podem não aparecer nessa soma.
-
-          “Eficiência de cache” mede quantos tokens de entrada foram reaproveitados;
-          ela reduz trabalho repetido, mas não mede a qualidade semântica das respostas.
-          A autonomia é uma projeção linear do ritmo médio da janela atual e pode
-          mudar se o uso acelerar.
-
-          O saldo oficial da conta continua disponível em **Codex → Settings → Usage**.
+              O valor oficial continua disponível em **Codex → Settings → Usage & billing**.
 
   - title: RTX 4070
     path: uso-rtx
@@ -217,17 +242,19 @@ views:
           {% if live == 'em uso' %}
           🟢 **Inferência local ativa** — {{ state_attr('sensor.codex_rtx_ao_vivo', 'tarefa') }} ·
           {{ state_attr('sensor.codex_rtx_ao_vivo', 'modelo') }}.
+          {% elif live == 'disponível' %}
+          🟢 **Infraestrutura pronta.** Local AI, Ollama e RTX estão disponíveis;
+          aguardando uma tarefa em que a compactação local traga benefício real.
           {% elif live == 'desatualizado' %}
           🟡 **Sinal da RTX desatualizado.** A última verificação de saúde tem mais de dois
           minutos; aguardando a próxima confirmação do bridge antes de afirmar que a RTX está pronta.
           {% elif live == 'sem sinal' %}
           🔴 **Sem sinal do bridge Local AI.** O painel tentará novamente automaticamente.
           {% else %}
-          ⚪ RTX pronta para o Codex; aguardando uma tarefa elegível.
+          🔴 **Local AI indisponível.** Consulte os cards de infraestrutura e o diagnóstico recente.
           {% endif %}
 
-          Atualização do job ativo: aproximadamente uma vez por segundo; a confirmação de
-          disponibilidade é renovada pelo bridge a cada minuto.
+          _Atualização automática: atividade em ~1 s, métricas em ~2 s e saúde em ~1 min._
 
           {% set chats = state_attr('sensor.codex_rtx_ao_vivo', 'chats_ativos') or [] %}
           {% if chats %}
@@ -244,41 +271,7 @@ views:
           {% endif %}
 
       - type: grid
-        title: Atualização
-        columns: 2
-        square: false
-        cards:
-          - type: tile
-            entity: sensor.codex_rtx_ultima_atualizacao
-            name: Última atualização
-          - type: button
-            name: Atualizar agora
-            icon: mdi:refresh
-            show_state: false
-            tap_action:
-              action: perform-action
-              perform_action: script.codex_atualizar_rtx_agora
-
-      - type: grid
-        title: RTX ao vivo
-        columns: 2
-        square: false
-        cards:
-          - type: tile
-            entity: sensor.codex_rtx_ao_vivo
-            name: Estado
-          - type: tile
-            entity: sensor.codex_rtx_gpu_agora
-            name: GPU agora
-          - type: tile
-            entity: sensor.codex_rtx_vram_agora
-            name: VRAM agora
-          - type: tile
-            entity: sensor.codex_rtx_potencia_agora
-            name: Potência agora
-
-      - type: grid
-        title: Infraestrutura Local AI
+        title: 1 · Saúde da infraestrutura
         columns: 2
         square: false
         cards:
@@ -296,19 +289,52 @@ views:
             name: Modelo local
 
       - type: grid
-        title: Roteamento inteligente — hoje
+        title: 2 · Atividade ao vivo
         columns: 2
         square: false
         cards:
           - type: tile
-            entity: sensor.codex_decisoes_de_roteamento_hoje
-            name: Tarefas avaliadas
+            entity: sensor.codex_rtx_ao_vivo
+            name: Estado
           - type: tile
-            entity: sensor.codex_tarefas_local_ai_elegiveis_hoje
-            name: Local AI elegível
+            entity: sensor.codex_rtx_gpu_agora
+            name: GPU agora
+          - type: tile
+            entity: sensor.codex_rtx_vram_agora
+            name: VRAM agora
+          - type: tile
+            entity: sensor.codex_rtx_potencia_agora
+            name: Potência agora
+
+      - type: grid
+        title: 3 · Resultado e qualidade — hoje
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_tokens_openai_evitados_hoje_estimados
+            name: Contexto evitado
+          - type: tile
+            entity: sensor.codex_reducao_de_contexto_local_ai
+            name: Redução de contexto
           - type: tile
             entity: sensor.codex_rtx_usos_hoje
             name: RTX usada
+          - type: tile
+            entity: sensor.codex_taxa_de_falhas_local_ai
+            name: Taxa de falhas
+          - type: tile
+            entity: sensor.codex_taxa_de_delegacao_rtx
+            name: Taxa de delegação
+          - type: tile
+            entity: sensor.codex_cobertura_ponderada_de_economia_rtx
+            name: Cobertura de economia
+
+      - type: grid
+        title: 4 · Atenção de roteamento — hoje
+        columns: 2
+        square: false
+        cards:
           - type: tile
             entity: sensor.codex_oportunidades_rtx_perdidas_hoje
             name: Oportunidades perdidas
@@ -318,27 +344,36 @@ views:
           - type: tile
             entity: sensor.codex_chamadas_local_ai_desnecessarias_hoje
             name: Chamadas desnecessárias
+          - type: tile
+            entity: sensor.codex_tokens_potenciais_evitaveis_estimados
+            name: Potencial estimado
+          - type: tile
+            entity: sensor.codex_decisoes_de_roteamento_hoje
+            name: Tarefas avaliadas
+          - type: tile
+            entity: sensor.codex_tarefas_local_ai_elegiveis_hoje
+            name: Tarefas elegíveis
 
       - type: grid
-        title: Cobertura de economia de contexto
+        title: 5 · Última atividade
         columns: 2
         square: false
         cards:
           - type: tile
-            entity: sensor.codex_taxa_de_delegacao_rtx
-            name: Taxa de delegação RTX
+            entity: sensor.codex_ultimo_job_local_ai
+            name: Último job
           - type: tile
-            entity: sensor.codex_cobertura_ponderada_de_economia_rtx
-            name: Cobertura ponderada
+            entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
+            name: Última decisão
           - type: tile
-            entity: sensor.codex_tokens_potenciais_evitaveis_estimados
-            name: Potencial evitável
+            entity: sensor.codex_ultima_falha_local_ai
+            name: Última falha
           - type: tile
-            entity: sensor.codex_tokens_openai_evitados_hoje_estimados
-            name: Evitado hoje
+            entity: sensor.codex_ultima_decisao_de_memoria
+            name: Última memória
 
       - type: grid
-        title: Contexto e memória — hoje
+        title: 6 · Contexto e memória — hoje
         columns: 2
         square: false
         cards:
@@ -366,15 +401,15 @@ views:
           {% set memory = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {} %}
           {% set startup = memory.get('startup_context') or {} %}
           {% set today = (memory.get('periods') or {}).get('today') or {} %}
-          ## Startup context
+          ## Contexto inicial
 
           **AGENTS / instructions observáveis:** ~{{ startup.get('observable_startup_context_tokens', 0) }} tokens
           (global: ~{{ startup.get('global_agents_tokens', 0) }} · repositório: ~{{ startup.get('repo_agents_tokens', 0) }}).
 
-          **Repo memory preload:** {{ startup.get('repo_memory_tokens', 0) }} tokens ·
-          **Retrieved memory:** ~{{ today.get('memory_tokens_retrieved', 0) }} tokens ·
-          **Sent to primary model:** ~{{ today.get('memory_tokens_sent_to_primary_model', 0) }} tokens ·
-          **Memory avoided:** ~{{ today.get('memory_tokens_avoided', 0) }} tokens.
+          **Memória pré-carregada:** {{ startup.get('repo_memory_tokens', 0) }} tokens ·
+          **memória recuperada:** ~{{ today.get('memory_tokens_retrieved', 0) }} tokens ·
+          **enviada ao GPT:** ~{{ today.get('memory_tokens_sent_to_primary_model', 0) }} tokens ·
+          **contexto evitado:** ~{{ today.get('memory_tokens_avoided', 0) }} tokens.
 
           {% if startup.get('total_startup_context_tokens') is none %}
           O envelope interno do Codex e a memória privada automática não expõem contagem de tokens; este card mostra somente o contexto observável e indica estimativas quando aplicável.
@@ -393,24 +428,24 @@ views:
           {% set memory = decision.get('memory') or {} %}
           {% set latest = (memory.get('latest_decisions') or [])[0] if memory.get('latest_decisions') else {} %}
           {% if latest %}
-          ## Last memory routing
+          ## Último roteamento de memória
 
-          **Topic:** {{ latest.get('topic') }} · **Files found:** {{ latest.get('files_found') }}
+          **Tema:** {{ latest.get('topic') }} · **arquivos encontrados:** {{ latest.get('files_found') }}
 
-          Raw memory: ~{{ latest.get('memory_tokens_retrieved', 0) }} tokens ·
-          sent to Local AI: ~{{ latest.get('memory_tokens_sent_to_local_ai', 0) }} ·
-          sent to primary: ~{{ latest.get('memory_tokens_sent_to_primary_model', 0) }} ·
-          avoided: ~{{ latest.get('memory_tokens_avoided', 0) }}.
+          Memória recuperada: ~{{ latest.get('memory_tokens_retrieved', 0) }} tokens ·
+          enviada ao Local AI: ~{{ latest.get('memory_tokens_sent_to_local_ai', 0) }} ·
+          enviada ao GPT: ~{{ latest.get('memory_tokens_sent_to_primary_model', 0) }} ·
+          contexto evitado: ~{{ latest.get('memory_tokens_avoided', 0) }}.
 
-          **Decision:** {{ latest.get('decision') }} · {{ latest.get('reason') }}
+          **Decisão:** {{ latest.get('decision') }} · {{ latest.get('reason') }}
           {% else %}
-          ## Last memory routing
+          ## Último roteamento de memória
 
           Memory retrieval: **SKIPPED** — ainda não há decisão registrada nesta telemetria.
           {% endif %}
 
       - type: entities
-        title: Última decisão de roteamento
+        title: 7 · Decisão de roteamento
         show_header_toggle: false
         entities:
           - entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
@@ -423,19 +458,19 @@ views:
           {% if task %}
           ## Última decisão Local AI
 
-          **Task:** {{ task }}
+          **Tarefa:** {{ task }}
 
-          **Eligible:** {{ 'YES' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'elegivel') else 'NO' }}
+          **Elegível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'elegivel') else 'NÃO' }}
 
-          **RTX available:** {{ 'YES' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'rtx_disponivel') else 'NO' }}
+          **RTX disponível:** {{ 'SIM' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'rtx_disponivel') else 'NÃO' }}
 
-          **Decision:** {{ decision }}
+          **Decisão:** {{ decision }}
 
-          **Reason:** {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'motivo') }}
+          **Motivo:** {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'motivo') }}
 
-          Input: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'input_tokens_estimados') }} tokens ·
-          expected saving: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_esperada_tokens') }} tokens ·
-          actual saving: {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') is not none else 'not measured' }}.
+          Entrada: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'input_tokens_estimados') }} tokens ·
+          economia esperada: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_esperada_tokens') }} tokens ·
+          economia real: {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') is not none else 'não mensurada' }}.
           {% else %}
           ## Última decisão Local AI
 
@@ -460,7 +495,7 @@ views:
           {% endif %}
 
       - type: grid
-        title: Tokens OpenAI economizados (estimativa)
+        title: 8 · Economia acumulada (estimativa)
         columns: 2
         square: false
         cards:
@@ -485,13 +520,13 @@ views:
           não representa cobrança oficial da OpenAI.
 
       - type: grid
-        title: Resumo do uso Local AI
+        title: 9 · Totais acumulados
         columns: 2
         square: false
         cards:
           - type: tile
-            entity: sensor.codex_chamadas_local_ai_hoje
-            name: Chamadas hoje
+            entity: sensor.codex_chamadas_local_ai
+            name: Chamadas
           - type: tile
             entity: sensor.codex_chamadas_local_ai_com_sucesso
             name: Concluídas
@@ -499,17 +534,11 @@ views:
             entity: sensor.codex_falhas_local_ai
             name: Falhas
           - type: tile
-            entity: sensor.codex_taxa_de_falhas_local_ai
-            name: Taxa de falhas
-          - type: tile
-            entity: sensor.codex_reducao_de_contexto_local_ai
-            name: Redução de contexto
-          - type: tile
             entity: sensor.codex_fallbacks_local_ai_informados
             name: Fallbacks
 
       - type: entities
-        title: Diagnóstico recente
+        title: 10 · Diagnóstico detalhado
         show_header_toggle: false
         entities:
           - entity: sensor.codex_ultima_falha_local_ai
@@ -552,7 +581,7 @@ views:
           {% endif %}
 
       - type: history-graph
-        title: Tokens OpenAI economizados — últimos 7 dias
+        title: 11 · Economia — últimos 7 dias
         hours_to_show: 168
         entities:
           - entity: sensor.codex_tokens_openai_evitados_estimados
