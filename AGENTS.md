@@ -164,12 +164,6 @@ prompts, source input, model output, or secrets.
 
 # Contratos específicos deste repositório
 
-## Início imediato
-
-Em novas solicitações interativas, informe a recomendação de modelo prevista
-pela política global e prossiga imediatamente. Não imponha confirmação, a
-palavra `feito` ou qualquer pré-análise antes de começar o trabalho.
-
 ## Formatação numérica dos dashboards
 
 Todo número apresentado ao usuário em dashboards deve seguir a convenção
