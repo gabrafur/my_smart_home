@@ -8,8 +8,8 @@ const DEFAULT_REASONING_EFFORTS = Object.freeze([
   'low', 'medium', 'high', 'xhigh', 'max', 'ultra',
 ]);
 const DEFAULT_CODEX_OPTIONS = Object.freeze({
-  model: 'gpt-5.6-terra',
-  reasoningEffort: 'medium',
+  model: 'gpt-5.6-luna',
+  reasoningEffort: 'low',
 });
 
 function normalizeOptional(value) {

@@ -32,14 +32,14 @@ test('accepts supported GPT-5.6 model and reasoning combinations', () => {
   );
 });
 
-test('uses Terra Medium by default and separates selected configurations', () => {
+test('uses Luna Low by default and separates selected configurations', () => {
   assert.deepEqual(
     validateCodexOptions({}),
-    { model: 'gpt-5.6-terra', reasoningEffort: 'medium' },
+    { model: 'gpt-5.6-luna', reasoningEffort: 'low' },
   );
   assert.equal(
     codexSessionKey('home-assistant:codex:user', {}),
-    'codex:home-assistant:codex:user:model=gpt-5.6-terra:reasoning=medium',
+    'codex:home-assistant:codex:user:model=gpt-5.6-luna:reasoning=low',
   );
   assert.equal(
     codexSessionKey('home-assistant:codex:user', { model: 'gpt-5.6-luna', reasoningEffort: 'low' }),

@@ -8,6 +8,13 @@ Docker no host: **Claude Code (Full Access)** e **Codex**. O serviço
 `ai-bridge` executa o CLI selecionado em modo não interativo e mantém as
 sessões separadas por conversa.
 
+No card do Codex, toda solicitação recebe automaticamente um contexto confiável
+com o nome do usuário autenticado no Home Assistant e com a fronteira
+operacional: somente este servidor, o repositório e os softwares, serviços,
+contêineres e integrações instalados nele. O nome é tratado como dado de
+identidade, não como instrução. O card exibe permanentemente essa fronteira e o
+usuário atual, sem exigir que a pessoa repita o contexto em cada mensagem.
+
 O código-fonte fica em `ia-bridge/`. O serviço e o container usam o
 identificador `ai-bridge`; os volumes de autenticação existentes são
 preservados para compatibilidade com restauração e instalações anteriores.
@@ -162,6 +169,11 @@ Se o Codex reportar conflito de escrita ao retomar uma thread, o bridge remove a
 sessão conflitante e tenta uma vez em uma sessão nova. O prompt e o erro final
 continuam registrados em `.agent-history/turns.jsonl`.
 
+O `ai-bridge` usa resolvers DNS externos explícitos no Compose, mantendo a
+descoberta interna pelo DNS embutido do Docker. O healthcheck também exige que
+`chatgpt.com` seja resolvido; assim o contêiner não permanece falsamente
+saudável quando apenas o endpoint HTTP local está acessível.
+
 ### 3. Restart do Home Assistant (para carregar o custom_component)
 
 ```bash
@@ -259,8 +271,14 @@ O card é carregado pelo registro canônico `lovelace.resources`, com
 `resource_mode: yaml`, antes de o dashboard tentar instanciá-lo. O parâmetro
 `v` contém os 12 primeiros caracteres do SHA-256 do arquivo e o teste
 `homeassistant/tests/test_codex_chat_resource.py` impede que arquivo e versão
-divirjam. Os arquivos em `/local` recebem cache longo do navegador; quando o
-card for alterado, atualize esse hash na mesma implantação para que clientes não
+divirjam. As mensagens permitem seleção e cópia no desktop e por toque
+prolongado no celular. Durante uma execução, o rodapé mostra o tempo decorrido
+e distingue inicialização, análise e tarefas demoradas. A seleção inicial usa
+Luna com reasoning baixo para priorizar latência; Terra e Sol continuam
+disponíveis no seletor.
+
+Os arquivos em `/local` recebem cache longo do navegador; quando o card for
+alterado, atualize esse hash na mesma implantação para que clientes não
 reutilizem um módulo antigo que falhou ao carregar.
 
 Depois de alterar ou instalar esses arquivos, reconstrua o bridge e reinicie o
