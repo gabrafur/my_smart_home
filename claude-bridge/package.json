@@ -5,6 +5,6 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "test": "node --test history.test.js usage.test.js"
+    "test": "node --test *.test.js"
   }
 }

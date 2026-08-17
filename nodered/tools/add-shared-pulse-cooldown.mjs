@@ -29,8 +29,8 @@ const OUT = process.argv[2] || `${FLOWS}.new`;
 
 const TAB = '29d64664bf8cbde8';
 const BROKER = '721c47f31046b8bc';
-const SET_TOPIC = 'zigbee2mqtt/rele_acionador_portao/set';
-const STATE_TOPIC = 'zigbee2mqtt/rele_acionador_portao';
+const SET_TOPIC = '${BINDING_GARAGE_GATE_COMMAND_TOPIC}';
+const STATE_TOPIC = '${BINDING_GARAGE_GATE_STATE_TOPIC}';
 
 // Mesma janela do script.portao_garagem_pulso no HA (variavel cooldown_s: 3).
 // Mudou aqui? Mude la tambem, senao as duas pontas divergem.

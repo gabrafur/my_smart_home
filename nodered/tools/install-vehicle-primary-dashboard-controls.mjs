@@ -33,8 +33,8 @@ function addToGroup(groupId, ...ids) {
 }
 
 const refreshDecision = required("b33e117e55bdb5ed");
-refreshDecision.name = "Coordenar refresh do Creta";
-refreshDecision.func = source("creta-refresh-coordinator.js");
+refreshDecision.name = "Coordenar refresh do vehicle_primary";
+refreshDecision.func = source("vehicle-primary-refresh-coordinator.js");
 
 const normalizer = required("092625f2eb5cc156");
 if (!normalizer.func.includes("refresh_state_contract_v1")) {
@@ -47,19 +47,19 @@ if (!normalizer.func.includes("refresh_state_contract_v1")) {
     "            refreshState.state = \"backoff\";\n            refreshState.reason =\n                refreshState.recovery_reason ?? \"partial_evidence\";\n            refreshState.next_retry_at =\n                refreshState.next_allowed_at ?? null;\n            refreshState.cooldown_until = null;\n            refreshState.last_partial_evidence_at =\n                Date.now();",
   );
   normalizer.func = normalizer.func.replace(
-    'ctxSet("creta_context_v1", vehicleContext);',
-    `/* refresh_state_contract_v1: o contexto apenas espelha o estado\n * persistente do único coordenador; não calcula deadlines próprios. */\nconst sharedRefreshState =\n    flow.get("security_creta_refresh_v1", "persistent") ?? {};\nvehicleContext.refresh = {\n    state: sharedRefreshState.state ?? "idle",\n    reason: sharedRefreshState.reason ??\n        sharedRefreshState.recovery_reason ?? null,\n    attempt: Number(sharedRefreshState.attempts ?? 0),\n    last_request_at: Number(sharedRefreshState.last_request_at ??\n        sharedRefreshState.last_attempt_at ?? 0) || null,\n    last_success_at: Number(sharedRefreshState.last_success_at ?? 0) || null,\n    next_retry_at: Number(sharedRefreshState.next_retry_at ?? 0) || null,\n    cooldown_until: Number(sharedRefreshState.cooldown_until ?? 0) || null,\n    awaiting_evidence: sharedRefreshState.awaiting_evidence === true,\n    manual_force: sharedRefreshState.manual_force === true\n};\nctxSet("creta_context_v1", vehicleContext);`,
+    'ctxSet("vehicle_primary_context_v1", vehicleContext);',
+    `/* refresh_state_contract_v1: o contexto apenas espelha o estado\n * persistente do único coordenador; não calcula deadlines próprios. */\nconst sharedRefreshState =\n    flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};\nvehicleContext.refresh = {\n    state: sharedRefreshState.state ?? "idle",\n    reason: sharedRefreshState.reason ??\n        sharedRefreshState.recovery_reason ?? null,\n    attempt: Number(sharedRefreshState.attempts ?? 0),\n    last_request_at: Number(sharedRefreshState.last_request_at ??\n        sharedRefreshState.last_attempt_at ?? 0) || null,\n    last_success_at: Number(sharedRefreshState.last_success_at ?? 0) || null,\n    next_retry_at: Number(sharedRefreshState.next_retry_at ?? 0) || null,\n    cooldown_until: Number(sharedRefreshState.cooldown_until ?? 0) || null,\n    awaiting_evidence: sharedRefreshState.awaiting_evidence === true,\n    manual_force: sharedRefreshState.manual_force === true\n};\nctxSet("vehicle_primary_context_v1", vehicleContext);`,
   );
   if (!normalizer.func.includes("refresh_state_contract_v1")) {
-    throw new Error("Não foi possível inserir refresh no contexto_creta");
+    throw new Error("Não foi possível inserir refresh no contexto_vehicle_primary");
   }
 }
 
-const errorLogger = required("creta_api_error_log_v1");
-errorLogger.func = `const source = String(msg.error?.source?.name ?? "unknown")\n    .replace(/[^a-zA-Z0-9 _-]/g, "");\nconst message = String(msg.error?.message ?? "unknown")\n    .replace(/[\\r\\n]+/g, " ")\n    .slice(0, 240);\nconst key = "security_creta_refresh_v1";\nconst state = flow.get(key, "persistent") ?? {};\nconst now = Date.now();\nstate.state = "backoff";\nstate.reason = "api_error";\nstate.failure_at = now;\nstate.failure_source = source;\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nflow.set(key, state, "persistent");\nnode.error("CRETA_API_ERROR source=" + source + " message=" + message);\nreturn null;`;
+const errorLogger = required("vehicle_primary_api_error_log_v1");
+errorLogger.func = `const source = String(msg.error?.source?.name ?? "unknown")\n    .replace(/[^a-zA-Z0-9 _-]/g, "");\nconst message = String(msg.error?.message ?? "unknown")\n    .replace(/[\\r\\n]+/g, " ")\n    .slice(0, 240);\nconst key = "security_vehicle_primary_refresh_v1";\nconst state = flow.get(key, "persistent") ?? {};\nconst now = Date.now();\nstate.state = "backoff";\nstate.reason = "api_error";\nstate.failure_at = now;\nstate.failure_source = source;\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nflow.set(key, state, "persistent");\nnode.error("VEHICLE_PRIMARY_API_ERROR source=" + source + " message=" + message);\nreturn null;`;
 
 upsert({
-  id: "creta_manual_refresh_button_v1",
+  id: "vehicle_primary_manual_refresh_button_v1",
   type: "server-state-changed",
   z: "62bb822e033d1623",
   g: "790bea5f55d43bd0",
@@ -68,7 +68,7 @@ upsert({
   version: 6,
   outputs: 1,
   exposeAsEntityConfig: "",
-  entities: { entity: ["input_button.creta_force_refresh_now"], substring: [], regex: [] },
+  entities: { entity: ["input_button.vehicle_primary_force_refresh_now"], substring: [], regex: [] },
   outputInitially: false,
   stateType: "str",
   ifState: "",
@@ -88,16 +88,16 @@ upsert({
   ],
   x: 215,
   y: 300,
-  wires: [["creta_manual_refresh_request_v1"]],
+  wires: [["vehicle_primary_manual_refresh_request_v1"]],
 });
 
 upsert({
-  id: "creta_manual_refresh_request_v1",
+  id: "vehicle_primary_manual_refresh_request_v1",
   type: "function",
   z: "62bb822e033d1623",
   g: "790bea5f55d43bd0",
   name: "Solicitar manual_force ao coordenador",
-  func: source("creta-manual-refresh.js"),
+  func: source("vehicle-primary-manual-refresh.js"),
   outputs: 1,
   timeout: 0,
   noerr: 0,
@@ -110,7 +110,7 @@ upsert({
 });
 
 upsert({
-  id: "creta_refresh_telemetry_tick_v1",
+  id: "vehicle_primary_refresh_telemetry_tick_v1",
   type: "inject",
   z: "c22d8b12055e87f7",
   g: "43a2bc9c218353ae",
@@ -125,16 +125,16 @@ upsert({
   payloadType: "date",
   x: 350,
   y: 860,
-  wires: [["creta_refresh_telemetry_v1"]],
+  wires: [["vehicle_primary_refresh_telemetry_v1"]],
 });
 
 upsert({
-  id: "creta_refresh_telemetry_v1",
+  id: "vehicle_primary_refresh_telemetry_v1",
   type: "function",
   z: "c22d8b12055e87f7",
   g: "43a2bc9c218353ae",
   name: "Espelhar estado real do refresh",
-  func: source("creta-refresh-telemetry.js"),
+  func: source("vehicle-primary-refresh-telemetry.js"),
   outputs: 1,
   timeout: 0,
   noerr: 0,
@@ -143,11 +143,11 @@ upsert({
   libs: [],
   x: 635,
   y: 860,
-  wires: [["creta_refresh_mqtt_v1"]],
+  wires: [["vehicle_primary_refresh_mqtt_v1"]],
 });
 
 upsert({
-  id: "creta_refresh_mqtt_v1",
+  id: "vehicle_primary_refresh_mqtt_v1",
   type: "mqtt out",
   z: "c22d8b12055e87f7",
   g: "43a2bc9c218353ae",
@@ -168,15 +168,15 @@ upsert({
 
 addToGroup(
   "790bea5f55d43bd0",
-  "creta_manual_refresh_button_v1",
-  "creta_manual_refresh_request_v1",
+  "vehicle_primary_manual_refresh_button_v1",
+  "vehicle_primary_manual_refresh_request_v1",
 );
 addToGroup(
   "43a2bc9c218353ae",
-  "creta_refresh_telemetry_tick_v1",
-  "creta_refresh_telemetry_v1",
-  "creta_refresh_mqtt_v1",
+  "vehicle_primary_refresh_telemetry_tick_v1",
+  "vehicle_primary_refresh_telemetry_v1",
+  "vehicle_primary_refresh_mqtt_v1",
 );
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 4)}\n`);
-console.log("Controles e telemetria do Creta instalados sem duplicar o coordenador.");
+console.log("Controles e telemetria do vehicle_primary instalados sem duplicar o coordenador.");

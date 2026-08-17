@@ -1,7 +1,7 @@
-title: Creta
+title: vehicle_primary
 views:
-  - title: Creta
-    path: creta
+  - title: vehicle_primary
+    path: vehicle_primary
     icon: mdi:car
     type: sections
     max_columns: 3
@@ -13,15 +13,15 @@ views:
             icon: mdi:car-connected
           - type: markdown
             content: >-
-              {% set engine = is_state('binary_sensor.creta_engine', 'on') %}
-              {% set location = states('device_tracker.creta_location') %}
-              {% set updated = states('sensor.creta_last_updated_at') %}
+              {% set engine = is_state('binary_sensor.vehicle_primary_engine', 'on') %}
+              {% set location = states('device_tracker.vehicle_primary') %}
+              {% set updated = states('sensor.vehicle_primary_last_updated_at') %}
               {% set updated_ts = as_timestamp(updated, none) %}
               {% set age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
 
               # {{ 'Em uso' if engine else 'Estacionado' }}
 
-              **Local:** {{ state_attr('device_tracker.creta_location', 'friendly_name') if location in ['unknown', 'unavailable'] else location | replace('_', ' ') | title }}
+              **Local:** {{ state_attr('device_tracker.vehicle_primary', 'friendly_name') if location in ['unknown', 'unavailable'] else location | replace('_', ' ') | title }}
 
               {% if age_min is none %}
               🔴 **Sem telemetria válida** · aguardando dados do Bluelink.
@@ -37,20 +37,20 @@ views:
             square: false
             cards:
               - type: tile
-                entity: sensor.creta_fuel_level
+                entity: sensor.vehicle_primary_fuel_level
                 name: Combustível
                 icon: mdi:gas-station
               - type: tile
-                entity: sensor.garagem_creta_total_driving_range
+                entity: sensor.garagem_vehicle_primary_total_driving_range
                 name: Autonomia
                 icon: mdi:map-marker-distance
               - type: tile
-                entity: sensor.garagem_creta_odometer
+                entity: sensor.garagem_vehicle_primary_odometer
                 name: Odômetro
                 icon: mdi:speedometer
               - type: markdown
                 content: >-
-                  {% set entity = states.sensor.garagem_creta_estimated_fuel_efficiency %}
+                  {% set entity = states.sensor.garagem_vehicle_primary_estimated_fuel_efficiency %}
                   {% set value = entity.state if entity else 'unknown' %}
                   {% set trips = entity.attributes.trips_considered | default(0) if entity else 0 %}
                   **Consumo estimado**
@@ -67,14 +67,14 @@ views:
             square: false
             cards:
               - type: tile
-                entity: binary_sensor.creta_engine
+                entity: binary_sensor.vehicle_primary_engine
                 name: Motor
                 icon: mdi:engine
               - type: tile
-                entity: lock.creta_door_lock
+                entity: lock.vehicle_primary_door_lock
                 name: Travas
               - type: tile
-                entity: binary_sensor.creta_fuel_low_level
+                entity: binary_sensor.vehicle_primary_fuel_low_level
                 name: Reserva
                 icon: mdi:fuel
           - type: heading
@@ -82,15 +82,15 @@ views:
             icon: mdi:map-marker
           - type: map
             entities:
-              - entity: device_tracker.creta_location
+              - entity: device_tracker.vehicle_primary
             hours_to_show: 12
             default_zoom: 15
           - type: entities
             show_header_toggle: false
             entities:
-              - entity: sensor.creta_location_last_updated
+              - entity: sensor.vehicle_primary_location_last_updated
                 name: Posição recebida em
-              - entity: sensor.creta_last_updated_at
+              - entity: sensor.vehicle_primary_last_updated_at
                 name: Telemetria confirmada em
 
       - type: grid
@@ -100,13 +100,13 @@ views:
             icon: mdi:cloud-sync
           - type: markdown
             content: >-
-              {% set refresh = states.sensor.creta_refresh_coordinator %}
+              {% set refresh = states.sensor.vehicle_primary_refresh_coordinator %}
               {% set state = refresh.state if refresh else 'unavailable' %}
-              {% set remaining = state_attr('sensor.creta_refresh_coordinator', 'remaining_seconds') | int(0) %}
-              {% set attempt = state_attr('sensor.creta_refresh_coordinator', 'attempt') | int(0) %}
-              {% set last_vehicle = states('sensor.creta_last_updated_at') %}
-              {% set last_scan = states('sensor.creta_last_scanned_at') %}
-              {% set reason = state_attr('sensor.creta_refresh_coordinator', 'reason') %}
+              {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
+              {% set attempt = state_attr('sensor.vehicle_primary_refresh_coordinator', 'attempt') | int(0) %}
+              {% set last_vehicle = states('sensor.vehicle_primary_last_updated_at') %}
+              {% set last_scan = states('sensor.vehicle_primary_last_scanned_at') %}
+              {% set reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
 
               {% if state == 'refreshing' %}
               ## ↻ Consultando Bluelink
@@ -131,7 +131,7 @@ views:
               **Veículo:** {{ relative_time(as_datetime(last_vehicle)) if last_vehicle not in ['unknown', 'unavailable'] else 'sem leitura válida' }}<br>
               **Bluelink:** {{ relative_time(as_datetime(last_scan)) if last_scan not in ['unknown', 'unavailable'] else 'sem leitura válida' }}
           - type: button
-            entity: input_button.creta_force_refresh_now
+            entity: input_button.vehicle_primary_force_refresh_now
             name: Forçar atualização agora
             icon: mdi:refresh
             show_state: false
@@ -139,7 +139,7 @@ views:
               action: perform-action
               perform_action: input_button.press
               target:
-                entity_id: input_button.creta_force_refresh_now
+                entity_id: input_button.vehicle_primary_force_refresh_now
             hold_action:
               action: none
           - type: heading
@@ -147,8 +147,8 @@ views:
             icon: mdi:map-marker-path
           - type: markdown
             content: >-
-              {% set trips = state_attr('sensor.garagem_creta_recent_trip_info', 'trips') or [] %}
-              {% set efficiency = state_attr('sensor.garagem_creta_recent_trip_info', 'fuel_efficiency') or {} %}
+              {% set trips = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'trips') or [] %}
+              {% set efficiency = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'fuel_efficiency') or {} %}
               {% if trips %}
               **{{ trips | length }} viagem(ns) nos últimos dois dias**
 
@@ -177,7 +177,7 @@ views:
             icon: mdi:car-key
           - type: markdown
             content: >-
-              {% set command = states('sensor.garagem_creta_remote_command_status') %}
+              {% set command = states('sensor.garagem_vehicle_primary_remote_command_status') %}
               {% if command == 'requesting' %}
               ## ↻ Localizando veículo...
               Aguardando confirmação do Bluelink.
@@ -193,7 +193,7 @@ views:
               O comando oficial aciona buzina e luzes por aproximadamente 30 segundos.
               {% endif %}
           - type: button
-            entity: button.creta_start_hazard_lights_and_horn
+            entity: button.vehicle_primary_start_hazard_lights_and_horn
             name: Localizar veículo · segure para acionar
             icon: mdi:car-emergency
             show_state: false
@@ -203,15 +203,15 @@ views:
               action: perform-action
               perform_action: button.press
               target:
-                entity_id: button.creta_start_hazard_lights_and_horn
+                entity_id: button.vehicle_primary_start_hazard_lights_and_horn
               confirmation:
-                text: Acionar a buzina e as luzes do Creta por aproximadamente 30 segundos?
+                text: Acionar a buzina e as luzes do vehicle_primary por aproximadamente 30 segundos?
           - type: heading
             heading: Alertas e confiabilidade
             icon: mdi:car-battery
           - type: markdown
             content: >-
-              {% set battery = states('sensor.creta_car_battery_level') %}
+              {% set battery = states('sensor.vehicle_primary_car_battery_level') %}
               {% if battery not in ['unknown', 'unavailable'] %}
               ## Bateria 12 V: {{ battery }}%
               Leitura confiável recebida do veículo.
@@ -222,17 +222,17 @@ views:
           - type: entities
             show_header_toggle: false
             entities:
-              - entity: binary_sensor.creta_front_left_door
+              - entity: binary_sensor.vehicle_primary_front_left_door
                 name: Porta dianteira esquerda
-              - entity: binary_sensor.creta_front_right_door
+              - entity: binary_sensor.vehicle_primary_front_right_door
                 name: Porta dianteira direita
-              - entity: binary_sensor.creta_back_left_door
+              - entity: binary_sensor.vehicle_primary_back_left_door
                 name: Porta traseira esquerda
-              - entity: binary_sensor.creta_back_right_door
+              - entity: binary_sensor.vehicle_primary_back_right_door
                 name: Porta traseira direita
-              - entity: binary_sensor.creta_trunk
+              - entity: binary_sensor.vehicle_primary_trunk
                 name: Porta-malas
-              - entity: binary_sensor.creta_tire_pressure_all
+              - entity: binary_sensor.vehicle_primary_tire_pressure_all
                 name: Alerta de pneus
 
   - title: Detalhes
@@ -248,8 +248,8 @@ views:
             icon: mdi:map-marker-path
           - type: markdown
             content: >-
-              {% set trips = state_attr('sensor.garagem_creta_recent_trip_info', 'trips') or [] %}
-              {% set efficiency = state_attr('sensor.garagem_creta_recent_trip_info', 'fuel_efficiency') or {} %}
+              {% set trips = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'trips') or [] %}
+              {% set efficiency = state_attr('sensor.garagem_vehicle_primary_recent_trip_info', 'fuel_efficiency') or {} %}
               {% if efficiency.data_sufficient %}
               ## {{ efficiency.km_per_l }} km/L estimados
 
@@ -279,15 +279,15 @@ views:
             title: Motor e combustível · 48 horas
             hours_to_show: 48
             entities:
-              - entity: binary_sensor.creta_engine
+              - entity: binary_sensor.vehicle_primary_engine
                 name: Motor
-              - entity: sensor.creta_fuel_level
+              - entity: sensor.vehicle_primary_fuel_level
                 name: Combustível
           - type: history-graph
             title: Consumo estimado · 7 dias
             hours_to_show: 168
             entities:
-              - entity: sensor.garagem_creta_estimated_fuel_efficiency
+              - entity: sensor.garagem_vehicle_primary_estimated_fuel_efficiency
                 name: km/L estimados
 
       - type: grid
@@ -305,19 +305,19 @@ views:
           - type: entities
             show_header_toggle: false
             entities:
-              - entity: sensor.creta_last_updated_at
+              - entity: sensor.vehicle_primary_last_updated_at
                 name: Estado confirmado em
-              - entity: sensor.creta_last_scanned_at
+              - entity: sensor.vehicle_primary_last_scanned_at
                 name: Consulta executada em
-              - entity: sensor.creta_location_last_updated
+              - entity: sensor.vehicle_primary_location_last_updated
                 name: Posição confirmada em
-              - entity: sensor.garagem_creta_recent_trip_info
+              - entity: sensor.garagem_vehicle_primary_recent_trip_info
                 name: Viagens carregadas
-              - entity: sensor.garagem_creta_estimated_fuel_efficiency
+              - entity: sensor.garagem_vehicle_primary_estimated_fuel_efficiency
                 name: Base de consumo
-              - entity: sensor.creta_refresh_coordinator
+              - entity: sensor.vehicle_primary_refresh_coordinator
                 name: Coordenador de refresh
-              - entity: sensor.garagem_creta_remote_command_status
+              - entity: sensor.garagem_vehicle_primary_remote_command_status
                 name: Último comando remoto
-              - entity: sensor.integracao_creta
+              - entity: sensor.integracao_vehicle_primary
                 name: Manutenção da integração

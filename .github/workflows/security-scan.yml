@@ -95,7 +95,7 @@ jobs:
           make validate-public
           node --test scripts/docker-auto-update.test.mjs
           bash -n scripts/storage-maintenance.sh
-          sh -n nodered/tools/storage-maintenance.sh
+          sh -n scripts/storage-health-maintenance.sh
           sh -n scripts/weekly-docs-review-entrypoint.sh
 
       - name: Validar fluxos Node-RED
@@ -103,12 +103,7 @@ jobs:
           npm --prefix nodered ci
           npm --prefix nodered run flows:validate
           node --check nodered/settings.js
-          npm --prefix nodered run flows:test-alarm-arrival
-          npm --prefix nodered run flows:test-security
-          npm --prefix nodered run flows:test-security-recovery
-          npm --prefix nodered run flows:test-security-adversarial
-          npm --prefix nodered run flows:test-raspberry-cooling
-          npm --prefix nodered run flows:test-storage
+          npm --prefix nodered run test:all
 
       - name: Testar bridge
         run: npm --prefix claude-bridge test

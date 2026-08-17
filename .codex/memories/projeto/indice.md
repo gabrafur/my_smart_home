@@ -15,6 +15,7 @@ precedência sobre estas anotações.
 | Codex e Local AI | [`.codex/memories/codex-local-ai/codex-e-local-ai.md`](../codex-local-ai/codex-e-local-ai.md) | Helper local, RTX, hook, telemetria ou painéis Codex/RTX |
 | Segurança e dados locais | [`.codex/memories/seguranca/seguranca-e-dados-locais.md`](../seguranca/seguranca-e-dados-locais.md) | Credenciais, arquivos privados ou acesso ao host |
 | Governança da memória | [`.codex/memories/projeto/governanca-da-memoria.md`](governanca-da-memoria.md) | Criar, revisar, validar ou anonimizar memória de agentes |
+| Privacidade e bindings | [`.codex/memories/privacidade/papeis-bindings-e-fronteira-publica.md`](../privacidade/papeis-bindings-e-fronteira-publica.md) | Papéis públicos, bindings privados, scanner ou restauração sanitizada |
 
 ## Manutenção
 

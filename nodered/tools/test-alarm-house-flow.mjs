@@ -117,7 +117,7 @@ const updateMoniMobile = node("moni_mobile_update_after_arm");
 assert.equal(updateMoniMobile.action, "homeassistant.update_entity");
 assert.deepEqual(updateMoniMobile.entityId, []);
 assert.deepEqual(JSON.parse(updateMoniMobile.data), {
-  entity_id: ["alarm_control_panel.alarme_moni_mobile"],
+  entity_id: ["alarm_control_panel.security_panel"],
 });
 
 for (const item of flows.filter((candidate) => candidate.type === "function")) {

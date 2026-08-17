@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Cria pastas "Senhas para Trocar" (itens com senha reutilizada) e "Valéria"
+// Cria pastas "Senhas para Trocar" (itens com senha reutilizada) e "resident_secondary"
 // (itens cujo nome menciona ela) e move os itens correspondentes.
 // Uso: node make_folders.js            -> dry-run (mostra o que faria)
 //      node make_folders.js --apply    -> aplica de fato
@@ -34,18 +34,18 @@ for (const it of logins) {
 const toChange = [];
 for (const [, list] of byPassword) if (list.length > 1) toChange.push(...list);
 
-const VALERIA_RE = /val[eé]ria/i;
-const valeriaItems = logins.filter((it) => VALERIA_RE.test(it.name));
+const RESIDENT_SECONDARY_RE = /val[eé]ria/i;
+const resident_secondaryItems = logins.filter((it) => RESIDENT_SECONDARY_RE.test(it.name));
 
-// Evita duplicar um item nas duas pastas: Valéria tem prioridade.
-const valeriaIds = new Set(valeriaItems.map((i) => i.id));
-const toChangeFiltered = toChange.filter((it) => !valeriaIds.has(it.id));
+// Evita duplicar um item nas duas pastas: resident_secondary tem prioridade.
+const resident_secondaryIds = new Set(resident_secondaryItems.map((i) => i.id));
+const toChangeFiltered = toChange.filter((it) => !resident_secondaryIds.has(it.id));
 
 console.log(`\n=== Plano (${APPLY ? "APLICANDO" : "DRY-RUN"}) ===`);
 console.log(`\nSenhas para Trocar: ${toChangeFiltered.length} itens`);
 for (const it of toChangeFiltered) console.log(`  - ${it.name}`);
-console.log(`\nValéria: ${valeriaItems.length} itens`);
-for (const it of valeriaItems) console.log(`  - ${it.name}`);
+console.log(`\nresident_secondary: ${resident_secondaryItems.length} itens`);
+for (const it of resident_secondaryItems) console.log(`  - ${it.name}`);
 
 if (!APPLY) {
   console.log("\nNenhuma alteração feita. Rode com --apply para executar.\n");
@@ -88,11 +88,11 @@ function moveItem(it, folderId) {
 }
 
 const toChangeFolderId = ensureFolder("Senhas para Trocar");
-const valeriaFolderId = ensureFolder("Valéria");
+const resident_secondaryFolderId = ensureFolder("resident_secondary");
 
-console.log("\nMovendo itens de Valéria...");
-for (const it of valeriaItems) moveItem(it, valeriaFolderId);
-console.log(`  -> ${valeriaItems.length} itens movidos.`);
+console.log("\nMovendo itens de resident_secondary...");
+for (const it of resident_secondaryItems) moveItem(it, resident_secondaryFolderId);
+console.log(`  -> ${resident_secondaryItems.length} itens movidos.`);
 
 console.log("\nMovendo itens de Senhas para Trocar...");
 for (const it of toChangeFiltered) moveItem(it, toChangeFolderId);

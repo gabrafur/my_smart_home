@@ -6,16 +6,16 @@ const byId = new Map(flows.map((node) => [node.id, node]));
 const aliasesByName = {
   people_normalize: "Normalizar pessoas e detectar transições",
   people_refresh_decide: "Atualizar iPhones agora?",
-  creta_normalize: "Normalizar Creta e detectar transições",
-  creta_refresh_decide: "Coordenar refresh do Creta",
-  creta_arrival_actions: "Acordar carro e fechar viagem",
-  creta_trip_refresh: "Atualizar viagens do dia após chegada",
-  creta_unlock_event: "Porta destravada por 5 s",
+  vehicle_primary_normalize: "Normalizar vehicle_primary e detectar transições",
+  vehicle_primary_refresh_decide: "Coordenar refresh do vehicle_primary",
+  vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
+  vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
+  vehicle_primary_unlock_event: "Porta destravada por 5 s",
   context_coordinator: "Coordenar snapshot e refresh",
   context_tick: "Reavaliar contextos a cada 30 s",
   light_merge_context: "Atualizar contexto de alto nível",
   light_prepare_arrival: "Montar decisão de acendimento",
-  light_check_creta_in_use: "Creta está em uso?",
+  light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_mark_active: "Marcar refletor ativo por chegada",
   light_evaluate_off: "Alguma condição de desligamento ocorreu?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
@@ -77,8 +77,8 @@ const geoEnv = environment({ HOME_LAT: "0", HOME_LON: "0", GATE_LAT: "0", GATE_L
 function activeLightFlow(extra = {}) {
   const now = Date.now();
   return memoryFlow({
-    people_context_v1: { ready: true, updated_at: now, gabriel: { current_home: true }, valeria: { current_home: true } },
-    creta_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, updated_at: now, home: true, in_use: true },
+    people_context_v1: { ready: true, updated_at: now, resident_primary: { current_home: true }, resident_secondary: { current_home: true } },
+    vehicle_primary_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, updated_at: now, home: true, in_use: true },
     sun_ready: true,
     security_light_physical_state: "on",
     security_light_lifecycle_v1: {
@@ -98,7 +98,7 @@ function activeLightFlow(extra = {}) {
 function readyLightFlow(extra = {}) {
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: Date.now() },
-    creta_context_v1: { ready: true, lighting_ready: true, in_use: true, engine_on: true, engine_state_valid: true, updated_at: Date.now() },
+    vehicle_primary_context_v1: { ready: true, lighting_ready: true, in_use: true, engine_on: true, engine_state_valid: true, updated_at: Date.now() },
     sun_ready: true,
     sun_below_horizon: true,
     light_reconciled: true,
@@ -111,37 +111,37 @@ function readyLightFlow(extra = {}) {
 }
 
 function peopleInput({
-  event = "location_update", source = "gabriel", previous = "not_home", current = "chegando",
-  gabriel = entity(source === "gabriel" ? current : "home", source === "gabriel" ? 1_400 : 20),
-  gabrielIcloud = entity(source === "gabriel" ? current : "home", source === "gabriel" ? 1_400 : 20),
-  valeria = entity(source === "valeria" ? current : "home", source === "valeria" ? 1_400 : 20),
-  valeriaIcloud = entity(source === "valeria" ? current : "home", source === "valeria" ? 1_400 : 20),
+  event = "location_update", source = "resident_primary", previous = "not_home", current = "chegando",
+  resident_primary = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 1_400 : 20),
+  resident_primaryIcloud = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 1_400 : 20),
+  resident_secondary = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 1_400 : 20),
+  resident_secondaryIcloud = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 1_400 : 20),
   cycle,
 } = {}) {
   return { payload: {
     event, source, trigger_state: current, trigger_prev_state: previous,
-    gabriel, gabriel_icloud: gabrielIcloud, valeria, valeria_icloud: valeriaIcloud,
+    resident_primary, resident_primary_icloud: resident_primaryIcloud, resident_secondary, resident_secondary_icloud: resident_secondaryIcloud,
     refresh_cycle_id: cycle,
   } };
 }
 
-function cretaInput({
+function vehicle_primaryInput({
   event = "location_update", previous = "not_home", current = "chegando", distance = 1_400,
   engine = "off", lock = "locked", cycle, changed = new Date().toISOString(), accuracy = 10,
 } = {}) {
   return { payload: {
-    event, source: "creta", trigger_state: current, trigger_prev_state: previous,
-    reason: event === "turn_off" ? "creta_engine_off" : undefined,
-    creta: entity(current, distance, changed, accuracy),
-    creta_engine: { state: engine, last_updated: changed },
-    creta_lock: { state: lock, last_updated: changed }, refresh_cycle_id: cycle,
+    event, source: "vehicle_primary", trigger_state: current, trigger_prev_state: previous,
+    reason: event === "turn_off" ? "vehicle_primary_engine_off" : undefined,
+    vehicle_primary: entity(current, distance, changed, accuracy),
+    vehicle_primary_engine: { state: engine, last_updated: changed },
+    vehicle_primary_lock: { state: lock, last_updated: changed }, refresh_cycle_id: cycle,
   } };
 }
 
-function arrival(source = "gabriel", stage = "approach") {
+function arrival(source = "resident_primary", stage = "approach") {
   return { payload: {
     contract: "security.arrival.v1", kind: "arrival", source, arriving: [source],
-    arrival_source_type: source === "creta" ? "creta" : "person", arrival_stage: stage,
+    arrival_source_type: source === "vehicle_primary" ? "vehicle_primary" : "person", arrival_stage: stage,
   } };
 }
 
@@ -150,32 +150,32 @@ for (const node of flows.filter((item) => item.type === "function")) {
 }
 
 for (const [tabId, forbidden] of [
-  ["2fd40fd570e6f37a", /device_tracker\.|binary_sensor\.creta|lock\.creta|button\.creta|HOME_LAT|distanceMeters/],
-  ["security_people_tab", /binary_sensor\.creta|lock\.creta|device_tracker\.creta|button\.creta/],
-  ["security_creta_tab", /iphone_de_|iphonegabriel|request_location_update/],
+  ["2fd40fd570e6f37a", /device_tracker\.|binary_sensor\.vehicle_primary|lock\.vehicle_primary|button\.vehicle_primary|HOME_LAT|distanceMeters/],
+  ["security_people_tab", /binary_sensor\.vehicle_primary|lock\.vehicle_primary|device_tracker\.vehicle_primary|button\.vehicle_primary/],
+  ["security_vehicle_primary_tab", /iphone_de_|iphoneresident_primary|request_location_update/],
 ]) {
   const serialized = JSON.stringify(flows.filter((node) => node.z === tabId));
   assert.doesNotMatch(serialized, forbidden, `fronteira de dominio violada em ${tabId}`);
 }
 
-scenario("01 Creta desligado e todos em casa", () => {
-  const people = run("people_normalize", peopleInput({ event: "context_snapshot", gabriel: entity("home", 20), gabrielIcloud: entity("home", 20), valeria: entity("home", 20), valeriaIcloud: entity("home", 20) }), memoryFlow(), geoEnv)[0];
-  const creta = run("creta_normalize", cretaInput({ event: "context_snapshot", current: "home", distance: 20 }), memoryFlow(), geoEnv)[0];
+scenario("01 vehicle_primary desligado e todos em casa", () => {
+  const people = run("people_normalize", peopleInput({ event: "context_snapshot", resident_primary: entity("home", 20), resident_primaryIcloud: entity("home", 20), resident_secondary: entity("home", 20), resident_secondaryIcloud: entity("home", 20) }), memoryFlow(), geoEnv)[0];
+  const vehicle_primary = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "context_snapshot", current: "home", distance: 20 }), memoryFlow(), geoEnv)[0];
   assert.equal(people.payload.context.anyone_away, false);
-  assert.equal(creta.payload.context.in_use, false);
-  assert.equal(creta.payload.context.home, true);
+  assert.equal(vehicle_primary.payload.context.in_use, false);
+  assert.equal(vehicle_primary.payload.context.home, true);
 });
 
-scenario("02 Creta ligado e longe de casa", () => {
-  const result = run("creta_normalize", cretaInput({ current: "not_home", distance: 5_000, engine: "on" }), memoryFlow(), geoEnv)[0];
+scenario("02 vehicle_primary ligado e longe de casa", () => {
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "not_home", distance: 5_000, engine: "on" }), memoryFlow(), geoEnv)[0];
   assert.equal(result.payload.context.in_use, true);
   assert.equal(result.payload.context.away, true);
 });
 
-scenario("03 Creta ligado e aproximando-se", () => {
-  const [, detected] = run("creta_normalize", cretaInput({ engine: "on" }), memoryFlow(), geoEnv);
+scenario("03 vehicle_primary ligado e aproximando-se", () => {
+  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "on" }), memoryFlow(), geoEnv);
   assert.equal(detected.payload.arrival_stage, "approach");
-  assert.equal(detected.payload.request_creta_wake, true);
+  assert.equal(detected.payload.request_vehicle_primary_wake, true);
 });
 
 scenario("04 entrada no anel de aproximadamente 1500 m", () => {
@@ -183,53 +183,53 @@ scenario("04 entrada no anel de aproximadamente 1500 m", () => {
   assert.equal(detected.payload.arrival_stage, "approach");
 });
 
-scenario("05 Gabriel aproximando-se", () => {
-  const [, detected] = run("people_normalize", peopleInput({ source: "gabriel" }), memoryFlow(), geoEnv);
-  assert.deepEqual(detected.payload.arriving, ["gabriel"]);
+scenario("05 resident_primary aproximando-se", () => {
+  const [, detected] = run("people_normalize", peopleInput({ source: "resident_primary" }), memoryFlow(), geoEnv);
+  assert.deepEqual(detected.payload.arriving, ["resident_primary"]);
 });
 
-scenario("06 Valeria aproximando-se", () => {
-  const [, detected, notification] = run("people_normalize", peopleInput({ source: "valeria" }), memoryFlow(), geoEnv);
-  assert.deepEqual(detected.payload.arriving, ["valeria"]);
-  assert.equal(notification.payload.kind, "valeria_approach_notification");
+scenario("06 resident_secondary aproximando-se", () => {
+  const [, detected, notification] = run("people_normalize", peopleInput({ source: "resident_secondary" }), memoryFlow(), geoEnv);
+  assert.deepEqual(detected.payload.arriving, ["resident_secondary"]);
+  assert.equal(notification.payload.kind, "resident_secondary_approach_notification");
 });
 
-scenario("07 Gabriel ja em casa", () => {
-  const flow = memoryFlow({ people_arrival_armed: { gabriel: true } });
-  run("people_normalize", peopleInput({ event: "context_snapshot", gabriel: entity("home", 20), gabrielIcloud: entity("home", 20) }), flow, geoEnv);
-  assert.equal(flow.get("people_arrival_armed").gabriel, false);
+scenario("07 resident_primary ja em casa", () => {
+  const flow = memoryFlow({ people_arrival_armed: { resident_primary: true } });
+  run("people_normalize", peopleInput({ event: "context_snapshot", resident_primary: entity("home", 20), resident_primaryIcloud: entity("home", 20) }), flow, geoEnv);
+  assert.equal(flow.get("people_arrival_armed").resident_primary, false);
 });
 
-scenario("08 Valeria ja em casa", () => {
-  const flow = memoryFlow({ people_arrival_armed: { valeria: true } });
-  run("people_normalize", peopleInput({ event: "context_snapshot", valeria: entity("home", 20), valeriaIcloud: entity("home", 20) }), flow, geoEnv);
-  assert.equal(flow.get("people_arrival_armed").valeria, false);
+scenario("08 resident_secondary ja em casa", () => {
+  const flow = memoryFlow({ people_arrival_armed: { resident_secondary: true } });
+  run("people_normalize", peopleInput({ event: "context_snapshot", resident_secondary: entity("home", 20), resident_secondaryIcloud: entity("home", 20) }), flow, geoEnv);
+  assert.equal(flow.get("people_arrival_armed").resident_secondary, false);
 });
 
-scenario("09 Creta chegando encerra viagem e publica chegada", () => {
-  const flow = memoryFlow({ creta_arrival_armed: true, creta_in_use: true });
-  const [, detected] = run("creta_normalize", cretaInput({ previous: "chegando", current: "home", distance: 20 }), flow, geoEnv);
-  assert.equal(detected.payload.arrival_source_type, "creta");
-  const actions = run("creta_arrival_actions", detected, flow, geoEnv);
+scenario("09 vehicle_primary chegando encerra viagem e publica chegada", () => {
+  const flow = memoryFlow({ vehicle_primary_arrival_armed: true, vehicle_primary_in_use: true });
+  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ previous: "chegando", current: "home", distance: 20 }), flow, geoEnv);
+  assert.equal(detected.payload.arrival_source_type, "vehicle_primary");
+  const actions = run("vehicle_primary_arrival_actions", detected, flow, geoEnv);
   assert.equal(actions[1], detected);
-  assert.equal(byId.get("creta_trip_refresh").action, "button.press");
+  assert.equal(byId.get("vehicle_primary_trip_refresh").action, "button.press");
 });
 
-scenario("10 Creta desligado ao chegar", () => {
-  const result = run("creta_normalize", cretaInput({ event: "turn_off", current: "home", distance: 20, engine: "off", lock: "unlocked" }), memoryFlow({ creta_in_use: true }), geoEnv)[0];
+scenario("10 vehicle_primary desligado ao chegar", () => {
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "turn_off", current: "home", distance: 20, engine: "off", lock: "unlocked" }), memoryFlow({ vehicle_primary_in_use: true }), geoEnv)[0];
   assert.equal(result.payload.context.in_use, false);
 });
 
-scenario("11 Creta travado ao chegar nao apaga imediatamente", () => {
-  const decision = run("light_evaluate_off", { payload: { active: true, event: "location_update", creta_engine_on: false, creta_unlocked: false } }, activeLightFlow(), geoEnv);
+scenario("11 vehicle_primary travado ao chegar nao apaga imediatamente", () => {
+  const decision = run("light_evaluate_off", { payload: { active: true, event: "location_update", vehicle_primary_engine_on: false, vehicle_primary_unlocked: false } }, activeLightFlow(), geoEnv);
   assert.equal(decision, null);
 });
 
-scenario("12 Creta destravado em casa apaga apos filtro do evento", () => {
-  const eventNode = byId.get("creta_unlock_event");
+scenario("12 vehicle_primary destravado em casa apaga apos filtro do evento", () => {
+  const eventNode = byId.get("vehicle_primary_unlock_event");
   assert.equal(eventNode.for, "5");
-  const decision = run("light_evaluate_off", { payload: { active: true, event: "turn_off", creta_ready: true, creta_engine_on: false, creta_unlocked: true } }, activeLightFlow(), geoEnv);
-  assert.equal(decision[0].payload.off_reason, "creta_desligado_e_destravado");
+  const decision = run("light_evaluate_off", { payload: { active: true, event: "turn_off", vehicle_primary_ready: true, vehicle_primary_engine_on: false, vehicle_primary_unlocked: true } }, activeLightFlow(), geoEnv);
+  assert.equal(decision[0].payload.off_reason, "vehicle_primary_desligado_e_destravado");
 });
 
 scenario("13 refletor ja ligado antes da chegada", () => {
@@ -247,7 +247,7 @@ scenario("15 ambiente escuro", () => {
   const flow = readyLightFlow();
   const prepared = run("light_prepare_arrival", arrival(), flow, geoEnv)[0];
   assert.equal(prepared.payload.sun_below_horizon, true);
-  assert(run("light_check_creta_in_use", prepared, flow, geoEnv));
+  assert(run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv));
 });
 
 scenario("16 timeout de 15 minutos", () => {
@@ -259,38 +259,38 @@ scenario("16 timeout de 15 minutos", () => {
 
 scenario("17 desligamento respeita carencia de 90 segundos", () => {
   const flow = activeLightFlow();
-  const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source: "gabriel" } }, flow, geoEnv);
+  const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source: "resident_primary" } }, flow, geoEnv);
   assert(decision[1].delay > 89_000 && decision[1].delay <= 90_000);
   assert.equal(byId.get("light_off_grace").pauseType, "delayv");
 });
 
 scenario("18 cinco condicoes independentes de desligamento", () => {
-  for (const source of ["gabriel", "valeria", "creta"]) {
+  for (const source of ["resident_primary", "resident_secondary", "vehicle_primary"]) {
     const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source } }, activeLightFlow(), geoEnv);
     assert.equal(decision[1].payload.off_reason, `chegada_confirmada_${source}`);
   }
   assert.equal(byId.get("light_auto_off").timeout, "15");
 });
 
-scenario("19 localizacao de Gabriel unknown/unavailable", () => {
-  const flow = memoryFlow({ people_arrival_armed: { gabriel: true } });
-  const result = run("people_normalize", peopleInput({ event: "context_snapshot", gabriel: entity("unknown"), gabrielIcloud: entity("unavailable") }), flow, geoEnv)[0];
-  assert.equal(result.payload.context.gabriel.state_valid, false);
-  assert.equal(flow.get("people_arrival_armed").gabriel, true);
+scenario("19 localizacao de resident_primary unknown/unavailable", () => {
+  const flow = memoryFlow({ people_arrival_armed: { resident_primary: true } });
+  const result = run("people_normalize", peopleInput({ event: "context_snapshot", resident_primary: entity("unknown"), resident_primaryIcloud: entity("unavailable") }), flow, geoEnv)[0];
+  assert.equal(result.payload.context.resident_primary.state_valid, false);
+  assert.equal(flow.get("people_arrival_armed").resident_primary, true);
 });
 
-scenario("20 localizacao de Valeria unknown/unavailable", () => {
-  const flow = memoryFlow({ people_arrival_armed: { valeria: true } });
-  const result = run("people_normalize", peopleInput({ event: "context_snapshot", valeria: entity("unknown"), valeriaIcloud: entity("unavailable") }), flow, geoEnv)[0];
-  assert.equal(result.payload.context.valeria.state_valid, false);
-  assert.equal(flow.get("people_arrival_armed").valeria, true);
+scenario("20 localizacao de resident_secondary unknown/unavailable", () => {
+  const flow = memoryFlow({ people_arrival_armed: { resident_secondary: true } });
+  const result = run("people_normalize", peopleInput({ event: "context_snapshot", resident_secondary: entity("unknown"), resident_secondaryIcloud: entity("unavailable") }), flow, geoEnv)[0];
+  assert.equal(result.payload.context.resident_secondary.state_valid, false);
+  assert.equal(flow.get("people_arrival_armed").resident_secondary, true);
 });
 
-scenario("21 localizacao do Creta unknown/unavailable", () => {
-  const flow = memoryFlow({ creta_arrival_armed: true });
-  const result = run("creta_normalize", cretaInput({ event: "context_snapshot", current: "unknown", distance: null, accuracy: 999 }), flow, geoEnv)[0];
+scenario("21 localizacao do vehicle_primary unknown/unavailable", () => {
+  const flow = memoryFlow({ vehicle_primary_arrival_armed: true });
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "context_snapshot", current: "unknown", distance: null, accuracy: 999 }), flow, geoEnv)[0];
   assert.equal(result.payload.context.state_valid, false);
-  assert.equal(flow.get("creta_arrival_armed"), true);
+  assert.equal(flow.get("vehicle_primary_arrival_armed"), true);
 });
 
 scenario("22 Home Assistant reiniciado: ciclo volta a pedir snapshots", () => {
@@ -303,13 +303,13 @@ scenario("23 Node-RED reiniciado: gates falham de forma segura", () => {
   const decision = run("light_prepare_arrival", arrival(), memoryFlow(), geoEnv);
   assert.equal(decision[0], null);
   assert(decision[1]);
-  assert.equal(run("light_check_creta_in_use", { payload: {} }, memoryFlow(), geoEnv), null);
+  assert.equal(run("light_check_vehicle_primary_in_use", { payload: {} }, memoryFlow(), geoEnv), null);
 });
 
 scenario("24 restart durante viagem fica pendente sem evidência persistida", () => {
-  const input = cretaInput({ event: "context_snapshot", current: "not_home", distance: 5_000, engine: "off" });
-  input.payload.creta_engine.last_updated = new Date(Date.now() - 10 * 60_000).toISOString();
-  const result = run("creta_normalize", input, memoryFlow(), geoEnv)[0];
+  const input = vehicle_primaryInput({ event: "context_snapshot", current: "not_home", distance: 5_000, engine: "off" });
+  input.payload.vehicle_primary_engine.last_updated = new Date(Date.now() - 10 * 60_000).toISOString();
+  const result = run("vehicle_primary_normalize", input, memoryFlow(), geoEnv)[0];
   assert.equal(result.payload.context.in_use, null);
   assert.equal(result.payload.context.in_use_pending, true);
   assert.equal(result.payload.context.away, true);
@@ -322,9 +322,9 @@ scenario("25 restart sem reconciliação não presume refletor ativo", () => {
 
 scenario("26 eventos fora de ordem atualizam caches sem emitir refresh", () => {
   const flow = memoryFlow();
-  assert.equal(run("context_coordinator", { payload: { kind: "creta_context", context: { away: true } } }, flow, geoEnv), null);
+  assert.equal(run("context_coordinator", { payload: { kind: "vehicle_primary_context", context: { away: true } } }, flow, geoEnv), null);
   assert.equal(run("context_coordinator", { payload: { kind: "people_context", context: { anyone_away: false } } }, flow, geoEnv), null);
-  assert.equal(flow.get("creta_context_v1").away, true);
+  assert.equal(flow.get("vehicle_primary_context_v1").away, true);
 });
 
 scenario("27 dois eventos quase simultaneos geram um comando por ciclo", () => {
@@ -332,33 +332,33 @@ scenario("27 dois eventos quase simultaneos geram um comando por ciclo", () => {
   const request = run("context_coordinator", { payload: { kind: "refresh_tick" } }, flow, geoEnv)[0];
   const cycle = request.payload.refresh_cycle_id;
   assert.equal(run("context_coordinator", { payload: { kind: "people_context", context: { anyone_away: false }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv), null);
-  const completed = run("context_coordinator", { payload: { kind: "creta_context", context: { away: true }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv);
+  const completed = run("context_coordinator", { payload: { kind: "vehicle_primary_context", context: { away: true }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv);
   assert.equal(completed[1].payload.anyone_away, true);
-  assert.equal(run("context_coordinator", { payload: { kind: "creta_context", context: { away: true }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv), null);
+  assert.equal(run("context_coordinator", { payload: { kind: "vehicle_primary_context", context: { away: true }, ready: true, refresh_cycle_id: cycle } }, flow, geoEnv), null);
 });
 
-scenario("28 refresh do Creta falhando permite retry", () => {
-  const flow = memoryFlow({ creta_context_v1: { away: true } });
+scenario("28 refresh do vehicle_primary falhando permite retry", () => {
+  const flow = memoryFlow({ vehicle_primary_context_v1: { away: true } });
   const command = { payload: { kind: "refresh_command", anyone_away: true } };
-  assert(run("creta_refresh_decide", structuredClone(command), flow, geoEnv));
-  assert.equal(run("creta_refresh_decide", structuredClone(command), flow, geoEnv), null);
-  assert.equal(flow.get("security_creta_refresh_v1").attempts, 1);
+  assert(run("vehicle_primary_refresh_decide", structuredClone(command), flow, geoEnv));
+  assert.equal(run("vehicle_primary_refresh_decide", structuredClone(command), flow, geoEnv), null);
+  assert.equal(flow.get("security_vehicle_primary_refresh_v1").attempts, 1);
 });
 
-scenario("29 refresh posterior do Creta só confirma com evidência nova", () => {
-  const flow = memoryFlow({ creta_context_v1: { away: true } });
-  run("creta_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv);
-  run("creta_normalize", cretaInput({ locationOffset: 0, engineOffset: 0 }), flow, geoEnv);
-  assert.equal(typeof flow.get("security_creta_refresh_v1").last_success_at, "number");
-  assert.equal(flow.get("security_creta_refresh_v1").awaiting_evidence, false);
-  assert.equal(run("creta_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
+scenario("29 refresh posterior do vehicle_primary só confirma com evidência nova", () => {
+  const flow = memoryFlow({ vehicle_primary_context_v1: { away: true } });
+  run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv);
+  run("vehicle_primary_normalize", vehicle_primaryInput({ locationOffset: 0, engineOffset: 0 }), flow, geoEnv);
+  assert.equal(typeof flow.get("security_vehicle_primary_refresh_v1").last_success_at, "number");
+  assert.equal(flow.get("security_vehicle_primary_refresh_v1").awaiting_evidence, false);
+  assert.equal(run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
 });
 
 scenario("30 tick de 30 segundos sem mudanca nao cria loop", () => {
   assert.equal(byId.get("context_tick").repeat, "30");
   const flow = memoryFlow({ people_context_v1: { nearest_distance_m: 5_000 }, security_people_last_refresh_at: Date.now() });
   assert.equal(run("people_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
-  const labels = new Set(["localizacao_pessoas", "contexto_creta", "contexto_chegadas", "iluminacao_seguranca"]);
+  const labels = new Set(["localizacao_pessoas", "contexto_vehicle_primary", "contexto_chegadas", "iluminacao_seguranca"]);
   const securityTabs = new Set(flows.filter((item) => item.type === "tab" && labels.has(item.label)).map((item) => item.id));
   for (const node of flows.filter((item) => securityTabs.has(item.z))) {
     for (const targetId of (node.wires ?? []).flat()) {
@@ -371,22 +371,22 @@ scenario("31 movimento na mesma zona solicita refresh sem autorizar iluminação
   assert.equal(byId.get("46c2142f93cfc3e1").outputOnlyOnStateChange, false);
   const flow = memoryFlow();
   const staleAt = new Date(Date.now() - 10 * 60_000).toISOString();
-  const first = cretaInput({
+  const first = vehicle_primaryInput({
     previous: "not_home", current: "not_home", distance: 5_000,
     engine: "off", changed: staleAt,
   });
-  first.payload.creta_engine.last_updated = staleAt;
-  assert.equal(run("creta_normalize", first, flow, geoEnv)[2], null);
+  first.payload.vehicle_primary_engine.last_updated = staleAt;
+  assert.equal(run("vehicle_primary_normalize", first, flow, geoEnv)[2], null);
 
-  const second = cretaInput({
+  const second = vehicle_primaryInput({
     previous: "not_home", current: "not_home", distance: 5_400,
     engine: "off", changed: new Date().toISOString(),
   });
-  second.payload.creta_engine.last_updated = staleAt;
-  const [context, arrivalEvent, refresh] = run("creta_normalize", second, flow, geoEnv);
+  second.payload.vehicle_primary_engine.last_updated = staleAt;
+  const [context, arrivalEvent, refresh] = run("vehicle_primary_normalize", second, flow, geoEnv);
   assert.equal(arrivalEvent, null);
   assert.equal(context.payload.context.in_use, null);
-  assert.equal(refresh.payload.reason, "creta_location_changed_engine_stale");
+  assert.equal(refresh.payload.reason, "vehicle_primary_location_changed_engine_stale");
   assert.equal(refresh.payload.force_recovery, true);
   assert.equal(refresh.payload.require_lighting_ready, true);
 });

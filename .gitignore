@@ -20,6 +20,7 @@
 .local-secrets/
 .local-state/
 .kia-uvo-updater-state/
+bindings/private/
 .agent-history/
 .agents/
 # Preserve Codex runtime state as private while versioning the project memory.
@@ -61,6 +62,7 @@ homeassistant/*.log.*
 homeassistant/home-assistant_v2.db*
 homeassistant/home-assistant.log*
 homeassistant/backups/
+homeassistant/packages/private_bindings.yaml
 homeassistant/codex_prompts/
 homeassistant/tts/
 homeassistant/custom_components/hacs/hacs_frontend/

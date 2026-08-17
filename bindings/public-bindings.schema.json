@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/my-smart-home/public-bindings.schema.json",
+  "title": "Private smart-home role bindings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "roles"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resident_primary": { "$ref": "#/$defs/role" },
+        "resident_secondary": { "$ref": "#/$defs/role" },
+        "mobile_primary": { "$ref": "#/$defs/role" },
+        "mobile_secondary": { "$ref": "#/$defs/role" },
+        "vehicle_primary": { "$ref": "#/$defs/role" },
+        "garage_gate": { "$ref": "#/$defs/role" },
+        "exterior_light": { "$ref": "#/$defs/role" },
+        "security_panel": { "$ref": "#/$defs/role" }
+      }
+    }
+  },
+  "$defs": {
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "source_alias": { "type": "string", "minLength": 1 },
+        "entities": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^(alarm_control_panel|binary_sensor|button|climate|cover|device_tracker|light|lock|person|sensor|switch)\\.[a-z0-9_]+$"
+          },
+          "additionalProperties": { "$ref": "#/$defs/entity_binding" }
+        },
+        "services": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z0-9_]+$" },
+          "additionalProperties": { "$ref": "#/$defs/service_binding" }
+        },
+        "topics": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z0-9_]+$" },
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "mqtt_topics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/mqtt_topic_binding" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "entity_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_entity_id"],
+      "properties": {
+        "target_entity_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+        },
+        "state_mode": {
+          "enum": ["passthrough", "home_away", "boolean"]
+        },
+        "attributes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "uniqueItems": true
+        },
+        "allowed_services": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "service_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_service"],
+      "properties": {
+        "target_service": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+        },
+        "target_entity_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
+        }
+      }
+    },
+    "mqtt_topic_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["topic", "payload_on", "payload_off"],
+      "properties": {
+        "topic": { "type": "string", "minLength": 1 },
+        "payload_on": { "type": ["string", "number", "boolean"] },
+        "payload_off": { "type": ["string", "number", "boolean"] }
+      }
+    }
+  }
+}

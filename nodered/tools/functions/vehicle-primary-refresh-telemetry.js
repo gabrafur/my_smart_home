@@ -1,4 +1,4 @@
-const raw = flow.get("security_creta_refresh_v1", "persistent") ?? {};
+const raw = flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};
 const now = Date.now();
 let state = raw.state ?? "idle";
 let deadline = null;
@@ -42,28 +42,28 @@ const status = {
 
 const discovery = {
     name: "Refresh Coordinator",
-    unique_id: "creta_refresh_coordinator",
-    object_id: "creta_refresh_coordinator",
-    state_topic: "homeassistant/creta/refresh/state",
+    unique_id: "vehicle_primary_refresh_coordinator",
+    object_id: "vehicle_primary_refresh_coordinator",
+    state_topic: "homeassistant/vehicle_primary/refresh/state",
     value_template: "{{ value_json.state }}",
-    json_attributes_topic: "homeassistant/creta/refresh/state",
+    json_attributes_topic: "homeassistant/vehicle_primary/refresh/state",
     icon: "mdi:car-clock",
     device: {
-        identifiers: ["creta_bluelink"],
-        name: "Creta",
+        identifiers: ["vehicle_primary_bluelink"],
+        name: "vehicle_primary",
         manufacturer: "Hyundai"
     }
 };
 
 return [[
     {
-        topic: "homeassistant/sensor/creta_refresh_coordinator/config",
+        topic: "homeassistant/sensor/vehicle_primary_refresh_coordinator/config",
         payload: JSON.stringify(discovery),
         retain: true,
         qos: 1
     },
     {
-        topic: "homeassistant/creta/refresh/state",
+        topic: "homeassistant/vehicle_primary/refresh/state",
         payload: JSON.stringify(status),
         retain: true,
         qos: 1

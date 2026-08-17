@@ -570,8 +570,8 @@ automation:
         continue_on_error: true
         target:
           entity_id:
-            - notify.iphone_de_gabriel_furlan
-            - notify.iphone_de_valeria
+            - notify.mobile_primary_2
+            - notify.mobile_secondary
         data:
           title: "Raspberry Pi - {{ severity | upper }}"
           message: "{{ message }}"
@@ -618,8 +618,8 @@ automation:
         continue_on_error: true
         target:
           entity_id:
-            - notify.iphone_de_gabriel_furlan
-            - notify.iphone_de_valeria
+            - notify.mobile_primary_2
+            - notify.mobile_secondary
         data:
           title: "Raspberry Pi - recuperado"
           message: "{{ message }}"

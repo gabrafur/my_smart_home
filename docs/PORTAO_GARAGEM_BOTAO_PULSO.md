@@ -26,7 +26,7 @@ Duas fontes independentes disparam o mesmo relé:
 | Botão Zigbee físico `botao_portao_garagem` | Node-RED, aba `garagem` (dedupe 900 ms + cooldown 3 s → ON → delay 700 ms → OFF) | `{"state":"ON"}` (JSON) |
 | Botão do dashboard `button.acionar_portao_da_garagem` | `script.portao_garagem_pulso` no HA | `ON` / `OFF` (cru, via `switch.turn_on`) |
 
-Os dois publicam em `zigbee2mqtt/rele_acionador_portao/set`. O formato do payload
+Os dois publicam em `zigbee2mqtt/example_garage_gate/set`. O formato do payload
 é útil para distinguir a origem ao depurar com `mosquitto_sub`.
 
 O caminho antigo (cena RF Tuya `scene.acionar_portao` chamada por
@@ -111,7 +111,7 @@ cena Tuya — não há chamada ao HA no caminho do clique.
 
 O lado do Node-RED assina **dois** tópicos de propósito:
 
-- `zigbee2mqtt/rele_acionador_portao/set` — vê o comando no instante em que é
+- `zigbee2mqtt/example_garage_gate/set` — vê o comando no instante em que é
   publicado (pega o `ON` do HA em milissegundos, antes de o relé responder);
 - `zigbee2mqtt/rele_acionador_portao` — o estado reportado, que pega qualquer
   pulso, inclusive um comandado fora dos dois caminhos (Developer Tools,
@@ -179,7 +179,7 @@ aberto automaticamente em 5 s e uma notificação é criada.
 
 ## Testes executados (2026-08-07)
 
-Todos com `mosquitto_sub -t 'zigbee2mqtt/rele_acionador_portao/set'` gravando o
+Todos com `mosquitto_sub -t 'zigbee2mqtt/example_garage_gate/set'` gravando o
 tráfego real.
 
 | Teste | Resultado |

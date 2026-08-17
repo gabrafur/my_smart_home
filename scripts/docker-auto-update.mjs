@@ -219,9 +219,9 @@ function haRequest(method, requestPath, token, body) {
 // Locally-forked custom_components whose HACS "update" entity must NEVER be
 // auto-installed: installing the upstream release overwrites our on-host
 // patches. kia_uvo carries a local CCS2-endpoint fix (without which the BR
-// Creta 503s on /status/latest) plus the trip-log sensor; a HACS auto-update
+// vehicle_primary 503s on /status/latest) plus the trip-log sensor; a HACS auto-update
 // silently wiped both twice (2026-07-19, 2026-07-27) before this guard.
-// See docs/CRETA_KIA_UVO_INTEGRATION.md. Match is substring, on entity_id +
+// See docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md. Match is substring, on entity_id +
 // friendly_name, so it holds even if the exact entity_id changes.
 const PROTECTED_UPDATE_PATTERNS = ["kia_uvo", "hyundai", "bluelink", "uvo"];
 
@@ -277,7 +277,7 @@ async function haUpdates() {
   for (const entity of protectedPending) {
     const latest = entity.attributes?.latest_version;
     log(
-      `CRETA_INTEGRATION_UPDATE_AVAILABLE entity=${entity.entity_id} latest=${latest ?? "unknown"}; analyzing only`,
+      `VEHICLE_PRIMARY_INTEGRATION_UPDATE_AVAILABLE entity=${entity.entity_id} latest=${latest ?? "unknown"}; analyzing only`,
     );
     if (!dryRun) {
       run(

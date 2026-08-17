@@ -832,7 +832,7 @@ template:
 
 input_boolean:
   codex_alertas_iphone:
-    name: Alertas Codex no iPhone de Gabriel
+    name: Alertas Codex no dispositivo de mobile_primary
     icon: mdi:cellphone-message
   codex_resumo_diario_iphone:
     name: Resumo diário do Codex

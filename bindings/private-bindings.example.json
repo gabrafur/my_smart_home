@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "roles": {
+    "resident_primary": {
+      "enabled": true,
+      "entities": {
+        "person.resident_primary": {
+          "target_entity_id": "person.example_resident_primary",
+          "state_mode": "home_away"
+        }
+      }
+    },
+    "resident_secondary": {
+      "enabled": true,
+      "entities": {
+        "person.resident_secondary": {
+          "target_entity_id": "person.example_resident_secondary",
+          "state_mode": "home_away"
+        }
+      }
+    },
+    "mobile_primary": {
+      "enabled": true,
+      "entities": {
+        "device_tracker.mobile_primary": {
+          "target_entity_id": "device_tracker.example_mobile_primary",
+          "state_mode": "home_away"
+        }
+      },
+      "services": {
+        "notify": { "target_service": "notify.example_mobile_primary" }
+      }
+    },
+    "mobile_secondary": {
+      "enabled": false,
+      "entities": {},
+      "services": {}
+    },
+    "vehicle_primary": {
+      "enabled": true,
+      "entities": {
+        "device_tracker.vehicle_primary": {
+          "target_entity_id": "device_tracker.example_vehicle_primary",
+          "state_mode": "home_away"
+        }
+      }
+    },
+    "garage_gate": {
+      "enabled": true,
+      "entities": {
+        "binary_sensor.garage_gate": {
+          "target_entity_id": "binary_sensor.example_garage_gate",
+          "state_mode": "boolean"
+        }
+      },
+      "services": {
+        "pulse": {
+          "target_service": "script.turn_on",
+          "target_entity_id": "script.example_garage_gate_pulse"
+        }
+      },
+      "topics": {
+        "relay_state": "zigbee2mqtt/example_garage_gate_relay/state",
+        "action": "zigbee2mqtt/example_garage_gate_remote/action",
+        "command": "zigbee2mqtt/example_garage_gate_relay/set",
+        "state": "zigbee2mqtt/example_garage_gate_relay/state"
+      }
+    },
+    "exterior_light": {
+      "enabled": true,
+      "entities": {
+        "light.exterior_light": {
+          "target_entity_id": "light.example_exterior_light",
+          "state_mode": "boolean",
+          "allowed_services": ["light.turn_on", "light.turn_off"]
+        }
+      },
+      "mqtt_topics": [
+        {
+          "topic": "zigbee2mqtt/example_exterior_light_1/set",
+          "payload_on": "ON",
+          "payload_off": "OFF"
+        },
+        {
+          "topic": "zigbee2mqtt/example_exterior_light_2/set",
+          "payload_on": "ON",
+          "payload_off": "OFF"
+        }
+      ]
+    },
+    "security_panel": {
+      "enabled": true,
+      "entities": {
+        "alarm_control_panel.security_panel": {
+          "target_entity_id": "alarm_control_panel.example_security_panel",
+          "state_mode": "passthrough",
+          "allowed_services": [
+            "alarm_control_panel.alarm_arm_away",
+            "alarm_control_panel.alarm_disarm"
+          ]
+        }
+      }
+    }
+  }
+}

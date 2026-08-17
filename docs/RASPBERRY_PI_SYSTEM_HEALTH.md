@@ -39,7 +39,7 @@ da correcao foi:
 | --- | ---: | --- | --- | --- |
 | Docker build cache | 5,033 GB; 2,159 GB recuperaveis | camadas de 1,11 GB criadas ha 5 dias e varias camadas de 1,1 GB/287 MB criadas ha 2-3 dias | causa raiz principal: builds repetidos das imagens locais sem limite de cache | `docker builder prune` controlado; rotina preventiva com idade minima de 24 h |
 | Imagens Docker | 11,53 GB; 1,384 GB inicialmente recuperaveis | imagens intermediarias sem tag, incluindo uma camada unica de 1,115 GB criada ha 2 dias | fator da causa raiz: imagens intermediarias deixadas pelos builds | `docker image prune` somente para dangling; imagens tagged preservadas |
-| Ferramentas remotas de IDE em `/home/gabriel` | 9,32 GB; VS Code Server 5,85 GB e Cursor Server 1,37 GB | novas copias de servidores/extensoes em 7, 11 e 13 de agosto | fator contribuinte fora da stack; versoes antigas podem acumular | somente diagnostico; revisao manual para nao interromper sessoes da IDE |
+| Ferramentas remotas de IDE em `/home/resident_primary` | 9,32 GB; VS Code Server 5,85 GB e Cursor Server 1,37 GB | novas copias de servidores/extensoes em 7, 11 e 13 de agosto | fator contribuinte fora da stack; versoes antigas podem acumular | somente diagnostico; revisao manual para nao interromper sessoes da IDE |
 | Home Assistant | 319 MB | DB 111 MB + WAL ~4 MB; 3 backups diarios totalizando 141 MB | crescimento compativel com Recorder/backups, nao explica o salto | nenhuma exclusao; manter Recorder em 30 dias e acompanhar |
 | Node-RED persistente | 151 MB | 91,6 MB de cache npm, 53,4 MB de modulos, 3,9 MB de backups | normal; flows/contexto nao apresentaram crescimento anormal | housekeeping allowlisted para backups antigos e logs npm antigos |
 | Zigbee2MQTT / Mosquitto | 573 KB / 418 KB persistentes | Zigbee2MQTT emitiu ~6,4 MB de stdout em 7 dias; demais logs abaixo de 50 KB | nao causaram o salto | rotacao Docker preventiva; manter `info` |
@@ -169,7 +169,7 @@ Continuam deliberadamente manuais:
 - remocao de qualquer volume ou container;
 - `docker system prune -a`, `docker image prune -a` e qualquer prune com volumes;
 - remocao de imagens tagged mantidas para rollback;
-- limpeza de servidores/extensoes VS Code/Cursor em `/home/gabriel`;
+- limpeza de servidores/extensoes VS Code/Cursor em `/home/resident_primary`;
 - purge/repack do Recorder e exclusao de backups do Home Assistant;
 - vacuum ou mudanca de retencao do journald;
 - qualquer `du` completo em `/`.

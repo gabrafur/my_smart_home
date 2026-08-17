@@ -1,0 +1,8 @@
+{
+  "domain": "public_bindings",
+  "name": "Public Bindings",
+  "codeowners": [],
+  "documentation": "https://github.com/gabrafur/my_smart_home/blob/main/docs/PUBLIC_PRIVATE_BOUNDARY.md",
+  "iot_class": "local_push",
+  "version": "1.0.0"
+}

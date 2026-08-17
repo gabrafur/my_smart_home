@@ -37,6 +37,64 @@ const credentialSecret = process.env.NODE_RED_CREDENTIAL_SECRET || readRuntimeCr
 const nodeRedAdminUser = process.env.NODE_RED_ADMIN_USER || "admin";
 const nodeRedAdminPasswordHash = process.env.NODE_RED_ADMIN_PASSWORD_HASH;
 
+function readPublicBindings() {
+    const bindingsDirectory = process.env.PUBLIC_BINDINGS_DIR || "/run/private-bindings";
+    const merged = { schema_version: 1, roles: {} };
+
+    try {
+        const files = fs.readdirSync(bindingsDirectory)
+            .filter((file) => file.endsWith(".json"))
+            .sort();
+
+        for (const file of files) {
+            const candidate = JSON.parse(fs.readFileSync(path.join(bindingsDirectory, file), "utf8"));
+            if (candidate?.schema_version !== 1 || !candidate.roles || typeof candidate.roles !== "object") {
+                continue;
+            }
+
+            for (const [role, binding] of Object.entries(candidate.roles)) {
+                if (!binding || typeof binding !== "object" || Array.isArray(binding)) {
+                    continue;
+                }
+                merged.roles[role] = {
+                    ...(merged.roles[role] || {}),
+                    ...binding,
+                    entities: {
+                        ...(merged.roles[role]?.entities || {}),
+                        ...(binding.entities || {}),
+                    },
+                    services: {
+                        ...(merged.roles[role]?.services || {}),
+                        ...(binding.services || {}),
+                    },
+                    topics: {
+                        ...(merged.roles[role]?.topics || {}),
+                        ...(binding.topics || {}),
+                    },
+                };
+            }
+        }
+    } catch (_error) {
+        return merged;
+    }
+
+    return merged;
+}
+
+const publicBindings = readPublicBindings();
+
+function exposeBindingTopic(envName, role, key) {
+    const value = publicBindings.roles?.[role]?.topics?.[key];
+    if (!process.env[envName] && typeof value === "string" && value.length > 0) {
+        process.env[envName] = value;
+    }
+}
+
+exposeBindingTopic("BINDING_GARAGE_GATE_RELAY_STATE_TOPIC", "garage_gate", "relay_state");
+exposeBindingTopic("BINDING_GARAGE_GATE_ACTION_TOPIC", "garage_gate", "action");
+exposeBindingTopic("BINDING_GARAGE_GATE_COMMAND_TOPIC", "garage_gate", "command");
+exposeBindingTopic("BINDING_GARAGE_GATE_STATE_TOPIC", "garage_gate", "state");
+
 module.exports = {
 
 /*******************************************************************************
@@ -576,6 +634,7 @@ module.exports = {
         // Used only by the infrastructure internet monitor. The flow calls
         // /bin/ping with a fixed executable and fixed IP arguments.
         childProcess: require("child_process"),
+        publicBindings,
     },
 
     /** The maximum number of messages nodes will buffer internally as part of their

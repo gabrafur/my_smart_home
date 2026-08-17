@@ -160,17 +160,13 @@ function gitFiles(repoRoot, args) {
 }
 
 export function checkPublicMemory({ repoRoot = defaultRepoRoot, trackedFiles } = {}) {
-  const actuallyTracked = new Set((trackedFiles ?? gitFiles(repoRoot, ["--cached"])).map(normalizePath));
-  const tracked = new Set((trackedFiles ?? gitFiles(
-    repoRoot,
-    ["--cached", "--others", "--exclude-standard"],
-  )).map(normalizePath));
+  const tracked = new Set((trackedFiles ?? gitFiles(repoRoot, ["--cached"])).map(normalizePath));
   const errors = [];
 
   for (const file of requiredFiles) {
     if (!tracked.has(file)) errors.push(`missing required tracked file: ${file}`);
   }
-  for (const file of actuallyTracked) {
+  for (const file of tracked) {
     if (isPrivateRuntimeFile(file)) {
       errors.push(`${file}: private runtime path must not be tracked`);
     }

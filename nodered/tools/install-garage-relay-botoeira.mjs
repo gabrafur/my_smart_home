@@ -24,7 +24,10 @@ const OUT = process.argv[2] || `${FLOWS}.new`;
 const TAB = '29d64664bf8cbde8';               // aba "garagem"
 const BROKER = '721c47f31046b8bc';            // broker Zigbee2MQTT
 const NORMALIZAR = 'gar_portao_normalizar_click';
-const RELAY_SET_TOPIC = 'zigbee2mqtt/rele_acionador_portao/set';
+const TOPIC_CODE =
+  "const topic = global.get('publicBindings')?.roles?.garage_gate?.topics?.command;\n" +
+  "if (!topic) { node.status({ fill: 'red', shape: 'ring', text: 'binding ausente' }); return null; }\n" +
+  "msg.topic = topic;\n";
 
 // nos da antiga cena de nuvem a remover (acionador + tratamento de erro/retry)
 const CLOUD_NODES = [
@@ -62,7 +65,7 @@ const novos = [
       "// Botoeira de campainha: pulso momentaneo no rele_acionador_portao.\n" +
       "// onWithTimedOff (on_time) -> o proprio rele desliga sozinho apos 1s,\n" +
       "// entao mesmo que o Node-RED/rede caia o contato nunca fica preso.\n" +
-      `msg.topic = '${RELAY_SET_TOPIC}';\n` +
+      TOPIC_CODE +
       "msg.payload = JSON.stringify({ state: 'ON', on_time: 1, off_wait_time: 0 });\n" +
       "return msg;",
     outputs: 1,
@@ -121,7 +124,7 @@ const novos = [
     name: 'seguranca: garantir rele desligado',
     func:
       "// Rede de seguranca: garante OFF caso algum firmware ignore o on_time.\n" +
-      `msg.topic = '${RELAY_SET_TOPIC}';\n` +
+      TOPIC_CODE +
       "msg.payload = JSON.stringify({ state: 'OFF' });\n" +
       "return msg;",
     outputs: 1,

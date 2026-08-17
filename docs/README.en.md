@@ -21,6 +21,8 @@ physical identifiers must appear only as placeholders.
 | [Home Assistant agent bridge](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex in the UI | summarized in [Containers](CONTAINERS.en.md) |
 | [Codex + Local AI with RTX 4070](LOCAL_AI_RTX_4070.md) | Local inference, network, telemetry, and fork reproduction | detailed Portuguese guide |
 | [Versioned agent memory](MEMORIA_VERSIONADA_AGENTES.md) | Authority, privacy, maintenance, and validation of AI memory | detailed Portuguese guide |
+| [Privacy model](PRIVACY_MODEL.en.md) | Public roles, sanitization, scanning, and public memory | [Português](PRIVACY_MODEL.md) |
+| [Public/private boundary](PUBLIC_PRIVATE_BOUNDARY.en.md) | Bindings, bootstrap, safe degradation, and compatibility | [Português](PUBLIC_PRIVATE_BOUNDARY.md) |
 
 ## Feature guides
 
@@ -33,7 +35,7 @@ Portuguese because that is the system's primary operating language:
 - [Security flow state and recovery inventory (Portuguese)](SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md)
 - [Alarm disarm on arrival](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Moni Mobile / Intelbras integration](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
-- [Hyundai/Kia integration](CRETA_KIA_UVO_INTEGRATION.md)
+- [Hyundai/Kia integration](VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md)
 - [Garage gate: local relay](PORTAO_GARAGEM_RELE_LOCAL.md)
 - [Garage gate: pulse button](PORTAO_GARAGEM_BOTAO_PULSO.md)
 - [Power control](CONTROLE_ENERGIA_HOME_ASSISTANT.md)
