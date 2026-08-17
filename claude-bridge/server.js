@@ -153,7 +153,14 @@ function refreshLocalAiHealth() {
   // WORKDIR; it never starts a model or repairs remote infrastructure.
   const child = spawn(process.execPath, [command, '--json', '--revalidate'], {
     cwd: WORKDIR,
-    env: process.env,
+    // The usage reader consumes the shared global telemetry file, but this
+    // periodic health probe must keep its independently refreshed status in
+    // HISTORY_DIR. Otherwise the hook derives a status path beside the global
+    // telemetry file and cannot update it when that mount is read-only.
+    env: {
+      ...process.env,
+      LOCAL_AI_TELEMETRY_PATH: path.join(HISTORY_DIR, 'local-ai-telemetry.json'),
+    },
   });
   // The hook reads stdin to support Codex hook events. This standalone health
   // refresh has no event payload, so close the pipe to let it complete.

@@ -3,6 +3,7 @@
 
 import importlib.util
 import json
+import stat
 import sys
 import tempfile
 import unittest
@@ -23,6 +24,17 @@ TELEMETRY_SPEC.loader.exec_module(TELEMETRY)
 
 
 class LocalAiTest(unittest.TestCase):
+    def test_telemetry_files_are_private_and_group_writable_for_bridge_sharing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            recorder.started({
+                "id": "shared", "task": "inspect-files", "model": "model",
+                "status": "running", "started_at": "2026-08-17T12:00:00Z",
+            })
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o660)
+            self.assertEqual(stat.S_IMODE(path.with_suffix(".json.lock").stat().st_mode), 0o660)
+
     def test_gpu_sampler_uses_persistent_strict_known_hosts(self):
         sampler = TELEMETRY.RemoteGpuSampler({
             "container": "homeassistant",
@@ -99,12 +111,18 @@ class LocalAiTest(unittest.TestCase):
             "confidence": "low",
         })
 
-    def test_summarize_log_schema_bounds_normal_and_retry_lists(self):
+    def test_bounded_schemas_limit_normal_and_retry_lists(self):
         normal = LOCAL_AI.response_format("summarize-log")
         compact = LOCAL_AI.response_format("summarize-log", compact=True)
         self.assertEqual(normal["properties"]["errors"]["maxItems"], 8)
         self.assertEqual(compact["properties"]["errors"]["maxItems"], 2)
-        self.assertEqual(LOCAL_AI.response_format("review-diff"), "json")
+        review = LOCAL_AI.response_format("review-diff")
+        compact_review = LOCAL_AI.response_format("review-diff", compact=True)
+        self.assertEqual(review["properties"]["findings"]["maxItems"], 8)
+        self.assertEqual(compact_review["properties"]["findings"]["maxItems"], 2)
+        finding = review["properties"]["findings"]["items"]
+        self.assertEqual(finding["required"], ["file", "severity", "reason"])
+        self.assertFalse(finding["additionalProperties"])
 
     def test_summarize_memory_schema_preserves_required_technical_facts(self):
         schema = LOCAL_AI.response_format("summarize-memory")

@@ -23,10 +23,11 @@ RUN mkdir -p /home/node/.claude /home/node/.codex && \
     chown -R node:node /home/node/.claude /home/node/.codex
 
 WORKDIR /app
-COPY server.js history.js usage.js codex-options.js codex-rate-limits.js package.json ./
+COPY server.js history.js usage.js codex-options.js codex-rate-limits.js \
+  configure-local-ai-mcp.js bootstrap.js package.json ./
 RUN chown -R node:node /app
 
 USER node
 
 EXPOSE 8099
-CMD ["node", "server.js"]
+CMD ["node", "bootstrap.js"]

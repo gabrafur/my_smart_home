@@ -278,6 +278,11 @@ uma segunda tentativa mais compacta. As duas gerações pertencem ao mesmo job e
 seus tokens locais são somados; nova falha encerra a tarefa normalmente para o
 Codex aplicar o fallback, sem criar loops.
 
+`review-diff` usa schema JSON nativo e limitado, inclusive para cada finding
+(`file`, `severity` e `reason`). Isso evita depender apenas da aderência textual
+do modelo em diffs longos, que anteriormente podia consumir as duas tentativas
+e terminar como `RuntimeError` mesmo com Ollama e GPU saudáveis.
+
 Em logs longos, uma etapa determinística preserva início, fim, `ERROR`,
 `EXCEPTION`, `FAIL`, `ASSERT`, `WARN`, `CRITICAL`, `FATAL`, `TIMEOUT` e uma linha
 de contexto ao redor de cada sinal, substituindo apenas trechos rotineiros por
@@ -302,12 +307,38 @@ A imagem `claude-bridge` inclui `python3`, pois o helper versionado
 chat do Home Assistant consegue executar a primeira passagem na RTX, em vez de
 falhar localmente por ausência do interpretador.
 
+O bridge executa o mesmo servidor `local-ai-rtx` instalado no host. No startup,
+um bootstrap idempotente mantém um bloco gerenciado em
+`/home/node/.codex/config.toml`, com aprovação automática das ferramentas e o
+runtime indicado por `CODEX_LOCAL_AI_RUNTIME_DIR` montado em
+`/opt/codex-local-ai` somente para leitura. Se esse runtime não estiver
+disponível, o bridge continua atendendo e o Codex aplica o fallback normal.
+O diretório privado do runtime precisa permitir leitura e travessia ao grupo
+`docker`; seu conteúdo continua sem permissão de escrita pelo container.
+Portanto, tanto o Codex do IDE quanto o chat do Home Assistant aplicam `local_ai_status`,
+`local_ai_route` e `local_ai_compress_context` sem o usuário precisar pedir o
+uso da RTX.
+
 O bridge expõe dois endpoints locais sem conteúdo de conversa:
 
 | Endpoint | Dados | Atualização usada no HA |
 | --- | --- | --- |
 | `GET /usage` | uso/limites do Codex e histórico agregado Local AI | 2 s |
 | `GET /local-ai/live` | job atual, amostra instantânea e chats ativos | 1 s |
+
+O diretório privado definido por `CODEX_LOCAL_AI_STATE_DIR` é a fonte canônica
+da telemetria agregada gerada pelos dois clientes MCP. O Compose monta esse
+diretório no bridge com escrita restrita ao grupo compartilhado e define
+`LOCAL_AI_TELEMETRY_PATH` para o arquivo montado. Os arquivos usam modo `0660`:
+host e bridge podem registrar somente metadados de jobs, enquanto outros
+usuários continuam sem acesso.
+
+O status de saúde do painel permanece separado em `.agent-history`. Ao iniciar
+o preflight periódico, o bridge substitui `LOCAL_AI_TELEMETRY_PATH` apenas no
+processo filho para que o hook derive e renove o status local, sem misturá-lo
+com a telemetria global. Isso evita que uma montagem sem escrita congele o
+último status até ele expirar após dois minutos, que fazia o painel mostrar RTX
+indisponível mesmo com Ollama e GPU saudáveis.
 
 No dashboard **Chat** há duas abas separadas:
 

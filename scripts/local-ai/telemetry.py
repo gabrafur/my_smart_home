@@ -30,7 +30,7 @@ MAX_SEEN_IDS = 10_000
 MAX_SEEN_DECISION_IDS = 10_000
 MAX_SEEN_MEMORY_DECISION_IDS = 10_000
 MAX_DAILY_RETENTION_DAYS = 400
-PRIVATE_METADATA_MODE = 0o640  # owner + bridge group; never world-readable
+PRIVATE_METADATA_MODE = 0o660  # owner + bridge group; never world-readable
 
 
 def utc_now() -> str:
@@ -254,7 +254,7 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     lock_path = path.with_suffix(path.suffix + ".lock")
     with open(lock_path, "a+", encoding="utf-8") as lock:
-        os.chmod(lock_path, 0o600)
+        os.chmod(lock_path, PRIVATE_METADATA_MODE)
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         state = _safe_json(path, _initial_state())
         _migrate_complete_v1_history(state)

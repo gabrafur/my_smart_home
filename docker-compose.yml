@@ -149,6 +149,10 @@ services:
       # Read-only telemetry source for Codex sessions started outside the
       # Home Assistant chat. Only aggregated token metadata leaves the bridge.
       - ${CODEX_HOST_SESSIONS_DIR:-/home/replace_with_host_user/.codex/sessions}:/host-codex-sessions:ro
+      # Canonical metadata-only Local AI telemetry shared by both MCP clients.
+      - ${CODEX_LOCAL_AI_STATE_DIR:-./.agent-history}:/local-ai-state
+      # The bridge starts the same reviewed global MCP runtime as the host.
+      - ${CODEX_LOCAL_AI_RUNTIME_DIR:-/home/replace_with_host_user/.local/share/codex-local-ai/current}:/opt/codex-local-ai:ro
       # Keep Home Assistant's Codex process on the same automatic Local AI
       # routing policy used by this workspace and the IDE extension.
       - ./AGENTS.md:/home/node/.codex/AGENTS.md:ro
@@ -158,6 +162,9 @@ services:
       # Machine-local Ollama routing persists in the Codex auth volume, rather
       # than in the image or repository.
       - LOCAL_AI_CONFIG=/home/node/.codex/local-ai.json
+      - LOCAL_AI_MCP_RUNTIME_DIR=/opt/codex-local-ai
+      - LOCAL_AI_TELEMETRY_PATH=/local-ai-state/local-ai-telemetry.json
+      - LOCAL_AI_STATUS_PATH=/workspace/.agent-history/local-ai-status.json
       - CODEX_SESSIONS_DIRS=/home/node/.codex/sessions,/host-codex-sessions
       # Metadata-only account read through Codex app-server. It does not start
       # a model turn or consume plan credits.
