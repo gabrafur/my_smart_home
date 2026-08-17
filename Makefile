@@ -21,7 +21,7 @@ ALLOW_NON_CANARY ?=
 MODULES ?= core
 
 validate-public:
-	@$(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
+	@./scripts/run-resource-safe.sh $(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
 
 validate-dependencies:
 	npm --prefix validation ci --ignore-scripts --no-audit --no-fund
