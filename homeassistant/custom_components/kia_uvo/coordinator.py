@@ -204,15 +204,16 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             except Exception:
                 try:
                     _LOGGER.exception(
-                        f"Force update failed, falling back to cached: {traceback.format_exc()}"
+                        "Force update failed, falling back to cached vehicle state"
                     )
                     await self.hass.async_add_executor_job(
                         self.vehicle_manager.update_all_vehicles_with_cached_state
                     )
                 except Exception:
-                    _LOGGER.exception(f"Cached update failed: {traceback.format_exc()}")
+                    _LOGGER.exception("Cached vehicle update failed")
                     raise UpdateFailed(
-                        f"Error communicating with API: {traceback.format_exc()}"
+                        "Error communicating with Hyundai/Kia Connect; will retry",
+                        retry_after=60,
                     )
 
         else:
@@ -310,9 +311,23 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.info("CRETA_REFRESH_REQUESTED source=force_refresh_button")
             if type(api).__name__ == "HyundaiBlueLinkApiBR":
                 self._br_last_button_wake_at = now
-            await self.hass.async_add_executor_job(
-                self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
-            )
+            try:
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+                )
+            except Exception as err:
+                # The BR backend can accept the wake request but fail to return
+                # fresh telemetry before its deadline.  This is a transient
+                # vehicle/API condition; do not turn a manual refresh into an
+                # unhandled WebSocket error or discard the last known state.
+                _LOGGER.warning(
+                    "CRETA_REFRESH_TIMEOUT vehicle_id=%s; keeping cached state: %s",
+                    vehicle_id,
+                    err,
+                )
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.update_vehicle_with_cached_state, vehicle_id
+                )
         self.async_set_updated_data(self.data)
 
     async def async_refresh_day_trip_info(self, vehicle_id: str) -> None:
