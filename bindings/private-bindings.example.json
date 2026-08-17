@@ -60,6 +60,10 @@
           "target_entity_id": "button.example_vehicle_primary_refresh_trip_info",
           "state_mode": "passthrough"
         },
+        "lock.vehicle_primary_door_lock": {
+          "target_entity_id": "lock.example_vehicle_primary_door_lock",
+          "state_mode": "passthrough"
+        },
         "switch.vehicle_primary_climate": {
           "target_entity_id": "switch.example_vehicle_primary_climate",
           "state_mode": "boolean"
@@ -81,6 +85,10 @@
         "climate_off": {
           "target_service": "switch.turn_off",
           "target_public_entity_id": "switch.vehicle_primary_climate"
+        },
+        "lock": {
+          "target_service": "lock.lock",
+          "target_public_entity_id": "lock.vehicle_primary_door_lock"
         }
       }
     },

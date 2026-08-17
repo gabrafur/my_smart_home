@@ -173,6 +173,31 @@ views:
                     action: locate
                   confirmation:
                     text: Acionar a buzina e as luzes do Creta por aproximadamente 30 segundos?
+              - type: tile
+                entity: lock.vehicle_primary_door_lock
+                name: Travar portas
+                icon: mdi:lock
+                hide_state: true
+                tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: lock
+                  confirmation:
+                    text: Travar as portas do Creta remotamente?
+                icon_tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: lock
+                  confirmation:
+                    text: Travar as portas do Creta remotamente?
+                hold_action:
+                  action: none
+                icon_hold_action:
+                  action: none
           - type: markdown
             content: >-
               {% set command = states('sensor.garagem_vehicle_primary_remote_command_status') %}
