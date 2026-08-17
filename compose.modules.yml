@@ -7,5 +7,5 @@ services:
     profiles: ["appdaemon"]
   zigbee2mqtt:
     profiles: ["zigbee"]
-  claude-bridge:
+  ai-bridge:
     profiles: ["agent-bridge"]

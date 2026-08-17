@@ -89,7 +89,7 @@ read-only credential.
 
 Before enabling it:
 
-1. authenticate Codex in `claude-bridge` so `codex-bridge-auth` contains
+1. authenticate Codex in `ai-bridge` so `codex-bridge-auth` contains
    `auth.json`;
 2. create a dedicated SSH key with push access to the repository remote;
 3. register the public key with the Git provider and keep the private key out

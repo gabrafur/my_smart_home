@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -217,7 +218,7 @@ def public_memory_inventory(root: Path) -> dict[str, Any]:
         methods.add(counted.method)
         relative = path.relative_to(root)
         if relative == MEMORY_INDEX:
-            category, role = "ALWAYS_REQUIRED", "canonical_retrieval_index"
+            category, role = "ROUTING_ONLY", "canonical_retrieval_index"
         elif relative == MEMORY_COMPATIBILITY_INDEX:
             category, role = "REDUNDANT", "compatibility_index"
         elif relative == MEMORY_CONTRACT:
@@ -258,25 +259,40 @@ def _topic_entries(root: Path) -> list[tuple[str, Path]]:
     return entries
 
 
+def _search_key(value: str) -> str:
+    """Normalize case and accents for deterministic Portuguese/English lookup."""
+    decomposed = unicodedata.normalize("NFKD", value.casefold())
+    return "".join(character for character in decomposed if not unicodedata.combining(character))
+
+
 def retrieve_topic(root: Path, topic: str, query: str = "") -> dict[str, Any]:
     """Select thematic memory by index labels, then narrow with a deterministic query."""
-    needle = topic.casefold().strip()
+    needle = _search_key(topic).strip()
     indexed = _topic_entries(root)
-    if needle in {"all", "project", "repository", "repositório"}:
+    if needle in {"all", "project", "projeto", "repository", "repositorio"}:
         selected = list(indexed)
         contract = root / MEMORY_CONTRACT
         if contract.is_file():
             selected.append(("memory governance contract", contract))
     else:
-        selected = [(label, path) for label, path in indexed if needle in label or needle in path.stem.casefold()]
+        selected = [
+            (label, path)
+            for label, path in indexed
+            if needle in _search_key(label) or needle in _search_key(path.stem)
+        ]
     if not selected:
-        selected = [(label, path) for label, path in _topic_entries(root) if any(token in label for token in needle.split() if len(token) > 2)]
-    query_terms = [term.casefold() for term in re.findall(r"[\w-]{3,}", query)]
+        selected = [
+            (label, path)
+            for label, path in indexed
+            if any(token in _search_key(label) for token in needle.split() if len(token) > 2)
+        ]
+    query_terms = [_search_key(term) for term in re.findall(r"[\w-]{3,}", query)]
     if query_terms:
         filtered = []
         for label, path in selected:
-            text = path.read_text(encoding="utf-8").casefold()
-            if any(term in label or term in text for term in query_terms):
+            text = path.read_text(encoding="utf-8")
+            searchable = _search_key(f"{label}\n{text}")
+            if any(term in searchable for term in query_terms):
                 filtered.append((label, path))
         selected = filtered
     files = []

@@ -17,7 +17,7 @@ host requirements, and private files that cannot be inferred from YAML alone.
 | `appdaemon` | digest-pinned image | host network, UI on `127.0.0.1:5050` only | runtime in `./appdaemon`, config in `./templates/appdaemon` | `.local-secrets/appdaemon-secrets.yaml` |
 | `nodered` | digest-pinned image | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` after credentials are configured |
 | `zigbee2mqtt` | digest-pinned image | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, database, coordinator backup |
-| `claude-bridge` | local build | `127.0.0.1:8099` only | auth volumes and workspace | `.env` bridge token and optional OAuth token |
+| `ai-bridge` | local build | `127.0.0.1:8099` only | auth volumes and workspace | `.env` bridge token and optional OAuth token |
 | `docs-review-scheduler` | same local bridge build | no published port | workspace, Codex auth, and `.local-state/docs-review` | narrow-scope SSH key and `known_hosts` outside Git |
 
 Published ports use `HOST_LAN_IP`; when it is absent, they bind to loopback.
@@ -94,7 +94,7 @@ agent token from being copied into Node-RED when Node-RED does not need it.
 | `NODE_RED_ADMIN_*` | Node-RED | yes for a protected editor |
 | `HOME_LAT/LON`, `GATE_LAT/LON` | arrival flow | no; safe fallback exists |
 | `DOCKER_GID` | bridge | yes for Docker commands |
-| `CLAUDE_BRIDGE_TOKEN` | bridge and HA integration | yes to use the endpoint |
+| `AI_BRIDGE_TOKEN` | bridge and HA integration | yes to use the endpoint |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude CLI | optional if auth volume is used |
 | `HA_LONG_LIVED_TOKEN` | host update script | optional; prefer `.local-secrets/` |
 | `WEEKLY_DOCS_REVIEW_*` | documentation scheduler | time/branch have defaults; SSH paths are required |
@@ -124,7 +124,7 @@ flowchart TD
     MQ --> NR[nodered]
     HA --> NR
     HA --> AD[appdaemon]
-    HA --> BR[claude-bridge / integration]
+    HA --> BR[ai-bridge / integration]
     SCH[docs-review-scheduler] --> GIT[Git remote]
 ```
 
@@ -137,7 +137,7 @@ the deployment healthy.
 ```bash
 docker compose config --quiet
 docker compose pull
-docker compose build --pull claude-bridge
+docker compose build --pull ai-bridge
 docker compose up -d
 docker compose ps
 ```
@@ -160,7 +160,7 @@ docker compose ps
 docker compose logs --tail=100 mosquitto zigbee2mqtt
 docker compose logs --tail=100 homeassistant matter_server
 docker compose logs --tail=100 nodered appdaemon
-docker compose logs --tail=100 portainer claude-bridge
+docker compose logs --tail=100 portainer ai-bridge
 ```
 
 - Home Assistant: `http://HOST_IP:8123` plus its in-container config check.

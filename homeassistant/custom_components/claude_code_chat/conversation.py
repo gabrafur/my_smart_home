@@ -50,7 +50,7 @@ async def async_setup_entry(
 class ClaudeCodeConversationEntity(
     conversation.ConversationEntity, conversation.AbstractConversationAgent
 ):
-    """Conversation agent that forwards messages to the claude-bridge service.
+    """Conversation agent that forwards messages to the ai-bridge service.
 
     Unlike the built-in Anthropic conversation entity, this agent does not use
     Home Assistant's LLM/chat_log machinery: `async_process` is overridden
@@ -111,8 +111,8 @@ class ClaudeCodeConversationEntity(
                 result = await resp.json()
                 reply = result.get("reply", "Sem resposta da ponte Claude Code.")
         except Exception:  # noqa: BLE001 - surface any bridge failure as a chat reply
-            _LOGGER.exception("Erro ao chamar claude-bridge")
-            reply = "Não consegui falar com o claude-bridge. Verifique se o container está no ar."
+            _LOGGER.exception("Erro ao chamar ai-bridge")
+            reply = "Não consegui falar com o ai-bridge. Verifique se o container está no ar."
 
         response.async_set_speech(reply)
         return conversation.ConversationResult(

@@ -57,7 +57,7 @@ flowchart LR
 | AppDaemon | Python applications | host network; UI on `127.0.0.1:5050` |
 | Matter Server | Legacy containerized Matter controller | host network; WebSocket on `127.0.0.1:5580` |
 | Portainer | Manual container operations | `${HOST_LAN_IP}:9000` |
-| `claude-bridge` | Claude Code/Codex from Home Assistant | `127.0.0.1:8099` only |
+| `ai-bridge` | Claude Code/Codex from Home Assistant | `127.0.0.1:8099` only |
 | `docs-review-scheduler` | weekly documentation review and updates | no published port |
 
 If `HOST_LAN_IP` is unset, published services bind to `127.0.0.1`. Nothing is
@@ -96,7 +96,7 @@ node scripts/setup-node-red-security.mjs
 docker compose config --quiet
 npm --prefix nodered ci
 npm --prefix nodered run flows:validate
-docker compose build claude-bridge
+docker compose build ai-bridge
 docker compose up -d
 docker compose ps
 ```

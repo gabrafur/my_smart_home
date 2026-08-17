@@ -44,7 +44,7 @@ test("bootstrap creates only selected private templates and safe random values",
   assert.equal(fs.existsSync(path.join(root, "zigbee2mqtt/configuration.yaml")), false);
   const env = fs.readFileSync(path.join(root, ".env"), "utf8");
   assert.match(env, /^NODE_RED_CREDENTIAL_SECRET=[0-9a-f]{64}$/m);
-  assert.match(env, /^CLAUDE_BRIDGE_TOKEN=[0-9a-f]{64}$/m);
+  assert.match(env, /^AI_BRIDGE_TOKEN=[0-9a-f]{64}$/m);
   assert.equal(fs.statSync(path.join(root, ".env")).mode & 0o777, 0o600);
   assert.ok(result.gaps.some((gap) => gap.logical_name === "mosquitto_credentials"));
 });

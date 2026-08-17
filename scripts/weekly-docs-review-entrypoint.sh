@@ -31,7 +31,7 @@ if ! getent passwd "$repo_uid" >/dev/null; then
 fi
 
 if [ ! -s "$source_codex_dir/auth.json" ]; then
-  echo "Codex auth volume is missing auth.json; authenticate claude-bridge first" >&2
+  echo "Codex auth volume is missing auth.json; authenticate ai-bridge first" >&2
   exit 1
 fi
 if [ ! -f "$source_key" ] || [ ! -s "$source_key" ]; then

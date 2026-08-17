@@ -1,9 +1,9 @@
 # Memória do projeto
 
-Este é o índice canônico de memória de longo prazo do repositório. Leia-o com
-`AGENTS.md` antes de trabalho não trivial e, em seguida, consulte somente o
-arquivo temático pertinente. A configuração e a documentação versionadas têm
-precedência sobre estas anotações.
+Este é o índice canônico de memória de longo prazo do repositório. Quando uma
+tarefa depender do histórico do projeto, use-o com `AGENTS.md` para localizar
+somente o arquivo temático pertinente. A configuração e a documentação
+versionadas têm precedência sobre estas anotações.
 
 ## Índice
 

@@ -19,6 +19,7 @@ migrações, alterações de runtime ou correções executáveis diretamente em
 1. Leia:
    - `AGENTS.md`;
    - `MEMORY.md`;
+   - `.codex/memories/projeto/indice.md`;
    - `docs/PRIVACY_MODEL.md`;
    - `docs/PUBLIC_PRIVATE_BOUNDARY.md`;
    - `docs/RESTORE_CONTRACT.md`;
@@ -374,7 +375,9 @@ Para cada mudança relevante, verifique se ela altera conhecimento reutilizável
 
 Se alterar, atualize o arquivo temático apropriado em `.codex/memories/`.
 
-Não transforme `MEMORY.md` em um arquivo extenso. Ele deve continuar sendo um índice canônico e conciso apontando para memórias temáticas.
+Não transforme `MEMORY.md` em um arquivo extenso. Ele deve continuar sendo um
+índice de compatibilidade conciso apontando para as mesmas memórias temáticas
+do índice canônico `.codex/memories/projeto/indice.md`.
 
 ### Qualidade
 

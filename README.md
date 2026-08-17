@@ -57,7 +57,7 @@ flowchart LR
 | AppDaemon | Aplicações Python | rede do host; UI em `127.0.0.1:5050` |
 | Matter Server | Controlador Matter legado em container | rede do host; WebSocket em `127.0.0.1:5580` |
 | Portainer | Operação manual dos containers | `${HOST_LAN_IP}:9000` |
-| `claude-bridge` | Claude Code/Codex dentro do HA | somente `127.0.0.1:8099` |
+| `ai-bridge` | Claude Code/Codex dentro do HA | somente `127.0.0.1:8099` |
 | `docs-review-scheduler` | revisão e atualização documental semanal | nenhuma porta publicada |
 
 Se `HOST_LAN_IP` não estiver definido, os serviços publicados ficam presos a
@@ -97,7 +97,7 @@ node scripts/setup-node-red-security.mjs
 docker compose config --quiet
 npm --prefix nodered ci
 npm --prefix nodered run flows:validate
-docker compose build claude-bridge
+docker compose build ai-bridge
 docker compose up -d
 docker compose ps
 ```

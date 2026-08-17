@@ -132,11 +132,11 @@ services:
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
 
-  claude-bridge:
+  ai-bridge:
     logging: *default-logging
     build:
       context: ./ia-bridge
-    container_name: claude-bridge
+    container_name: ai-bridge
     restart: always
     group_add:
       # Numeric group that owns /var/run/docker.sock on the host.
@@ -144,6 +144,8 @@ services:
     volumes:
       - .:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
+      # Preserve the historical physical volume name; it stores Claude CLI
+      # authentication and is independent of the service rename to ai-bridge.
       - claude-bridge-auth:/home/node/.claude
       - codex-bridge-auth:/home/node/.codex
       # Read-only telemetry source for Codex sessions started outside the
@@ -153,9 +155,6 @@ services:
       - ${CODEX_LOCAL_AI_STATE_DIR:-./.agent-history}:/local-ai-state
       # The bridge starts the same reviewed global MCP runtime as the host.
       - ${CODEX_LOCAL_AI_RUNTIME_DIR:-/home/replace_with_host_user/.local/share/codex-local-ai/current}:/opt/codex-local-ai:ro
-      # Keep Home Assistant's Codex process on the same automatic Local AI
-      # routing policy used by this workspace and the IDE extension.
-      - ./AGENTS.md:/home/node/.codex/AGENTS.md:ro
     environment:
       - WORKDIR=/workspace
       - HISTORY_DIR=/workspace/.agent-history
@@ -170,7 +169,8 @@ services:
       # a model turn or consume plan credits.
       - CODEX_RATE_LIMIT_REFRESH_MS=30000
       - TZ=${TZ:-America/Sao_Paulo}
-      - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN:-}
+      # AI_BRIDGE_TOKEN is canonical; the old key is a migration fallback only.
+      - BRIDGE_TOKEN=${AI_BRIDGE_TOKEN:-${CLAUDE_BRIDGE_TOKEN:-}}
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
       # Keep this explicit: an older value in the private .env must not reduce
       # the request window and reintroduce five-minute chat timeouts.

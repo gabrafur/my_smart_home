@@ -17,7 +17,7 @@ pré-requisitos e arquivos privados que não podem ser deduzidos apenas do YAML.
 | `appdaemon` | imagem por digest | `network_mode: host`, UI somente em `127.0.0.1:5050` | runtime em `./appdaemon`, config em `./templates/appdaemon` | `.local-secrets/appdaemon-secrets.yaml` |
 | `nodered` | imagem por digest | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` quando houver credenciais já configuradas |
 | `zigbee2mqtt` | imagem por digest | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, banco e backup do coordenador |
-| `claude-bridge` | build local | somente `127.0.0.1:8099` | volumes de autenticação e workspace | `.env` com token do bridge e, opcionalmente, OAuth |
+| `ai-bridge` | build local | somente `127.0.0.1:8099` | volumes de autenticação e workspace | `.env` com token do bridge e, opcionalmente, OAuth |
 | `docs-review-scheduler` | mesmo build local do bridge | nenhuma porta publicada | workspace, autenticação Codex e `.local-state/docs-review` | chave SSH de escopo restrito e `known_hosts` fora do Git |
 
 As portas publicadas usam `HOST_LAN_IP`. A ausência da variável faz o bind em
@@ -95,7 +95,7 @@ token de agente seja copiado para o ambiente do Node-RED sem necessidade.
 | `NODE_RED_ADMIN_*` | Node-RED | sim para editor protegido |
 | `HOME_LAT/LON`, `GATE_LAT/LON` | fluxo de chegada | não; há degradação segura |
 | `DOCKER_GID` | bridge | sim para comandos Docker |
-| `CLAUDE_BRIDGE_TOKEN` | bridge e integração HA | sim para usar o endpoint |
+| `AI_BRIDGE_TOKEN` | bridge e integração HA | sim para usar o endpoint |
 | `CLAUDE_CODE_OAUTH_TOKEN` | CLI Claude no bridge | opcional se autenticado pelo volume |
 | `HA_LONG_LIVED_TOKEN` | script no host | opcional; prefira arquivo em `.local-secrets/` |
 | `WEEKLY_DOCS_REVIEW_*` | agendador documental | horário/branch têm padrão; caminhos SSH são obrigatórios |
@@ -125,7 +125,7 @@ flowchart TD
     MQ --> NR[nodered]
     HA --> NR
     HA --> AD[appdaemon]
-    HA --> BR[claude-bridge / integração]
+    HA --> BR[ai-bridge / integração]
     SCH[docs-review-scheduler] --> GIT[remoto Git]
 ```
 
@@ -138,7 +138,7 @@ integrações antes de considerar o deploy concluído.
 ```bash
 docker compose config --quiet
 docker compose pull
-docker compose build --pull claude-bridge
+docker compose build --pull ai-bridge
 docker compose up -d
 docker compose ps
 ```
@@ -162,7 +162,7 @@ docker compose ps
 docker compose logs --tail=100 mosquitto zigbee2mqtt
 docker compose logs --tail=100 homeassistant matter_server
 docker compose logs --tail=100 nodered appdaemon
-docker compose logs --tail=100 portainer claude-bridge
+docker compose logs --tail=100 portainer ai-bridge
 ```
 
 - Home Assistant: `http://IP_DO_HOST:8123` e check de configuração dentro do

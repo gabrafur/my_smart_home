@@ -45,6 +45,7 @@ Consulte [o guia](../../../docs/MEMORIA_VERSIONADA_AGENTES.md) e rode \`make val
 
 ## Memória versionada dos agentes
 
+Consulte \`.codex/memories/projeto/indice.md\`.
 Revise \`.codex/memories/**\`.
 `,
     "scripts/public-memory-check.mjs": "// fixture\n",
@@ -111,12 +112,18 @@ test("rejects tracked private runtime paths while allowing public Codex memory",
   const fixture = createFixture();
   fixture.trackedFiles.push(
     ".agent-history/turns.jsonl",
+    ".agents/runtime-state.json",
+    ".agents/skills/other-skill/SKILL.md",
+    ".agents/skills/rtx-context-optimizer/SKILL.md",
     ".codex/hooks.json",
     ".codex/session-state.json",
   );
 
   const result = checkPublicMemory(fixture);
   assert.ok(result.errors.some((error) => error.startsWith(".agent-history/turns.jsonl:")));
+  assert.ok(result.errors.some((error) => error.startsWith(".agents/runtime-state.json:")));
+  assert.ok(result.errors.some((error) => error.startsWith(".agents/skills/other-skill/SKILL.md:")));
+  assert.ok(result.errors.every((error) => !error.startsWith(".agents/skills/rtx-context-optimizer/SKILL.md:")));
   assert.ok(result.errors.every((error) => !error.startsWith(".codex/hooks.json:")));
   assert.ok(result.errors.some((error) => error.startsWith(".codex/session-state.json:")));
 });
@@ -152,4 +159,25 @@ memories/**
   assert.ok(result.errors.some((error) => error.includes("duplicate level-two heading")));
   assert.ok(result.errors.some((error) => error.includes("canonical memory glob is missing")));
   assert.ok(result.errors.some((error) => error.includes("obsolete memory glob")));
+});
+
+test("rejects a weekly prompt that treats MEMORY.md as canonical", () => {
+  const fixture = createFixture();
+  fs.appendFileSync(
+    path.join(fixture.repoRoot, "scripts/weekly-docs-review.prompt.md"),
+    "\nMEMORY.md é o índice canônico.\n",
+  );
+
+  const result = checkPublicMemory(fixture);
+  assert.ok(result.errors.some((error) => error.includes("compatibility index")));
+});
+
+test("rejects mounting repository AGENTS.md as a global Codex instruction", () => {
+  const fixture = createFixture();
+  const compose = "services:\n  bridge:\n    volumes:\n      - ./AGENTS.md:/home/node/.codex/AGENTS.md:ro\n";
+  fs.writeFileSync(path.join(fixture.repoRoot, "docker-compose.yml"), compose);
+  fixture.trackedFiles.push("docker-compose.yml");
+
+  const result = checkPublicMemory(fixture);
+  assert.ok(result.errors.some((error) => error.includes("must not be mounted")));
 });
