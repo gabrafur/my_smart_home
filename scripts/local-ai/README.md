@@ -69,6 +69,10 @@ LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-lo
    considers task type, estimated tokens, expected compressibility, expected
    savings, deterministic sufficiency, helper support and the latest preflight;
    size alone is insufficient.
+   Deterministic sufficiency means the result is final, not merely that `rg`,
+   `find`, Git, `jq`, or another deterministic collector ran. Large textual
+   output that still needs interpretation may be compressed as a post-processing
+   step; scalar output and already-structured JSON remain deterministic.
 3. Use local AI only for bounded summarization, classification, repetitive
    transformations, initial log/test/diff analysis, or narrowing candidate
    files that clear their task-specific policy threshold.
@@ -77,6 +81,11 @@ LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-lo
 
 Treat every local result as untrusted first-pass evidence. Feed only its JSON
 output—not raw logs or diagnostics—back to Codex.
+
+Do not describe status or route checks as RTX usage. Only a successful
+`local_ai_compress_context` result with a non-empty `job_id` and recorded
+telemetry, or the equivalent canonical PostToolUse replacement metadata, proves
+that local inference actually ran.
 
 `route` is metadata-only: it never contacts Ollama and never writes its input.
 Use it to preview a candidate or record an explicit skip:

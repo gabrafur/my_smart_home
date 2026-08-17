@@ -16,6 +16,7 @@ from typing import Any, Iterable
 
 DEFAULT_MAX_CONVERSATIONS = 20
 MAX_ADJUSTMENTS = 12
+DETERMINISTIC_POSTPROCESS_MIN_CHARS = 12_000
 ADJUSTMENT_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
@@ -44,34 +45,108 @@ def json_lines(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def tool_output_size(payload: dict[str, Any]) -> int:
+def tool_output_text(payload: dict[str, Any]) -> str:
     output = payload.get("output")
     if isinstance(output, str):
-        return len(output)
+        return output
+    if isinstance(output, list):
+        texts = [
+            item.get("text")
+            for item in output
+            if isinstance(item, dict) and isinstance(item.get("text"), str)
+        ]
+        if texts:
+            return "\n".join(texts)
     try:
-        return len(json.dumps(output, ensure_ascii=False)) if output is not None else 0
-    except (TypeError, ValueError):
-        return 0
-
-
-def call_source(payload: dict[str, Any]) -> str:
-    source = payload.get("input")
-    if isinstance(source, str):
-        return source
-    try:
-        return json.dumps(source, ensure_ascii=False) if source is not None else ""
+        return json.dumps(output, ensure_ascii=False) if output is not None else ""
     except (TypeError, ValueError):
         return ""
 
 
-def output_profile(source: str, size: int) -> tuple[bool, bool]:
+def tool_output_size(payload: dict[str, Any]) -> int:
+    return len(tool_output_text(payload))
+
+
+def successful_hook_replacement(output: str) -> str | None:
+    """Recognize only the canonical, telemetry-backed PostToolUse replacement."""
+    try:
+        value = json.loads(output)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if isinstance(value, dict) and isinstance(value.get("hookSpecificOutput"), dict):
+        value = value["hookSpecificOutput"].get("additionalContext")
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except json.JSONDecodeError:
+                return None
+    if not isinstance(value, dict) or value.get("local_ai_context_replacement") is not True:
+        return None
+    metadata = value.get("local_ai")
+    valid = bool(
+        isinstance(metadata, dict)
+        and metadata.get("executed") is True
+        and metadata.get("success") is True
+        and metadata.get("telemetry_recorded") is True
+        and isinstance(metadata.get("job_id"), str)
+        and metadata["job_id"]
+        and isinstance(value.get("result"), dict)
+    )
+    return str(metadata["job_id"]) if valid else None
+
+
+def call_source(payload: dict[str, Any]) -> str:
+    source = payload.get("input")
+    if not isinstance(source, str):
+        try:
+            source = json.dumps(source, ensure_ascii=False) if source is not None else ""
+        except (TypeError, ValueError):
+            return ""
+    # Code mode wraps shell calls in JavaScript. Attribute output only when one
+    # nested exec_command exists; a combined result from multiple commands has
+    # no safe per-command correlation and must not become a false opportunity.
+    if "tools.exec_command" in source:
+        encoded = re.findall(r"(?:\b|[\"'])cmd[\"']?\s*:\s*(\"(?:\\.|[^\"\\])*\")", source)
+        if len(encoded) != 1:
+            return ""
+        try:
+            decoded = json.loads(encoded[0])
+        except (TypeError, json.JSONDecodeError):
+            return ""
+        return decoded if isinstance(decoded, str) else ""
+    return source
+
+
+def deterministic_source(source: str) -> bool:
+    lowered = source.lower()
+    if re.search(r"\b(?:sed|cat|head|tail|pytest|unittest|journalctl)\b|git\s+(?:diff|show)", lowered):
+        return False
+    return bool(re.search(r"\brg\b|\bfind\b|\bwc\b|git\s+(?:status|log)\b|\bdocker\s+ps\b|\bjq\b", lowered))
+
+
+def deterministic_output_final(source: str, output: str, size: int | None = None) -> bool:
+    if not deterministic_source(source):
+        return False
+    lowered = source.lower()
+    if re.search(r"\bwc\b", lowered):
+        return True
+    if re.search(r"\bjq\b", lowered):
+        try:
+            parsed = json.loads(output)
+        except (TypeError, json.JSONDecodeError):
+            parsed = None
+        if isinstance(parsed, (dict, list)):
+            return True
+    effective_size = len(output) if output else max(0, int(size or 0))
+    return effective_size < DETERMINISTIC_POSTPROCESS_MIN_CHARS
+
+
+def output_profile(source: str, size: int, output: str = "") -> tuple[bool, bool]:
     """Return (eligible_candidate, deterministic_sufficient) without content output."""
     lowered = source.lower()
     if "local_ai_compress_context" in lowered:
         return False, False
-    deterministic = bool(re.search(r"\brg\b|\bfind\b|\bwc\b|git\s+(?:status|log)\b|\bjq\b", lowered))
-    if re.search(r"\b(?:sed|cat|head|tail|pytest|unittest|journalctl)\b|git\s+(?:diff|show)", lowered):
-        deterministic = False
+    deterministic = deterministic_output_final(source, output, size)
     threshold = 3_200 if re.search(r"pytest|unittest|journalctl|docker\s+logs|traceback", lowered) else 4_800
     if size < threshold:
         return False, deterministic
@@ -103,7 +178,9 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
     calls: dict[str, str] = {}
     candidate = False
     deterministic = False
-    successful_compressions = 0
+    successful_job_ids: set[str] = set()
+    candidate_outputs = 0
+    deterministic_outputs = 0
     unavailable = False
     unnecessary_calls = 0
     last_route: tuple[str | None, str | None] = (None, None)
@@ -121,9 +198,15 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
             calls[str(payload.get("call_id") or "")] = call_source(payload)
         elif event_type == "custom_tool_call_output":
             source = calls.get(str(payload.get("call_id") or ""), "")
-            eligible_output, deterministic_output = output_profile(source, tool_output_size(payload))
+            output = tool_output_text(payload)
+            hook_job_id = successful_hook_replacement(output)
+            if hook_job_id:
+                successful_job_ids.add(hook_job_id)
+            eligible_output, deterministic_output = output_profile(source, len(output), output)
             candidate = candidate or eligible_output
             deterministic = deterministic or deterministic_output
+            candidate_outputs += int(eligible_output)
+            deterministic_outputs += int(deterministic_output)
         elif event_type == "mcp_tool_call_end":
             tool, result = mcp_event(payload)
             if tool == "local_ai_route":
@@ -137,12 +220,22 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
                 arguments = invocation.get("arguments") if isinstance(invocation, dict) else {}
                 task = arguments.get("task_type") if isinstance(arguments, dict) else None
                 raw_result = payload.get("result")
-                ok = isinstance(raw_result, dict) and isinstance(raw_result.get("Ok"), dict) and not raw_result["Ok"].get("isError")
+                job_id = result.get("job_id")
+                ok = (
+                    isinstance(raw_result, dict)
+                    and isinstance(raw_result.get("Ok"), dict)
+                    and not raw_result["Ok"].get("isError")
+                    and isinstance(job_id, str)
+                    and bool(job_id)
+                    and result.get("telemetry_recorded") is True
+                    and isinstance(result.get("result"), dict)
+                )
                 if ok:
-                    successful_compressions += 1
+                    successful_job_ids.add(job_id)
                     if last_route == ("DETERMINISTIC", task):
                         unnecessary_calls += 1
 
+    successful_compressions = len(successful_job_ids)
     if successful_compressions:
         category = "RTX_USED_CORRECTLY"
     elif unavailable and candidate:
@@ -161,6 +254,10 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
         "candidate": category in {"RTX_USED_CORRECTLY", "RTX_UNAVAILABLE", "MISSED_OPPORTUNITY"},
         "successful_compressions": successful_compressions,
         "unnecessary_calls": unnecessary_calls,
+        "candidate_outputs": candidate_outputs,
+        "deterministic_outputs": deterministic_outputs,
+        "missed_candidate_outputs": candidate_outputs if category == "MISSED_OPPORTUNITY" else 0,
+        "missed_reason": "candidate_output_without_successful_local_inference" if category == "MISSED_OPPORTUNITY" else None,
     }
 
 
@@ -245,7 +342,11 @@ def audit(
     selected = sorted(combined, key=lambda item: item["timestamp"], reverse=True)[:limit]
     categories = Counter(item["category"] for item in selected)
     retrospective_today = [item for item in selected if item["timestamp"].date() == now.date()]
-    today_categories = Counter(item["category"] for item in retrospective_today)
+    missed_reasons = Counter(
+        str(item.get("missed_reason"))
+        for item in selected
+        if item.get("missed_reason")
+    )
     return {
         "schema_version": 1,
         "audited_at": now.isoformat().replace("+00:00", "Z"),
@@ -261,8 +362,15 @@ def audit(
         "not_appropriate": categories["NOT_APPROPRIATE"],
         "retrospective_today_conversations": len(retrospective_today),
         "retrospective_today_candidates": sum(1 for item in retrospective_today if item["candidate"]),
-        "retrospective_today_correctly_used": today_categories["RTX_USED_CORRECTLY"],
-        "retrospective_today_missed_opportunities": today_categories["MISSED_OPPORTUNITY"],
+        "retrospective_today_correctly_used": sum(
+            1 for item in retrospective_today if item["category"] == "RTX_USED_CORRECTLY"
+        ),
+        "retrospective_today_missed_opportunities": sum(
+            1 for item in retrospective_today if item["category"] == "MISSED_OPPORTUNITY"
+        ),
+        "candidate_outputs": sum(int(item.get("candidate_outputs", 0)) for item in selected),
+        "missed_candidate_outputs": sum(int(item.get("missed_candidate_outputs", 0)) for item in selected),
+        "missed_reasons": dict(sorted(missed_reasons.items())),
         "adjustments": [],
     }
 

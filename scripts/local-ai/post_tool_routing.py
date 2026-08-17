@@ -27,6 +27,7 @@ TASK_MIN_CHARS = {
     "summarize-document": 4_800,
     "summarize-log": 3_600,
 }
+DETERMINISTIC_POSTPROCESS_MIN_CHARS = 12_000
 MAX_HOOK_INPUT_CHARS = 2_000_000
 MAX_MODEL_CONTEXT_CHARS = 8_000
 
@@ -128,13 +129,35 @@ def extract_response(payload: dict[str, Any]) -> str:
         return ""
 
 
-def deterministic_sufficient(command: str) -> bool:
+def deterministic_source(command: str) -> bool:
     lowered = command.lower()
     if re.search(r"\b(?:sed|cat|head|tail|pytest|unittest|journalctl)\b|git\s+(?:diff|show)", lowered):
         return False
     return bool(
         re.search(r"\brg\b|\bfind\b|\bwc\b|git\s+(?:status|log)\b|\bdocker\s+ps\b|\bjq\b", lowered)
     )
+
+
+def deterministic_sufficient(command: str, response: str) -> bool:
+    """Return true only when deterministic processing also finishes interpretation.
+
+    Deterministic collection remains the first step. A large textual inventory,
+    search result, or listing can still benefit from bounded local compression;
+    scalar aggregates and already-structured JSON remain final.
+    """
+    if not deterministic_source(command):
+        return False
+    lowered = command.lower()
+    if re.search(r"\bwc\b", lowered):
+        return True
+    if re.search(r"\bjq\b", lowered):
+        try:
+            parsed = json.loads(response)
+        except (TypeError, json.JSONDecodeError):
+            parsed = None
+        if isinstance(parsed, (dict, list)):
+            return True
+    return len(response) < DETERMINISTIC_POSTPROCESS_MIN_CHARS
 
 
 def classify_task(command: str, response: str) -> tuple[str, bool] | None:
@@ -151,7 +174,7 @@ def classify_task(command: str, response: str) -> tuple[str, bool] | None:
         r"\b(?:sed|cat|head|tail|awk|rg)\b", lowered
     ):
         task = "summarize-document"
-    elif deterministic_sufficient(command):
+    elif deterministic_source(command):
         task = "inspect-files"
     elif re.search(r"\b(?:sed|cat|head|tail|awk)\b|\brg\b", lowered):
         task = "inspect-files"
@@ -159,7 +182,7 @@ def classify_task(command: str, response: str) -> tuple[str, bool] | None:
         task = "classify-error"
     else:
         return None
-    return task, deterministic_sufficient(command)
+    return task, deterministic_sufficient(command, response)
 
 
 def redact_for_local_ai(text: str) -> tuple[str, int]:
@@ -228,11 +251,24 @@ class McpProcess:
             self.process.terminate()
 
 
-def bounded_result(task: str, result: dict[str, Any], redactions: int) -> str:
+def bounded_result(task: str, compressed: dict[str, Any], redactions: int) -> str:
+    result = compressed.get("result")
+    job_id = compressed.get("job_id")
+    telemetry_recorded = compressed.get("telemetry_recorded") is True
+    if not isinstance(result, dict) or not isinstance(job_id, str) or not job_id or not telemetry_recorded:
+        raise RuntimeError("local_ai_success_metadata_missing")
     payload = {
         "local_ai_context_replacement": True,
         "task_type": task,
         "redactions_applied": redactions,
+        "local_ai": {
+            "evaluated": True,
+            "eligible": True,
+            "job_id": job_id,
+            "executed": True,
+            "success": True,
+            "telemetry_recorded": True,
+        },
         "result": result,
         "notice": "Non-authoritative first pass; verify exact code, configuration, security, and production conclusions deterministically.",
     }
@@ -257,12 +293,18 @@ def process_hook(
     selected, redactions = redact_for_local_ai(response)
     if len(selected) < TASK_MIN_CHARS[task]:
         return None
+    # Never send output containing a recognized secret shape to Local AI. The
+    # original result remains available to the primary model as normal fallback.
+    if redactions:
+        return None
 
     client = mcp_factory()
     route_arguments = {
         "task_type": task,
         "input_chars": len(selected),
         "compressibility": "high" if task in {"analyze-tests", "classify-error", "summarize-log"} else "medium",
+        # The MCP adapter keeps this legacy field name for compatibility. Here
+        # it means deterministic *finality*, not merely that preprocessing ran.
         "deterministic_preprocessing_available": deterministic,
     }
     try:
@@ -276,10 +318,7 @@ def process_hook(
         if route.get("decision") != "LOCAL_AI_ELIGIBLE":
             return None
         compressed = client.call("local_ai_compress_context", {"task_type": task, "text": selected})
-        result = compressed.get("result")
-        if not isinstance(result, dict):
-            return None
-        context = bounded_result(task, result, redactions)
+        context = bounded_result(task, compressed, redactions)
     except (OSError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError):
         # Revalidate once so the core can distinguish confirmed infrastructure
         # unavailability. Do not add a synthetic ``skipped`` decision here:
@@ -299,7 +338,7 @@ def process_hook(
         # PostToolUse continue=false replaces the raw result with this bounded
         # feedback without rejecting a nested code-mode tool promise.
         "continue": False,
-        "systemMessage": "Local AI compacted an eligible large tool result; the raw result was withheld from model context.",
+        "systemMessage": "Local AI completed a recorded inference job and compacted an eligible large tool result; the raw result was withheld from model context.",
         "hookSpecificOutput": {
             "hookEventName": "PostToolUse",
             "additionalContext": context,
