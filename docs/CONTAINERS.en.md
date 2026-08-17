@@ -132,6 +132,12 @@ flowchart TD
 time after `docker compose up -d`; inspect logs and integrations before calling
 the deployment healthy.
 
+Home Assistant uses two explicit, independent public DNS resolvers. This keeps
+a recreation performed while the host `/etc/resolv.conf` is temporarily empty
+from leaving every cloud integration unavailable. The container health check
+validates both DNS and local port 8123; inspect `docker compose ps homeassistant`
+and investigate any `unhealthy` state immediately.
+
 ## Build, pull, and startup
 
 ```bash

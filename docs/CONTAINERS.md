@@ -133,6 +133,13 @@ flowchart TD
 Node-RED podem levar mais tempo para aceitar conexões. Observe logs e valide as
 integrações antes de considerar o deploy concluído.
 
+O Home Assistant usa dois resolvedores DNS públicos explícitos e independentes.
+Isso impede que uma recriação feita enquanto o `/etc/resolv.conf` do host está
+temporariamente vazio deixe todas as integrações de nuvem indisponíveis. O
+health check do container valida tanto DNS quanto a porta local 8123; confira
+`docker compose ps homeassistant` e investigue imediatamente qualquer estado
+`unhealthy`.
+
 ## Build, pull e inicialização
 
 ```bash
