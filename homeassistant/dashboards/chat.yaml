@@ -184,14 +184,20 @@ views:
               - type: tile
                 entity: sensor.codex_velocidade_7_dias
                 name: Média por hora · 7 dias
+          - type: markdown
+            content: >-
+              ## Histórico deste computador
+
+              Estes dados vêm apenas das sessões registradas **nesta máquina**.
+              Eles servem para analisar o uso local e **não são o saldo semanal do
+              seu plano**. O limite oficial fica no topo do painel e é consultado
+              automaticamente a cada 30 segundos.
           - type: entities
-            title: Coleta local
+            title: Última atividade local
             show_header_toggle: false
             entities:
               - entity: sensor.codex_ultima_metrica
-                name: Última atividade
-              - entity: sensor.codex_usage_raw
-                name: Estado do coletor
+                name: Última conversa registrada nesta máquina
 
       - type: grid
         cards:
