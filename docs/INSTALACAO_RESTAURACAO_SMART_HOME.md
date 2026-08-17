@@ -366,6 +366,7 @@ Depois de revisar o resultado e garantir backup:
 
 ```bash
 node scripts/docker-auto-update.mjs daily
+scripts/install-storage-maintenance-cron.sh
 ```
 
 O script resolve tags de canal para digests, atualiza o Compose, valida e

@@ -3,10 +3,12 @@ set -Eeuo pipefail
 
 MODE="dry-run"
 MIN_AGE="24h"
+MAX_BUILD_CACHE="2GB"
 STEP="startup"
+LOCK_FILE="${STORAGE_MAINTENANCE_LOCK_FILE:-/tmp/my-smart-home-storage-maintenance.lock}"
 
 usage() {
-  echo "Usage: $0 [--dry-run|--apply] [--min-age HOURS]" >&2
+  echo "Usage: $0 [--dry-run|--apply] [--min-age HOURS] [--max-build-cache SIZE]" >&2
 }
 
 while (($#)); do
@@ -17,6 +19,11 @@ while (($#)); do
       shift
       [[ ${1:-} =~ ^[0-9]+$ ]] || { echo "--min-age must be an integer number of hours" >&2; exit 64; }
       MIN_AGE="${1}h"
+      ;;
+    --max-build-cache)
+      shift
+      [[ ${1:-} =~ ^[1-9][0-9]*([KMGT]B)?$ ]] || { echo "--max-build-cache must be a positive Docker size such as 2GB" >&2; exit 64; }
+      MAX_BUILD_CACHE="$1"
       ;;
     -h|--help) usage; exit 0 ;;
     *) usage; exit 64 ;;
@@ -35,6 +42,15 @@ on_error() {
 }
 trap on_error ERR
 
+STEP="lock"
+if command -v flock >/dev/null 2>&1; then
+  exec 8>"$LOCK_FILE"
+  if ! flock -n 8; then
+    log "status=skipped reason=already_running"
+    exit 0
+  fi
+fi
+
 disk_used_bytes() {
   df -B1 --output=used / | awk 'NR == 2 {print $1}'
 }
@@ -43,7 +59,7 @@ STEP="preflight"
 command -v docker >/dev/null
 docker info >/dev/null
 BEFORE_BYTES=$(disk_used_bytes)
-log "status=started mode=$MODE min_age=$MIN_AGE filesystem=/ used_bytes=$BEFORE_BYTES"
+log "status=started mode=$MODE min_age=$MIN_AGE max_build_cache=$MAX_BUILD_CACHE filesystem=/ used_bytes=$BEFORE_BYTES"
 
 STEP="inventory"
 docker system df
@@ -54,13 +70,16 @@ docker ps -a --filter status=exited --format '  {{.ID}} {{.Names}} {{.Status}} {
 
 if [[ "$MODE" == "apply" ]]; then
   STEP="build-cache-prune"
-  docker builder prune --all --force --filter "until=$MIN_AGE"
+  # A recent build can keep an entire old dependency chain reachable, so an
+  # age-only filter does not bound disk usage. Keep a useful hot cache while
+  # pruning only BuildKit records that no container or image needs.
+  docker builder prune --all --force --max-used-space "$MAX_BUILD_CACHE"
 
   STEP="dangling-image-prune"
   docker image prune --force --filter "until=$MIN_AGE"
 else
   STEP="dry-run"
-  log "status=skipped reason=dry-run actions=builder-prune,dangling-image-prune"
+  log "status=skipped reason=dry-run actions=builder-prune-to-${MAX_BUILD_CACHE},dangling-image-prune"
 fi
 
 STEP="final-metrics"

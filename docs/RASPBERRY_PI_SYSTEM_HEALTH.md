@@ -130,10 +130,17 @@ inodes, tendencias, ultima manutencao e espaco recuperado.
 
 O botão **Executar Storage Health** do dashboard pede confirmação e aciona o
 helper nativo `input_button.storage_health_manual_run`. O Node-RED reage à
-mudança desse helper e executa `/opt/storage-health-maintenance.sh --apply`;
-em paralelo, atualiza a leitura dos sensores existentes e a avaliação de
-limites/tendência. A manutenção manual segue a mesma allowlist da execução
-diária; não executa a inspeção profunda.
+mudança desse helper, executa `/opt/storage-health-maintenance.sh --apply` e
+cria uma solicitação coalescente no volume dedicado de triggers, ignorado pelo
+Git. Em paralelo, atualiza a leitura dos sensores existentes e a avaliação de
+limites/tendência.
+O Node-RED continua sem acesso ao socket Docker.
+
+O cron instalado por `scripts/install-storage-maintenance-cron.sh` verifica a
+solicitação a cada minuto e chama, com prioridade reduzida,
+`scripts/process-storage-maintenance-request.sh`. Falhas restauram o marcador
+para uma tentativa posterior. Solicitações repetidas antes do processamento
+são coalescidas em uma única execução.
 
 O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
 e uma no celular. Os históricos ficam no fim da página, redistribuídos com os
@@ -153,13 +160,17 @@ Flows, credenciais, context storage, `node_modules` e outros temporarios nao
 entram no escopo. O container continua sem Docker socket, mount do host ou
 `sudo`.
 
-No host, `scripts/storage-maintenance.sh` remove somente build cache sem uso
-(`builder prune --all`) e imagens dangling com mais de 24 horas. O script valida argumentos, e idempotente,
+No host, `scripts/storage-maintenance.sh` limita o build cache sem uso a 2 GB
+(`builder prune --all --max-used-space 2GB`) e remove imagens dangling com mais
+de 24 horas. O limite de tamanho é necessário porque um build recente pode
+manter toda uma cadeia antiga alcançável e tornar ineficaz uma política baseada
+somente em idade. O script valida argumentos, e idempotente,
 registra metricas antes/depois e usa dry-run por padrao:
 
 ```bash
 scripts/storage-maintenance.sh --dry-run
-scripts/storage-maintenance.sh --apply --min-age 24
+scripts/storage-maintenance.sh --apply --min-age 24 --max-build-cache 2GB
+scripts/install-storage-maintenance-cron.sh
 ```
 
 ### MANUAL / REQUIRES REVIEW

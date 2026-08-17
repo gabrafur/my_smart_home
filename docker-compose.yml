@@ -126,6 +126,8 @@ services:
     ports:
       - "${HOST_LAN_IP:-127.0.0.1}:1880:1880"
     volumes:
+      - ./homeassistant/.storage-maintenance-trigger:/run/storage-maintenance-trigger
+      - ./scripts/request-host-storage-maintenance.sh:/opt/request-host-storage-maintenance.sh:ro
       - ./nodered:/data
       - ./bindings/private:/run/private-bindings:ro
       - ./scripts/storage-health-maintenance.sh:/opt/storage-health-maintenance.sh:ro

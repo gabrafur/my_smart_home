@@ -206,7 +206,13 @@ and retention policy.
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
 node scripts/docker-auto-update.mjs daily
+scripts/install-storage-maintenance-cron.sh
 ```
+
+The cron installer adds an idempotent managed block that processes requests
+from the **Run Storage Health** dashboard button once per minute with reduced
+CPU and I/O priority. Home Assistant and Node-RED do not receive the Docker
+socket.
 
 The script discovers its repository path and no longer depends on
 `/mnt/data/docker`. It backs up Git, resolves digests, validates Compose and

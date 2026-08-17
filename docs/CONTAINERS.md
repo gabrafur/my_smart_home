@@ -210,12 +210,18 @@ política explícita de chaves e retenção.
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
 node scripts/docker-auto-update.mjs daily
+scripts/install-storage-maintenance-cron.sh
 ```
 
 O script descobre o próprio diretório, portanto não depende mais de
 `/mnt/data/docker`. Ele faz backup Git, resolve digests, valida Compose e
 Node-RED e só então recria os serviços. Mudanças de banco, fabric ou protocolo
 ainda exigem leitura das notas upstream e backup externo.
+
+O instalador de cron acrescenta um bloco idempotente que processa, a cada
+minuto, as solicitações do botão **Executar Storage Health**. O job usa o alvo
+de prioridade reduzida e não concede o socket Docker ao Home Assistant ou ao
+Node-RED.
 
 Para rollback, restaure o Compose e os volumes compatíveis. Reverter apenas o
 digest pode não funcionar depois que uma aplicação migra seu banco.

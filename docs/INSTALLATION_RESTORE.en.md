@@ -333,6 +333,7 @@ the Raspberry Pi. Git, even private Git, is not the right storage for this data.
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
 node scripts/docker-auto-update.mjs daily
+scripts/install-storage-maintenance-cron.sh
 ```
 
 The script resolves channel tags to digests, updates Compose, validates, and
