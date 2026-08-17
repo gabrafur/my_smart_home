@@ -64,7 +64,9 @@ function isPublicMemoryFile(file) {
 
 function isPrivateRuntimeFile(file) {
   return privateRuntimePrefixes.some((prefix) => file.startsWith(prefix))
-    || (file.startsWith(".codex/") && !isPublicMemoryFile(file));
+    || (file.startsWith(".codex/")
+      && file !== ".codex/hooks.json"
+      && !isPublicMemoryFile(file));
 }
 
 function markdownLinks(content) {

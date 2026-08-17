@@ -16,7 +16,7 @@ configuração privada de cada máquina, nunca neste repositório.
 
 ```text
 Host Codex / DietPi
-  └─ local-ai + preflight + telemetria privada
+  └─ MCP local-ai-rtx + roteamento preguiçoso + telemetria privada
        │ LAN, TCP 11435
        ▼
 Host Windows com GPU
@@ -59,14 +59,17 @@ Ollama.
 | Windows + WSL2 | manter Ollama e a GPU disponíveis | configuração privada do host de GPU |
 | Portproxy e firewall | publicar somente a porta LAN restrita | regras privadas do Windows |
 | `local-ai` | executar tarefas limitadas e emitir JSON/telemetria | `scripts/local-ai/` |
-| Política do Codex | decidir quando uma primeira passagem agrega valor | `AGENTS.md` e hook global privado |
+| Política do Codex | decidir quando uma primeira passagem agrega valor | `AGENTS.md` e hook de projeto `.codex/hooks.json` |
 | Bridge | expor somente resumo de uso e estado de job | `ia-bridge/server.js`, `ia-bridge/usage.js` |
 | Home Assistant | mostrar uso do Codex e RTX separadamente | `homeassistant/packages/codex_usage.yaml` e dashboard |
 
-Os modelos disponíveis podem mudar por instalação. O modelo selecionado após o
-benchmark é `qwen2.5-coder:7b`: cumpriu os quatro schemas, teve cerca de
+Os modelos disponíveis podem mudar por instalação. O modelo padrão selecionado
+após o benchmark é `qwen2.5-coder:7b`: cumpriu os quatro schemas, teve cerca de
 91–93 tok/s por caso e não exibiu CPU offload. O registro comparativo está em
 [`LOCAL_AI_BENCHMARK_2026-08-16.md`](LOCAL_AI_BENCHMARK_2026-08-16.md).
+Outros modelos já instalados podem ser avaliados por benchmark quando uma
+tarefa justificar; instalar ou trocar modelos exige solicitação separada e não
+faz parte do roteamento automático.
 
 ## Rede, segurança e inicialização
 
@@ -111,10 +114,12 @@ variáveis `LOCAL_AI_ENABLED=0`, `LOCAL_AI_ENDPOINT`, `LOCAL_AI_MODEL` e
 `LOCAL_AI_FORCE` permitem controle local; `LOCAL_AI_FORCE` é diagnóstico e não
 autoriza delegação inadequada.
 
-No início de cada conversa, a política chama `local_ai_status` uma vez. Em
-tarefas elegíveis com material selecionado de cerca de 1.200 tokens ou mais,
-ela usa o MCP global `local-ai-rtx`: primeiro `local_ai_route` e, somente para
-uma rota elegível e benéfica, `local_ai_compress_context`. Os tipos são
+Não há hook global nem preflight no envio do prompt. O Codex começa a trabalhar
+imediatamente. Quando o pré-processamento determinístico encontra pela primeira
+vez na conversa material elegível de cerca de 1.200 tokens ou mais, a política
+consulta `local_ai_status` de forma preguiçosa e usa o MCP global
+`local-ai-rtx`: primeiro `local_ai_route` e, somente para uma rota elegível e
+benéfica, `local_ai_compress_context`. Os tipos são
 `summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
 `analyze-tests`, `summarize-log` e `classify-error`. O helper
 `./scripts/local-ai/local-ai` continua disponível apenas para diagnósticos e
@@ -127,10 +132,18 @@ arquivos, campos, comandos, módulos, headings e nomes de testes, não o código
 bruto inteiro. Esse crosswalk é adequado para cobertura documental e triagem;
 arquitetura, segurança e aprovação final permanecem no modelo principal.
 
-O hook é privado e precisa ser aprovado no Codex em `/hooks` depois de sua
-instalação ou de qualquer alteração. A aprovação é vinculada ao conteúdo do
-hook; uma alteração exige nova revisão. Consulte a documentação oficial de
+O hook `PostToolUse` é versionado apenas neste projeto e precisa ser aprovado no
+Codex em `/hooks` depois de sua instalação ou de qualquer alteração. Ele atua
+somente quando uma saída grande já foi produzida; não analisa o prompt nem cria
+uma etapa de confirmação. A aprovação é vinculada ao conteúdo do hook; uma
+alteração exige nova revisão. Consulte a documentação oficial de
 [hooks do Codex](https://learn.chatgpt.com/docs/hooks).
+
+Quando a compressão é útil, o hook retorna `continue: false` com contexto
+adicional limitado. Assim o resultado bruto é substituído também em code mode
+sem rejeitar a promise da ferramenta. Uma falha mantém o resultado original e
+é registrada pelo helper como `LOCAL_AI_FAILED`; o hook não cria uma segunda
+decisão `skipped`, evitando contabilizar a mesma tentativa também como perda.
 
 ## Política de roteamento e auditoria
 
@@ -144,7 +157,7 @@ ferramenta determinística -> decisão de roteamento -> Local AI quando útil ->
 
 `scripts/local-ai/routing.py` torna a decisão reproduzível sem inferência. Ele
 usa tamanho estimado, tipo da tarefa, compressibilidade esperada, helper
-compatível, disponibilidade já conhecida pelo preflight e suficiência de uma
+compatível, disponibilidade verificada de forma preguiçosa e suficiência de uma
 ferramenta determinística. Os valores iniciais vêm do helper limitado a 4.096
 tokens e do benchmark local validado; a suíte de workloads os protege contra
 regressão.
@@ -167,7 +180,7 @@ confirmou melhor retenção para inventários derivados de schemas, módulos,
 comandos e testes do que para blocos longos de código bruto; essa preferência é
 parte da política atual.
 
-As decisões terminais são `DETERMINISTIC`, `LOCAL_AI_USED`,
+As decisões terminais são `DETERMINISTIC`, `LOCAL_AI_USED`, `LOCAL_AI_FAILED`,
 `LOCAL_AI_UNAVAILABLE`, `LOCAL_AI_NOT_BENEFICIAL`, `LOCAL_AI_SKIPPED`,
 `LOCAL_AI_UNNECESSARY_CALL` e `ROUTING_MISSED_OPPORTUNITY`. Uma oportunidade é
 perdida somente quando a tarefa era elegível, a RTX estava disponível, a
@@ -198,14 +211,23 @@ controlada e sem chamada de rede:
 ./scripts/local-ai/local-ai route analyze-tests --input-chars 32000 --availability unavailable
 ```
 
-O hook `UserPromptSubmit` atual executa só o preflight após a confirmação do
-roteamento de modelo; ele não é um middleware de todos os resultados de
-ferramentas. Assim, um anexo já incluído no prompt inicial pode necessariamente
-chegar ao modelo principal antes de o helper do repositório poder compactá-lo.
-Para diffs, logs, testes, arquivos e saídas de comandos, a política em
-`AGENTS.md` exige a decisão antes de imprimir ou anexar o corpo bruto. Essa é a
-limitação conhecida da cobertura, não uma razão para chamar a GPU tardiamente
-ou para inventar telemetria.
+Não existe `UserPromptSubmit`: o envio do prompt não bloqueia, não chama a RTX e
+não exige a palavra `feito`. O hook de projeto `PostToolUse` trata somente
+saídas grandes de `Bash`: remove padrões de credenciais em memória, consulta o MCP
+na primeira candidata elegível da conversa e substitui o corpo pelo JSON
+limitado somente quando a rota e a compressão têm sucesso. Saídas pequenas,
+consultas determinísticas, histórico privado e comandos que apontem para
+credenciais são ignorados; código proprietário, logs e configuração privada sem
+segredos podem seguir para a RTX. Falha ou indisponibilidade preserva o fallback para
+o modelo principal. Anexos já incluídos no prompt continuam fora desse ponto de
+interceptação, portanto nunca devem ser enviados integralmente apenas para
+provocar roteamento.
+
+A redação cobre atribuições em texto ou JSON para senhas, chaves, cookies,
+tokens genéricos, `access_token`, `refresh_token`, `client_secret` e IDs/tokens
+de sessão. Comandos que apontem para `.env`, chaves privadas, armazenamento de
+autenticação ou histórico privado são rejeitados antes da criação do cliente
+MCP.
 
 ## Contexto de memória do repositório
 
@@ -290,8 +312,8 @@ marcadores de contagem. A economia continua usando o tamanho do contexto bruto
 como baseline; a telemetria também registra quantas linhas rotineiras foram
 omitidas e quantos caracteres chegaram ao modelo local.
 
-O bridge renova o preflight de saúde a cada minuto (e ao iniciar), usando o
-mesmo hook privado já aprovado. Isso impede que uma falha transitória de rede
+O bridge renova sua própria sondagem de saúde a cada minuto (e ao iniciar),
+usando o helper de disponibilidade, não um hook de prompt. Isso impede que uma falha transitória de rede
 deixe a aba RTX presa em **indisponível** depois de o Ollama voltar. A checagem
 só consulta endpoint/GPU e não inicia modelo, não gera carga artificial e não
 reinicia nem reconfigura o host remoto.
@@ -334,8 +356,8 @@ host e bridge podem registrar somente metadados de jobs, enquanto outros
 usuários continuam sem acesso.
 
 O status de saúde do painel permanece separado em `.agent-history`. Ao iniciar
-o preflight periódico, o bridge substitui `LOCAL_AI_TELEMETRY_PATH` apenas no
-processo filho para que o hook derive e renove o status local, sem misturá-lo
+a sondagem periódica, o bridge substitui `LOCAL_AI_TELEMETRY_PATH` apenas no
+processo filho para que o helper derive e renove o status local, sem misturá-lo
 com a telemetria global. Isso evita que uma montagem sem escrita congele o
 último status até ele expirar após dois minutos, que fazia o painel mostrar RTX
 indisponível mesmo com Ollama e GPU saudáveis.
@@ -399,6 +421,15 @@ mantém totais, dias recentes (400 no máximo) e as últimas 40 decisões; o log
 privado é limitado a 2 MiB. Não armazena prompt, diff, log, saída de comando ou
 resposta local.
 
+A auditoria retrospectiva usa o arquivo irmão
+`local-ai-routing-audit.json`. Ele contém exclusivamente agregados sanitizados:
+quantidade auditada, candidatas, usos corretos, oportunidades históricas,
+indisponibilidades, chamadas desnecessárias, categorias restantes, códigos dos
+ajustes, data e um recorte retrospectivo das conversas datadas de hoje. O bridge
+aplica uma allowlist antes de expor esses dados. Eles
+não alteram os totais operacionais, os agregados de hoje nem o histórico de
+jobs.
+
 O bridge expõe `local_ai.routing` dentro de `GET /usage`, com totais para hoje,
 semana, mês e total. As métricas são:
 
@@ -410,12 +441,16 @@ semana, mês e total. As métricas são:
   a cobertura é limitada a 100% e deltas negativos continuam visíveis no
   contador de economia existente.
 
-Na aba **RTX 4070**, o bloco *Roteamento inteligente* mostra tarefas avaliadas,
-elegíveis, RTX usada, oportunidades perdidas, indisponibilidade e chamadas
-desnecessárias. Os cards seguintes exibem as duas coberturas, potencial,
-economia real diária, a última decisão e oportunidades perdidas recentes. Os
-cards anteriores de chamadas, economia, GPU, VRAM, potência e último job são
-preservados.
+Na aba **RTX 4070**, a seção **4 · Atenção de roteamento — hoje** mostra somente
+decisões operacionais do dia UTC: tarefas avaliadas, elegíveis, elegíveis e
+disponíveis, oportunidades perdidas, indisponibilidade confirmada,
+disponibilidade desconhecida, falhas de
+chamada, chamadas desnecessárias e potencial estimado de
+redução de contexto. Esse potencial não é cobrança nem economia financeira
+oficial. Um card e texto auxiliar separados mostram apenas o agregado da
+auditoria retrospectiva, que não entra nos cards de hoje nem nos acumulados.
+As entidades acumuladas e as demais seções de atividade, qualidade e histórico
+permanecem separadas.
 
 Os indicadores de GPU, VRAM e potência exibem **ociosa** quando a RTX está
 disponível sem inferência em andamento. Os valores numéricos aparecem somente
@@ -497,7 +532,7 @@ segundos.
 | Ollama responde mas sem GPU | `ollama ps`, `nvidia-smi`, driver NVIDIA/WSL e tamanho/quantização do modelo |
 | CPU offload | reduza o modelo/contexto; não assuma que uma resposta rápida significa GPU integral |
 | RTX não aparece no painel | `GET /local-ai/live`, arquivo privado de telemetria e sensores do pacote HA |
-| Hook não roda | abra `/hooks`, revise/aprove o hook e confirme o caminho configurado |
+| Roteamento automático do projeto não roda | abra `/hooks`, revise/aprove `.codex/hooks.json` e confirme o caminho configurado |
 
 ## Reprodução em um fork
 
@@ -510,8 +545,8 @@ segundos.
 4. Crie o `local-ai.json` privado no host Codex e, se usar o bridge, no volume
    privado do Codex do container; adapte os caminhos do preflight a cada
    ambiente.
-5. Instale/revise o hook do Codex, faça a aprovação em `/hooks` e mantenha
-   `AGENTS.md` apontando para o helper versionado.
+5. Revise o hook de projeto do Codex, faça a aprovação em `/hooks` e mantenha
+   `AGENTS.md` apontando para o MCP global. Não configure `UserPromptSubmit`.
 6. Suba o bridge e o Home Assistant, então valide `/usage`, `/local-ai/live` e
    as duas abas do dashboard.
 

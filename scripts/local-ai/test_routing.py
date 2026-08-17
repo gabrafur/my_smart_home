@@ -21,6 +21,7 @@ class RoutingPolicyTest(unittest.TestCase):
             ("log-repeated-stack", "summarize-log", 36_000, False, "available", "LOCAL_AI_ELIGIBLE"),
             ("json-large", "inspect-files", 80_000, True, "available", "DETERMINISTIC"),
             ("file-triage-large", "inspect-files", 40_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("documentation-large", "summarize-document", 24_000, False, "available", "LOCAL_AI_ELIGIBLE"),
             ("memory-small-focused", "summarize-memory", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("memory-large-retrieval", "summarize-memory", 32_000, False, "available", "LOCAL_AI_ELIGIBLE"),
             ("gpu-unavailable", "analyze-tests", 32_000, False, "unavailable", "LOCAL_AI_UNAVAILABLE"),

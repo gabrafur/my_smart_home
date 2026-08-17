@@ -109,10 +109,15 @@ test("an untracked file cannot satisfy the public memory graph", () => {
 
 test("rejects tracked private runtime paths while allowing public Codex memory", () => {
   const fixture = createFixture();
-  fixture.trackedFiles.push(".agent-history/turns.jsonl", ".codex/session-state.json");
+  fixture.trackedFiles.push(
+    ".agent-history/turns.jsonl",
+    ".codex/hooks.json",
+    ".codex/session-state.json",
+  );
 
   const result = checkPublicMemory(fixture);
   assert.ok(result.errors.some((error) => error.startsWith(".agent-history/turns.jsonl:")));
+  assert.ok(result.errors.every((error) => !error.startsWith(".codex/hooks.json:")));
   assert.ok(result.errors.some((error) => error.startsWith(".codex/session-state.json:")));
 });
 

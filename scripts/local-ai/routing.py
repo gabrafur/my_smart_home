@@ -12,6 +12,7 @@ ROUTING_DECISIONS = {
     "DETERMINISTIC",
     "LOCAL_AI_ELIGIBLE",
     "LOCAL_AI_USED",
+    "LOCAL_AI_FAILED",
     "LOCAL_AI_SKIPPED",
     "LOCAL_AI_UNAVAILABLE",
     "LOCAL_AI_NOT_BENEFICIAL",
@@ -41,6 +42,10 @@ TASK_PROFILES: dict[str, TaskProfile] = {
     # retrieval. Its threshold matches bounded file triage; a small focused
     # memory note should go straight to the primary model.
     "summarize-memory": TaskProfile(1200, 0.65, 700, "medium"),
+    # Long-form documentation follows the bounded, moderately compressible
+    # profile of a reviewed file set. Arbitrary prose is never routed by size
+    # alone; the caller still has to identify it as documentation.
+    "summarize-document": TaskProfile(1200, 0.65, 700, "medium"),
     "summarize-log": TaskProfile(900, 0.80, 600, "high"),
 }
 
@@ -135,6 +140,8 @@ def terminal_decision(assessment: dict[str, Any], outcome: str = "auto") -> dict
     final = dict(assessment)
     if outcome == "used":
         final.update({"decision": "LOCAL_AI_USED", "reason": "local_ai_completed"})
+    elif outcome == "failed":
+        final.update({"decision": "LOCAL_AI_FAILED", "reason": "local_ai_call_failed"})
     elif outcome == "unnecessary":
         final.update({"decision": "LOCAL_AI_UNNECESSARY_CALL", "reason": "local_ai_call_not_beneficial"})
     elif outcome == "skipped" and assessment.get("decision") == "LOCAL_AI_ELIGIBLE":

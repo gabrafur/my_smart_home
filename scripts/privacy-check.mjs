@@ -26,7 +26,7 @@ const ignoredText = [
 ];
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
-const privateCodexPath = /^\.codex\/(?!memories(?:\/|$))/;
+const privateCodexPath = /^\.codex\/(?!(?:hooks\.json$|memories(?:\/|$)))/;
 const sensitiveArtifactPath = /(?:^|\/)(?:secrets\.ya?ml|password\.txt|coordinator_backup\.json|\.env)(?:$|\/)|\.(?:bak|backup|db|sqlite\d*|log|tar|tgz|zip)$/i;
 
 function git(args, input) {

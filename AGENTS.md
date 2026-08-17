@@ -4,26 +4,20 @@ As políticas globais de modelo, primeira resposta, segurança e Local AI em
 `~/.codex/AGENTS.md` já fazem parte desta conversa. Este arquivo contém somente
 os desvios e contratos deste repositório para não duplicar contexto no startup.
 
-## Pausa para troca manual do modelo
+## Início imediato
 
-Em novas solicitações interativas, depois de informar o modelo e o nível de
-reasoning recomendados, o Codex deve interromper o fluxo antes de executar a
-tarefa. Ele deve aguardar o usuário trocar o modelo, se desejar, e enviar uma
-mensagem contendo exatamente `feito`. Somente depois desse sinal pode continuar
-a análise, usar ferramentas ou alterar arquivos.
-
-Essa pausa é um gate de seleção do modelo, não uma aprovação genérica para
-ações posteriores. O marcador `CODEX_UNATTENDED_WEEKLY_DOCS_REVIEW` continua
-sujeito à exceção de revisão documental semanal descrita abaixo.
+Em novas solicitações interativas, informe a recomendação de modelo prevista
+pela política global e prossiga imediatamente. Não imponha confirmação, a
+palavra `feito` ou qualquer pré-análise antes de começar o trabalho.
 
 ## Exceção de revisão documental semanal sem supervisão
 
 O prompt versionado `scripts/weekly-docs-review.prompt.md` contém o marcador
 exato `CODEX_UNATTENDED_WEEKLY_DOCS_REVIEW`. Quando ele aparecer na primeira
 solicitação, é uma invocação não interativa pré-autorizada de
-`scripts/weekly-docs-review.mjs`: ignore apenas o gate inicial de título,
-melhoria de prompt, roteamento de modelo e `continue`; execute o prompt e
-registre o resultado. Esta exceção não vale para solicitações interativas.
+`scripts/weekly-docs-review.mjs`: execute o prompt e registre o resultado sem
+interação. Solicitações interativas também começam imediatamente, mas não
+herdam outras autorizações específicas dessa revisão semanal.
 
 ## Memória pública do projeto: retrieval, não preload
 
@@ -128,6 +122,14 @@ material relevante. A partir de aproximadamente 1.200 tokens estimados, chame
 rotas elegíveis, sempre sujeitas a compressibilidade e economia esperada. Use
 `summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
 `analyze-tests`, `summarize-log` ou `classify-error`, conforme o material.
+
+Não existe preflight global no envio do prompt. A primeira verificação de
+disponibilidade é preguiçosa: ocorre automaticamente somente quando uma saída
+grande e elegível aparece, antes de `local_ai_route`, e no máximo uma vez por
+conversa enquanto as chamadas funcionarem. O hook `PostToolUse` deste projeto é
+uma proteção complementar para saídas grandes de `Bash`; ele não exige ação do
+usuário. Em chamadas por code mode, não exponha deliberadamente o corpo bruto
+com `text(...)` antes de concluir o roteamento.
 
 Para contratos, schemas, documentação bilíngue e mudanças que atravessam muitos
 arquivos, gere primeiro um inventário determinístico derivado (arquivos, campos,

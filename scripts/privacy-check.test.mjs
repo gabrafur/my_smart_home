@@ -64,6 +64,15 @@ test("rejects private runtime paths and state artifacts", () => {
   ]);
 });
 
+test("allows only the declarative project hook inside private Codex runtime", () => {
+  const result = scanEntries([
+    { file: ".codex/hooks.json", buffer: Buffer.from('{"hooks":{}}') },
+    { file: ".codex/session.json", buffer: Buffer.from("{}") },
+  ]);
+  assert.deepEqual(result.map((item) => item.rule), ["private-runtime-path"]);
+  assert.equal(result[0].file, ".codex/session.json");
+});
+
 test("Git tracked mode excludes untracked files and staged mode sees staged content", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "privacy-git-fixture-"));
   const run = (args) => spawnSync("git", args, { cwd: root, encoding: "utf8" });

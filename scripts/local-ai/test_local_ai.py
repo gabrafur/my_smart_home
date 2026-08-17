@@ -8,6 +8,8 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -78,15 +80,24 @@ class LocalAiTest(unittest.TestCase):
             self.assertGreater(len(raw), 20_000)
             self.assertLess(len(bounded), 200)
 
-    def test_routing_availability_rejects_a_stale_preflight(self):
+    def test_routing_availability_reuses_the_conversation_preflight(self):
         with tempfile.TemporaryDirectory() as directory:
             telemetry_path = Path(directory) / "local-ai-telemetry.json"
             telemetry_path.with_name("local-ai-status.json").write_text(json.dumps({
                 "state": "LOCAL_AI_AVAILABLE", "checked_at": "2026-08-16T00:00:00Z",
             }), encoding="utf-8")
             recorder = TELEMETRY.TelemetryRecorder(telemetry_path)
-            self.assertEqual(LOCAL_AI.routing_availability(recorder, None), "unknown")
+            self.assertEqual(LOCAL_AI.routing_availability(recorder, None), "available")
             self.assertEqual(LOCAL_AI.routing_availability(recorder, "available"), "available")
+
+    def test_routing_availability_requires_a_recorded_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            telemetry_path = Path(directory) / "local-ai-telemetry.json"
+            telemetry_path.with_name("local-ai-status.json").write_text(json.dumps({
+                "state": "LOCAL_AI_AVAILABLE",
+            }), encoding="utf-8")
+            recorder = TELEMETRY.TelemetryRecorder(telemetry_path)
+            self.assertEqual(LOCAL_AI.routing_availability(recorder, None), "unknown")
 
     def test_long_log_preprocessing_preserves_signals_and_bounds_noise(self):
         lines = [f"INFO request={index}" for index in range(100)]
@@ -200,6 +211,61 @@ class LocalAiTest(unittest.TestCase):
             self.assertEqual(state["totals"]["context_output_tokens"], 120)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], -20)
 
+    def test_failed_inference_retries_once_records_failure_and_clears_active_job(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            telemetry_path = root / "canonical-telemetry.json"
+            source_path = root / "review.diff"
+            source_path.write_text("+ safe implementation change\n" * 600, encoding="utf-8")
+            args = SimpleNamespace(
+                task="review-diff",
+                input_file=str(source_path),
+                input_max_chars=12_000,
+                endpoint=None,
+                model=None,
+                max_output_chars=6_000,
+                context_tokens=4_096,
+                output_tokens=700,
+                memory_topic=None,
+                memory_files_found=None,
+            )
+            settings = {
+                "enabled": True,
+                "endpoint": "http://local-ai.invalid",
+                "model": "qwen2.5-coder:7b",
+                "telemetry_path": str(telemetry_path),
+            }
+            generate_calls = 0
+
+            def request_failure(_endpoint, path, _payload=None):
+                nonlocal generate_calls
+                if path == "/api/tags":
+                    return {"models": [{"name": "qwen2.5-coder:7b", "size": 5_000_000_000}]}
+                if path == "/api/generate":
+                    generate_calls += 1
+                    raise RuntimeError("controlled inference failure")
+                raise AssertionError(path)
+
+            with (
+                patch.object(LOCAL_AI, "user_settings", return_value=settings),
+                patch.object(LOCAL_AI, "request", side_effect=request_failure),
+                patch.object(LOCAL_AI, "revalidate_once", return_value=True) as revalidate,
+                patch.object(LOCAL_AI, "gpu_snapshot", return_value=None),
+            ):
+                with self.assertRaises(RuntimeError):
+                    LOCAL_AI.run_analysis(args)
+
+            state = json.loads(telemetry_path.read_text(encoding="utf-8"))
+            self.assertEqual(generate_calls, 2)
+            revalidate.assert_called_once()
+            self.assertEqual(state["active_jobs"], {})
+            self.assertEqual(state["totals"]["successful_calls"], 0)
+            self.assertEqual(state["totals"]["failed_calls"], 1)
+            self.assertEqual(state["routing"]["totals"]["used_tasks"], 0)
+            self.assertEqual(state["routing"]["totals"]["failed_tasks"], 1)
+            self.assertEqual(state["routing"]["totals"]["missed_opportunities"], 0)
+            self.assertEqual(state["latest_jobs"][-1]["status"], "failed")
+
     def test_complete_v1_history_migrates_without_benchmark_or_failed_savings(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "local-ai-telemetry.json"
@@ -231,7 +297,7 @@ class LocalAiTest(unittest.TestCase):
                 "status": "running", "started_at": "2026-08-16T12:01:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 4)
+            self.assertEqual(state["schema_version"], 6)
             self.assertEqual(state["totals"]["calls"], 3)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 80)
@@ -259,7 +325,7 @@ class LocalAiTest(unittest.TestCase):
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["routing"]["totals"]
-            self.assertEqual(state["schema_version"], 4)
+            self.assertEqual(state["schema_version"], 6)
             self.assertEqual(totals["tasks"], 2)
             self.assertEqual(totals["used_tasks"], 1)
             self.assertEqual(totals["missed_opportunities"], 1)
@@ -270,7 +336,76 @@ class LocalAiTest(unittest.TestCase):
             self.assertEqual(state["daily"]["2026-08-16"]["routing"]["used_tasks"], 1)
             self.assertNotIn("totals", state["daily"]["2026-08-16"]["routing"])
 
-    def test_failed_local_call_reason_can_be_recorded_without_changing_its_outcome(self):
+    def test_routing_telemetry_splits_unknown_and_confirmed_unavailability(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            recorder.routing_decision({
+                "id": "unknown", "timestamp": "2026-08-17T12:00:00Z",
+                "task_type": "review-diff", "decision": "LOCAL_AI_UNAVAILABLE",
+                "reason": "local_ai_availability_unknown", "eligible": True,
+            })
+            recorder.routing_decision({
+                "id": "confirmed", "timestamp": "2026-08-17T12:01:00Z",
+                "task_type": "review-diff", "decision": "LOCAL_AI_UNAVAILABLE",
+                "reason": "local_ai_unavailable", "eligible": True,
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            totals = state["routing"]["totals"]
+            self.assertEqual(totals["unavailable_tasks"], 2)
+            self.assertEqual(totals["availability_unknown_tasks"], 1)
+            self.assertEqual(totals["confirmed_unavailable_tasks"], 1)
+
+    def test_schema_four_backfills_availability_breakdown_when_history_is_complete(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            path.write_text(json.dumps({
+                "schema_version": 4,
+                "routing": {
+                    "totals": {"unavailable_tasks": 2},
+                    "latest_decisions": [
+                        {"id": "u", "timestamp": "2026-08-17T12:00:00Z", "decision": "LOCAL_AI_UNAVAILABLE", "reason": "local_ai_availability_unknown"},
+                        {"id": "c", "timestamp": "2026-08-17T12:01:00Z", "decision": "LOCAL_AI_UNAVAILABLE", "reason": "local_ai_unavailable"},
+                    ],
+                },
+                "daily": {"2026-08-17": {"routing": {"unavailable_tasks": 2}}},
+            }), encoding="utf-8")
+            TELEMETRY.TelemetryRecorder(path).started({
+                "id": "active", "task": "review-diff", "model": "model",
+                "status": "running", "started_at": "2026-08-17T12:02:00Z",
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(state["schema_version"], 6)
+            self.assertEqual(state["routing"]["totals"]["availability_unknown_tasks"], 1)
+            self.assertEqual(state["routing"]["totals"]["confirmed_unavailable_tasks"], 1)
+            self.assertEqual(state["daily"]["2026-08-17"]["routing"]["availability_unknown_tasks"], 1)
+
+    def test_schema_five_reclassifies_failed_calls_that_were_counted_as_used(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            path.write_text(json.dumps({
+                "schema_version": 5,
+                "routing": {
+                    "totals": {"tasks": 1, "eligible_tasks": 1, "eligible_and_available_tasks": 1, "used_tasks": 1},
+                    "latest_decisions": [{
+                        "id": "failed", "timestamp": "2026-08-17T12:00:00Z",
+                        "decision": "LOCAL_AI_USED", "reason": "local_ai_call_failed",
+                    }],
+                },
+                "daily": {"2026-08-17": {"routing": {
+                    "tasks": 1, "eligible_tasks": 1, "eligible_and_available_tasks": 1, "used_tasks": 1,
+                }}},
+            }), encoding="utf-8")
+            TELEMETRY.TelemetryRecorder(path).started({
+                "id": "active", "task": "review-diff", "model": "model",
+                "status": "running", "started_at": "2026-08-17T12:02:00Z",
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(state["routing"]["totals"]["used_tasks"], 0)
+            self.assertEqual(state["routing"]["totals"]["failed_tasks"], 1)
+            self.assertEqual(state["routing"]["latest_decisions"][0]["decision"], "LOCAL_AI_FAILED")
+
+    def test_failed_local_call_has_a_distinct_terminal_outcome(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "local-ai-telemetry.json"
             recorder = TELEMETRY.TelemetryRecorder(path)
@@ -278,13 +413,15 @@ class LocalAiTest(unittest.TestCase):
             LOCAL_AI.record_routing_outcome(
                 recorder,
                 assessment,
-                outcome="used",
+                outcome="failed",
                 reason="local_ai_call_failed",
             )
             state = json.loads(path.read_text(encoding="utf-8"))
             decision = state["routing"]["latest_decisions"][0]
-            self.assertEqual(decision["decision"], "LOCAL_AI_USED")
+            self.assertEqual(decision["decision"], "LOCAL_AI_FAILED")
             self.assertEqual(decision["reason"], "local_ai_call_failed")
+            self.assertEqual(state["routing"]["totals"]["used_tasks"], 0)
+            self.assertEqual(state["routing"]["totals"]["failed_tasks"], 1)
 
 
 if __name__ == "__main__":

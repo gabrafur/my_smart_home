@@ -41,8 +41,9 @@ def new_event_id() -> str:
     return str(uuid.uuid4())
 
 
-def private_telemetry_path(script_root: Path) -> Path | None:
-    configured = os.getenv("LOCAL_AI_TELEMETRY_PATH")
+def private_telemetry_path(script_root: Path, configured_path: str | None = None) -> Path | None:
+    """Resolve the single private state store used by the CLI and global MCP."""
+    configured = os.getenv("LOCAL_AI_TELEMETRY_PATH") or configured_path
     if configured:
         return Path(configured).expanduser()
     project_root = script_root.parent.parent
@@ -83,8 +84,11 @@ def _routing_totals() -> dict[str, float | int]:
         "eligible_tasks": 0,
         "eligible_and_available_tasks": 0,
         "used_tasks": 0,
+        "failed_tasks": 0,
         "skipped_tasks": 0,
         "unavailable_tasks": 0,
+        "availability_unknown_tasks": 0,
+        "confirmed_unavailable_tasks": 0,
         "not_beneficial_tasks": 0,
         "missed_opportunities": 0,
         "unnecessary_calls": 0,
@@ -113,7 +117,7 @@ def _memory_totals() -> dict[str, float | int]:
 
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 4,
+        "schema_version": 6,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
@@ -195,6 +199,7 @@ def _ensure_routing_state(state: dict[str, Any]) -> None:
     if not isinstance(routing, dict):
         routing = {}
         state["routing"] = routing
+    previous_schema = int(state.get("schema_version") or 1)
     totals = routing.setdefault("totals", _routing_totals())
     for key, value in _routing_totals().items():
         totals.setdefault(key, value)
@@ -218,7 +223,58 @@ def _ensure_routing_state(state: dict[str, Any]) -> None:
                         daily_routing[key] = value
             for key, value in _routing_totals().items():
                 daily_routing.setdefault(key, value)
-    state["schema_version"] = max(3, int(state.get("schema_version") or 1))
+    if previous_schema < 5:
+        decisions = [
+            item for item in routing.get("latest_decisions", [])
+            if isinstance(item, dict) and item.get("decision") == "LOCAL_AI_UNAVAILABLE"
+        ]
+
+        def backfill(target: dict[str, Any], candidates: list[dict[str, Any]]) -> None:
+            recorded = int(_number(target.get("unavailable_tasks")) or 0)
+            # Only claim a complete split when the bounded decision history
+            # contains every unavailable event represented by this aggregate.
+            if recorded != len(candidates):
+                return
+            target["availability_unknown_tasks"] = sum(
+                str(item.get("reason") or "") == "local_ai_availability_unknown"
+                for item in candidates
+            )
+            target["confirmed_unavailable_tasks"] = recorded - int(target["availability_unknown_tasks"])
+
+        backfill(totals, decisions)
+        if isinstance(daily, dict):
+            for day, entry in daily.items():
+                if not isinstance(entry, dict) or not isinstance(entry.get("routing"), dict):
+                    continue
+                backfill(
+                    entry["routing"],
+                    [item for item in decisions if str(item.get("timestamp") or "")[:10] == day],
+                )
+    if previous_schema < 6:
+        failed_decisions = [
+            item for item in routing.get("latest_decisions", [])
+            if isinstance(item, dict)
+            and item.get("decision") == "LOCAL_AI_USED"
+            and item.get("reason") == "local_ai_call_failed"
+        ]
+
+        def reclassify(target: dict[str, Any], candidates: list[dict[str, Any]]) -> None:
+            count = min(int(_number(target.get("used_tasks")) or 0), len(candidates))
+            target["used_tasks"] = int(_number(target.get("used_tasks")) or 0) - count
+            target["failed_tasks"] = int(_number(target.get("failed_tasks")) or 0) + count
+
+        reclassify(totals, failed_decisions)
+        if isinstance(daily, dict):
+            for day, entry in daily.items():
+                if not isinstance(entry, dict) or not isinstance(entry.get("routing"), dict):
+                    continue
+                reclassify(
+                    entry["routing"],
+                    [item for item in failed_decisions if str(item.get("timestamp") or "")[:10] == day],
+                )
+        for item in failed_decisions:
+            item["decision"] = "LOCAL_AI_FAILED"
+    state["schema_version"] = max(6, previous_schema)
 
 
 def _ensure_memory_state(state: dict[str, Any]) -> None:
@@ -335,6 +391,10 @@ def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> Non
         totals["eligible_tasks"] += 1
         totals["eligible_and_available_tasks"] += 1
         totals["used_tasks"] += 1
+    elif status == "LOCAL_AI_FAILED":
+        totals["eligible_tasks"] += 1
+        totals["eligible_and_available_tasks"] += 1
+        totals["failed_tasks"] += 1
     elif status == "ROUTING_MISSED_OPPORTUNITY":
         totals["eligible_tasks"] += 1
         totals["eligible_and_available_tasks"] += 1
@@ -345,6 +405,10 @@ def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> Non
     elif status == "LOCAL_AI_UNAVAILABLE":
         totals["eligible_tasks"] += 1
         totals["unavailable_tasks"] += 1
+        if str(decision.get("reason") or "") == "local_ai_availability_unknown":
+            totals["availability_unknown_tasks"] += 1
+        else:
+            totals["confirmed_unavailable_tasks"] += 1
     elif status == "LOCAL_AI_NOT_BENEFICIAL":
         totals["not_beneficial_tasks"] += 1
     elif status == "LOCAL_AI_UNNECESSARY_CALL":
@@ -352,7 +416,7 @@ def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> Non
     else:
         totals["skipped_tasks"] += 1
 
-    if status in {"LOCAL_AI_USED", "ROUTING_MISSED_OPPORTUNITY", "LOCAL_AI_ELIGIBLE"}:
+    if status in {"LOCAL_AI_USED", "LOCAL_AI_FAILED", "ROUTING_MISSED_OPPORTUNITY", "LOCAL_AI_ELIGIBLE"}:
         expected = _number(decision.get("expected_tokens_saved"))
         if expected is not None and expected > 0:
             totals["potential_tokens_avoidable"] = round(
