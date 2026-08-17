@@ -24,7 +24,12 @@ from typing import Any, Iterator
 
 MAX_EVENT_LOG_BYTES = 2_000_000
 MAX_RECENT_JOBS = 40
+MAX_RECENT_DECISIONS = 40
+MAX_RECENT_MEMORY_DECISIONS = 40
 MAX_SEEN_IDS = 10_000
+MAX_SEEN_DECISION_IDS = 10_000
+MAX_SEEN_MEMORY_DECISION_IDS = 10_000
+MAX_DAILY_RETENTION_DAYS = 400
 PRIVATE_METADATA_MODE = 0o640  # owner + bridge group; never world-readable
 
 
@@ -71,9 +76,44 @@ def _event_totals() -> dict[str, float | int]:
     }
 
 
+def _routing_totals() -> dict[str, float | int]:
+    return {
+        "tasks": 0,
+        "deterministic_tasks": 0,
+        "eligible_tasks": 0,
+        "eligible_and_available_tasks": 0,
+        "used_tasks": 0,
+        "skipped_tasks": 0,
+        "unavailable_tasks": 0,
+        "not_beneficial_tasks": 0,
+        "missed_opportunities": 0,
+        "unnecessary_calls": 0,
+        "potential_tokens_avoidable": 0,
+        "actual_tokens_avoided": 0,
+    }
+
+
+def _memory_totals() -> dict[str, float | int]:
+    """Metrics for retrieval context only; never mix them with tool-output savings."""
+    return {
+        "retrieval_calls": 0,
+        "retrieval_skips": 0,
+        "files_found": 0,
+        "memory_tokens_available": 0,
+        "memory_tokens_retrieved": 0,
+        "memory_tokens_sent_to_local_ai": 0,
+        "memory_tokens_sent_to_primary_model": 0,
+        "memory_tokens_avoided": 0,
+        "compression_events": 0,
+        "memory_overload_incidents": 0,
+        "local_ai_unavailable": 0,
+        "local_ai_not_beneficial": 0,
+    }
+
+
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 2,
+        "schema_version": 4,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
@@ -81,6 +121,17 @@ def _initial_state() -> dict[str, Any]:
         "seen_event_ids": [],
         "active_jobs": {},
         "latest_jobs": [],
+        "routing": {
+            "totals": _routing_totals(),
+            "seen_decision_ids": [],
+            "latest_decisions": [],
+        },
+        "memory": {
+            "totals": _memory_totals(),
+            "seen_decision_ids": [],
+            "latest_decisions": [],
+            "startup_context": None,
+        },
     }
 
 
@@ -138,6 +189,66 @@ def _migrate_complete_v1_history(state: dict[str, Any]) -> None:
     state["schema_version"] = 2
 
 
+def _ensure_routing_state(state: dict[str, Any]) -> None:
+    """Upgrade metadata in place without rebuilding unknown historical routing."""
+    routing = state.setdefault("routing", {})
+    if not isinstance(routing, dict):
+        routing = {}
+        state["routing"] = routing
+    totals = routing.setdefault("totals", _routing_totals())
+    for key, value in _routing_totals().items():
+        totals.setdefault(key, value)
+    routing.setdefault("seen_decision_ids", [])
+    routing.setdefault("latest_decisions", [])
+    daily = state.get("daily")
+    if isinstance(daily, dict):
+        for entry in daily.values():
+            if not isinstance(entry, dict):
+                continue
+            daily_routing = entry.get("routing")
+            if not isinstance(daily_routing, dict):
+                continue
+            # Schema 3 initially wrote the daily totals under an unnecessary
+            # nested key. Flatten it so bridge aggregation is consistent with
+            # the total routing shape and preserve every already-recorded item.
+            nested = daily_routing.pop("totals", None)
+            if isinstance(nested, dict):
+                for key, value in nested.items():
+                    if _number(value) is not None:
+                        daily_routing[key] = value
+            for key, value in _routing_totals().items():
+                daily_routing.setdefault(key, value)
+    state["schema_version"] = max(3, int(state.get("schema_version") or 1))
+
+
+def _ensure_memory_state(state: dict[str, Any]) -> None:
+    """Add retrieval telemetry without reinterpreting historical Local AI jobs."""
+    memory = state.setdefault("memory", {})
+    if not isinstance(memory, dict):
+        memory = {}
+        state["memory"] = memory
+    totals = memory.setdefault("totals", _memory_totals())
+    for key, value in _memory_totals().items():
+        totals.setdefault(key, value)
+    memory.setdefault("seen_decision_ids", [])
+    memory.setdefault("latest_decisions", [])
+    memory.setdefault("startup_context", None)
+    daily = state.get("daily")
+    if isinstance(daily, dict):
+        for entry in daily.values():
+            if not isinstance(entry, dict):
+                continue
+            daily_memory = entry.get("memory")
+            if not isinstance(daily_memory, dict):
+                continue
+            nested = daily_memory.pop("totals", None)
+            if isinstance(nested, dict):
+                daily_memory.update({key: value for key, value in nested.items() if _number(value) is not None})
+            for key, value in _memory_totals().items():
+                daily_memory.setdefault(key, value)
+    state["schema_version"] = max(4, int(state.get("schema_version") or 1))
+
+
 @contextlib.contextmanager
 def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -147,6 +258,8 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         state = _safe_json(path, _initial_state())
         _migrate_complete_v1_history(state)
+        _ensure_routing_state(state)
+        _ensure_memory_state(state)
         try:
             yield state
         finally:
@@ -209,6 +322,91 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
             )
 
 
+def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> None:
+    nested = target.get("totals")
+    totals = nested if isinstance(nested, dict) else target
+    for key, value in _routing_totals().items():
+        totals.setdefault(key, value)
+    totals["tasks"] = int(totals.get("tasks", 0)) + 1
+    status = str(decision.get("decision") or "LOCAL_AI_SKIPPED")
+    if status == "DETERMINISTIC":
+        totals["deterministic_tasks"] += 1
+    elif status == "LOCAL_AI_USED":
+        totals["eligible_tasks"] += 1
+        totals["eligible_and_available_tasks"] += 1
+        totals["used_tasks"] += 1
+    elif status == "ROUTING_MISSED_OPPORTUNITY":
+        totals["eligible_tasks"] += 1
+        totals["eligible_and_available_tasks"] += 1
+        totals["missed_opportunities"] += 1
+    elif status == "LOCAL_AI_ELIGIBLE":
+        totals["eligible_tasks"] += 1
+        totals["eligible_and_available_tasks"] += 1
+    elif status == "LOCAL_AI_UNAVAILABLE":
+        totals["eligible_tasks"] += 1
+        totals["unavailable_tasks"] += 1
+    elif status == "LOCAL_AI_NOT_BENEFICIAL":
+        totals["not_beneficial_tasks"] += 1
+    elif status == "LOCAL_AI_UNNECESSARY_CALL":
+        totals["unnecessary_calls"] += 1
+    else:
+        totals["skipped_tasks"] += 1
+
+    if status in {"LOCAL_AI_USED", "ROUTING_MISSED_OPPORTUNITY", "LOCAL_AI_ELIGIBLE"}:
+        expected = _number(decision.get("expected_tokens_saved"))
+        if expected is not None and expected > 0:
+            totals["potential_tokens_avoidable"] = round(
+                float(totals.get("potential_tokens_avoidable", 0)) + float(expected), 3,
+            )
+    if status in {"LOCAL_AI_USED", "LOCAL_AI_UNNECESSARY_CALL"}:
+        actual = _number(decision.get("actual_tokens_avoided"))
+        if actual is not None:
+            totals["actual_tokens_avoided"] = round(
+                float(totals.get("actual_tokens_avoided", 0)) + float(actual), 3,
+            )
+
+
+def _add_memory_totals(target: dict[str, Any], decision: dict[str, Any]) -> None:
+    nested = target.get("totals")
+    totals = nested if isinstance(nested, dict) else target
+    for key, value in _memory_totals().items():
+        totals.setdefault(key, value)
+    status = str(decision.get("decision") or "MEMORY_RETRIEVAL_SKIPPED")
+    available = _number(decision.get("memory_tokens_available"))
+    if available is not None:
+        # The corpus is a snapshot, not a per-retrieval saving.  Retain the
+        # largest observed public corpus instead of summing it repeatedly.
+        totals["memory_tokens_available"] = max(float(totals.get("memory_tokens_available", 0)), available)
+    if status == "MEMORY_RETRIEVAL_SKIPPED":
+        totals["retrieval_skips"] += 1
+        return
+
+    totals["retrieval_calls"] += 1
+    for key in ("files_found", "memory_tokens_retrieved", "memory_tokens_sent_to_local_ai", "memory_tokens_sent_to_primary_model"):
+        value = _number(decision.get(key))
+        if value is not None and value > 0:
+            totals[key] = round(float(totals.get(key, 0)) + value, 3)
+    if status == "MEMORY_LOCAL_AI_USED":
+        totals["compression_events"] += 1
+        avoided = _number(decision.get("memory_tokens_avoided"))
+        if avoided is not None:
+            totals["memory_tokens_avoided"] = round(float(totals.get("memory_tokens_avoided", 0)) + avoided, 3)
+    elif status == "MEMORY_LOCAL_AI_UNAVAILABLE":
+        totals["local_ai_unavailable"] += 1
+    elif status == "MEMORY_LOCAL_AI_NOT_BENEFICIAL":
+        totals["local_ai_not_beneficial"] += 1
+    if decision.get("memory_overload") is True:
+        totals["memory_overload_incidents"] += 1
+
+
+def _prune_daily(state: dict[str, Any]) -> None:
+    daily = state.get("daily")
+    if not isinstance(daily, dict) or len(daily) <= MAX_DAILY_RETENTION_DAYS:
+        return
+    for day in sorted(daily)[:-MAX_DAILY_RETENTION_DAYS]:
+        daily.pop(day, None)
+
+
 class TelemetryRecorder:
     """Persist idempotent aggregate and recent-job data without blocking inference."""
 
@@ -260,6 +458,102 @@ class TelemetryRecorder:
                 state["updated_at"] = utc_now()
             _append_event(self.state_path, event)
         except (OSError, KeyError, TypeError):
+            pass
+
+    def routing_decision(self, decision: dict[str, Any]) -> None:
+        """Persist a final routing outcome, never the source material it evaluated."""
+        if not self.enabled or self.state_path is None:
+            return
+        allowed = (
+            "id", "timestamp", "task_type", "input_chars", "estimated_input_tokens",
+            "compressibility", "compatible_helper", "eligible", "available",
+            "expected_tokens_saved", "actual_tokens_avoided", "decision", "reason",
+            "minimum_input_tokens", "minimum_expected_saved_tokens", "model",
+        )
+        public = {key: decision.get(key) for key in allowed if key in decision}
+        public["event_type"] = "routing_decision"
+        try:
+            with _locked_state(self.state_path) as state:
+                routing = state.setdefault("routing", {})
+                seen = [str(value) for value in routing.setdefault("seen_decision_ids", [])]
+                decision_id = str(public["id"])
+                if decision_id not in seen:
+                    _add_routing_totals(routing, public)
+                    day = str(public.get("timestamp") or utc_now())[:10]
+                    daily = state.setdefault("daily", {})
+                    daily_entry = daily.setdefault(day, {"totals": _event_totals(), "routing": _routing_totals()})
+                    _add_routing_totals(daily_entry.setdefault("routing", _routing_totals()), public)
+                    seen.append(decision_id)
+                    routing["seen_decision_ids"] = seen[-MAX_SEEN_DECISION_IDS:]
+                    latest = routing.setdefault("latest_decisions", [])
+                    latest.append(public)
+                    routing["latest_decisions"] = latest[-MAX_RECENT_DECISIONS:]
+                    _prune_daily(state)
+                state["updated_at"] = utc_now()
+            _append_event(self.state_path, public)
+        except (OSError, KeyError, TypeError):
+            pass
+
+    def memory_decision(self, decision: dict[str, Any]) -> None:
+        """Persist retrieval metadata only; source paths, text and summaries stay out."""
+        if not self.enabled or self.state_path is None:
+            return
+        allowed = (
+            "id", "timestamp", "topic", "files_found", "memory_tokens_available",
+            "memory_tokens_retrieved", "memory_tokens_sent_to_local_ai",
+            "memory_tokens_sent_to_primary_model", "memory_tokens_avoided",
+            "decision", "reason", "available", "expected_tokens_saved",
+            "minimum_input_tokens", "minimum_expected_saved_tokens", "model",
+            "memory_overload", "canonical_source_conflict", "token_count_method", "estimated",
+        )
+        public = {key: decision.get(key) for key in allowed if key in decision}
+        public["event_type"] = "memory_routing_decision"
+        try:
+            with _locked_state(self.state_path) as state:
+                memory = state.setdefault("memory", {})
+                seen = [str(value) for value in memory.setdefault("seen_decision_ids", [])]
+                decision_id = str(public["id"])
+                if decision_id not in seen:
+                    _add_memory_totals(memory, public)
+                    day = str(public.get("timestamp") or utc_now())[:10]
+                    daily = state.setdefault("daily", {})
+                    daily_entry = daily.setdefault(day, {"totals": _event_totals(), "memory": _memory_totals()})
+                    _add_memory_totals(daily_entry.setdefault("memory", _memory_totals()), public)
+                    seen.append(decision_id)
+                    memory["seen_decision_ids"] = seen[-MAX_SEEN_MEMORY_DECISION_IDS:]
+                    latest = memory.setdefault("latest_decisions", [])
+                    latest.append(public)
+                    memory["latest_decisions"] = latest[-MAX_RECENT_MEMORY_DECISIONS:]
+                    _prune_daily(state)
+                state["updated_at"] = utc_now()
+            _append_event(self.state_path, public)
+        except (OSError, KeyError, TypeError):
+            pass
+
+    def startup_context(self, snapshot: dict[str, Any], memory_tokens_available: int = 0) -> None:
+        """Store a bounded, observable startup-context snapshot without raw instructions."""
+        if not self.enabled or self.state_path is None:
+            return
+        allowed = (
+            "project_doc_max_bytes", "loaded_instruction_bytes", "global_agents_tokens",
+            "repo_agents_tokens", "nested_agents_tokens", "repo_memory_tokens",
+            "auto_loaded_docs_tokens", "global_instructions_tokens",
+            "other_startup_context_tokens", "local_codex_memories_enabled",
+            "local_codex_memory_tokens", "observable_startup_context_tokens",
+            "total_startup_context_tokens", "token_count_method", "estimated",
+        )
+        public = {key: snapshot.get(key) for key in allowed if key in snapshot}
+        public["measured_at"] = utc_now()
+        try:
+            with _locked_state(self.state_path) as state:
+                memory = state.setdefault("memory", {})
+                memory["startup_context"] = public
+                totals = memory.setdefault("totals", _memory_totals())
+                totals["memory_tokens_available"] = max(
+                    float(totals.get("memory_tokens_available", 0)), max(0, int(memory_tokens_available)),
+                )
+                state["updated_at"] = utc_now()
+        except (OSError, TypeError, ValueError):
             pass
 
     def sampled(self, event_id: str, sample: dict[str, Any]) -> None:

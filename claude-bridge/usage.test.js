@@ -212,3 +212,108 @@ test('preserves a signed negative context delta instead of reporting false savin
   assert.equal(usage.totals.openai_context_tokens_avoided, -20);
   assert.equal(usage.totals.context_reduction_percent, -20);
 });
+
+test('reports routing coverage, weighted savings, and compact last decisions', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-routing-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    routing: {
+      totals: {
+        tasks: 4, eligible_tasks: 3, eligible_and_available_tasks: 3,
+        used_tasks: 2, missed_opportunities: 1, not_beneficial_tasks: 1,
+        potential_tokens_avoidable: 10_000, actual_tokens_avoided: 8_400,
+      },
+      latest_decisions: [
+        {
+          id: 'used', timestamp: '2026-08-16T12:00:00Z', task_type: 'analyze-tests',
+          decision: 'LOCAL_AI_USED', reason: 'large_test_output', endpoint: 'http://private.example:11435',
+        },
+      ],
+    },
+    daily: {
+      '2026-08-16': { routing: {
+        tasks: 4, eligible_tasks: 3, eligible_and_available_tasks: 3,
+        used_tasks: 2, missed_opportunities: 1, potential_tokens_avoidable: 10_000,
+        actual_tokens_avoided: 8_400,
+      } },
+    },
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-16T12:00:00.000Z',
+  }));
+
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(usage.routing.totals.rtx_delegation_rate_percent, 66.7);
+  assert.equal(usage.routing.totals.weighted_context_savings_coverage_percent, 84);
+  assert.equal(usage.routing.periods.today.missed_opportunities, 1);
+  assert.equal(usage.routing.latest_decisions[0].endpoint, undefined);
+});
+
+test('labels an unmeasured used decision as failed when its matching Local AI job failed', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-routing-failure-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    routing: { latest_decisions: [{
+      id: 'decision', timestamp: '2026-08-16T12:00:01.000Z', task_type: 'review-diff',
+      decision: 'LOCAL_AI_USED', reason: 'local_ai_completed',
+    }] },
+    latest_jobs: [{
+      id: 'failed-job', task: 'review-diff', status: 'failed',
+      finished_at: '2026-08-16T12:00:00.000Z', error_type: 'RuntimeError',
+    }],
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-16T12:00:00.000Z',
+  }));
+
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(usage.routing.latest_decisions[0].reason, 'local_ai_call_failed');
+});
+
+test('reports bounded memory retrieval separately from tool-output context savings', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-memory-routing-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    memory: {
+      totals: {
+        retrieval_calls: 2, retrieval_skips: 1, files_found: 4, memory_tokens_available: 3655,
+        memory_tokens_retrieved: 2400, memory_tokens_sent_to_local_ai: 2200,
+        memory_tokens_sent_to_primary_model: 420, memory_tokens_avoided: 1980,
+        compression_events: 1, memory_overload_incidents: 0,
+      },
+      startup_context: {
+        global_agents_tokens: 4034, repo_agents_tokens: 4158,
+        observable_startup_context_tokens: 8192, total_startup_context_tokens: null,
+        estimated: true,
+      },
+      latest_decisions: [{
+        id: 'memory', timestamp: '2026-08-17T12:00:00Z', topic: 'codex-local-ai',
+        files_found: 2, memory_tokens_retrieved: 2000, memory_tokens_sent_to_primary_model: 200,
+        decision: 'MEMORY_LOCAL_AI_USED', reason: 'memory_compressed_locally', source: 'must not expose',
+      }],
+    },
+    daily: {
+      '2026-08-17': { memory: {
+        retrieval_calls: 2, retrieval_skips: 1, files_found: 4, memory_tokens_available: 3655,
+        memory_tokens_retrieved: 2400, memory_tokens_sent_to_local_ai: 2200,
+        memory_tokens_sent_to_primary_model: 420, memory_tokens_avoided: 1980,
+        compression_events: 1, memory_overload_incidents: 0,
+      } },
+    },
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-17T12:00:00.000Z',
+  }));
+
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-17T12:00:00Z'));
+  assert.equal(usage.memory.totals.memory_compression_percent, 82.5);
+  assert.equal(usage.memory.periods.today.memory_tokens_avoided, 1980);
+  assert.equal(usage.memory.startup_context.observable_startup_context_tokens, 8192);
+  assert.equal(usage.memory.latest_decisions[0].source, undefined);
+});

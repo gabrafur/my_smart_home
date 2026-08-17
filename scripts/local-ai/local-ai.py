@@ -18,13 +18,17 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from memory_context import instruction_chain, public_memory_inventory
+from routing import TASK_PROFILES, assess_routing, terminal_decision
 from telemetry import RemoteGpuSampler, TelemetryRecorder, new_event_id, private_telemetry_path, utc_now
 
 
 ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = ROOT.parent.parent
 PROMPTS = ROOT / "prompts"
 # This workspace runs separately from the GPU/Ollama host. Requiring an explicit
 # machine-local endpoint avoids accidentally sending work to an unrelated local
@@ -37,6 +41,10 @@ TASK_REQUIRED_FIELDS = {
     "classify-error": {"summary", "category", "layer", "likely_causes", "recommended_actions", "confidence"},
     "inspect-files": {"summary", "files", "suspected_files", "recommended_actions", "confidence"},
     "review-diff": {"summary", "findings", "suspected_files", "risks", "recommended_actions", "confidence"},
+    "summarize-memory": {
+        "summary", "current_state", "decisions", "constraints", "known_bugs", "root_causes",
+        "configuration_values", "unresolved_issues", "warnings", "source_facts", "confidence",
+    },
     "summarize-log": {"summary", "errors", "suspected_files", "recommended_actions", "confidence"},
 }
 TASK_LIST_FIELDS = {
@@ -44,12 +52,43 @@ TASK_LIST_FIELDS = {
     "classify-error": {"likely_causes", "recommended_actions"},
     "inspect-files": {"files", "suspected_files", "recommended_actions"},
     "review-diff": {"findings", "suspected_files", "risks", "recommended_actions"},
+    "summarize-memory": {
+        "current_state", "decisions", "constraints", "known_bugs", "root_causes",
+        "configuration_values", "unresolved_issues", "warnings", "source_facts",
+    },
     "summarize-log": {"errors", "suspected_files", "recommended_actions"},
 }
 
 
 def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
     """Use a bounded schema where free-form JSON proved too easy to overrun."""
+    if task == "summarize-memory":
+        max_items = 2 if compact else 8
+        text_lists = [
+            "current_state", "decisions", "constraints", "known_bugs", "root_causes",
+            "configuration_values", "unresolved_issues", "warnings",
+        ]
+        properties: dict[str, Any] = {
+            "summary": {"type": "string"},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "source_facts": {
+                "type": "array", "maxItems": max_items,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "source": {"type": "string"},
+                        "facts": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+                    },
+                    "required": ["source", "facts"], "additionalProperties": False,
+                },
+            },
+        }
+        properties.update({name: {"type": "array", "maxItems": max_items, "items": {"type": "string"}} for name in text_lists})
+        return {
+            "type": "object", "properties": properties,
+            "required": ["summary", *text_lists, "source_facts", "confidence"],
+            "additionalProperties": False,
+        }
     if task != "summarize-log":
         return "json"
     max_items = 2 if compact else 8
@@ -122,6 +161,13 @@ def positive_int(value: str) -> int:
     parsed = int(value)
     if parsed < 1:
         raise argparse.ArgumentTypeError("must be positive")
+    return parsed
+
+
+def nonnegative_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be zero or positive")
     return parsed
 
 
@@ -212,7 +258,7 @@ def preprocess_for_task(task: str, text: str) -> tuple[str, int]:
     return "\n".join(selected), len(lines) - len(keep)
 
 
-def read_input(path: str | None, limit: int) -> tuple[str, bool, bool]:
+def read_input(path: str | None, limit: int) -> tuple[str, str, bool, bool]:
     if path:
         try:
             with open(path, "r", encoding="utf-8", errors="replace") as source:
@@ -227,7 +273,200 @@ def read_input(path: str | None, limit: int) -> tuple[str, bool, bool]:
     if raw_limited:
         raw = raw[:MAX_RAW_CHARS]
     bounded, truncated = clean_and_bound(raw, limit)
-    return bounded, truncated or raw_limited, raw_limited
+    # Keep the raw body only in process memory long enough to account for what
+    # would otherwise have entered the main model.  The bounded value is what
+    # reaches Local AI after deterministic preprocessing; neither is persisted.
+    return raw, bounded, truncated or raw_limited, raw_limited
+
+
+def routing_input_chars(path: str | None, supplied_chars: int | None) -> int:
+    """Count a candidate source without emitting or persisting it."""
+    if supplied_chars is not None:
+        return supplied_chars
+    if path:
+        try:
+            return min(len(Path(path).read_text(encoding="utf-8", errors="replace")), MAX_RAW_CHARS)
+        except OSError as error:
+            raise RuntimeError(f"cannot read {path}: {error}") from error
+    if not sys.stdin.isatty():
+        return min(len(sys.stdin.read(MAX_RAW_CHARS + 1)), MAX_RAW_CHARS)
+    raise RuntimeError("provide --input-chars, a file argument, or pipe input on stdin")
+
+
+def routing_availability(recorder: TelemetryRecorder, override: str | None) -> str:
+    if override:
+        return override
+    if recorder.state_path is None:
+        return "unknown"
+    try:
+        status = json.loads(recorder.state_path.with_name("local-ai-status.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "unknown"
+    checked_at = status.get("checked_at")
+    try:
+        checked = datetime.fromisoformat(str(checked_at).replace("Z", "+00:00"))
+        if (datetime.now(UTC) - checked).total_seconds() > 120:
+            return "unknown"
+    except (TypeError, ValueError):
+        return "unknown"
+    state = str(status.get("state") or "")
+    if state in {"LOCAL_AI_AVAILABLE", "LOCAL_AI_DEGRADED"}:
+        return "available"
+    return "unavailable" if state else "unknown"
+
+
+def record_routing_outcome(
+    recorder: TelemetryRecorder,
+    assessment: dict[str, Any],
+    *,
+    outcome: str = "auto",
+    actual_tokens_avoided: int | None = None,
+    model: str | None = None,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    decision = terminal_decision(assessment, outcome)
+    decision.update({"id": new_event_id(), "timestamp": utc_now()})
+    if actual_tokens_avoided is not None:
+        decision["actual_tokens_avoided"] = actual_tokens_avoided
+    if model:
+        decision["model"] = model
+    if reason:
+        decision["reason"] = reason
+    recorder.routing_decision(decision)
+    return decision
+
+
+def memory_files_found(text: str) -> int:
+    """Count materialized public-memory separators without retaining source paths."""
+    return len(re.findall(r"^--- BEGIN MEMORY .+ ---$", text, flags=re.MULTILINE))
+
+
+def record_memory_outcome(
+    recorder: TelemetryRecorder,
+    *,
+    topic: str | None,
+    files_found: int,
+    decision: str,
+    reason: str,
+    retrieved_tokens: int = 0,
+    sent_to_local_ai_tokens: int = 0,
+    sent_to_primary_tokens: int = 0,
+    available: bool | None = None,
+    model: str | None = None,
+    expected_tokens_saved: int | None = None,
+    minimum_input_tokens: int | None = None,
+    minimum_expected_saved_tokens: int | None = None,
+    token_count_method: str | None = None,
+    estimated: bool | None = None,
+    memory_overload: bool = False,
+    canonical_source_conflict: bool = False,
+) -> dict[str, Any]:
+    """Record only countable memory-routing metadata, never its text or paths."""
+    inventory = public_memory_inventory(PROJECT_ROOT)
+    result: dict[str, Any] = {
+        "id": new_event_id(),
+        "timestamp": utc_now(),
+        "topic": topic or "unspecified",
+        "files_found": max(0, files_found),
+        "memory_tokens_available": int(inventory["repository_memory_tokens_available"]),
+        "memory_tokens_retrieved": max(0, retrieved_tokens),
+        "memory_tokens_sent_to_local_ai": max(0, sent_to_local_ai_tokens),
+        "memory_tokens_sent_to_primary_model": max(0, sent_to_primary_tokens),
+        "decision": decision,
+        "reason": reason,
+        "memory_overload": memory_overload,
+        "canonical_source_conflict": canonical_source_conflict,
+        "token_count_method": token_count_method or str(inventory["token_count_method"]),
+        "estimated": bool(inventory["estimated"] if estimated is None else estimated),
+    }
+    if decision == "MEMORY_LOCAL_AI_USED":
+        result["memory_tokens_avoided"] = retrieved_tokens - sent_to_primary_tokens
+    if available is not None:
+        result["available"] = available
+    if model:
+        result["model"] = model
+    for key, value in (
+        ("expected_tokens_saved", expected_tokens_saved),
+        ("minimum_input_tokens", minimum_input_tokens),
+        ("minimum_expected_saved_tokens", minimum_expected_saved_tokens),
+    ):
+        if value is not None:
+            result[key] = value
+    recorder.memory_decision(result)
+    return result
+
+
+def run_memory_audit(args: argparse.Namespace) -> int:
+    """Persist a reproducible observable-startup snapshot; no model or history access."""
+    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    startup = instruction_chain(PROJECT_ROOT, args.cwd)
+    inventory = public_memory_inventory(PROJECT_ROOT)
+    recorder.startup_context(startup, int(inventory["repository_memory_tokens_available"]))
+    print(json.dumps({"startup_context": startup, "memory_corpus": inventory}, ensure_ascii=False, indent=2))
+    return 0
+
+
+def run_memory_route(args: argparse.Namespace) -> int:
+    """Record a deterministic skip/direct/fallback memory decision without inference."""
+    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    status = routing_availability(recorder, args.availability)
+    retrieved = max(0, args.retrieved_tokens)
+    direct_budget = int(TASK_PROFILES["summarize-memory"].min_input_tokens)
+    if args.outcome == "skipped":
+        result = record_memory_outcome(
+            recorder, topic=args.topic, files_found=args.files_found,
+            decision="MEMORY_RETRIEVAL_SKIPPED", reason=args.reason or "no_repository_history_required",
+            available=status == "available",
+        )
+    elif args.outcome == "unavailable":
+        result = record_memory_outcome(
+            recorder, topic=args.topic, files_found=args.files_found,
+            decision="MEMORY_LOCAL_AI_UNAVAILABLE", reason=args.reason or "local_ai_unavailable",
+            retrieved_tokens=retrieved, available=False,
+        )
+    elif args.outcome == "direct":
+        result = record_memory_outcome(
+            recorder, topic=args.topic, files_found=args.files_found,
+            decision="MEMORY_RETRIEVED_DIRECT", reason=args.reason or (
+                "canonical_source_preferred" if args.canonical_conflict else "retrieved_memory_within_direct_budget"
+            ),
+            retrieved_tokens=retrieved, sent_to_primary_tokens=retrieved, available=status == "available",
+            memory_overload=retrieved > direct_budget,
+            canonical_source_conflict=args.canonical_conflict,
+        )
+    else:
+        result = record_memory_outcome(
+            recorder, topic=args.topic, files_found=args.files_found,
+            decision="MEMORY_LOCAL_AI_NOT_BENEFICIAL", reason=args.reason or "memory_retrieval_not_compressible",
+            retrieved_tokens=retrieved, available=status == "available",
+        )
+    print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
+    return 0
+
+
+def run_route(args: argparse.Namespace) -> int:
+    """Record a skipped decision or preview a candidate with no inference call."""
+    recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    chars = routing_input_chars(args.input_file, args.input_chars)
+    availability = routing_availability(recorder, args.availability)
+    assessment = assess_routing(
+        args.task,
+        chars,
+        availability=availability,
+        deterministic_sufficient=args.deterministic_sufficient,
+        compressibility=args.compressibility,
+    )
+    # An eligibility result is intentionally only a preview: the following
+    # helper call records LOCAL_AI_USED.  Terminal skips are recorded here.
+    should_record = args.outcome != "auto" or assessment["decision"] != "LOCAL_AI_ELIGIBLE"
+    result = terminal_decision(assessment, args.outcome)
+    if should_record:
+        result = record_routing_outcome(recorder, assessment, outcome=args.outcome)
+        result["recorded"] = True
+    else:
+        result["recorded"] = False
+    print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
+    return 0
 
 
 def prompt_for(task: str) -> str:
@@ -341,17 +580,37 @@ def run_analysis(args: argparse.Namespace) -> int:
     if not local_ai_enabled(settings):
         raise RuntimeError("Local AI is disabled by LOCAL_AI_ENABLED=0 or machine configuration")
     instruction = prompt_for(args.task)
-    text, truncated, raw_limited = read_input(args.input_file, args.input_max_chars)
+    raw_text, text, truncated, raw_limited = read_input(args.input_file, args.input_max_chars)
     model_text, deterministic_omitted_lines = preprocess_for_task(args.task, text)
+    memory_task = args.task == "summarize-memory"
+    memory_topic = getattr(args, "memory_topic", None)
+    source_files = (
+        getattr(args, "memory_files_found", None)
+        if memory_task and getattr(args, "memory_files_found", None) is not None
+        else memory_files_found(raw_text) if memory_task else 0
+    )
+    context_input_tokens, token_method = count_openai_context_tokens(raw_text, settings)
+    model_input_tokens, _ = count_openai_context_tokens(model_text, settings)
     endpoint = resolved_endpoint(args.endpoint, settings)
     retry_budget = RevalidationBudget()
     request_call = lambda target, path, payload=None: request_with_one_revalidation(
         target, path, payload, settings, retry_budget,
     )
     recorder = TelemetryRecorder(private_telemetry_path(ROOT))
+    routing_recorded = False
     try:
         models = tags(endpoint, request_call)
     except Exception as error:
+        unavailable = assess_routing(args.task, len(raw_text), availability="unavailable")
+        record_routing_outcome(recorder, unavailable)
+        if memory_task:
+            record_memory_outcome(
+                recorder, topic=memory_topic, files_found=source_files,
+                decision="MEMORY_LOCAL_AI_UNAVAILABLE", reason="local_ai_unavailable",
+                retrieved_tokens=context_input_tokens, available=False,
+                token_count_method=token_method,
+            )
+        routing_recorded = True
         recorder.finished({
             "id": new_event_id(),
             "started_at": utc_now(),
@@ -365,9 +624,20 @@ def run_analysis(args: argparse.Namespace) -> int:
         raise
     model = configured_model(args.model, settings) or select_model(models)
     if not model:
+        unavailable = assess_routing(args.task, len(raw_text), availability="unavailable")
+        unavailable["reason"] = "local_model_unavailable"
+        record_routing_outcome(recorder, unavailable)
+        if memory_task:
+            record_memory_outcome(
+                recorder, topic=memory_topic, files_found=source_files,
+                decision="MEMORY_LOCAL_AI_UNAVAILABLE", reason="local_model_unavailable",
+                retrieved_tokens=context_input_tokens, available=False,
+                token_count_method=token_method,
+            )
         raise RuntimeError(
             "no safe default model found. Set LOCAL_AI_MODEL after running `local-ai status` and `local-ai benchmark --model <name>`."
         )
+    routing_assessment = assess_routing(args.task, len(raw_text), availability="available")
     prompt = (
         "You are a non-authoritative local first-pass assistant. "
         "Return concise valid JSON only: no Markdown fences, no prose outside JSON. "
@@ -377,7 +647,6 @@ def run_analysis(args: argparse.Namespace) -> int:
         f"routine_lines_omitted={deterministic_omitted_lines}):\n{model_text}"
     )
     before_gpu = gpu_snapshot()
-    context_input_tokens, token_method = count_openai_context_tokens(text, settings)
     event: dict[str, Any] = {
         "id": new_event_id(),
         "started_at": utc_now(),
@@ -387,8 +656,8 @@ def run_analysis(args: argparse.Namespace) -> int:
         "status": "running",
         "chat_id": current_chat_id(),
         "chat_name": current_chat_name(),
-        "context_input_chars": len(text),
-        "context_input_bytes": len(text.encode("utf-8")),
+        "context_input_chars": len(raw_text),
+        "context_input_bytes": len(raw_text.encode("utf-8")),
         "context_input_tokens": context_input_tokens,
         "token_count_method": token_method,
         "input_truncated": truncated,
@@ -467,6 +736,38 @@ def run_analysis(args: argparse.Namespace) -> int:
                 1,
             ),
         })
+        actual_avoided = int(event["openai_context_tokens_avoided"])
+        minimum = int(routing_assessment.get("minimum_expected_saved_tokens") or 0)
+        outcome = "used" if (
+            routing_assessment.get("decision") == "LOCAL_AI_ELIGIBLE"
+            and actual_avoided >= minimum
+        ) else "unnecessary"
+        record_routing_outcome(
+            recorder,
+            routing_assessment,
+            outcome=outcome,
+            actual_tokens_avoided=actual_avoided,
+            model=model,
+        )
+        if memory_task:
+            profile = TASK_PROFILES["summarize-memory"]
+            record_memory_outcome(
+                recorder,
+                topic=memory_topic,
+                files_found=source_files,
+                decision="MEMORY_LOCAL_AI_USED" if outcome == "used" else "MEMORY_LOCAL_AI_NOT_BENEFICIAL",
+                reason="memory_compressed_locally" if outcome == "used" else "memory_compression_below_threshold",
+                retrieved_tokens=context_input_tokens,
+                sent_to_local_ai_tokens=model_input_tokens,
+                sent_to_primary_tokens=context_output_tokens,
+                available=True,
+                model=model,
+                expected_tokens_saved=int(routing_assessment.get("expected_tokens_saved") or 0),
+                minimum_input_tokens=profile.min_input_tokens,
+                minimum_expected_saved_tokens=profile.min_expected_saved_tokens,
+                token_count_method=token_method,
+            )
+        routing_recorded = True
         print(
             f"local-ai: model={model} elapsed={elapsed:.2f}s tokens_per_second={token_rate} "
             f"input_truncated={truncated} telemetry_id={event['id']} gpu_before={before_gpu} gpu_after={gpu_snapshot()}",
@@ -481,6 +782,22 @@ def run_analysis(args: argparse.Namespace) -> int:
             "duration_seconds": round(time.monotonic() - started, 3),
             "error_type": type(error).__name__,
         })
+        if not routing_recorded:
+            record_routing_outcome(
+                recorder,
+                routing_assessment,
+                outcome="used",
+                model=model,
+                reason="local_ai_call_failed",
+            )
+            if memory_task:
+                record_memory_outcome(
+                    recorder, topic=memory_topic, files_found=source_files,
+                    decision="MEMORY_LOCAL_AI_UNAVAILABLE", reason="local_ai_call_failed",
+                    retrieved_tokens=context_input_tokens, sent_to_local_ai_tokens=model_input_tokens,
+                    available=False, model=model, token_count_method=token_method,
+                )
+            routing_recorded = True
         raise
     finally:
         event.update(sampler.stop(model))
@@ -624,15 +941,39 @@ def parser() -> argparse.ArgumentParser:
     main = argparse.ArgumentParser(description=__doc__)
     subs = main.add_subparsers(dest="command", required=True)
     subs.add_parser("status", parents=[common], help="report Ollama, models and visible GPU state")
+    route = subs.add_parser("route", parents=[common], help="classify and record a Local AI routing outcome without inference")
+    route.add_argument("task", choices=sorted(TASK_PROFILES), help="candidate helper task")
+    route.add_argument("input_file", nargs="?", help="candidate input file; omit to read stdin")
+    route.add_argument("--input-chars", type=positive_int, help="metadata-only input size when the source must not be read")
+    route.add_argument("--availability", choices=("available", "unavailable", "unknown"), help="override the recorded preflight state")
+    route.add_argument("--compressibility", choices=("high", "medium", "low"), help="override the task profile's expected compressibility")
+    route.add_argument("--deterministic-sufficient", action="store_true", help="record that a deterministic tool resolves the task")
+    route.add_argument("--outcome", choices=("auto", "skipped", "used", "unnecessary"), default="auto")
+    route.set_defaults(func=run_route)
+    memory_audit = subs.add_parser("memory-audit", help="measure observable startup context and public memory metadata")
+    memory_audit.add_argument("--cwd", type=Path, help="include nested instruction files down to this directory")
+    memory_audit.set_defaults(func=run_memory_audit)
+    memory_route = subs.add_parser("memory-route", help="record a memory retrieval decision without inference")
+    memory_route.add_argument("topic", help="logical topic from the canonical memory index")
+    memory_route.add_argument("--files-found", type=nonnegative_int, default=0)
+    memory_route.add_argument("--retrieved-tokens", type=nonnegative_int, default=0)
+    memory_route.add_argument("--availability", choices=("available", "unavailable", "unknown"), help="override recorded preflight state")
+    memory_route.add_argument("--outcome", choices=("skipped", "direct", "unavailable", "not-beneficial"), default="skipped")
+    memory_route.add_argument("--reason", help="bounded decision reason; never include source text")
+    memory_route.add_argument("--canonical-conflict", action="store_true", help="record that current canonical documentation won over stale memory")
+    memory_route.set_defaults(func=run_memory_route)
     bench = subs.add_parser("benchmark", parents=[common], help="run a bounded four-case structured-output benchmark")
     bench.add_argument("--benchmark-output-tokens", type=positive_int, default=420)
     bench.set_defaults(func=benchmark)
     for task in sorted(p.stem for p in PROMPTS.glob("*.md")):
         sub = subs.add_parser(task, parents=[common], help=f"run {task}")
         sub.add_argument("input_file", nargs="?", help="input file; omit to read stdin")
-        sub.add_argument("--input-max-chars", type=positive_int, default=int(os.getenv("LOCAL_AI_MAX_INPUT_CHARS", "12000")))
+        default_input = "24000" if task == "summarize-memory" else "12000"
+        sub.add_argument("--input-max-chars", type=positive_int, default=int(os.getenv("LOCAL_AI_MAX_INPUT_CHARS", default_input)))
         sub.add_argument("--max-output-chars", type=positive_int, default=int(os.getenv("LOCAL_AI_MAX_OUTPUT_CHARS", "6000")))
         sub.add_argument("--output-tokens", type=positive_int, default=int(os.getenv("LOCAL_AI_OUTPUT_TOKENS", "700")))
+        sub.add_argument("--memory-topic", help="logical public-memory topic; used only for summarize-memory telemetry")
+        sub.add_argument("--memory-files-found", type=nonnegative_int, help="selected files count when input was not materialized by memory-context")
         sub.set_defaults(func=run_analysis, task=task)
     return main
 

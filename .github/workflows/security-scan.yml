@@ -90,10 +90,9 @@ jobs:
           docker compose config --quiet
           rm -f .env
 
-      - name: Validar documentacao
+      - name: Validar documentacao e memoria publica
         run: |
-          node scripts/docs-check.mjs
-          node scripts/weekly-docs-review.mjs --self-test
+          make validate-public
           node --test scripts/docker-auto-update.test.mjs
           bash -n scripts/storage-maintenance.sh
           sh -n nodered/tools/storage-maintenance.sh

@@ -149,16 +149,18 @@ possível segredo. A análise do histórico e as ações de rotação estão em
 ## Validação
 
 ```bash
+make validate-public
 docker compose config --quiet
 npm --prefix nodered run flows:validate
 npm --prefix nodered run flows:test-alarm-arrival
 npm --prefix nodered run flows:test-infrastructure
 npm --prefix nodered run flows:test-security
 npm --prefix claude-bridge test
-scripts/security-scan.sh
-node scripts/docs-check.mjs
-node scripts/weekly-docs-review.mjs --self-test
 ```
+
+`make validate-public` verifica documentação, memória versionada dos agentes,
+privacidade dos arquivos públicos e o contrato da revisão semanal sem acessar
+estado privado de runtime.
 
 `depends_on` ordena a criação, mas não confirma que uma dependência está
 pronta. Depois de subir a stack, confira `docker compose ps` e os logs de cada
@@ -175,6 +177,7 @@ serviço.
 - [Monitoramento de Zigbee e Internet no Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.md)
 - [Bridge de agentes no Home Assistant](docs/CHAT_CLAUDE_CODE_HA.md)
 - [Codex + Local AI com RTX 4070](docs/LOCAL_AI_RTX_4070.md)
+- [Memória versionada dos agentes](docs/MEMORIA_VERSIONADA_AGENTES.md)
 - [Revisão semanal da documentação](docs/REVISAO_DOCUMENTACAO_SEMANAL.md)
 
 Os guias operacionais detalhados usam português do Brasil como idioma

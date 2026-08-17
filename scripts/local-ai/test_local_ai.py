@@ -42,6 +42,26 @@ class LocalAiTest(unittest.TestCase):
         self.assertIn("omitted", bounded)
         self.assertLessEqual(len(bounded), 70)
 
+    def test_raw_input_size_survives_deterministic_log_compaction_for_accounting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "repeated.log"
+            path.write_text("INFO heartbeat\n" * 2_000 + "ERROR synthetic failure\n", encoding="utf-8")
+            raw, bounded, truncated, raw_limited = LOCAL_AI.read_input(str(path), 100_000)
+            self.assertFalse(truncated)
+            self.assertFalse(raw_limited)
+            self.assertGreater(len(raw), 20_000)
+            self.assertLess(len(bounded), 200)
+
+    def test_routing_availability_rejects_a_stale_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            telemetry_path = Path(directory) / "local-ai-telemetry.json"
+            telemetry_path.with_name("local-ai-status.json").write_text(json.dumps({
+                "state": "LOCAL_AI_AVAILABLE", "checked_at": "2026-08-16T00:00:00Z",
+            }), encoding="utf-8")
+            recorder = TELEMETRY.TelemetryRecorder(telemetry_path)
+            self.assertEqual(LOCAL_AI.routing_availability(recorder, None), "unknown")
+            self.assertEqual(LOCAL_AI.routing_availability(recorder, "available"), "available")
+
     def test_long_log_preprocessing_preserves_signals_and_bounds_noise(self):
         lines = [f"INFO request={index}" for index in range(100)]
         lines[40] = "ERROR DatabaseTimeoutError at src/orders/repository.py:87"
@@ -71,6 +91,17 @@ class LocalAiTest(unittest.TestCase):
         self.assertEqual(normal["properties"]["errors"]["maxItems"], 8)
         self.assertEqual(compact["properties"]["errors"]["maxItems"], 2)
         self.assertEqual(LOCAL_AI.response_format("review-diff"), "json")
+
+    def test_summarize_memory_schema_preserves_required_technical_facts(self):
+        schema = LOCAL_AI.response_format("summarize-memory")
+        self.assertIsInstance(schema, dict)
+        self.assertIn("root_causes", schema["required"])
+        self.assertIn("configuration_values", schema["required"])
+        LOCAL_AI.validate_structured_response("summarize-memory", {
+            "summary": "bounded memory", "current_state": [], "decisions": [], "constraints": [],
+            "known_bugs": [], "root_causes": [], "configuration_values": [],
+            "unresolved_issues": [], "warnings": [], "source_facts": [], "confidence": "low",
+        })
 
     def test_all_benchmark_cases_have_non_sensitive_input_and_known_schema(self):
         cases = LOCAL_AI.benchmark_cases()
@@ -168,10 +199,60 @@ class LocalAiTest(unittest.TestCase):
                 "status": "running", "started_at": "2026-08-16T12:01:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 2)
+            self.assertEqual(state["schema_version"], 4)
             self.assertEqual(state["totals"]["calls"], 3)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 80)
+
+    def test_routing_decisions_are_idempotent_and_keep_only_metadata(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            decision = {
+                "id": "routing-used", "timestamp": "2026-08-16T12:00:00Z",
+                "task_type": "analyze-tests", "input_chars": 32_000,
+                "estimated_input_tokens": 8_000, "eligible": True, "available": True,
+                "expected_tokens_saved": 6_400, "actual_tokens_avoided": 6_000,
+                "decision": "LOCAL_AI_USED", "reason": "large_test_output",
+                "prompt": "must never be persisted",
+            }
+            recorder.routing_decision(decision)
+            recorder.routing_decision(decision)
+            recorder.routing_decision({
+                "id": "routing-missed", "timestamp": "2026-08-16T12:01:00Z",
+                "task_type": "review-diff", "input_chars": 24_000,
+                "estimated_input_tokens": 6_000, "eligible": True, "available": True,
+                "expected_tokens_saved": 3_900,
+                "decision": "ROUTING_MISSED_OPPORTUNITY", "reason": "helper_not_called",
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            totals = state["routing"]["totals"]
+            self.assertEqual(state["schema_version"], 4)
+            self.assertEqual(totals["tasks"], 2)
+            self.assertEqual(totals["used_tasks"], 1)
+            self.assertEqual(totals["missed_opportunities"], 1)
+            self.assertEqual(totals["eligible_and_available_tasks"], 2)
+            self.assertEqual(totals["potential_tokens_avoidable"], 10_300)
+            self.assertEqual(totals["actual_tokens_avoided"], 6_000)
+            self.assertNotIn("prompt", state["routing"]["latest_decisions"][0])
+            self.assertEqual(state["daily"]["2026-08-16"]["routing"]["used_tasks"], 1)
+            self.assertNotIn("totals", state["daily"]["2026-08-16"]["routing"])
+
+    def test_failed_local_call_reason_can_be_recorded_without_changing_its_outcome(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            assessment = LOCAL_AI.assess_routing("review-diff", 32_000, availability="available")
+            LOCAL_AI.record_routing_outcome(
+                recorder,
+                assessment,
+                outcome="used",
+                reason="local_ai_call_failed",
+            )
+            state = json.loads(path.read_text(encoding="utf-8"))
+            decision = state["routing"]["latest_decisions"][0]
+            self.assertEqual(decision["decision"], "LOCAL_AI_USED")
+            self.assertEqual(decision["reason"], "local_ai_call_failed")
 
 
 if __name__ == "__main__":

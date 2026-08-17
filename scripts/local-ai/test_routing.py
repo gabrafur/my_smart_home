@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Deterministic workload matrix for the Local AI routing policy."""
+
+from __future__ import annotations
+
+import unittest
+
+from routing import assess_routing, terminal_decision
+
+
+class RoutingPolicyTest(unittest.TestCase):
+    def test_workload_matrix_has_expected_decisions(self):
+        cases = [
+            ("typo-small", "review-diff", 120, True, "available", "DETERMINISTIC"),
+            ("search-many-files", "inspect-files", 16_000, True, "available", "DETERMINISTIC"),
+            ("diff-small", "review-diff", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("diff-large", "review-diff", 24_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("pytest-small", "analyze-tests", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("pytest-large", "analyze-tests", 32_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("log-short", "summarize-log", 1_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("log-repeated-stack", "summarize-log", 36_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("json-large", "inspect-files", 80_000, True, "available", "DETERMINISTIC"),
+            ("file-triage-large", "inspect-files", 40_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("memory-small-focused", "summarize-memory", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("memory-large-retrieval", "summarize-memory", 32_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("gpu-unavailable", "analyze-tests", 32_000, False, "unavailable", "LOCAL_AI_UNAVAILABLE"),
+        ]
+        for name, task, chars, deterministic, availability, expected in cases:
+            with self.subTest(name=name):
+                actual = assess_routing(
+                    task,
+                    chars,
+                    deterministic_sufficient=deterministic,
+                    availability=availability,
+                )
+                self.assertEqual(actual["decision"], expected)
+
+    def test_missed_opportunity_requires_eligible_and_available_task(self):
+        eligible = assess_routing("analyze-tests", 32_000, availability="available")
+        missed = terminal_decision(eligible, "skipped")
+        self.assertEqual(missed["decision"], "ROUTING_MISSED_OPPORTUNITY")
+        unavailable = assess_routing("analyze-tests", 32_000, availability="unavailable")
+        self.assertEqual(terminal_decision(unavailable, "skipped")["decision"], "LOCAL_AI_UNAVAILABLE")
+
+    def test_small_and_low_compressibility_tasks_do_not_look_like_opportunities(self):
+        small = assess_routing("summarize-log", 1_000)
+        self.assertTrue(small["eligible"])
+        self.assertEqual(small["decision"], "LOCAL_AI_NOT_BENEFICIAL")
+        low = assess_routing("summarize-log", 40_000, compressibility="low")
+        self.assertEqual(low["decision"], "LOCAL_AI_NOT_BENEFICIAL")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -21,6 +21,7 @@ placeholders.
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
 | [Bridge no Home Assistant](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex na interface | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
 | [Codex + Local AI com RTX 4070](LOCAL_AI_RTX_4070.md) | Inferência local, rede, telemetria e reprodução em fork | guia detalhado em português |
+| [Memória versionada dos agentes](MEMORIA_VERSIONADA_AGENTES.md) | Autoridade, privacidade, manutenção e validação da memória de IA | guia detalhado em português |
 
 ## Funcionalidades
 
@@ -54,6 +55,5 @@ deve marcá-lo explicitamente como histórico e apontar para o estado atual.
   as duas versões do guia correspondente na mesma alteração.
 - Exemplos usam `IP_DO_HOST`, `IP_DO_COORDENADOR`, `USUARIO_MQTT` ou endereços
   reservados para documentação; nunca valores reais da residência.
-- Todo link relativo e todo par bilíngue obrigatório é verificado por
-  `node scripts/docs-check.mjs`.
-- Antes de publicar, rode também `scripts/security-scan.sh`.
+- Links, pares bilíngues, memória pública e privacidade mecanicamente
+  verificável fazem parte de `make validate-public`.

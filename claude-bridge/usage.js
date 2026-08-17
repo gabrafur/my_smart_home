@@ -182,6 +182,40 @@ function emptyLocalAiTotals() {
   };
 }
 
+function emptyRoutingTotals() {
+  return {
+    tasks: 0,
+    deterministic_tasks: 0,
+    eligible_tasks: 0,
+    eligible_and_available_tasks: 0,
+    used_tasks: 0,
+    skipped_tasks: 0,
+    unavailable_tasks: 0,
+    not_beneficial_tasks: 0,
+    missed_opportunities: 0,
+    unnecessary_calls: 0,
+    potential_tokens_avoidable: 0,
+    actual_tokens_avoided: 0,
+  };
+}
+
+function emptyMemoryTotals() {
+  return {
+    retrieval_calls: 0,
+    retrieval_skips: 0,
+    files_found: 0,
+    memory_tokens_available: 0,
+    memory_tokens_retrieved: 0,
+    memory_tokens_sent_to_local_ai: 0,
+    memory_tokens_sent_to_primary_model: 0,
+    memory_tokens_avoided: 0,
+    compression_events: 0,
+    memory_overload_incidents: 0,
+    local_ai_unavailable: 0,
+    local_ai_not_beneficial: 0,
+  };
+}
+
 function addLocalAiTotals(target, source) {
   for (const key of Object.keys(emptyLocalAiTotals())) {
     const value = Number(source?.[key]);
@@ -204,6 +238,49 @@ function localAiDerived(totals) {
     success_rate_percent: calls > 0 ? round((successful / calls) * 100, 1) : null,
     failure_rate_percent: calls > 0 ? round((failed / calls) * 100, 1) : null,
     average_duration_seconds: calls > 0 ? round(duration / calls, 2) : null,
+  };
+}
+
+function addRoutingTotals(target, source) {
+  for (const key of Object.keys(emptyRoutingTotals())) {
+    const value = Number(source?.[key]);
+    if (Number.isFinite(value)) target[key] += value;
+  }
+  return target;
+}
+
+function routingDerived(totals) {
+  const eligibleAvailable = Number(totals.eligible_and_available_tasks) || 0;
+  const used = Number(totals.used_tasks) || 0;
+  const potential = Number(totals.potential_tokens_avoidable) || 0;
+  const actual = Number(totals.actual_tokens_avoided) || 0;
+  return {
+    rtx_delegation_rate_percent: eligibleAvailable > 0
+      ? round((used / eligibleAvailable) * 100, 1)
+      : null,
+    weighted_context_savings_coverage_percent: potential > 0
+      ? round(Math.min(100, Math.max(0, actual) / potential * 100), 1)
+      : null,
+  };
+}
+
+function addMemoryTotals(target, source) {
+  for (const key of Object.keys(emptyMemoryTotals())) {
+    const value = Number(source?.[key]);
+    if (!Number.isFinite(value)) continue;
+    // Available corpus is a point-in-time inventory, never a sum of every
+    // retrieval event. Keep its latest-largest observed value across periods.
+    if (key === 'memory_tokens_available') target[key] = Math.max(target[key], value);
+    else target[key] += value;
+  }
+  return target;
+}
+
+function memoryDerived(totals) {
+  const retrieved = Number(totals.memory_tokens_retrieved) || 0;
+  const avoided = Number(totals.memory_tokens_avoided) || 0;
+  return {
+    memory_compression_percent: retrieved > 0 ? round((avoided / retrieved) * 100, 1) : null,
   };
 }
 
@@ -236,6 +313,40 @@ function summarizeMonth(daily, now) {
     if (day.startsWith(prefix)) addLocalAiTotals(totals, value?.totals);
   }
   return { ...totals, ...localAiDerived(totals) };
+}
+
+function summarizeRoutingPeriod(daily, now, days) {
+  const totals = emptyRoutingTotals();
+  for (let offset = 0; offset < days; offset += 1) {
+    addRoutingTotals(totals, daily?.[isoDayOffset(now, offset)]?.routing);
+  }
+  return { ...totals, ...routingDerived(totals) };
+}
+
+function summarizeRoutingMonth(daily, now) {
+  const totals = emptyRoutingTotals();
+  const prefix = now.toISOString().slice(0, 7);
+  for (const [day, value] of Object.entries(daily || {})) {
+    if (day.startsWith(prefix)) addRoutingTotals(totals, value?.routing);
+  }
+  return { ...totals, ...routingDerived(totals) };
+}
+
+function summarizeMemoryPeriod(daily, now, days) {
+  const totals = emptyMemoryTotals();
+  for (let offset = 0; offset < days; offset += 1) {
+    addMemoryTotals(totals, daily?.[isoDayOffset(now, offset)]?.memory);
+  }
+  return { ...totals, ...memoryDerived(totals) };
+}
+
+function summarizeMemoryMonth(daily, now) {
+  const totals = emptyMemoryTotals();
+  const prefix = now.toISOString().slice(0, 7);
+  for (const [day, value] of Object.entries(daily || {})) {
+    if (day.startsWith(prefix)) addMemoryTotals(totals, value?.memory);
+  }
+  return { ...totals, ...memoryDerived(totals) };
 }
 
 function sanitizeLocalAiJob(job) {
@@ -274,10 +385,59 @@ function sanitizeLocalAiJob(job) {
   return sanitized;
 }
 
+function sanitizeRoutingDecision(decision) {
+  if (!decision || typeof decision !== 'object') return {};
+  const fields = [
+    'id', 'timestamp', 'task_type', 'input_chars', 'estimated_input_tokens',
+    'compressibility', 'compatible_helper', 'eligible', 'available',
+    'expected_tokens_saved', 'actual_tokens_avoided', 'decision', 'reason',
+    'minimum_input_tokens', 'minimum_expected_saved_tokens', 'model',
+  ];
+  return Object.fromEntries(
+    fields.filter((field) => Object.hasOwn(decision, field)).map((field) => [field, decision[field]]),
+  );
+}
+
+function sanitizeMemoryDecision(decision) {
+  if (!decision || typeof decision !== 'object') return {};
+  const fields = [
+    'id', 'timestamp', 'topic', 'files_found', 'memory_tokens_available',
+    'memory_tokens_retrieved', 'memory_tokens_sent_to_local_ai',
+    'memory_tokens_sent_to_primary_model', 'memory_tokens_avoided',
+    'decision', 'reason', 'available', 'expected_tokens_saved',
+    'minimum_input_tokens', 'minimum_expected_saved_tokens', 'model',
+    'memory_overload', 'canonical_source_conflict', 'token_count_method', 'estimated',
+  ];
+  return Object.fromEntries(
+    fields.filter((field) => Object.hasOwn(decision, field)).map((field) => [field, decision[field]]),
+  );
+}
+
+function reconcileRoutingDecisions(decisions, jobs) {
+  return decisions.map((decision) => {
+    if (
+      decision.decision !== 'LOCAL_AI_USED'
+      || decision.reason !== 'local_ai_completed'
+      || Object.hasOwn(decision, 'actual_tokens_avoided')
+    ) return decision;
+    const timestamp = new Date(decision.timestamp);
+    const matchingFailure = jobs.find((job) => {
+      if (job.status !== 'failed' || job.task !== decision.task_type) return false;
+      const finished = new Date(job.finished_at);
+      return !Number.isNaN(timestamp.valueOf())
+        && !Number.isNaN(finished.valueOf())
+        && Math.abs(finished.valueOf() - timestamp.valueOf()) <= 60_000;
+    });
+    return matchingFailure ? { ...decision, reason: 'local_ai_call_failed' } : decision;
+  });
+}
+
 function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const state = readJson(telemetryPath, {});
   const preflight = readJson(statusPath, {});
   const totals = { ...emptyLocalAiTotals(), ...(state.totals || {}) };
+  const routingTotals = { ...emptyRoutingTotals(), ...(state.routing?.totals || {}) };
+  const memoryTotals = { ...emptyMemoryTotals(), ...(state.memory?.totals || {}) };
   const activeJobs = Object.values(state.active_jobs || {});
   const recentActiveJobs = activeJobs
     .filter((job) => {
@@ -307,6 +467,15 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const models = Object.entries(state.models || {})
     .map(([model, value]) => ({ model, ...(value.totals || {}), ...localAiDerived(value.totals || {}) }))
     .sort((left, right) => Number(right.calls || 0) - Number(left.calls || 0));
+  const latestJobs = Array.isArray(state.latest_jobs)
+    ? state.latest_jobs.slice(-5).reverse().map(sanitizeLocalAiJob)
+    : [];
+  const latestDecisions = Array.isArray(state.routing?.latest_decisions)
+    ? state.routing.latest_decisions.slice(-5).reverse().map(sanitizeRoutingDecision)
+    : [];
+  const latestMemoryDecisions = Array.isArray(state.memory?.latest_decisions)
+    ? state.memory.latest_decisions.slice(-5).reverse().map(sanitizeMemoryDecision)
+    : [];
 
   return {
     state: stateName,
@@ -332,12 +501,31 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
       week: summarizePeriod(state.daily, now, 7),
       month: summarizeMonth(state.daily, now),
     },
+    routing: {
+      totals: { ...routingTotals, ...routingDerived(routingTotals) },
+      periods: {
+        today: summarizeRoutingPeriod(state.daily, now, 1),
+        week: summarizeRoutingPeriod(state.daily, now, 7),
+        month: summarizeRoutingMonth(state.daily, now),
+      },
+      latest_decisions: reconcileRoutingDecisions(latestDecisions, latestJobs),
+    },
+    memory: {
+      totals: { ...memoryTotals, ...memoryDerived(memoryTotals) },
+      periods: {
+        today: summarizeMemoryPeriod(state.daily, now, 1),
+        week: summarizeMemoryPeriod(state.daily, now, 7),
+        month: summarizeMemoryMonth(state.daily, now),
+      },
+      startup_context: state.memory?.startup_context && typeof state.memory.startup_context === 'object'
+        ? state.memory.startup_context
+        : null,
+      latest_decisions: latestMemoryDecisions,
+    },
     models,
     // Five jobs cover the current job plus recent diagnostics, while staying
     // well below the attribute-size limit enforced by Home Assistant.
-    latest_jobs: Array.isArray(state.latest_jobs)
-      ? state.latest_jobs.slice(-5).reverse().map(sanitizeLocalAiJob)
-      : [],
+    latest_jobs: latestJobs,
   };
 }
 
