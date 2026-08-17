@@ -427,8 +427,11 @@ apresentação e ficam fora do Recorder: seus atributos mudam a cada segundo e
 não representam uma série histórica útil. O histórico da seção usa entidades
 dedicadas: `binary_sensor.codex_rtx_em_uso` registra intervalos de inferência e
 os sensores `sensor.codex_rtx_*_historico` registram GPU, VRAM e potência como
-valores numéricos, com unidade e `state_class: measurement`, somente enquanto
-há uma amostra ativa. Uma tolerância de cinco segundos no sinal e no fim do
+valores numéricos, com unidade e `state_class: measurement`. Nesses gráficos,
+`0` significa que não havia uma amostra de inferência ativa; não representa
+uma medição do consumo físico em repouso. Assim, o histórico permanece
+contínuo, enquanto indisponibilidade e perda de sinal continuam representadas
+pelos cards de saúde. Uma tolerância de cinco segundos no sinal e no fim do
 uso evita que uma falha isolada de polling fragmente o histórico ou faça o
 card alternar brevemente para **sem sinal**.
 

@@ -148,28 +148,26 @@ template:
           amostra_ativa: "{{ states('sensor.codex_rtx_live_raw') == 'in_use' }}"
           watts: "{{ state_attr('sensor.codex_rtx_live_raw', 'power_watts') }}"
 
-      # Recorder-facing metrics are numeric and exist only while an actual GPU
-      # sample is present. The live tiles above can therefore keep friendly
-      # textual states without turning every value into a history category.
+      # Recorder-facing metrics stay numeric and use zero outside an active
+      # sample so native history graphs remain continuous. Health and signal
+      # availability remain visible in the dedicated live status entities.
       - name: Codex RTX GPU Historico
         unique_id: codex_rtx_gpu_historico
         icon: mdi:chip
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'gpu_util_percent') }}"
-        availability: >-
-          {{ states('sensor.codex_rtx_live_raw') == 'in_use'
-             and state_attr('sensor.codex_rtx_live_raw', 'gpu_util_percent') is number }}
+        state: >-
+          {% set value = state_attr('sensor.codex_rtx_live_raw', 'gpu_util_percent') %}
+          {{ value if states('sensor.codex_rtx_live_raw') == 'in_use' and value is number else 0 }}
 
       - name: Codex RTX VRAM Historico
         unique_id: codex_rtx_vram_historico
         icon: mdi:memory
         unit_of_measurement: MiB
         state_class: measurement
-        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'vram_mib') }}"
-        availability: >-
-          {{ states('sensor.codex_rtx_live_raw') == 'in_use'
-             and state_attr('sensor.codex_rtx_live_raw', 'vram_mib') is number }}
+        state: >-
+          {% set value = state_attr('sensor.codex_rtx_live_raw', 'vram_mib') %}
+          {{ value if states('sensor.codex_rtx_live_raw') == 'in_use' and value is number else 0 }}
 
       - name: Codex RTX Potencia Historico
         unique_id: codex_rtx_potencia_historico
@@ -177,10 +175,9 @@ template:
         device_class: power
         unit_of_measurement: W
         state_class: measurement
-        state: "{{ state_attr('sensor.codex_rtx_live_raw', 'power_watts') }}"
-        availability: >-
-          {{ states('sensor.codex_rtx_live_raw') == 'in_use'
-             and state_attr('sensor.codex_rtx_live_raw', 'power_watts') is number }}
+        state: >-
+          {% set value = state_attr('sensor.codex_rtx_live_raw', 'power_watts') %}
+          {{ value if states('sensor.codex_rtx_live_raw') == 'in_use' and value is number else 0 }}
 
       - name: Codex Limite Usado
         unique_id: codex_limite_usado

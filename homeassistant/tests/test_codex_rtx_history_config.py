@@ -36,9 +36,11 @@ class CodexRtxHistoryConfigTest(unittest.TestCase):
             "codex_rtx_potencia_historico",
         ):
             start = self.config.index(f"unique_id: {unique_id}")
-            block = self.config[start : start + 700]
+            end = self.config.find("\n      - name:", start)
+            block = self.config[start:end]
             self.assertIn("state_class: measurement", block)
-            self.assertIn("availability:", block)
+            self.assertIn("else 0", block)
+            self.assertNotIn("availability:", block)
 
     def test_signal_and_usage_have_a_five_second_grace_period(self):
         for unique_id in ("codex_rtx_sinal_estavel", "codex_rtx_em_uso"):
