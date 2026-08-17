@@ -106,4 +106,4 @@ jobs:
           npm --prefix nodered run test:all
 
       - name: Testar bridge
-        run: npm --prefix claude-bridge test
+        run: npm --prefix ia-bridge test

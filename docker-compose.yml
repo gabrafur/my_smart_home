@@ -135,7 +135,7 @@ services:
   claude-bridge:
     logging: *default-logging
     build:
-      context: ./claude-bridge
+      context: ./ia-bridge
     container_name: claude-bridge
     restart: always
     group_add:
@@ -194,7 +194,7 @@ services:
     # Separate process, same pinned agent toolchain. It has no published port
     # and runs Codex only at the configured weekly UTC window.
     build:
-      context: ./claude-bridge
+      context: ./ia-bridge
     container_name: docs-review-scheduler
     profiles: ["automation"]
     restart: always

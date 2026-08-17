@@ -60,7 +60,7 @@ Ollama.
 | Portproxy e firewall | publicar somente a porta LAN restrita | regras privadas do Windows |
 | `local-ai` | executar tarefas limitadas e emitir JSON/telemetria | `scripts/local-ai/` |
 | Política do Codex | decidir quando uma primeira passagem agrega valor | `AGENTS.md` e hook global privado |
-| Bridge | expor somente resumo de uso e estado de job | `claude-bridge/server.js`, `claude-bridge/usage.js` |
+| Bridge | expor somente resumo de uso e estado de job | `ia-bridge/server.js`, `ia-bridge/usage.js` |
 | Home Assistant | mostrar uso do Codex e RTX separadamente | `homeassistant/packages/codex_usage.yaml` e dashboard |
 
 Os modelos disponíveis podem mudar por instalação. O modelo selecionado após o
