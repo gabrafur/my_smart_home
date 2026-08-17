@@ -28,11 +28,15 @@ def main() -> None:
     assert dashboard.count("action: lock") == 2
     assert "perform_action: lock.lock" not in dashboard
     assert "text: Travar as portas do Creta remotamente?" in dashboard
+    assert "O Bluelink não fornece litros consumidos por viagem" in dashboard
+    assert "trip.estimated_km_per_l" in dashboard
+    assert "referência da janela" not in dashboard
+    assert "Consumo sem amostras suficientes" not in dashboard
     assert dashboard.index("**Localizar por luz e buzina**") < dashboard.index(
         "**Atualização dos dados**"
     )
 
-    print("vehicle_primary dashboard: 16 verificações aprovadas.")
+    print("vehicle_primary dashboard: 20 verificações aprovadas.")
 
 
 class VehiclePrimaryDashboardLocationTest(unittest.TestCase):

@@ -619,15 +619,27 @@ posicao GPS atual nem o avanca sem uma nova coordenada confirmada pelo backend.
 
 As viagens renderizadas vem de
 `sensor.garagem_vehicle_primary_recent_trip_info` e cobrem hoje e ontem. O consumo em
-km/L so aparece quando o recorder possui leituras confiaveis de combustivel e
-odometro antes e depois da viagem; caso contrario o card explicita que aguarda
-amostras, em vez de fabricar uma media. Para o calculo, snapshots historicos
-desse sensor sao mesclados por data e horario durante toda a retencao configurada
-do Recorder (30 dias nesta instalacao), sem chamadas adicionais ao endpoint
-rate-limited `/tripinfo`. Os atributos detalham a janela maxima pesquisada,
-viagens disponiveis/consideradas,
-amostras usadas, distancia, litros estimados, queda minima de 2% e gap maximo
-de quatro horas. O card principal mostra o intervalo efetivamente usado.
+km/L usa a mediana da eficiencia implicita nas leituras pareadas de autonomia e
+nivel de combustivel do proprio veiculo. Apenas pares do mesmo refresh (gap
+maximo de cinco minutos) e com tanque entre 20% e 80% entram no calculo; os
+extremos sao descartados porque a boia inteira e nao linear fica especialmente
+imprecisa perto do cheio e da reserva. Sao exigidas pelo menos cinco amostras e
+uma faixa observada de 10 pontos percentuais. Isso evita atribuir a uma viagem
+curta uma queda de combustivel ocorrida horas depois, causa que produzia medias
+artificialmente baixas. A estimativa global e referencia da janela, nunca uma
+medicao direta de viagem individual. Como o endpoint `/tripinfo` nao
+fornece combustivel consumido por trajeto, o consumo individual e modelado:
+o total de combustivel implicito na media da janela e distribuido entre as
+viagens atualmente exibidas segundo distancia e proporcao de marcha lenta. A
+normalizacao preserva a media agregada da janela nesse conjunto, enquanto
+viagens com maior fracao em marcha lenta recebem km/L menor. Cada linha
+identifica o valor e os litros como modelados. O card explicita dados
+insuficientes quando os criterios da estimativa global ou os tempos da viagem
+nao sao satisfeitos.
+
+Snapshots historicos do sensor de viagens continuam mesclados por data e
+horario durante toda a retencao configurada do Recorder (30 dias nesta
+instalacao), sem chamadas adicionais ao endpoint rate-limited `/tripinfo`.
 
 `button.vehicle_primary_start_hazard_lights_and_horn` chama exclusivamente o endpoint
 oficial Brasil `/ccs2/control/hornlight` com `command=on`. A API nao oferece

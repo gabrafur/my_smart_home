@@ -55,13 +55,13 @@ views:
                   {% from 'formatting.jinja' import format_number_ptbr %}
                   {% set entity = states.sensor.garagem_vehicle_primary_estimated_fuel_efficiency %}
                   {% set value = entity.state if entity else 'unknown' %}
-                  {% set trips = entity.attributes.trips_considered | default(0) if entity else 0 %}
+                  {% set samples = entity.attributes.samples_used | default(0) if entity else 0 %}
                   {% set window_days = entity.attributes.search_window_days | default(0) if entity else 0 %}
                   **Consumo estimado**
 
                   {% if value not in ['unknown', 'unavailable', 'none'] %}
                   ## {{ format_number_ptbr(value, 2) }} km/L
-                  {{ format_number_ptbr(trips) }} viagem(ns) · até {{ format_number_ptbr(window_days) }} dias
+                  {{ format_number_ptbr(samples) }} amostras confiáveis · até {{ format_number_ptbr(window_days) }} dias
                   {% else %}
                   ## Dados insuficientes
                   Janela pesquisada: até {{ format_number_ptbr(window_days) }} dias
@@ -123,7 +123,7 @@ views:
               **{{ format_number_ptbr(trips | length) }} viagem(ns) recentes**
 
               {% if efficiency.km_per_l is defined and efficiency.km_per_l is not none %}
-              ⛽ {{ format_number_ptbr(efficiency.km_per_l, 2) }} km/L · {{ format_number_ptbr(efficiency.estimated_distance, 1) }} km analisados
+              ⛽ {{ format_number_ptbr(efficiency.km_per_l, 2) }} km/L · referência de {{ format_number_ptbr(efficiency.samples_used) }} amostras
               {% endif %}
 
               {% for trip in trips[:2] %}
@@ -321,13 +321,17 @@ views:
               {% if efficiency.data_sufficient | default(false) %}
               ## {{ format_number_ptbr(efficiency.km_per_l, 2) }} km/L estimados
 
-              Janela efetiva: {{ as_datetime(efficiency.trip_window_start).astimezone().strftime('%d/%m %H:%M') if efficiency.trip_window_start else 'indisponível' }}–{{ as_datetime(efficiency.trip_window_end).astimezone().strftime('%d/%m %H:%M') if efficiency.trip_window_end else 'indisponível' }}
+              Janela efetiva: {{ as_datetime(efficiency.sample_window_start).astimezone().strftime('%d/%m %H:%M') if efficiency.sample_window_start else 'indisponível' }}–{{ as_datetime(efficiency.sample_window_end).astimezone().strftime('%d/%m %H:%M') if efficiency.sample_window_end else 'indisponível' }}
 
-              {{ format_number_ptbr(efficiency.trips_considered) }} de {{ format_number_ptbr(efficiency.trips_available) }} viagem(ns) · {{ format_number_ptbr(efficiency.estimated_distance, 1) }} km · {{ format_number_ptbr(efficiency.estimated_liters, 2) }} L
+              {{ format_number_ptbr(efficiency.samples_used) }} amostras de autonomia/combustível · faixa observada de {{ format_number_ptbr(efficiency.fuel_span_percent, 1) }}%
+
+              Esta é a mediana estimada pelo alcance informado pelo veículo entre 20% e 80% do tanque.
+
+              O Bluelink não fornece litros consumidos por viagem. Os valores abaixo são estimativas modeladas pela média da janela, distância e proporção de marcha lenta de cada trajeto.
               {% else %}
               ## Dados insuficientes
 
-              Janela pesquisada: até {{ format_number_ptbr(efficiency.search_window_days | default(0)) }} dias, conforme a retenção disponível do Recorder. A estimativa requer queda de combustível e odômetro antes/depois da mesma viagem.
+              Janela pesquisada: até {{ format_number_ptbr(efficiency.search_window_days | default(0)) }} dias, conforme a retenção disponível do Recorder. A estimativa requer ao menos 5 leituras pareadas e uma variação de 10% na faixa confiável do tanque.
               {% endif %}
 
               {% if trips %}
@@ -337,12 +341,10 @@ views:
 
               {{ format_number_ptbr(trip.distance, 1) }} km · {{ format_number_ptbr(trip.duration_min) }} min · média {{ format_number_ptbr(trip.avg_speed, 1) }} km/h
 
-              {% if trip.estimated_km_per_l is defined %}
-              ⛽ **{{ format_number_ptbr(trip.estimated_km_per_l, 2) }} km/L** nesta viagem
-              {% elif efficiency.data_sufficient | default(false) %}
-              ⛽ **{{ format_number_ptbr(efficiency.km_per_l, 2) }} km/L** · média da janela
+              {% if trip.estimated_km_per_l is defined and trip.estimated_liters is defined %}
+              ⛽ **{{ format_number_ptbr(trip.estimated_km_per_l, 2) }} km/L estimados** · {{ format_number_ptbr(trip.estimated_liters, 2) }} L modelados
               {% else %}
-              ⛽ Consumo sem amostras suficientes
+              ⛽ Estimativa individual indisponível
               {% endif %}
               {% endfor %}
               {% else %}
