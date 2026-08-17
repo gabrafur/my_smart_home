@@ -27,8 +27,9 @@ placeholders.
 | [Modelo de privacidade](PRIVACY_MODEL.md) | Papéis públicos, sanitização, scanner e memória pública | [English](PRIVACY_MODEL.en.md) |
 | [Fronteira pública e privada](PUBLIC_PRIVATE_BOUNDARY.md) | Bindings, bootstrap, degradação segura e compatibilidade | [English](PUBLIC_PRIVATE_BOUNDARY.en.md) |
 | [Estratégia de testes](ESTRATEGIA_DE_TESTES.md) | Níveis, descoberta, CI e limites sem residência real | [English](TESTING_STRATEGY.en.md) |
-| [Proveniência de dependências](DEPENDENCY_PROVENANCE.md) | Locks, digests e dependências da validação | guia em português |
-| [Configuração do GitHub](GITHUB_REPOSITORY_SETTINGS.md) | Proteção recomendada de `main` e check obrigatório | guia em português |
+| [Proveniência de dependências](DEPENDENCY_PROVENANCE.md) | Código vendorizado, licenças, deltas, locks e digests | [English](DEPENDENCY_PROVENANCE.en.md) |
+| [Configuração do GitHub](GITHUB_REPOSITORY_SETTINGS.md) | Estado observado, template, ruleset e checklist manual | [English](GITHUB_REPOSITORY_SETTINGS.en.md) |
+| [Ativos de documentação](assets/README.md) | Fonte Mermaid, SVG, social preview e reprodução | [English](assets/README.en.md) |
 
 ## Funcionalidades
 
@@ -50,15 +51,25 @@ placeholders.
 - [Auditoria do repositório público](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Handoff da limpeza do histórico](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
 
-Esses arquivos preservam datas e incidentes para explicar decisões. Uma seção
-histórica pode mencionar uma versão antiga ou um comportamento corrigido, mas
-deve marcá-lo explicitamente como histórico e apontar para o estado atual.
+Esses arquivos foram reescritos como cases técnicos sanitizados. Preservam
+problema, causa, investigação T0/T+, correção, validação e lições, sem
+cronologia residencial, nomes, rotas ou identificadores privados.
+
+## Portfólio
+
+- [Projeto para LinkedIn — PT-BR](portfolio/linkedin-project-pt-BR.md) ·
+  [English](portfolio/linkedin-project-en.md)
+- [Case técnico — PT-BR](portfolio/technical-case-study-pt-BR.md) ·
+  [English](portfolio/technical-case-study-en.md)
 
 ## Política de manutenção
 
 - Português do Brasil é o idioma principal.
-- README, índice, containers, instalação/restauração, revisão semanal e recursos marcados como
-  bilíngues têm versão completa em inglês.
+- Todo documento humano público declara área e estratégia no
+  [`i18n-manifest.json`](i18n-manifest.json).
+- Documentos `full pair` precisam ser atualizados nos dois idiomas na mesma
+  mudança; `summary pair`, `archived` e `third-party/not-translated` são
+  exceções explícitas, não traduções esquecidas.
 - Mudanças de porta, volume, variável, imagem ou procedimento devem atualizar
   as duas versões do guia correspondente na mesma alteração.
 - Exemplos usam `IP_DO_HOST`, `IP_DO_COORDENADOR`, `USUARIO_MQTT` ou endereços

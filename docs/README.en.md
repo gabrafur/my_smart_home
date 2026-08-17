@@ -26,8 +26,9 @@ physical identifiers must appear only as placeholders.
 | [Privacy model](PRIVACY_MODEL.en.md) | Public roles, sanitization, scanning, and public memory | [Português](PRIVACY_MODEL.md) |
 | [Public/private boundary](PUBLIC_PRIVATE_BOUNDARY.en.md) | Bindings, bootstrap, safe degradation, and compatibility | [Português](PUBLIC_PRIVATE_BOUNDARY.md) |
 | [Testing strategy](TESTING_STRATEGY.en.md) | Levels, discovery, CI, and no-household boundaries | [Português](ESTRATEGIA_DE_TESTES.md) |
-| [Dependency provenance](DEPENDENCY_PROVENANCE.md) | Locks, digests, and validation dependencies | detailed Portuguese guide |
-| [GitHub repository settings](GITHUB_REPOSITORY_SETTINGS.md) | Recommended `main` protection and required check | detailed Portuguese guide |
+| [Dependency provenance](DEPENDENCY_PROVENANCE.en.md) | Vendored code, licenses, deltas, locks, and digests | [Português](DEPENDENCY_PROVENANCE.md) |
+| [GitHub repository settings](GITHUB_REPOSITORY_SETTINGS.en.md) | Observed state, template, ruleset, and manual checklist | [Português](GITHUB_REPOSITORY_SETTINGS.md) |
+| [Documentation assets](assets/README.en.md) | Mermaid source, SVG, social preview, and reproduction | [Português](assets/README.md) |
 
 ## Feature guides
 
@@ -58,15 +59,25 @@ controlled actions and local metrics.
 - [Public repository audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md)
 - [Git history cleanup handoff](HANDOFF_LIMPEZA_HISTORICO_GIT.md)
 
-Historical sections preserve dated incidents to explain decisions. An old
-version or superseded behavior must be clearly marked as historical and point
-to the current state.
+These records are sanitized technical cases. They retain the problem, cause,
+T0/T+ investigation, fix, validation, and lessons without household chronology,
+names, routes, or private identifiers.
+
+## Portfolio
+
+- [LinkedIn project — English](portfolio/linkedin-project-en.md) ·
+  [Português](portfolio/linkedin-project-pt-BR.md)
+- [Technical case study — English](portfolio/technical-case-study-en.md) ·
+  [Português](portfolio/technical-case-study-pt-BR.md)
 
 ## Maintenance policy
 
 - Brazilian Portuguese is the primary language.
-- The README, index, container guide, installation/restore runbook, weekly review, and
-  explicitly bilingual features have complete English versions.
+- Every public human document declares its area and strategy in
+  [`i18n-manifest.json`](i18n-manifest.json).
+- `full pair` documents must change in both languages; `summary pair`,
+  `archived`, and `third-party/not-translated` are explicit policies, not
+  forgotten translations.
 - Port, volume, variable, image, or procedure changes must update both language
   versions in the same change.
 - Examples use placeholders or documentation-reserved addresses, never real

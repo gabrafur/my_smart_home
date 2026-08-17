@@ -22,6 +22,26 @@ const privateDocumentedPrefixes = [
   ".agent-history/", ".local-secrets/", "bindings/private/", "homeassistant/.storage/",
   "homeassistant/secrets.yaml", "nodered/flows_cred.json",
 ];
+const rootHumanDocuments = new Set([
+  "README.md", "README.en.md", "CONTRIBUTING.md", "SECURITY.md",
+  "CODE_OF_CONDUCT.md", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.pt-BR.md",
+]);
+const additionalHumanDocuments = new Set([
+  ".github/PULL_REQUEST_TEMPLATE.md",
+  "scripts/local-ai/README.md",
+  "homeassistant/custom_components/hacs/validate/README.md",
+]);
+
+function isHumanDocument(file) {
+  return rootHumanDocuments.has(file)
+    || additionalHumanDocuments.has(file)
+    || (file.startsWith("docs/") && markdownExtensions.has(path.extname(file).toLowerCase()));
+}
+
+function isDocumentationGraphFile(file) {
+  return /^README(?:\.[^.]+)?\.md$/i.test(file)
+    || (file.startsWith("docs/") && markdownExtensions.has(path.extname(file).toLowerCase()));
+}
 
 function normalizePath(value) {
   return value.split(path.sep).join("/");
@@ -113,10 +133,8 @@ function trackedPathExists(candidate, tracked) {
 
 export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } = {}) {
   const tracked = new Set((trackedFiles ?? gitFiles(repoRoot)).map(normalizePath));
-  const markdownFiles = [...tracked].filter((file) => (
-    (path.dirname(file) === "." && /^README(?:\.[^.]+)?\.md$/i.test(file))
-      || (file.startsWith("docs/") && markdownExtensions.has(path.extname(file).toLowerCase()))
-  )).sort();
+  const markdownFiles = [...tracked].filter(isHumanDocument).sort();
+  const graphFiles = markdownFiles.filter(isDocumentationGraphFile);
   const errors = [];
   const contents = new Map();
   const readTracked = (file) => {
@@ -126,28 +144,84 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
   };
 
   if (!tracked.has(i18nManifest)) errors.push(`missing tracked i18n manifest: ${i18nManifest}`);
-  let pairs = [];
+  let documents = [];
+  let pairs = 0;
   if (tracked.has(i18nManifest)) {
     try {
       const manifest = JSON.parse(readTracked(i18nManifest));
-      if (manifest.schema_version !== 1 || manifest.primary_language !== "pt-BR" || !Array.isArray(manifest.pairs)) {
+      if (manifest.schema_version !== 2 || manifest.primary_language !== "pt-BR"
+          || !Array.isArray(manifest.areas) || !Array.isArray(manifest.strategies)
+          || !Array.isArray(manifest.documents)) {
         errors.push(`${i18nManifest}: invalid manifest contract`);
-      } else pairs = manifest.pairs;
+      } else {
+        documents = manifest.documents;
+        const allowedAreas = new Set(manifest.areas);
+        const allowedStrategies = new Set(manifest.strategies);
+        const classified = new Map();
+        const classify = (file) => classified.set(file, (classified.get(file) ?? 0) + 1);
+
+        for (const document of documents) {
+          if (!document || typeof document !== "object") {
+            errors.push(`${i18nManifest}: each document requires an object`);
+            continue;
+          }
+          if (!allowedAreas.has(document.area)) errors.push(`${i18nManifest}: invalid area: ${document.area}`);
+          if (!allowedStrategies.has(document.strategy)) errors.push(`${i18nManifest}: invalid strategy: ${document.strategy}`);
+
+          if (document.strategy === "full pair" && typeof document.pt === "string" && typeof document.en === "string") {
+            pairs += 1;
+            for (const file of [document.pt, document.en]) {
+              classify(file);
+              if (!tracked.has(file)) errors.push(`missing required tracked bilingual document: ${file}`);
+            }
+            if (tracked.has(document.pt) && !readTracked(document.pt).includes(path.basename(document.en))) {
+              errors.push(`${document.pt}: missing reference to English pair ${path.basename(document.en)}`);
+            }
+            if (tracked.has(document.en) && !readTracked(document.en).includes(path.basename(document.pt))) {
+              errors.push(`${document.en}: missing reference to Portuguese pair ${path.basename(document.pt)}`);
+            }
+            continue;
+          }
+
+          if (document.strategy === "full pair" && document.format === "bilingual-single-file"
+              && typeof document.path === "string" && Array.isArray(document.languages)
+              && document.languages.includes("pt-BR") && document.languages.includes("en")) {
+            pairs += 1;
+            classify(document.path);
+            if (!tracked.has(document.path)) errors.push(`missing tracked bilingual document: ${document.path}`);
+            continue;
+          }
+
+          if (typeof document.path !== "string") {
+            errors.push(`${i18nManifest}: ${document.strategy} entry requires a path`);
+            continue;
+          }
+          classify(document.path);
+          if (!tracked.has(document.path)) errors.push(`missing tracked i18n document: ${document.path}`);
+          if (document.strategy === "summary pair") {
+            if (typeof document.summary !== "string" || !tracked.has(document.summary)) {
+              errors.push(`${i18nManifest}: summary pair for ${document.path} requires a tracked summary`);
+            }
+            if (!new Set(["pt-BR", "en"]).has(document.language)) {
+              errors.push(`${i18nManifest}: summary pair for ${document.path} requires a language`);
+            }
+          }
+          if (document.strategy === "third-party/not-translated" && typeof document.upstream !== "string") {
+            errors.push(`${i18nManifest}: third-party entry for ${document.path} requires upstream`);
+          }
+        }
+
+        for (const file of markdownFiles) {
+          const count = classified.get(file) ?? 0;
+          if (count === 0) errors.push(`${file}: human documentation is not classified in ${i18nManifest}`);
+          if (count > 1) errors.push(`${file}: human documentation has ${count} i18n classifications`);
+        }
+        for (const file of classified.keys()) {
+          if (!markdownFiles.includes(file)) errors.push(`${i18nManifest}: classified path is outside human documentation scope: ${file}`);
+        }
+      }
     } catch (error) {
       errors.push(`${i18nManifest}: invalid JSON: ${error.message}`);
-    }
-  }
-  for (const pair of pairs) {
-    if (!pair || typeof pair.pt !== "string" || typeof pair.en !== "string") {
-      errors.push(`${i18nManifest}: each pair requires pt and en paths`);
-      continue;
-    }
-    for (const file of [pair.pt, pair.en]) if (!tracked.has(file)) errors.push(`missing required tracked bilingual document: ${file}`);
-    if (tracked.has(pair.pt) && !readTracked(pair.pt).includes(path.basename(pair.en))) {
-      errors.push(`${pair.pt}: missing reference to English pair ${path.basename(pair.en)}`);
-    }
-    if (tracked.has(pair.en) && !readTracked(pair.en).includes(path.basename(pair.pt))) {
-      errors.push(`${pair.en}: missing reference to Portuguese pair ${path.basename(pair.pt)}`);
     }
   }
 
@@ -156,6 +230,7 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
   let imagesChecked = 0;
   for (const file of markdownFiles) {
     const content = readTracked(file);
+    const proseContent = content.replace(/```[\s\S]*?```/g, (block) => block.replace(/[^\n]/g, " "));
     const links = markdownLinks(content);
     linksBySource.set(file, links);
     for (const link of links) {
@@ -182,7 +257,7 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
       }
     }
 
-    for (const match of content.matchAll(/\b(?:TODO|TBD|FIXME|XXX)\b/g)) {
+    for (const match of proseContent.matchAll(/\b(?:TODO|TBD|FIXME|XXX)\b/g)) {
       errors.push(`${file}:${lineNumber(content, match.index ?? 0)}: unresolved documentation placeholder`);
     }
     for (const match of content.matchAll(/\b(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2})\b/g)) {
@@ -203,12 +278,12 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
     const source = pending.shift();
     for (const link of linksBySource.get(source) ?? []) {
       const resolved = resolveTarget(source, link.target);
-      if (!resolved?.target || !markdownFiles.includes(resolved.target) || reachable.has(resolved.target)) continue;
+      if (!resolved?.target || !graphFiles.includes(resolved.target) || reachable.has(resolved.target)) continue;
       reachable.add(resolved.target);
       pending.push(resolved.target);
     }
   }
-  for (const file of markdownFiles) if (!reachable.has(file)) errors.push(`${file}: orphaned Markdown document (not reachable from README)`);
+  for (const file of graphFiles) if (!reachable.has(file)) errors.push(`${file}: orphaned Markdown document (not reachable from README)`);
 
   const makefile = tracked.has("Makefile") ? readTracked("Makefile") : "";
   const targets = makeTargets(makefile);
@@ -252,7 +327,7 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
 
   return {
     errors: [...new Set(errors)].sort(),
-    stats: { markdownFiles: markdownFiles.length, linksChecked, imagesChecked, pairs: pairs.length, services: services.length },
+    stats: { markdownFiles: markdownFiles.length, linksChecked, imagesChecked, pairs, services: services.length },
   };
 }
 

@@ -1,17 +1,88 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "primary_language": "pt-BR",
-  "pairs": [
-    { "pt": "README.md", "en": "README.en.md" },
-    { "pt": "docs/README.md", "en": "docs/README.en.md" },
-    { "pt": "docs/CONTAINERS.md", "en": "docs/CONTAINERS.en.md" },
-    { "pt": "docs/INSTALACAO_RESTAURACAO_SMART_HOME.md", "en": "docs/INSTALLATION_RESTORE.en.md" },
-    { "pt": "docs/REVISAO_DOCUMENTACAO_SEMANAL.md", "en": "docs/WEEKLY_DOCUMENTATION_REVIEW.en.md" },
-    { "pt": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.md", "en": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md" },
-    { "pt": "docs/PRIVACY_MODEL.md", "en": "docs/PRIVACY_MODEL.en.md" },
-    { "pt": "docs/PUBLIC_PRIVATE_BOUNDARY.md", "en": "docs/PUBLIC_PRIVATE_BOUNDARY.en.md" },
-    { "pt": "docs/RESTORE_CONTRACT.md", "en": "docs/RESTORE_CONTRACT.en.md" },
-    { "pt": "docs/BOOTSTRAP_DEMO.md", "en": "docs/BOOTSTRAP_DEMO.en.md" },
-    { "pt": "docs/ESTRATEGIA_DE_TESTES.md", "en": "docs/TESTING_STRATEGY.en.md" }
+  "areas": [
+    "overview",
+    "architecture",
+    "getting-started",
+    "installation",
+    "restore",
+    "security",
+    "privacy",
+    "operations",
+    "troubleshooting",
+    "contributing",
+    "template-customization",
+    "features",
+    "portfolio",
+    "historical-case-studies"
+  ],
+  "strategies": [
+    "full pair",
+    "summary pair",
+    "third-party/not-translated",
+    "archived"
+  ],
+  "scope": {
+    "description": "Public-facing human documentation maintained by the project, plus explicitly identified third-party documentation.",
+    "excluded": [
+      { "pattern": "AGENTS.md", "reason": "agent instruction contract" },
+      { "pattern": "CLAUDE.md", "reason": "agent instruction compatibility file" },
+      { "pattern": "MEMORY.md", "reason": "agent memory compatibility index" },
+      { "pattern": ".agents/**/*.md", "reason": "machine-consumed skill instructions" },
+      { "pattern": ".codex/memories/**/*.md", "reason": "agent retrieval memory, governed separately" },
+      { "pattern": "prompts/**/*.md", "reason": "machine-consumed prompt" },
+      { "pattern": "scripts/**/*.prompt.md", "reason": "machine-consumed prompt" },
+      { "pattern": "scripts/local-ai/prompts/**/*.md", "reason": "machine-consumed Local AI prompt" }
+    ]
+  },
+  "documents": [
+    { "id": "root-readme", "area": "overview", "strategy": "full pair", "pt": "README.md", "en": "README.en.md" },
+    { "id": "docs-index", "area": "overview", "strategy": "full pair", "pt": "docs/README.md", "en": "docs/README.en.md" },
+    { "id": "containers", "area": "architecture", "strategy": "full pair", "pt": "docs/CONTAINERS.md", "en": "docs/CONTAINERS.en.md" },
+    { "id": "installation-restore", "area": "installation", "strategy": "full pair", "pt": "docs/INSTALACAO_RESTAURACAO_SMART_HOME.md", "en": "docs/INSTALLATION_RESTORE.en.md" },
+    { "id": "weekly-review", "area": "operations", "strategy": "full pair", "pt": "docs/REVISAO_DOCUMENTACAO_SEMANAL.md", "en": "docs/WEEKLY_DOCUMENTATION_REVIEW.en.md" },
+    { "id": "infrastructure-monitoring", "area": "features", "strategy": "full pair", "pt": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.md", "en": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md" },
+    { "id": "privacy-model", "area": "privacy", "strategy": "full pair", "pt": "docs/PRIVACY_MODEL.md", "en": "docs/PRIVACY_MODEL.en.md" },
+    { "id": "public-private-boundary", "area": "privacy", "strategy": "full pair", "pt": "docs/PUBLIC_PRIVATE_BOUNDARY.md", "en": "docs/PUBLIC_PRIVATE_BOUNDARY.en.md" },
+    { "id": "restore-contract", "area": "restore", "strategy": "full pair", "pt": "docs/RESTORE_CONTRACT.md", "en": "docs/RESTORE_CONTRACT.en.md" },
+    { "id": "bootstrap-demo", "area": "getting-started", "strategy": "full pair", "pt": "docs/BOOTSTRAP_DEMO.md", "en": "docs/BOOTSTRAP_DEMO.en.md" },
+    { "id": "testing-strategy", "area": "operations", "strategy": "full pair", "pt": "docs/ESTRATEGIA_DE_TESTES.md", "en": "docs/TESTING_STRATEGY.en.md" },
+    { "id": "dependency-provenance", "area": "security", "strategy": "full pair", "pt": "docs/DEPENDENCY_PROVENANCE.md", "en": "docs/DEPENDENCY_PROVENANCE.en.md" },
+    { "id": "github-settings", "area": "contributing", "strategy": "full pair", "pt": "docs/GITHUB_REPOSITORY_SETTINGS.md", "en": "docs/GITHUB_REPOSITORY_SETTINGS.en.md" },
+    { "id": "documentation-assets", "area": "architecture", "strategy": "full pair", "pt": "docs/assets/README.md", "en": "docs/assets/README.en.md" },
+    { "id": "linkedin-project", "area": "portfolio", "strategy": "full pair", "pt": "docs/portfolio/linkedin-project-pt-BR.md", "en": "docs/portfolio/linkedin-project-en.md" },
+    { "id": "technical-case-study", "area": "portfolio", "strategy": "full pair", "pt": "docs/portfolio/technical-case-study-pt-BR.md", "en": "docs/portfolio/technical-case-study-en.md" },
+    { "id": "third-party-notices", "area": "security", "strategy": "full pair", "pt": "THIRD_PARTY_NOTICES.pt-BR.md", "en": "THIRD_PARTY_NOTICES.md" },
+
+    { "path": "CONTRIBUTING.md", "area": "contributing", "strategy": "full pair", "format": "bilingual-single-file", "languages": ["pt-BR", "en"] },
+    { "path": "SECURITY.md", "area": "security", "strategy": "full pair", "format": "bilingual-single-file", "languages": ["pt-BR", "en"] },
+    { "path": "CODE_OF_CONDUCT.md", "area": "contributing", "strategy": "full pair", "format": "bilingual-single-file", "languages": ["pt-BR", "en"] },
+    { "path": ".github/PULL_REQUEST_TEMPLATE.md", "area": "contributing", "strategy": "full pair", "format": "bilingual-single-file", "languages": ["pt-BR", "en"] },
+
+    { "path": "docs/ALARME_CASA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/ALARME_DESARME_CHEGADA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/BLUETOOTH_MATTER.md", "area": "troubleshooting", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/CONTAINERS.en.md" },
+    { "path": "docs/CHAT_CLAUDE_CODE_HA.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/CONTAINERS.en.md" },
+    { "path": "docs/CONTROLE_ENERGIA_HOME_ASSISTANT.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/ILUMINACAO_EXTERNA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/ILUMINACAO_SEGURANCA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/INTEGRACAO_MONI_MOBILE_INTELBRAS.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/LOCAL_AI_RTX_4070.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "scripts/local-ai/README.md" },
+    { "path": "scripts/local-ai/README.md", "area": "operations", "strategy": "summary pair", "language": "en", "summary": "docs/LOCAL_AI_RTX_4070.md" },
+    { "path": "docs/MEMORIA_VERSIONADA_AGENTES.md", "area": "architecture", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/PORTAO_GARAGEM_BOTAO_PULSO.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/PORTAO_GARAGEM_RELE_LOCAL.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/RASPBERRY_PI_SYSTEM_HEALTH.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md", "area": "security", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/WAKE_ON_LAN_TV_SALA.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+
+    { "path": "docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
+    { "path": "docs/HANDOFF_LIMPEZA_HISTORICO_GIT.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
+    { "path": "docs/LOCAL_AI_BENCHMARK_2026-08-16.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
+
+    { "path": "homeassistant/custom_components/hacs/validate/README.md", "area": "contributing", "strategy": "third-party/not-translated", "language": "en", "upstream": "https://github.com/hacs/integration" }
   ]
 }
