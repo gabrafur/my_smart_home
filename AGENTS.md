@@ -4,6 +4,18 @@ As políticas globais de modelo, primeira resposta, segurança e Local AI em
 `~/.codex/AGENTS.md` já fazem parte desta conversa. Este arquivo contém somente
 os desvios e contratos deste repositório para não duplicar contexto no startup.
 
+## Pausa para troca manual do modelo
+
+Em novas solicitações interativas, depois de informar o modelo e o nível de
+reasoning recomendados, o Codex deve interromper o fluxo antes de executar a
+tarefa. Ele deve aguardar o usuário trocar o modelo, se desejar, e enviar uma
+mensagem contendo exatamente `feito`. Somente depois desse sinal pode continuar
+a análise, usar ferramentas ou alterar arquivos.
+
+Essa pausa é um gate de seleção do modelo, não uma aprovação genérica para
+ações posteriores. O marcador `CODEX_UNATTENDED_WEEKLY_DOCS_REVIEW` continua
+sujeito à exceção de revisão documental semanal descrita abaixo.
+
 ## Exceção de revisão documental semanal sem supervisão
 
 O prompt versionado `scripts/weekly-docs-review.prompt.md` contém o marcador
