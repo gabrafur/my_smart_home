@@ -352,6 +352,7 @@ const server = http.createServer((req, res) => {
   }
   const supportedRoute = (
     (req.method === 'POST' && requestUrl.pathname === '/chat')
+    || (req.method === 'DELETE' && requestUrl.pathname === '/history')
     || (req.method === 'GET' && requestUrl.pathname === '/history')
     || (req.method === 'GET' && requestUrl.pathname === '/history/conversations')
   );
@@ -392,6 +393,40 @@ const server = http.createServer((req, res) => {
       console.error(err);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'failed to read shared history' }));
+    }
+    return;
+  }
+
+  if (req.method === 'DELETE') {
+    const agent = requestUrl.searchParams.get('agent');
+    const conversationId = requestUrl.searchParams.get('conversation_id');
+    if (!['claude', 'codex'].includes(agent) || !conversationId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'agent and conversation_id are required' }));
+      return;
+    }
+    const sessionPrefix = `${agent}:${conversationId}`;
+    const active = [...sessionQueues.keys()].some(
+      (key) => key === sessionPrefix || key.startsWith(`${sessionPrefix}:`),
+    );
+    if (active) {
+      res.writeHead(409, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'conversation is active' }));
+      return;
+    }
+    try {
+      const clearedTurns = history.clearTurns({ agent, conversationId });
+      const clearedSessions = history.deleteSessionsForConversation(agent, conversationId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        status: 'cleared',
+        cleared_turns: clearedTurns,
+        cleared_sessions: clearedSessions,
+      }));
+    } catch (err) {
+      console.error(`Failed to clear shared history: ${err.message}`);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'failed to clear shared history' }));
     }
     return;
   }

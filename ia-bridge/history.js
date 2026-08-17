@@ -50,6 +50,24 @@ class SharedHistoryStore {
   deleteSession(key) {
     if (!key || !this.sessions.delete(key)) return;
 
+    this.persistSessions();
+  }
+
+  deleteSessionsForConversation(agent, conversationId) {
+    if (!agent || !conversationId) return 0;
+    const prefix = `${agent}:${conversationId}`;
+    let removed = 0;
+    for (const key of this.sessions.keys()) {
+      if (key === prefix || key.startsWith(`${prefix}:`)) {
+        this.sessions.delete(key);
+        removed += 1;
+      }
+    }
+    if (removed) this.persistSessions();
+    return removed;
+  }
+
+  persistSessions() {
     const temporaryPath = `${this.sessionsPath}.${process.pid}.tmp`;
     const serialized = `${JSON.stringify(Object.fromEntries(this.sessions), null, 2)}\n`;
     fs.writeFileSync(temporaryPath, serialized, { mode: 0o660 });
@@ -99,6 +117,38 @@ class SharedHistoryStore {
       }
     }
     return turns.slice(-limit);
+  }
+
+  clearTurns({ agent, conversationId }) {
+    if (!agent || !conversationId) return 0;
+    let contents;
+    try {
+      contents = fs.readFileSync(this.turnsPath, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') return 0;
+      throw err;
+    }
+
+    let removed = 0;
+    const retained = [];
+    for (const line of contents.split(/\r?\n/)) {
+      if (!line.trim()) continue;
+      try {
+        const turn = JSON.parse(line);
+        if (turn.agent === agent && turn.conversation_id === conversationId) {
+          removed += 1;
+          continue;
+        }
+      } catch {
+        // Preserve malformed or partially written records from other work.
+      }
+      retained.push(line);
+    }
+
+    const temporaryPath = `${this.turnsPath}.${process.pid}.tmp`;
+    fs.writeFileSync(temporaryPath, retained.length ? `${retained.join('\n')}\n` : '', { mode: 0o660 });
+    fs.renameSync(temporaryPath, this.turnsPath);
+    return removed;
   }
 
   listConversations({ agent = null, limit = 100 } = {}) {

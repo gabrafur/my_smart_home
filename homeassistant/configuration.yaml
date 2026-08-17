@@ -25,7 +25,7 @@ lovelace:
   # 12 characters of the asset's SHA-256 and is enforced by a regression test.
   resource_mode: yaml
   resources:
-    - url: /local/codex-chat-card-v2.js?v=fc7c85ef739d
+    - url: /local/codex-chat-card-v2.js?v=f33546e34cc8
       type: module
   dashboards:
     chat-assistants:

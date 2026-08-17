@@ -14,6 +14,10 @@ operacional: somente este servidor, o repositório e os softwares, serviços,
 contêineres e integrações instalados nele. O nome é tratado como dado de
 identidade, não como instrução. O card exibe permanentemente essa fronteira e o
 usuário atual, sem exigir que a pessoa repita o contexto em cada mensagem.
+O botão **Limpar conversa** pede confirmação antes de remover, no servidor, os
+turnos persistidos e todas as sessões do Codex associadas à conversa. A próxima
+mensagem inicia um contexto novo; a ação não afeta conversas de outros usuários
+ou do Claude Code.
 
 O código-fonte fica em `ia-bridge/`. O serviço e o container usam o
 identificador `ai-bridge`; os volumes de autenticação existentes são

@@ -87,3 +87,26 @@ test('keeps a pending prompt and coalesces its completed result', (t) => {
   assert.equal(turns[0].reply, 'feito');
   assert.equal(turns[0].status, 'success');
 });
+
+test('clears one conversation history and every associated model session', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-history-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const store = new SharedHistoryStore(directory);
+  store.initialize();
+  store.setSession('codex:conversation-1:model=luna', 'session-1');
+  store.setSession('codex:conversation-1:model=terra', 'session-2');
+  store.setSession('codex:conversation-2:model=luna', 'session-3');
+  for (const conversationId of ['conversation-1', 'conversation-2']) {
+    store.appendTurn({
+      agent: 'codex', conversationId, sessionId: 'session',
+      prompt: conversationId, reply: 'ok', status: 'success',
+    });
+  }
+
+  assert.equal(store.clearTurns({ agent: 'codex', conversationId: 'conversation-1' }), 1);
+  assert.equal(store.deleteSessionsForConversation('codex', 'conversation-1'), 2);
+  assert.deepEqual(store.readTurns({ agent: 'codex' }).map((turn) => turn.prompt), ['conversation-2']);
+  assert.equal(store.getSession('codex:conversation-1:model=luna'), null);
+  assert.equal(store.getSession('codex:conversation-1:model=terra'), null);
+  assert.equal(store.getSession('codex:conversation-2:model=luna'), 'session-3');
+});

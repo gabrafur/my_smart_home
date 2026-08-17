@@ -28,6 +28,17 @@ class CodexChatContextTest(unittest.TestCase):
         self.assertIn("Escopo: somente este servidor", card)
         self.assertIn("Usuário: ${userName}", card)
 
+    def test_clear_button_requires_confirmation_and_clears_server_context(self):
+        component = COMPONENT.read_text(encoding="utf-8")
+        card = CARD.read_text(encoding="utf-8")
+
+        self.assertIn("claude_code_chat/clear", component)
+        self.assertIn("async def websocket_clear", component)
+        self.assertIn("window.confirm", card)
+        self.assertIn("Limpar conversa", card)
+        self.assertIn("Esta ação não pode ser desfeita", card)
+        self.assertIn("this.messages = []", card)
+
 
 if __name__ == "__main__":
     unittest.main()
