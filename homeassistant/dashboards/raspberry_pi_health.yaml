@@ -83,6 +83,8 @@ views:
                   perform_action: event.fire
                   data:
                     event_type: storage_health_manual_run
+                  confirmation:
+                    text: A manutenção remove backups de flows e logs npm expirados. Deseja continuar?
               - type: button
                 name: Rodar revisão documental
                 icon: mdi:file-document-refresh-outline
