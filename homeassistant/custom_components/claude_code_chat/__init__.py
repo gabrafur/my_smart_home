@@ -93,6 +93,29 @@ async def websocket_history(hass: HomeAssistant, connection: websocket_api.Activ
     connection.send_result(msg["id"], payload)
 
 
+@websocket_api.websocket_command({vol.Required("type"): "claude_code_chat/clear"})
+@websocket_api.async_response
+async def websocket_clear(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """Clear the authenticated user's Codex transcript and session context."""
+    data = _entry_data(hass)
+    if data is None:
+        connection.send_error(msg["id"], "not_loaded", "Integração não carregada")
+        return
+    if not _authorized(connection, data):
+        connection.send_error(msg["id"], "unauthorized", "Usuário não autorizado")
+        return
+    history_url = data.bridge_url.rsplit("/chat", 1)[0] + "/history"
+    params = {"agent": "codex", "conversation_id": f"home-assistant:codex:{connection.user.id}"}
+    try:
+        async with async_get_clientsession(hass).delete(history_url, params=params, headers={"Authorization": f"Bearer {data.bridge_token}"}, timeout=aiohttp.ClientTimeout(total=30)) as response:
+            response.raise_for_status()
+            payload = await response.json()
+    except Exception as err:  # noqa: BLE001
+        connection.send_error(msg["id"], "bridge_error", str(err))
+        return
+    connection.send_result(msg["id"], payload)
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): "claude_code_chat/process",
@@ -161,6 +184,7 @@ async def async_setup_entry(
     )
     if not hass.data.get(f"{DOMAIN}_websocket_registered"):
         websocket_api.async_register_command(hass, websocket_history)
+        websocket_api.async_register_command(hass, websocket_clear)
         websocket_api.async_register_command(hass, websocket_process)
         hass.data[f"{DOMAIN}_websocket_registered"] = True
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

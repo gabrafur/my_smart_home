@@ -13,6 +13,7 @@ class CodexChatCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.messages = [];
     this.loading = false;
+    this.clearing = false;
     this.loadingStartedAt = null;
     this.loadingTimer = null;
     this.loaded = false;
@@ -65,6 +66,22 @@ class CodexChatCard extends HTMLElement {
     this.stopLoadingFeedback(); this.loading = false; this.render(); this.scrollToEnd();
   }
 
+  async clearChat() {
+    if (this.loading || this.clearing) return;
+    const confirmed = window.confirm('Apagar todo o histórico e o contexto desta conversa? Esta ação não pode ser desfeita.');
+    if (!confirmed) return;
+    this.clearing = true;
+    this.render();
+    try {
+      await this._hass.callWS({ type: 'claude_code_chat/clear' });
+      this.messages = [];
+    } catch (error) {
+      this.messages.push({ role: 'error', text: `Não foi possível limpar a conversa: ${error.message || error}` });
+    }
+    this.clearing = false;
+    this.render();
+  }
+
   loadingMessage() {
     const elapsed = Math.max(0, Math.floor((Date.now() - this.loadingStartedAt) / 1000));
     const duration = elapsed < 60 ? `${elapsed} s` : `${Math.floor(elapsed / 60)} min ${elapsed % 60} s`;
@@ -114,7 +131,24 @@ class CodexChatCard extends HTMLElement {
     const userName = this._hass?.user?.name || 'usuário autenticado';
     this.shadowRoot.querySelector('.sub').textContent = `Escopo: somente este servidor e o que está instalado nele · Usuário: ${userName} · Histórico preservado`;
     this.shadowRoot.querySelector('.note').textContent = 'A seleção inicial prioriza velocidade: Luna com reasoning baixo. Terra e Sol continuam disponíveis para tarefas mais difíceis.';
-    this.shadowRoot.querySelector('button')?.addEventListener('click', () => this.send());
+    const clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.className = 'clear-history';
+    clearButton.textContent = this.clearing ? 'Limpando…' : 'Limpar conversa';
+    clearButton.title = 'Apagar histórico e contexto desta conversa';
+    clearButton.disabled = this.loading || this.clearing || this.messages.length === 0;
+    clearButton.style.cssText = 'grid-column:1/-1;justify-self:end;width:auto;height:36px;padding:0 14px;border-radius:10px;background:var(--error-color);font-size:13px';
+    this.shadowRoot.querySelector('.settings').append(clearButton);
+    clearButton.addEventListener('click', () => this.clearChat());
+    if (this.clearing) {
+      this.shadowRoot.querySelector('textarea').disabled = true;
+      this.shadowRoot.querySelector('.composer button').disabled = true;
+    }
+    if (this.loaded && this.messages.length === 0) {
+      const emptyState = this.shadowRoot.querySelector('.feed .sub');
+      if (emptyState) emptyState.textContent = 'Conversa vazia. A próxima mensagem iniciará um novo contexto.';
+    }
+    this.shadowRoot.querySelector('.composer button')?.addEventListener('click', () => this.send());
     this.shadowRoot.querySelector('textarea')?.addEventListener('keydown', (event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.send(); } });
     this.shadowRoot.querySelector('[data-setting="model"]')?.addEventListener('change', (event) => { this.settings.model = event.target.value; if (!this.allowedReasoning().includes(this.settings.reasoning)) this.settings.reasoning = ''; this.saveSettings(); this.render(); });
     this.shadowRoot.querySelector('[data-setting="reasoning"]')?.addEventListener('change', (event) => { this.settings.reasoning = event.target.value; this.saveSettings(); });
