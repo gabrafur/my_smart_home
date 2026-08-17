@@ -24,7 +24,7 @@
       "entities": {
         "device_tracker.mobile_primary": {
           "target_entity_id": "device_tracker.example_mobile_primary",
-          "state_mode": "home_away"
+          "state_mode": "passthrough"
         }
       },
       "services": {
@@ -41,7 +41,13 @@
       "entities": {
         "device_tracker.vehicle_primary": {
           "target_entity_id": "device_tracker.example_vehicle_primary",
-          "state_mode": "home_away"
+          "state_mode": "passthrough",
+          "attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude",
+            "source_type"
+          ]
         },
         "switch.vehicle_primary_climate": {
           "target_entity_id": "switch.example_vehicle_primary_climate",

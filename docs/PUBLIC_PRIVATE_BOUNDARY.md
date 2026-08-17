@@ -37,6 +37,13 @@ obrigatórios.
 - normaliza presença e estados booleanos quando configurado;
 - encaminha ações allowlisted pelo serviço `public_bindings.call`.
 
+Aliases públicos de `device_tracker` devem usar `state_mode: passthrough`. Isso
+preserva estados de zonas nomeadas, como `chegando`; `home_away` reduziria essas
+zonas a `not_home`. Os atributos de localização necessários por automações
+(`latitude`, `longitude`, `gps_accuracy` e `source_type`) também precisam estar
+na allowlist do binding privado. Os valores continuam apenas no runtime e não
+são versionados.
+
 Uma ação pode apontar diretamente para `target_entity_id` ou reutilizar uma
 entidade do mesmo papel por `target_public_entity_id`. A segunda forma mantém o
 alvo privado em um único binding e é adequada para pares seguros como

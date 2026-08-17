@@ -758,6 +758,7 @@
             "e1df5b6e59c2e349",
             "46c2142f93cfc3e1",
             "94164ea9e4f5c8d1",
+            "vehicle_primary_engine_on_event_v1",
             "9bbff0058231747f",
             "2ff44a30d0a2cf18",
             "26d6516f49329f7b",
@@ -766,7 +767,7 @@
         "x": 94,
         "y": 59,
         "w": 492,
-        "h": 402
+        "h": 462
     },
     {
         "id": "d860cb4ad0d1fd89",
@@ -6869,6 +6870,53 @@
         ]
     },
     {
+        "id": "vehicle_primary_engine_on_event_v1",
+        "type": "server-state-changed",
+        "z": "c22d8b12055e87f7",
+        "g": "c1e3fc50d8ed0093",
+        "name": "Motor ligado por 5 s",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "binary_sensor.vehicle_primary_engine"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "on",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "5",
+        "forType": "num",
+        "forUnits": "seconds",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "(\n  {\"event\":\"turn_on\",\"reason\":\"vehicle_primary_engine_on\",\"source\":\"vehicle_primary\",\"vehicle_primary\":$entities(\"device_tracker.vehicle_primary\"),\"vehicle_primary_engine\":$entities(\"binary_sensor.vehicle_primary_engine\"),\"vehicle_primary_lock\":$entities(\"lock.vehicle_primary_door_lock\")}\n)",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 330,
+        "y": 300,
+        "wires": [
+            [
+                "092625f2eb5cc156"
+            ]
+        ]
+    },
+    {
         "id": "9bbff0058231747f",
         "type": "server-state-changed",
         "z": "c22d8b12055e87f7",
@@ -6908,7 +6956,7 @@
             }
         ],
         "x": 330,
-        "y": 300,
+        "y": 350,
         "wires": [
             [
                 "092625f2eb5cc156"
@@ -6955,7 +7003,7 @@
             }
         ],
         "x": 330,
-        "y": 360,
+        "y": 400,
         "wires": [
             [
                 "092625f2eb5cc156"
@@ -6972,7 +7020,7 @@
             "3514854bb1279cbb"
         ],
         "x": 195,
-        "y": 420,
+        "y": 480,
         "wires": [
             [
                 "f673b02282a47d31"

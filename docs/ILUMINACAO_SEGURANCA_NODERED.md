@@ -108,7 +108,7 @@ com o iCloud atrasado.
 
 ### vehicle_primary
 
-- `device_tracker.vehicle_primary_location`
+- `device_tracker.vehicle_primary`
 - `binary_sensor.vehicle_primary_engine`
 - `lock.vehicle_primary_door_lock`
 - `button.vehicle_primary_force_refresh`
@@ -129,8 +129,19 @@ com o iCloud atrasado.
 `HOME_LAT`, `HOME_LON`, `GATE_LAT` e `GATE_LON` vêm do ambiente do container;
 coordenadas privadas nunca são versionadas. O cálculo só aceita GPS com
 precisão de até 100 m. Sem coordenada confiável, usa-se `home`/`not_home` como
-fallback. `unknown`, `unavailable` ou precisão ruim produzem `state_valid:
-false`, não geram chegada e não limpam o armado anterior.
+fallback. `unknown` e `unavailable` produzem `state_valid: false`. Precisão ruim
+impede que coordenadas ou `home` confirmem chegada; `not_home` ainda pode armar
+o retorno de forma conservadora. Nenhum desses casos gera chegada nem limpa o
+armado anterior.
+
+O alias público `device_tracker.vehicle_primary` preserva os estados nativos do
+Home Assistant com `state_mode: passthrough`: `home` dentro da zona da casa,
+`chegando` dentro da zona de aproximação e `not_home` fora das zonas. `away` não
+é estado do tracker; é o booleano derivado no contrato
+`security.vehicle_primary-context.v1`, usando primeiro coordenadas confiáveis e
+depois `not_home` como fallback. O checker de bindings rejeita
+`home_away` em `device_tracker`, pois esse modo apagaria a distinção entre
+`chegando` e `not_home`.
 
 ## Regras de chegada preservadas
 
@@ -175,6 +186,11 @@ O estado pertence exclusivamente a `contexto_vehicle_primary`:
 - sem evidência suficiente publica `in_use: null`, `in_use_pending: true`, e a
   iluminação permanece bloqueada. Nunca converte stale automaticamente em
   `false`.
+
+Mudanças confirmadas de motor são observadas simetricamente: `on` por 5 s e
+`off` por 5 s entram imediatamente no normalizador. Isso evita esperar o
+próximo snapshot periódico para iniciar ou encerrar o contexto de uso, mantendo
+o mesmo filtro contra oscilações nos dois sentidos.
 
 O gate não usa apenas a leitura ao vivo do motor porque o backend brasileiro
 pode manter esse sensor antigo durante uma viagem. A iluminação recebe apenas
@@ -340,9 +356,10 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa 31 cenários de regressão, incluindo
+`flows:test-security` executa 33 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
-de refresh, inclusive movimento dentro da mesma zona.
+de refresh, inclusive movimento dentro da mesma zona, simetria de motor
+`on`/`off` e preservação de `home`/`chegando`/`not_home` com `away` derivado.
 `flows:test-security-recovery` acrescenta 40 cenários de restart e recuperação;
 `flows:test-security-adversarial`, mais 23 casos adversariais com relógio
 controlado para reconciliação e deadlines. São replays offline dos
