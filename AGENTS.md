@@ -1,608 +1,126 @@
-## Model Routing, Prompt Improvement, and Cost Policy
+# Instruções específicas do repositório Home Assistant
 
-## Unattended weekly documentation review exception
+As políticas globais de modelo, primeira resposta, segurança e Local AI em
+`~/.codex/AGENTS.md` já fazem parte desta conversa. Este arquivo contém somente
+os desvios e contratos deste repositório para não duplicar contexto no startup.
 
-The versioned prompt `scripts/weekly-docs-review.prompt.md` contains the exact
-marker `CODEX_UNATTENDED_WEEKLY_DOCS_REVIEW`. When that marker appears in the
-first user request, it is a pre-authorized, non-interactive invocation from
-`scripts/weekly-docs-review.mjs`.
+## Exceção de revisão documental semanal sem supervisão
 
-For that invocation only, skip this document's initial title, prompt-improvement,
-model-routing, and `continue` confirmation gate. Execute the prompt immediately
-and report the result in the command log. All other instructions in this file,
-especially its safety, validation, Git, and Local AI requirements, remain in
-effect. Do not apply this exception to interactive requests merely because they
-ask for documentation review.
+O prompt versionado `scripts/weekly-docs-review.prompt.md` contém o marcador
+exato `CODEX_UNATTENDED_WEEKLY_DOCS_REVIEW`. Quando ele aparecer na primeira
+solicitação, é uma invocação não interativa pré-autorizada de
+`scripts/weekly-docs-review.mjs`: ignore apenas o gate inicial de título,
+melhoria de prompt, roteamento de modelo e `continue`; execute o prompt e
+registre o resultado. Esta exceção não vale para solicitações interativas.
 
-For the first user request in a new conversation, perform only three preliminary actions:
+## Memória pública do projeto: retrieval, não preload
 
-1. suggest a concise title for the conversation;
-2. improve the user's original prompt into a clearer and more actionable task specification;
-3. recommend the cheapest GPT-5.6 model and reasoning level with a high probability of completing the improved task correctly.
+`.codex/memories/<assunto>/<nome-descritivo>.md` é o local canônico para
+memória pública, durável e versionada. O índice canônico é
+`.codex/memories/projeto/indice.md`; `MEMORY.md` é somente um índice curto de
+compatibilidade. Documentação operacional atual continua sendo a fonte de
+verdade para comportamento corrente.
 
-Do not inspect the project, search files, run task-related commands, edit files, change Git, debug, research the repository, query services, execute tests, or execute the requested task before the user confirms.
+Ao haver divergência, aplique esta ordem de autoridade:
 
-Interpreting the request only to understand intent, improve the prompt, classify complexity, identify likely risks, and recommend a model is allowed.
+1. código e configuração executável atual;
+2. testes e contratos executáveis;
+3. documentação operacional atual;
+4. decisões arquiteturais vigentes;
+5. memória versionada dos agentes.
 
-This first-request gate applies once per conversation.
+Corrija memória obsoleta em vez de mudar o sistema para confirmá-la. Uma
+decisão histórica só permanece quando é explicitamente histórica e aponta para
+a fonte que a substituiu. O contrato completo está em
+`docs/MEMORIA_VERSIONADA_AGENTES.md`.
 
-After the user confirms with `continue`, `pode continuar`, or an equivalent confirmation, proceed normally using the improved prompt as the working task specification.
+Para cada tarefa, antes de carregar documentação ou memória de projeto:
 
-If the user edits, corrects, expands, or replaces the improved prompt before confirming, use the latest user-approved version instead.
+1. determine se ela realmente depende de histórico do repositório;
+2. se não depender, registre `memory-route <topico> --outcome skipped` somente
+   quando a telemetria for apropriada e siga sem recuperar memória;
+3. se depender, consulte primeiro o índice e use `rg`, nomes de arquivo,
+   headings, `find` e metadados para localizar somente o tema necessário;
+4. leia apenas os arquivos/seções necessários, preferindo a documentação
+   canônica atual a notas duplicadas ou históricas;
+5. para recuperação grande, não coloque o corpo bruto no contexto principal:
+   use a RTX com `summarize-memory` e passe adiante apenas o JSON estruturado;
+6. não carregue RCAs, arquitetura, histórico ou memória de outros subsistemas
+   em tarefas simples e não leia `.agent-history/`, `.claude/`, conteúdo de
+   runtime não público de `.codex/` ou `.local-secrets/` como fonte automática.
 
-Follow-up messages in the same conversation do not restart the gate unless the user explicitly asks for another model recommendation, another prompt improvement, or starts a materially unrelated task.
+O fluxo determinístico é:
 
-Use the conversation history to avoid loops after a model switch.
+```text
+tarefa -> índice/rg -> memória temática mínima -> Local AI se grande -> JSON estruturado -> modelo principal
+```
 
----
-
-## Prompt Improvement Policy
-
-Rewrite the user's original request into a stronger prompt while preserving the original intent, scope, concrete details, URLs, identifiers, examples, constraints, terminology, commands, code snippets, error messages, paths, entity names, branch names, and other relevant technical context.
-
-Improve the prompt where useful by clarifying:
-
-* objective;
-* current or observed behavior;
-* desired behavior;
-* investigation expectations;
-* scope;
-* constraints;
-* acceptance criteria;
-* validation steps;
-* regression checks;
-* safety expectations;
-* reversibility or rollback expectations;
-* documentation expectations;
-* expected final report.
-
-For debugging or investigation tasks, prefer an execution flow such as:
-
-1. understand the existing implementation and architecture;
-2. confirm or reproduce the reported behavior;
-3. trace the relevant data or execution path;
-4. identify the root cause;
-5. implement the smallest reliable correction;
-6. validate the correction;
-7. check for regressions;
-8. document findings and changes.
-
-For implementation tasks, make the desired result and validation criteria explicit.
-
-For infrastructure, Home Assistant, Node-RED, data engineering, CI/CD, Git, integrations, networking, containers, operating systems, or production-adjacent work, favor:
-
-* understanding the current architecture before modifying it;
-* root-cause fixes instead of symptom masking;
-* reuse of existing components and conventions;
-* incremental and reversible changes;
-* preservation of existing behavior unless explicitly requested otherwise;
-* validation after modifications;
-* testing the complete affected execution path when practical;
-* avoiding destructive operations when a safer alternative exists.
-
-Do not arbitrarily expand the task.
-
-Do not invent repository structure, filenames, entity IDs, branches, APIs, services, credentials, architecture, business rules, tools, infrastructure, or technical requirements that are not provided or reasonably implied.
-
-Do not convert optional ideas into mandatory requirements.
-
-When useful improvements beyond the original request are identified, keep them clearly separated as optional suggestions.
-
-Correct technical terminology when useful without changing the user's intended meaning.
-
-If the original request is already precise, improve it lightly instead of making it unnecessarily verbose.
-
-The improved prompt should be detailed enough that, after confirmation, it can be treated as the execution specification without needing to reinterpret the original request.
-
----
-
-## Copy-Safe Improved Prompt Output Policy
-
-The improved prompt must be easy to copy directly from the Codex response and paste into another Codex or ChatGPT conversation without losing its Markdown structure.
-
-Always output the complete improved prompt inside exactly one fenced code block.
-
-The content inside that block must contain the actual Markdown source of the improved prompt, not rendered Markdown.
-
-This means that Markdown syntax such as:
-
-* `#` and `##` headings;
-* numbered lists;
-* bullet lists;
-* checklists;
-* indentation;
-* inline code;
-* paths;
-* commands;
-* code blocks;
-* URLs;
-* quoted values;
-
-must remain visible literally inside the copyable block.
-
-Do not use blockquotes (`>`) as the outer container for the improved prompt.
-
-Do not split the improved prompt across multiple outer code blocks merely for presentation.
-
-Do not put explanations, model recommendations, notes, or commentary inside the improved-prompt block unless they are intentionally part of the task specification.
-
-Do not escape normal Markdown characters merely to make the rendered response look different.
-
-Preserve meaningful blank lines and indentation.
-
-### Fence safety
-
-The outer fence used for the improved prompt must be longer than any consecutive backtick sequence contained inside the improved prompt.
-
-Prefer four backticks for the outer fence:
-
-````text
-# Objective
-
-Investigate the reported issue.
-
-## Validation
-
-Run the relevant tests.
+Para medir o estado observável, use `./scripts/local-ai/local-ai memory-audit`.
+Para localizar um tema sem inferência, use
+`./scripts/local-ai/memory_context.py retrieve '<tema>' --query '<termos>'`.
+Para uma recuperação ampla e não sensível, materialize apenas os arquivos
+encontrados e faça a primeira passagem local:
 
 ```bash
-pytest tests/
-```
-````
-
-If the improved prompt itself contains a four-backtick sequence, use five backticks for the outer fence instead.
-
-In general:
-
-> outer fence length = longest internal backtick sequence + at least one
-
-Use `markdown` or `text` as the outer code-block language when useful.
-
-The content copied from the block must be immediately usable as a new chat prompt without cleanup.
-
-### Prompt structure
-
-For substantial engineering tasks, prefer a structure similar to:
-
-# Objective
-
-Describe the result that must be achieved.
-
-# Context
-
-Preserve relevant information supplied by the user.
-
-# Current Behavior
-
-Describe the observed issue when applicable.
-
-# Desired Behavior
-
-Describe the expected outcome.
-
-# Investigation
-
-Explain what should be inspected or verified before modifications.
-
-# Implementation Requirements
-
-Describe required changes and constraints.
-
-# Validation
-
-Describe tests and checks that must demonstrate correctness.
-
-# Regression Checks
-
-Describe existing behavior that must remain functional.
-
-# Git / Delivery Requirements
-
-Include branch, commit, PR, or repository requirements only when relevant or requested.
-
-# Documentation
-
-Describe documentation expectations when relevant.
-
-# Final Report
-
-Describe what the executing agent should report when finished.
-
-Do not mechanically add every section.
-
-Use only sections that make the task clearer.
-
-For simple tasks, keep the improved prompt compact.
-
----
-
-## Chat Title Policy
-
-Suggest one concise title for the new conversation.
-
-The title should:
-
-* describe the actual task;
-* normally use 3 to 8 words;
-* be easy to identify later in conversation history;
-* use the same language as the user's request unless there is a strong reason not to.
-
-Prefer specific titles such as:
-
-* `Corrigir bateria e consumo do Creta`
-* `Refatorar contexto de segurança Node-RED`
-* `Investigar crescimento de storage Raspberry`
-* `Adicionar observabilidade ao pipeline Grow`
-
-Avoid generic titles such as:
-
-* `Fix issue`
-* `New task`
-* `Code changes`
-* `Investigation`
-
-Do not attempt to rename the conversation automatically.
-
-The title is only a suggestion so the user can rename the Codex chat manually.
-
----
-
-## Model Routing Policy
-
-Use the cheapest option with a high probability of completing the improved task correctly, considering deterministic tools and local scripts before model escalation.
-
-### GPT-5.6 Luna (`gpt-5.6-luna`)
-
-Use for:
-
-* clear and small tasks;
-* localized changes;
-* repetitive or mechanical work;
-* easily validated transformations;
-* extraction;
-* simple documentation;
-* small code changes;
-* boilerplate;
-* simple tests.
-
-Prefer `low`.
-
-Use `medium` for ordinary bounded work.
-
-Use `high` only with concrete justification.
-
-### GPT-5.6 Terra (`gpt-5.6-terra`)
-
-Use for:
-
-* substantial engineering;
-* multi-file changes;
-* debugging;
-* implementation plus tests;
-* refactoring;
-* repository exploration;
-* Git;
-* CI/CD;
-* infrastructure;
-* integrations;
-* moderate architecture;
-* PR analysis.
-
-Prefer `medium`.
-
-Use `high` for multi-step debugging or architecture.
-
-Use `xhigh` only for unusually difficult problems.
-
-### GPT-5.6 Sol (`gpt-5.6-sol`)
-
-Use for:
-
-* materially difficult or ambiguous work;
-* unresolved complex debugging;
-* broad repository analysis;
-* high-risk migrations;
-* security-sensitive reasoning;
-* complex architecture;
-* multi-system root-cause investigation;
-* cases where Terra has demonstrated limitations.
-
-Prefer `medium` for substantial but clear work.
-
-Use `high` for complex work.
-
-Use `xhigh` for very difficult work.
-
-Use `max` only exceptionally.
-
-Do not select a stronger model merely because a task:
-
-* involves code;
-* has a long prompt;
-* references a large repository;
-* may touch many files.
-
-For large but deterministic extraction or transformation, keep the cheapest sufficient option.
-
-Consider deterministic tools, local scripts, and local AI/Ollama when available before Luna, Terra, or Sol.
-
-Do not create, repair, install, restart, or reconfigure Ollama infrastructure as part of model routing.
-
----
-
-## Initial Response Policy
-
-The initial response must remain concise enough to review easily, although the improved prompt itself may be detailed when the task benefits from additional structure.
-
-Use exactly this high-level response structure:
-
-### SUGGESTED CHAT TITLE
-
-`<concise suggested title>`
-
-### IMPROVED PROMPT
-
-Place the complete improved prompt in one copy-safe fenced block according to the `Copy-Safe Improved Prompt Output Policy`.
-
-Example:
-
-```markdown
-# Objective
-
-<clear objective>
-
-# Context
-
-<relevant context>
-
-# Requirements
-
-- <requirement>
-- <requirement>
-
-# Validation
-
-- <validation step>
-- <regression check>
+./scripts/local-ai/memory_context.py materialize '<tema>' --query '<termos>' \
+  | ./scripts/local-ai/local-ai summarize-memory --memory-topic '<tema>' --context-tokens 8192
 ```
 
-### MODEL RECOMMENDATION
-
-Model: GPT-5.6 `<Luna | Terra | Sol>`
-Reasoning: `<Low | Medium | High | Extra High | Max>`
-Confidence: `<High | Medium | Low>`
-
-Reason: `<short explanation>`
-
-Why not cheaper:
-`<short explanation or "Luna is sufficient">`
-
-Why not stronger:
-`<short explanation or "Sol is not justified">`
-
-### NEXT STEP
-
-Tell the user to switch to the recommended model and reasoning level using `/model` or the equivalent supported UI, then reply with:
-
-`continue`
-
-Do not claim that the model was switched automatically.
-
-Do not execute the requested task in this initial response.
-
----
-
-## Confirmation and Continuation Policy
-
-When the user replies with `continue`, `pode continuar`, or an equivalent confirmation, consider the initial gate complete and execute the task normally using the improved prompt as the working specification.
-
-Do not repeat the model recommendation after confirmation.
-
-Do not regenerate the improved prompt after confirmation unless explicitly requested.
-
-Do not ask the user to confirm the same task again.
-
-If the user adds requirements before confirmation, incorporate those requirements into the working specification.
-
-A subsequent `continue` approves the latest version.
-
-If the user pastes an edited version of the improved prompt and then confirms, the user-edited version takes precedence.
-
-After confirmation, continue naturally from the conversation context rather than restarting the workflow.
-
-To disable this policy for this repository, remove this section from this
-`AGENTS.md` and restart new conversations.
-
-The default model and reasoning remain independently controlled by `~/.codex/config.toml`.
-
----
-
-## Local AI / RTX Context Compression Policy
-
-After the user has selected a recommended model and explicitly confirms with `continue`, the global `UserPromptSubmit` hook runs one cheap Local AI preflight.
-
-It records one of:
-
-* `LOCAL_AI_AVAILABLE`
-* `LOCAL_AI_DEGRADED`
-* `LOCAL_AI_UNAVAILABLE`
-* `LOCAL_AI_DISABLED`
-
-for that session.
-
-Do not run the full SSH/WSL/GPU preflight again in the same conversation unless:
-
-* a Local AI request fails;
-* it times out;
-* the endpoint refuses a connection;
-* the selected local model becomes unavailable.
-
-At most once, revalidate and retry the failed local request.
-
-After that, fall back normally without loops or repair attempts.
-
-When available, machine-local configuration supplies the remote Ollama endpoint and default model.
-
-Never silently use `127.0.0.1:11434` in this environment.
-
-The configured endpoint is the only default, while explicit CLI options and `LOCAL_AI_ENDPOINT` / `LOCAL_AI_MODEL` remain overrides.
-
-`LOCAL_AI_ENABLED=0` disables Local AI for a session.
-
-`LOCAL_AI_FORCE=1` is diagnostic only and does not authorize unsuitable delegation.
-
-The machine-local preflight command configured in `LOCAL_AI_CONFIG` is the
-manual health check. `./scripts/local-ai/local-ai status` is the portable
-repository health check.
-
-Keep deterministic tools first, including:
-
-* `rg`;
-* Git;
-* parsers;
-* tests;
-* linters;
-* type checkers;
-* SQL;
-* project scripts.
-
-Use `./scripts/local-ai/local-ai` for Local AI tasks. Use Local AI only when bounded first-pass work will materially compress a large context or cheaply classify it, such as:
-
-* long logs or test output;
-* large diffs;
-* repetitive extraction;
-* relevant-file triage;
-* strict structured JSON generation.
-
-### Automatic local delegation
-
-When the Local AI preflight for the current conversation is `LOCAL_AI_AVAILABLE`,
-make this routing decision automatically. Do not ask the user to enable Local AI,
-repeat a special prompt, select a model, or run a helper command.
-
-Before placing a medium or large, non-sensitive body of text into the
-OpenAI/Codex context, use `./scripts/local-ai/local-ai` to produce a bounded
-structured first pass when it will reduce the context materially. Treat roughly
-800 OpenAI tokens (about 3,200 ordinary text characters) as the normal lower
-bound. Keep skipping small or already well-structured material that deterministic
-tools can inspect directly.
-
-Choose the helper task from the evidence at hand:
-
-* `review-diff` for a substantial Git diff;
-* `summarize-log` for long logs, stack traces, or command output;
-* `analyze-tests` for substantial test failures;
-* `inspect-files` for a bounded set of candidate source files;
-* `classify-error` for repeated or noisy errors.
-
-Pass only the relevant bounded input to the helper, consume its concise JSON
-result, and continue the primary task from that result. Do not paste the full
-raw input into the primary-model context when the local result is sufficient.
-This is the default behavior for every eligible task after confirmation; it
-requires no extra wording from the user.
-
-For short requests or evidence that deterministic tools can answer directly,
-skip inference. Never create dummy GPU work merely to change dashboard state.
-The telemetry-backed dashboard is updated automatically whenever a local job is
-actually useful and runs.
-
-Return only concise, relevant, structured results to the selected GPT-5.6 model.
-
-Treat Local AI as non-authoritative.
-
-Do not delegate to Local AI:
-
-* final architecture decisions;
-* security or authentication decisions;
-* secrets;
-* destructive or irreversible operations;
-* production decisions;
-* migrations;
-* final RCA;
-* final PR approval.
-
-Redact or exclude:
-
-* credentials;
-* private keys;
-* tokens;
-* passwords;
-* unnecessary `.env` content;
-
-before calling Local AI.
-
-If Local AI is unavailable, keep the selected Luna/Terra/Sol routing unchanged and continue normally.
-
-Never automatically:
-
-* install;
-* restart;
-* wake;
-* repair;
-* reconfigure;
-
-Local AI infrastructure.
-
-The Local AI helper records metadata-only private telemetry when present.
-
-It must not persist:
-
-* prompts;
-* source input;
-* model output;
-* secrets.
-
-`OpenAI tokens avoided` means the measured or explicitly estimated reduction between input context processed locally and the concise result passed onward.
-
-It is not a claim that local inference tokens equal OpenAI tokens or money saved.
-
---- project-doc ---
-
-# Shared Home Assistant agent history
-
-## Project memory
-
-`.codex/memories/<assunto>/<nome-descritivo>.md` is the canonical location for
-important long-term project memories. Before non-trivial work, read
-`.codex/memories/projeto/indice.md` with this file and then consult only the
-relevant topic. `MEMORY.md` at the repository root is a versioned compatibility
-index.
-
-- Name every topic file descriptively in kebab-case; never use the generic
-  filename `memoria.md`.
-- For an important decision in a new topic, create a new Markdown file and add
-  it to the project index. Update an existing file only when the topic is the
-  same.
-- Keep memories concise, verified against the versioned configuration and
-  documentation, and free of secrets or time-limited authorizations.
-
-Prompts sent to Claude Code or Codex through Home Assistant are stored at
-`.agent-history/turns.jsonl`. The directory contains private runtime data and
-must never be committed.
-
-When the user asks to review or continue a Home Assistant conversation:
-
-1. Run `node scripts/agent-history.mjs list` to locate the conversation.
-2. Run `node scripts/agent-history.mjs show <conversation_id> [claude|codex]`
-   to load its transcript.
-3. Use that transcript as context in the current chat. Do not reproduce secrets
-   from the transcript unless the user explicitly requests them.
-
-## Local AI routing
-
-Prefer deterministic local tools over any LLM whenever they can answer the
-question reliably: `rg`, `find`, `jq`, Git, parsers, linters, type checkers,
-tests, shell, Python, SQL, and project-specific tools.
-
-For inexpensive, well-scoped first-pass AI work, use the repository-local
-Ollama helper when it is available: `./scripts/local-ai/local-ai` (or
-`local-ai` after adding `scripts/local-ai` to `PATH`). Suitable tasks include
-summarizing logs or test output, classifying errors, initial diff review,
-repetitive transformations, and narrowing potentially relevant files. Keep its
-input and JSON output bounded; pass the structured result, not raw large output,
-to the primary model.
-
-Local-model output is non-authoritative evidence. Architecture, complex
-multi-system debugging, security-sensitive or destructive decisions, trade-offs,
-integration of evidence, and final review remain the responsibility of the
-primary Codex/OpenAI model.
+`summarize-memory` deve preservar estado atual, decisões, restrições, bugs,
+causas-raiz, valores de configuração, pendências, avisos e referências de
+origem. Seu resultado é evidência não autoritativa; decisões de arquitetura,
+segurança, produção e revisão final continuam no modelo principal. Não crie
+cache ou uma segunda cópia resumida da memória. A telemetria registra apenas
+contagens e decisões, nunca conteúdo, caminhos de fonte, prompts ou saídas.
+
+O limite direto de recuperação segue o perfil já validado de `summarize-memory`
+(1.200 tokens estimados e 700 de economia prevista). Uma sobrecarga de memória
+é um sinal de candidato grande enviado diretamente ao modelo principal; não é
+uma alegação de relevância semântica não mensurada.
+
+## Manutenção de memória e privacidade
+
+- Nomeie cada arquivo temático de modo descritivo em kebab-case; nunca use
+  `memoria.md` genérico. Todo novo tema deve constar nos dois índices.
+- Registre somente decisões reutilizáveis, invariantes, riscos recorrentes,
+  recovery e razões para comportamento não óbvio; mantenha notas concisas e
+  verificadas contra código, testes ou documentação atual.
+- Use somente papéis lógicos, como `resident_primary`, `mobile_primary`,
+  `vehicle_primary`, `garage_gate`, `exterior_light` e `security_panel`.
+  Nunca registre nomes, identificadores privados, rotinas, logs, transcripts,
+  localizações, credenciais ou autorizações temporárias.
+- Prompts e conversas do bridge ficam em `.agent-history/turns.jsonl`: são
+  dados privados, não devem ser versionados nem usados como documentação
+  automática. Se um conhecimento só existir ali, responda
+  `knowledge_not_versioned` e exija uma decisão pública sanitizada.
+- Ao revisar ou continuar uma conversa Home Assistant explicitamente pedida,
+  localize-a com `node scripts/agent-history.mjs list`, carregue-a com
+  `node scripts/agent-history.mjs show <conversation_id> [claude|codex]` e não
+  reproduza segredos.
+- Após alterar instruções, índices ou memórias, execute
+  `make validate-public`.
+
+## Local AI do projeto
+
+Prefira ferramentas determinísticas (`rg`, Git, parsers, testes, linters, type
+checkers, SQL e scripts do projeto) a qualquer LLM. O helper local deste
+repositório é `./scripts/local-ai/local-ai`; a configuração privada define o
+endpoint. `./scripts/local-ai/local-ai status` é o health check portátil.
+
+Neste projeto, material médio/grande não sensível começa em aproximadamente
+800 tokens estimados para a decisão de roteamento; logs/testes/erros usam
+800–900 e diff/triagem de arquivos/memória 1.200, sempre sujeitos a
+compressibilidade e economia esperada. Tome a decisão antes de imprimir ou
+anexar o corpo bruto ao contexto principal. Chamada normal registra
+`LOCAL_AI_USED` ou `LOCAL_AI_UNNECESSARY_CALL`; uma oportunidade elegível,
+disponível e deliberadamente ignorada exige
+`local-ai route <task> --input-chars <n> --outcome skipped`.
+
+Não use a RTX para atualizar painel, descobrir palavra em arquivo, dados
+estruturados que uma ferramenta resolve, segredos, decisões finais,
+migrações, operações destrutivas ou ações de produção. Se Local AI falhar,
+revalide e tente uma vez no máximo; depois siga pelo fallback normal sem loops.
+
+Consulte `docs/LOCAL_AI_RTX_4070.md` antes de alterar helper, hook, telemetria
+ou cards Codex/RTX. A publicação LAN tem porta proxy restrita e não deve ter
+seu escopo ampliado sem confirmação.

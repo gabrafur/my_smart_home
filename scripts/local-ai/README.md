@@ -63,11 +63,69 @@ LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-lo
 
 1. Use deterministic tools first: `rg`, `find`, `jq`, `git diff`, parsers,
    linters, type checkers, tests, shell, Python, SQL, and project tools.
-2. Use local AI only for bounded summarization, classification, repetitive
+2. Before showing a medium or large non-sensitive log, test output, diff, error
+   report or file set to Codex, classify it with the task-specific policy. It
+   considers task type, estimated tokens, expected compressibility, expected
+   savings, deterministic sufficiency, helper support and the latest preflight;
+   size alone is insufficient.
+3. Use local AI only for bounded summarization, classification, repetitive
    transformations, initial log/test/diff analysis, or narrowing candidate
-   files.
-3. Keep architecture, multi-system debugging, security, destructive changes,
+   files that clear their task-specific policy threshold.
+4. Keep architecture, multi-system debugging, security, destructive changes,
    trade-offs, integration of evidence and final review with Codex/OpenAI.
 
 Treat every local result as untrusted first-pass evidence. Feed only its JSON
 output—not raw logs or diagnostics—back to Codex.
+
+`route` is metadata-only: it never contacts Ollama and never writes its input.
+Use it to preview a candidate or record an explicit skip:
+
+```bash
+local-ai route summarize-log --input-chars 36000
+local-ai route review-diff --input-chars 24000 --outcome skipped
+local-ai route inspect-files --input-chars 80000 --deterministic-sufficient
+```
+
+The first command returns `LOCAL_AI_ELIGIBLE` without recording a pending job;
+the normal helper command records the eventual `LOCAL_AI_USED` or
+`LOCAL_AI_UNNECESSARY_CALL`. Terminal deterministic, small and unavailable
+outcomes are recorded immediately. See
+[`docs/LOCAL_AI_RTX_4070.md`](../../docs/LOCAL_AI_RTX_4070.md) for thresholds,
+coverage metrics, retention and the known hook limitation.
+
+## Repository-memory retrieval
+
+Public, versioned repository memory is storage—not a startup prompt payload.
+Use deterministic index/search first; the helper never searches private session
+history or generated local Codex memories. Audit what is technically observable
+at startup without invoking a model:
+
+```bash
+./scripts/local-ai/local-ai memory-audit
+./scripts/local-ai/memory_context.py retrieve 'codex local ai' --query 'RTX telemetry'
+```
+
+For a large, non-sensitive result from the canonical index, pipe only those
+selected files to the dedicated structured task:
+
+```bash
+./scripts/local-ai/memory_context.py materialize 'codex local ai' --query 'RTX telemetry' \
+  | ./scripts/local-ai/local-ai summarize-memory --memory-topic 'codex-local-ai' --context-tokens 8192
+```
+
+`summarize-memory` preserves current state, decisions, constraints, known bugs,
+root causes, configuration values, unresolved issues, warnings and source facts.
+It follows the file-triage threshold (1,200 estimated input tokens and 700
+expected saved tokens). Small focused notes should be recorded as direct, and a
+no-history task as a skip, without inventing an RTX job:
+
+```bash
+local-ai memory-route readme-typo --outcome skipped
+local-ai memory-route codex-local-ai --files-found 1 --retrieved-tokens 359 --outcome direct
+local-ai memory-route architecture --files-found 4 --retrieved-tokens 2400 --outcome direct --canonical-conflict
+```
+
+Memory telemetry is metadata only and is separate from ordinary tool-output
+compression: `memory_tokens_avoided` is the retrieved-memory input minus the
+structured result sent to the primary model. The whole memory corpus is never
+counted as avoided merely because it exists on disk.

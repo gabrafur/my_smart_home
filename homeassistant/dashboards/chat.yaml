@@ -296,6 +296,170 @@ views:
             name: Modelo local
 
       - type: grid
+        title: Roteamento inteligente — hoje
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_decisoes_de_roteamento_hoje
+            name: Tarefas avaliadas
+          - type: tile
+            entity: sensor.codex_tarefas_local_ai_elegiveis_hoje
+            name: Local AI elegível
+          - type: tile
+            entity: sensor.codex_rtx_usos_hoje
+            name: RTX usada
+          - type: tile
+            entity: sensor.codex_oportunidades_rtx_perdidas_hoje
+            name: Oportunidades perdidas
+          - type: tile
+            entity: sensor.codex_local_ai_indisponivel_hoje
+            name: RTX indisponível
+          - type: tile
+            entity: sensor.codex_chamadas_local_ai_desnecessarias_hoje
+            name: Chamadas desnecessárias
+
+      - type: grid
+        title: Cobertura de economia de contexto
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_taxa_de_delegacao_rtx
+            name: Taxa de delegação RTX
+          - type: tile
+            entity: sensor.codex_cobertura_ponderada_de_economia_rtx
+            name: Cobertura ponderada
+          - type: tile
+            entity: sensor.codex_tokens_potenciais_evitaveis_estimados
+            name: Potencial evitável
+          - type: tile
+            entity: sensor.codex_tokens_openai_evitados_hoje_estimados
+            name: Evitado hoje
+
+      - type: grid
+        title: Contexto e memória — hoje
+        columns: 2
+        square: false
+        cards:
+          - type: tile
+            entity: sensor.codex_contexto_inicial_observavel
+            name: Startup observável
+          - type: tile
+            entity: sensor.codex_memoria_recuperada_hoje
+            name: Memória recuperada
+          - type: tile
+            entity: sensor.codex_memoria_enviada_ao_modelo_principal_hoje
+            name: Enviada ao GPT
+          - type: tile
+            entity: sensor.codex_contexto_de_memoria_evitado_hoje
+            name: Contexto evitado
+          - type: tile
+            entity: sensor.codex_compressao_de_memoria
+            name: Compressão de memória
+          - type: tile
+            entity: sensor.codex_sobrecargas_de_memoria_hoje
+            name: Sobrecargas
+
+      - type: markdown
+        content: >-
+          {% set memory = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {} %}
+          {% set startup = memory.get('startup_context') or {} %}
+          {% set today = (memory.get('periods') or {}).get('today') or {} %}
+          ## Startup context
+
+          **AGENTS / instructions observáveis:** ~{{ startup.get('observable_startup_context_tokens', 0) }} tokens
+          (global: ~{{ startup.get('global_agents_tokens', 0) }} · repositório: ~{{ startup.get('repo_agents_tokens', 0) }}).
+
+          **Repo memory preload:** {{ startup.get('repo_memory_tokens', 0) }} tokens ·
+          **Retrieved memory:** ~{{ today.get('memory_tokens_retrieved', 0) }} tokens ·
+          **Sent to primary model:** ~{{ today.get('memory_tokens_sent_to_primary_model', 0) }} tokens ·
+          **Memory avoided:** ~{{ today.get('memory_tokens_avoided', 0) }} tokens.
+
+          {% if startup.get('total_startup_context_tokens') is none %}
+          O envelope interno do Codex e a memória privada automática não expõem contagem de tokens; este card mostra somente o contexto observável e indica estimativas quando aplicável.
+          {% endif %}
+
+      - type: entities
+        title: Última decisão de memória
+        show_header_toggle: false
+        entities:
+          - entity: sensor.codex_ultima_decisao_de_memoria
+            name: Decisão
+
+      - type: markdown
+        content: >-
+          {% set decision = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set memory = decision.get('memory') or {} %}
+          {% set latest = (memory.get('latest_decisions') or [])[0] if memory.get('latest_decisions') else {} %}
+          {% if latest %}
+          ## Last memory routing
+
+          **Topic:** {{ latest.get('topic') }} · **Files found:** {{ latest.get('files_found') }}
+
+          Raw memory: ~{{ latest.get('memory_tokens_retrieved', 0) }} tokens ·
+          sent to Local AI: ~{{ latest.get('memory_tokens_sent_to_local_ai', 0) }} ·
+          sent to primary: ~{{ latest.get('memory_tokens_sent_to_primary_model', 0) }} ·
+          avoided: ~{{ latest.get('memory_tokens_avoided', 0) }}.
+
+          **Decision:** {{ latest.get('decision') }} · {{ latest.get('reason') }}
+          {% else %}
+          ## Last memory routing
+
+          Memory retrieval: **SKIPPED** — ainda não há decisão registrada nesta telemetria.
+          {% endif %}
+
+      - type: entities
+        title: Última decisão de roteamento
+        show_header_toggle: false
+        entities:
+          - entity: sensor.codex_ultima_decisao_de_roteamento_local_ai
+            name: Decisão
+
+      - type: markdown
+        content: >-
+          {% set task = state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'tarefa') %}
+          {% set decision = states('sensor.codex_ultima_decisao_de_roteamento_local_ai') %}
+          {% if task %}
+          ## Última decisão Local AI
+
+          **Task:** {{ task }}
+
+          **Eligible:** {{ 'YES' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'elegivel') else 'NO' }}
+
+          **RTX available:** {{ 'YES' if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'rtx_disponivel') else 'NO' }}
+
+          **Decision:** {{ decision }}
+
+          **Reason:** {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'motivo') }}
+
+          Input: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'input_tokens_estimados') }} tokens ·
+          expected saving: ~{{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_esperada_tokens') }} tokens ·
+          actual saving: {{ state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') if state_attr('sensor.codex_ultima_decisao_de_roteamento_local_ai', 'economia_real_tokens') is not none else 'not measured' }}.
+          {% else %}
+          ## Última decisão Local AI
+
+          Ainda não há uma decisão de roteamento registrada.
+          {% endif %}
+
+      - type: markdown
+        content: >-
+          {% set routing = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {} %}
+          {% set missed = routing.get('latest_decisions', []) | selectattr('decision', 'eq', 'ROUTING_MISSED_OPPORTUNITY') | list %}
+          ## Oportunidades RTX perdidas
+
+          **Hoje:** {{ states('sensor.codex_oportunidades_rtx_perdidas_hoje') }} ·
+          potencial de contexto evitável acumulado: ~{{ ((routing.get('totals') or {}).get('potential_tokens_avoidable', 0)) }} tokens.
+
+          {% if missed %}
+          {% for item in missed %}
+          - {{ item.get('task_type') }} · ~{{ item.get('expected_tokens_saved') }} tokens potenciais · {{ item.get('reason') }}
+          {% endfor %}
+          {% else %}
+          Nenhuma oportunidade perdida recente registrada.
+          {% endif %}
+
+      - type: grid
         title: Tokens OpenAI economizados (estimativa)
         columns: 2
         square: false

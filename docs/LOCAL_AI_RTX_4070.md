@@ -125,6 +125,134 @@ instalação ou de qualquer alteração. A aprovação é vinculada ao conteúdo
 hook; uma alteração exige nova revisão. Consulte a documentação oficial de
 [hooks do Codex](https://learn.chatgpt.com/docs/hooks).
 
+## Política de roteamento e auditoria
+
+O objetivo não é ocupar a RTX em todos os prompts. A decisão é positiva somente
+quando uma primeira passagem local, limitada e não sensível, tem previsão
+material de reduzir o contexto que chegaria ao modelo principal. A ordem é:
+
+```text
+ferramenta determinística -> decisão de roteamento -> Local AI quando útil -> Codex/OpenAI
+```
+
+`scripts/local-ai/routing.py` torna a decisão reproduzível sem inferência. Ele
+usa tamanho estimado, tipo da tarefa, compressibilidade esperada, helper
+compatível, disponibilidade já conhecida pelo preflight e suficiência de uma
+ferramenta determinística. Os valores iniciais vêm do helper limitado a 4.096
+tokens e do benchmark local validado; a suíte de workloads os protege contra
+regressão.
+
+| Tipo | Mínimo estimado | Economia esperada mínima | Compressão padrão |
+| --- | ---: | ---: | --- |
+| `classify-error` | 800 tokens | 500 tokens | alta |
+| `analyze-tests` / `summarize-log` | 900 tokens | 600 tokens | alta |
+| `review-diff` / `inspect-files` | 1.200 tokens | 700 tokens | média |
+
+JSON grande, busca, listagem de arquivos, parsing e outros dados estruturados
+continuam determinísticos quando a ferramenta aplicável resolve o caso. Por
+isso, tamanho isolado nunca aciona a RTX.
+
+As decisões terminais são `DETERMINISTIC`, `LOCAL_AI_USED`,
+`LOCAL_AI_UNAVAILABLE`, `LOCAL_AI_NOT_BENEFICIAL`, `LOCAL_AI_SKIPPED`,
+`LOCAL_AI_UNNECESSARY_CALL` e `ROUTING_MISSED_OPPORTUNITY`. Uma oportunidade é
+perdida somente quando a tarefa era elegível, a RTX estava disponível, a
+economia esperada era material e o helper não foi chamado. Uma chamada com
+entrada pequena, economia real insuficiente ou delta não positivo é marcada
+como desnecessária; uma falha continua contabilizada nas métricas de falha
+existentes, sem alegar economia.
+
+Para pré-visualizar uma decisão sem registrar uma inferência, use:
+
+```bash
+./scripts/local-ai/local-ai route analyze-tests --input-chars 32000
+```
+
+O resultado `LOCAL_AI_ELIGIBLE` é apenas uma prévia: a chamada normal ao helper
+registra o resultado final como `LOCAL_AI_USED` ou
+`LOCAL_AI_UNNECESSARY_CALL`. Se uma oportunidade clara for conscientemente
+ignorada, registre-a sem fornecer o conteúdo bruto:
+
+```bash
+./scripts/local-ai/local-ai route review-diff --input-chars 24000 --outcome skipped
+```
+
+Para testar uma indisponibilidade sem desligar a GPU, use uma avaliação
+controlada e sem chamada de rede:
+
+```bash
+./scripts/local-ai/local-ai route analyze-tests --input-chars 32000 --availability unavailable
+```
+
+O hook `UserPromptSubmit` atual executa só o preflight após a confirmação do
+roteamento de modelo; ele não é um middleware de todos os resultados de
+ferramentas. Assim, um anexo já incluído no prompt inicial pode necessariamente
+chegar ao modelo principal antes de o helper do repositório poder compactá-lo.
+Para diffs, logs, testes, arquivos e saídas de comandos, a política em
+`AGENTS.md` exige a decisão antes de imprimir ou anexar o corpo bruto. Essa é a
+limitação conhecida da cobertura, não uma razão para chamar a GPU tardiamente
+ou para inventar telemetria.
+
+## Contexto de memória do repositório
+
+`AGENTS.md` é carregado pelo Codex antes do trabalho; memória versionada do
+repositório não é descoberta como instrução automaticamente. O projeto mantém
+somente o índice canônico `.codex/memories/projeto/indice.md` como ponto leve
+de entrada e seleciona memória temática depois que a tarefa justifica histórico.
+`MEMORY.md` permanece um índice de compatibilidade, não outra fonte canônica.
+
+O auditor reproduzível é:
+
+```bash
+./scripts/local-ai/local-ai memory-audit
+```
+
+Ele informa apenas tokens observáveis: AGENTS global, AGENTS do repositório,
+AGENTS aninhados, memória pública disponível e a configuração de memória local.
+Instruções internas do Codex, o envelope de ferramentas e tokens de memória
+privada não são expostos pela plataforma; são `null`, não valores zero. O
+contador usa `o200k_base` se `tiktoken` estiver instalado e, caso contrário,
+marca a estimativa por caracteres.
+
+O fluxo de retrieval não usa Ollama para descobrir arquivos:
+
+```text
+tarefa -> índice/rg/headings -> arquivos temáticos mínimos -> avaliar tamanho
+                                                    -> direto ou RTX -> JSON para Codex
+```
+
+Para recuperar por índice sem conteúdo bruto no contexto principal:
+
+```bash
+./scripts/local-ai/memory_context.py retrieve 'codex local ai' --query 'telemetria RTX'
+./scripts/local-ai/memory_context.py materialize 'codex local ai' --query 'telemetria RTX' \
+  | ./scripts/local-ai/local-ai summarize-memory --memory-topic 'codex-local-ai' --context-tokens 8192
+```
+
+`summarize-memory` tem threshold de 1.200 tokens de entrada estimados e 700
+tokens de economia prevista. Ele retorna JSON com estado atual, decisões,
+restrições, bugs, causas-raiz, valores de configuração, pendências, avisos e
+fatos por fonte. Um conjunto menor segue direto; indisponibilidade ou falha da
+RTX não bloqueia o Codex. A saída é primeira passagem não autoritativa e não
+autoriza decisões de arquitetura, segurança ou produção.
+
+A telemetria separa `tool_output_context_avoided` (o contador já existente
+`openai_context_tokens_avoided`) de `memory_tokens_avoided`. A economia de
+memória é exclusivamente `memory_tokens_retrieved -
+memory_tokens_sent_to_primary_model`; não trata todo o corpus disponível como
+economia. Registra `retrieval_calls`, `retrieval_skips`, `files_found`, tokens
+recuperados/enviados/evitados, compressão, indisponibilidade e sobrecarga. Uma
+sobrecarga sinaliza candidato grande enviado diretamente ao modelo acima do
+orçamento validado; não afirma relevância semântica não mensurada.
+Quando uma anotação antiga divergir da fonte canônica atual, registre a decisão
+direta com `memory-route ... --canonical-conflict`; a telemetria guarda somente
+esse sinal e o motivo, não o conteúdo conflitante.
+
+No dashboard **Uso RTX**, o bloco *Contexto e memória* mostra startup
+observável, memória recuperada, enviada ao modelo principal, evitada,
+compressão, sobrecargas e a última decisão. A configuração local do Codex
+mantém memória gerada automaticamente desligada para evitar um segundo preload;
+a memória versionada e a restauração de Git continuam disponíveis por retrieval.
+
 ## Telemetria e painéis
 
 O helper não grava prompt, diff, código-fonte, resposta do modelo nem
@@ -210,6 +338,32 @@ fica explicitamente marcado como não mensurado, portanto o valor não é um
 registro de cobrança oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
 detalhes de endpoint para permanecer abaixo do limite de atributos do Home
 Assistant e preservar a telemetria no Recorder.
+
+Além dos jobs, a telemetria privada guarda somente metadados das decisões de
+roteamento: tipo, tamanho estimado, elegibilidade, disponibilidade, motivo,
+economia esperada e, após uma chamada bem-sucedida, delta real. IDs UUID tornam
+as agregações idempotentes mesmo se o bridge reiniciar ou reler dados. O estado
+mantém totais, dias recentes (400 no máximo) e as últimas 40 decisões; o log
+privado é limitado a 2 MiB. Não armazena prompt, diff, log, saída de comando ou
+resposta local.
+
+O bridge expõe `local_ai.routing` dentro de `GET /usage`, com totais para hoje,
+semana, mês e total. As métricas são:
+
+- **RTX delegation rate** = tarefas elegíveis e disponíveis que usaram RTX /
+  tarefas elegíveis e disponíveis.
+- **Weighted context savings coverage** = tokens realmente evitados /
+  economia potencial estimada das oportunidades elegíveis e disponíveis.
+- **Potential tokens avoidable** é estimativa de conteúdo, não fatura OpenAI;
+  a cobertura é limitada a 100% e deltas negativos continuam visíveis no
+  contador de economia existente.
+
+Na aba **RTX 4070**, o bloco *Roteamento inteligente* mostra tarefas avaliadas,
+elegíveis, RTX usada, oportunidades perdidas, indisponibilidade e chamadas
+desnecessárias. Os cards seguintes exibem as duas coberturas, potencial,
+economia real diária, a última decisão e oportunidades perdidas recentes. Os
+cards anteriores de chamadas, economia, GPU, VRAM, potência e último job são
+preservados.
 
 Os indicadores de GPU, VRAM e potência exibem **ociosa** quando a RTX está
 disponível sem inferência em andamento. Os valores numéricos aparecem somente

@@ -525,6 +525,197 @@ template:
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('fallbacks_reported', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
+      - name: Codex Decisoes de Roteamento Hoje
+        unique_id: codex_decisoes_de_roteamento_hoje
+        icon: mdi:source-branch
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('tasks', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Tarefas Local AI Elegiveis Hoje
+        unique_id: codex_tarefas_local_ai_elegiveis_hoje
+        icon: mdi:memory
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('eligible_tasks', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex RTX Usos Hoje
+        unique_id: codex_rtx_usos_hoje
+        icon: mdi:gpu
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('used_tasks', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Oportunidades RTX Perdidas Hoje
+        unique_id: codex_oportunidades_rtx_perdidas_hoje
+        icon: mdi:alert-circle-outline
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('missed_opportunities', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Local AI Indisponivel Hoje
+        unique_id: codex_local_ai_indisponivel_hoje
+        icon: mdi:cloud-off-outline
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('unavailable_tasks', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Chamadas Local AI Desnecessarias Hoje
+        unique_id: codex_chamadas_local_ai_desnecessarias_hoje
+        icon: mdi:flash-off
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('unnecessary_calls', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Taxa de Delegacao RTX
+        unique_id: codex_taxa_de_delegacao_rtx
+        icon: mdi:chart-donut
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('rtx_delegation_rate_percent') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('rtx_delegation_rate_percent') is number }}"
+
+      - name: Codex Cobertura Ponderada de Economia RTX
+        unique_id: codex_cobertura_ponderada_de_economia_rtx
+        icon: mdi:chart-areaspline
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('weighted_context_savings_coverage_percent') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('weighted_context_savings_coverage_percent') is number }}"
+
+      - name: Codex Tokens Potenciais Evitaveis Estimados
+        unique_id: codex_tokens_potenciais_evitaveis_estimados
+        icon: mdi:content-save-alert-outline
+        state_class: total
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('totals') or {}).get('potential_tokens_avoidable', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          metodologia: "soma das economias estimadas de tarefas elegiveis e disponiveis; nao e cobranca oficial da OpenAI"
+
+      - name: Codex Ultima Decisao de Roteamento Local AI
+        unique_id: codex_ultima_decisao_de_roteamento_local_ai
+        icon: mdi:source-branch-check
+        state: >-
+          {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+          {{ decisions[0].get('decision') if decisions else 'sem decisao registrada' }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          tarefa: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('task_type') if decisions else none }}
+          motivo: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('reason') if decisions else none }}
+          elegivel: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('eligible') if decisions else none }}
+          rtx_disponivel: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('available') if decisions else none }}
+          input_tokens_estimados: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('estimated_input_tokens') if decisions else none }}
+          economia_esperada_tokens: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('expected_tokens_saved') if decisions else none }}
+          economia_real_tokens: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('actual_tokens_avoided') if decisions else none }}
+
+      - name: Codex Contexto Inicial Observavel
+        unique_id: codex_contexto_inicial_observavel
+        icon: mdi:database-eye-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('startup_context') or {}).get('observable_startup_context_tokens') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('startup_context') or {}).get('observable_startup_context_tokens') is number }}"
+        attributes:
+          metodo: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('startup_context') or {}).get('token_count_method') }}"
+          estimado: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('startup_context') or {}).get('estimated') }}"
+          total_interno_nao_exposto: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('startup_context') or {}).get('total_startup_context_tokens') is none }}"
+
+      - name: Codex Memoria Recuperada Hoje
+        unique_id: codex_memoria_recuperada_hoje
+        icon: mdi:book-search-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('memory_tokens_retrieved', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Memoria Enviada ao Modelo Principal Hoje
+        unique_id: codex_memoria_enviada_modelo_principal_hoje
+        icon: mdi:arrow-right-bold-box-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('memory_tokens_sent_to_primary_model', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Contexto de Memoria Evitado Hoje
+        unique_id: codex_contexto_memoria_evitado_hoje
+        icon: mdi:arrow-collapse-horizontal
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('memory_tokens_avoided', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          metodologia: "delta entre memória recuperada e resultado estruturado enviado ao modelo principal; não inclui o corpus que nunca foi carregado"
+
+      - name: Codex Compressao de Memoria
+        unique_id: codex_compressao_de_memoria
+        icon: mdi:archive-arrow-down-outline
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('totals') or {}).get('memory_compression_percent') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('totals') or {}).get('memory_compression_percent') is number }}"
+
+      - name: Codex Recuperacoes de Memoria Hoje
+        unique_id: codex_recuperacoes_de_memoria_hoje
+        icon: mdi:database-search-outline
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('retrieval_calls', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Skips de Memoria Hoje
+        unique_id: codex_skips_de_memoria_hoje
+        icon: mdi:database-off-outline
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('retrieval_skips', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Sobrecargas de Memoria Hoje
+        unique_id: codex_sobrecargas_de_memoria_hoje
+        icon: mdi:alert-outline
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}).get('memory_overload_incidents', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Ultima Decisao de Memoria
+        unique_id: codex_ultima_decisao_de_memoria
+        icon: mdi:book-check-outline
+        state: >-
+          {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('latest_decisions') or []) %}
+          {{ decisions[0].get('decision') if decisions else 'sem decisao registrada' }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          topico: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('topic') if decisions else none }}
+          arquivos: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('files_found') if decisions else none }}
+          recuperada_tokens: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('memory_tokens_retrieved') if decisions else none }}
+          enviada_modelo_principal_tokens: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('memory_tokens_sent_to_primary_model') if decisions else none }}
+          evitada_tokens: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('memory_tokens_avoided') if decisions else none }}
+          motivo: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('reason') if decisions else none }}
+
       - name: Codex Tokens OpenAI Economizados Estimados
         unique_id: codex_tokens_openai_evitados_estimados
         icon: mdi:content-save-outline

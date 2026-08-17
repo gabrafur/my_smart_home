@@ -20,6 +20,7 @@ physical identifiers must appear only as placeholders.
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Home Assistant agent bridge](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex in the UI | summarized in [Containers](CONTAINERS.en.md) |
 | [Codex + Local AI with RTX 4070](LOCAL_AI_RTX_4070.md) | Local inference, network, telemetry, and fork reproduction | detailed Portuguese guide |
+| [Versioned agent memory](MEMORIA_VERSIONADA_AGENTES.md) | Authority, privacy, maintenance, and validation of AI memory | detailed Portuguese guide |
 
 ## Feature guides
 
@@ -62,5 +63,5 @@ to the current state.
   versions in the same change.
 - Examples use placeholders or documentation-reserved addresses, never real
   household values.
-- `node scripts/docs-check.mjs` verifies relative links and required bilingual
-  pairs; run `scripts/security-scan.sh` before publishing.
+- `make validate-public` verifies links, required bilingual pairs, public agent
+  memory, and mechanically detectable privacy rules.

@@ -16,8 +16,9 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
 
 ## Alarme e painéis
 
-- A integração Moni Mobile cobre armar e desarmar; monitoramento de zonas é um
-  escopo futuro deliberado. Consulte `docs/INTEGRACAO_MONI_MOBILE_INTELBRAS.md`.
-- Painéis Lovelace personalizados usam `url_path` com hífen; `input_text` tem
-  limite de 255 caracteres. Para assistentes e chat, consulte
-  `docs/CHAT_CLAUDE_CODE_HA.md`.
+- A integração Moni Mobile cobre armar, desarmar e ler o estado agregado das
+  partições. Ela não expõe entidades individuais de zona. Consulte
+  `docs/INTEGRACAO_MONI_MOBILE_INTELBRAS.md`.
+- Os painéis Lovelace YAML são declarados em `lovelace.dashboards` dentro de
+  `homeassistant/configuration.yaml`; as chaves públicas de dashboard usam
+  hífen. Para assistentes e chat, consulte `docs/CHAT_CLAUDE_CODE_HA.md`.

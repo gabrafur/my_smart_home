@@ -13,9 +13,10 @@ estas anotações.
 | --- | --- | --- |
 | Práticas de trabalho e Git | [`.codex/memories/praticas-de-trabalho/praticas-de-trabalho.md`](.codex/memories/praticas-de-trabalho/praticas-de-trabalho.md) | Alterações, testes, commits ou push |
 | Automações e interface | [`.codex/memories/automacoes/automacoes-e-interface.md`](.codex/memories/automacoes/automacoes-e-interface.md) | Node-RED, Home Assistant, painéis, alarme ou portão |
-| Integrações e operação | [`.codex/memories/integracoes/integracoes-e-operacao.md`](.codex/memories/integracoes/integracoes-e-operacao.md) | Creta, MQTT, Bluetooth, Matter ou energia |
+| Integrações e operação | [`.codex/memories/integracoes/integracoes-e-operacao.md`](.codex/memories/integracoes/integracoes-e-operacao.md) | Veículo principal, MQTT, Bluetooth, Matter ou energia |
 | Codex e Local AI | [`.codex/memories/codex-local-ai/codex-e-local-ai.md`](.codex/memories/codex-local-ai/codex-e-local-ai.md) | Helper local, RTX, hook, telemetria ou painéis Codex/RTX |
 | Segurança e dados locais | [`.codex/memories/seguranca/seguranca-e-dados-locais.md`](.codex/memories/seguranca/seguranca-e-dados-locais.md) | Credenciais, arquivos privados ou acesso ao host |
+| Governança da memória | [`.codex/memories/projeto/governanca-da-memoria.md`](.codex/memories/projeto/governanca-da-memoria.md) | Criar, revisar, validar ou anonimizar memória de agentes |
 
 ## Manutenção
 
