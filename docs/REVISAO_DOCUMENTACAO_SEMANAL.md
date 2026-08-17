@@ -97,7 +97,7 @@ credencial Git de escrita em credencial de leitura.
 
 Antes de ativar:
 
-1. autentique o Codex no `claude-bridge`, de modo que o volume
+1. autentique o Codex no `ai-bridge`, de modo que o volume
    `codex-bridge-auth` contenha `auth.json`;
 2. crie uma chave SSH exclusiva com acesso de push ao repositório remoto;
 3. registre a chave pública no provedor Git e mantenha a privada fora do Git;

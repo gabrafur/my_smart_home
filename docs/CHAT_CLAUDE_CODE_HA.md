@@ -5,12 +5,12 @@
 Dois assistentes de desenvolvimento no HA, separados do
 `conversation.claude_conversation` nativo, com acesso **irrestrito** a shell e
 Docker no host: **Claude Code (Full Access)** e **Codex**. O serviço
-`claude-bridge` executa o CLI selecionado em modo não interativo e mantém as
+`ai-bridge` executa o CLI selecionado em modo não interativo e mantém as
 sessões separadas por conversa.
 
-O código-fonte fica em `ia-bridge/`. O serviço e o container continuam com o
-identificador `claude-bridge` para preservar DNS interno, volumes de
-autenticação, restauração e instalações existentes.
+O código-fonte fica em `ia-bridge/`. O serviço e o container usam o
+identificador `ai-bridge`; os volumes de autenticação existentes são
+preservados para compatibilidade com restauração e instalações anteriores.
 
 **Restrito a um único usuário do HA** (o `user_id` do administrador, lido de
 `/config/.storage/auth`). Qualquer outra conta recebe recusa automática do
@@ -33,20 +33,21 @@ arquivos já foram todos preparados; falta só você subir e conectar as peças.
 
 ```bash
 cd CAMINHO_DO_REPOSITORIO
-docker compose build claude-bridge
-docker compose up -d claude-bridge
-docker compose logs -f claude-bridge   # deve mostrar "claude-bridge listening on :8099"
+docker compose build ai-bridge
+docker compose up -d ai-bridge
+docker compose logs -f ai-bridge   # deve mostrar "agent bridge listening on :8099"
 ```
 
 ### 1.5. Login com a assinatura (Pro/Max), não API key avulsa
 
 O bridge está configurado para **não** usar `ANTHROPIC_API_KEY` (billing por
 token) e sim o login OAuth da sua assinatura mensal, via `claude setup-token`.
-As credenciais ficam persistidas no volume `claude-bridge-auth`, então esse
+As credenciais do Claude ficam persistidas no volume legado
+`claude-bridge-auth`, então esse
 login só precisa ser feito uma vez (sobrevive a restart/rebuild do container).
 
 ```bash
-docker exec -it claude-bridge claude setup-token
+docker exec -it ai-bridge claude setup-token
 ```
 
 Isso vai mostrar uma URL para abrir no navegador e pedir um código de
@@ -54,7 +55,7 @@ confirmação — siga o fluxo normalmente (é o mesmo tipo de login usado pelo
 Claude Code no terminal). Confirme que funcionou com:
 
 ```bash
-docker exec claude-bridge claude auth status
+docker exec ai-bridge claude auth status
 ```
 
 ### 1.6. Login do Codex com a conta ChatGPT
@@ -63,8 +64,8 @@ O Codex usa um volume separado (`codex-bridge-auth`) para persistir o login.
 Como o container não tem navegador, use o fluxo por código de dispositivo:
 
 ```bash
-docker exec -it claude-bridge codex login --device-auth
-docker exec claude-bridge codex login status
+docker exec -it ai-bridge codex login --device-auth
+docker exec ai-bridge codex login status
 ```
 
 Abra no navegador o endereço exibido pelo primeiro comando e informe o código.
@@ -73,7 +74,7 @@ O login sobrevive a restart e rebuild do container.
 ### 2. Testar o bridge isoladamente (antes de plugar no HA)
 
 ```bash
-TOKEN=$(grep ^CLAUDE_BRIDGE_TOKEN .env | cut -d= -f2-)
+TOKEN=$(grep ^AI_BRIDGE_TOKEN .env | cut -d= -f2-)
 curl -s -X POST http://127.0.0.1:8099/chat \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -88,7 +89,7 @@ deve bater com `docker ps`.
 Para testar o Codex isoladamente, acrescente `"agent":"codex"` ao JSON:
 
 ```bash
-TOKEN=$(grep ^CLAUDE_BRIDGE_TOKEN .env | cut -d= -f2-)
+TOKEN=$(grep ^AI_BRIDGE_TOKEN .env | cut -d= -f2-)
 curl -s -X POST http://127.0.0.1:8099/chat \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -122,7 +123,7 @@ node scripts/agent-history.mjs show <conversation_id> codex
 O bridge também oferece leitura autenticada para integrações locais:
 
 ```bash
-TOKEN=$(grep ^CLAUDE_BRIDGE_TOKEN .env | cut -d= -f2-)
+TOKEN=$(grep ^AI_BRIDGE_TOKEN .env | cut -d= -f2-)
 curl -s http://127.0.0.1:8099/history/conversations \
   -H "Authorization: Bearer $TOKEN"
 curl -s "http://127.0.0.1:8099/history?conversation_id=<conversation_id>" \
@@ -176,8 +177,8 @@ Espere ~30-60s o HA voltar (`docker compose logs -f homeassistant` até ver
 2. **+ Adicionar Integração** → buscar **"Claude Code Chat"**
 3. Preencher:
    - **bridge_url**: `http://127.0.0.1:8099/chat` (já vem preenchido)
-   - **bridge_token**: o mesmo valor do `CLAUDE_BRIDGE_TOKEN` no `.env`
-     (rode `grep CLAUDE_BRIDGE_TOKEN .env` pra copiar)
+   - **bridge_token**: o mesmo valor do `AI_BRIDGE_TOKEN` no `.env`
+     (rode `grep AI_BRIDGE_TOKEN .env` pra copiar)
    - **allowed_user_id**: cole o `user_id` do administrador. Pegue em
      `/config/.storage/auth` (chave `users` → `id`) ou em
      **Configurações → Pessoas → (usuário)**, na URL do navegador
@@ -263,8 +264,8 @@ Depois de alterar ou instalar esses arquivos, reconstrua o bridge e reinicie o
 Home Assistant:
 
 ```bash
-docker compose build claude-bridge
-docker compose up -d claude-bridge
+docker compose build ai-bridge
+docker compose up -d ai-bridge
 docker compose restart homeassistant
 ```
 
@@ -299,8 +300,8 @@ dispara essa notificação.
 - `ia-bridge/Dockerfile`, `ia-bridge/server.js`, `ia-bridge/package.json`
 - `ia-bridge/history.js`, `ia-bridge/usage.js`, `scripts/agent-history.mjs`, `AGENTS.md`
 - `scripts/local-ai/` (helper delimitado, prompts, testes e telemetria privada)
-- `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_BRIDGE_TOKEN`) e `.env.example`
-- `docker-compose.yml` (serviço `claude-bridge`)
+- `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `AI_BRIDGE_TOKEN`) e `.env.example`
+- `docker-compose.yml` (serviço `ai-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)
 - `homeassistant/dashboards/chat.yaml` (card novo)
 - `homeassistant/packages/codex_usage.yaml`, `homeassistant/tools/codex_usage.py`,

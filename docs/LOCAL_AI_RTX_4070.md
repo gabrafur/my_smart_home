@@ -139,6 +139,31 @@ uma etapa de confirmação. A aprovação é vinculada ao conteúdo do hook; uma
 alteração exige nova revisão. Consulte a documentação oficial de
 [hooks do Codex](https://learn.chatgpt.com/docs/hooks).
 
+### Aprovação obrigatória do hook
+
+Esta verificação interativa faz parte da instalação e manutenção, não é uma
+etapa opcional. Repita-a depois de um novo clone ou instalação, da reconstrução
+do contêiner que executa o Codex e sempre que `.codex/hooks.json` mudar. No host
+do projeto, abra o CLI já instalado no bridge:
+
+```bash
+cd /mnt/data/docker
+docker compose exec -w /workspace ai-bridge codex
+```
+
+Dentro do Codex CLI, execute `/hooks`, revise o hook do projeto e habilite-o.
+O estado esperado é:
+
+```text
+Event          Installed   Active
+PostToolUse    1           1
+```
+
+`PreToolUse = 0` é esperado porque este projeto não usa preflight de prompt. A
+mera presença de `.codex/hooks.json` não comprova que o hook está ativo. Não use
+opções de bypass de trust; se a tabela não mostrar `PostToolUse` como instalado
+e ativo, conclua a revisão pela própria interface antes de validar o roteamento.
+
 Quando a compressão é útil, o hook retorna `continue: false` com contexto
 adicional limitado. Assim o resultado bruto é substituído também em code mode
 sem rejeitar a promise da ferramenta. Uma falha mantém o resultado original e
@@ -236,6 +261,10 @@ repositório não é descoberta como instrução automaticamente. O projeto mant
 somente o índice canônico `.codex/memories/projeto/indice.md` como ponto leve
 de entrada e seleciona memória temática depois que a tarefa justifica histórico.
 `MEMORY.md` permanece um índice de compatibilidade, não outra fonte canônica.
+As políticas gerais e específicas desta instalação ficam juntas no
+`AGENTS.md` do Git root. Não mantenha outra cópia em `~/.codex/AGENTS.md` nem
+monte esse arquivo no `CODEX_HOME` do bridge; `/workspace/AGENTS.md` já é
+descoberto como instrução do projeto.
 
 O auditor reproduzível é:
 
@@ -243,8 +272,9 @@ O auditor reproduzível é:
 ./scripts/local-ai/local-ai memory-audit
 ```
 
-Ele informa apenas tokens observáveis: AGENTS global, AGENTS do repositório,
-AGENTS aninhados, memória pública disponível e a configuração de memória local.
+Ele informa apenas tokens observáveis: AGENTS global (esperado como zero nesta
+instalação), AGENTS do repositório, AGENTS aninhados, memória pública disponível
+e a configuração de memória local.
 Instruções internas do Codex, o envelope de ferramentas e tokens de memória
 privada não são expostos pela plataforma; são `null`, não valores zero. O
 contador usa `o200k_base` se `tiktoken` estiver instalado e, caso contrário,
@@ -324,7 +354,7 @@ porque o `$HOME` do container do Home Assistant é efêmero: confiar apenas em
 `/root/.ssh/known_hosts` faria a telemetria degradar depois de uma recriação do
 container, mesmo com Ollama e RTX saudáveis.
 
-A imagem `claude-bridge` inclui `python3`, pois o helper versionado
+A imagem `ai-bridge` inclui `python3`, pois o helper versionado
 `./scripts/local-ai/local-ai` é Python. Assim, uma tarefa elegível enviada pelo
 chat do Home Assistant consegue executar a primeira passagem na RTX, em vez de
 falhar localmente por ausência do interpretador.
@@ -532,7 +562,7 @@ segundos.
 | Ollama responde mas sem GPU | `ollama ps`, `nvidia-smi`, driver NVIDIA/WSL e tamanho/quantização do modelo |
 | CPU offload | reduza o modelo/contexto; não assuma que uma resposta rápida significa GPU integral |
 | RTX não aparece no painel | `GET /local-ai/live`, arquivo privado de telemetria e sensores do pacote HA |
-| Roteamento automático do projeto não roda | abra `/hooks`, revise/aprove `.codex/hooks.json` e confirme o caminho configurado |
+| Roteamento automático do projeto não roda | abra o Codex CLI pelo bridge, execute `/hooks`, revise/aprove `.codex/hooks.json` e confirme `PostToolUse` com `Installed = 1` e `Active = 1` |
 
 ## Reprodução em um fork
 
@@ -545,7 +575,8 @@ segundos.
 4. Crie o `local-ai.json` privado no host Codex e, se usar o bridge, no volume
    privado do Codex do container; adapte os caminhos do preflight a cada
    ambiente.
-5. Revise o hook de projeto do Codex, faça a aprovação em `/hooks` e mantenha
+5. Abra o Codex CLI, execute `/hooks`, revise o hook do projeto e confirme
+   obrigatoriamente `PostToolUse` com `Installed = 1` e `Active = 1`; mantenha
    `AGENTS.md` apontando para o MCP global. Não configure `UserPromptSubmit`.
 6. Suba o bridge e o Home Assistant, então valide `/usage`, `/local-ai/live` e
    as duas abas do dashboard.

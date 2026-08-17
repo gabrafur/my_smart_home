@@ -26,8 +26,9 @@ fork-reproduction steps are documented in
 [`docs/LOCAL_AI_RTX_4070.md`](../../docs/LOCAL_AI_RTX_4070.md).
 
 `AGENTS.md` is recognized by both Codex and Cline, so it is the single routing
-policy for this repository; a duplicate `.clinerules/` file would add context
-without adding behavior.
+policy for this repository. Do not mirror it into `~/.codex/AGENTS.md`, mount it
+as a global Codex instruction, or duplicate it in `.clinerules/`; each would
+add startup context without adding behavior.
 
 ```bash
 export PATH="$PWD/scripts/local-ai:$PATH"
@@ -104,6 +105,10 @@ at startup without invoking a model:
 ./scripts/local-ai/local-ai memory-audit
 ./scripts/local-ai/memory_context.py retrieve 'codex local ai' --query 'RTX telemetry'
 ```
+
+Topic and query matching is case- and accent-insensitive. Use `projeto` (or
+`all`, `project`, `repository`, or `repositório`) to select the full indexed
+public corpus before applying `--query`.
 
 For a large, non-sensitive result from the canonical index, pipe only those
 selected files to the dedicated structured task:

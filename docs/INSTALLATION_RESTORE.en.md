@@ -131,7 +131,7 @@ Edit:
   absolute paths to a dedicated repository-scoped push key and `known_hosts`.
 
 Generate the shared bridge token, then paste it into
-`CLAUDE_BRIDGE_TOKEN` without printing `.env` afterward:
+`AI_BRIDGE_TOKEN` without printing `.env` afterward:
 
 ```bash
 openssl rand -hex 32
@@ -248,7 +248,7 @@ docker compose config --quiet
 scripts/security-scan.sh
 node scripts/docs-check.mjs
 docker compose pull
-docker compose build --pull claude-bridge
+docker compose build --pull ai-bridge
 ```
 
 The first bridge build downloads APT and npm packages. Its base image and CLIs
@@ -267,7 +267,7 @@ docker compose ps
 docker compose logs --tail=100 mosquitto zigbee2mqtt
 docker compose logs --tail=100 homeassistant matter_server
 docker compose logs --tail=100 nodered appdaemon
-docker compose logs --tail=100 portainer claude-bridge
+docker compose logs --tail=100 portainer ai-bridge
 ```
 
 | Service | URL |

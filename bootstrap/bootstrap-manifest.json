@@ -6,7 +6,7 @@
       "source": ".env.example",
       "destination": ".env",
       "mode": "0600",
-      "generators": ["NODE_RED_CREDENTIAL_SECRET", "CLAUDE_BRIDGE_TOKEN"]
+      "generators": ["NODE_RED_CREDENTIAL_SECRET", "AI_BRIDGE_TOKEN"]
     },
     {
       "module": "core",

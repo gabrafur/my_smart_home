@@ -60,13 +60,19 @@ arquivos `AGENTS.md` realmente incluídos, limite configurado, memória pública
 do repositório e configuração de memória local. Tokens de instruções internas,
 envelope da plataforma e conteúdo de memória privada não são expostos pelo
 Codex e ficam como `null`, nunca como zero. O método de contagem acompanha cada
-resultado; sem `tiktoken`, os valores são marcados como estimativa.
+resultado; sem `tiktoken`, os valores são marcados como estimativa. No
+inventário, o índice canônico é classificado como `ROUTING_ONLY`: ele orienta a
+recuperação quando o histórico é necessário, mas não é payload automático de
+startup.
 
 Use `./scripts/local-ai/memory_context.py retrieve '<tema>' --query '<termos>'`
 para selecionar arquivos pelo índice sem inferência. `materialize` só deve ser
 usado em pipe para `summarize-memory`, nunca para despejar memória bruta no
-contexto principal. As decisões e métricas resultantes contêm apenas contagens
-e tópicos; não guardam conteúdo, caminhos de fonte, prompts ou resultados.
+contexto principal. Temas e consultas ignoram diferenças entre maiúsculas,
+minúsculas e acentos; `all`, `project`, `projeto`, `repository` e `repositório`
+selecionam o corpus público indexado antes do filtro de consulta. As decisões e
+métricas resultantes contêm apenas contagens e tópicos; não guardam conteúdo,
+caminhos de fonte, prompts ou resultados.
 
 ## O que registrar
 

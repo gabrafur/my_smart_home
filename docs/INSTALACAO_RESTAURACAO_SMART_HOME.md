@@ -139,7 +139,7 @@ Gere o token compartilhado do bridge sem imprimir o `.env` depois:
 openssl rand -hex 32
 ```
 
-Cole o resultado em `CLAUDE_BRIDGE_TOKEN`. Para Claude Code por assinatura,
+Cole o resultado em `AI_BRIDGE_TOKEN`. Para Claude Code por assinatura,
 gere o token OAuth conforme o guia [CHAT_CLAUDE_CODE_HA.md](CHAT_CLAUDE_CODE_HA.md).
 Não é necessário manter `ANTHROPIC_API_KEY` no `.env`.
 
@@ -259,7 +259,7 @@ docker compose config --quiet
 scripts/security-scan.sh
 node scripts/docs-check.mjs
 docker compose pull
-docker compose build --pull claude-bridge
+docker compose build --pull ai-bridge
 ```
 
 O primeiro build do bridge baixa pacotes APT e npm. A imagem-base e os CLIs são
@@ -278,7 +278,7 @@ docker compose ps
 docker compose logs --tail=100 mosquitto zigbee2mqtt
 docker compose logs --tail=100 homeassistant matter_server
 docker compose logs --tail=100 nodered appdaemon
-docker compose logs --tail=100 portainer claude-bridge
+docker compose logs --tail=100 portainer ai-bridge
 ```
 
 Endpoints locais:

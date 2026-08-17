@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const defaultRepoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const memoryRoot = ".codex/memories";
 const canonicalIndex = `${memoryRoot}/projeto/indice.md`;
+const publicAgentSkill = ".agents/skills/rtx-context-optimizer/SKILL.md";
 const requiredFiles = [
   "AGENTS.md",
   "MEMORY.md",
@@ -63,7 +64,8 @@ function isPublicMemoryFile(file) {
 }
 
 function isPrivateRuntimeFile(file) {
-  return privateRuntimePrefixes.some((prefix) => file.startsWith(prefix))
+  return (privateRuntimePrefixes.some((prefix) => file.startsWith(prefix))
+      && file !== publicAgentSkill)
     || (file.startsWith(".codex/")
       && file !== ".codex/hooks.json"
       && !isPublicMemoryFile(file));
@@ -285,8 +287,19 @@ export function checkPublicMemory({ repoRoot = defaultRepoRoot, trackedFiles } =
   if (!weeklyPrompt.includes(".codex/memories/**")) {
     errors.push("scripts/weekly-docs-review.prompt.md: canonical memory glob is missing");
   }
+  if (!weeklyPrompt.includes(canonicalIndex)) {
+    errors.push(`scripts/weekly-docs-review.prompt.md: canonical index is missing: ${canonicalIndex}`);
+  }
+  if (/MEMORY\.md[^\n]*índice canônico/i.test(weeklyPrompt)) {
+    errors.push("scripts/weekly-docs-review.prompt.md: MEMORY.md must be described as a compatibility index");
+  }
   if (/^memories\/\*\*$/m.test(weeklyPrompt)) {
     errors.push("scripts/weekly-docs-review.prompt.md: obsolete memory glob: memories/**");
+  }
+
+  const compose = readTracked("docker-compose.yml");
+  if (/\.\/AGENTS\.md:\/[^\s]*\.codex\/AGENTS(?:\.override)?\.md/.test(compose)) {
+    errors.push("docker-compose.yml: repository AGENTS.md must not be mounted as a global Codex instruction");
   }
 
   return {

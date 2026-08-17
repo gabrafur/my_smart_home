@@ -38,7 +38,7 @@ class MemoryContextTest(unittest.TestCase):
             encoding="utf-8",
         )
         (root / ".codex/memories/codex-local-ai/codex-e-local-ai.md").write_text(
-            "# Codex Local\n\n## Atual\nA RTX usa Local AI.\n\n## Limitação\nNão enviar segredos.\n",
+            "# Codex Local\n\n## Atual\nA memória pública usa Local AI na RTX.\n\n## Limitação\nNão enviar segredos.\n",
             encoding="utf-8",
         )
         (root / "docs/MEMORIA_VERSIONADA_AGENTES.md").write_text("# Contrato\n", encoding="utf-8")
@@ -60,11 +60,14 @@ class MemoryContextTest(unittest.TestCase):
             root, _ = self.make_root(Path(directory))
             inventory = public_memory_inventory(root)
             categories = {item["path"]: item["category"] for item in inventory["files"]}
-            self.assertEqual(categories[".codex/memories/projeto/indice.md"], "ALWAYS_REQUIRED")
+            self.assertEqual(categories[".codex/memories/projeto/indice.md"], "ROUTING_ONLY")
             self.assertEqual(categories["MEMORY.md"], "REDUNDANT")
             selected = retrieve_topic(root, "local ai", "RTX")
             self.assertEqual(selected["files_found"], 1)
             self.assertEqual(selected["files"][0]["path"], ".codex/memories/codex-local-ai/codex-e-local-ai.md")
+            portuguese = retrieve_topic(root, "projeto", "memoria")
+            self.assertEqual(portuguese["files_found"], 1)
+            self.assertEqual(portuguese["files"][0]["path"], ".codex/memories/codex-local-ai/codex-e-local-ai.md")
             all_memory = retrieve_topic(root, "all")
             self.assertEqual(all_memory["files_found"], 2)
 

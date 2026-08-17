@@ -2,10 +2,10 @@
 
 Este é o índice de compatibilidade para a memória de longo prazo do
 repositório. A fonte canônica está em
-`.codex/memories/projeto/indice.md`. Leia esse índice com `AGENTS.md` antes de
-trabalho não trivial e, em seguida, consulte somente o arquivo temático
-pertinente. A configuração e a documentação versionadas têm precedência sobre
-estas anotações.
+`.codex/memories/projeto/indice.md`. Quando uma tarefa depender do histórico do
+projeto, use o índice canônico com `AGENTS.md` para localizar somente o arquivo
+temático pertinente. A configuração e a documentação versionadas têm
+precedência sobre estas anotações.
 
 ## Índice
 

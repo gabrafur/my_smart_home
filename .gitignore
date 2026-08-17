@@ -24,7 +24,12 @@ restore/bundles/
 restore/private-bundles/
 bindings/private/
 .agent-history/
-.agents/
+# Keep agent runtime private, but version the repository-scoped RTX skill.
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/rtx-context-optimizer/
+!.agents/skills/rtx-context-optimizer/**
 # Preserve Codex runtime state as private while versioning the project memory.
 .codex/*
 !.codex/hooks.json
