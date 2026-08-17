@@ -22,6 +22,8 @@ placeholders.
 | [Bridge no Home Assistant](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex na interface | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
 | [Codex + Local AI com RTX 4070](LOCAL_AI_RTX_4070.md) | Inferência local, rede, telemetria e reprodução em fork | guia detalhado em português |
 | [Memória versionada dos agentes](MEMORIA_VERSIONADA_AGENTES.md) | Autoridade, privacidade, manutenção e validação da memória de IA | guia detalhado em português |
+| [Modelo de privacidade](PRIVACY_MODEL.md) | Papéis públicos, sanitização, scanner e memória pública | [English](PRIVACY_MODEL.en.md) |
+| [Fronteira pública e privada](PUBLIC_PRIVATE_BOUNDARY.md) | Bindings, bootstrap, degradação segura e compatibilidade | [English](PUBLIC_PRIVATE_BOUNDARY.en.md) |
 
 ## Funcionalidades
 
@@ -31,7 +33,7 @@ placeholders.
 - [Inventário de estado e recovery dos flows de segurança](SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md)
 - [Desarme do alarme na chegada](ALARME_DESARME_CHEGADA_NODERED.md)
 - [Integração Moni Mobile / Intelbras](INTEGRACAO_MONI_MOBILE_INTELBRAS.md)
-- [Integração Hyundai/Kia](CRETA_KIA_UVO_INTEGRATION.md)
+- [Integração Hyundai/Kia](VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md)
 - [Portão: relé local](PORTAO_GARAGEM_RELE_LOCAL.md)
 - [Portão: botão de pulso](PORTAO_GARAGEM_BOTAO_PULSO.md)
 - [Controle de energia](CONTROLE_ENERGIA_HOME_ASSISTANT.md)

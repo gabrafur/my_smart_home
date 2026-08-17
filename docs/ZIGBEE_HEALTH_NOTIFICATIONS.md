@@ -25,8 +25,8 @@ O subflow `Notificar todos os dispositivos móveis` é reutilizado pelos dois
 monitores. Para cada evento ele:
 
 1. cria ou atualiza uma notificação persistente no Home Assistant;
-2. envia push para `notify.iphone_de_gabriel_furlan` e
-   `notify.iphone_de_valeria`;
+2. envia push para `notify.mobile_primary` e
+   `notify.mobile_primary`;
 3. em uma recuperação, remove o alerta persistente da falha anterior.
 
 O contrato de entrada, também documentado visualmente no subflow, é:
@@ -253,8 +253,8 @@ local.
 | Retorno real da WAN | Físico | Não executado | Não existe queda física válida correspondente. | PENDENTE |
 | Restart real do roteador | Físico | Não executado | Exige nova janela que permita perder a conectividade externa. | PENDENTE |
 | Restart real do Zigbee2MQTT | Físico | Startup transitório abaixo do threshold, sem incidente | `bridge/state` ficou offline às 19:52:24 UTC e voltou online às 19:52:37 UTC (cerca de 13 s); o monitor passou por `checking`, recompôs o estado retained e permaneceu online por mais de 90 s, sem alerta ou falsa recuperação. | PASS |
-| Entrega no iPhone de Gabriel | Físico/manual | Não observada | Nenhum incidente físico confirmado ultrapassou o threshold. | PENDENTE |
-| Entrega no iPhone de Valéria | Físico/manual | Não observada | Nenhum incidente físico confirmado ultrapassou o threshold. | PENDENTE |
+| Entrega no iPhone de resident_primary | Físico/manual | Não observada | Nenhum incidente físico confirmado ultrapassou o threshold. | PENDENTE |
+| Entrega no iPhone de resident_secondary | Físico/manual | Não observada | Nenhum incidente físico confirmado ultrapassou o threshold. | PENDENTE |
 | Ordem das notificações | Físico/manual | Não observada | Depende de uma queda WAN válida e da anotação manual dos dois aparelhos. | PENDENTE |
 
 O deploy físico também mostrou que o Home Assistant 2026.x prefixava o nome do

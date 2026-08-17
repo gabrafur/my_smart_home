@@ -6,9 +6,8 @@
 # esta apenas no disco (secrets.yaml, .env, .storage/, .local-secrets/) e' o
 # estado privado da casa e nao deve ser lido nem impresso por esta ferramenta.
 #
-# A saida NUNCA imprime o valor de um possivel segredo: mostra arquivo, linha,
-# a regra que disparou e no maximo um prefixo curto mascarado, o suficiente
-# para localizar a ocorrencia sem vazar nada em log de CI.
+# A saida NUNCA imprime o valor, prefixo ou sufixo de um possivel segredo:
+# mostra somente regra, arquivo, linha e categoria.
 #
 # Saida: 0 = limpo, 1 = achado real, 2 = erro de uso/ambiente.
 #
@@ -30,13 +29,10 @@ findings=0
 red()  { printf '\033[31m%s\033[0m\n' "$*"; }
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 
-# Mostra o achado sem vazar o segredo: so' os 4 primeiros caracteres do trecho
-# que casou, o resto virando reticencias.
+# Mostra somente metadados do achado, sem imprimir qualquer parte do valor.
 report() {
-  local rule="$1" file="$2" line="$3" sample="$4"
-  local masked
-  masked="$(printf '%s' "$sample" | cut -c1-4)"
-  red "  [$rule] $file:$line  -> '${masked}…' (valor omitido)"
+  local rule="$1" file="$2" line="$3" category="$4"
+  red "  rule=$rule file=$file line=$line category=$category"
   findings=$((findings + 1))
 }
 
@@ -157,7 +153,7 @@ bold "==> Conteudo dos arquivos rastreados"
 # correto do Home Assistant, nao um vazamento.
 # zZWtXTja... e' o hash bcrypt de exemplo que vem comentado no settings.js
 # padrao do Node-RED (esta na documentacao oficial), nao uma credencial nossa.
-IGNORE_LINE_RE='!secret|CHANGE_ME|SUA_SENHA|replace-with|your-|example\.com|placeholder|<[A-Za-z_-]+>|sha256:|sha512-|integrity"|AA:AA:AA|zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN'
+IGNORE_LINE_RE='!secret|CHANGE_ME|SUA_SENHA|replace-with|your-|example\.com|placeholder|PRIVACY_TEST_FIXTURE|<[A-Za-z_-]+>|sha256:|sha512-|integrity"|AA:AA:AA|zZWtXTja0fB1pzD4sHCMyOCMYz2Z6dNbM6tl8sJogENOMcxWV9DN'
 
 # nome-da-regra <TAB> regex ERE
 #
@@ -209,8 +205,7 @@ while IFS=$'\t' read -r rule regex; do
       *package-lock.json|*/hacs_frontend/*|*/hacs/iconset.js|*.min.js|*.svg) continue ;;
     esac
     printf '%s' "$text" | grep -qE -- "$IGNORE_LINE_RE" && continue
-    sample="$(printf '%s' "$text" | grep -oE -- "$regex" | head -n1)"
-    report "$rule" "$file" "$line" "$sample"
+    report "$rule" "$file" "$line" "secret-or-private-data"
   done < <(git grep "${GREP_ARGS[@]}" -e "$regex" -- "${FILES[@]}" 2>/dev/null)
 done <<< "$RULES"
 

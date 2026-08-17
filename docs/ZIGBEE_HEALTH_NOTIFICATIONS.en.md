@@ -15,7 +15,7 @@ Both tabs read left to right: trigger, collection, state/confirmation,
 failure/recovery, notification, and retained MQTT publication. The shared
 `Notificar todos os dispositivos móveis` subflow creates a persistent Home
 Assistant notification and sends the same message to
-`notify.iphone_de_gabriel_furlan` and `notify.iphone_de_valeria`. Recovery also
+`notify.mobile_primary` and `notify.mobile_primary`. Recovery also
 dismisses the prior failure alert. Home Assistant calls use the connector's
 `all` queue during short HA restarts. That connector queue does not retain a
 mobile push merely because the WAN is down.
@@ -160,8 +160,8 @@ be dropped; Home Assistant does not guarantee later delivery.
 | Real WAN recovery | Physical | Not run | There is no corresponding valid physical outage. | PENDING |
 | Real router restart | Physical | Not run | A new window that permits loss of external connectivity is required. | PENDING |
 | Real Zigbee2MQTT restart | Physical | Startup transient remained below the threshold, with no incident | `bridge/state` went offline at 19:52:24 UTC and returned online at 19:52:37 UTC (about 13 seconds); the monitor entered `checking`, restored retained state, and remained online for more than 90 seconds without an alert or false recovery. | PASS |
-| Delivery to Gabriel's iPhone | Physical/manual | Not observed | No confirmed physical incident crossed its threshold. | PENDING |
-| Delivery to Valéria's iPhone | Physical/manual | Not observed | No confirmed physical incident crossed its threshold. | PENDING |
+| Delivery to resident_primary's iPhone | Physical/manual | Not observed | No confirmed physical incident crossed its threshold. | PENDING |
+| Delivery to resident_secondary's iPhone | Physical/manual | Not observed | No confirmed physical incident crossed its threshold. | PENDING |
 | Notification ordering | Physical/manual | Not observed | Requires a valid WAN outage and manual observations from both phones. | PENDING |
 
 The physical deployment also showed that Home Assistant 2026.x prefixed the

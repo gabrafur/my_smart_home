@@ -282,7 +282,7 @@ passagem e conserva somente telemetria privada por metadados em
 4070](LOCAL_AI_RTX_4070.md) descreve a rede, o preflight, a política de
 delegação, a aprovação do hook, os comandos de teste e a reprodução em um fork.
 
-A mesma aba possui controles de alertas para o iPhone de Gabriel. O painel
+A mesma aba possui controles de alertas para o iPhone de resident_primary. O painel
 mantém apenas os sensores e as preferências; a avaliação, o cooldown e o push
 são executados pelo fluxo **Alertas Codex** do Node-RED. Os limites de atenção,
 crítico, eficiência mínima de cache e saldo baixo de créditos podem ser

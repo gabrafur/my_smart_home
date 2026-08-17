@@ -1,0 +1,80 @@
+# Fronteira pública e privada
+
+Esta fronteira permite restaurar a arquitetura pública sem acoplar a lógica a
+uma residência específica.
+
+## Arquivos e fluxo de configuração
+
+| Tipo | Caminho | Git |
+| --- | --- | --- |
+| schema | `bindings/public-bindings.schema.json` | rastreado |
+| exemplo sintético | `bindings/private-bindings.example.json` | rastreado |
+| entidades e serviços reais | `bindings/private/private-bindings.json` | ignorado |
+| tópicos MQTT reais | `bindings/private/node-red-bindings.json` | ignorado |
+
+O Compose monta `bindings/private/` como `/run/private-bindings`, somente para
+leitura, nos containers do Home Assistant e Node-RED. Nenhum binding depende de
+`.storage`, altera registries ou migra `entity_id` automaticamente.
+
+Valide o exemplo público ou um arquivo privado sem imprimir valores:
+
+```bash
+node scripts/public-bindings-check.mjs
+node scripts/public-bindings-check.mjs --private bindings/private/private-bindings.json
+```
+
+Os campos `entities`, `services`, `topics` e `mqtt_topics` são opcionais por
+papel. Entidades exigem um alvo; serviços exigem um serviço alvo; tópicos MQTT
+exigem chaves e payloads válidos. O exemplo público contém todos os oito papéis
+obrigatórios.
+
+## Consumo pelo Home Assistant
+
+`homeassistant/custom_components/public_bindings` lê o arquivo privado e:
+
+- projeta estados em IDs públicos baseados em papel;
+- copia somente atributos explicitamente allowlisted;
+- normaliza presença e estados booleanos quando configurado;
+- encaminha ações allowlisted pelo serviço `public_bindings.call`.
+
+Arquivo ausente, versão inválida, papel desabilitado ou ação não configurada
+resultam em ausência de proxy/ação. O adapter falha fechado e não revela o alvo
+privado em atributos públicos.
+
+## Consumo pelo Node-RED
+
+`nodered/settings.js` mescla os documentos JSON do diretório privado no contexto
+global `publicBindings`. Functions de portão, iluminação e notificações consultam
+esse contexto; nós MQTT estáticos recebem apenas variáveis derivadas dos
+bindings. Binding ausente bloqueia o comando ou deixa o nó sem tópico real,
+preservando degradação segura.
+
+## Bootstrap e restauração
+
+1. Copie `bindings/private-bindings.example.json` para o diretório privado.
+2. Substitua somente os placeholders pelos alvos da instalação.
+3. Mantenha permissões restritas e confirme que os arquivos continuam ignorados.
+4. Execute o checker privado e os scanners públicos.
+5. Valide Compose com `.env.example` e `config --quiet`.
+6. Faça a ativação operacional separadamente, com aprovação local e rollback.
+
+Módulos opcionais podem permanecer `enabled: false` ou sem binding. A lógica
+pública não presume que veículo, segundo morador, portão ou iluminação estejam
+disponíveis.
+
+## Compatibilidade e futura renomeação
+
+Bindings preservam os IDs reais existentes e evitam alterações automáticas em
+registries. Uma futura migração física de entidades é um projeto separado e deve
+conter inventário de consumidores, ordem de mudança, backup, rollback, testes
+antes/depois, riscos de indisponibilidade e aprovação presencial. Esta etapa não
+executa essa migração.
+
+## Limitações
+
+- O schema valida forma e papéis, não a existência do alvo na instalação.
+- Atualizar um binding exige validação e ativação operacional explícitas.
+- O proxy do Home Assistant é de runtime; ele não renomeia nem recria entradas
+  no entity registry.
+- Arquivos privados devem ser incluídos no backup privado da instalação; eles
+  nunca fazem parte do pacote público.

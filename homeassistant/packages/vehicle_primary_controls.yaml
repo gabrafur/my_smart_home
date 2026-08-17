@@ -1,12 +1,12 @@
 input_button:
-  creta_force_refresh_now:
-    name: Forçar atualização do Creta agora
+  vehicle_primary_force_refresh_now:
+    name: Forçar atualização do vehicle_primary agora
     icon: mdi:car-connected
 
 command_line:
   - sensor:
-      name: Integração Creta
-      unique_id: creta_integration_maintenance
+      name: Integração vehicle_primary
+      unique_id: vehicle_primary_integration_maintenance
       command: >-
         sh -c 'test -r /config/.storage/kia_uvo_safe_update &&
         cat /config/.storage/kia_uvo_safe_update ||

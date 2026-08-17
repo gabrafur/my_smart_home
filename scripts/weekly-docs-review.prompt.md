@@ -249,13 +249,12 @@ Execute:
 
 ```bash
 make validate-public
-make restore-test
 scripts/security-scan.sh
 make privacy-check
 git diff --check
 ```
 
-Se houver alterações válidas, execute também:
+O scheduler fará o stage e executará também, fora do agente:
 
 ```bash
 scripts/security-scan.sh --staged
@@ -276,36 +275,30 @@ As validações não podem:
 - modificar registries;
 - ler segredos.
 
-Se qualquer validação falhar, não faça commit nem push.
+Se qualquer validação falhar, encerre com erro. O scheduler rejeitará o diff.
 
-# Commit e publicação
+# Entrega ao scheduler
 
-Somente quando:
+Não faça commit, push, merge, rebase nem altere remotes. A execução ocorre em
+worktree destacado com push bloqueado. O scheduler é o único responsável por:
 
-- as alterações forem exclusivamente documentais;
-- todos os checks passarem;
-- a privacidade estiver preservada;
-- `origin/main` continuar fast-forward;
+- verificar a allowlist de paths;
+- rejeitar qualquer alteração executável;
+- executar os checks finais e staged;
+- criar um único commit `docs: weekly public-repository review`;
+- fazer novo fetch;
+- confirmar `main`, árvore limpa e fast-forward;
+- publicar em `origin/main`.
 
-crie um único commit com prefixo:
+Se a revisão identificar necessidade de mudar código, configuração executável,
+flows, scanners, workflows, testes ou restore operacional, não faça essa mudança.
+Registre apenas:
 
 ```text
-docs: weekly public-repository review
+implementation_change_required
 ```
 
-Antes do push, faça um novo fetch e confirme novamente o fast-forward.
-
-Faça:
-
-```bash
-git push origin main
-```
-
-somente quando todas as pré-condições continuarem válidas.
-
-Não crie commit vazio.
-
-Se nada precisar ser alterado, registre `no_changes` e não faça push.
+Se nada precisar ser alterado, registre `no_changes`.
 
 # Resultado esperado no log
 
@@ -318,7 +311,6 @@ Registre somente metadados seguros:
 - estado do contrato de restauração;
 - resultado dos scanners;
 - resultado do `make validate-public`;
-- resultado do `make restore-test`;
 - arquivos documentais alterados;
 - commit criado, quando houver;
 - resultado final;

@@ -64,7 +64,7 @@ assert.deepEqual(node("storage_manual_health").wires, [["storage_exec_maintenanc
 assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maintenance.sh --dry-run --deep");
 assert.equal(node("storage_notify").action, "notify.send_message");
-assert.deepEqual(node("storage_notify").entityId, ["notify.iphone_de_gabriel_furlan", "notify.iphone_de_valeria"]);
+assert.deepEqual(node("storage_notify").entityId, ["notify.mobile_primary_2", "notify.mobile_secondary"]);
 assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.sock"));
 
 {
@@ -156,7 +156,7 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
 
 {
   const parse = compile("storage_parse_maintenance");
-  const output = parse({ payload: "START|mode=apply\nRESULT|status=success|at=2026-08-13T04:17:00Z|mode=apply|before_bytes=1000|after_bytes=500|reclaimed_bytes=500" }, memoryFlow(), runtimeNode(), {}, {});
+  const output = parse({ payload: "START|mode=apply\nRESULT|status=success|at=1999-01-01T04:17:00Z|mode=apply|before_bytes=1000|after_bytes=500|reclaimed_bytes=500" }, memoryFlow(), runtimeNode(), {}, {});
   assert.equal(output[0][0].topic, "smart_home/raspberry/storage/last_maintenance");
   assert.equal(output[0][1].payload, "0");
   assert.equal(parse({ payload: "RESULT|status=success|at=x|mode=dry-run|reclaimed_bytes=0" }, memoryFlow(), runtimeNode(), {}, {}), null);

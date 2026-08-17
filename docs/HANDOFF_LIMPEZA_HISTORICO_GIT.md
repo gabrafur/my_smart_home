@@ -11,10 +11,10 @@ os itens obsoletos (181 delecoes staged e `.ha_ws.py`) foram removidos.
   do historico esta pronta, mas o force-push exige autorizacao explicita.
 - O refresh periodico Kia foi alinhado ao piso real de 15 min do backend BR.
   O tick de 30 s permanece somente para a cadencia adaptativa dos iPhones; a
-  entrada na `zone.chegando` conserva o wake pontual do Creta.
+  entrada na `zone.chegando` conserva o wake pontual do vehicle_primary.
 - O fluxo foi validado por replay automatizado e carregado no Node-RED.
 - Os dois iPhones ja produziram estado `chegando`, portanto a zona foi
-  sincronizada. O tracker da Valeria saiu da posicao em que estava congelado,
+  sincronizada. O tracker da resident_secondary saiu da posicao em que estava congelado,
   mas deve continuar sendo observado.
 - Ainda nao houve um `on` real do refletor desde a implantacao. A comprovacao
   numa chegada noturna real continua sendo uma observacao de producao.
@@ -85,9 +85,9 @@ npm run flows:validate
 npm run flows:test-security
 ```
 
-O replay cobre oito cenarios: fallback sem env, pessoa sem Creta, motor velho
-com trava de uso, chegada pela localizacao do Creta, desligado+destravado,
-anti-religamento, tracker congelado com/sem Creta e saida de casa. Ele tambem
+O replay cobre oito cenarios: fallback sem env, pessoa sem vehicle_primary, motor velho
+com trava de uso, chegada pela localizacao do vehicle_primary, desligado+destravado,
+anti-religamento, tracker congelado com/sem vehicle_primary e saida de casa. Ele tambem
 compila todos os function nodes.
 
 O antigo `tools/install-security-light-flow.mjs` foi desativado porque gerava

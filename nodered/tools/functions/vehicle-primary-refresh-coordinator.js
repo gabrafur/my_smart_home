@@ -4,11 +4,11 @@ const TEST_MODE =
 
 if (TEST_MODE || msg.payload?.kind !== "refresh_command") return null;
 
-const vehicleContext = flow.get("creta_context_v1") ?? {};
+const vehicleContext = flow.get("vehicle_primary_context_v1") ?? {};
 const INTERVAL_MS = 15 * 60 * 1000;
 const BASE_RETRY_MS = 60 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
-const key = "security_creta_refresh_v1";
+const key = "security_vehicle_primary_refresh_v1";
 const now = Date.now();
 
 let state = flow.get(key, "persistent");
@@ -62,7 +62,7 @@ const outstandingRecovery =
 const recoveryNeeded =
     msg.payload?.recovery_needed === true ||
     msg.payload?.force_recovery === true ||
-    msg.payload?.creta_ready === false ||
+    msg.payload?.vehicle_primary_ready === false ||
     contextReady !== true ||
     outstandingRecovery;
 const requireLightingReady =
@@ -99,7 +99,7 @@ if (!enabled) {
     node.status({
         fill: "grey",
         shape: "ring",
-        text: "refresh Creta: aguardando movimento"
+        text: "refresh vehicle_primary: aguardando movimento"
     });
     return null;
 }
@@ -115,7 +115,7 @@ if (now < state.next_allowed_at) {
         shape: "ring",
         text: waitingEvidence
             ? `retry Bluelink em ${waitS}s`
-            : `refresh Creta cooldown ${waitS}s`
+            : `refresh vehicle_primary cooldown ${waitS}s`
     });
     return null;
 }
@@ -141,8 +141,8 @@ save("refreshing", requestedReason, { enabled: true });
 
 node.log?.(
     (state.attempts > 1
-        ? "CRETA_REFRESH_RETRY"
-        : "CRETA_REFRESH_REQUESTED") +
+        ? "VEHICLE_PRIMARY_REFRESH_RETRY"
+        : "VEHICLE_PRIMARY_REFRESH_REQUESTED") +
     " attempt=" + state.attempts +
     " reason=" + requestedReason +
     " recovery=" + String(recoveryNeeded) +
@@ -151,7 +151,7 @@ node.log?.(
 
 msg.payload.retry_attempt = state.attempts;
 msg.payload.refresh_requested_at = now;
-msg.payload.creta_refresh_recovery = recoveryNeeded;
+msg.payload.vehicle_primary_refresh_recovery = recoveryNeeded;
 msg.payload.require_lighting_ready = requireLightingReady;
 msg.payload.origin = msg.payload.origin ?? "contexto_chegadas";
 

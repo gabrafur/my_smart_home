@@ -91,6 +91,22 @@ test("reports broken links without reading an untracked target", () => {
   assert.ok(result.errors.some((error) => error.includes("broken or untracked relative link")));
 });
 
+test("an untracked file cannot satisfy the public memory graph", () => {
+  const fixture = createFixture();
+  const untracked = ".codex/memories/untracked/untracked-topic.md";
+  const absolute = path.join(fixture.repoRoot, untracked);
+  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+  fs.writeFileSync(absolute, "# Present only in the worktree\n");
+  fs.appendFileSync(
+    path.join(fixture.repoRoot, "MEMORY.md"),
+    `\n- [Untracked](.codex/memories/untracked/untracked-topic.md)\n`,
+  );
+
+  const result = checkPublicMemory(fixture);
+  assert.ok(result.errors.some((error) => error.includes("broken or untracked relative link")));
+  assert.ok(result.errors.some((error) => error.includes("points to unknown thematic memory")));
+});
+
 test("rejects tracked private runtime paths while allowing public Codex memory", () => {
   const fixture = createFixture();
   fixture.trackedFiles.push(".agent-history/turns.jsonl", ".codex/session-state.json");

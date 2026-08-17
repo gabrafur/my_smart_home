@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 
 const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
 const secretsDir = path.join(repoRoot, ".local-secrets");
-const mqttPasswordPath = path.join(secretsDir, "mqtt-gabriel-password.txt");
+const mqttPasswordPath = path.join(secretsDir, "mqtt-resident_primary-password.txt");
 const mosquittoPasswordPath = path.join(repoRoot, "mosquitto", "config", "password.txt");
 const zigbeeConfigPath = path.join(repoRoot, "zigbee2mqtt", "configuration.yaml");
 const haConfigEntriesPath = path.join(repoRoot, "homeassistant", ".storage", "core.config_entries");
@@ -14,7 +14,7 @@ const flowsCredPath = path.join(repoRoot, "nodered", "flows_cred.json");
 const runtimeConfigPath = path.join(repoRoot, "nodered", ".config.runtime.json");
 const envPath = path.join(repoRoot, ".env");
 
-const mqttUser = "gabriel";
+const mqttUser = "resident_primary";
 const mqttBrokerNodeId = "721c47f31046b8bc";
 
 function parseEnv(content) {

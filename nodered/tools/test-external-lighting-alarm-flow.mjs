@@ -50,7 +50,7 @@ const sunsetAlarmCheck = getNode("ext_sunset_alarm_check");
 assert.equal(sunsetAlarmCheck.type, "api-current-state");
 assert.equal(
   sunsetAlarmCheck.entity_id,
-  "alarm_control_panel.alarme_moni_mobile",
+  "alarm_control_panel.security_panel",
 );
 assert.equal(sunsetAlarmCheck.halt_if, "disarmed");
 assert.equal(sunsetAlarmCheck.halt_if_compare, "is");
@@ -155,24 +155,40 @@ for (const [id, expectedState] of commandNodes) {
 }
 
 const distributor = compileFunction(getNode("88e6fc3e56fa347c"));
+const exteriorTopics = [
+  { topic: "zigbee2mqtt/example_exterior_light_1/set", payload_on: "ON", payload_off: "OFF" },
+  { topic: "zigbee2mqtt/example_exterior_light_2/set", payload_on: "ON", payload_off: "OFF" },
+  { topic: "zigbee2mqtt/example_exterior_light_3/set", payload_on: "ON", payload_off: "OFF" },
+];
+const bindingGlobal = {
+  get: (key) => key === "publicBindings"
+    ? { roles: { exterior_light: { mqtt_topics: exteriorTopics } } }
+    : undefined,
+};
 const distributed = distributor(
   { payload: { state: "ON" } },
+  statusNode,
   {},
   {},
-  {},
-  {},
+  bindingGlobal,
   {},
   setTimeout,
   clearTimeout,
 );
 assert.deepEqual(
   distributed.map((message) => message.topic),
-  [
-    "zigbee2mqtt/lampada_varanda/set",
-    "zigbee2mqtt/lampadas_garagem/set",
-    "zigbee2mqtt/refletores_jardim/set",
-  ],
+  exteriorTopics.map((binding) => binding.topic),
 );
+assert.equal(distributor(
+  { payload: { state: "ON" } },
+  statusNode,
+  {},
+  {},
+  { get: () => undefined },
+  {},
+  setTimeout,
+  clearTimeout,
+), null);
 
 const confirmation = compileFunction(getNode("ext_wait_confirm"));
 const contextValues = new Map();

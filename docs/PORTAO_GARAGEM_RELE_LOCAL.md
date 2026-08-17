@@ -83,7 +83,7 @@ HA porém **não são mais usados** pelo Node-RED.
 1. **Testar o relé isolado** (valida a fiação na botoeira + o pulso) — HA →
    Ferramentas de Desenvolvedor → Ações → `mqtt.publish`:
    ```yaml
-   topic: zigbee2mqtt/rele_acionador_portao/set
+   topic: zigbee2mqtt/example_garage_gate/set
    payload: '{"state":"ON","on_time":1,"off_wait_time":0}'
    ```
    ⚠️ o portão vai acionar — área livre.
@@ -93,5 +93,5 @@ HA porém **não são mais usados** pelo Node-RED.
 ## Arquivo de ownership
 
 `nodered/flows.json` pertence a `node-red` (uid 1000) — não é editável direto pelo
-host (`gabriel`). Edite via `tools/*.mjs` gerando um arquivo de saída e escreva no
+host (`resident_primary`). Edite via `tools/*.mjs` gerando um arquivo de saída e escreva no
 container: `docker exec -i nodered sh -c 'cat > /data/flows.json' < saida.json`.

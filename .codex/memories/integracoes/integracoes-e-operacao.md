@@ -5,7 +5,7 @@
 A integração local de `vehicle_primary`, o intervalo de wake/refresh e as
 entidades de viagens são intencionais. Confirme os IDs atuais na configuração
 antes de conectá-los a uma automação e consulte
-`docs/CRETA_KIA_UVO_INTEGRATION.md` para versões e detalhes de implementação
+`docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md` para versões e detalhes de implementação
 vigentes.
 
 Wakes manuais e automáticos compartilham o mesmo coordenador e o piso definido

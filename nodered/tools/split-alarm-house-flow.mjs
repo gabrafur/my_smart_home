@@ -146,7 +146,7 @@ requireNode("alarm_real_change_filter").wires = [["alarm_armed_lighting_out"]];
 const updateMoniMobile = requireNode("moni_mobile_update_after_arm");
 updateMoniMobile.entityId = [];
 updateMoniMobile.data = JSON.stringify({
-  entity_id: ["alarm_control_panel.alarme_moni_mobile"],
+  entity_id: ["alarm_control_panel.security_panel"],
 });
 updateMoniMobile.dataType = "json";
 

@@ -343,10 +343,10 @@ async function check(targetVersion, options = {}) {
   }
 
   console.log(
-    `CRETA_INTEGRATION_UPDATE_AVAILABLE installed=${hacs?.version_installed ?? "unknown"} latest=${target}`,
+    `VEHICLE_PRIMARY_INTEGRATION_UPDATE_AVAILABLE installed=${hacs?.version_installed ?? "unknown"} latest=${target}`,
   );
   const token = process.env.HA_LONG_LIVED_TOKEN?.trim();
-  await publishEvent(token, "creta_integration_update_available", {
+  await publishEvent(token, "vehicle_primary_integration_update_available", {
     installed_version: hacs?.version_installed ?? null,
     latest_version: target,
     detected_at: new Date().toISOString(),
@@ -370,16 +370,16 @@ async function waitForHomeAssistant(token, timeoutMs = 240_000) {
     try {
       const states = await haRequest("GET", "/api/states", token);
       const required = [
-        "sensor.creta_fuel_level",
-        "button.creta_force_refresh",
-        "button.creta_start_hazard_lights_and_horn",
-        "sensor.garagem_creta_recent_trip_info",
-        "sensor.garagem_creta_remote_command_status",
+        "sensor.vehicle_primary_fuel_level",
+        "button.vehicle_primary_force_refresh",
+        "button.vehicle_primary_start_hazard_lights_and_horn",
+        "sensor.garagem_vehicle_primary_recent_trip_info",
+        "sensor.garagem_vehicle_primary_remote_command_status",
       ];
       const missing = required.filter(
         (entityId) => !states.some((state) => state.entity_id === entityId),
       );
-      const fuel = states.find((state) => state.entity_id === "sensor.creta_fuel_level");
+      const fuel = states.find((state) => state.entity_id === "sensor.vehicle_primary_fuel_level");
       if (!missing.length && fuel && !["unknown", "unavailable"].includes(fuel.state)) {
         return { entities: "passed", fuel_state: fuel.state };
       }
@@ -476,7 +476,7 @@ async function apply(targetVersion) {
       message: "HACS instalou a versão oficial e o delta local foi reaplicado.",
     });
     writeStatus(status);
-    await publishEvent(token, "creta_integration_update_applied", status);
+    await publishEvent(token, "vehicle_primary_integration_update_applied", status);
     fs.rmSync(prepared.workspace, { recursive: true, force: true });
     console.log(JSON.stringify(status, null, 2));
     return status;
@@ -496,7 +496,7 @@ async function apply(targetVersion) {
       message: `Falha: ${error.message}. Backup restaurado.`,
     });
     writeStatus(rollback);
-    await publishEvent(token, "creta_integration_update_rollback", rollback)
+    await publishEvent(token, "vehicle_primary_integration_update_rollback", rollback)
       .catch(() => undefined);
     throw error;
   }

@@ -1,0 +1,21 @@
+call:
+  name: Call a private binding
+  description: Resolves a public role/action pair without exposing the private target.
+  fields:
+    role:
+      name: Role
+      required: true
+      example: garage_gate
+      selector:
+        text:
+    action:
+      name: Action
+      required: true
+      example: pulse
+      selector:
+        text:
+    data:
+      name: Data
+      required: false
+      selector:
+        object:

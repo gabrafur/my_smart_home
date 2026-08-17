@@ -37,9 +37,9 @@ quando o flow `alarme_casa` informa um armamento real.
    criada e a Alexa informa a falha.
 4. Quando a rede esta disponivel, `Distribuir para topicos Zigbee2MQTT`
    publica em:
-   - `zigbee2mqtt/lampada_varanda/set`;
-   - `zigbee2mqtt/lampadas_garagem/set`;
-   - `zigbee2mqtt/refletores_jardim/set`.
+   - `zigbee2mqtt/example_exterior_light_1/set`;
+   - `zigbee2mqtt/example_exterior_light_2/set`;
+   - `zigbee2mqtt/example_exterior_light_3/set`.
 5. `Confirmar somente o comando mais recente` aguarda cinco segundos. Um novo
    comando cancela a confirmacao anterior para impedir avisos obsoletos.
 6. `Confirmar estados no Home Assistant` le as tres entidades. Estados
@@ -50,7 +50,7 @@ quando o flow `alarme_casa` informa um armamento real.
 ## Avisos
 
 Os avisos desta aba usam o node `Avisar Alexa`
-(`notify.alexa_media_echo_dot_de_gabriel`). O flow `alarme_casa` possui um
+(`notify.alexa_media_echo_dot_de_resident_primary`). O flow `alarme_casa` possui um
 node de aviso proprio, evitando fios diretos entre abas.
 
 ## Historico relevante

@@ -9,7 +9,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 const FLOWS = new URL('../flows.json', import.meta.url).pathname;
 const OUT = process.argv[2] || `${FLOWS}.new`;
-const TOPIC = 'zigbee2mqtt/rele_acionador_portao/set';
+const TOPIC_CODE =
+  "const topic = global.get('publicBindings')?.roles?.garage_gate?.topics?.command;\n" +
+  "if (!topic) { node.status({ fill: 'red', shape: 'ring', text: 'binding ausente' }); return null; }\n" +
+  "msg.topic = topic;\n";
 
 const flows = JSON.parse(readFileSync(FLOWS, 'utf8'));
 const on = flows.find((n) => n.id === 'gar_relay_pulse_on');
@@ -21,7 +24,7 @@ on.name = 'botoeira: liga o rele (inicio do pulso)';
 on.func =
   "// Botoeira: fecha o contato. O TS0001 nao honra on_time, entao o pulso e'\n" +
   "// feito por software: este no liga, o delay+no seguinte desligam.\n" +
-  `msg.topic = '${TOPIC}';\n` +
+  TOPIC_CODE +
   "msg.payload = JSON.stringify({ state: 'ON' });\n" +
   "return msg;";
 
@@ -33,7 +36,7 @@ delay.timeoutUnits = 'milliseconds';
 off.name = 'botoeira: solta o contato (fim do pulso)';
 off.func =
   "// Fim do pulso: abre o contato.\n" +
-  `msg.topic = '${TOPIC}';\n` +
+  TOPIC_CODE +
   "msg.payload = JSON.stringify({ state: 'OFF' });\n" +
   "return msg;";
 

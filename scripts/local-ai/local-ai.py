@@ -827,10 +827,10 @@ export async function updateUser(request) { return users.update(request.params.i
 
 tests/auth.test.ts
 it('rejects cross-user role changes', async () => expect(await updateUser(otherUser)).toHaveStatus(403));"""),
-        ("summarize-log", """2026-08-16T12:00:01Z api ERROR TypeError: Cannot read properties of undefined (reading 'id')
+        ("summarize-log", """1999-01-01T12:00:01Z api ERROR TypeError: Cannot read properties of undefined (reading 'id')
     at updateUser (src/auth.ts:18:42)
-2026-08-16T12:00:02Z api WARN retrying database write once
-2026-08-16T12:00:03Z api ERROR request_id=abc123 status=500"""),
+1999-01-01T12:00:02Z api WARN retrying database write once
+1999-01-01T12:00:03Z api ERROR request_id=abc123 status=500"""),
     ]
 
 

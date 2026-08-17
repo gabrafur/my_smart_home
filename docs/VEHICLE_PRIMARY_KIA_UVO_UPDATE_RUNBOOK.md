@@ -3,7 +3,7 @@
 ## Objetivo
 
 Atualizar `custom_components/kia_uvo` sem permitir que o HACS sobrescreva o
-delta local do Creta. A base upstream e registrada em
+delta local do vehicle_primary. A base upstream e registrada em
 `scripts/kia-uvo-upstream.json`; as customizacoes permanecem nos commits deste
 repositorio, sem manter uma copia manual de patch que possa ficar stale.
 
@@ -12,7 +12,7 @@ repositorio, sem manter uma copia manual de patch que possa ficar stale.
 O job `scripts/docker-auto-update.mjs ha-updates` continua bloqueando a
 instalacao automatica de entidades com `kia_uvo`, `hyundai`, `bluelink` ou
 `uvo`. Quando uma delas fica `on`, ele registra
-`CRETA_INTEGRATION_UPDATE_AVAILABLE` e executa somente:
+`VEHICLE_PRIMARY_INTEGRATION_UPDATE_AVAILABLE` e executa somente:
 
 ```bash
 node scripts/kia-uvo-safe-update.mjs check --target vX.Y.Z
@@ -21,7 +21,7 @@ node scripts/kia-uvo-safe-update.mjs check --target vX.Y.Z
 O check baixa base e alvo oficiais em `/tmp`, calcula o delta local, tenta
 aplica-lo no alvo e executa `compileall` e os marcadores obrigatorios. O
 resultado fica em `/config/.storage/kia_uvo_safe_update` e e exibido por
-`sensor.integracao_creta`.
+`sensor.integracao_vehicle_primary`.
 
 Estados possiveis: `compatible`, `conflict`, `applying`, `applied` e
 `rollback`. `conflict` nunca altera o componente em uso.

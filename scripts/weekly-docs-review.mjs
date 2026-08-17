@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -85,6 +86,7 @@ function preflightReason(error) {
   if (message.includes("working tree is not clean")) return "dirty_worktree";
   if (message.startsWith("prompt not found")) return "prompt_missing";
   if (message.startsWith("cannot authenticate")) return "remote_authentication_failed";
+  if (message.includes("not synchronized")) return "remote_not_synchronized";
   return "preflight_failed";
 }
 
@@ -103,9 +105,9 @@ export function nextWeeklyRun(now, { day, hour, minute }) {
   return candidate;
 }
 
-function gitOutput(args) {
+function gitOutput(args, cwd = repoRoot) {
   const result = spawnSync("git", ["-c", `safe.directory=${repoRoot}`, ...args], {
-    cwd: repoRoot,
+    cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -113,6 +115,26 @@ function gitOutput(args) {
     throw new Error(`git ${args.join(" ")} failed: ${result.stderr.trim()}`);
   }
   return result.stdout.trim();
+}
+
+export function isAllowedReviewPath(file) {
+  if (["README.md", "MEMORY.md"].includes(file)) return true;
+  if (/^\.codex\/memories\/.+\.md$/.test(file)) return true;
+  if (/^docs\/.+\.md$/.test(file)) return true;
+  return /^docs\/assets\/generated\/.+\.(?:jpe?g|png|svg|webp)$/i.test(file);
+}
+
+function changedReviewPaths(worktree) {
+  const tracked = gitOutput(["diff", "--name-only", "-z", "HEAD"], worktree)
+    .split("\0").filter(Boolean);
+  const untracked = gitOutput(["ls-files", "--others", "--exclude-standard", "-z"], worktree)
+    .split("\0").filter(Boolean);
+  return [...new Set([...tracked, ...untracked])].sort();
+}
+
+function runChecked(command, args, cwd) {
+  const result = spawnSync(command, args, { cwd, stdio: "inherit", env: { ...process.env, CI: "1" } });
+  if (result.status !== 0) throw new Error(`${command} validation failed`);
 }
 
 function preflight() {
@@ -129,21 +151,17 @@ function preflight() {
     throw new Error(`prompt not found: ${promptPath}`);
   }
   const remote = process.env.WEEKLY_DOCS_REVIEW_REMOTE || "origin";
-  const remoteCheck = spawnSync("git", [
-    "-c",
-    `safe.directory=${repoRoot}`,
-    "ls-remote",
-    "--exit-code",
-    remote,
-    "HEAD",
-  ], {
-    cwd: repoRoot,
-    encoding: "utf8",
-    stdio: ["ignore", "ignore", "pipe"],
-  });
-  if (remoteCheck.status !== 0) {
-    throw new Error(`cannot authenticate to Git remote ${remote}: ${remoteCheck.stderr.trim()}`);
+  try {
+    gitOutput(["fetch", "--quiet", remote, expectedBranch]);
+  } catch (error) {
+    throw new Error(`cannot authenticate to Git remote ${remote}: ${error.message}`);
   }
+  const baseline = gitOutput(["rev-parse", "HEAD"]);
+  const remoteHead = gitOutput(["rev-parse", "FETCH_HEAD"]);
+  if (baseline !== remoteHead) {
+    throw new Error("local branch is not synchronized with the configured remote");
+  }
+  return { baseline, expectedBranch, remote };
 }
 
 function killProcessGroup(child) {
@@ -154,9 +172,71 @@ function killProcessGroup(child) {
   }
 }
 
+function runAgent(prompt, worktree, remote) {
+  const args = [
+    "-n", lockPath,
+    "codex", "exec", "--ephemeral",
+    "--model", "gpt-5.6-terra",
+    "--config", 'model_reasoning_effort="medium"',
+    "--approve-for-me", "--sandbox", "workspace-write",
+    "-C", worktree, "-",
+  ];
+  return new Promise((resolve) => {
+    let timedOut = false;
+    let settled = false;
+    const child = spawn("flock", args, {
+      cwd: worktree,
+      detached: true,
+      env: {
+        ...process.env,
+        CI: "1",
+        GIT_CONFIG_COUNT: "1",
+        GIT_CONFIG_KEY_0: `remote.${remote}.pushurl`,
+        GIT_CONFIG_VALUE_0: "weekly-docs-review-push-disabled",
+      },
+      stdio: ["pipe", "inherit", "inherit"],
+    });
+    activeChild = child;
+    child.stdin.on("error", (error) => log(`weekly review prompt stream closed early: ${error.message}`));
+    child.stdin.end(prompt);
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      log(`weekly review exceeded ${maxRuntimeMs} ms; terminating process group`);
+      killProcessGroup(child);
+    }, maxRuntimeMs);
+    child.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      activeChild = undefined;
+      resolve({ ok: false, reason: "process_start_failed", error });
+    });
+    child.once("close", (code, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      activeChild = undefined;
+      resolve({ ok: code === 0, reason: timedOut ? "timeout" : "process_failed", code, signal });
+    });
+  });
+}
+
+function failReview(reason, error) {
+  log(`weekly review failed (${reason}): ${error?.message || "validation rejected"}`);
+  updateStatus({
+    state: "failed",
+    last_finished: new Date().toISOString(),
+    last_result: "failed",
+    last_reason: reason,
+    failure_count: Number(status.failure_count || 0) + 1,
+  });
+  return false;
+}
+
 export async function runReview() {
+  let initial;
   try {
-    preflight();
+    initial = preflight();
   } catch (error) {
     log(`weekly review skipped: ${error.message}`);
     updateStatus({
@@ -173,36 +253,14 @@ export async function runReview() {
   try {
     prompt = fs.readFileSync(promptPath, "utf8");
   } catch (error) {
-    log(`weekly review skipped: cannot read prompt: ${error.message}`);
-    updateStatus({
-      state: "skipped",
-      last_finished: new Date().toISOString(),
-      last_result: "skipped",
-      last_reason: "prompt_unreadable",
-      skipped_count: Number(status.skipped_count || 0) + 1,
-    });
-    return false;
+    return failReview("prompt_unreadable", error);
   }
-  const args = [
-    "-n",
-    lockPath,
-    "codex",
-    "exec",
-    "--ephemeral",
-    "--model",
-    "gpt-5.6-terra",
-    "--config",
-    'model_reasoning_effort="medium"',
-    "--approve-for-me",
-    "--sandbox",
-    "workspace-write",
-    "-C",
-    repoRoot,
-    "-",
-  ];
 
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "weekly-docs-review-"));
+  const worktree = path.join(temporaryRoot, "worktree");
+  let worktreeCreated = false;
   const startedAt = new Date().toISOString();
-  log("weekly documentation review started");
+  log("weekly documentation review started in isolated worktree");
   updateStatus({
     state: "running",
     next_run: null,
@@ -212,81 +270,77 @@ export async function runReview() {
     last_signal: null,
     run_count: Number(status.run_count || 0) + 1,
   });
-  return new Promise((resolve) => {
-    let timedOut = false;
-    let settled = false;
-    const child = spawn("flock", args, {
-      cwd: repoRoot,
-      detached: true,
-      env: { ...process.env, CI: "1" },
-      stdio: ["pipe", "inherit", "inherit"],
-    });
-    activeChild = child;
-    child.stdin.on("error", (error) => {
-      log(`weekly review prompt stream closed early: ${error.message}`);
-    });
-    child.stdin.end(prompt);
 
-    const timeout = setTimeout(() => {
-      timedOut = true;
-      log(`weekly review exceeded ${maxRuntimeMs} ms; terminating process group`);
-      killProcessGroup(child);
-    }, maxRuntimeMs);
+  try {
+    gitOutput(["worktree", "add", "--detach", worktree, initial.baseline]);
+    worktreeCreated = true;
+    const agent = await runAgent(prompt, worktree, initial.remote);
+    if (!agent.ok) return failReview(agent.reason, agent.error);
+    if (gitOutput(["rev-parse", "HEAD"], worktree) !== initial.baseline) {
+      return failReview("agent_created_commit", new Error("agent changed isolated HEAD"));
+    }
 
-    child.once("error", (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      activeChild = undefined;
-      log(`weekly review failed to start: ${error.message}`);
+    const changed = changedReviewPaths(worktree);
+    if (changed.length === 0) {
+      log("weekly documentation review completed with no changes");
       updateStatus({
-        state: "failed",
-        last_finished: new Date().toISOString(),
-        last_result: "failed",
-        last_reason: "process_start_failed",
-        failure_count: Number(status.failure_count || 0) + 1,
+        state: "success", last_finished: new Date().toISOString(), last_result: "no_changes",
+        last_reason: null, success_count: Number(status.success_count || 0) + 1,
       });
-      resolve(false);
-    });
-    child.once("close", (code, signal) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timeout);
-      activeChild = undefined;
-      if (code === 0) {
-        log("weekly documentation review finished successfully");
-        let lastCommit = null;
-        try {
-          lastCommit = gitOutput(["rev-parse", "--short=12", "HEAD"]);
-        } catch {
-          // The successful result remains valid even if metadata collection fails.
-        }
-        updateStatus({
-          state: "success",
-          last_finished: new Date().toISOString(),
-          last_result: "success",
-          last_reason: null,
-          last_exit_code: 0,
-          last_signal: null,
-          last_commit: lastCommit,
-          success_count: Number(status.success_count || 0) + 1,
-        });
-        resolve(true);
-      } else {
-        log(`weekly review failed: exit=${code ?? "null"} signal=${signal ?? "none"}`);
-        updateStatus({
-          state: "failed",
-          last_finished: new Date().toISOString(),
-          last_result: "failed",
-          last_reason: timedOut ? "timeout" : "process_failed",
-          last_exit_code: code,
-          last_signal: signal,
-          failure_count: Number(status.failure_count || 0) + 1,
-        });
-        resolve(false);
+      return true;
+    }
+    const rejected = changed.filter((file) => !isAllowedReviewPath(file));
+    if (rejected.length) {
+      return failReview("unapproved_paths", new Error(`${rejected.length} path(s) outside documentation allowlist`));
+    }
+    for (const file of changed) {
+      const candidate = path.join(worktree, file);
+      if (fs.existsSync(candidate) && fs.lstatSync(candidate).isSymbolicLink()) {
+        return failReview("symlink_rejected", new Error("documentation symlink is not allowed"));
       }
+    }
+
+    gitOutput(["add", "--", ...changed], worktree);
+    runChecked("make", ["validate-public"], worktree);
+    runChecked("scripts/security-scan.sh", ["--staged"], worktree);
+    runChecked("make", ["privacy-check-staged"], worktree);
+    runChecked("git", ["diff", "--cached", "--check"], worktree);
+    gitOutput(["commit", "-m", "docs: weekly public-repository review"], worktree);
+    const reviewCommit = gitOutput(["rev-parse", "HEAD"], worktree);
+
+    gitOutput(["fetch", "--quiet", initial.remote, initial.expectedBranch]);
+    const remoteHead = gitOutput(["rev-parse", "FETCH_HEAD"]);
+    if (remoteHead !== initial.baseline) {
+      return failReview("remote_advanced", new Error("remote branch changed during review"));
+    }
+    if (gitOutput(["branch", "--show-current"]) !== initial.expectedBranch ||
+        gitOutput(["rev-parse", "HEAD"]) !== initial.baseline ||
+        gitOutput(["status", "--porcelain", "--untracked-files=all"])) {
+      return failReview("main_changed_during_review", new Error("main worktree no longer matches baseline"));
+    }
+    gitOutput(["merge", "--ff-only", reviewCommit]);
+    gitOutput(["push", initial.remote, `HEAD:${initial.expectedBranch}`]);
+    log("weekly documentation review committed and pushed successfully");
+    updateStatus({
+      state: "success", last_finished: new Date().toISOString(), last_result: "success",
+      last_reason: null, last_commit: reviewCommit.slice(0, 12),
+      success_count: Number(status.success_count || 0) + 1,
     });
-  });
+    return true;
+  } catch (error) {
+    return failReview("validation_or_delivery_failed", error);
+  } finally {
+    if (worktreeCreated) {
+      spawnSync("git", ["-c", `safe.directory=${repoRoot}`, "worktree", "remove", "--force", worktree], {
+        cwd: repoRoot, stdio: "ignore",
+      });
+    }
+    try {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    } catch {
+      log("temporary weekly review directory could not be removed");
+    }
+  }
 }
 
 async function runManagedReview(source) {
@@ -384,6 +438,12 @@ function selfTest() {
     "2026-08-17T06:00:00.000Z",
   );
   assert.ok(fs.readFileSync(promptPath, "utf8").includes("Português do Brasil"));
+  assert.equal(isAllowedReviewPath("README.md"), true);
+  assert.equal(isAllowedReviewPath("docs/PRIVACY_MODEL.md"), true);
+  assert.equal(isAllowedReviewPath("docs/assets/generated/diagram.svg"), true);
+  assert.equal(isAllowedReviewPath("nodered/flows.json"), false);
+  assert.equal(isAllowedReviewPath("scripts/security-scan.sh"), false);
+  assert.equal(isAllowedReviewPath(".github/workflows/security-scan.yml"), false);
   console.log("weekly documentation scheduler self-test passed");
 }
 

@@ -15,23 +15,23 @@ if (recoveryAware) {
 const old = new Map(flows.map((node) => [node.id, structuredClone(node)]));
 const SECURITY_TAB = "2fd40fd570e6f37a";
 const PEOPLE_TAB = "security_people_tab";
-const CRETA_TAB = "security_creta_tab";
+const VEHICLE_PRIMARY_TAB = "security_vehicle_primary_tab";
 const CONTEXT_TAB = "security_context_tab";
 const generatedFallback = {
-  sec_gabriel_location_changed: "people_gabriel_event",
-  sec_valeria_location_changed: "people_valeria_event",
-  sec_creta_location_changed: "creta_location_event",
-  sec_creta_lock_context_changed: "creta_lock_event",
-  sec_engine_off_changed: "creta_engine_off_event",
-  sec_creta_locked_changed: "creta_unlock_event",
+  sec_resident_primary_location_changed: "people_resident_primary_event",
+  sec_resident_secondary_location_changed: "people_resident_secondary_event",
+  sec_vehicle_primary_location_changed: "vehicle_primary_location_event",
+  sec_vehicle_primary_lock_context_changed: "vehicle_primary_lock_event",
+  sec_engine_off_changed: "vehicle_primary_engine_off_event",
+  sec_vehicle_primary_locked_changed: "vehicle_primary_unlock_event",
   sec_refresh_context_snapshot: "people_snapshot",
-  sec_request_gabriel_location: "people_refresh_gabriel",
-  sec_request_valeria_location: "people_refresh_valeria",
-  sec_force_refresh_creta: "creta_force_refresh",
-  sec_refresh_creta_entities: "creta_update_entities",
-  sec_refresh_creta_trip_info: "creta_trip_refresh",
+  sec_request_resident_primary_location: "people_refresh_resident_primary",
+  sec_request_resident_secondary_location: "people_refresh_resident_secondary",
+  sec_force_refresh_vehicle_primary: "vehicle_primary_force_refresh",
+  sec_refresh_vehicle_primary_entities: "vehicle_primary_update_entities",
+  sec_refresh_vehicle_primary_trip_info: "vehicle_primary_trip_refresh",
   sec_refresh_every_10min: "context_tick",
-  sec_notify_valeria_approaching: "context_notify_valeria",
+  sec_notify_resident_secondary_approaching: "context_notify_resident_secondary",
   "249963a6cd6c247a": "context_test_notification",
   sec_sun_changed: "light_sun_event",
   sec_check_dark: "light_check_dark",
@@ -82,11 +82,11 @@ function linkOut(id, z, g, name, links, x, y) {
 }
 
 function rawEvent(source, event = "location_update") {
-  const entity = source === "gabriel"
-    ? "device_tracker.iphone_de_gabriel_furlan"
-    : source === "valeria"
-      ? "device_tracker.iphone_de_valeria"
-      : "device_tracker.creta_location";
+  const entity = source === "resident_primary"
+    ? "device_tracker.mobile_primary_source_1"
+    : source === "resident_secondary"
+      ? "device_tracker.mobile_secondary_source_1"
+      : "device_tracker.vehicle_primary";
   const common = [
     `"event": "${event}"`,
     `"source": "${source}"`,
@@ -94,17 +94,17 @@ function rawEvent(source, event = "location_update") {
     `"trigger_state": $entity().state`,
     `"trigger_prev_state": $prevEntity().state`,
   ];
-  const domain = source === "creta"
+  const domain = source === "vehicle_primary"
     ? [
-        `"creta": $entities("device_tracker.creta_location")`,
-        `"creta_engine": $entities("binary_sensor.creta_engine")`,
-        `"creta_lock": $entities("lock.creta_door_lock")`,
+        `"vehicle_primary": $entities("device_tracker.vehicle_primary")`,
+        `"vehicle_primary_engine": $entities("binary_sensor.vehicle_primary_engine")`,
+        `"vehicle_primary_lock": $entities("lock.vehicle_primary_door_lock")`,
       ]
     : [
-        `"gabriel": $entities("device_tracker.iphone_de_gabriel_furlan")`,
-        `"gabriel_icloud": $entities("device_tracker.iphonegabrielfurlan")`,
-        `"valeria": $entities("device_tracker.iphone_de_valeria")`,
-        `"valeria_icloud": $entities("device_tracker.iphone_de_valeria_2")`,
+        `"resident_primary": $entities("device_tracker.mobile_primary_source_1")`,
+        `"resident_primary_icloud": $entities("device_tracker.mobile_primary_source_2")`,
+        `"resident_secondary": $entities("device_tracker.mobile_secondary_source_1")`,
+        `"resident_secondary_icloud": $entities("device_tracker.mobile_secondary_source_2")`,
       ];
   return `(\n  {\n    ${[...common, ...domain].join(",\n    ")}\n  }\n)`;
 }
@@ -122,8 +122,8 @@ const MAX_GPS_ACCURACY_M = 100;
 const APPROACH_ZONE = "chegando";
 const PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;
 const ARMED_KEY = "people_arrival_armed";
-const VALERIA_NOTIFY_KEY = "valeria_approaching_gabriel_notified";
-const VALERIA_AWAY_CYCLE_KEY = "valeria_approaching_confirmed_away_cycle";
+const RESIDENT_SECONDARY_NOTIFY_KEY = "resident_secondary_approaching_resident_primary_notified";
+const RESIDENT_SECONDARY_AWAY_CYCLE_KEY = "resident_secondary_approaching_confirmed_away_cycle";
 
 function distanceMeters(lat1, lon1, lat2, lon2) {
     const toRad = (value) => value * Math.PI / 180;
@@ -203,9 +203,9 @@ function isArrivalHome(item) {
     return item?.state === "home";
 }
 
-const gabriel = position(msg.payload?.gabriel, msg.payload?.gabriel_icloud);
-const valeria = position(msg.payload?.valeria, msg.payload?.valeria_icloud);
-const people = { gabriel, valeria };
+const resident_primary = position(msg.payload?.resident_primary, msg.payload?.resident_primary_icloud);
+const resident_secondary = position(msg.payload?.resident_secondary, msg.payload?.resident_secondary_icloud);
+const people = { resident_primary, resident_secondary };
 const source = msg.payload?.source;
 const sourcePosition = people[source];
 const triggerState = msg.payload?.trigger_state;
@@ -218,17 +218,17 @@ for (const [name, item] of Object.entries(people)) {
 }
 
 let notification = null;
-if (isLocationEvent && source === "valeria") {
+if (isLocationEvent && source === "resident_secondary") {
     if (triggerState === "not_home" && (triggerPrevState === APPROACH_ZONE || triggerPrevState === "home")) {
-        flow.set(VALERIA_AWAY_CYCLE_KEY, true);
+        flow.set(RESIDENT_SECONDARY_AWAY_CYCLE_KEY, true);
     }
-    const confirmedAwayCycle = flow.get(VALERIA_AWAY_CYCLE_KEY) === true;
-    const approachForNotification = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== "home" && (valeria.any_tracker_home !== true || confirmedAwayCycle);
-    if (triggerState === "not_home" || (valeria.distance_m !== null && valeria.distance_m > 1000)) flow.set(VALERIA_NOTIFY_KEY, false);
-    if (triggerState === "home") flow.set(VALERIA_AWAY_CYCLE_KEY, false);
-    if (approachForNotification && flow.get(VALERIA_NOTIFY_KEY) !== true) {
-        flow.set(VALERIA_NOTIFY_KEY, true);
-        notification = { payload: { contract: "security.person-arrival-notification.v1", kind: "valeria_approach_notification", valeria_distance_m: valeria.distance_m } };
+    const confirmedAwayCycle = flow.get(RESIDENT_SECONDARY_AWAY_CYCLE_KEY) === true;
+    const approachForNotification = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== "home" && (resident_secondary.any_tracker_home !== true || confirmedAwayCycle);
+    if (triggerState === "not_home" || (resident_secondary.distance_m !== null && resident_secondary.distance_m > 1000)) flow.set(RESIDENT_SECONDARY_NOTIFY_KEY, false);
+    if (triggerState === "home") flow.set(RESIDENT_SECONDARY_AWAY_CYCLE_KEY, false);
+    if (approachForNotification && flow.get(RESIDENT_SECONDARY_NOTIFY_KEY) !== true) {
+        flow.set(RESIDENT_SECONDARY_NOTIFY_KEY, true);
+        notification = { payload: { contract: "security.person-arrival-notification.v1", kind: "resident_secondary_approach_notification", resident_secondary_distance_m: resident_secondary.distance_m } };
     }
 }
 
@@ -255,10 +255,10 @@ flow.set(ARMED_KEY, armed);
 
 const distances = Object.values(people).map((item) => item.distance_m).filter((value) => value !== null);
 const peopleContext = {
-    gabriel, valeria,
+    resident_primary, resident_secondary,
     anyone_away: Object.values(people).some(isAway),
     nearest_distance_m: distances.length ? Math.min(...distances) : null,
-    state_valid: gabriel.state_valid && valeria.state_valid,
+    state_valid: resident_primary.state_valid && resident_secondary.state_valid,
     arrival_armed: { ...armed },
 };
 flow.set("people_context_v1", peopleContext);
@@ -273,7 +273,7 @@ msg.payload = {
 return [msg, arrival, notification];
 `;
 
-const cretaNormalize = String.raw`
+const vehicle_primaryNormalize = String.raw`
 const HOME_LAT = Number(env.get("HOME_LAT"));
 const HOME_LON = Number(env.get("HOME_LON"));
 const GATE_LAT = Number(env.get("GATE_LAT"));
@@ -285,8 +285,8 @@ const ARRIVAL_DISTANCE_M = 300;
 const MAX_GPS_ACCURACY_M = 100;
 const APPROACH_ZONE = "chegando";
 const PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;
-const ARMED_KEY = "creta_arrival_armed";
-const IN_USE_KEY = "creta_in_use";
+const ARMED_KEY = "vehicle_primary_arrival_armed";
+const IN_USE_KEY = "vehicle_primary_in_use";
 
 function distanceMeters(lat1, lon1, lat2, lon2) {
     const toRad = (value) => value * Math.PI / 180;
@@ -348,18 +348,18 @@ function isArrivalHome(item) {
     return item?.state === "home";
 }
 
-const creta = position(msg.payload?.creta);
-const engineState = msg.payload?.creta_engine?.state;
-const lockState = msg.payload?.creta_lock?.state;
+const vehicle_primary = position(msg.payload?.vehicle_primary);
+const engineState = msg.payload?.vehicle_primary_engine?.state;
+const lockState = msg.payload?.vehicle_primary_lock?.state;
 const engineOn = engineState === "on";
 const unlocked = lockState === "unlocked";
 let inUse = flow.get(IN_USE_KEY) === true;
 if (engineOn) inUse = true;
-if (!engineOn && (unlocked || primaryHome(msg.payload?.creta))) inUse = false;
+if (!engineOn && (unlocked || primaryHome(msg.payload?.vehicle_primary))) inUse = false;
 flow.set(IN_USE_KEY, inUse);
 
 let armed = flow.get(ARMED_KEY) === true;
-if (isAway(creta)) armed = true;
+if (isAway(vehicle_primary)) armed = true;
 const isLocationEvent = msg.payload?.event === "location_update";
 const triggerState = msg.payload?.trigger_state;
 const triggerPrevState = msg.payload?.trigger_prev_state;
@@ -367,33 +367,33 @@ let arrival = null;
 if (isLocationEvent) {
     const approachEntry = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== "home";
     const leavingHome = triggerPrevState === "home";
-    const staleCatchUp = !approachEntry && creta.primary_home === true && typeof creta.primary_home_for_ms === "number" && creta.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;
-    if (!leavingHome && !staleCatchUp && (approachEntry || isArrivalHome(creta)) && armed) {
+    const staleCatchUp = !approachEntry && vehicle_primary.primary_home === true && typeof vehicle_primary.primary_home_for_ms === "number" && vehicle_primary.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;
+    if (!leavingHome && !staleCatchUp && (approachEntry || isArrivalHome(vehicle_primary)) && armed) {
         arrival = { payload: {
-            contract: "security.arrival.v1", kind: "arrival", source: "creta", arriving: ["creta"],
-            arrival_source_type: "creta", arrival_stage: approachEntry ? "approach" : "home",
-            request_creta_wake: approachEntry,
+            contract: "security.arrival.v1", kind: "arrival", source: "vehicle_primary", arriving: ["vehicle_primary"],
+            arrival_source_type: "vehicle_primary", arrival_stage: approachEntry ? "approach" : "home",
+            request_vehicle_primary_wake: approachEntry,
         } };
     }
-    if (!approachEntry && isArrivalHome(creta)) armed = false;
-} else if (isArmingHome(creta)) {
+    if (!approachEntry && isArrivalHome(vehicle_primary)) armed = false;
+} else if (isArmingHome(vehicle_primary)) {
     armed = false;
 }
 flow.set(ARMED_KEY, armed);
 
 const vehicleContext = {
-    location: creta,
-    distance_home_m: creta.distance_m,
-    home: isArrivalHome(creta), away: isAway(creta), approaching_home: arrival?.payload?.arrival_stage === "approach",
+    location: vehicle_primary,
+    distance_home_m: vehicle_primary.distance_m,
+    home: isArrivalHome(vehicle_primary), away: isAway(vehicle_primary), approaching_home: arrival?.payload?.arrival_stage === "approach",
     arrived_home: arrival?.payload?.arrival_stage === "home",
     engine_on: engineOn, engine_state_valid: ["on", "off"].includes(engineState),
     lock_state: lockState, unlocked, lock_state_valid: ["locked", "unlocked"].includes(lockState),
-    in_use: inUse, state_valid: creta.state_valid, arrival_armed: armed,
+    in_use: inUse, state_valid: vehicle_primary.state_valid, arrival_armed: armed,
 };
-flow.set("creta_context_v1", vehicleContext);
+flow.set("vehicle_primary_context_v1", vehicleContext);
 msg.payload = {
-    contract: "security.creta-context.v1", kind: "creta_context", context: vehicleContext,
-    event: msg.payload?.event, reason: msg.payload?.reason, source: "creta",
+    contract: "security.vehicle_primary-context.v1", kind: "vehicle_primary_context", context: vehicleContext,
+    event: msg.payload?.event, reason: msg.payload?.reason, source: "vehicle_primary",
     trigger_entity: msg.payload?.trigger_entity, trigger_state: triggerState, trigger_prev_state: triggerPrevState,
     confirmed_home_transition: isLocationEvent && triggerState === "home" && triggerPrevState !== undefined && triggerPrevState !== "home",
     refresh_cycle_id: msg.payload?.refresh_cycle_id,
@@ -413,13 +413,13 @@ flow.set("people_last_refresh_ts", Date.now());
 return msg;
 `;
 
-const cretaRefresh = String.raw`
-const vehicleContext = flow.get("creta_context_v1");
+const vehicle_primaryRefresh = String.raw`
+const vehicleContext = flow.get("vehicle_primary_context_v1");
 if (!vehicleContext || msg.payload?.kind !== "refresh_command") return null;
 const INTERVAL_MS = 15 * 60 * 1000;
 const hour = new Date().getHours();
 const enabled = msg.payload.anyone_away === true || (hour >= 7 && hour < 22);
-const last = flow.get("creta_last_force_refresh_ts") ?? 0;
+const last = flow.get("vehicle_primary_last_force_refresh_ts") ?? 0;
 return enabled && Date.now() - last >= INTERVAL_MS ? [msg, msg] : null;
 `;
 
@@ -428,37 +428,37 @@ const kind = msg.payload?.kind;
 if (kind === "refresh_tick") {
     const cycle = (flow.get("refresh_cycle_seq") ?? 0) + 1;
     flow.set("refresh_cycle_seq", cycle);
-    flow.set("refresh_pending", { cycle, people: false, creta: false, emitted: false });
+    flow.set("refresh_pending", { cycle, people: false, vehicle_primary: false, emitted: false });
     msg.payload = { contract: "security.snapshot-request.v1", kind: "snapshot_request", refresh_cycle_id: cycle };
     return [msg, null, null];
 }
-if (kind === "people_context" || kind === "creta_context") {
-    const domain = kind === "people_context" ? "people" : "creta";
+if (kind === "people_context" || kind === "vehicle_primary_context") {
+    const domain = kind === "people_context" ? "people" : "vehicle_primary";
     flow.set(domain + "_context_v1", msg.payload.context);
     const pending = flow.get("refresh_pending");
     if (pending && msg.payload.refresh_cycle_id === pending.cycle) {
         pending[domain] = true;
-        if (pending.people && pending.creta && !pending.emitted) {
+        if (pending.people && pending.vehicle_primary && !pending.emitted) {
             pending.emitted = true;
             flow.set("refresh_pending", pending);
             const people = flow.get("people_context_v1");
-            const creta = flow.get("creta_context_v1");
+            const vehicle_primary = flow.get("vehicle_primary_context_v1");
             return [null, { payload: {
                 contract: "security.refresh-command.v1", kind: "refresh_command",
                 refresh_cycle_id: pending.cycle,
-                anyone_away: people?.anyone_away === true || creta?.away === true,
+                anyone_away: people?.anyone_away === true || vehicle_primary?.away === true,
             } }, null];
         }
         flow.set("refresh_pending", pending);
     }
     return null;
 }
-if (kind === "valeria_approach_notification") {
-    const creta = flow.get("creta_context_v1");
-    const byCar = creta?.arrival_armed === true && creta?.distance_home_m !== null && creta.distance_home_m <= 1500;
+if (kind === "resident_secondary_approach_notification") {
+    const vehicle_primary = flow.get("vehicle_primary_context_v1");
+    const byCar = vehicle_primary?.arrival_armed === true && vehicle_primary?.distance_home_m !== null && vehicle_primary.distance_home_m <= 1500;
     msg.payload.by_car = byCar;
-    msg.payload.creta_distance_m = creta?.distance_home_m ?? null;
-    msg.payload.message = byCar ? "Valéria está chegando de carro." : "Valéria está chegando.";
+    msg.payload.vehicle_primary_distance_m = vehicle_primary?.distance_home_m ?? null;
+    msg.payload.message = byCar ? "resident_secondary está chegando de carro." : "resident_secondary está chegando.";
     return [null, null, msg];
 }
 return null;
@@ -467,9 +467,9 @@ return null;
 const lightMergeContext = String.raw`
 const kind = msg.payload?.kind;
 if (kind === "people_context") flow.set("people_context_v1", msg.payload.context);
-if (kind === "creta_context") flow.set("creta_context_v1", msg.payload.context);
+if (kind === "vehicle_primary_context") flow.set("vehicle_primary_context_v1", msg.payload.context);
 if (kind === "sun_context") flow.set("sun_below_horizon", msg.payload.sun_below_horizon === true);
-const creta = flow.get("creta_context_v1") ?? {};
+const vehicle_primary = flow.get("vehicle_primary_context_v1") ?? {};
 msg.payload = {
     event: msg.payload?.event ?? "context_update",
     reason: msg.payload?.reason,
@@ -477,9 +477,9 @@ msg.payload = {
     trigger_state: msg.payload?.trigger_state,
     trigger_prev_state: msg.payload?.trigger_prev_state,
     confirmed_home_transition: msg.payload?.confirmed_home_transition === true,
-    creta_engine_on: creta.engine_on === true,
-    creta_unlocked: creta.unlocked === true,
-    creta_in_use: creta.in_use === true,
+    vehicle_primary_engine_on: vehicle_primary.engine_on === true,
+    vehicle_primary_unlocked: vehicle_primary.unlocked === true,
+    vehicle_primary_in_use: vehicle_primary.in_use === true,
     active: flow.get("refletor_portao_carros_active_by_arrival") === true,
 };
 return msg;
@@ -487,19 +487,19 @@ return msg;
 
 const lightPrepareArrival = String.raw`
 if (msg.payload?.kind !== "arrival") return null;
-const creta = flow.get("creta_context_v1") ?? {};
+const vehicle_primary = flow.get("vehicle_primary_context_v1") ?? {};
 msg.payload.sun_below_horizon = flow.get("sun_below_horizon") === true;
-msg.payload.creta_in_use = creta.in_use === true;
-msg.payload.creta_engine_on = creta.engine_on === true;
+msg.payload.vehicle_primary_in_use = vehicle_primary.in_use === true;
+msg.payload.vehicle_primary_engine_on = vehicle_primary.engine_on === true;
 msg.payload.active = flow.get("refletor_portao_carros_active_by_arrival") === true;
 return msg;
 `;
 
 const lightGate = String.raw`
-if (msg.payload?.creta_in_use !== true) return null;
+if (msg.payload?.vehicle_primary_in_use !== true) return null;
 const suppressedUntil = flow.get("refletor_suppressed_until") ?? 0;
 if (Date.now() < suppressedUntil) return null;
-msg.payload.creta_gate = msg.payload.creta_engine_on === true ? "engine_on" : "creta_in_use_latched";
+msg.payload.vehicle_primary_gate = msg.payload.vehicle_primary_engine_on === true ? "engine_on" : "vehicle_primary_in_use_latched";
 return msg;
 `;
 
@@ -507,8 +507,8 @@ const lightEvaluateOff = String.raw`
 const ARRIVAL_OFF_GRACE_MS = 90 * 1000;
 if (msg.payload?.active !== true) return null;
 const vehicleEventCanStop = msg.payload.event === "turn_off" || msg.payload.event === "location_update";
-if (vehicleEventCanStop && msg.payload.creta_engine_on === false && msg.payload.creta_unlocked === true) {
-    msg.payload.off_reason = "creta_desligado_e_destravado";
+if (vehicleEventCanStop && msg.payload.vehicle_primary_engine_on === false && msg.payload.vehicle_primary_unlocked === true) {
+    msg.payload.off_reason = "vehicle_primary_desligado_e_destravado";
     return [msg, null];
 }
 if (msg.payload.confirmed_home_transition !== true) return null;
@@ -519,95 +519,95 @@ msg.delay = Math.max(0, ARRIVAL_OFF_GRACE_MS - elapsed);
 return [null, msg];
 `;
 
-const replacedTabs = new Set([SECURITY_TAB, PEOPLE_TAB, CRETA_TAB, CONTEXT_TAB]);
+const replacedTabs = new Set([SECURITY_TAB, PEOPLE_TAB, VEHICLE_PRIMARY_TAB, CONTEXT_TAB]);
 const remaining = flows.filter((node) => !replacedTabs.has(node.id) && !replacedTabs.has(node.z));
 const alarmArrival = remaining.find((node) => node.id === "alarm_arrival_in");
 const alarmArrivalComment = remaining.find((node) => node.id === "alarm_arrival_comment");
 if (alarmArrivalComment) {
-  alarmArrivalComment.info = "A chegada vem dos contratos security.arrival.v1 publicados por localizacao_pessoas e contexto_creta. Esses domínios validam zona, direção, distância, precisão e trackers congelados; o desarme só é solicitado após confirmação no Home Assistant.";
+  alarmArrivalComment.info = "A chegada vem dos contratos security.arrival.v1 publicados por localizacao_pessoas e contexto_vehicle_primary. Esses domínios validam zona, direção, distância, precisão e trackers congelados; o desarme só é solicitado após confirmação no Home Assistant.";
 }
 
 const nodes = [];
 
 // localizacao_pessoas
 nodes.push(tab(PEOPLE_TAB, "localizacao_pessoas", "Normaliza os trackers dos iPhones, detecta chegada de pessoas e publica security.people-context.v1."));
-nodes.push(group("grp_people_events", PEOPLE_TAB, "1. Eventos dos iPhones", ["people_comment", "people_gabriel_event", "people_valeria_event", "people_snapshot_in", "people_snapshot"], 34, 59, 382, 302, "#3f7cb5"));
+nodes.push(group("grp_people_events", PEOPLE_TAB, "1. Eventos dos iPhones", ["people_comment", "people_resident_primary_event", "people_resident_secondary_event", "people_snapshot_in", "people_snapshot"], 34, 59, 382, 302, "#3f7cb5"));
 nodes.push(group("grp_people_context", PEOPLE_TAB, "2. Normalização, presença e chegada", ["people_normalize", "people_context_out", "people_arrival_out", "people_notify_candidate_out"], 454, 99, 702, 222, "#7d6ba8"));
-nodes.push(group("grp_people_refresh", PEOPLE_TAB, "3. Refresh adaptativo dos iPhones", ["people_refresh_in", "people_refresh_decide", "people_refresh_gabriel", "people_refresh_valeria", "people_creta_sync_in", "people_update_entities"], 34, 419, 922, 242, "#4d9a6a"));
+nodes.push(group("grp_people_refresh", PEOPLE_TAB, "3. Refresh adaptativo dos iPhones", ["people_refresh_in", "people_refresh_decide", "people_refresh_resident_primary", "people_refresh_resident_secondary", "people_vehicle_primary_sync_in", "people_update_entities"], 34, 419, 922, 242, "#4d9a6a"));
 nodes.push(comment("people_comment", PEOPLE_TAB, "grp_people_events", "Contrato: GPS bruto entra; contexto normalizado sai", "Estados unknown/unavailable nunca viram chegada. HOME_LAT/HOME_LON e GATE_LAT/GATE_LON vêm do ambiente; sem coordenadas, usa-se o estado de zona como fallback.", 210, 100, 330));
-nodes.push(clone("sec_gabriel_location_changed", { id: "people_gabriel_event", z: PEOPLE_TAB, g: "grp_people_events", name: "iPhone Gabriel mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("gabriel"), valueType: "jsonata" }], x: 210, y: 180, wires: [["people_normalize"]] }));
-nodes.push(clone("sec_valeria_location_changed", { id: "people_valeria_event", z: PEOPLE_TAB, g: "grp_people_events", name: "iPhone Valéria mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("valeria"), valueType: "jsonata" }], x: 210, y: 240, wires: [["people_normalize"]] }));
+nodes.push(clone("sec_resident_primary_location_changed", { id: "people_resident_primary_event", z: PEOPLE_TAB, g: "grp_people_events", name: "iPhone resident_primary mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("resident_primary"), valueType: "jsonata" }], x: 210, y: 180, wires: [["people_normalize"]] }));
+nodes.push(clone("sec_resident_secondary_location_changed", { id: "people_resident_secondary_event", z: PEOPLE_TAB, g: "grp_people_events", name: "iPhone resident_secondary mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("resident_secondary"), valueType: "jsonata" }], x: 210, y: 240, wires: [["people_normalize"]] }));
 nodes.push(linkIn("people_snapshot_in", PEOPLE_TAB, "grp_people_events", "Solicitar snapshot de pessoas", ["context_snapshot_request_out"], 95, 300, [["people_snapshot"]]));
-nodes.push(clone("sec_refresh_context_snapshot", { id: "people_snapshot", z: PEOPLE_TAB, g: "grp_people_events", name: "Ler trackers de Gabriel e Valéria", entity_id: "device_tracker.iphone_de_gabriel_furlan", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {\n    "event": "context_snapshot",\n    "source": "refresh",\n    "refresh_cycle_id": payload.refresh_cycle_id,\n    "gabriel": $entities("device_tracker.iphone_de_gabriel_furlan"),\n    "gabriel_icloud": $entities("device_tracker.iphonegabrielfurlan"),\n    "valeria": $entities("device_tracker.iphone_de_valeria"),\n    "valeria_icloud": $entities("device_tracker.iphone_de_valeria_2")\n  }\n)`, valueType: "jsonata" }], x: 270, y: 300, wires: [["people_normalize"]] }));
+nodes.push(clone("sec_refresh_context_snapshot", { id: "people_snapshot", z: PEOPLE_TAB, g: "grp_people_events", name: "Ler trackers de resident_primary e resident_secondary", entity_id: "device_tracker.mobile_primary_source_1", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {\n    "event": "context_snapshot",\n    "source": "refresh",\n    "refresh_cycle_id": payload.refresh_cycle_id,\n    "resident_primary": $entities("device_tracker.mobile_primary_source_1"),\n    "resident_primary_icloud": $entities("device_tracker.mobile_primary_source_2"),\n    "resident_secondary": $entities("device_tracker.mobile_secondary_source_1"),\n    "resident_secondary_icloud": $entities("device_tracker.mobile_secondary_source_2")\n  }\n)`, valueType: "jsonata" }], x: 270, y: 300, wires: [["people_normalize"]] }));
 nodes.push(functionNode("people_normalize", PEOPLE_TAB, "grp_people_context", "Normalizar pessoas e detectar transições", peopleNormalize, 3, 650, 200, [["people_context_out"], ["people_arrival_out"], ["people_notify_candidate_out"]]));
 nodes.push(linkOut("people_context_out", PEOPLE_TAB, "grp_people_context", "Publicar contexto de pessoas v1", ["context_people_in", "light_people_context_in"], 1085, 160));
 nodes.push(linkOut("people_arrival_out", PEOPLE_TAB, "grp_people_context", "Publicar chegada de pessoa v1", ["light_arrival_in", "alarm_arrival_in"], 1085, 220));
-nodes.push(linkOut("people_notify_candidate_out", PEOPLE_TAB, "grp_people_context", "Publicar candidato de aviso da Valéria", ["context_person_event_in"], 1085, 280));
+nodes.push(linkOut("people_notify_candidate_out", PEOPLE_TAB, "grp_people_context", "Publicar candidato de aviso da resident_secondary", ["context_person_event_in"], 1085, 280));
 nodes.push(linkIn("people_refresh_in", PEOPLE_TAB, "grp_people_refresh", "Política conjunta de refresh", ["context_refresh_command_out"], 95, 490, [["people_refresh_decide"]]));
-nodes.push(functionNode("people_refresh_decide", PEOPLE_TAB, "grp_people_refresh", "Atualizar iPhones agora?", peopleRefresh, 1, 280, 490, [["people_refresh_gabriel", "people_refresh_valeria"]]));
-nodes.push(clone("sec_request_gabriel_location", { id: "people_refresh_gabriel", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone Gabriel", x: 650, y: 460, wires: [[]] }));
-nodes.push(clone("sec_request_valeria_location", { id: "people_refresh_valeria", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone Valéria", x: 650, y: 520, wires: [[]] }));
-nodes.push(linkIn("people_creta_sync_in", PEOPLE_TAB, "grp_people_refresh", "Sincronizar trackers após refresh do Creta", ["creta_refresh_people_sync_out"], 180, 600, [["people_update_entities"]]));
-nodes.push(clone("sec_refresh_creta_entities", { id: "people_update_entities", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Atualizar entidades dos iPhones", data: `{"entity_id":["device_tracker.iphone_de_gabriel_furlan","device_tracker.iphone_de_valeria"]}`, x: 650, y: 600, wires: [[]] }));
+nodes.push(functionNode("people_refresh_decide", PEOPLE_TAB, "grp_people_refresh", "Atualizar iPhones agora?", peopleRefresh, 1, 280, 490, [["people_refresh_resident_primary", "people_refresh_resident_secondary"]]));
+nodes.push(clone("sec_request_resident_primary_location", { id: "people_refresh_resident_primary", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone resident_primary", x: 650, y: 460, wires: [[]] }));
+nodes.push(clone("sec_request_resident_secondary_location", { id: "people_refresh_resident_secondary", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone resident_secondary", x: 650, y: 520, wires: [[]] }));
+nodes.push(linkIn("people_vehicle_primary_sync_in", PEOPLE_TAB, "grp_people_refresh", "Sincronizar trackers após refresh do vehicle_primary", ["vehicle_primary_refresh_people_sync_out"], 180, 600, [["people_update_entities"]]));
+nodes.push(clone("sec_refresh_vehicle_primary_entities", { id: "people_update_entities", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Atualizar entidades dos iPhones", data: `{"entity_id":["device_tracker.mobile_primary_source_1","device_tracker.mobile_secondary_source_1"]}`, x: 650, y: 600, wires: [[]] }));
 
-// contexto_creta
-nodes.push(tab(CRETA_TAB, "contexto_creta", "Normaliza estado/localização do Creta, mantém creta_in_use, detecta chegada e controla refresh/viagens."));
-nodes.push(group("grp_creta_events", CRETA_TAB, "1. Eventos e snapshot do Creta", ["creta_comment", "creta_location_event", "creta_lock_event", "creta_engine_off_event", "creta_unlock_event", "creta_snapshot_in", "creta_snapshot"], 34, 59, 442, 422, "#3f7cb5"));
-nodes.push(group("grp_creta_context", CRETA_TAB, "2. Estado do veículo, viagem e chegada", ["creta_normalize", "creta_context_out", "creta_arrival_out", "creta_arrival_actions_out"], 514, 99, 682, 282, "#7d6ba8"));
-nodes.push(group("grp_creta_actions", CRETA_TAB, "3. Refresh do veículo e viagens", ["creta_refresh_in", "creta_refresh_decide", "creta_refresh_people_sync_out", "creta_arrival_actions_in", "creta_arrival_actions", "creta_force_refresh", "creta_refresh_ack", "creta_update_entities", "creta_trip_refresh"], 34, 539, 1122, 282, "#4d9a6a"));
-nodes.push(comment("creta_comment", CRETA_TAB, "grp_creta_events", "Contrato: entidades do veículo entram; contexto Creta v1 sai", "creta_in_use é uma trava de domínio: liga quando o motor é visto ligado e só solta com motor desligado mais carro em casa ou porta destravada.", 240, 100, 380));
-nodes.push(clone("sec_creta_location_changed", { id: "creta_location_event", z: CRETA_TAB, g: "grp_creta_events", name: "Creta mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("creta"), valueType: "jsonata" }], x: 230, y: 180, wires: [["creta_normalize"]] }));
-nodes.push(clone("sec_creta_lock_context_changed", { id: "creta_lock_event", z: CRETA_TAB, g: "grp_creta_events", name: "Estado da trava do Creta mudou", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"context_update","source":"creta","creta":$entities("device_tracker.creta_location"),"creta_engine":$entities("binary_sensor.creta_engine"),"creta_lock":$entities("lock.creta_door_lock")}\n)`, valueType: "jsonata" }], x: 230, y: 240, wires: [["creta_normalize"]] }));
-nodes.push(clone("sec_engine_off_changed", { id: "creta_engine_off_event", z: CRETA_TAB, g: "grp_creta_events", name: "Motor desligado por 5 s", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"turn_off","reason":"creta_engine_off","source":"creta","creta":$entities("device_tracker.creta_location"),"creta_engine":$entities("binary_sensor.creta_engine"),"creta_lock":$entities("lock.creta_door_lock")}\n)`, valueType: "jsonata" }], x: 230, y: 300, wires: [["creta_normalize"]] }));
-nodes.push(clone("sec_creta_locked_changed", { id: "creta_unlock_event", z: CRETA_TAB, g: "grp_creta_events", name: "Porta destravada por 5 s", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"turn_off","reason":"creta_unlocked","source":"creta","creta":$entities("device_tracker.creta_location"),"creta_engine":$entities("binary_sensor.creta_engine"),"creta_lock":$entities("lock.creta_door_lock")}\n)`, valueType: "jsonata" }], x: 230, y: 360, wires: [["creta_normalize"]] }));
-nodes.push(linkIn("creta_snapshot_in", CRETA_TAB, "grp_creta_events", "Solicitar snapshot do Creta", ["context_snapshot_request_out"], 95, 420, [["creta_snapshot"]]));
-nodes.push(clone("sec_refresh_context_snapshot", { id: "creta_snapshot", z: CRETA_TAB, g: "grp_creta_events", name: "Ler localização, motor e trava", entity_id: "device_tracker.creta_location", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"context_snapshot","source":"refresh","refresh_cycle_id":payload.refresh_cycle_id,"creta":$entities("device_tracker.creta_location"),"creta_engine":$entities("binary_sensor.creta_engine"),"creta_lock":$entities("lock.creta_door_lock")}\n)`, valueType: "jsonata" }], x: 290, y: 420, wires: [["creta_normalize"]] }));
-nodes.push(functionNode("creta_normalize", CRETA_TAB, "grp_creta_context", "Normalizar Creta e detectar transições", cretaNormalize, 2, 700, 220, [["creta_context_out"], ["creta_arrival_out", "creta_arrival_actions_out"]]));
-nodes.push(linkOut("creta_context_out", CRETA_TAB, "grp_creta_context", "Publicar contexto do Creta v1", ["context_creta_in", "light_creta_context_in"], 1125, 160));
-nodes.push(linkOut("creta_arrival_out", CRETA_TAB, "grp_creta_context", "Publicar chegada do Creta v1", ["light_arrival_in", "alarm_arrival_in"], 1125, 220));
-nodes.push(linkOut("creta_arrival_actions_out", CRETA_TAB, "grp_creta_context", "Chegada -> ações do veículo", ["creta_arrival_actions_in"], 1125, 300));
-nodes.push(linkIn("creta_refresh_in", CRETA_TAB, "grp_creta_actions", "Política conjunta de refresh", ["context_refresh_command_out"], 95, 640, [["creta_refresh_decide"]]));
-nodes.push(functionNode("creta_refresh_decide", CRETA_TAB, "grp_creta_actions", "Coordenar refresh do Creta", cretaRefresh, 2, 300, 640, [["creta_force_refresh", "creta_update_entities"], ["creta_refresh_people_sync_out"]]));
-nodes.push(linkOut("creta_refresh_people_sync_out", CRETA_TAB, "grp_creta_actions", "Refresh Creta -> sincronizar trackers", ["people_creta_sync_in"], 520, 660));
-nodes.push(linkIn("creta_arrival_actions_in", CRETA_TAB, "grp_creta_actions", "Receber chegada para ações", ["creta_arrival_actions_out"], 95, 760, [["creta_arrival_actions"]]));
-nodes.push(functionNode("creta_arrival_actions", CRETA_TAB, "grp_creta_actions", "Acordar carro e fechar viagem", `const wake = msg.payload?.request_creta_wake === true ? msg : null;\nreturn [wake, msg];`, 2, 300, 760, [["creta_force_refresh"], ["creta_trip_refresh"]]));
-nodes.push(clone("sec_force_refresh_creta", { id: "creta_force_refresh", z: CRETA_TAB, g: "grp_creta_actions", name: "Forçar refresh do Creta", x: 600, y: 600, wires: [["creta_refresh_ack"]] }));
-nodes.push(functionNode("creta_refresh_ack", CRETA_TAB, "grp_creta_actions", "Confirmar refresh bem-sucedido", `flow.set("creta_last_force_refresh_ts", Date.now());\nreturn null;`, 1, 900, 600, [[]]));
-nodes.push(clone("sec_refresh_creta_entities", { id: "creta_update_entities", z: CRETA_TAB, g: "grp_creta_actions", name: "Atualizar entidades do Creta", data: `{"entity_id":["device_tracker.creta_location","binary_sensor.creta_engine","lock.creta_door_lock"]}`, x: 600, y: 700, wires: [[]] }));
-nodes.push(clone("sec_refresh_creta_trip_info", { id: "creta_trip_refresh", z: CRETA_TAB, g: "grp_creta_actions", name: "Atualizar viagens do dia após chegada", x: 650, y: 780, wires: [[]] }));
+// contexto_vehicle_primary
+nodes.push(tab(VEHICLE_PRIMARY_TAB, "contexto_vehicle_primary", "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens."));
+nodes.push(group("grp_vehicle_primary_events", VEHICLE_PRIMARY_TAB, "1. Eventos e snapshot do vehicle_primary", ["vehicle_primary_comment", "vehicle_primary_location_event", "vehicle_primary_lock_event", "vehicle_primary_engine_off_event", "vehicle_primary_unlock_event", "vehicle_primary_snapshot_in", "vehicle_primary_snapshot"], 34, 59, 442, 422, "#3f7cb5"));
+nodes.push(group("grp_vehicle_primary_context", VEHICLE_PRIMARY_TAB, "2. Estado do veículo, viagem e chegada", ["vehicle_primary_normalize", "vehicle_primary_context_out", "vehicle_primary_arrival_out", "vehicle_primary_arrival_actions_out"], 514, 99, 682, 282, "#7d6ba8"));
+nodes.push(group("grp_vehicle_primary_actions", VEHICLE_PRIMARY_TAB, "3. Refresh do veículo e viagens", ["vehicle_primary_refresh_in", "vehicle_primary_refresh_decide", "vehicle_primary_refresh_people_sync_out", "vehicle_primary_arrival_actions_in", "vehicle_primary_arrival_actions", "vehicle_primary_force_refresh", "vehicle_primary_refresh_ack", "vehicle_primary_update_entities", "vehicle_primary_trip_refresh"], 34, 539, 1122, 282, "#4d9a6a"));
+nodes.push(comment("vehicle_primary_comment", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_events", "Contrato: entidades do veículo entram; contexto vehicle_primary v1 sai", "vehicle_primary_in_use é uma trava de domínio: liga quando o motor é visto ligado e só solta com motor desligado mais carro em casa ou porta destravada.", 240, 100, 380));
+nodes.push(clone("sec_vehicle_primary_location_changed", { id: "vehicle_primary_location_event", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_events", name: "vehicle_primary mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("vehicle_primary"), valueType: "jsonata" }], x: 230, y: 180, wires: [["vehicle_primary_normalize"]] }));
+nodes.push(clone("sec_vehicle_primary_lock_context_changed", { id: "vehicle_primary_lock_event", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_events", name: "Estado da trava do vehicle_primary mudou", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"context_update","source":"vehicle_primary","vehicle_primary":$entities("device_tracker.vehicle_primary"),"vehicle_primary_engine":$entities("binary_sensor.vehicle_primary_engine"),"vehicle_primary_lock":$entities("lock.vehicle_primary_door_lock")}\n)`, valueType: "jsonata" }], x: 230, y: 240, wires: [["vehicle_primary_normalize"]] }));
+nodes.push(clone("sec_engine_off_changed", { id: "vehicle_primary_engine_off_event", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_events", name: "Motor desligado por 5 s", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"turn_off","reason":"vehicle_primary_engine_off","source":"vehicle_primary","vehicle_primary":$entities("device_tracker.vehicle_primary"),"vehicle_primary_engine":$entities("binary_sensor.vehicle_primary_engine"),"vehicle_primary_lock":$entities("lock.vehicle_primary_door_lock")}\n)`, valueType: "jsonata" }], x: 230, y: 300, wires: [["vehicle_primary_normalize"]] }));
+nodes.push(clone("sec_vehicle_primary_locked_changed", { id: "vehicle_primary_unlock_event", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_events", name: "Porta destravada por 5 s", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"turn_off","reason":"vehicle_primary_unlocked","source":"vehicle_primary","vehicle_primary":$entities("device_tracker.vehicle_primary"),"vehicle_primary_engine":$entities("binary_sensor.vehicle_primary_engine"),"vehicle_primary_lock":$entities("lock.vehicle_primary_door_lock")}\n)`, valueType: "jsonata" }], x: 230, y: 360, wires: [["vehicle_primary_normalize"]] }));
+nodes.push(linkIn("vehicle_primary_snapshot_in", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_events", "Solicitar snapshot do vehicle_primary", ["context_snapshot_request_out"], 95, 420, [["vehicle_primary_snapshot"]]));
+nodes.push(clone("sec_refresh_context_snapshot", { id: "vehicle_primary_snapshot", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_events", name: "Ler localização, motor e trava", entity_id: "device_tracker.vehicle_primary", outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"event":"context_snapshot","source":"refresh","refresh_cycle_id":payload.refresh_cycle_id,"vehicle_primary":$entities("device_tracker.vehicle_primary"),"vehicle_primary_engine":$entities("binary_sensor.vehicle_primary_engine"),"vehicle_primary_lock":$entities("lock.vehicle_primary_door_lock")}\n)`, valueType: "jsonata" }], x: 290, y: 420, wires: [["vehicle_primary_normalize"]] }));
+nodes.push(functionNode("vehicle_primary_normalize", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_context", "Normalizar vehicle_primary e detectar transições", vehicle_primaryNormalize, 2, 700, 220, [["vehicle_primary_context_out"], ["vehicle_primary_arrival_out", "vehicle_primary_arrival_actions_out"]]));
+nodes.push(linkOut("vehicle_primary_context_out", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_context", "Publicar contexto do vehicle_primary v1", ["context_vehicle_primary_in", "light_vehicle_primary_context_in"], 1125, 160));
+nodes.push(linkOut("vehicle_primary_arrival_out", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_context", "Publicar chegada do vehicle_primary v1", ["light_arrival_in", "alarm_arrival_in"], 1125, 220));
+nodes.push(linkOut("vehicle_primary_arrival_actions_out", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_context", "Chegada -> ações do veículo", ["vehicle_primary_arrival_actions_in"], 1125, 300));
+nodes.push(linkIn("vehicle_primary_refresh_in", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_actions", "Política conjunta de refresh", ["context_refresh_command_out"], 95, 640, [["vehicle_primary_refresh_decide"]]));
+nodes.push(functionNode("vehicle_primary_refresh_decide", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_actions", "Coordenar refresh do vehicle_primary", vehicle_primaryRefresh, 2, 300, 640, [["vehicle_primary_force_refresh", "vehicle_primary_update_entities"], ["vehicle_primary_refresh_people_sync_out"]]));
+nodes.push(linkOut("vehicle_primary_refresh_people_sync_out", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_actions", "Refresh vehicle_primary -> sincronizar trackers", ["people_vehicle_primary_sync_in"], 520, 660));
+nodes.push(linkIn("vehicle_primary_arrival_actions_in", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_actions", "Receber chegada para ações", ["vehicle_primary_arrival_actions_out"], 95, 760, [["vehicle_primary_arrival_actions"]]));
+nodes.push(functionNode("vehicle_primary_arrival_actions", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_actions", "Acordar carro e fechar viagem", `const wake = msg.payload?.request_vehicle_primary_wake === true ? msg : null;\nreturn [wake, msg];`, 2, 300, 760, [["vehicle_primary_force_refresh"], ["vehicle_primary_trip_refresh"]]));
+nodes.push(clone("sec_force_refresh_vehicle_primary", { id: "vehicle_primary_force_refresh", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_actions", name: "Forçar refresh do vehicle_primary", x: 600, y: 600, wires: [["vehicle_primary_refresh_ack"]] }));
+nodes.push(functionNode("vehicle_primary_refresh_ack", VEHICLE_PRIMARY_TAB, "grp_vehicle_primary_actions", "Confirmar refresh bem-sucedido", `flow.set("vehicle_primary_last_force_refresh_ts", Date.now());\nreturn null;`, 1, 900, 600, [[]]));
+nodes.push(clone("sec_refresh_vehicle_primary_entities", { id: "vehicle_primary_update_entities", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_actions", name: "Atualizar entidades do vehicle_primary", data: `{"entity_id":["device_tracker.vehicle_primary","binary_sensor.vehicle_primary_engine","lock.vehicle_primary_door_lock"]}`, x: 600, y: 700, wires: [[]] }));
+nodes.push(clone("sec_refresh_vehicle_primary_trip_info", { id: "vehicle_primary_trip_refresh", z: VEHICLE_PRIMARY_TAB, g: "grp_vehicle_primary_actions", name: "Atualizar viagens do dia após chegada", x: 650, y: 780, wires: [[]] }));
 
 // contexto_chegadas
-nodes.push(tab(CONTEXT_TAB, "contexto_chegadas", "Coordena snapshots e política conjunta sem interpretar GPS; enriquece apenas o aviso da Valéria."));
+nodes.push(tab(CONTEXT_TAB, "contexto_chegadas", "Coordena snapshots e política conjunta sem interpretar GPS; enriquece apenas o aviso da resident_secondary."));
 nodes.push(group("grp_context_tick", CONTEXT_TAB, "1. Ciclo periódico", ["context_comment", "context_tick", "context_coordinator", "context_snapshot_request_out"], 34, 59, 862, 222, "#3f7cb5"));
-nodes.push(group("grp_context_inputs", CONTEXT_TAB, "2. Contratos de domínio", ["context_people_in", "context_creta_in", "context_person_event_in"], 34, 339, 362, 222, "#7d6ba8"));
-nodes.push(group("grp_context_outputs", CONTEXT_TAB, "3. Comandos e notificações", ["context_refresh_command_out", "context_notify_valeria", "context_test_notification"], 674, 339, 482, 222, "#4d9a6a"));
+nodes.push(group("grp_context_inputs", CONTEXT_TAB, "2. Contratos de domínio", ["context_people_in", "context_vehicle_primary_in", "context_person_event_in"], 34, 339, 362, 222, "#7d6ba8"));
+nodes.push(group("grp_context_outputs", CONTEXT_TAB, "3. Comandos e notificações", ["context_refresh_command_out", "context_notify_resident_secondary", "context_test_notification"], 674, 339, 482, 222, "#4d9a6a"));
 nodes.push(comment("context_comment", CONTEXT_TAB, "grp_context_tick", "Orquestração sem GPS bruto", "O ciclo espera os dois snapshots do mesmo refresh_cycle_id. Só então calcula anyone_away e publica um comando; cada domínio mantém seu próprio cooldown.", 230, 100, 390));
 nodes.push(clone("sec_refresh_every_10min", { id: "context_tick", z: CONTEXT_TAB, g: "grp_context_tick", name: "Reavaliar contextos a cada 30 s", topic: "security_context_refresh", payload: `{"kind":"refresh_tick"}`, payloadType: "json", x: 230, y: 200, wires: [["context_coordinator"]] }));
-nodes.push(functionNode("context_coordinator", CONTEXT_TAB, "grp_context_tick", "Coordenar snapshot e refresh", contextCoordinator, 3, 500, 200, [["context_snapshot_request_out"], ["context_refresh_command_out"], ["context_notify_valeria"]]));
-nodes.push(linkOut("context_snapshot_request_out", CONTEXT_TAB, "grp_context_tick", "Solicitar snapshots dos domínios", ["people_snapshot_in", "creta_snapshot_in"], 800, 200));
+nodes.push(functionNode("context_coordinator", CONTEXT_TAB, "grp_context_tick", "Coordenar snapshot e refresh", contextCoordinator, 3, 500, 200, [["context_snapshot_request_out"], ["context_refresh_command_out"], ["context_notify_resident_secondary"]]));
+nodes.push(linkOut("context_snapshot_request_out", CONTEXT_TAB, "grp_context_tick", "Solicitar snapshots dos domínios", ["people_snapshot_in", "vehicle_primary_snapshot_in"], 800, 200));
 nodes.push(linkIn("context_people_in", CONTEXT_TAB, "grp_context_inputs", "Receber contexto de pessoas v1", ["people_context_out"], 180, 400, [["context_coordinator"]]));
-nodes.push(linkIn("context_creta_in", CONTEXT_TAB, "grp_context_inputs", "Receber contexto do Creta v1", ["creta_context_out"], 180, 460, [["context_coordinator"]]));
-nodes.push(linkIn("context_person_event_in", CONTEXT_TAB, "grp_context_inputs", "Receber candidato de aviso da Valéria", ["people_notify_candidate_out"], 180, 520, [["context_coordinator"]]));
-nodes.push(linkOut("context_refresh_command_out", CONTEXT_TAB, "grp_context_outputs", "Publicar política conjunta de refresh", ["people_refresh_in", "creta_refresh_in"], 900, 400));
-nodes.push(clone("sec_notify_valeria_approaching", { id: "context_notify_valeria", z: CONTEXT_TAB, g: "grp_context_outputs", name: "Avisar Gabriel: Valéria se aproxima", x: 850, y: 480, wires: [[]] }));
-nodes.push(clone("249963a6cd6c247a", { id: "context_test_notification", z: CONTEXT_TAB, g: "grp_context_outputs", name: "Teste manual: aviso de aproximação", payload: `{"message":"Teste manual: Valéria está chegando."}`, x: 820, y: 540, wires: [["context_notify_valeria"]] }));
+nodes.push(linkIn("context_vehicle_primary_in", CONTEXT_TAB, "grp_context_inputs", "Receber contexto do vehicle_primary v1", ["vehicle_primary_context_out"], 180, 460, [["context_coordinator"]]));
+nodes.push(linkIn("context_person_event_in", CONTEXT_TAB, "grp_context_inputs", "Receber candidato de aviso da resident_secondary", ["people_notify_candidate_out"], 180, 520, [["context_coordinator"]]));
+nodes.push(linkOut("context_refresh_command_out", CONTEXT_TAB, "grp_context_outputs", "Publicar política conjunta de refresh", ["people_refresh_in", "vehicle_primary_refresh_in"], 900, 400));
+nodes.push(clone("sec_notify_resident_secondary_approaching", { id: "context_notify_resident_secondary", z: CONTEXT_TAB, g: "grp_context_outputs", name: "Avisar resident_primary: resident_secondary se aproxima", x: 850, y: 480, wires: [[]] }));
+nodes.push(clone("249963a6cd6c247a", { id: "context_test_notification", z: CONTEXT_TAB, g: "grp_context_outputs", name: "Teste manual: aviso de aproximação", payload: `{"message":"Teste manual: resident_secondary está chegando."}`, x: 820, y: 540, wires: [["context_notify_resident_secondary"]] }));
 
 // iluminacao_seguranca simplificada
 nodes.push(tab(SECURITY_TAB, "iluminacao_seguranca", "Orquestra exclusivamente a decisão e o ciclo de vida do refletor a partir de contratos de alto nível."));
-nodes.push(group("grp_light_inputs", SECURITY_TAB, "1. Contextos e eventos de alto nível", ["light_comment", "light_people_context_in", "light_creta_context_in", "light_arrival_in", "light_sun_event"], 34, 59, 402, 342, "#3f7cb5"));
-nodes.push(group("grp_light_decision", SECURITY_TAB, "2. Atualizar estado e decidir", ["light_merge_context", "light_prepare_arrival", "light_check_dark", "light_check_creta_in_use", "light_check_inactive"], 474, 99, 1002, 242, "#7d6ba8"));
+nodes.push(group("grp_light_inputs", SECURITY_TAB, "1. Contextos e eventos de alto nível", ["light_comment", "light_people_context_in", "light_vehicle_primary_context_in", "light_arrival_in", "light_sun_event"], 34, 59, 402, 342, "#3f7cb5"));
+nodes.push(group("grp_light_decision", SECURITY_TAB, "2. Atualizar estado e decidir", ["light_merge_context", "light_prepare_arrival", "light_check_dark", "light_check_vehicle_primary_in_use", "light_check_inactive"], 474, 99, 1002, 242, "#7d6ba8"));
 nodes.push(group("grp_light_on", SECURITY_TAB, "3. Ligar, notificar e proteger por timeout", ["light_mark_active", "light_turn_on", "light_notify_on", "light_auto_off", "light_timeout", "light_timeout_route_out", "light_manual_action_in"], 1514, 59, 922, 342, "#4d9a6a"));
 nodes.push(group("grp_light_off", SECURITY_TAB, "4. Cinco condições independentes de desligamento", ["light_timeout_route_in", "light_evaluate_off", "light_off_grace", "light_turn_off_if_active", "light_turn_off"], 474, 459, 1282, 202, "#c27c4c"));
 nodes.push(group("grp_light_tests", SECURITY_TAB, "5. Testes manuais", ["light_manual_test", "light_manual_action_out"], 1834, 499, 522, 122, "#777777"));
-nodes.push(comment("light_comment", SECURITY_TAB, "grp_light_inputs", "Contrato da iluminação", "Esta aba não lê GPS, trackers, motor ou trava diretamente. Ela consome security.people-context.v1, security.creta-context.v1 e security.arrival.v1.", 230, 100, 340));
+nodes.push(comment("light_comment", SECURITY_TAB, "grp_light_inputs", "Contrato da iluminação", "Esta aba não lê GPS, trackers, motor ou trava diretamente. Ela consome security.people-context.v1, security.vehicle_primary-context.v1 e security.arrival.v1.", 230, 100, 340));
 nodes.push(linkIn("light_people_context_in", SECURITY_TAB, "grp_light_inputs", "Contexto de pessoas v1", ["people_context_out"], 95, 200, [["light_merge_context"]]));
-nodes.push(linkIn("light_creta_context_in", SECURITY_TAB, "grp_light_inputs", "Contexto do Creta v1", ["creta_context_out"], 95, 260, [["light_merge_context"]]));
-nodes.push(linkIn("light_arrival_in", SECURITY_TAB, "grp_light_inputs", "Chegada processada v1", ["people_arrival_out", "creta_arrival_out"], 95, 320, [["light_prepare_arrival"]]));
+nodes.push(linkIn("light_vehicle_primary_context_in", SECURITY_TAB, "grp_light_inputs", "Contexto do vehicle_primary v1", ["vehicle_primary_context_out"], 95, 260, [["light_merge_context"]]));
+nodes.push(linkIn("light_arrival_in", SECURITY_TAB, "grp_light_inputs", "Chegada processada v1", ["people_arrival_out", "vehicle_primary_arrival_out"], 95, 320, [["light_prepare_arrival"]]));
 nodes.push(clone("sec_sun_changed", { id: "light_sun_event", z: SECURITY_TAB, g: "grp_light_inputs", name: "Luminosidade mudou", outputInitially: true, outputProperties: [{ property: "payload", propertyType: "msg", value: `(\n  {"contract":"security.sun-context.v1","kind":"sun_context","sun_below_horizon":$entity().state="below_horizon","source":"sun"}\n)`, valueType: "jsonata" }], x: 220, y: 380, wires: [["light_merge_context"]] }));
 nodes.push(functionNode("light_merge_context", SECURITY_TAB, "grp_light_decision", "Atualizar contexto de alto nível", lightMergeContext, 1, 560, 180, [["light_evaluate_off"]]));
 nodes.push(functionNode("light_prepare_arrival", SECURITY_TAB, "grp_light_decision", "Montar decisão de acendimento", lightPrepareArrival, 1, 560, 280, [["light_check_dark"]]));
-nodes.push(clone("sec_check_dark", { id: "light_check_dark", z: SECURITY_TAB, g: "grp_light_decision", name: "Ambiente está escuro?", x: 800, y: 280, wires: [["light_check_creta_in_use"]] }));
-nodes.push(functionNode("light_check_creta_in_use", SECURITY_TAB, "grp_light_decision", "Creta está em uso?", lightGate, 1, 1040, 280, [["light_check_inactive"]]));
+nodes.push(clone("sec_check_dark", { id: "light_check_dark", z: SECURITY_TAB, g: "grp_light_decision", name: "Ambiente está escuro?", x: 800, y: 280, wires: [["light_check_vehicle_primary_in_use"]] }));
+nodes.push(functionNode("light_check_vehicle_primary_in_use", SECURITY_TAB, "grp_light_decision", "vehicle_primary está em uso?", lightGate, 1, 1040, 280, [["light_check_inactive"]]));
 nodes.push(clone("sec_check_reflector_inactive", { id: "light_check_inactive", z: SECURITY_TAB, g: "grp_light_decision", name: "Refletor está inativo?", x: 1320, y: 280, wires: [["light_mark_active"]] }));
 nodes.push(clone("sec_mark_reflector_active", { id: "light_mark_active", z: SECURITY_TAB, g: "grp_light_on", name: "Marcar refletor ativo por chegada", x: 1700, y: 200, wires: [["light_turn_on", "light_auto_off", "light_notify_on"]] }));
 nodes.push(clone("sec_reflector_turn_on", { id: "light_turn_on", z: SECURITY_TAB, g: "grp_light_on", name: "Ligar refletor do portão", x: 2050, y: 120, wires: [[]] }));
@@ -625,7 +625,7 @@ nodes.push(clone("965afc02b5d9e809", { id: "light_manual_test", z: SECURITY_TAB,
 nodes.push(linkOut("light_manual_action_out", SECURITY_TAB, "grp_light_tests", "Teste -> ações do refletor", ["light_manual_action_in"], 2280, 560));
 
 // O link de chegada do alarme precisa listar os novos produtores.
-if (alarmArrival) alarmArrival.links = ["people_arrival_out", "creta_arrival_out"];
+if (alarmArrival) alarmArrival.links = ["people_arrival_out", "vehicle_primary_arrival_out"];
 
 const result = [...remaining, ...nodes];
 const ids = new Set();
@@ -634,4 +634,4 @@ for (const node of result) {
   ids.add(node.id);
 }
 fs.writeFileSync(flowUrl, `${JSON.stringify(result, null, 4)}\n`);
-console.log("Flows de segurança separados em pessoas, Creta, contexto e iluminação.");
+console.log("Flows de segurança separados em pessoas, vehicle_primary, contexto e iluminação.");

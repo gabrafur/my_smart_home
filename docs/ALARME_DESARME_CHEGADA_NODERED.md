@@ -1,17 +1,17 @@
 # Desarme confirmado do alarme na chegada
 
 O flow `alarme_desarme_chegada` solicita confirmacao por uma notificacao
-acionavel do Home Assistant quando uma chegada real de Gabriel, Valeria ou do
-Creta e detectada. O `alarm_control_panel.alarme_moni_mobile` so e desarmado
+acionavel do Home Assistant quando uma chegada real de resident_primary, resident_secondary ou do
+vehicle_primary e detectada. O `alarm_control_panel.alarme_moni_mobile` so e desarmado
 depois que alguem toca em `Desarmar`.
 
 ## Origem da chegada
 
 O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas contratos
 `security.arrival.v1` publicados por `localizacao_pessoas` e
-`contexto_creta`. Esses flows de dominio ja validam:
+`contexto_vehicle_primary`. Esses flows de dominio ja validam:
 
-- origem `gabriel`, `valeria` ou `creta`;
+- origem `resident_primary`, `resident_secondary` ou `vehicle_primary`;
 - entrada no anel `zone.chegando` vinda de fora (`arrival_stage: approach`),
   ou chegada confirmada perto de casa (`arrival_stage: home`);
 - precisao do GPS, sentido da travessia e trackers iCloud/mobile_app
@@ -25,8 +25,8 @@ a mesma chegada e não recria uma confirmação. Snapshots stale ou ainda não
 ready não geram `security.arrival.v1`; `unknown` nunca é interpretado como
 ausência ou chegada.
 
-O aviso de aproximação da Valéria é separado do comando de desarme. Se o
-contexto do Creta ainda estiver pendente, o coordenador mantém o candidato por
+O aviso de aproximação da resident_secondary é separado do comando de desarme. Se o
+contexto do vehicle_primary ainda estiver pendente, o coordenador mantém o candidato por
 até 10 min e o libera uma única vez quando puder enriquecê-lo; isso evita perda
 ou duplicação durante a ordem variável do startup.
 
@@ -38,10 +38,10 @@ ou duplicação durante a ordem variável do startup.
 3. `Alarme esta armado?` so prossegue para `armed_away`. Se estiver
    `disarmed`, `unknown` ou `unavailable`, nenhuma acao e enviada.
 4. `Preparar confirmacao (5 min)` cria identificadores de acao exclusivos e
-   absorve eventos quase simultaneos, por exemplo Valeria e Creta entrando
+   absorve eventos quase simultaneos, por exemplo resident_secondary e vehicle_primary entrando
    juntos no anel.
 5. `Pedir confirmacao no Home Assistant` envia a notificacao aos entities
-   `notify.iphone_de_gabriel_furlan` e `notify.iphone_de_valeria`, com os
+   `notify.mobile_primary` e `notify.mobile_primary`, com os
    botoes `Desarmar` e `Manter armado`.
 6. `Resposta da notificacao` escuta
    `mobile_app_notification_action`. `Validar confirmacao pendente` aceita

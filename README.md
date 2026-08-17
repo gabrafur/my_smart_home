@@ -152,9 +152,7 @@ possível segredo. A análise do histórico e as ações de rotação estão em
 make validate-public
 docker compose config --quiet
 npm --prefix nodered run flows:validate
-npm --prefix nodered run flows:test-alarm-arrival
-npm --prefix nodered run flows:test-infrastructure
-npm --prefix nodered run flows:test-security
+npm --prefix nodered run test:all
 npm --prefix claude-bridge test
 ```
 

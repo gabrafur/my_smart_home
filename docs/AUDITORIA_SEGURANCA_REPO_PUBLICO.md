@@ -191,7 +191,7 @@ force-push nem risco de reconciliacao.
 | `docker compose config --quiet` | ok |
 | `homeassistant --script check_config` | ok; `!secret` resolve para os mesmos valores de antes |
 | Sintaxe dos function nodes do Node-RED | ok |
-| Flows antigos `sec_prepare_arrival_context` / `sec_refresh_anyone_away` com e sem env (substituídos por `localizacao_pessoas` e `contexto_creta`) | idêntico com env; degrada para estado de zona sem env |
+| Flows antigos `sec_prepare_arrival_context` / `sec_refresh_anyone_away` com e sem env (substituídos por `localizacao_pessoas` e `contexto_vehicle_primary`) | idêntico com env; degrada para estado de zona sem env |
 | `python3 -m ast` em `config_flow.py` | ok |
 | `node scripts/docs-check.mjs` | links, pares bilingues, serviços e placeholders validados |
 
@@ -199,7 +199,7 @@ force-push nem risco de reconciliacao.
 
 Ver a secao correspondente no relatorio de entrega. Em resumo: os `entity_id`
 do Home Assistant ainda carregam nomes proprios
-(`device_tracker.iphone_de_*`, `notify.iphone_de_*`). Renomea-los e' possivel,
+(`device_tracker.mobile_primary*`, `notify.mobile_primary*`). Renomea-los e' possivel,
 mas e' uma alteracao no registro de entidades de uma instalacao **em
 producao**, com risco de silenciar a iluminacao de seguranca e os alertas de
 saude do sistema se alguma referencia ficar para tras. Por isso nao foi feito

@@ -1,13 +1,13 @@
-# Integracao Creta (kia_uvo / Hyundai Bluelink Brasil)
+# Integracao vehicle_primary (kia_uvo / Hyundai Bluelink Brasil)
 
 ## O que e
 
 `custom_components/kia_uvo` (fork local, nao HACS puro) conecta ao Hyundai
 Bluelink Brasil via `hyundai_kia_connect_api` (`HyundaiBlueLinkApiBR`) para
 expor localizacao, status (motor, portas, combustivel etc.) e controles do
-Creta como entidades Home Assistant. Documentado tambem em
+vehicle_primary como entidades Home Assistant. Documentado tambem em
 [docs/ILUMINACAO_SEGURANCA_NODERED.md](ILUMINACAO_SEGURANCA_NODERED.md)
-(uso das entidades `creta_*` no fluxo de chegada/seguranca).
+(uso das entidades `vehicle_primary_*` no fluxo de chegada/seguranca).
 
 ## Estado atual (2026-08-16)
 
@@ -16,7 +16,7 @@ Creta como entidades Home Assistant. Documentado tambem em
   altera somente essa dependencia. Entre 4.26.1 e 4.26.5 nao houve mudanca
   no backend Brasil nem no comando horn/light; entraram correcoes EU, USA e
   do sentinel de agenda CCS2.
-- A biblioteca 4.26.x incorporou o suporte nativo ao Creta brasileiro:
+- A biblioteca 4.26.x incorporou o suporte nativo ao vehicle_primary brasileiro:
   `/ccs2/carstatus/latest`, parser CCS2, wake real por
   `/ccs2/carstatus`, rejeicao de snapshot que nao avancou e interpretacao do
   campo `Date` como UTC. Os monkey patches locais que duplicavam essas funcoes
@@ -35,7 +35,7 @@ Creta como entidades Home Assistant. Documentado tambem em
   apos 1440 minutos; a politica Node-RED pede wake a cada 15 minutos quando
   habilitada.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
-  odometro avanca e na chegada do Creta. O dashboard nao depende mais de press
+  odometro avanca e na chegada do vehicle_primary. O dashboard nao depende mais de press
   manual para voltar a exibir viagens depois de restart.
 - Bateria 12 V `unknown` pode ser um estado correto: quando
   `SensorReliability=1`, o valor bruto e deliberadamente descartado pela
@@ -45,11 +45,11 @@ Creta como entidades Home Assistant. Documentado tambem em
 
 ```text
 Bluelink BR -> hyundai_kia_connect_api 4.26.5 -> coordinator kia_uvo
-             -> entidades Home Assistant -> contexto_creta (Node-RED)
-             -> security.creta-context.v1 -> chegada/iluminacao
+             -> entidades Home Assistant -> contexto_vehicle_primary (Node-RED)
+             -> security.vehicle_primary-context.v1 -> chegada/iluminacao
 ```
 
-`contexto_creta` reage a mudanca de zona e a deslocamento GPS acumulado de no
+`contexto_vehicle_primary` reage a mudanca de zona e a deslocamento GPS acumulado de no
 minimo 250 m, descontando a precisao reportada. A coordenada fica somente no
 contexto persistente e nunca vai para logs. Movimento solicita atualizacao dos
 dados, mas **nao** autoriza sozinho qualquer acao fisica: iluminacao continua
@@ -59,18 +59,18 @@ O refresh grava baseline dos timestamps de localizacao, motor e trava. Uma
 tentativa so vira sucesso quando pelo menos um deles avanca e o alvo de
 readiness e atingido. Sem evidencia, o mesmo recovery segue backoff de
 1, 2, 4, 8 e 15 minutos; o contador satura sem criar rajadas ou loops.
-Eventos operacionais usam `CRETA_LOCATION_CHANGED`,
-`CRETA_MOVEMENT_DETECTED`, `CRETA_REFRESH_REQUESTED`,
-`CRETA_REFRESH_RETRY`, `CRETA_NEW_DATA_RECEIVED`, `CRETA_TRIP_UPDATED` e
-`CRETA_API_ERROR`, sempre sem coordenadas ou credenciais.
+Eventos operacionais usam `VEHICLE_PRIMARY_LOCATION_CHANGED`,
+`VEHICLE_PRIMARY_MOVEMENT_DETECTED`, `VEHICLE_PRIMARY_REFRESH_REQUESTED`,
+`VEHICLE_PRIMARY_REFRESH_RETRY`, `VEHICLE_PRIMARY_NEW_DATA_RECEIVED`, `VEHICLE_PRIMARY_TRIP_UPDATED` e
+`VEHICLE_PRIMARY_API_ERROR`, sempre sem coordenadas ou credenciais.
 
-O mesmo estado persistente `security_creta_refresh_v1` agora alimenta
-`contexto_creta.refresh` e o sensor MQTT
-`sensor.creta_refresh_coordinator`. Os campos publicados sao `state`,
+O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
+`contexto_vehicle_primary.refresh` e o sensor MQTT
+`sensor.vehicle_primary_refresh_coordinator`. Os campos publicados sao `state`,
 `reason`, `attempt`, `last_request_at`, `last_success_at`, `next_retry_at` e
 `cooldown_until`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
-`input_button.creta_force_refresh_now` entra no ciclo normal de snapshot com
+`input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
 `reason=manual_force`: pode quebrar cooldown de sucesso, mas nunca o backoff de
 uma tentativa em voo nem o piso de 15 minutos do coordinator Python.
 
@@ -78,34 +78,34 @@ As secoes datadas abaixo preservam o historico da investigacao. Onde falarem
 em `_force_ccs2_status_endpoint()` ou `_install_br_wake_force_refresh()`, leia
 como solucao anterior, substituida pelo suporte upstream descrito acima.
 
-## Por que o historico de `binary_sensor.creta_engine` nao bate com o app Bluelink
+## Por que o historico de `binary_sensor.vehicle_primary_engine` nao bate com o app Bluelink
 
 **2026-07-10:** usuario reportou que o historico do motor nao refletia o uso
 real do carro, enquanto o app Bluelink mostrava certo. Investigacao:
 
-- O sensor `binary_sensor.creta_engine` e alimentado pelo campo `engine` do
+- O sensor `binary_sensor.vehicle_primary_engine` e alimentado pelo campo `engine` do
   endpoint de status (`/status/latest` ou `/ccs2/carstatus/latest`), lido a
   cada poll do coordinator.
 - Por padrao (`options: {}` no config entry, ou seja, tudo default) o
   coordinator so faz uma leitura *ao vivo* forcada automaticamente **uma vez
   por dia** (`DEFAULT_FORCE_REFRESH_INTERVAL = 1440` min); todo o resto do
   tempo le o cache do servidor da Hyundai (`update_all_vehicles_with_cached_state`).
-  As leituras ao vivo "extras" vêm do `button.creta_force_refresh`
-  (`nodered/flows.json`, flow `contexto_creta`, node
-  `creta_force_refresh`). A política conjunta em `contexto_chegadas` pede o
+  As leituras ao vivo "extras" vêm do `button.vehicle_primary_force_refresh`
+  (`nodered/flows.json`, flow `contexto_vehicle_primary`, node
+  `vehicle_primary_force_refresh`). A política conjunta em `contexto_chegadas` pede o
   refresh periódico a cada 15 min quando alguém está fora, ou entre 07h e
   22h quando todos estão em casa — ver "Refresh" em
   ILUMINACAO_SEGURANCA_NODERED.md.
-- Verificado ao vivo: um `button.press` manual em `button.creta_force_refresh`
-  de fato busca dado fresco (timestamp `sensor.creta_last_updated_at`
+- Verificado ao vivo: um `button.press` manual em `button.vehicle_primary_force_refresh`
+  de fato busca dado fresco (timestamp `sensor.vehicle_primary_last_updated_at`
   avancou corretamente). O parsing do campo `engine` tambem esta correto
-  (`sensor.creta_data` expõe o payload cru, `"engine": false` bate com o
+  (`sensor.vehicle_primary_data` expõe o payload cru, `"engine": false` bate com o
   estado do carro no momento).
 - Ou seja: o mecanismo funciona, mas so amostra o estado do motor nos raros
   instantes em que o Node-RED decide forcar um refresh. Conferindo o
-  historico de `device_tracker.creta_location` de 2026-07-09, o carro fez
+  historico de `device_tracker.vehicle_primary_location` de 2026-07-09, o carro fez
   duas viagens completas (10:14-14:19 e 22:35-23:14) — nesse mesmo periodo,
-  `binary_sensor.creta_engine` **nunca uma vez** registrou "on". A API da
+  `binary_sensor.vehicle_primary_engine` **nunca uma vez** registrou "on". A API da
   Hyundai BR tambem so aceita `/location/park` (localizacao) quando o carro
   esta parado (retorna 400 em movimento, ver
   `hyundai_kia_connect_api.HyundaiBlueLinkApiBR._get_vehicle_location`) — o
@@ -121,7 +121,7 @@ frequente so mitigaria parcialmente, e aumentaria o risco de rate-limit /
 dreno da bateria de 12V (ja documentado em ILUMINACAO_SEGURANCA_NODERED.md).
 
 > **CORRECAO (2026-08-07): a conclusao acima estava errada.** Nao era
-> amostragem esparsa — o `button.creta_force_refresh` **nunca forcou nada**.
+> amostragem esparsa — o `button.vehicle_primary_force_refresh` **nunca forcou nada**.
 > A implementacao BR so relia o snapshot em cache. O sensor de motor nao
 > estava mal amostrado, estava sem dado. Ver a secao
 > "Force refresh nunca acordava o carro" abaixo.
@@ -133,15 +133,15 @@ dreno da bateria de 12V (ja documentado em ILUMINACAO_SEGURANCA_NODERED.md).
 
 ## Historico: force refresh nunca acordava o carro (2026-08-07)
 
-**Sintoma:** usuario ligou o carro e reportou que `binary_sensor.creta_engine`
+**Sintoma:** usuario ligou o carro e reportou que `binary_sensor.vehicle_primary_engine`
 nao mexia — nem no HA, nem no proprio app Bluelink.
 
 **Diagnostico, medido ao vivo com o motor ligado:**
 
 - Cada `button.press` chegava na API sem erro (com a atualizacao para 3.9.0 os
-  erros 500 do `br-ccapi` pararam), e `sensor.creta_last_scanned_at` avancava a
+  erros 500 do `br-ccapi` pararam), e `sensor.vehicle_primary_last_scanned_at` avancava a
   cada ciclo — o HA estava recebendo resposta.
-- Mas `sensor.creta_last_updated_at` (o timestamp **do veiculo**) ficou
+- Mas `sensor.vehicle_primary_last_updated_at` (o timestamp **do veiculo**) ficou
   congelado em 16:11:03 durante 4 minutos de motor comprovadamente ligado.
 - **A chamada voltava em 160 ms.** Esse foi o dado decisivo: um poll real, que
   acorda o carro pela rede celular, leva 10-30 s. 160 ms so pode ser cache.
@@ -186,7 +186,7 @@ comando de wake foi aceito pelo backend.
 - **Piso de 15 min entre wakes reais** (`BR_WAKE_MIN_INTERVAL_S`). Acordar o
   carro puxa a bateria de 12 V e conta contra o rate limit — e' por isso que o
   options flow trava o force interval proprio da integracao em 90 min. Quem
-  aperta o botão direto (o flow `contexto_creta` no Node-RED, a cada 15 min,
+  aperta o botão direto (o flow `contexto_vehicle_primary` no Node-RED, a cada 15 min,
   além do wake pontual na entrada da zona) também passa por esse piso.
   Dentro do cooldown a chamada degrada para a leitura em cache.
 - O `sleep(25)` e o valor medido pelo upstream EU. Um refinamento possivel e
@@ -200,7 +200,7 @@ comando de wake foi aceito pelo backend.
 
 ## Partida remota exige o carro TRAVADO (2026-08-07)
 
-Ao testar o ciclo completo liga/desliga por `switch.creta_climate`, a partida
+Ao testar o ciclo completo liga/desliga por `switch.vehicle_primary_climate`, a partida
 falhava silenciosamente: HTTP 200, o switch nao latchava, nada acontecia no
 carro (confirmado com o usuario olhando o veiculo).
 
@@ -224,7 +224,7 @@ historico de comandos com `result` e uma mensagem em portugues:
 ```
 
 **Causa:** o carro estava `unlocked`. Travando (`lock.lock` em
-`lock.creta_door_lock`) e repetindo, a partida funcionou de primeira —
+`lock.vehicle_primary_door_lock`) e repetindo, a partida funcionou de primeira —
 confirmado fisicamente pelo usuario.
 
 **Precondicoes da partida remota:** marcha em P, ignicao desligada, e portas /
@@ -245,7 +245,7 @@ diz em portugues exatamente qual precondicao falhou. Sem isso o sintoma e
 17:05:51  HA le engine=off, climate=off (last_updated_at 17:05:51)
 ```
 
-`binary_sensor.creta_engine` — que tinha **0 transicoes em 5 dias** — registrou
+`binary_sensor.vehicle_primary_engine` — que tinha **0 transicoes em 5 dias** — registrou
 o on->off inteiro sem ninguem abrir o app Bluelink. O sensor sempre funcionou;
 o que faltava era dado fresco.
 
@@ -254,7 +254,7 @@ refresh da integracao pelo caminho `async_await_action_and_refresh`, entao
 neste teste o dado fresco veio de la, nao do wake — o wake estava em cooldown
 (409 s de 900 s) e degradou para cache, exatamente como projetado.
 
-## Fix: sensor de historico de viagens (`sensor.garagem_creta_day_trip_info`)
+## Fix: sensor de historico de viagens (`sensor.garagem_vehicle_primary_day_trip_info`)
 
 Em vez de tentar reconstruir "motor ligado quando" a partir do polling de
 status, adicionado um caminho separado que usa a **mesma fonte de dados que
@@ -268,20 +268,20 @@ Adicionado em `custom_components/kia_uvo/`:
 
 - `coordinator.py`: `async_refresh_day_trip_info(vehicle_id)` — busca o
   tripinfo do dia atual (`YYYYMMDD` local) e atualiza `vehicle.day_trip_info`.
-- `button.py`: novo botao `button.garagem_creta_refresh_trip_info` (chave
+- `button.py`: novo botao `button.garagem_vehicle_primary_refresh_trip_info` (chave
   `refresh_trip_info`) que dispara esse refresh.
 - `sensor.py`: novo `DayTripInfoEntity` →
-  `sensor.garagem_creta_day_trip_info`. Estado = numero de viagens hoje;
+  `sensor.garagem_vehicle_primary_day_trip_info`. Estado = numero de viagens hoje;
   atributos = lista de viagens (`start_time`, `drive_time_min`,
   `idle_time_min`, `distance`, `avg_speed`, `max_speed`) + resumo do dia.
   Fica `unknown` ate o botao ser pressionado ao menos uma vez.
 
-**Nota de nomenclatura:** o device do Creta tem `area_id: garagem`, e
+**Nota de nomenclatura:** o device do vehicle_primary tem `area_id: garagem`, e
 entidades novas herdam o prefixo da area no entity_id
-(`garagem_creta_...`), diferente das entidades antigas (`creta_force_refresh`
+(`garagem_vehicle_primary_...`), diferente das entidades antigas (`vehicle_primary_force_refresh`
 etc., criadas antes da area existir/mudar de comportamento). Inconsistente,
 mas intencionalmente deixado assim em vez de mexer no entity registry ao
-vivo — usar o entity_id real (`garagem_creta_*`) em qualquer automação nova
+vivo — usar o entity_id real (`garagem_vehicle_primary_*`) em qualquer automação nova
 que referencie o botao/sensor de trip info.
 
 ### Por que nao busca automaticamente a cada poll
@@ -290,29 +290,29 @@ que referencie o botao/sensor de trip info.
 Chamar isso no mesmo ritmo do refresh de localizacao (1-5 min enquanto
 "fora") multiplicaria as chamadas a API da Hyundai sem necessidade — dados
 de viagem so mudam quando uma viagem termina, nao a cada minuto durante
-ela. Em vez disso, `nodered/flows.json` (`creta_arrival_actions` →
-`creta_trip_refresh`) pressiona esse botão automaticamente **uma
-vez, exatamente quando o Creta chega em casa** (mesmo evento de "chegada"
+ela. Em vez disso, `nodered/flows.json` (`vehicle_primary_arrival_actions` →
+`vehicle_primary_trip_refresh`) pressiona esse botão automaticamente **uma
+vez, exatamente quando o vehicle_primary chega em casa** (mesmo evento de "chegada"
 que liga o refletor de seguranca, filtrado para `arrival_source_type ===
-"creta"`) — o momento natural em que uma viagem acabou de ser concluida e
+"vehicle_primary"`) — o momento natural em que uma viagem acabou de ser concluida e
 vai aparecer no tripinfo do dia.
 
 ### Testado ao vivo (2026-07-10)
 
-Apos pressionar `button.garagem_creta_refresh_trip_info` manualmente,
-`sensor.garagem_creta_day_trip_info` mostrou corretamente a viagem da
+Apos pressionar `button.garagem_vehicle_primary_refresh_trip_info` manualmente,
+`sensor.garagem_vehicle_primary_day_trip_info` mostrou corretamente a viagem da
 manha: inicio `07:40:40`, 16 km, velocidade media 26 km/h, maxima 88 km/h —
-dado que `binary_sensor.creta_engine` nunca capturou.
+dado que `binary_sensor.vehicle_primary_engine` nunca capturou.
 
 ## Manutencao
 
-Sempre que mexer na chegada de `contexto_creta`, lembrar que
-`creta_arrival_actions` depende de `security.arrival.v1` continuar publicando
-`arrival_source_type: creta`, `arrival_stage` e `event_at`.
+Sempre que mexer na chegada de `contexto_vehicle_primary`, lembrar que
+`vehicle_primary_arrival_actions` depende de `security.arrival.v1` continuar publicando
+`arrival_source_type: vehicle_primary`, `arrival_stage` e `event_at`.
 
 Desde a etapa de recovery, a chegada e a atualização de trip info têm dedupe
 persistente de 10 minutos. O lifecycle da viagem (`trip_active`,
-`trip_started_at`) e o último `creta_in_use` confirmado sobrevivem ao restart,
+`trip_started_at`) e o último `vehicle_primary_in_use` confirmado sobrevivem ao restart,
 mas nunca substituem as entidades atuais: motor/trava expiram em 5 minutos e
 localização em 30 minutos. Motor stale `off` durante uma viagem não encerra o
 lifecycle; localização fresca fora de casa pode revalidar o estado persistido.
@@ -337,11 +337,11 @@ dos pneus, `drive_mode`, fix do device_class de bateria em EV/PHEV;
 3.8.0) mas **removendo silenciosamente** tudo que foi adicionado na secao
 "Fix: sensor de historico de viagens" acima:
 `coordinator.async_refresh_day_trip_info`, o botao
-`button.garagem_creta_refresh_trip_info` e a entidade `DayTripInfoEntity`
-(`sensor.garagem_creta_day_trip_info`).
+`button.garagem_vehicle_primary_refresh_trip_info` e a entidade `DayTripInfoEntity`
+(`sensor.garagem_vehicle_primary_day_trip_info`).
 
 **Reportado de volta no mesmo dia**, ja que `nodered/flows.json`
-(`creta_trip_refresh`) continua dependendo dessa entidade.
+(`vehicle_primary_trip_refresh`) continua dependendo dessa entidade.
 `VehicleManager.update_day_trip_info` e `Vehicle.day_trip_info` continuam
 com a mesma assinatura na versao nova da lib (confirmado via
 `inspect.signature` dentro do container), entao o reporte foi um
@@ -408,7 +408,7 @@ else:
     url = url + "/ccs2/carstatus/latest"   # flag == 1
 ```
 
-Para esse Creta a flag sempre retornou `0`. Testando manualmente (chamada
+Para esse vehicle_primary a flag sempre retornou `0`. Testando manualmente (chamada
 GET direta, read-only, com o token ja salvo) descobri que
 `/ccs2/carstatus/latest` retorna **200 com dados frescos** para o mesmo
 veiculo, no mesmo momento em que `/status/latest` retorna 503. Ou seja: a
@@ -448,23 +448,23 @@ chamado a cada `_async_update_data`):
    diferente). Descoberto comparando programaticamente todo `vehicle.X =`
    dos dois parsers. Corrigido com um alias de uma linha depois de chamar
    o parser CCS2, em vez de mudar `sensor.py` (mantem o mesmo entity_id
-   `sensor.creta_fuel_driving_range`).
+   `sensor.vehicle_primary_fuel_driving_range`).
 
 **Testado ao vivo, ponta a ponta:** antes do fix, script standalone
 reproduzindo a chamada `/ccs2/carstatus/latest` batia num bug separado da
 lib (`float(None)` em `Drivetrain.FuelSystem.DTE.Total` — bug de nivel
 errado, nao da Hyundai) ate eu descobrir o drill-down correto. Depois do
 fix completo + restart: config entry foi de `setup_retry` (contínuo desde
-07-14) para `loaded`; `sensor.creta_fuel_level` = 20 (antes
-`unavailable`), `sensor.creta_car_battery_level` = 62,
-`sensor.creta_fuel_driving_range` = 110.0, `sensor.creta_last_updated_at`
+07-14) para `loaded`; `sensor.vehicle_primary_fuel_level` = 20 (antes
+`unavailable`), `sensor.vehicle_primary_car_battery_level` = 62,
+`sensor.vehicle_primary_fuel_driving_range` = 110.0, `sensor.vehicle_primary_last_updated_at`
 = 2026-07-18T17:24:41Z (dado fresco, nao mais o cache de 07-11),
-`device_tracker.creta_location` = home. Zero erros nos logs pos-restart.
+`device_tracker.vehicle_primary_location` = home. Zero erros nos logs pos-restart.
 De bonus, o parser CCS2 preenche ~65 campos que o parser BR nunca setava
 (pressao dos pneus, drive_mode, avisos de oleo/bateria 12V, varios campos
 EV) — as `SENSOR_DESCRIPTIONS` de `tire_pressure_*`/`drive_mode`
 adicionadas pelo update de upstream (ver secao anterior) agora tem chance
-real de popular, quando o veiculo reportar esses dados (esse Creta
+real de popular, quando o veiculo reportar esses dados (esse vehicle_primary
 especifico nao reporta `drive_mode`/pressao individual dos pneus — ficam
 `None`, o que e esperado, nao erro).
 
@@ -490,7 +490,7 @@ local e removeu **tanto** o `_force_ccs2_status_endpoint` do `coordinator.py`
 **quanto** o sensor de trip-log (`button.py`/`sensor.py`/`strings.json`/
 `translations/en.json`). O backup automatico noturno `876aeaf` (2026-07-27)
 capturou esse estado ja quebrado, e o `/status/latest` voltou a 503ar
-continuamente (resCode 5031) — `sensor.creta_fuel_level` ficou
+continuamente (resCode 5031) — `sensor.vehicle_primary_fuel_level` ficou
 `unavailable` de novo.
 
 **Correcao:** restaurados os 5 arquivos verbatim do commit `212211a`
@@ -500,7 +500,7 @@ container) — o parser `ApiImplType1._update_vehicle_properties_ccs2`
 continua com a mesma assinatura `(self, vehicle, state)` em 4.25.3, e
 `data_timezone` segue existindo em `HyundaiBlueLinkApiBR`, entao o fix bom
 e compativel sem downgrade. Confirmado ao vivo apos `homeassistant.restart`:
-`sensor.creta_fuel_level` `unavailable` -> `90`, `sensor.creta_last_updated_at`
+`sensor.vehicle_primary_fuel_level` `unavailable` -> `90`, `sensor.vehicle_primary_last_updated_at`
 com timestamp do proprio dia, zero 503 nos logs.
 
 **Origem do overwrite — FINALMENTE identificada (2026-08-02).** As duas notas
@@ -524,7 +524,7 @@ mesmo atualizar o kia_uvo, faca no HACS e depois **re-aplique o fix CCS2 +
 trip-log** antes de considerar concluido. Se adicionar outro custom_component
 forkado, adicione o padrao dele nessa mesma lista.
 
-**Padrao a vigiar:** sempre que o Creta voltar a ficar `unavailable`, rodar
+**Padrao a vigiar:** sempre que o vehicle_primary voltar a ficar `unavailable`, rodar
 `git status homeassistant/custom_components/kia_uvo/` e
 `grep -c _force_ccs2_status_endpoint coordinator.py` — se o grep der `0`, e o
 mesmo overwrite (alguem atualizou o kia_uvo manualmente por fora da blindagem);
@@ -574,15 +574,15 @@ de patch sao o caminho rapido) e verifique `0x 503` antes de considerar pronto.
 
 ## Dashboard, comandos e manutencao segura (atualizado em 2026-08-16)
 
-O dashboard Lovelace `creta-viagens` (titulo "Creta",
-`homeassistant/dashboards/creta.yaml`) usa o layout nativo responsivo
+O dashboard Lovelace `vehicle_primary-viagens` (titulo "vehicle_primary",
+`homeassistant/dashboards/vehicle_primary.yaml`) usa o layout nativo responsivo
 `type: sections`, sem dependencia nova. Ele separa visao geral, localizacao,
 viagens, bateria 12 V, historico, comandos fisicos e diagnostico. A area
 "Atualizacao dos dados" mostra o estado real do coordenador, a ultima consulta,
 o deadline de retry/cooldown e o botao `Forcar atualizacao agora`.
 
 As viagens renderizadas vem de
-`sensor.garagem_creta_recent_trip_info` e cobrem hoje e ontem. O consumo em
+`sensor.garagem_vehicle_primary_recent_trip_info` e cobrem hoje e ontem. O consumo em
 km/L so aparece quando o recorder possui leituras confiaveis de combustivel e
 odometro antes e depois da viagem; caso contrario o card explicita que aguarda
 amostras, em vez de fabricar uma media. Os atributos detalham janela de hoje e
@@ -590,18 +590,18 @@ ontem, busca de recorder de tres dias, viagens disponiveis/consideradas,
 amostras usadas, distancia, litros estimados, queda minima de 2% e gap maximo
 de quatro horas. O card principal mostra o intervalo efetivamente usado.
 
-`button.creta_start_hazard_lights_and_horn` chama exclusivamente o endpoint
+`button.vehicle_primary_start_hazard_lights_and_horn` chama exclusivamente o endpoint
 oficial Brasil `/ccs2/control/hornlight` com `command=on`. A API nao oferece
 duracao configuravel; a integracao documenta cerca de 30 segundos. O
 coordinator reaproveita `_action_lock`, aguarda `check_action_status` por ate
-60 s, publica `sensor.garagem_creta_remote_command_status` e registra somente
-`CRETA_REMOTE_LOCATE_REQUESTED`, `ACCEPTED` ou `FAILED`, sem IDs, tokens ou
+60 s, publica `sensor.garagem_vehicle_primary_remote_command_status` e registra somente
+`VEHICLE_PRIMARY_REMOTE_LOCATE_REQUESTED`, `ACCEPTED` ou `FAILED`, sem IDs, tokens ou
 coordenadas. Ha cooldown local de 60 s. No Lovelace, tap nao executa nada: e
 necessario segurar e confirmar explicitamente.
 
 ### HACS e futuras versoes
 
-O aviso `Installed v3.9.0 / Latest v3.10.1` tinha causa concreta: o codigo foi
+O aviso `Installed v3.9.0 / Latest v3.10.1` tinha causa convehicle_primary: o codigo foi
 sincronizado e commitado manualmente, mas o registro
 `hacs.repositories[356385629]` continuou com `installed_commit=52f943d` e
 `version_installed=v3.9.0`. O manifesto local ja estava em 3.10.0. Alterar so o
@@ -619,9 +619,9 @@ falha restaura componente e metadata e reinicia a versao anterior.
 
 O modo `ha-updates` de `scripts/docker-auto-update.mjs` continua proibido de
 instalar Kia/Hyundai cegamente. Quando a entidade protegida fica `on`, ele
-registra `CRETA_INTEGRATION_UPDATE_AVAILABLE` e chama apenas `check`. O estado
+registra `VEHICLE_PRIMARY_INTEGRATION_UPDATE_AVAILABLE` e chama apenas `check`. O estado
 fica em `/config/.storage/kia_uvo_safe_update` e aparece como
-`sensor.integracao_creta`; `apply` permanece uma decisao explicita apos revisar
+`sensor.integracao_vehicle_primary`; `apply` permanece uma decisao explicita apos revisar
 compatibilidade.
 
 O estado do motor no recorder continua sendo telemetria amostrada, nao um log

@@ -49,9 +49,9 @@ function runtime(code, { msg, values = {}, now }) {
   return { result, store, logs };
 }
 
-const coordinator = source("creta-refresh-coordinator.js");
-const manual = source("creta-manual-refresh.js");
-const telemetry = source("creta-refresh-telemetry.js");
+const coordinator = source("vehicle-primary-refresh-coordinator.js");
+const manual = source("vehicle-primary-manual-refresh.js");
+const telemetry = source("vehicle-primary-refresh-telemetry.js");
 const now = Date.parse("2026-08-17T03:00:00Z");
 
 {
@@ -74,8 +74,8 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   const first = runtime(coordinator, {
     now,
     values: {
-      creta_context_v1: { ready: true, location: {}, engine_updated_at: 1, lock_updated_at: 1 },
-      security_creta_refresh_v1: state,
+      vehicle_primary_context_v1: { ready: true, location: {}, engine_updated_at: 1, lock_updated_at: 1 },
+      security_vehicle_primary_refresh_v1: state,
     },
     msg: {
       payload: {
@@ -86,7 +86,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     },
   });
   assert.ok(Array.isArray(first.result));
-  const stored = first.store.get("security_creta_refresh_v1");
+  const stored = first.store.get("security_vehicle_primary_refresh_v1");
   assert.equal(stored.state, "refreshing");
   assert.equal(stored.attempts, 1);
   assert.equal(stored.manual_force, true);
@@ -94,8 +94,8 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   const second = runtime(coordinator, {
     now: now + 1_000,
     values: {
-      creta_context_v1: { ready: true },
-      security_creta_refresh_v1: stored,
+      vehicle_primary_context_v1: { ready: true },
+      security_vehicle_primary_refresh_v1: stored,
     },
     msg: {
       payload: {
@@ -106,16 +106,16 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     },
   });
   assert.equal(second.result, null);
-  assert.equal(second.store.get("security_creta_refresh_v1").attempts, 1);
-  assert.equal(second.store.get("security_creta_refresh_v1").state, "backoff");
+  assert.equal(second.store.get("security_vehicle_primary_refresh_v1").attempts, 1);
+  assert.equal(second.store.get("security_vehicle_primary_refresh_v1").state, "backoff");
 }
 
 {
   const { result, store } = runtime(coordinator, {
     now,
     values: {
-      creta_context_v1: { ready: true },
-      security_creta_refresh_v1: {
+      vehicle_primary_context_v1: { ready: true },
+      security_vehicle_primary_refresh_v1: {
         attempts: 0,
         awaiting_evidence: false,
         last_success_at: 0,
@@ -125,9 +125,9 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     msg: { payload: { kind: "refresh_command", anyone_away: false } },
   });
   assert.equal(result, null);
-  assert.equal(store.get("security_creta_refresh_v1").state, "waiting");
+  assert.equal(store.get("security_vehicle_primary_refresh_v1").state, "waiting");
   assert.equal(
-    store.get("security_creta_refresh_v1").reason,
+    store.get("security_vehicle_primary_refresh_v1").reason,
     "waiting_for_movement",
   );
 }
@@ -136,8 +136,8 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   const { store } = runtime(coordinator, {
     now,
     values: {
-      creta_context_v1: { ready: true },
-      security_creta_refresh_v1: {
+      vehicle_primary_context_v1: { ready: true },
+      security_vehicle_primary_refresh_v1: {
         attempts: 2,
         awaiting_evidence: true,
         recovery_reason: "movement_recovery",
@@ -147,7 +147,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     },
     msg: { payload: { kind: "refresh_command", anyone_away: true } },
   });
-  const state = store.get("security_creta_refresh_v1");
+  const state = store.get("security_vehicle_primary_refresh_v1");
   assert.equal(state.attempts, 3);
   assert.equal(state.state, "refreshing");
   assert.equal(state.next_retry_at, now + 240_000);
@@ -157,7 +157,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   const { result } = runtime(telemetry, {
     now,
     values: {
-      security_creta_refresh_v1: {
+      security_vehicle_primary_refresh_v1: {
         state: "backoff",
         reason: "api_error",
         attempts: 3,
@@ -171,7 +171,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   assert.equal(result[0].length, 2);
   const discovery = JSON.parse(result[0][0].payload);
   assert.equal(discovery.name, "Refresh Coordinator");
-  assert.equal(discovery.object_id, "creta_refresh_coordinator");
+  assert.equal(discovery.object_id, "vehicle_primary_refresh_coordinator");
   const payload = JSON.parse(result[0][1].payload);
   assert.equal(payload.state, "backoff");
   assert.equal(payload.attempt, 3);
@@ -180,11 +180,11 @@ const now = Date.parse("2026-08-17T03:00:00Z");
 
 const ids = flows.map((node) => node.id);
 for (const expected of [
-  "creta_manual_refresh_button_v1",
-  "creta_manual_refresh_request_v1",
-  "creta_refresh_telemetry_tick_v1",
-  "creta_refresh_telemetry_v1",
-  "creta_refresh_mqtt_v1",
+  "vehicle_primary_manual_refresh_button_v1",
+  "vehicle_primary_manual_refresh_request_v1",
+  "vehicle_primary_refresh_telemetry_tick_v1",
+  "vehicle_primary_refresh_telemetry_v1",
+  "vehicle_primary_refresh_mqtt_v1",
 ]) {
   assert.equal(ids.filter((id) => id === expected).length, 1, expected);
 }
@@ -193,4 +193,4 @@ const normalizer = flows.find((node) => node.id === "092625f2eb5cc156");
 assert.match(normalizer.func, /refresh_state_contract_v1/);
 assert.match(normalizer.func, /vehicleContext\.refresh/);
 
-console.log("Creta dashboard controls: 6 cenários aprovados.");
+console.log("vehicle_primary dashboard controls: 6 cenários aprovados.");
