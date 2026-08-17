@@ -1,177 +1,186 @@
-# Self-hosted smart home
+# Self-hosted Smart Home Platform
 
 [Português (primary)](README.md) · [English](README.en.md)
 
-An event-driven home automation platform running on a Raspberry Pi with Docker
-Compose. The repository contains the declarative configuration, flows, local
-integrations, and operational tooling for Home Assistant, Node-RED, Mosquitto,
-Zigbee2MQTT, AppDaemon, Matter Server, Portainer, and an optional coding-agent
-bridge.
+[![Public validation](https://github.com/gabrafur/my_smart_home/actions/workflows/public-validation.yml/badge.svg)](https://github.com/gabrafur/my_smart_home/actions/workflows/public-validation.yml)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-platform-18BCF2?logo=homeassistant&logoColor=white)](https://www.home-assistant.io/)
+[![Node--RED](https://img.shields.io/badge/Node--RED-event--driven-8F0000?logo=nodered&logoColor=white)](https://nodered.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 
-This public repository represents only the reviewable part of the system.
-Credentials, coordinates, device registries, databases, Zigbee keys, and
-pairing state must never be committed.
+A self-hosted, event-driven home-automation platform operated as versioned
+infrastructure. Home Assistant, Node-RED, and MQTT form the core; optional
+modules add Zigbee, AppDaemon, Matter, observability, and agent-assisted
+automation without mixing public code with household state.
 
-> A fresh clone can build and start the platform, but it cannot reproduce the
-> original household. Restoring devices, identities, and history also requires
-> a private backup of the files listed in the
-> [installation and restore guide](docs/INSTALLATION_RESTORE.en.md).
+![Public, private, and recovery architecture](docs/assets/smart-home-architecture.svg)
+
+[Demo](#synthetic-demo) · [Getting Started](#start-in-five-minutes) ·
+[Documentation](docs/README.en.md) ·
+[Restore](docs/RESTORE_CONTRACT.en.md) ·
+[Case study](docs/portfolio/technical-case-study-en.md)
+
+## Why this project exists
+
+Reliable home automation is state, failure, and recovery engineering—not just
+device commands. This project makes those decisions reviewable through
+configuration as code, event-driven flows, stale-state guards, observability,
+CI, deterministic restore, and operational documentation.
+
+It also demonstrates how to publish a real platform without publishing the
+household. Physical IDs, registries, coordinates, credentials, maps, and
+history remain private. Public code uses logical roles and synthetic fixtures;
+a fresh clone reproduces platform, tests, and demo, never the original install.
+
+## What it demonstrates
+
+- Home Assistant as state model, UI, and integration layer;
+- Node-RED state machines, deduplication, backoff, and restart recovery;
+- MQTT/Mosquitto and Zigbee2MQTT for decoupled local integration;
+- modular Docker Compose, digest-pinned images, and edge operation;
+- YAML/Jinja automations, AppDaemon, and Python integrations;
+- host, storage, Internet, and Zigbee observability;
+- private bindings, security/privacy scanners, and responsible disclosure;
+- manifest-driven backup/restore with verification, human approval, rollback;
+- canonical CI, isolated runtime tests, and a no-real-I/O demo;
+- optional Local AI/agents with explicit boundaries and content-free telemetry.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph Devices
-        ZB[Zigbee]
-        IP[Wi-Fi / IP]
-        BLE[Bluetooth / Matter]
-    end
+The public core is Home Assistant ↔ MQTT ↔ Node-RED. Zigbee2MQTT, AppDaemon,
+and the agent bridge are optional. Bindings and physical state never enter Git;
+an encrypted private bundle is applied only after plan, verify, and human
+confirmation. See the [Mermaid source and reproduction](docs/assets/README.en.md).
 
-    subgraph Host[Raspberry Pi / Docker Compose]
-        Z2M[Zigbee2MQTT]
-        MQ[Mosquitto]
-        HA[Home Assistant]
-        NR[Node-RED]
-        AD[AppDaemon]
-        MAT[Matter Server]
-        PT[Portainer]
-        BR[Agent bridge]
-        DOC[Weekly documentation review]
-    end
+## Engineering highlights
 
-    ZB <--> Z2M --> MQ <--> HA
-    IP <--> HA
-    BLE <--> MAT <--> HA
-    HA <--> NR
-    HA <--> AD
-    BR <--> HA
-    DOC --> GIT[Git remote]
-```
-
-| Service | Purpose | Default exposure |
+| Capability | Evidence | Why it matters |
 | --- | --- | --- |
-| Home Assistant | State, integrations, UI, and YAML automations | host network, port 8123 |
-| Mosquitto | Local MQTT broker | `${HOST_LAN_IP}:1883` |
-| Zigbee2MQTT | Zigbee coordinator and MQTT bridge | `${HOST_LAN_IP}:8080` |
-| Node-RED | Event-driven, stateful flows | `${HOST_LAN_IP}:1880` |
-| AppDaemon | Python applications | host network; UI on `127.0.0.1:5050` |
-| Matter Server | Legacy containerized Matter controller | host network; WebSocket on `127.0.0.1:5580` |
-| Portainer | Manual container operations | `${HOST_LAN_IP}:9000` |
-| `ai-bridge` | Claude Code/Codex from Home Assistant | `127.0.0.1:8099` only |
-| `docs-review-scheduler` | weekly documentation review and updates | no published port |
+| Modular core | [`modules/features.json`](modules/features.json), [`compose.modules.yml`](compose.modules.yml), [check](scripts/modules-check.mjs) | a clone starts with three services and expands without implicit dependencies |
+| Recoverable flows | [`flows.json`](nodered/flows.json), [replays](nodered/tools/test-security-recovery-flow.mjs), [adversarial cases](nodered/tools/test-security-recovery-adversarial.mjs) | restarts, event order, and invalid state fail safely |
+| Observability | [monitoring](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md), [host health](docs/RASPBERRY_PI_SYSTEM_HEALTH.md), [runtime tests](nodered/tools/test-infrastructure-monitoring-runtime.mjs) | outage, recovery, and deduplication are testable states, not only logs |
+| Public/private boundary | [schema](bindings/public-bindings.schema.json), [model](docs/PRIVACY_MODEL.en.md), [scanner](scripts/privacy-check.mjs) | logic remains reviewable without exposing topology or physical identities |
+| Disaster recovery | [manifest](restore/private-state-manifest.yaml), [implementation](scripts/restore.mjs), [tests](scripts/restore.test.mjs) | verify is read-only; apply validates its destination and prepares rollback |
+| Canonical validation | [Makefile](Makefile), [CI](.github/workflows/public-validation.yml), [strategy](docs/TESTING_STRATEGY.en.md) | one local/remote command covers configuration, docs, privacy, and runtime |
+| Provenance | [inventory](docs/DEPENDENCY_PROVENANCE.en.md), [notices](THIRD_PARTY_NOTICES.md) | vendored versions, licenses, and local deltas are explicit |
+| Agent context | [contract](docs/MEMORIA_VERSIONADA_AGENTES.md), [recovery](scripts/ai-context-recovery.mjs) | agents resume from commit and public memory, never automatic private runtime |
 
-If `HOST_LAN_IP` is unset, published services bind to `127.0.0.1`. Nothing is
-intentionally published on `0.0.0.0`.
+## Five-to-ten-minute technical tour
 
-## Quick start
+1. Read the [diagram](docs/assets/smart-home-architecture.svg) and distinguish
+   core, optional, public, private, and restore paths.
+2. Open [`docker-compose.yml`](docker-compose.yml) and
+   [`compose.modules.yml`](compose.modules.yml); confirm the graph in
+   [`modules/features.json`](modules/features.json).
+3. Trace a recovery scenario from
+   [`test-security-recovery-flow.mjs`](nodered/tools/test-security-recovery-flow.mjs)
+   to the function nodes in [`flows.json`](nodered/flows.json).
+4. Compare the [public schema](bindings/public-bindings.schema.json) with the
+   [synthetic example](bindings/private-bindings.example.json).
+5. Review `plan → verify → apply` in the [restore contract](docs/RESTORE_CONTRACT.en.md)
+   and rollback tests in [`restore.test.mjs`](scripts/restore.test.mjs).
+6. Finish at the [`Makefile`](Makefile) and
+   [public workflow](.github/workflows/public-validation.yml): both execute the
+   same contract.
 
-Minimum requirements:
+## Start in five minutes
 
-- Linux with Docker Engine 23 or newer and the `docker compose` plugin;
-- an image-supported `linux/arm64` or `linux/amd64` host;
-- Node.js on the host for setup and validation scripts;
-- GNU Make for the project's canonical commands;
-- host networking and D-Bus for Bluetooth/Matter;
-- `/usr/bin/vcgencmd` for Raspberry Pi-specific health metrics.
+Prerequisites: Linux, Git, Node.js 20, Python 3, GNU Make, Docker Engine, and
+the Compose plugin.
 
 ```bash
-git clone REPOSITORY_URL smart-home
+git clone https://github.com/gabrafur/my_smart_home.git smart-home
 cd smart-home
-make bootstrap-test
 make bootstrap
-```
-
-Bootstrap creates only missing private templates and reports gaps without
-printing values. Edit `.env`, especially `HOST_LAN_IP`, and record the Docker socket GID if the
-agent bridge will be enabled:
-
-```bash
-stat -c '%g' /var/run/docker.sock
-```
-
-Prepare the private files described by the installation guide, then run:
-
-```bash
-node scripts/setup-node-red-security.mjs
-docker compose config --quiet
-npm --prefix nodered ci
-npm --prefix nodered run flows:validate
-docker compose build ai-bridge
-docker compose up -d
-docker compose ps
-```
-
-Mosquitto requires `mosquitto/config/password.txt`; Zigbee2MQTT requires a
-filled copy of `zigbee2mqtt/configuration.example.yaml`; and AppDaemon requires
-`.local-secrets/appdaemon-secrets.yaml`. The safe procedure for both fresh installations and
-restores is in [INSTALLATION_RESTORE.en.md](docs/INSTALLATION_RESTORE.en.md).
-The documentation scheduler belongs to the optional `automation` profile and
-must only be enabled after following
-[WEEKLY_DOCUMENTATION_REVIEW.en.md](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md).
-
-## Reproducibility and updates
-
-External images are pinned by digest. `scripts/docker-auto-update.mjs` checks
-the selected release channels, updates Compose digests, validates the local
-configuration, and recreates the stack only when needed. The bridge Dockerfile
-also pins its base image and installed CLI versions.
-
-`matter_server` deliberately retains the existing Python 8.1 controller
-because its volume contains the installation fabric. That project is now in
-maintenance mode and the ecosystem is moving to a matter.js-based server.
-Migration needs a backup and explicit testing, so it is documented as a
-planned migration instead of being applied silently. See
-[Containers](docs/CONTAINERS.en.md).
-
-## Security
-
-`.gitignore` is authoritative for private runtime state. Excluded items include:
-
-- `.env`, `.local-secrets/`, and every real `secrets.yaml`;
-- `homeassistant/.storage/`, `.cloud/`, databases, and backups;
-- `nodered/flows_cred.json` and session files;
-- `mosquitto/config/password.txt`;
-- `zigbee2mqtt/configuration.yaml`, network key, and coordinator backup;
-- Portainer data and Matter fabric data.
-
-Compose passes each service only the variables it needs. In particular, agent
-bridge tokens are no longer injected into Node-RED. Audit before publishing:
-
-```bash
-scripts/security-scan.sh
-scripts/security-scan.sh --staged
-```
-
-The scanner checks tracked files only and never prints a suspected secret.
-
-## Validation
-
-```bash
 make validate-public
+make demo-test
 ```
 
-This is the single complete public verification command. Specialized targets
-remain available for diagnosis and are described in the
-[testing strategy](docs/TESTING_STRATEGY.en.md).
+`make bootstrap` creates missing private templates only, never overwrites
+files, and reports gaps. Before starting containers, read
+[installation/restore](docs/INSTALLATION_RESTORE.en.md) and configure your own
+secrets, bindings, and hardware.
 
-`depends_on` orders container creation; it does not prove that a dependency is
-ready. Check `docker compose ps` and service logs after startup.
+### Template or fork?
 
-## Documentation
+- **Use this template** is the recommended path for your installation: an
+  independent history, your bindings, and no expectation to contribute back.
+- **Fork** is for contributing to this project through a branch and pull
+  request. See [CONTRIBUTING](CONTRIBUTING.md).
 
-- [English documentation index](docs/README.en.md)
-- [Installation and restore](docs/INSTALLATION_RESTORE.en.md)
-- [Deterministic restore contract](docs/RESTORE_CONTRACT.en.md)
-- [Bootstrap, modules, and synthetic demo](docs/BOOTSTRAP_DEMO.en.md)
-- [Containers, volumes, ports, and dependencies](docs/CONTAINERS.en.md)
-- [Weekly documentation review](docs/WEEKLY_DOCUMENTATION_REVIEW.en.md)
-- [Zigbee and Internet monitoring in Node-RED](docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
-- [Codex + Local AI with RTX 4070 (Portuguese)](docs/LOCAL_AI_RTX_4070.md)
-- [Versioned agent memory (Portuguese)](docs/MEMORIA_VERSIONADA_AGENTES.md)
-- [Testing strategy](docs/TESTING_STRATEGY.en.md)
-- [Portuguese feature documentation](docs/README.md)
+The template option still requires a [manual GitHub setting](docs/GITHUB_REPOSITORY_SETTINGS.en.md).
 
-Brazilian Portuguese is the primary operational language. The repository
-overview, documentation index, container guide, installation runbook, and
-features marked as bilingual have complete English versions; the English
-index summarizes and routes to the remaining Portuguese feature guides.
+## Execution boundaries
+
+| Area | What runs | What never happens automatically |
+| --- | --- | --- |
+| Demo | in-memory logical events, no network/process/MQTT/device clients | no physical command or private-state read |
+| Validation | parsers, scanners, tests, and an isolated Node-RED container with fixtures | it does not start the household stack or restore a real backup |
+| Core | Home Assistant, Node-RED, and Mosquitto after private setup | optional modules are never inferred or enabled |
+| Integrations | only with the selected module, binding, secret, and hardware | absence degrades safely; registries are not migrated |
+| Restore | read-only plan/verify | apply needs a destination, explicit token, and human presence |
+| Agents/Local AI | optional, allowed to process bounded public context | no secrets, production approval, security decision, or destructive authority |
+
+## Stack
+
+Home Assistant · Node-RED · Mosquitto/MQTT · Zigbee2MQTT · AppDaemon · Matter
+Server · Docker Compose · Node.js · Python · YAML/Jinja · GitHub Actions ·
+Mermaid · optional Codex/Local AI.
+
+## Synthetic demo
+
+```bash
+make demo
+make demo-test
+```
+
+The scenario covers logical presence, security, lighting, storage, and health
+recovery. Its implementation imports no network, process, MQTT, or device-
+control client. See [Bootstrap and demo](docs/BOOTSTRAP_DEMO.en.md).
+
+## Restore
+
+The repository is the public layer; installation recovery state belongs in an
+encrypted private bundle. Use `backup-plan`, `backup-verify`, `restore-plan`,
+and `restore-verify`; `restore-apply` requires a confirmation token. Full
+contract: [RESTORE_CONTRACT](docs/RESTORE_CONTRACT.en.md).
+
+## Security and privacy
+
+Run before publishing:
+
+```bash
+scripts/security-scan.sh --staged
+make privacy-check-staged
+```
+
+Scanners never echo a finding's value. Report vulnerabilities through
+[SECURITY](SECURITY.md), never a public issue. Vendored dependencies retain
+their licenses; there is no root license because licensing original work is an
+[intentional open decision](THIRD_PARTY_NOTICES.md#repository-level-license-status).
+
+## Repository map
+
+```text
+homeassistant/   Configuration, dashboards, packages, integrations
+nodered/         Flows, settings, and runtime replays
+bindings/        Public schema and synthetic example
+modules/         Core/optional feature graph
+restore/         Private-state manifest and schema
+scripts/         Bootstrap, demo, restore, scanners, validation
+docs/            Operations, architecture, cases, bilingual portfolio
+.codex/memories/ Sanitized public agent memory
+```
+
+## Contributing
+
+External contributions use a fork, branch, and PR; PT/EN updates and validation
+are acceptance criteria. Read [CONTRIBUTING](CONTRIBUTING.md), the
+[Code of Conduct](CODE_OF_CONDUCT.md), and
+[third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Disclaimer
+
+This is an independent engineering portfolio project. It is not a security
+product, emergency service, or ready-made image for every household. Cloud
+integrations and trademarks belong to their owners. Assess licensing, hardware,
+risk, and local regulation before operating physical effects.
