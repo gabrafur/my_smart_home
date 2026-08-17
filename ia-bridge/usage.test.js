@@ -150,6 +150,27 @@ test('prefers the account-wide live limit over a newer model-specific session sn
   assert.equal(usage.rate_limit_updated_at, '2026-08-16T10:00:00.000Z');
 });
 
+test('does not present a model-specific session limit as the account-wide limit', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-no-account-limit-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(directory, 'usage.jsonl'),
+    tokenEvent('2026-08-16T10:01:00Z', { total_tokens: 10 }, 0, '0', 'spark'));
+  const reader = new CodexUsageReader(directory, null, null, 0);
+
+  const usage = reader.read({
+    timestamp: null,
+    rateLimits: null,
+    refreshMetadata: { mode: 'codex_app_server', last_error: 'backend unavailable' },
+  });
+
+  assert.equal(usage.status, 'ok');
+  assert.equal(usage.rate_limit, null);
+  assert.equal(usage.plan_type, null);
+  assert.equal(usage.rate_limit_updated_at, null);
+  assert.equal(usage.freshness.rate_limit.current, false);
+  assert.equal(usage.rate_limit_refresh.last_error, 'backend unavailable');
+});
+
 test('merges multiple session directories and refreshes only a changed session file', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-usage-reader-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
