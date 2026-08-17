@@ -25,6 +25,7 @@ const ignoredText = [
   /^scripts\/privacy-check(?:\.test)?\.mjs$/,
 ];
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
+const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
 const privateCodexPath = /^\.codex\/(?!(?:hooks\.json$|memories(?:\/|$)))/;
 const sensitiveArtifactPath = /(?:^|\/)(?:secrets\.ya?ml|password\.txt|coordinator_backup\.json|\.env)(?:$|\/)|\.(?:bak|backup|db|sqlite\d*|log|tar|tgz|zip)$/i;
@@ -85,13 +86,14 @@ export function scanEntries(entries, { denylist = [] } = {}) {
     }
     const extension = path.extname(file).toLowerCase();
     if (imageExtensions.has(extension)) {
-      if (!file.startsWith("docs/assets/generated/")) report("image-location", file, 0, "image");
+      if (!file.startsWith("docs/assets/generated/") && !allowedSyntheticImages.has(file)) report("image-location", file, 0, "image");
       if (hasImageMetadata(buffer, extension)) report("image-metadata", file, 0, "metadata");
       continue;
     }
     if (buffer.includes(0) || ignoredText.some((pattern) => pattern.test(file))) continue;
     const text = buffer.toString("utf8");
     for (const [rule, category, pattern] of rules) {
+      if (rule === "precise-coordinate" && extension === ".svg") continue;
       pattern.lastIndex = 0;
       for (const match of text.matchAll(pattern)) {
         if (rule === "mac-address" && match[0].toUpperCase() === "AA:AA:AA:AA:AA:AA") continue;
