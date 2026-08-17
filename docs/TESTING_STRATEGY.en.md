@@ -13,6 +13,7 @@ documentation, and the scheduler do not maintain a second coverage list.
 | Unit | Pure functions, parsing, and fail-safe rules | Node Test Runner and `unittest` |
 | Static | JSON, YAML, shell, Compose, links, assets, and syntax | Git-tracked checkers |
 | Contract | Manifests, modules, bindings, memory, privacy, and security | fail-closed schemas and scanners |
+| Home Assistant | Dashboards, Brazilian numeric formatting, RTX history, and vehicle estimate | `unittest` discovery without household runtime |
 | Synthetic integration | Flows and bridge with temporary data | Node-RED and bridge aggregators |
 | Restore/bootstrap/demo | Recovery, fresh clones, and logical scenarios | temporary directories, no household state |
 
@@ -28,6 +29,8 @@ Node.js tests under `scripts/` are recursively discovered by
 `scripts/test-all.mjs`. Restore, bootstrap, and demo are explicit categories
 run by `make restore-test`, `make bootstrap-test`, and `make demo-test`.
 Independent public Local AI tests use `test_*.py` discovery.
+Tests in `homeassistant/tests/` use the same discovery and load only minimal
+deterministic stubs when exercising the vendored integration.
 
 ## Matrices and CI
 

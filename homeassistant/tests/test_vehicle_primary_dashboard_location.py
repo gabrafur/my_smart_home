@@ -2,6 +2,7 @@
 """Regression checks for the parked-location wording in the vehicle dashboard."""
 
 from pathlib import Path
+import unittest
 
 
 DASHBOARD = (
@@ -30,5 +31,10 @@ def main() -> None:
     print("vehicle_primary dashboard: 12 verificações aprovadas.")
 
 
+class VehiclePrimaryDashboardLocationTest(unittest.TestCase):
+    def test_location_wording_and_controls(self):
+        main()
+
+
 if __name__ == "__main__":
-    main()
+    unittest.main()

@@ -2,15 +2,102 @@
 
 from __future__ import annotations
 
-import asyncio
 import datetime as dt
-from types import MethodType, SimpleNamespace
+import importlib.util
+import sys
+import unittest
+from pathlib import Path
+from types import MethodType, ModuleType, SimpleNamespace
 from unittest.mock import patch
 
-from custom_components.kia_uvo.coordinator import HyundaiKiaConnectDataUpdateCoordinator
+
+def _module(name: str, **attributes):
+    module = ModuleType(name)
+    module.__dict__.update(attributes)
+    sys.modules[name] = module
+    return module
+
+
+def _load_coordinator_without_home_assistant():
+    """Load the vendored coordinator with the smallest deterministic API surface."""
+    package_root = Path(__file__).resolve().parents[1] / "custom_components" / "kia_uvo"
+    _module("homeassistant", __path__=[])
+    _module("homeassistant.components", __path__=[])
+    history = _module(
+        "homeassistant.components.recorder.history",
+        get_significant_states=lambda *_args, **_kwargs: {},
+    )
+    _module("homeassistant.components.recorder", get_instance=None, history=history)
+    _module("homeassistant.config_entries", ConfigEntry=type("ConfigEntry", (), {}))
+    _module(
+        "homeassistant.const",
+        CONF_PASSWORD="password",
+        CONF_PIN="pin",
+        CONF_REGION="region",
+        CONF_SCAN_INTERVAL="scan_interval",
+        CONF_USERNAME="username",
+    )
+    _module("homeassistant.core", HomeAssistant=type("HomeAssistant", (), {}))
+    _module(
+        "homeassistant.exceptions",
+        ConfigEntryAuthFailed=type("ConfigEntryAuthFailed", (Exception,), {}),
+        HomeAssistantError=type("HomeAssistantError", (Exception,), {}),
+    )
+    _module("homeassistant.helpers", __path__=[])
+    _module("homeassistant.helpers.entity_registry", async_get=lambda _hass: None)
+    _module(
+        "homeassistant.helpers.update_coordinator",
+        DataUpdateCoordinator=type("DataUpdateCoordinator", (), {}),
+        UpdateFailed=type("UpdateFailed", (Exception,), {}),
+    )
+    _module("homeassistant.util", __path__=[])
+    _module(
+        "homeassistant.util.dt",
+        now=lambda: dt.datetime.now(UTC),
+        utcnow=lambda: dt.datetime.now(UTC),
+        as_utc=lambda value: value.astimezone(UTC),
+        get_time_zone=lambda _name: UTC,
+        DEFAULT_TIME_ZONE=UTC,
+    )
+
+    api_types = {
+        name: type(name, (), {"from_dict": staticmethod(lambda _value: None)})
+        for name in (
+            "ClimateRequestOptions",
+            "POIInfo",
+            "ScheduleChargingClimateRequestOptions",
+            "Token",
+            "Vehicle",
+            "VehicleManager",
+            "WindowRequestOptions",
+        )
+    }
+    _module("hyundai_kia_connect_api", **api_types)
+    _module(
+        "hyundai_kia_connect_api.const",
+        WINDOW_STATE=SimpleNamespace(OPEN="open", CLOSED="closed", VENTILATION="ventilation"),
+    )
+    _module(
+        "hyundai_kia_connect_api.exceptions",
+        AuthenticationError=type("AuthenticationError", (Exception,), {}),
+        UnsupportedControlError=type("UnsupportedControlError", (Exception,), {}),
+    )
+
+    _module("custom_components", __path__=[])
+    _module("custom_components.kia_uvo", __path__=[str(package_root)])
+    for short_name in ("const", "coordinator"):
+        full_name = f"custom_components.kia_uvo.{short_name}"
+        spec = importlib.util.spec_from_file_location(full_name, package_root / f"{short_name}.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[full_name] = module
+        spec.loader.exec_module(module)
+    return sys.modules["custom_components.kia_uvo.coordinator"].HyundaiKiaConnectDataUpdateCoordinator
 
 
 UTC = dt.timezone.utc
+HyundaiKiaConnectDataUpdateCoordinator = _load_coordinator_without_home_assistant()
+
+
 VEHICLE_ID = "vehicle-1"
 FUEL_ENTITY = "sensor.vehicle_primary_fuel_level"
 ODOMETER_ENTITY = "sensor.vehicle_primary_odometer"
@@ -249,5 +336,10 @@ async def main() -> None:
     print("vehicle_primary consumption estimate: 8 cenários aprovados.")
 
 
+class VehiclePrimaryConsumptionTest(unittest.IsolatedAsyncioTestCase):
+    async def test_recorder_estimate_and_refresh_scenarios(self):
+        await main()
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    unittest.main()
