@@ -422,6 +422,28 @@ disponível sem inferência em andamento. Os valores numéricos aparecem somente
 com uma amostra ativa, evitando que o painel apresente `Unavailable` ou um
 valor de repouso inventado como se fosse medido.
 
+Os quatro indicadores da seção **Atividade ao vivo** são entidades de
+apresentação e ficam fora do Recorder: seus atributos mudam a cada segundo e
+não representam uma série histórica útil. O histórico da seção usa entidades
+dedicadas: `binary_sensor.codex_rtx_em_uso` registra intervalos de inferência e
+os sensores `sensor.codex_rtx_*_historico` registram GPU, VRAM e potência como
+valores numéricos, com unidade e `state_class: measurement`, somente enquanto
+há uma amostra ativa. Uma tolerância de cinco segundos no sinal e no fim do
+uso evita que uma falha isolada de polling fragmente o histórico ou faça o
+card alternar brevemente para **sem sinal**.
+
+A coleta ao vivo ocorre a cada dois segundos, com timeout de três segundos. A
+cadência evita sobreposição de comandos observada no intervalo anterior de um
+segundo, sem introduzir atraso relevante na leitura operacional do painel.
+
+Os cards de saúde e **Job atual / último** usam o mesmo estado rápido da seção
+ao vivo para sinalizar imediatamente o início e o fim de uma inferência. Os
+cards em seções com o sufixo **hoje** leem exclusivamente os agregados diários;
+as entidades acumuladas permanecem separadas para totais e gráficos de sete
+dias. Contagens, economia e qualidade são consolidadas quando cada decisão ou
+job termina, enquanto GPU, VRAM, potência e estado do job mudam durante a
+execução.
+
 Os chats aparecem como identificadores curtos (`Codex #…`), não títulos ou
 prompts. Quando o chamador fornece `CODEX_CHAT_NAME` ou `CODEX_THREAD_NAME`,
 o painel exibe esse nome no lugar do identificador; ele nunca deriva um nome a
@@ -462,8 +484,8 @@ Para um teste real, use um diff não sensível ou uma entrada sintética por
 stdin. Durante a geração, acompanhe `nvidia-smi` e `ollama ps` no WSL; o
 resultado esperado é modelo carregado com `100% GPU`, crescimento de VRAM e
 utilização de GPU acima do baseline. No Home Assistant, a aba RTX deve mudar
-para **inferência local ativa** e exibir a amostra em até aproximadamente um
-segundo.
+para **inferência local ativa** e exibir a amostra em até aproximadamente dois
+segundos.
 
 | Sintoma | Verificações seguras |
 | --- | --- |

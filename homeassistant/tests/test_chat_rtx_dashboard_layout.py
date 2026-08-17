@@ -31,3 +31,13 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             re.findall(r"^\s+title: (\d+) ·", view, re.MULTILINE),
             [str(number) for number in range(1, 12)],
         )
+
+    def test_live_section_uses_dedicated_history_entities(self):
+        """Keep presentation entities separate from numeric Recorder history."""
+        view = rtx_view()
+
+        self.assertIn("title: 2 · Atividade ao vivo", view)
+        self.assertIn("entity: binary_sensor.codex_rtx_em_uso", view)
+        self.assertIn("entity: sensor.codex_rtx_gpu_historico", view)
+        self.assertIn("entity: sensor.codex_rtx_vram_historico", view)
+        self.assertIn("entity: sensor.codex_rtx_potencia_historico", view)
