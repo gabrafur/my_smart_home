@@ -596,11 +596,16 @@ class RemoteGpuSampler:
         required = ("container", "ssh_user", "ssh_host", "ssh_key_path", "wsl_nvidia_smi")
         if any(not self.probe.get(key) for key in required):
             return None
+        known_hosts_path = self.probe.get("ssh_known_hosts_path")
+        if not known_hosts_path:
+            known_hosts_path = str(Path(str(self.probe["ssh_key_path"])).parent / "known_hosts")
         return [
             "docker", "exec", str(self.probe["container"]), "ssh",
             "-i", str(self.probe["ssh_key_path"]),
             "-p", str(self.probe.get("ssh_port", 22)),
             "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
+            "-o", f"UserKnownHostsFile={known_hosts_path}",
+            "-o", "StrictHostKeyChecking=yes",
             f"{self.probe['ssh_user']}@{self.probe['ssh_host']}", remote_command,
         ]
 

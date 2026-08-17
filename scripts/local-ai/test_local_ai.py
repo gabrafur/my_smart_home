@@ -23,6 +23,20 @@ TELEMETRY_SPEC.loader.exec_module(TELEMETRY)
 
 
 class LocalAiTest(unittest.TestCase):
+    def test_gpu_sampler_uses_persistent_strict_known_hosts(self):
+        sampler = TELEMETRY.RemoteGpuSampler({
+            "container": "homeassistant",
+            "ssh_user": "gpu-user",
+            "ssh_host": "gpu-host",
+            "ssh_key_path": "/config/.ssh/gpu_ed25519",
+            "wsl_nvidia_smi": "/usr/lib/wsl/lib/nvidia-smi",
+        })
+
+        command = sampler._ssh_command("wsl.exe -e ollama ps")
+
+        self.assertIn("UserKnownHostsFile=/config/.ssh/known_hosts", command)
+        self.assertIn("StrictHostKeyChecking=yes", command)
+
     def test_prefers_supported_small_code_model(self):
         models = [
             {"name": "large-coder:32b", "size": 20_000_000_000},

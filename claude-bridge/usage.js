@@ -43,6 +43,7 @@ function isoFromEpoch(value) {
 }
 
 const LIVE_USAGE_MAX_AGE_MS = 2 * 60 * 1000;
+const RATE_LIMIT_MAX_AGE_MS = 15 * 60 * 1000;
 const LIVE_GPU_SAMPLE_MAX_AGE_MS = 10 * 1000;
 const ACTIVE_JOB_START_GRACE_MS = 10 * 1000;
 
@@ -62,6 +63,17 @@ function sanitizeRateLimits(rateLimits) {
   if (!rateLimits) return null;
   const primary = rateLimits.primary || null;
   const credits = rateLimits.credits || null;
+  const windowMinutes = Number.isFinite(Number(primary?.window_minutes))
+    ? Number(primary.window_minutes)
+    : null;
+  const resetsAt = isoFromEpoch(primary?.resets_at);
+  const windowType = windowMinutes === 7 * 24 * 60
+    ? 'weekly'
+    : windowMinutes === 24 * 60 ? 'daily' : 'rolling';
+  const windowStartedAt = resetsAt && windowMinutes
+    ? new Date(new Date(resetsAt).valueOf() - windowMinutes * 60_000).toISOString()
+    : null;
+
   return {
     limit_id: rateLimits.limit_id || null,
     plan_type: rateLimits.plan_type || null,
@@ -71,10 +83,10 @@ function sanitizeRateLimits(rateLimits) {
     remaining_percent: Number.isFinite(Number(primary?.used_percent))
       ? Math.max(0, 100 - Number(primary.used_percent))
       : null,
-    window_minutes: Number.isFinite(Number(primary?.window_minutes))
-      ? Number(primary.window_minutes)
-      : null,
-    resets_at: isoFromEpoch(primary?.resets_at),
+    window_minutes: windowMinutes,
+    window_type: windowType,
+    window_started_at: windowStartedAt,
+    resets_at: resetsAt,
     credits: {
       has_credits: credits?.has_credits === true,
       unlimited: credits?.unlimited === true,
@@ -90,7 +102,7 @@ function round(value, digits = 2) {
   return Math.round(value * factor) / factor;
 }
 
-function buildAnalytics({ totals, recentTokens, rateLimit, now }) {
+function buildAnalytics({ totals, recentTokens, rateLimit, rateLimitSamples = [], now }) {
   const input = Number(totals.input_tokens) || 0;
   const cached = Number(totals.cached_input_tokens) || 0;
   const cacheHitPercent = input > 0 ? round((cached / input) * 100, 1) : null;
@@ -130,21 +142,40 @@ function buildAnalytics({ totals, recentTokens, rateLimit, now }) {
       Math.max(0, now.valueOf() - windowStart.valueOf()),
     );
     const remainingMs = Math.max(0, resetAt.valueOf() - now.valueOf());
-    const elapsedDays = elapsedMs / 86_400_000;
     const remainingDays = remainingMs / 86_400_000;
     const elapsedWindowPercent = (elapsedMs / (windowMinutes * 60_000)) * 100;
     forecast.elapsed_window_percent = round(elapsedWindowPercent, 1);
 
-    // Wait for at least one hour of the window before extrapolating a rounded
-    // percentage. Earlier than that, a displayed 1% produces a wild forecast.
-    if (elapsedMs >= 3_600_000) {
-      const percentPerDay = used / elapsedDays;
+    // A snapshot can first appear after much of the weekly allowance has
+    // already been consumed, including usage from other machines. Derive pace
+    // only from two observations in the same reset window; treating the
+    // current percentage as usage since the theoretical window start produces
+    // misleading projections immediately after the bridge sees a new window.
+    const samples = rateLimitSamples
+      .filter((sample) => (
+        sample.resets_at === rateLimit.resets_at
+        && Number.isFinite(Number(sample.used_percent))
+        && sample.timestamp instanceof Date
+        && !Number.isNaN(sample.timestamp.valueOf())
+        && sample.timestamp >= windowStart
+        && sample.timestamp <= now
+      ))
+      .sort((left, right) => left.timestamp - right.timestamp);
+    const first = samples[0];
+    const last = samples.at(-1);
+    const observedMs = first && last ? last.timestamp - first.timestamp : 0;
+    const usedDelta = first && last
+      ? Math.max(0, Number(last.used_percent) - Number(first.used_percent))
+      : 0;
+
+    if (observedMs >= 3_600_000) {
+      const percentPerDay = usedDelta / (observedMs / 86_400_000);
       const projected = Math.min(100, used + percentPerDay * remainingDays);
       forecast.status = projected < 90 ? 'aguenta' : projected < 100 ? 'atencao' : 'risco';
       forecast.will_last = projected < 100;
-      forecast.confidence = elapsedWindowPercent >= 50
+      forecast.confidence = observedMs >= 24 * 3_600_000
         ? 'alta'
-        : elapsedWindowPercent >= 20 ? 'media' : 'baixa';
+        : observedMs >= 6 * 3_600_000 ? 'media' : 'baixa';
       forecast.percent_per_day = round(percentPerDay, 2);
       forecast.projected_used_at_reset = round(projected, 1);
       forecast.projected_remaining_at_reset = round(Math.max(0, 100 - projected), 1);
@@ -536,6 +567,7 @@ function scanCodexUsageFile(filePath) {
   let latestRateEvent = null;
   let latestCreditEvent = null;
   let eventCount = 0;
+  const rateEvents = [];
 
   let contents;
   try {
@@ -581,6 +613,7 @@ function scanCodexUsageFile(filePath) {
       event.payload.rate_limits?.primary
       && (!latestRateEvent || timestamp > latestRateEvent.timestamp)
     ) latestRateEvent = candidate;
+    if (event.payload.rate_limits?.primary) rateEvents.push(candidate);
     if (
       event.payload.rate_limits?.credits
       && (!latestCreditEvent || timestamp > latestCreditEvent.timestamp)
@@ -595,10 +628,11 @@ function scanCodexUsageFile(filePath) {
     latestCreditEvent,
     sessionCount: hasUsage ? 1 : 0,
     eventCount,
+    rateEvents,
   };
 }
 
-function buildCodexUsage(fileSummaries, now = new Date()) {
+function buildCodexUsage(fileSummaries, now = new Date(), liveRateEvent = null) {
   const totals = emptyTokens();
   const recentTokens = emptyTokens();
   const daily = new Map();
@@ -607,12 +641,17 @@ function buildCodexUsage(fileSummaries, now = new Date()) {
   let latestCreditEvent = null;
   let sessionCount = 0;
   let eventCount = 0;
+  const rateLimitSamples = [];
 
   for (const summary of fileSummaries) {
     if (!summary) continue;
     addTokens(totals, summary.totals);
     sessionCount += summary.sessionCount;
     eventCount += summary.eventCount;
+    for (const event of summary.rateEvents || []) {
+      const sample = sanitizeRateLimits(event.rateLimits);
+      if (sample) rateLimitSamples.push({ timestamp: event.timestamp, ...sample });
+    }
     if (!latestEvent || summary.latestEvent?.timestamp > latestEvent.timestamp) {
       latestEvent = summary.latestEvent || latestEvent;
     }
@@ -626,6 +665,23 @@ function buildCodexUsage(fileSummaries, now = new Date()) {
       const dayUsage = daily.get(day) || emptyTokens();
       addTokens(dayUsage, usage);
       daily.set(day, dayUsage);
+    }
+  }
+
+  // Session JSONL files only receive a new rate-limit snapshot when a model
+  // turn emits token telemetry. The app-server snapshot is independent of a
+  // turn, so it can keep the plan limit current while Codex is idle.
+  if (liveRateEvent?.rateLimits && liveRateEvent.timestamp instanceof Date) {
+    const liveSample = sanitizeRateLimits(liveRateEvent.rateLimits);
+    if (liveSample) {
+      rateLimitSamples.push({ timestamp: liveRateEvent.timestamp, ...liveSample });
+      if (!latestRateEvent || liveRateEvent.timestamp > latestRateEvent.timestamp) {
+        latestRateEvent = liveRateEvent;
+      }
+      if (
+        liveRateEvent.rateLimits.credits
+        && (!latestCreditEvent || liveRateEvent.timestamp > latestCreditEvent.timestamp)
+      ) latestCreditEvent = liveRateEvent;
     }
   }
 
@@ -643,19 +699,21 @@ function buildCodexUsage(fileSummaries, now = new Date()) {
     totals,
     recentTokens,
     rateLimit: sanitized,
+    rateLimitSamples,
     now,
   });
 
   return {
-    status: latestEvent ? 'ok' : 'no_data',
+    status: latestEvent || latestRateEvent ? 'ok' : 'no_data',
     collected_at: now.toISOString(),
     source_updated_at: latestEvent?.timestamp.toISOString() || null,
     rate_limit_updated_at: latestRateEvent?.timestamp.toISOString() || null,
     plan_type: sanitized?.plan_type || null,
     rate_limit: sanitized,
+    rate_limit_refresh: liveRateEvent?.refreshMetadata || null,
     freshness: {
       activity: freshness(latestEvent?.timestamp, now),
-      rate_limit: freshness(latestRateEvent?.timestamp, now),
+      rate_limit: freshness(latestRateEvent?.timestamp, now, RATE_LIMIT_MAX_AGE_MS),
     },
     totals: { ...totals, sessions: sessionCount, events: eventCount },
     analytics,
@@ -683,7 +741,7 @@ class CodexUsageReader {
     this.usageFiles = new Map();
   }
 
-  readCodexUsage(now) {
+  readCodexUsage(now, liveRateEvent = null) {
     const files = [...new Set(
       this.sessionsDirectories.flatMap((directory) => listJsonlFiles(directory)),
     )];
@@ -707,14 +765,18 @@ class CodexUsageReader {
     for (const filePath of this.usageFiles.keys()) {
       if (!present.has(filePath)) this.usageFiles.delete(filePath);
     }
-    return buildCodexUsage([...this.usageFiles.values()].map((entry) => entry.summary), now);
+    return buildCodexUsage(
+      [...this.usageFiles.values()].map((entry) => entry.summary),
+      now,
+      liveRateEvent,
+    );
   }
 
-  read() {
+  read(liveRateEvent = null) {
     if (this.cached && Date.now() - this.cachedAt < this.cacheMs) return this.cached;
     const now = new Date();
     this.cached = {
-      ...this.readCodexUsage(now),
+      ...this.readCodexUsage(now, liveRateEvent),
       local_ai: scanLocalAiTelemetry(this.localAiTelemetryPath, this.localAiStatusPath),
     };
     this.cachedAt = Date.now();

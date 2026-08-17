@@ -39,24 +39,25 @@ command_line:
         - rate_limit_updated_at
         - plan_type
         - rate_limit
+        - rate_limit_refresh
         - freshness
         - totals
-        - daily
         - analytics
         - local_ai
         - error
 
+# These transport sensors update every one or two seconds and contain nested
+# attributes consumed immediately by template sensors. Persisting every raw
+# payload would add database churn without adding useful history; the derived
+# dashboard sensors remain recorded normally.
+recorder:
+  exclude:
+    entities:
+      - sensor.codex_usage_raw
+      - sensor.codex_rtx_live_raw
+
 template:
   - sensor:
-      - name: Codex RTX Ultima Atualizacao
-        unique_id: codex_rtx_ultima_atualizacao
-        device_class: timestamp
-        state: "{{ states.sensor.codex_rtx_live_raw.last_updated.isoformat() }}"
-        availability: >-
-          {{ states('sensor.codex_rtx_live_raw') not in ['unknown', 'unavailable'] }}
-        attributes:
-          amostra_da_rtx: "{{ state_attr('sensor.codex_rtx_live_raw', 'sampled_at') }}"
-
       - name: Codex RTX ao Vivo
         unique_id: codex_rtx_ao_vivo
         icon: >-
@@ -160,6 +161,7 @@ template:
           ultimo_evento: "{{ state_attr('sensor.codex_usage_raw', 'rate_limit_updated_at') }}"
           idade_segundos: "{{ ((state_attr('sensor.codex_usage_raw', 'freshness') or {}).get('rate_limit', {}) or {}).get('age_seconds') }}"
           validade_segundos: "{{ ((state_attr('sensor.codex_usage_raw', 'freshness') or {}).get('rate_limit', {}) or {}).get('max_age_seconds') }}"
+          janela: "{{ ((state_attr('sensor.codex_usage_raw', 'rate_limit') or {}).get('window_type', 'desconhecida')) }}"
 
       - name: Codex Creditos Extras
         unique_id: codex_creditos_extras
@@ -255,6 +257,36 @@ template:
         availability: >-
           {{ state_attr('sensor.codex_usage_raw', 'rate_limit_updated_at') not in [none, ''] }}
 
+      - name: Codex Atualizacao do Limite em
+        unique_id: codex_atualizacao_do_limite_em
+        icon: mdi:timer-refresh-outline
+        unit_of_measurement: "s"
+        state_class: measurement
+        state: >-
+          {% set refresh = state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {} %}
+          {{ refresh.get('seconds_until_refresh') }}
+        availability: >-
+          {% set refresh = state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {} %}
+          {{ refresh.get('seconds_until_refresh') is number }}
+        attributes:
+          intervalo_segundos: >-
+            {{ (state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {}).get('refresh_interval_seconds') }}
+          modo: >-
+            {{ (state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {}).get('mode') }}
+          consome_creditos_de_modelo: >-
+            {{ (state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {}).get('consumes_model_credits', false) }}
+          ultimo_erro: >-
+            {{ (state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {}).get('last_error') }}
+
+      - name: Codex Proxima Atualizacao do Limite
+        unique_id: codex_proxima_atualizacao_do_limite
+        icon: mdi:update
+        device_class: timestamp
+        state: >-
+          {{ (state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {}).get('next_refresh_at') }}
+        availability: >-
+          {{ (state_attr('sensor.codex_usage_raw', 'rate_limit_refresh') or {}).get('next_refresh_at') not in [none, ''] }}
+
       - name: Codex Eficiencia de Cache
         unique_id: codex_eficiencia_de_cache
         icon: mdi:cached
@@ -295,7 +327,8 @@ template:
         availability: >-
           {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') %}
           {% set forecast = analytics.get('forecast', {}) if analytics else {} %}
-          {{ forecast.get('percent_per_day') is number }}
+          {% set current = ((state_attr('sensor.codex_usage_raw', 'freshness') or {}).get('rate_limit', {}) or {}).get('current', false) %}
+          {{ current and forecast.get('percent_per_day') is number }}
 
       - name: Codex Uso Projetado no Reset
         unique_id: codex_uso_projetado_no_reset
@@ -309,7 +342,22 @@ template:
         availability: >-
           {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') %}
           {% set forecast = analytics.get('forecast', {}) if analytics else {} %}
-          {{ forecast.get('projected_used_at_reset') is number }}
+          {% set current = ((state_attr('sensor.codex_usage_raw', 'freshness') or {}).get('rate_limit', {}) or {}).get('current', false) %}
+          {{ current and forecast.get('projected_used_at_reset') is number }}
+
+      - name: Codex Progresso da Janela Semanal
+        unique_id: codex_progresso_da_janela_semanal
+        icon: mdi:progress-clock
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >-
+          {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') or {} %}
+          {{ (analytics.get('forecast', {}) or {}).get('elapsed_window_percent') }}
+        availability: >-
+          {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') or {} %}
+          {{ (analytics.get('forecast', {}) or {}).get('elapsed_window_percent') is number }}
+        attributes:
+          significado: "percentual de tempo decorrido na janela semanal"
 
       - name: Codex Folga Projetada no Reset
         unique_id: codex_folga_projetada_no_reset
@@ -323,7 +371,8 @@ template:
         availability: >-
           {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') %}
           {% set forecast = analytics.get('forecast', {}) if analytics else {} %}
-          {{ forecast.get('projected_remaining_at_reset') is number }}
+          {% set current = ((state_attr('sensor.codex_usage_raw', 'freshness') or {}).get('rate_limit', {}) or {}).get('current', false) %}
+          {{ current and forecast.get('projected_remaining_at_reset') is number }}
 
       - name: Codex Previsao Ate o Reset
         unique_id: codex_previsao_ate_o_reset
@@ -338,7 +387,10 @@ template:
             'insuficiente': 'dados insuficientes'
           } %}
           {{ labels.get(forecast.get('status'), 'dados insuficientes') }}
-        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        availability: >-
+          {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') or {} %}
+          {% set current = ((state_attr('sensor.codex_usage_raw', 'freshness') or {}).get('rate_limit', {}) or {}).get('current', false) %}
+          {{ current and (analytics.get('forecast', {}) or {}).get('status') != 'insuficiente' }}
         attributes:
           confianca: >-
             {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') %}
@@ -352,7 +404,8 @@ template:
           {{ analytics.get('forecast', {}).get('estimated_exhaust_at') if analytics else none }}
         availability: >-
           {% set analytics = state_attr('sensor.codex_usage_raw', 'analytics') %}
-          {{ analytics and analytics.get('forecast', {}).get('estimated_exhaust_at') not in [none, ''] }}
+          {% set current = ((state_attr('sensor.codex_usage_raw', 'freshness') or {}).get('rate_limit', {}) or {}).get('current', false) %}
+          {{ current and analytics and analytics.get('forecast', {}).get('estimated_exhaust_at') not in [none, ''] }}
 
       - name: Codex Nivel de Alerta
         unique_id: codex_nivel_de_alerta
@@ -363,13 +416,11 @@ template:
           {% endif %}
         state: >-
           {% set usado = states('sensor.codex_limite_usado') | float(0) %}
-          {% set cache = states('sensor.codex_eficiencia_de_cache') | float(100) %}
-          {% set previsao = states('sensor.codex_previsao_ate_o_reset') %}
-          {% if previsao == 'não aguenta' or usado >= states('input_number.codex_alerta_critico_percentual') | float(90) %}
+          {% if states('sensor.codex_dados_de_limite') != 'atual' %}
+            sem dados atuais
+          {% elif usado >= states('input_number.codex_alerta_critico_percentual') | float(90) %}
             crítico
-          {% elif previsao == 'atenção'
-              or usado >= states('input_number.codex_alerta_aviso_percentual') | float(70)
-              or cache < states('input_number.codex_alerta_cache_minimo') | float(60) %}
+          {% elif usado >= states('input_number.codex_alerta_aviso_percentual') | float(70) %}
             atenção
           {% else %}
             normal
@@ -391,6 +442,7 @@ template:
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
           estado_tecnico: "{{ (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('state') }}"
+          motivo: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('reason') }}"
           endpoint: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('endpoint') }}"
           verificado_em: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('checked_at') }}"
 
@@ -399,16 +451,22 @@ template:
         icon: mdi:expansion-card-variant
         state: >-
           {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+          {% set preflight = local.get('preflight') or {} %}
           {% if local.get('state') == 'LOCAL_AI_IN_USE' %}
             em uso pelo Codex
-          {% elif local.get('available') and ((local.get('preflight') or {}).get('gpu')) %}
+          {% elif local.get('state') == 'LOCAL_AI_AVAILABLE' and preflight.get('gpu') %}
             disponível
+          {% elif local.get('state') == 'LOCAL_AI_DEGRADED' and preflight.get('ollama') %}
+            telemetria não confirmada
+          {% elif local.get('state') == 'LOCAL_AI_DISABLED' %}
+            desativada
           {% else %}
             indisponível
           {% endif %}
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
           gpu: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('gpu') }}"
+          motivo: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('reason') }}"
           vram_livre_mib: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('vram_free_mib') }}"
           vram_total_mib: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('vram_total_mib') }}"
 
@@ -893,13 +951,3 @@ script:
       - action: homeassistant.update_entity
         target:
           entity_id: sensor.codex_usage_raw
-
-  codex_atualizar_rtx_agora:
-    alias: Codex - atualizar painel RTX agora
-    mode: single
-    sequence:
-      - action: homeassistant.update_entity
-        target:
-          entity_id:
-            - sensor.codex_rtx_live_raw
-            - sensor.codex_usage_raw

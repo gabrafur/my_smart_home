@@ -159,6 +159,9 @@ services:
       # than in the image or repository.
       - LOCAL_AI_CONFIG=/home/node/.codex/local-ai.json
       - CODEX_SESSIONS_DIRS=/home/node/.codex/sessions,/host-codex-sessions
+      # Metadata-only account read through Codex app-server. It does not start
+      # a model turn or consume plan credits.
+      - CODEX_RATE_LIMIT_REFRESH_MS=30000
       - TZ=${TZ:-America/Sao_Paulo}
       - BRIDGE_TOKEN=${CLAUDE_BRIDGE_TOKEN:-}
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}

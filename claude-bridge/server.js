@@ -5,6 +5,7 @@ const os = require('os');
 const path = require('path');
 const { SharedHistoryStore } = require('./history');
 const { CodexUsageReader } = require('./usage');
+const { CodexRateLimitsPoller } = require('./codex-rate-limits');
 const {
   codexExecOptions,
   codexSessionKey,
@@ -40,6 +41,14 @@ const codexUsage = new CodexUsageReader(
   process.env.LOCAL_AI_STATUS_PATH || path.join(HISTORY_DIR, 'local-ai-status.json'),
   1_000,
 );
+const codexRateLimits = new CodexRateLimitsPoller({
+  refreshMs: Math.min(
+    Math.max(Number(process.env.CODEX_RATE_LIMIT_REFRESH_MS || 30_000), 15_000),
+    5 * 60 * 1000,
+  ),
+  cwd: WORKDIR,
+  env: process.env,
+});
 const sessionQueues = new Map();
 
 function enqueueSession(sessionKey, task) {
@@ -310,7 +319,7 @@ const server = http.createServer((req, res) => {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-store',
       });
-      res.end(JSON.stringify(codexUsage.read()));
+      res.end(JSON.stringify(codexUsage.read(codexRateLimits.readEvent())));
     } catch (err) {
       console.error(`Failed to read Codex usage: ${err.message}`);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -500,6 +509,7 @@ const server = http.createServer((req, res) => {
 
 ensureClaudeWorkspaceTrust();
 history.initialize();
+codexRateLimits.start();
 refreshLocalAiHealth();
 setInterval(refreshLocalAiHealth, LOCAL_AI_HEALTH_REFRESH_MS).unref();
 

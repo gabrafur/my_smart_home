@@ -291,6 +291,12 @@ deixe a aba RTX presa em **indisponível** depois de o Ollama voltar. A checagem
 só consulta endpoint/GPU e não inicia modelo, não gera carga artificial e não
 reinicia nem reconfigura o host remoto.
 
+A sondagem de GPU mantém `StrictHostKeyChecking=yes` e usa por padrão o arquivo
+`known_hosts` persistente ao lado de `gpu_probe.ssh_key_path`. Isso é necessário
+porque o `$HOME` do container do Home Assistant é efêmero: confiar apenas em
+`/root/.ssh/known_hosts` faria a telemetria degradar depois de uma recriação do
+container, mesmo com Ollama e RTX saudáveis.
+
 A imagem `claude-bridge` inclui `python3`, pois o helper versionado
 `./scripts/local-ai/local-ai` é Python. Assim, uma tarefa elegível enviada pelo
 chat do Home Assistant consegue executar a primeira passagem na RTX, em vez de
@@ -329,10 +335,10 @@ cada segundo. A disponibilidade só é tratada como atual quando o preflight do
 bridge tem no máximo dois minutos; fora disso, o painel mostra
 **desatualizado** em vez de afirmar que a RTX está pronta.
 
-O card **Última atualização** informa quando o Home Assistant recebeu a última
-observação do endpoint ao vivo. O botão **Atualizar agora** pede uma nova coleta
-dos sensores RTX e de uso ao bridge; ele não executa um modelo local nem cria
-uma tarefa artificial na GPU.
+O Home Assistant recebe automaticamente a observação do endpoint ao vivo a cada
+segundo e o agregado de uso a cada dois segundos. Por essa cadência, a aba não
+oferece botão de atualização manual: ele apenas repetiria um polling já iminente
+e não anteciparia o preflight de saúde, renovado pelo bridge a cada minuto.
 
 Na aba **Codex**, os seletores permitem usar `gpt-5.6-luna`,
 `gpt-5.6-terra` ou `gpt-5.6-sol` e um nível compatível de reasoning. O valor
@@ -399,9 +405,11 @@ adicional para aparecerem no gráfico nativo do Home Assistant.
 
 Os grids do painel usam duas colunas para que estado, GPU, VRAM e potência
 permaneçam legíveis também em telas estreitas. A aba organiza as informações em
-blocos de estado ao vivo, infraestrutura, economia de contexto, resumo do uso,
-diagnóstico recente e gráficos; disponibilidade não é repetida em um card de
-texto separado.
+ordem operacional: saúde da infraestrutura, atividade ao vivo, resultado e
+qualidade do roteamento do dia, itens que exigem atenção, última atividade,
+contexto e memória, decisões detalhadas, acumulados, diagnóstico e gráficos.
+Métricas prioritárias aparecem uma vez no topo; os blocos inferiores preservam
+detalhes e histórico sem repetir os mesmos indicadores.
 
 ## Verificação e diagnóstico
 
