@@ -81,8 +81,17 @@ function build(title, message, kind) {
   const now = Date.now();
   const cooldownMs = kind === "critical" ? 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
   if (now - Number(state.sent[kind] || 0) < cooldownMs) return null;
-  state.sent[kind] = now;
-  return { title, message, kind, at: new Date(now).toISOString() };
+  if (state.pending?.kind === kind && now - Number(state.pending.lastAttemptAt || 0) < 60 * 1000) return null;
+  const alert = {
+    title,
+    message,
+    kind,
+    at: new Date(now).toISOString(),
+    lastAttemptAt: now,
+    deliveryAck: { id: kind + ":" + String(now), kind, at: now },
+  };
+  state.pending = alert;
+  return alert;
 }
 
 function summary() {
@@ -163,22 +172,50 @@ if (entity === "sensor.codex_previsao_ate_o_reset") {
   if (value < minimum && old >= minimum) alert = build("Codex — créditos extras baixos", "⚠️ O saldo caiu para " + value + " créditos.", "credits_low");
 }
 
+if (!alert && state.pending?.deliveryAck?.id) {
+  const now = Date.now();
+  if (now - Number(state.pending.lastAttemptAt || 0) >= 60 * 1000) {
+    state.pending.lastAttemptAt = now;
+    alert = state.pending;
+  }
+}
+
 flow.set(KEY, state, "persistent");
 node.status({ fill: alert ? "red" : "green", shape: alert ? "ring" : "dot", text: alert ? "alerta: " + alert.kind : "monitorando" });
 return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;
 `;
 
+const alertAck = String.raw`const ack = msg.alert?.deliveryAck;
+if (!ack || typeof ack.kind !== "string" || !Number.isFinite(Number(ack.at))) return null;
+const KEY = "codex_alertas_state_v1";
+const state = flow.get(KEY, "persistent") || { values: {}, ready: false, sent: {} };
+state.sent = state.sent || {};
+state.sent[ack.kind] = Number(ack.at);
+if (state.pending?.deliveryAck?.id === ack.id) state.pending = null;
+flow.set(KEY, state, "persistent");
+node.status({ fill: "green", shape: "dot", text: "entrega aceita pelo HA" });
+return null;`;
+
+const alertFailure = String.raw`const source = String(msg.error?.source?.name ?? "notificacao").replace(/[^a-zA-Z0-9 _-]/g, "");
+const detail = String(msg.error?.message ?? "erro desconhecido").replace(/[\r\n]+/g, " ").slice(0, 240);
+node.error("codex_alert_delivery_failed source=" + source + " message=" + detail);
+node.status({ fill: "red", shape: "ring", text: "pendente para nova tentativa" });
+return null;`;
+
 const nodes = [
   { id: TAB, type: "tab", label: "alertas_codex", disabled: false, info: "Alertas de uso do Codex: lógica, teste manual e deduplicação no Node-RED; painel e configurações no Home Assistant.", env: [] },
-  { id: GROUP, type: "group", z: TAB, name: "Alertas Codex → iPhone de resident_primary", style: { label: true, "label-position": "nw", stroke: "#5d6f96", "stroke-opacity": "1", fill: "none", color: "#a4a4a4" }, nodes: ["codex_alert_state", "codex_alert_manual_test", "codex_alert_daily", "codex_alert_logic", "codex_alert_push", "codex_alert_text", "codex_alert_time", "codex_alert_persistent"], x: 40, y: 40, w: 1520, h: 280 },
+  { id: GROUP, type: "group", z: TAB, name: "Alertas Codex → iPhone de resident_primary", style: { label: true, "label-position": "nw", stroke: "#5d6f96", "stroke-opacity": "1", fill: "none", color: "#a4a4a4" }, nodes: ["codex_alert_state", "codex_alert_manual_test", "codex_alert_daily", "codex_alert_logic", "codex_alert_push", "codex_alert_text", "codex_alert_time", "codex_alert_persistent", "codex_alert_ack", "codex_alert_catch", "codex_alert_failure"], x: 40, y: 40, w: 1760, h: 360 },
   stateNode("codex_alert_state", "Estados e limites do Codex", monitored, true, ["codex_alert_logic"], "{\"entity_id\":$entity().entity_id,\"state\":$entity().state,\"previous\":$prevEntity().state}"),
   node("codex_alert_manual_test", "inject", { g: GROUP, name: "Testar push no iPhone", props: [{ p: "payload", v: "{\"type\":\"manual_test\"}", vt: "json" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "{\"type\":\"manual_test\"}", payloadType: "json", x: 180, y: 180, wires: [["codex_alert_logic"]] }),
   node("codex_alert_daily", "inject", { g: GROUP, name: "Resumo diário — 20:00", props: [{ p: "payload" }, { p: "topic", v: "codex.daily_summary", vt: "str" }], repeat: "", crontab: "00 20 * * *", once: false, onceDelay: 0.1, topic: "codex.daily_summary", payload: "", payloadType: "date", x: 180, y: 240, wires: [["codex_alert_logic"]] }),
   node("codex_alert_logic", "function", { g: GROUP, name: "Avaliar alertas, cooldown e resumo", func: alertLogic, outputs: 4, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x: 590, y: 160, wires: [["codex_alert_push"], ["codex_alert_text"], ["codex_alert_time"], ["codex_alert_persistent"]] }),
-  node("codex_alert_push", "api-call-service", { g: GROUP, name: "Push iPhone resident_primary", server: HA, version: 7, debugenabled: false, action: "public_bindings.call", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "public_bindings", service: "call", x: 920, y: 100, wires: [[]] }),
+  node("codex_alert_push", "api-call-service", { g: GROUP, name: "Push iPhone resident_primary", server: HA, version: 7, debugenabled: false, action: "public_bindings.call", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "public_bindings", service: "call", x: 920, y: 100, wires: [["codex_alert_ack"]] }),
   node("codex_alert_text", "api-call-service", { g: GROUP, name: "Registrar último alerta", server: HA, version: 7, debugenabled: false, action: "input_text.set_value", floorId: [], areaId: [], deviceId: [], entityId: ["input_text.codex_ultimo_alerta_iphone"], labelId: [], data: "{\"value\": alert.title & \": \" & alert.message}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "input_text", service: "set_value", x: 940, y: 160, wires: [[]] }),
   node("codex_alert_time", "api-call-service", { g: GROUP, name: "Registrar horário", server: HA, version: 7, debugenabled: false, action: "input_datetime.set_datetime", floorId: [], areaId: [], deviceId: [], entityId: ["input_datetime.codex_ultimo_alerta_iphone_em"], labelId: [], data: "{\"datetime\": alert.at}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "input_datetime", service: "set_datetime", x: 920, y: 220, wires: [[]] }),
-  node("codex_alert_persistent", "api-call-service", { g: GROUP, name: "Notificação persistente", server: HA, version: 7, debugenabled: false, action: "persistent_notification.create", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"codex_alert_\" & alert.kind}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "persistent_notification", service: "create", x: 930, y: 280, wires: [[]] }),
+  node("codex_alert_persistent", "api-call-service", { g: GROUP, name: "Notificação persistente", server: HA, version: 7, debugenabled: false, action: "persistent_notification.create", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"codex_alert_\" & alert.kind}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "persistent_notification", service: "create", x: 930, y: 280, wires: [["codex_alert_ack"]] }),
+  node("codex_alert_ack", "function", { g: GROUP, name: "Confirmar entrega e iniciar cooldown", func: alertAck, outputs: 0, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x: 1370, y: 120, wires: [] }),
+  node("codex_alert_catch", "catch", { g: GROUP, name: "Capturar falha de entrega", scope: ["codex_alert_push", "codex_alert_persistent"], uncaught: false, x: 930, y: 340, wires: [["codex_alert_failure"]] }),
+  node("codex_alert_failure", "function", { g: GROUP, name: "Manter alerta pendente", func: alertFailure, outputs: 0, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x: 1260, y: 340, wires: [] }),
 ];
 
 const retained = flows.filter((item) => item.z !== TAB && item.id !== TAB && item.id !== GROUP);

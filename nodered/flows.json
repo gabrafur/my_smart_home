@@ -98,7 +98,7 @@
         "type": "tab",
         "label": "alarme_desarme_chegada",
         "disabled": false,
-        "info": "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary estão chegando.\n\nv9: isolamento e reset determinístico de TESTE preservados; actions antigas continuam invalidadas após reset.",
+        "info": "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary estão chegando.\n\nv10: pendência e cooldown só começam após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.",
         "env": []
     },
     {
@@ -186,12 +186,16 @@
         },
         "nodes": [
             "storage_notify",
-            "storage_notify_secondary"
+            "storage_notify_secondary",
+            "storage_notify_persistent",
+            "storage_notification_ack",
+            "storage_notification_catch",
+            "storage_notification_failure"
         ],
         "x": 1314,
-        "y": 249,
-        "w": 314,
-        "h": 142
+        "y": 209,
+        "w": 594,
+        "h": 262
     },
     {
         "id": "storage_group_maintenance",
@@ -772,9 +776,9 @@
             "26d6516f49329f7b",
             "f673b02282a47d31"
         ],
-        "x": 94,
+        "x": 64,
         "y": 59,
-        "w": 492,
+        "w": 552,
         "h": 462
     },
     {
@@ -797,9 +801,9 @@
             "67d24b1f56447c94",
             "aa9889d5766ce5a0"
         ],
-        "x": 654,
+        "x": 754,
         "y": 139,
-        "w": 432,
+        "w": 462,
         "h": 222
     },
     {
@@ -836,8 +840,8 @@
         ],
         "x": 154,
         "y": 519,
-        "w": 1192,
-        "h": 402
+        "w": 1612,
+        "h": 462
     },
     {
         "id": "5df25064f701ecd2",
@@ -861,9 +865,9 @@
             "3ad83e8d6897b983",
             "2ff281276fc1d020"
         ],
-        "x": 154,
-        "y": 899,
-        "w": 897,
+        "x": 144,
+        "y": 1019,
+        "w": 937,
         "h": 302
     },
     {
@@ -935,9 +939,9 @@
             "32f1180d9ab2d2de",
             "93c16cfc3f3b3856"
         ],
-        "x": 634,
+        "x": 624,
         "y": 359,
-        "w": 392,
+        "w": 472,
         "h": 222
     },
     {
@@ -994,7 +998,7 @@
         ],
         "x": 394,
         "y": 79,
-        "w": 1112,
+        "w": 1192,
         "h": 322
     },
     {
@@ -1023,10 +1027,10 @@
             "light_notify_on_secondary",
             "light_notify_unavailable_secondary"
         ],
-        "x": 1534,
-        "y": 39,
-        "w": 862,
-        "h": 342
+        "x": 1694,
+        "y": 59,
+        "w": 882,
+        "h": 382
     },
     {
         "id": "a610d085d27ea80d",
@@ -1120,12 +1124,15 @@
             "codex_alert_push",
             "codex_alert_text",
             "codex_alert_time",
-            "codex_alert_persistent"
+            "codex_alert_persistent",
+            "codex_alert_ack",
+            "codex_alert_catch",
+            "codex_alert_failure"
         ],
         "x": 40,
         "y": 40,
-        "w": 1520,
-        "h": 280
+        "w": 1760,
+        "h": 360
     },
     {
         "id": "4126427d5e161a03",
@@ -3114,7 +3121,7 @@
         "z": "456b32bd5d59b0d6",
         "g": "c8f8e5b532232a4f",
         "name": "Classificar estado no startup",
-        "func": "const temperature = Number(msg.cpu_temperature);\nconst owner = msg.cooling_owner;\nlet pendingSnapshot = null;\n\nif (typeof msg.stored_snapshot === \"string\" && msg.stored_snapshot.trim()) {\n    try {\n        const parsed = JSON.parse(msg.stored_snapshot);\n        if (parsed && typeof parsed.state === \"string\") pendingSnapshot = parsed;\n    } catch (error) {\n        node.warn(\"Snapshot pendente inválido no startup: \" + error.message);\n    }\n}\n\nif (!Number.isFinite(temperature)) {\n    node.warn(\"Reconciliação ignorada: temperatura da CPU inválida.\");\n    return null;\n}\n\nmsg.trigger_temperature = temperature;\nif (temperature > 81.9) {\n    msg.operation = \"start\";\n    msg.start_source = \"startup_reconciliation\";\n    if (owner === \"off\" && pendingSnapshot) msg.previous_climate = pendingSnapshot;\n    return [msg, null];\n}\n\nif (owner === \"on\" && temperature < 70) {\n    msg.operation = \"stop\";\n    msg.stop_source = \"startup_reconciliation\";\n    return [null, msg];\n}\n\nif (owner === \"off\" && temperature < 70 && pendingSnapshot) {\n    msg.operation = \"rollback\";\n    msg.stop_source = \"startup_incomplete_acquisition\";\n    msg.previous_climate = pendingSnapshot;\n    flow.set(\"rpi_emergency_cooling_operation\", \"rollback\");\n    node.warn(\"Retomando rollback de uma aquisição interrompida antes do ownership.\");\n    return [null, null, msg];\n}\n\nnode.status({ fill: \"grey\", shape: \"ring\", text: owner === \"on\" ? \"aguardando faixa segura\" : \"sem ação\" });\nreturn null;",
+        "func": "const temperature = Number(msg.cpu_temperature);\nconst owner = msg.cooling_owner;\nlet pendingSnapshot = null;\n\nif (typeof msg.stored_snapshot === \"string\") {\n    const rawSnapshot = msg.stored_snapshot.trim();\n    const transientStates = new Set([\"\", \"unknown\", \"unavailable\", \"none\", \"null\"]);\n    if (!transientStates.has(rawSnapshot.toLowerCase())) {\n        try {\n            const parsed = JSON.parse(rawSnapshot);\n            if (parsed && typeof parsed.state === \"string\") pendingSnapshot = parsed;\n            else node.warn(\"Snapshot pendente inválido no startup: contrato ausente\");\n        } catch (error) {\n            node.warn(\"Snapshot pendente inválido no startup: \" + error.message);\n        }\n    }\n}\n\nif (!Number.isFinite(temperature)) {\n    node.warn(\"Reconciliação ignorada: temperatura da CPU inválida.\");\n    return null;\n}\n\nmsg.trigger_temperature = temperature;\nif (temperature > 81.9) {\n    msg.operation = \"start\";\n    msg.start_source = \"startup_reconciliation\";\n    if (owner === \"off\" && pendingSnapshot) msg.previous_climate = pendingSnapshot;\n    return [msg, null];\n}\n\nif (owner === \"on\" && temperature < 70) {\n    msg.operation = \"stop\";\n    msg.stop_source = \"startup_reconciliation\";\n    return [null, msg];\n}\n\nif (owner === \"off\" && temperature < 70 && pendingSnapshot) {\n    msg.operation = \"rollback\";\n    msg.stop_source = \"startup_incomplete_acquisition\";\n    msg.previous_climate = pendingSnapshot;\n    flow.set(\"rpi_emergency_cooling_operation\", \"rollback\");\n    node.warn(\"Retomando rollback de uma aquisição interrompida antes do ownership.\");\n    return [null, null, msg];\n}\n\nnode.status({ fill: \"grey\", shape: \"ring\", text: owner === \"on\" ? \"aguardando faixa segura\" : \"sem ação\" });\nreturn null;",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
@@ -5315,7 +5322,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_health",
         "name": "Thresholds + histerese + tendencia",
-        "func": "const CONFIG_KEY = \"storage_health_config_v1\";\nconst STATE_KEY = \"storage_health_state_v1\";\nconst HISTORY_KEY = \"storage_health_history_v1\";\nconst config = flow.get(CONFIG_KEY, \"persistent\");\nconst now = Number(msg.testNow ?? Date.now());\nconst input = msg.payload ?? {};\nconst used = Number(input.used_percent);\nconst freeGiB = Number(input.free_gb);\nconst usedGiB = Number(input.used_gb);\nconst inodeUsed = input.inode_used_percent === undefined ? null : Number(input.inode_used_percent);\nconst valid = config && Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(freeGiB) && freeGiB >= 0;\nlet state = flow.get(STATE_KEY, \"persistent\") ?? { severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0 };\n\nfunction notification(title, message) {\n    return { payload: { title, message } };\n}\n\nif (!valid) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"metrica invalida\" });\n    let alert = null;\n    const cooldown = config?.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000;\n    if (now - Number(state.lastErrorNotificationAt || 0) >= cooldown) {\n        state.lastErrorNotificationAt = now;\n        alert = notification(\"Raspberry Pi - storage indisponivel\", \"Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada.\");\n    }\n    flow.set(STATE_KEY, state, \"persistent\");\n    return [null, alert, { payload: { event: \"invalid_metrics\", at: new Date(now).toISOString(), input } }];\n}\n\nlet history = flow.get(HISTORY_KEY, \"persistent\");\nif (!Array.isArray(history)) history = [];\nhistory = history.filter((point) => Number.isFinite(point?.ts) && Number.isFinite(point?.used) && point.ts >= now - config.historyRetentionMs && point.ts <= now + config.sampleIntervalMs);\nconst last = history[history.length - 1];\nif (!last || now - last.ts >= config.sampleIntervalMs / 2) history.push({ ts: now, used });\nelse history[history.length - 1] = { ts: now, used };\nhistory.sort((a, b) => a.ts - b.ts);\nflow.set(HISTORY_KEY, history, \"persistent\");\n\nfunction growthFor(ageMs) {\n    const cutoff = now - ageMs;\n    const candidates = history.filter((point) => point.ts <= cutoff);\n    if (!candidates.length) return null;\n    const point = candidates[candidates.length - 1];\n    const sampleAge = now - point.ts;\n    if (sampleAge < ageMs - 2 * 60 * 60 * 1000 || sampleAge > ageMs + 2 * 60 * 60 * 1000) return null;\n    return Math.round((used - point.used) * 10) / 10;\n}\n\nconst growth24h = growthFor(24 * 60 * 60 * 1000);\nconst growth7d = growthFor(7 * 24 * 60 * 60 * 1000);\nconst thresholds = config.thresholds;\nfunction rawSeverity(value) {\n    if (value >= thresholds.critical) return \"critical\";\n    if (value >= thresholds.high) return \"high\";\n    if (value >= thresholds.warning) return \"warning\";\n    return \"normal\";\n}\nlet severity = rawSeverity(used);\nconst previous = state.severity ?? \"normal\";\nconst h = config.hysteresisPercentagePoints;\nif (previous === \"critical\" && used >= thresholds.critical - h) severity = \"critical\";\nelse if (previous === \"high\" && used >= thresholds.high - h && severity !== \"critical\") severity = \"high\";\nelse if (previous === \"warning\" && used >= thresholds.warning - h && severity === \"normal\") severity = \"warning\";\n\nconst rank = { normal: 0, warning: 1, high: 2, critical: 3 };\nconst freeText = freeGiB.toFixed(1) + \" GiB livres\";\nconst trendText = growth24h === null ? \"\" : \"; \" + (growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\";\nlet alert = null;\nif (severity === \"normal\" && previous !== \"normal\") {\n    alert = notification(\"Raspberry Pi - storage recuperado\", \"✅ Raspberry Pi storage back to normal: \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + \".\");\n    state.lastNotificationAt = now;\n} else if (rank[severity] > rank[previous] || (severity !== \"normal\" && now - Number(state.lastNotificationAt || 0) >= config.notificationCooldownMs)) {\n    const icon = severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    const label = severity === \"critical\" ? \"critical\" : severity;\n    alert = notification(\"Raspberry Pi - storage \" + label, icon + \" Raspberry Pi storage \" + label + \": \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + \".\");\n    state.lastNotificationAt = now;\n}\n\nconst accelerated = (growth24h !== null && growth24h >= config.trendAlert24hPercentagePoints) || (growth7d !== null && growth7d >= config.trendAlert7dPercentagePoints);\nif (alert && accelerated) state.lastTrendNotificationAt = now;\nif (!alert && accelerated && now - Number(state.lastTrendNotificationAt || 0) >= config.notificationCooldownMs) {\n    const parts = [];\n    if (growth24h !== null) parts.push((growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\");\n    if (growth7d !== null) parts.push((growth7d >= 0 ? \"+\" : \"\") + growth7d.toFixed(1) + \" pp/7d\");\n    alert = notification(\"Raspberry Pi - crescimento de storage\", \"⚠️ Storage crescendo rapidamente: \" + parts.join(\", \") + \". Uso atual: \" + used.toFixed(1) + \"% (\" + freeText + \").\");\n    state.lastTrendNotificationAt = now;\n}\n\nstate.severity = severity;\nstate.updatedAt = now;\nstate.usedPercent = used;\nstate.freeGiB = freeGiB;\nstate.growth24h = growth24h;\nstate.growth7d = growth7d;\nflow.set(STATE_KEY, state, \"persistent\");\nconst color = { normal: \"green\", warning: \"yellow\", high: \"yellow\", critical: \"red\" }[severity];\nnode.status({ fill: color, shape: severity === \"normal\" ? \"dot\" : \"ring\", text: severity + \" \" + used.toFixed(1) + \"%\" });\nif (severity !== previous) node.log(\"storage_health: \" + previous + \" -> \" + severity + \" at \" + used.toFixed(1) + \"%\");\n\nconst attributes = {\n    used_percent: used,\n    used_gib: Number.isFinite(usedGiB) ? usedGiB : null,\n    free_gib: freeGiB,\n    filesystem: input.filesystem ?? \"/\",\n    inode_used_percent: Number.isFinite(inodeUsed) ? inodeUsed : null,\n    growth_24h_percentage_points: growth24h,\n    growth_7d_percentage_points: growth7d,\n    collected_at: input.collected_at ?? new Date(now).toISOString(),\n    thresholds,\n    hysteresis_percentage_points: h\n};\nfunction growthMessages(window, value) {\n    const availabilityTopic = \"smart_home/raspberry/storage/growth_\" + window + \"_available\";\n    if (value === null) return [{ topic: availabilityTopic, payload: \"offline\", retain: true }];\n    return [\n        { topic: \"smart_home/raspberry/storage/growth_\" + window, payload: String(value), retain: true },\n        { topic: availabilityTopic, payload: \"online\", retain: true }\n    ];\n}\n\nconst mqtt = [\n    { topic: \"smart_home/raspberry/storage/status\", payload: severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(attributes), retain: true },\n    ...growthMessages(\"24h\", growth24h),\n    ...growthMessages(\"7d\", growth7d)\n];\nreturn [mqtt, alert, { payload: { event: \"health_check\", severity, previous, used, freeGiB, growth24h, growth7d, at: new Date(now).toISOString() } }];",
+        "func": "const CONFIG_KEY = \"storage_health_config_v1\";\nconst STATE_KEY = \"storage_health_state_v1\";\nconst HISTORY_KEY = \"storage_health_history_v1\";\nconst config = flow.get(CONFIG_KEY, \"persistent\");\nconst now = Number(msg.testNow ?? Date.now());\nconst input = msg.payload ?? {};\nconst used = Number(input.used_percent);\nconst freeGiB = Number(input.free_gb);\nconst usedGiB = Number(input.used_gb);\nconst inodeUsed = input.inode_used_percent === undefined ? null : Number(input.inode_used_percent);\nconst valid = config && Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(freeGiB) && freeGiB >= 0;\nlet state = flow.get(STATE_KEY, \"persistent\") ?? { severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0 };\n\nfunction notification(title, message, fields) {\n    const id = String(now) + \":\" + fields.join(\",\");\n    return {\n        payload: { title, message },\n        notificationAck: {\n            id,\n            at: now,\n            targets: fields.map((field) => ({ key: STATE_KEY, field }))\n        }\n    };\n}\n\nif (!valid) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"metrica invalida\" });\n    let alert = null;\n    const cooldown = config?.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000;\n    if (now - Number(state.lastErrorNotificationAt || 0) >= cooldown) {\n        alert = notification(\"Raspberry Pi - storage indisponivel\", \"Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada.\", [\"lastErrorNotificationAt\"]);\n        state.pendingAlert = alert;\n    }\n    flow.set(STATE_KEY, state, \"persistent\");\n    return [null, alert, { payload: { event: \"invalid_metrics\", at: new Date(now).toISOString(), input } }];\n}\n\nlet history = flow.get(HISTORY_KEY, \"persistent\");\nif (!Array.isArray(history)) history = [];\nhistory = history.filter((point) => Number.isFinite(point?.ts) && Number.isFinite(point?.used) && point.ts >= now - config.historyRetentionMs && point.ts <= now + config.sampleIntervalMs);\nconst last = history[history.length - 1];\nif (!last || now - last.ts >= config.sampleIntervalMs / 2) history.push({ ts: now, used });\nelse history[history.length - 1] = { ts: now, used };\nhistory.sort((a, b) => a.ts - b.ts);\nflow.set(HISTORY_KEY, history, \"persistent\");\n\nfunction growthFor(ageMs) {\n    const cutoff = now - ageMs;\n    const candidates = history.filter((point) => point.ts <= cutoff);\n    if (!candidates.length) return null;\n    const point = candidates[candidates.length - 1];\n    const sampleAge = now - point.ts;\n    if (sampleAge < ageMs - 2 * 60 * 60 * 1000 || sampleAge > ageMs + 2 * 60 * 60 * 1000) return null;\n    return Math.round((used - point.used) * 10) / 10;\n}\n\nconst growth24h = growthFor(24 * 60 * 60 * 1000);\nconst growth7d = growthFor(7 * 24 * 60 * 60 * 1000);\nconst thresholds = config.thresholds;\nfunction rawSeverity(value) {\n    if (value >= thresholds.critical) return \"critical\";\n    if (value >= thresholds.high) return \"high\";\n    if (value >= thresholds.warning) return \"warning\";\n    return \"normal\";\n}\nlet severity = rawSeverity(used);\nconst previous = state.severity ?? \"normal\";\nconst h = config.hysteresisPercentagePoints;\nif (previous === \"critical\" && used >= thresholds.critical - h) severity = \"critical\";\nelse if (previous === \"high\" && used >= thresholds.high - h && severity !== \"critical\") severity = \"high\";\nelse if (previous === \"warning\" && used >= thresholds.warning - h && severity === \"normal\") severity = \"warning\";\n\nconst rank = { normal: 0, warning: 1, high: 2, critical: 3 };\nconst freeText = freeGiB.toFixed(1) + \" GiB livres\";\nconst trendText = growth24h === null ? \"\" : \"; \" + (growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\";\nlet alert = null;\nif (severity === \"normal\" && previous !== \"normal\") {\n    alert = notification(\"Raspberry Pi - storage recuperado\", \"✅ Raspberry Pi storage back to normal: \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + \".\", [\"lastNotificationAt\"]);\n} else if (rank[severity] > rank[previous] || (severity !== \"normal\" && now - Number(state.lastNotificationAt || 0) >= config.notificationCooldownMs)) {\n    const icon = severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    const label = severity === \"critical\" ? \"critical\" : severity;\n    alert = notification(\"Raspberry Pi - storage \" + label, icon + \" Raspberry Pi storage \" + label + \": \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + \".\", [\"lastNotificationAt\"]);\n}\n\nconst accelerated = (growth24h !== null && growth24h >= config.trendAlert24hPercentagePoints) || (growth7d !== null && growth7d >= config.trendAlert7dPercentagePoints);\nif (alert && accelerated && !alert.notificationAck.targets.some((target) => target.field === \"lastTrendNotificationAt\")) {\n    alert.notificationAck.targets.push({ key: STATE_KEY, field: \"lastTrendNotificationAt\" });\n}\nif (!alert && accelerated && now - Number(state.lastTrendNotificationAt || 0) >= config.notificationCooldownMs) {\n    const parts = [];\n    if (growth24h !== null) parts.push((growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\");\n    if (growth7d !== null) parts.push((growth7d >= 0 ? \"+\" : \"\") + growth7d.toFixed(1) + \" pp/7d\");\n    alert = notification(\"Raspberry Pi - crescimento de storage\", \"⚠️ Storage crescendo rapidamente: \" + parts.join(\", \") + \". Uso atual: \" + used.toFixed(1) + \"% (\" + freeText + \").\", [\"lastTrendNotificationAt\"]);\n}\n\nif (alert) state.pendingAlert = alert;\nelse if (state.pendingAlert?.notificationAck?.id) alert = state.pendingAlert;\n\nstate.severity = severity;\nstate.updatedAt = now;\nstate.usedPercent = used;\nstate.freeGiB = freeGiB;\nstate.growth24h = growth24h;\nstate.growth7d = growth7d;\nflow.set(STATE_KEY, state, \"persistent\");\nconst color = { normal: \"green\", warning: \"yellow\", high: \"yellow\", critical: \"red\" }[severity];\nnode.status({ fill: color, shape: severity === \"normal\" ? \"dot\" : \"ring\", text: severity + \" \" + used.toFixed(1) + \"%\" });\nif (severity !== previous) node.log(\"storage_health: \" + previous + \" -> \" + severity + \" at \" + used.toFixed(1) + \"%\");\n\nconst attributes = {\n    used_percent: used,\n    used_gib: Number.isFinite(usedGiB) ? usedGiB : null,\n    free_gib: freeGiB,\n    filesystem: input.filesystem ?? \"/\",\n    inode_used_percent: Number.isFinite(inodeUsed) ? inodeUsed : null,\n    growth_24h_percentage_points: growth24h,\n    growth_7d_percentage_points: growth7d,\n    collected_at: input.collected_at ?? new Date(now).toISOString(),\n    thresholds,\n    hysteresis_percentage_points: h\n};\nfunction growthMessages(window, value) {\n    const availabilityTopic = \"smart_home/raspberry/storage/growth_\" + window + \"_available\";\n    if (value === null) return [{ topic: availabilityTopic, payload: \"offline\", retain: true }];\n    return [\n        { topic: \"smart_home/raspberry/storage/growth_\" + window, payload: String(value), retain: true },\n        { topic: availabilityTopic, payload: \"online\", retain: true }\n    ];\n}\n\nconst mqtt = [\n    { topic: \"smart_home/raspberry/storage/status\", payload: severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(attributes), retain: true },\n    ...growthMessages(\"24h\", growth24h),\n    ...growthMessages(\"7d\", growth7d)\n];\nreturn [mqtt, alert, { payload: { event: \"health_check\", severity, previous, used, freeGiB, growth24h, growth7d, at: new Date(now).toISOString() } }];",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
@@ -5330,7 +5337,8 @@
             ],
             [
                 "storage_notify",
-                "storage_notify_secondary"
+                "storage_notify_secondary",
+                "storage_notify_persistent"
             ],
             []
         ]
@@ -5378,10 +5386,12 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1460,
-        "y": 290,
+        "x": 1480,
+        "y": 250,
         "wires": [
-            []
+            [
+                "storage_notification_ack"
+            ]
         ]
     },
     {
@@ -5408,10 +5418,12 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1460,
-        "y": 350,
+        "x": 1480,
+        "y": 310,
         "wires": [
-            []
+            [
+                "storage_notification_ack"
+            ]
         ]
     },
     {
@@ -5516,7 +5528,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_maintenance",
         "name": "Validar termino / cooldown",
-        "func": "const raw = msg.payload;\nconst code = Number(raw?.code ?? raw);\nif (code === 0) {\n    flow.set(\"storage_maintenance_last_stderr\", null);\n    node.status({ fill: \"green\", shape: \"dot\", text: \"sucesso\" });\n    return null;\n}\nconst config = flow.get(\"storage_health_config_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nconst last = Number(flow.get(\"storage_maintenance_last_error_notification\", \"persistent\") || 0);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"falhou rc=\" + code });\nnode.error(\"storage_maintenance: failed rc=\" + code + \" stderr=\" + String(flow.get(\"storage_maintenance_last_stderr\") ?? \"\"));\nif (now - last < (config.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000)) return null;\nflow.set(\"storage_maintenance_last_error_notification\", now, \"persistent\");\nreturn { payload: { title: \"Raspberry Pi - falha na manutencao\", message: \"A manutencao segura de storage falhou (codigo \" + code + \"). Nenhuma etapa adicional foi executada; revise o log do flow Storage Health.\" } };",
+        "func": "const raw = msg.payload;\nconst code = Number(raw?.code ?? raw);\nif (code === 0) {\n    flow.set(\"storage_maintenance_last_stderr\", null);\n    node.status({ fill: \"green\", shape: \"dot\", text: \"sucesso\" });\n    return null;\n}\nconst config = flow.get(\"storage_health_config_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nconst last = Number(flow.get(\"storage_maintenance_last_error_notification\", \"persistent\") || 0);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"falhou rc=\" + code });\nnode.error(\"storage_maintenance: failed rc=\" + code + \" stderr=\" + String(flow.get(\"storage_maintenance_last_stderr\") ?? \"\"));\nif (now - last < (config.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000)) return null;\nreturn {\n    payload: { title: \"Raspberry Pi - falha na manutencao\", message: \"A manutencao segura de storage falhou (codigo \" + code + \"). Nenhuma etapa adicional foi executada; revise o log do flow Storage Health.\" },\n    notificationAck: {\n        id: \"maintenance:\" + String(now),\n        at: now,\n        targets: [{ key: \"storage_maintenance_last_error_notification\" }]\n    }\n};",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -5528,7 +5540,8 @@
         "wires": [
             [
                 "storage_notify",
-                "storage_notify_secondary"
+                "storage_notify_secondary",
+                "storage_notify_persistent"
             ]
         ]
     },
@@ -5647,76 +5660,6 @@
             ],
             [
                 "storage_maintenance_complete"
-            ]
-        ]
-    },
-    {
-        "id": "storage_manual_start",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Iniciar execução manual",
-        "func": "const LOCK = \"storage_manual_running\";\nif (flow.get(LOCK, \"memoryOnly\") === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"execução manual já ativa\" });\n    return [null, null, null, { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true }];\n}\nflow.set(LOCK, true, \"memoryOnly\");\nmsg.storageManualRun = true;\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"running\" });\nconst status = { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true };\nreturn [msg, { ...msg }, { ...msg }, status];",
-        "outputs": 4,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 430,
-        "y": 370,
-        "wires": [
-            [
-                "storage_exec_maintenance"
-            ],
-            [
-                "storage_request_host_maintenance"
-            ],
-            [
-                "storage_read_ha"
-            ],
-            [
-                "storage_manual_status_mqtt"
-            ]
-        ]
-    },
-    {
-        "id": "storage_manual_status_mqtt",
-        "type": "mqtt out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Publicar execução manual",
-        "topic": "",
-        "qos": "1",
-        "retain": "true",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "721c47f31046b8bc",
-        "x": 1190,
-        "y": 390,
-        "wires": []
-    },
-    {
-        "id": "storage_manual_complete",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Finalizar execução manual",
-        "func": "if (msg.storageManualRun !== true) return null;\nflow.set(\"storage_manual_running\", false, \"memoryOnly\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"idle\" });\nreturn { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true };",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1250,
-        "y": 590,
-        "wires": [
-            [
-                "storage_manual_status_mqtt"
             ]
         ]
     },
@@ -7029,7 +6972,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 330,
+        "x": 270,
         "y": 300,
         "wires": [
             [
@@ -7076,8 +7019,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 330,
-        "y": 350,
+        "x": 280,
+        "y": 360,
         "wires": [
             [
                 "092625f2eb5cc156"
@@ -7123,8 +7066,8 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 330,
-        "y": 400,
+        "x": 290,
+        "y": 420,
         "wires": [
             [
                 "092625f2eb5cc156"
@@ -7140,7 +7083,7 @@
         "links": [
             "3514854bb1279cbb"
         ],
-        "x": 195,
+        "x": 105,
         "y": 480,
         "wires": [
             [
@@ -7179,8 +7122,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 390,
-        "y": 420,
+        "x": 310,
+        "y": 480,
         "wires": [
             [
                 "092625f2eb5cc156"
@@ -7200,7 +7143,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 830,
+        "x": 960,
         "y": 240,
         "wires": [
             [
@@ -7226,7 +7169,7 @@
             "9f9a1fe3c4afc387",
             "fad81d855058dad1"
         ],
-        "x": 1045,
+        "x": 1175,
         "y": 180,
         "wires": []
     },
@@ -7241,7 +7184,7 @@
             "cf9bc321e0ec89f9",
             "6481cb991b3732f5"
         ],
-        "x": 1045,
+        "x": 1175,
         "y": 220,
         "wires": []
     },
@@ -7255,7 +7198,7 @@
         "links": [
             "eedc9dd2ecc0ad7d"
         ],
-        "x": 1045,
+        "x": 1175,
         "y": 260,
         "wires": []
     },
@@ -7459,8 +7402,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 330,
-        "y": 940,
+        "x": 360,
+        "y": 1060,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -7485,8 +7428,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 320,
-        "y": 980,
+        "x": 350,
+        "y": 1100,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -7511,8 +7454,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 320,
-        "y": 1020,
+        "x": 350,
+        "y": 1140,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -7537,8 +7480,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 310,
-        "y": 1060,
+        "x": 340,
+        "y": 1180,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -7563,8 +7506,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 320,
-        "y": 1120,
+        "x": 350,
+        "y": 1240,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -7589,8 +7532,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 340,
-        "y": 1160,
+        "x": 370,
+        "y": 1280,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -7610,8 +7553,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 670,
-        "y": 1040,
+        "x": 700,
+        "y": 1160,
         "wires": [
             [
                 "2ff281276fc1d020"
@@ -7629,8 +7572,8 @@
             "9f109b7076619124",
             "882f727e98158ffe"
         ],
-        "x": 1010,
-        "y": 1040,
+        "x": 1040,
+        "y": 1160,
         "wires": []
     },
     {
@@ -7683,7 +7626,7 @@
         "links": [
             "6473697c19342f07"
         ],
-        "x": 1045,
+        "x": 1175,
         "y": 320,
         "wires": []
     },
@@ -7729,8 +7672,8 @@
             "16396e34ff530ac7"
         ],
         "uncaught": false,
-        "x": 920,
-        "y": 880,
+        "x": 1190,
+        "y": 860,
         "wires": [
             [
                 "vehicle_primary_api_error_log_v1"
@@ -7750,8 +7693,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1190,
-        "y": 880,
+        "x": 1580,
+        "y": 860,
         "wires": []
     },
     {
@@ -7772,7 +7715,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 350,
+        "x": 320,
         "y": 860,
         "wires": [
             [
@@ -7793,8 +7736,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 635,
-        "y": 860,
+        "x": 410,
+        "y": 940,
         "wires": [
             [
                 "vehicle_primary_refresh_mqtt_v1"
@@ -7816,8 +7759,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 925,
-        "y": 860,
+        "x": 710,
+        "y": 940,
         "wires": []
     },
     {
@@ -8037,7 +7980,7 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
@@ -8346,7 +8289,7 @@
         "checkall": "true",
         "repair": false,
         "outputs": 1,
-        "x": 860,
+        "x": 820,
         "y": 280,
         "wires": [
             [
@@ -8367,7 +8310,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1090,
+        "x": 1110,
         "y": 280,
         "wires": [
             [
@@ -8388,7 +8331,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1340,
+        "x": 1420,
         "y": 280,
         "wires": [
             [
@@ -8414,8 +8357,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1700,
-        "y": 200,
+        "x": 1880,
+        "y": 220,
         "wires": [
             [
                 "f863fcd77744a4da",
@@ -8451,8 +8394,8 @@
         "blockInputOverrides": true,
         "domain": "switch",
         "service": "turn_on",
-        "x": 2050,
-        "y": 120,
+        "x": 2230,
+        "y": 140,
         "wires": [
             []
         ]
@@ -8477,12 +8420,12 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 2050,
-        "y": 200,
+        "x": 2230,
+        "y": 220,
         "wires": [
             []
         ]
@@ -8507,11 +8450,11 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 2050,
+        "x": 2230,
         "y": 240,
         "wires": [
             []
@@ -8535,8 +8478,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 2050,
-        "y": 280,
+        "x": 2230,
+        "y": 300,
         "wires": [
             [
                 "8fbbd9e9e8fdaacc"
@@ -8572,8 +8515,8 @@
                 "tot": "str"
             }
         ],
-        "x": 2160,
-        "y": 340,
+        "x": 2340,
+        "y": 360,
         "wires": [
             [
                 "225a9b23f78894c9"
@@ -8590,8 +8533,8 @@
         "links": [
             "a5cbd5aa62c5a99b"
         ],
-        "x": 2355,
-        "y": 340,
+        "x": 2535,
+        "y": 360,
         "wires": []
     },
     {
@@ -8603,8 +8546,8 @@
         "links": [
             "556814a7d5379621"
         ],
-        "x": 1850,
-        "y": 80,
+        "x": 2030,
+        "y": 100,
         "wires": [
             [
                 "f863fcd77744a4da",
@@ -9075,12 +9018,12 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1720,
-        "y": 280,
+        "x": 1900,
+        "y": 300,
         "wires": [
             []
         ]
@@ -9105,11 +9048,11 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1720,
+        "x": 1900,
         "y": 320,
         "wires": [
             []
@@ -9129,8 +9072,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1730,
-        "y": 340,
+        "x": 1890,
+        "y": 400,
         "wires": []
     },
     {
@@ -9454,7 +9397,7 @@
         "type": "function",
         "z": "1f468eaeef0733dd",
         "name": "Preparar confirmação (5 min)",
-        "func": "const COOLDOWN_MS = 60 * 1000;\nconst CONFIRMATION_TTL_MS = 5 * 60 * 1000;\nconst LAST_REQUEST_KEY = \"alarm_arrival_last_confirmation_at\";\nconst PENDING_KEY = \"alarm_arrival_pending_confirmation\";\n\nconst now = Date.now();\nconst lastRequest = Number(flow.get(LAST_REQUEST_KEY) || 0);\nlet pending = flow.get(PENDING_KEY);\n\n/*\n * Limpa pendência inválida/expirada antes de aplicar o cooldown.\n */\nif (\n    pending &&\n    (\n        !Number.isFinite(Number(pending.expiresAt)) ||\n        Number(pending.expiresAt) <= now\n    )\n) {\n    flow.set(PENDING_KEY, null);\n    pending = null;\n}\n\n/*\n * resident_primary/resident_secondary e vehicle_primary podem cruzar o anel quase juntos.\n * Uma única confirmação real é suficiente.\n */\nif (\n    pending?.expiresAt > now ||\n    (\n        Number.isFinite(lastRequest) &&\n        lastRequest > 0 &&\n        lastRequest <= now + 60 * 1000 &&\n        now - lastRequest < COOLDOWN_MS\n    )\n) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"confirmacao real ja pendente\"\n    });\n    return null;\n}\n\nconst token =\n    (\n        now.toString(36) +\n        \"_\" +\n        Math.random().toString(36).slice(2, 10)\n    ).toUpperCase();\n\nconst confirmAction = \"ALARME_DESARMAR_\" + token;\nconst cancelAction = \"ALARME_MANTER_ARMADO_\" + token;\n\nconst labels = {\n    resident_primary: \"resident_primary\",\n    resident_secondary: \"resident_secondary\",\n    vehicle_primary: \"vehicle_primary\"\n};\n\nflow.set(PENDING_KEY, {\n    version: 1,\n    confirmAction,\n    cancelAction,\n    createdAt: now,\n    expiresAt: now + CONFIRMATION_TTL_MS,\n    source: msg.arrival_source,\n    stage: msg.arrival_stage,\n    refreshCycleId: msg.payload?.refresh_cycle_id ?? null\n});\n\nflow.set(LAST_REQUEST_KEY, now);\n\nmsg.confirm_action = confirmAction;\nmsg.cancel_action = cancelAction;\nmsg.confirm_action_title = \"Desarmar\";\nmsg.cancel_action_title = \"Manter armado\";\nmsg.notification_title = \"Confirmar desarme do alarme\";\nmsg.notification_tag = \"alarm_arrival_confirmation_real\";\nmsg.notification_message =\n    (labels[msg.arrival_source] || msg.arrival_source) +\n    \" está chegando. Deseja desarmar o alarme da casa?\";\n\nnode.status({\n    fill: \"yellow\",\n    shape: \"dot\",\n    text: \"aguardando confirmacao real\"\n});\n\nreturn msg;",
+        "func": "const COOLDOWN_MS = 60 * 1000;\nconst CONFIRMATION_TTL_MS = 5 * 60 * 1000;\nconst DELIVERY_WINDOW_MS = 30 * 1000;\nconst LAST_REQUEST_KEY = \"alarm_arrival_last_confirmation_at\";\nconst PENDING_KEY = \"alarm_arrival_pending_confirmation\";\nconst INFLIGHT_KEY = \"alarm_arrival_confirmation_inflight\";\n\nconst now = Date.now();\nconst lastRequest = Number(flow.get(LAST_REQUEST_KEY) || 0);\nlet pending = flow.get(PENDING_KEY);\nlet inflight = flow.get(INFLIGHT_KEY);\n\nif (pending && (!Number.isFinite(Number(pending.expiresAt)) || Number(pending.expiresAt) <= now)) {\n    flow.set(PENDING_KEY, null);\n    pending = null;\n}\nif (inflight && (!Number.isFinite(Number(inflight.expiresAt)) || Number(inflight.expiresAt) <= now)) {\n    flow.set(INFLIGHT_KEY, null);\n    inflight = null;\n}\n\nif (\n    pending?.expiresAt > now ||\n    inflight?.expiresAt > now ||\n    (Number.isFinite(lastRequest) && lastRequest > 0 && lastRequest <= now + 60 * 1000 && now - lastRequest < COOLDOWN_MS)\n) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"confirmacao real ja pendente\" });\n    return null;\n}\n\nconst token = (now.toString(36) + \"_\" + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst confirmAction = \"ALARME_DESARMAR_\" + token;\nconst cancelAction = \"ALARME_MANTER_ARMADO_\" + token;\nconst candidate = {\n    version: 1,\n    deliveryId: token,\n    confirmAction,\n    cancelAction,\n    createdAt: now,\n    expiresAt: now + CONFIRMATION_TTL_MS,\n    source: msg.arrival_source,\n    stage: msg.arrival_stage,\n    refreshCycleId: msg.payload?.refresh_cycle_id ?? null\n};\n\nflow.set(INFLIGHT_KEY, { deliveryId: token, expiresAt: now + DELIVERY_WINDOW_MS });\nmsg.alarmConfirmationCandidate = candidate;\nmsg.confirm_action = confirmAction;\nmsg.cancel_action = cancelAction;\nmsg.confirm_action_title = \"Desarmar\";\nmsg.cancel_action_title = \"Manter armado\";\nmsg.notification_title = \"Confirmar desarme do alarme\";\nmsg.notification_tag = \"alarm_arrival_confirmation_real\";\nmsg.notification_message = (msg.arrival_source || \"residente\") + \" está chegando. Deseja desarmar o alarme da casa?\";\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: \"enviando confirmacao real\" });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -9489,14 +9432,16 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
         "x": 1560,
         "y": 120,
         "wires": [
-            []
+            [
+                "alarm_arrival_notification_ack_v1"
+            ]
         ]
     },
     {
@@ -9584,14 +9529,16 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
         "x": 1560,
         "y": 180,
         "wires": [
-            []
+            [
+                "alarm_arrival_notification_ack_v1"
+            ]
         ]
     },
     {
@@ -9677,7 +9624,7 @@
         "y": 320,
         "wires": [
             [
-                "694a63ad7980fa81"
+                "alarm_arrival_notification_failure_v1"
             ]
         ]
     },
@@ -9841,7 +9788,7 @@
         "z": "codex_alertas_tab",
         "g": "codex_alertas_group",
         "name": "Avaliar alertas, cooldown e resumo",
-        "func": "\nconst REQUIRED = [\"input_boolean.codex_alertas_iphone\",\"input_boolean.codex_resumo_diario_iphone\",\"input_number.codex_alerta_aviso_percentual\",\"input_number.codex_alerta_critico_percentual\",\"input_number.codex_alerta_cache_minimo\",\"input_number.codex_alerta_saldo_creditos\",\"sensor.codex_previsao_ate_o_reset\",\"sensor.codex_limite_usado\",\"sensor.codex_eficiencia_de_cache\",\"sensor.codex_creditos_extras\",\"sensor.codex_uso_projetado_no_reset\",\"sensor.codex_folga_projetada_no_reset\",\"sensor.codex_ritmo_do_limite\",\"sensor.codex_limite_disponivel\",\"sensor.codex_proximo_reset\"];\nconst KEY = \"codex_alertas_state_v1\";\nlet state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nconst event = msg.payload || {};\n\nfunction num(value, fallback = 0) {\n  const parsed = Number(value);\n  return Number.isFinite(parsed) ? parsed : fallback;\n}\n\nfunction build(title, message, kind) {\n  const now = Date.now();\n  const cooldownMs = kind === \"critical\" ? 60 * 60 * 1000 : 6 * 60 * 60 * 1000;\n  if (now - Number(state.sent[kind] || 0) < cooldownMs) return null;\n  state.sent[kind] = now;\n  return { title, message, kind, at: new Date(now).toISOString() };\n}\n\nfunction summary() {\n  if (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\"\n      || state.values[\"input_boolean.codex_resumo_diario_iphone\"] !== \"on\") return null;\n  return build(\n    \"Codex — resumo diário\",\n    \"Uso: \" + (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; \" +\n      \"projeção no reset: \" + (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%; \" +\n      \"folga: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%; \" +\n      \"cache: \" + (state.values[\"sensor.codex_eficiencia_de_cache\"] || \"?\") + \"%; \" +\n      \"previsão: \" + (state.values[\"sensor.codex_previsao_ate_o_reset\"] || \"?\") + \".\",\n    \"daily\",\n  );\n}\n\nif (msg.topic === \"codex.daily_summary\") {\n  const alert = state.ready ? summary() : null;\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nif (event.type === \"manual_test\") {\n  const alert = build(\n    \"Codex — teste de alertas\",\n    \"✅ O Node-RED está conectado ao iPhone de resident_primary. Uso atual: \" +\n      (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; projeção no reset: \" +\n      (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%.\",\n    \"test\",\n  );\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nconst entity = event.entity_id;\nif (!entity || !REQUIRED.includes(entity)) return null;\nconst previous = state.values[entity];\nstate.values[entity] = String(event.state ?? \"\");\nif (!state.ready) {\n  state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: state.ready ? \"green\" : \"yellow\", shape: \"dot\", text: state.ready ? \"monitorando\" : \"sincronizando\" });\n  return null;\n}\n\nif (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\") {\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: \"grey\", shape: \"ring\", text: \"alertas desativados\" });\n  return null;\n}\n\nlet alert = null;\nif (entity === \"sensor.codex_previsao_ate_o_reset\") {\n  if ([\"atenção\", \"não aguenta\"].includes(event.state) && previous !== event.state) {\n    const critical = event.state === \"não aguenta\";\n    alert = build(\n      critical ? \"Codex — risco de esgotamento\" : \"Codex — pouca folga até o reset\",\n      (critical ? \"🔴\" : \"⚠️\") + \" Ritmo atual: \" +\n        (state.values[\"sensor.codex_ritmo_do_limite\"] || \"?\") + \"%/dia. Uso projetado no reset: \" +\n        (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%. Reset: \" +\n        (state.values[\"sensor.codex_proximo_reset\"] || \"?\") + \".\",\n      critical ? \"critical\" : \"forecast_warning\",\n    );\n  } else if (event.state === \"aguenta\" && [\"atenção\", \"não aguenta\"].includes(previous)) {\n    alert = build(\"Codex — autonomia recuperada\", \"✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"recovery\");\n  }\n} else if (entity === \"sensor.codex_limite_usado\") {\n  const used = num(event.state); const old = num(previous, -1);\n  const warning = num(state.values[\"input_number.codex_alerta_aviso_percentual\"], 70);\n  const critical = num(state.values[\"input_number.codex_alerta_critico_percentual\"], 90);\n  if (used >= critical && old < critical) alert = build(\"Codex — limite crítico\", \"🚨 Uso chegou a \" + used + \"%. Restam \" + (state.values[\"sensor.codex_limite_disponivel\"] || \"?\") + \"% até o reset.\", \"critical\");\n  else if (used >= warning && old < warning) alert = build(\"Codex — limite em atenção\", \"⚠️ Uso chegou a \" + used + \"%. Folga projetada no reset: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"usage_warning\");\n} else if (entity === \"sensor.codex_eficiencia_de_cache\") {\n  const value = num(event.state); const old = num(previous, 101); const minimum = num(state.values[\"input_number.codex_alerta_cache_minimo\"], 60);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — eficiência de cache baixa\", \"⚠️ A eficiência caiu para \" + value + \"%. Limite configurado: \" + minimum + \"%.\", \"cache_low\");\n} else if (entity === \"sensor.codex_creditos_extras\") {\n  const value = num(event.state); const old = num(previous, -1); const minimum = num(state.values[\"input_number.codex_alerta_saldo_creditos\"], 10);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — créditos extras baixos\", \"⚠️ O saldo caiu para \" + value + \" créditos.\", \"credits_low\");\n}\n\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: alert ? \"red\" : \"green\", shape: alert ? \"ring\" : \"dot\", text: alert ? \"alerta: \" + alert.kind : \"monitorando\" });\nreturn alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n",
+        "func": "\nconst REQUIRED = [\"input_boolean.codex_alertas_iphone\",\"input_boolean.codex_resumo_diario_iphone\",\"input_number.codex_alerta_aviso_percentual\",\"input_number.codex_alerta_critico_percentual\",\"input_number.codex_alerta_cache_minimo\",\"input_number.codex_alerta_saldo_creditos\",\"sensor.codex_previsao_ate_o_reset\",\"sensor.codex_limite_usado\",\"sensor.codex_eficiencia_de_cache\",\"sensor.codex_creditos_extras\",\"sensor.codex_uso_projetado_no_reset\",\"sensor.codex_folga_projetada_no_reset\",\"sensor.codex_ritmo_do_limite\",\"sensor.codex_limite_disponivel\",\"sensor.codex_proximo_reset\"];\nconst KEY = \"codex_alertas_state_v1\";\nlet state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nconst event = msg.payload || {};\n\nfunction num(value, fallback = 0) {\n  const parsed = Number(value);\n  return Number.isFinite(parsed) ? parsed : fallback;\n}\n\nfunction build(title, message, kind) {\n  const now = Date.now();\n  const cooldownMs = kind === \"critical\" ? 60 * 60 * 1000 : 6 * 60 * 60 * 1000;\n  if (now - Number(state.sent[kind] || 0) < cooldownMs) return null;\n  if (state.pending?.kind === kind && now - Number(state.pending.lastAttemptAt || 0) < 60 * 1000) return null;\n  const alert = {\n    title,\n    message,\n    kind,\n    at: new Date(now).toISOString(),\n    lastAttemptAt: now,\n    deliveryAck: { id: kind + \":\" + String(now), kind, at: now },\n  };\n  state.pending = alert;\n  return alert;\n}\n\nfunction summary() {\n  if (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\"\n      || state.values[\"input_boolean.codex_resumo_diario_iphone\"] !== \"on\") return null;\n  return build(\n    \"Codex — resumo diário\",\n    \"Uso: \" + (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; \" +\n      \"projeção no reset: \" + (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%; \" +\n      \"folga: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%; \" +\n      \"cache: \" + (state.values[\"sensor.codex_eficiencia_de_cache\"] || \"?\") + \"%; \" +\n      \"previsão: \" + (state.values[\"sensor.codex_previsao_ate_o_reset\"] || \"?\") + \".\",\n    \"daily\",\n  );\n}\n\nif (msg.topic === \"codex.daily_summary\") {\n  const alert = state.ready ? summary() : null;\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nif (event.type === \"manual_test\") {\n  const alert = build(\n    \"Codex — teste de alertas\",\n    \"✅ O Node-RED está conectado ao iPhone de resident_primary. Uso atual: \" +\n      (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; projeção no reset: \" +\n      (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%.\",\n    \"test\",\n  );\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nconst entity = event.entity_id;\nif (!entity || !REQUIRED.includes(entity)) return null;\nconst previous = state.values[entity];\nstate.values[entity] = String(event.state ?? \"\");\nif (!state.ready) {\n  state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: state.ready ? \"green\" : \"yellow\", shape: \"dot\", text: state.ready ? \"monitorando\" : \"sincronizando\" });\n  return null;\n}\n\nif (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\") {\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: \"grey\", shape: \"ring\", text: \"alertas desativados\" });\n  return null;\n}\n\nlet alert = null;\nif (entity === \"sensor.codex_previsao_ate_o_reset\") {\n  if ([\"atenção\", \"não aguenta\"].includes(event.state) && previous !== event.state) {\n    const critical = event.state === \"não aguenta\";\n    alert = build(\n      critical ? \"Codex — risco de esgotamento\" : \"Codex — pouca folga até o reset\",\n      (critical ? \"🔴\" : \"⚠️\") + \" Ritmo atual: \" +\n        (state.values[\"sensor.codex_ritmo_do_limite\"] || \"?\") + \"%/dia. Uso projetado no reset: \" +\n        (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%. Reset: \" +\n        (state.values[\"sensor.codex_proximo_reset\"] || \"?\") + \".\",\n      critical ? \"critical\" : \"forecast_warning\",\n    );\n  } else if (event.state === \"aguenta\" && [\"atenção\", \"não aguenta\"].includes(previous)) {\n    alert = build(\"Codex — autonomia recuperada\", \"✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"recovery\");\n  }\n} else if (entity === \"sensor.codex_limite_usado\") {\n  const used = num(event.state); const old = num(previous, -1);\n  const warning = num(state.values[\"input_number.codex_alerta_aviso_percentual\"], 70);\n  const critical = num(state.values[\"input_number.codex_alerta_critico_percentual\"], 90);\n  if (used >= critical && old < critical) alert = build(\"Codex — limite crítico\", \"🚨 Uso chegou a \" + used + \"%. Restam \" + (state.values[\"sensor.codex_limite_disponivel\"] || \"?\") + \"% até o reset.\", \"critical\");\n  else if (used >= warning && old < warning) alert = build(\"Codex — limite em atenção\", \"⚠️ Uso chegou a \" + used + \"%. Folga projetada no reset: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"usage_warning\");\n} else if (entity === \"sensor.codex_eficiencia_de_cache\") {\n  const value = num(event.state); const old = num(previous, 101); const minimum = num(state.values[\"input_number.codex_alerta_cache_minimo\"], 60);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — eficiência de cache baixa\", \"⚠️ A eficiência caiu para \" + value + \"%. Limite configurado: \" + minimum + \"%.\", \"cache_low\");\n} else if (entity === \"sensor.codex_creditos_extras\") {\n  const value = num(event.state); const old = num(previous, -1); const minimum = num(state.values[\"input_number.codex_alerta_saldo_creditos\"], 10);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — créditos extras baixos\", \"⚠️ O saldo caiu para \" + value + \" créditos.\", \"credits_low\");\n}\n\nif (!alert && state.pending?.deliveryAck?.id) {\n  const now = Date.now();\n  if (now - Number(state.pending.lastAttemptAt || 0) >= 60 * 1000) {\n    state.pending.lastAttemptAt = now;\n    alert = state.pending;\n  }\n}\n\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: alert ? \"red\" : \"green\", shape: alert ? \"ring\" : \"dot\", text: alert ? \"alerta: \" + alert.kind : \"monitorando\" });\nreturn alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n",
         "outputs": 4,
         "timeout": 0,
         "noerr": 0,
@@ -9892,7 +9839,9 @@
         "x": 920,
         "y": 100,
         "wires": [
-            []
+            [
+                "codex_alert_ack"
+            ]
         ]
     },
     {
@@ -9986,8 +9935,255 @@
         "x": 930,
         "y": 280,
         "wires": [
-            []
+            [
+                "codex_alert_ack"
+            ]
         ]
+    },
+    {
+        "id": "storage_notify_persistent",
+        "type": "api-call-service",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Fallback persistente no HA",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":payload.title,\"message\":payload.message,\"notification_id\":\"raspberry_storage_health\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1480,
+        "y": 370,
+        "wires": [
+            [
+                "storage_notification_ack"
+            ]
+        ]
+    },
+    {
+        "id": "storage_notification_ack",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Confirmar entrega e iniciar cooldown",
+        "func": "const ack = msg.notificationAck;\nif (!ack || !Number.isFinite(Number(ack.at)) || !Array.isArray(ack.targets)) return null;\nfor (const target of ack.targets) {\n    if (!target || typeof target.key !== \"string\") continue;\n    if (typeof target.field === \"string\") {\n        const value = flow.get(target.key, \"persistent\") ?? {};\n        value[target.field] = Number(ack.at);\n        if (value.pendingAlert?.notificationAck?.id === ack.id) value.pendingAlert = null;\n        flow.set(target.key, value, \"persistent\");\n    } else {\n        flow.set(target.key, Number(ack.at), \"persistent\");\n    }\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1770,
+        "y": 310,
+        "wires": []
+    },
+    {
+        "id": "storage_notification_catch",
+        "type": "catch",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Capturar falha de notificacao",
+        "scope": [
+            "storage_notify",
+            "storage_notify_secondary",
+            "storage_notify_persistent"
+        ],
+        "uncaught": false,
+        "x": 1480,
+        "y": 430,
+        "wires": [
+            [
+                "storage_notification_failure"
+            ]
+        ]
+    },
+    {
+        "id": "storage_notification_failure",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Registrar falha sem cooldown",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"storage_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1760,
+        "y": 430,
+        "wires": []
+    },
+    {
+        "id": "storage_manual_start",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Iniciar execução manual",
+        "func": "const LOCK = \"storage_manual_running\";\nif (flow.get(LOCK, \"memoryOnly\") === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"execução manual já ativa\" });\n    return [null, null, null, { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true }];\n}\nflow.set(LOCK, true, \"memoryOnly\");\nmsg.storageManualRun = true;\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"running\" });\nconst status = { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true };\nreturn [msg, { ...msg }, { ...msg }, status];",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 370,
+        "wires": [
+            [
+                "storage_exec_maintenance"
+            ],
+            [
+                "storage_request_host_maintenance"
+            ],
+            [
+                "storage_read_ha"
+            ],
+            [
+                "storage_manual_status_mqtt"
+            ]
+        ]
+    },
+    {
+        "id": "storage_manual_status_mqtt",
+        "type": "mqtt out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Publicar execução manual",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1190,
+        "y": 390,
+        "wires": []
+    },
+    {
+        "id": "storage_manual_complete",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Finalizar execução manual",
+        "func": "if (msg.storageManualRun !== true) return null;\nflow.set(\"storage_manual_running\", false, \"memoryOnly\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"idle\" });\nreturn { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1250,
+        "y": 590,
+        "wires": [
+            [
+                "storage_manual_status_mqtt"
+            ]
+        ]
+    },
+    {
+        "id": "alarm_arrival_notification_ack_v1",
+        "type": "function",
+        "z": "1f468eaeef0733dd",
+        "name": "Confirmar entrega da solicitacao",
+        "func": "const candidate = msg.alarmConfirmationCandidate;\nif (!candidate || typeof candidate.deliveryId !== \"string\" || !Number.isFinite(Number(candidate.createdAt)) || !Number.isFinite(Number(candidate.expiresAt))) return null;\nconst PENDING_KEY = \"alarm_arrival_pending_confirmation\";\nconst LAST_REQUEST_KEY = \"alarm_arrival_last_confirmation_at\";\nconst INFLIGHT_KEY = \"alarm_arrival_confirmation_inflight\";\nconst existing = flow.get(PENDING_KEY);\nif (!existing || existing.deliveryId === candidate.deliveryId || Number(existing.expiresAt || 0) <= Date.now()) {\n    flow.set(PENDING_KEY, candidate);\n    flow.set(LAST_REQUEST_KEY, Number(candidate.createdAt));\n}\nconst inflight = flow.get(INFLIGHT_KEY);\nif (inflight?.deliveryId === candidate.deliveryId) flow.set(INFLIGHT_KEY, null);\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1900,
+        "y": 150,
+        "wires": []
+    },
+    {
+        "id": "alarm_arrival_notification_failure_v1",
+        "type": "function",
+        "z": "1f468eaeef0733dd",
+        "name": "Registrar falha sem armar cooldown",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"alarm_arrival_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1510,
+        "y": 320,
+        "wires": [
+            [
+                "694a63ad7980fa81"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_ack",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Confirmar entrega e iniciar cooldown",
+        "func": "const ack = msg.alert?.deliveryAck;\nif (!ack || typeof ack.kind !== \"string\" || !Number.isFinite(Number(ack.at))) return null;\nconst KEY = \"codex_alertas_state_v1\";\nconst state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nstate.sent = state.sent || {};\nstate.sent[ack.kind] = Number(ack.at);\nif (state.pending?.deliveryAck?.id === ack.id) state.pending = null;\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1370,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "codex_alert_catch",
+        "type": "catch",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Capturar falha de entrega",
+        "scope": [
+            "codex_alert_push",
+            "codex_alert_persistent"
+        ],
+        "uncaught": false,
+        "x": 930,
+        "y": 340,
+        "wires": [
+            [
+                "codex_alert_failure"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_failure",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Manter alerta pendente",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"codex_alert_delivery_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"pendente para nova tentativa\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1260,
+        "y": 340,
+        "wires": []
     },
     {
         "id": "internet_history_retained",

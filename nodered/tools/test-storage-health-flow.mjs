@@ -45,6 +45,7 @@ function configuredFlow() {
 
 const NOW = Date.parse("2026-08-13T12:00:00Z");
 const health = compile("storage_evaluate");
+const acknowledge = compile("storage_notification_ack");
 const manualStart = compile("storage_manual_start");
 const manualComplete = compile("storage_manual_complete");
 const metric = (used, free = 20) => ({
@@ -58,6 +59,7 @@ const metric = (used, free = 20) => ({
 const evaluate = (flow, used, now = NOW, free = 20) => health(
   { payload: metric(used, free), testNow: now }, flow, runtimeNode(), {}, {},
 );
+const accept = (flow, alert) => acknowledge(alert, flow, runtimeNode(), {}, {});
 
 assert.equal(node("storage_health_tick").repeat, "900");
 assert.equal(node("storage_manual_health").type, "server-state-changed");
@@ -79,6 +81,15 @@ for (const [id, role, action] of [
   assert.match(node(id).data, new RegExp(`\"role\":\"${role}\"`));
   assert.match(node(id).data, new RegExp(`\"action\":\"${action}\"`));
 }
+assert.equal(node("storage_notify_persistent").action, "persistent_notification.create");
+assert.deepEqual(node("storage_notify").wires, [["storage_notification_ack"]]);
+assert.deepEqual(node("storage_notify_secondary").wires, [["storage_notification_ack"]]);
+assert.deepEqual(node("storage_notify_persistent").wires, [["storage_notification_ack"]]);
+assert.deepEqual(node("storage_notification_catch").scope.sort(), [
+  "storage_notify",
+  "storage_notify_persistent",
+  "storage_notify_secondary",
+].sort());
 assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.sock"));
 
 {
@@ -120,6 +131,9 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   let result = evaluate(flow, 70);
   assert.equal(flow.get("storage_health_state_v1").severity, "warning");
   assert.match(result[1].payload.message, /70\.0%/);
+  assert.equal(flow.get("storage_health_state_v1").lastNotificationAt, 0, "cooldown must wait for HA acceptance");
+  accept(flow, result[1]);
+  assert.equal(flow.get("storage_health_state_v1").lastNotificationAt, NOW);
   result = evaluate(flow, 68, NOW + 15 * 60 * 1000);
   assert.equal(flow.get("storage_health_state_v1").severity, "warning", "warning must remain inside hysteresis band");
   assert.equal(result[1], null, "no duplicate alert inside cooldown");
@@ -130,7 +144,8 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
 
 {
   const flow = configuredFlow();
-  evaluate(flow, 80);
+  const high = evaluate(flow, 80);
+  accept(flow, high[1]);
   assert.equal(flow.get("storage_health_state_v1").severity, "high");
   const critical = evaluate(flow, 99.9, NOW + 15 * 60 * 1000, 0.05);
   assert.equal(flow.get("storage_health_state_v1").severity, "critical");
@@ -140,8 +155,11 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
 {
   const flow = configuredFlow();
   evaluate(flow, 71);
+  const retry = evaluate(flow, 71, NOW + 15 * 60 * 1000)[1];
+  assert.ok(retry, "an unacknowledged delivery must remain retryable");
+  accept(flow, retry);
   assert.equal(evaluate(flow, 71, NOW + 11 * 60 * 60 * 1000)[1], null);
-  assert.ok(evaluate(flow, 71, NOW + 12 * 60 * 60 * 1000)[1], "cooldown reminder should fire after 12h");
+  assert.ok(evaluate(flow, 71, NOW + 12 * 60 * 60 * 1000 + 15 * 60 * 1000)[1], "cooldown reminder should fire 12h after accepted delivery");
 }
 
 {
@@ -157,6 +175,7 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 64 }]);
   const thresholdAlert = evaluate(flow, 71);
   assert.match(thresholdAlert[1].payload.message, /warning/);
+  accept(flow, thresholdAlert[1]);
   const nextCheck = evaluate(flow, 71, NOW + 15 * 60 * 1000);
   assert.equal(nextCheck[1], null, "trend included in a threshold alert must not alert again on the next check");
 }
@@ -179,6 +198,8 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   const result = health({ payload: { used_percent: "unknown", free_gb: -1 }, testNow: NOW }, flow, runtimeNode(), {}, {});
   assert.equal(result[0], null);
   assert.match(result[1].payload.message, /metricas validas/);
+  assert.equal(flow.get("storage_health_state_v1").lastErrorNotificationAt, 0);
+  accept(flow, result[1]);
   assert.equal(health({ payload: {}, testNow: NOW + 60_000 }, flow, runtimeNode(), {}, {})[1], null, "invalid metric alert must respect cooldown");
 }
 
@@ -196,6 +217,8 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   assert.equal(complete({ payload: { code: 0 } }, flow, runtimeNode(), {}, {}), null);
   const failed = complete({ payload: { code: 7 } }, flow, runtimeNode(), {}, {});
   assert.match(failed.payload.message, /codigo 7/);
+  assert.equal(flow.get("storage_maintenance_last_error_notification"), undefined);
+  accept(flow, failed);
   assert.equal(complete({ payload: { code: 7 } }, flow, runtimeNode(), {}, {}), null, "maintenance errors must respect cooldown");
 }
 

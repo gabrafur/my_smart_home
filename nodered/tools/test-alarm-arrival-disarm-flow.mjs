@@ -54,6 +54,8 @@ const isArmed = "a305a1379c919215";
 const cooldown = "88bf3513a44e58e6";
 const primaryNotification = "3b95712a74512929";
 const secondaryNotification = "370622ddaaf3fcab";
+const notificationAck = "alarm_arrival_notification_ack_v1";
+const notificationFailure = "alarm_arrival_notification_failure_v1";
 const confirmationEvent = "9d0d42f03aa9013d";
 const validateConfirmation = "815c14ef3c054b25";
 const disarmOut = "dcd87a69ec3c6008";
@@ -96,6 +98,11 @@ assert.equal(
 assert.deepEqual(node(cooldown).wires, [
   [primaryNotification, secondaryNotification],
 ]);
+assert.deepEqual(node(primaryNotification).wires, [[notificationAck]]);
+assert.deepEqual(node(secondaryNotification).wires, [[notificationAck]]);
+assert.equal(node(primaryNotification).queue, "all");
+assert.equal(node(secondaryNotification).queue, "all");
+assert.deepEqual(node("7a19b058661ba5f8").wires, [[notificationFailure]]);
 assert.deepEqual(node(validateConfirmation).wires[0], [disarmOut]);
 
 const valid = runFunction(validateArrival, {
@@ -127,6 +134,21 @@ const first = runFunction(
 assert.equal(first.result.alarm_disarm_automatic, undefined);
 assert.match(first.result.confirm_action, /^ALARME_DESARMAR_/);
 assert.match(first.result.cancel_action, /^ALARME_MANTER_ARMADO_/);
+assert.equal(first.flowValues.alarm_arrival_last_confirmation_at, undefined, "cooldown must wait for HA acceptance");
+assert.equal(first.flowValues.alarm_arrival_pending_confirmation, undefined, "pending action must wait for HA acceptance");
+assert.equal(
+  first.flowValues.alarm_arrival_confirmation_inflight.deliveryId,
+  first.result.alarmConfirmationCandidate.deliveryId,
+);
+
+const duplicate = runFunction(
+  cooldown,
+  { arrival_source: "vehicle_primary", arrival_stage: "approach" },
+  first.flowValues,
+);
+assert.equal(duplicate.result, null);
+
+runFunction(notificationAck, first.result, first.flowValues);
 assert.ok(first.flowValues.alarm_arrival_last_confirmation_at >= now);
 assert.equal(
   first.flowValues.alarm_arrival_pending_confirmation.confirmAction,
@@ -136,13 +158,7 @@ assert.ok(
   first.flowValues.alarm_arrival_pending_confirmation.expiresAt >=
     now + 5 * 60 * 1000 - 100,
 );
-
-const duplicate = runFunction(
-  cooldown,
-  { arrival_source: "vehicle_primary", arrival_stage: "approach" },
-  first.flowValues,
-);
-assert.equal(duplicate.result, null);
+assert.equal(first.flowValues.alarm_arrival_confirmation_inflight, null);
 
 const unrelated = runFunction(
   validateConfirmation,
