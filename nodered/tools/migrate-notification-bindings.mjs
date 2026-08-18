@@ -21,6 +21,13 @@ function publicBinding(id, { role, action, data, name }) {
     data: `{"role":"${role}","action":"${action}","data":${data}}`,
     domain: "public_bindings",
     service: "call",
+    ...(
+      ["notify_2", "notify_3"].includes(action) &&
+      !data.includes("request_location_update") &&
+      !data.includes("clear_notification")
+        ? { queue: "all" }
+        : {}
+    ),
   });
   return node;
 }
@@ -82,19 +89,19 @@ publicBinding("storage_notify", {
   name: "Avisar resident_primary",
   data: "{\"title\":payload.title,\"message\":payload.message}",
 });
-Object.assign(required("storage_notify"), { x: 1460, y: 290 });
+Object.assign(required("storage_notify"), { x: 1480, y: 250 });
 upsertClone("storage_notify", "storage_notify_secondary", {
   name: "Avisar resident_secondary",
   data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.title,\"message\":payload.message}}",
-  x: 1460,
-  y: 350,
+  x: 1480,
+  y: 310,
 });
 for (const sourceId of ["storage_evaluate", "storage_maintenance_complete"]) {
   addWire(sourceId, sourceId === "storage_evaluate" ? 1 : 0, "storage_notify_secondary");
 }
 const storageGroup = required("storage_group_alerts");
 appendUnique(storageGroup.nodes, "storage_notify_secondary");
-Object.assign(storageGroup, { x: 1314, y: 249, w: 314, h: 142 });
+Object.assign(storageGroup, { x: 1314, y: 209, w: 594, h: 262 });
 
 publicBinding("564fdc36031eaef8", {
   role: "mobile_primary",
@@ -133,6 +140,7 @@ upsertClone("2818bf202b397612", "light_notify_on_secondary", {
   name: "Avisar resident_secondary: refletor ligado",
   data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE\" : \"Casa inteligente\",\"message\":payload.test_mode=true ? \"[TESTE] O refletor da garagem foi ligado.\" : \"O refletor da garagem foi ligado.\"}}",
   y: 240,
+  queue: "all",
 });
 
 publicBinding("04007cc1732f60c9", {
@@ -145,6 +153,7 @@ upsertClone("04007cc1732f60c9", "light_notify_unavailable_secondary", {
   name: "Avisar resident_secondary: refletor indisponível",
   data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE — erro no refletor\" : \"Casa inteligente — erro no refletor\",\"message\":payload.message}}",
   y: 320,
+  queue: "all",
 });
 
 for (const sourceId of ["354c9839bfca592f", "d2cc7a5873776be0"]) {

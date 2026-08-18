@@ -133,6 +133,32 @@ test("resolves a service through an entity binding in the same role", () => {
   assert.deepEqual(validateBindings(document), []);
 });
 
+test("requires modern mobile notification entities", () => {
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      mobile_primary: {
+        services: {
+          legacy: { target_service: "notify.mobile_app_example" },
+          missing_target: { target_service: "notify.send_message" },
+        },
+      },
+    },
+  };
+  const rules = validateBindings(document).map((item) => item.rule);
+  assert.ok(rules.includes("legacy-mobile-notify-service"));
+  assert.ok(rules.includes("notify-target-entity"));
+
+  document.roles.mobile_primary.services = {
+    notify_3: {
+      target_service: "notify.send_message",
+      target_entity_id: "notify.example_mobile_primary",
+    },
+  };
+  assert.deepEqual(validateBindings(document), []);
+});
+
 test("rejects a service pointing to a missing public entity binding", () => {
   const document = {
     schema_version: 1,

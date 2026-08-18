@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.const import EVENT_STATE_CHANGED
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
@@ -32,6 +33,7 @@ SERVICE_SCHEMA = vol.Schema(
         vol.Optional("data", default={}): dict,
     }
 )
+STARTUP_SERVICE_WAIT_SECONDS = 30
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -56,7 +58,10 @@ def _state_value(mode: str, state: str) -> str:
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     settings = config.get(DOMAIN, {})
-    document = _load(Path(settings.get("path", DEFAULT_PATH)))
+    document = await hass.async_add_executor_job(
+        _load,
+        Path(settings.get("path", DEFAULT_PATH)),
+    )
     entities: dict[str, tuple[str, dict[str, Any]]] = {}
     services: dict[tuple[str, str], dict[str, Any]] = {}
 
@@ -98,10 +103,28 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
     hass.bus.async_listen(EVENT_STATE_CHANGED, state_changed)
 
+    async def wait_until_started() -> None:
+        if hass.is_running:
+            return
+        started = asyncio.Event()
+        remove_listener = hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STARTED,
+            lambda _event: started.set(),
+        )
+        if hass.is_running:
+            started.set()
+        try:
+            await asyncio.wait_for(started.wait(), timeout=STARTUP_SERVICE_WAIT_SECONDS)
+        except TimeoutError:
+            pass
+        finally:
+            remove_listener()
+
     async def call_binding(call: ServiceCall) -> None:
         binding = services.get((call.data["role"], call.data["action"]))
         if binding is None:
             raise HomeAssistantError("Public binding action is unavailable")
+        await wait_until_started()
         domain, service = binding["target_service"].split(".", 1)
         data = dict(binding.get("data", {}))
         data.update(call.data.get("data", {}))

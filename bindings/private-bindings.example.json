@@ -29,14 +29,20 @@
       },
       "services": {
         "notify": { "target_service": "notify.example_voice_assistant" },
-        "notify_3": { "target_service": "notify.example_mobile_primary" }
+        "notify_3": {
+          "target_service": "notify.send_message",
+          "target_entity_id": "notify.example_mobile_primary"
+        }
       }
     },
     "mobile_secondary": {
       "enabled": false,
       "entities": {},
       "services": {
-        "notify_2": { "target_service": "notify.example_mobile_secondary" }
+        "notify_2": {
+          "target_service": "notify.send_message",
+          "target_entity_id": "notify.example_mobile_secondary"
+        }
       }
     },
     "vehicle_primary": {

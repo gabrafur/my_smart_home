@@ -145,6 +145,25 @@ for (const input of [
 ]) {
   assert.equal(run("566d191a914b687b", input).result, null);
 }
+for (const stored_snapshot of ["", "unknown", "unavailable", "none", "null"]) {
+  const { result, events } = run("566d191a914b687b", {
+    cpu_temperature: 69,
+    cooling_owner: "off",
+    stored_snapshot,
+  });
+  assert.equal(result, null);
+  assert.deepEqual(events.warnings, [], `${stored_snapshot || "empty"} is a transient HA state, not corrupt JSON`);
+}
+{
+  const { result, events } = run("566d191a914b687b", {
+    cpu_temperature: 69,
+    cooling_owner: "off",
+    stored_snapshot: "{malformed",
+  });
+  assert.equal(result, null);
+  assert.equal(events.warnings.length, 1, "real malformed snapshots must remain observable");
+  assert.match(events.warnings[0], /Snapshot pendente inválido/);
+}
 {
   const pending = { state: "cool", temperature: 23, fan_mode: "auto" };
   const flow = memoryFlow();
