@@ -51,6 +51,22 @@ test("passes a safe tracked tree", () => {
   assert.match(result.stdout, /nenhum segredo/);
 });
 
+test("allows exact detector definitions without allowing a private key fixture", () => {
+  const item = fixture();
+  write(item.root, "scripts/public-memory-check.mjs", 'const patterns = [["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g]];\n');
+  write(item.root, "scripts/local-ai/post_tool_routing.py", 'SECRET_BLOCK = r"-----BEGIN [^-\\n]*PRIVATE KEY-----[\\s\\S]*?-----END [^-\\n]*PRIVATE KEY-----",\n');
+  git(item.root, ["add", "scripts/public-memory-check.mjs", "scripts/local-ai/post_tool_routing.py"]);
+  assert.equal(item.scan(["--staged"]).status, 0);
+
+  const synthetic = ["-----BEGIN ", "TEST PRIVATE KEY-----"].join("");
+  write(item.root, "scripts/public-memory-check.mjs", `${synthetic}\n`);
+  git(item.root, ["add", "scripts/public-memory-check.mjs"]);
+  const result = item.scan(["--staged"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /rule=chave-privada file=scripts\/public-memory-check\.mjs/);
+  assert.equal(result.stdout.includes(synthetic), false);
+});
+
 test("detects a synthetic credential without printing any fragment", () => {
   const item = fixture();
   const value = ["ghp", "_", "A".repeat(32)].join("");

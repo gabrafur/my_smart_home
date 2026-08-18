@@ -37,6 +37,33 @@ class LocalAiTest(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o660)
             self.assertEqual(stat.S_IMODE(path.with_suffix(".json.lock").stat().st_mode), 0o660)
 
+    def test_shared_writer_does_not_chmod_already_private_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            recorder.started({
+                "id": "owner", "task": "inspect-files", "model": "model",
+                "status": "running", "started_at": "2026-08-17T12:00:00Z",
+            })
+            lock_path = path.with_suffix(".json.lock")
+            events_path = path.with_name("local-ai-events.jsonl")
+            original_chmod = TELEMETRY.os.chmod
+
+            def reject_cross_owner_chmod(target, mode):
+                if Path(target) in {lock_path, events_path}:
+                    raise PermissionError("simulated shared-file owner")
+                original_chmod(target, mode)
+
+            with patch.object(TELEMETRY.os, "chmod", side_effect=reject_cross_owner_chmod):
+                recorder.routing_decision({
+                    "id": "shared-writer", "timestamp": "2026-08-17T12:01:00Z",
+                    "task_type": "inspect-files", "decision": "DETERMINISTIC",
+                    "reason": "deterministic_tool_sufficient",
+                })
+
+            state = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(state["routing"]["latest_decisions"][-1]["id"], "shared-writer")
+
     def test_gpu_sampler_uses_persistent_strict_known_hosts(self):
         sampler = TELEMETRY.RemoteGpuSampler({
             "container": "homeassistant",
