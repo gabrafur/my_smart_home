@@ -203,6 +203,13 @@ Comportamentos esperados:
   alertar e online por 60 segundos para recuperar;
 - roteador reinicia: pings continuam na cadência normal.
 
+O payload MQTT retained de atributos também funciona como cópia de segurança
+da última queda confirmada, recuperação e duração. No startup, o monitor
+restaura esses campos históricos antes de publicar dados novos, evitando que a
+ausência do arquivo de contexto substitua timestamps conhecidos por valores
+nulos. Se nunca houve incidente confirmado, o Home Assistant mostra uma
+mensagem explícita de ausência de evento em vez de `Unknown`.
+
 Uma interrupção abrupta nos até 30 segundos entre gravações pode perder a
 última transição de contexto. Esse é o risco residual do cache em arquivo; não
 há banco externo. MQTT retained e os limiares reduzem falsos positivos no

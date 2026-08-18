@@ -164,14 +164,16 @@
         "nodes": [
             "storage_health_tick",
             "storage_manual_health",
+            "storage_manual_start",
             "storage_read_ha",
             "storage_evaluate",
-            "storage_mqtt_state"
+            "storage_mqtt_state",
+            "storage_manual_status_mqtt"
         ],
         "x": 34,
         "y": 249,
-        "w": 1192,
-        "h": 142
+        "w": 1352,
+        "h": 202
     },
     {
         "id": "storage_group_alerts",
@@ -207,14 +209,15 @@
             "storage_parse_maintenance",
             "storage_store_maintenance_stderr",
             "storage_maintenance_complete",
+            "storage_manual_complete",
             "storage_weekly_inspection",
             "storage_exec_inspection",
             "storage_parse_inspection",
             "storage_maintenance_mqtt"
         ],
         "x": 24,
-        "y": 429,
-        "w": 1212,
+        "y": 489,
+        "w": 1392,
         "h": 279.5
     },
     {
@@ -232,12 +235,13 @@
         },
         "nodes": [
             "internet_cycle",
-            "internet_discovery_tick"
+            "internet_discovery_tick",
+            "internet_history_retained"
         ],
-        "x": 34,
-        "y": 119,
-        "w": 312,
-        "h": 162
+        "x": 44,
+        "y": 79,
+        "w": 252,
+        "h": 302
     },
     {
         "id": "grp_internet_ping",
@@ -255,10 +259,10 @@
         "nodes": [
             "internet_ping"
         ],
-        "x": 354,
-        "y": 119,
-        "w": 312,
-        "h": 82
+        "x": 324,
+        "y": 79,
+        "w": 252,
+        "h": 162
     },
     {
         "id": "grp_internet_state",
@@ -274,12 +278,13 @@
             "color": "#a4a4a4"
         },
         "nodes": [
-            "internet_evaluate"
+            "internet_evaluate",
+            "internet_restore_history"
         ],
-        "x": 694,
-        "y": 111.5,
-        "w": 392,
-        "h": 97
+        "x": 604,
+        "y": 79,
+        "w": 282,
+        "h": 162
     },
     {
         "id": "grp_internet_notify",
@@ -298,10 +303,10 @@
             "internet_notify_down",
             "internet_notify_recovery"
         ],
-        "x": 1124,
-        "y": 99,
-        "w": 292,
-        "h": 162
+        "x": 914,
+        "y": 59,
+        "w": 342,
+        "h": 222
     },
     {
         "id": "grp_internet_publish",
@@ -320,10 +325,10 @@
             "internet_discovery",
             "internet_mqtt_publish"
         ],
-        "x": 774,
-        "y": 359,
-        "w": 572,
-        "h": 82
+        "x": 604,
+        "y": 319,
+        "w": 652,
+        "h": 162
     },
     {
         "id": "grp_internet_tests",
@@ -341,10 +346,10 @@
         "nodes": [
             "internet_test_note"
         ],
-        "x": 274,
-        "y": 439,
-        "w": 432,
-        "h": 82
+        "x": 44,
+        "y": 519,
+        "w": 1212,
+        "h": 102
     },
     {
         "id": "grp_zigbee_triggers",
@@ -364,12 +369,13 @@
             "zigbee_broker_status",
             "zigbee_tick",
             "zigbee_component_availability",
-            "zigbee_discovery_tick"
+            "zigbee_discovery_tick",
+            "zigbee_history_retained"
         ],
-        "x": 24,
-        "y": 99,
-        "w": 312,
-        "h": 442
+        "x": 44,
+        "y": 79,
+        "w": 292,
+        "h": 482
     },
     {
         "id": "grp_zigbee_detect",
@@ -388,10 +394,10 @@
             "zigbee_store_observation",
             "zigbee_component_evaluate"
         ],
-        "x": 374,
-        "y": 139,
-        "w": 332,
-        "h": 312
+        "x": 364,
+        "y": 79,
+        "w": 272,
+        "h": 482
     },
     {
         "id": "grp_zigbee_state",
@@ -407,12 +413,13 @@
             "color": "#a4a4a4"
         },
         "nodes": [
-            "zigbee_network_evaluate"
+            "zigbee_network_evaluate",
+            "zigbee_restore_history"
         ],
-        "x": 754,
-        "y": 151.5,
-        "w": 272,
-        "h": 97
+        "x": 664,
+        "y": 79,
+        "w": 292,
+        "h": 202
     },
     {
         "id": "grp_zigbee_notify",
@@ -433,10 +440,10 @@
             "zigbee_component_notify_down",
             "zigbee_component_notify_recovery"
         ],
-        "x": 1084,
-        "y": 139,
-        "w": 292,
-        "h": 422
+        "x": 984,
+        "y": 59,
+        "w": 352,
+        "h": 502
     },
     {
         "id": "grp_zigbee_publish",
@@ -455,10 +462,10 @@
             "zigbee_discovery",
             "zigbee_mqtt_publish"
         ],
-        "x": 774,
-        "y": 459,
-        "w": 272,
-        "h": 142
+        "x": 664,
+        "y": 359,
+        "w": 292,
+        "h": 202
     },
     {
         "id": "grp_zigbee_tests",
@@ -476,10 +483,10 @@
         "nodes": [
             "zigbee_test_note"
         ],
-        "x": 274,
-        "y": 579,
-        "w": 432,
-        "h": 82
+        "x": 44,
+        "y": 599,
+        "w": 1292,
+        "h": 102
     },
     {
         "id": "c8f8e5b532232a4f",
@@ -5159,7 +5166,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_config",
         "name": "Publicar discovery",
-        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    }\n];\nreturn [definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true }))];",
+        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    },\n    {\n        topic: \"homeassistant/binary_sensor/raspberry_storage_manual_running/config\",\n        payload: { name: \"Storage Health Manual Running\", unique_id: \"raspberry_storage_manual_running\", object_id: \"raspberry_storage_manual_running\", default_entity_id: \"binary_sensor.raspberry_pi_storage_manual_running\", state_topic: \"smart_home/raspberry/storage/manual_running\", payload_on: \"ON\", payload_off: \"OFF\", device_class: \"running\", icon: \"mdi:harddisk\", device }\n    }\n];\nreturn [[\n    ...definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true })),\n    { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true }\n]];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -5255,13 +5262,11 @@
         "ignoreCurrentStateUnknown": true,
         "ignoreCurrentStateUnavailable": true,
         "outputProperties": [],
-        "x": 190,
-        "y": 350,
+        "x": 170,
+        "y": 370,
         "wires": [
             [
-                "storage_exec_maintenance",
-                "storage_request_host_maintenance",
-                "storage_read_ha"
+                "storage_manual_start"
             ]
         ]
     },
@@ -5453,7 +5458,7 @@
         "oldrc": false,
         "name": "Housekeeping Node-RED allowlisted",
         "x": 460,
-        "y": 500,
+        "y": 560,
         "wires": [
             [
                 "storage_parse_maintenance"
@@ -5462,7 +5467,8 @@
                 "storage_store_maintenance_stderr"
             ],
             [
-                "storage_maintenance_complete"
+                "storage_maintenance_complete",
+                "storage_manual_complete"
             ]
         ]
     },
@@ -5645,6 +5651,76 @@
         ]
     },
     {
+        "id": "storage_manual_start",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Iniciar execução manual",
+        "func": "const LOCK = \"storage_manual_running\";\nif (flow.get(LOCK, \"memoryOnly\") === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"execução manual já ativa\" });\n    return [null, null, null, { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true }];\n}\nflow.set(LOCK, true, \"memoryOnly\");\nmsg.storageManualRun = true;\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"running\" });\nconst status = { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true };\nreturn [msg, { ...msg }, { ...msg }, status];",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 370,
+        "wires": [
+            [
+                "storage_exec_maintenance"
+            ],
+            [
+                "storage_request_host_maintenance"
+            ],
+            [
+                "storage_read_ha"
+            ],
+            [
+                "storage_manual_status_mqtt"
+            ]
+        ]
+    },
+    {
+        "id": "storage_manual_status_mqtt",
+        "type": "mqtt out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Publicar execução manual",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1190,
+        "y": 390,
+        "wires": []
+    },
+    {
+        "id": "storage_manual_complete",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Finalizar execução manual",
+        "func": "if (msg.storageManualRun !== true) return null;\nflow.set(\"storage_manual_running\", false, \"memoryOnly\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"idle\" });\nreturn { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1250,
+        "y": 590,
+        "wires": [
+            [
+                "storage_manual_status_mqtt"
+            ]
+        ]
+    },
+    {
         "id": "internet_cycle",
         "type": "inject",
         "z": "monitoramento_internet_tab",
@@ -5666,7 +5742,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 180,
+        "x": 170,
         "y": 160,
         "wires": [
             [
@@ -5696,8 +5772,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 200,
-        "y": 240,
+        "x": 170,
+        "y": 320,
         "wires": [
             [
                 "internet_discovery"
@@ -5717,7 +5793,7 @@
         "initialize": "",
         "finalize": "flow.set('internet_ping_cycle_running', false, 'memoryOnly');",
         "libs": [],
-        "x": 510,
+        "x": 450,
         "y": 160,
         "wires": [
             [
@@ -5731,14 +5807,14 @@
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_state",
         "name": "Máquina de estados (3 falhas / 2 sucessos)",
-        "func": "const KEY = \"internet_monitor_state_v1\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const results = Array.isArray(msg.payload?.results) ? msg.payload.results : [];\n  const targetsTotal = 3;\n  const targetsOk = results.filter((result) => result && result.ok === true).length;\n  const reachable = targetsOk >= 2;\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    consecutive_failures: 0,\n    consecutive_successes: 0,\n    failure_started_at: null,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n    last_valid_ping: null,\n  };\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (reachable) {\n    state.last_valid_ping = nowIso;\n    state.consecutive_failures = 0;\n    state.failure_started_at = null;\n    if (state.incident_open) {\n      state.consecutive_successes = Number(state.consecutive_successes || 0) + 1;\n      state.phase = \"recovering\";\n      if (state.consecutive_successes >= 2) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        const durationSeconds = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.consecutive_successes = 0;\n        state.last_recovery_at = nowIso;\n        state.last_outage_duration_s = durationSeconds;\n        const durationText = durationSeconds === null\n          ? \"\"\n          : ` após ${Math.max(1, Math.round(durationSeconds / 60))} minuto(s) de indisponibilidade`;\n        recoveryNotification = {\n          notification: {\n            id: \"internet_connection_recovered\",\n            dismiss_id: \"internet_connection_failure\",\n            title: \"Internet restabelecida\",\n            message: `A conexão com a internet voltou às ${new Date(now).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}${durationText}.`,\n          },\n        };\n      }\n    } else {\n      // Establishing a healthy baseline is not a recovery event.\n      state.phase = \"online\";\n      state.consecutive_successes = 1;\n    }\n  } else {\n    state.consecutive_successes = 0;\n    state.consecutive_failures = Number(state.consecutive_failures || 0) + 1;\n    if (!state.failure_started_at) state.failure_started_at = nowIso;\n    if (state.incident_open) {\n      state.phase = \"offline\";\n    } else if (state.consecutive_failures >= 3) {\n      state.phase = \"offline\";\n      state.incident_open = true;\n      state.outage_started_at = state.failure_started_at;\n      state.last_outage_at = state.failure_started_at;\n      downNotification = {\n        notification: {\n          id: \"internet_connection_failure\",\n          title: \"Internet indisponível\",\n          message: `A conexão com a internet foi perdida às ${new Date(state.failure_started_at).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}. Menos de 2 dos 3 destinos externos responderam em 3 ciclos consecutivos.`,\n        },\n      };\n    } else {\n      state.phase = \"checking\";\n    }\n  }\n\n  state.last_checked_at = msg.payload?.checked_at || nowIso;\n  state.targets_ok = targetsOk;\n  state.targets_total = targetsTotal;\n  state.required_responses = 2;\n  flow.set(KEY, state, \"persistent\");\n\n  const attributes = {\n    state: state.phase,\n    checked_at: state.last_checked_at,\n    targets_ok: targetsOk,\n    targets_total: targetsTotal,\n    required_responses: 2,\n    consecutive_failures: state.consecutive_failures,\n    consecutive_successes: state.consecutive_successes,\n    last_valid_ping: state.last_valid_ping,\n    last_outage: state.last_outage_at,\n    last_recovery: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n    targets: results.map((result) => ({ name: result.name, address: result.address, ok: result.ok })),\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/internet/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/internet/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/internet/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${targetsOk}/3`,\n  });\n  return [downNotification, recoveryNotification, publications];",
+        "func": "const KEY = \"internet_monitor_state_v1\";\n  const HISTORY_KEY = \"internet_monitor_history_v1\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const results = Array.isArray(msg.payload?.results) ? msg.payload.results : [];\n  const targetsTotal = 3;\n  const targetsOk = results.filter((result) => result && result.ok === true).length;\n  const reachable = targetsOk >= 2;\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    consecutive_failures: 0,\n    consecutive_successes: 0,\n    failure_started_at: null,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n    last_valid_ping: null,\n  };\n  const retainedHistory = flow.get(HISTORY_KEY, \"persistent\") || {};\n  if (!state.last_outage_at && retainedHistory.last_outage_at) state.last_outage_at = retainedHistory.last_outage_at;\n  if (!state.last_recovery_at && retainedHistory.last_recovery_at) state.last_recovery_at = retainedHistory.last_recovery_at;\n  if (state.last_outage_duration_s == null && retainedHistory.last_outage_duration_s != null) {\n    state.last_outage_duration_s = retainedHistory.last_outage_duration_s;\n  }\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (reachable) {\n    state.last_valid_ping = nowIso;\n    state.consecutive_failures = 0;\n    state.failure_started_at = null;\n    if (state.incident_open) {\n      state.consecutive_successes = Number(state.consecutive_successes || 0) + 1;\n      state.phase = \"recovering\";\n      if (state.consecutive_successes >= 2) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        const durationSeconds = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.consecutive_successes = 0;\n        state.last_recovery_at = nowIso;\n        state.last_outage_duration_s = durationSeconds;\n        const durationText = durationSeconds === null\n          ? \"\"\n          : ` após ${Math.max(1, Math.round(durationSeconds / 60))} minuto(s) de indisponibilidade`;\n        recoveryNotification = {\n          notification: {\n            id: \"internet_connection_recovered\",\n            dismiss_id: \"internet_connection_failure\",\n            title: \"Internet restabelecida\",\n            message: `A conexão com a internet voltou às ${new Date(now).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}${durationText}.`,\n          },\n        };\n      }\n    } else {\n      // Establishing a healthy baseline is not a recovery event.\n      state.phase = \"online\";\n      state.consecutive_successes = 1;\n    }\n  } else {\n    state.consecutive_successes = 0;\n    state.consecutive_failures = Number(state.consecutive_failures || 0) + 1;\n    if (!state.failure_started_at) state.failure_started_at = nowIso;\n    if (state.incident_open) {\n      state.phase = \"offline\";\n    } else if (state.consecutive_failures >= 3) {\n      state.phase = \"offline\";\n      state.incident_open = true;\n      state.outage_started_at = state.failure_started_at;\n      state.last_outage_at = state.failure_started_at;\n      downNotification = {\n        notification: {\n          id: \"internet_connection_failure\",\n          title: \"Internet indisponível\",\n          message: `A conexão com a internet foi perdida às ${new Date(state.failure_started_at).toLocaleTimeString(\"pt-BR\", { hour: \"2-digit\", minute: \"2-digit\" })}. Menos de 2 dos 3 destinos externos responderam em 3 ciclos consecutivos.`,\n        },\n      };\n    } else {\n      state.phase = \"checking\";\n    }\n  }\n\n  state.last_checked_at = msg.payload?.checked_at || nowIso;\n  state.targets_ok = targetsOk;\n  state.targets_total = targetsTotal;\n  state.required_responses = 2;\n  flow.set(KEY, state, \"persistent\");\n  flow.set(HISTORY_KEY, {\n    last_outage_at: state.last_outage_at,\n    last_recovery_at: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n  }, \"persistent\");\n\n  const attributes = {\n    state: state.phase,\n    checked_at: state.last_checked_at,\n    targets_ok: targetsOk,\n    targets_total: targetsTotal,\n    required_responses: 2,\n    consecutive_failures: state.consecutive_failures,\n    consecutive_successes: state.consecutive_successes,\n    last_valid_ping: state.last_valid_ping,\n    last_outage: state.last_outage_at || \"Nenhuma queda confirmada\",\n    last_recovery: state.last_recovery_at || \"Nenhuma recuperação registrada\",\n    last_outage_duration_s: state.last_outage_duration_s,\n    targets: results.map((result) => ({ name: result.name, address: result.address, ok: result.ok })),\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/internet/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/internet/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/internet/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${targetsOk}/3`,\n  });\n  return [downNotification, recoveryNotification, publications];",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 890,
+        "x": 745,
         "y": 160,
         "wires": [
             [
@@ -5759,7 +5835,7 @@
         "g": "grp_internet_notify",
         "name": "Notificar queda (uma vez)",
         "env": [],
-        "x": 1270,
+        "x": 1085,
         "y": 140,
         "wires": []
     },
@@ -5770,7 +5846,7 @@
         "g": "grp_internet_notify",
         "name": "Notificar retorno confirmado",
         "env": [],
-        "x": 1270,
+        "x": 1085,
         "y": 220,
         "wires": []
     },
@@ -5787,7 +5863,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 890,
+        "x": 760,
         "y": 400,
         "wires": [
             [
@@ -5810,7 +5886,7 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1210,
+        "x": 1080,
         "y": 400,
         "wires": []
     },
@@ -5821,8 +5897,8 @@
         "g": "grp_internet_tests",
         "name": "Testes automatizados fora do caminho de produção",
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre 1 host falhando, DNS irrelevante (IPs), 3 falhas, dedupe, oscilação, 2 sucessos, duração, segunda queda e restart. O ciclo real nunca aceita mensagens de teste e mantém no máximo três processos ping simultâneos.",
-        "x": 490,
-        "y": 480,
+        "x": 420,
+        "y": 570,
         "wires": []
     },
     {
@@ -5959,8 +6035,8 @@
         "initialize": "flow.set('zigbee_bridge_observation', { state: 'unknown', changed_at: Date.now() }, 'memoryOnly');",
         "finalize": "",
         "libs": [],
-        "x": 540,
-        "y": 180,
+        "x": 500,
+        "y": 170,
         "wires": [
             [
                 "zigbee_network_evaluate"
@@ -5980,8 +6056,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 540,
-        "y": 410,
+        "x": 500,
+        "y": 400,
         "wires": [
             [
                 "zigbee_component_notify_down"
@@ -5997,15 +6073,15 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_state",
         "name": "30 s queda / 60 s retorno",
-        "func": "const KEY = \"zigbee_network_monitor_state_v1\";\n  const OBSERVATION_KEY = \"zigbee_bridge_observation\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const observation = flow.get(OBSERVATION_KEY, \"memoryOnly\") || { state: \"unknown\", changed_at: now };\n  const rawState = observation.state;\n  const stableForMs = Math.max(0, now - Number(observation.changed_at || now));\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n  };\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (rawState === \"online\") {\n    if (state.incident_open) {\n      state.phase = \"recovering\";\n      if (stableForMs >= 60_000) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        state.last_outage_duration_s = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.last_recovery_at = nowIso;\n        recoveryNotification = {\n          notification: {\n            id: \"zigbee_network_recovered\",\n            dismiss_id: \"zigbee_network_failure\",\n            title: \"Rede Zigbee recuperada\",\n            message: `A rede Zigbee voltou a funcionar e permaneceu conectada por 1 minuto. Recuperada em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n          },\n        };\n      }\n    } else {\n      // Retained online at startup establishes baseline without false recovery.\n      state.phase = \"online\";\n    }\n  } else if (state.incident_open) {\n    state.phase = \"offline\";\n  } else if (stableForMs >= 30_000) {\n    state.phase = \"offline\";\n    state.incident_open = true;\n    state.outage_started_at = new Date(Number(observation.changed_at || now)).toISOString();\n    state.last_outage_at = state.outage_started_at;\n    downNotification = {\n      notification: {\n        id: \"zigbee_network_failure\",\n        title: \"Falha na rede Zigbee\",\n        message: `A rede Zigbee está indisponível. O Zigbee2MQTT perdeu a conexão com a antena/coordenador ou parou de funcionar. Detectado em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n      },\n    };\n  } else {\n    state.phase = \"checking\";\n  }\n\n  state.raw_state = rawState;\n  state.last_checked_at = nowIso;\n  state.stable_for_s = Math.floor(stableForMs / 1000);\n  flow.set(KEY, state, \"persistent\");\n  const attributes = {\n    state: state.phase,\n    raw_state: rawState,\n    stable_for_s: state.stable_for_s,\n    checked_at: nowIso,\n    last_outage: state.last_outage_at,\n    last_recovery: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n    failure_confirmation_s: 30,\n    recovery_confirmation_s: 60,\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${rawState}`,\n  });\n  return [downNotification, recoveryNotification, publications];",
+        "func": "const KEY = \"zigbee_network_monitor_state_v1\";\n  const HISTORY_KEY = \"zigbee_network_monitor_history_v1\";\n  const OBSERVATION_KEY = \"zigbee_bridge_observation\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const observation = flow.get(OBSERVATION_KEY, \"memoryOnly\") || { state: \"unknown\", changed_at: now };\n  const rawState = observation.state;\n  const stableForMs = Math.max(0, now - Number(observation.changed_at || now));\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n  };\n  const retainedHistory = flow.get(HISTORY_KEY, \"persistent\") || {};\n  if (!state.last_outage_at && retainedHistory.last_outage_at) state.last_outage_at = retainedHistory.last_outage_at;\n  if (!state.last_recovery_at && retainedHistory.last_recovery_at) state.last_recovery_at = retainedHistory.last_recovery_at;\n  if (state.last_outage_duration_s == null && retainedHistory.last_outage_duration_s != null) {\n    state.last_outage_duration_s = retainedHistory.last_outage_duration_s;\n  }\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (rawState === \"online\") {\n    if (state.incident_open) {\n      state.phase = \"recovering\";\n      if (stableForMs >= 60_000) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        state.last_outage_duration_s = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.last_recovery_at = nowIso;\n        recoveryNotification = {\n          notification: {\n            id: \"zigbee_network_recovered\",\n            dismiss_id: \"zigbee_network_failure\",\n            title: \"Rede Zigbee recuperada\",\n            message: `A rede Zigbee voltou a funcionar e permaneceu conectada por 1 minuto. Recuperada em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n          },\n        };\n      }\n    } else {\n      // Retained online at startup establishes baseline without false recovery.\n      state.phase = \"online\";\n    }\n  } else if (state.incident_open) {\n    state.phase = \"offline\";\n  } else if (stableForMs >= 30_000) {\n    state.phase = \"offline\";\n    state.incident_open = true;\n    state.outage_started_at = new Date(Number(observation.changed_at || now)).toISOString();\n    state.last_outage_at = state.outage_started_at;\n    downNotification = {\n      notification: {\n        id: \"zigbee_network_failure\",\n        title: \"Falha na rede Zigbee\",\n        message: `A rede Zigbee está indisponível. O Zigbee2MQTT perdeu a conexão com a antena/coordenador ou parou de funcionar. Detectado em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n      },\n    };\n  } else {\n    state.phase = \"checking\";\n  }\n\n  state.raw_state = rawState;\n  state.last_checked_at = nowIso;\n  state.stable_for_s = Math.floor(stableForMs / 1000);\n  flow.set(KEY, state, \"persistent\");\n  flow.set(HISTORY_KEY, {\n    last_outage_at: state.last_outage_at,\n    last_recovery_at: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n  }, \"persistent\");\n  const attributes = {\n    state: state.phase,\n    raw_state: rawState,\n    stable_for_s: state.stable_for_s,\n    checked_at: nowIso,\n    last_outage: state.last_outage_at || \"Nenhuma queda confirmada\",\n    last_recovery: state.last_recovery_at || \"Nenhuma recuperação registrada\",\n    last_outage_duration_s: state.last_outage_duration_s,\n    failure_confirmation_s: 30,\n    recovery_confirmation_s: 60,\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${rawState}`,\n  });\n  return [downNotification, recoveryNotification, publications];",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 890,
-        "y": 200,
+        "x": 810,
+        "y": 170,
         "wires": [
             [
                 "zigbee_network_notify_down"
@@ -6025,8 +6101,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar queda da rede",
         "env": [],
-        "x": 1230,
-        "y": 180,
+        "x": 1160,
+        "y": 140,
         "wires": []
     },
     {
@@ -6036,8 +6112,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar retorno da rede",
         "env": [],
-        "x": 1230,
-        "y": 260,
+        "x": 1160,
+        "y": 220,
         "wires": []
     },
     {
@@ -6047,8 +6123,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente offline",
         "env": [],
-        "x": 1230,
-        "y": 440,
+        "x": 1160,
+        "y": 400,
         "wires": []
     },
     {
@@ -6058,8 +6134,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente online",
         "env": [],
-        "x": 1230,
-        "y": 520,
+        "x": 1160,
+        "y": 480,
         "wires": []
     },
     {
@@ -6075,8 +6151,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 890,
-        "y": 500,
+        "x": 790,
+        "y": 440,
         "wires": [
             [
                 "zigbee_mqtt_publish"
@@ -6098,8 +6174,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 910,
-        "y": 560,
+        "x": 810,
+        "y": 500,
         "wires": []
     },
     {
@@ -6109,8 +6185,8 @@
         "g": "grp_zigbee_tests",
         "name": "Testes automatizados fora do caminho de produção",
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre startup, falha momentânea, 30 s offline, dedupe, 60 s de recuperação, restart persistente, componente offline/online e nova queda. Teste MQTT ponta a ponta deve usar um componente fictício retained, conforme a documentação.",
-        "x": 490,
-        "y": 620,
+        "x": 450,
+        "y": 650,
         "wires": []
     },
     {
@@ -9912,5 +9988,83 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "internet_history_retained",
+        "type": "mqtt in",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_triggers",
+        "name": "Recuperar histórico retained",
+        "topic": "nodered/infrastructure/internet/attributes",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 170,
+        "y": 260,
+        "wires": [
+            [
+                "internet_restore_history"
+            ]
+        ]
+    },
+    {
+        "id": "internet_restore_history",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_state",
+        "name": "Preservar histórico retained",
+        "func": "const HISTORY_KEY = \"internet_monitor_history_v1\";\n  let retained = msg.payload;\n  if (Buffer.isBuffer(retained)) retained = retained.toString(\"utf8\");\n  if (typeof retained === \"string\") {\n    try { retained = JSON.parse(retained); } catch { return null; }\n  }\n  if (!retained || typeof retained !== \"object\") return null;\n  const current = flow.get(HISTORY_KEY, \"persistent\") || {};\n  const isTimestamp = (value) => typeof value === \"string\" && Number.isFinite(Date.parse(value));\n  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;\n  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;\n  const durationValue = retained.last_outage_duration_s;\n  const duration = Number(durationValue);\n  if (durationValue != null && durationValue !== \"\" && Number.isFinite(duration) && duration >= 0) {\n    current.last_outage_duration_s = duration;\n  }\n  flow.set(HISTORY_KEY, current, \"persistent\");\n  return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 745,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "zigbee_history_retained",
+        "type": "mqtt in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Recuperar histórico retained",
+        "topic": "nodered/infrastructure/zigbee/attributes",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 450,
+        "wires": [
+            [
+                "zigbee_restore_history"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_restore_history",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_state",
+        "name": "Preservar histórico retained",
+        "func": "const HISTORY_KEY = \"zigbee_network_monitor_history_v1\";\n  let retained = msg.payload;\n  if (Buffer.isBuffer(retained)) retained = retained.toString(\"utf8\");\n  if (typeof retained === \"string\") {\n    try { retained = JSON.parse(retained); } catch { return null; }\n  }\n  if (!retained || typeof retained !== \"object\") return null;\n  const current = flow.get(HISTORY_KEY, \"persistent\") || {};\n  const isTimestamp = (value) => typeof value === \"string\" && Number.isFinite(Date.parse(value));\n  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;\n  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;\n  const durationValue = retained.last_outage_duration_s;\n  const duration = Number(durationValue);\n  if (durationValue != null && durationValue !== \"\" && Number.isFinite(duration) && duration >= 0) {\n    current.last_outage_duration_s = duration;\n  }\n  flow.set(HISTORY_KEY, current, \"persistent\");\n  return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 230,
+        "wires": []
     }
 ]

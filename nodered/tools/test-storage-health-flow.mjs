@@ -45,6 +45,8 @@ function configuredFlow() {
 
 const NOW = Date.parse("2026-08-13T12:00:00Z");
 const health = compile("storage_evaluate");
+const manualStart = compile("storage_manual_start");
+const manualComplete = compile("storage_manual_complete");
 const metric = (used, free = 20) => ({
   used_percent: used,
   used_gb: 30,
@@ -60,7 +62,9 @@ const evaluate = (flow, used, now = NOW, free = 20) => health(
 assert.equal(node("storage_health_tick").repeat, "900");
 assert.equal(node("storage_manual_health").type, "server-state-changed");
 assert.deepEqual(node("storage_manual_health").entities.entity, ["input_button.storage_health_manual_run"]);
-assert.deepEqual(node("storage_manual_health").wires, [["storage_exec_maintenance", "storage_request_host_maintenance", "storage_read_ha"]]);
+assert.deepEqual(node("storage_manual_health").wires, [["storage_manual_start"]]);
+assert.deepEqual(node("storage_manual_start").wires, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_read_ha"], ["storage_manual_status_mqtt"]]);
+assert.deepEqual(node("storage_exec_maintenance").wires[2], ["storage_maintenance_complete", "storage_manual_complete"]);
 assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(node("storage_request_host_maintenance").command, "/opt/request-host-storage-maintenance.sh");
 assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maintenance.sh --dry-run --deep");
@@ -76,6 +80,20 @@ for (const [id, role, action] of [
   assert.match(node(id).data, new RegExp(`\"action\":\"${action}\"`));
 }
 assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.sock"));
+
+{
+  const flow = memoryFlow();
+  const started = manualStart({ payload: "pressed" }, flow, runtimeNode(), {}, {});
+  assert.equal(flow.get("storage_manual_running"), true);
+  assert.equal(started[0].storageManualRun, true);
+  assert.equal(started[3].payload, "ON");
+  const duplicate = manualStart({ payload: "pressed-again" }, flow, runtimeNode(), {}, {});
+  assert.equal(duplicate[0], null);
+  assert.equal(duplicate[3].payload, "ON");
+  const finished = manualComplete({ storageManualRun: true, payload: { code: 0 } }, flow, runtimeNode(), {}, {});
+  assert.equal(flow.get("storage_manual_running"), false);
+  assert.equal(finished.payload, "OFF");
+}
 
 {
   const flow = configuredFlow();
