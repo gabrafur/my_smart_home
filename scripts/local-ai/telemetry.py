@@ -13,6 +13,7 @@ import fcntl
 import json
 import os
 import re
+import stat
 import subprocess
 import threading
 import time
@@ -39,6 +40,12 @@ def utc_now() -> str:
 
 def new_event_id() -> str:
     return str(uuid.uuid4())
+
+
+def _ensure_private_mode(path: Path) -> None:
+    """Avoid chmod on correctly secured files owned by the other writer."""
+    if stat.S_IMODE(path.stat().st_mode) != PRIVATE_METADATA_MODE:
+        os.chmod(path, PRIVATE_METADATA_MODE)
 
 
 def private_telemetry_path(script_root: Path, configured_path: str | None = None) -> Path | None:
@@ -310,7 +317,7 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     lock_path = path.with_suffix(path.suffix + ".lock")
     with open(lock_path, "a+", encoding="utf-8") as lock:
-        os.chmod(lock_path, PRIVATE_METADATA_MODE)
+        _ensure_private_mode(lock_path)
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         state = _safe_json(path, _initial_state())
         _migrate_complete_v1_history(state)
@@ -321,7 +328,7 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
         finally:
             temporary = path.with_suffix(path.suffix + ".tmp")
             temporary.write_text(json.dumps(state, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-            os.chmod(temporary, PRIVATE_METADATA_MODE)
+            _ensure_private_mode(temporary)
             temporary.replace(path)
             fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
@@ -331,7 +338,7 @@ def _append_event(path: Path, event: dict[str, Any]) -> None:
     events_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     line = json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n"
     with open(events_path, "a", encoding="utf-8") as destination:
-        os.chmod(events_path, PRIVATE_METADATA_MODE)
+        _ensure_private_mode(events_path)
         fcntl.flock(destination.fileno(), fcntl.LOCK_EX)
         destination.write(line)
         destination.flush()
@@ -342,7 +349,7 @@ def _append_event(path: Path, event: dict[str, Any]) -> None:
             lines = events_path.read_text(encoding="utf-8").splitlines()[-400:]
             temporary = events_path.with_suffix(".jsonl.tmp")
             temporary.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            os.chmod(temporary, PRIVATE_METADATA_MODE)
+            _ensure_private_mode(temporary)
             temporary.replace(events_path)
     except OSError:
         pass

@@ -191,6 +191,23 @@ while IFS=$'\t' read -r rule regex; do
     [[ -z "$hit" ]] && continue
     file="${hit%%:*}"; rest="${hit#*:}"
     line="${rest%%:*}"; text="${rest#*:}"
+    # As definicoes exatas do proprio detector nao sao chaves privadas. A
+    # excecao e deliberadamente estreita para que qualquer outro conteudo nos
+    # mesmos arquivos continue sendo auditado normalmente.
+    if [[ "$rule" == "chave-privada" ]]; then
+      if [[ "$file" == "scripts/security-scan.sh" \
+        && "$text" == $'chave-privada\t-----BEGIN [A-Z ]*PRIVATE KEY-----' ]]; then
+        continue
+      fi
+      if [[ "$file" == "scripts/public-memory-check.mjs" \
+        && "$text" == *'["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/g],'* ]]; then
+        continue
+      fi
+      if [[ "$file" == "scripts/local-ai/post_tool_routing.py" \
+        && "$text" == *'r"-----BEGIN [^-\n]*PRIVATE KEY-----[\s\S]*?-----END [^-\n]*PRIVATE KEY-----",'* ]]; then
+        continue
+      fi
+    fi
     # Constante de protocolo da biblioteca vendorizada LocalTuya; nao e um
     # endereco da instalacao. Mantenha a excecao restrita a regra e arquivo.
     if [[ "$rule" == "ipv4-privado" \

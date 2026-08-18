@@ -211,6 +211,7 @@ política explícita de chaves e retenção.
 node scripts/docker-auto-update.mjs daily --dry-run
 node scripts/docker-auto-update.mjs daily
 scripts/install-storage-maintenance-cron.sh
+scripts/install-git-backup-nodered-bridge.sh
 ```
 
 O script descobre o próprio diretório, portanto não depende mais de
@@ -222,6 +223,11 @@ O instalador de cron acrescenta um bloco idempotente que processa, a cada
 minuto, as solicitações do botão **Executar Storage Health**. O job usa o alvo
 de prioridade reduzida e não concede o socket Docker ao Home Assistant ou ao
 Node-RED.
+
+O backup Git diário é agendado na aba `backup_git` do Node-RED. Uma ponte
+allowlisted no host processa a solicitação sem expor checkout ou credenciais ao
+container; veja [Backup Git no Node-RED](GIT_BACKUP_NODERED.md). Essa aba não
+altera os sensores nem os cards da revisão documental semanal.
 
 Para rollback, restaure o Compose e os volumes compatíveis. Reverter apenas o
 digest pode não funcionar depois que uma aplicação migra seu banco.

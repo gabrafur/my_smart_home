@@ -207,6 +207,7 @@ and retention policy.
 node scripts/docker-auto-update.mjs daily --dry-run
 node scripts/docker-auto-update.mjs daily
 scripts/install-storage-maintenance-cron.sh
+scripts/install-git-backup-nodered-bridge.sh
 ```
 
 The cron installer adds an idempotent managed block that processes requests

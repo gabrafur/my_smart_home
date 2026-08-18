@@ -1,5 +1,187 @@
 [
     {
+        "id": "git_backup_tab",
+        "type": "tab",
+        "label": "backup_git",
+        "disabled": false,
+        "info": "Agenda o backup Git no Node-RED e usa uma ponte de solicitação para o host, sem expor repositório, chave SSH ou socket Docker ao container.",
+        "env": []
+    },
+    {
+        "id": "git_backup_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "Backup Git agendado e execução isolada no host",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a"
+        },
+        "nodes": [
+            "git_backup_architecture",
+            "git_backup_schedule",
+            "git_backup_manual",
+            "git_backup_request",
+            "git_backup_result",
+            "git_backup_error",
+            "git_backup_complete"
+        ],
+        "x": 34,
+        "y": 39,
+        "w": 1272,
+        "h": 262
+    },
+    {
+        "id": "git_backup_architecture",
+        "type": "comment",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "00:30 America/Sao_Paulo preserva o instante do cron antigo (03:30 UTC). A ponte no host mantém Git e SSH fora do Node-RED.",
+        "info": "A revisão documental semanal usa entidades e status próprios e não é alterada por esta aba.",
+        "x": 610,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "git_backup_schedule",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Diariamente 00:30 (03:30 UTC)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "scheduled",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "30 00 * * *",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "scheduled",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 160,
+        "wires": [
+            [
+                "git_backup_request"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_manual",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Executar backup agora",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "manual",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "manual",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 240,
+        "wires": [
+            [
+                "git_backup_request"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_request",
+        "type": "exec",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "command": "/opt/request-host-git-backup.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "240",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar backup ao host",
+        "x": 520,
+        "y": 200,
+        "wires": [
+            [
+                "git_backup_result"
+            ],
+            [
+                "git_backup_error"
+            ],
+            [
+                "git_backup_complete"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_result",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Registrar resultado",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return null;\n}\nflow.set(\"git_backup_last_result_v1\", { status, finished_at: finishedAt }, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 150,
+        "wires": []
+    },
+    {
+        "id": "git_backup_error",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Registrar erro seguro",
+        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"solicitação falhou\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 210,
+        "wires": []
+    },
+    {
+        "id": "git_backup_complete",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Registrar código de saída",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code === 0) {\n    node.status({ fill: \"green\", shape: \"dot\", text: \"worker finalizado\" });\n} else {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"worker código \" + String(code) });\n}\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 270,
+        "wires": []
+    },
+    {
         "id": "29d64664bf8cbde8",
         "type": "tab",
         "label": "garagem",

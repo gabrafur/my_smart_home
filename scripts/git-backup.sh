@@ -40,34 +40,12 @@ cd "$REPO_DIR"
 
   git add -A
 
-  suspicious_files="$(
-    git diff --cached --name-only |
-      grep -Ei '(^|/)(secrets?\\.ya?ml|.*cred.*|.*auth.*|.*cookie.*|.*password.*|.*token.*|.*\\.db|.*\\.tar|flows_cred\\.json|coordinator_backup\\.json|configuration\\.yaml|portainer)(/|$)' ||
-      true
-  )"
-
-  allowed_suspicious="$(
-    printf '%s\n' "$suspicious_files" |
-      grep -Ev '^(homeassistant/configuration\.yaml|scripts/rotate-mqtt-password\.mjs)$' ||
-      true
-  )"
-
-  if [ -n "$allowed_suspicious" ]; then
-    log "backup aborted: suspicious files staged:"
-    printf '%s\n' "$allowed_suspicious" >> "$LOG_FILE"
-    git reset --quiet
-    exit 1
-  fi
-
-  secret_hits="$(
-    git grep --cached -n -I -E 'home10|BEGIN OPENSSH|PRIVATE KEY|refresh[_-]?token[:=][[:space:]]*[A-Za-z0-9_.-]+|access[_-]?token[:=][[:space:]]*[A-Za-z0-9_.-]+|client[_-]?secret[:=][[:space:]]*[A-Za-z0-9_.-]+|api[_-]?key[:=][[:space:]]*[A-Za-z0-9_.-]+' |
-      grep -Ev '^(scripts/git-backup\.sh|scripts/security-scan\.sh|docs/AUDITORIA_SEGURANCA_REPO_PUBLICO\.md):' ||
-      true
-  )"
-
-  if [ -n "$secret_hits" ]; then
-    log "backup aborted: possible secret content staged"
-    printf '%s\n' "$secret_hits" >> "$LOG_FILE"
+  # O scanner canonico valida caminhos proibidos e conteudo sem confundir
+  # scripts/testes legitimos que tenham palavras como "credentials" no nome.
+  # Sua saida e somente metadado do achado; nenhum valor sensivel vai ao log.
+  if ! security_scan="$(bash scripts/security-scan.sh --staged 2>&1)"; then
+    log "backup aborted: staged security scan failed"
+    printf '%s\n' "$security_scan" >> "$LOG_FILE"
     git reset --quiet
     exit 1
   fi

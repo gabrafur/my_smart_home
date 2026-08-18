@@ -20,6 +20,7 @@
 .local-secrets/
 .local-state/
 homeassistant/.storage-maintenance-trigger/
+homeassistant/.git-backup-trigger/
 .kia-uvo-updater-state/
 restore/bundles/
 restore/private-bundles/
