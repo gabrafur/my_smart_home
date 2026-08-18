@@ -157,6 +157,14 @@ class DashboardNumberFormattingTest(unittest.TestCase):
         self.assertIn("preserva 2 GB de cache recente", dashboard)
         self.assertIn("entity_id: input_button.storage_health_manual_run", dashboard)
 
+    def test_manual_action_buttons_expose_running_state(self):
+        dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("entity: binary_sensor.raspberry_pi_storage_manual_running", dashboard)
+        self.assertIn("entity: binary_sensor.revisao_documental_em_execucao", dashboard)
+        self.assertGreaterEqual(dashboard.count("show_state: true"), 2)
+        self.assertGreaterEqual(dashboard.count("state_color: true"), 2)
+
     def test_repository_rules_make_number_formatting_permanent(self):
         rules = AGENT_RULES.read_text(encoding="utf-8")
 

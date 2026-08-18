@@ -46,6 +46,7 @@ function pingResult(okCount, now) {
 }
 
 const internet = getFunction("internet_evaluate");
+const restoreInternetHistory = getFunction("internet_restore_history");
 const internetFlow = context();
 assert.match(flows.find((item) => item.id === "internet_evaluate").func, /persistent/);
 assert.match(flows.find((item) => item.id === "zigbee_network_evaluate").func, /persistent/);
@@ -95,6 +96,25 @@ result = run(internet, restartedInternetFlow, pingResult(3, now += 30_000));
 assert.equal(result[1], null);
 result = run(internet, restartedInternetFlow, pingResult(3, now += 30_000));
 assert.ok(result[1], "incidente persistido deve recuperar sem nova queda");
+
+// Retained attributes are a second copy of historical fields. They must repair
+// a missing flow context before the next health publication replaces them.
+const recoveredInternetFlow = context();
+const retainedInternet = {
+  last_outage: "2026-08-13T20:00:51.226Z",
+  last_recovery: "2026-08-13T20:08:19.281Z",
+  last_outage_duration_s: 448,
+};
+run(restoreInternetHistory, recoveredInternetFlow, { payload: JSON.stringify(retainedInternet) });
+result = run(internet, recoveredInternetFlow, pingResult(3, now += 30_000));
+const recoveredInternetAttributes = JSON.parse(result[2].find((message) => message.topic.endsWith("/attributes")).payload);
+assert.equal(recoveredInternetAttributes.last_outage, retainedInternet.last_outage);
+assert.equal(recoveredInternetAttributes.last_recovery, retainedInternet.last_recovery);
+assert.equal(recoveredInternetAttributes.last_outage_duration_s, 448);
+run(restoreInternetHistory, recoveredInternetFlow, {
+  payload: JSON.stringify({ last_outage: null, last_recovery: null, last_outage_duration_s: null }),
+});
+assert.equal(recoveredInternetFlow.get("internet_monitor_history_v1").last_outage_duration_s, 448);
 
 // The production ping node uses only IP literals and a volatile no-overlap lock.
 const pingNode = flows.find((item) => item.id === "internet_ping");
@@ -157,6 +177,7 @@ await testPingLock({ throwFirst: true });
 
 const observeZigbee = getFunction("zigbee_store_observation");
 const zigbee = getFunction("zigbee_network_evaluate");
+const restoreZigbeeHistory = getFunction("zigbee_restore_history");
 const zigbeeComponent = getFunction("zigbee_component_evaluate");
 const zigbeeFlow = context();
 now = Date.UTC(2026, 7, 13, 13, 0, 0);
@@ -168,6 +189,20 @@ result = run(zigbee, zigbeeFlow, { monitor_now: now + 1_000 });
 assert.equal(result[0], null);
 assert.equal(result[1], null);
 assert.equal(zigbeeFlow.get("zigbee_network_monitor_state_v1").phase, "online");
+
+const recoveredZigbeeFlow = context();
+run(restoreZigbeeHistory, recoveredZigbeeFlow, {
+  payload: JSON.stringify({
+    last_outage: "2026-08-12T10:00:00.000Z",
+    last_recovery: "2026-08-12T10:02:00.000Z",
+    last_outage_duration_s: 120,
+  }),
+});
+recoveredZigbeeFlow.set("zigbee_bridge_observation", { state: "online", changed_at: now }, "memoryOnly");
+result = run(zigbee, recoveredZigbeeFlow, { monitor_now: now });
+const recoveredZigbeeAttributes = JSON.parse(result[2].find((message) => message.topic.endsWith("/attributes")).payload);
+assert.equal(recoveredZigbeeAttributes.last_outage, "2026-08-12T10:00:00.000Z");
+assert.equal(recoveredZigbeeAttributes.last_recovery, "2026-08-12T10:02:00.000Z");
 
 // A transient failure under 30 seconds is ignored.
 run(observeZigbee, zigbeeFlow, { payload: "offline", monitor_now: now + 10_000 });

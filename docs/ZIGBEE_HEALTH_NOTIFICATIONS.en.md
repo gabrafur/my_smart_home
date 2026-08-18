@@ -117,6 +117,12 @@ An online startup does not announce recovery. An offline startup is detected
 normally. A restart during a persisted incident does not duplicate failure and
 can later confirm recovery. Retained discovery/state rebuilds entities after an
 HA restart. Zigbee2MQTT startup transients must cross the 30-second threshold.
+The retained MQTT attribute payload also backs up the last confirmed outage,
+recovery, and duration. On startup the monitor restores those historical fields
+before publishing fresh health data, so a missing flow-context file cannot
+silently replace known timestamps with null values. When no incident has ever
+been confirmed, Home Assistant displays an explicit no-event message instead
+of `Unknown`.
 The residual risk is an abrupt crash within the 30-second context flush window,
 which can lose the latest transition and, in the narrow notification-before-
 flush case, repeat an alert.

@@ -230,6 +230,7 @@ function internetPingCycle() {
 
 function internetStateMachine() {
   const KEY = "internet_monitor_state_v1";
+  const HISTORY_KEY = "internet_monitor_history_v1";
   const now = Number(msg.monitor_now || Date.now());
   const nowIso = new Date(now).toISOString();
   const results = Array.isArray(msg.payload?.results) ? msg.payload.results : [];
@@ -248,6 +249,12 @@ function internetStateMachine() {
     last_outage_duration_s: null,
     last_valid_ping: null,
   };
+  const retainedHistory = flow.get(HISTORY_KEY, "persistent") || {};
+  if (!state.last_outage_at && retainedHistory.last_outage_at) state.last_outage_at = retainedHistory.last_outage_at;
+  if (!state.last_recovery_at && retainedHistory.last_recovery_at) state.last_recovery_at = retainedHistory.last_recovery_at;
+  if (state.last_outage_duration_s == null && retainedHistory.last_outage_duration_s != null) {
+    state.last_outage_duration_s = retainedHistory.last_outage_duration_s;
+  }
   let downNotification = null;
   let recoveryNotification = null;
 
@@ -313,6 +320,11 @@ function internetStateMachine() {
   state.targets_total = targetsTotal;
   state.required_responses = 2;
   flow.set(KEY, state, "persistent");
+  flow.set(HISTORY_KEY, {
+    last_outage_at: state.last_outage_at,
+    last_recovery_at: state.last_recovery_at,
+    last_outage_duration_s: state.last_outage_duration_s,
+  }, "persistent");
 
   const attributes = {
     state: state.phase,
@@ -323,8 +335,8 @@ function internetStateMachine() {
     consecutive_failures: state.consecutive_failures,
     consecutive_successes: state.consecutive_successes,
     last_valid_ping: state.last_valid_ping,
-    last_outage: state.last_outage_at,
-    last_recovery: state.last_recovery_at,
+    last_outage: state.last_outage_at || "Nenhuma queda confirmada",
+    last_recovery: state.last_recovery_at || "Nenhuma recuperação registrada",
     last_outage_duration_s: state.last_outage_duration_s,
     targets: results.map((result) => ({ name: result.name, address: result.address, ok: result.ok })),
   };
@@ -339,6 +351,27 @@ function internetStateMachine() {
     text: `${state.phase}: ${targetsOk}/3`,
   });
   return [downNotification, recoveryNotification, publications];
+}
+
+function restoreInternetHistory() {
+  const HISTORY_KEY = "internet_monitor_history_v1";
+  let retained = msg.payload;
+  if (Buffer.isBuffer(retained)) retained = retained.toString("utf8");
+  if (typeof retained === "string") {
+    try { retained = JSON.parse(retained); } catch { return null; }
+  }
+  if (!retained || typeof retained !== "object") return null;
+  const current = flow.get(HISTORY_KEY, "persistent") || {};
+  const isTimestamp = (value) => typeof value === "string" && Number.isFinite(Date.parse(value));
+  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;
+  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;
+  const durationValue = retained.last_outage_duration_s;
+  const duration = Number(durationValue);
+  if (durationValue != null && durationValue !== "" && Number.isFinite(duration) && duration >= 0) {
+    current.last_outage_duration_s = duration;
+  }
+  flow.set(HISTORY_KEY, current, "persistent");
+  return null;
 }
 
 function internetDiscovery() {
@@ -425,6 +458,7 @@ function zigbeeObservation() {
 
 function zigbeeStateMachine() {
   const KEY = "zigbee_network_monitor_state_v1";
+  const HISTORY_KEY = "zigbee_network_monitor_history_v1";
   const OBSERVATION_KEY = "zigbee_bridge_observation";
   const now = Number(msg.monitor_now || Date.now());
   const nowIso = new Date(now).toISOString();
@@ -439,6 +473,12 @@ function zigbeeStateMachine() {
     last_recovery_at: null,
     last_outage_duration_s: null,
   };
+  const retainedHistory = flow.get(HISTORY_KEY, "persistent") || {};
+  if (!state.last_outage_at && retainedHistory.last_outage_at) state.last_outage_at = retainedHistory.last_outage_at;
+  if (!state.last_recovery_at && retainedHistory.last_recovery_at) state.last_recovery_at = retainedHistory.last_recovery_at;
+  if (state.last_outage_duration_s == null && retainedHistory.last_outage_duration_s != null) {
+    state.last_outage_duration_s = retainedHistory.last_outage_duration_s;
+  }
   let downNotification = null;
   let recoveryNotification = null;
 
@@ -488,13 +528,18 @@ function zigbeeStateMachine() {
   state.last_checked_at = nowIso;
   state.stable_for_s = Math.floor(stableForMs / 1000);
   flow.set(KEY, state, "persistent");
+  flow.set(HISTORY_KEY, {
+    last_outage_at: state.last_outage_at,
+    last_recovery_at: state.last_recovery_at,
+    last_outage_duration_s: state.last_outage_duration_s,
+  }, "persistent");
   const attributes = {
     state: state.phase,
     raw_state: rawState,
     stable_for_s: state.stable_for_s,
     checked_at: nowIso,
-    last_outage: state.last_outage_at,
-    last_recovery: state.last_recovery_at,
+    last_outage: state.last_outage_at || "Nenhuma queda confirmada",
+    last_recovery: state.last_recovery_at || "Nenhuma recuperação registrada",
     last_outage_duration_s: state.last_outage_duration_s,
     failure_confirmation_s: 30,
     recovery_confirmation_s: 60,
@@ -510,6 +555,27 @@ function zigbeeStateMachine() {
     text: `${state.phase}: ${rawState}`,
   });
   return [downNotification, recoveryNotification, publications];
+}
+
+function restoreZigbeeHistory() {
+  const HISTORY_KEY = "zigbee_network_monitor_history_v1";
+  let retained = msg.payload;
+  if (Buffer.isBuffer(retained)) retained = retained.toString("utf8");
+  if (typeof retained === "string") {
+    try { retained = JSON.parse(retained); } catch { return null; }
+  }
+  if (!retained || typeof retained !== "object") return null;
+  const current = flow.get(HISTORY_KEY, "persistent") || {};
+  const isTimestamp = (value) => typeof value === "string" && Number.isFinite(Date.parse(value));
+  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;
+  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;
+  const durationValue = retained.last_outage_duration_s;
+  const duration = Number(durationValue);
+  if (durationValue != null && durationValue !== "" && Number.isFinite(duration) && duration >= 0) {
+    current.last_outage_duration_s = duration;
+  }
+  flow.set(HISTORY_KEY, current, "persistent");
+  return null;
 }
 
 function zigbeeComponentState() {
@@ -697,9 +763,9 @@ next.push(
 );
 
 const internetGroups = {
-  triggers: ["internet_cycle", "internet_discovery_tick"],
+  triggers: ["internet_cycle", "internet_discovery_tick", "internet_history_retained"],
   ping: ["internet_ping"],
-  state: ["internet_evaluate"],
+  state: ["internet_evaluate", "internet_restore_history"],
   notify: ["internet_notify_down", "internet_notify_recovery"],
   publish: ["internet_discovery", "internet_mqtt_publish"],
   tests: ["internet_test_note"],
@@ -714,11 +780,13 @@ next.push(
   group("grp_internet_tests", INTERNET_TAB, "6. Testes", internetGroups.tests, 44, 519, 1212, 102, "#8a8a8a"),
   inject({ id: "internet_cycle", z: INTERNET_TAB, g: "grp_internet_triggers", name: "A cada 30 s + startup", repeat: "30", once: true, onceDelay: 5, x: 170, y: 160, wires: [["internet_ping"]] }),
   inject({ id: "internet_discovery_tick", z: INTERNET_TAB, g: "grp_internet_triggers", name: "Publicar discovery no startup", once: true, onceDelay: 2, x: 170, y: 320, wires: [["internet_discovery"]] }),
+  mqttIn({ id: "internet_history_retained", z: INTERNET_TAB, g: "grp_internet_triggers", name: "Recuperar histórico retained", topic: "nodered/infrastructure/internet/attributes", x: 170, y: 260, wires: [["internet_restore_history"]] }),
   functionNode({
     id: "internet_ping", z: INTERNET_TAB, g: "grp_internet_ping", name: "Ping 1.1.1.1 + 8.8.8.8 + 9.9.9.9",
     fn: internetPingCycle, x: 450, y: 160, wires: [["internet_evaluate"]],
     finalize: "flow.set('internet_ping_cycle_running', false, 'memoryOnly');",
   }),
+  functionNode({ id: "internet_restore_history", z: INTERNET_TAB, g: "grp_internet_state", name: "Preservar histórico retained", fn: restoreInternetHistory, outputs: 0, x: 745, y: 220, wires: [] }),
   functionNode({
     id: "internet_evaluate", z: INTERNET_TAB, g: "grp_internet_state", name: "Máquina de estados (3 falhas / 2 sucessos)",
     fn: internetStateMachine, outputs: 3, x: 745, y: 160,
@@ -736,9 +804,9 @@ next.push(
 );
 
 const zigbeeGroups = {
-  triggers: ["zigbee_bridge_state", "zigbee_broker_status", "zigbee_tick", "zigbee_component_availability", "zigbee_discovery_tick"],
+  triggers: ["zigbee_bridge_state", "zigbee_broker_status", "zigbee_tick", "zigbee_component_availability", "zigbee_discovery_tick", "zigbee_history_retained"],
   detect: ["zigbee_store_observation", "zigbee_component_evaluate"],
-  state: ["zigbee_network_evaluate"],
+  state: ["zigbee_network_evaluate", "zigbee_restore_history"],
   notify: ["zigbee_network_notify_down", "zigbee_network_notify_recovery", "zigbee_component_notify_down", "zigbee_component_notify_recovery"],
   publish: ["zigbee_discovery", "zigbee_mqtt_publish"],
   tests: ["zigbee_test_note"],
@@ -758,12 +826,14 @@ next.push(
   },
   inject({ id: "zigbee_tick", z: ZIGBEE_TAB, g: "grp_zigbee_triggers", name: "Avaliar a cada 10 s", repeat: "10", once: true, onceDelay: 5, x: 180, y: 260, wires: [["zigbee_network_evaluate"]] }),
   mqttIn({ id: "zigbee_component_availability", z: ZIGBEE_TAB, g: "grp_zigbee_triggers", name: "zigbee2mqtt/.../availability", topic: "zigbee2mqtt/#", x: 190, y: 400, wires: [["zigbee_component_evaluate"]] }),
+  mqttIn({ id: "zigbee_history_retained", z: ZIGBEE_TAB, g: "grp_zigbee_triggers", name: "Recuperar histórico retained", topic: "nodered/infrastructure/zigbee/attributes", x: 190, y: 450, wires: [["zigbee_restore_history"]] }),
   inject({ id: "zigbee_discovery_tick", z: ZIGBEE_TAB, g: "grp_zigbee_triggers", name: "Publicar discovery no startup", once: true, onceDelay: 2, x: 190, y: 500, wires: [["zigbee_discovery"]] }),
   functionNode({
     id: "zigbee_store_observation", z: ZIGBEE_TAB, g: "grp_zigbee_detect", name: "Normalizar e guardar observação",
     fn: zigbeeObservation, x: 500, y: 170, wires: [["zigbee_network_evaluate"]],
     initialize: "flow.set('zigbee_bridge_observation', { state: 'unknown', changed_at: Date.now() }, 'memoryOnly');",
   }),
+  functionNode({ id: "zigbee_restore_history", z: ZIGBEE_TAB, g: "grp_zigbee_state", name: "Preservar histórico retained", fn: restoreZigbeeHistory, outputs: 0, x: 810, y: 230, wires: [] }),
   functionNode({
     id: "zigbee_component_evaluate", z: ZIGBEE_TAB, g: "grp_zigbee_detect", name: "Dedupe por componente",
     fn: zigbeeComponentState, outputs: 2, x: 500, y: 400,
@@ -787,5 +857,25 @@ next.push(
   ),
 );
 
-fs.writeFileSync(flowUrl, `${JSON.stringify(next, null, 4)}\n`);
+const replacementById = new Map(next.map((node) => [node.id, node]));
+const ordered = [];
+const installed = new Set();
+for (const node of flows) {
+  const replacement = replacementById.get(node.id);
+  if (replacement) {
+    ordered.push(replacement);
+    installed.add(node.id);
+  } else if (!oldIds.has(node.id) && node.z !== NOTIFY_SUBFLOW && node.z !== INTERNET_TAB && node.z !== ZIGBEE_TAB) {
+    ordered.push(node);
+    installed.add(node.id);
+  }
+}
+for (const node of next) {
+  if (!installed.has(node.id)) {
+    ordered.push(node);
+    installed.add(node.id);
+  }
+}
+
+fs.writeFileSync(flowUrl, `${JSON.stringify(ordered, null, 4)}\n`);
 console.log("Flows de monitoramento de infraestrutura instalados.");
