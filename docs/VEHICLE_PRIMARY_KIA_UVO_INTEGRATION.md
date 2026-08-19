@@ -9,7 +9,7 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
 [docs/ILUMINACAO_SEGURANCA_NODERED.md](ILUMINACAO_SEGURANCA_NODERED.md)
 (uso das entidades `vehicle_primary_*` no fluxo de chegada/seguranca).
 
-## Estado atual (2026-08-16)
+## Estado atual (2026-08-19)
 
 - Componente sincronizado com o upstream `kia_uvo` **3.10.1** e
   `hyundai_kia_connect_api` **4.26.5**. O diff oficial 3.10.0 -> 3.10.1
@@ -21,6 +21,13 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   `/ccs2/carstatus`, rejeicao de snapshot que nao avancou e interpretacao do
   campo `Date` como UTC. Os monkey patches locais que duplicavam essas funcoes
   foram removidos.
+- O app Android brasileiro 1.0.20 trocou o `ccsp-application-id` e deixou de
+  usar o `deviceId` fixo da biblioteca. Em 18/08/2026 o backend invalidou esse
+  identificador: todas as chamadas passaram a retornar `resCode 4002` e todas
+  as entidades ficaram indisponíveis. A compatibilidade local agora replica o
+  registro mínimo do app em `/spa/notifications/register`, aceita somente o
+  `deviceId` emitido pelo servidor, persiste-o no token e repete uma única vez
+  a chamada que recebeu 4002. Outros erros 400 não acionam registro nem retry.
 - Permanecem locais somente as extensoes necessarias nesta instalacao:
   viagens de hoje e ontem, estimativa conservadora de consumo, refresh do
   tripinfo por movimento do odometro, tolerancia ao `DTE.Unit` anomalo e o
@@ -54,6 +61,13 @@ minimo 250 m, descontando a precisao reportada. A coordenada fica somente no
 contexto persistente e nunca vai para logs. Movimento solicita atualizacao dos
 dados, mas **nao** autoriza sozinho qualquer acao fisica: iluminacao continua
 exigindo motor/contexto frescos.
+
+Antes das leituras autenticadas, o cliente usa o identificador de aplicação do
+app brasileiro atual. Se o backend responder especificamente `4002`, um lock
+serializa o registro de dispositivo para impedir duplicação por chamadas
+concorrentes. O retry reaplica o novo identificador tanto nos headers quanto no
+payload de comandos e o token atualizado é salvo pelo loop do Home Assistant.
+Esse recovery não acorda o carro e não amplia a frequência normal de polling.
 
 O refresh grava baseline dos timestamps de localizacao, motor e trava. Uma
 tentativa so vira sucesso quando pelo menos um deles avanca e o alvo de
