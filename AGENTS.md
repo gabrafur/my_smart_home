@@ -8,7 +8,7 @@ diretório global da máquina.
 
 ## Prompt processing and model routing
 
-Execute each user request directly. On the first user request of a conversation, include a concise suggested title and a recommendation for the cheapest suitable GPT-5.6 model and reasoning level. Do not require an initial confirmation or automatically rewrite the prompt.
+Execute each user request directly. Do not require an initial confirmation or automatically rewrite the prompt.
 
 ---
 
