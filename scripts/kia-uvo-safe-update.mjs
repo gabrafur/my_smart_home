@@ -22,6 +22,8 @@ const backupRoot = path.join(
 );
 const REQUIRED_MARKERS = [
   ["coordinator.py", "BR_WAKE_MIN_INTERVAL_S = 15 * 60"],
+  ["coordinator.py", "BR_CURRENT_APPLICATION_ID"],
+  ["coordinator.py", "_install_br_client_compatibility"],
   ["coordinator.py", "async_refresh_day_trip_info"],
   ["coordinator.py", "_async_update_fuel_efficiency"],
   ["coordinator.py", "REMOTE_LOCATE_MIN_INTERVAL_S = 60"],

@@ -371,5 +371,115 @@ class VehiclePrimaryConsumptionTest(unittest.IsolatedAsyncioTestCase):
         await main()
 
 
+class FakeResponse:
+    """Small requests-like response for BR device recovery tests."""
+
+    def __init__(self, status_code, payload):
+        self.status_code = status_code
+        self.payload = payload
+
+    def json(self):
+        return self.payload
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class FakeSession:
+    """Return deterministic API responses and retain request metadata."""
+
+    def __init__(self, responses):
+        self.responses = iter(responses)
+        self.requests = []
+
+    def request(self, method, url, **kwargs):
+        self.requests.append((method, url, kwargs))
+        return next(self.responses)
+
+    def get(self, url, **kwargs):
+        return self.request("GET", url, **kwargs)
+
+
+class HyundaiBlueLinkApiBR:
+    """Minimum BR API surface used by the compatibility installer."""
+
+    ccsp_application_id = "legacy-application"
+    ccsp_service_id = "service-id"
+
+    def __init__(self, responses):
+        self.api_headers = {"User-Agent": "legacy-agent"}
+        self.session = FakeSession(responses)
+
+    @staticmethod
+    def _build_api_url(path):
+        return f"https://example.invalid/api/v1/{path.lstrip('/')}"
+
+
+class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
+    def test_invalid_device_is_registered_persisted_and_retried_once(self):
+        api = HyundaiBlueLinkApiBR(
+            [
+                FakeResponse(400, {"retCode": "F", "resCode": "4002"}),
+                FakeResponse(
+                    200,
+                    {
+                        "retCode": "S",
+                        "resCode": "0000",
+                        "resMsg": {"deviceId": "registered-device"},
+                    },
+                ),
+                FakeResponse(200, {"retCode": "S", "resCode": "0000"}),
+            ]
+        )
+        token = SimpleNamespace(device_id="legacy-device")
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(api=api, token=token)
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+        response = api.session.get(
+            "https://example.invalid/api/v1/spa/vehicles",
+            headers={"ccsp-device-id": "legacy-device"},
+            json={"deviceId": "legacy-device"},
+        )
+
+        assert response.status_code == 200
+        assert token.device_id == "registered-device"
+        assert len(api.session.requests) == 3
+        registration = api.session.requests[1]
+        assert registration[0] == "POST"
+        assert registration[1].endswith("/spa/notifications/register")
+        assert registration[2]["json"]["pushType"] == "GCM"
+        retry = api.session.requests[2]
+        assert retry[2]["headers"]["ccsp-device-id"] == "registered-device"
+        assert retry[2]["json"]["deviceId"] == "registered-device"
+        assert api.ccsp_application_id.endswith("a2df127d73b0")
+        assert api.api_headers["User-Agent"].endswith("_CCS_APP_AOS")
+
+    def test_other_bad_request_is_not_registered_or_retried(self):
+        api = HyundaiBlueLinkApiBR(
+            [FakeResponse(400, {"retCode": "F", "resCode": "4003"})]
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(
+                api=api, token=SimpleNamespace(device_id="still-valid")
+            )
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+        response = api.session.get(
+            "https://example.invalid/api/v1/spa/vehicles",
+            headers={"ccsp-device-id": "still-valid"},
+        )
+
+        assert response.status_code == 400
+        assert len(api.session.requests) == 1
+
+
 if __name__ == "__main__":
     unittest.main()

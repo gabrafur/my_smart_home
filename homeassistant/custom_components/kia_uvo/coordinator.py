@@ -6,8 +6,11 @@ import asyncio
 import copy
 import datetime as dt
 import logging
+import threading
+import time
 import traceback
 import types
+import uuid
 from collections.abc import Callable
 from datetime import timedelta
 from statistics import median
@@ -67,6 +70,13 @@ _LOGGER = logging.getLogger(__name__)
 # aperta button.*_force_refresh direto (o flow iluminacao_seguranca no
 # Node-RED) contorna esse piso, entao mantemos um aqui, que ninguem contorna.
 BR_WAKE_MIN_INTERVAL_S = 15 * 60
+BR_CURRENT_APPLICATION_ID = "213a491a-0d7c-4d6a-ac03-a2df127d73b0"
+BR_CURRENT_USER_AGENT = (
+    "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) "
+    "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166 "
+    "Mobile Safari/535.19_CCS_APP_AOS"
+)
+BR_DEVICE_REGISTRATION_PATH = "/spa/notifications/register"
 TRIP_INFO_BACKGROUND_TIMEOUT_S = 120
 TRIP_INFO_RETRY_DELAY_S = 60
 TRIP_INFO_MAX_AGE = timedelta(hours=6)
@@ -118,6 +128,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             if config_entry.data.get(CONF_TOKEN, None)
             else None,
         )
+        self._install_br_client_compatibility()
         self.scan_interval: int = (
             config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL) * 60
         )
@@ -143,6 +154,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name=DOMAIN,
             update_interval=timedelta(
                 seconds=min(self.scan_interval, self.force_refresh_interval)
@@ -233,6 +245,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
         await self._async_refresh_trip_info_on_new_distance()
+        await self._async_save_token()
 
         return self.data
 
@@ -710,6 +723,123 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             ),
         }
         self.recent_trip_info[vehicle_id]["fuel_efficiency"] = self.fuel_efficiency[vehicle_id]
+
+    def _install_br_client_compatibility(self) -> None:
+        """Follow the current Brazilian app device-registration contract.
+
+        The BR backend invalidated the fixed device id used by API 4.26.5
+        after the official Android app moved to 1.0.20. Every authenticated
+        request then fails with resCode 4002, including the cached status call,
+        so all Home Assistant entities become unavailable.
+
+        The current app first registers a local UUID/push token and uses the
+        server-issued deviceId on subsequent requests. Intercept only that
+        explicit backend response, register once under a lock, update the
+        persisted Token object and retry the original request once.
+        """
+        api = self.vehicle_manager.api
+        if type(api).__name__ != "HyundaiBlueLinkApiBR":
+            return
+
+        api.ccsp_application_id = BR_CURRENT_APPLICATION_ID
+        api.api_headers["User-Agent"] = BR_CURRENT_USER_AGENT
+        registration_lock = threading.Lock()
+        original_request = api.session.request
+        coordinator = self
+
+        def _is_invalid_device(response) -> bool:
+            if response.status_code != 400:
+                return False
+            try:
+                payload = response.json()
+            except ValueError:
+                return False
+            return isinstance(payload, dict) and payload.get("resCode") == "4002"
+
+        def _register_device() -> str:
+            headers = dict(api.api_headers)
+            headers.update(
+                {
+                    "Authorization": "",
+                    "Stamp": "false",
+                    "ccsp-application-id": BR_CURRENT_APPLICATION_ID,
+                    "ccsp-device-id": "",
+                    "ccsp-service-id": api.ccsp_service_id,
+                }
+            )
+            payload = {
+                "uuid": str(uuid.uuid4()),
+                "pushRegId": f"dummy-push-{time.time_ns() // 1_000_000}",
+                "pushType": "GCM",
+            }
+            response = original_request(
+                "POST",
+                api._build_api_url(BR_DEVICE_REGISTRATION_PATH),
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            result = response.json()
+            device_id = (
+                result.get("resMsg", {}).get("deviceId")
+                if isinstance(result, dict)
+                and isinstance(result.get("resMsg"), dict)
+                else None
+            )
+            if (
+                not isinstance(result, dict)
+                or result.get("retCode") != "S"
+                or not device_id
+            ):
+                raise RuntimeError(
+                    "Brazilian Hyundai device registration returned no deviceId"
+                )
+            return device_id
+
+        def _request_with_device_recovery(session_self, method, url, **kwargs):
+            del session_self
+            response = original_request(method, url, **kwargs)
+            if (
+                BR_DEVICE_REGISTRATION_PATH in url
+                or not _is_invalid_device(response)
+            ):
+                return response
+
+            headers = dict(kwargs.get("headers") or {})
+            rejected_device_id = headers.get("ccsp-device-id")
+            with registration_lock:
+                token = coordinator.vehicle_manager.token
+                if token is None:
+                    return response
+                if token.device_id and token.device_id != rejected_device_id:
+                    device_id = token.device_id
+                else:
+                    device_id = _register_device()
+                    token.device_id = device_id
+                    _LOGGER.warning(
+                        "CRETA_DEVICE_ID_RECOVERED res_code=4002; "
+                        "registered current Bluelink client"
+                    )
+                    if hasattr(coordinator, "hass"):
+                        coordinator.hass.loop.call_soon_threadsafe(
+                            coordinator._save_token_if_changed
+                        )
+
+            retry_kwargs = dict(kwargs)
+            headers["ccsp-application-id"] = BR_CURRENT_APPLICATION_ID
+            headers["ccsp-device-id"] = device_id
+            retry_kwargs["headers"] = headers
+            if isinstance(retry_kwargs.get("json"), dict):
+                request_payload = dict(retry_kwargs["json"])
+                for key in ("deviceId", "deviceID"):
+                    if key in request_payload:
+                        request_payload[key] = device_id
+                retry_kwargs["json"] = request_payload
+            return original_request(method, url, **retry_kwargs)
+
+        api.session.request = types.MethodType(
+            _request_with_device_recovery, api.session
+        )
 
     def _install_br_parser_compatibility(self) -> None:
         """Preserve local BR parsing compatibility on top of API 4.26.5.
@@ -1247,6 +1377,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_save_token(self):
         """Persist the latest token into the config entry."""
+        self._save_token_if_changed()
+
+    def _save_token_if_changed(self) -> None:
+        """Persist a changed token; must run on the Home Assistant loop."""
         new_token = self.vehicle_manager.token.to_dict()
         # Only update if token actually changed
         if new_token and new_token != self.config_entry.data.get(CONF_TOKEN):
