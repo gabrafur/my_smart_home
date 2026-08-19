@@ -100,6 +100,39 @@ maintenance`.
 
 ## Validação
 
+### Proteção local obrigatória
+
+Ative os hooks versionados uma vez depois de cada clone:
+
+```bash
+make install-git-hooks
+git config --local --get core.hooksPath
+# .githooks
+```
+
+Por segurança, o Git não ativa hooks vindos do repositório automaticamente no
+clone. O instalador configura apenas este checkout, é idempotente e se recusa a
+sobrescrever um `core.hooksPath` personalizado. Nesse caso, integre o hook
+existente manualmente antes de alterar a configuração.
+
+O hook usado é `commit-msg`, porque o hook `pre-commit` é executado antes de a
+mensagem existir. Ele lê a primeira linha preparada pelo Git e chama o mesmo
+validador usado pela CI. Commits feitos pelo terminal e por IDEs que respeitam
+hooks Git são bloqueados quando o assunto é inválido. `--no-verify` consegue
+ignorar hooks por design do Git e não deve ser usado no fluxo normal.
+
+Exemplo de bloqueio:
+
+```text
+$ git commit -m 'Corrigir painel'
+commit-message-check: expected '<type>[(optional-scope)][!]: <lowercase description>': Corrigir painel
+```
+
+Corrija a mensagem e execute o commit novamente; o hook não altera a mensagem
+automaticamente nem cria commits.
+
+### Execução direta
+
 Valide um assunto antes de criar o commit:
 
 ```bash
@@ -114,11 +147,13 @@ make validate-commit-message
 node scripts/commit-message-check.mjs origin/main..HEAD
 ```
 
-`make validate-public` inclui a validação de `HEAD`, e a CI executa esse alvo
-em pushes e pull requests. A checagem confirma o formato, os tipos, o escopo, o
-limite e a pontuação. Inglês, modo imperativo e precisão semântica continuam
-sendo requisitos de revisão humana e do Codex, pois não podem ser inferidos de
-forma confiável por uma expressão regular.
+O hook fornece retorno imediato antes da criação do commit.
+`make validate-public` também inclui a validação de `HEAD`, e a CI executa esse
+alvo em pushes e pull requests como segunda barreira. A checagem confirma o
+formato, os tipos, o escopo, o limite e a pontuação, além de rejeitar uma lista
+conservadora de verbos de ação comuns em português. Essa lista evita regressões
+conhecidas, mas não é um detector completo de idioma; inglês, modo imperativo e
+precisão semântica continuam sendo requisitos de revisão humana e do Codex.
 
 ## Checklist rápido
 

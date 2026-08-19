@@ -15,6 +15,7 @@ test("accepts the repository commit subject convention", () => {
 
 test("rejects legacy, uppercase, punctuated, and oversized subjects", () => {
   assert.notDeepEqual(validateCommitSubject("Corrigir iluminação externa"), []);
+  assert.notDeepEqual(validateCommitSubject("fix: corrigir mensagens manuais"), []);
   assert.notDeepEqual(validateCommitSubject("fix: Make Codex card deterministic"), []);
   assert.notDeepEqual(validateCommitSubject("fix: make Codex card deterministic."), []);
   assert.notDeepEqual(validateCommitSubject(`fix: ${"a".repeat(70)}`), []);

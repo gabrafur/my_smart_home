@@ -6,6 +6,14 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const allowedTypes = ["build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "test"];
+const portugueseActionWords = new Set([
+  "adiciona", "adicionar", "ajusta", "ajustar", "atualiza", "atualizar",
+  "corrige", "corrigir", "cria", "criar", "documenta", "documentar",
+  "endurece", "endurecer", "esclarece", "esclarecer", "evita", "evitar",
+  "melhora", "melhorar", "organiza", "organizar", "preenche", "preencher",
+  "recupera", "recuperar", "renomeia", "renomear", "traduz", "traduzir",
+  "torna", "tornar",
+]);
 const conventionalSubject = new RegExp(
   `^(?:${allowedTypes.join("|")})(?:\\([a-z0-9][a-z0-9._/-]*\\))?!?: ([a-z0-9].*)$`,
 );
@@ -15,6 +23,10 @@ export function validateCommitSubject(subject) {
   if (subject.length > 72) errors.push("subject exceeds 72 characters");
   if (!conventionalSubject.test(subject)) {
     errors.push("expected '<type>[(optional-scope)][!]: <lowercase description>'");
+  }
+  const descriptionFirstWord = subject.match(/^[^:]+: ([^\s]+)/)?.[1].toLocaleLowerCase("pt-BR");
+  if (portugueseActionWords.has(descriptionFirstWord)) {
+    errors.push(`description starts with Portuguese action word '${descriptionFirstWord}'`);
   }
   if (/[.!?]$/.test(subject)) errors.push("subject must not end with punctuation");
   return errors;

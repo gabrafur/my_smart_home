@@ -5,7 +5,7 @@
 	validate-bootstrap validate-demo validate-git validate-commit-message validate-staged privacy-check \
 	privacy-check-staged bindings-check backup-plan backup-verify restore-plan \
 	restore-verify restore-test restore-apply bootstrap bootstrap-test demo demo-test \
-	modules-check context-recovery-check
+	modules-check context-recovery-check install-git-hooks
 
 PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
 	validate-yaml validate-shell validate-docs validate-assets validate-security \
@@ -97,6 +97,9 @@ validate-git:
 
 validate-commit-message:
 	node scripts/commit-message-check.mjs HEAD
+
+install-git-hooks:
+	@./scripts/install-git-hooks.sh
 
 validate-staged:
 	bash scripts/security-scan.sh --staged

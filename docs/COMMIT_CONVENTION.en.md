@@ -99,6 +99,39 @@ a conventional form such as `chore: integrate storage maintenance`.
 
 ## Validation
 
+### Required local protection
+
+Enable the versioned hooks once after each clone:
+
+```bash
+make install-git-hooks
+git config --local --get core.hooksPath
+# .githooks
+```
+
+Git deliberately does not activate repository-provided hooks automatically on
+clone. The installer configures only the current checkout, is idempotent, and
+refuses to overwrite a custom `core.hooksPath`. If one exists, integrate the
+existing hook manually before changing the configuration.
+
+The repository uses `commit-msg` because `pre-commit` runs before a commit
+message exists. The hook reads the first line prepared by Git and invokes the
+same checker used by CI. Commits made in a terminal or an IDE that honors Git
+hooks are blocked when the subject is invalid. Git provides `--no-verify` as an
+escape hatch; it must not be used in the normal workflow.
+
+Example rejection:
+
+```text
+$ git commit -m 'Fix dashboard'
+commit-message-check: expected '<type>[(optional-scope)][!]: <lowercase description>': Fix dashboard
+```
+
+Correct the message and commit again. The hook never edits a message or creates
+a commit automatically.
+
+### Direct execution
+
 Validate a subject before creating a commit:
 
 ```bash
@@ -113,11 +146,13 @@ make validate-commit-message
 node scripts/commit-message-check.mjs origin/main..HEAD
 ```
 
-`make validate-public` includes validation of `HEAD`, and CI runs that target
-for pushes and pull requests. The checker enforces the structure, allowed
-types, scope, length, and punctuation. English, imperative mood, and semantic
-accuracy remain review requirements for humans and Codex because a regular
-expression cannot determine them reliably.
+The hook provides immediate feedback before a commit is created.
+`make validate-public` also validates `HEAD`, and CI runs that target for pushes
+and pull requests as a second barrier. The checker enforces the structure,
+allowed types, scope, length, and punctuation, and rejects a conservative list
+of common Portuguese action verbs. That list prevents known regressions but is
+not a complete language detector; English, imperative mood, and semantic
+accuracy remain review requirements for humans and Codex.
 
 ## Quick checklist
 

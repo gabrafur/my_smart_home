@@ -77,6 +77,7 @@ Valide uma mensagem antes do commit com / Validate a message before committing
 with:
 
 ```bash
+make install-git-hooks
 node scripts/commit-message-check.mjs --subject 'fix: describe the correction'
 ```
 

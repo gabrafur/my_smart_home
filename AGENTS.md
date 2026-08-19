@@ -161,6 +161,8 @@ the style of `fix: make Codex card loading deterministic`:
 - Before committing, run `node scripts/commit-message-check.mjs --subject
   '<subject>'`. After committing, `make validate-commit-message` validates
   `HEAD` and `make validate-public` includes the same check.
+- Keep the versioned hooks enabled with `make install-git-hooks`. Never bypass
+  the `commit-msg` hook with `--no-verify` for a commit created by Codex.
 
 Do not imitate legacy commit subjects that predate this policy. Automated
 commits made by repository scripts must follow the same format.

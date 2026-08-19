@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+message_file=${1:?commit message file is required}
+repository_root=$(git rev-parse --show-toplevel)
+subject=$(sed -n '1p' "$message_file")
+
+node "$repository_root/scripts/commit-message-check.mjs" --subject "$subject"
