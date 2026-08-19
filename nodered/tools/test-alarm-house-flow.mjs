@@ -31,8 +31,6 @@ const alarmNodeIds = [
   "arm_alarm_catch",
   "arm_alarm_retry_decision",
   "arm_alarm_retry_delay",
-  "e380ce19c7f96420",
-  "alarm_real_change_filter",
   "arm_alarm_notify_success",
   "moni_mobile_update_after_arm",
   "disarm_alarm_notify_success",
@@ -54,7 +52,6 @@ for (const id of alarmNodeIds) {
 for (const id of [
   "2dd5071569184cb4",
   "ext_zigbee_command_gate",
-  "ext_alarm_armed_off",
   "ext_build_alexa_message",
   "9d81b75a18d482f1",
 ]) {
@@ -87,18 +84,15 @@ assert.deepEqual(node("alarm_dulo_hub_link_in").wires, [
   ["de18d31309e8a0ca"],
 ]);
 
-assert.deepEqual(node("alarm_real_change_filter").wires, [
-  ["alarm_armed_lighting_out"],
-]);
-assert.deepEqual(node("alarm_armed_lighting_out").links, [
-  "ext_alarm_armed_lighting_in",
-]);
-assert.deepEqual(node("ext_alarm_armed_lighting_in").links, [
+for (const removedId of [
+  "e380ce19c7f96420",
+  "alarm_real_change_filter",
   "alarm_armed_lighting_out",
-]);
-assert.deepEqual(node("ext_alarm_armed_lighting_in").wires, [
-  ["ext_alarm_armed_off"],
-]);
+  "ext_alarm_armed_lighting_in",
+  "ext_alarm_armed_off",
+]) {
+  assert.equal(byId.has(removedId), false, `${removedId} ainda acopla alarme e iluminação`);
+}
 
 for (const id of [
   "arm_alarm_retry_decision",

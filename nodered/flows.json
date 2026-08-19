@@ -202,14 +202,14 @@
         "type": "tab",
         "label": "iluminacao_externa",
         "disabled": false,
-        "info": "Controla a iluminação externa, recebe o hub Dulo compartilhado por link e reage ao evento de alarme armado recebido da aba alarme_casa."
+        "info": "Controla a iluminação externa por comando manual e pôr do sol. Não consulta nem recebe eventos do fluxo Moni Mobile."
     },
     {
         "id": "alarm_house_tab",
         "type": "tab",
         "label": "alarme_casa",
         "disabled": false,
-        "info": "Arma/desarma o alarme Moni Mobile, controla retries e publica o evento de alarme armado para outros flows.",
+        "info": "Arma/desarma o alarme Moni Mobile e controla seus retries e avisos, sem acoplamento com a iluminação externa.",
         "env": []
     },
     {
@@ -1877,7 +1877,7 @@
             "substring": [],
             "regex": []
         },
-        "outputInitially": true,
+        "outputInitially": false,
         "stateType": "str",
         "ifState": "below_horizon",
         "ifStateType": "str",
@@ -1894,38 +1894,6 @@
         "outputProperties": [],
         "x": 240,
         "y": 360,
-        "wires": [
-            [
-                "ext_sunset_alarm_check"
-            ],
-            []
-        ]
-    },
-    {
-        "id": "ext_sunset_alarm_check",
-        "type": "api-current-state",
-        "z": "ce258dec9814b96b",
-        "name": "Ligar somente com alarme desarmado",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "outputs": 2,
-        "halt_if": "disarmed",
-        "halt_if_type": "str",
-        "halt_if_compare": "is",
-        "entity_id": "alarm_control_panel.security_panel",
-        "state_type": "str",
-        "blockInputOverrides": true,
-        "outputProperties": [],
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "override_topic": false,
-        "state_location": "payload",
-        "override_payload": "msg",
-        "entity_location": "data",
-        "override_data": "msg",
-        "x": 490,
-        "y": 280,
         "wires": [
             [
                 "943c87e6b17f0d68"
@@ -2027,56 +1995,6 @@
         ],
         "x": 840,
         "y": 120,
-        "wires": [
-            [
-                "ext_zigbee_command_gate"
-            ]
-        ]
-    },
-    {
-        "id": "ext_alarm_armed_off",
-        "type": "change",
-        "z": "ce258dec9814b96b",
-        "name": "Definir OFF ao armar",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload",
-                "pt": "msg",
-                "to": "{\"state\":\"OFF\"}",
-                "tot": "json"
-            },
-            {
-                "t": "set",
-                "p": "source",
-                "pt": "msg",
-                "to": "alarm_armed",
-                "tot": "str"
-            },
-            {
-                "t": "set",
-                "p": "notify_text",
-                "pt": "msg",
-                "to": "Alarme armado. A iluminação externa foi desligada",
-                "tot": "str"
-            },
-            {
-                "t": "set",
-                "p": "expected_state",
-                "pt": "msg",
-                "to": "off",
-                "tot": "str"
-            },
-            {
-                "t": "set",
-                "p": "notify_success",
-                "pt": "msg",
-                "to": "Alarme armado. A iluminação externa foi desligada",
-                "tot": "str"
-            }
-        ],
-        "x": 880,
-        "y": 360,
         "wires": [
             [
                 "ext_zigbee_command_gate"
@@ -2439,22 +2357,6 @@
         ]
     },
     {
-        "id": "ext_alarm_armed_lighting_in",
-        "type": "link in",
-        "z": "ce258dec9814b96b",
-        "name": "Alarme armado",
-        "links": [
-            "alarm_armed_lighting_out"
-        ],
-        "x": 655,
-        "y": 300,
-        "wires": [
-            [
-                "ext_alarm_armed_off"
-            ]
-        ]
-    },
-    {
         "id": "a5ae2c780bbcef08",
         "type": "mqtt out",
         "z": "ce258dec9814b96b",
@@ -2496,26 +2398,6 @@
         "wires": [
             [
                 "alarm_set_desired_arm"
-            ]
-        ]
-    },
-    {
-        "id": "alarm_real_change_filter",
-        "type": "function",
-        "z": "alarm_house_tab",
-        "name": "Somente se alarme mudou",
-        "func": "const getState = (value) => {\n    if (value === undefined || value === null) return undefined;\n    if (typeof value === \"string\") return value;\n    if (typeof value === \"object\" && value.state !== undefined) return value.state;\n    return undefined;\n};\n\n// \"unknown\"/\"unavailable\" sao glitches momentaneos da integracao moni_mobile\n// (falha de parsing no protocolo TCP) e nao devem contar como estado real,\n// nem entrar no historico usado para detectar mudanca.\nconst isUnknown = (state) =>\n    state === undefined ||\n    state === null ||\n    state === \"\" ||\n    state === \"unknown\" ||\n    state === \"unavailable\";\n\nconst data = msg.data?.event ?? msg.data ?? {};\n\nconst oldStateRaw =\n    getState(data.old_state) ??\n    getState(msg.old_state);\n\nconst newState =\n    getState(data.new_state) ??\n    getState(msg.new_state) ??\n    getState(msg.payload);\n\nconst entityId =\n    data.entity_id ??\n    msg.topic ??\n    \"alarm_control_panel.security_panel\";\n\nconst cacheKey = `last_alarm_state:${entityId}`;\n\nif (!newState) {\n    node.status({\n        fill: \"red\",\n        shape: \"ring\",\n        text: \"sem estado novo\"\n    });\n    return null;\n}\n\nif (isUnknown(newState)) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `ignorado: ${newState}`\n    });\n    return null;\n}\n\n// Se o old_state vindo do evento for \"unknown\", usa o ultimo estado real\n// salvo no flow context em vez de tratar o glitch como estado anterior.\nconst lastState = !isUnknown(oldStateRaw) ? oldStateRaw : flow.get(cacheKey);\n\nflow.set(cacheKey, newState);\n\nif (lastState === newState) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `bloqueado: ${lastState} -> ${newState}`\n    });\n    return null;\n}\n\nmsg.previous_alarm_state = lastState ?? \"desconhecido\";\nmsg.current_alarm_state = newState;\nmsg.alarm_state_changed = true;\n\nnode.status({\n    fill: \"green\",\n    shape: \"dot\",\n    text: `${lastState ?? \"?\"} -> ${newState}`\n});\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 590,
-        "y": 780,
-        "wires": [
-            [
-                "alarm_armed_lighting_out"
             ]
         ]
     },
@@ -2691,65 +2573,6 @@
             [
                 "alarm_guard_arm"
             ]
-        ]
-    },
-    {
-        "id": "e380ce19c7f96420",
-        "type": "server-state-changed",
-        "z": "alarm_house_tab",
-        "name": "Alarme armado",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 2,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "alarm_control_panel.security_panel"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "armed_away",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": false,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": false,
-        "ignoreCurrentStateUnavailable": false,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "entityState"
-            },
-            {
-                "property": "data",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "eventData"
-            },
-            {
-                "property": "topic",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "triggerId"
-            }
-        ],
-        "x": 320,
-        "y": 780,
-        "wires": [
-            [
-                "alarm_real_change_filter"
-            ],
-            []
         ]
     },
     {
@@ -3059,19 +2882,6 @@
                 "de18d31309e8a0ca"
             ]
         ]
-    },
-    {
-        "id": "alarm_armed_lighting_out",
-        "type": "link out",
-        "z": "alarm_house_tab",
-        "name": "Alarme armado -> iluminação externa",
-        "mode": "link",
-        "links": [
-            "ext_alarm_armed_lighting_in"
-        ],
-        "x": 870,
-        "y": 780,
-        "wires": []
     },
     {
         "id": "alarm_notify_alexa",
@@ -10444,5 +10254,223 @@
         "x": 810,
         "y": 230,
         "wires": []
+    },
+    {
+        "id": "ext_sunset_recovery_boot",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "name": "Verificar pôr do sol perdido no boot",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 15,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 440,
+        "wires": [
+            [
+                "ext_sunset_recovery_sun_check"
+            ]
+        ]
+    },
+    {
+        "id": "ext_sunset_recovery_sun_check",
+        "type": "api-current-state",
+        "z": "ce258dec9814b96b",
+        "name": "Boot ocorreu depois do pôr do sol?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "below_horizon",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sun.sun",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "sun_last_changed",
+                "propertyType": "msg",
+                "value": "$entities(\"sun.sun\").last_changed",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 520,
+        "y": 440,
+        "wires": [
+            [
+                "ext_prepare_recovery_confirmation"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "ext_prepare_recovery_confirmation",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Preparar confirmação do pôr do sol perdido",
+        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat('en-US', {\n        timeZone,\n        year: 'numeric',\n        month: '2-digit',\n        day: '2-digit'\n    }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\n\nconst STORE = 'persistent';\nconst PENDING_KEY = 'external_lighting_recovery_pending_v1';\nconst PROMPTED_DATE_KEY = 'external_lighting_recovery_prompted_date_v1';\nconst TTL_MS = 12 * 60 * 60 * 1000;\nconst now = new Date();\nconst sunsetAt = new Date(msg.sun_last_changed);\nconst timeZone = env.get('TZ') || 'America/Sao_Paulo';\n\nif (!Number.isFinite(sunsetAt.getTime())) {\n    node.status({ fill: 'red', shape: 'ring', text: 'horário do pôr do sol ausente' });\n    return null;\n}\n\nconst today = localDate(now, timeZone);\nif (localDate(sunsetAt, timeZone) !== today) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'pôr do sol foi em outro dia' });\n    return null;\n}\n\nconst pending = flow.get(PENDING_KEY, STORE);\nconst promptedDate = flow.get(PROMPTED_DATE_KEY, STORE);\nif (promptedDate === today || (pending?.localDate === today && Number(pending.expiresAt) > now.getTime())) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'confirmação já enviada hoje' });\n    return null;\n}\n\nconst token = (now.getTime().toString(36) + '_' + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst candidate = {\n    version: 1,\n    localDate: today,\n    createdAt: now.getTime(),\n    expiresAt: now.getTime() + TTL_MS,\n    confirmAction: 'ILUMINACAO_EXTERNA_LIGAR_' + token,\n    cancelAction: 'ILUMINACAO_EXTERNA_NAO_LIGAR_' + token\n};\n\nmsg.external_lighting_recovery_candidate = candidate;\nmsg.confirm_action = candidate.confirmAction;\nmsg.cancel_action = candidate.cancelAction;\nmsg.notification_title = 'Iluminação externa';\nmsg.notification_message = 'O Node-RED voltou depois do pôr do sol de hoje. Deseja ligar as lâmpadas externas agora?';\nmsg.notification_tag = 'external_lighting_sunset_recovery';\nmsg.notify_text = 'O Node-RED voltou depois do pôr do sol. Você ainda quer ligar a iluminação externa? Responda pela notificação que enviei ao celular.';\nnode.status({ fill: 'yellow', shape: 'dot', text: 'enviando confirmação' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 440,
+        "wires": [
+            [
+                "ext_send_recovery_mobile"
+            ]
+        ]
+    },
+    {
+        "id": "ext_send_recovery_mobile",
+        "type": "api-call-service",
+        "z": "ce258dec9814b96b",
+        "name": "Perguntar no celular",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\": notification_title, \"message\": notification_message, \"data\": {\"tag\": notification_tag, \"actions\": [{\"action\": confirm_action, \"title\": \"Ligar\"}, {\"action\": cancel_action, \"title\": \"Não ligar\"}]}}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1160,
+        "y": 440,
+        "wires": [
+            [
+                "ext_commit_recovery_confirmation"
+            ]
+        ]
+    },
+    {
+        "id": "ext_commit_recovery_confirmation",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Registrar confirmação enviada",
+        "func": "const STORE = 'persistent';\nconst candidate = msg.external_lighting_recovery_candidate;\nif (!candidate?.localDate || !candidate?.confirmAction || !candidate?.cancelAction) {\n    node.status({ fill: 'red', shape: 'ring', text: 'confirmação inválida' });\n    return null;\n}\nflow.set('external_lighting_recovery_pending_v1', candidate, STORE);\nflow.set('external_lighting_recovery_prompted_date_v1', candidate.localDate, STORE);\nnode.status({ fill: 'yellow', shape: 'dot', text: 'aguardando resposta no celular' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1440,
+        "y": 440,
+        "wires": [
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "ext_recovery_notification_action",
+        "type": "server-events",
+        "z": "ce258dec9814b96b",
+        "name": "Resposta da confirmação no celular",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "exposeAsEntityConfig": "",
+        "eventType": "mobile_app_notification_action",
+        "eventData": "",
+        "waitForRunning": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 230,
+        "y": 520,
+        "wires": [
+            [
+                "ext_validate_recovery_confirmation"
+            ]
+        ]
+    },
+    {
+        "id": "ext_validate_recovery_confirmation",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Validar confirmação da iluminação",
+        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat('en-US', {\n        timeZone,\n        year: 'numeric',\n        month: '2-digit',\n        day: '2-digit'\n    }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\n\nconst STORE = 'persistent';\nconst PENDING_KEY = 'external_lighting_recovery_pending_v1';\nconst pending = flow.get(PENDING_KEY, STORE);\nconst action = msg.payload?.event?.action ?? msg.payload?.action ?? msg.event?.action ?? null;\n\nif (!pending || typeof action !== 'string') return null;\n\nconst now = new Date();\nconst timeZone = env.get('TZ') || 'America/Sao_Paulo';\nif (Number(pending.expiresAt) <= now.getTime() || pending.localDate !== localDate(now, timeZone)) {\n    flow.set(PENDING_KEY, null, STORE);\n    node.status({ fill: 'grey', shape: 'ring', text: 'confirmação expirada' });\n    return null;\n}\n\nif (action === pending.cancelAction) {\n    flow.set(PENDING_KEY, null, STORE);\n    node.status({ fill: 'blue', shape: 'ring', text: 'usuário optou por não ligar' });\n    return null;\n}\n\nif (action !== pending.confirmAction) return null;\n\nflow.set(PENDING_KEY, null, STORE);\nmsg.external_lighting_recovery_confirmed = true;\nnode.status({ fill: 'green', shape: 'dot', text: 'ligação confirmada' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 520,
+        "wires": [
+            [
+                "ext_confirm_recovery_sun_check"
+            ]
+        ]
+    },
+    {
+        "id": "ext_confirm_recovery_sun_check",
+        "type": "api-current-state",
+        "z": "ce258dec9814b96b",
+        "name": "Ainda está depois do pôr do sol?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "below_horizon",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sun.sun",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 860,
+        "y": 520,
+        "wires": [
+            [
+                "943c87e6b17f0d68"
+            ],
+            []
+        ]
     }
 ]

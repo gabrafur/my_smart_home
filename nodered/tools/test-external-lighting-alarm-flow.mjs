@@ -46,21 +46,120 @@ for (const node of flows.filter((candidate) => candidate.z === tabId)) {
 const sunset = getNode("24743bc9f254d1c1");
 assert.equal(
   sunset.outputInitially,
-  true,
-  "o estado atual do sol deve ser reavaliado depois de um restart",
+  false,
+  "um restart depois do pôr do sol não pode ligar as cargas automaticamente",
 );
-assert.deepEqual(sunset.wires, [["ext_sunset_alarm_check"], []]);
+assert.deepEqual(sunset.wires, [["943c87e6b17f0d68"], []]);
 
-const sunsetAlarmCheck = getNode("ext_sunset_alarm_check");
-assert.equal(sunsetAlarmCheck.type, "api-current-state");
-assert.equal(
-  sunsetAlarmCheck.entity_id,
-  "alarm_control_panel.security_panel",
+for (const removedId of [
+  "ext_sunset_alarm_check",
+  "ext_alarm_armed_off",
+  "ext_alarm_armed_lighting_in",
+  "alarm_armed_lighting_out",
+]) {
+  assert.equal(byId.has(removedId), false, `${removedId} ainda acopla alarme e iluminação`);
+}
+for (const candidate of flows.filter((node) => node.z === tabId && node.type !== "tab")) {
+  assert.doesNotMatch(
+    JSON.stringify(candidate),
+    /alarm_control_panel\.security_panel|moni_mobile/i,
+    `${candidate.id} ainda depende do Moni Mobile`,
+  );
+}
+
+const recoveryBoot = getNode("ext_sunset_recovery_boot");
+assert.equal(recoveryBoot.type, "inject");
+assert.equal(recoveryBoot.once, true);
+assert.deepEqual(recoveryBoot.wires, [["ext_sunset_recovery_sun_check"]]);
+
+const recoverySunCheck = getNode("ext_sunset_recovery_sun_check");
+assert.equal(recoverySunCheck.entity_id, "sun.sun");
+assert.equal(recoverySunCheck.halt_if, "below_horizon");
+assert.deepEqual(recoverySunCheck.wires, [["ext_prepare_recovery_confirmation"], []]);
+
+const mobileQuestion = getNode("ext_send_recovery_mobile");
+assert.equal(mobileQuestion.action, "public_bindings.call");
+assert.match(mobileQuestion.data, /"role":"mobile_primary"/);
+assert.match(mobileQuestion.data, /"action":"notify_3"/);
+assert.match(mobileQuestion.data, /confirm_action/);
+assert.match(mobileQuestion.data, /cancel_action/);
+assert.deepEqual(mobileQuestion.wires, [["ext_commit_recovery_confirmation"]]);
+
+const recoveryResponse = getNode("ext_recovery_notification_action");
+assert.equal(recoveryResponse.eventType, "mobile_app_notification_action");
+assert.deepEqual(recoveryResponse.wires, [["ext_validate_recovery_confirmation"]]);
+
+const confirmSunCheck = getNode("ext_confirm_recovery_sun_check");
+assert.equal(confirmSunCheck.entity_id, "sun.sun");
+assert.equal(confirmSunCheck.halt_if, "below_horizon");
+assert.deepEqual(confirmSunCheck.wires, [["943c87e6b17f0d68"], []]);
+
+const recoveryValues = new Map();
+const recoveryFlow = {
+  get: (key) => recoveryValues.get(key),
+  set: (key, value) => recoveryValues.set(key, value),
+};
+const recoveryEnv = { get: (key) => key === "TZ" ? "America/Sao_Paulo" : undefined };
+const prepareRecovery = compileFunction(getNode("ext_prepare_recovery_confirmation"));
+const recoveryMessage = prepareRecovery(
+  { sun_last_changed: new Date().toISOString() },
+  { status: () => {} },
+  {},
+  recoveryFlow,
+  {},
+  recoveryEnv,
+  setTimeout,
+  clearTimeout,
 );
-assert.equal(sunsetAlarmCheck.halt_if, "disarmed");
-assert.equal(sunsetAlarmCheck.halt_if_compare, "is");
-assert.equal(sunsetAlarmCheck.blockInputOverrides, true);
-assert.deepEqual(sunsetAlarmCheck.wires, [["943c87e6b17f0d68"], []]);
+assert.ok(recoveryMessage?.external_lighting_recovery_candidate);
+assert.match(recoveryMessage.confirm_action, /^ILUMINACAO_EXTERNA_LIGAR_/);
+assert.match(recoveryMessage.cancel_action, /^ILUMINACAO_EXTERNA_NAO_LIGAR_/);
+
+const commitRecovery = compileFunction(getNode("ext_commit_recovery_confirmation"));
+commitRecovery(
+  recoveryMessage,
+  { status: () => {} },
+  {},
+  recoveryFlow,
+  {},
+  recoveryEnv,
+  setTimeout,
+  clearTimeout,
+);
+const pendingRecovery = recoveryValues.get("external_lighting_recovery_pending_v1");
+assert.equal(pendingRecovery.confirmAction, recoveryMessage.confirm_action);
+assert.equal(
+  recoveryValues.get("external_lighting_recovery_prompted_date_v1"),
+  pendingRecovery.localDate,
+);
+assert.equal(
+  prepareRecovery(
+    { sun_last_changed: new Date().toISOString() },
+    { status: () => {} },
+    {},
+    recoveryFlow,
+    {},
+    recoveryEnv,
+    setTimeout,
+    clearTimeout,
+  ),
+  null,
+  "a pergunta não deve ser repetida no mesmo dia",
+);
+
+const validateRecovery = compileFunction(getNode("ext_validate_recovery_confirmation"));
+const confirmedRecovery = validateRecovery(
+  { payload: { event: { action: pendingRecovery.confirmAction } } },
+  { status: () => {} },
+  {},
+  recoveryFlow,
+  {},
+  recoveryEnv,
+  setTimeout,
+  clearTimeout,
+);
+assert.equal(confirmedRecovery.external_lighting_recovery_confirmed, true);
+assert.equal(recoveryValues.get("external_lighting_recovery_pending_v1"), null);
 
 const bridgeStateInput = getNode("ext_zigbee_bridge_state_in");
 assert.equal(bridgeStateInput.type, "mqtt in");
@@ -141,7 +240,6 @@ const commandNodes = [
   ["d940e2132bca7ecc", "on"],
   ["c7fe1a52ffe5091d", "off"],
   ["943c87e6b17f0d68", "on"],
-  ["ext_alarm_armed_off", "off"],
 ];
 
 for (const [id, expectedState] of commandNodes) {
@@ -328,4 +426,4 @@ assert.match(networkFailure.notify_text, /Erro na rede Zigbee/);
 assert.match(networkFailure.notify_text, /garagem, jardim/);
 assert.match(networkFailure.notify_text, /não será repetido/);
 
-console.log("External-lighting/alarm flow tests passed.");
+console.log("External-lighting independent flow tests passed.");

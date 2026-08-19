@@ -123,6 +123,9 @@ Resultados validados:
 
 Pendencias pequenas:
 
-1. A entidade pode ficar `unknown` por alguns segundos logo apos um comando, enquanto o servidor atualiza o resumo. Isso e esperado nesta integracao (poll periodico + protocolo TCP proprietario); o flow `iluminacao_externa` (`nodered/flows.json`, node `Somente se alarme mudou`) ja trata esse `unknown` como glitch e ignora, usando o ultimo estado real conhecido para decidir se houve mudanca de fato. Ver detalhes em [ILUMINACAO_EXTERNA_NODERED.md](ILUMINACAO_EXTERNA_NODERED.md).
+1. A entidade pode ficar `unknown` por alguns segundos logo apos um comando,
+   enquanto o servidor atualiza o resumo. Isso e esperado nesta integracao
+   (poll periodico + protocolo TCP proprietario). A iluminacao externa nao
+   consulta essa entidade e nao recebe eventos do Moni Mobile.
 2. Por seguranca, nao registrar payloads descriptografados em log, pois podem conter nomes, eventos e zonas.
 3. Se a senha de arme/desarme tiver zeros a esquerda, mantenha-a entre aspas em `secrets.yaml`; a integracao tambem tenta preservar o valor bruto do arquivo para evitar perda desses zeros.

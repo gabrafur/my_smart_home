@@ -7,13 +7,13 @@ import { fileURLToPath } from "node:url";
 const defaultTarget = "/data/flows.json";
 const sunsetNodeId = "24743bc9f254d1c1";
 
-export function enableExternalLightingRecovery(flows) {
+export function disableAutomaticExternalLightingRecovery(flows) {
   const sunset = flows.find((node) => node.id === sunsetNodeId);
   if (!sunset || sunset.type !== "server-state-changed") {
     throw new Error(`External-lighting sunset node not found: ${sunsetNodeId}`);
   }
-  if (sunset.outputInitially === true) return false;
-  sunset.outputInitially = true;
+  if (sunset.outputInitially === false) return false;
+  sunset.outputInitially = false;
   return true;
 }
 
@@ -39,7 +39,7 @@ export function removePrivateServiceData(flows) {
 
 export function patchFile(target = defaultTarget) {
   const flows = JSON.parse(fs.readFileSync(target, "utf8"));
-  const recovered = enableExternalLightingRecovery(flows);
+  const recovered = disableAutomaticExternalLightingRecovery(flows);
   const sanitized = removePrivateServiceData(flows);
   const changed = recovered || sanitized;
   if (changed) fs.writeFileSync(target, `${JSON.stringify(flows, null, 4)}\n`);

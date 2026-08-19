@@ -1,21 +1,25 @@
 import assert from "node:assert/strict";
 
 import {
-  enableExternalLightingRecovery,
+  disableAutomaticExternalLightingRecovery,
   removePrivateServiceData,
 } from "./prepare-runtime-flows.mjs";
 
 const flows = [{
   id: "24743bc9f254d1c1",
   type: "server-state-changed",
-  outputInitially: false,
+  outputInitially: true,
 }];
 
-assert.equal(enableExternalLightingRecovery(flows), true);
-assert.equal(flows[0].outputInitially, true);
-assert.equal(enableExternalLightingRecovery(flows), false, "o patch deve ser idempotente");
+assert.equal(disableAutomaticExternalLightingRecovery(flows), true);
+assert.equal(flows[0].outputInitially, false);
+assert.equal(
+  disableAutomaticExternalLightingRecovery(flows),
+  false,
+  "o patch deve ser idempotente",
+);
 
-console.log("External-lighting restart recovery patch test passed.");
+console.log("External-lighting restart confirmation safety patch test passed.");
 
 const securityFlows = [
   {

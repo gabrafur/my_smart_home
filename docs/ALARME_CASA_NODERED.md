@@ -1,8 +1,9 @@
 # Alarme da casa (Node-RED)
 
 Flow `alarme_casa` (`nodered/flows.json`, tab `alarm_house_tab`). Ele concentra
-o controle do binding publico `alarm_control_panel.security_panel`, os retries e os avisos
-do alarme. A iluminacao externa permanece no flow `iluminacao_externa`.
+o controle do binding publico `alarm_control_panel.security_panel`, os retries
+e os avisos do alarme. Nao ha troca de eventos ou comandos com o flow
+`iluminacao_externa`.
 
 ## Entradas
 
@@ -34,18 +35,6 @@ Os comandos de armar e desarmar usam as ações allowlisted `arm_away` e
 Os retries acima pertencem somente a comunicacao da central Moni Mobile. Erros
 da rede Zigbee na aba `iluminacao_externa` nunca geram retry.
 
-## Evento de alarme armado para a iluminacao
-
-`Alarme armado` observa `armed_away`. Como a integracao usa polling,
-`Somente se alarme mudou` elimina polls repetidos e ignora os estados
-transitorios `unknown`/`unavailable`, usando o ultimo estado real no flow
-context quando necessario.
-
-Uma mudanca real segue por `alarm_armed_lighting_out` para
-`ext_alarm_armed_lighting_in`, na aba `iluminacao_externa`. A aba de alarme
-publica apenas o evento; a decisao e o comando MQTT das luzes permanecem na
-aba de iluminacao.
-
 ## Historico relevante
 
 - 2026-08-11: o controle foi retirado da antiga aba
@@ -60,6 +49,9 @@ aba de iluminacao.
   como mudanca real do alarme; o retry de armamento e os avisos periodicos
   foram adicionados.
 - 2026-07-10: o mesmo retry protegido foi aplicado ao desarmamento.
+- 2026-08-19: removidos o observador e os links que desligavam a iluminacao
+  externa ao armar. Alarme e iluminacao passaram a ser independentes nos dois
+  sentidos.
 
 ## Testes e manutencao
 

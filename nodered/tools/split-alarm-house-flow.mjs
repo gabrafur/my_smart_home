@@ -21,6 +21,9 @@ const managedIds = new Set([
   "alarm_dulo_hub_link_in",
   "alarm_armed_lighting_out",
   "ext_alarm_armed_lighting_in",
+  "ext_alarm_armed_off",
+  "alarm_real_change_filter",
+  "e380ce19c7f96420",
   "light_dulo_hub_link_out",
   "light_dulo_hub_link_in",
 ]);
@@ -34,8 +37,6 @@ const alarmNodeIds = [
   "arm_alarm_catch",
   "arm_alarm_retry_decision",
   "arm_alarm_retry_delay",
-  "e380ce19c7f96420",
-  "alarm_real_change_filter",
   "arm_alarm_notify_success",
   "moni_mobile_update_after_arm",
   "disarm_alarm_notify_success",
@@ -72,9 +73,6 @@ const positions = {
   disarm_alarm_retry_decision: [720, 600],
   disarm_alarm_retry_delay: [990, 660],
   alarm_guard_disarm: [1260, 660],
-  e380ce19c7f96420: [320, 780],
-  alarm_real_change_filter: [590, 780],
-  alarm_armed_lighting_out: [870, 780],
   [ALARM_ALEXA_NOTIFY_ID]: [1770, 360],
   "4043829dac0a9fee": [330, 280],
   "0543222ad4ed094d": [130, 560],
@@ -127,7 +125,7 @@ function orderFlowsForNodeRed(items) {
 
 const lightTab = requireNode(LIGHT_TAB_ID);
 lightTab.label = "iluminacao_externa";
-lightTab.info = "Controla a iluminação externa, recebe o hub Dulo compartilhado por link e reage ao evento de alarme armado recebido da aba alarme_casa.";
+lightTab.info = "Controla a iluminação externa por comando manual e pôr do sol, sem depender do fluxo Moni Mobile.";
 
 for (const id of alarmNodeIds) {
   const node = requireNode(id);
@@ -140,8 +138,6 @@ hub.z = SHARED_TAB_ID;
 hub.x = 250;
 hub.y = 120;
 hub.wires = [["light_dulo_hub_link_out", "alarm_dulo_hub_link_out"]];
-
-requireNode("alarm_real_change_filter").wires = [["alarm_armed_lighting_out"]];
 
 const updateMoniMobile = requireNode("moni_mobile_update_after_arm");
 updateMoniMobile.entityId = [];
@@ -234,27 +230,6 @@ keptFlows.push(
     x: positions.alarm_dulo_hub_link_in[0],
     y: positions.alarm_dulo_hub_link_in[1],
     wires: [[ALARM_DEVICE_ID]],
-  },
-  {
-    id: "alarm_armed_lighting_out",
-    type: "link out",
-    z: ALARM_TAB_ID,
-    name: "Alarme armado -> iluminação externa",
-    mode: "link",
-    links: ["ext_alarm_armed_lighting_in"],
-    x: positions.alarm_armed_lighting_out[0],
-    y: positions.alarm_armed_lighting_out[1],
-    wires: [],
-  },
-  {
-    id: "ext_alarm_armed_lighting_in",
-    type: "link in",
-    z: LIGHT_TAB_ID,
-    name: "Alarme armado",
-    links: ["alarm_armed_lighting_out"],
-    x: 655,
-    y: 300,
-    wires: [["ext_alarm_armed_off"]],
   },
   alarmAlexaNotify,
 );

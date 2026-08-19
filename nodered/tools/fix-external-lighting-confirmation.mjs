@@ -27,11 +27,6 @@ const commandNodes = [
     expectedState: "on",
     successText: "Pôr do sol. A iluminação externa foi ligada",
   },
-  {
-    id: "ext_alarm_armed_off",
-    expectedState: "off",
-    successText: "Alarme armado. A iluminação externa foi desligada",
-  },
 ];
 
 function requireNode(id) {
@@ -97,8 +92,8 @@ for (const command of commandNodes) {
 }
 
 Object.assign(requireNode("24743bc9f254d1c1"), {
-  outputInitially: true,
-  wires: [["ext_sunset_alarm_check"], []],
+  outputInitially: false,
+  wires: [["943c87e6b17f0d68"], []],
 });
 
 const managedIds = new Set([
@@ -198,33 +193,6 @@ return null;`,
     x: 190,
     y: 240,
     wires: [["ext_zigbee_bridge_state_store"]],
-  },
-  {
-    id: "ext_sunset_alarm_check",
-    type: "api-current-state",
-    z: tabId,
-    name: "Ligar somente com alarme desarmado",
-    server: haServerId,
-    version: 3,
-    outputs: 2,
-    halt_if: "disarmed",
-    halt_if_type: "str",
-    halt_if_compare: "is",
-    entity_id: "alarm_control_panel.security_panel",
-    state_type: "str",
-    blockInputOverrides: true,
-    outputProperties: [],
-    for: "0",
-    forType: "num",
-    forUnits: "minutes",
-    override_topic: false,
-    state_location: "payload",
-    override_payload: "msg",
-    entity_location: "data",
-    override_data: "msg",
-    x: 850,
-    y: 220,
-    wires: [["943c87e6b17f0d68"], []],
   },
   {
     id: "ext_zigbee_command_gate",
