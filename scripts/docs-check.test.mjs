@@ -64,6 +64,16 @@ test("an untracked link target cannot satisfy public documentation", (t) => {
   assert.ok(result.errors.some((error) => error.includes("broken or untracked relative link")));
 });
 
+test("accepts documented private runtime paths that must remain untracked", (t) => {
+  const input = fixture(t);
+  fs.appendFileSync(
+    path.join(input.repoRoot, "docs/GUIDE.md"),
+    "\nRequests use `homeassistant/.git-backup-trigger/` at runtime.\n",
+  );
+  const result = checkDocumentation(input);
+  assert.deepEqual(result.errors, []);
+});
+
 test("requires every public human document to declare an i18n strategy", (t) => {
   const input = fixture(t);
   fs.writeFileSync(path.join(input.repoRoot, "docs/UNCLASSIFIED.md"), "# Unclassified\n");
