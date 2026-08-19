@@ -20,7 +20,7 @@ const exactRepoPaths = new Set([
 ]);
 const privateDocumentedPrefixes = [
   ".agent-history/", ".local-secrets/", "bindings/private/", "homeassistant/.storage/",
-  "homeassistant/secrets.yaml", "nodered/flows_cred.json",
+  "homeassistant/.git-backup-trigger/", "homeassistant/secrets.yaml", "nodered/flows_cred.json",
 ];
 const rootHumanDocuments = new Set([
   "README.md", "README.en.md", "CONTRIBUTING.md", "SECURITY.md",
