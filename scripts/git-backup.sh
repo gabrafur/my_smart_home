@@ -55,7 +55,7 @@ cd "$REPO_DIR"
     exit 0
   fi
 
-  commit_message="Automated smart home backup $(date '+%Y-%m-%d %H:%M:%S %z')"
+  commit_message="chore: create automated smart home backup"
   git commit -m "$commit_message" --quiet
   git push "$REMOTE" "$BRANCH" --quiet
 

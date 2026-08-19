@@ -2,7 +2,7 @@
 	validate-shell validate-docs validate-assets validate-security validate-privacy \
 	validate-memory validate-node-red validate-bridge validate-local-ai validate-homeassistant validate-scripts \
 	validate-scheduler validate-auto-update validate-modules validate-restore \
-	validate-bootstrap validate-demo validate-git validate-staged privacy-check \
+	validate-bootstrap validate-demo validate-git validate-commit-message validate-staged privacy-check \
 	privacy-check-staged bindings-check backup-plan backup-verify restore-plan \
 	restore-verify restore-test restore-apply bootstrap bootstrap-test demo demo-test \
 	modules-check context-recovery-check
@@ -12,7 +12,7 @@ PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-jso
 	validate-privacy validate-memory validate-node-red validate-bridge validate-local-ai \
 	validate-homeassistant \
 	validate-scripts validate-scheduler validate-auto-update validate-modules \
-	validate-restore validate-bootstrap validate-demo validate-git
+	validate-restore validate-bootstrap validate-demo validate-git validate-commit-message
 
 BACKUP_DIR ?=
 DESTINATION ?=
@@ -94,6 +94,9 @@ validate-demo: demo-test
 
 validate-git:
 	git diff --check
+
+validate-commit-message:
+	node scripts/commit-message-check.mjs HEAD
 
 validate-staged:
 	bash scripts/security-scan.sh --staged

@@ -13,6 +13,7 @@
 - [ ] `make validate-public`
 - [ ] `scripts/security-scan.sh --staged`
 - [ ] `make privacy-check-staged`
+- [ ] Commit subjects follow `type[(scope)][!]: imperative description` in English
 - [ ] PT-BR/English updated when `docs/i18n-manifest.json` requires a full pair
 - [ ] No credentials, household data, private runtime, or real screenshots
 - [ ] External effects and manual steps are explicitly documented

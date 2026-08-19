@@ -29,6 +29,7 @@ placeholders.
 | [Estratégia de testes](ESTRATEGIA_DE_TESTES.md) | Níveis, descoberta, CI e limites sem residência real | [English](TESTING_STRATEGY.en.md) |
 | [Proveniência de dependências](DEPENDENCY_PROVENANCE.md) | Código vendorizado, licenças, deltas, locks e digests | [English](DEPENDENCY_PROVENANCE.en.md) |
 | [Configuração do GitHub](GITHUB_REPOSITORY_SETTINGS.md) | Estado observado, template, ruleset e checklist manual | [English](GITHUB_REPOSITORY_SETTINGS.en.md) |
+| [Convenção de commits](CONVENCAO_COMMITS.md) | Formato, tipos, escopos, breaking changes e validação | [English](COMMIT_CONVENTION.en.md) |
 | [Ativos de documentação](assets/README.md) | Fonte Mermaid, SVG, social preview e reprodução | [English](assets/README.en.md) |
 
 ## Funcionalidades

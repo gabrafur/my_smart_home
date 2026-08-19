@@ -12,6 +12,7 @@ const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const requestScript = path.join(scriptsDir, "request-host-git-backup.sh");
 const processScript = path.join(scriptsDir, "process-git-backup-request.sh");
 const installScript = path.join(scriptsDir, "install-git-backup-nodered-bridge.sh");
+const backupScript = path.join(scriptsDir, "git-backup.sh");
 
 function waitForFile(file, timeoutMs = 3000) {
   const started = Date.now();
@@ -37,6 +38,12 @@ function completed(child) {
     child.on("close", (status) => resolve({ status, stdout, stderr }));
   });
 }
+
+test("automated backups use the repository commit convention", () => {
+  const source = fs.readFileSync(backupScript, "utf8");
+  assert.match(source, /commit_message="chore: create automated smart home backup"/);
+  assert.doesNotMatch(source, /Automated smart home backup/);
+});
 
 test("Node-RED request is executed once by the host bridge", async () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-request-test-"));

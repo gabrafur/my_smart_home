@@ -19,6 +19,10 @@
 
 - Para alterações acumuladas e independentes, separe commits por assunto e
   revise o índice antes de cada commit.
+- Mensagens novas seguem Conventional Commits em inglês, com descrição
+  imperativa iniciada em minúscula e assunto de até 72 caracteres; o contrato
+  vigente está em `AGENTS.md` e `CONTRIBUTING.md` e é verificado por
+  `scripts/commit-message-check.mjs`.
 - Imediatamente antes de `git push`, confira `git status` e o histórico recente
   do branch. Se houver commit inesperado, não o publique nem o descarte sem
   confirmar o escopo com o usuário.

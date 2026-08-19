@@ -55,5 +55,34 @@ both languages for full pairs, change tests and docs with their contracts, run
 the checks above, and label optional integrations, external effects, and human
 approval boundaries.
 
+## Mensagens de commit / Commit messages
+
+Use Conventional Commits em inglês, no formato
+`<tipo>[(escopo-opcional)][!]: <descrição imperativa>`. O assunto deve começar
+com palavra minúscula, ter no máximo 72 caracteres e não terminar com
+pontuação. Os tipos aceitos são `feat`, `fix`, `docs`, `test`, `refactor`,
+`chore`, `ci`, `build`, `perf` e `revert`. Use escopo minúsculo apenas quando
+ele esclarecer o subsistema. Exemplo: `fix: make Codex card loading
+deterministic`.
+
+Use English Conventional Commits in the form
+`<type>[(optional-scope)][!]: <imperative description>`. Start the subject with
+a lowercase word, keep it to 72 characters or fewer, and omit trailing
+punctuation. The accepted types are `feat`, `fix`, `docs`, `test`, `refactor`,
+`chore`, `ci`, `build`, `perf`, and `revert`. Add a lowercase scope only when
+it clarifies the affected subsystem. Example: `fix: make Codex card loading
+deterministic`.
+
+Valide uma mensagem antes do commit com / Validate a message before committing
+with:
+
+```bash
+node scripts/commit-message-check.mjs --subject 'fix: describe the correction'
+```
+
+Consulte [a convenção completa](docs/CONVENCAO_COMMITS.md) para tipos, escopos,
+breaking changes e exemplos. See [the complete convention](docs/COMMIT_CONVENTION.en.md)
+for types, scopes, breaking changes, and examples.
+
 Ao participar, você concorda com o [Código de Conduta](CODE_OF_CONDUCT.md).
 Security findings follow [SECURITY.md](SECURITY.md), never a public issue.

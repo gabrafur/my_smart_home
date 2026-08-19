@@ -141,6 +141,32 @@ Do not impose an initial confirmation gate. Treat `continue` as ordinary user in
 
 ---
 
+## Commit message policy
+
+Use Conventional Commits in English for every commit created by Codex, following
+the style of `fix: make Codex card loading deterministic`:
+
+```text
+<type>[(optional-scope)][!]: <imperative description>
+```
+
+- Use one of `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `build`,
+  `perf`, or `revert`.
+- Start the description with a lowercase word, use the imperative mood, keep the
+  complete subject to at most 72 characters, and do not end it with punctuation.
+- Add a lowercase scope only when it makes the affected subsystem materially
+  clearer. Use `!` and a `BREAKING CHANGE:` footer for breaking changes.
+- Keep the subject focused on one change. Put motivation, migration notes, and
+  verification details in the body when they are useful.
+- Before committing, run `node scripts/commit-message-check.mjs --subject
+  '<subject>'`. After committing, `make validate-commit-message` validates
+  `HEAD` and `make validate-public` includes the same check.
+
+Do not imitate legacy commit subjects that predate this policy. Automated
+commits made by repository scripts must follow the same format.
+
+---
+
 ## Local AI / RTX context compression
 
 Use deterministic tools first. Do not run Local AI pre-analysis or status at
