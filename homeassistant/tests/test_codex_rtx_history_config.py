@@ -22,6 +22,14 @@ class CodexRtxHistoryConfigTest(unittest.TestCase):
             "sensor.codex_rtx_potencia_agora",
         ):
             self.assertIn(f"      - {entity_id}\n", self.config)
+        self.assertIn("      - sensor.codex_rtx_historico_48h_raw\n", self.config)
+
+    def test_compact_job_history_uses_a_separate_bounded_feed(self):
+        start = self.config.index("unique_id: codex_rtx_historico_48h_raw")
+        block = self.config[start : start + 500]
+        self.assertIn("codex_rtx_history.py", block)
+        self.assertIn("scan_interval: 30", block)
+        self.assertIn("- jobs", block)
 
     def test_live_polling_does_not_overlap_the_normal_helper_window(self):
         start = self.config.index("unique_id: codex_rtx_live_raw")

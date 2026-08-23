@@ -39,7 +39,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         )
         self.assertEqual(
             sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            25,
+            31,
         )
         for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico detalhado"):
             self.assertIn(f"title: {title}", columns[0])
@@ -49,22 +49,18 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             self.assertIn(f"title: {title}", columns[2])
         self.assertIsNone(re.search(r"^\s+title: \d+ ·", view, re.MULTILINE))
 
-    def test_live_section_preserves_activity_history_and_metric_peaks(self):
-        """Keep binary activity history and line charts with five-minute maxima."""
+    def test_live_section_preserves_quality_history_table_and_metric_peaks(self):
+        """Keep the quality-aware job table and line charts with five-minute maxima."""
         view = rtx_view()
 
         self.assertIn("title: Atividade ao vivo", view)
-        self.assertIn(
-            "          - type: history-graph\n"
-            "            title: RTX em uso — últimas 48 horas\n"
-            "            hours_to_show: 48\n"
-            "            grid_options:\n"
-            "              columns: full\n"
-            "              rows: auto\n"
-            "            entities:\n"
-            "              - entity: binary_sensor.codex_rtx_em_uso\n"
-            "                name: RTX em uso",
-            view,
+        self.assertNotIn("entity: binary_sensor.codex_rtx_em_uso", view)
+        self.assertIn("title: RTX em uso — últimas 48 horas", view)
+        self.assertIn("state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs')", view)
+        self.assertIn("Tokens úteis evitados", view)
+        self.assertLess(
+            view.index("title: Taxa de falhas Local AI — últimos 7 dias"),
+            view.index("title: RTX em uso — últimas 48 horas"),
         )
 
         metric_graphs = re.findall(
@@ -85,3 +81,18 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             ("Potência", "sensor.codex_rtx_potencia_historico"),
         ])
         self.assertNotIn("- mean", view)
+
+    def test_indicator_groups_explain_how_to_read_their_metrics(self):
+        view = rtx_view()
+
+        self.assertEqual(view.count("**Como ler:**"), 14)
+        for definition in (
+            "*elegível* significa",
+            "*economia esperada* é",
+            "*job* é uma tentativa",
+            "*contexto útil evitado* soma",
+            "*startup observável* são",
+            "a taxa é `failed / chamadas`",
+            "*utilizado* passou pelo gate",
+        ):
+            self.assertIn(definition, view)

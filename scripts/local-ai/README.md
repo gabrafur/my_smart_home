@@ -43,6 +43,27 @@ adherence, throughput, GPU/VRAM, processor/offload indication and host RAM;
 only metadata is retained in `.agent-history/`. Run it once per candidate with
 the same settings before changing `LOCAL_AI_MODEL`.
 
+Run `python3 scripts/local-ai/quality_ab.py --model <installed-model>` after the
+schema benchmark. It counts token reduction only for candidates accepted by the
+fidelity gate; a discarded result is charged the full control context and saves
+zero. The current quality-selected model on the RTX 4070 is
+`qwen2.5-coder:14b`.
+
+## On-demand endpoint recovery
+
+A machine-private configuration may opt into the reviewed
+`recover-endpoint.mjs` helper. It runs only for an invocation marked as MCP;
+passive bridge health polling never wakes or mutates the GPU host. The helper
+may send Wake-on-LAN and performs at most two bounded attempts to start the
+already-installed WSL/Ollama service and reconcile only the configured
+exact-address portproxy. It preserves strict SSH host verification and never
+installs software, widens firewall scope, creates a wildcard listener, or
+reboots the host. After two failures, normal primary-model fallback applies.
+
+The recovery behavior has deterministic coverage in
+`recover-endpoint.test.mjs`; private MAC, broadcast, endpoint, user, key, and
+host-key values remain outside Git.
+
 ## Use
 
 ```bash
@@ -79,8 +100,10 @@ LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-lo
 4. Keep architecture, multi-system debugging, security, destructive changes,
    trade-offs, integration of evidence and final review with Codex/OpenAI.
 
-Treat every local result as untrusted first-pass evidence. Feed only its JSON
-output—not raw logs or diagnostics—back to Codex.
+Treat every local result as untrusted first-pass evidence. The helper validates
+task-specific anchors and runs a second fidelity check with a minimum score of
+90%; rejected output is not returned as context and records zero useful token
+savings. Feed only accepted JSON—not raw logs or diagnostics—back to Codex.
 
 Do not describe status or route checks as RTX usage. Only a successful
 `local_ai_compress_context` result with a non-empty `job_id` and recorded

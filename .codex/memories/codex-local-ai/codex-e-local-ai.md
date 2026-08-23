@@ -16,9 +16,9 @@ Não mantenha cópia em `~/.codex/AGENTS.md` nem monte o arquivo do projeto como
 instrução global no bridge; o workspace já fornece o mesmo arquivo pelo
 mecanismo de descoberta do repositório.
 
-A economia exibida exclui falhas e benchmarks, admite delta negativo quando o
-resumo cresce e permanece estimada porque o overhead do envelope OpenAI não é
-mensurável pelo helper. Logs longos passam primeiro por filtragem determinística
+A economia útil exibida exclui falhas, descartes e benchmarks; resultado
+descartado equivale ao contexto bruto e economiza zero. Ela permanece estimada
+porque o overhead do envelope OpenAI não é mensurável pelo helper. Logs longos passam primeiro por filtragem determinística
 de ruído, preservando sinais e contexto; `summarize-log` usa schema limitado e
 no máximo uma repetição compacta para evitar JSON truncado.
 
@@ -45,6 +45,30 @@ módulos, headings e testes. Esse inventário é a entrada preferencial para
 nesse formato do que em blocos longos de código bruto. Uma inferência concluída
 que omita requisitos, arquivos ou riscos críticos deve ser descartada e não
 conta como preservação útil de contexto.
+
+Uma avaliação A/B do MCP deve comparar fixtures idênticas em sessões isoladas:
+o controle recebe a saída determinística bruta e o tratamento recebe somente o
+JSON estruturado da compressão local. Fixe modelo principal, reasoning,
+instruções e limites; alterne a ordem das condições e meça qualidade, retenção
+de fatos críticos, tokens enviados ao modelo principal, latência total,
+falhas, GPU, VRAM e CPU offload. Falha local pertence ao braço de tratamento e
+não pode ser ocultada pelo fallback. Execute as condições sequencialmente no
+host residencial e somente com preflight disponível.
+
+O A/B de 2026-08-23 demonstrou que schema válido não comprova retenção. Após a
+introdução do gate determinístico e do verificador com nota mínima de 90%, o
+`qwen2.5-coder:14b` foi selecionado: 2/4 fixtures utilizáveis, 3.414 tokens úteis
+evitados e 51,5% de redução efetiva. O 7B obteve 1/4 e 16,8%; `qwen3.5:9b`
+obteve 0/4 e 0%. Diff e inventário rejeitados pelo 14B contaram zero, enquanto
+testes e log foram utilizados. A fonte detalhada é
+`docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
+
+Para disponibilidade, o helper versionado `recover-endpoint.mjs` é uma exceção
+estreita: somente uma chamada MCP pode enviar Wake-on-LAN e fazer no máximo duas
+tentativas de iniciar WSL/Ollama já instalado e restaurar o portproxy de endereço
+exato. Polling passivo não desperta o host; nenhuma tentativa instala software,
+amplia firewall/listener ou reinicia a máquina, e duas falhas encerram no
+fallback normal. Endereço, MAC e credenciais permanecem em configuração privada.
 
 Memória pública do repositório é recuperada por índice e busca determinística,
 nunca carregada integralmente no startup. `local-ai memory-audit` mede somente

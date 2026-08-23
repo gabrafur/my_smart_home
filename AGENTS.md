@@ -133,6 +133,16 @@ Consider deterministic tools, local scripts, and local AI/Ollama when available 
 
 Do not create, repair, install, restart, or reconfigure Ollama infrastructure as part of model routing.
 
+The reviewed `scripts/local-ai/recover-endpoint.mjs` is the only exception. If
+machine-private configuration enables it, an MCP invocation may send
+Wake-on-LAN and perform at most two idempotent attempts to start the existing
+WSL/Ollama service and reconcile the exact configured `11435` portproxy. It
+must preserve strict SSH host verification and the existing firewall scope;
+it never installs software, binds a wildcard listener, reboots the host or
+runs for passive dashboard health polling. After two failures, use the normal
+OpenAI fallback. Do not reproduce these recovery mutations manually as part of
+ordinary model routing.
+
 ---
 
 ## Confirmation and Continuation Policy
@@ -189,6 +199,11 @@ Do not expose a large raw tool result before routing finishes. Claim actual RTX
 use only after successful compression returns the required execution and
 telemetry metadata. Local telemetry is metadata-only and must never persist
 prompts, source input, model output, or secrets.
+
+Count context reduction as useful only when the task-specific fidelity gate
+accepts the result. A rejected or discarded Local AI result must fall back to
+the original context and record zero useful tokens avoided, regardless of how
+small the rejected JSON was.
 
 # Contratos específicos deste repositório
 

@@ -62,6 +62,32 @@ TASK_LIST_FIELDS = {
     "summarize-document": {"key_points", "decisions", "constraints", "open_questions"},
     "summarize-log": {"errors", "suspected_files", "recommended_actions"},
 }
+QUALITY_VERIFICATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "usable": {"type": "boolean"},
+        "coverage_score": {"type": "integer", "minimum": 0, "maximum": 100},
+        "critical_omissions": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
+        "contradictions": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
+        "unsupported_claims": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
+    },
+    "required": ["usable", "coverage_score", "critical_omissions", "contradictions", "unsupported_claims"],
+    "additionalProperties": False,
+}
+
+
+class QualityRejected(RuntimeError):
+    """The local result was syntactically valid but unsafe to use as replacement context."""
+
+    def __init__(
+        self,
+        reason: str,
+        report: dict[str, Any] | None = None,
+        response: dict[str, Any] | None = None,
+    ):
+        super().__init__(reason)
+        self.report = report or {}
+        self.response = response
 
 
 def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
@@ -134,6 +160,34 @@ def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
                 "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
             },
             "required": ["summary", *list_fields, "confidence"],
+            "additionalProperties": False,
+        }
+    if task == "inspect-files":
+        max_items = 16 if not compact else 8
+        return {
+            "type": "object",
+            "properties": {
+                "summary": {"type": "string"},
+                "files": {
+                    "type": "array", "maxItems": 32,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string"},
+                            "role": {"type": "string"},
+                            "relevant_items": {
+                                "type": "array", "maxItems": max_items, "items": {"type": "string"},
+                            },
+                        },
+                        "required": ["path", "role", "relevant_items"],
+                        "additionalProperties": False,
+                    },
+                },
+                "suspected_files": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+                "recommended_actions": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+                "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            },
+            "required": ["summary", "files", "suspected_files", "recommended_actions", "confidence"],
             "additionalProperties": False,
         }
     if task != "summarize-log":
@@ -378,6 +432,9 @@ def record_routing_outcome(
     *,
     outcome: str = "auto",
     actual_tokens_avoided: int | None = None,
+    useful_tokens_avoided: int | None = None,
+    quality_accepted: bool | None = None,
+    quality_score_percent: int | None = None,
     model: str | None = None,
     reason: str | None = None,
 ) -> dict[str, Any]:
@@ -385,6 +442,12 @@ def record_routing_outcome(
     decision.update({"id": new_event_id(), "timestamp": utc_now()})
     if actual_tokens_avoided is not None:
         decision["actual_tokens_avoided"] = actual_tokens_avoided
+    if useful_tokens_avoided is not None:
+        decision["useful_tokens_avoided"] = useful_tokens_avoided
+    if quality_accepted is not None:
+        decision["quality_accepted"] = quality_accepted
+    if quality_score_percent is not None:
+        decision["quality_score_percent"] = quality_score_percent
     if model:
         decision["model"] = model
     if reason:
@@ -534,7 +597,7 @@ def prompt_for(task: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def validate_structured_response(task: str, parsed: Any) -> None:
+def validate_structured_response(task: str, parsed: Any, source_text: str | None = None) -> None:
     """Reject syntactically valid but unusable local-model responses."""
     if not isinstance(parsed, dict):
         raise RuntimeError("model returned JSON but not an object")
@@ -546,6 +609,135 @@ def validate_structured_response(task: str, parsed: Any) -> None:
     if missing or non_lists:
         detail = ', '.join(missing or non_lists)
         raise RuntimeError(f"{task} response did not follow the required schema ({detail})")
+    if task == "summarize-log" and source_text:
+        signal_pattern = re.compile(r"\b(ERROR|EXCEPTION|FAIL|ASSERT|WARN|CRITICAL|FATAL|TIMEOUT)\b", re.IGNORECASE)
+        signal_lines = [line for line in source_text.splitlines() if signal_pattern.search(line)]
+        required_identifiers = set(re.findall(
+            r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b", "\n".join(signal_lines),
+        ))
+        required_signals = {match.upper() for line in signal_lines for match in signal_pattern.findall(line)}
+        preserved = "\n".join([str(parsed.get("summary") or ""), *map(str, parsed.get("errors") or [])])
+        omitted = sorted(identifier for identifier in required_identifiers if identifier not in preserved)
+        preserved_upper = preserved.upper()
+        omitted_signals = sorted(signal for signal in required_signals if signal not in preserved_upper)
+        if omitted or omitted_signals:
+            details = [*omitted[:8], *omitted_signals[:8]]
+            raise QualityRejected(
+                "summarize-log response omitted critical signals from summary/errors "
+                f"({', '.join(details)})",
+                {"critical_omissions": details},
+            )
+    if source_text:
+        serialized = json.dumps(parsed, ensure_ascii=False)
+        omitted_anchors = sorted(anchor for anchor in required_source_anchors(task, source_text) if anchor not in serialized)
+        if omitted_anchors:
+            raise QualityRejected(
+                "structured response omitted deterministic source anchors "
+                f"({', '.join(omitted_anchors[:12])})",
+                {"critical_omissions": omitted_anchors[:12]},
+            )
+
+
+def required_source_anchors(task: str, source_text: str) -> set[str]:
+    """Extract exact, non-semantic facts whose loss makes replacement unsafe."""
+    anchors: set[str] = set()
+    path_pattern = re.compile(
+        r"(?<![A-Za-z0-9_])(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+(?::\d+(?::\d+)?)?"
+    )
+    if task in {"summarize-log", "analyze-tests", "classify-error"}:
+        signal = re.compile(
+            r"\b(ERROR|EXCEPTION|FAIL(?:ED|URE)?|ASSERT(?:ION)?|WARN(?:ING)?|CRITICAL|FATAL|TIMEOUT)\b",
+            re.IGNORECASE,
+        )
+        signal_lines = "\n".join(line for line in source_text.splitlines() if signal.search(line))
+        anchors.update(re.findall(r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b", signal_lines))
+        anchors.update(re.findall(r"\b[A-Z][A-Za-z0-9]*(?:Error|Exception)\b", signal_lines))
+        anchors.update(path_pattern.findall(signal_lines))
+        anchors.update(re.findall(r"\b[\w./-]+::[\w.\[\]-]+", signal_lines))
+    elif task == "inspect-files":
+        anchors.update(path_pattern.findall(source_text))
+    elif task == "review-diff":
+        current_file = None
+        sensitive_change = re.compile(
+            r"\b(auth|permission|role|owner|token|ttl|timeout|cache|validat|forbidden)\w*\b",
+            re.IGNORECASE,
+        )
+        for line in source_text.splitlines():
+            match = re.match(r"diff --git a/\S+ b/(\S+)$", line)
+            if match:
+                current_file = match.group(1)
+            elif current_file and line[:1] in {"+", "-"} and not line.startswith(("+++", "---")):
+                if sensitive_change.search(line):
+                    anchors.add(current_file)
+        for identifier, operator, number in re.findall(
+            r"^\+[^+].*?\b([A-Za-z_]\w*)\s*([*/])\s*(\d+(?:\.\d+)?)",
+            source_text,
+            flags=re.MULTILINE,
+        ):
+            anchors.add(identifier)
+            anchors.add(f"{operator} {number}")
+    elif task == "summarize-memory":
+        anchors.update(re.findall(r"^--- BEGIN MEMORY (.+) ---$", source_text, flags=re.MULTILINE))
+    return {anchor for anchor in anchors if 2 <= len(anchor) <= 160}
+
+
+def quality_verification_prompt(task: str, source_text: str, parsed: dict[str, Any]) -> str:
+    """Build the second-pass fidelity gate; its output is metadata-only and never returned as context."""
+    candidate = json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))
+    return (
+        "You are a strict fidelity gate for lossy context compression. Compare CANDIDATE with SOURCE. "
+        "Set usable=true only when the candidate preserves every materially actionable fact needed by an "
+        "engineering agent: failures, warnings, changed behavior and direction, files, identifiers, numeric "
+        "values, constraints, commands, and unresolved risks. Any contradiction, reversed operation, omitted "
+        "critical fact, invented claim, or misleading confidence makes it unusable. Routine repetition may be "
+        "omitted. Return JSON only.\n\n"
+        f"TASK: {task}\n\nSOURCE:\n{source_text}\n\nCANDIDATE:\n{candidate}"
+    )
+
+
+def verify_candidate_quality(
+    task: str,
+    source_text: str,
+    parsed: dict[str, Any],
+    *,
+    endpoint: str,
+    model: str,
+    request_call,
+    minimum_score: int,
+    context_tokens: int,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run a conservative second pass and reject anything not explicitly usable."""
+    response = request_call(endpoint, "/api/generate", {
+        "model": model,
+        "prompt": quality_verification_prompt(task, source_text, parsed),
+        "stream": False,
+        "think": False,
+        "format": QUALITY_VERIFICATION_SCHEMA,
+        "options": {
+            "num_ctx": max(context_tokens, 8192),
+            "num_predict": 600,
+            "temperature": 0,
+        },
+    })
+    try:
+        report = json.loads(str(response.get("response", "")).strip())
+    except json.JSONDecodeError as error:
+        raise QualityRejected("quality verifier returned invalid JSON", response=response) from error
+    if not isinstance(report, dict):
+        raise QualityRejected("quality verifier returned invalid shape", response=response)
+    lists = ("critical_omissions", "contradictions", "unsupported_claims")
+    if any(not isinstance(report.get(key), list) for key in lists):
+        raise QualityRejected("quality verifier omitted required lists", report, response)
+    score = report.get("coverage_score")
+    accepted = (
+        report.get("usable") is True
+        and isinstance(score, int)
+        and score >= minimum_score
+        and all(not report[key] for key in lists)
+    )
+    if not accepted:
+        raise QualityRejected("quality verifier rejected candidate", report, response)
+    return report, response
 
 
 def gpu_snapshot() -> dict[str, Any] | None:
@@ -577,7 +769,7 @@ def revalidate_once(settings: dict[str, Any]) -> bool:
     try:
         result = subprocess.run(
             [str(command), "--json", "--revalidate"],
-            capture_output=True, text=True, timeout=15, check=False,
+            capture_output=True, text=True, timeout=75, check=False,
         )
         payload = json.loads(result.stdout)
     except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
@@ -735,37 +927,67 @@ def run_analysis(args: argparse.Namespace) -> int:
     started = time.monotonic()
     try:
         responses: list[dict[str, Any]] = []
+        generation_responses: list[dict[str, Any]] = []
+        verification_responses: list[dict[str, Any]] = []
         parsed: Any = None
+        quality_report: dict[str, Any] = {}
         output = ""
+        retry_feedback = ""
+        minimum_quality_score = max(90, min(int(settings.get("quality_minimum_score", 90)), 100))
         for attempt in range(2):
             attempt_prompt = prompt if attempt == 0 else (
-                "Your previous response was invalid or too long. Return the same schema as compact valid JSON. "
-                "Use at most two concise entries in each list and omit routine noise.\n\n" + prompt
+                "The previous candidate failed the fidelity gate. Correct every reported omission or "
+                "contradiction. Preserve all critical facts even if the answer takes longer; do not shorten "
+                "away warnings, files, identifiers, numeric values, changed operation direction, or risks.\n"
+                f"GATE FEEDBACK: {retry_feedback[:1800]}\n\n{prompt}"
             )
             response = request_call(endpoint, "/api/generate", {
                 "model": model,
                 "prompt": attempt_prompt,
                 "stream": False,
-                "format": response_format(args.task, compact=attempt == 1),
+                "think": False,
+                "format": response_format(args.task),
                 "options": {
-                    "num_ctx": args.context_tokens,
-                    "num_predict": max(args.output_tokens, 1200) if attempt == 1 else args.output_tokens,
-                    "temperature": 0.1,
+                    "num_ctx": max(args.context_tokens, 8192),
+                    "num_predict": max(args.output_tokens, 1200),
+                    "temperature": 0,
                 },
             })
             responses.append(response)
+            generation_responses.append(response)
             output = str(response.get("response", "")).strip()
             if len(output) > args.max_output_chars:
                 output = output[:args.max_output_chars]
                 print("local-ai: output truncated to configured limit", file=sys.stderr)
             try:
                 parsed = json.loads(output)
-                validate_structured_response(args.task, parsed)
+                validate_structured_response(args.task, parsed, model_text)
+                quality_report, verification = verify_candidate_quality(
+                    args.task,
+                    model_text,
+                    parsed,
+                    endpoint=endpoint,
+                    model=model,
+                    request_call=request_call,
+                    minimum_score=minimum_quality_score,
+                    context_tokens=args.context_tokens,
+                )
+                responses.append(verification)
+                verification_responses.append(verification)
                 break
-            except (json.JSONDecodeError, RuntimeError):
+            except QualityRejected as error:
+                if error.response is not None:
+                    responses.append(error.response)
+                    verification_responses.append(error.response)
+                retry_feedback = json.dumps(error.report or {"reason": str(error)}, ensure_ascii=False)
                 if attempt == 1:
                     raise
-                print("local-ai: retrying one compact structured response", file=sys.stderr)
+                print("local-ai: retrying after quality rejection", file=sys.stderr)
+            except (json.JSONDecodeError, RuntimeError) as error:
+                retry_feedback = str(error)
+                if attempt == 1:
+                    raise RuntimeError("model returned invalid structured response after two attempts") from error
+                print("local-ai: retrying invalid structured response", file=sys.stderr)
         elapsed = time.monotonic() - started
         eval_count = sum(int(item.get("eval_count") or 0) for item in responses)
         eval_duration = sum(int(item.get("eval_duration") or 0) for item in responses)
@@ -778,7 +1000,10 @@ def run_analysis(args: argparse.Namespace) -> int:
             "duration_seconds": round(elapsed, 3),
             "local_input_tokens": prompt_eval_count,
             "local_output_tokens": eval_count,
-            "local_attempts": len(responses),
+            "local_attempts": len(generation_responses),
+            "quality_verification_attempts": len(verification_responses),
+            "quality_accepted": True,
+            "quality_score_percent": int(quality_report.get("coverage_score") or 0),
             "tokens_per_second": token_rate,
             "context_output_chars": len(output),
             "context_output_bytes": len(output.encode("utf-8")),
@@ -791,6 +1016,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             "context_overhead_method": "not_measured",
             "context_savings_estimated": True,
             "openai_context_tokens_avoided": context_input_tokens - context_output_tokens,
+            "useful_context_tokens_avoided": context_input_tokens - context_output_tokens,
             "context_reduction_percent": round(
                 ((context_input_tokens - context_output_tokens) / context_input_tokens) * 100 if context_input_tokens else 0,
                 1,
@@ -802,11 +1028,25 @@ def run_analysis(args: argparse.Namespace) -> int:
             routing_assessment.get("decision") == "LOCAL_AI_ELIGIBLE"
             and actual_avoided >= minimum
         ) else "unnecessary"
+        if outcome != "used":
+            raise QualityRejected(
+                "validated result did not meet the minimum useful context reduction",
+                {
+                    "usable": True,
+                    "coverage_score": int(quality_report.get("coverage_score") or 0),
+                    "critical_omissions": [],
+                    "contradictions": [],
+                    "unsupported_claims": [],
+                },
+            )
         record_routing_outcome(
             recorder,
             routing_assessment,
             outcome=outcome,
             actual_tokens_avoided=actual_avoided,
+            useful_tokens_avoided=actual_avoided if outcome == "used" else 0,
+            quality_accepted=outcome == "used",
+            quality_score_percent=int(quality_report.get("coverage_score") or 0),
             model=model,
         )
         if memory_task:
@@ -836,26 +1076,32 @@ def run_analysis(args: argparse.Namespace) -> int:
         print(json.dumps(parsed, ensure_ascii=False, separators=(",", ":")))
         return 0
     except Exception as error:
+        quality_rejected = isinstance(error, QualityRejected)
         event.update({
-            "status": "failed",
+            "status": "discarded" if quality_rejected else "failed",
             "finished_at": utc_now(),
             "duration_seconds": round(time.monotonic() - started, 3),
             "error_type": type(error).__name__,
+            "quality_accepted": False if quality_rejected else None,
+            "quality_score_percent": int(error.report.get("coverage_score") or 0) if quality_rejected else None,
         })
         if not routing_recorded:
             record_routing_outcome(
                 recorder,
                 routing_assessment,
-                outcome="failed",
+                outcome="quality-rejected" if quality_rejected else "failed",
                 model=model,
-                reason="local_ai_call_failed",
+                reason="quality_gate_rejected" if quality_rejected else "local_ai_call_failed",
+                quality_accepted=False if quality_rejected else None,
+                quality_score_percent=int(error.report.get("coverage_score") or 0) if quality_rejected else None,
             )
             if memory_task:
                 record_memory_outcome(
                     recorder, topic=memory_topic, files_found=source_files,
-                    decision="MEMORY_LOCAL_AI_UNAVAILABLE", reason="local_ai_call_failed",
+                    decision="MEMORY_LOCAL_AI_NOT_BENEFICIAL" if quality_rejected else "MEMORY_LOCAL_AI_UNAVAILABLE",
+                    reason="quality_gate_rejected" if quality_rejected else "local_ai_call_failed",
                     retrieved_tokens=context_input_tokens, sent_to_local_ai_tokens=model_input_tokens,
-                    available=False, model=model, token_count_method=token_method,
+                    available=quality_rejected, model=model, token_count_method=token_method,
                 )
             routing_recorded = True
         raise
@@ -936,12 +1182,12 @@ def benchmark(args: argparse.Namespace) -> int:
                 f"TASK INSTRUCTIONS:\n{prompt_for(task)}\n\nINPUT:\n{source}"
             )
             response = request_call(endpoint, "/api/generate", {
-                "model": model, "prompt": prompt, "stream": False, "format": "json",
+                "model": model, "prompt": prompt, "stream": False, "think": False, "format": "json",
                 "options": {"num_ctx": args.context_tokens, "num_predict": args.benchmark_output_tokens, "temperature": 0},
             })
             output = str(response.get("response", "")).strip()
             parsed = json.loads(output)
-            validate_structured_response(task, parsed)
+            validate_structured_response(task, parsed, source)
             elapsed = time.monotonic() - started
             eval_count, eval_duration = response.get("eval_count"), response.get("eval_duration")
             token_rate = round(eval_count / (eval_duration / 1_000_000_000), 2) if isinstance(eval_count, int) and eval_duration else None
@@ -973,7 +1219,7 @@ def benchmark(args: argparse.Namespace) -> int:
     print(json.dumps({
         "suite": "local-ai-bounded-v1", "model": model, "endpoint": endpoint,
         "cases": len(results), "successful_cases": len(successful),
-        "quality_score_percent": round(len(successful) / len(results) * 100, 1) if results else 0,
+        "schema_adherence_percent": round(len(successful) / len(results) * 100, 1) if results else 0,
         "aggregate_tokens_per_second": round(eval_tokens / elapsed_total, 2) if elapsed_total else None,
         "gpu_peak_percent": max(gpu_peaks) if gpu_peaks else None,
         "vram_peak_mib": max(vram_peaks) if vram_peaks else None,

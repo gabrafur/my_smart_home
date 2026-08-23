@@ -332,22 +332,30 @@ views:
             cards:
               - type: tile
                 entity: sensor.codex_oportunidades_rtx_perdidas_hoje
-                name: Perdas registradas (operacional)
+                name: Oportunidades realmente perdidas
+              - type: markdown
+                content: |-
+                  {% from 'formatting.jinja' import format_number_ptbr %}
+                  {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {} %}
+                  **Tokens potenciais dessas perdas**
+
+                  # {{ format_number_ptbr(today.get('missed_potential_tokens_avoidable', 0)) }}
               - type: tile
                 entity: sensor.codex_local_ai_indisponivel_hoje
                 name: RTX indisponível (confirmado)
               - type: tile
                 entity: sensor.codex_disponibilidade_rtx_desconhecida_hoje
                 name: Estado RTX desconhecido
-              - type: tile
-                entity: sensor.codex_chamadas_local_ai_desnecessarias_hoje
-                name: Chamadas desnecessárias
+              - type: markdown
+                content: |-
+                  {% from 'formatting.jinja' import format_number_ptbr %}
+                  {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {} %}
+                  **Resultados descartados por qualidade**
+
+                  # {{ format_number_ptbr(today.get('quality_rejected_tasks', 0)) }}
               - type: tile
                 entity: sensor.codex_falhas_de_roteamento_local_ai_hoje
-                name: Falhas após roteamento
-              - type: tile
-                entity: sensor.codex_tokens_potenciais_evitaveis_hoje_estimados
-                name: Potencial estimado
+                name: Falhas técnicas após roteamento
               - type: tile
                 entity: sensor.codex_decisoes_de_roteamento_hoje
                 name: Tarefas avaliadas
@@ -357,33 +365,19 @@ views:
               - type: tile
                 entity: sensor.codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje
                 name: Elegíveis e disponíveis
-              - type: tile
-                entity: sensor.codex_auditoria_retrospectiva_de_roteamento_rtx
-                name: Conversas auditadas
-              - type: tile
-                entity: sensor.codex_oportunidades_rtx_perdidas_hoje_na_auditoria
-                name: Perdas detectadas na auditoria hoje
               - type: markdown
                 content: >-
-                  **Hoje:** os nove primeiros cards usam somente decisões
-                  operacionais registradas do dia UTC e são atualizados pelo
-                  feed de uso após cada decisão. O primeiro card não cobre
-                  conversas anteriores em que o roteador nem sequer foi
-                  chamado. “Potencial estimado” mede redução estimada
-                  de contexto, não cobrança nem economia financeira oficial.
+                  Estes cards usam somente eventos operacionais do dia UTC.
+                  Resultados descartados pelo gate de fidelidade não contam
+                  como uso bem-sucedido nem como economia de tokens. A antiga
+                  auditoria retrospectiva foi removida daqui porque sua amostra
+                  fixa não representava o estado de “hoje”.
 
-                  **Auditoria retrospectiva:** {{
-                  states('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx')
-                  }} conversas · {{
-                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'candidatas')
-                  }} candidatas · {{
-                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'oportunidades_historicas')
-                  }} oportunidades históricas · última auditoria {{
-                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'auditado_em')
-                  or 'não registrada' }}. Destas, {{
-                  state_attr('sensor.codex_auditoria_retrospectiva_de_roteamento_rtx', 'oportunidades_de_hoje_na_auditoria')
-                  }} ocorreram em conversas de hoje. Esses valores não entram
-                  nos cards diários nem nos totais operacionais.
+                  **Como ler:** *elegível* significa que tamanho, tipo e
+                  compressibilidade justificavam a RTX; *disponível* confirma
+                  que o endpoint respondia; *perdida* é uma tarefa elegível e
+                  disponível que não chamou o helper. *Descartado* falhou no
+                  gate de qualidade; *falha técnica* não produziu candidato.
 
           - type: entities
             title: Decisão de roteamento
@@ -419,6 +413,11 @@ views:
               Ainda não há uma decisão de roteamento registrada.
               {% endif %}
 
+              **Como ler:** *economia esperada* é a previsão antes da chamada;
+              *economia real* é o delta útil somente após aprovação do gate.
+              *Elegível* não prova execução: uso real exige uma decisão
+              `LOCAL_AI_USED` com resultado validado.
+
           - type: markdown
             content: >-
               {% from 'formatting.jinja' import format_number_ptbr %}
@@ -426,8 +425,12 @@ views:
               {% set missed = routing.get('latest_decisions', []) | selectattr('decision', 'eq', 'ROUTING_MISSED_OPPORTUNITY') | list %}
               ## Oportunidades RTX perdidas
 
+              **Como ler:** este bloco lista somente decisões operacionais
+              `ROUTING_MISSED_OPPORTUNITY`; o potencial é estimado antes da
+              inferência e não representa cobrança.
+
               **Hoje:** {{ format_number_ptbr(states('sensor.codex_oportunidades_rtx_perdidas_hoje')) }} ·
-              potencial de contexto evitável acumulado: ~{{ format_number_ptbr((routing.get('totals') or {}).get('potential_tokens_avoidable', 0)) }} tokens.
+              potencial de contexto das perdas de hoje: ~{{ format_number_ptbr(((routing.get('periods') or {}).get('today') or {}).get('missed_potential_tokens_avoidable', 0)) }} tokens.
 
               {% if missed %}
               {% for item in missed %}
@@ -470,15 +473,16 @@ views:
               Contexto: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_entrada')) }} →
               {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_saida')) }} tokens** ·
               redução **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'reducao_contexto_percentual'), 1) }}%** ·
-              contexto OpenAI evitado **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados')) }} tokens** ·
+              contexto útil evitado **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados')) }} tokens** ·
+              gate de qualidade **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'qualidade_percentual')) }}%** ·
               {{ state_attr('sensor.codex_ultimo_job_local_ai', 'processador') or 'processador não amostrado' }}.
 
               Overhead do envelope OpenAI: **não mensurado**; a economia é uma estimativa de
-              conteúdo pelo método `{{ state_attr('sensor.codex_ultimo_job_local_ai', 'metodo_contagem_tokens') }}`.
-              {% elif task and status == 'failed' %}
+              conteúdo aprovada pelo gate, pelo método `{{ state_attr('sensor.codex_ultimo_job_local_ai', 'metodo_contagem_tokens') }}`.
+              {% elif task and status in ['failed', 'discarded'] %}
               ## Último job de GPU
 
-              A última execução de **{{ task }}** falhou em
+              A última execução de **{{ task }}** foi {{ 'descartada pelo gate de qualidade' if status == 'discarded' else 'interrompida por falha técnica' }} em
               {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s'), 3) }} s
               ({{ state_attr('sensor.codex_ultimo_job_local_ai', 'erro_tipo') or 'tipo não informado' }}).
               Nenhum token economizado é contabilizado para uma execução sem sucesso.
@@ -487,6 +491,11 @@ views:
 
               Nenhuma inferência local foi registrada ainda.
               {% endif %}
+
+              **Como ler:** *job* é uma tentativa de inferência; *success*
+              indica resultado validado e utilizado; *discarded* indica rejeição
+              de qualidade; *failed* indica falha técnica. GPU/VRAM são picos
+              amostrados durante o job, não valores de repouso.
 
       - type: grid
         cards:
@@ -507,16 +516,6 @@ views:
               - type: tile
                 entity: sensor.codex_rtx_potencia_agora
                 name: Potência agora
-
-          - type: history-graph
-            title: RTX em uso — últimas 48 horas
-            hours_to_show: 48
-            grid_options:
-              columns: full
-              rows: auto
-            entities:
-              - entity: binary_sensor.codex_rtx_em_uso
-                name: RTX em uso
 
           - type: statistics-graph
             title: GPU — últimas 48 horas
@@ -569,6 +568,14 @@ views:
                 entity: sensor.codex_ultima_decisao_de_memoria
                 name: Última memória
 
+          - type: markdown
+            content: >-
+              **Como ler:** *Job atual / último* acompanha a inferência; *última
+              decisão* mostra a escolha do roteador; *última falha* considera
+              apenas erro técnico; *última memória* descreve o retrieval mais
+              recente. Os horários podem ser diferentes porque são eventos
+              independentes.
+
           - type: grid
             title: Economia acumulada (estimativa)
             columns: 2
@@ -589,10 +596,12 @@ views:
 
           - type: markdown
             content: >-
-              **Chamadas** medem quantas tarefas locais foram tentadas; **tokens economizados**
-              estimam a redução entre o contexto enviado ao Local AI e seu resumo retornado.
+              **Como ler:** **chamadas** medem quantas tarefas locais foram tentadas; **tokens economizados**
+              estimam a redução entre o contexto enviado ao Local AI e somente resultados aprovados pelo gate de fidelidade.
               São unidades diferentes e não devem ser comparadas no mesmo gráfico. A estimativa
-              não representa cobrança oficial da OpenAI.
+              não representa cobrança oficial da OpenAI; descartes contam zero.
+              *Hoje*, *semana* e *mês* usam janelas UTC; *total* cobre toda a
+              telemetria preservada.
 
           - type: grid
             title: Totais acumulados
@@ -604,13 +613,21 @@ views:
                 name: Chamadas
               - type: tile
                 entity: sensor.codex_chamadas_local_ai_com_sucesso
-                name: Concluídas
+                name: Validadas
               - type: tile
                 entity: sensor.codex_falhas_local_ai
                 name: Falhas
               - type: tile
                 entity: sensor.codex_fallbacks_local_ai_informados
                 name: Fallbacks
+
+          - type: markdown
+            content: >-
+              **Como ler:** *chamadas* inclui toda tentativa operacional;
+              *validadas* passaram pelo gate de fidelidade; *falhas* são erros
+              técnicos; *fallbacks* são retornos explicitamente informados ao
+              modelo principal. Um descarte por qualidade não é falha técnica
+              nem economia útil.
 
       - type: grid
         cards:
@@ -621,22 +638,34 @@ views:
             cards:
               - type: tile
                 entity: sensor.codex_tokens_openai_evitados_hoje_estimados
-                name: Contexto evitado
+                name: Contexto útil evitado
               - type: tile
                 entity: sensor.codex_reducao_de_contexto_local_ai_hoje
                 name: Redução de contexto
               - type: tile
                 entity: sensor.codex_rtx_usos_hoje
-                name: RTX usada
-              - type: tile
-                entity: sensor.codex_taxa_de_falhas_local_ai_hoje
-                name: Taxa de falhas
+                name: Resultados utilizados
+              - type: markdown
+                content: |-
+                  {% from 'formatting.jinja' import format_number_ptbr %}
+                  {% set today = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {} %}
+                  **Descartados por qualidade**
+
+                  # {{ format_number_ptbr(today.get('quality_rejected_calls', 0)) }}
               - type: tile
                 entity: sensor.codex_taxa_de_delegacao_rtx_hoje
                 name: Taxa de delegação
               - type: tile
                 entity: sensor.codex_cobertura_ponderada_de_economia_rtx_hoje
                 name: Cobertura de economia
+
+          - type: markdown
+            content: >-
+              **Como ler:** *contexto útil evitado* soma apenas resultados
+              aprovados; *redução* compara entrada e saída desses resultados;
+              *utilizados* conta decisões `LOCAL_AI_USED`; *descartados* vale
+              zero economia. *Delegação* mede usos entre tarefas elegíveis e
+              disponíveis; *cobertura* pondera tokens úteis contra o potencial.
 
           - type: grid
             title: Contexto e memória — hoje
@@ -682,6 +711,11 @@ views:
               O envelope interno do Codex e a memória privada automática não expõem contagem de tokens; este card mostra somente o contexto observável e indica estimativas quando aplicável.
               {% endif %}
 
+              **Como ler:** *startup observável* são instruções mensuráveis;
+              *recuperada* é a memória selecionada sob demanda; *enviada ao GPT*
+              é o JSON condensado; *evitada* é a diferença útil. *Sobrecarga*
+              registra contexto grande que não foi comprimido localmente.
+
           - type: entities
             title: Última decisão de memória
             show_header_toggle: false
@@ -712,6 +746,11 @@ views:
               Memory retrieval: **SKIPPED** — ainda não há decisão registrada nesta telemetria.
               {% endif %}
 
+              **Como ler:** a decisão informa se a memória foi ignorada,
+              enviada diretamente, comprimida ou descartada. *Arquivos
+              encontrados* mede o retrieval; somente a diferença entre memória
+              recuperada e contexto validado enviado ao GPT conta como economia.
+
           - type: history-graph
             title: Economia — últimos 7 dias
             hours_to_show: 168
@@ -719,12 +758,25 @@ views:
               - entity: sensor.codex_tokens_openai_evitados_estimados
                 name: Tokens economizados (estimativa)
 
+          - type: markdown
+            content: >-
+              **Como ler:** cada ponto é o total acumulado de tokens úteis
+              evitados observado naquele instante. Trechos planos significam
+              ausência de novo resultado validado; descartes e falhas não elevam
+              a série. Não é uma medição de cobrança da OpenAI.
+
           - type: history-graph
             title: Chamadas Local AI — últimos 7 dias
             hours_to_show: 168
             entities:
               - entity: sensor.codex_chamadas_local_ai
                 name: Chamadas Local AI
+
+          - type: markdown
+            content: >-
+              **Como ler:** a série é um contador acumulado de tentativas
+              operacionais. Ela cresce tanto para resultados aceitos quanto para
+              descartes ou falhas; benchmarks diagnósticos ficam fora.
 
           - type: history-graph
             title: Taxa de falhas Local AI — últimos 7 dias
@@ -738,8 +790,38 @@ views:
                 name: qwen3:8b
               - entity: sensor.codex_taxa_de_falhas_qwen_2_5_coder_1_5b
                 name: qwen2.5-coder:1.5b-base
-              - entity: sensor.codex_taxa_de_falhas_qwen_3_14b
-                name: qwen3:14b
+
+          - type: markdown
+            content: >-
+              **Como ler:** a taxa é `failed / chamadas` e mede somente falhas
+              técnicas. Rejeições do gate de qualidade são *descartes*, não
+              falhas. As linhas por modelo preservam comparações históricas; o
+              modelo ativo aparece no total até sua entidade ser recarregada.
+
+          - type: markdown
+            title: RTX em uso — últimas 48 horas
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+              {% set full_history = state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs') %}
+              {% set jobs = full_history if full_history is not none else local.get('latest_jobs', []) %}
+              | Horário | Tarefa | Modelo | Resultado | Qualidade | Duração | Tokens úteis evitados |
+              |:--|:--|:--|:--|:--|--:|--:|
+              {% for job in jobs %}
+              {% set timestamp = as_timestamp(job.get('finished_at') or job.get('started_at'), none) %}
+              | {{ timestamp | timestamp_custom('%d/%m %H:%M', true) if timestamp is number else '—' }} | `{{ job.get('task', '—') }}` | `{{ job.get('model', '—') }}` | {{ 'utilizado' if job.get('quality_accepted') == true else 'descartado' if job.get('status') == 'discarded' else job.get('status', '—') }} | {{ (format_number_ptbr(job.get('quality_score_percent')) ~ '%') if job.get('quality_score_percent') is number else '—' }} | {{ (format_number_ptbr(job.get('duration_seconds'), 1) ~ ' s') if job.get('duration_seconds') is number else '—' }} | {{ format_number_ptbr(job.get('useful_context_tokens_avoided', 0)) }} |
+              {% else %}
+              | — | Nenhuma inferência registrada nesta janela | — | — | — | — | 0 |
+              {% endfor %}
+
+              **Como ler:** *utilizado* passou pelo gate; *descartado* foi
+              rejeitado por qualidade; *failed* é erro técnico; qualidade é a
+              nota de fidelidade. Resultados descartados aparecem com **zero
+              tokens úteis evitados**. A tabela omite benchmarks e é atualizada
+              a cada 30 segundos.
+              {% if full_history is none %}
+              _Exibindo temporariamente os jobs recentes do feed principal até a próxima recarga programada do Home Assistant._
+              {% endif %}
 
   - title: Assistentes
     path: assistentes

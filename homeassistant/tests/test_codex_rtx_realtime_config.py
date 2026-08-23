@@ -25,32 +25,24 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
     def test_today_sections_use_daily_entities(self):
         today_entities = (
             "sensor.codex_reducao_de_contexto_local_ai_hoje",
-            "sensor.codex_taxa_de_falhas_local_ai_hoje",
             "sensor.codex_taxa_de_delegacao_rtx_hoje",
             "sensor.codex_cobertura_ponderada_de_economia_rtx_hoje",
-            "sensor.codex_tokens_potenciais_evitaveis_hoje_estimados",
             "sensor.codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje",
             "sensor.codex_compressao_de_memoria_hoje",
         )
         for entity_id in today_entities:
             self.assertIn(f"entity: {entity_id}", DASHBOARD)
+        self.assertIn("today.get('missed_potential_tokens_avoidable', 0)", DASHBOARD)
+        self.assertIn("today.get('quality_rejected_tasks', 0)", DASHBOARD)
+        self.assertIn("today.get('quality_rejected_calls', 0)", DASHBOARD)
 
-    def test_retrospective_audit_is_separate_from_today_entities(self):
-        audit_id = "codex_auditoria_retrospectiva_de_roteamento_rtx"
-        start = PACKAGE.index(f"unique_id: {audit_id}")
-        block = PACKAGE[start : start + 2800]
-        self.assertIn("get('audit')", block)
-        self.assertNotIn("get('today')", block)
-        self.assertIn(f"entity: sensor.{audit_id}", DASHBOARD)
-        self.assertIn("não entram", DASHBOARD)
-        self.assertIn("totais operacionais", DASHBOARD)
-        retrospective_today = "codex_oportunidades_rtx_perdidas_hoje_na_auditoria"
-        start = PACKAGE.index(f"unique_id: {retrospective_today}")
-        block = PACKAGE[start : start + 2200]
-        self.assertIn("retrospective_today_missed_opportunities", block)
-        self.assertNotIn("get('periods')", block)
-        self.assertIn(f"entity: sensor.{retrospective_today}", DASHBOARD)
-        self.assertIn("Perdas registradas (operacional)", DASHBOARD)
+    def test_stale_retrospective_audit_is_not_presented_as_today(self):
+        self.assertNotIn("codex_auditoria_retrospectiva_de_roteamento_rtx", PACKAGE)
+        self.assertNotIn("codex_oportunidades_rtx_perdidas_hoje_na_auditoria", PACKAGE)
+        self.assertNotIn("get('audit')", PACKAGE)
+        self.assertIn("Oportunidades realmente perdidas", DASHBOARD)
+        self.assertIn("auditoria retrospectiva foi removida", DASHBOARD)
+        self.assertIn("fixa não representava", DASHBOARD)
 
     def test_daily_routing_counters_explain_their_semantics(self):
         for unique_id in (
@@ -62,6 +54,8 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
             "codex_disponibilidade_rtx_desconhecida_hoje",
             "codex_chamadas_local_ai_desnecessarias_hoje",
             "codex_falhas_de_roteamento_local_ai_hoje",
+            "codex_tokens_de_oportunidades_rtx_perdidas_hoje",
+            "codex_resultados_local_ai_descartados_hoje",
         ):
             start = PACKAGE.index(f"unique_id: {unique_id}")
             self.assertIn("significado:", PACKAGE[start : start + 1200])

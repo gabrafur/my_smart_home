@@ -4,7 +4,9 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { CodexUsageReader, scanCodexUsage, scanLocalAiTelemetry } = require('./usage');
+const {
+  CodexUsageReader, scanCodexUsage, scanLocalAiTelemetry, scanLocalAiHistory,
+} = require('./usage');
 
 function tokenEvent(timestamp, total, usedPercent, balance = '0', plan = 'plus') {
   return JSON.stringify({
@@ -209,14 +211,18 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
       calls: 3, successful_calls: 2, failed_calls: 1, fallbacks_reported: 1,
       duration_seconds: 20, local_input_tokens: 1500, local_output_tokens: 260,
       context_input_tokens: 1200, context_output_tokens: 180, context_overhead_tokens: 0,
-      openai_context_tokens_avoided: 1020,
+      openai_context_tokens_avoided: 1020, quality_rejected_calls: 1,
+      quality_validated_calls: 1, quality_validated_context_input_tokens: 700,
+      quality_validated_context_output_tokens: 100, useful_context_tokens_avoided: 600,
     },
     daily: {
       '2026-08-16': { totals: {
         calls: 2, successful_calls: 1, failed_calls: 1, fallbacks_reported: 1,
         duration_seconds: 10, local_input_tokens: 800, local_output_tokens: 130,
         context_input_tokens: 700, context_output_tokens: 100,
-        openai_context_tokens_avoided: 600,
+        openai_context_tokens_avoided: 600, quality_rejected_calls: 1,
+        quality_validated_calls: 1, quality_validated_context_input_tokens: 700,
+        quality_validated_context_output_tokens: 100, useful_context_tokens_avoided: 600,
       } },
     },
     models: { 'qwen2.5-coder:7b': { totals: { calls: 3, successful_calls: 2 } } },
@@ -239,7 +245,8 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.equal(usage.state, 'LOCAL_AI_IN_USE');
   assert.equal(usage.totals.local_input_tokens, 1500);
   assert.equal(usage.totals.openai_context_tokens_avoided, 1020);
-  assert.equal(usage.totals.context_reduction_percent, 85);
+  assert.equal(usage.totals.context_reduction_percent, 85.7);
+  assert.equal(usage.totals.quality_acceptance_rate_percent, 50);
   assert.equal(usage.totals.failure_rate_percent, 33.3);
   assert.equal(usage.totals.average_duration_seconds, 6.67);
   assert.equal(usage.periods.today.openai_context_tokens_avoided, 600);
@@ -306,7 +313,8 @@ test('preserves a signed negative context delta instead of reporting false savin
   }));
   const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
   assert.equal(usage.totals.openai_context_tokens_avoided, -20);
-  assert.equal(usage.totals.context_reduction_percent, -20);
+  assert.equal(usage.totals.raw_context_reduction_percent, -20);
+  assert.equal(usage.totals.context_reduction_percent, null);
 });
 
 test('reports routing coverage, weighted savings, and compact last decisions', (t) => {
@@ -320,6 +328,7 @@ test('reports routing coverage, weighted savings, and compact last decisions', (
         tasks: 4, eligible_tasks: 3, eligible_and_available_tasks: 3,
         used_tasks: 2, missed_opportunities: 1, not_beneficial_tasks: 1,
         potential_tokens_avoidable: 10_000, actual_tokens_avoided: 8_400,
+        useful_tokens_avoided: 7_600, missed_potential_tokens_avoidable: 1_200,
       },
       latest_decisions: [
         {
@@ -332,7 +341,8 @@ test('reports routing coverage, weighted savings, and compact last decisions', (
       '2026-08-16': { routing: {
         tasks: 4, eligible_tasks: 3, eligible_and_available_tasks: 3,
         used_tasks: 2, missed_opportunities: 1, potential_tokens_avoidable: 10_000,
-        actual_tokens_avoided: 8_400,
+        actual_tokens_avoided: 8_400, useful_tokens_avoided: 7_600,
+        missed_potential_tokens_avoidable: 1_200,
       } },
     },
   }));
@@ -342,12 +352,13 @@ test('reports routing coverage, weighted savings, and compact last decisions', (
 
   const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
   assert.equal(usage.routing.totals.rtx_delegation_rate_percent, 66.7);
-  assert.equal(usage.routing.totals.weighted_context_savings_coverage_percent, 84);
+  assert.equal(usage.routing.totals.weighted_context_savings_coverage_percent, 76);
+  assert.equal(usage.routing.periods.today.missed_potential_tokens_avoidable, 1200);
   assert.equal(usage.routing.periods.today.missed_opportunities, 1);
   assert.equal(usage.routing.latest_decisions[0].endpoint, undefined);
 });
 
-test('keeps retrospective routing audit separate from operational daily totals', (t) => {
+test('does not expose a stale retrospective audit as current routing telemetry', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-routing-audit-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
@@ -383,10 +394,30 @@ test('keeps retrospective routing audit separate from operational daily totals',
   const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-17T15:00:00Z'));
   assert.equal(usage.routing.periods.today.tasks, 2);
   assert.equal(usage.routing.periods.today.missed_opportunities, 0);
-  assert.equal(usage.routing.audit.conversations_audited, 18);
-  assert.equal(usage.routing.audit.historical_missed_opportunities, 11);
-  assert.equal(usage.routing.audit.retrospective_today_missed_opportunities, 13);
-  assert.equal(usage.routing.audit.private_prompt, undefined);
+  assert.equal(usage.routing.audit, undefined);
+});
+
+test('returns a bounded quality-aware Local AI history for the last 48 hours', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-history-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({ latest_jobs: [
+    { id: 'old', task: 'review-diff', status: 'success', quality_accepted: true,
+      finished_at: '2026-08-14T11:59:00Z', useful_context_tokens_avoided: 500 },
+    { id: 'benchmark', task: 'benchmark:review-diff', status: 'success',
+      finished_at: '2026-08-16T11:00:00Z' },
+    { id: 'discarded', task: 'inspect-files', status: 'discarded', quality_accepted: false,
+      finished_at: '2026-08-16T11:30:00Z', useful_context_tokens_avoided: 900 },
+    { id: 'accepted', task: 'summarize-log', status: 'success', quality_accepted: true,
+      finished_at: '2026-08-16T11:45:00Z', useful_context_tokens_avoided: 800 },
+  ] }));
+
+  const history = scanLocalAiHistory(telemetryPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(history.window_hours, 48);
+  assert.equal(history.count, 2);
+  assert.equal(history.jobs[0].task, 'summarize-log');
+  assert.equal(history.jobs[0].useful_context_tokens_avoided, 800);
+  assert.equal(history.jobs[1].useful_context_tokens_avoided, 0);
 });
 
 test('separates confirmed RTX unavailability from unknown availability', (t) => {

@@ -48,6 +48,17 @@ command_line:
         - analytics
         - local_ai
         - error
+  - sensor:
+      name: Codex RTX Historico 48h Raw
+      unique_id: codex_rtx_historico_48h_raw
+      command: "python3 /config/tools/codex_rtx_history.py"
+      command_timeout: 7
+      scan_interval: 30
+      value_template: "{{ value_json.count }}"
+      json_attributes:
+        - window_hours
+        - jobs
+        - error
 
 # These transport sensors update every one or two seconds and contain nested
 # attributes consumed immediately by template sensors. Persisting every raw
@@ -59,6 +70,7 @@ recorder:
     entities:
       - sensor.codex_usage_raw
       - sensor.codex_rtx_live_raw
+      - sensor.codex_rtx_historico_48h_raw
       - binary_sensor.codex_rtx_sinal_estavel
       - sensor.codex_rtx_ao_vivo
       - sensor.codex_rtx_gpu_agora
@@ -563,6 +575,13 @@ template:
         unit_of_measurement: "chamadas"
         state_class: total_increasing
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('successful_calls', 0) }}"
+
+      - name: Codex Resultados Local AI Validados Hoje
+        unique_id: codex_resultados_local_ai_validados_hoje
+        icon: mdi:shield-check-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_validated_calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Falhas Local AI
@@ -631,18 +650,18 @@ template:
           {% set match = models | selectattr('model', 'eq', 'qwen2.5-coder:1.5b-base') | list %}
           {{ match and match[0].get('failure_rate_percent') is number }}
 
-      - name: Codex Taxa de Falhas Qwen 3 14B
-        unique_id: codex_taxa_de_falhas_qwen_3_14b
+      - name: Codex Taxa de Falhas Qwen 2 5 Coder 14B
+        unique_id: codex_taxa_de_falhas_qwen_2_5_coder_14b
         icon: mdi:chart-line-variant
         unit_of_measurement: "%"
         state_class: measurement
         state: >-
           {% set models = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('models') or []) %}
-          {% set match = models | selectattr('model', 'eq', 'qwen3:14b') | list %}
+          {% set match = models | selectattr('model', 'eq', 'qwen2.5-coder:14b') | list %}
           {{ match[0].get('failure_rate_percent') if match else none }}
         availability: >-
           {% set models = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('models') or []) %}
-          {% set match = models | selectattr('model', 'eq', 'qwen3:14b') | list %}
+          {% set match = models | selectattr('model', 'eq', 'qwen2.5-coder:14b') | list %}
           {{ match and match[0].get('failure_rate_percent') is number }}
 
       - name: Codex Fallbacks Local AI Informados
@@ -701,6 +720,16 @@ template:
         attributes:
           significado: "tarefas elegíveis e disponíveis do dia que terminaram sem chamada ao helper; não inclui achados retrospectivos"
 
+      - name: Codex Tokens de Oportunidades RTX Perdidas Hoje
+        unique_id: codex_tokens_de_oportunidades_rtx_perdidas_hoje
+        icon: mdi:content-save-alert-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('missed_potential_tokens_avoidable', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          significado: "economia estimada somente das oportunidades operacionais realmente perdidas hoje"
+
       - name: Codex Local AI Indisponivel Hoje
         unique_id: codex_local_ai_indisponivel_hoje
         icon: mdi:cloud-off-outline
@@ -742,7 +771,17 @@ template:
         state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('failed_tasks', 0)) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
-          significado: "tarefas elegíveis e disponíveis cuja chamada local terminou sem um resultado utilizável; não contam como RTX usada"
+          significado: "tarefas elegíveis e disponíveis cuja chamada local falhou tecnicamente; resultados descartados por qualidade ficam em contador separado"
+
+      - name: Codex Resultados Local AI Descartados Hoje
+        unique_id: codex_resultados_local_ai_descartados_hoje
+        icon: mdi:shield-alert-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ (((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {}).get('quality_rejected_tasks', 0)) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          significado: "resultados locais rejeitados pelo gate de fidelidade; sua economia útil de tokens é sempre zero"
 
       - name: Codex Taxa de Delegacao RTX
         unique_id: codex_taxa_de_delegacao_rtx
@@ -812,74 +851,6 @@ template:
           metodologia: "soma diária das economias estimadas de tarefas elegíveis e disponíveis; não é cobrança oficial da OpenAI"
           significado: "redução estimada do contexto que chegaria ao modelo principal; não representa economia financeira oficial"
 
-      - name: Codex Auditoria Retrospectiva de Roteamento RTX
-        unique_id: codex_auditoria_retrospectiva_de_roteamento_rtx
-        icon: mdi:clipboard-search-outline
-        unit_of_measurement: "conversas"
-        state_class: measurement
-        state: >-
-          {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-          {{ audit.get('conversations_audited', 0) }}
-        availability: >-
-          {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-          {{ audit.get('audited_at') is string }}
-        attributes:
-          candidatas: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('candidates', 0) }}
-          usadas_corretamente: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('correctly_used', 0) }}
-          oportunidades_historicas: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('historical_missed_opportunities', 0) }}
-          conversas_de_hoje_na_amostra: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('retrospective_today_conversations', 0) }}
-          candidatas_de_hoje_na_auditoria: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('retrospective_today_candidates', 0) }}
-          oportunidades_de_hoje_na_auditoria: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('retrospective_today_missed_opportunities', 0) }}
-          indisponibilidades_historicas: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('historical_unavailable', 0) }}
-          chamadas_desnecessarias: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('unnecessary_calls', 0) }}
-          ajustes_aplicados: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('adjustments', []) }}
-          auditado_em: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('audited_at') }}
-          escopo: "agregado retrospectivo sanitizado; campos 'de hoje' descrevem a data das conversas auditadas e não alteram a telemetria operacional"
-
-      - name: Codex Oportunidades RTX Perdidas Hoje na Auditoria
-        unique_id: codex_oportunidades_rtx_perdidas_hoje_na_auditoria
-        icon: mdi:clipboard-alert-outline
-        unit_of_measurement: "oportunidades"
-        state_class: measurement
-        state: >-
-          {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-          {{ audit.get('retrospective_today_missed_opportunities', 0) }}
-        availability: >-
-          {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-          {% set audited = as_datetime(audit.get('audited_at')) %}
-          {{ audited is not none and audited.date() == now().date() }}
-        attributes:
-          significado: "oportunidades de conversas datadas de hoje detectadas pela auditoria retrospectiva; não é um contador operacional"
-          auditado_em: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('audited_at') }}
-          conversas_de_hoje_na_amostra: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('retrospective_today_conversations', 0) }}
-          candidatas_de_hoje_na_auditoria: >-
-            {% set audit = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('audit') or {}) %}
-            {{ audit.get('retrospective_today_candidates', 0) }}
-
       - name: Codex Ultima Decisao de Roteamento Local AI
         unique_id: codex_ultima_decisao_de_roteamento_local_ai
         icon: mdi:source-branch-check
@@ -908,7 +879,10 @@ template:
             {{ decisions[0].get('expected_tokens_saved') if decisions else none }}
           economia_real_tokens: >-
             {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
-            {{ decisions[0].get('actual_tokens_avoided') if decisions else none }}
+            {{ decisions[0].get('useful_tokens_avoided') if decisions else none }}
+          qualidade_aceita: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('quality_accepted') if decisions else none }}
 
       - name: Codex Contexto Inicial Observavel
         unique_id: codex_contexto_inicial_observavel
@@ -1026,17 +1000,17 @@ template:
         icon: mdi:content-save-outline
         unit_of_measurement: "tokens"
         state_class: total
-        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('openai_context_tokens_avoided', 0) }}"
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
-          metodologia: "delta entre contexto bruto e resumo efetivamente retornado; exclui falhas e benchmarks; overhead do envelope OpenAI não mensurável"
+          metodologia: "delta entre contexto bruto e resultado aprovado pelo gate de fidelidade; descartes, falhas e benchmarks valem zero; overhead do envelope OpenAI não mensurável"
 
       - name: Codex Tokens OpenAI Economizados Hoje Estimados
         unique_id: codex_tokens_openai_evitados_hoje_estimados
         icon: mdi:calendar-today-outline
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('openai_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens OpenAI Economizados Semana Estimados
@@ -1044,7 +1018,7 @@ template:
         icon: mdi:calendar-week
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('week') or {}).get('openai_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('week') or {}).get('useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens OpenAI Economizados Mes Estimados
@@ -1052,7 +1026,7 @@ template:
         icon: mdi:calendar-month
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('month') or {}).get('openai_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('month') or {}).get('useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Reducao de Contexto Local AI
@@ -1117,7 +1091,13 @@ template:
             {{ jobs[0].get('vram_peak_mib') if jobs else none }}
           tokens_openai_evitados_estimados: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
-            {{ jobs[0].get('openai_context_tokens_avoided') if jobs else none }}
+            {{ jobs[0].get('useful_context_tokens_avoided', 0) if jobs else none }}
+          qualidade_aceita: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('quality_accepted') if jobs else none }}
+          qualidade_percentual: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('quality_score_percent') if jobs else none }}
           tokens_contexto_entrada: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('context_input_tokens') if jobs else none }}

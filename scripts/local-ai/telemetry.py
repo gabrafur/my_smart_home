@@ -73,6 +73,8 @@ def _event_totals() -> dict[str, float | int]:
         "calls": 0,
         "successful_calls": 0,
         "failed_calls": 0,
+        "quality_rejected_calls": 0,
+        "quality_validated_calls": 0,
         "fallbacks_reported": 0,
         "duration_seconds": 0.0,
         "local_input_tokens": 0,
@@ -81,6 +83,9 @@ def _event_totals() -> dict[str, float | int]:
         "context_output_tokens": 0,
         "context_overhead_tokens": 0,
         "openai_context_tokens_avoided": 0,
+        "quality_validated_context_input_tokens": 0,
+        "quality_validated_context_output_tokens": 0,
+        "useful_context_tokens_avoided": 0,
     }
 
 
@@ -92,6 +97,7 @@ def _routing_totals() -> dict[str, float | int]:
         "eligible_and_available_tasks": 0,
         "used_tasks": 0,
         "failed_tasks": 0,
+        "quality_rejected_tasks": 0,
         "skipped_tasks": 0,
         "unavailable_tasks": 0,
         "availability_unknown_tasks": 0,
@@ -101,6 +107,8 @@ def _routing_totals() -> dict[str, float | int]:
         "unnecessary_calls": 0,
         "potential_tokens_avoidable": 0,
         "actual_tokens_avoided": 0,
+        "missed_potential_tokens_avoidable": 0,
+        "useful_tokens_avoided": 0,
     }
 
 
@@ -124,7 +132,7 @@ def _memory_totals() -> dict[str, float | int]:
 
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 6,
+        "schema_version": 7,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
@@ -281,7 +289,7 @@ def _ensure_routing_state(state: dict[str, Any]) -> None:
                 )
         for item in failed_decisions:
             item["decision"] = "LOCAL_AI_FAILED"
-    state["schema_version"] = max(6, previous_schema)
+    state["schema_version"] = max(7, previous_schema)
 
 
 def _ensure_memory_state(state: dict[str, Any]) -> None:
@@ -359,9 +367,12 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
     totals = target.setdefault("totals", _event_totals())
     totals["calls"] = int(totals.get("calls", 0)) + 1
     successful = event.get("status") == "success"
-    totals["successful_calls" if successful else "failed_calls"] = int(
-        totals.get("successful_calls" if successful else "failed_calls", 0),
-    ) + 1
+    quality_rejected = event.get("status") == "discarded"
+    outcome_key = "successful_calls" if successful else "quality_rejected_calls" if quality_rejected else "failed_calls"
+    totals[outcome_key] = int(totals.get(outcome_key, 0)) + 1
+    quality_validated = successful and event.get("quality_accepted") is True
+    if quality_validated:
+        totals["quality_validated_calls"] = int(totals.get("quality_validated_calls", 0)) + 1
     if event.get("fallback_reported") is True:
         totals["fallbacks_reported"] = int(totals.get("fallbacks_reported", 0)) + 1
     for key in (
@@ -383,6 +394,19 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
                 float(totals.get("openai_context_tokens_avoided", 0)) + float(avoided),
                 3,
             )
+        if quality_validated:
+            for source, target_key in (
+                ("context_input_tokens", "quality_validated_context_input_tokens"),
+                ("context_output_tokens", "quality_validated_context_output_tokens"),
+            ):
+                value = _number(event.get(source))
+                if value is not None and value > 0:
+                    totals[target_key] = round(float(totals.get(target_key, 0)) + float(value), 3)
+            useful = _number(event.get("useful_context_tokens_avoided"))
+            if useful is not None and useful > 0:
+                totals["useful_context_tokens_avoided"] = round(
+                    float(totals.get("useful_context_tokens_avoided", 0)) + float(useful), 3,
+                )
 
 
 def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> None:
@@ -402,6 +426,10 @@ def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> Non
         totals["eligible_tasks"] += 1
         totals["eligible_and_available_tasks"] += 1
         totals["failed_tasks"] += 1
+    elif status == "LOCAL_AI_QUALITY_REJECTED":
+        totals["eligible_tasks"] += 1
+        totals["eligible_and_available_tasks"] += 1
+        totals["quality_rejected_tasks"] += 1
     elif status == "ROUTING_MISSED_OPPORTUNITY":
         totals["eligible_tasks"] += 1
         totals["eligible_and_available_tasks"] += 1
@@ -423,17 +451,27 @@ def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> Non
     else:
         totals["skipped_tasks"] += 1
 
-    if status in {"LOCAL_AI_USED", "LOCAL_AI_FAILED", "ROUTING_MISSED_OPPORTUNITY", "LOCAL_AI_ELIGIBLE"}:
+    if status in {"LOCAL_AI_USED", "LOCAL_AI_FAILED", "LOCAL_AI_QUALITY_REJECTED", "ROUTING_MISSED_OPPORTUNITY", "LOCAL_AI_ELIGIBLE"}:
         expected = _number(decision.get("expected_tokens_saved"))
         if expected is not None and expected > 0:
             totals["potential_tokens_avoidable"] = round(
                 float(totals.get("potential_tokens_avoidable", 0)) + float(expected), 3,
             )
+            if status == "ROUTING_MISSED_OPPORTUNITY":
+                totals["missed_potential_tokens_avoidable"] = round(
+                    float(totals.get("missed_potential_tokens_avoidable", 0)) + float(expected), 3,
+                )
     if status in {"LOCAL_AI_USED", "LOCAL_AI_UNNECESSARY_CALL"}:
         actual = _number(decision.get("actual_tokens_avoided"))
         if actual is not None:
             totals["actual_tokens_avoided"] = round(
                 float(totals.get("actual_tokens_avoided", 0)) + float(actual), 3,
+            )
+    if status == "LOCAL_AI_USED" and decision.get("quality_accepted") is True:
+        useful = _number(decision.get("useful_tokens_avoided"))
+        if useful is not None and useful > 0:
+            totals["useful_tokens_avoided"] = round(
+                float(totals.get("useful_tokens_avoided", 0)) + float(useful), 3,
             )
 
 
@@ -540,6 +578,7 @@ class TelemetryRecorder:
             "compressibility", "compatible_helper", "eligible", "available",
             "expected_tokens_saved", "actual_tokens_avoided", "decision", "reason",
             "minimum_input_tokens", "minimum_expected_saved_tokens", "model",
+            "quality_accepted", "quality_score_percent", "useful_tokens_avoided",
         )
         public = {key: decision.get(key) for key in allowed if key in decision}
         public["event_type"] = "routing_decision"

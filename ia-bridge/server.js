@@ -350,6 +350,24 @@ const server = http.createServer((req, res) => {
     }
     return;
   }
+  if (req.method === 'GET' && requestUrl.pathname === '/local-ai/history') {
+    try {
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      });
+      res.end(JSON.stringify({
+        status: 'ok',
+        collected_at: new Date().toISOString(),
+        local_ai: codexUsage.readLocalAiHistory(),
+      }));
+    } catch (err) {
+      console.error(`Failed to read Local AI history: ${err.message}`);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'error', error: 'failed to read Local AI history' }));
+    }
+    return;
+  }
   const supportedRoute = (
     (req.method === 'POST' && requestUrl.pathname === '/chat')
     || (req.method === 'DELETE' && requestUrl.pathname === '/history')

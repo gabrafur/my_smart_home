@@ -107,6 +107,39 @@ class LocalAiTest(unittest.TestCase):
             self.assertGreater(len(raw), 20_000)
             self.assertLess(len(bounded), 200)
 
+    def test_log_validation_requires_critical_identifiers_in_summary_or_errors(self):
+        response = {
+            "summary": "Cache write timed out.",
+            "errors": [],
+            "suspected_files": [],
+            "recommended_actions": ["Inspect CACHE_WRITE_TIMEOUT."],
+            "confidence": "high",
+        }
+        with self.assertRaises(RuntimeError):
+            LOCAL_AI.validate_structured_response(
+                "summarize-log", response,
+                "cache TIMEOUT CACHE_WRITE_TIMEOUT after 30000ms key=session",
+            )
+        response["errors"] = ["CACHE_WRITE_TIMEOUT after 30000ms key=session"]
+        LOCAL_AI.validate_structured_response(
+            "summarize-log", response,
+            "cache TIMEOUT CACHE_WRITE_TIMEOUT after 30000ms key=session",
+        )
+
+    def test_log_validation_requires_each_signal_kind_and_ignores_routine_identifiers(self):
+        response = {
+            "summary": "ERROR TypeError in src/app.py.",
+            "errors": [],
+            "suspected_files": ["src/app.py"],
+            "recommended_actions": [],
+            "confidence": "high",
+        }
+        source = "INFO ROUTINE_HEARTBEAT ok\nERROR TypeError in src/app.py\nWARN retry database"
+        with self.assertRaises(RuntimeError):
+            LOCAL_AI.validate_structured_response("summarize-log", response, source)
+        response["errors"] = ["WARN retry database"]
+        LOCAL_AI.validate_structured_response("summarize-log", response, source)
+
     def test_routing_availability_reuses_the_conversation_preflight(self):
         with tempfile.TemporaryDirectory() as directory:
             telemetry_path = Path(directory) / "local-ai-telemetry.json"
@@ -148,6 +181,66 @@ class LocalAiTest(unittest.TestCase):
             "recommended_actions": [],
             "confidence": "low",
         })
+
+    def test_review_diff_anchors_keep_sensitive_changes_but_ignore_harmless_files(self):
+        source = """diff --git a/src/cache.ts b/src/cache.ts
+--- a/src/cache.ts
++++ b/src/cache.ts
+@@ -1 +1 @@
+-return cache.setTtl(ttlSeconds)
++return cache.setTtl(ttlSeconds * 1000)
+diff --git a/docs/label.md b/docs/label.md
+--- a/docs/label.md
++++ b/docs/label.md
+@@ -1 +1 @@
+-old label
++new label
+"""
+        anchors = LOCAL_AI.required_source_anchors("review-diff", source)
+        self.assertIn("src/cache.ts", anchors)
+        self.assertIn("* 1000", anchors)
+        self.assertNotIn("docs/label.md", anchors)
+
+    def test_inspect_files_uses_a_bounded_schema(self):
+        schema = LOCAL_AI.response_format("inspect-files")
+        self.assertIsInstance(schema, dict)
+        self.assertEqual(schema["properties"]["files"]["maxItems"], 32)
+        self.assertEqual(
+            schema["properties"]["files"]["items"]["properties"]["relevant_items"]["maxItems"],
+            16,
+        )
+
+    def test_quality_verifier_requires_high_coverage_and_no_findings(self):
+        accepted = {
+            "usable": True,
+            "coverage_score": 96,
+            "critical_omissions": [],
+            "contradictions": [],
+            "unsupported_claims": [],
+        }
+        report, _ = LOCAL_AI.verify_candidate_quality(
+            "summarize-document",
+            "source contract",
+            {"summary": "source contract"},
+            endpoint="http://example.invalid",
+            model="model",
+            request_call=lambda *_args, **_kwargs: {"response": json.dumps(accepted)},
+            minimum_score=90,
+            context_tokens=4096,
+        )
+        self.assertEqual(report["coverage_score"], 96)
+        rejected = {**accepted, "usable": False, "critical_omissions": ["threshold"]}
+        with self.assertRaises(LOCAL_AI.QualityRejected):
+            LOCAL_AI.verify_candidate_quality(
+                "summarize-document",
+                "source contract",
+                {"summary": "source"},
+                endpoint="http://example.invalid",
+                model="model",
+                request_call=lambda *_args, **_kwargs: {"response": json.dumps(rejected)},
+                minimum_score=90,
+                context_tokens=4096,
+            )
 
     def test_bounded_schemas_limit_normal_and_retry_lists(self):
         normal = LOCAL_AI.response_format("summarize-log")
@@ -210,6 +303,34 @@ class LocalAiTest(unittest.TestCase):
             self.assertEqual(state["totals"]["successful_calls"], 1)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 90)
             self.assertEqual(state["active_jobs"], {})
+
+    def test_only_quality_validated_results_count_as_useful_savings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            base = {
+                "started_at": "2026-08-17T12:00:00Z",
+                "finished_at": "2026-08-17T12:00:01Z",
+                "task": "summarize-log",
+                "model": "model",
+                "context_input_tokens": 100,
+                "context_output_tokens": 10,
+                "context_replacement": True,
+            }
+            recorder.finished({
+                **base, "id": "accepted", "status": "success", "quality_accepted": True,
+                "openai_context_tokens_avoided": 90, "useful_context_tokens_avoided": 90,
+            })
+            recorder.finished({
+                **base, "id": "discarded", "status": "discarded", "quality_accepted": False,
+                "openai_context_tokens_avoided": 90, "useful_context_tokens_avoided": 90,
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            totals = state["totals"]
+            self.assertEqual(totals["quality_validated_calls"], 1)
+            self.assertEqual(totals["quality_rejected_calls"], 1)
+            self.assertEqual(totals["useful_context_tokens_avoided"], 90)
+            self.assertEqual(totals["quality_validated_context_input_tokens"], 100)
 
     def test_telemetry_excludes_failures_and_benchmarks_from_context_savings(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -324,7 +445,7 @@ class LocalAiTest(unittest.TestCase):
                 "status": "running", "started_at": "2026-08-16T12:01:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 6)
+            self.assertEqual(state["schema_version"], 7)
             self.assertEqual(state["totals"]["calls"], 3)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 80)
@@ -352,7 +473,7 @@ class LocalAiTest(unittest.TestCase):
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["routing"]["totals"]
-            self.assertEqual(state["schema_version"], 6)
+            self.assertEqual(state["schema_version"], 7)
             self.assertEqual(totals["tasks"], 2)
             self.assertEqual(totals["used_tasks"], 1)
             self.assertEqual(totals["missed_opportunities"], 1)
@@ -402,7 +523,7 @@ class LocalAiTest(unittest.TestCase):
                 "status": "running", "started_at": "2026-08-17T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 6)
+            self.assertEqual(state["schema_version"], 7)
             self.assertEqual(state["routing"]["totals"]["availability_unknown_tasks"], 1)
             self.assertEqual(state["routing"]["totals"]["confirmed_unavailable_tasks"], 1)
             self.assertEqual(state["daily"]["2026-08-17"]["routing"]["availability_unknown_tasks"], 1)

@@ -207,6 +207,8 @@ function emptyLocalAiTotals() {
     calls: 0,
     successful_calls: 0,
     failed_calls: 0,
+    quality_rejected_calls: 0,
+    quality_validated_calls: 0,
     fallbacks_reported: 0,
     duration_seconds: 0,
     local_input_tokens: 0,
@@ -215,6 +217,9 @@ function emptyLocalAiTotals() {
     context_output_tokens: 0,
     context_overhead_tokens: 0,
     openai_context_tokens_avoided: 0,
+    quality_validated_context_input_tokens: 0,
+    quality_validated_context_output_tokens: 0,
+    useful_context_tokens_avoided: 0,
   };
 }
 
@@ -226,6 +231,7 @@ function emptyRoutingTotals() {
     eligible_and_available_tasks: 0,
     used_tasks: 0,
     failed_tasks: 0,
+    quality_rejected_tasks: 0,
     skipped_tasks: 0,
     unavailable_tasks: 0,
     availability_unknown_tasks: 0,
@@ -234,7 +240,9 @@ function emptyRoutingTotals() {
     missed_opportunities: 0,
     unnecessary_calls: 0,
     potential_tokens_avoidable: 0,
+    missed_potential_tokens_avoidable: 0,
     actual_tokens_avoided: 0,
+    useful_tokens_avoided: 0,
   };
 }
 
@@ -258,7 +266,10 @@ function emptyMemoryTotals() {
 function addLocalAiTotals(target, source) {
   for (const key of Object.keys(emptyLocalAiTotals())) {
     const value = Number(source?.[key]);
-    if (Number.isFinite(value) && (value > 0 || (key === 'openai_context_tokens_avoided' && value !== 0))) {
+    if (Number.isFinite(value) && (value > 0 || (
+      ['openai_context_tokens_avoided', 'useful_context_tokens_avoided'].includes(key)
+      && value !== 0
+    ))) {
       target[key] += value;
     }
   }
@@ -271,9 +282,19 @@ function localAiDerived(totals) {
   const failed = Number(totals.failed_calls) || 0;
   const input = Number(totals.context_input_tokens) || 0;
   const avoided = Number(totals.openai_context_tokens_avoided) || 0;
+  const qualityInput = Number(totals.quality_validated_context_input_tokens) || 0;
+  const usefulAvoided = Number(totals.useful_context_tokens_avoided) || 0;
+  const qualityAccepted = Number(totals.quality_validated_calls) || 0;
+  const qualityRejected = Number(totals.quality_rejected_calls) || 0;
   const duration = Number(totals.duration_seconds) || 0;
   return {
-    context_reduction_percent: input > 0 ? round((avoided / input) * 100, 1) : null,
+    context_reduction_percent: qualityInput > 0
+      ? round((usefulAvoided / qualityInput) * 100, 1)
+      : null,
+    raw_context_reduction_percent: input > 0 ? round((avoided / input) * 100, 1) : null,
+    quality_acceptance_rate_percent: qualityAccepted + qualityRejected > 0
+      ? round((qualityAccepted / (qualityAccepted + qualityRejected)) * 100, 1)
+      : null,
     success_rate_percent: calls > 0 ? round((successful / calls) * 100, 1) : null,
     failure_rate_percent: calls > 0 ? round((failed / calls) * 100, 1) : null,
     average_duration_seconds: calls > 0 ? round(duration / calls, 2) : null,
@@ -292,7 +313,7 @@ function routingDerived(totals) {
   const eligibleAvailable = Number(totals.eligible_and_available_tasks) || 0;
   const used = Number(totals.used_tasks) || 0;
   const potential = Number(totals.potential_tokens_avoidable) || 0;
-  const actual = Number(totals.actual_tokens_avoided) || 0;
+  const useful = Number(totals.useful_tokens_avoided) || 0;
   const unavailable = Number(totals.unavailable_tasks) || 0;
   const availabilityUnknown = Number(totals.availability_unknown_tasks) || 0;
   const confirmedUnavailable = Number(totals.confirmed_unavailable_tasks) || 0;
@@ -301,7 +322,7 @@ function routingDerived(totals) {
       ? round((used / eligibleAvailable) * 100, 1)
       : null,
     weighted_context_savings_coverage_percent: potential > 0
-      ? round(Math.min(100, Math.max(0, actual) / potential * 100), 1)
+      ? round(Math.min(100, Math.max(0, useful) / potential * 100), 1)
       : null,
     unclassified_unavailable_tasks: Math.max(0, unavailable - availabilityUnknown - confirmedUnavailable),
   };
@@ -405,7 +426,9 @@ function sanitizeLocalAiJob(job) {
     'token_count_method', 'context_replacement',
     'deterministic_omitted_lines', 'model_input_chars',
     'openai_context_tokens_avoided', 'context_reduction_percent',
-    'tokens_per_second', 'local_attempts', 'gpu_telemetry_available', 'gpu_peak_percent',
+    'useful_context_tokens_avoided', 'quality_accepted', 'quality_score_percent',
+    'quality_verification_attempts', 'tokens_per_second', 'local_attempts',
+    'gpu_telemetry_available', 'gpu_peak_percent',
     'vram_peak_mib', 'gpu_power_peak_watts', 'processor',
     'cpu_offload_detected',
   ];
@@ -433,7 +456,8 @@ function sanitizeRoutingDecision(decision) {
   const fields = [
     'id', 'timestamp', 'task_type', 'input_chars', 'estimated_input_tokens',
     'compressibility', 'compatible_helper', 'eligible', 'available',
-    'expected_tokens_saved', 'actual_tokens_avoided', 'decision', 'reason',
+    'expected_tokens_saved', 'actual_tokens_avoided', 'useful_tokens_avoided',
+    'quality_accepted', 'quality_score_percent', 'decision', 'reason',
     'minimum_input_tokens', 'minimum_expected_saved_tokens', 'model',
   ];
   return Object.fromEntries(
@@ -454,31 +478,6 @@ function sanitizeMemoryDecision(decision) {
   return Object.fromEntries(
     fields.filter((field) => Object.hasOwn(decision, field)).map((field) => [field, decision[field]]),
   );
-}
-
-function sanitizeRoutingAudit(audit) {
-  if (!audit || typeof audit !== 'object') return null;
-  const numericFields = [
-    'schema_version', 'window_days', 'conversations_audited', 'candidates',
-    'correctly_used', 'historical_missed_opportunities', 'historical_unavailable',
-    'unnecessary_calls', 'deterministic', 'too_small', 'not_appropriate',
-    'retrospective_today_conversations', 'retrospective_today_candidates',
-    'retrospective_today_correctly_used', 'retrospective_today_missed_opportunities',
-  ];
-  const result = {};
-  for (const field of numericFields) {
-    const value = Number(audit[field]);
-    if (Number.isFinite(value) && value >= 0) result[field] = value;
-  }
-  if (typeof audit.audited_at === 'string' && !Number.isNaN(new Date(audit.audited_at).valueOf())) {
-    result.audited_at = audit.audited_at;
-  }
-  result.adjustments = Array.isArray(audit.adjustments)
-    ? audit.adjustments
-      .filter((value) => typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,63}$/.test(value))
-      .slice(0, 12)
-    : [];
-  return Number.isFinite(result.conversations_audited) ? result : null;
 }
 
 function reconcileRoutingDecisions(decisions, jobs) {
@@ -505,10 +504,6 @@ function reconcileRoutingDecisions(decisions, jobs) {
 function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const state = readJson(telemetryPath, {});
   const preflight = readJson(statusPath, {});
-  const auditPath = telemetryPath
-    ? path.join(path.dirname(telemetryPath), 'local-ai-routing-audit.json')
-    : null;
-  const routingAudit = sanitizeRoutingAudit(auditPath ? readJson(auditPath, null) : null);
   const totals = { ...emptyLocalAiTotals(), ...(state.totals || {}) };
   const routingTotals = { ...emptyRoutingTotals(), ...(state.routing?.totals || {}) };
   const memoryTotals = { ...emptyMemoryTotals(), ...(state.memory?.totals || {}) };
@@ -583,7 +578,6 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
         month: summarizeRoutingMonth(state.daily, now),
       },
       latest_decisions: reconcileRoutingDecisions(latestDecisions, latestJobs),
-      audit: routingAudit,
     },
     memory: {
       totals: { ...memoryTotals, ...memoryDerived(memoryTotals) },
@@ -602,6 +596,42 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
     // well below the attribute-size limit enforced by Home Assistant.
     latest_jobs: latestJobs,
   };
+}
+
+function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
+  const state = readJson(telemetryPath, {});
+  const cutoff = now.valueOf() - windowHours * 3_600_000;
+  const jobs = Array.isArray(state.latest_jobs) ? state.latest_jobs : [];
+  const recent = jobs
+    .filter((job) => {
+      if (String(job?.task || '').startsWith('benchmark:')) return false;
+      const timestamp = new Date(job?.finished_at || job?.started_at);
+      return !Number.isNaN(timestamp.valueOf()) && timestamp.valueOf() >= cutoff;
+    })
+    .slice(-40)
+    .reverse()
+    .map((job) => {
+      return {
+        started_at: job.started_at || null,
+        finished_at: job.finished_at || null,
+        task: job.task || null,
+        model: job.model || null,
+        status: job.status || null,
+        duration_seconds: Number.isFinite(Number(job.duration_seconds))
+          ? Number(job.duration_seconds)
+          : null,
+        quality_accepted: job.quality_accepted === true
+          ? true
+          : job.quality_accepted === false ? false : null,
+        quality_score_percent: Number.isFinite(Number(job.quality_score_percent))
+          ? Number(job.quality_score_percent)
+          : null,
+        useful_context_tokens_avoided: job.quality_accepted === true
+          ? Math.max(0, Number(job.useful_context_tokens_avoided) || 0)
+          : 0,
+      };
+    });
+  return { window_hours: windowHours, count: recent.length, jobs: recent };
 }
 
 function scanCodexUsageFile(filePath) {
@@ -862,6 +892,12 @@ class CodexUsageReader {
   readLocalAiLive() {
     return scanLocalAiTelemetry(this.localAiTelemetryPath, this.localAiStatusPath);
   }
+
+  readLocalAiHistory() {
+    return scanLocalAiHistory(this.localAiTelemetryPath);
+  }
 }
 
-module.exports = { CodexUsageReader, scanCodexUsage, scanLocalAiTelemetry };
+module.exports = {
+  CodexUsageReader, scanCodexUsage, scanLocalAiTelemetry, scanLocalAiHistory,
+};

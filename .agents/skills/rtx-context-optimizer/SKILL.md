@@ -56,9 +56,11 @@ only when deterministic processing completely resolves the result and no LLM
 interpretation remains. Deterministic collection alone does not make a large
 textual result final.
 
-Treat `OpenAI tokens avoided` as the measured or explicitly estimated
-difference between the original input and the concise result passed onward. It
-does not mean local tokens equal OpenAI tokens or prove monetary savings.
+Treat `OpenAI tokens avoided` as useful only after the task-specific fidelity
+gate accepts the result. A rejected or discarded result is equivalent to
+passing the original input onward and therefore saves zero tokens. Even an
+accepted delta remains measured or explicitly estimated and does not prove
+monetary savings.
 
 # Enforce privacy and authority boundaries
 
@@ -76,9 +78,14 @@ Use only the configured remote endpoint; never silently fall back to
 `127.0.0.1:11434`. `LOCAL_AI_ENABLED=0` disables the route, and
 `LOCAL_AI_FORCE=1` is diagnostic only and does not override suitability.
 
-On failure, fall back to the selected primary model without changing its model
-route. Never install, restart, wake, repair, or reconfigure Ollama or GPU
-infrastructure automatically.
+On ordinary failure, fall back to the selected primary model without changing
+its model route. A machine may explicitly configure the repository's bounded
+MCP recovery helper: only an invocation marked `mcp` may send Wake-on-LAN and
+make at most two attempts to start the already-installed WSL/Ollama service and
+reconcile the existing exact-address portproxy. This exception never installs
+software, broadens firewall/listener scope, reboots a host, or authorizes manual
+repair outside that reviewed helper. If both attempts fail, continue with the
+primary model.
 
 # Apply repository-specific safeguards
 

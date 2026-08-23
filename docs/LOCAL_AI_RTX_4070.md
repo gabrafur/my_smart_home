@@ -64,12 +64,14 @@ Ollama.
 | Home Assistant | mostrar uso do Codex e RTX separadamente | `homeassistant/packages/codex_usage.yaml` e dashboard |
 
 Os modelos disponíveis podem mudar por instalação. O modelo padrão selecionado
-após o benchmark é `qwen2.5-coder:7b`: cumpriu os quatro schemas, teve cerca de
-91–93 tok/s por caso e não exibiu CPU offload. O registro comparativo está em
-[`LOCAL_AI_BENCHMARK_2026-08-16.md`](LOCAL_AI_BENCHMARK_2026-08-16.md).
-Outros modelos já instalados podem ser avaliados por benchmark quando uma
-tarefa justificar; instalar ou trocar modelos exige solicitação separada e não
-faz parte do roteamento automático.
+após o A/B com gate de qualidade é `qwen2.5-coder:14b`: cumpriu os quatro
+schemas, obteve 51,5% de redução útil nas fixtures e não exibiu CPU offload. O registro comparativo e a
+reavaliação operacional de 2026-08-23 estão em
+[`LOCAL_AI_BENCHMARK_2026-08-16.md`](LOCAL_AI_BENCHMARK_2026-08-16.md). A
+reavaliação restaurou o endpoint e comparou 7B, 14B e `qwen3.5:9b` com o mesmo
+critério conservador. Outros modelos já instalados podem ser avaliados quando
+uma tarefa justificar; instalação ou troca não faz parte do roteamento
+automático.
 
 ## Rede, segurança e inicialização
 
@@ -87,11 +89,10 @@ aceitem qualquer origem, devem permanecer desativadas. Não exponha a porta em
 um roteador, VPN pública ou internet.
 
 O WSL validado usa `networkingMode=mirrored`, firewall ativo, DNS tunneling,
-auto-proxy e `hostAddressLoopback`. Um agendador do Windows inicia um processo
-leve de keepalive do WSL no logon do usuário; o `ollama.service` fica habilitado
-no systemd do WSL. Portanto, a disponibilidade automática depende desse logon
-(ou de uma política de logon automático equivalente), além de Windows e WSL
-estarem saudáveis.
+auto-proxy e `hostAddressLoopback`. O `ollama.service` fica habilitado no
+systemd do WSL. Quando a máquina está ligada ou responde ao Wake-on-LAN, uma
+chamada MCP pode iniciar o WSL/Ollama e restaurar a publicação restrita sem
+depender de logon interativo.
 
 ## Configuração do cliente Codex
 
@@ -102,14 +103,30 @@ exemplo em `~/.config/codex/local-ai.json`:
 {
   "enabled": true,
   "endpoint": "http://GPU_HOST:11435",
-  "model": "qwen2.5-coder:7b",
+  "model": "qwen2.5-coder:14b",
   "medium_analysis_min_tokens": 800,
-  "preflight_command": "/caminho/privado/local-ai-preflight"
+  "preflight_command": "/caminho/privado/local-ai-preflight",
+  "recovery_command": "/workspace/scripts/local-ai/recover-endpoint.mjs",
+  "recovery": {
+    "enabled": true,
+    "attempts": 2,
+    "boot_wait_seconds": 20,
+    "endpoint_wait_seconds": 12,
+    "wake_on_lan": {
+      "mac": "MAC_PRIVADO",
+      "broadcast": "BROADCAST_PRIVADO",
+      "port": 9
+    }
+  }
 }
 ```
 
-O preflight só confirma disponibilidade e, quando configurado, sonda a GPU por
-SSH/WSL. Ele não instala, reinicia, desperta ou reconfigura infraestrutura. As
+O polling passivo só confirma disponibilidade e, quando configurado, sonda a
+GPU por SSH/WSL; ele nunca desperta a máquina. Somente uma invocação identificada
+como MCP pode acionar o helper revisado: Wake-on-LAN seguido de no máximo duas
+tentativas de iniciar o serviço já instalado e reconciliar o portproxy do
+endereço exato. Se ambas falharem, o fluxo usa o modelo principal. O helper não
+instala software, amplia firewall/listener nem reinicia o host. As
 variáveis `LOCAL_AI_ENABLED=0`, `LOCAL_AI_ENDPOINT`, `LOCAL_AI_MODEL` e
 `LOCAL_AI_FORCE` permitem controle local; `LOCAL_AI_FORCE` é diagnóstico e não
 autoriza delegação inadequada.
@@ -351,10 +368,13 @@ a memória versionada e a restauração de Git continuam disponíveis por retrie
 O helper não grava prompt, diff, código-fonte, resposta do modelo nem
 credenciais. Em `.agent-history/` (ignorado pelo Git) ele preserva somente
 metadados: tarefa, modelo, duração, contagens, status e amostras de GPU/VRAM.
-Se a primeira resposta local não formar o JSON exigido, o helper faz no máximo
-uma segunda tentativa mais compacta. As duas gerações pertencem ao mesmo job e
-seus tokens locais são somados; nova falha encerra a tarefa normalmente para o
-Codex aplicar o fallback, sem criar loops.
+Cada candidato passa primeiro por validações determinísticas específicas da
+tarefa e depois por um verificador de fidelidade com nota mínima de 90%. Se a
+primeira resposta falhar, o helper faz uma segunda geração completa com o
+feedback do gate, sem reduzir silenciosamente o contexto ou o schema. As duas
+gerações e verificações pertencem ao mesmo job. Uma segunda rejeição devolve o
+fluxo ao modelo principal e registra `discarded`, com economia útil igual a
+zero; falha de transporte ou JSON inválido continua sendo falha técnica.
 
 `review-diff` usa schema JSON nativo e limitado, inclusive para cada finding
 (`file`, `severity` e `reason`). Isso evita depender apenas da aderência textual
@@ -366,7 +386,10 @@ Em logs longos, uma etapa determinística preserva início, fim, `ERROR`,
 de contexto ao redor de cada sinal, substituindo apenas trechos rotineiros por
 marcadores de contagem. A economia continua usando o tamanho do contexto bruto
 como baseline; a telemetria também registra quantas linhas rotineiras foram
-omitidas e quantos caracteres chegaram ao modelo local.
+omitidas e quantos caracteres chegaram ao modelo local. A validação exige que
+tipos de sinal e identificadores com underscore presentes nessas linhas sejam
+retidos em `summary` ou `errors`; uma omissão consome a única repetição compacta
+e, se persistir, devolve o fluxo ao fallback.
 
 O bridge renova sua própria sondagem de saúde a cada minuto (e ao iniciar),
 usando o helper de disponibilidade, não um hook de prompt. Isso impede que uma falha transitória de rede
@@ -397,12 +420,13 @@ Portanto, tanto o Codex do IDE quanto o chat do Home Assistant aplicam `local_ai
 `local_ai_route` e `local_ai_compress_context` sem o usuário precisar pedir o
 uso da RTX.
 
-O bridge expõe dois endpoints locais sem conteúdo de conversa:
+O bridge expõe três endpoints locais sem conteúdo de conversa:
 
 | Endpoint | Dados | Atualização usada no HA |
 | --- | --- | --- |
 | `GET /usage` | uso/limites do Codex e histórico agregado Local AI | 2 s |
 | `GET /local-ai/live` | job atual, amostra instantânea e chats ativos | 1 s |
+| `GET /local-ai/history` | até 40 jobs sanitizados das últimas 48 horas | 30 s |
 
 O diretório privado definido por `CODEX_LOCAL_AI_STATE_DIR` é a fonte canônica
 da telemetria agregada gerada pelos dois clientes MCP. O Compose monta esse
@@ -460,9 +484,9 @@ apps é configurado nele; isso evita a inicialização do MCP ambiental
 
 No painel RTX, **chamadas Local AI** e **tokens OpenAI economizados** ficam em
 gráficos separados: chamadas contam tentativas de tarefas; tokens economizados
-são a estimativa assinada da diferença entre o contexto recebido pelo helper e
-o resumo efetivamente retornado ao Codex. Falhas e benchmarks diagnósticos não
-entram nessa economia; uma saída maior que a entrada reduz o acumulado. O
+somam somente a diferença entre o contexto recebido e resultados que passaram
+pelo gate de qualidade e foram efetivamente usados. Falhas, descartes e
+benchmarks diagnósticos valem zero. O
 overhead do envelope de ferramenta/API da OpenAI não é mensurável pelo helper e
 fica explicitamente marcado como não mensurado, portanto o valor não é um
 registro de cobrança oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
@@ -477,42 +501,29 @@ mantém totais, dias recentes (400 no máximo) e as últimas 40 decisões; o log
 privado é limitado a 2 MiB. Não armazena prompt, diff, log, saída de comando ou
 resposta local.
 
-A auditoria retrospectiva usa o arquivo irmão
-`local-ai-routing-audit.json`. Ele contém exclusivamente agregados sanitizados:
-quantidade auditada, candidatas, usos corretos, oportunidades históricas,
-indisponibilidades, chamadas desnecessárias, categorias restantes, códigos dos
-ajustes, data e um recorte retrospectivo das conversas datadas de hoje. O bridge
-aplica uma allowlist antes de expor esses dados. Eles
-não alteram os totais operacionais, os agregados de hoje nem o histórico de
-jobs.
-
-A auditoria mede outputs observados; uma decisão de rota no mesmo chat não é
-correlação suficiente para encerrar outro output. Quando existe saída candidata
-sem inferência local bem-sucedida, o reason agregado é
-`candidate_output_without_successful_local_inference`. Assim, uma rota
-`DETERMINISTIC` só descreve o material que ela avaliou e não oculta outra saída
-extensa da mesma conversa. A auditoria continua sem persistir comandos ou
-conteúdo.
+O bridge não expõe mais o arquivo retrospectivo como indicador de “hoje”. A
+amostra tinha data própria e podia permanecer estática por vários dias, logo
+não representava um contador operacional atual. O painel usa somente decisões
+terminais registradas na data UTC corrente.
 
 O bridge expõe `local_ai.routing` dentro de `GET /usage`, com totais para hoje,
 semana, mês e total. As métricas são:
 
 - **RTX delegation rate** = tarefas elegíveis e disponíveis que usaram RTX /
   tarefas elegíveis e disponíveis.
-- **Weighted context savings coverage** = tokens realmente evitados /
+- **Weighted context savings coverage** = tokens úteis de resultados validados /
   economia potencial estimada das oportunidades elegíveis e disponíveis.
 - **Potential tokens avoidable** é estimativa de conteúdo, não fatura OpenAI;
   a cobertura é limitada a 100% e deltas negativos continuam visíveis no
   contador de economia existente.
 
-Na aba **RTX 4070**, a seção **4 · Atenção de roteamento — hoje** mostra somente
+Na aba **RTX 4070**, a seção **Atenção de roteamento — hoje** mostra somente
 decisões operacionais do dia UTC: tarefas avaliadas, elegíveis, elegíveis e
-disponíveis, oportunidades perdidas, indisponibilidade confirmada,
-disponibilidade desconhecida, falhas de
-chamada, chamadas desnecessárias e potencial estimado de
-redução de contexto. Esse potencial não é cobrança nem economia financeira
-oficial. Um card e texto auxiliar separados mostram apenas o agregado da
-auditoria retrospectiva, que não entra nos cards de hoje nem nos acumulados.
+disponíveis, oportunidades realmente perdidas, tokens potenciais somente dessas
+perdas, indisponibilidade confirmada, disponibilidade desconhecida, falhas
+técnicas e resultados descartados por qualidade. A auditoria retrospectiva e o
+potencial global foram removidos dessa seção porque não representavam atenção
+operacional concreta do dia.
 As entidades acumuladas e as demais seções de atividade, qualidade e histórico
 permanecem separadas.
 
@@ -523,16 +534,18 @@ valor de repouso inventado como se fosse medido.
 
 Os quatro indicadores da seção **Atividade ao vivo** são entidades de
 apresentação e ficam fora do Recorder: seus atributos mudam a cada segundo e
-não representam uma série histórica útil. O histórico da seção usa entidades
-dedicadas: `binary_sensor.codex_rtx_em_uso` registra intervalos de inferência e
-os sensores `sensor.codex_rtx_*_historico` registram GPU, VRAM e potência como
-valores numéricos, com unidade e `state_class: measurement`. Nesses gráficos,
+não representam uma série histórica útil. Os sensores
+`sensor.codex_rtx_*_historico` registram GPU, VRAM e potência como valores
+numéricos, com unidade e `state_class: measurement`. Nesses gráficos,
 `0` significa que não havia uma amostra de inferência ativa; não representa
 uma medição do consumo físico em repouso. Assim, o histórico permanece
 contínuo, enquanto indisponibilidade e perda de sinal continuam representadas
 pelos cards de saúde. Uma tolerância de cinco segundos no sinal e no fim do
 uso evita que uma falha isolada de polling fragmente o histórico ou faça o
-card alternar brevemente para **sem sinal**.
+card alternar brevemente para **sem sinal**. Ao fim da aba, **RTX em uso —
+últimas 48 horas** é uma tabela de jobs sanitizados: tarefa, modelo, resultado,
+nota do gate, duração e tokens úteis evitados. Benchmarks são omitidos e todo
+descarte aparece com zero economia.
 
 A coleta ao vivo ocorre a cada dois segundos, com timeout de três segundos. A
 cadência evita sobreposição de comandos observada no intervalo anterior de um
@@ -564,7 +577,10 @@ ordem operacional: saúde da infraestrutura, atividade ao vivo, resultado e
 qualidade do roteamento do dia, itens que exigem atenção, última atividade,
 contexto e memória, decisões detalhadas, acumulados, diagnóstico e gráficos.
 Métricas prioritárias aparecem uma vez no topo; os blocos inferiores preservam
-detalhes e histórico sem repetir os mesmos indicadores.
+detalhes e histórico sem repetir os mesmos indicadores. Cada conjunto de
+roteamento, qualidade, memória, totais, decisões ou histórico inclui uma nota
+curta de interpretação; saúde, atividade instantânea e os três gráficos físicos
+de GPU/VRAM/potência permanecem sem esse texto auxiliar por serem autoexplicativos.
 
 A view usa o layout nativo `sections`, com até três colunas e
 `dense_section_placement: false`. Esse é o contrato visual padrão: no desktop,
@@ -592,6 +608,7 @@ segundos.
 | Sintoma | Verificações seguras |
 | --- | --- |
 | `11435` não conecta | listener e regra de firewall do Windows; rota LAN; teste `curl /api/tags` |
+| Recuperação do MCP falha | execute `node --test scripts/local-ai/recover-endpoint.test.mjs`; revise a configuração privada sem expor MAC, endpoint, usuário, chave ou `known_hosts` |
 | `11434` conecta pela LAN | desabilite a exposição direta e mantenha somente o portproxy restrito |
 | Ollama responde mas sem GPU | `ollama ps`, `nvidia-smi`, driver NVIDIA/WSL e tamanho/quantização do modelo |
 | CPU offload | reduza o modelo/contexto; não assuma que uma resposta rápida significa GPU integral |
