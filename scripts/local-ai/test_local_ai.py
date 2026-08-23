@@ -170,6 +170,16 @@ class LocalAiTest(unittest.TestCase):
         self.assertGreater(omitted, 80)
         self.assertEqual(LOCAL_AI.preprocess_for_task("review-diff", "\n".join(lines))[1], 0)
 
+    def test_test_output_preprocessing_uses_the_same_signal_contract(self):
+        lines = [f"routine line {index}" for index in range(120)]
+        lines[60] = "FAILED tests/test_example.py::test_contract"
+
+        filtered, omitted = LOCAL_AI.preprocess_for_task("analyze-tests", "\n".join(lines))
+
+        self.assertIn("FAILED tests/test_example.py::test_contract", filtered)
+        self.assertIn("routine log lines omitted", filtered)
+        self.assertGreater(omitted, 0)
+
     def test_review_diff_requires_the_declared_schema(self):
         with self.assertRaises(RuntimeError):
             LOCAL_AI.validate_structured_response("review-diff", {"response": "not a review"})
@@ -241,6 +251,19 @@ diff --git a/docs/label.md b/docs/label.md
                 minimum_score=90,
                 context_tokens=4096,
             )
+
+    def test_response_token_usage_separates_validator_cost(self):
+        self.assertEqual(
+            LOCAL_AI.response_token_usage([
+                {"prompt_eval_count": 120, "eval_count": 20},
+                {"prompt_eval_count": 80, "eval_count": 10},
+            ]),
+            (200, 30, True),
+        )
+        self.assertEqual(
+            LOCAL_AI.response_token_usage([{"prompt_eval_count": 120}]),
+            (0, 0, False),
+        )
 
     def test_bounded_schemas_limit_normal_and_retry_lists(self):
         normal = LOCAL_AI.response_format("summarize-log")
@@ -319,18 +342,33 @@ diff --git a/docs/label.md b/docs/label.md
             }
             recorder.finished({
                 **base, "id": "accepted", "status": "success", "quality_accepted": True,
-                "openai_context_tokens_avoided": 90, "useful_context_tokens_avoided": 90,
+                "openai_context_tokens_avoided": 90,
+                "gross_useful_context_tokens_avoided": 90,
+                "quality_validation_input_tokens": 3,
+                "quality_validation_output_tokens": 2,
+                "quality_validation_tokens": 5,
+                "quality_validation_tokens_measured": True,
+                "useful_context_tokens_avoided": 85,
             })
             recorder.finished({
                 **base, "id": "discarded", "status": "discarded", "quality_accepted": False,
-                "openai_context_tokens_avoided": 90, "useful_context_tokens_avoided": 90,
+                "openai_context_tokens_avoided": 90,
+                "quality_validation_input_tokens": 4,
+                "quality_validation_output_tokens": 1,
+                "quality_validation_tokens": 5,
+                "quality_validation_tokens_measured": True,
+                "useful_context_tokens_avoided": 0,
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["totals"]
             self.assertEqual(totals["quality_validated_calls"], 1)
             self.assertEqual(totals["quality_rejected_calls"], 1)
-            self.assertEqual(totals["useful_context_tokens_avoided"], 90)
+            self.assertEqual(totals["gross_useful_context_tokens_avoided"], 90)
+            self.assertEqual(totals["quality_validation_tokens"], 10)
+            self.assertEqual(totals["quality_validated_validation_tokens"], 5)
+            self.assertEqual(totals["useful_context_tokens_avoided"], 85)
             self.assertEqual(totals["quality_validated_context_input_tokens"], 100)
+            self.assertEqual(totals["attempted_context_input_tokens"], 200)
 
     def test_telemetry_excludes_failures_and_benchmarks_from_context_savings(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -364,9 +402,9 @@ diff --git a/docs/label.md b/docs/label.md
             root = Path(directory)
             telemetry_path = root / "canonical-telemetry.json"
             source_path = root / "review.diff"
-            source_path.write_text("+ safe implementation change\n" * 600, encoding="utf-8")
+            source_path.write_text("+ safe implementation change\n" * 300, encoding="utf-8")
             args = SimpleNamespace(
-                task="review-diff",
+                task="summarize-document",
                 input_file=str(source_path),
                 input_max_chars=12_000,
                 endpoint=None,
@@ -413,6 +451,10 @@ diff --git a/docs/label.md b/docs/label.md
             self.assertEqual(state["routing"]["totals"]["failed_tasks"], 1)
             self.assertEqual(state["routing"]["totals"]["missed_opportunities"], 0)
             self.assertEqual(state["latest_jobs"][-1]["status"], "failed")
+            self.assertEqual(state["latest_jobs"][-1]["useful_context_tokens_avoided"], 0)
+            latest_decision = state["routing"]["latest_decisions"][0]
+            self.assertEqual(latest_decision["actual_tokens_avoided"], 0)
+            self.assertEqual(latest_decision["useful_tokens_avoided"], 0)
 
     def test_complete_v1_history_migrates_without_benchmark_or_failed_savings(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -445,10 +487,147 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-16T12:01:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 7)
+            self.assertEqual(state["schema_version"], 10)
             self.assertEqual(state["totals"]["calls"], 3)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 80)
+
+    def test_schema_seven_backfills_complete_daily_ab_denominator(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            events_path = Path(directory) / "local-ai-events.jsonl"
+            events = [
+                {
+                    "id": "accepted", "task": "analyze-tests", "model": "model",
+                    "status": "success", "finished_at": "2026-08-23T12:00:00Z",
+                    "context_replacement": True, "context_input_tokens": 100,
+                },
+                {
+                    "id": "discarded", "task": "review-diff", "model": "model",
+                    "status": "discarded", "finished_at": "2026-08-23T12:01:00Z",
+                    "context_replacement": True, "context_input_tokens": 300,
+                },
+            ]
+            events_path.write_text("\n".join(json.dumps(event) for event in events) + "\n", encoding="utf-8")
+            path.write_text(json.dumps({
+                "schema_version": 7,
+                "totals": {"calls": 5, "quality_validated_context_input_tokens": 100},
+                "daily": {"2026-08-23": {"totals": {
+                    "calls": 2, "quality_validated_context_input_tokens": 100,
+                }}},
+                "models": {"model": {"totals": {"calls": 2}}},
+            }), encoding="utf-8")
+
+            TELEMETRY.TelemetryRecorder(path).started({
+                "id": "active", "task": "inspect-files", "model": "model",
+                "status": "running", "started_at": "2026-08-23T12:02:00Z",
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(state["schema_version"], 10)
+            self.assertNotIn("attempted_context_input_tokens", state["totals"])
+            self.assertEqual(state["daily"]["2026-08-23"]["totals"]["attempted_context_input_tokens"], 400)
+            self.assertEqual(state["models"]["model"]["totals"]["attempted_context_input_tokens"], 400)
+
+    def test_schema_eight_keeps_legacy_gross_but_claims_zero_unmeasured_net(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            path.write_text(json.dumps({
+                "schema_version": 8,
+                "totals": {
+                    "calls": 3,
+                    "quality_validated_calls": 1,
+                    "quality_rejected_calls": 1,
+                    "useful_context_tokens_avoided": 90,
+                },
+                "daily": {"2026-08-23": {"totals": {
+                    "calls": 3,
+                    "quality_validated_calls": 1,
+                    "quality_rejected_calls": 1,
+                    "useful_context_tokens_avoided": 90,
+                }}},
+            }), encoding="utf-8")
+
+            TELEMETRY.TelemetryRecorder(path).started({
+                "id": "active", "task": "inspect-files", "model": "model",
+                "status": "running", "started_at": "2026-08-23T12:02:00Z",
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            totals = state["totals"]
+            self.assertEqual(state["schema_version"], 10)
+            self.assertEqual(totals["gross_useful_context_tokens_avoided"], 90)
+            self.assertEqual(totals["quality_validation_unmeasured_gross_tokens"], 90)
+            self.assertEqual(totals["quality_validation_unmeasured_calls"], 2)
+            self.assertEqual(totals["useful_context_tokens_avoided"], 0)
+
+    def test_schema_nine_revokes_savings_from_truncated_bounded_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            event = {
+                "id": "unsafe", "task": "summarize-document", "model": "model",
+                "status": "success", "started_at": "2026-08-23T23:09:00Z",
+                "finished_at": "2026-08-23T23:09:23.368688Z",  # PRIVACY_TEST_FIXTURE
+                "context_replacement": True, "input_truncated": True,
+                "context_input_tokens": 6910, "context_output_tokens": 375,
+                "openai_context_tokens_avoided": 6535,
+                "gross_useful_context_tokens_avoided": 6535,
+                "quality_validation_input_tokens": 4500,
+                "quality_validation_output_tokens": 346,
+                "quality_validation_tokens": 4846,
+                "quality_validation_tokens_measured": True,
+                "quality_verification_attempts": 1,
+                "quality_accepted": True, "quality_score_percent": 100,
+                "useful_context_tokens_avoided": 1689,
+            }
+            decision = {
+                "id": "unsafe-routing", "timestamp": "2026-08-23T23:09:23.368754Z",  # PRIVACY_TEST_FIXTURE
+                "task_type": "summarize-document", "decision": "LOCAL_AI_USED",
+                "reason": "local_ai_completed", "eligible": True, "available": True,
+                "actual_tokens_avoided": 6535,
+                "gross_useful_tokens_avoided": 6535,
+                "quality_validation_tokens": 4846,
+                "quality_validation_tokens_measured": True,
+                "quality_accepted": True, "quality_score_percent": 100,
+                "useful_tokens_avoided": 1689,
+            }
+            state = TELEMETRY._initial_state()
+            state["schema_version"] = 9
+            state["latest_jobs"] = [dict(event)]
+            TELEMETRY._add_totals(state, event)
+            state["daily"] = {"2026-08-23": {"totals": TELEMETRY._event_totals(), "routing": {}}}
+            TELEMETRY._add_totals(state["daily"]["2026-08-23"], event)
+            state["models"] = {"model": {"totals": TELEMETRY._event_totals()}}
+            TELEMETRY._add_totals(state["models"]["model"], event)
+            state["routing"]["latest_decisions"] = [dict(decision)]
+            TELEMETRY._add_routing_totals(state["routing"], decision)
+            TELEMETRY._add_routing_totals(state["daily"]["2026-08-23"]["routing"], decision)
+            path.write_text(json.dumps(state), encoding="utf-8")
+
+            TELEMETRY.TelemetryRecorder(path).started({
+                "id": "active", "task": "summarize-log", "model": "model",
+                "status": "running", "started_at": "2026-08-23T23:10:00Z",
+            })
+            migrated = json.loads(path.read_text(encoding="utf-8"))
+            totals = migrated["totals"]
+            routing = migrated["routing"]["totals"]
+            self.assertEqual(migrated["schema_version"], 10)
+            self.assertEqual(totals["successful_calls"], 0)
+            self.assertEqual(totals["quality_rejected_calls"], 1)
+            self.assertEqual(totals["quality_validated_calls"], 0)
+            self.assertEqual(totals["attempted_context_input_tokens"], 6910)
+            self.assertEqual(totals["gross_useful_context_tokens_avoided"], 0)
+            self.assertEqual(totals["quality_validation_tokens"], 4846)
+            self.assertEqual(totals["quality_validated_validation_tokens"], 0)
+            self.assertEqual(totals["useful_context_tokens_avoided"], 0)
+            self.assertEqual(migrated["latest_jobs"][0]["status"], "discarded")
+            self.assertEqual(routing["used_tasks"], 0)
+            self.assertEqual(routing["quality_rejected_tasks"], 1)
+            self.assertEqual(routing["quality_validation_tokens"], 4846)
+            self.assertEqual(routing["quality_validated_validation_tokens"], 0)
+            self.assertEqual(routing["useful_tokens_avoided"], 0)
+            self.assertEqual(
+                migrated["routing"]["latest_decisions"][0]["reason"],
+                "input_truncated_before_quality_gate",
+            )
 
     def test_routing_decisions_are_idempotent_and_keep_only_metadata(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -473,7 +652,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["routing"]["totals"]
-            self.assertEqual(state["schema_version"], 7)
+            self.assertEqual(state["schema_version"], 10)
             self.assertEqual(totals["tasks"], 2)
             self.assertEqual(totals["used_tasks"], 1)
             self.assertEqual(totals["missed_opportunities"], 1)
@@ -523,7 +702,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-17T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 7)
+            self.assertEqual(state["schema_version"], 10)
             self.assertEqual(state["routing"]["totals"]["availability_unknown_tasks"], 1)
             self.assertEqual(state["routing"]["totals"]["confirmed_unavailable_tasks"], 1)
             self.assertEqual(state["daily"]["2026-08-17"]["routing"]["availability_unknown_tasks"], 1)
@@ -570,6 +749,25 @@ diff --git a/docs/label.md b/docs/label.md
             self.assertEqual(decision["reason"], "local_ai_call_failed")
             self.assertEqual(state["routing"]["totals"]["used_tasks"], 0)
             self.assertEqual(state["routing"]["totals"]["failed_tasks"], 1)
+
+    def test_quality_rejected_decision_records_zero_real_savings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            assessment = LOCAL_AI.assess_routing("review-diff", 32_000, availability="available")
+            LOCAL_AI.record_routing_outcome(
+                recorder,
+                assessment,
+                outcome="quality-rejected",
+                actual_tokens_avoided=0,
+                useful_tokens_avoided=0,
+                quality_accepted=False,
+                reason="quality_gate_rejected",
+            )
+            decision = json.loads(path.read_text(encoding="utf-8"))["routing"]["latest_decisions"][0]
+            self.assertEqual(decision["decision"], "LOCAL_AI_QUALITY_REJECTED")
+            self.assertEqual(decision["actual_tokens_avoided"], 0)
+            self.assertEqual(decision["useful_tokens_avoided"], 0)
 
 
 if __name__ == "__main__":

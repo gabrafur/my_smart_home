@@ -14,17 +14,20 @@ class RoutingPolicyTest(unittest.TestCase):
             ("typo-small", "review-diff", 120, True, "available", "DETERMINISTIC"),
             ("search-many-files", "inspect-files", 16_000, True, "available", "DETERMINISTIC"),
             ("diff-small", "review-diff", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
-            ("diff-large", "review-diff", 24_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("diff-bounded", "review-diff", 10_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("diff-too-large", "review-diff", 24_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("pytest-small", "analyze-tests", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
-            ("pytest-large", "analyze-tests", 32_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("pytest-large", "analyze-tests", 32_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("log-short", "summarize-log", 1_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("log-repeated-stack", "summarize-log", 36_000, False, "available", "LOCAL_AI_ELIGIBLE"),
             ("json-large", "inspect-files", 80_000, True, "available", "DETERMINISTIC"),
-            ("file-triage-large", "inspect-files", 40_000, False, "available", "LOCAL_AI_ELIGIBLE"),
-            ("documentation-large", "summarize-document", 24_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("file-triage-too-large", "inspect-files", 40_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("documentation-bounded", "summarize-document", 10_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("documentation-too-large", "summarize-document", 24_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("memory-small-focused", "summarize-memory", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
-            ("memory-large-retrieval", "summarize-memory", 32_000, False, "available", "LOCAL_AI_ELIGIBLE"),
-            ("gpu-unavailable", "analyze-tests", 32_000, False, "unavailable", "LOCAL_AI_UNAVAILABLE"),
+            ("memory-bounded-retrieval", "summarize-memory", 20_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("memory-too-large", "summarize-memory", 32_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("gpu-unavailable", "summarize-log", 32_000, False, "unavailable", "LOCAL_AI_UNAVAILABLE"),
         ]
         for name, task, chars, deterministic, availability, expected in cases:
             with self.subTest(name=name):
@@ -37,18 +40,33 @@ class RoutingPolicyTest(unittest.TestCase):
                 self.assertEqual(actual["decision"], expected)
 
     def test_missed_opportunity_requires_eligible_and_available_task(self):
-        eligible = assess_routing("analyze-tests", 32_000, availability="available")
+        eligible = assess_routing("summarize-log", 32_000, availability="available")
         missed = terminal_decision(eligible, "skipped")
         self.assertEqual(missed["decision"], "ROUTING_MISSED_OPPORTUNITY")
-        unavailable = assess_routing("analyze-tests", 32_000, availability="unavailable")
+        unavailable = assess_routing("summarize-log", 32_000, availability="unavailable")
         self.assertEqual(terminal_decision(unavailable, "skipped")["decision"], "LOCAL_AI_UNAVAILABLE")
 
     def test_small_and_low_compressibility_tasks_do_not_look_like_opportunities(self):
         small = assess_routing("summarize-log", 1_000)
-        self.assertTrue(small["eligible"])
+        self.assertFalse(small["eligible"])
         self.assertEqual(small["decision"], "LOCAL_AI_NOT_BENEFICIAL")
         low = assess_routing("summarize-log", 40_000, compressibility="low")
         self.assertEqual(low["decision"], "LOCAL_AI_NOT_BENEFICIAL")
+
+    def test_bounded_tasks_do_not_claim_savings_for_unseen_middle_content(self):
+        assessment = assess_routing("summarize-document", 73_435, availability="available")
+
+        self.assertFalse(assessment["eligible"])
+        self.assertEqual(assessment["expected_tokens_saved"], 0)
+        self.assertEqual(assessment["bounded_input_limit_tokens"], 3_000)
+        self.assertEqual(assessment["reason"], "input_exceeds_bounded_context")
+
+    def test_tasks_rejected_by_quality_ab_are_not_operational_candidates(self):
+        for task in ("analyze-tests", "inspect-files", "review-diff"):
+            with self.subTest(task=task):
+                assessment = assess_routing(task, 10_000, availability="available")
+                self.assertFalse(assessment["eligible"])
+                self.assertEqual(assessment["reason"], "task_quality_not_validated")
 
 
 if __name__ == "__main__":

@@ -148,3 +148,52 @@ A decisão vigente é usar `qwen2.5-coder:14b` e aceitar a latência maior em tr
 da redução útil superior. O comando reprodutível é
 `python3 scripts/local-ai/quality_ab.py --model <modelo>`; benchmarks e A/B não
 entram nos acumulados operacionais.
+
+## A/B líquido do custo de validação — 2026-08-23
+
+Depois de separar os tokens de cada chamada do verificador, o mesmo A/B foi
+repetido com `qwen2.5-coder:14b`. A economia útil passou a ser calculada por
+resultado aprovado como `max(0, economia bruta - entrada do verificador - saída
+do verificador)`. Um resultado descartado continua valendo zero, nunca economia
+negativa; seu trabalho de verificação permanece visível no custo total do gate.
+
+| Métrica | Resultado |
+| --- | ---: |
+| Casos aprovados e eficientes | 1/4 |
+| Contexto do controle | 6.624 tokens |
+| Contexto efetivamente enviado ao modelo principal | 4.378 tokens |
+| Economia bruta dos aprovados | 2.230 tokens |
+| Gate do resultado aprovado | 693 tokens locais |
+| **Tokens úteis líquidos** | **1.537 tokens** |
+| **Redução útil líquida** | **23,2%** |
+| Trabalho total de todos os gates, inclusive descartes | 8.095 tokens locais |
+| Latência local total | 68,179 s |
+
+Somente `summarize-log` foi aproveitado: 2.230 tokens brutos menos 693 tokens do
+gate resultaram em 1.537 tokens úteis líquidos. `review-diff`, `analyze-tests` e
+`inspect-files` foram descartados e, portanto, economizaram zero. O resultado
+anterior de 51,5% media o delta aprovado sem descontar o verificador e não deve
+mais ser usado como a taxa vigente. O A/B líquido mostra benefício real, porém
+limitado a 23,2% nesta suíte; o gate conservador continua obrigatório porque
+três quartos dos casos não produziram contexto confiável e econômico.
+
+### Verificação operacional do limite de contexto
+
+Uma revisão real de diff com 73.435 caracteres foi executada depois do A/B. O
+endpoint permaneceu disponível, o `qwen2.5-coder:14b` usou 100% da GPU, mas as
+duas gerações de cada tentativa foram rejeitadas antes do verificador: o helper
+conseguia apresentar apenas 12.000 caracteres ao modelo. As tentativas
+economizaram zero e comprovaram que estimar benefício sobre o diff bruto inteiro
+seria incorreto.
+
+Por isso, o roteador passou a classificar `review-diff`, `inspect-files` e
+`summarize-document` acima de 3.000 tokens estimados como
+`LOCAL_AI_NOT_BENEFICIAL`; `summarize-memory` usa teto de 6.000. O caller deve
+particionar entradas maiores deterministicamente. Para logs, erros e testes, a
+filtragem de sinais agora percorre o corpo bruto antes do corte, preservando as
+linhas acionáveis sem alegar que um miolo arbitrariamente omitido foi analisado.
+Como `review-diff`, `inspect-files` e `analyze-tests` não produziram resultado
+líquido confiável nesta bateria, o roteamento operacional os marca como
+`task_quality_not_validated`; `LOCAL_AI_FORCE=1` permanece reservado à próxima
+rodada diagnóstica. Assim, rejeições já conhecidas deixam de consumir GPU e não
+aparecem como oportunidades RTX perdidas.

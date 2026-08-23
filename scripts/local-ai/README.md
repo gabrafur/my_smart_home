@@ -49,6 +49,12 @@ fidelity gate; a discarded result is charged the full control context and saves
 zero. The current quality-selected model on the RTX 4070 is
 `qwen2.5-coder:14b`.
 
+The current operational policy enables only task profiles with defensible
+quality evidence. `review-diff`, `inspect-files` and `analyze-tests` are routed
+as `LOCAL_AI_NOT_BENEFICIAL` after failing the net quality A/B; they remain
+available to `quality_ab.py` through the diagnostic-only `LOCAL_AI_FORCE=1`.
+Their rejection does not count as a missed RTX opportunity.
+
 ## On-demand endpoint recovery
 
 A machine-private configuration may opt into the reviewed
@@ -73,9 +79,15 @@ pytest 2>&1 | ./scripts/local-ai/local-ai.sh analyze-tests
 rg -n "TODO|FIXME" src | ./scripts/local-ai/local-ai.sh inspect-files
 ```
 
-The defaults are a 4,096-token context, 12,000 input characters and 6,000
-output characters. Adjacent duplicate log lines are removed; oversized input
-keeps its beginning and end. Change a limit explicitly when needed:
+The CLI default is a 4,096-token context request, while generation and fidelity
+verification enforce at least 8,192 tokens. The ordinary input bound is 12,000
+characters (24,000 for repository memory) and the output bound is 6,000
+characters. Test output, errors and logs are filtered from the full raw body so
+signal neighborhoods are retained before the character bound. Diffs, file
+inventories and documents above their reliable bound are routed as not
+beneficial until the caller partitions them deterministically; head/tail
+truncation never counts the unseen middle as useful savings. Change a limit
+explicitly only for diagnostics:
 
 ```bash
 LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-log app.log
@@ -103,7 +115,11 @@ LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-lo
 Treat every local result as untrusted first-pass evidence. The helper validates
 task-specific anchors and runs a second fidelity check with a minimum score of
 90%; rejected output is not returned as context and records zero useful token
-savings. Feed only accepted JSON—not raw logs or diagnostics—back to Codex.
+savings. For accepted output, useful savings are net: the gross primary-context
+delta minus the Ollama prompt and completion tokens consumed by that output's
+fidelity checks. Legacy jobs without a separable verifier count retain gross
+telemetry but claim zero net savings. Feed only accepted JSON—not raw logs or
+diagnostics—back to Codex.
 
 Do not describe status or route checks as RTX usage. Only a successful
 `local_ai_compress_context` result with a non-empty `job_id` and recorded

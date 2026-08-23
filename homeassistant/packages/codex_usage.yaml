@@ -576,6 +576,24 @@ template:
         state_class: total_increasing
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('successful_calls', 0) }}"
 
+      - name: Codex Resultados Local AI com Gate
+        unique_id: codex_resultados_local_ai_com_gate
+        icon: mdi:shield-half-full
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: >-
+          {% set totals = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}) %}
+          {{ (totals.get('quality_validated_calls', 0) | int(0)) + (totals.get('quality_rejected_calls', 0) | int(0)) }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI Validados
+        unique_id: codex_resultados_local_ai_validados
+        icon: mdi:shield-check-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('quality_validated_calls', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
       - name: Codex Resultados Local AI Validados Hoje
         unique_id: codex_resultados_local_ai_validados_hoje
         icon: mdi:shield-check-outline
@@ -879,7 +897,14 @@ template:
             {{ decisions[0].get('expected_tokens_saved') if decisions else none }}
           economia_real_tokens: >-
             {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
-            {{ decisions[0].get('useful_tokens_avoided') if decisions else none }}
+            {% set latest = decisions[0] if decisions else {} %}
+            {{ 0 if latest.get('decision') in ['LOCAL_AI_QUALITY_REJECTED', 'LOCAL_AI_FAILED'] else latest.get('useful_tokens_avoided') }}
+          economia_bruta_tokens: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('gross_useful_tokens_avoided') if decisions else none }}
+          custo_gate_validacao_tokens: >-
+            {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
+            {{ decisions[0].get('quality_validation_tokens') if decisions else none }}
           qualidade_aceita: >-
             {% set decisions = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('latest_decisions') or []) %}
             {{ decisions[0].get('quality_accepted') if decisions else none }}
@@ -999,11 +1024,29 @@ template:
         unique_id: codex_tokens_openai_evitados_estimados
         icon: mdi:content-save-outline
         unit_of_measurement: "tokens"
-        state_class: total
+        state_class: measurement
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
-          metodologia: "delta entre contexto bruto e resultado aprovado pelo gate de fidelidade; descartes, falhas e benchmarks valem zero; overhead do envelope OpenAI não mensurável"
+          metodologia: "economia bruta dos resultados aprovados menos tokens locais de entrada e saída usados pelo gate desses resultados; legado sem custo separável vale zero; descartes, falhas e benchmarks valem zero"
+
+      - name: Codex Economia Bruta Validada
+        unique_id: codex_economia_bruta_validada
+        icon: mdi:arrow-collapse-horizontal
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: >-
+          {% set totals = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}) %}
+          {{ [0, (totals.get('gross_useful_context_tokens_avoided', 0) | float(0)) - (totals.get('quality_validation_unmeasured_gross_tokens', 0) | float(0))] | max }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Custo Gate Validacao Resultados
+        unique_id: codex_custo_gate_validacao_resultados
+        icon: mdi:shield-search-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('quality_validated_validation_tokens', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens OpenAI Economizados Hoje Estimados
         unique_id: codex_tokens_openai_evitados_hoje_estimados
@@ -1012,6 +1055,49 @@ template:
         state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Economia Bruta Validada Hoje
+        unique_id: codex_economia_bruta_validada_hoje
+        icon: mdi:arrow-collapse-horizontal
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: >-
+          {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ [0, (today.get('gross_useful_context_tokens_avoided', 0) | float(0)) - (today.get('quality_validation_unmeasured_gross_tokens', 0) | float(0))] | max }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Custo Gate Validacao Resultados Hoje
+        unique_id: codex_custo_gate_validacao_resultados_hoje
+        icon: mdi:shield-search-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_validated_validation_tokens', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          metodologia: "tokens locais de entrada e saída consumidos pelo verificador somente nos resultados aprovados; esses tokens são subtraídos da economia bruta"
+
+      - name: Codex Economia Util Validada Hoje
+        unique_id: codex_economia_util_validada_hoje
+        icon: mdi:shield-check-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('useful_context_tokens_avoided', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          metodologia: "economia bruta dos resultados com quality_accepted igual a true menos o custo local medido de seus gates; legado sem separacao mensuravel, descartes, falhas e benchmarks valem zero"
+
+      # Série criada após a adoção do custo líquido do gate. A entidade anterior
+      # permanece para compatibilidade, mas seu histórico do dia contém amostras
+      # da antiga métrica bruta e não deve alimentar o gráfico diário.
+      - name: Codex Economia Util Liquida Validada Hoje
+        unique_id: codex_economia_util_liquida_validada_hoje
+        icon: mdi:shield-check-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('useful_context_tokens_avoided', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          metodologia: "economia bruta validada menos os tokens locais de entrada e saída do gate do resultado aprovado; descartes e legado sem custo separável valem zero"
 
       - name: Codex Tokens OpenAI Economizados Semana Estimados
         unique_id: codex_tokens_openai_evitados_semana_estimados
@@ -1092,6 +1178,15 @@ template:
           tokens_openai_evitados_estimados: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('useful_context_tokens_avoided', 0) if jobs else none }}
+          economia_bruta_validada_tokens: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('gross_useful_context_tokens_avoided', 0) if jobs else none }}
+          custo_gate_validacao_tokens: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('quality_validation_tokens', 0) if jobs else none }}
+          custo_gate_mensurado: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('quality_validation_tokens_measured') if jobs else none }}
           qualidade_aceita: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('quality_accepted') if jobs else none }}

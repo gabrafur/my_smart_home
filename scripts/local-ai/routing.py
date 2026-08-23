@@ -28,25 +28,27 @@ class TaskProfile:
     expected_reduction: float
     min_expected_saved_tokens: int
     default_compressibility: str
+    max_input_tokens: int | None = None
+    quality_validated: bool = True
 
 
-# These starting values come from the bounded helper's current 4,096-token
-# context and the validated 91-93 tok/s local model.  They are intentionally
+# These starting values come from the bounded helper's effective 8,192-token
+# context and the validated local model.  They are intentionally
 # task-specific: a small repeated-error report can be useful sooner than a diff
 # or generic file triage, while structured data remains deterministic first.
 TASK_PROFILES: dict[str, TaskProfile] = {
-    "analyze-tests": TaskProfile(900, 0.80, 600, "high"),
+    "analyze-tests": TaskProfile(900, 0.80, 600, "high", quality_validated=False),
     "classify-error": TaskProfile(800, 0.70, 500, "high"),
-    "inspect-files": TaskProfile(1200, 0.65, 700, "medium"),
-    "review-diff": TaskProfile(1200, 0.65, 700, "medium"),
+    "inspect-files": TaskProfile(1200, 0.65, 700, "medium", 3000, False),
+    "review-diff": TaskProfile(1200, 0.65, 700, "medium", 3000, False),
     # Repository memory is only delegated after deterministic index/search
     # retrieval. Its threshold matches bounded file triage; a small focused
     # memory note should go straight to the primary model.
-    "summarize-memory": TaskProfile(1200, 0.65, 700, "medium"),
+    "summarize-memory": TaskProfile(1200, 0.65, 700, "medium", 6000),
     # Long-form documentation follows the bounded, moderately compressible
     # profile of a reviewed file set. Arbitrary prose is never routed by size
     # alone; the caller still has to identify it as documentation.
-    "summarize-document": TaskProfile(1200, 0.65, 700, "medium"),
+    "summarize-document": TaskProfile(1200, 0.65, 700, "medium", 3000),
     "summarize-log": TaskProfile(900, 0.80, 600, "high"),
 }
 
@@ -98,13 +100,18 @@ def assess_routing(
     if profile is None:
         return result
 
-    expected = expected_tokens_saved(input_tokens, profile, effective_compressibility)
     result.update({
-        "eligible": True,
-        "expected_tokens_saved": expected,
         "minimum_input_tokens": profile.min_input_tokens,
         "minimum_expected_saved_tokens": profile.min_expected_saved_tokens,
     })
+    if not profile.quality_validated:
+        result.update({
+            "decision": "LOCAL_AI_NOT_BENEFICIAL",
+            "reason": "task_quality_not_validated",
+        })
+        return result
+
+    expected = expected_tokens_saved(input_tokens, profile, effective_compressibility)
     if effective_compressibility == "low":
         result.update({
             "decision": "LOCAL_AI_NOT_BENEFICIAL",
@@ -112,17 +119,30 @@ def assess_routing(
         })
         return result
     if input_tokens < profile.min_input_tokens:
+        result["expected_tokens_saved"] = expected
         result.update({
             "decision": "LOCAL_AI_NOT_BENEFICIAL",
             "reason": "input_below_task_threshold",
         })
         return result
+    if profile.max_input_tokens is not None and input_tokens > profile.max_input_tokens:
+        result.update({
+            "bounded_input_limit_tokens": profile.max_input_tokens,
+            "decision": "LOCAL_AI_NOT_BENEFICIAL",
+            "reason": "input_exceeds_bounded_context",
+        })
+        return result
     if expected < profile.min_expected_saved_tokens:
+        result["expected_tokens_saved"] = expected
         result.update({
             "decision": "LOCAL_AI_NOT_BENEFICIAL",
             "reason": "expected_savings_below_threshold",
         })
         return result
+    result.update({
+        "eligible": True,
+        "expected_tokens_saved": expected,
+    })
     if availability != "available":
         result.update({
             "decision": "LOCAL_AI_UNAVAILABLE",

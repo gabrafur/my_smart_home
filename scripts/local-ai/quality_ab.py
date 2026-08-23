@@ -9,6 +9,7 @@ import math
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -117,28 +118,40 @@ def run_case(model: str, case: dict[str, Any]) -> dict[str, Any]:
     source = str(case["source"])
     control_tokens = estimated_tokens(source)
     environment = dict(os.environ)
-    environment["LOCAL_AI_TELEMETRY_ENABLED"] = "0"
+    environment["LOCAL_AI_TELEMETRY_ENABLED"] = "1"
+    environment["LOCAL_AI_FORCE"] = "1"
     started = time.monotonic()
-    completed = subprocess.run(
-        [
-            sys.executable, str(HELPER), str(case["task"]),
-            "--model", model, "--context-tokens", "8192",
-            "--input-max-chars", "50000", "--output-tokens", "1200",
-        ],
-        input=source,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        env=environment,
-        timeout=600,
-        check=False,
-    )
+    with tempfile.TemporaryDirectory(prefix="local-ai-quality-ab-") as directory:
+        telemetry_path = Path(directory) / "telemetry.json"
+        environment["LOCAL_AI_TELEMETRY_PATH"] = str(telemetry_path)
+        completed = subprocess.run(
+            [
+                sys.executable, str(HELPER), str(case["task"]),
+                "--model", model, "--context-tokens", "8192",
+                "--input-max-chars", "50000", "--output-tokens", "1200",
+            ],
+            input=source,
+            text=True,
+            capture_output=True,
+            cwd=ROOT,
+            env=environment,
+            timeout=600,
+            check=False,
+        )
+        try:
+            state = json.loads(telemetry_path.read_text(encoding="utf-8"))
+            job = (state.get("latest_jobs") or [])[-1]
+        except (OSError, json.JSONDecodeError, IndexError, TypeError):
+            job = {}
     output = completed.stdout.strip()
     candidate_tokens = estimated_tokens(output) if output else 0
     missing = missing_requirements(output, case["required"])
     quality_accepted = completed.returncode == 0 and not missing
-    raw_saved = max(0, control_tokens - candidate_tokens)
-    efficient = quality_accepted and raw_saved >= 600
+    raw_saved = max(0, int(job.get("gross_useful_context_tokens_avoided") or 0))
+    validation_tokens = max(0, int(job.get("quality_validation_tokens") or 0))
+    useful_saved = max(0, int(job.get("useful_context_tokens_avoided") or 0))
+    validation_measured = job.get("quality_validation_tokens_measured") is True
+    efficient = quality_accepted and validation_measured and useful_saved >= 600
     return {
         "task": case["task"],
         "quality_accepted": quality_accepted,
@@ -146,7 +159,10 @@ def run_case(model: str, case: dict[str, Any]) -> dict[str, Any]:
         "control_tokens": control_tokens,
         "candidate_tokens": candidate_tokens,
         "effective_tokens_sent_to_primary": candidate_tokens if efficient else control_tokens,
-        "useful_tokens_avoided": raw_saved if efficient else 0,
+        "gross_useful_tokens_avoided": raw_saved if quality_accepted else 0,
+        "quality_validation_tokens": validation_tokens,
+        "quality_validation_tokens_measured": validation_measured,
+        "useful_tokens_avoided": useful_saved if efficient else 0,
         "latency_seconds": round(time.monotonic() - started, 3),
         "rejection_reason": None if efficient else (
             "quality_gate_or_inference_rejected" if completed.returncode != 0 else
@@ -164,6 +180,13 @@ def main() -> int:
     control = sum(int(item["control_tokens"]) for item in results)
     effective = sum(int(item["effective_tokens_sent_to_primary"]) for item in results)
     useful = sum(int(item["useful_tokens_avoided"]) for item in results)
+    gross_useful = sum(int(item["gross_useful_tokens_avoided"]) for item in results)
+    validation_tokens = sum(int(item["quality_validation_tokens"]) for item in results)
+    validated_validation_tokens = sum(
+        int(item["quality_validation_tokens"])
+        for item in results
+        if item["quality_accepted"] is True
+    )
     print(json.dumps({
         "suite": "local-ai-quality-ab-v2",
         "model": args.model,
@@ -172,6 +195,9 @@ def main() -> int:
         "efficient_cases": sum(item["efficient"] is True for item in results),
         "control_tokens": control,
         "effective_tokens_sent_to_primary": effective,
+        "gross_useful_tokens_avoided": gross_useful,
+        "quality_validation_tokens_total": validation_tokens,
+        "quality_validated_validation_tokens": validated_validation_tokens,
         "useful_tokens_avoided": useful,
         "useful_reduction_percent": round(useful / control * 100, 1) if control else 0,
         "latency_seconds": round(sum(float(item["latency_seconds"]) for item in results), 3),

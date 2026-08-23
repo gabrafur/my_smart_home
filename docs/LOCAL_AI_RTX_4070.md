@@ -65,7 +65,9 @@ Ollama.
 
 Os modelos disponíveis podem mudar por instalação. O modelo padrão selecionado
 após o A/B com gate de qualidade é `qwen2.5-coder:14b`: cumpriu os quatro
-schemas, obteve 51,5% de redução útil nas fixtures e não exibiu CPU offload. O registro comparativo e a
+schemas e não exibiu CPU offload. A primeira leitura foi 51,5% bruta do custo
+do verificador; o A/B líquido posterior aprovou 1/4 casos e mediu 23,2% depois
+de descontar 693 tokens locais do gate do resultado aproveitado. O registro comparativo e a
 reavaliação operacional de 2026-08-23 estão em
 [`LOCAL_AI_BENCHMARK_2026-08-16.md`](LOCAL_AI_BENCHMARK_2026-08-16.md). A
 reavaliação restaurou o endpoint e comparou 7B, 14B e `qwen3.5:9b` com o mesmo
@@ -200,16 +202,24 @@ ferramenta determinística -> decisão de roteamento -> Local AI quando útil ->
 `scripts/local-ai/routing.py` torna a decisão reproduzível sem inferência. Ele
 usa tamanho estimado, tipo da tarefa, compressibilidade esperada, helper
 compatível, disponibilidade verificada de forma preguiçosa e suficiência de uma
-ferramenta determinística. Os valores iniciais vêm do helper limitado a 4.096
-tokens e do benchmark local validado; a suíte de workloads os protege contra
-regressão.
+ferramenta determinística. Os valores iniciais vêm do helper com contexto
+efetivo mínimo de 8.192 tokens e do benchmark local validado; a suíte de
+workloads os protege contra regressão.
 
-| Tipo | Mínimo estimado | Economia esperada mínima | Compressão padrão |
-| --- | ---: | ---: | --- |
-| `classify-error` | 800 tokens | 500 tokens | alta |
-| `analyze-tests` / `summarize-log` | 900 tokens | 600 tokens | alta |
-| `review-diff` / `inspect-files` | 1.200 tokens | 700 tokens | média |
-| `summarize-document` / `summarize-memory` pelo MCP | 1.200 tokens | 700 tokens | alta |
+| Tipo | Mínimo estimado | Máximo bruto confiável | Economia mínima | Compressão |
+| --- | ---: | ---: | ---: | --- |
+| `classify-error` | 800 tokens | sem máximo após filtro de sinais | 500 tokens | alta |
+| `analyze-tests` / `summarize-log` | 900 tokens | sem máximo após filtro de sinais | 600 tokens | alta |
+| `review-diff` / `inspect-files` | 1.200 tokens | 3.000 tokens | 700 tokens | média |
+| `summarize-document` | 1.200 tokens | 3.000 tokens | 700 tokens | média |
+| `summarize-memory` pelo MCP | 1.200 tokens | 6.000 tokens | 700 tokens | média |
+
+Com o modelo operacional `qwen2.5-coder:14b`, `review-diff`, `inspect-files` e
+`analyze-tests` ficam temporariamente em `LOCAL_AI_NOT_BENEFICIAL` porque não
+passaram o A/B líquido de qualidade. Eles só rodam com `LOCAL_AI_FORCE=1` em
+benchmark diagnóstico e não formam oportunidades perdidas. `summarize-log` é o
+perfil com redução útil comprovada; documentos e memória mantêm seus gates e
+limites próprios.
 
 JSON grande, busca, listagem de arquivos, parsing e outros dados estruturados
 continuam determinísticos quando a ferramenta aplicável resolve o caso. Por
@@ -217,11 +227,15 @@ isso, tamanho isolado nunca aciona a RTX.
 
 "Determinístico" descreve o resultado final, não apenas a coleta. Um valor
 escalar, uma resposta curta ou JSON já estruturado permanecem
-`DETERMINISTIC`. Já uma saída textual de busca, inventário ou listagem com pelo
-menos 12.000 caracteres pode seguir para pós-processamento local quando ainda
-precisa ser interpretada e satisfaz os limites normais de benefício. A RTX não
-substitui `rg`, `find`, Git ou `jq`; ela recebe somente o resultado selecionado
-dessas ferramentas. No campo MCP legado
+`DETERMINISTIC`. Uma saída textual ainda pode seguir para pós-processamento
+local quando precisa ser interpretada e satisfaz os limites mínimo e máximo da
+tarefa. Diffs, inventários e documentos acima de aproximadamente 12.000
+caracteres precisam ser particionados deterministicamente antes da RTX;
+tratá-los apenas pelo início e pelo fim não autoriza reivindicar economia sobre
+o miolo não analisado. Testes, erros e logs podem ser maiores porque o helper
+filtra o corpo bruto e preserva deterministicamente as vizinhanças de sinais
+antes de aplicar o limite. A RTX não substitui `rg`, `find`, Git ou `jq`; ela
+recebe somente o resultado selecionado dessas ferramentas. No campo MCP legado
 `deterministic_preprocessing_available`, `true` significa que o processamento
 determinístico é final e suficiente, não apenas que ele foi executado.
 
@@ -518,14 +532,26 @@ semana, mês e total. As métricas são:
   contador de economia existente.
 
 Na aba **RTX 4070**, a seção **Atenção de roteamento — hoje** mostra somente
-decisões operacionais do dia UTC: tarefas avaliadas, elegíveis, elegíveis e
-disponíveis, oportunidades realmente perdidas, tokens potenciais somente dessas
-perdas, indisponibilidade confirmada, disponibilidade desconhecida, falhas
-técnicas e resultados descartados por qualidade. A auditoria retrospectiva e o
-potencial global foram removidos dessa seção porque não representavam atenção
-operacional concreta do dia.
+os sinais acionáveis do dia UTC: oportunidades realmente perdidas, tokens
+potenciais dessas perdas, indisponibilidade confirmada, disponibilidade
+desconhecida e falhas técnicas após delegação. Tarefas avaliadas, elegíveis e
+disponíveis permanecem numa linha compacta de contexto, acompanhadas da taxa de
+disponibilidade entre elegíveis; não ocupam cards de atenção. Rejeições de
+qualidade ficam exclusivamente em **Resultado e qualidade — hoje**. A auditoria
+retrospectiva e o potencial global permanecem fora porque não representam
+atenção operacional concreta do dia.
 As entidades acumuladas e as demais seções de atividade, qualidade e histórico
 permanecem separadas.
+
+O bloco **Waterfall acumulado — até o resultado útil** reconcilia chamadas
+registradas, conclusões técnicas, resultados com gate explícito e resultados
+validados em tiles, sem tabela. Depois muda explicitamente de unidade para
+economia bruta, custo local do gate nos resultados aprovados, tokens úteis
+líquidos e redução útil líquida. A regra é `max(0, economia bruta - tokens de
+entrada e saída do verificador)`. O resíduo sem classificação reúne benchmarks e
+histórico anterior ao gate; resultados legados cujo custo do verificador não pode
+ser separado preservam a economia bruta para auditoria, mas valem zero líquido.
+Fallbacks não aparecem porque sua notificação não forma uma etapa reconciliável.
 
 Os indicadores de GPU, VRAM e potência exibem **ociosa** quando a RTX está
 disponível sem inferência em andamento. Os valores numéricos aparecem somente
@@ -544,7 +570,7 @@ pelos cards de saúde. Uma tolerância de cinco segundos no sinal e no fim do
 uso evita que uma falha isolada de polling fragmente o histórico ou faça o
 card alternar brevemente para **sem sinal**. Ao fim da aba, **RTX em uso —
 últimas 48 horas** é uma tabela de jobs sanitizados: tarefa, modelo, resultado,
-nota do gate, duração e tokens úteis evitados. Benchmarks são omitidos e todo
+nota do gate, duração e tokens úteis líquidos. Benchmarks são omitidos e todo
 descarte aparece com zero economia.
 
 A coleta ao vivo ocorre a cada dois segundos, com timeout de três segundos. A
@@ -559,34 +585,77 @@ dias. Contagens, economia e qualidade são consolidadas quando cada decisão ou
 job termina, enquanto GPU, VRAM, potência e estado do job mudam durante a
 execução.
 
+O gráfico **Economia útil diária — últimos 7 dias** usa uma entidade diária
+dedicada, com `state_class: measurement`, alimentada por
+`useful_context_tokens_avoided`. Barras usam o máximo diário do contador, que
+reinicia à meia-noite UTC, sem herdar o histórico da antiga entidade, que já
+teve semântica bruta carregada no Home Assistant. Somente jobs com
+`quality_accepted: true` cujo delta excede o custo medido do verificador aumentam
+o valor; descartes, falhas, benchmarks e legado sem custo separável contribuem
+com zero. `gross_useful_context_tokens_avoided` mantém o delta aprovado antes do
+gate e `quality_validated_validation_tokens` mantém somente o custo dos gates
+que aprovaram resultados, permitindo reconciliar o líquido sem misturar tokens
+de gerações descartadas.
+
+Em **Contexto inicial e memória — hoje**, o startup observável fica separado dos
+agregados diários. Recuperações, ocorrências de arquivos, tokens recuperados,
+enviados ao GPT e evitados formam um fluxo reconciliável; ocorrências não são
+arquivos únicos. Quando a memória recuperada cabe no orçamento direto, enviá-la
+integralmente ao GPT e registrar zero compressões e zero contexto evitado é o
+resultado esperado, não uma falha da RTX.
+
 Os chats aparecem como identificadores curtos (`Codex #…`), não títulos ou
 prompts. Quando o chamador fornece `CODEX_CHAT_NAME` ou `CODEX_THREAD_NAME`,
 o painel exibe esse nome no lugar do identificador; ele nunca deriva um nome a
 partir do conteúdo da conversa. Isso dá correlação operacional sem vazar
 conteúdo da conversa.
 
-O painel também registra a **taxa de falhas Local AI**: chamadas com status
-`failed` divididas pelo total de tarefas solicitadas à RTX. O gráfico mostra a
-taxa acumulada que o sensor observou ao longo do tempo, com linhas para o
-total e para cada modelo monitorado. Novos modelos exigem uma entidade estável
-adicional para aparecerem no gráfico nativo do Home Assistant.
+O painel também registra a **taxa diária de falhas técnicas Local AI**: chamadas
+com status `failed` divididas pelo total de tarefas solicitadas à RTX no dia UTC.
+O gráfico de barras apresenta a média temporal dessa taxa em cada dia e não
+exibe mais a taxa acumulada total como se fosse o valor de hoje. Logo abaixo, o
+resumo separa falhas técnicas,
+descartes por qualidade e resultados não aproveitados (`failed + discarded`).
+Descartes não são falhas de infraestrutura, mas valem zero economia e reduzem a
+redução útil segundo a mesma lógica do A/B. O A/B também subtrai os tokens locais
+de entrada e saída usados na verificação antes de declarar um caso eficiente.
 
-Os grids do painel usam duas colunas para que estado, GPU, VRAM e potência
-permaneçam legíveis também em telas estreitas. A aba organiza as informações em
-ordem operacional: saúde da infraestrutura, atividade ao vivo, resultado e
-qualidade do roteamento do dia, itens que exigem atenção, última atividade,
-contexto e memória, decisões detalhadas, acumulados, diagnóstico e gráficos.
-Métricas prioritárias aparecem uma vez no topo; os blocos inferiores preservam
-detalhes e histórico sem repetir os mesmos indicadores. Cada conjunto de
-roteamento, qualidade, memória, totais, decisões ou histórico inclui uma nota
-curta de interpretação; saúde, atividade instantânea e os três gráficos físicos
-de GPU/VRAM/potência permanecem sem esse texto auxiliar por serem autoexplicativos.
+Os grids de indicadores usam duas colunas para permanecerem legíveis também em
+telas estreitas. A aba organiza as informações em ordem operacional: saúde da
+infraestrutura, atividade ao vivo e resultado/qualidade do dia iniciam as três
+colunas; atenção de roteamento e última atividade vêm logo abaixo. Para equilibrar
+as alturas, contexto/memória fica após o diagnóstico na primeira coluna, enquanto
+qualidade e históricos permanecem na terceira. Acumulados, decisões detalhadas, diagnóstico e gráficos físicos ou
+históricos ficam na parte inferior. Métricas prioritárias aparecem uma vez no
+topo; rejeições de qualidade aparecem somente em resultado/qualidade, junto da
+redução útil. Como no teste A/B, ela divide os tokens úteis líquidos por todo o
+contexto das tentativas; descartes e falhas entram no denominador com economia
+zero. Os blocos
+inferiores preservam detalhes e histórico sem repetir indicadores. Cada
+conjunto de roteamento, qualidade, memória, totais, decisões ou histórico inclui
+uma nota curta de interpretação; saúde, atividade instantânea e os três gráficos
+físicos de GPU/VRAM/potência permanecem sem esse texto auxiliar por serem
+autoexplicativos.
 
-A view usa o layout nativo `sections`, com até três colunas e
-`dense_section_placement: false`. Esse é o contrato visual padrão: no desktop,
-as seções numeradas de 1 a 11 seguem da esquerda para a direita e depois de cima
-para baixo; em telas estreitas, a responsividade nativa preserva a mesma ordem
-em uma coluna. O teste `test_chat_rtx_dashboard_layout.py` protege essa sequência.
+Os textos **Como ler** são definições fixas dos indicadores; valores correntes e
+avisos condicionais aparecem fora desses parágrafos. Os tiles usam somente as
+cores semânticas nativas do Home Assistant: azul/ciano para fluxo e
+infraestrutura, roxo para roteamento/memória, verde para resultados úteis, âmbar
+para custo ou incerteza e vermelho para falha ou descarte. Isso preserva a
+legibilidade nos temas claro e escuro sem CSS customizado.
+
+A decisão terminal `LOCAL_AI_QUALITY_REJECTED` registra economia real e útil
+iguais a zero. O bridge também normaliza decisões e jobs históricos sem esses
+campos, impedindo que o dashboard apresente “não mensurada” ou uma redução bruta
+como economia aproveitável. O diagnóstico detalha somente a tentativa mais
+recente; falhas técnicas continuam separadas de rejeições do gate.
+
+A view usa o layout nativo `sections`, com até três colunas contínuas e
+`dense_section_placement: false`. Cada coluna mantém seus cards empilhados, sem
+lacunas criadas por cards altos das colunas vizinhas. No desktop, os três grupos
+prioritários permanecem na primeira linha visual; em telas estreitas, a
+responsividade nativa preserva a ordem de cada coluna. O teste
+`test_chat_rtx_dashboard_layout.py` protege essa composição.
 
 ## Verificação e diagnóstico
 

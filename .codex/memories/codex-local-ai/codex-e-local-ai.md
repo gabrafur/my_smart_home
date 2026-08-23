@@ -17,7 +17,10 @@ instrução global no bridge; o workspace já fornece o mesmo arquivo pelo
 mecanismo de descoberta do repositório.
 
 A economia útil exibida exclui falhas, descartes e benchmarks; resultado
-descartado equivale ao contexto bruto e economiza zero. Ela permanece estimada
+descartado equivale ao contexto bruto e economiza zero. Para cada resultado
+aprovado, a economia útil líquida subtrai do delta bruto os tokens locais de
+entrada e saída consumidos por seus gates. Histórico sem separação do custo
+preserva o bruto para auditoria, mas reivindica zero líquido. Ela permanece estimada
 porque o overhead do envelope OpenAI não é mensurável pelo helper. Logs longos passam primeiro por filtragem determinística
 de ruído, preservando sinais e contexto; `summarize-log` usa schema limitado e
 no máximo uma repetição compacta para evitar JSON truncado.
@@ -30,6 +33,18 @@ ou `LOCAL_AI_UNNECESSARY_CALL`. Uma oportunidade perdida exige tarefa elegível,
 RTX disponível e helper não chamado; métricas de cobertura usam oportunidades
 e economia real, sem tratar estimativas como cobrança. Consulte
 `docs/LOCAL_AI_RTX_4070.md` para thresholds, retenção e a limitação do hook.
+
+O contexto bruto também precisa caber no contrato confiável do helper. Diffs,
+inventários e documentos acima de 3.000 tokens estimados, e memória acima de
+6.000, são `LOCAL_AI_NOT_BENEFICIAL` até serem particionados
+deterministicamente; o miolo cortado não conta como contexto substituído. Saída
+de testes, erros e logs pode ser maior porque a filtragem de sinais ocorre
+sobre o corpo bruto antes do limite.
+
+No modelo vigente, `review-diff`, `inspect-files` e `analyze-tests` não passaram
+o A/B líquido e são `LOCAL_AI_NOT_BENEFICIAL` no uso operacional. Continuam
+disponíveis apenas em benchmark forçado; `summarize-log` é o perfil do conjunto
+A/B com redução útil comprovada.
 
 Suficiência determinística significa que nenhuma interpretação por LLM ainda é
 necessária. Coleta determinística pode produzir texto grande que continua
@@ -62,6 +77,12 @@ evitados e 51,5% de redução efetiva. O 7B obteve 1/4 e 16,8%; `qwen3.5:9b`
 obteve 0/4 e 0%. Diff e inventário rejeitados pelo 14B contaram zero, enquanto
 testes e log foram utilizados. A fonte detalhada é
 `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
+
+Ao descontar também o custo do verificador dos resultados aprovados, a repetição
+com 14B aproveitou somente `summarize-log`: 2.230 tokens brutos menos 693 do
+gate, ou 1.537 tokens úteis líquidos e 23,2% no conjunto. Os outros três casos
+foram descartados e valeram zero. A taxa anterior de 51,5% é histórica e não é
+a taxa líquida vigente.
 
 Para disponibilidade, o helper versionado `recover-endpoint.mjs` é uma exceção
 estreita: somente uma chamada MCP pode enviar Wake-on-LAN e fazer no máximo duas

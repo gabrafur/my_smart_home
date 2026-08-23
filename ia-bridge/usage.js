@@ -214,11 +214,20 @@ function emptyLocalAiTotals() {
     local_input_tokens: 0,
     local_output_tokens: 0,
     context_input_tokens: 0,
+    attempted_context_input_tokens: 0,
     context_output_tokens: 0,
     context_overhead_tokens: 0,
     openai_context_tokens_avoided: 0,
     quality_validated_context_input_tokens: 0,
     quality_validated_context_output_tokens: 0,
+    gross_useful_context_tokens_avoided: 0,
+    quality_validation_input_tokens: 0,
+    quality_validation_output_tokens: 0,
+    quality_validation_tokens: 0,
+    quality_validated_validation_tokens: 0,
+    quality_validation_measured_calls: 0,
+    quality_validation_unmeasured_calls: 0,
+    quality_validation_unmeasured_gross_tokens: 0,
     useful_context_tokens_avoided: 0,
   };
 }
@@ -242,6 +251,12 @@ function emptyRoutingTotals() {
     potential_tokens_avoidable: 0,
     missed_potential_tokens_avoidable: 0,
     actual_tokens_avoided: 0,
+    gross_useful_tokens_avoided: 0,
+    quality_validation_tokens: 0,
+    quality_validated_validation_tokens: 0,
+    quality_validation_measured_calls: 0,
+    quality_validation_unmeasured_calls: 0,
+    quality_validation_unmeasured_gross_tokens: 0,
     useful_tokens_avoided: 0,
   };
 }
@@ -283,17 +298,26 @@ function localAiDerived(totals) {
   const input = Number(totals.context_input_tokens) || 0;
   const avoided = Number(totals.openai_context_tokens_avoided) || 0;
   const qualityInput = Number(totals.quality_validated_context_input_tokens) || 0;
+  const attemptedInput = Number(totals.attempted_context_input_tokens) || qualityInput;
   const usefulAvoided = Number(totals.useful_context_tokens_avoided) || 0;
   const qualityAccepted = Number(totals.quality_validated_calls) || 0;
   const qualityRejected = Number(totals.quality_rejected_calls) || 0;
+  const validationMeasured = Number(totals.quality_validation_measured_calls) || 0;
+  const validationUnmeasured = Number(totals.quality_validation_unmeasured_calls) || 0;
   const duration = Number(totals.duration_seconds) || 0;
   return {
-    context_reduction_percent: qualityInput > 0
-      ? round((usefulAvoided / qualityInput) * 100, 1)
+    context_reduction_percent: attemptedInput > 0
+      ? round((usefulAvoided / attemptedInput) * 100, 1)
+      : null,
+    useful_reduction_percent: attemptedInput > 0
+      ? round((usefulAvoided / attemptedInput) * 100, 1)
       : null,
     raw_context_reduction_percent: input > 0 ? round((avoided / input) * 100, 1) : null,
     quality_acceptance_rate_percent: qualityAccepted + qualityRejected > 0
       ? round((qualityAccepted / (qualityAccepted + qualityRejected)) * 100, 1)
+      : null,
+    quality_validation_cost_coverage_percent: validationMeasured + validationUnmeasured > 0
+      ? round((validationMeasured / (validationMeasured + validationUnmeasured)) * 100, 1)
       : null,
     success_rate_percent: calls > 0 ? round((successful / calls) * 100, 1) : null,
     failure_rate_percent: calls > 0 ? round((failed / calls) * 100, 1) : null,
@@ -317,12 +341,17 @@ function routingDerived(totals) {
   const unavailable = Number(totals.unavailable_tasks) || 0;
   const availabilityUnknown = Number(totals.availability_unknown_tasks) || 0;
   const confirmedUnavailable = Number(totals.confirmed_unavailable_tasks) || 0;
+  const validationMeasured = Number(totals.quality_validation_measured_calls) || 0;
+  const validationUnmeasured = Number(totals.quality_validation_unmeasured_calls) || 0;
   return {
     rtx_delegation_rate_percent: eligibleAvailable > 0
       ? round((used / eligibleAvailable) * 100, 1)
       : null,
     weighted_context_savings_coverage_percent: potential > 0
       ? round(Math.min(100, Math.max(0, useful) / potential * 100), 1)
+      : null,
+    quality_validation_cost_coverage_percent: validationMeasured + validationUnmeasured > 0
+      ? round((validationMeasured / (validationMeasured + validationUnmeasured)) * 100, 1)
       : null,
     unclassified_unavailable_tasks: Math.max(0, unavailable - availabilityUnknown - confirmedUnavailable),
   };
@@ -426,7 +455,10 @@ function sanitizeLocalAiJob(job) {
     'token_count_method', 'context_replacement',
     'deterministic_omitted_lines', 'model_input_chars',
     'openai_context_tokens_avoided', 'context_reduction_percent',
-    'useful_context_tokens_avoided', 'quality_accepted', 'quality_score_percent',
+    'gross_useful_context_tokens_avoided', 'useful_context_tokens_avoided',
+    'quality_validation_input_tokens', 'quality_validation_output_tokens',
+    'quality_validation_tokens', 'quality_validation_tokens_measured',
+    'quality_accepted', 'quality_score_percent',
     'quality_verification_attempts', 'tokens_per_second', 'local_attempts',
     'gpu_telemetry_available', 'gpu_peak_percent',
     'vram_peak_mib', 'gpu_power_peak_watts', 'processor',
@@ -435,6 +467,9 @@ function sanitizeLocalAiJob(job) {
   const sanitized = Object.fromEntries(
     fields.filter((field) => Object.hasOwn(job, field)).map((field) => [field, job[field]]),
   );
+  if (sanitized.status !== 'success' || sanitized.quality_accepted !== true) {
+    sanitized.useful_context_tokens_avoided = 0;
+  }
   // This is operational data only, but unlike the aggregate peaks it is the
   // actual sample for the running job. The one-second RTX card needs it to
   // show GPU, VRAM and power while work is in progress.
@@ -457,6 +492,8 @@ function sanitizeRoutingDecision(decision) {
     'id', 'timestamp', 'task_type', 'input_chars', 'estimated_input_tokens',
     'compressibility', 'compatible_helper', 'eligible', 'available',
     'expected_tokens_saved', 'actual_tokens_avoided', 'useful_tokens_avoided',
+    'gross_useful_tokens_avoided', 'quality_validation_tokens',
+    'quality_validation_tokens_measured',
     'quality_accepted', 'quality_score_percent', 'decision', 'reason',
     'minimum_input_tokens', 'minimum_expected_saved_tokens', 'model',
   ];
@@ -482,6 +519,9 @@ function sanitizeMemoryDecision(decision) {
 
 function reconcileRoutingDecisions(decisions, jobs) {
   return decisions.map((decision) => {
+    if (['LOCAL_AI_QUALITY_REJECTED', 'LOCAL_AI_FAILED'].includes(decision.decision)) {
+      return { ...decision, actual_tokens_avoided: 0, useful_tokens_avoided: 0 };
+    }
     if (
       decision.decision !== 'LOCAL_AI_USED'
       || decision.reason !== 'local_ai_completed'
@@ -496,7 +536,13 @@ function reconcileRoutingDecisions(decisions, jobs) {
         && Math.abs(finished.valueOf() - timestamp.valueOf()) <= 60_000;
     });
     return matchingFailure
-      ? { ...decision, decision: 'LOCAL_AI_FAILED', reason: 'local_ai_call_failed' }
+      ? {
+        ...decision,
+        decision: 'LOCAL_AI_FAILED',
+        reason: 'local_ai_call_failed',
+        actual_tokens_avoided: 0,
+        useful_tokens_avoided: 0,
+      }
       : decision;
   });
 }

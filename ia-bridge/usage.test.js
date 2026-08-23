@@ -213,7 +213,12 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
       context_input_tokens: 1200, context_output_tokens: 180, context_overhead_tokens: 0,
       openai_context_tokens_avoided: 1020, quality_rejected_calls: 1,
       quality_validated_calls: 1, quality_validated_context_input_tokens: 700,
-      quality_validated_context_output_tokens: 100, useful_context_tokens_avoided: 600,
+      attempted_context_input_tokens: 1200,
+      quality_validated_context_output_tokens: 100,
+      gross_useful_context_tokens_avoided: 700,
+      quality_validation_tokens: 140, quality_validated_validation_tokens: 100,
+      quality_validation_measured_calls: 1, quality_validation_unmeasured_calls: 1,
+      useful_context_tokens_avoided: 600,
     },
     daily: {
       '2026-08-16': { totals: {
@@ -222,7 +227,12 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
         context_input_tokens: 700, context_output_tokens: 100,
         openai_context_tokens_avoided: 600, quality_rejected_calls: 1,
         quality_validated_calls: 1, quality_validated_context_input_tokens: 700,
-        quality_validated_context_output_tokens: 100, useful_context_tokens_avoided: 600,
+        attempted_context_input_tokens: 1200,
+        quality_validated_context_output_tokens: 100,
+        gross_useful_context_tokens_avoided: 700,
+        quality_validation_tokens: 140, quality_validated_validation_tokens: 100,
+        quality_validation_measured_calls: 1, quality_validation_unmeasured_calls: 1,
+        useful_context_tokens_avoided: 600,
       } },
     },
     models: { 'qwen2.5-coder:7b': { totals: { calls: 3, successful_calls: 2 } } },
@@ -245,11 +255,16 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.equal(usage.state, 'LOCAL_AI_IN_USE');
   assert.equal(usage.totals.local_input_tokens, 1500);
   assert.equal(usage.totals.openai_context_tokens_avoided, 1020);
-  assert.equal(usage.totals.context_reduction_percent, 85.7);
+  assert.equal(usage.totals.context_reduction_percent, 50);
+  assert.equal(usage.totals.useful_reduction_percent, 50);
+  assert.equal(usage.totals.gross_useful_context_tokens_avoided, 700);
+  assert.equal(usage.totals.quality_validated_validation_tokens, 100);
+  assert.equal(usage.totals.quality_validation_cost_coverage_percent, 50);
   assert.equal(usage.totals.quality_acceptance_rate_percent, 50);
   assert.equal(usage.totals.failure_rate_percent, 33.3);
   assert.equal(usage.totals.average_duration_seconds, 6.67);
   assert.equal(usage.periods.today.openai_context_tokens_avoided, 600);
+  assert.equal(usage.periods.today.useful_reduction_percent, 50);
   assert.equal(usage.current_job.task, 'review-diff');
   assert.equal(usage.current_job.endpoint, undefined);
   assert.equal(usage.current_job.live_gpu.gpu_util_percent, 87);
@@ -464,6 +479,33 @@ test('labels an unmeasured used decision as failed when its matching Local AI jo
   const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
   assert.equal(usage.routing.latest_decisions[0].decision, 'LOCAL_AI_FAILED');
   assert.equal(usage.routing.latest_decisions[0].reason, 'local_ai_call_failed');
+  assert.equal(usage.routing.latest_decisions[0].actual_tokens_avoided, 0);
+  assert.equal(usage.routing.latest_decisions[0].useful_tokens_avoided, 0);
+});
+
+test('normalizes rejected routing and discarded jobs to zero useful savings', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-routing-rejected-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    routing: { latest_decisions: [{
+      id: 'rejected', timestamp: '2026-08-16T12:00:00.000Z', task_type: 'review-diff',
+      decision: 'LOCAL_AI_QUALITY_REJECTED', reason: 'quality_gate_rejected',
+    }] },
+    latest_jobs: [{
+      id: 'discarded', task: 'review-diff', status: 'discarded', quality_accepted: false,
+      finished_at: '2026-08-16T12:00:00.000Z', useful_context_tokens_avoided: 900,
+    }],
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-16T12:00:00.000Z',
+  }));
+
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(usage.routing.latest_decisions[0].actual_tokens_avoided, 0);
+  assert.equal(usage.routing.latest_decisions[0].useful_tokens_avoided, 0);
+  assert.equal(usage.latest_jobs[0].useful_context_tokens_avoided, 0);
 });
 
 test('reports bounded memory retrieval separately from tool-output context savings', (t) => {

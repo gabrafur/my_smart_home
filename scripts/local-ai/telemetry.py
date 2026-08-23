@@ -80,11 +80,20 @@ def _event_totals() -> dict[str, float | int]:
         "local_input_tokens": 0,
         "local_output_tokens": 0,
         "context_input_tokens": 0,
+        "attempted_context_input_tokens": 0,
         "context_output_tokens": 0,
         "context_overhead_tokens": 0,
         "openai_context_tokens_avoided": 0,
         "quality_validated_context_input_tokens": 0,
         "quality_validated_context_output_tokens": 0,
+        "gross_useful_context_tokens_avoided": 0,
+        "quality_validation_input_tokens": 0,
+        "quality_validation_output_tokens": 0,
+        "quality_validation_tokens": 0,
+        "quality_validated_validation_tokens": 0,
+        "quality_validation_measured_calls": 0,
+        "quality_validation_unmeasured_calls": 0,
+        "quality_validation_unmeasured_gross_tokens": 0,
         "useful_context_tokens_avoided": 0,
     }
 
@@ -107,6 +116,12 @@ def _routing_totals() -> dict[str, float | int]:
         "unnecessary_calls": 0,
         "potential_tokens_avoidable": 0,
         "actual_tokens_avoided": 0,
+        "gross_useful_tokens_avoided": 0,
+        "quality_validation_tokens": 0,
+        "quality_validated_validation_tokens": 0,
+        "quality_validation_measured_calls": 0,
+        "quality_validation_unmeasured_calls": 0,
+        "quality_validation_unmeasured_gross_tokens": 0,
         "missed_potential_tokens_avoidable": 0,
         "useful_tokens_avoided": 0,
     }
@@ -132,7 +147,7 @@ def _memory_totals() -> dict[str, float | int]:
 
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 7,
+        "schema_version": 10,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
@@ -163,7 +178,7 @@ def _safe_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
 
 
 def _counts_as_context_replacement(event: dict[str, Any]) -> bool:
-    """Count only successful analyses intended to replace raw OpenAI context."""
+    """Identify analysis attempts intended to replace raw OpenAI context."""
     explicit = event.get("context_replacement")
     if explicit is not None:
         return explicit is True
@@ -320,6 +335,248 @@ def _ensure_memory_state(state: dict[str, Any]) -> None:
     state["schema_version"] = max(4, int(state.get("schema_version") or 1))
 
 
+def _backfill_attempted_context_inputs(state: dict[str, Any], path: Path) -> None:
+    """Recover A/B denominators only when the retained event log is complete."""
+    if int(state.get("schema_version") or 1) >= 8:
+        return
+    events_path = path.with_name("local-ai-events.jsonl")
+    terminal: dict[str, dict[str, Any]] = {}
+    try:
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            event = json.loads(line)
+            if not isinstance(event, dict) or event.get("status") not in {"success", "discarded", "failed"}:
+                continue
+            event_id = str(event.get("id") or "")
+            if event_id:
+                terminal[event_id] = event
+    except (OSError, json.JSONDecodeError):
+        state["schema_version"] = 8
+        return
+
+    def backfill(target: dict[str, Any], candidates: list[dict[str, Any]]) -> None:
+        if int(_number(target.get("calls")) or 0) != len(candidates):
+            return
+        target["attempted_context_input_tokens"] = round(sum(
+            float(_number(event.get("context_input_tokens")) or 0)
+            for event in candidates
+            if _counts_as_context_replacement(event)
+        ), 3)
+
+    events = list(terminal.values())
+    totals = state.get("totals")
+    if isinstance(totals, dict):
+        backfill(totals, events)
+    daily = state.get("daily")
+    if isinstance(daily, dict):
+        for day, entry in daily.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                backfill(
+                    entry["totals"],
+                    [event for event in events if str(event.get("finished_at") or event.get("started_at") or "")[:10] == day],
+                )
+    models = state.get("models")
+    if isinstance(models, dict):
+        for model, entry in models.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                backfill(entry["totals"], [event for event in events if str(event.get("model") or "unknown") == model])
+    state["schema_version"] = 8
+
+
+def _ensure_quality_cost_accounting(state: dict[str, Any]) -> None:
+    """Start conservative net accounting without inventing legacy gate costs."""
+    if int(state.get("schema_version") or 1) >= 9:
+        return
+
+    event_targets: list[dict[str, Any]] = []
+    if isinstance(state.get("totals"), dict):
+        event_targets.append(state["totals"])
+    for collection_name in ("daily", "models"):
+        collection = state.get(collection_name)
+        if not isinstance(collection, dict):
+            continue
+        for entry in collection.values():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                event_targets.append(entry["totals"])
+    for totals in event_targets:
+        legacy_useful = max(0, float(_number(totals.get("useful_context_tokens_avoided")) or 0))
+        totals["gross_useful_context_tokens_avoided"] = legacy_useful
+        totals["quality_validation_input_tokens"] = 0
+        totals["quality_validation_output_tokens"] = 0
+        totals["quality_validation_tokens"] = 0
+        totals["quality_validated_validation_tokens"] = 0
+        totals["quality_validation_measured_calls"] = 0
+        totals["quality_validation_unmeasured_calls"] = int(
+            _number(totals.get("quality_validated_calls")) or 0
+        ) + int(_number(totals.get("quality_rejected_calls")) or 0)
+        totals["quality_validation_unmeasured_gross_tokens"] = legacy_useful
+        # Legacy events did not split generation from verifier tokens. Their
+        # gross saving stays visible, but cannot be claimed as net saving.
+        totals["useful_context_tokens_avoided"] = 0
+
+    routing_targets: list[dict[str, Any]] = []
+    routing = state.get("routing")
+    if isinstance(routing, dict) and isinstance(routing.get("totals"), dict):
+        routing_targets.append(routing["totals"])
+    daily = state.get("daily")
+    if isinstance(daily, dict):
+        for entry in daily.values():
+            if isinstance(entry, dict) and isinstance(entry.get("routing"), dict):
+                routing_targets.append(entry["routing"])
+    for totals in routing_targets:
+        legacy_useful = max(0, float(_number(totals.get("useful_tokens_avoided")) or 0))
+        totals["gross_useful_tokens_avoided"] = legacy_useful
+        totals["quality_validation_tokens"] = 0
+        totals["quality_validated_validation_tokens"] = 0
+        totals["quality_validation_measured_calls"] = 0
+        totals["quality_validation_unmeasured_calls"] = int(
+            _number(totals.get("used_tasks")) or 0
+        ) + int(_number(totals.get("quality_rejected_tasks")) or 0)
+        totals["quality_validation_unmeasured_gross_tokens"] = legacy_useful
+        totals["useful_tokens_avoided"] = 0
+
+    for job in state.get("latest_jobs", []):
+        if not isinstance(job, dict) or job.get("quality_accepted") is not True:
+            continue
+        legacy_useful = max(0, int(_number(job.get("useful_context_tokens_avoided")) or 0))
+        job["gross_useful_context_tokens_avoided"] = legacy_useful
+        job["quality_validation_tokens_measured"] = False
+        job["useful_context_tokens_avoided"] = 0
+    if isinstance(routing, dict):
+        for decision in routing.get("latest_decisions", []):
+            if not isinstance(decision, dict) or decision.get("quality_accepted") is not True:
+                continue
+            legacy_useful = max(0, int(_number(decision.get("useful_tokens_avoided")) or 0))
+            decision["gross_useful_tokens_avoided"] = legacy_useful
+            decision["quality_validation_tokens_measured"] = False
+            decision["useful_tokens_avoided"] = 0
+    state["schema_version"] = 9
+
+
+def _ensure_bounded_context_accounting(state: dict[str, Any]) -> None:
+    """Revoke savings from results that replaced context the model never saw."""
+    if int(state.get("schema_version") or 1) >= 10:
+        return
+
+    bounded_tasks = {"inspect-files", "review-diff", "summarize-document", "summarize-memory"}
+    unsafe_jobs = [
+        job for job in state.get("latest_jobs", [])
+        if isinstance(job, dict)
+        and job.get("status") == "success"
+        and job.get("quality_accepted") is True
+        and job.get("input_truncated") is True
+        and str(job.get("task") or "") in bounded_tasks
+        and _counts_as_context_replacement(job)
+    ]
+
+    def subtract(target: dict[str, Any], key: str, value: Any, *, count: bool = False) -> None:
+        amount = _number(value)
+        if amount is None:
+            return
+        remaining = float(_number(target.get(key)) or 0) - float(amount)
+        target[key] = max(0, int(round(remaining))) if count else round(remaining, 3)
+
+    def reclassify_event_totals(target: dict[str, Any], jobs: list[dict[str, Any]]) -> None:
+        for job in jobs:
+            subtract(target, "successful_calls", 1, count=True)
+            target["quality_rejected_calls"] = int(_number(target.get("quality_rejected_calls")) or 0) + 1
+            subtract(target, "quality_validated_calls", 1, count=True)
+            for target_key, source_key in (
+                ("context_input_tokens", "context_input_tokens"),
+                ("context_output_tokens", "context_output_tokens"),
+                ("context_overhead_tokens", "context_overhead_tokens"),
+                ("openai_context_tokens_avoided", "openai_context_tokens_avoided"),
+                ("quality_validated_context_input_tokens", "context_input_tokens"),
+                ("quality_validated_context_output_tokens", "context_output_tokens"),
+                ("gross_useful_context_tokens_avoided", "gross_useful_context_tokens_avoided"),
+                ("quality_validated_validation_tokens", "quality_validation_tokens"),
+                ("useful_context_tokens_avoided", "useful_context_tokens_avoided"),
+            ):
+                subtract(target, target_key, job.get(source_key))
+
+    totals = state.get("totals")
+    if isinstance(totals, dict):
+        reclassify_event_totals(totals, unsafe_jobs)
+    daily = state.get("daily")
+    if isinstance(daily, dict):
+        for day, entry in daily.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                reclassify_event_totals(
+                    entry["totals"],
+                    [job for job in unsafe_jobs if str(job.get("finished_at") or "")[:10] == day],
+                )
+    models = state.get("models")
+    if isinstance(models, dict):
+        for model, entry in models.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                reclassify_event_totals(
+                    entry["totals"],
+                    [job for job in unsafe_jobs if str(job.get("model") or "unknown") == model],
+                )
+
+    unsafe_seconds = {
+        (str(job.get("finished_at") or "")[:19], str(job.get("task") or ""))
+        for job in unsafe_jobs
+    }
+    routing = state.get("routing")
+    unsafe_decisions: list[dict[str, Any]] = []
+    if isinstance(routing, dict):
+        unsafe_decisions = [
+            decision for decision in routing.get("latest_decisions", [])
+            if isinstance(decision, dict)
+            and decision.get("decision") == "LOCAL_AI_USED"
+            and (str(decision.get("timestamp") or "")[:19], str(decision.get("task_type") or ""))
+            in unsafe_seconds
+        ]
+
+        def reclassify_routing_totals(target: dict[str, Any], decisions: list[dict[str, Any]]) -> None:
+            for decision in decisions:
+                subtract(target, "used_tasks", 1, count=True)
+                target["quality_rejected_tasks"] = int(
+                    _number(target.get("quality_rejected_tasks")) or 0
+                ) + 1
+                for target_key, source_key in (
+                    ("actual_tokens_avoided", "actual_tokens_avoided"),
+                    ("gross_useful_tokens_avoided", "gross_useful_tokens_avoided"),
+                    ("quality_validated_validation_tokens", "quality_validation_tokens"),
+                    ("useful_tokens_avoided", "useful_tokens_avoided"),
+                ):
+                    subtract(target, target_key, decision.get(source_key))
+
+        if isinstance(routing.get("totals"), dict):
+            reclassify_routing_totals(routing["totals"], unsafe_decisions)
+        if isinstance(daily, dict):
+            for day, entry in daily.items():
+                if isinstance(entry, dict) and isinstance(entry.get("routing"), dict):
+                    reclassify_routing_totals(
+                        entry["routing"],
+                        [
+                            decision for decision in unsafe_decisions
+                            if str(decision.get("timestamp") or "")[:10] == day
+                        ],
+                    )
+
+    for job in unsafe_jobs:
+        job.update({
+            "status": "discarded",
+            "error_type": "QualityRejected",
+            "quality_accepted": False,
+            "quality_score_percent": 0,
+            "gross_useful_context_tokens_avoided": 0,
+            "useful_context_tokens_avoided": 0,
+        })
+    for decision in unsafe_decisions:
+        decision.update({
+            "decision": "LOCAL_AI_QUALITY_REJECTED",
+            "reason": "input_truncated_before_quality_gate",
+            "actual_tokens_avoided": 0,
+            "gross_useful_tokens_avoided": 0,
+            "useful_tokens_avoided": 0,
+            "quality_accepted": False,
+            "quality_score_percent": 0,
+        })
+    state["schema_version"] = 10
+
+
 @contextlib.contextmanager
 def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -331,6 +588,9 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
         _migrate_complete_v1_history(state)
         _ensure_routing_state(state)
         _ensure_memory_state(state)
+        _backfill_attempted_context_inputs(state, path)
+        _ensure_quality_cost_accounting(state)
+        _ensure_bounded_context_accounting(state)
         try:
             yield state
         finally:
@@ -365,12 +625,29 @@ def _append_event(path: Path, event: dict[str, Any]) -> None:
 
 def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
     totals = target.setdefault("totals", _event_totals())
+    for key, value in _event_totals().items():
+        totals.setdefault(key, value)
+    if "attempted_context_input_tokens" not in totals:
+        # Older aggregates did not retain rejected inputs. Preserve their
+        # accepted baseline and apply A/B semantics to every new attempt.
+        totals["attempted_context_input_tokens"] = totals.get(
+            "quality_validated_context_input_tokens", 0,
+        )
     totals["calls"] = int(totals.get("calls", 0)) + 1
     successful = event.get("status") == "success"
     quality_rejected = event.get("status") == "discarded"
     outcome_key = "successful_calls" if successful else "quality_rejected_calls" if quality_rejected else "failed_calls"
     totals[outcome_key] = int(totals.get(outcome_key, 0)) + 1
     quality_validated = successful and event.get("quality_accepted") is True
+    quality_tokens_measured = event.get("quality_validation_tokens_measured") is True
+    if quality_tokens_measured:
+        totals["quality_validation_measured_calls"] = int(
+            totals.get("quality_validation_measured_calls", 0)
+        ) + 1
+    elif event.get("quality_accepted") is not None or event.get("quality_verification_attempts"):
+        totals["quality_validation_unmeasured_calls"] = int(
+            totals.get("quality_validation_unmeasured_calls", 0)
+        ) + 1
     if quality_validated:
         totals["quality_validated_calls"] = int(totals.get("quality_validated_calls", 0)) + 1
     if event.get("fallback_reported") is True:
@@ -379,10 +656,19 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
         "duration_seconds",
         "local_input_tokens",
         "local_output_tokens",
+        "quality_validation_input_tokens",
+        "quality_validation_output_tokens",
+        "quality_validation_tokens",
     ):
         value = _number(event.get(key))
         if value is not None and value > 0:
             totals[key] = round(float(totals.get(key, 0)) + float(value), 3)
+    if _counts_as_context_replacement(event):
+        attempted_input = _number(event.get("context_input_tokens"))
+        if attempted_input is not None and attempted_input > 0:
+            totals["attempted_context_input_tokens"] = round(
+                float(totals.get("attempted_context_input_tokens", 0)) + float(attempted_input), 3,
+            )
     if successful and _counts_as_context_replacement(event):
         for key in ("context_input_tokens", "context_output_tokens", "context_overhead_tokens"):
             value = _number(event.get(key))
@@ -402,7 +688,27 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
                 value = _number(event.get(source))
                 if value is not None and value > 0:
                     totals[target_key] = round(float(totals.get(target_key, 0)) + float(value), 3)
-            useful = _number(event.get("useful_context_tokens_avoided"))
+            gross_useful = _number(event.get("gross_useful_context_tokens_avoided"))
+            if gross_useful is None:
+                gross_useful = _number(event.get("useful_context_tokens_avoided"))
+            if gross_useful is not None and gross_useful > 0:
+                totals["gross_useful_context_tokens_avoided"] = round(
+                    float(totals.get("gross_useful_context_tokens_avoided", 0)) + float(gross_useful), 3,
+                )
+            if quality_tokens_measured:
+                validation_tokens = _number(event.get("quality_validation_tokens")) or 0
+                totals["quality_validated_validation_tokens"] = round(
+                    float(totals.get("quality_validated_validation_tokens", 0)) + float(validation_tokens), 3,
+                )
+                useful = _number(event.get("useful_context_tokens_avoided"))
+            else:
+                useful = 0
+                if gross_useful is not None and gross_useful > 0:
+                    totals["quality_validation_unmeasured_gross_tokens"] = round(
+                        float(totals.get("quality_validation_unmeasured_gross_tokens", 0))
+                        + float(gross_useful),
+                        3,
+                    )
             if useful is not None and useful > 0:
                 totals["useful_context_tokens_avoided"] = round(
                     float(totals.get("useful_context_tokens_avoided", 0)) + float(useful), 3,
@@ -416,6 +722,16 @@ def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> Non
         totals.setdefault(key, value)
     totals["tasks"] = int(totals.get("tasks", 0)) + 1
     status = str(decision.get("decision") or "LOCAL_AI_SKIPPED")
+    quality_tokens_measured = decision.get("quality_validation_tokens_measured") is True
+    if quality_tokens_measured:
+        totals["quality_validation_measured_calls"] += 1
+    elif decision.get("quality_accepted") is not None:
+        totals["quality_validation_unmeasured_calls"] += 1
+    validation_tokens = _number(decision.get("quality_validation_tokens"))
+    if validation_tokens is not None and validation_tokens > 0:
+        totals["quality_validation_tokens"] = round(
+            float(totals.get("quality_validation_tokens", 0)) + float(validation_tokens), 3,
+        )
     if status == "DETERMINISTIC":
         totals["deterministic_tasks"] += 1
     elif status == "LOCAL_AI_USED":
@@ -468,7 +784,28 @@ def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> Non
                 float(totals.get("actual_tokens_avoided", 0)) + float(actual), 3,
             )
     if status == "LOCAL_AI_USED" and decision.get("quality_accepted") is True:
-        useful = _number(decision.get("useful_tokens_avoided"))
+        gross_useful = _number(decision.get("gross_useful_tokens_avoided"))
+        if gross_useful is None:
+            gross_useful = _number(decision.get("useful_tokens_avoided"))
+        if gross_useful is not None and gross_useful > 0:
+            totals["gross_useful_tokens_avoided"] = round(
+                float(totals.get("gross_useful_tokens_avoided", 0)) + float(gross_useful), 3,
+            )
+        if quality_tokens_measured:
+            totals["quality_validated_validation_tokens"] = round(
+                float(totals.get("quality_validated_validation_tokens", 0))
+                + float(validation_tokens or 0),
+                3,
+            )
+            useful = _number(decision.get("useful_tokens_avoided"))
+        else:
+            useful = 0
+            if gross_useful is not None and gross_useful > 0:
+                totals["quality_validation_unmeasured_gross_tokens"] = round(
+                    float(totals.get("quality_validation_unmeasured_gross_tokens", 0))
+                    + float(gross_useful),
+                    3,
+                )
         if useful is not None and useful > 0:
             totals["useful_tokens_avoided"] = round(
                 float(totals.get("useful_tokens_avoided", 0)) + float(useful), 3,
@@ -579,6 +916,8 @@ class TelemetryRecorder:
             "expected_tokens_saved", "actual_tokens_avoided", "decision", "reason",
             "minimum_input_tokens", "minimum_expected_saved_tokens", "model",
             "quality_accepted", "quality_score_percent", "useful_tokens_avoided",
+            "gross_useful_tokens_avoided", "quality_validation_tokens",
+            "quality_validation_tokens_measured",
         )
         public = {key: decision.get(key) for key in allowed if key in decision}
         public["event_type"] = "routing_decision"

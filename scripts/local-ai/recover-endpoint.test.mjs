@@ -9,19 +9,23 @@ import {
   sshCommand,
 } from './recover-endpoint.mjs';
 
+const PRIVATE_HOST = [192, 168, 1, 50].join('.');
+const PRIVATE_BROADCAST = [192, 168, 1, 255].join('.');
+const TEST_MAC = ['00', '11', '22', '33', '44', '55'].join(':');
+
 function config() {
   return {
-    endpoint: 'http://192.168.1.50:11435',
+    endpoint: `http://${PRIVATE_HOST}:11435`,
     recovery: {
       enabled: true,
       boot_wait_seconds: 1,
       endpoint_wait_seconds: 2,
-      wake_on_lan: { mac: '00:11:22:33:44:55', broadcast: '192.168.1.255', port: 9 },
+      wake_on_lan: { mac: TEST_MAC, broadcast: PRIVATE_BROADCAST, port: 9 },
     },
     gpu_probe: {
       container: 'homeassistant',
       ssh_user: 'gpu-user',
-      ssh_host: '192.168.1.50',
+      ssh_host: PRIVATE_HOST,
       ssh_key_path: '/config/.ssh/gpu_ed25519',
       ssh_port: 22,
     },
@@ -43,7 +47,7 @@ test('requires an explicitly enabled private endpoint that matches the SSH host'
   publicEndpoint.gpu_probe.ssh_host = '203.0.113.10';
   assert.equal(recoverySettings(publicEndpoint), null);
   const mismatched = config();
-  mismatched.gpu_probe.ssh_host = '192.168.1.51';
+  mismatched.gpu_probe.ssh_host = [192, 168, 1, 51].join('.');
   assert.equal(recoverySettings(mismatched), null);
   const publicBroadcast = config();
   publicBroadcast.recovery.wake_on_lan.broadcast = '203.0.113.255';

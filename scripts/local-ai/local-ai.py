@@ -36,6 +36,7 @@ PROMPTS = ROOT / "prompts"
 DEFAULT_ENDPOINT: str | None = None
 MAX_RAW_CHARS = 2_000_000
 AUTO_MODEL_MAX_BYTES = 8_500_000_000
+SIGNAL_PREPROCESS_TASKS = {"analyze-tests", "classify-error", "summarize-log"}
 TASK_REQUIRED_FIELDS = {
     "analyze-tests": {"summary", "failures", "warnings", "recommended_actions", "confidence"},
     "classify-error": {"summary", "category", "layer", "likely_causes", "recommended_actions", "confidence"},
@@ -345,9 +346,9 @@ def clean_and_bound(text: str, limit: int) -> tuple[str, bool]:
 
 
 def preprocess_for_task(task: str, text: str) -> tuple[str, int]:
-    """Deterministically remove routine noise from long logs before inference."""
+    """Deterministically retain signal neighborhoods in long diagnostic output."""
     lines = text.splitlines()
-    if task != "summarize-log" or len(lines) < 80:
+    if task not in SIGNAL_PREPROCESS_TASKS or len(lines) < 80:
         return text, 0
     signal = re.compile(
         r"\b(error|exception|traceback|fail(?:ed|ure)?|assert(?:ion)?|warn(?:ing)?|critical|fatal|timeout)\b",
@@ -432,6 +433,9 @@ def record_routing_outcome(
     *,
     outcome: str = "auto",
     actual_tokens_avoided: int | None = None,
+    gross_useful_tokens_avoided: int | None = None,
+    quality_validation_tokens: int | None = None,
+    quality_validation_tokens_measured: bool | None = None,
     useful_tokens_avoided: int | None = None,
     quality_accepted: bool | None = None,
     quality_score_percent: int | None = None,
@@ -442,6 +446,12 @@ def record_routing_outcome(
     decision.update({"id": new_event_id(), "timestamp": utc_now()})
     if actual_tokens_avoided is not None:
         decision["actual_tokens_avoided"] = actual_tokens_avoided
+    if gross_useful_tokens_avoided is not None:
+        decision["gross_useful_tokens_avoided"] = gross_useful_tokens_avoided
+    if quality_validation_tokens is not None:
+        decision["quality_validation_tokens"] = quality_validation_tokens
+    if quality_validation_tokens_measured is not None:
+        decision["quality_validation_tokens_measured"] = quality_validation_tokens_measured
     if useful_tokens_avoided is not None:
         decision["useful_tokens_avoided"] = useful_tokens_avoided
     if quality_accepted is not None:
@@ -740,6 +750,22 @@ def verify_candidate_quality(
     return report, response
 
 
+def response_token_usage(responses: list[dict[str, Any]]) -> tuple[int, int, bool]:
+    """Return exact Ollama prompt/output token counts and whether all were reported."""
+    input_tokens = 0
+    output_tokens = 0
+    measured = True
+    for response in responses:
+        prompt_count = response.get("prompt_eval_count")
+        output_count = response.get("eval_count")
+        if not isinstance(prompt_count, int) or not isinstance(output_count, int):
+            measured = False
+            continue
+        input_tokens += max(0, prompt_count)
+        output_tokens += max(0, output_count)
+    return input_tokens, output_tokens, measured
+
+
 def gpu_snapshot() -> dict[str, Any] | None:
     executable = shutil.which("nvidia-smi")
     if not executable:
@@ -831,8 +857,13 @@ def run_analysis(args: argparse.Namespace) -> int:
     if not local_ai_enabled(settings):
         raise RuntimeError("Local AI is disabled by LOCAL_AI_ENABLED=0 or machine configuration")
     instruction = prompt_for(args.task)
-    raw_text, text, truncated, raw_limited = read_input(args.input_file, args.input_max_chars)
-    model_text, deterministic_omitted_lines = preprocess_for_task(args.task, text)
+    raw_text, bounded_text, truncated, raw_limited = read_input(args.input_file, args.input_max_chars)
+    if args.task in SIGNAL_PREPROCESS_TASKS:
+        preprocessed_text, deterministic_omitted_lines = preprocess_for_task(args.task, raw_text)
+        model_text, preprocessed_truncated = clean_and_bound(preprocessed_text, args.input_max_chars)
+        truncated = raw_limited or preprocessed_truncated
+    else:
+        model_text, deterministic_omitted_lines = preprocess_for_task(args.task, bounded_text)
     memory_task = args.task == "summarize-memory"
     memory_topic = getattr(args, "memory_topic", None)
     source_files = (
@@ -889,6 +920,38 @@ def run_analysis(args: argparse.Namespace) -> int:
             "no safe default model found. Set LOCAL_AI_MODEL after running `local-ai status` and `local-ai benchmark --model <name>`."
         )
     routing_assessment = assess_routing(args.task, len(raw_text), availability="available")
+    non_beneficial_reason = str(routing_assessment.get("reason") or "")
+    force_diagnostic = os.getenv("LOCAL_AI_FORCE", "").strip() == "1"
+    if non_beneficial_reason in {"input_exceeds_bounded_context", "task_quality_not_validated"} and not force_diagnostic:
+        record_routing_outcome(recorder, routing_assessment)
+        routing_recorded = True
+        if memory_task:
+            record_memory_outcome(
+                recorder,
+                topic=memory_topic,
+                files_found=source_files,
+                decision="MEMORY_LOCAL_AI_NOT_BENEFICIAL",
+                reason=non_beneficial_reason,
+                retrieved_tokens=context_input_tokens,
+                available=True,
+                model=model,
+                expected_tokens_saved=0,
+                minimum_input_tokens=int(routing_assessment.get("minimum_input_tokens") or 0),
+                minimum_expected_saved_tokens=int(
+                    routing_assessment.get("minimum_expected_saved_tokens") or 0
+                ),
+                token_count_method=token_method,
+            )
+        limit = int(routing_assessment.get("bounded_input_limit_tokens") or 0)
+        if non_beneficial_reason == "input_exceeds_bounded_context":
+            raise RuntimeError(
+                f"{args.task} input exceeds the bounded reliable context ({context_input_tokens} > {limit} tokens); "
+                "partition it deterministically before Local AI"
+            )
+        raise RuntimeError(
+            f"{args.task} is disabled for operational routing because the current model did not pass its quality A/B; "
+            "use LOCAL_AI_FORCE=1 only for a diagnostic benchmark"
+        )
     prompt = (
         "You are a non-authoritative local first-pass assistant. "
         "Return concise valid JSON only: no Markdown fences, no prose outside JSON. "
@@ -989,11 +1052,18 @@ def run_analysis(args: argparse.Namespace) -> int:
                     raise RuntimeError("model returned invalid structured response after two attempts") from error
                 print("local-ai: retrying invalid structured response", file=sys.stderr)
         elapsed = time.monotonic() - started
-        eval_count = sum(int(item.get("eval_count") or 0) for item in responses)
+        generation_input_tokens, generation_output_tokens, _ = response_token_usage(generation_responses)
+        validation_input_tokens, validation_output_tokens, validation_tokens_measured = response_token_usage(
+            verification_responses,
+        )
+        eval_count = generation_output_tokens + validation_output_tokens
         eval_duration = sum(int(item.get("eval_duration") or 0) for item in responses)
-        prompt_eval_count = sum(int(item.get("prompt_eval_count") or 0) for item in responses)
+        prompt_eval_count = generation_input_tokens + validation_input_tokens
         token_rate = round(eval_count / (eval_duration / 1_000_000_000), 2) if eval_count and eval_duration else None
         context_output_tokens, _ = count_openai_context_tokens(output, settings)
+        gross_useful_tokens = max(0, context_input_tokens - context_output_tokens)
+        accepted_validation_tokens = validation_input_tokens + validation_output_tokens
+        net_useful_tokens = max(0, gross_useful_tokens - accepted_validation_tokens)
         event.update({
             "status": "success",
             "finished_at": utc_now(),
@@ -1002,6 +1072,10 @@ def run_analysis(args: argparse.Namespace) -> int:
             "local_output_tokens": eval_count,
             "local_attempts": len(generation_responses),
             "quality_verification_attempts": len(verification_responses),
+            "quality_validation_input_tokens": validation_input_tokens,
+            "quality_validation_output_tokens": validation_output_tokens,
+            "quality_validation_tokens": accepted_validation_tokens,
+            "quality_validation_tokens_measured": validation_tokens_measured,
             "quality_accepted": True,
             "quality_score_percent": int(quality_report.get("coverage_score") or 0),
             "tokens_per_second": token_rate,
@@ -1016,9 +1090,10 @@ def run_analysis(args: argparse.Namespace) -> int:
             "context_overhead_method": "not_measured",
             "context_savings_estimated": True,
             "openai_context_tokens_avoided": context_input_tokens - context_output_tokens,
-            "useful_context_tokens_avoided": context_input_tokens - context_output_tokens,
+            "gross_useful_context_tokens_avoided": gross_useful_tokens,
+            "useful_context_tokens_avoided": net_useful_tokens,
             "context_reduction_percent": round(
-                ((context_input_tokens - context_output_tokens) / context_input_tokens) * 100 if context_input_tokens else 0,
+                (net_useful_tokens / context_input_tokens) * 100 if context_input_tokens else 0,
                 1,
             ),
         })
@@ -1026,7 +1101,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         minimum = int(routing_assessment.get("minimum_expected_saved_tokens") or 0)
         outcome = "used" if (
             routing_assessment.get("decision") == "LOCAL_AI_ELIGIBLE"
-            and actual_avoided >= minimum
+            and net_useful_tokens >= minimum
         ) else "unnecessary"
         if outcome != "used":
             raise QualityRejected(
@@ -1044,7 +1119,10 @@ def run_analysis(args: argparse.Namespace) -> int:
             routing_assessment,
             outcome=outcome,
             actual_tokens_avoided=actual_avoided,
-            useful_tokens_avoided=actual_avoided if outcome == "used" else 0,
+            gross_useful_tokens_avoided=gross_useful_tokens if outcome == "used" else 0,
+            quality_validation_tokens=accepted_validation_tokens,
+            quality_validation_tokens_measured=validation_tokens_measured,
+            useful_tokens_avoided=net_useful_tokens if outcome == "used" else 0,
             quality_accepted=outcome == "used",
             quality_score_percent=int(quality_report.get("coverage_score") or 0),
             model=model,
@@ -1077,19 +1155,37 @@ def run_analysis(args: argparse.Namespace) -> int:
         return 0
     except Exception as error:
         quality_rejected = isinstance(error, QualityRejected)
+        generation_input_tokens, generation_output_tokens, _ = response_token_usage(generation_responses)
+        validation_input_tokens, validation_output_tokens, validation_tokens_measured = response_token_usage(
+            verification_responses,
+        )
         event.update({
             "status": "discarded" if quality_rejected else "failed",
             "finished_at": utc_now(),
             "duration_seconds": round(time.monotonic() - started, 3),
             "error_type": type(error).__name__,
+            "local_input_tokens": generation_input_tokens + validation_input_tokens,
+            "local_output_tokens": generation_output_tokens + validation_output_tokens,
+            "quality_verification_attempts": len(verification_responses),
+            "quality_validation_input_tokens": validation_input_tokens,
+            "quality_validation_output_tokens": validation_output_tokens,
+            "quality_validation_tokens": validation_input_tokens + validation_output_tokens,
+            "quality_validation_tokens_measured": validation_tokens_measured,
             "quality_accepted": False if quality_rejected else None,
             "quality_score_percent": int(error.report.get("coverage_score") or 0) if quality_rejected else None,
+            "gross_useful_context_tokens_avoided": 0,
+            "useful_context_tokens_avoided": 0,
         })
         if not routing_recorded:
             record_routing_outcome(
                 recorder,
                 routing_assessment,
                 outcome="quality-rejected" if quality_rejected else "failed",
+                actual_tokens_avoided=0,
+                gross_useful_tokens_avoided=0,
+                quality_validation_tokens=validation_input_tokens + validation_output_tokens,
+                quality_validation_tokens_measured=validation_tokens_measured,
+                useful_tokens_avoided=0,
                 model=model,
                 reason="quality_gate_rejected" if quality_rejected else "local_ai_call_failed",
                 quality_accepted=False if quality_rejected else None,
