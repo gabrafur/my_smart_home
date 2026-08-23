@@ -97,13 +97,21 @@ O conteudo dos pacotes muda a cada sessao e parece criptografado/dinamico. Porta
 
 ## Integracao no Home Assistant
 
-A estrutura da integracao customizada foi instalada em:
+O código da integração é mantido no repositório HACS
+[`gabrafur/moni_mobile_home_assistant`](https://github.com/gabrafur/moni_mobile_home_assistant)
+e instalado em `/config/custom_components/moni_mobile/`. Este monorepo mantém
+somente a configuração e as ferramentas residenciais:
 
-- `homeassistant/custom_components/moni_mobile/`
 - `homeassistant/packages/moni_mobile_alarm.yaml`
 - `homeassistant/tools/moni_mobile_alarm.py`
 
-Isso cria a plataforma `alarm_control_panel` `moni_mobile`, carregada pelo package com os dados vindos de `secrets.yaml`.
+No HACS, adicione o repositório acima como repositório personalizado do tipo
+**Integração** e instale uma release. O diretório instalado é ignorado pelo Git
+deste monorepo para que exista uma única fonte canônica do código.
+
+Isso cria a plataforma `alarm_control_panel` `moni_mobile`, carregada pelo
+package com os dados vindos de `secrets.yaml`; a migração preserva o schema
+YAML e o identificador da entidade.
 
 Os comandos de armar/desarmar e a leitura de estado foram implementados no cliente TCP.
 
@@ -119,9 +127,7 @@ Resultados validados:
 - `disarm`: comando aceito e estado final `disarmed`;
 - sequencia controlada `arm_away -> state -> disarm`: `arm_away` confirmou `armed_away`, `disarm` foi aceito, e a leitura posterior voltou para `disarmed`.
 
-## Proximos passos
-
-Pendencias pequenas:
+## Operacao e limitacoes
 
 1. A entidade pode ficar `unknown` por alguns segundos logo apos um comando,
    enquanto o servidor atualiza o resumo. Isso e esperado nesta integracao

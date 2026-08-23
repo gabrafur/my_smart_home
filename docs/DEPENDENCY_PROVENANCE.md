@@ -23,13 +23,19 @@ revalidação estão abaixo.
 
 ## Componentes próprios e serviços externos
 
-`claude_code_chat`, `moni_mobile` e `public_bindings` são implementações deste
+`claude_code_chat` e `public_bindings` são implementações deste
 repositório, não cópias dos projetos citados em seus manifests. Links para
-Anthropic, Moni e a documentação do próprio repositório identificam APIs ou
+Anthropic e a documentação do próprio repositório identificam APIs ou
 serviços integrados; não transferem licença sobre o código local.
 
 Nenhum desses componentes próprios possui hoje declaração de licença. Eles
 seguem o bloqueio da [licença raiz](../THIRD_PARTY_NOTICES.md#repository-level-license-status).
+
+`moni_mobile` foi extraído para
+[`gabrafur/moni_mobile_home_assistant`](https://github.com/gabrafur/moni_mobile_home_assistant),
+licenciado sob MIT e instalado pelo HACS. O diretório de runtime
+`/config/custom_components/moni_mobile/` não é mais rastreado neste repositório;
+a release HACS é a única fonte canônica do código da integração.
 
 ## Dependências gerenciadas
 

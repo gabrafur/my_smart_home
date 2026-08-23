@@ -167,6 +167,9 @@ chmod 600 homeassistant/secrets.yaml .local-secrets/appdaemon-secrets.yaml
 Fill coordinates and integrations actually in use. Disable the Moni Mobile
 package when that provider is not used; `CHANGE_ME` values identify incomplete
 setup and are not production values.
+If it is used, add `gabrafur/moni_mobile_home_assistant` to HACS as a custom
+Integration repository and install a release before restarting Home Assistant.
+This monorepo no longer distributes the integration code.
 
 AppDaemon coordinates belong in `.local-secrets/appdaemon-secrets.yaml`.
 Compose mounts that file and `templates/appdaemon/appdaemon.yaml` read-only on

@@ -78,6 +78,8 @@ homeassistant/packages/private_bindings.yaml
 homeassistant/codex_prompts/
 homeassistant/tts/
 homeassistant/custom_components/hacs/hacs_frontend/
+# Installed and updated by HACS from gabrafur/moni_mobile_home_assistant.
+homeassistant/custom_components/moni_mobile/
 
 # Node-RED runtime secrets and dependencies
 nodered/node_modules/

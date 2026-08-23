@@ -21,12 +21,18 @@ directory contains the verified upstream license as `LICENSE.upstream`.
 
 ## Project-owned components and external services
 
-`claude_code_chat`, `moni_mobile`, and `public_bindings` are implementations
+`claude_code_chat` and `public_bindings` are implementations
 owned by this repository, not copies of the projects or services named by
 their manifests. Their links identify an API, service, or local guide; they do
 not transfer a license to the local code. These components currently have no
 license declaration and follow the repository-level blocker in
 [third-party notices](../THIRD_PARTY_NOTICES.md#repository-level-license-status).
+
+`moni_mobile` was extracted to
+[`gabrafur/moni_mobile_home_assistant`](https://github.com/gabrafur/moni_mobile_home_assistant),
+is licensed under MIT, and is installed by HACS. The runtime directory
+`/config/custom_components/moni_mobile/` is no longer tracked here; the HACS
+release is the integration code's single canonical source.
 
 ## Managed dependencies
 
