@@ -14,7 +14,9 @@ estão em `docs/RESTORE_CONTRACT.md`.
   Mosquitto; o overlay `compose.modules.yml` torna serviços adicionais
   selecionáveis sem mudar o Compose principal.
 - `make demo` executa somente eventos lógicos em memória, sem rede, credenciais
-  ou despacho para dispositivos.
+  ou despacho para dispositivos; o cenário cobre coordenação de chegada,
+  deduplicação, descarte stale/out-of-order, sinais de saúde e reload sintético
+  de contexto após restart. A saída publicada é verificada pelos testes.
 - `scripts/ai-context-recovery.mjs` verifica AGENTS, índices e memórias contra o
   commit sem consultar runtime privado. Conhecimento existente apenas nesse
   runtime é `knowledge_not_versioned`.

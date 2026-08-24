@@ -17,15 +17,26 @@ export function runSyntheticScenario(scenario) {
   if (!scenario || scenario.schema_version !== 1 || scenario.synthetic !== true || !Array.isArray(scenario.events)) {
     throw new Error("demo scenario must be explicitly synthetic");
   }
-  const state = clone(scenario.initial_state);
+  let state = clone(scenario.initial_state);
   const activeAlerts = new Set();
+  const lastHealthSequence = new Map();
   const timeline = [];
-  const metrics = { events: 0, alerts: 0, recoveries: 0, simulated_actions: 0 };
+  const metrics = {
+    events: 0,
+    events_applied: 0,
+    alerts: 0,
+    recoveries: 0,
+    deduplicated: 0,
+    stale_rejected: 0,
+    restart_restores: 0,
+    simulated_actions: 0,
+  };
 
   for (const event of scenario.events) {
     if (!Number.isInteger(event.step) || event.step <= 0) throw new Error("demo event step is invalid");
     const actions = [];
     const observations = [];
+    let outcome = "applied";
     if (event.type === "vehicle.approaching") {
       if (event.role !== "vehicle_primary") throw new Error("demo vehicle role is invalid");
       state.vehicle_primary = "approaching";
@@ -58,16 +69,47 @@ export function runSyntheticScenario(scenario) {
       }
     } else if (event.type === "health.changed") {
       if (!allowedHealthSubsystems.has(event.subsystem) || !["online", "offline"].includes(event.state)) throw new Error("demo health event is invalid");
-      state[event.subsystem] = event.state;
-      const key = alertKey(event.subsystem);
-      if (event.state === "offline" && !activeAlerts.has(key)) {
-        activeAlerts.add(key);
-        metrics.alerts += 1;
-        observations.push(`${event.subsystem}-alert-created`);
-      } else if (event.state === "online" && activeAlerts.delete(key)) {
-        metrics.recoveries += 1;
-        observations.push(`${event.subsystem}-recovery-recorded`);
+      if (!Number.isInteger(event.sequence) || event.sequence <= 0) throw new Error("demo health sequence is invalid");
+      const previousSequence = lastHealthSequence.get(event.subsystem) ?? 0;
+      if (event.sequence <= previousSequence) {
+        metrics.stale_rejected += 1;
+        outcome = "rejected_stale";
+        observations.push(`${event.subsystem}-stale-event-rejected`);
+      } else {
+        lastHealthSequence.set(event.subsystem, event.sequence);
+        const key = alertKey(event.subsystem);
+        if (state[event.subsystem] === event.state) {
+          metrics.deduplicated += 1;
+          outcome = "deduplicated";
+          observations.push(`${event.subsystem}-alert-deduplicated`);
+        } else {
+          state[event.subsystem] = event.state;
+          if (event.state === "offline" && !activeAlerts.has(key)) {
+            activeAlerts.add(key);
+            metrics.alerts += 1;
+            observations.push(`${event.subsystem}-alert-created`);
+          } else if (event.state === "online" && activeAlerts.delete(key)) {
+            metrics.recoveries += 1;
+            observations.push(`${event.subsystem}-recovery-recorded`);
+          }
+        }
       }
+    } else if (event.type === "runtime.restart") {
+      const persisted = clone({
+        state,
+        active_alerts: [...activeAlerts],
+        last_health_sequence: Object.fromEntries(lastHealthSequence),
+      });
+      state = clone(persisted.state);
+      activeAlerts.clear();
+      for (const key of persisted.active_alerts) activeAlerts.add(key);
+      lastHealthSequence.clear();
+      for (const [subsystem, sequence] of Object.entries(persisted.last_health_sequence)) {
+        lastHealthSequence.set(subsystem, sequence);
+      }
+      metrics.restart_restores += 1;
+      outcome = "restart_reloaded";
+      observations.push("restart-state-restored");
     } else if (event.type === "lighting.timeout") {
       if (event.role !== "exterior_light") throw new Error("demo lighting role is invalid");
       state.exterior_light = "off";
@@ -76,12 +118,14 @@ export function runSyntheticScenario(scenario) {
       throw new Error(`unsupported synthetic event: ${event.type}`);
     }
     metrics.events += 1;
+    if (!["deduplicated", "rejected_stale"].includes(outcome)) metrics.events_applied += 1;
     metrics.simulated_actions += actions.length;
-    timeline.push({ step: event.step, event: event.type, observations, actions, active_alerts: [...activeAlerts].sort() });
+    timeline.push({ step: event.step, event: event.type, outcome, observations, actions, active_alerts: [...activeAlerts].sort() });
   }
 
   return {
     schema_version: 1,
+    scenario: scenario.name,
     synthetic: true,
     network_access: false,
     device_access: false,
@@ -91,4 +135,37 @@ export function runSyntheticScenario(scenario) {
     metrics,
     timeline,
   };
+}
+
+function observations(result, suffix) {
+  return result.timeline
+    .flatMap((entry) => entry.observations)
+    .filter((observation) => observation.endsWith(suffix));
+}
+
+export function formatSyntheticSummary(result) {
+  if (!result?.synthetic || !Array.isArray(result.timeline)) throw new Error("demo result is invalid");
+  const dispatchedActions = result.timeline
+    .flatMap((entry) => entry.actions)
+    .filter((entry) => entry.dispatched).length;
+  const arrival = result.timeline
+    .flatMap((entry) => entry.observations)
+    .filter((entry) => ["arrival-context-opened", "presence-confirmed"].includes(entry));
+  const degradations = observations(result, "-alert-created").filter((entry) => entry !== "storage-alert-created");
+  const recovered = observations(result, "-recovery-recorded");
+
+  return [
+    `Synthetic smart-home recovery demo: ${result.scenario}`,
+    `Safety: network=off | devices=off | credentials=none | dispatched_actions=${dispatchedActions}`,
+    `Arrival: context=${arrival.includes("arrival-context-opened") ? "opened" : "missing"} | resident_primary=${result.final_state.presence.resident_primary} | security=${result.final_state.security_panel} | exterior_light=${result.final_state.exterior_light}`,
+    `Resilience: alerts=${result.metrics.alerts} | deduplicated=${result.metrics.deduplicated} | stale_rejected=${result.metrics.stale_rejected} | restart_restores=${result.metrics.restart_restores} | recoveries=${result.metrics.recoveries}`,
+    `Health: storage=${result.final_state.storage} | internet=${result.final_state.internet} | zigbee=${result.final_state.zigbee} | active_alerts=${result.active_alerts.length}`,
+    "Evidence:",
+    `- arrival coordination: ${arrival.join(" -> ")}`,
+    `- infrastructure degradation: ${degradations.join("; ")}`,
+    `- deduplication: ${observations(result, "-alert-deduplicated").join("; ")}`,
+    `- stale/out-of-order: ${observations(result, "-stale-event-rejected").join("; ")}`,
+    `- restart safety: ${observations(result, "restart-state-restored").join("; ")}`,
+    `- recovery: ${recovered.join("; ")}`,
+  ].join("\n");
 }

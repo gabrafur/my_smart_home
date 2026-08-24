@@ -48,6 +48,7 @@
     { "id": "public-private-boundary", "area": "privacy", "strategy": "full pair", "pt": "docs/PUBLIC_PRIVATE_BOUNDARY.md", "en": "docs/PUBLIC_PRIVATE_BOUNDARY.en.md" },
     { "id": "restore-contract", "area": "restore", "strategy": "full pair", "pt": "docs/RESTORE_CONTRACT.md", "en": "docs/RESTORE_CONTRACT.en.md" },
     { "id": "bootstrap-demo", "area": "getting-started", "strategy": "full pair", "pt": "docs/BOOTSTRAP_DEMO.md", "en": "docs/BOOTSTRAP_DEMO.en.md" },
+    { "id": "demo-output", "area": "portfolio", "strategy": "full pair", "pt": "docs/demo-output.pt-BR.md", "en": "docs/demo-output.md" },
     { "id": "testing-strategy", "area": "operations", "strategy": "full pair", "pt": "docs/ESTRATEGIA_DE_TESTES.md", "en": "docs/TESTING_STRATEGY.en.md" },
     { "id": "dependency-provenance", "area": "security", "strategy": "full pair", "pt": "docs/DEPENDENCY_PROVENANCE.md", "en": "docs/DEPENDENCY_PROVENANCE.en.md" },
     { "id": "licensing-decision", "area": "contributing", "strategy": "full pair", "pt": "docs/LICENSING_DECISION.pt-BR.md", "en": "docs/LICENSING_DECISION.md" },

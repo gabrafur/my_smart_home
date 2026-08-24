@@ -19,11 +19,14 @@
     { "step": 1, "type": "vehicle.approaching", "role": "vehicle_primary" },
     { "step": 2, "type": "presence.arrival", "role": "resident_primary" },
     { "step": 3, "type": "storage.pressure", "level": "warning" },
-    { "step": 4, "type": "health.changed", "subsystem": "internet", "state": "offline" },
-    { "step": 5, "type": "health.changed", "subsystem": "zigbee", "state": "offline" },
-    { "step": 6, "type": "health.changed", "subsystem": "internet", "state": "online" },
-    { "step": 7, "type": "health.changed", "subsystem": "zigbee", "state": "online" },
-    { "step": 8, "type": "storage.recovered" },
-    { "step": 9, "type": "lighting.timeout", "role": "exterior_light" }
+    { "step": 4, "type": "health.changed", "subsystem": "internet", "state": "offline", "sequence": 1 },
+    { "step": 5, "type": "health.changed", "subsystem": "internet", "state": "offline", "sequence": 2 },
+    { "step": 6, "type": "health.changed", "subsystem": "zigbee", "state": "offline", "sequence": 1 },
+    { "step": 7, "type": "runtime.restart" },
+    { "step": 8, "type": "health.changed", "subsystem": "internet", "state": "online", "sequence": 3 },
+    { "step": 9, "type": "health.changed", "subsystem": "internet", "state": "offline", "sequence": 2 },
+    { "step": 10, "type": "health.changed", "subsystem": "zigbee", "state": "online", "sequence": 2 },
+    { "step": 11, "type": "storage.recovered" },
+    { "step": 12, "type": "lighting.timeout", "role": "exterior_light" }
   ]
 }

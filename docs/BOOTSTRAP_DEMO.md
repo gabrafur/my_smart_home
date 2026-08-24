@@ -4,6 +4,20 @@
 
 ## Bootstrap reproduzível
 
+O caminho para um revisor público é:
+
+```bash
+git clone https://github.com/gabrafur/my_smart_home.git smart-home
+cd smart-home
+make bootstrap
+make validate-public
+make demo
+make demo-test
+```
+
+Esses comandos criam apenas templates ignorados no clone, executam o contrato
+público canônico e rodam o cenário em memória. Eles não iniciam a stack Compose.
+
 Em clone público limpo, valide primeiro:
 
 ```bash
@@ -83,12 +97,17 @@ make demo-test
 - iluminação de chegada e timeout;
 - pressão e recovery de storage;
 - queda/recovery de Internet e Zigbee;
+- deduplicação de alerta sem segunda notificação;
+- rejeição de evento de saúde stale/out-of-order;
+- serialização e reload de estado sintético num restart simulado;
 - alertas, recoveries e métricas de observabilidade.
 
 Toda ação produzida contém `simulated: true` e `dispatched: false`. A engine não
 importa HTTP, rede, MQTT, subprocessos ou clientes residenciais; não usa
 credenciais, coordenadas nem `entity_id`. O teste substitui `fetch` por uma
-falha, verifica os imports e prova que nenhuma rota real é chamada.
+falha, verifica os imports, prova que nenhuma rota real é chamada e mantém a
+[saída de exemplo publicada](demo-output.pt-BR.md) idêntica ao formatter. O
+restart é um modelo em memória.
 
 ## Contexto da IA
 

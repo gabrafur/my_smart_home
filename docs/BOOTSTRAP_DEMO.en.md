@@ -4,6 +4,21 @@
 
 ## Reproducible bootstrap
 
+The public reviewer path is:
+
+```bash
+git clone https://github.com/gabrafur/my_smart_home.git smart-home
+cd smart-home
+make bootstrap
+make validate-public
+make demo
+make demo-test
+```
+
+These commands create only ignored templates in the clone, run the canonical
+public contract, and execute the in-memory scenario. They do not start the
+Compose stack.
+
 In a clean public clone, validate first:
 
 ```bash
@@ -83,12 +98,17 @@ make demo-test
 - arrival lighting and timeout;
 - storage pressure and recovery;
 - Internet and Zigbee failure/recovery;
+- alert deduplication without a second notification;
+- stale/out-of-order health-event rejection;
+- serialization and reload of synthetic state across a simulated restart;
 - alerts, recoveries, and observability metrics.
 
 Every generated action has `simulated: true` and `dispatched: false`. The engine
 imports no HTTP, network, MQTT, subprocess, or household client; it uses no
 credentials, coordinates, or entity IDs. Tests replace `fetch` with a failure,
-inspect imports, and prove no real route is called.
+inspect imports, prove no real route is called, and keep the
+[published example output](demo-output.md) byte-identical to the formatter. The
+restart is an in-memory model.
 
 ## AI context
 
