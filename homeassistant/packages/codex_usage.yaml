@@ -576,14 +576,30 @@ template:
           {% set benchmark = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}) %}
           {{ states('sensor.codex_usage_raw') == 'ok' and benchmark.get('available', false) }}
         attributes:
+          schema_version: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('schema_version')) }}
+          compatibility_status: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('compatibility_status')) }}
           benchmark_run_id: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('benchmark_run_id')) }}
           ultima_execucao: >-
-            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('generated_at')) }}
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('benchmark_executed_at')) }}
+          artefato_recalculado_em: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('artifact_recomputed_at')) }}
+          idade_benchmark_s: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('benchmark_age_seconds')) }}
           modelo: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('model')) }}
+          independencia_ground_truth: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('ground_truth_independence_status')) }}
+          decisao_operacional: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('operational_decision')) }}
+          resultados_recalculados: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('results_recomputed_from_existing_raw_artifacts')) }}
           base_de_medicao: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('measurement_basis')) or {} }}
+          cenarios_adversariais: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('adversarial_metrics')) or {} }}
           totais: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('totals')) or {} }}
           atividades: >-

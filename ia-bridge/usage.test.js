@@ -331,7 +331,7 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.equal(usage.latest_jobs[0].endpoint, undefined);
 });
 
-test('exposes a sanitized high-potential benchmark without mixing operational totals', (t) => {
+test('exposes explicit v2 denominators without mixing operational totals', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-benchmark-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const telemetryPath = path.join(directory, 'telemetry.json');
@@ -342,30 +342,60 @@ test('exposes a sanitized high-potential benchmark without mixing operational to
     state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-16T11:59:59Z',
   }));
   fs.writeFileSync(benchmarkPath, JSON.stringify({
-    suite: 'local-ai-high-potential-v1',
+    schema_version: 2,
+    suite: 'local-ai-high-potential-v2',
     execution_mode: 'benchmark',
     excluded_from_production_metrics: true,
     benchmark_run_id: 'public-run',
-    generated_at: '2026-08-16T11:00:00Z',
+    benchmark_executed_at: '2026-08-16T11:00:00Z',
+    artifact_recomputed_at: '2026-08-16T11:30:00Z',
+    results_recomputed_from_existing_raw_artifacts: true,
     model: 'benchmark-model',
     measurement_basis: {
-      gpt_direct: 'simulated', local_ai: 'measured', deterministic: 'measured',
-      gpt_tokens: 'estimated_utf8_bytes_div_4', gpt_final_quality: 'not_tested',
+      gpt_tokens: 'estimated', gpt_token_estimation_method: 'utf8_bytes_divided_by_4',
+      gpt_direct_execution: 'simulated', local_inference: 'measured',
+      gpu_telemetry: 'measured', deterministic_execution: 'recomputed',
+      gpt_final_quality: 'not_tested',
+    },
+    ground_truth_provenance: { status: 'INSUFFICIENT_EVIDENCE' },
+    operational_policy: {
+      classification: {
+        production_local_ai_enabled: false, local_ai_mode: 'disabled',
+      },
+    },
+    adversarial_metrics: {
+      adversarial_scenarios_total: 20, adversarial_guardrails_passed: 20,
+      adversarial_model_outputs_accepted: 0, adversarial_model_outputs_rejected: 0,
     },
     totals: {
-      cases: 100, rtx_attempted: 75, outputs_accepted: 50, outputs_rejected: 25,
-      fallbacks: 25, useful_rtx_rate: 0.5, baseline_gpt_tokens: 10000,
-      routed_gpt_tokens: 7000, avoided_gpt_tokens: 3000,
-      weighted_token_savings: 0.3, latency_p50_seconds: 2.5,
-      latency_p95_seconds: 4.5, quality_score: 0.95,
+      total_cases: 100, eligible_cases: 70, non_eligible_cases: 30,
+      rtx_attempted_cases: 70, local_inference_calls: 86,
+      accepted_cases: 27, rejected_cases: 43, fallback_cases: 43, useful_cases: 27,
+      useful_rtx_rate_among_attempts: 27 / 70, end_to_end_useful_coverage: 0.27,
+      inferences_per_attempted_case: 86 / 70, critical_error_occurrences: 32,
+      cases_with_critical_error: 25, critical_case_rate_among_attempts: 25 / 70,
+      critical_errors_per_inference: 32 / 86, local_inferences_with_critical_error: null,
+      critical_error_scope: 'selected_case_output_category_flags',
+      estimated_baseline_gpt_tokens: 10000,
+      estimated_routed_gpt_tokens: 7000, estimated_avoided_gpt_tokens: 3000,
+      estimated_weighted_gpt_context_reduction: 0.3,
+      local_added_latency_total_seconds: 513.553, rtx_latency_p50_seconds: 2.5,
+      rtx_latency_p95_seconds: 4.5, rtx_quality_score: 0.95,
+      baseline_quality_score: 1, baseline_latency_p50_seconds: 0.0001,
     },
     per_activity_class: {
       classification: {
-        cases: 20, rtx_attempted: 15, outputs_accepted: 10, outputs_rejected: 5,
-        fallbacks: 5, useful_rtx_rate: 0.5, baseline_gpt_tokens: 2000,
-        routed_gpt_tokens: 1400, avoided_gpt_tokens: 600,
-        weighted_token_savings: 0.3, latency_p50_seconds: 2,
-        latency_p95_seconds: 4, quality_score: 0.94, decision: 'EXPERIMENTAL',
+        total_cases: 20, eligible_cases: 14, non_eligible_cases: 6,
+        rtx_attempted_cases: 14, local_inference_calls: 14,
+        accepted_cases: 0, rejected_cases: 14, fallback_cases: 14, useful_cases: 0,
+        useful_rtx_rate_among_attempts: 0, end_to_end_useful_coverage: 0,
+        class_eligibility_rate: 0.7, fallback_rate_among_attempts: 1,
+        inferences_per_attempted_case: 1, critical_error_occurrences: 2,
+        cases_with_critical_error: 2, rtx_quality_score: 0.2,
+        baseline_quality_score: 1, rtx_latency_p50_seconds: 2,
+        baseline_latency_p50_seconds: 0.0001, estimated_avoided_gpt_tokens: 0,
+        estimated_weighted_gpt_context_reduction: 0,
+        rtx_operational_advantage: false, decision: 'DETERMINISTIC_FIRST',
       },
     },
     results: [{ input: 'must not be exposed' }],
@@ -376,9 +406,68 @@ test('exposes a sanitized high-potential benchmark without mixing operational to
   );
   assert.equal(usage.totals.calls, 7);
   assert.equal(usage.benchmark_high_potential.status, 'measured');
-  assert.equal(usage.benchmark_high_potential.totals.avoided_gpt_tokens, 3000);
+  assert.equal(usage.benchmark_high_potential.schema_version, 2);
+  assert.equal(usage.benchmark_high_potential.benchmark_age_seconds, 3600);
+  assert.equal(usage.benchmark_high_potential.totals.estimated_avoided_gpt_tokens, 3000);
+  assert.equal(usage.benchmark_high_potential.totals.useful_rtx_rate_among_attempts, 27 / 70);
+  assert.equal(usage.benchmark_high_potential.totals.end_to_end_useful_coverage, 0.27);
+  assert.equal(usage.benchmark_high_potential.totals.critical_error_occurrences, 32);
+  assert.equal(usage.benchmark_high_potential.totals.cases_with_critical_error, 25);
+  assert.equal(usage.benchmark_high_potential.totals.local_inferences_with_critical_error, null);
+  assert.equal(
+    usage.benchmark_high_potential.totals.critical_error_scope,
+    'selected_case_output_category_flags',
+  );
+  assert.equal(usage.benchmark_high_potential.ground_truth_independence_status, 'INSUFFICIENT_EVIDENCE');
+  assert.equal(usage.benchmark_high_potential.activities[0].rtx_operational_advantage, false);
+  assert.equal(usage.benchmark_high_potential.activities[0].production_local_ai_enabled, false);
   assert.equal(usage.benchmark_high_potential.activities[0].sample_status, 'sufficient');
   assert.equal(usage.benchmark_high_potential.results, undefined);
+});
+
+test('keeps v1 benchmark compatibility without inventing v2 evidence', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-benchmark-v1-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const benchmarkPath = path.join(directory, 'latest.json');
+  fs.writeFileSync(benchmarkPath, JSON.stringify({
+    suite: 'local-ai-high-potential-v1', execution_mode: 'benchmark',
+    excluded_from_production_metrics: true, benchmark_run_id: 'legacy-run',
+    generated_at: '2026-08-16T11:00:00Z', model: 'legacy-model',
+    measurement_basis: { local_ai: 'measured', gpt_final_quality: 'not_tested' },
+    totals: { cases: 100, rtx_attempted: 70, avoided_gpt_tokens: 3000, critical_errors: 25 },
+    per_activity_class: { classification: { cases: 20, rtx_attempted: 14 } },
+  }));
+  const usage = scanLocalAiTelemetry(null, null, new Date('2026-08-16T12:00:00Z'), benchmarkPath);
+  const benchmark = usage.benchmark_high_potential;
+  assert.equal(benchmark.status, 'legacy_schema');
+  assert.equal(benchmark.schema_version, 1);
+  assert.equal(benchmark.totals.estimated_avoided_gpt_tokens, 3000);
+  assert.equal(benchmark.totals.critical_error_occurrences, null);
+  assert.equal(benchmark.totals.cases_with_critical_error, null);
+  assert.equal(benchmark.ground_truth_independence_status, null);
+  assert.equal(benchmark.activities[0].end_to_end_useful_coverage, null);
+  assert.equal(benchmark.activities[0].rtx_operational_advantage, null);
+});
+
+test('sanitizes the versioned v2 benchmark artifact end to end', () => {
+  const benchmarkPath = path.resolve(
+    __dirname, '..', 'docs', 'benchmarks', 'local-ai-high-potential', 'latest.json',
+  );
+  const usage = scanLocalAiTelemetry(
+    null, null, new Date('2026-08-24T16:00:00Z'), benchmarkPath,
+  );
+  const benchmark = usage.benchmark_high_potential;
+  assert.equal(benchmark.schema_version, 2);
+  assert.equal(benchmark.totals.total_cases, 100);
+  assert.equal(benchmark.totals.rtx_attempted_cases, 70);
+  assert.equal(benchmark.totals.local_inference_calls, 86);
+  assert.equal(benchmark.totals.useful_cases, 27);
+  assert.equal(benchmark.totals.critical_error_occurrences, 32);
+  assert.equal(benchmark.totals.cases_with_critical_error, 25);
+  assert.equal(benchmark.ground_truth_independence_status, 'INSUFFICIENT_EVIDENCE');
+  assert.equal(benchmark.activities.length, 5);
+  assert.ok(benchmark.activities.every((item) => item.rtx_operational_advantage === false));
+  assert.ok(benchmark.activities.every((item) => item.production_local_ai_enabled === false));
 });
 
 test('does not report a stale Local AI preflight as available', (t) => {

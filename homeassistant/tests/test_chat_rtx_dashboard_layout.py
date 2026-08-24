@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 DASHBOARD = Path(__file__).resolve().parents[1] / "dashboards" / "chat.yaml"
+CODEX_PACKAGE = Path(__file__).resolve().parents[1] / "packages" / "codex_usage.yaml"
 
 
 def rtx_view() -> str:
@@ -19,6 +20,21 @@ def rtx_view() -> str:
 
 
 class RtxDashboardLayoutTest(unittest.TestCase):
+    def test_high_potential_sensor_exposes_v2_evidence_without_operational_mix(self):
+        package = CODEX_PACKAGE.read_text(encoding="utf-8")
+        start = package.index("      - name: Codex Benchmark RTX Alto Potencial\n")
+        end = package.index("      - name: Codex Chamadas Local AI\n", start)
+        sensor = package[start:end]
+        for attribute in (
+            "schema_version", "compatibility_status", "benchmark_run_id",
+            "ultima_execucao", "artefato_recalculado_em", "idade_benchmark_s",
+            "independencia_ground_truth", "decisao_operacional", "resultados_recalculados",
+            "base_de_medicao", "cenarios_adversariais", "totais", "atividades",
+        ):
+            self.assertIn(f"          {attribute}:", sensor)
+        self.assertNotIn("operational_calls", sensor)
+        self.assertNotIn("useful_context_tokens_avoided", sensor)
+
     def test_three_independent_columns_preserve_priority_and_fill_gaps(self):
         """Keep one continuous section per column so tall cards cannot open gaps."""
         view = rtx_view()
@@ -118,21 +134,31 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertIn("entity: sensor.codex_falhas_operacionais_local_ai_hoje", view)
         self.assertIn("'modelo_verificador'", view)
 
-    def test_high_potential_benchmark_is_separate_and_token_weighted(self):
+    def test_high_potential_benchmark_separates_denominators_and_evidence(self):
         view = rtx_view()
 
         self.assertIn("title: Benchmark RTX — alto potencial além de logs", view)
         self.assertIn("sensor.codex_benchmark_rtx_alto_potencial", view)
         self.assertIn("item.get('activity')", view)
-        self.assertIn("totals.get('baseline_gpt_tokens'", view)
-        self.assertIn("totals.get('routed_gpt_tokens'", view)
-        self.assertIn("totals.get('avoided_gpt_tokens'", view)
-        self.assertIn("weighted_token_savings", view)
-        self.assertIn("measured", view)
-        self.assertIn("estimated", view)
-        self.assertIn("simulated", view)
-        self.assertIn("insufficient_sample", view)
-        self.assertIn("não é média simples", view)
+        for field in (
+            "total_cases", "eligible_cases", "rtx_attempted_cases", "local_inference_calls",
+            "accepted_cases", "useful_rtx_rate_among_attempts", "end_to_end_useful_coverage",
+            "fallback_cases", "critical_error_occurrences", "cases_with_critical_error",
+            "estimated_baseline_gpt_tokens", "estimated_routed_gpt_tokens",
+            "estimated_avoided_gpt_tokens", "estimated_weighted_gpt_context_reduction",
+            "rtx_quality_score", "baseline_quality_score", "rtx_operational_advantage",
+        ):
+            self.assertIn(field, view)
+        for label in ("MEDIDO", "ESTIMADO", "SIMULADO", "NÃO TESTADO"):
+            self.assertIn(label, view)
+        self.assertIn("indisponível", view)
+        self.assertIn("independencia_ground_truth", view)
+        self.assertIn("adversarial_guardrails_passed", view)
+        self.assertIn("adversarial_model_outputs_accepted", view)
+        self.assertIn("Sucesso do guardrail não é sucesso do modelo", view)
+        self.assertIn("Nenhuma das cinco", view)
+        self.assertNotIn("weighted_token_savings", view)
+        self.assertNotIn("totals.get('critical_errors'", view)
         self.assertIn("`summarize-log` está excluído", view)
 
     def test_daily_operational_flow_reconciles_quality_outcomes(self):

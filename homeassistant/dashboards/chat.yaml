@@ -1030,34 +1030,53 @@ views:
               {% set totals = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'totais') or {} %}
               {% set rows = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'atividades') or [] %}
               {% set status = states('sensor.codex_benchmark_rtx_alto_potencial') %}
+              {% set idade_s = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'idade_benchmark_s') %}
+              {% set ground_truth = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'independencia_ground_truth') %}
+              {% set decisao = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'decisao_operacional') %}
+              {% set adversarial = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'cenarios_adversariais') or {} %}
               {% set badges = {
-                'measured': '🟢 measured',
-                'estimated': '🟡 estimated',
-                'simulated': '🔵 simulated',
-                'insufficient_sample': '⚪ insufficient_sample',
-                'not_tested': '⚪ not_tested'
+                'measured': '🟢 MEDIDO',
+                'recomputed': '🟣 RECALCULADO',
+                'estimated': '🟡 ESTIMADO',
+                'simulated': '🔵 SIMULADO',
+                'not_applicable': '⚪ NÃO APLICÁVEL',
+                'insufficient_sample': '⚪ AMOSTRA INSUFICIENTE',
+                'legacy_schema': '⚪ SCHEMA LEGADO',
+                'not_tested': '⚪ NÃO TESTADO'
               } %}
               {% if rows %}
-              **Execução:** `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'benchmark_run_id') or '—' }}` · **modelo:** `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'modelo') or '—' }}` · **última execução:** {{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'ultima_execucao') or '—' }}
+              **Execução:** `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'benchmark_run_id') or '—' }}` · **schema:** {{ format_number_ptbr(state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'schema_version'), 0) if state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'schema_version') is number else 'não informado' }} · **modelo:** `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'modelo') or '—' }}`
 
-              **Evidência:** RTX {{ badges.get(basis.get('local_ai'), basis.get('local_ai', '—')) }} · contexto GPT direto {{ badges.get(basis.get('gpt_direct'), basis.get('gpt_direct', '—')) }} · contagem de tokens {{ badges.get('estimated') }} · qualidade final GPT {{ badges.get(basis.get('gpt_final_quality'), basis.get('gpt_final_quality', '—')) }}.
+              **Data:** {{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'ultima_execucao') or 'não informada' }} · **idade:** {{ (format_number_ptbr((idade_s | float(0)) / 86400, 1) ~ ' dias') if idade_s is number else 'não informada' }} · **artefato recalculado:** {{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'artefato_recalculado_em') or 'não' }}
 
-              | Casos | RTX tentada | Aceita | Rejeitada | Fallback | Useful RTX | Baseline | Roteados | Evitados | Economia ponderada | p50 | p95 | Qualidade |
-              |--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-              | {{ format_number_ptbr(totals.get('cases', 0)) }} | {{ format_number_ptbr(totals.get('rtx_attempted', 0)) }} | {{ format_number_ptbr(totals.get('outputs_accepted', 0)) }} | {{ format_number_ptbr(totals.get('outputs_rejected', 0)) }} | {{ format_number_ptbr(totals.get('fallbacks', 0)) }} | {{ format_number_ptbr((totals.get('useful_rtx_rate', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(totals.get('baseline_gpt_tokens', 0)) }} | {{ format_number_ptbr(totals.get('routed_gpt_tokens', 0)) }} | {{ format_number_ptbr(totals.get('avoided_gpt_tokens', 0)) }} | {{ format_number_ptbr((totals.get('weighted_token_savings', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(totals.get('latency_p50_seconds', 0), 2) }} s | {{ format_number_ptbr(totals.get('latency_p95_seconds', 0), 2) }} s | {{ format_number_ptbr((totals.get('quality_score', 0) | float(0)) * 100, 1) }}% |
+              **Evidência:** inferência local {{ badges.get(basis.get('local_inference'), '⚪ NÃO INFORMADO') }} · GPU {{ badges.get(basis.get('gpu_telemetry'), '⚪ NÃO INFORMADO') }} · tokens GPT {{ badges.get(basis.get('gpt_tokens'), '⚪ NÃO INFORMADO') }} · GPT direto {{ badges.get(basis.get('gpt_direct_execution'), '⚪ NÃO INFORMADO') }} · qualidade GPT {{ badges.get(basis.get('gpt_final_quality'), '⚪ NÃO INFORMADO') }}.
 
-              | Atividade | Casos | RTX | Aceita | Rejeitada | Fallback | Useful RTX | Baseline | Roteados | Evitados | Economia | p50 | p95 | Qualidade | Decisão |
-              |:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|:--|
+              **Ground truth:** `{{ ground_truth or 'não informado' }}` · **decisão:** `{{ decisao or 'não informada' }}`.
+
+              **Guardrails adversariais:** {{ format_number_ptbr(adversarial.get('adversarial_guardrails_passed')) if adversarial.get('adversarial_guardrails_passed') is number else 'indisponível' }}/{{ format_number_ptbr(adversarial.get('adversarial_scenarios_total')) if adversarial.get('adversarial_scenarios_total') is number else 'indisponível' }} cenários simulados tratados · outputs do modelo aceitos/rejeitados: {{ format_number_ptbr(adversarial.get('adversarial_model_outputs_accepted')) if adversarial.get('adversarial_model_outputs_accepted') is number else 'indisponível' }}/{{ format_number_ptbr(adversarial.get('adversarial_model_outputs_rejected')) if adversarial.get('adversarial_model_outputs_rejected') is number else 'indisponível' }}. Sucesso do guardrail não é sucesso do modelo.
+
+              | Casos totais | Elegíveis | Tentativas RTX | Inferências | Saídas úteis | Useful rate entre tentativas | Cobertura end-to-end | Fallbacks |
+              |--:|--:|--:|--:|--:|--:|--:|--:|
+              | {{ format_number_ptbr(totals.get('total_cases')) if totals.get('total_cases') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('eligible_cases')) if totals.get('eligible_cases') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('rtx_attempted_cases')) if totals.get('rtx_attempted_cases') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('local_inference_calls')) if totals.get('local_inference_calls') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('useful_cases')) if totals.get('useful_cases') is number else 'indisponível' }} | {{ (format_number_ptbr((totals.get('useful_rtx_rate_among_attempts') | float(0)) * 100, 2) ~ '%') if totals.get('useful_rtx_rate_among_attempts') is number else 'indisponível' }} | {{ (format_number_ptbr((totals.get('end_to_end_useful_coverage') | float(0)) * 100, 2) ~ '%') if totals.get('end_to_end_useful_coverage') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('fallback_cases')) if totals.get('fallback_cases') is number else 'indisponível' }} |
+
+              | Ocorrências críticas | Casos com erro crítico | Contexto GPT direto | Contexto GPT roteado | Tokens GPT potencialmente evitados | Redução estimada de contexto GPT | Latência local acumulada |
+              |--:|--:|--:|--:|--:|--:|--:|
+              | {{ format_number_ptbr(totals.get('critical_error_occurrences')) if totals.get('critical_error_occurrences') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('cases_with_critical_error')) if totals.get('cases_with_critical_error') is number else 'indisponível' }} | {{ format_number_ptbr(totals.get('estimated_baseline_gpt_tokens')) if totals.get('estimated_baseline_gpt_tokens') is number else 'indisponível' }} **ESTIMADO/SIMULADO** | {{ format_number_ptbr(totals.get('estimated_routed_gpt_tokens')) if totals.get('estimated_routed_gpt_tokens') is number else 'indisponível' }} **ESTIMADO/SIMULADO** | {{ format_number_ptbr(totals.get('estimated_avoided_gpt_tokens')) if totals.get('estimated_avoided_gpt_tokens') is number else 'indisponível' }} **ESTIMADO** | {{ (format_number_ptbr((totals.get('estimated_weighted_gpt_context_reduction') | float(0)) * 100, 2) ~ '%') if totals.get('estimated_weighted_gpt_context_reduction') is number else 'indisponível' }} **ESTIMADO/SIMULADO** | {{ (format_number_ptbr(totals.get('local_added_latency_total_seconds'), 3) ~ ' s') if totals.get('local_added_latency_total_seconds') is number else 'indisponível' }} **MEDIDO** |
+
+              | Atividade | Casos totais | Elegíveis | Tentativas | Inferências | Aceitas | Useful rate/tentativas | Cobertura end-to-end | Fallbacks | Casos críticos | Qualidade RTX | Qualidade determinística | p50 RTX | p50 determinístico | Vantagem operacional | Decisão |
+              |:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|:--:|:--|
               {% for item in rows -%}
-              | `{{ item.get('activity') }}`{% if item.get('sample_status') == 'insufficient_sample' %} ⚪{% endif %} | {{ format_number_ptbr(item.get('cases', 0)) }} | {{ format_number_ptbr(item.get('rtx_attempted', 0)) }} | {{ format_number_ptbr(item.get('outputs_accepted', 0)) }} | {{ format_number_ptbr(item.get('outputs_rejected', 0)) }} | {{ format_number_ptbr(item.get('fallbacks', 0)) }} | {{ format_number_ptbr((item.get('useful_rtx_rate', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(item.get('baseline_gpt_tokens', 0)) }} | {{ format_number_ptbr(item.get('routed_gpt_tokens', 0)) }} | {{ format_number_ptbr(item.get('avoided_gpt_tokens', 0)) }} | {{ format_number_ptbr((item.get('weighted_token_savings', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(item.get('latency_p50_seconds', 0), 2) }} s | {{ format_number_ptbr(item.get('latency_p95_seconds', 0), 2) }} s | {{ format_number_ptbr((item.get('quality_score', 0) | float(0)) * 100, 1) }}% | `{{ item.get('decision') }}` |
+              | `{{ item.get('activity') }}`{% if item.get('sample_status') == 'insufficient_sample' %} ⚪{% endif %} | {{ format_number_ptbr(item.get('total_cases')) if item.get('total_cases') is number else 'indisponível' }} | {{ format_number_ptbr(item.get('eligible_cases')) if item.get('eligible_cases') is number else 'indisponível' }} | {{ format_number_ptbr(item.get('rtx_attempted_cases')) if item.get('rtx_attempted_cases') is number else 'indisponível' }} | {{ format_number_ptbr(item.get('local_inference_calls')) if item.get('local_inference_calls') is number else 'indisponível' }} | {{ format_number_ptbr(item.get('accepted_cases')) if item.get('accepted_cases') is number else 'indisponível' }} | {{ (format_number_ptbr((item.get('useful_rtx_rate_among_attempts') | float(0)) * 100, 2) ~ '%') if item.get('useful_rtx_rate_among_attempts') is number else 'indisponível' }} | {{ (format_number_ptbr((item.get('end_to_end_useful_coverage') | float(0)) * 100, 2) ~ '%') if item.get('end_to_end_useful_coverage') is number else 'indisponível' }} | {{ format_number_ptbr(item.get('fallback_cases')) if item.get('fallback_cases') is number else 'indisponível' }} | {{ format_number_ptbr(item.get('cases_with_critical_error')) if item.get('cases_with_critical_error') is number else 'indisponível' }} | {{ (format_number_ptbr((item.get('rtx_quality_score') | float(0)) * 100, 2) ~ '%') if item.get('rtx_quality_score') is number else 'indisponível' }} | {{ (format_number_ptbr((item.get('baseline_quality_score') | float(0)) * 100, 2) ~ '%') if item.get('baseline_quality_score') is number else 'indisponível' }} | {{ (format_number_ptbr(item.get('rtx_latency_p50_seconds'), 3) ~ ' s') if item.get('rtx_latency_p50_seconds') is number else 'indisponível' }} | {{ (format_number_ptbr(item.get('baseline_latency_p50_seconds'), 6) ~ ' s') if item.get('baseline_latency_p50_seconds') is number else 'indisponível' }} | {{ 'SIM' if item.get('rtx_operational_advantage') == true else 'NÃO' if item.get('rtx_operational_advantage') == false else 'indisponível' }} | `{{ item.get('decision') or 'não informada' }}` |
               {% endfor %}
 
-              A economia global usa `soma(baseline) − soma(roteados)` ponderada
-              pelos pesos do workload; não é média simples das porcentagens.
-              `summarize-log` está excluído desta métrica e estes dados não entram
-              nos contadores operacionais.
+              **Capacidade** (houve saída aceita), **utilidade no benchmark**,
+              **redução estimada de contexto**, **vantagem operacional** e
+              **aptidão para produção** são critérios distintos. Nenhuma das cinco
+              atividades possui vantagem operacional ou habilitação de produção.
+              `summarize-log` está excluído e permanece em benchmark separado; estes dados não
+              entram nos contadores operacionais.
               {% else %}
-              {{ badges.get(status, '⚪ insufficient_sample') }} — nenhum artefato
+              {{ badges.get(status, '⚪ AMOSTRA INSUFICIENTE') }} — nenhum artefato
               de benchmark sanitizado foi carregado pelo bridge.
               {% endif %}
 

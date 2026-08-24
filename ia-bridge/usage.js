@@ -756,63 +756,133 @@ function reconcileRoutingDecisions(decisions, jobs) {
   });
 }
 
-function sanitizeHighPotentialBenchmark(benchmarkPath) {
+function sanitizeHighPotentialBenchmark(benchmarkPath, now = new Date()) {
   const report = readJson(benchmarkPath, null);
-  if (!report || report.suite !== 'local-ai-high-potential-v1'
+  const isV1 = report?.suite === 'local-ai-high-potential-v1';
+  const isV2 = report?.schema_version === 2 && report?.suite === 'local-ai-high-potential-v2';
+  if (!report || (!isV1 && !isV2)
       || report.execution_mode !== 'benchmark'
       || report.excluded_from_production_metrics !== true) {
     return { available: false, status: 'insufficient_sample', activities: [] };
   }
-  const safeNumber = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
+  const safeNumber = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    return Number.isFinite(Number(value)) ? Number(value) : null;
+  };
   const totals = report.totals && typeof report.totals === 'object' ? report.totals : {};
-  const activities = Object.entries(report.per_activity_class || {}).map(([activity, value]) => ({
-    activity,
-    cases: safeNumber(value?.cases) || 0,
-    rtx_attempted: safeNumber(value?.rtx_attempted) || 0,
-    outputs_accepted: safeNumber(value?.outputs_accepted) || 0,
-    outputs_rejected: safeNumber(value?.outputs_rejected) || 0,
-    fallbacks: safeNumber(value?.fallbacks) || 0,
-    useful_rtx_rate: safeNumber(value?.useful_rtx_rate),
-    baseline_gpt_tokens: safeNumber(value?.baseline_gpt_tokens) || 0,
-    routed_gpt_tokens: safeNumber(value?.routed_gpt_tokens) || 0,
-    avoided_gpt_tokens: safeNumber(value?.avoided_gpt_tokens) || 0,
-    weighted_token_savings: safeNumber(value?.weighted_token_savings),
-    latency_p50_seconds: safeNumber(value?.latency_p50_seconds),
-    latency_p95_seconds: safeNumber(value?.latency_p95_seconds),
-    quality_score: safeNumber(value?.quality_score),
-    decision: typeof value?.decision === 'string' ? value.decision : 'EXPERIMENTAL',
-    sample_status: Number(value?.cases) >= 20 ? 'sufficient' : 'insufficient_sample',
-  }));
-  const localBasis = report.measurement_basis?.local_ai;
+  const policy = report.operational_policy && typeof report.operational_policy === 'object'
+    ? report.operational_policy : {};
+  const activities = Object.entries(report.per_activity_class || {}).map(([activity, value]) => {
+    const currentPolicy = policy[activity] && typeof policy[activity] === 'object' ? policy[activity] : {};
+    const legacy = value?.legacy_metric_aliases || {};
+    const totalCases = safeNumber(isV2 ? value?.total_cases : value?.cases);
+    return {
+      activity,
+      total_cases: totalCases,
+      eligible_cases: safeNumber(isV2 ? value?.eligible_cases : value?.eligible_tasks),
+      non_eligible_cases: safeNumber(isV2 ? value?.non_eligible_cases : null),
+      rtx_attempted_cases: safeNumber(isV2 ? value?.rtx_attempted_cases : value?.rtx_attempted),
+      local_inference_calls: safeNumber(value?.local_inference_calls),
+      accepted_cases: safeNumber(isV2 ? value?.accepted_cases : value?.outputs_accepted),
+      rejected_cases: safeNumber(isV2 ? value?.rejected_cases : value?.outputs_rejected),
+      fallback_cases: safeNumber(isV2 ? value?.fallback_cases : value?.fallbacks),
+      useful_cases: safeNumber(isV2 ? value?.useful_cases : value?.useful_rtx_tasks),
+      useful_rtx_rate_among_attempts: safeNumber(isV2 ? value?.useful_rtx_rate_among_attempts : value?.useful_rtx_rate),
+      end_to_end_useful_coverage: safeNumber(isV2 ? value?.end_to_end_useful_coverage : null),
+      class_eligibility_rate: safeNumber(isV2 ? value?.class_eligibility_rate : null),
+      fallback_rate_among_attempts: safeNumber(isV2 ? value?.fallback_rate_among_attempts : value?.fallback_rate),
+      inferences_per_attempted_case: safeNumber(isV2 ? value?.inferences_per_attempted_case : null),
+      critical_error_occurrences: safeNumber(isV2 ? value?.critical_error_occurrences : null),
+      cases_with_critical_error: safeNumber(isV2 ? value?.cases_with_critical_error : null),
+      rtx_quality_score: safeNumber(isV2 ? value?.rtx_quality_score : value?.quality_score),
+      baseline_quality_score: safeNumber(isV2 ? value?.baseline_quality_score : value?.deterministic_quality_score),
+      rtx_latency_p50_seconds: safeNumber(isV2 ? value?.rtx_latency_p50_seconds : value?.latency_p50_seconds),
+      baseline_latency_p50_seconds: safeNumber(isV2 ? value?.baseline_latency_p50_seconds : value?.deterministic_latency_p50_seconds),
+      estimated_avoided_gpt_tokens: safeNumber(isV2 ? value?.estimated_avoided_gpt_tokens : value?.avoided_gpt_tokens),
+      estimated_weighted_gpt_context_reduction: safeNumber(isV2 ? value?.estimated_weighted_gpt_context_reduction : value?.weighted_token_savings),
+      rtx_operational_advantage: isV2 && typeof value?.rtx_operational_advantage === 'boolean'
+        ? value.rtx_operational_advantage : null,
+      decision: typeof value?.decision === 'string' ? value.decision : null,
+      production_local_ai_enabled: typeof currentPolicy.production_local_ai_enabled === 'boolean'
+        ? currentPolicy.production_local_ai_enabled : null,
+      local_ai_mode: typeof currentPolicy.local_ai_mode === 'string' ? currentPolicy.local_ai_mode : null,
+      sample_status: totalCases !== null && totalCases >= 20 ? 'sufficient' : 'insufficient_sample',
+      legacy_aliases_present: Boolean(Object.keys(legacy).length),
+    };
+  });
+  const benchmarkExecutedAt = isV2 ? report.benchmark_executed_at : report.generated_at;
+  const executedDate = new Date(benchmarkExecutedAt);
+  const ageSeconds = Number.isNaN(executedDate.valueOf())
+    ? null : Math.max(0, Math.floor((now.valueOf() - executedDate.valueOf()) / 1000));
+  const localBasis = isV2 ? report.measurement_basis?.local_inference : report.measurement_basis?.local_ai;
+  const groundTruthStatus = isV2 && typeof report.ground_truth_provenance?.status === 'string'
+    ? report.ground_truth_provenance.status : null;
+  const totalsLegacy = totals.legacy_metric_aliases || {};
   return {
     available: true,
-    status: activities.every((item) => item.sample_status === 'sufficient')
-      ? String(localBasis || 'estimated')
-      : 'insufficient_sample',
+    status: isV2
+      ? activities.every((item) => item.sample_status === 'sufficient') ? String(localBasis || 'not_tested') : 'insufficient_sample'
+      : 'legacy_schema',
+    schema_version: isV2 ? 2 : 1,
+    compatibility_status: isV2 ? 'current' : 'legacy_schema',
     benchmark_run_id: typeof report.benchmark_run_id === 'string' ? report.benchmark_run_id : null,
-    generated_at: typeof report.generated_at === 'string' ? report.generated_at : null,
+    benchmark_executed_at: typeof benchmarkExecutedAt === 'string' ? benchmarkExecutedAt : null,
+    artifact_recomputed_at: isV2 && typeof report.artifact_recomputed_at === 'string' ? report.artifact_recomputed_at : null,
+    benchmark_age_seconds: ageSeconds,
     model: typeof report.model === 'string' ? report.model : null,
     measurement_basis: {
-      gpt_direct: report.measurement_basis?.gpt_direct || 'simulated',
-      gpt_tokens: report.measurement_basis?.gpt_tokens || 'estimated',
-      local_ai: localBasis || 'estimated',
-      deterministic: report.measurement_basis?.deterministic || 'estimated',
+      gpt_tokens: isV2 ? report.measurement_basis?.gpt_tokens : 'estimated',
+      gpt_token_estimation_method: isV2
+        ? report.measurement_basis?.gpt_token_estimation_method : 'utf8_bytes_divided_by_4',
+      gpt_direct_execution: isV2 ? report.measurement_basis?.gpt_direct_execution : 'simulated',
+      local_inference: localBasis || null,
+      gpu_telemetry: isV2 ? report.measurement_basis?.gpu_telemetry : null,
+      deterministic_execution: isV2 ? report.measurement_basis?.deterministic_execution : null,
       gpt_final_quality: report.measurement_basis?.gpt_final_quality || 'not_tested',
     },
+    ground_truth_independence_status: groundTruthStatus,
+    operational_decision: isV2 ? 'NO_RTX_OPERATIONAL_ADVANTAGE' : null,
+    results_recomputed_from_existing_raw_artifacts: isV2
+      ? report.results_recomputed_from_existing_raw_artifacts === true : null,
+    adversarial_metrics: isV2 ? {
+      adversarial_scenarios_total: safeNumber(report.adversarial_metrics?.adversarial_scenarios_total),
+      adversarial_guardrails_passed: safeNumber(report.adversarial_metrics?.adversarial_guardrails_passed),
+      adversarial_model_outputs_accepted: safeNumber(report.adversarial_metrics?.adversarial_model_outputs_accepted),
+      adversarial_model_outputs_rejected: safeNumber(report.adversarial_metrics?.adversarial_model_outputs_rejected),
+    } : null,
     totals: {
-      cases: safeNumber(totals.cases) || 0,
-      rtx_attempted: safeNumber(totals.rtx_attempted) || 0,
-      outputs_accepted: safeNumber(totals.outputs_accepted) || 0,
-      outputs_rejected: safeNumber(totals.outputs_rejected) || 0,
-      fallbacks: safeNumber(totals.fallbacks) || 0,
-      useful_rtx_rate: safeNumber(totals.useful_rtx_rate),
-      baseline_gpt_tokens: safeNumber(totals.baseline_gpt_tokens) || 0,
-      routed_gpt_tokens: safeNumber(totals.routed_gpt_tokens) || 0,
-      avoided_gpt_tokens: safeNumber(totals.avoided_gpt_tokens) || 0,
-      weighted_token_savings: safeNumber(totals.weighted_token_savings),
-      latency_p50_seconds: safeNumber(totals.latency_p50_seconds),
-      latency_p95_seconds: safeNumber(totals.latency_p95_seconds),
-      quality_score: safeNumber(totals.quality_score),
+      total_cases: safeNumber(isV2 ? totals.total_cases : totals.cases),
+      eligible_cases: safeNumber(isV2 ? totals.eligible_cases : totals.eligible_tasks),
+      non_eligible_cases: safeNumber(isV2 ? totals.non_eligible_cases : null),
+      rtx_attempted_cases: safeNumber(isV2 ? totals.rtx_attempted_cases : totals.rtx_attempted),
+      local_inference_calls: safeNumber(totals.local_inference_calls),
+      accepted_cases: safeNumber(isV2 ? totals.accepted_cases : totals.outputs_accepted),
+      rejected_cases: safeNumber(isV2 ? totals.rejected_cases : totals.outputs_rejected),
+      fallback_cases: safeNumber(isV2 ? totals.fallback_cases : totals.fallbacks),
+      useful_cases: safeNumber(isV2 ? totals.useful_cases : totals.useful_rtx_tasks),
+      useful_rtx_rate_among_attempts: safeNumber(isV2 ? totals.useful_rtx_rate_among_attempts : totals.useful_rtx_rate),
+      end_to_end_useful_coverage: safeNumber(isV2 ? totals.end_to_end_useful_coverage : null),
+      inferences_per_attempted_case: safeNumber(isV2 ? totals.inferences_per_attempted_case : null),
+      critical_error_occurrences: safeNumber(isV2 ? totals.critical_error_occurrences : null),
+      cases_with_critical_error: safeNumber(isV2 ? totals.cases_with_critical_error : null),
+      critical_case_rate_among_attempts: safeNumber(isV2 ? totals.critical_case_rate_among_attempts : null),
+      critical_errors_per_inference: safeNumber(isV2 ? totals.critical_errors_per_inference : null),
+      local_inferences_with_critical_error: safeNumber(
+        isV2 ? totals.local_inferences_with_critical_error : null,
+      ),
+      critical_error_scope: isV2 && typeof totals.critical_error_scope === 'string'
+        ? totals.critical_error_scope : null,
+      estimated_baseline_gpt_tokens: safeNumber(isV2 ? totals.estimated_baseline_gpt_tokens : totals.baseline_gpt_tokens),
+      estimated_routed_gpt_tokens: safeNumber(isV2 ? totals.estimated_routed_gpt_tokens : totals.routed_gpt_tokens),
+      estimated_avoided_gpt_tokens: safeNumber(isV2 ? totals.estimated_avoided_gpt_tokens : totals.avoided_gpt_tokens),
+      estimated_weighted_gpt_context_reduction: safeNumber(isV2 ? totals.estimated_weighted_gpt_context_reduction : totals.weighted_token_savings),
+      local_added_latency_total_seconds: safeNumber(isV2 ? totals.local_added_latency_total_seconds : totals.net_latency_delta_seconds),
+      rtx_quality_score: safeNumber(isV2 ? totals.rtx_quality_score : totals.quality_score),
+      rtx_latency_p50_seconds: safeNumber(isV2 ? totals.rtx_latency_p50_seconds : totals.latency_p50_seconds),
+      rtx_latency_p95_seconds: safeNumber(isV2 ? totals.rtx_latency_p95_seconds : totals.latency_p95_seconds),
+      baseline_quality_score: safeNumber(isV2 ? totals.baseline_quality_score : totals.deterministic_quality_score),
+      baseline_latency_p50_seconds: safeNumber(isV2 ? totals.baseline_latency_p50_seconds : totals.deterministic_latency_p50_seconds),
+      legacy_critical_errors: safeNumber(isV1 ? totals.critical_errors : totalsLegacy.critical_errors),
     },
     activities,
   };
@@ -934,7 +1004,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date(), bench
     deliveries: {
       confirmed_code_mode_calls: deliveryReceipts.size,
     },
-    benchmark_high_potential: sanitizeHighPotentialBenchmark(benchmarkPath),
+    benchmark_high_potential: sanitizeHighPotentialBenchmark(benchmarkPath, now),
   };
 }
 
