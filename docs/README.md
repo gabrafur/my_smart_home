@@ -17,6 +17,7 @@ placeholders.
 | [Bootstrap, módulos e demo](BOOTSTRAP_DEMO.md) | Clone mínimo, features opcionais e cenário sintético | [English](BOOTSTRAP_DEMO.en.md) |
 | [Containers](CONTAINERS.md) | Imagens, portas, volumes, dependências e operação | [English](CONTAINERS.en.md) |
 | [Revisão semanal da documentação](REVISAO_DOCUMENTACAO_SEMANAL.md) | Agendamento, escopo, credenciais e recuperação | [English](WEEKLY_DOCUMENTATION_REVIEW.en.md) |
+| [Fronteira das automações nativas](AUTOMACOES_NATIVAS_HOME_ASSISTANT.md) | Critérios para manter automações no Home Assistant ou migrá-las ao Node-RED | [English](HOME_ASSISTANT_NATIVE_AUTOMATIONS.en.md) |
 | [Auditoria de segurança](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publicação, rotação e histórico Git | resumo no [índice em inglês](README.en.md) |
 | [Bluetooth e Matter](BLUETOOTH_MATTER.md) | D-Bus, rede do host e comissionamento | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
 | [Saúde do Raspberry Pi](RASPBERRY_PI_SYSTEM_HEALTH.md) | Métricas e alertas do host | resumo no [índice em inglês](README.en.md) |

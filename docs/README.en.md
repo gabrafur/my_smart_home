@@ -16,6 +16,7 @@ physical identifiers must appear only as placeholders.
 | [Bootstrap, modules, and demo](BOOTSTRAP_DEMO.en.md) | Minimum clone, optional features, and synthetic scenario | [Português](BOOTSTRAP_DEMO.md) |
 | [Containers](CONTAINERS.en.md) | Images, ports, volumes, dependencies, and operations | [Português](CONTAINERS.md) |
 | [Weekly documentation review](WEEKLY_DOCUMENTATION_REVIEW.en.md) | Schedule, scope, credentials, and recovery | [Português](REVISAO_DOCUMENTACAO_SEMANAL.md) |
+| [Native automation boundary](HOME_ASSISTANT_NATIVE_AUTOMATIONS.en.md) | Criteria for keeping automations in Home Assistant or moving them to Node-RED | [Português](AUTOMACOES_NATIVAS_HOME_ASSISTANT.md) |
 | [Public-repository security audit](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publishing, rotation, and Git history | Portuguese detailed record |
 | [Bluetooth and Matter](BLUETOOTH_MATTER.md) | D-Bus, host networking, and commissioning | summarized in [Containers](CONTAINERS.en.md) |
 | [Raspberry Pi health](RASPBERRY_PI_SYSTEM_HEALTH.md) | Host metrics and alerts | Portuguese detailed guide |

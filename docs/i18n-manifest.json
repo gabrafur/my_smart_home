@@ -42,6 +42,7 @@
     { "id": "containers", "area": "architecture", "strategy": "full pair", "pt": "docs/CONTAINERS.md", "en": "docs/CONTAINERS.en.md" },
     { "id": "installation-restore", "area": "installation", "strategy": "full pair", "pt": "docs/INSTALACAO_RESTAURACAO_SMART_HOME.md", "en": "docs/INSTALLATION_RESTORE.en.md" },
     { "id": "weekly-review", "area": "operations", "strategy": "full pair", "pt": "docs/REVISAO_DOCUMENTACAO_SEMANAL.md", "en": "docs/WEEKLY_DOCUMENTATION_REVIEW.en.md" },
+    { "id": "native-automation-boundary", "area": "architecture", "strategy": "full pair", "pt": "docs/AUTOMACOES_NATIVAS_HOME_ASSISTANT.md", "en": "docs/HOME_ASSISTANT_NATIVE_AUTOMATIONS.en.md" },
     { "id": "infrastructure-monitoring", "area": "features", "strategy": "full pair", "pt": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.md", "en": "docs/ZIGBEE_HEALTH_NOTIFICATIONS.en.md" },
     { "id": "privacy-model", "area": "privacy", "strategy": "full pair", "pt": "docs/PRIVACY_MODEL.md", "en": "docs/PRIVACY_MODEL.en.md" },
     { "id": "public-private-boundary", "area": "privacy", "strategy": "full pair", "pt": "docs/PUBLIC_PRIVATE_BOUNDARY.md", "en": "docs/PUBLIC_PRIVATE_BOUNDARY.en.md" },
