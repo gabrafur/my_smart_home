@@ -101,14 +101,23 @@ make benchmark-local-ai-high-potential-unit
 make benchmark-local-ai-high-potential-integration
 make benchmark-local-ai-high-potential-simulated
 make benchmark-local-ai-high-potential-dashboard
+make benchmark-local-ai-high-potential-recompute
 make benchmark-local-ai-high-potential-local-ai
 make benchmark-local-ai-high-potential
 ```
 
+The simulated target writes to `/tmp/local-ai-high-potential-simulated` and
+cannot overwrite the canonical measured artifact. The recompute target upgrades
+the preserved v1 evidence to schema v2 without a new RTX run.
+
 The dataset contains 70 anonymized repository-derived fixtures and 30
 deterministic synthetic fixtures, split into calibration and holdout. GPT
-direct context is simulated, while Local AI inference, latency and GPU are
-measured by the real target. See
+direct context and GPT tokens are simulated/estimated, while Local AI inference,
+latency and GPU were measured by the original real target. The v2 audit records
+32 critical-category occurrences in 25 unique cases and classifies ground-truth
+independence as `INSUFFICIENT_EVIDENCE`; deterministic 100/100 is fixture
+consistency, not an independently verified comparison. No activity has an RTX
+operational advantage or production enablement. See
 [`docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md`](../../docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md).
 
 Calibrate a proposed verifier independently before the generator A/B:

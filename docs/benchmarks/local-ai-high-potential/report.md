@@ -1,107 +1,82 @@
-# Benchmark Local AI — atividades de alto potencial
+# Benchmark Local AI — atividades de alto potencial (schema v2)
 
-Execução: `7cfc9f52-17f3-4eb7-94ce-4faf0a9fba9b` · modelo `qwen2.5-coder:14b` · modo `benchmark`.
+Execução original: `7cfc9f52-17f3-4eb7-94ce-4faf0a9fba9b` · modelo `qwen2.5-coder:14b` · artefato recalculado: `True`.
 
-`summarize-log` foi excluído da métrica principal e nenhuma atividade foi habilitada em produção.
+## 1. Veredito executivo revisado
 
-## Cenários e medição
+Nas cinco atividades avaliadas além de `summarize-log`, a RTX demonstrou capacidade de produzir saídas utilizáveis em alguns casos, mas não demonstrou vantagem operacional incremental sobre o baseline determinístico.
 
-- Cenário A (GPT direto): contexto e tokens simulados/estimados; não houve chamada paga ao GPT-5.6.
-- Cenário B (RTX): inferência, tokens Ollama, latência e GPU medidos; o resultado aceito é o contexto que seguiria ao GPT.
-- Cenário C (determinístico): parser, regras, busca/ranking ou assinaturas executados e comparados ao mesmo ground truth.
+Das 70 tarefas encaminhadas à IA local, 27 produziram saída aceita e selecionada no benchmark, com redução validada de contexto estimado. Isso corresponde a 38.57% entre tentativas e 27.00% sobre os 100 casos. Houve 43 fallbacks e 86 inferências.
 
-## Dataset
+A redução de 37.35% é estimada para um cenário GPT direto simulado; não representa tokens cobrados, economia financeira ou redução medida em chamadas reais ao GPT-5.6. Nenhuma atividade foi promovida.
 
-100 casos: 70 reais anonimizados e 30 sintéticos; 60 de calibração e 40 de holdout.
+## 2. Metodologia e bases de medição
 
-## Resultado global
+- **MEDIDO:** inferência local, latência local, tokens Ollama e telemetria de GPU da execução original.
+- **ESTIMADO:** tokens GPT pela aproximação `bytes UTF-8 / 4`.
+- **SIMULADO:** execução GPT direta; nenhuma chamada real ao GPT-5.6 ocorreu.
+- **NÃO TESTADO:** qualidade final, cobrança e latência do GPT-5.6.
+- Ground truth: `INSUFFICIENT_EVIDENCE`. Foi congelado antes das inferências, mas não existe evidência versionada de anotação ou revisão independente.
 
-Foram avaliados 100 casos; 70 tentaram RTX, 27 foram aceitos e 43 usaram fallback.
-Useful RTX rate: 38.6%. Economia ponderada pela soma dos tokens: 37.3%; economia ponderada pela frequência declarada: 34.6%.
-Baseline: 237627 tokens; roteados: 148879; evitados: 88748. Fallback: 61.4%; erros críticos: 25. Latência p50/p95: 5.184s/28.774s.
+## 3. Denominadores
 
-## Por atividade
+| Escopo | Casos totais | Elegíveis | Tentativas RTX | Inferências | Aceitas | Useful rate entre tentativas | Cobertura end-to-end | Fallback |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Global | 100 | 70 | 70 | 86 | 27 | 38.57% | 27.00% | 43 |
 
-| Atividade | Casos | Qualidade | Useful RTX | Economia | Fallback | p50 | p95 | Decisão |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| structured_extraction | 20 | 90.3% | 56.2% | 57.7% | 43.8% | 5.721s | 9.796s | DETERMINISTIC_FIRST |
-| classification | 20 | 21.4% | 0.0% | 0.0% | 100.0% | 3.832s | 8.561s | DETERMINISTIC_FIRST |
-| file_selection | 20 | 87.3% | 37.5% | 44.9% | 62.5% | 5.186s | 7.423s | DETERMINISTIC_FIRST |
-| error_clustering | 20 | 75.0% | 75.0% | 68.5% | 25.0% | 5.118s | 7.167s | DETERMINISTIC_FIRST |
-| diff_summary | 20 | 0.0% | 0.0% | 0.0% | 100.0% | 28.740s | 30.868s | DETERMINISTIC_FIRST |
+| Atividade | Casos totais | Elegíveis | Tentativas RTX | Inferências | Aceitas | Useful rate entre tentativas | Cobertura end-to-end | Fallback | Decisão |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| structured_extraction | 20 | 16 | 16 | 16 | 9 | 56.25% | 45.00% | 7 | DETERMINISTIC_FIRST |
+| classification | 20 | 14 | 14 | 14 | 0 | 0.00% | 0.00% | 14 | DETERMINISTIC_FIRST |
+| file_selection | 20 | 16 | 16 | 32 | 6 | 37.50% | 30.00% | 10 | DETERMINISTIC_FIRST |
+| error_clustering | 20 | 16 | 16 | 16 | 12 | 75.00% | 60.00% | 4 | DETERMINISTIC_FIRST |
+| diff_summary | 20 | 8 | 8 | 8 | 0 | 0.00% | 0.00% | 8 | DETERMINISTIC_FIRST |
 
-## Métricas objetivas
+## 4. Erros críticos
 
-- **structured_extraction:** `schema_validity=1.0`, `critical_field_recall=0.8125`, `critical_hallucinations=7`, `field_precision=0.8698`, `field_recall=0.9531`, `field_f1=0.9031`, `numeric_preservation=1.0`, `invented_fields=7`, `omitted_fields=3`.
-- **classification:** `schema_validity=1.0`, `critical_field_recall=0.8571`, `critical_hallucinations=0`, `accuracy=0.0`, `label_precision=0.2857`, `label_recall=0.1905`, `label_f1=0.2143`, `critical_route_recall=0.8571`, `abstention_rate=0.7143`, `eligibility_false_positives=4`, `eligibility_false_negatives=4`, `unsafe_false_positives=0`, `macro_f1=0.1818`.
-- **file_selection:** `schema_validity=1.0`, `critical_field_recall=0.375`, `critical_hallucinations=0`, `precision_at_k=1.0`, `recall_at_k=0.7917`, `critical_file_recall=0.7917`, `mean_reciprocal_rank=1.0`, `irrelevant_files=0`, `critical_files_omitted=12`.
-  Híbrido versus local-only: aceite 37.5% versus 12.5%; qualidade 0.8726 versus 0.7655.
-- **error_clustering:** `schema_validity=1.0`, `critical_field_recall=0.75`, `critical_hallucinations=4`, `pairwise_precision=0.75`, `pairwise_recall=0.75`, `pairwise_f1=0.75`, `cluster_purity=0.9375`, `false_merges=4`, `false_splits=0`, `critical_false_merges=4`, `root_cause_preservation=0.8333`.
-- **diff_summary:** `schema_validity=0.25`, `critical_field_recall=0.75`, `critical_hallucinations=0`, `factual_precision=0.0`, `critical_fact_recall=0.0`, `evidence_validity=1.0`, `unknown_recall=1.0`.
+O campo legado `critical_errors=25` contava casos únicos com ao menos uma flag crítica, não ocorrências. A recomputação identifica 32 ocorrências categóricas em 25 casos; taxa por caso entre tentativas: 35.71%; ocorrências por inferência: 0.3721.
 
-## Comparação determinística
+Uma ocorrência é uma flag `critical_omission` ou `critical_hallucination`. Uma inferência híbrida extra não cria outro caso. O artefato v1 não preservou validações completas para todas as inferências local-only; portanto, `local_inferences_with_critical_error` permanece indisponível.
 
-O cenário determinístico foi aceito em 100/100 casos, com score médio 1.0000 e latência p50 abaixo de 1 ms.
+## 5. Comparação com o melhor baseline
 
-## Configuração recomendada
+O braço determinístico teve schema válido em 100/100, aceite de qualidade em 100/100, exact match em 40/100 e 0 casos unsupported. Esses valores medem consistência com fixtures cujo ground truth é `INSUFFICIENT_EVIDENCE`.
 
-```yaml
-- activity: structured_extraction
-  decision: DETERMINISTIC_FIRST
-  model: qwen2.5-coder:14b
-  minimum_input_tokens: 800
-  maximum_input_tokens: 6000
-  confidence_threshold: 0.9
-  required_validation: true
-  fallback: gpt-direct
-  production_enabled: false
-  reason: O método determinístico atingiu qualidade igual ou superior com menor latência.
-- activity: classification
-  decision: DETERMINISTIC_FIRST
-  model: qwen2.5-coder:14b
-  minimum_input_tokens: 800
-  maximum_input_tokens: 6000
-  confidence_threshold: 0.9
-  required_validation: true
-  fallback: gpt-direct
-  production_enabled: false
-  reason: O método determinístico atingiu qualidade igual ou superior com menor latência.
-- activity: file_selection
-  decision: DETERMINISTIC_FIRST
-  model: qwen2.5-coder:14b
-  minimum_input_tokens: 800
-  maximum_input_tokens: 6000
-  confidence_threshold: 0.9
-  required_validation: true
-  fallback: gpt-direct
-  production_enabled: false
-  reason: O método determinístico atingiu qualidade igual ou superior com menor latência.
-- activity: error_clustering
-  decision: DETERMINISTIC_FIRST
-  model: qwen2.5-coder:14b
-  minimum_input_tokens: 800
-  maximum_input_tokens: 6000
-  confidence_threshold: 0.9
-  required_validation: true
-  fallback: gpt-direct
-  production_enabled: false
-  reason: O método determinístico atingiu qualidade igual ou superior com menor latência.
-- activity: diff_summary
-  decision: DETERMINISTIC_FIRST
-  model: qwen2.5-coder:14b
-  minimum_input_tokens: 800
-  maximum_input_tokens: 6000
-  confidence_threshold: 0.9
-  required_validation: true
-  fallback: gpt-direct
-  production_enabled: false
-  reason: O método determinístico atingiu qualidade igual ou superior com menor latência.
-```
+| Atividade | Qualidade RTX | Qualidade baseline | p50 RTX | p50 baseline | Fallback RTX | Vantagem operacional |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| structured_extraction | 0.9031 | 1.0000 | 5.721s | 0.000s | 43.75% | `false` |
+| classification | 0.2143 | 1.0000 | 3.832s | 0.000s | 100.00% | `false` |
+| file_selection | 0.8726 | 1.0000 | 5.186s | 0.000s | 62.50% | `false` |
+| error_clustering | 0.7500 | 1.0000 | 5.118s | 0.000s | 25.00% | `false` |
+| diff_summary | 0.0000 | 1.0000 | 28.740s | 0.000s | 100.00% | `false` |
 
-## Casos adversariais
+Nenhuma atividade superou o melhor baseline segundo os critérios documentados.
 
-20/20 guardrails passaram em simulação determinística.
+## 6. Casos adversariais
 
-## Limitações
+Os guardrails detectaram e trataram corretamente 20/20 cenários adversariais simulados. Não houve execução do modelo nesses checks; outputs do modelo aceitos/rejeitados: 0/0.
 
-O braço GPT direto usa volume de contexto simulado; tokens GPT são estimados por bytes/4. A qualidade da resposta final do GPT-5.6 não foi testada. Os pesos de frequência são declarados, não derivados de conversas privadas. A inferência RTX, a latência e o sampler são medidos; os casos adversariais de indisponibilidade/timeout são simulados. Não há promoção automática do roteador.
+## 7. Política operacional
+
+Fluxo autorizado: `método determinístico → validação → GPT direto quando ambíguo, não suportado ou insuficiente`. Shadow mode não altera a saída usada pelo sistema nem contabiliza economia operacional.
+
+| Atividade | Local AI | Fallback não resolvido | Decisão |
+| --- | --- | --- | --- |
+| structured_extraction | shadow | gpt-direct | DETERMINISTIC_FIRST |
+| classification | disabled | gpt-direct | DETERMINISTIC_FIRST |
+| file_selection | shadow | gpt-direct | DETERMINISTIC_FIRST |
+| error_clustering | shadow | gpt-direct | DETERMINISTIC_FIRST |
+| diff_summary | disabled | gpt-direct | DETERMINISTIC_FIRST |
+| summarize_log | separate | separate | SEPARATE_BENCHMARK |
+
+## 8. Limitações
+
+Não houve chamada real ao GPT-5.6. A independência do ground truth não foi comprovada. O artefato v1 não reteve o output bruto local nem violações por todas as 86 inferências, impedindo reconstrução de uma taxa por inferência individual. A recomputação não alterou dataset, prompts, modelo ou lógica de validação e não reexecutou a RTX.
+
+## 9. Artefatos e hashes
+
+Schema `2`; dataset `321e9ee4aae5c6df2da714797b1c22bd711fd1cc1d90657dcdbc4cbe6c8872dc`; ground truth `d7ea4ea564276c9df93c886401f75d873853bf7e3ba95da5bc1fa6d2f35751fa`; schemas atuais `4f459fd7e0b4282fb19aee71dbc9c2e4af7bf232bd2d627ed7cb150e94ca099a`; schemas na execução `431fd5afd048a2ec7ba97f5b84bd3196057d6b69c72950aed32a7a66f0f2fa48`; prompts reconstruídos `f3fdd9b0f1bf3a6ac702ff5be840798263e6bc998dc4e3735ac883b0e12d1f5f`; configuração reconstruída do modelo `5a0fb6add3eae6f5292adfc96f8cd80530eee5182c379d2788299db9a2ee1aee`.
+
+Implementação da inferência v1 `5df9c1d830a4b278431426aff6f2d98fc0daaffa882d3d6d6df8e8cf59b7f782`; implementação da recomputação `61ec8f941c83b267e239e232919b61094dabffe5b1a98dd9b018bae5eab28f76`. A base de cada hash está em `artifact_hash_basis`.
+
+Artefato v1 preservado em `docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/latest.json`. `results_recomputed_from_existing_raw_artifacts=true`.

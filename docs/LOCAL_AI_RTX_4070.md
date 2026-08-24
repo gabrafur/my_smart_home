@@ -191,16 +191,18 @@ passaram 14/14 oráculos funcionais, sem perda relevante ou divergência. O cust
 foi latência: nos logs, a média end-to-end subiu de 6,502 para 15,660 segundos.
 Pesos e limitações estão em `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
 
-O benchmark de alto potencial v1, também em 2026-08-24, excluiu
+O benchmark de alto potencial, revisado no schema v2 em 2026-08-24, excluiu
 `summarize-log` e avaliou 100 casos em extração, classificação, seleção de
 arquivos, agrupamento de erros e resumo factual de diffs. Houve 70 tentativas
 de tarefa e 86 inferências contando o braço local-only de seleção: 27 resultados
-foram utilizáveis, 43 caíram em fallback e 25 tiveram erro crítico. O cenário
-determinístico passou 100/100 casos com latência p50 abaixo de 1 ms. Embora os
-resultados aceitos evitassem 88.748 tokens estimados no contrafactual, o useful
-RTX rate de 38,6%, fallback de 61,4% e as perdas críticas impedem promoção. Todas
-as classes receberam `DETERMINISTIC_FIRST`; o roteamento de produção permanece
-inalterado. O relatório completo está em
+foram utilizáveis e 43 caíram em fallback. A auditoria separou 32 ocorrências
+categóricas de erro crítico em 25 casos únicos. O braço determinístico passou o
+gate das fixtures em 100/100, mas a independência do ground truth ficou
+`INSUFFICIENT_EVIDENCE`; esse número não é tratado como comparação independente.
+A redução de 37,35% e os 88.748 tokens potencialmente evitados são estimativas
+do cenário GPT simulado, não medição do GPT-5.6. Todas as classes receberam
+`DETERMINISTIC_FIRST`, nenhuma apresentou vantagem operacional e o roteamento
+de produção permanece inalterado. O relatório completo está em
 [`LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md`](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md).
 
 O hook `PostToolUse` é versionado apenas neste projeto e precisa ser aprovado no

@@ -1,225 +1,287 @@
-# Benchmark RTX de atividades de alto potencial — 2026-08-24
+# Benchmark RTX de atividades de alto potencial — revisão metodológica
 
-## 1. Veredito executivo
+- Data da inferência original: 24/08/2026
+- Schema publicado: `local-ai-high-potential-v2`
+- Execução original: `local-ai`, `qwen2.5-coder:14b`
+Escopo: cinco classes além de `summarize-log`
 
-A RTX não deve ser promovida para nenhuma atividade avaliada além de
-`summarize-log`. O `qwen2.5-coder:14b` produziu contexto utilizável em 27 das 70
-tarefas tentadas (38,6%), mas 43 exigiram fallback e 25 tiveram omissão ou
-alucinação crítica. O método determinístico passou 100/100 casos com latência
-p50 abaixo de 1 ms. Todas as cinco classes recebem `DETERMINISTIC_FIRST`, com
-Local AI desabilitada em produção.
+Este relatório substitui semanticamente a versão v1. A evidência anterior foi
+preservada no [diretório histórico v1](benchmarks/local-ai-high-potential/history/v1-2026-08-24/README.md).
+A migração recalculou agregados a partir dos resultados por caso e dos eventos
+v1; não reexecutou a RTX e não realizou chamadas ao GPT-5.6.
 
-Os 88.748 tokens estimados evitados representam somente resultados aceitos no
-contrafactual. Não são economia operacional nem faturável: o GPT-5.6 não foi
-chamado e a qualidade de sua resposta final não foi medida. `summarize-log` foi
-excluído de todos os totais principais.
+## 1. Veredito executivo revisado
 
-## 2. Atividades descobertas e testadas
+Nas cinco atividades avaliadas além de `summarize-log`, a RTX demonstrou
+capacidade de produzir saídas utilizáveis em alguns casos, mas não demonstrou
+vantagem operacional incremental sobre o baseline determinístico.
 
-O roteador reconhece `review-diff`, `inspect-files`, `classify-error`,
-`analyze-tests`, `summarize-document`, `summarize-memory` e `summarize-log`.
-Não havia implementações próprias para os outros nomes pedidos; elas foram
-adicionadas somente ao harness.
+Das 70 tarefas encaminhadas à IA local, 27 produziram saída aceita e selecionada
+no benchmark, com redução validada de contexto estimado. Isso representa 38,57%
+entre tentativas e cobertura end-to-end de 27,00% nos 100 casos. As outras 43
+tentativas exigiram fallback. O fluxo realizou 86 inferências, pois os 16 casos
+elegíveis de seleção de arquivos compararam o braço local-only com o híbrido.
 
-| Nome pedido | Nome real | Implementação | Entrada/saída | Elegibilidade e validação | Fallback/telemetria |
-| --- | --- | --- | --- | --- | --- |
-| `extract-structured` | `benchmark:extract-structured` | `high_potential_benchmark.py::local_prompt` e `deterministic_extract` | teste, diff, comando, métrica, documento ou evento → um de seis schemas | benchmark 800–6.000 tokens; schema, F1, valores, nomes e caminhos | GPT direto; evento isolado; classe `structured_extraction` |
-| `classify-task` | `benchmark:classify-task` | `local_prompt` e `deterministic_classify` | tarefa → labels, elegibilidade, revisão, abstention e confiança | somente benchmark; accuracy, macro-F1, rota crítica e falso positivo inseguro | GPT direto; classe `classification` |
-| `classify-diff` | `benchmark:classify-diff` | mesma implementação | diff → mesmo schema | igual | igual |
-| `triage-files` | `inspect-files` em produção; alias no benchmark | produção em `local-ai.py::response_format/run_analysis`; benchmark em `local_prompt` | tarefa/candidatos → arquivos, full-context e confiança | produção não benéfica; precision@k, recall@k, critical-file recall e MRR | GPT direto; classe `file_selection` |
-| `select-context` | `inspect-files` em produção; alias no benchmark | mesma implementação | inventário → mesmo schema | igual | igual |
-| `cluster-errors` | aproximação `classify-error`; cluster no benchmark | `local_prompt` e `deterministic_cluster` | registros/ruído → clusters, representante e causa | somente benchmark; pairwise F1, pureza, merge/split e causa | GPT direto; classe `error_clustering` |
-| `deduplicate-errors` | aproximação `classify-error`; dedupe no benchmark | mesma implementação | mesmos registros → mesmo schema | igual | igual |
-| `summarize-diff` | `review-diff` em produção; resumo factual no benchmark | produção em `local-ai.py::response_format/run_analysis`; benchmark em `local_prompt` | diff → `observed`, `inferred`, `unknown` | produção não benéfica; schema, precisão, fatos críticos e evidência extrativa | GPT direto; classe `diff_summary` |
+Foram identificadas 32 ocorrências categóricas de erro crítico em 25 casos
+únicos: 21 flags de omissão e 11 de alucinação, com ambas presentes em sete
+casos. O campo v1 `critical_errors=25` era, na realidade, uma contagem de casos,
+não de ocorrências.
 
-O modelo de todas as inferências foi `qwen2.5-coder:14b`. Todos os eventos
-contêm `execution_mode: benchmark`, `benchmark_run_id` e
-`excluded_from_production_metrics: true`. O bridge lê apenas o agregado
-sanitizado; respostas e entradas não são persistidas.
+A latência local acumulada foi 513,553 s, com p50 de 5,184 s e p95 de 28,774 s.
+O braço determinístico foi aceito pelas fixtures em 100/100 casos, com score
+1,00 e p50 armazenada como 0,000 s. Esse resultado é de consistência com o ground
+truth atual; sua independência metodológica não foi comprovada.
 
-## 3. Dataset
+A redução de 37,35% representa contexto GPT estimado no cenário simulado. Não
+representa economia financeira, tokens cobrados nem redução medida em chamadas
+reais ao GPT-5.6. Nenhuma atividade foi promovida para produção.
 
-- 100 casos, 20 por classe.
-- 70 reais anonimizados/derivados de caminhos, símbolos, contratos e formatos
-  públicos do repositório; 30 sintéticos determinísticos.
-- 60 casos de calibração e 40 de holdout.
-- 30 casos pequenos ou não elegíveis permaneceram no denominador global.
-- Pesos de frequência: extração 1,20; classificação 1,40; seleção 1,10; erros
-  0,80; diff 1,00. Casos pequenos recebem metade do peso.
+## 2. Metodologia, componentes e bases de medição
 
-O dataset está em
-[`scripts/local-ai/benchmarks/high-potential/`](../scripts/local-ai/benchmarks/high-potential/README.md)
-e é reproduzido por `python3 scripts/local-ai/high_potential_dataset.py --check`.
+### Componentes e nomes reais
 
-## 4. Resultados globais
+| Classe | Atividades reais | Implementação avaliada | Produção |
+| --- | --- | --- | --- |
+| Extração estruturada | `extract-errors`, `extract-diff-symbols`, `extract-commands`, `extract-metrics`, `extract-components`, `extract-telemetry` | `high_potential_benchmark.py::deterministic_extract`, `local_prompt` | não habilitada |
+| Classificação | `classify-task`, `classify-diff` | `high_potential_benchmark.py::deterministic_classify`, `local_prompt` | não habilitada |
+| Seleção de arquivos | `triage-files`, `select-context`; alias existente `inspect-files` | `deterministic_file_selection`, `hybrid_file_source`; `local-ai.py::response_format` | não habilitada |
+| Agrupamento de erros | `cluster-errors`, `deduplicate-errors`; alias existente `classify-error` | `deterministic_cluster`; `local-ai.py::response_format` | não habilitada |
+| Resumo factual de diff | `summarize-diff`; alias existente `review-diff` | `deterministic_diff`; `local-ai.py::response_format` | não habilitada |
 
-| Métrica | Resultado | Base |
+`summarize-log` não entra em nenhum denominador deste benchmark e conserva sua
+avaliação separada.
+
+### Fluxo de dados e fontes de verdade
+
+```text
+dataset.jsonl + inputs.json
+  → expected_output do dataset
+  → deterministic_output / run_local
+  → evaluate_output + schema por caso
+  → aggregate + reconcile_inference_events
+  → latest.json / CSV / events.jsonl / report.md
+  → sanitizeHighPotentialBenchmark
+  → sensor.codex_benchmark_rtx_alto_potencial
+  → painel uso-rtx
+  → este relatório
+```
+
+O dataset é a fonte dos casos e do ground truth. Resultados por caso e eventos
+são a evidência das inferências. `aggregate` é a fonte das métricas; a
+reconciliação conta um `job_id` uma única vez e acusa conflitos de identidade.
+O `latest.json` v2 é a fonte publicada. Bridge, sensor e painel apenas sanitizam,
+transportam e apresentam esse subconjunto; não recalculam qualidade.
+
+### Classificação da evidência
+
+- **MEDIDO:** inferências locais da execução v1, tokens Ollama, duração local e
+  amostras de GPU/VRAM/potência.
+- **ESTIMADO:** tokens de contexto GPT por `ceil(bytes UTF-8 / 4)`.
+- **SIMULADO:** cenários GPT direto e GPT após roteamento; o GPT-5.6 não foi
+  chamado.
+- **NÃO TESTADO:** qualidade final, latência, cobrança e tokens reais do GPT-5.6.
+- **RECALCULADO:** nomes, denominadores, hashes e agregados v2 derivados da
+  evidência v1, sem nova inferência.
+
+Nomenclatura principal v2:
+
+| Nome v1 | Nome principal v2 | Observação |
+| --- | --- | --- |
+| `avoided_gpt_tokens` | `estimated_avoided_gpt_tokens` | estimativa, não tokens medidos no GPT |
+| `token_savings_ratio` | `estimated_gpt_context_reduction_ratio` | cenário GPT simulado |
+| `weighted_token_savings` | `estimated_weighted_gpt_context_reduction` | pondera pela soma de tokens |
+| `useful_rtx_rate` | `useful_rtx_rate_among_attempts` | denominador RTX tentada |
+| inexistente | `end_to_end_useful_coverage` | denominador de todos os casos |
+| `critical_errors` | `cases_with_critical_error` | o v1 contava casos, não ocorrências |
+
+Os nomes v1 sobrevivem apenas dentro de `legacy_metric_aliases`, marcado
+`deprecated=true`; CSV, bridge e painel usam os nomes v2.
+
+### Proveniência e independência do ground truth
+
+Classificação: `INSUFFICIENT_EVIDENCE` para as cinco classes.
+
+Evidência concreta:
+
+- `expected_output` é construído pelas fixtures de
+  `high_potential_dataset.py::build_dataset`; o gerador não chama as funções
+  `deterministic_*` avaliadas;
+- o harness carrega os arquivos antes de executar qualquer braço e o ground
+  truth atual está congelado pelo hash
+  `d7ea4ea564276c9df93c886401f75d873853bf7e3ba95da5bc1fa6d2f35751fa`;
+- gerador, dataset e implementação determinística foram introduzidos juntos no
+  commit `be11ce933f126ce5a11a759be21ba52ca9851ef3`, posterior ao timestamp interno
+  da execução v1;
+- não existe evidência versionada de data de autoria, protocolo de anotação,
+  revisor manual ou autoria independente;
+- `manual_review_evidence` e `independent_authorship_evidence` permanecem `null`.
+
+Assim, é possível afirmar que as fixtures existiam e eram carregadas antes das
+inferências, mas não que foram criadas ou revisadas independentemente do braço
+determinístico. O resultado 100/100 não pode ser apresentado como comparação de
+qualidade independente.
+
+## 3. Denominadores globais e por atividade
+
+| Escopo | Casos totais | Elegíveis | Tentativas RTX | Inferências | Aceitas/úteis | Useful rate/tentativas | Cobertura end-to-end | Fallbacks |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Global | 100 | 70 | 70 | 86 | 27 | 38,57% | 27,00% | 43 |
+| Extração | 20 | 16 | 16 | 16 | 9 | 56,25% | 45,00% | 7 |
+| Classificação | 20 | 14 | 14 | 14 | 0 | 0,00% | 0,00% | 14 |
+| Seleção de arquivos | 20 | 16 | 16 | 32 | 6 | 37,50% | 30,00% | 10 |
+| Agrupamento de erros | 20 | 16 | 16 | 16 | 12 | 75,00% | 60,00% | 4 |
+| Resumo factual de diff | 20 | 8 | 8 | 8 | 0 | 0,00% | 0,00% | 8 |
+
+Fórmulas publicadas:
+
+```text
+useful_rtx_rate_among_attempts = 27 / 70 = 38,57%
+end_to_end_useful_coverage = 27 / 100 = 27,00%
+class_eligibility_rate = 70 / 100 = 70,00%
+fallback_rate_among_attempts = 43 / 70 = 61,43%
+inferences_per_attempted_case = 86 / 70 = 1,2286
+```
+
+Os 30 casos não elegíveis continuam no denominador end-to-end e contribuem zero
+para a cobertura útil. Uma saída aceita conta como útil somente quando foi
+selecionada pelo benchmark, reduziu o contexto estimado e não acionou fallback.
+
+Contexto do cenário simulado:
+
+| Métrica | Valor | Base |
 | --- | ---: | --- |
-| Tarefas avaliadas / elegíveis | 100 / 70 | harness/regra determinística |
-| Inferências locais | 86 | medida; inclui 16 braços local-only |
-| Saídas aceitas / rejeitadas | 27 / 43 | schema e ground truth |
-| Fallbacks / useful RTX rate | 43 / 38,6% | medido |
-| Tokens baseline / roteados / evitados | 237.627 / 148.879 / 88.748 | estimados por bytes/4 |
-| Economia por tokens / frequência | 37,3% / 34,6% | soma e pesos declarados |
-| Economia no estrato elegível | 38,2% | estimada |
-| Latência p50 / p95 | 5,184 s / 28,774 s | medida |
-| Delta acumulado / tokens por segundo adicional | 513,553 s / 172,812 | medido/estimado |
-| Erros críticos | 25 | ground truth determinístico |
-| GPU observada | 86/86 inferências | sampler remoto |
-| Pico GPU / VRAM / potência | 100% / 11.768 MiB / 185,45 W | medido |
+| Contexto GPT direto | 237.627 tokens | ESTIMADO/SIMULADO |
+| Contexto GPT roteado | 148.879 tokens | ESTIMADO/SIMULADO |
+| Tokens GPT potencialmente evitados | 88.748 tokens | ESTIMADO |
+| Redução estimada ponderada por tokens | 37,35% | ESTIMADO/SIMULADO |
+| Redução estimada ponderada por frequência | 34,61% | ESTIMADO/SIMULADO |
 
-Calibração: 39 tentativas, 16 aceites, 13 erros críticos e 52.937 tokens
-estimados evitados. Holdout: 31 tentativas, 11 aceites, 12 erros críticos e
-35.811 tokens estimados evitados. Nenhum prompt ou threshold foi alterado entre
-os conjuntos.
+A redução global é `soma(baseline) - soma(roteado)` dividida pela soma do
+baseline; não é uma média simples de percentuais por tarefa.
 
-## 5. Resultados por atividade
+## 4. Erros críticos
 
-| Atividade | Casos | Qualidade | Useful RTX | Economia | Fallback | p50/p95 | Decisão |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| Extração estruturada | 20 | 90,3% | 56,2% | 57,7% | 43,8% | 5,721/9,796 s | `DETERMINISTIC_FIRST` |
-| Classificação | 20 | 21,4% | 0,0% | 0,0% | 100,0% | 3,832/8,561 s | `DETERMINISTIC_FIRST` |
-| Seleção de arquivos | 20 | 87,3% | 37,5% | 44,9% | 62,5% | 5,186/7,423 s | `DETERMINISTIC_FIRST` |
-| Agrupamento de erros | 20 | 75,0% | 75,0% | 68,5% | 25,0% | 5,118/7,167 s | `DETERMINISTIC_FIRST` |
-| Resumo factual de diff | 20 | 0,0% | 0,0% | 0,0% | 100,0% | 28,740/30,868 s | `DETERMINISTIC_FIRST` |
+| Métrica | Valor | Denominador/escopo |
+| --- | ---: | --- |
+| Ocorrências categóricas críticas | 32 | 21 omissões + 11 alucinações |
+| Casos com ao menos um erro crítico | 25 | 25/70 tentativas = 35,71% |
+| Ocorrências por inferência | 0,3721 | 32/86 inferências |
+| Inferências individuais com erro | indisponível | v1 não reteve validação do braço local-only |
+| Saídas rejeitadas/partial/invalid | 43 | 43/70 tentativas = 61,43% |
 
-Métricas críticas:
+Uma ocorrência é uma categoria de violação (`critical_omission` ou
+`critical_hallucination`). Um caso pode conter duas ocorrências. Uma inferência
+é uma chamada local identificada por `job_id`. Um caso híbrido pode conter duas
+inferências, mas continua sendo uma tarefa. Rejeição e fallback são resultados
+do caso selecionado, não novas ocorrências.
 
-- Extração: schema 100%, recall crítico 81,2%, F1 90,3%, preservação numérica
-  100%, sete campos inventados e três omitidos.
-- Classificação: accuracy 0%, macro-F1 18,2%, recall de rota crítica 85,7%,
-  quatro falsos positivos e quatro falsos negativos de elegibilidade.
-- Seleção: precision@k 100%, recall@k/critical-file recall 79,2%, MRR 1,0 e
-  12 arquivos críticos omitidos. O híbrido elevou aceite de 12,5% para 37,5%,
-  ainda abaixo do threshold.
-- Erros: pairwise F1 75,0%, pureza 93,8%, quatro falsos merges críticos e
-  preservação de causa de 83,3%.
-- Diffs: schema 25%, precisão factual/recall crítico 0%; seis respostas foram
-  JSON inválido.
+Entre os 43 fallbacks, 25 resultados foram rejeitados com flags críticas, 12
+foram `partial` e seis foram `invalid` por JSON/schema. Os seis inválidos não
+possuem flags semânticas recuperáveis no v1; não foram reclassificados
+retroativamente como omissões.
 
-## 6. Comparação determinística
+## 5. Comparação com o melhor baseline
 
-O cenário determinístico atingiu 100/100 ground truths, score médio 1,0 e p50
-abaixo de 1 ms. Parsers/regex foram superiores na extração; regras estáticas na
-classificação; busca/mapeamento de contratos na seleção; normalização/assinatura
-no agrupamento; e `git diff` mais regras observáveis no resumo.
+O braço determinístico produziu schema válido e passou o gate atual em 100/100,
+teve recall crítico 1,00 e zero `unsupported`. O exact match estrito foi 40/100:
+20 extrações e 20 resumos de diff. Classificação e seleção adicionam
+`confidence`; agrupamento usa IDs/rótulos de causa equivalentes pelo avaliador,
+mas diferentes do JSON esperado. `accepted` não significa apenas JSON válido.
 
-O reranking híbrido melhorou seleção, mas não eliminou omissões críticas. Pode
-permanecer somente como experimento offline sobre candidatos já seguros.
+Esses números permanecem sujeitos a `INSUFFICIENT_EVIDENCE` para independência
+do ground truth.
 
-## 7. Erros e inconsistências
+| Atividade | Qualidade RTX | Qualidade baseline | p50 RTX | p50 baseline | Fallback RTX | Vantagem operacional |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Extração | 0,9031 | 1,0000 | 5,721 s | 0,000 s | 43,75% | não |
+| Classificação | 0,2143 | 1,0000 | 3,832 s | 0,000 s | 100,00% | não |
+| Seleção de arquivos | 0,8726 | 1,0000 | 5,186 s | 0,000 s | 62,50% | não |
+| Agrupamento de erros | 0,7500 | 1,0000 | 5,118 s | 0,000 s | 25,00% | não |
+| Resumo factual de diff | 0,0000 | 1,0000 | 28,740 s | 0,000 s | 100,00% | não |
 
-- 25 casos com omissão ou alucinação crítica.
-- Sete invenções e três omissões de campo na extração.
-- Oito classificações erradas de elegibilidade e macro-F1 de 18,2%.
-- 12 omissões de arquivos críticos e quatro merges de causas diferentes.
-- Seis respostas de diff com JSON inválido e nenhum resumo factual aceito.
-- 37 candidatos reduziram tokens, mas foram rejeitados por qualidade; todos
-  contabilizaram economia útil zero.
-- Nenhuma ausência de sampler virou zero; as 86 inferências reais foram
-  `observed`.
-- Os 20 cenários adversariais passaram como simulações de guardrail.
+`rtx_operational_advantage` só pode ser verdadeiro quando qualidade RTX não é
+inferior ao baseline, não há erro crítico, existe redução validada, p50 é no
+máximo 10 s, fallback é no máximo 10%, o ground truth é comprovadamente
+independente e existe benefício que o baseline não oferece. Nenhuma atividade
+atendeu ao conjunto.
 
-## 8. Configuração recomendada
+Resposta operacional: **não, a RTX não superou o melhor método disponível em
+nenhuma das cinco atividades.**
 
-```yaml
-activities:
-  - activity: extract-structured
-    decision: DETERMINISTIC_FIRST
-    model: qwen2.5-coder:14b
-    minimum_input_tokens: 800
-    maximum_input_tokens: 6000
-    confidence_threshold: 0.90
-    required_validation: true
-    fallback: gpt-direct
-    production_enabled: false
-    reason: parser perfeito; RTX omitiu e inventou campos críticos
-  - activity: classify-task-and-diff
-    decision: DETERMINISTIC_FIRST
-    model: qwen2.5-coder:14b
-    minimum_input_tokens: 800
-    maximum_input_tokens: 6000
-    confidence_threshold: 0.90
-    required_validation: true
-    fallback: gpt-direct
-    production_enabled: false
-    reason: macro-F1 0,182 e zero saídas aproveitadas
-  - activity: triage-files-and-select-context
-    decision: DETERMINISTIC_FIRST
-    model: qwen2.5-coder:14b
-    minimum_input_tokens: 800
-    maximum_input_tokens: 6000
-    confidence_threshold: 0.90
-    required_validation: true
-    fallback: gpt-direct
-    production_enabled: false
-    reason: 12 arquivos críticos omitidos; híbrido falhou em 62,5%
-  - activity: cluster-and-deduplicate-errors
-    decision: DETERMINISTIC_FIRST
-    model: qwen2.5-coder:14b
-    minimum_input_tokens: 800
-    maximum_input_tokens: 6000
-    confidence_threshold: 0.90
-    required_validation: true
-    fallback: gpt-direct
-    production_enabled: false
-    reason: quatro falsos merges; assinatura determinística perfeita
-  - activity: summarize-diff
-    decision: DETERMINISTIC_FIRST
-    model: qwen2.5-coder:14b
-    minimum_input_tokens: 800
-    maximum_input_tokens: 6000
-    confidence_threshold: 0.95
-    required_validation: true
-    fallback: gpt-direct
-    production_enabled: false
-    reason: zero saídas úteis, schema 25% e p95 de 30,868 s
+## 6. Casos adversariais
+
+Os guardrails detectaram e trataram corretamente os 20 cenários adversariais
+simulados. Isso não significa que o modelo respondeu corretamente a 20 casos:
+essa bateria executou guardrails determinísticos, não outputs do modelo.
+
+```text
+adversarial_scenarios_total = 20
+adversarial_guardrails_passed = 20
+adversarial_model_outputs_accepted = 0
+adversarial_model_outputs_rejected = 0
 ```
 
-## 9. Alterações realizadas
+## 7. Política operacional
 
-- Harness, gerador, fixtures, schemas, validadores, testes e artefatos em
-  `scripts/local-ai/` e `docs/benchmarks/local-ai-high-potential/`.
-- Alvos Make separados para unit, integration, simulated, local-ai e dashboard.
-- Bridge expõe somente o resumo sanitizado, separado da telemetria operacional.
-- Sensor `sensor.codex_benchmark_rtx_alto_potencial` e card na view `uso-rtx`,
-  com base measured/estimated/simulated/insufficient_sample e números pt-BR.
+Fluxo autorizado:
 
-## 10. Validações reproduzíveis
-
-```bash
-make benchmark-local-ai-high-potential-unit
-make benchmark-local-ai-high-potential-integration
-make benchmark-local-ai-high-potential-simulated
-make benchmark-local-ai-high-potential-dashboard
-make benchmark-local-ai-high-potential-local-ai
+```text
+método determinístico → validação → GPT direto se ambíguo, não suportado ou insuficiente
 ```
 
-`make benchmark-local-ai-high-potential` executa os cinco estágios
-sequencialmente, com `run-resource-safe.sh` e preflight antes da bateria real.
+Não foi autorizado inserir a RTX como fallback intermediário. Shadow mode é
+somente pesquisa: não altera a saída operacional e não contabiliza economia.
 
-## 11. Limitações
+| Atividade | Decisão | Local AI | Produção | Fallback não resolvido |
+| --- | --- | --- | --- | --- |
+| `structured_extraction` | `DETERMINISTIC_FIRST` | `shadow` | desabilitada | `gpt-direct` |
+| `classification` | `DETERMINISTIC_FIRST` | `disabled` | desabilitada | `gpt-direct` |
+| `file_selection` | `DETERMINISTIC_FIRST` | `shadow` | desabilitada | `gpt-direct` |
+| `error_clustering` | `DETERMINISTIC_FIRST` | `shadow` | desabilitada | `gpt-direct` |
+| `diff_summary` | `DETERMINISTIC_FIRST` | `disabled` | desabilitada | `gpt-direct` |
+| `summarize_log` | `SEPARATE_BENCHMARK` | fora deste benchmark | não alterada | fora deste benchmark |
 
-- Medido: inferência RTX, tokens Ollama, latência, GPU/VRAM/potência, schemas e
-  métricas contra ground truth.
-- Estimado: tokens GPT por bytes/4 e deltas.
-- Simulado: braço GPT direto, indisponibilidade, timeout, retry, sampler ausente
-  e duplicidade de `job_id`.
-- Não testado: chamada/qualidade final do GPT-5.6, custo monetário real, tráfego
-  operacional e modelos locais alternativos.
+## 8. Limitações
 
-Os pesos são declarados e não vêm de conversas privadas. O resultado autoriza
-manter os perfis desabilitados, não provar impossibilidade futura.
+- Não houve chamadas reais ao GPT-5.6; tokens, contexto roteado e redução GPT
+  são estimados e simulados.
+- A independência do ground truth não foi comprovada.
+- O v1 não armazenou outputs brutos locais, nem a validação completa das 16
+  chamadas local-only. Não é possível contar inferências individuais com erro.
+- Os casos inválidos sem output não permitem reconstrução de violações
+  semânticas; ausência de flag não prova ausência de omissão.
+- A p50 determinística 0,000 s reflete resolução/arredondamento do artefato, não
+  latência literalmente nula.
+- A recomputação não alterou dataset, inputs, prompts, modelo ou gate. Uma nova
+  inferência só se justifica se esses elementos mudarem ou se um ground truth
+  independente for criado.
 
-## 12. Artefatos
+## 9. Artefatos, schema e hashes
 
-- [Relatório Markdown](benchmarks/local-ai-high-potential/report.md)
-- [Resultado JSON](benchmarks/local-ai-high-potential/latest.json)
-- [CSV por caso](benchmarks/local-ai-high-potential/cases.csv)
-- [Matriz de confusão](benchmarks/local-ai-high-potential/classification-confusion-matrix.csv)
-- [Tabela por atividade](benchmarks/local-ai-high-potential/activity-table.csv)
-- [Eventos de benchmark](benchmarks/local-ai-high-potential/events.jsonl)
+O schema subiu de v1 para v2 porque denominadores, proveniência, erros e bases de
+medição mudaram de forma incompatível. O bridge mantém leitura do v1, preserva
+campos desconhecidos como indisponíveis e não deriva casos críticos a partir de
+ocorrências.
 
-O JSON contém os hashes e o `benchmark_run_id`
-`7cfc9f52-17f3-4eb7-94ce-4faf0a9fba9b`. Nenhum prompt, entrada ou resposta
-local foi persistido nos artefatos de resultados.
+Artefatos v2:
+
+- [relatório gerado v2](benchmarks/local-ai-high-potential/report.md);
+- `docs/benchmarks/local-ai-high-potential/latest.json`;
+- `cases.csv`, `activity-table.csv`, `classification-confusion-matrix.csv`;
+- `events.jsonl`;
+- schema `scripts/local-ai/benchmarks/high-potential/schemas/report-v2.json`.
+
+Hashes do artefato recalculado são publicados em `artifact_hashes`. O dataset
+permanece `321e9ee4aae5c6df2da714797b1c22bd711fd1cc1d90657dcdbc4cbe6c8872dc` e o
+ground truth permanece
+`d7ea4ea564276c9df93c886401f75d873853bf7e3ba95da5bc1fa6d2f35751fa`. O hash
+de schemas da execução v1 é preservado separadamente do conjunto atual, que inclui
+o novo schema do relatório. Hashes de prompt e configuração do modelo são
+reconstruídos de função/constantes versionadas e recebem essa base explicitamente
+em `artifact_hash_basis`; não são apresentados como campos que o v1 tenha medido.
+
+```text
+results_recomputed_from_existing_raw_artifacts = true
+benchmark_rerun_reason = null
+ground_truth_provenance.status = INSUFFICIENT_EVIDENCE
+```

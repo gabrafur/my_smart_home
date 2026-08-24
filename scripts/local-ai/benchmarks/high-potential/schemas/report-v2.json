@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/local-ai-high-potential-report-v2.json",
+  "title": "Local AI high-potential benchmark report v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "suite",
+    "benchmark_run_id",
+    "execution_mode",
+    "excluded_from_production_metrics",
+    "results_recomputed_from_existing_raw_artifacts",
+    "measurement_basis",
+    "ground_truth_provenance",
+    "artifact_hashes",
+    "totals",
+    "inference_reconciliation",
+    "per_activity_class",
+    "operational_policy",
+    "adversarial_metrics",
+    "benchmark_events",
+    "results"
+  ],
+  "properties": {
+    "schema_version": { "const": 2 },
+    "schema_reference": { "const": "scripts/local-ai/benchmarks/high-potential/schemas/report-v2.json" },
+    "suite": { "const": "local-ai-high-potential-v2" },
+    "benchmark_run_id": { "type": "string", "minLength": 1 },
+    "execution_mode": { "const": "benchmark" },
+    "excluded_from_production_metrics": { "const": true },
+    "results_recomputed_from_existing_raw_artifacts": { "type": "boolean" },
+    "benchmark_rerun_reason": { "type": ["string", "null"] },
+    "measurement_basis": {
+      "type": "object",
+      "required": [
+        "gpt_tokens",
+        "gpt_token_estimation_method",
+        "gpt_direct_execution",
+        "local_inference",
+        "gpu_telemetry",
+        "gpt_final_quality"
+      ],
+      "properties": {
+        "gpt_tokens": { "const": "estimated" },
+        "gpt_token_estimation_method": { "const": "utf8_bytes_divided_by_4" },
+        "gpt_direct_execution": { "const": "simulated" },
+        "local_inference": { "enum": ["measured", "simulated"] },
+        "gpu_telemetry": { "enum": ["measured", "not_applicable"] },
+        "gpt_final_quality": { "const": "not_tested" }
+      },
+      "additionalProperties": true
+    },
+    "ground_truth_provenance": {
+      "type": "object",
+      "required": [
+        "status",
+        "created_before_benchmark",
+        "generated_by_evaluated_implementation",
+        "manual_review_evidence",
+        "independent_authorship_evidence",
+        "frozen_hash"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "VERIFIED_INDEPENDENT",
+            "PARTIALLY_INDEPENDENT",
+            "NOT_INDEPENDENT",
+            "INSUFFICIENT_EVIDENCE"
+          ]
+        },
+        "created_before_benchmark": { "type": "boolean" },
+        "generated_by_evaluated_implementation": { "type": "boolean" },
+        "manual_review_evidence": { "type": ["string", "null"] },
+        "independent_authorship_evidence": { "type": ["string", "null"] },
+        "frozen_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": true
+    },
+    "artifact_hashes": {
+      "type": "object",
+      "required": ["dataset", "ground_truth", "schemas", "prompts", "model_configuration"]
+    },
+    "artifact_hash_basis": { "type": "object" },
+    "totals": { "$ref": "#/$defs/aggregate" },
+    "inference_reconciliation": {
+      "type": "object",
+      "required": ["local_inference_calls", "duplicate_event_records", "conflicting_job_ids"],
+      "properties": {
+        "local_inference_calls": { "type": "integer", "minimum": 0 },
+        "duplicate_event_records": { "type": "integer", "minimum": 0 },
+        "conflicting_job_ids": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "per_activity_class": {
+      "type": "object",
+      "required": [
+        "structured_extraction",
+        "classification",
+        "file_selection",
+        "error_clustering",
+        "diff_summary"
+      ],
+      "additionalProperties": { "$ref": "#/$defs/aggregate" }
+    },
+    "operational_policy": {
+      "type": "object",
+      "required": [
+        "structured_extraction", "classification", "file_selection",
+        "error_clustering", "diff_summary", "summarize_log"
+      ]
+    },
+    "adversarial_metrics": {
+      "type": "object",
+      "required": [
+        "adversarial_scenarios_total",
+        "adversarial_guardrails_passed",
+        "adversarial_model_outputs_accepted",
+        "adversarial_model_outputs_rejected"
+      ]
+    },
+    "benchmark_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "execution_mode", "benchmark_run_id", "excluded_from_production_metrics",
+          "case_id", "attempt_id", "call_role", "job_id"
+        ],
+        "properties": {
+          "execution_mode": { "const": "benchmark" },
+          "excluded_from_production_metrics": { "const": true },
+          "case_id": { "type": "string" },
+          "attempt_id": { "type": ["string", "null"] },
+          "call_role": { "enum": ["selected", "local-only", "not-attempted"] },
+          "job_id": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id", "rtx_attempted", "attempt_id", "local_inference_calls",
+          "quality_status", "benchmark_useful_case", "critical_error_occurrences",
+          "case_has_critical_error", "estimated_baseline_gpt_tokens",
+          "estimated_routed_gpt_tokens", "estimated_avoided_gpt_tokens",
+          "validated_estimated_context_reduction"
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "aggregate": {
+      "type": "object",
+      "required": [
+        "total_cases",
+        "eligible_cases",
+        "non_eligible_cases",
+        "rtx_attempted_cases",
+        "local_inference_calls",
+        "accepted_cases",
+        "rejected_cases",
+        "fallback_cases",
+        "useful_cases",
+        "useful_rtx_rate_among_attempts",
+        "end_to_end_useful_coverage",
+        "class_eligibility_rate",
+        "fallback_rate_among_attempts",
+        "inferences_per_attempted_case",
+        "critical_error_occurrences",
+        "cases_with_critical_error",
+        "critical_case_rate_among_attempts",
+        "critical_errors_per_inference",
+        "estimated_baseline_gpt_tokens",
+        "estimated_routed_gpt_tokens",
+        "estimated_avoided_gpt_tokens",
+        "estimated_weighted_gpt_context_reduction",
+        "deterministic_schema_valid",
+        "deterministic_quality_accepted",
+        "deterministic_exact_match",
+        "deterministic_unsupported_cases"
+      ],
+      "properties": {
+        "total_cases": { "type": "integer", "minimum": 0 },
+        "eligible_cases": { "type": "integer", "minimum": 0 },
+        "non_eligible_cases": { "type": "integer", "minimum": 0 },
+        "rtx_attempted_cases": { "type": "integer", "minimum": 0 },
+        "local_inference_calls": { "type": "integer", "minimum": 0 },
+        "accepted_cases": { "type": "integer", "minimum": 0 },
+        "rejected_cases": { "type": "integer", "minimum": 0 },
+        "fallback_cases": { "type": "integer", "minimum": 0 },
+        "useful_cases": { "type": "integer", "minimum": 0 },
+        "useful_rtx_rate_among_attempts": { "type": "number", "minimum": 0, "maximum": 1 },
+        "end_to_end_useful_coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "class_eligibility_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "fallback_rate_among_attempts": { "type": "number", "minimum": 0, "maximum": 1 },
+        "inferences_per_attempted_case": { "type": "number", "minimum": 0 },
+        "critical_error_occurrences": { "type": "integer", "minimum": 0 },
+        "cases_with_critical_error": { "type": "integer", "minimum": 0 },
+        "critical_case_rate_among_attempts": { "type": "number", "minimum": 0, "maximum": 1 },
+        "critical_errors_per_inference": { "type": "number", "minimum": 0 },
+        "local_inferences_with_critical_error": { "type": ["integer", "null"], "minimum": 0 },
+        "estimated_baseline_gpt_tokens": { "type": "integer", "minimum": 0 },
+        "estimated_routed_gpt_tokens": { "type": "integer", "minimum": 0 },
+        "estimated_avoided_gpt_tokens": { "type": "integer" },
+        "estimated_weighted_gpt_context_reduction": { "type": "number" },
+        "deterministic_schema_valid": { "type": "integer", "minimum": 0 },
+        "deterministic_quality_accepted": { "type": "integer", "minimum": 0 },
+        "deterministic_exact_match": { "type": "integer", "minimum": 0 },
+        "deterministic_unsupported_cases": { "type": "integer", "minimum": 0 },
+        "rtx_operational_advantage": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

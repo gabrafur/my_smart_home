@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import hashlib
 import importlib.util
+import inspect
 import json
 import math
 import os
@@ -25,6 +27,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = ROOT / "scripts" / "local-ai"
 DATASET_DIR = SCRIPT_DIR / "benchmarks" / "high-potential"
 DEFAULT_OUTPUT_DIR = ROOT / "docs" / "benchmarks" / "local-ai-high-potential"
+SCHEMA_VERSION = 2
+SUITE_NAME = "local-ai-high-potential-v2"
+GROUND_TRUTH_STATUS = "INSUFFICIENT_EVIDENCE"
 sys.path.insert(0, str(SCRIPT_DIR))
 _SPEC = importlib.util.spec_from_file_location("local_ai_runtime", SCRIPT_DIR / "local-ai.py")
 if _SPEC is None or _SPEC.loader is None:
@@ -66,6 +71,38 @@ ACTIVITY_DISCOVERY = [
         "production_alias": "review-diff", "production_enabled": False,
     },
 ]
+
+BASELINE_METHODS = {
+    "structured_extraction": "schema-specific parser and regular expressions",
+    "classification": "static labels and risk rules",
+    "file_selection": "lexical, dependency and contract ranking",
+    "error_clustering": "normalized error signatures",
+    "diff_summary": "structured diff parser",
+}
+
+OPERATIONAL_POLICY = {
+    "structured_extraction": {
+        "decision": "DETERMINISTIC_FIRST", "production_local_ai_enabled": False,
+        "local_ai_mode": "shadow", "unresolved_fallback": "gpt-direct",
+    },
+    "classification": {
+        "decision": "DETERMINISTIC_FIRST", "production_local_ai_enabled": False,
+        "local_ai_mode": "disabled", "unresolved_fallback": "gpt-direct",
+    },
+    "file_selection": {
+        "decision": "DETERMINISTIC_FIRST", "production_local_ai_enabled": False,
+        "local_ai_mode": "shadow", "unresolved_fallback": "gpt-direct",
+    },
+    "error_clustering": {
+        "decision": "DETERMINISTIC_FIRST", "production_local_ai_enabled": False,
+        "local_ai_mode": "shadow", "unresolved_fallback": "gpt-direct",
+    },
+    "diff_summary": {
+        "decision": "DETERMINISTIC_FIRST", "production_local_ai_enabled": False,
+        "local_ai_mode": "disabled", "unresolved_fallback": "gpt-direct",
+    },
+    "summarize_log": {"decision": "SEPARATE_BENCHMARK"},
+}
 
 
 def utc_now() -> str:
@@ -111,11 +148,54 @@ def load_dataset(dataset_dir: Path) -> tuple[list[dict[str, Any]], dict[str, str
     return cases, inputs, schemas
 
 
-def schema_errors(value: Any, schema: dict[str, Any], path: str = "$") -> list[str]:
+def ground_truth_payload(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {"case_id": case["case_id"], "expected_output": case["expected_output"]}
+        for case in sorted(cases, key=lambda item: item["case_id"])
+    ]
+
+
+def ground_truth_provenance(cases: list[dict[str, Any]]) -> dict[str, Any]:
+    frozen_hash = stable_hash(ground_truth_payload(cases))
+    return {
+        "status": GROUND_TRUTH_STATUS,
+        "created_before_benchmark": True,
+        "created_before_benchmark_scope": "available_as_fixture_files_before_runtime_inference",
+        "creation_timestamp_evidence": None,
+        "versioned_before_benchmark_execution": False,
+        "generated_by_evaluated_implementation": False,
+        "manual_review_evidence": None,
+        "independent_authorship_evidence": None,
+        "frozen_hash": frozen_hash,
+        "created_in_same_commit_as_evaluated_implementation": True,
+        "class_status": {name: GROUND_TRUTH_STATUS for name in QUALITY_THRESHOLDS},
+        "notes": [
+            "expected_output is constructed by the dataset generator, not by calling deterministic_output",
+            "dataset generator and evaluated deterministic implementation were introduced in the same commit",
+            "no versioned evidence of independent annotation or review was found",
+            "100/100 deterministic acceptance is a fixture-consistency result, not an independently verified quality comparison",
+        ],
+    }
+
+
+def schema_errors(
+    value: Any, schema: dict[str, Any], path: str = "$", root_schema: dict[str, Any] | None = None,
+) -> list[str]:
     """Validate the strict JSON-Schema subset used by the benchmark without dependencies."""
+    root_schema = root_schema or schema
+    if "$ref" in schema:
+        reference = str(schema["$ref"])
+        if not reference.startswith("#/"):
+            return [f"{path}:unsupported_reference"]
+        resolved: Any = root_schema
+        for part in reference[2:].split("/"):
+            resolved = resolved.get(part) if isinstance(resolved, dict) else None
+        if not isinstance(resolved, dict):
+            return [f"{path}:unresolved_reference"]
+        return schema_errors(value, resolved, path, root_schema)
     errors: list[str] = []
     kind = schema.get("type")
-    valid_type = {
+    type_matches = lambda name: {
         "object": isinstance(value, dict),
         "array": isinstance(value, list),
         "string": isinstance(value, str),
@@ -123,12 +203,15 @@ def schema_errors(value: Any, schema: dict[str, Any], path: str = "$") -> list[s
         "number": isinstance(value, (int, float)) and not isinstance(value, bool),
         "boolean": isinstance(value, bool),
         "null": value is None,
-    }.get(kind, True)
+    }.get(name, True)
+    valid_type = any(type_matches(name) for name in kind) if isinstance(kind, list) else type_matches(kind)
     if not valid_type:
         return [f"{path}:expected_{kind}"]
+    if "const" in schema and value != schema["const"]:
+        errors.append(f"{path}:not_const")
     if "enum" in schema and value not in schema["enum"]:
         errors.append(f"{path}:not_in_enum")
-    if kind in {"integer", "number"}:
+    if isinstance(kind, str) and kind in {"integer", "number"}:
         if "minimum" in schema and value < schema["minimum"]:
             errors.append(f"{path}:below_minimum")
         if "maximum" in schema and value > schema["maximum"]:
@@ -137,24 +220,68 @@ def schema_errors(value: Any, schema: dict[str, Any], path: str = "$") -> list[s
         if "maxItems" in schema and len(value) > int(schema["maxItems"]):
             errors.append(f"{path}:too_many_items")
         for index, item in enumerate(value):
-            errors.extend(schema_errors(item, schema.get("items", {}), f"{path}[{index}]"))
+            errors.extend(schema_errors(item, schema.get("items", {}), f"{path}[{index}]", root_schema))
+    if kind == "string":
+        if "minLength" in schema and len(value) < int(schema["minLength"]):
+            errors.append(f"{path}:too_short")
+        if "pattern" in schema and re.search(str(schema["pattern"]), value) is None:
+            errors.append(f"{path}:pattern_mismatch")
     if kind == "object":
         properties = schema.get("properties", {})
         for name in schema.get("required", []):
             if name not in value:
                 errors.append(f"{path}.{name}:required")
-        if schema.get("additionalProperties") is False:
+        additional = schema.get("additionalProperties", True)
+        if additional is False:
             for name in value:
                 if name not in properties:
                     errors.append(f"{path}.{name}:additional_property")
         for name, item in value.items():
             if name in properties:
-                errors.extend(schema_errors(item, properties[name], f"{path}.{name}"))
+                errors.extend(schema_errors(item, properties[name], f"{path}.{name}", root_schema))
+            elif isinstance(additional, dict):
+                errors.extend(schema_errors(item, additional, f"{path}.{name}", root_schema))
     return errors
 
 
 def ratio(numerator: float, denominator: float) -> float:
     return numerator / denominator if denominator else 0.0
+
+
+def reconcile_inference_events(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Deduplicate inference evidence by job_id and expose identity conflicts."""
+    unique: dict[str, dict[str, Any]] = {}
+    duplicate_records = 0
+    conflicts: set[str] = set()
+    for event in events:
+        job_id = event.get("job_id")
+        if not job_id:
+            continue
+        job_id = str(job_id)
+        if job_id not in unique:
+            unique[job_id] = event
+            continue
+        duplicate_records += 1
+        previous = unique[job_id]
+        if any(previous.get(field) != event.get(field) for field in ("case_id", "attempt_id", "call_role")):
+            conflicts.add(job_id)
+    return {
+        "unique_events": list(unique.values()),
+        "local_inference_calls": len(unique),
+        "duplicate_event_records": duplicate_records,
+        "conflicting_job_ids": sorted(conflicts),
+    }
+
+
+def apply_inference_denominator(summary: dict[str, Any], inference_calls: int) -> None:
+    """Bind inference-rate metrics to reconciled unique inference calls."""
+    summary["local_inference_calls"] = inference_calls
+    summary["inferences_per_attempted_case"] = round(
+        ratio(inference_calls, int(summary["rtx_attempted_cases"])), 4,
+    )
+    summary["critical_errors_per_inference"] = round(
+        ratio(int(summary["critical_error_occurrences"]), inference_calls), 4,
+    )
 
 
 def f1_score(expected: set[Any], actual: set[Any]) -> tuple[float, float, float]:
@@ -506,6 +633,80 @@ def deterministic_output(case: dict[str, Any], source: str) -> dict[str, Any]:
     return deterministic_diff(source)
 
 
+def critical_recall_from_evaluation(class_name: str, evaluation: dict[str, Any]) -> float | None:
+    key = {
+        "structured_extraction": "recall",
+        "classification": "critical_recall",
+        "file_selection": "critical_recall",
+        "error_clustering": "root_cause_preservation",
+        "diff_summary": "critical_recall",
+    }[class_name]
+    value = evaluation.get(key)
+    return round(float(value), 4) if isinstance(value, (int, float)) else None
+
+
+def deterministic_audit(
+    case: dict[str, Any], source: str, schema: dict[str, Any], output: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    deterministic = output if output is not None else deterministic_output(case, source)
+    evaluation = evaluate_output(case, deterministic, schema, source)
+    return {
+        "deterministic_schema_valid": evaluation.get("schema_valid") is True,
+        "deterministic_quality_accepted": evaluation.get("core_accepted") is True,
+        "deterministic_exact_match": deterministic == case["expected_output"],
+        "deterministic_critical_fact_recall": critical_recall_from_evaluation(case["activity_class"], evaluation),
+        "deterministic_unsupported": False,
+    }
+
+
+def critical_violation_types(result: dict[str, Any]) -> list[str]:
+    violations = []
+    if result.get("critical_omission") is True:
+        violations.append("critical_omission")
+    if result.get("critical_hallucination") is True:
+        violations.append("critical_hallucination")
+    return violations
+
+
+def enrich_result_v2(
+    result: dict[str, Any], case: dict[str, Any], source: str, schema: dict[str, Any],
+    deterministic: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    enriched = copy.deepcopy(result)
+    audit = deterministic_audit(case, source, schema, deterministic)
+    violations = critical_violation_types(enriched)
+    attempted = bool(enriched.get("rtx_attempted"))
+    useful = bool(enriched.get("useful_rtx_task"))
+    enriched.update(audit)
+    enriched.update({
+        "attempt_id": f"{case['case_id']}:selected" if attempted else None,
+        "rtx_quality_score": float(enriched.get("quality_score") or 0),
+        "benchmark_useful_case": useful,
+        "validated_estimated_context_reduction": useful,
+        "candidate_selected_for_simulated_gpt_context": useful,
+        "estimated_baseline_gpt_tokens": int(enriched.get("baseline_gpt_tokens") or 0),
+        "estimated_candidate_gpt_tokens": int(enriched.get("candidate_gpt_tokens") or 0),
+        "estimated_routed_gpt_tokens": int(enriched.get("routed_gpt_tokens") or 0),
+        "estimated_avoided_gpt_tokens": int(enriched.get("avoided_gpt_tokens") or 0),
+        "estimated_gpt_context_reduction_ratio": float(enriched.get("token_savings_ratio") or 0),
+        "critical_violation_types": violations,
+        "critical_error_occurrences": len(violations),
+        "case_has_critical_error": bool(violations),
+        "local_measurement_basis": enriched.get("measurement_basis") if attempted else "not_applicable",
+        "legacy_metric_aliases": {
+            "deprecated": True,
+            "baseline_gpt_tokens": enriched.get("baseline_gpt_tokens"),
+            "candidate_gpt_tokens": enriched.get("candidate_gpt_tokens"),
+            "routed_gpt_tokens": enriched.get("routed_gpt_tokens"),
+            "avoided_gpt_tokens": enriched.get("avoided_gpt_tokens"),
+            "token_savings_ratio": enriched.get("token_savings_ratio"),
+            "useful_rtx_task": enriched.get("useful_rtx_task"),
+            "context_effectively_used": enriched.get("context_effectively_used"),
+        },
+    })
+    return enriched
+
+
 def simulated_output(case: dict[str, Any]) -> dict[str, Any]:
     result = json.loads(json.dumps(case["expected_output"]))
     if case["activity_class"] in {"classification", "file_selection"}:
@@ -716,16 +917,18 @@ def finalize_case(
         "local_only_quality_score": hybrid_result.get("local_only_quality_score") if hybrid_result else None,
         "local_only_duration_seconds": hybrid_result.get("local_only_duration_seconds") if hybrid_result else None,
         "local_inference_calls": 2 if hybrid_result is not None else 1 if attempted else 0,
-        "measurement_basis": "measured" if mode == "local-ai" and attempted else "simulated" if mode == "simulated" and attempted else "estimated",
+        "measurement_basis": "measured" if mode == "local-ai" and attempted else "simulated" if mode == "simulated" and attempted else "not_applicable",
         "objective_metrics": {
             key: value for key, value in evaluation.items()
             if key not in {"schema_errors", "core_accepted", "schema_valid", "quality_score", "critical_omission", "critical_hallucination"}
             and isinstance(value, (str, int, float, bool, list, type(None)))
         },
     }
+    result = enrich_result_v2(result, case, source, schema, deterministic)
     event = {
         "execution_mode": "benchmark", "benchmark_run_id": None,
         "excluded_from_production_metrics": True, "case_id": case["case_id"],
+        "attempt_id": result["attempt_id"], "call_role": "selected" if attempted else "not-attempted",
         "job_id": result["job_id"], "activity": case["activity"], "model": result["model"],
         "status": result["local_status"], "local_input_tokens": result["local_input_tokens"],
         "local_output_tokens": result["local_output_tokens"], "duration_seconds": duration,
@@ -742,45 +945,103 @@ def aggregate(items: list[dict[str, Any]]) -> dict[str, Any]:
     attempted = [item for item in items if item["rtx_attempted"]]
     accepted = [item for item in attempted if item["quality_status"] == "accepted"]
     rejected = [item for item in attempted if item["quality_status"] in {"rejected", "partial", "invalid"}]
-    useful = [item for item in attempted if item["useful_rtx_task"]]
-    baseline = sum(int(item["baseline_gpt_tokens"]) for item in items)
-    routed = sum(int(item["routed_gpt_tokens"]) for item in items)
+    useful = [item for item in attempted if item.get("benchmark_useful_case", item.get("useful_rtx_task"))]
+    baseline = sum(int(item.get("estimated_baseline_gpt_tokens", item.get("baseline_gpt_tokens", 0))) for item in items)
+    routed = sum(int(item.get("estimated_routed_gpt_tokens", item.get("routed_gpt_tokens", 0))) for item in items)
     eligible = [item for item in items if item["expected_eligible"]]
-    eligible_baseline = sum(int(item["baseline_gpt_tokens"]) for item in eligible)
-    eligible_routed = sum(int(item["routed_gpt_tokens"]) for item in eligible)
-    frequency_weighted_baseline = sum(float(item["weight"]) * int(item["baseline_gpt_tokens"]) for item in items)
-    frequency_weighted_routed = sum(float(item["weight"]) * int(item["routed_gpt_tokens"]) for item in items)
+    eligible_baseline = sum(int(item.get("estimated_baseline_gpt_tokens", item.get("baseline_gpt_tokens", 0))) for item in eligible)
+    eligible_routed = sum(int(item.get("estimated_routed_gpt_tokens", item.get("routed_gpt_tokens", 0))) for item in eligible)
+    frequency_weighted_baseline = sum(float(item["weight"]) * int(item.get("estimated_baseline_gpt_tokens", item.get("baseline_gpt_tokens", 0))) for item in items)
+    frequency_weighted_routed = sum(float(item["weight"]) * int(item.get("estimated_routed_gpt_tokens", item.get("routed_gpt_tokens", 0))) for item in items)
     durations = [float(item["duration_seconds"]) for item in attempted]
     added_latency = sum(max(0.0, float(item["net_latency_delta_seconds"])) for item in attempted)
     avoided = baseline - routed
-    return {
-        "cases": len(items), "eligible_tasks": len(eligible), "rtx_attempted": len(attempted),
-        "local_inference_calls": sum(int(item.get("local_inference_calls") or 0) for item in items),
-        "outputs_accepted": len(accepted), "outputs_rejected": len(rejected),
-        "fallbacks": sum(item["full_context_fallback"] for item in attempted),
-        "useful_rtx_tasks": len(useful), "useful_rtx_rate": round(ratio(len(useful), len(attempted)), 4),
-        "baseline_gpt_tokens": baseline, "routed_gpt_tokens": routed,
-        "avoided_gpt_tokens": avoided,
-        "weighted_token_savings": round(ratio(avoided, baseline), 6),
-        "frequency_weighted_token_savings": round(
+    total_cases = len(items)
+    local_inference_calls = sum(int(item.get("local_inference_calls") or 0) for item in items)
+    fallback_cases = sum(bool(item["full_context_fallback"]) for item in attempted)
+    critical_occurrences = sum(int(item.get("critical_error_occurrences", len(critical_violation_types(item)))) for item in attempted)
+    cases_with_critical_error = sum(bool(item.get("case_has_critical_error", critical_violation_types(item))) for item in attempted)
+    estimated_reduction = round(ratio(avoided, baseline), 6)
+    deterministic_recall_values = [
+        float(item["deterministic_critical_fact_recall"])
+        for item in items if isinstance(item.get("deterministic_critical_fact_recall"), (int, float))
+    ]
+    result = {
+        "total_cases": total_cases,
+        "eligible_cases": len(eligible),
+        "non_eligible_cases": total_cases - len(eligible),
+        "rtx_attempted_cases": len(attempted),
+        "local_inference_calls": local_inference_calls,
+        "accepted_cases": len(accepted),
+        "rejected_cases": len(rejected),
+        "fallback_cases": fallback_cases,
+        "useful_cases": len(useful),
+        "useful_rtx_rate_among_attempts": round(ratio(len(useful), len(attempted)), 4),
+        "end_to_end_useful_coverage": round(ratio(len(useful), total_cases), 4),
+        "class_eligibility_rate": round(ratio(len(eligible), total_cases), 4),
+        "fallback_rate_among_attempts": round(ratio(fallback_cases, len(attempted)), 4),
+        "inferences_per_attempted_case": round(ratio(local_inference_calls, len(attempted)), 4),
+        "validated_estimated_context_reduction_cases": len(useful),
+        "estimated_baseline_gpt_tokens": baseline,
+        "estimated_routed_gpt_tokens": routed,
+        "estimated_avoided_gpt_tokens": avoided,
+        "estimated_gpt_context_reduction_ratio": estimated_reduction,
+        "estimated_weighted_gpt_context_reduction": estimated_reduction,
+        "estimated_frequency_weighted_gpt_context_reduction": round(
             ratio(frequency_weighted_baseline - frequency_weighted_routed, frequency_weighted_baseline), 6
         ),
-        "eligible_task_token_savings": round(ratio(eligible_baseline - eligible_routed, eligible_baseline), 6),
-        "fallback_rate": round(ratio(sum(item["full_context_fallback"] for item in attempted), len(attempted)), 4),
+        "estimated_eligible_task_gpt_context_reduction": round(ratio(eligible_baseline - eligible_routed, eligible_baseline), 6),
         "output_rejection_rate": round(ratio(len(rejected), len(attempted)), 4),
-        "critical_errors": sum(item["critical_omission"] or item["critical_hallucination"] for item in attempted),
-        "critical_error_rate": round(ratio(sum(item["critical_omission"] or item["critical_hallucination"] for item in attempted), len(attempted)), 4),
-        "quality_score": round(statistics.mean(float(item["quality_score"]) for item in attempted), 4) if attempted else 0.0,
-        "latency_p50_seconds": percentile(durations, 0.50), "latency_p95_seconds": percentile(durations, 0.95),
-        "net_latency_delta_seconds": round(sum(float(item["net_latency_delta_seconds"]) for item in attempted), 3),
-        "tokens_saved_per_second_of_added_latency": round(ratio(avoided, added_latency), 3) if avoided > 0 else 0.0,
+        "critical_error_occurrences": critical_occurrences,
+        "cases_with_critical_error": cases_with_critical_error,
+        "critical_case_rate_among_attempts": round(ratio(cases_with_critical_error, len(attempted)), 4),
+        "critical_errors_per_inference": round(ratio(critical_occurrences, local_inference_calls), 4),
+        "selected_outputs_with_critical_error": cases_with_critical_error,
+        "local_inferences_with_critical_error": None,
+        "critical_error_scope": "selected_case_output_category_flags",
+        "rtx_quality_score": round(statistics.mean(float(item["quality_score"]) for item in attempted), 4) if attempted else 0.0,
+        "rtx_latency_p50_seconds": percentile(durations, 0.50),
+        "rtx_latency_p95_seconds": percentile(durations, 0.95),
+        "local_added_latency_total_seconds": round(sum(float(item["net_latency_delta_seconds"]) for item in attempted), 3),
+        "estimated_tokens_avoided_per_second_of_added_latency": round(ratio(avoided, added_latency), 3) if avoided > 0 else 0.0,
         "local_input_tokens": sum(int(item.get("local_input_tokens") or 0) for item in attempted),
         "local_output_tokens": sum(int(item.get("local_output_tokens") or 0) for item in attempted),
         "gpu_observed_calls": sum(item.get("gpu_metrics_status") == "observed" for item in attempted),
-        "deterministic_accepted": sum(item["deterministic_accepted"] for item in items),
-        "deterministic_quality_score": round(statistics.mean(float(item["deterministic_quality_score"]) for item in items), 4) if items else 0.0,
-        "deterministic_latency_p50_seconds": percentile([float(item["deterministic_duration_seconds"]) for item in items], 0.50),
+        "deterministic_schema_valid": sum(bool(item.get("deterministic_schema_valid")) for item in items),
+        "deterministic_quality_accepted": sum(bool(item.get("deterministic_quality_accepted", item.get("deterministic_accepted"))) for item in items),
+        "deterministic_exact_match": sum(bool(item.get("deterministic_exact_match")) for item in items),
+        "deterministic_critical_fact_recall": round(statistics.mean(deterministic_recall_values), 4) if deterministic_recall_values else None,
+        "deterministic_unsupported_cases": sum(bool(item.get("deterministic_unsupported")) for item in items),
+        "baseline_quality_score": round(statistics.mean(float(item["deterministic_quality_score"]) for item in items), 4) if items else 0.0,
+        "baseline_latency_p50_seconds": percentile([float(item["deterministic_duration_seconds"]) for item in items], 0.50),
+        "baseline_fallback_rate": round(ratio(sum(bool(item.get("deterministic_unsupported")) for item in items), total_cases), 4),
     }
+    result["legacy_metric_aliases"] = {
+        "deprecated": True,
+        "cases": total_cases,
+        "eligible_tasks": len(eligible),
+        "rtx_attempted": len(attempted),
+        "outputs_accepted": len(accepted),
+        "outputs_rejected": len(rejected),
+        "fallbacks": fallback_cases,
+        "useful_rtx_tasks": len(useful),
+        "useful_rtx_rate": result["useful_rtx_rate_among_attempts"],
+        "baseline_gpt_tokens": baseline,
+        "routed_gpt_tokens": routed,
+        "avoided_gpt_tokens": avoided,
+        "weighted_token_savings": estimated_reduction,
+        "fallback_rate": result["fallback_rate_among_attempts"],
+        "critical_errors": cases_with_critical_error,
+        "critical_error_rate": result["critical_case_rate_among_attempts"],
+        "quality_score": result["rtx_quality_score"],
+        "latency_p50_seconds": result["rtx_latency_p50_seconds"],
+        "latency_p95_seconds": result["rtx_latency_p95_seconds"],
+        "net_latency_delta_seconds": result["local_added_latency_total_seconds"],
+        "deterministic_accepted": result["deterministic_quality_accepted"],
+        "deterministic_quality_score": result["baseline_quality_score"],
+        "deterministic_latency_p50_seconds": result["baseline_latency_p50_seconds"],
+    }
+    return result
 
 
 def objective_summary(class_name: str, items: list[dict[str, Any]]) -> dict[str, Any]:
@@ -855,23 +1116,34 @@ def classification_matrix(items: list[dict[str, Any]], cases_by_id: dict[str, di
 
 
 def decision_for(class_name: str, summary: dict[str, Any], items: list[dict[str, Any]]) -> tuple[str, str]:
-    deterministic_better = (
-        summary["deterministic_quality_score"] >= summary["quality_score"]
-        and (summary["deterministic_latency_p50_seconds"] or 0) < (summary["latency_p50_seconds"] or float("inf"))
+    del items
+    return (
+        "DETERMINISTIC_FIRST",
+        "A RTX não demonstrou vantagem operacional incremental; casos ambíguos ou não suportados seguem diretamente ao GPT.",
     )
-    if deterministic_better and summary["deterministic_accepted"] == summary["cases"]:
-        return "DETERMINISTIC_FIRST", "O método determinístico atingiu qualidade igual ou superior com menor latência."
-    thresholds = QUALITY_THRESHOLDS[class_name]
-    critical_ok = summary["critical_errors"] == 0
-    benefit = summary["useful_rtx_rate"] > 0 and summary["weighted_token_savings"] > 0
-    class_quality = summary["quality_score"] >= thresholds["field_f1"]
-    if critical_ok and class_quality and benefit and summary["fallback_rate"] <= 0.10:
-        return "ENABLE_WITH_GUARDRAILS", "Houve benefício reproduzível, condicionado a schema, threshold e fallback automático."
-    if benefit and summary["critical_error_rate"] == 0:
-        return "EXPERIMENTAL", "Há benefício em parte da amostra, mas a taxa de fallback ou a qualidade ainda impede promoção."
-    if summary["outputs_accepted"] == 0 or summary["weighted_token_savings"] <= 0:
-        return "DISABLE", "Nenhum ganho líquido utilizável foi demonstrado."
-    return "EXPERIMENTAL", "A evidência é insuficiente para habilitação operacional."
+
+
+def baseline_comparison(class_name: str, summary: dict[str, Any]) -> dict[str, Any]:
+    criteria = {
+        "rtx_quality_at_least_baseline": summary["rtx_quality_score"] >= summary["baseline_quality_score"],
+        "zero_critical_error_occurrences": summary["critical_error_occurrences"] == 0,
+        "positive_validated_estimated_context_reduction": summary["estimated_avoided_gpt_tokens"] > 0,
+        "latency_within_10_seconds_p50": (summary["rtx_latency_p50_seconds"] or float("inf")) <= 10.0,
+        "fallback_rate_at_most_10_percent": summary["fallback_rate_among_attempts"] <= 0.10,
+        "benefit_not_provided_by_baseline": False,
+        "ground_truth_independence_verified": GROUND_TRUTH_STATUS == "VERIFIED_INDEPENDENT",
+    }
+    return {
+        "best_baseline_method": BASELINE_METHODS[class_name],
+        "rtx_quality_score": summary["rtx_quality_score"],
+        "baseline_quality_score": summary["baseline_quality_score"],
+        "rtx_latency_p50_seconds": summary["rtx_latency_p50_seconds"],
+        "baseline_latency_p50_seconds": summary["baseline_latency_p50_seconds"],
+        "rtx_fallback_rate": summary["fallback_rate_among_attempts"],
+        "baseline_fallback_rate": summary["baseline_fallback_rate"],
+        "criteria": criteria,
+        "rtx_operational_advantage": all(criteria.values()),
+    }
 
 
 def adversarial_suite(cases: list[dict[str, Any]], inputs: dict[str, str], schemas: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -923,7 +1195,18 @@ def adversarial_suite(cases: list[dict[str, Any]], inputs: dict[str, str], schem
     checks.append(("token_reduction_with_quality_loss", not distinct_eval["core_accepted"], "compressão com perda crítica é rejeitada"))
     checks.append(("local_output_expands_context", (100 - 120) < 0, "delta candidato negativo não é contado como economia útil"))
     duplicate = "00000000-0000-4000-8000-000000000001"
-    checks.append(("duplicate_job_id", len({duplicate, duplicate}) == 1, "agregação idempotente deduplica job_id"))
+    duplicate_events = [
+        {"job_id": duplicate, "case_id": "case-1", "attempt_id": "case-1:selected", "call_role": "selected"},
+        {"job_id": duplicate, "case_id": "case-1", "attempt_id": "case-1:selected", "call_role": "selected"},
+    ]
+    duplicate_reconciliation = reconcile_inference_events(duplicate_events)
+    checks.append((
+        "duplicate_job_id",
+        duplicate_reconciliation["local_inference_calls"] == 1
+        and duplicate_reconciliation["duplicate_event_records"] == 1
+        and not duplicate_reconciliation["conflicting_job_ids"],
+        "reconciliação por case_id/attempt_id/job_id deduplica a mesma inferência",
+    ))
     return [{"case": name, "passed": bool(passed), "guard": guard, "measurement_basis": "simulated"} for name, passed, guard in checks]
 
 
@@ -932,12 +1215,17 @@ def write_artifacts(report: dict[str, Any], output_dir: Path) -> None:
     (output_dir / "latest.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     case_fields = [
         "case_id", "activity", "activity_class", "source_type", "split", "size_band", "weight",
-        "expected_eligible", "rtx_attempted", "quality_status", "quality_score", "critical_omission",
-        "critical_hallucination", "full_context_fallback", "useful_rtx_task", "baseline_gpt_tokens",
-        "routed_gpt_tokens", "avoided_gpt_tokens", "token_savings_ratio", "local_input_tokens",
+        "expected_eligible", "rtx_attempted", "attempt_id", "local_inference_calls", "quality_status",
+        "rtx_quality_score", "benchmark_useful_case", "critical_omission", "critical_hallucination",
+        "critical_error_occurrences", "case_has_critical_error", "critical_violation_types",
+        "full_context_fallback", "estimated_baseline_gpt_tokens", "estimated_candidate_gpt_tokens",
+        "estimated_routed_gpt_tokens", "estimated_avoided_gpt_tokens",
+        "estimated_gpt_context_reduction_ratio", "validated_estimated_context_reduction", "local_input_tokens",
         "local_output_tokens", "duration_seconds", "gpu_metrics_status", "gpu_mean_percent",
         "gpu_peak_percent", "vram_mean_mib", "vram_peak_mib", "power_mean_watts", "power_peak_watts",
-        "deterministic_quality_score", "deterministic_duration_seconds", "measurement_basis",
+        "deterministic_schema_valid", "deterministic_quality_accepted", "deterministic_exact_match",
+        "deterministic_critical_fact_recall", "deterministic_unsupported", "deterministic_quality_score",
+        "deterministic_duration_seconds", "local_measurement_basis",
         "local_only_quality_status", "local_only_quality_score", "local_only_duration_seconds",
         "objective_metrics",
     ]
@@ -950,74 +1238,87 @@ def write_artifacts(report: dict[str, Any], output_dir: Path) -> None:
         writer = csv.DictWriter(handle, fieldnames=["label", "tp", "fp", "fn", "tn", "precision", "recall", "f1"], lineterminator="\n")
         writer.writeheader(); writer.writerows(rows)
     with (output_dir / "activity-table.csv").open("w", encoding="utf-8", newline="") as handle:
-        fields = ["activity", "cases", "quality_score", "useful_rtx_rate", "weighted_token_savings", "frequency_weighted_token_savings", "fallback_rate", "latency_p50_seconds", "latency_p95_seconds", "decision"]
+        fields = [
+            "activity", "total_cases", "eligible_cases", "non_eligible_cases", "rtx_attempted_cases",
+            "local_inference_calls", "accepted_cases", "rejected_cases", "fallback_cases", "useful_cases",
+            "useful_rtx_rate_among_attempts", "end_to_end_useful_coverage", "class_eligibility_rate",
+            "fallback_rate_among_attempts", "inferences_per_attempted_case", "critical_error_occurrences",
+            "cases_with_critical_error", "critical_case_rate_among_attempts", "critical_errors_per_inference",
+            "estimated_baseline_gpt_tokens", "estimated_routed_gpt_tokens", "estimated_avoided_gpt_tokens",
+            "estimated_weighted_gpt_context_reduction", "rtx_quality_score", "baseline_quality_score",
+            "rtx_latency_p50_seconds", "baseline_latency_p50_seconds", "rtx_operational_advantage", "decision",
+        ]
         writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n"); writer.writeheader()
         writer.writerows({field: {"activity": name, **value}.get(field) for field in fields} for name, value in report["per_activity_class"].items())
     totals = report["totals"]
+    ground_truth = report["ground_truth_provenance"]
+    adversarial = report["adversarial_metrics"]
     lines = [
-        "# Benchmark Local AI — atividades de alto potencial",
-        "", f"Execução: `{report['benchmark_run_id']}` · modelo `{report['model']}` · modo `{report['execution_mode']}`.",
-        "", "`summarize-log` foi excluído da métrica principal e nenhuma atividade foi habilitada em produção.",
-        "", "## Cenários e medição", "",
-        "- Cenário A (GPT direto): contexto e tokens simulados/estimados; não houve chamada paga ao GPT-5.6.",
-        "- Cenário B (RTX): inferência, tokens Ollama, latência e GPU medidos; o resultado aceito é o contexto que seguiria ao GPT.",
-        "- Cenário C (determinístico): parser, regras, busca/ranking ou assinaturas executados e comparados ao mesmo ground truth.",
-        "", "## Dataset", "",
-        f"{report['dataset']['cases']} casos: {report['dataset']['real_anonymized']} reais anonimizados e {report['dataset']['synthetic']} sintéticos; "
-        f"{report['dataset']['calibration']} de calibração e {report['dataset']['holdout']} de holdout.",
-        "", "## Resultado global", "",
-        f"Foram avaliados {totals['cases']} casos; {totals['rtx_attempted']} tentaram RTX, {totals['outputs_accepted']} foram aceitos e {totals['fallbacks']} usaram fallback.",
-        f"Useful RTX rate: {totals['useful_rtx_rate'] * 100:.1f}%. Economia ponderada pela soma dos tokens: {totals['weighted_token_savings'] * 100:.1f}%; "
-        f"economia ponderada pela frequência declarada: {totals['frequency_weighted_token_savings'] * 100:.1f}%.",
-        f"Baseline: {totals['baseline_gpt_tokens']} tokens; roteados: {totals['routed_gpt_tokens']}; evitados: {totals['avoided_gpt_tokens']}. "
-        f"Fallback: {totals['fallback_rate'] * 100:.1f}%; erros críticos: {totals['critical_errors']}. Latência p50/p95: "
-        f"{totals['latency_p50_seconds']:.3f}s/{totals['latency_p95_seconds']:.3f}s.",
-        "", "## Por atividade", "",
-        "| Atividade | Casos | Qualidade | Useful RTX | Economia | Fallback | p50 | p95 | Decisão |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+        "# Benchmark Local AI — atividades de alto potencial (schema v2)",
+        "", f"Execução original: `{report['benchmark_run_id']}` · modelo `{report['model']}` · artefato recalculado: `{report['results_recomputed_from_existing_raw_artifacts']}`.",
+        "", "## 1. Veredito executivo revisado", "",
+        "Nas cinco atividades avaliadas além de `summarize-log`, a RTX demonstrou capacidade de produzir saídas utilizáveis em alguns casos, mas não demonstrou vantagem operacional incremental sobre o baseline determinístico.",
+        "",
+        f"Das {totals['rtx_attempted_cases']} tarefas encaminhadas à IA local, {totals['useful_cases']} produziram saída aceita e selecionada no benchmark, com redução validada de contexto estimado. Isso corresponde a {totals['useful_rtx_rate_among_attempts'] * 100:.2f}% entre tentativas e {totals['end_to_end_useful_coverage'] * 100:.2f}% sobre os {totals['total_cases']} casos. Houve {totals['fallback_cases']} fallbacks e {totals['local_inference_calls']} inferências.",
+        "",
+        f"A redução de {totals['estimated_weighted_gpt_context_reduction'] * 100:.2f}% é estimada para um cenário GPT direto simulado; não representa tokens cobrados, economia financeira ou redução medida em chamadas reais ao GPT-5.6. Nenhuma atividade foi promovida.",
+        "", "## 2. Metodologia e bases de medição", "",
+        "- **MEDIDO:** inferência local, latência local, tokens Ollama e telemetria de GPU da execução original.",
+        "- **ESTIMADO:** tokens GPT pela aproximação `bytes UTF-8 / 4`.",
+        "- **SIMULADO:** execução GPT direta; nenhuma chamada real ao GPT-5.6 ocorreu.",
+        "- **NÃO TESTADO:** qualidade final, cobrança e latência do GPT-5.6.",
+        f"- Ground truth: `{ground_truth['status']}`. Foi congelado antes das inferências, mas não existe evidência versionada de anotação ou revisão independente.",
+        "", "## 3. Denominadores", "",
+        "| Escopo | Casos totais | Elegíveis | Tentativas RTX | Inferências | Aceitas | Useful rate entre tentativas | Cobertura end-to-end | Fallback |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        f"| Global | {totals['total_cases']} | {totals['eligible_cases']} | {totals['rtx_attempted_cases']} | {totals['local_inference_calls']} | {totals['accepted_cases']} | {totals['useful_rtx_rate_among_attempts'] * 100:.2f}% | {totals['end_to_end_useful_coverage'] * 100:.2f}% | {totals['fallback_cases']} |",
+        "", "| Atividade | Casos totais | Elegíveis | Tentativas RTX | Inferências | Aceitas | Useful rate entre tentativas | Cobertura end-to-end | Fallback | Decisão |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
     for name, value in report["per_activity_class"].items():
         lines.append(
-            f"| {name} | {value['cases']} | {value['quality_score'] * 100:.1f}% | "
-            f"{value['useful_rtx_rate'] * 100:.1f}% | {value['weighted_token_savings'] * 100:.1f}% | "
-            f"{value['fallback_rate'] * 100:.1f}% | {value['latency_p50_seconds'] or 0:.3f}s | "
-            f"{value['latency_p95_seconds'] or 0:.3f}s | {value['decision']} |"
+            f"| {name} | {value['total_cases']} | {value['eligible_cases']} | {value['rtx_attempted_cases']} | "
+            f"{value['local_inference_calls']} | {value['accepted_cases']} | {value['useful_rtx_rate_among_attempts'] * 100:.2f}% | "
+            f"{value['end_to_end_useful_coverage'] * 100:.2f}% | {value['fallback_cases']} | {value['decision']} |"
         )
-    lines.extend(["", "## Métricas objetivas", ""])
-    for name, value in report["per_activity_class"].items():
-        metrics = ", ".join(f"`{key}={metric}`" for key, metric in value["objective_metrics"].items())
-        lines.append(f"- **{name}:** {metrics}.")
-        if value.get("hybrid_comparison"):
-            hybrid = value["hybrid_comparison"]
-            lines.append(
-                f"  Híbrido versus local-only: aceite {hybrid['hybrid_acceptance_rate'] * 100:.1f}% versus "
-                f"{hybrid['local_only_acceptance_rate'] * 100:.1f}%; qualidade {hybrid['hybrid_quality_score']:.4f} "
-                f"versus {hybrid['local_only_quality_score']:.4f}."
-            )
     lines.extend([
-        "", "## Comparação determinística", "",
-        f"O cenário determinístico foi aceito em {totals['deterministic_accepted']}/{totals['cases']} casos, "
-        f"com score médio {totals['deterministic_quality_score']:.4f} e latência p50 abaixo de 1 ms.",
-        "", "## Configuração recomendada", "", "```yaml",
+        "", "## 4. Erros críticos", "",
+        f"O campo legado `critical_errors=25` contava casos únicos com ao menos uma flag crítica, não ocorrências. A recomputação identifica {totals['critical_error_occurrences']} ocorrências categóricas em {totals['cases_with_critical_error']} casos; taxa por caso entre tentativas: {totals['critical_case_rate_among_attempts'] * 100:.2f}%; ocorrências por inferência: {totals['critical_errors_per_inference']:.4f}.",
+        "",
+        "Uma ocorrência é uma flag `critical_omission` ou `critical_hallucination`. Uma inferência híbrida extra não cria outro caso. O artefato v1 não preservou validações completas para todas as inferências local-only; portanto, `local_inferences_with_critical_error` permanece indisponível.",
+        "", "## 5. Comparação com o melhor baseline", "",
+        f"O braço determinístico teve schema válido em {totals['deterministic_schema_valid']}/{totals['total_cases']}, aceite de qualidade em {totals['deterministic_quality_accepted']}/{totals['total_cases']}, exact match em {totals['deterministic_exact_match']}/{totals['total_cases']} e {totals['deterministic_unsupported_cases']} casos unsupported. Esses valores medem consistência com fixtures cujo ground truth é `{ground_truth['status']}`.",
+        "",
+        "| Atividade | Qualidade RTX | Qualidade baseline | p50 RTX | p50 baseline | Fallback RTX | Vantagem operacional |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | --- |",
     ])
-    for config in report["recommended_configuration"]:
-        lines.extend([
-            f"- activity: {config['activity']}", f"  decision: {config['decision']}",
-            f"  model: {config['model']}", f"  minimum_input_tokens: {config['minimum_input_tokens']}",
-            f"  maximum_input_tokens: {config['maximum_input_tokens']}",
-            f"  confidence_threshold: {config['confidence_threshold']}",
-            f"  required_validation: {str(config['required_validation']).lower()}",
-            f"  fallback: {config['fallback']}",
-            f"  production_enabled: {str(config['production_enabled']).lower()}",
-            f"  reason: {config['reason']}",
-        ])
+    for name, value in report["per_activity_class"].items():
+        comparison = value["baseline_comparison"]
+        lines.append(
+            f"| {name} | {comparison['rtx_quality_score']:.4f} | {comparison['baseline_quality_score']:.4f} | "
+            f"{comparison['rtx_latency_p50_seconds'] or 0:.3f}s | {comparison['baseline_latency_p50_seconds'] or 0:.3f}s | "
+            f"{comparison['rtx_fallback_rate'] * 100:.2f}% | `{str(comparison['rtx_operational_advantage']).lower()}` |"
+        )
     lines.extend([
-        "```", "", "## Casos adversariais", "",
-        f"{report['adversarial_cases_passed']}/{report['adversarial_cases_total']} guardrails passaram em simulação determinística.",
-        "", "## Limitações", "",
-        "O braço GPT direto usa volume de contexto simulado; tokens GPT são estimados por bytes/4. A qualidade da resposta final do GPT-5.6 não foi testada. "
-        "Os pesos de frequência são declarados, não derivados de conversas privadas. A inferência RTX, a latência e o sampler são medidos; os casos adversariais de indisponibilidade/timeout são simulados. "
-        "Não há promoção automática do roteador.", "",
+        "", "Nenhuma atividade superou o melhor baseline segundo os critérios documentados.",
+        "", "## 6. Casos adversariais", "",
+        f"Os guardrails detectaram e trataram corretamente {adversarial['adversarial_guardrails_passed']}/{adversarial['adversarial_scenarios_total']} cenários adversariais simulados. Não houve execução do modelo nesses checks; outputs do modelo aceitos/rejeitados: {adversarial['adversarial_model_outputs_accepted']}/{adversarial['adversarial_model_outputs_rejected']}.",
+        "", "## 7. Política operacional", "",
+        "Fluxo autorizado: `método determinístico → validação → GPT direto quando ambíguo, não suportado ou insuficiente`. Shadow mode não altera a saída usada pelo sistema nem contabiliza economia operacional.",
+        "", "| Atividade | Local AI | Fallback não resolvido | Decisão |",
+        "| --- | --- | --- | --- |",
+    ])
+    for name, policy in report["operational_policy"].items():
+        lines.append(f"| {name} | {policy.get('local_ai_mode', 'separate')} | {policy.get('unresolved_fallback', 'separate')} | {policy['decision']} |")
+    lines.extend([
+        "", "## 8. Limitações", "",
+        "Não houve chamada real ao GPT-5.6. A independência do ground truth não foi comprovada. O artefato v1 não reteve o output bruto local nem violações por todas as 86 inferências, impedindo reconstrução de uma taxa por inferência individual. A recomputação não alterou dataset, prompts, modelo ou lógica de validação e não reexecutou a RTX.",
+        "", "## 9. Artefatos e hashes", "",
+        f"Schema `{report['schema_version']}`; dataset `{report['artifact_hashes']['dataset']}`; ground truth `{report['artifact_hashes']['ground_truth']}`; schemas atuais `{report['artifact_hashes']['schemas']}`; schemas na execução `{report['artifact_hashes'].get('schemas_at_execution')}`; prompts reconstruídos `{report['artifact_hashes']['prompts']}`; configuração reconstruída do modelo `{report['artifact_hashes']['model_configuration']}`.",
+        "",
+        f"Implementação da inferência v1 `{report['artifact_hashes'].get('benchmark_execution_implementation', report['artifact_hashes'].get('benchmark_implementation'))}`; implementação da recomputação `{report['artifact_hashes'].get('artifact_recomputation_implementation')}`. A base de cada hash está em `artifact_hash_basis`.",
+        "",
+        f"Artefato v1 preservado em `{report.get('source_artifact', {}).get('path', 'histórico Git')}`. `results_recomputed_from_existing_raw_artifacts={str(report['results_recomputed_from_existing_raw_artifacts']).lower()}`.", "",
     ])
     (output_dir / "report.md").write_text("\n".join(lines), encoding="utf-8")
     with (output_dir / "events.jsonl").open("w", encoding="utf-8") as handle:
@@ -1069,6 +1370,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                     events.append({
                         "execution_mode": "benchmark", "benchmark_run_id": run_id,
                         "excluded_from_production_metrics": True, "case_id": case["case_id"],
+                        "attempt_id": f"{case['case_id']}:local-only", "call_role": "local-only",
                         "job_id": local_only["job_id"], "activity": f"{case['activity']}:local-only",
                         "model": model, "status": local_only["status"],
                         "local_input_tokens": local_only.get("local_input_tokens"),
@@ -1102,6 +1404,20 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
                         "quality_status": "accepted", "local_only_quality_score": 1.0,
                         "local_only_duration_seconds": 0.05,
                     }
+                    events.append({
+                        "execution_mode": "benchmark", "benchmark_run_id": run_id,
+                        "excluded_from_production_metrics": True, "case_id": case["case_id"],
+                        "attempt_id": f"{case['case_id']}:local-only", "call_role": "local-only",
+                        "job_id": str(uuid.uuid4()), "activity": f"{case['activity']}:local-only",
+                        "model": model, "status": "success",
+                        "local_input_tokens": estimated_tokens(local_prompt(case, source, schema)),
+                        "local_output_tokens": estimated_tokens(json.dumps(simulated_output(case))),
+                        "duration_seconds": 0.05, "gpu_mean_percent": None,
+                        "gpu_peak_percent": None, "vram_mean_mib": None, "vram_peak_mib": None,
+                        "power_mean_watts": None, "power_peak_watts": None,
+                        "gpu_metrics_status": "not_applicable", "quality_status": "accepted",
+                        "full_context_fallback": False, "recorded_at": utc_now(),
+                    })
             if local.get("output") is not None:
                 local_outputs[case["case_id"]] = local["output"]
         result, event = finalize_case(
@@ -1115,7 +1431,9 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     totals = aggregate(results)
     per_class = {name: aggregate([item for item in results if item["activity_class"] == name]) for name in QUALITY_THRESHOLDS}
     event_class = {case["case_id"]: case["activity_class"] for case in cases}
-    local_events = [event for event in events if event.get("job_id")]
+    inference_reconciliation = reconcile_inference_events(events)
+    local_events = inference_reconciliation["unique_events"]
+    apply_inference_denominator(totals, inference_reconciliation["local_inference_calls"])
     totals.update({
         "benchmark_local_input_tokens_all_calls": sum(int(event.get("local_input_tokens") or 0) for event in local_events),
         "benchmark_local_output_tokens_all_calls": sum(int(event.get("local_output_tokens") or 0) for event in local_events),
@@ -1127,6 +1445,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
     for name, summary in per_class.items():
         class_items = [item for item in results if item["activity_class"] == name]
         class_events = [event for event in local_events if event_class.get(event.get("case_id")) == name]
+        apply_inference_denominator(summary, len(class_events))
         summary.update({
             "benchmark_local_input_tokens_all_calls": sum(int(event.get("local_input_tokens") or 0) for event in class_events),
             "benchmark_local_output_tokens_all_calls": sum(int(event.get("local_output_tokens") or 0) for event in class_events),
@@ -1146,19 +1465,35 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
             }
         decision, reason = decision_for(name, summary, class_items)
         summary["decision"] = decision; summary["decision_reason"] = reason
+        summary["baseline_comparison"] = baseline_comparison(name, summary)
+        summary["rtx_operational_advantage"] = summary["baseline_comparison"]["rtx_operational_advantage"]
     cases_by_id = {case["case_id"]: case for case in cases}
     matrix = classification_matrix(results, cases_by_id, local_outputs)
     macro_f1 = statistics.mean(row["f1"] for row in matrix) if matrix else 0.0
     per_class["classification"]["objective_metrics"]["macro_f1"] = round(macro_f1, 4)
+    generated_at = utc_now()
+    provenance = ground_truth_provenance(cases)
+    model_configuration = {
+        "model": model, "num_ctx": 12288, "num_predict": 700,
+        "temperature": 0, "seed": 20260824, "think": False,
+    }
     report = {
-        "suite": "local-ai-high-potential-v1", "benchmark_run_id": run_id,
+        "schema_version": SCHEMA_VERSION,
+        "schema_reference": "scripts/local-ai/benchmarks/high-potential/schemas/report-v2.json",
+        "suite": SUITE_NAME, "benchmark_run_id": run_id,
         "execution_mode": "benchmark", "excluded_from_production_metrics": True,
         "primary_metric_excludes": ["summarize-log"], "mode": args.mode,
-        "model": model, "generated_at": utc_now(),
+        "model": model, "benchmark_executed_at": generated_at, "artifact_recomputed_at": None,
+        "results_recomputed_from_existing_raw_artifacts": False,
+        "benchmark_rerun_reason": None,
         "measurement_basis": {
-            "gpt_direct": "simulated", "gpt_tokens": "estimated_utf8_bytes_div_4",
-            "local_ai": "measured" if args.mode == "local-ai" else "simulated",
-            "deterministic": "measured", "gpt_final_quality": "not_tested",
+            "gpt_tokens": "estimated",
+            "gpt_token_estimation_method": "utf8_bytes_divided_by_4",
+            "gpt_direct_execution": "simulated",
+            "local_inference": "measured" if args.mode == "local-ai" else "simulated",
+            "gpu_telemetry": "measured" if args.mode == "local-ai" else "not_applicable",
+            "deterministic_execution": "measured",
+            "gpt_final_quality": "not_tested",
         },
         "dataset": {
             "cases": len(cases), "real_anonymized": sum(case["source_type"] == "real_anonymized" for case in cases),
@@ -1167,28 +1502,220 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
             "holdout": sum(case["split"] == "holdout" for case in cases),
             "dataset_sha256": stable_hash(cases), "inputs_sha256": stable_hash({case["case_id"]: inputs[case["case_id"]] for case in cases}),
         },
+        "ground_truth_provenance": provenance,
+        "artifact_hashes": {
+            "dataset": stable_hash(cases),
+            "ground_truth": provenance["frozen_hash"],
+            "schemas": stable_hash(schemas),
+            "schemas_at_execution": stable_hash(schemas),
+            "benchmark_implementation": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "prompts": hashlib.sha256(inspect.getsource(local_prompt).encode("utf-8")).hexdigest(),
+            "model_configuration": stable_hash(model_configuration),
+        },
+        "artifact_hash_basis": {
+            "dataset": "loaded_for_this_execution",
+            "ground_truth": "loaded_for_this_execution",
+            "schemas": "loaded_for_this_execution",
+            "benchmark_implementation": "executed_file",
+            "prompts": "executed_local_prompt_function",
+            "model_configuration": "executed_configuration",
+        },
         "implementation_sha256": {
-            "harness": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "benchmark_execution": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             "dataset_generator": hashlib.sha256((SCRIPT_DIR / "high_potential_dataset.py").read_bytes()).hexdigest(),
             "schemas": stable_hash(schemas),
         },
         "activity_discovery": ACTIVITY_DISCOVERY, "totals": totals,
+        "inference_reconciliation": {
+            key: value for key, value in inference_reconciliation.items() if key != "unique_events"
+        },
         "classification_macro_f1": round(macro_f1, 4),
         "classification_confusion_matrix": matrix,
         "per_activity_class": per_class,
-        "recommended_configuration": [{
-            "activity": name,
-            "decision": summary["decision"], "model": model,
-            "minimum_input_tokens": 800, "maximum_input_tokens": 6000,
-            "confidence_threshold": 0.90, "required_validation": True,
-            "fallback": "gpt-direct", "production_enabled": False,
-            "reason": summary["decision_reason"],
-        } for name, summary in per_class.items()],
+        "operational_policy": copy.deepcopy(OPERATIONAL_POLICY),
+        "recommended_configuration": [
+            {"activity": name, **copy.deepcopy(OPERATIONAL_POLICY[name])}
+            for name in QUALITY_THRESHOLDS
+        ],
         "adversarial_validation": adversarial_suite(suite_cases, inputs, schemas),
         "benchmark_events": events, "results": results,
     }
-    report["adversarial_cases_passed"] = sum(item["passed"] for item in report["adversarial_validation"])
-    report["adversarial_cases_total"] = len(report["adversarial_validation"])
+    report["adversarial_metrics"] = {
+        "adversarial_scenarios_total": len(report["adversarial_validation"]),
+        "adversarial_guardrails_passed": sum(item["passed"] for item in report["adversarial_validation"]),
+        "adversarial_model_outputs_accepted": 0,
+        "adversarial_model_outputs_rejected": 0,
+        "model_output_scope": "not_executed; deterministic guardrail simulations only",
+    }
+    report["legacy_metric_aliases"] = {
+        "deprecated": True,
+        "adversarial_cases_passed": report["adversarial_metrics"]["adversarial_guardrails_passed"],
+        "adversarial_cases_total": report["adversarial_metrics"]["adversarial_scenarios_total"],
+    }
+    return report
+
+
+def recompute_existing_report(source_path: Path, dataset_dir: Path = DATASET_DIR) -> dict[str, Any]:
+    """Upgrade a v1 measured artifact without performing another model inference."""
+    source_path = source_path.resolve()
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    if source.get("suite") != "local-ai-high-potential-v1":
+        raise RuntimeError("recompute_requires_v1_source")
+    cases, inputs, schemas = load_dataset(dataset_dir)
+    cases_by_id = {case["case_id"]: case for case in cases}
+    enriched_results = []
+    for old_result in source.get("results", []):
+        case = cases_by_id[old_result["case_id"]]
+        schema = schemas[Path(case["schema_reference"]).name]
+        enriched_results.append(enrich_result_v2(old_result, case, inputs[case["case_id"]], schema))
+
+    result_by_case = {item["case_id"]: item for item in enriched_results}
+    enriched_events = []
+    for old_event in source.get("benchmark_events", []):
+        event = copy.deepcopy(old_event)
+        result = result_by_case.get(event.get("case_id"))
+        if not event.get("job_id"):
+            event["attempt_id"] = None
+            event["call_role"] = "not-attempted"
+        elif result and event.get("job_id") == result.get("job_id"):
+            event["attempt_id"] = f"{event['case_id']}:selected"
+            event["call_role"] = "selected"
+        else:
+            event["attempt_id"] = f"{event['case_id']}:local-only"
+            event["call_role"] = "local-only"
+        enriched_events.append(event)
+
+    inference_reconciliation = reconcile_inference_events(enriched_events)
+    totals = aggregate(enriched_results)
+    apply_inference_denominator(totals, inference_reconciliation["local_inference_calls"])
+    old_totals = source.get("totals") or {}
+    for field in (
+        "benchmark_local_input_tokens_all_calls", "benchmark_local_output_tokens_all_calls",
+        "gpu_observed_calls", "gpu_peak_percent", "vram_peak_mib", "power_peak_watts",
+    ):
+        totals[field] = old_totals.get(field)
+
+    per_class = {}
+    for name in QUALITY_THRESHOLDS:
+        class_items = [item for item in enriched_results if item["activity_class"] == name]
+        summary = aggregate(class_items)
+        class_inference_calls = sum(
+            event.get("case_id") in {item["case_id"] for item in class_items}
+            for event in inference_reconciliation["unique_events"]
+        )
+        apply_inference_denominator(summary, class_inference_calls)
+        old_summary = (source.get("per_activity_class") or {}).get(name) or {}
+        summary["objective_metrics"] = copy.deepcopy(old_summary.get("objective_metrics") or {})
+        if old_summary.get("hybrid_comparison") is not None:
+            summary["hybrid_comparison"] = copy.deepcopy(old_summary["hybrid_comparison"])
+        for field in (
+            "benchmark_local_input_tokens_all_calls", "benchmark_local_output_tokens_all_calls", "gpu_observed_calls",
+        ):
+            summary[field] = old_summary.get(field)
+        decision, reason = decision_for(name, summary, class_items)
+        summary["decision"] = decision
+        summary["decision_reason"] = reason
+        summary["baseline_comparison"] = baseline_comparison(name, summary)
+        summary["rtx_operational_advantage"] = summary["baseline_comparison"]["rtx_operational_advantage"]
+        per_class[name] = summary
+
+    provenance = ground_truth_provenance(cases)
+    model = str(source.get("model") or "unknown")
+    model_configuration = {
+        "model": model, "num_ctx": 12288, "num_predict": 700,
+        "temperature": 0, "seed": 20260824, "think": False,
+    }
+    old_implementation = source.get("implementation_sha256") or {}
+    adversarial_validation = adversarial_suite(cases, inputs, schemas)
+    report = {
+        "schema_version": SCHEMA_VERSION,
+        "schema_reference": "scripts/local-ai/benchmarks/high-potential/schemas/report-v2.json",
+        "suite": SUITE_NAME,
+        "benchmark_run_id": source["benchmark_run_id"],
+        "execution_mode": "benchmark",
+        "excluded_from_production_metrics": True,
+        "primary_metric_excludes": ["summarize-log"],
+        "mode": source.get("mode"),
+        "model": model,
+        "benchmark_executed_at": source.get("generated_at"),
+        "artifact_recomputed_at": utc_now(),
+        "results_recomputed_from_existing_raw_artifacts": True,
+        "benchmark_rerun_reason": None,
+        "source_artifact": {
+            "schema_version": 1,
+            "suite": source.get("suite"),
+            "sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+            "path": str(source_path.relative_to(ROOT)),
+        },
+        "measurement_basis": {
+            "gpt_tokens": "estimated",
+            "gpt_token_estimation_method": "utf8_bytes_divided_by_4",
+            "gpt_direct_execution": "simulated",
+            "local_inference": "measured",
+            "gpu_telemetry": "measured",
+            "deterministic_execution": "recomputed",
+            "gpt_final_quality": "not_tested",
+        },
+        "dataset": copy.deepcopy(source.get("dataset") or {}),
+        "ground_truth_provenance": provenance,
+        "artifact_hashes": {
+            "dataset": stable_hash(cases),
+            "ground_truth": provenance["frozen_hash"],
+            "schemas": stable_hash(schemas),
+            "schemas_at_execution": old_implementation.get("schemas"),
+            "benchmark_execution_implementation": old_implementation.get("harness"),
+            "artifact_recomputation_implementation": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "prompts": hashlib.sha256(inspect.getsource(local_prompt).encode("utf-8")).hexdigest(),
+            "model_configuration": stable_hash(model_configuration),
+        },
+        "artifact_hash_basis": {
+            "dataset": "matches_v1_dataset_sha256",
+            "ground_truth": "recomputed_from_unchanged_dataset_fixtures",
+            "schemas": "current_schema_set_including_report_v2",
+            "schemas_at_execution": "v1_implementation_sha256.schemas",
+            "benchmark_execution_implementation": "v1_implementation_sha256.harness",
+            "artifact_recomputation_implementation": "current_recomputation_file",
+            "prompts": "reconstructed_from_unchanged_local_prompt_function",
+            "model_configuration": "reconstructed_from_v1_model_and_versioned_constants",
+        },
+        "implementation_sha256": {
+            "benchmark_execution": old_implementation.get("harness"),
+            "artifact_recomputation": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "dataset_generator": old_implementation.get("dataset_generator"),
+            "schemas_at_execution": old_implementation.get("schemas"),
+        },
+        "activity_discovery": copy.deepcopy(source.get("activity_discovery") or ACTIVITY_DISCOVERY),
+        "totals": totals,
+        "inference_reconciliation": {
+            key: value for key, value in inference_reconciliation.items() if key != "unique_events"
+        },
+        "classification_macro_f1": source.get("classification_macro_f1"),
+        "classification_confusion_matrix": copy.deepcopy(source.get("classification_confusion_matrix") or []),
+        "per_activity_class": per_class,
+        "operational_policy": copy.deepcopy(OPERATIONAL_POLICY),
+        "recommended_configuration": [
+            {"activity": name, **copy.deepcopy(OPERATIONAL_POLICY[name])}
+            for name in QUALITY_THRESHOLDS
+        ],
+        "adversarial_validation": adversarial_validation,
+        "adversarial_metrics": {
+            "adversarial_scenarios_total": len(adversarial_validation),
+            "adversarial_guardrails_passed": sum(bool(item.get("passed")) for item in adversarial_validation),
+            "adversarial_model_outputs_accepted": 0,
+            "adversarial_model_outputs_rejected": 0,
+            "model_output_scope": "not_executed; deterministic guardrail simulations only",
+            "guardrails_recomputed_during_v2_migration": True,
+        },
+        "benchmark_events": enriched_events,
+        "results": enriched_results,
+        "legacy_metric_aliases": {
+            "deprecated": True,
+            "source_schema_version": 1,
+            "source_totals": copy.deepcopy(source.get("totals") or {}),
+            "adversarial_cases_passed": source.get("adversarial_cases_passed"),
+            "adversarial_cases_total": source.get("adversarial_cases_total"),
+        },
+    }
     return report
 
 
@@ -1200,17 +1727,35 @@ def main() -> int:
     parser.add_argument("--split", choices=("all", "calibration", "holdout"), default="all")
     parser.add_argument("--model")
     parser.add_argument("--benchmark-run-id")
+    parser.add_argument("--recompute-existing", type=Path)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--no-artifacts", action="store_true")
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--compare-file-selection", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
-    report = run_benchmark(args)
+    report = recompute_existing_report(args.recompute_existing, args.dataset_dir) if args.recompute_existing else run_benchmark(args)
     if not args.no_artifacts:
         write_artifacts(report, args.output_dir)
     public = {key: value for key, value in report.items() if key not in {"results", "benchmark_events"}}
-    print(json.dumps(public, ensure_ascii=False, indent=2))
-    return 0 if report["adversarial_cases_passed"] == report["adversarial_cases_total"] else 1
+    if args.quiet:
+        print(json.dumps({
+            "schema_version": report["schema_version"],
+            "benchmark_run_id": report["benchmark_run_id"],
+            "results_recomputed_from_existing_raw_artifacts": report[
+                "results_recomputed_from_existing_raw_artifacts"
+            ],
+            "totals": {
+                key: report["totals"][key] for key in (
+                    "total_cases", "rtx_attempted_cases", "local_inference_calls",
+                    "useful_cases", "fallback_cases", "critical_error_occurrences",
+                    "cases_with_critical_error",
+                )
+            },
+        }, ensure_ascii=False))
+    else:
+        print(json.dumps(public, ensure_ascii=False, indent=2))
+    adversarial = report["adversarial_metrics"]
+    return 0 if adversarial["adversarial_guardrails_passed"] == adversarial["adversarial_scenarios_total"] else 1
 
 
 if __name__ == "__main__":

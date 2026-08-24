@@ -86,6 +86,9 @@
     { "path": "docs/LOCAL_AI_BENCHMARK_2026-08-16.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
     { "path": "docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
     { "path": "docs/benchmarks/local-ai-high-potential/report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
+    { "path": "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/README.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
+    { "path": "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
+    { "path": "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/technical-report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
 
     { "path": "homeassistant/custom_components/hacs/validate/README.md", "area": "contributing", "strategy": "third-party/not-translated", "language": "en", "upstream": "https://github.com/hacs/integration" }
   ]

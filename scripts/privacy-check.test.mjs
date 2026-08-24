@@ -110,6 +110,12 @@ test("allows precise benchmark metrics without allowing private network data", (
   assert.deepEqual(result.map((item) => item.rule), ["private-ipv4"]);
 });
 
+test("allows precise metrics in the preserved v1 benchmark artifacts", () => {
+  const metric = ["28", "773001"].join(".");
+  const file = "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/events.jsonl";
+  assert.deepEqual(scanEntries([entry(file, `{"duration_seconds":${metric}}`)]), []);
+});
+
 test("rejects private runtime paths and state artifacts", () => {
   const result = scanEntries([
     { file: "homeassistant/.storage/synthetic", buffer: Buffer.from("{}") },

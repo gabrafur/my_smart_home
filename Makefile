@@ -8,7 +8,8 @@
 	modules-check context-recovery-check install-git-hooks \
 	benchmark-local-ai-high-potential benchmark-local-ai-high-potential-unit \
 	benchmark-local-ai-high-potential-integration benchmark-local-ai-high-potential-simulated \
-	benchmark-local-ai-high-potential-local-ai benchmark-local-ai-high-potential-dashboard
+	benchmark-local-ai-high-potential-local-ai benchmark-local-ai-high-potential-dashboard \
+	benchmark-local-ai-high-potential-recompute
 
 PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
 	validate-yaml validate-shell validate-docs validate-assets validate-security \
@@ -23,6 +24,7 @@ CONFIRM ?=
 ALLOW_NON_CANARY ?=
 MODULES ?= core
 HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR ?= docs/benchmarks/local-ai-high-potential
+HIGH_POTENTIAL_BENCHMARK_SIMULATED_OUTPUT_DIR ?= /tmp/local-ai-high-potential-simulated
 
 validate-public:
 	@./scripts/run-resource-safe.sh $(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
@@ -83,7 +85,12 @@ benchmark-local-ai-high-potential-integration:
 	python3 scripts/local-ai/test_high_potential_benchmark.py HighPotentialBenchmarkIntegrationTests
 
 benchmark-local-ai-high-potential-simulated:
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --mode simulated --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR)"
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --mode simulated --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_SIMULATED_OUTPUT_DIR)"
+
+benchmark-local-ai-high-potential-recompute:
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --quiet \
+		--recompute-existing docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/latest.json \
+		--output-dir "$(HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR)"
 
 benchmark-local-ai-high-potential-local-ai:
 	uptime

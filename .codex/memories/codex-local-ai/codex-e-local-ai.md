@@ -120,13 +120,16 @@ logs subiu de 6,502 para 15,660 segundos. Esses pesos não vêm de conversas
 privadas nem garantem a distribuição futura de uso. A fonte detalhada continua
 em `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
 
-O benchmark de alto potencial v1 de 2026-08-24 excluiu `summarize-log` e testou
+O benchmark de alto potencial v2 de 2026-08-24 excluiu `summarize-log` e testou
 100 casos em cinco classes. Das 70 tarefas tentadas, 27 foram utilizáveis, 43
-caíram em fallback e 25 tiveram perda crítica; o método determinístico passou
-100/100. Extração, classificação, seleção, agrupamento/deduplicação e resumo de
-diff ficaram `DETERMINISTIC_FIRST`, todos com `production_enabled: false`. A
-economia estimada dos aceites não autoriza promoção porque useful RTX rate foi
-38,6%, fallback 61,4% e o GPT final não foi executado. A fonte canônica é
+caíram em fallback e houve 86 inferências. A revisão distinguiu 32 ocorrências
+críticas em 25 casos. O método determinístico passou o gate das fixtures em
+100/100, mas a independência do ground truth é `INSUFFICIENT_EVIDENCE`; não trate
+esse resultado como comparação independente. Extração, classificação, seleção,
+agrupamento/deduplicação e resumo de diff ficaram `DETERMINISTIC_FIRST`, todos
+com produção desabilitada. A redução de 37,35% é estimada sobre cenário GPT
+simulado; o useful rate foi 38,57% entre tentativas, a cobertura end-to-end foi
+27,00%, o fallback 61,43% e nenhuma atividade superou o baseline. A fonte canônica é
 `docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md`.
 
 Não compare diretamente esse percentual A/B com a redução útil operacional. O

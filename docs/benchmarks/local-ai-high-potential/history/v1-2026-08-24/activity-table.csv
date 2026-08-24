@@ -1,0 +1,6 @@
+activity,cases,quality_score,useful_rtx_rate,weighted_token_savings,frequency_weighted_token_savings,fallback_rate,latency_p50_seconds,latency_p95_seconds,decision
+structured_extraction,20,0.9031,0.5625,0.577324,0.577764,0.4375,5.721,9.796,DETERMINISTIC_FIRST
+classification,20,0.2143,0.0,0.0,0.0,1.0,3.832,8.561,DETERMINISTIC_FIRST
+file_selection,20,0.8726,0.375,0.449009,0.451181,0.625,5.186,7.423,DETERMINISTIC_FIRST
+error_clustering,20,0.75,0.75,0.684633,0.686759,0.25,5.118,7.167,DETERMINISTIC_FIRST
+diff_summary,20,0.0,0.0,0.0,0.0,1.0,28.74,30.868,DETERMINISTIC_FIRST

@@ -1,6 +1,6 @@
-activity,cases,quality_score,useful_rtx_rate,weighted_token_savings,frequency_weighted_token_savings,fallback_rate,latency_p50_seconds,latency_p95_seconds,decision
-structured_extraction,20,0.9031,0.5625,0.577324,0.577764,0.4375,5.721,9.796,DETERMINISTIC_FIRST
-classification,20,0.2143,0.0,0.0,0.0,1.0,3.832,8.561,DETERMINISTIC_FIRST
-file_selection,20,0.8726,0.375,0.449009,0.451181,0.625,5.186,7.423,DETERMINISTIC_FIRST
-error_clustering,20,0.75,0.75,0.684633,0.686759,0.25,5.118,7.167,DETERMINISTIC_FIRST
-diff_summary,20,0.0,0.0,0.0,0.0,1.0,28.74,30.868,DETERMINISTIC_FIRST
+activity,total_cases,eligible_cases,non_eligible_cases,rtx_attempted_cases,local_inference_calls,accepted_cases,rejected_cases,fallback_cases,useful_cases,useful_rtx_rate_among_attempts,end_to_end_useful_coverage,class_eligibility_rate,fallback_rate_among_attempts,inferences_per_attempted_case,critical_error_occurrences,cases_with_critical_error,critical_case_rate_among_attempts,critical_errors_per_inference,estimated_baseline_gpt_tokens,estimated_routed_gpt_tokens,estimated_avoided_gpt_tokens,estimated_weighted_gpt_context_reduction,rtx_quality_score,baseline_quality_score,rtx_latency_p50_seconds,baseline_latency_p50_seconds,rtx_operational_advantage,decision
+structured_extraction,20,16,4,16,16,9,7,7,9,0.5625,0.45,0.8,0.4375,1.0,10,7,0.4375,0.625,62911,26591,36320,0.577324,0.9031,1.0,5.721,0.0,False,DETERMINISTIC_FIRST
+classification,20,14,6,14,14,0,14,14,0,0.0,0.0,0.7,1.0,1.0,2,2,0.1429,0.1429,62140,62140,0,0.0,0.2143,1.0,3.832,0.0,False,DETERMINISTIC_FIRST
+file_selection,20,16,4,16,32,6,10,10,6,0.375,0.3,0.8,0.625,2.0,10,10,0.625,0.3125,63580,35032,28548,0.449009,0.8726,1.0,5.186,0.0,False,DETERMINISTIC_FIRST
+error_clustering,20,16,4,16,16,12,4,4,12,0.75,0.6,0.8,0.25,1.0,8,4,0.25,0.5,34880,11000,23880,0.684633,0.75,1.0,5.118,0.0,False,DETERMINISTIC_FIRST
+diff_summary,20,8,12,8,8,0,8,8,0,0.0,0.0,0.4,1.0,1.0,2,2,0.25,0.25,14116,14116,0,0.0,0.0,1.0,28.74,0.0,False,DETERMINISTIC_FIRST

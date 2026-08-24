@@ -32,7 +32,7 @@ const ignoredText = [
   /^scripts\/privacy-check(?:\.test)?\.mjs$/,
   /^scripts\/security-scan(?:\.test)?\.(?:mjs|sh)$/,
 ];
-const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:[^/]+\.(?:json|jsonl|csv))|scripts\/local-ai\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
+const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:history\/v1-2026-08-24\/)?(?:[^/]+\.(?:json|jsonl|csv))|scripts\/local-ai\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
