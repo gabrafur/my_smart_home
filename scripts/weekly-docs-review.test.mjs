@@ -65,6 +65,7 @@ function fixture({ branch = "main" } = {}) {
   write(path.join(bin, "codex"), [
     "#!/bin/sh",
     "set -eu",
+    "[ -z \"${SCHEDULER_ARGS_PATH:-}\" ] || printf '%s\\n' \"$@\" > \"$SCHEDULER_ARGS_PATH\"",
     "case \"${SCHEDULER_SCENARIO:-no_changes}\" in",
     "  allowed) printf '%s\\n' '# Reviewed' > docs/review.md ;;",
     "  validation_failure|privacy_failure|security_failure) printf '%s\\n' '# Reviewed' > docs/review.md ;;",
@@ -92,9 +93,11 @@ function fixture({ branch = "main" } = {}) {
   ].join("\n"), 0o755);
 
   function run(scenario) {
+    const argsPath = path.join(temporaryRoot, "codex-args.txt");
     return command(repo, process.execPath, ["scripts/weekly-docs-review.mjs", "--run-now"], {
       PATH: `${bin}:${process.env.PATH}`,
       SCHEDULER_SCENARIO: scenario,
+      SCHEDULER_ARGS_PATH: argsPath,
       SCHEDULER_CONTROL: control,
       SCHEDULER_REMOTE: remote,
       WEEKLY_DOCS_REVIEW_STATUS_PATH: path.join(temporaryRoot, "status.json"),
@@ -105,8 +108,26 @@ function fixture({ branch = "main" } = {}) {
     return Number(git(temporaryRoot, ["--git-dir", remote, "rev-list", "--count", branch]));
   }
 
-  return { baseline, branch, remote, remoteCount, repo, run, temporaryRoot };
+  return {
+    argsPath: path.join(temporaryRoot, "codex-args.txt"),
+    baseline,
+    branch,
+    remote,
+    remoteCount,
+    repo,
+    run,
+    temporaryRoot,
+  };
 }
+
+test("uses automatic approval without a conflicting sandbox option", () => {
+  const item = fixture();
+  const result = item.run("no_changes");
+  assert.equal(result.status, 0, result.stderr);
+  const args = fs.readFileSync(item.argsPath, "utf8").trim().split("\n");
+  assert.equal(args.filter((arg) => arg === "--approve-for-me").length, 1);
+  assert.equal(args.includes("--sandbox"), false);
+});
 
 test("allows a documentation-only diff, validates it and publishes one commit", () => {
   const item = fixture();

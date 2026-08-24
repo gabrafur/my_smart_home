@@ -27,3 +27,18 @@
 - Imediatamente antes de `git push`, confira `git status` e o histórico recente
   do branch. Se houver commit inesperado, não o publique nem o descarte sem
   confirmar o escopo com o usuário.
+
+## Revisão documental automatizada
+
+- `scripts/weekly-docs-review.mjs` é a implementação canônica; o prompt
+  versionado instrui o agente, mas o scheduler conserva a autoridade para
+  allowlist, validação, commit e push.
+- Na versão atual do CLI, `codex exec --approve-for-me` já usa revisão
+  automática com sandbox `workspace-write`. Não combine essa opção com
+  `--sandbox`; a regressão fica em `scripts/weekly-docs-review.test.mjs`.
+- `remote_authentication_failed` pode mascarar falha de DNS anterior ao SSH.
+  Verifique separadamente resolução dentro do contêiner, validade da chave e
+  leitura do remoto antes de trocar credenciais.
+- Se apenas `docs-review-scheduler` reteve resolvers obsoletos, recrie somente
+  esse serviço e confirme DNS, leitura remota e `next_run`; não reinicie a
+  stack residencial.

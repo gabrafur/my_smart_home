@@ -178,7 +178,7 @@ function runAgent(prompt, worktree, remote) {
     "codex", "exec", "--ephemeral",
     "--model", "gpt-5.6-terra",
     "--config", 'model_reasoning_effort="medium"',
-    "--approve-for-me", "--sandbox", "workspace-write",
+    "--approve-for-me",
     "-C", worktree, "-",
   ];
   return new Promise((resolve) => {

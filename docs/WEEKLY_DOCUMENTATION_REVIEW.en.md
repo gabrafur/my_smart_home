@@ -176,6 +176,21 @@ The service checkout must remain on `main`. On another branch the scheduler
 itself remains healthy and waiting, but the run is recorded as
 `skipped`/`unexpected_branch` to avoid mixing with interactive work.
 
+When `last_reason` is `remote_authentication_failed`, distinguish DNS failure
+from key rejection before replacing credentials. A container created while the
+host had no external resolvers can retain a stale `/etc/resolv.conf` after the
+host recovers. Check Git-host resolution inside `docs-review-scheduler` and, if
+only that container is affected, recreate the scheduler alone:
+
+```bash
+docker compose --profile automation up -d --no-deps --force-recreate \
+  docs-review-scheduler
+```
+
+Then confirm DNS resolution, an authenticated read from the remote without a
+push, and the new `next_run`. Do not restart the residential stack to repair
+the scheduler.
+
 This is a local schedule and depends on the Docker host being powered on. The
 official [Scheduled tasks documentation](https://learn.chatgpt.com/docs/automations)
 describes the same limitation for local Codex tasks and notes that schedule

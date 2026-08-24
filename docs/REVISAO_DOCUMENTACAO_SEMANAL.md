@@ -183,6 +183,21 @@ O checkout usado pelo serviço deve permanecer em `main`. Em outra branch, a
 rotina continua saudável e aguardando, mas o run será registrado como
 `skipped`/`unexpected_branch` para não misturar trabalho interativo.
 
+Quando `last_reason` indicar `remote_authentication_failed`, diferencie falha
+de DNS de rejeição da chave antes de trocar credenciais. Um contêiner criado
+enquanto o host estava sem resolvers externos pode manter um
+`/etc/resolv.conf` obsoleto mesmo depois da recuperação do host. Confirme a
+resolução do host Git dentro de `docs-review-scheduler` e, se somente esse
+contêiner estiver afetado, recrie apenas o agendador:
+
+```bash
+docker compose --profile automation up -d --no-deps --force-recreate \
+  docs-review-scheduler
+```
+
+Depois confirme a resolução DNS, uma leitura autenticada do remoto sem push e
+o novo `next_run`. Não reinicie a stack residencial para reparar o agendador.
+
 O agendamento é local e depende de o host Docker estar ligado. A documentação
 oficial de [Scheduled tasks](https://learn.chatgpt.com/docs/automations)
 também explica essa limitação para tarefas locais do Codex e informa que a
