@@ -56,6 +56,7 @@ NUMERIC_EXPRESSION_MARKERS = (
 
 DASHBOARD_COUNTERS = (
     "codex_tokens_totais",
+    "codex_tokens_totais_hoje",
     "codex_tokens_em_cache",
     "codex_tokens_de_saida",
     "codex_sessoes_monitoradas",
@@ -83,6 +84,7 @@ DASHBOARD_COUNTERS = (
     "codex_decisoes_de_roteamento_hoje",
     "codex_tarefas_local_ai_elegiveis_hoje",
     "codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje",
+    "codex_disponibilidade_nas_tarefas_elegiveis_hoje",
     "codex_rtx_usos_hoje",
     "codex_oportunidades_rtx_perdidas_hoje",
     "codex_local_ai_indisponivel_hoje",

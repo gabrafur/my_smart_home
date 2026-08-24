@@ -45,6 +45,7 @@ command_line:
         - rate_limit_refresh
         - freshness
         - totals
+        - daily
         - analytics
         - local_ai
         - error
@@ -268,6 +269,18 @@ template:
         availability: >-
           {% set totals = state_attr('sensor.codex_usage_raw', 'totals') %}
           {{ totals and totals.get('total_tokens') is number }}
+
+      - name: Codex Tokens Totais Hoje
+        unique_id: codex_tokens_totais_hoje
+        icon: mdi:calendar-today-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: >-
+          {% set day = now().strftime('%Y-%m-%d') %}
+          {% set daily = state_attr('sensor.codex_usage_raw', 'daily') or [] %}
+          {% set matches = daily | selectattr('date', 'eq', day) | list %}
+          {{ matches[0].get('total_tokens', 0) if matches else 0 }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens em Cache
         unique_id: codex_tokens_em_cache
@@ -821,16 +834,16 @@ template:
         icon: mdi:check-network-outline
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_use_rate_percent') }}"
-        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_use_rate_percent') is number }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_use_rate_percent') | float(0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Cobertura da Confirmacao de Uso Hoje
         unique_id: codex_cobertura_da_confirmacao_de_uso_hoje
         icon: mdi:check-circle-outline
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_usage_coverage_percent') }}"
-        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_usage_coverage_percent') is number }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_usage_coverage_percent') | float(0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Falhas Local AI
         unique_id: codex_falhas_local_ai
@@ -957,6 +970,20 @@ template:
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
           significado: "tarefas elegíveis do dia cuja disponibilidade da RTX foi confirmada; exclui estado desconhecido e indisponibilidade confirmada"
+
+      - name: Codex Disponibilidade nas Tarefas Elegiveis Hoje
+        unique_id: codex_disponibilidade_nas_tarefas_elegiveis_hoje
+        icon: mdi:server-network
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >-
+          {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {} %}
+          {% set eligible = today.get('eligible_tasks', 0) | float(0) %}
+          {% set available = today.get('eligible_and_available_tasks', 0) | float(0) %}
+          {{ ((available / eligible * 100) if eligible > 0 else 0) | round(1) }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+        attributes:
+          significado: "percentual das tarefas elegíveis do dia em que a disponibilidade da RTX foi confirmada"
 
       - name: Codex RTX Usos Hoje
         unique_id: codex_rtx_usos_hoje
@@ -1392,16 +1419,24 @@ template:
         icon: mdi:arrow-collapse-horizontal
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('context_reduction_percent') }}"
-        availability: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('context_reduction_percent') is number }}"
+        state: >-
+          {% set total_tokens = ((state_attr('sensor.codex_usage_raw', 'totals') or {}).get('total_tokens', 0)) | float(0) %}
+          {% set useful_tokens = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('confirmed_useful_context_tokens_avoided', 0)) | float(0) %}
+          {% set baseline_tokens = total_tokens + useful_tokens %}
+          {{ ((useful_tokens / baseline_tokens) * 100) | round(4) if baseline_tokens > 0 else 0 }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Reducao de Contexto Local AI Hoje
         unique_id: codex_reducao_de_contexto_local_ai_hoje
         icon: mdi:calendar-today
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('context_reduction_percent') }}"
-        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('context_reduction_percent') is number }}"
+        state: >-
+          {% set total_tokens = states('sensor.codex_tokens_totais_hoje') | float(0) %}
+          {% set useful_tokens = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('confirmed_useful_context_tokens_avoided', 0) | float(0) %}
+          {% set baseline_tokens = total_tokens + useful_tokens %}
+          {{ ((useful_tokens / baseline_tokens) * 100) | round(4) if baseline_tokens > 0 else 0 }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Ultimo Job Local AI
         unique_id: codex_ultimo_job_local_ai
@@ -1433,6 +1468,9 @@ template:
           modelo_verificador: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('verifier_model') if jobs else none }}
+          tipo_gate_qualidade: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('quality_gate_type') if jobs else none }}
           iniciado_em: >-
             {{ state_attr('sensor.codex_rtx_live_raw', 'started_at') if is_state('sensor.codex_rtx_ao_vivo', 'em uso') else none }}
           duracao_s: >-
@@ -1468,6 +1506,9 @@ template:
           uso_modelo_principal_confirmado: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('primary_context_used') if jobs else none }}
+          transporte_entrega: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('delivery_transport') if jobs else none }}
           qualidade_percentual: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('quality_score_percent') if jobs else none }}

@@ -26,6 +26,7 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         today_entities = (
             "sensor.codex_reducao_de_contexto_local_ai_hoje",
             "sensor.codex_contexto_tentado_local_ai_hoje",
+            "sensor.codex_tokens_totais_hoje",
             "sensor.codex_taxa_de_aproveitamento_do_gate_hoje",
             "sensor.codex_cobertura_do_custo_do_gate_hoje",
             "sensor.codex_cobertura_da_classificacao_operacional_hoje",
@@ -35,11 +36,19 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         )
         for entity_id in today_entities:
             self.assertIn(f"entity: {entity_id}", DASHBOARD)
-        self.assertIn("today.get('missed_potential_tokens_avoidable', 0)", DASHBOARD)
-        self.assertIn("today.get('eligible_and_available_tasks', 0)", DASHBOARD)
+        self.assertIn("entity: sensor.codex_tokens_de_oportunidades_rtx_perdidas_hoje", DASHBOARD)
+        self.assertIn("entity: sensor.codex_disponibilidade_nas_tarefas_elegiveis_hoje", DASHBOARD)
         self.assertIn("today.get('operational_quality_rejected_calls', 0)", DASHBOARD)
         self.assertEqual(DASHBOARD.count("name: Rejeitados pelo gate"), 2)
         self.assertEqual(DASHBOARD.count("name: Redução útil líquida"), 2)
+        self.assertEqual(
+            DASHBOARD.count("entity: sensor.codex_tokens_totais\n"),
+            2,
+        )
+        self.assertEqual(
+            DASHBOARD.count("entity: sensor.codex_tokens_totais_hoje\n"),
+            1,
+        )
         self.assertIn("today.get('rtx_delegation_rate_percent', 0)", DASHBOARD)
         self.assertIn("today.get('weighted_context_savings_coverage_percent', 0)", DASHBOARD)
 
@@ -55,6 +64,38 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         self.assertIn("entity: sensor.codex_custo_gate_validacao_resultados_hoje", DASHBOARD)
         self.assertIn("name: Saldo líquido equivalente", DASHBOARD)
         self.assertIn("name: Contexto tentado", DASHBOARD)
+        self.assertIn("name: Tokens totais", DASHBOARD)
+
+    def test_useful_reduction_uses_counterfactual_total_for_each_period(self):
+        total_start = PACKAGE.index("unique_id: codex_reducao_de_contexto_local_ai\n")
+        total_block = PACKAGE[total_start : total_start + 1000]
+        self.assertIn("get('total_tokens', 0)", total_block)
+        self.assertIn("confirmed_useful_context_tokens_avoided", total_block)
+        self.assertIn("baseline_tokens = total_tokens + useful_tokens", total_block)
+        self.assertIn("useful_tokens / baseline_tokens", total_block)
+        self.assertNotIn("suggested_display_precision", total_block)
+        self.assertIn("round(4)", total_block)
+        self.assertNotIn("attempted_context_input_tokens", total_block)
+
+        today_start = PACKAGE.index("unique_id: codex_reducao_de_contexto_local_ai_hoje")
+        today_block = PACKAGE[today_start : today_start + 1000]
+        self.assertIn("sensor.codex_tokens_totais_hoje", today_block)
+        self.assertIn("confirmed_useful_context_tokens_avoided", today_block)
+        self.assertIn("baseline_tokens = total_tokens + useful_tokens", today_block)
+        self.assertIn("useful_tokens / baseline_tokens", today_block)
+        self.assertNotIn("suggested_display_precision", today_block)
+        self.assertIn("round(4)", today_block)
+        self.assertNotIn("attempted_context_input_tokens", today_block)
+
+    def test_empty_primary_usage_percentages_render_as_zero(self):
+        for unique_id, field in (
+            ("codex_taxa_de_uso_efetivo_local_ai_hoje", "primary_context_use_rate_percent"),
+            ("codex_cobertura_da_confirmacao_de_uso_hoje", "primary_context_usage_coverage_percent"),
+        ):
+            start = PACKAGE.index(f"unique_id: {unique_id}")
+            block = PACKAGE[start : start + 800]
+            self.assertIn(f"get('{field}') | float(0)", block)
+            self.assertIn("states('sensor.codex_usage_raw') == 'ok'", block)
 
     def test_accumulated_waterfall_exposes_every_reconciliation_branch(self):
         expected_fields = {
@@ -102,6 +143,7 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
             "codex_decisoes_de_roteamento_hoje",
             "codex_tarefas_local_ai_elegiveis_hoje",
             "codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje",
+            "codex_disponibilidade_nas_tarefas_elegiveis_hoje",
             "codex_oportunidades_rtx_perdidas_hoje",
             "codex_local_ai_indisponivel_hoje",
             "codex_disponibilidade_rtx_desconhecida_hoje",
@@ -113,6 +155,22 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         ):
             start = PACKAGE.index(f"unique_id: {unique_id}")
             self.assertIn("significado:", PACKAGE[start : start + 1200])
+
+    def test_routing_attention_values_use_native_tiles_without_losing_data(self):
+        for entity_id in (
+            "sensor.codex_tokens_de_oportunidades_rtx_perdidas_hoje",
+            "sensor.codex_disponibilidade_nas_tarefas_elegiveis_hoje",
+        ):
+            entity = f"entity: {entity_id}"
+            start = DASHBOARD.index(entity)
+            self.assertIn("type: tile", DASHBOARD[max(0, start - 80) : start])
+
+        start = PACKAGE.index("unique_id: codex_disponibilidade_nas_tarefas_elegiveis_hoje")
+        block = PACKAGE[start : start + 1200]
+        self.assertIn("eligible_tasks", block)
+        self.assertIn("eligible_and_available_tasks", block)
+        self.assertIn("available / eligible * 100", block)
+        self.assertIn("round(1)", block)
 
     def test_unknown_availability_is_not_reported_as_confirmed_unavailability(self):
         confirmed_start = PACKAGE.index("unique_id: codex_local_ai_indisponivel_hoje")
@@ -138,6 +196,14 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         self.assertIn("get('discard_reason')", sensor)
         self.assertIn("descartada por não gerar ganho líquido suficiente", DASHBOARD)
         self.assertIn("descartada pelo gate de fidelidade", DASHBOARD)
+
+    def test_latest_job_identifies_the_confirmed_delivery_transport(self):
+        sensor_start = PACKAGE.index("unique_id: codex_ultimo_job_local_ai")
+        sensor = PACKAGE[sensor_start : sensor_start + 8_000]
+        self.assertIn("transporte_entrega:", sensor)
+        self.assertIn("get('delivery_transport')", sensor)
+        self.assertIn("code-mode-orchestrator-v1", DASHBOARD)
+        self.assertIn("entrega **", DASHBOARD)
 
     def test_daily_savings_uses_preserved_quality_validated_series(self):
         sensor_start = PACKAGE.index("unique_id: codex_economia_util_liquida_validada_hoje")

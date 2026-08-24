@@ -112,6 +112,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertEqual(view.count("name: Rejeitados pelo gate"), 2)
         self.assertNotIn("today.get('quality_rejected_tasks', 0)", view)
         self.assertEqual(view.count("name: Redução útil líquida"), 2)
+        self.assertEqual(view.count("name: Tokens totais"), 2)
         self.assertIn("name: Aproveitamento de qualidade", view)
         self.assertEqual(view.count("name: Fiéis sem ganho líquido"), 2)
         self.assertIn("entity: sensor.codex_falhas_operacionais_local_ai_hoje", view)
@@ -229,6 +230,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "sensor.codex_resultados_local_ai_com_uso_nao_confirmado",
             "sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal",
             "sensor.codex_resultados_local_ai_sem_ganho_liquido",
+            "sensor.codex_tokens_totais",
             "sensor.codex_contexto_tentado_local_ai",
             "sensor.codex_economia_bruta_validada",
             "sensor.codex_custo_gate_validacao_resultados",
@@ -266,6 +268,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "sensor.codex_resultados_local_ai_validados_mensuraveis",
             "sensor.codex_resultados_local_ai_com_uso_nao_confirmado",
             "sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal",
+            "sensor.codex_tokens_totais",
             "sensor.codex_contexto_tentado_local_ai",
             "sensor.codex_economia_bruta_validada",
             "sensor.codex_custo_gate_validacao_resultados",
@@ -274,10 +277,10 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         ]
         expected_today = [f"{entity}_hoje" for entity in expected_total]
         expected_today[5] = "sensor.codex_resultados_local_ai_descartados_hoje"
-        expected_today[13] = "sensor.codex_economia_bruta_validada_hoje"
-        expected_today[14] = "sensor.codex_custo_gate_validacao_resultados_hoje"
-        expected_today[15] = "sensor.codex_tokens_openai_evitados_hoje_estimados"
-        expected_today[16] = "sensor.codex_reducao_de_contexto_local_ai_hoje"
+        expected_today[14] = "sensor.codex_economia_bruta_validada_hoje"
+        expected_today[15] = "sensor.codex_custo_gate_validacao_resultados_hoje"
+        expected_today[16] = "sensor.codex_tokens_openai_evitados_hoje_estimados"
+        expected_today[17] = "sensor.codex_reducao_de_contexto_local_ai_hoje"
 
         self.assertEqual(total_entities, expected_total)
         self.assertEqual(today_entities, expected_today)
@@ -309,7 +312,8 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "sensor.codex_tarefas_local_ai_elegiveis_e_disponiveis_hoje",
         ):
             self.assertNotIn(f"entity: {contextual_entity}", view)
-        self.assertIn("**Disponibilidade nas elegíveis**", view)
+        self.assertIn("entity: sensor.codex_disponibilidade_nas_tarefas_elegiveis_hoje", view)
+        self.assertIn("name: Disponibilidade nas elegíveis", view)
         self.assertIn("**Fluxo avaliado:**", view)
 
         routing_start = view.index("title: Atenção de roteamento — hoje")

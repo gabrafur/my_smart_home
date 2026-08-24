@@ -338,13 +338,10 @@ views:
                 entity: sensor.codex_oportunidades_rtx_perdidas_hoje
                 name: Oportunidades realmente perdidas
                 color: red
-              - type: markdown
-                content: |-
-                  {% from 'formatting.jinja' import format_number_ptbr %}
-                  {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {} %}
-                  **Tokens potenciais dessas perdas**
-
-                  # {{ format_number_ptbr(today.get('missed_potential_tokens_avoidable', 0)) }}
+              - type: tile
+                entity: sensor.codex_tokens_de_oportunidades_rtx_perdidas_hoje
+                name: Tokens potenciais dessas perdas
+                color: red
               - type: tile
                 entity: sensor.codex_local_ai_indisponivel_hoje
                 name: RTX indisponível (confirmado)
@@ -357,15 +354,10 @@ views:
                 entity: sensor.codex_falhas_de_roteamento_local_ai_hoje
                 name: Falhas após delegação
                 color: red
-              - type: markdown
-                content: |-
-                  {% from 'formatting.jinja' import format_number_ptbr %}
-                  {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('routing') or {}).get('periods') or {}).get('today') or {} %}
-                  {% set eligible = today.get('eligible_tasks', 0) | float(0) %}
-                  {% set available = today.get('eligible_and_available_tasks', 0) | float(0) %}
-                  **Disponibilidade nas elegíveis**
-
-                  # {{ format_number_ptbr((available / eligible * 100) if eligible > 0 else 0, 1) }}%
+              - type: tile
+                entity: sensor.codex_disponibilidade_nas_tarefas_elegiveis_hoje
+                name: Disponibilidade nas elegíveis
+                color: green
           - type: markdown
             content: >-
               {% from 'formatting.jinja' import format_number_ptbr %}
@@ -463,18 +455,21 @@ views:
               {% set status = states('sensor.codex_ultimo_job_local_ai') %}
               {% set generator = state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') %}
               {% set verifier = state_attr('sensor.codex_ultimo_job_local_ai', 'modelo_verificador') %}
+              {% set gate_type = state_attr('sensor.codex_ultimo_job_local_ai', 'tipo_gate_qualidade') %}
+              {% set validator_label = 'gate determinístico de âncoras' if gate_type == 'deterministic-log-anchors-v1' else ('verificador ' ~ verifier if verifier else none) %}
               {% set primary_used = state_attr('sensor.codex_ultimo_job_local_ai', 'uso_modelo_principal_confirmado') == true %}
+              {% set delivery_transport = state_attr('sensor.codex_ultimo_job_local_ai', 'transporte_entrega') %}
               {% if task and status == 'em andamento' %}
               ## Inferência em andamento
 
-              **{{ task }}** · gerador {{ generator }}{% if verifier %} · verificador {{ verifier }}{% endif %} ·
+              **{{ task }}** · gerador {{ generator }}{% if validator_label %} · {{ validator_label }}{% endif %} ·
               iniciada em {{ state_attr('sensor.codex_ultimo_job_local_ai', 'iniciado_em') }}.
 
               GPU, VRAM e potência são atualizadas na seção **Atividade ao vivo**.
               {% elif task and status == 'success' %}
               ## Último job de GPU
 
-              **{{ task }}** · gerador {{ generator }}{% if verifier %} · verificador {{ verifier }}{% endif %} ·
+              **{{ task }}** · gerador {{ generator }}{% if validator_label %} · {{ validator_label }}{% endif %} ·
               {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s'), 3) }} s ·
               {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_por_segundo'), 2) }} tok/s
 
@@ -487,6 +482,7 @@ views:
               gate **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'custo_gate_validacao_tokens')) }}** =
               útil líquido **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados')) }} tokens** ·
               redução útil líquida **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'reducao_contexto_percentual'), 1) }}%** ·
+              entrega **{{ 'Code Mode' if delivery_transport == 'code-mode-orchestrator-v1' else 'PostToolUse' if delivery_transport == 'post-tool-hook' else delivery_transport or 'canônica' }}** ·
               {% else %}
               saída aprovada, mas **uso pelo modelo principal não confirmado**; contribuição líquida **0 tokens** ·
               {% endif %}
@@ -501,7 +497,7 @@ views:
               {% set discard_reason = state_attr('sensor.codex_ultimo_job_local_ai', 'motivo_descarte') %}
               A última execução de **{{ task }}** foi {{ 'descartada por não gerar ganho líquido suficiente' if status == 'discarded' and discard_reason == 'insufficient_net_savings' else 'descartada pelo gate de fidelidade' if status == 'discarded' else 'interrompida por falha técnica' }} em
               {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'duracao_s'), 3) }} s
-              com gerador {{ generator }}{% if verifier %} e verificador {{ verifier }}{% endif %}
+              com gerador {{ generator }}{% if validator_label %} e {{ validator_label }}{% endif %}
               ({{ state_attr('sensor.codex_ultimo_job_local_ai', 'erro_tipo') or 'tipo não informado' }}).
               Nenhum token economizado é contabilizado para uma execução sem sucesso.
               {% else %}
@@ -716,6 +712,10 @@ views:
                 name: Utilizados pelo modelo principal
                 color: green
               - type: tile
+                entity: sensor.codex_tokens_totais
+                name: Tokens totais
+                color: blue
+              - type: tile
                 entity: sensor.codex_contexto_tentado_local_ai
                 name: Contexto tentado
                 color: blue
@@ -790,10 +790,10 @@ views:
               contexto OpenAI evitado, aprovado e entregue ao modelo principal − tokens locais de entrada e
               saída do gate desses resultados = saldo líquido equivalente. Como os
               tokenizadores são diferentes, esse saldo é um índice conservador,
-              não uma contagem faturável. A redução útil divide o saldo por todo
-              o contexto tentado. Falhas, rejeições, fallbacks e uso não confirmado
-              permanecem no denominador e valem zero no numerador; somente benchmarks
-              diagnósticos ficam fora.
+              não uma contagem faturável. A redução útil divide o saldo pela base
+              contrafactual: tokens Codex totais preservados + saldo útil. Falhas,
+              rejeições, fallbacks, uso não confirmado e demais tokens fora dos
+              resultados úteis permanecem no denominador e valem zero no numerador.
 
           - type: statistics-graph
             title: GPU — últimas 48 horas
@@ -884,6 +884,10 @@ views:
                 name: Utilizados pelo modelo principal
                 color: green
               - type: tile
+                entity: sensor.codex_tokens_totais_hoje
+                name: Tokens totais
+                color: blue
+              - type: tile
                 entity: sensor.codex_contexto_tentado_local_ai_hoje
                 name: Contexto tentado
                 color: blue
@@ -935,13 +939,14 @@ views:
               do **Waterfall — total preservado**, mas inclui somente eventos do
               dia UTC atual. *contexto evitado validado* é somente o delta dos
               resultados aprovados, com custo mensurável e uso confirmado; contexto evitado validado − custo do gate = saldo
-              líquido equivalente; a redução útil divide esse saldo por todo o
-              contexto tentado. Uso não confirmado, descartes, fallbacks e falhas
-              valem zero no numerador.
+              líquido equivalente; a redução útil divide esse saldo pela base
+              contrafactual de hoje: tokens Codex totais + saldo útil. Uso não
+              confirmado, descartes, fallbacks, falhas e demais tokens fora dos
+              resultados úteis valem zero no numerador.
 
           - type: grid
             title: Diagnóstico do gate — hoje · UTC
-            columns: 6
+            columns: 2
             square: false
             cards:
               - type: tile
