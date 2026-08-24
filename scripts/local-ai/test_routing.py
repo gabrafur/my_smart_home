@@ -90,6 +90,19 @@ class RoutingPolicyTest(unittest.TestCase):
         self.assertEqual(accepted["decision"], "LOCAL_AI_ELIGIBLE")
         self.assertGreaterEqual(accepted["expected_net_tokens_saved"], 600)
 
+    def test_extractive_anchor_gate_has_zero_inference_validation_cost(self):
+        eligible = assess_routing("summarize-log", 40_000, availability="available")
+        accepted = apply_economic_precheck(
+            eligible,
+            context_input_tokens=10_000,
+            model_input_tokens=9_500,
+            quality_gate_type="deterministic-log-anchors-v1",
+        )
+
+        self.assertEqual(accepted["decision"], "LOCAL_AI_ELIGIBLE")
+        self.assertEqual(accepted["estimated_validation_tokens"], 0)
+        self.assertEqual(accepted["expected_net_tokens_saved"], 9_200)
+
 
 if __name__ == "__main__":
     unittest.main()

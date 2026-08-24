@@ -14,7 +14,7 @@ RUN apt-get update && \
 
 RUN npm install -g \
     @anthropic-ai/claude-code@2.1.197 \
-    @openai/codex@0.147.0
+    @openai/codex@0.149.1
 
 # --dangerously-skip-permissions refuses to run as root/sudo, so run as the
 # image's built-in "node" user. Compose adds the host docker socket GID at

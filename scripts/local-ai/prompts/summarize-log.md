@@ -1,13 +1,12 @@
-Return JSON only. Summarize this log for an engineering agent. Preserve exact error
-messages, exception types, affected components, likely cause, and the smallest
-next diagnostic command. Group repeated or related messages, return at most eight
-concise entries in each list, and do not enumerate routine INFO/DEBUG lines. Do not
-speculate beyond the evidence. Every distinct ERROR, EXCEPTION, FAIL, ASSERT, WARN,
-CRITICAL, FATAL, or TIMEOUT signal must be represented in `summary` or `errors`.
-Preserve exact exception names, test identifiers, paths, line numbers, and code
-identifiers such as names containing underscores; do not paraphrase them. Every
-such identifier from a signal line must occur in `summary` or `errors`, not only
-in `recommended_actions`.
+Return JSON only. Select evidence from this log for an engineering agent. Copy
+every ERROR, EXCEPTION, FAIL, ASSERT, WARN, CRITICAL, FATAL, or TIMEOUT line
+exactly into `errors`, including an immediately adjacent stack/path line. Input
+lines have IDs such as `L0001`. Select one to four representative INFO/DEBUG or
+other non-signal lines and put only their IDs in `routine_context`; never put an
+ERROR/WARN/FAIL/TIMEOUT line there. Keep `summary` concise, use only
+facts present in the input, and do not speculate. List only paths that occur in
+the input. Leave `recommended_actions` empty because the primary model will make
+diagnostic decisions from the extractive evidence.
 
 Schema:
-{"summary":"","errors":[""],"suspected_files":[""],"recommended_actions":[""],"confidence":"low|medium|high"}
+{"summary":"","errors":[""],"routine_context":["L0001"],"suspected_files":[""],"recommended_actions":[],"confidence":"low|medium|high"}

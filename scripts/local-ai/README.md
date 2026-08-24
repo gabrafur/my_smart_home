@@ -48,8 +48,9 @@ Run the offline quality benchmark after the schema benchmark:
 ```bash
 python3 scripts/local-ai/quality_ab.py \
   --model <installed-generator> \
-  --verifier-model <installed-independent-verifier> \
-  --repetitions 2 \
+  --quality-gate deterministic-log-anchors-v1 \
+  --task summarize-log \
+  --repetitions 4 \
   --output .agent-history/local-ai-quality-ab.json
 ```
 
@@ -61,6 +62,34 @@ confidence intervals, size bands, and task/split aggregates. It identifies
 models, parameters and fixture/prompt/helper/harness hashes, and explicitly
 records that it does not execute an end-to-end primary-model A/B. Full reports
 are private metadata under `.agent-history/`; stdout is a sanitized summary.
+
+For a completed Code Mode job, build the delivery-aware v6 control/treatment
+report without reading prompt or output content:
+
+```bash
+python3 scripts/local-ai/quality_ab.py --delivery-job-id <job_id>
+```
+
+This mode requires a telemetry-bound `code-mode-orchestrator-v1` receipt. It
+compares raw control tokens with the compressed treatment actually delivered,
+while keeping final-answer quality explicitly unevaluated.
+
+For the mixed end-to-end GPT workload, use the weighted v8 harness:
+
+```bash
+python3 scripts/local-ai/system_ab.py \
+  --model gpt-5.6-terra \
+  --reasoning medium \
+  --output .agent-history/local-ai-system-ab-v8.json
+```
+
+It executes two paired fixtures across logs, test output, documentation, diff
+review, file triage, structured extraction and explicitly RTX-ineligible work.
+The router is evaluated for every treatment task and all fallback traffic stays
+in the denominator. The 2026-08-24 run reported 6.4% weighted end-to-end GPT
+input-token savings and 30.1% eligible-task savings, with 14/14 functional
+passes in both arms. The workload weights are a declared synthetic profile,
+not production-traffic telemetry.
 
 Calibrate a proposed verifier independently before the generator A/B:
 
@@ -75,23 +104,33 @@ The configured generator on the RTX 4070 remains `qwen2.5-coder:14b`. In the
 `qwen3:8b`, but both selected the same 2/16 economically useful results and the
 same 13.6% offline weighted reduction, with a 0% median. Only the two
 `summarize-log` observations in the 3,000–5,999-token band saved context; all
-14 smaller observations saved zero. Neither verifier was promoted. These are
-offline compression results, not operational savings.
+14 smaller observations saved zero. Neither model verifier was promoted. A v5
+follow-up restricted to the eligible 3,000–5,999-token log band promoted the
+extractive `deterministic-log-anchors-v1` validator: 8/8 accepted and useful,
+zero false accepts/rejects, 94.8% median reduction, and a 94.7–94.8% clustered
+95% interval. These remain offline compression results, not confirmed
+operational savings. The first delivery-aware v6 observation subsequently
+confirmed 3,925 useful tokens from a 4,074-token control, or 96.3%; it is one
+operational paired observation, not a population estimate.
 
 The current operational policy enables only task profiles with defensible
 quality evidence. Every profile except `summarize-log` is routed as
 `LOCAL_AI_NOT_BENEFICIAL`; disabled profiles remain available to the benchmark
 through diagnostic-only `LOCAL_AI_FORCE=1`. `summarize-log` starts at 3,000
-input tokens, first applies a conservative economic precheck, and then requires
-a verifier different from the
-generator. With no promoted independent verifier configured, it bypasses local
-inference as `independent_verifier_required`. Such skips do not count as missed
-RTX opportunities or token savings.
+input tokens and uses an extractive gate. The model selects representative
+routine line IDs; deterministic code replaces generated prose with exact
+signal, stack/path, and selected source lines. Truncation, more than 16 critical
+lines, or a non-extractive selector falls back to the raw context. This gate
+uses zero model-validation tokens; other profiles still require a verifier
+different from the generator.
 
-Operational telemetry schema 18 separates gate-approved compression from
+Operational telemetry schema 19 separates gate-approved compression from
 confirmed primary-context replacement. A strict useful result must be a
-successful, measured, non-truncated `PostToolUse` replacement approved by a
-verifier independent from the generator. CLI, direct MCP, benchmark and legacy
+successful, measured, non-truncated replacement delivered either by
+`PostToolUse` or by a `code-mode-orchestrator-v1` receipt bound to the exact MCP
+job and source size. It must be approved by an independent validator: either a
+verifier model distinct from the generator or the exact promoted log-anchor
+gate. CLI, direct MCP, benchmark and legacy
 jobs without delivery evidence retain diagnostic/provisional metadata but add
 zero to the dashboard's confirmed savings. Aggregates are available by day,
 task, generator, and generator/verifier pair. Technical failure rates use only
@@ -162,11 +201,13 @@ LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-lo
    trade-offs, integration of evidence and final review with Codex/OpenAI.
 
 Treat every local result as untrusted first-pass evidence. The helper validates
-task-specific anchors and runs a second fidelity check with a minimum score of
-90%; rejected output is not returned as context and records zero useful token
-savings. For accepted output, useful savings are net: the gross primary-context
-delta minus the Ollama prompt and completion tokens consumed by that output's
-fidelity checks. Legacy jobs without a separable verifier count retain gross
+task-specific anchors. Most profiles run a second fidelity check with a minimum
+score of 90%. The promoted log profile instead permits only exact source
+extracts and therefore has no second model call. Rejected output is not returned
+as context and records zero useful token savings. For accepted output, useful
+savings are net: the gross primary-context delta minus the Ollama prompt and
+completion tokens consumed by that output's fidelity checks. Legacy jobs
+without a separable validator count retain gross
 telemetry but claim zero net savings. Feed only accepted JSON—not raw logs or
 diagnostics—back to Codex.
 
@@ -174,8 +215,11 @@ Do not describe status or route checks as RTX usage. A successful
 `local_ai_compress_context` result with a non-empty `job_id` and recorded
 telemetry proves only that local inference ran. It does not prove that the
 primary model consumed the result. Confirmed operational savings additionally
-require canonical `PostToolUse` replacement metadata, an independent verifier,
-measured gate cost, and no bounded truncation.
+require canonical `PostToolUse` replacement metadata or the metadata-only Code
+Mode receipt, an independent validator, measured gate cost, and no bounded
+truncation. The Code Mode path finishes with `local-ai confirm-delivery`; it
+records no input or output content, and the conversation auditor separately
+matches the bounded envelope to the runtime MCP job and result.
 
 `route` is metadata-only: it never contacts Ollama and never writes its input.
 Use it to preview a candidate or record an explicit skip:

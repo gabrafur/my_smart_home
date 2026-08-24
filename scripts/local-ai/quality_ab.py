@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline Local AI compression benchmark where rejected outputs save zero tokens."""
+"""Offline fidelity benchmark and delivery-confirmed Local AI context A/B."""
 
 from __future__ import annotations
 
@@ -32,6 +32,26 @@ TASK_MINIMUM_NET = {
 
 def estimated_tokens(text: str) -> int:
     return math.ceil(len(text.encode("utf-8")) / 4)
+
+
+def resolved_telemetry_path(explicit: Path | None) -> Path:
+    if explicit is not None:
+        return explicit.expanduser()
+    configured = os.getenv("LOCAL_AI_TELEMETRY_PATH")
+    if configured:
+        return Path(configured).expanduser()
+    config = Path(os.getenv(
+        "LOCAL_AI_CONFIG",
+        str(Path(os.getenv("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "codex" / "local-ai.json"),
+    )).expanduser()
+    try:
+        value = json.loads(config.read_text(encoding="utf-8"))
+        configured = value.get("telemetry_path") if isinstance(value, dict) else None
+    except (OSError, json.JSONDecodeError):
+        configured = None
+    if isinstance(configured, str) and configured:
+        return Path(configured).expanduser()
+    return Path.cwd() / ".agent-history" / "local-ai-telemetry.json"
 
 
 def missing_requirements(output: str, requirements: list[Any]) -> list[str]:
@@ -98,7 +118,7 @@ def cases() -> list[dict[str, Any]]:
     ])
     log_noise = "\n".join(
         f"1999-01-01T12:{index // 60:02d}:{index % 60:02d}Z api INFO request={index} status=200"
-        for index in range(180)
+        for index in range(240)
     )
     log = "\n".join([
         log_noise,
@@ -239,6 +259,7 @@ def wilson_interval(successes: int, observations: int, z: float = 1.96) -> list[
 def run_case(
     model: str,
     verifier_model: str,
+    quality_gate: str,
     case: dict[str, Any],
     repetition: int,
     order_index: int,
@@ -256,6 +277,7 @@ def run_case(
             [
                 sys.executable, str(HELPER), str(case["task"]),
                 "--model", model, "--verifier-model", verifier_model,
+                "--quality-gate", quality_gate,
                 "--context-tokens", "8192",
                 "--input-max-chars", "50000", "--output-tokens", "1200",
                 "--diagnostic-capture",
@@ -344,6 +366,7 @@ def run_case(
         "token_count_method": job.get("token_count_method") or "estimated_utf8_bytes_div_4",
         "generator_model": job.get("model") or model,
         "verifier_model": job.get("verifier_model") or verifier_model,
+        "quality_gate_type": job.get("quality_gate_type") or quality_gate,
         "error_type": job.get("error_type"),
         "quality_score_percent": job.get("quality_score_percent"),
         "generation_attempts": job.get("local_attempts"),
@@ -362,6 +385,7 @@ def summarize_results(
     condition_label: str = "candidate",
     order_seed: int = 0,
     execution_order: list[dict[str, Any]] | None = None,
+    quality_gate_type: str = "llm-verifier",
 ) -> dict[str, Any]:
     def aggregate(items: list[dict[str, Any]]) -> dict[str, Any]:
         control = sum(int(item["control_tokens"]) for item in items)
@@ -478,7 +502,7 @@ def summarize_results(
     accepted = sum(item["quality_accepted"] is True for item in results)
     efficient = sum(item["efficient"] is True for item in results)
     return {
-        "suite": "local-ai-quality-benchmark-v4",
+        "suite": "local-ai-quality-benchmark-v5",
         "benchmark_kind": "offline_context_compression_with_fidelity_gate",
         "end_to_end_primary_model_evaluated": False,
         "operational_savings_proven": False,
@@ -486,6 +510,8 @@ def summarize_results(
         "generator_model": model,
         "verifier_model": verifier_model,
         "independent_verifier": verifier_model != model,
+        "quality_gate_type": quality_gate_type,
+        "independent_validator": verifier_model != model,
         "fixture_suite_sha256": fixture_hash,
         "prompt_bundle_sha256": prompt_hash,
         "helper_sha256": file_sha256(HELPER),
@@ -528,10 +554,109 @@ def summarize_results(
     }
 
 
+def delivery_ab_report(state: dict[str, Any], job_id: str) -> dict[str, Any]:
+    """Compare raw control context with a telemetry-confirmed delivered result."""
+    jobs = state.get("latest_jobs")
+    job = next((
+        value for value in reversed(jobs if isinstance(jobs, list) else [])
+        if isinstance(value, dict) and str(value.get("id") or "") == job_id
+    ), None)
+    receipts = (state.get("deliveries") or {}).get("latest_receipts")
+    receipt = next((
+        value for value in reversed(receipts if isinstance(receipts, list) else [])
+        if isinstance(value, dict) and str(value.get("job_id") or "") == job_id
+    ), None)
+    if job is None or receipt is None:
+        raise RuntimeError("delivery_ab_job_or_receipt_not_found")
+
+    control_tokens = max(0, int(job.get("context_input_tokens") or 0))
+    treatment_tokens = max(0, int(job.get("context_output_tokens") or 0))
+    validation_tokens = max(0, int(job.get("quality_validation_tokens") or 0))
+    useful_tokens = max(0, control_tokens - treatment_tokens - validation_tokens)
+    expected_useful = max(0, int(job.get("useful_context_tokens_avoided") or 0))
+    valid = (
+        receipt.get("transport") == "code-mode-orchestrator-v1"
+        and receipt.get("task") == job.get("task") == "summarize-log"
+        and int(receipt.get("source_output_chars") or 0) == int(job.get("context_input_chars") or 0) > 0
+        and job.get("invocation_source") == "mcp"
+        and job.get("status") == "success"
+        and job.get("quality_accepted") is True
+        and job.get("quality_validation_tokens_measured") is True
+        and job.get("quality_gate_type") == "deterministic-log-anchors-v1"
+        and job.get("verifier_model") == "deterministic:log-anchors-v1"
+        and int(job.get("quality_verification_attempts") or 0) == 0
+        and control_tokens > treatment_tokens
+        and useful_tokens == expected_useful > 0
+    )
+    if not valid:
+        raise RuntimeError("delivery_ab_evidence_invalid")
+
+    reduction = round(useful_tokens / control_tokens * 100, 1)
+    return {
+        "suite": "local-ai-delivery-ab-v6",
+        "benchmark_kind": "operational_context_delivery_ab",
+        "job_id": job_id,
+        "task": "summarize-log",
+        "control_condition": {
+            "context_tokens": control_tokens,
+            "delivery": "raw_context_counterfactual",
+        },
+        "treatment_condition": {
+            "context_tokens": treatment_tokens,
+            "quality_validation_tokens": validation_tokens,
+            "delivery": "code-mode-orchestrator-v1",
+        },
+        "quality_gate_type": job.get("quality_gate_type"),
+        "quality_accepted": True,
+        "primary_context_delivery_evaluated": True,
+        "primary_model_use_confirmed": True,
+        "operational_savings_proven": True,
+        "final_answer_quality_evaluated": False,
+        "confirmed_end_to_end_useful_tokens_avoided": useful_tokens,
+        "confirmed_end_to_end_useful_reduction_percent": reduction,
+        "final_useful_reduction_percent": reduction,
+        "token_count_method": job.get("token_count_method") or "estimated_utf8_bytes_div_4",
+        "source_output_chars": int(job.get("context_input_chars") or 0),
+        "delivery_confirmed_at": receipt.get("confirmed_at"),
+    }
+
+
+def print_report(report: dict[str, Any], output: Path | None) -> None:
+    if output is not None:
+        output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        output.chmod(0o660)
+        printed = {key: value for key, value in report.items() if key != "results"}
+        printed["results_file"] = str(output)
+    else:
+        printed = report
+    print(json.dumps(printed, ensure_ascii=False, indent=2))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--model")
+    parser.add_argument(
+        "--delivery-job-id",
+        help="build a metadata-only v6 control/treatment report for a confirmed Code Mode job",
+    )
+    parser.add_argument(
+        "--telemetry-path",
+        type=Path,
+        help="private telemetry state; defaults to the canonical Local AI configuration",
+    )
     parser.add_argument("--verifier-model", help="independent installed verifier model; defaults to --model")
+    parser.add_argument(
+        "--quality-gate",
+        choices=("llm-verifier", "deterministic-log-anchors-v1"),
+        default="llm-verifier",
+    )
+    parser.add_argument(
+        "--task",
+        action="append",
+        choices=sorted(TASK_MINIMUM_NET),
+        help="fixture task to execute; repeat to select multiple tasks (default: all)",
+    )
     parser.add_argument("--repetitions", type=int, default=3)
     parser.add_argument(
         "--split",
@@ -547,11 +672,28 @@ def main() -> int:
         help="write the full metadata-only benchmark report to a private JSON file",
     )
     args = parser.parse_args()
+    if args.delivery_job_id:
+        try:
+            state = json.loads(resolved_telemetry_path(args.telemetry_path).read_text(encoding="utf-8"))
+            report = delivery_ab_report(state, args.delivery_job_id)
+        except (OSError, json.JSONDecodeError, RuntimeError) as error:
+            parser.error(str(error))
+        print_report(report, args.output)
+        return 0
+    if not args.model:
+        parser.error("--model is required unless --delivery-job-id is used")
     if args.repetitions < 1:
         parser.error("--repetitions must be positive")
-    verifier_model = args.verifier_model or args.model
+    verifier_model = (
+        "deterministic:log-anchors-v1"
+        if args.quality_gate == "deterministic-log-anchors-v1"
+        else args.verifier_model or args.model
+    )
     splits = set(args.split or ("development", "holdout"))
-    test_cases = [case for case in cases() if case["split"] in splits]
+    tasks = set(args.task or TASK_MINIMUM_NET)
+    test_cases = [case for case in cases() if case["split"] in splits and case["task"] in tasks]
+    if args.quality_gate == "deterministic-log-anchors-v1" and tasks != {"summarize-log"}:
+        parser.error("deterministic-log-anchors-v1 requires --task summarize-log")
     results: list[dict[str, Any]] = []
     execution_order: list[dict[str, Any]] = []
     order_index = 0
@@ -570,6 +712,7 @@ def main() -> int:
             results.append(run_case(
                 args.model,
                 verifier_model,
+                args.quality_gate,
                 case,
                 repetition,
                 order_index,
@@ -584,16 +727,9 @@ def main() -> int:
         condition_label=args.condition_label,
         order_seed=args.order_seed,
         execution_order=execution_order,
+        quality_gate_type=args.quality_gate,
     )
-    if args.output is not None:
-        args.output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        args.output.chmod(0o660)
-        printed = {key: value for key, value in report.items() if key != "results"}
-        printed["results_file"] = str(args.output)
-    else:
-        printed = report
-    print(json.dumps(printed, ensure_ascii=False, indent=2))
+    print_report(report, args.output)
     return 0
 
 

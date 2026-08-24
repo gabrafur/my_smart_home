@@ -188,6 +188,21 @@ repository skill `.agents/skills/rtx-context-optimizer/SKILL.md` and the global
 `local-ai-rtx` MCP server. Do not ask for confirmation merely to route eligible
 context.
 
+Apply this decision to every user request. Isolate the smallest candidate.
+Always call
+`local_ai_route` before `local_ai_compress_context`. The only profile with a
+currently positive promoted A/B result is non-sensitive `summarize-log` at
+3,000+ tokens with `deterministic-log-anchors-v1`; all else falls back.
+`PostToolUse` automates large `Bash` output, not prompt or nested Code Mode.
+
+For eligible Code Mode output, keep the raw result inside `functions.exec`,
+route/compress it, then run the metadata-only `./scripts/local-ai/local-ai
+confirm-delivery --job-id <uuid> --source-output-chars <exact_chars>` in that
+same orchestration. Emit only the exact MCP result in a bounded JSON envelope
+with `local_ai_context_replacement=true`, the receipt under `delivery`,
+`delivery.raw_output_emitted=false`, and canonical execution metadata. Any
+failure creates no delivery evidence and zero useful tokens.
+
 Never send secrets or private runtime to Local AI and never delegate final
 architecture, security, production, migration, destructive-operation, RCA, or
 PR approval decisions. Use only the configured endpoint; never silently use
@@ -199,6 +214,10 @@ Do not expose a large raw tool result before routing finishes. Claim actual RTX
 use only after successful compression returns the required execution and
 telemetry metadata. Local telemetry is metadata-only and must never persist
 prompts, source input, model output, or secrets.
+
+A direct MCP/CLI success proves only inference. Operational use requires
+`PostToolUse` replacement or a `code-mode-orchestrator-v1` receipt bound to the
+same job and input size; the auditor matches its runtime result by `job_id`.
 
 Count context reduction as useful only when the task-specific fidelity gate
 accepts the result. A rejected or discarded Local AI result must fall back to
@@ -347,14 +366,15 @@ O procedimento canônico fica em
 `./scripts/local-ai/local-ai` permanece somente para diagnóstico e testes do
 projeto.
 
-A revisão interativa do hook é uma etapa operacional obrigatória depois de um
-novo clone ou instalação, da reconstrução do contêiner que executa o Codex e de
-qualquer alteração em `.codex/hooks.json`. Abra o Codex CLI no diretório do
-projeto, execute `/hooks` e não considere o roteamento habilitado até a tabela
-mostrar `PostToolUse` com `Installed = 1` e `Active = 1`. Neste ambiente, abra o
-CLI com `docker compose exec -w /workspace ai-bridge codex`. A aprovação não
-pode ser automatizada nem substituída por opção de bypass; se estiver ausente,
-instrua o usuário a revisar e habilitar o hook interativamente.
+Revise o hook interativamente após clone, instalação, reconstrução do cliente
+Codex ou mudança em `.codex/hooks.json`. A confiança é específica por cliente:
+aprovar pelo CLI do `ai-bridge` não ativa o hook na extensão do VS Code, nem o
+inverso. Execute `/hooks` no cliente que recebe os prompts e exija
+`PostToolUse` com `Installed = 1` e `Active = 1`. No bridge, use
+`docker compose exec -w /workspace ai-bridge codex`. Na extensão, use
+`./scripts/local-ai/review-vscode-hooks.sh` no host; após aprovar ou atualizar,
+execute `Developer: Reload Window` e abra uma conversa nova. Nunca automatize
+nem contorne essa aprovação.
 
 Consulte `docs/LOCAL_AI_RTX_4070.md` antes de alterar helper, hook, telemetria
 ou cards Codex/RTX. A publicação LAN tem porta proxy restrita e não deve ter

@@ -25,7 +25,10 @@ TASK_MIN_CHARS = {
     "inspect-files": 4_800,
     "review-diff": 4_800,
     "summarize-document": 4_800,
-    "summarize-log": 3_600,
+    # The promoted extractive profile was validated only at 3,000+ estimated
+    # OpenAI tokens. Align the hook's character prefilter with that floor so a
+    # smaller log does not even pay MCP routing overhead.
+    "summarize-log": 12_000,
 }
 DETERMINISTIC_POSTPROCESS_MIN_CHARS = 12_000
 MAX_HOOK_INPUT_CHARS = 2_000_000

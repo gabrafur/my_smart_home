@@ -345,6 +345,10 @@ test('does not report a stale Local AI preflight as available', (t) => {
   assert.equal(usage.freshness.preflight.current, false);
   assert.equal(usage.available, false);
   assert.equal(usage.state, 'LOCAL_AI_UNKNOWN');
+  assert.equal(usage.totals.primary_context_use_rate_percent, 0);
+  assert.equal(usage.totals.primary_context_usage_coverage_percent, 0);
+  assert.equal(usage.periods.today.primary_context_use_rate_percent, 0);
+  assert.equal(usage.periods.today.primary_context_usage_coverage_percent, 0);
 });
 
 test('uses only operational calls for technical success and failure rates', (t) => {
@@ -547,6 +551,96 @@ test('returns a bounded quality-aware Local AI history for the last 48 hours', (
   assert.equal(history.jobs[1].useful_context_tokens_avoided, 0);
   assert.equal(history.jobs[2].discard_reason, 'quality_gate_rejected');
   assert.equal(history.jobs[2].useful_context_tokens_avoided, 0);
+});
+
+test('promotes only a telemetry-bound Code Mode delivery receipt to useful reduction', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-code-mode-delivery-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  const job = {
+    id: '12345678-1234-4234-8234-123456789abc', task: 'summarize-log',
+    status: 'success', quality_accepted: true, model: 'generator',
+    verifier_model: 'deterministic:log-anchors-v1',
+    quality_gate_type: 'deterministic-log-anchors-v1',
+    quality_validation_tokens: 0, quality_verification_attempts: 0,
+    quality_validation_tokens_measured: true, invocation_source: 'mcp',
+    context_input_chars: 16299, context_input_tokens: 4075,
+    context_output_tokens: 200, gross_useful_context_tokens_avoided: 3875,
+    useful_context_tokens_avoided: 3875, context_replacement: true,
+    finished_at: '2026-08-24T12:00:00Z',
+  };
+  const unconfirmed = {
+    operational_calls: 1, operational_successful_calls: 1,
+    operational_quality_validated_calls: 1,
+    operational_quality_validated_measured_calls: 1,
+    operational_primary_context_used_calls: 0,
+    operational_primary_context_unconfirmed_calls: 1,
+    confirmed_gross_useful_context_tokens_avoided: 0,
+    confirmed_quality_validation_tokens: 0,
+    confirmed_useful_context_tokens_avoided: 0,
+    attempted_context_input_tokens: 4075,
+  };
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    totals: { ...unconfirmed },
+    daily: { '2026-08-24': { totals: { ...unconfirmed } } },
+    models: { generator: { totals: { ...unconfirmed } } },
+    model_pairs: { pair: {
+      generator_model: 'generator', verifier_model: 'deterministic:log-anchors-v1',
+      independent_verifier: true, totals: { ...unconfirmed },
+    } },
+    tasks: { 'summarize-log': { totals: { ...unconfirmed } } },
+    latest_jobs: [job],
+    deliveries: { latest_receipts: [{
+      job_id: job.id, task: job.task, transport: 'code-mode-orchestrator-v1',
+      source_output_chars: 16299, confirmed_at: '2026-08-24T12:00:01Z',
+    }] },
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-24T12:00:00Z',
+  }));
+
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-24T12:00:02Z'));
+  assert.equal(usage.totals.operational_primary_context_used_calls, 1);
+  assert.equal(usage.totals.operational_primary_context_unconfirmed_calls, 0);
+  assert.equal(usage.totals.confirmed_useful_context_tokens_avoided, 3875);
+  assert.equal(usage.periods.today.confirmed_useful_context_tokens_avoided, 3875);
+  assert.equal(usage.tasks[0].confirmed_useful_context_tokens_avoided, 3875);
+  assert.equal(usage.latest_jobs[0].primary_context_used, true);
+  assert.equal(usage.latest_jobs[0].delivery_transport, 'code-mode-orchestrator-v1');
+  assert.equal(usage.deliveries.confirmed_code_mode_calls, 1);
+
+  const tampered = JSON.parse(fs.readFileSync(telemetryPath, 'utf8'));
+  tampered.deliveries.latest_receipts[0].source_output_chars = 16298;
+  fs.writeFileSync(telemetryPath, JSON.stringify(tampered));
+  const rejected = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-24T12:00:02Z'));
+  assert.equal(rejected.totals.operational_primary_context_used_calls, 0);
+  assert.equal(rejected.latest_jobs[0].primary_context_used, false);
+});
+
+test('recognizes only the exact zero-token deterministic log validator', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-anchor-history-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({ latest_jobs: [
+    { id: 'anchor', task: 'summarize-log', status: 'success', quality_accepted: true,
+      model: 'generator', verifier_model: 'deterministic:log-anchors-v1',
+      quality_gate_type: 'deterministic-log-anchors-v1', quality_validation_tokens: 0,
+      quality_verification_attempts: 0, quality_validation_tokens_measured: true,
+      invocation_source: 'post-tool-hook', finished_at: '2026-08-16T11:45:00Z',
+      useful_context_tokens_avoided: 900 },
+    { id: 'spoofed', task: 'summarize-log', status: 'success', quality_accepted: true,
+      model: 'generator', verifier_model: 'deterministic:other',
+      quality_gate_type: 'deterministic-log-anchors-v1', quality_validation_tokens: 0,
+      quality_verification_attempts: 0, quality_validation_tokens_measured: true,
+      invocation_source: 'post-tool-hook', finished_at: '2026-08-16T11:44:00Z',
+      useful_context_tokens_avoided: 800 },
+  ] }));
+
+  const history = scanLocalAiHistory(telemetryPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(history.jobs[0].primary_context_used, false);
+  assert.equal(history.jobs[1].primary_context_used, true);
+  assert.equal(history.jobs[1].quality_gate_type, 'deterministic-log-anchors-v1');
 });
 
 test('separates confirmed RTX unavailability from unknown availability', (t) => {

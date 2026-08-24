@@ -27,6 +27,7 @@ MAX_EVENT_LOG_BYTES = 2_000_000
 MAX_RECENT_JOBS = 40
 MAX_RECENT_DECISIONS = 40
 MAX_RECENT_MEMORY_DECISIONS = 40
+MAX_RECENT_DELIVERY_RECEIPTS = 40
 MAX_SEEN_IDS = 10_000
 MAX_SEEN_DECISION_IDS = 10_000
 MAX_SEEN_MEMORY_DECISION_IDS = 10_000
@@ -163,7 +164,7 @@ def _memory_totals() -> dict[str, float | int]:
 
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 18,
+        "schema_version": 19,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
@@ -173,6 +174,9 @@ def _initial_state() -> dict[str, Any]:
         "seen_event_ids": [],
         "active_jobs": {},
         "latest_jobs": [],
+        "deliveries": {
+            "latest_receipts": [],
+        },
         "routing": {
             "totals": _routing_totals(),
             "seen_decision_ids": [],
@@ -205,6 +209,21 @@ def _counts_as_context_replacement(event: dict[str, Any]) -> bool:
     return event.get("status") == "success" and not str(event.get("task") or "").startswith("benchmark:")
 
 
+def _quality_validation_independent(event: dict[str, Any]) -> bool:
+    """Accept either a distinct LLM verifier or the exact extractive log gate."""
+    gate_type = str(event.get("quality_gate_type") or "llm-verifier")
+    verifier = str(event.get("verifier_model") or "")
+    generator = str(event.get("model") or "")
+    if gate_type == "deterministic-log-anchors-v1":
+        return (
+            str(event.get("task") or "") == "summarize-log"
+            and verifier == "deterministic:log-anchors-v1"
+            and int(_number(event.get("quality_validation_tokens")) or 0) == 0
+            and int(_number(event.get("quality_verification_attempts")) or 0) == 0
+        )
+    return bool(verifier) and verifier != generator
+
+
 def _primary_context_use_confirmed(event: dict[str, Any]) -> bool:
     """Return true only when the hook proves the bounded result replaced raw context."""
     bounded_truncation = (
@@ -217,8 +236,7 @@ def _primary_context_use_confirmed(event: dict[str, Any]) -> bool:
         and event.get("status") == "success"
         and event.get("quality_accepted") is True
         and event.get("quality_validation_tokens_measured") is True
-        and bool(str(event.get("verifier_model") or ""))
-        and str(event.get("verifier_model") or "") != str(event.get("model") or "")
+        and _quality_validation_independent(event)
         and str(event.get("invocation_source") or "") == "post-tool-hook"
         and float(_number(event.get("useful_context_tokens_avoided")) or 0) > 0
         and not bounded_truncation
@@ -840,6 +858,20 @@ def _ensure_model_pair_accounting(state: dict[str, Any], path: Path) -> None:
     state["model_pairs"] = pairs
 
 
+def _ensure_delivery_state(state: dict[str, Any]) -> None:
+    """Add the metadata-only delivery receipt store without rewriting history."""
+    deliveries = state.setdefault("deliveries", {})
+    if not isinstance(deliveries, dict):
+        deliveries = {}
+        state["deliveries"] = deliveries
+    receipts = deliveries.setdefault("latest_receipts", [])
+    if not isinstance(receipts, list):
+        deliveries["latest_receipts"] = []
+    else:
+        deliveries["latest_receipts"] = receipts[-MAX_RECENT_DELIVERY_RECEIPTS:]
+    state["schema_version"] = max(19, int(state.get("schema_version") or 1))
+
+
 @contextlib.contextmanager
 def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -857,6 +889,7 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
         _ensure_operational_accounting(state, path)
         _ensure_primary_usage_and_task_accounting(state, path)
         _ensure_model_pair_accounting(state, path)
+        _ensure_delivery_state(state)
         try:
             yield state
         finally:
@@ -1252,6 +1285,85 @@ class TelemetryRecorder:
             _append_event(self.state_path, event)
         except (OSError, KeyError, TypeError):
             pass
+
+    def confirm_delivery(
+        self,
+        job_id: str,
+        *,
+        transport: str,
+        source_output_chars: int,
+    ) -> dict[str, Any]:
+        """Record a metadata-only receipt for bounded Code Mode delivery.
+
+        The receipt does not trust caller-supplied savings or result content. It
+        binds a supported transport to an already completed telemetry job and
+        requires the exact raw-output size seen by that job. Aggregate counters
+        remain immutable here; dashboard readers reconcile this receipt against
+        the retained job so an unverified MCP call continues to count as zero.
+        """
+        if not self.enabled or self.state_path is None:
+            raise RuntimeError("local_ai_telemetry_unavailable")
+        if transport != "code-mode-orchestrator-v1":
+            raise RuntimeError("unsupported_delivery_transport")
+        if not re.fullmatch(r"[0-9a-fA-F-]{36}", str(job_id)):
+            raise RuntimeError("invalid_delivery_job_id")
+        if source_output_chars < 1:
+            raise RuntimeError("invalid_delivery_source_size")
+
+        with _locked_state(self.state_path) as state:
+            jobs = state.get("latest_jobs")
+            job = next(
+                (
+                    value for value in reversed(jobs if isinstance(jobs, list) else [])
+                    if isinstance(value, dict) and str(value.get("id") or "") == job_id
+                ),
+                None,
+            )
+            if job is None:
+                raise RuntimeError("delivery_job_not_found")
+            if str(job.get("invocation_source") or "") != "mcp":
+                raise RuntimeError("delivery_job_not_mcp")
+            if int(_number(job.get("context_input_chars")) or 0) != source_output_chars:
+                raise RuntimeError("delivery_source_size_mismatch")
+            if not (
+                _counts_as_context_replacement(job)
+                and job.get("status") == "success"
+                and job.get("quality_accepted") is True
+                and job.get("quality_validation_tokens_measured") is True
+                and _quality_validation_independent(job)
+                and float(_number(job.get("useful_context_tokens_avoided")) or 0) > 0
+            ):
+                raise RuntimeError("delivery_job_not_useful")
+            if (
+                job.get("input_truncated") is True
+                and str(job.get("task") or "")
+                in {"inspect-files", "review-diff", "summarize-document", "summarize-memory"}
+            ):
+                raise RuntimeError("delivery_job_truncated")
+
+            deliveries = state.setdefault("deliveries", {})
+            receipts = deliveries.setdefault("latest_receipts", [])
+            existing = next(
+                (
+                    value for value in receipts
+                    if isinstance(value, dict) and str(value.get("job_id") or "") == job_id
+                ),
+                None,
+            )
+            if existing is not None:
+                return dict(existing)
+            receipt = {
+                "job_id": job_id,
+                "confirmed_at": utc_now(),
+                "transport": transport,
+                "source_output_chars": source_output_chars,
+                "task": str(job.get("task") or "unknown"),
+            }
+            receipts.append(receipt)
+            deliveries["latest_receipts"] = receipts[-MAX_RECENT_DELIVERY_RECEIPTS:]
+            state["schema_version"] = max(19, int(state.get("schema_version") or 1))
+            state["updated_at"] = utc_now()
+            return receipt
 
     def routing_decision(self, decision: dict[str, Any]) -> None:
         """Persist a final routing outcome, never the source material it evaluated."""

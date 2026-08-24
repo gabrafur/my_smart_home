@@ -37,6 +37,17 @@ DEFAULT_ENDPOINT: str | None = None
 MAX_RAW_CHARS = 2_000_000
 AUTO_MODEL_MAX_BYTES = 8_500_000_000
 SIGNAL_PREPROCESS_TASKS = {"analyze-tests", "classify-error", "summarize-log"}
+LOG_ANCHOR_GATE_TYPE = "deterministic-log-anchors-v1"
+LOG_ANCHOR_VERIFIER = "deterministic:log-anchors-v1"
+LOG_MAX_CRITICAL_LINES = 16
+LOG_MAX_ROUTINE_CONTEXT_LINES = 4
+LOG_SIGNAL_PATTERN = re.compile(
+    r"\b(ERROR|EXCEPTION|FAIL(?:ED|URE)?|ASSERT(?:ION)?|WARN(?:ING)?|CRITICAL|FATAL|TIMEOUT)\b",
+    re.IGNORECASE,
+)
+LOG_PATH_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_])(?:[A-Za-z]:)?/?(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+(?::\d+(?::\d+)?)?"
+)
 TASK_REQUIRED_FIELDS = {
     "analyze-tests": {"summary", "failures", "warnings", "recommended_actions", "confidence"},
     "classify-error": {"summary", "category", "layer", "likely_causes", "recommended_actions", "confidence"},
@@ -49,7 +60,9 @@ TASK_REQUIRED_FIELDS = {
     "summarize-document": {
         "summary", "key_points", "decisions", "constraints", "open_questions", "confidence",
     },
-    "summarize-log": {"summary", "errors", "suspected_files", "recommended_actions", "confidence"},
+    "summarize-log": {
+        "summary", "errors", "routine_context", "suspected_files", "recommended_actions", "confidence",
+    },
 }
 TASK_LIST_FIELDS = {
     "analyze-tests": {"failures", "warnings", "recommended_actions"},
@@ -61,7 +74,7 @@ TASK_LIST_FIELDS = {
         "configuration_values", "unresolved_issues", "warnings", "source_facts",
     },
     "summarize-document": {"key_points", "decisions", "constraints", "open_questions"},
-    "summarize-log": {"errors", "suspected_files", "recommended_actions"},
+    "summarize-log": {"errors", "routine_context", "suspected_files", "recommended_actions"},
 }
 QUALITY_VERIFICATION_SCHEMA = {
     "type": "object",
@@ -201,12 +214,22 @@ def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
         "type": "object",
         "properties": {
             "summary": {"type": "string"},
-            "errors": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
+            "errors": {
+                "type": "array", "maxItems": 4 if compact else LOG_MAX_CRITICAL_LINES,
+                "items": {"type": "string"},
+            },
+            "routine_context": {
+                "type": "array", "maxItems": 2 if compact else LOG_MAX_ROUTINE_CONTEXT_LINES,
+                "description": "One to four IDs of representative non-signal lines, for example L0001.",
+                "items": {"type": "string"},
+            },
             "suspected_files": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
             "recommended_actions": {"type": "array", "maxItems": max_items, "items": {"type": "string"}},
             "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
         },
-        "required": ["summary", "errors", "suspected_files", "recommended_actions", "confidence"],
+        "required": [
+            "summary", "errors", "routine_context", "suspected_files", "recommended_actions", "confidence",
+        ],
         "additionalProperties": False,
     }
 
@@ -248,6 +271,23 @@ def configured_verifier_model(
 ) -> str:
     value = explicit or os.getenv("LOCAL_AI_VERIFIER_MODEL") or settings.get("verifier_model")
     return str(value) if value else generation_model
+
+
+def configured_quality_gate_type(
+    task: str,
+    explicit: str | None,
+    settings: dict[str, Any],
+) -> str:
+    """Select the promoted gate without treating deterministic code as a model."""
+    value = explicit or os.getenv("LOCAL_AI_QUALITY_GATE") or settings.get("quality_gate") or "auto"
+    normalized = str(value).strip().lower()
+    if normalized not in {"auto", "llm-verifier", LOG_ANCHOR_GATE_TYPE}:
+        raise RuntimeError(f"unsupported quality gate: {value}")
+    if normalized == "auto":
+        return LOG_ANCHOR_GATE_TYPE if task == "summarize-log" else "llm-verifier"
+    if normalized == LOG_ANCHOR_GATE_TYPE and task != "summarize-log":
+        raise RuntimeError(f"{LOG_ANCHOR_GATE_TYPE} only supports summarize-log")
+    return normalized
 
 
 def local_ai_enabled(settings: dict[str, Any]) -> bool:
@@ -621,7 +661,13 @@ def prompt_for(task: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def validate_structured_response(task: str, parsed: Any, source_text: str | None = None) -> None:
+def validate_structured_response(
+    task: str,
+    parsed: Any,
+    source_text: str | None = None,
+    *,
+    enforce_source_anchors: bool = True,
+) -> None:
     """Reject syntactically valid but unusable local-model responses."""
     if not isinstance(parsed, dict):
         raise RuntimeError("model returned JSON but not an object")
@@ -633,13 +679,12 @@ def validate_structured_response(task: str, parsed: Any, source_text: str | None
     if missing or non_lists:
         detail = ', '.join(missing or non_lists)
         raise RuntimeError(f"{task} response did not follow the required schema ({detail})")
-    if task == "summarize-log" and source_text:
-        signal_pattern = re.compile(r"\b(ERROR|EXCEPTION|FAIL|ASSERT|WARN|CRITICAL|FATAL|TIMEOUT)\b", re.IGNORECASE)
-        signal_lines = [line for line in source_text.splitlines() if signal_pattern.search(line)]
+    if task == "summarize-log" and source_text and enforce_source_anchors:
+        signal_lines = [line for line in source_text.splitlines() if LOG_SIGNAL_PATTERN.search(line)]
         required_identifiers = set(re.findall(
             r"\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b", "\n".join(signal_lines),
         ))
-        required_signals = {match.upper() for line in signal_lines for match in signal_pattern.findall(line)}
+        required_signals = {match.upper() for line in signal_lines for match in LOG_SIGNAL_PATTERN.findall(line)}
         preserved = "\n".join([str(parsed.get("summary") or ""), *map(str, parsed.get("errors") or [])])
         omitted = sorted(identifier for identifier in required_identifiers if identifier not in preserved)
         preserved_upper = preserved.upper()
@@ -651,7 +696,7 @@ def validate_structured_response(task: str, parsed: Any, source_text: str | None
                 f"({', '.join(details)})",
                 {"critical_omissions": details},
             )
-    if source_text:
+    if source_text and enforce_source_anchors:
         serialized = json.dumps(parsed, ensure_ascii=False)
         omitted_anchors = sorted(anchor for anchor in required_source_anchors(task, source_text) if anchor not in serialized)
         if omitted_anchors:
@@ -666,7 +711,7 @@ def required_source_anchors(task: str, source_text: str) -> set[str]:
     """Extract exact, non-semantic facts whose loss makes replacement unsafe."""
     anchors: set[str] = set()
     path_pattern = re.compile(
-        r"(?<![A-Za-z0-9_])(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+(?::\d+(?::\d+)?)?"
+        r"(?<![A-Za-z0-9_])(?:[A-Za-z]:)?/?(?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+(?::\d+(?::\d+)?)?"
     )
     if task in {"summarize-log", "analyze-tests", "classify-error"}:
         signal = re.compile(
@@ -703,6 +748,153 @@ def required_source_anchors(task: str, source_text: str) -> set[str]:
     elif task == "summarize-memory":
         anchors.update(re.findall(r"^--- BEGIN MEMORY (.+) ---$", source_text, flags=re.MULTILINE))
     return {anchor for anchor in anchors if 2 <= len(anchor) <= 160}
+
+
+def normalize_log_line(line: str) -> str:
+    """Normalize presentation noise while retaining every factual token."""
+    without_ansi = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", line)
+    return " ".join(without_ansi.strip().split())
+
+
+def numbered_log_text(source_text: str) -> str:
+    """Give the model stable selectors while keeping delivered lines extractive."""
+    return "\n".join(
+        f"L{index:04d}\t{line}"
+        for index, line in enumerate(source_text.splitlines(), start=1)
+    )
+
+
+def log_anchor_manifest(source_text: str) -> dict[str, Any]:
+    """Extract exact critical log lines and their adjacent stack/path context."""
+    lines = [normalize_log_line(line) for line in source_text.splitlines()]
+    lines = [line for line in lines if line and not line.startswith("[... ")]
+    critical_indexes: set[int] = set()
+    signal_kinds: set[str] = set()
+    for index, line in enumerate(lines):
+        matches = LOG_SIGNAL_PATTERN.findall(line)
+        if not matches:
+            continue
+        critical_indexes.add(index)
+        signal_kinds.update(match.upper() for match in matches)
+        if index + 1 < len(lines):
+            continuation = lines[index + 1]
+            if LOG_PATH_PATTERN.search(continuation) or re.search(r"\bat\s+\S+|::[\w.\[\]-]+", continuation):
+                critical_indexes.add(index + 1)
+
+    # A traceback header is contextual rather than an error token, so looking
+    # only one line past ERROR loses the decisive File/line frame. Preserve a
+    # bounded traceback block until the next timestamped log record or blank.
+    traceback_header = re.compile(r"^(?:Traceback \(most recent call last\):|Caused by:)", re.IGNORECASE)
+    timestamped_record = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]")
+    for index, line in enumerate(lines):
+        if not traceback_header.search(line):
+            continue
+        critical_indexes.add(index)
+        for offset in range(index + 1, min(len(lines), index + 9)):
+            continuation = lines[offset]
+            if not continuation or timestamped_record.search(continuation):
+                break
+            if (
+                LOG_PATH_PATTERN.search(continuation)
+                or LOG_SIGNAL_PATTERN.search(continuation)
+                or continuation.startswith(("File ", "at ", "raise "))
+            ):
+                critical_indexes.add(offset)
+
+    critical_lines = list(dict.fromkeys(lines[index] for index in sorted(critical_indexes)))
+    paths = sorted({path for line in critical_lines for path in LOG_PATH_PATTERN.findall(line)})
+    routine_lines = [
+        line for index, line in enumerate(lines)
+        if index not in critical_indexes and not LOG_SIGNAL_PATTERN.search(line)
+    ]
+    return {
+        "critical_lines": critical_lines,
+        "signal_kinds": sorted(signal_kinds),
+        "paths": paths[:8],
+        "routine_lines": list(dict.fromkeys(routine_lines)),
+    }
+
+
+def apply_log_anchor_gate(
+    parsed: dict[str, Any],
+    source_text: str,
+    *,
+    input_truncated: bool,
+    deterministic_omitted_lines: int,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Build a loss-bounded, extractive result with no second model pass.
+
+    The local model may select representative routine lines, but only exact
+    source lines survive. Critical signal and stack/path lines are injected
+    from deterministic extraction, so generated prose cannot invent, reverse,
+    or omit the facts delivered to the primary model.
+    """
+    manifest = log_anchor_manifest(source_text)
+    critical_lines = manifest["critical_lines"]
+    routine_source = set(manifest["routine_lines"])
+    source_lines_by_id = {
+        f"L{index:04d}": normalize_log_line(line)
+        for index, line in enumerate(source_text.splitlines(), start=1)
+    }
+    proposed_routine: list[str] = []
+    invalid_routine: list[str] = []
+    for value in parsed.get("routine_context") or []:
+        selector = normalize_log_line(str(value))
+        resolved = source_lines_by_id.get(selector, selector)
+        if not resolved or resolved not in routine_source or LOG_SIGNAL_PATTERN.search(resolved):
+            invalid_routine.append(selector)
+            continue
+        proposed_routine.append(resolved)
+    omissions: list[str] = []
+    if input_truncated:
+        omissions.append("bounded_input_truncated")
+    if not critical_lines:
+        omissions.append("no_critical_signal_lines")
+    if len(critical_lines) > LOG_MAX_CRITICAL_LINES:
+        omissions.append(f"critical_line_limit_exceeded:{len(critical_lines)}")
+    if any(len(line) > 500 for line in critical_lines):
+        omissions.append("critical_line_too_long")
+    if routine_source and not proposed_routine:
+        omissions.append("routine_context_not_selected")
+    if invalid_routine:
+        omissions.extend(f"non_extractive_routine_context:{line[:80]}" for line in invalid_routine[:4])
+    if omissions:
+        raise QualityRejected(
+            "deterministic log-anchor gate rejected candidate",
+            {
+                "usable": False,
+                "coverage_score": 0,
+                "critical_omissions": omissions[:8],
+                "contradictions": [],
+                "unsupported_claims": [],
+                "quality_gate_type": LOG_ANCHOR_GATE_TYPE,
+            },
+        )
+
+    selected_routine = list(dict.fromkeys(proposed_routine))[:LOG_MAX_ROUTINE_CONTEXT_LINES]
+    result = {
+        "summary": (
+            f"Extractive log compression preserved {len(critical_lines)} critical lines and "
+            f"selected {len(selected_routine)} representative routine lines; "
+            f"{max(0, deterministic_omitted_lines)} routine lines were omitted deterministically."
+        ),
+        "errors": critical_lines,
+        "routine_context": selected_routine,
+        "suspected_files": manifest["paths"],
+        "recommended_actions": [],
+        "confidence": "high",
+    }
+    report = {
+        "usable": True,
+        "coverage_score": 100,
+        "critical_omissions": [],
+        "contradictions": [],
+        "unsupported_claims": [],
+        "quality_gate_type": LOG_ANCHOR_GATE_TYPE,
+        "critical_lines_preserved": len(critical_lines),
+        "routine_lines_selected": len(selected_routine),
+    }
+    return result, report
 
 
 def quality_verification_prompt(task: str, source_text: str, parsed: dict[str, Any]) -> str:
@@ -900,11 +1092,17 @@ def run_analysis(args: argparse.Namespace) -> int:
     )
     recorder = telemetry_recorder(settings)
     routing_recorded = False
+    quality_gate_type = configured_quality_gate_type(
+        args.task,
+        getattr(args, "quality_gate", None),
+        settings,
+    )
     routing_assessment = assess_routing(args.task, len(raw_text), availability="available")
     routing_assessment = apply_economic_precheck(
         routing_assessment,
         context_input_tokens=context_input_tokens,
         model_input_tokens=model_input_tokens,
+        quality_gate_type=quality_gate_type,
     )
     non_beneficial_reason = str(routing_assessment.get("reason") or "")
     if routing_assessment.get("decision") == "LOCAL_AI_NOT_BENEFICIAL" and not force_diagnostic:
@@ -997,9 +1195,14 @@ def run_analysis(args: argparse.Namespace) -> int:
         raise RuntimeError(
             "no safe default model found. Set LOCAL_AI_MODEL after running `local-ai status` and `local-ai benchmark --model <name>`."
         )
-    verifier_model = configured_verifier_model(getattr(args, "verifier_model", None), settings, model)
+    deterministic_log_gate = quality_gate_type == LOG_ANCHOR_GATE_TYPE
+    verifier_model = (
+        LOG_ANCHOR_VERIFIER
+        if deterministic_log_gate
+        else configured_verifier_model(getattr(args, "verifier_model", None), settings, model)
+    )
     installed_names = {str(item.get("name")) for item in models}
-    if verifier_model not in installed_names:
+    if not deterministic_log_gate and verifier_model not in installed_names:
         record_routing_outcome(
             recorder,
             routing_assessment,
@@ -1025,7 +1228,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             "context_replacement": True,
         })
         raise RuntimeError(f"configured verifier model is not installed: {verifier_model}")
-    if verifier_model == model and not force_diagnostic:
+    if not deterministic_log_gate and verifier_model == model and not force_diagnostic:
         routing_assessment.update({
             "eligible": False,
             "expected_tokens_saved": 0,
@@ -1042,7 +1245,8 @@ def run_analysis(args: argparse.Namespace) -> int:
         f"Keep the response below {args.max_output_chars} characters.\n\n"
         f"TASK INSTRUCTIONS:\n{instruction}\n\n"
         f"INPUT (truncated={str(truncated).lower()}, raw_limit_hit={str(raw_limited).lower()}, "
-        f"routine_lines_omitted={deterministic_omitted_lines}):\n{model_text}"
+        f"routine_lines_omitted={deterministic_omitted_lines}):\n"
+        f"{numbered_log_text(model_text) if deterministic_log_gate else model_text}"
     )
     before_gpu = gpu_snapshot()
     event: dict[str, Any] = {
@@ -1051,6 +1255,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         "task": args.task,
         "model": model,
         "verifier_model": verifier_model,
+        "quality_gate_type": quality_gate_type,
         "endpoint": endpoint,
         "status": "running",
         "chat_id": current_chat_id(),
@@ -1110,19 +1315,33 @@ def run_analysis(args: argparse.Namespace) -> int:
                 print("local-ai: output truncated to configured limit", file=sys.stderr)
             try:
                 parsed = json.loads(output)
-                validate_structured_response(args.task, parsed, model_text)
-                quality_report, verification = verify_candidate_quality(
+                validate_structured_response(
                     args.task,
-                    model_text,
                     parsed,
-                    endpoint=endpoint,
-                    model=verifier_model,
-                    request_call=request_call,
-                    minimum_score=minimum_quality_score,
-                    context_tokens=args.context_tokens,
+                    model_text,
+                    enforce_source_anchors=not deterministic_log_gate,
                 )
-                responses.append(verification)
-                verification_responses.append(verification)
+                if deterministic_log_gate:
+                    parsed, quality_report = apply_log_anchor_gate(
+                        parsed,
+                        model_text,
+                        input_truncated=truncated,
+                        deterministic_omitted_lines=deterministic_omitted_lines,
+                    )
+                    output = json.dumps(parsed, ensure_ascii=False, separators=(",", ":"))
+                else:
+                    quality_report, verification = verify_candidate_quality(
+                        args.task,
+                        model_text,
+                        parsed,
+                        endpoint=endpoint,
+                        model=verifier_model,
+                        request_call=request_call,
+                        minimum_score=minimum_quality_score,
+                        context_tokens=args.context_tokens,
+                    )
+                    responses.append(verification)
+                    verification_responses.append(verification)
                 break
             except QualityRejected as error:
                 if error.response is not None:
@@ -1162,6 +1381,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             "quality_validation_output_tokens": validation_output_tokens,
             "quality_validation_tokens": accepted_validation_tokens,
             "quality_validation_tokens_measured": validation_tokens_measured,
+            "quality_gate_type": quality_gate_type,
             "quality_accepted": True,
             "quality_score_percent": int(quality_report.get("coverage_score") or 0),
             "tokens_per_second": token_rate,
@@ -1437,6 +1657,22 @@ def _mem_available_kib() -> int | None:
     return None
 
 
+def run_confirm_delivery(args: argparse.Namespace) -> int:
+    """Bind a successful MCP job to the Code Mode bounded-delivery protocol."""
+    settings = user_settings()
+    receipt = telemetry_recorder(settings).confirm_delivery(
+        args.job_id,
+        transport=args.transport,
+        source_output_chars=args.source_output_chars,
+    )
+    print(json.dumps({
+        "delivery_receipt": True,
+        "schema_version": 1,
+        **receipt,
+    }, ensure_ascii=False, separators=(",", ":")))
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--endpoint", help="Ollama endpoint; overrides LOCAL_AI_ENDPOINT and user configuration")
@@ -1444,6 +1680,12 @@ def parser() -> argparse.ArgumentParser:
     common.add_argument(
         "--verifier-model",
         help="independent Ollama fidelity verifier; otherwise LOCAL_AI_VERIFIER_MODEL, user configuration, or --model",
+    )
+    common.add_argument(
+        "--quality-gate",
+        choices=("auto", "llm-verifier", LOG_ANCHOR_GATE_TYPE),
+        default="auto",
+        help="fidelity gate; auto uses the extractive deterministic gate only for summarize-log",
     )
     common.add_argument("--context-tokens", type=positive_int, default=int(os.getenv("LOCAL_AI_CONTEXT_TOKENS", "4096")))
     main = argparse.ArgumentParser(description=__doc__)
@@ -1470,6 +1712,18 @@ def parser() -> argparse.ArgumentParser:
     memory_route.add_argument("--reason", help="bounded decision reason; never include source text")
     memory_route.add_argument("--canonical-conflict", action="store_true", help="record that current canonical documentation won over stale memory")
     memory_route.set_defaults(func=run_memory_route)
+    delivery = subs.add_parser(
+        "confirm-delivery",
+        help="record a metadata-only receipt for bounded Code Mode context delivery",
+    )
+    delivery.add_argument("--job-id", required=True)
+    delivery.add_argument(
+        "--transport",
+        choices=("code-mode-orchestrator-v1",),
+        default="code-mode-orchestrator-v1",
+    )
+    delivery.add_argument("--source-output-chars", type=positive_int, required=True)
+    delivery.set_defaults(func=run_confirm_delivery)
     bench = subs.add_parser("benchmark", parents=[common], help="run a bounded four-case structured-output benchmark")
     bench.add_argument("--benchmark-output-tokens", type=positive_int, default=420)
     bench.set_defaults(func=benchmark)

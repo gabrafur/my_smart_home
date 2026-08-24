@@ -28,12 +28,12 @@ def event(payload: dict) -> dict:
     return {"type": "response_item", "payload": payload}
 
 
-def mcp_event(tool: str, structured: dict, *, error: bool = False) -> dict:
+def mcp_event(tool: str, structured: dict, *, arguments: dict | None = None, error: bool = False) -> dict:
     return {
         "type": "event_msg",
         "payload": {
             "type": "mcp_tool_call_end",
-            "invocation": {"tool": tool, "arguments": {}},
+            "invocation": {"tool": tool, "arguments": arguments or {}},
             "result": {"Ok": {"isError": error, "structuredContent": structured}},
         },
     }
@@ -147,7 +147,7 @@ class ConversationAuditTest(unittest.TestCase):
         self.assertEqual(result["category"], "MISSED_OPPORTUNITY")
         self.assertEqual(result["missed_reason"], "candidate_output_without_successful_local_inference")
 
-    def test_successful_compression_is_required_for_used_classification(self):
+    def test_successful_compression_without_delivery_proof_is_not_counted_as_used(self):
         rows = [
             event({"type": "custom_tool_call", "call_id": "1", "input": "git diff"}),
             event({"type": "custom_tool_call_output", "call_id": "1", "output": "+changed\n" * 700}),
@@ -158,9 +158,73 @@ class ConversationAuditTest(unittest.TestCase):
             }),
         ]
         result = AUDIT.audit_vscode_session(rows, datetime.now(UTC))
+        self.assertEqual(result["category"], "MISSED_OPPORTUNITY")
+        self.assertEqual(result["successful_compressions"], 0)
+
+    def test_code_mode_envelope_requires_routed_matching_runtime_result(self):
+        result_body = {"summary": "bounded", "errors": ["RuntimeError"]}
+        envelope = json.dumps({
+            "local_ai_context_replacement": True,
+            "delivery": {
+                "schema_version": 1,
+                "transport": "code-mode-orchestrator-v1",
+                "raw_output_emitted": False,
+                "source_output_chars": 16299,
+                "job_id": "job-code-mode",
+            },
+            "local_ai": {
+                "job_id": "job-code-mode",
+                "executed": True,
+                "success": True,
+                "telemetry_recorded": True,
+            },
+            "result": result_body,
+        })
+        rows = [
+            event({"type": "custom_tool_call", "call_id": "1", "input": "code-mode orchestrator"}),
+            mcp_event("local_ai_route", {
+                "decision": "LOCAL_AI_ELIGIBLE", "task_type": "summarize-log",
+            }),
+            mcp_event("local_ai_compress_context", {
+                "job_id": "job-code-mode",
+                "telemetry_recorded": True,
+                "result": result_body,
+            }, arguments={"task_type": "summarize-log"}),
+            event({"type": "custom_tool_call_output", "call_id": "1", "output": envelope}),
+        ]
+
+        result = AUDIT.audit_vscode_session(rows, datetime.now(UTC))
         self.assertEqual(result["category"], "RTX_USED_CORRECTLY")
         self.assertEqual(result["successful_compressions"], 1)
-        self.assertIsNone(result["missed_reason"])
+        self.assertEqual(result["confirmed_delivery_job_ids"], ["job-code-mode"])
+
+        mismatched = json.loads(envelope)
+        mismatched["result"] = {"summary": "invented"}
+        rows[-1] = event({
+            "type": "custom_tool_call_output", "call_id": "1", "output": json.dumps(mismatched),
+        })
+        rejected = AUDIT.audit_vscode_session(rows, datetime.now(UTC))
+        self.assertEqual(rejected["category"], "MISSED_OPPORTUNITY")
+        self.assertEqual(rejected["successful_compressions"], 0)
+
+    def test_code_mode_envelope_accepts_exact_functions_exec_wrapper(self):
+        envelope = json.dumps({
+            "local_ai_context_replacement": True,
+            "delivery": {
+                "schema_version": 1, "transport": "code-mode-orchestrator-v1",
+                "raw_output_emitted": False, "source_output_chars": 12000,
+                "job_id": "job-wrapper",
+            },
+            "local_ai": {
+                "job_id": "job-wrapper", "executed": True, "success": True,
+                "telemetry_recorded": True,
+            },
+            "result": {"summary": "bounded"},
+        })
+        wrapped = f"Script completed\nWall time 14.7 seconds\nOutput:\n\n{envelope}"
+        parsed = AUDIT.code_mode_delivery(wrapped)
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed["local_ai"]["job_id"], "job-wrapper")
 
     def test_compression_without_telemetry_proof_is_not_counted_as_used(self):
         rows = [

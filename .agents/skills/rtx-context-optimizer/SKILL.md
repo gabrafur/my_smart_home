@@ -9,6 +9,12 @@ Use deterministic discovery, filtering, parsing, and selection first. Prefer
 `rg`, Git, parsers, tests, linters, type checkers, SQL, and project scripts.
 Do not invoke Local AI merely to create GPU activity or telemetry.
 
+Evaluate this routing rule on every user request after repository instructions
+are loaded. This includes a non-sensitive candidate supplied in the prompt,
+retrieved from a file, or produced by a tool, but never route the aggregate
+prompt by size alone. The project has no `UserPromptSubmit` interceptor, so
+prompt text and attachments require this explicit agent decision.
+
 At the first large non-sensitive candidate, check `local_ai_status` lazily if
 availability has not yet been established in the conversation. Do not run a
 startup preflight. Recheck status only after an observed failure and retry a
@@ -20,6 +26,11 @@ sending the body to the primary-model context. Call
 `local_ai_compress_context` only when the route is eligible and the expected
 reduction is material. Use only its bounded structured result when it preserves
 the facts needed for the task.
+
+The only currently promoted positive A/B profile is `summarize-log` at 3,000
+estimated OpenAI tokens or more with `deterministic-log-anchors-v1`. The router
+must return every other profile to the primary-model fallback unless later
+versioned evidence and routing configuration promote it.
 
 Map evidence to `task_type` as follows:
 
@@ -43,6 +54,26 @@ result inside the orchestration call until routing finishes. Do not deliberately
 emit it with `text(...)` first. Treat the project `PostToolUse` hook as a
 complementary guardrail, not a substitute for this decision.
 
+The current Code Mode host does not deliver nested `exec_command` calls to the
+project `PostToolUse` hook. For the promoted `summarize-log` profile, use the
+versioned `code-mode-orchestrator-v1` transport inside one outer orchestration:
+
+1. retain the raw `exec_command` result only in a variable;
+2. call `local_ai_route`, then `local_ai_compress_context`;
+3. require a non-empty UUID `job_id`, `telemetry_recorded=true`, and a structured
+   `result`;
+4. call `./scripts/local-ai/local-ai confirm-delivery --job-id <uuid>
+   --source-output-chars <exact_chars>` as the only metadata-only follow-up
+   shell call;
+5. emit only a JSON object containing `local_ai_context_replacement=true`, the
+   returned receipt under `delivery`, `delivery.raw_output_emitted=false`,
+   canonical `local_ai` execution booleans, and the exact MCP `result`.
+
+Do not invent or manually copy receipt fields. If the receipt command fails,
+fall back without claiming useful reduction. Keep the envelope below 12,000
+characters. The retrospective auditor matches its job and result to runtime MCP
+events; a direct MCP result or unmatched envelope fails closed.
+
 # Interpret routing and telemetry precisely
 
 Do not claim that inference ran merely because status was available, routing
@@ -54,12 +85,18 @@ was evaluated, or a route was eligible. Say the RTX was used only when
 Keep inference evidence separate from delivery evidence. A successful direct
 MCP or CLI call proves local work, but does not prove that its result replaced
 context sent to the primary model. Count operational useful reduction only when
-the versioned `PostToolUse` hook withholds the raw output, delivers the accepted
-structured result, records `invocation_source=post-tool-hook`, measures the gate
-cost, uses a verifier independent from the generator, and reports no bounded
-truncation. Otherwise retain the job as diagnostic or provisional and assign
-zero confirmed useful tokens, even if the current conversation manually uses
-the result.
+the versioned `PostToolUse` hook performs the replacement, or when a
+`code-mode-orchestrator-v1` receipt is bound to the successful MCP job, exact
+input size, and bounded emitted result. Both paths require measured gate cost,
+an independent validator, and no bounded truncation. The
+validator is normally a model distinct from the generator. The sole promoted
+exception is `summarize-log` with
+`quality_gate_type=deterministic-log-anchors-v1`: it may report a zero-token gate
+only when exact signal/stack lines are injected deterministically, routine
+context consists only of source line IDs resolved back to verbatim lines, and
+the job identifies `verifier_model=deterministic:log-anchors-v1`. Otherwise
+retain the job as diagnostic or provisional and assign zero confirmed useful
+tokens, even if the current conversation manually uses the result.
 
 For the legacy route field `deterministic_preprocessing_available`, pass `true`
 only when deterministic processing completely resolves the result and no LLM
@@ -100,14 +137,19 @@ primary model.
 
 # Apply repository-specific safeguards
 
-Use the global `local-ai-rtx` MCP server as the canonical interface. Keep
-`./scripts/local-ai/local-ai` for project diagnostics and tests only. Consult
+Use the global `local-ai-rtx` MCP server as the canonical inference interface.
+Keep `./scripts/local-ai/local-ai` for diagnostics, tests, and the metadata-only
+`confirm-delivery` receipt; it must not perform a second inference. Consult
 `docs/LOCAL_AI_RTX_4070.md` before changing the helper, hook, telemetry, or
 Codex/RTX dashboard cards; do not broaden the restricted LAN proxy without
 confirmation.
 
-After a new clone, Codex container rebuild, or `.codex/hooks.json` change,
-require interactive `/hooks` review from
-`docker compose exec -w /workspace ai-bridge codex`. Consider `PostToolUse`
-enabled only when it reports `Installed = 1` and `Active = 1`; never automate
-or bypass that approval.
+After a new clone, Codex client rebuild/update, or `.codex/hooks.json` change,
+require interactive `/hooks` review in the same client and state directory
+used for prompts. The `ai-bridge` CLI and the VS Code extension have separate
+Codex state, so approval in one does not activate the other. For bridge prompts,
+use `docker compose exec -w /workspace ai-bridge codex`. For extension prompts,
+use `./scripts/local-ai/review-vscode-hooks.sh` on the host, reload the VS Code
+window after approval or extension updates, and start a new conversation. Consider
+`PostToolUse` enabled only when that client reports `Installed = 1` and
+`Active = 1`; never automate or bypass that approval.

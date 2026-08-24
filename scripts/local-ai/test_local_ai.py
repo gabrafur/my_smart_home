@@ -39,6 +39,20 @@ class LocalAiTest(unittest.TestCase):
         }):
             self.assertEqual(LOCAL_AI.current_invocation_source(), "mcp")
 
+    def test_quality_gate_auto_is_scoped_only_to_logs(self):
+        self.assertEqual(
+            LOCAL_AI.configured_quality_gate_type("summarize-log", "auto", {}),
+            LOCAL_AI.LOG_ANCHOR_GATE_TYPE,
+        )
+        self.assertEqual(
+            LOCAL_AI.configured_quality_gate_type("summarize-document", "auto", {}),
+            "llm-verifier",
+        )
+        with self.assertRaisesRegex(RuntimeError, "only supports summarize-log"):
+            LOCAL_AI.configured_quality_gate_type(
+                "review-diff", LOCAL_AI.LOG_ANCHOR_GATE_TYPE, {},
+            )
+
     def test_telemetry_files_are_private_and_group_writable_for_bridge_sharing(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "local-ai-telemetry.json"
@@ -124,6 +138,7 @@ class LocalAiTest(unittest.TestCase):
         response = {
             "summary": "Cache write timed out.",
             "errors": [],
+            "routine_context": [],
             "suspected_files": [],
             "recommended_actions": ["Inspect CACHE_WRITE_TIMEOUT."],
             "confidence": "high",
@@ -143,6 +158,7 @@ class LocalAiTest(unittest.TestCase):
         response = {
             "summary": "ERROR TypeError in src/app.py.",
             "errors": [],
+            "routine_context": [],
             "suspected_files": ["src/app.py"],
             "recommended_actions": [],
             "confidence": "high",
@@ -182,6 +198,118 @@ class LocalAiTest(unittest.TestCase):
         self.assertIn("routine log lines omitted", filtered)
         self.assertGreater(omitted, 80)
         self.assertEqual(LOCAL_AI.preprocess_for_task("review-diff", "\n".join(lines))[1], 0)
+
+    def test_log_anchor_gate_delivers_only_extracts_and_deterministic_metadata(self):
+        source = "\n".join([
+            "INFO worker ready",
+            "ERROR DatabaseTimeoutError request_id=42 at src/orders/repository.py:87",
+            "    at saveOrder (src/orders/repository.py:87:9)",
+            "WARN retry budget exhausted after 30000ms",
+        ])
+        candidate = {
+            "summary": "Invented root cause.",
+            "errors": ["invented error"],
+            "routine_context": ["L0001"],
+            "suspected_files": ["invented.py"],
+            "recommended_actions": ["delete the database"],
+            "confidence": "high",
+        }
+
+        result, report = LOCAL_AI.apply_log_anchor_gate(
+            candidate,
+            source,
+            input_truncated=False,
+            deterministic_omitted_lines=500,
+        )
+
+        self.assertEqual(report["coverage_score"], 100)
+        self.assertEqual(result["recommended_actions"], [])
+        self.assertNotIn("Invented", json.dumps(result))
+        self.assertIn("DatabaseTimeoutError", result["errors"][0])
+        self.assertIn("saveOrder", result["errors"][1])
+        self.assertIn("src/orders/repository.py:87", result["suspected_files"])
+        self.assertEqual(result["routine_context"], ["INFO worker ready"])
+
+    def test_log_anchor_gate_preserves_python_traceback_file_and_line(self):
+        source = "\n".join([
+            "INFO demo_worker heartbeat queue_depth=0",
+            "ERROR demo_worker request failed",
+            "Traceback (most recent call last):",
+            '  File "/srv/demo/worker.py", line 42, in process_queue',
+            '    raise RuntimeError("synthetic queue timeout")',
+            "RuntimeError: synthetic queue timeout",
+        ])
+        candidate = {
+            "summary": "summary",
+            "errors": [],
+            "routine_context": ["L0001"],
+            "suspected_files": [],
+            "recommended_actions": [],
+            "confidence": "high",
+        }
+
+        result, report = LOCAL_AI.apply_log_anchor_gate(
+            candidate,
+            source,
+            input_truncated=False,
+            deterministic_omitted_lines=0,
+        )
+
+        self.assertTrue(report["usable"])
+        self.assertIn('File "/srv/demo/worker.py", line 42', "\n".join(result["errors"]))
+        self.assertIn("/srv/demo/worker.py", result["suspected_files"])
+
+    def test_log_anchor_gate_rejects_non_extractive_or_bounded_candidates(self):
+        candidate = {
+            "summary": "summary",
+            "errors": [],
+            "routine_context": ["INFO invented routine"],
+            "suspected_files": [],
+            "recommended_actions": [],
+            "confidence": "low",
+        }
+        source = "INFO worker ready\nERROR CACHE_WRITE_TIMEOUT after 30000ms"
+
+        with self.assertRaises(LOCAL_AI.QualityRejected) as non_extractive:
+            LOCAL_AI.apply_log_anchor_gate(
+                candidate,
+                source,
+                input_truncated=False,
+                deterministic_omitted_lines=0,
+            )
+        self.assertIn("non_extractive_routine_context", json.dumps(non_extractive.exception.report))
+
+        candidate["routine_context"] = ["INFO worker ready"]
+        with self.assertRaises(LOCAL_AI.QualityRejected) as truncated:
+            LOCAL_AI.apply_log_anchor_gate(
+                candidate,
+                source,
+                input_truncated=True,
+                deterministic_omitted_lines=0,
+            )
+        self.assertIn("bounded_input_truncated", truncated.exception.report["critical_omissions"])
+
+    def test_log_anchor_gate_rejects_signal_overflow(self):
+        source = "INFO worker ready\n" + "\n".join(
+            f"ERROR FAILURE_{index} at src/jobs/job_{index}.py:{index + 1}"
+            for index in range(LOCAL_AI.LOG_MAX_CRITICAL_LINES + 1)
+        )
+        candidate = {
+            "summary": "summary",
+            "errors": [],
+            "routine_context": ["INFO worker ready"],
+            "suspected_files": [],
+            "recommended_actions": [],
+            "confidence": "low",
+        }
+        with self.assertRaises(LOCAL_AI.QualityRejected) as raised:
+            LOCAL_AI.apply_log_anchor_gate(
+                candidate,
+                source,
+                input_truncated=False,
+                deterministic_omitted_lines=0,
+            )
+        self.assertIn("critical_line_limit_exceeded", json.dumps(raised.exception.report))
 
     def test_test_output_preprocessing_uses_the_same_signal_contract(self):
         lines = [f"routine line {index}" for index in range(120)]
@@ -352,7 +480,7 @@ diff --git a/docs/label.md b/docs/label.md
             self.assertEqual(decision["decision"], "LOCAL_AI_UNNECESSARY_CALL")
             self.assertEqual(decision["reason"], "insufficient_net_savings")
 
-    def test_operational_self_verifier_bypasses_before_generation(self):
+    def test_operational_log_uses_deterministic_anchor_gate_without_second_model(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             telemetry_path = root / "canonical-telemetry.json"
@@ -383,31 +511,52 @@ diff --git a/docs/label.md b/docs/label.md
                 "telemetry_path": str(telemetry_path),
             }
 
-            def tags_only(_endpoint, path, payload=None):
-                self.assertEqual(path, "/api/tags")
-                self.assertIsNone(payload)
-                return {
-                    "models": [
-                        {"name": "qwen2.5-coder:14b", "size": 9_000_000_000},
-                    ],
-                }
+            candidate = {
+                "summary": "A cache timeout occurred.",
+                "errors": ["invented text that the gate must replace"],
+                "routine_context": ["L0001"],
+                "suspected_files": ["invented.py"],
+                "recommended_actions": ["restart everything"],
+                "confidence": "high",
+            }
+
+            def successful_request(_endpoint, path, payload=None):
+                if path == "/api/tags":
+                    self.assertIsNone(payload)
+                    return {
+                        "models": [
+                            {"name": "qwen2.5-coder:14b", "size": 9_000_000_000},
+                        ],
+                    }
+                if path == "/api/generate":
+                    return {
+                        "response": json.dumps(candidate),
+                        "prompt_eval_count": 400,
+                        "eval_count": 80,
+                    }
+                raise AssertionError(path)
 
             with (
                 patch.dict(os.environ, {}, clear=False),
                 patch.object(LOCAL_AI, "user_settings", return_value=settings),
-                patch.object(LOCAL_AI, "request", side_effect=tags_only) as request_mock,
+                patch.object(LOCAL_AI, "request", side_effect=successful_request) as request_mock,
+                patch.object(LOCAL_AI, "gpu_snapshot", return_value=None),
             ):
                 os.environ.pop("LOCAL_AI_FORCE", None)
                 os.environ.pop("LOCAL_AI_VERIFIER_MODEL", None)
-                with self.assertRaisesRegex(RuntimeError, "independently validated verifier"):
-                    LOCAL_AI.run_analysis(args)
+                self.assertEqual(LOCAL_AI.run_analysis(args), 0)
 
-            self.assertEqual(request_mock.call_count, 1)
+            self.assertEqual(request_mock.call_count, 2)
             state = json.loads(telemetry_path.read_text(encoding="utf-8"))
-            self.assertEqual(state["totals"]["calls"], 0)
+            self.assertEqual(state["totals"]["calls"], 1)
+            job = state["latest_jobs"][-1]
+            self.assertEqual(job["status"], "success")
+            self.assertEqual(job["verifier_model"], LOCAL_AI.LOG_ANCHOR_VERIFIER)
+            self.assertEqual(job["quality_gate_type"], LOCAL_AI.LOG_ANCHOR_GATE_TYPE)
+            self.assertEqual(job["quality_validation_tokens"], 0)
+            self.assertEqual(job["quality_verification_attempts"], 0)
             decision = state["routing"]["latest_decisions"][-1]
-            self.assertEqual(decision["decision"], "LOCAL_AI_NOT_BENEFICIAL")
-            self.assertEqual(decision["reason"], "independent_verifier_required")
+            self.assertEqual(decision["decision"], "LOCAL_AI_USED")
 
     def test_quality_disabled_task_bypasses_before_endpoint_preflight(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -452,8 +601,9 @@ diff --git a/docs/label.md b/docs/label.md
     def test_bounded_schemas_limit_normal_and_retry_lists(self):
         normal = LOCAL_AI.response_format("summarize-log")
         compact = LOCAL_AI.response_format("summarize-log", compact=True)
-        self.assertEqual(normal["properties"]["errors"]["maxItems"], 8)
-        self.assertEqual(compact["properties"]["errors"]["maxItems"], 2)
+        self.assertEqual(normal["properties"]["errors"]["maxItems"], 16)
+        self.assertEqual(compact["properties"]["errors"]["maxItems"], 4)
+        self.assertEqual(normal["properties"]["routine_context"]["maxItems"], 4)
         review = LOCAL_AI.response_format("review-diff")
         compact_review = LOCAL_AI.response_format("review-diff", compact=True)
         self.assertEqual(review["properties"]["findings"]["maxItems"], 8)
@@ -599,6 +749,102 @@ diff --git a/docs/label.md b/docs/label.md
             self.assertEqual(totals["confirmed_useful_context_tokens_avoided"], 700)
             self.assertEqual(state["tasks"]["summarize-log"]["totals"]["operational_calls"], 2)
 
+    def test_code_mode_delivery_receipt_binds_useful_mcp_job_and_source_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            job_id = "12345678-1234-4234-8234-123456789abc"
+            recorder.finished({
+                "id": job_id,
+                "started_at": "2026-08-24T12:00:00Z",
+                "finished_at": "2026-08-24T12:00:01Z",
+                "task": "summarize-log",
+                "model": "generator",
+                "verifier_model": "deterministic:log-anchors-v1",
+                "quality_gate_type": "deterministic-log-anchors-v1",
+                "quality_verification_attempts": 0,
+                "quality_validation_tokens": 0,
+                "quality_validation_tokens_measured": True,
+                "status": "success",
+                "context_replacement": True,
+                "invocation_source": "mcp",
+                "context_input_chars": 16299,
+                "context_input_tokens": 4075,
+                "context_output_tokens": 200,
+                "quality_accepted": True,
+                "gross_useful_context_tokens_avoided": 3875,
+                "useful_context_tokens_avoided": 3875,
+            })
+
+            with self.assertRaisesRegex(RuntimeError, "source_size_mismatch"):
+                recorder.confirm_delivery(
+                    job_id,
+                    transport="code-mode-orchestrator-v1",
+                    source_output_chars=16298,
+                )
+            receipt = recorder.confirm_delivery(
+                job_id,
+                transport="code-mode-orchestrator-v1",
+                source_output_chars=16299,
+            )
+            duplicate = recorder.confirm_delivery(
+                job_id,
+                transport="code-mode-orchestrator-v1",
+                source_output_chars=16299,
+            )
+
+            state = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(receipt, duplicate)
+            self.assertEqual(state["schema_version"], 19)
+            self.assertEqual(state["deliveries"]["latest_receipts"], [receipt])
+            self.assertEqual(state["totals"]["operational_primary_context_used_calls"], 0)
+
+    def test_confirmed_savings_accept_exact_deterministic_log_validator(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            recorder.finished({
+                "id": "anchor-hook",
+                "started_at": "2026-08-24T12:00:00Z",
+                "finished_at": "2026-08-24T12:00:01Z",
+                "task": "summarize-log",
+                "model": "generator",
+                "verifier_model": "deterministic:log-anchors-v1",
+                "quality_gate_type": "deterministic-log-anchors-v1",
+                "quality_verification_attempts": 0,
+                "quality_validation_tokens": 0,
+                "quality_validation_tokens_measured": True,
+                "status": "success",
+                "context_replacement": True,
+                "invocation_source": "post-tool-hook",
+                "context_input_tokens": 1000,
+                "context_output_tokens": 100,
+                "quality_accepted": True,
+                "gross_useful_context_tokens_avoided": 900,
+                "useful_context_tokens_avoided": 900,
+            })
+
+            totals = json.loads(path.read_text(encoding="utf-8"))["totals"]
+            self.assertEqual(totals["operational_primary_context_used_calls"], 1)
+            self.assertEqual(totals["confirmed_quality_validation_tokens"], 0)
+            self.assertEqual(totals["confirmed_useful_context_tokens_avoided"], 900)
+
+    def test_deterministic_log_validator_identity_is_fail_closed(self):
+        base = {
+            "task": "summarize-log",
+            "model": "generator",
+            "quality_gate_type": "deterministic-log-anchors-v1",
+            "quality_verification_attempts": 0,
+            "quality_validation_tokens": 0,
+        }
+        self.assertFalse(TELEMETRY._quality_validation_independent({
+            **base, "verifier_model": "deterministic:other",
+        }))
+        self.assertFalse(TELEMETRY._quality_validation_independent({
+            **base, "verifier_model": "deterministic:log-anchors-v1",
+            "quality_validation_tokens": 1,
+        }))
+
     def test_telemetry_excludes_failures_and_benchmarks_from_context_savings(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "local-ai-telemetry.json"
@@ -725,7 +971,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-16T12:01:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 18)
+            self.assertEqual(state["schema_version"], 19)
             self.assertEqual(state["totals"]["calls"], 3)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 80)
@@ -762,7 +1008,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-23T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 18)
+            self.assertEqual(state["schema_version"], 19)
             self.assertNotIn("attempted_context_input_tokens", state["totals"])
             self.assertEqual(state["daily"]["2026-08-23"]["totals"]["attempted_context_input_tokens"], 400)
             self.assertEqual(state["models"]["model"]["totals"]["attempted_context_input_tokens"], 400)
@@ -801,7 +1047,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["totals"]
-            self.assertEqual(state["schema_version"], 18)
+            self.assertEqual(state["schema_version"], 19)
             self.assertNotIn("totals", totals)
             self.assertEqual(totals["calls"], 1)
             self.assertEqual(totals["operational_calls"], 1)
@@ -832,7 +1078,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["totals"]
-            self.assertEqual(state["schema_version"], 18)
+            self.assertEqual(state["schema_version"], 19)
             self.assertEqual(totals["gross_useful_context_tokens_avoided"], 90)
             self.assertEqual(totals["quality_validation_unmeasured_gross_tokens"], 90)
             self.assertEqual(totals["quality_validation_unmeasured_calls"], 2)
@@ -892,7 +1138,7 @@ diff --git a/docs/label.md b/docs/label.md
             migrated = json.loads(path.read_text(encoding="utf-8"))
             totals = migrated["totals"]
             routing = migrated["routing"]["totals"]
-            self.assertEqual(migrated["schema_version"], 18)
+            self.assertEqual(migrated["schema_version"], 19)
             self.assertEqual(totals["successful_calls"], 0)
             self.assertEqual(totals["quality_rejected_calls"], 1)
             self.assertEqual(totals["quality_validated_calls"], 0)
@@ -939,7 +1185,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["routing"]["totals"]
-            self.assertEqual(state["schema_version"], 18)
+            self.assertEqual(state["schema_version"], 19)
             self.assertEqual(totals["tasks"], 2)
             self.assertEqual(totals["used_tasks"], 1)
             self.assertEqual(totals["missed_opportunities"], 1)
@@ -989,7 +1235,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-17T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 18)
+            self.assertEqual(state["schema_version"], 19)
             self.assertEqual(state["routing"]["totals"]["availability_unknown_tasks"], 1)
             self.assertEqual(state["routing"]["totals"]["confirmed_unavailable_tasks"], 1)
             self.assertEqual(state["daily"]["2026-08-17"]["routing"]["availability_unknown_tasks"], 1)

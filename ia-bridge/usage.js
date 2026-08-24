@@ -350,10 +350,10 @@ function localAiDerived(totals) {
       : null,
     primary_context_use_rate_percent: calls > 0
       ? round((primaryUsed / calls) * 100, 1)
-      : null,
+      : 0,
     primary_context_usage_coverage_percent: primaryUsed + primaryUnconfirmed > 0
       ? round((primaryUsed / (primaryUsed + primaryUnconfirmed)) * 100, 1)
-      : null,
+      : 0,
     raw_context_reduction_percent: input > 0 ? round((avoided / input) * 100, 1) : null,
     quality_acceptance_rate_percent: qualityAccepted + qualityRejected > 0
       ? round((qualityAccepted / (qualityAccepted + qualityRejected)) * 100, 1)
@@ -535,24 +535,50 @@ function localAiDiscardReason(job) {
   return 'quality_gate_rejected';
 }
 
-function localAiPrimaryContextUsed(job) {
+function validCodeModeDelivery(job, receipt) {
+  return (
+    receipt?.transport === 'code-mode-orchestrator-v1'
+    && receipt?.job_id === job?.id
+    && receipt?.task === job?.task
+    && Number(receipt?.source_output_chars) > 0
+    && Number(receipt.source_output_chars) === Number(job?.context_input_chars)
+    && job?.invocation_source === 'mcp'
+  );
+}
+
+function localAiPrimaryContextUsed(job, deliveryReceipts = new Map()) {
   const boundedTask = [
     'inspect-files', 'review-diff', 'summarize-document', 'summarize-memory',
   ].includes(String(job?.task || ''));
+  const gateType = String(job?.quality_gate_type || 'llm-verifier');
+  const independentValidation = gateType === 'deterministic-log-anchors-v1'
+    ? (
+      job?.task === 'summarize-log'
+      && job?.verifier_model === 'deterministic:log-anchors-v1'
+      && Number(job?.quality_validation_tokens) === 0
+      && Number(job?.quality_verification_attempts) === 0
+    )
+    : (
+      typeof job?.verifier_model === 'string'
+      && job.verifier_model.length > 0
+      && job.verifier_model !== job.model
+    );
   return (
     job?.status === 'success'
+    && job?.context_replacement !== false
     && job.quality_accepted === true
     && job.quality_validation_tokens_measured === true
-    && typeof job.verifier_model === 'string'
-    && job.verifier_model.length > 0
-    && job.verifier_model !== job.model
-    && job.invocation_source === 'post-tool-hook'
+    && independentValidation
+    && (
+      job.invocation_source === 'post-tool-hook'
+      || validCodeModeDelivery(job, deliveryReceipts.get(job?.id))
+    )
     && Number(job.useful_context_tokens_avoided) > 0
     && !(boundedTask && job.input_truncated === true)
   );
 }
 
-function sanitizeLocalAiJob(job) {
+function sanitizeLocalAiJob(job, deliveryReceipts = new Map()) {
   if (!job || typeof job !== 'object') return {};
   // The dashboard needs only operational metadata. Keeping this compact avoids
   // Home Assistant's 16 KiB state-attribute limit and never exposes endpoint
@@ -561,7 +587,7 @@ function sanitizeLocalAiJob(job) {
     'id', 'status', 'task', 'model', 'verifier_model', 'chat_id', 'chat_name', 'started_at', 'finished_at',
     'invocation_source',
     'duration_seconds', 'error_type', 'discard_reason', 'fallback_reported',
-    'context_input_tokens', 'context_output_tokens',
+    'context_input_chars', 'context_input_tokens', 'context_output_tokens',
     'context_overhead_tokens', 'context_overhead_method', 'context_savings_estimated',
     'token_count_method', 'context_replacement',
     'deterministic_omitted_lines', 'model_input_chars', 'model_input_tokens', 'input_truncated',
@@ -569,7 +595,7 @@ function sanitizeLocalAiJob(job) {
     'gross_useful_context_tokens_avoided', 'useful_context_tokens_avoided',
     'quality_validation_input_tokens', 'quality_validation_output_tokens',
     'quality_validation_tokens', 'quality_validation_tokens_measured',
-    'quality_accepted', 'quality_score_percent',
+    'quality_accepted', 'quality_score_percent', 'quality_gate_type',
     'quality_verification_attempts', 'tokens_per_second', 'local_attempts',
     'gpu_telemetry_available', 'gpu_peak_percent',
     'vram_peak_mib', 'gpu_power_peak_watts', 'processor',
@@ -578,7 +604,13 @@ function sanitizeLocalAiJob(job) {
   const sanitized = Object.fromEntries(
     fields.filter((field) => Object.hasOwn(job, field)).map((field) => [field, job[field]]),
   );
-  sanitized.primary_context_used = localAiPrimaryContextUsed(sanitized);
+  const deliveryReceipt = deliveryReceipts.get(sanitized.id);
+  sanitized.primary_context_used = localAiPrimaryContextUsed(sanitized, deliveryReceipts);
+  if (sanitized.primary_context_used && validCodeModeDelivery(sanitized, deliveryReceipt)) {
+    sanitized.delivery_transport = deliveryReceipt.transport;
+  } else if (sanitized.primary_context_used && sanitized.invocation_source === 'post-tool-hook') {
+    sanitized.delivery_transport = 'post-tool-hook';
+  }
   if (!sanitized.primary_context_used) {
     sanitized.useful_context_tokens_avoided = 0;
   }
@@ -601,6 +633,66 @@ function sanitizeLocalAiJob(job) {
   return sanitized;
 }
 
+function codeModeDeliveryReceipts(state) {
+  const jobs = Array.isArray(state?.latest_jobs) ? state.latest_jobs : [];
+  const jobsById = new Map(jobs
+    .filter((job) => job && typeof job === 'object' && typeof job.id === 'string')
+    .map((job) => [job.id, job]));
+  const receipts = Array.isArray(state?.deliveries?.latest_receipts)
+    ? state.deliveries.latest_receipts
+    : [];
+  const valid = new Map();
+  for (const receipt of receipts) {
+    if (!receipt || typeof receipt !== 'object' || typeof receipt.job_id !== 'string') continue;
+    const job = jobsById.get(receipt.job_id);
+    if (!job || !validCodeModeDelivery(job, receipt)) continue;
+    if (!localAiPrimaryContextUsed(job, new Map([[receipt.job_id, receipt]]))) continue;
+    valid.set(receipt.job_id, receipt);
+  }
+  return valid;
+}
+
+function promoteDeliveredTotals(totals, job) {
+  if (!totals || typeof totals !== 'object') return;
+  totals.operational_primary_context_used_calls =
+    (Number(totals.operational_primary_context_used_calls) || 0) + 1;
+  totals.operational_primary_context_unconfirmed_calls = Math.max(
+    0,
+    (Number(totals.operational_primary_context_unconfirmed_calls) || 0) - 1,
+  );
+  totals.confirmed_gross_useful_context_tokens_avoided =
+    (Number(totals.confirmed_gross_useful_context_tokens_avoided) || 0)
+    + Math.max(0, Number(job.gross_useful_context_tokens_avoided) || 0);
+  totals.confirmed_quality_validation_tokens =
+    (Number(totals.confirmed_quality_validation_tokens) || 0)
+    + Math.max(0, Number(job.quality_validation_tokens) || 0);
+  totals.confirmed_useful_context_tokens_avoided =
+    (Number(totals.confirmed_useful_context_tokens_avoided) || 0)
+    + Math.max(0, Number(job.useful_context_tokens_avoided) || 0);
+}
+
+function reconcileCodeModeDeliveries(state, deliveryReceipts) {
+  const jobs = Array.isArray(state?.latest_jobs) ? state.latest_jobs : [];
+  for (const job of jobs) {
+    if (!deliveryReceipts.has(job?.id)) continue;
+    if (!localAiPrimaryContextUsed(job, deliveryReceipts)) continue;
+    promoteDeliveredTotals(state.totals, job);
+    const day = String(job.finished_at || job.started_at || '').slice(0, 10);
+    promoteDeliveredTotals(state.daily?.[day]?.totals, job);
+    promoteDeliveredTotals(state.models?.[String(job.model || 'unknown')]?.totals, job);
+    promoteDeliveredTotals(state.tasks?.[String(job.task || 'unknown')]?.totals, job);
+    for (const pair of Object.values(state.model_pairs || {})) {
+      if (
+        pair?.generator_model === (job.model || 'unknown')
+        && pair?.verifier_model === (job.verifier_model || 'unmeasured')
+      ) {
+        promoteDeliveredTotals(pair.totals, job);
+        break;
+      }
+    }
+  }
+}
+
 function sanitizeRoutingDecision(decision) {
   if (!decision || typeof decision !== 'object') return {};
   const fields = [
@@ -612,7 +704,7 @@ function sanitizeRoutingDecision(decision) {
     'quality_accepted', 'quality_score_percent', 'decision', 'reason',
     'minimum_input_tokens', 'minimum_expected_saved_tokens', 'model',
     'model_input_tokens', 'estimated_candidate_tokens',
-    'estimated_validation_tokens', 'expected_net_tokens_saved',
+    'estimated_validation_tokens', 'expected_net_tokens_saved', 'quality_gate_type',
   ];
   return Object.fromEntries(
     fields.filter((field) => Object.hasOwn(decision, field)).map((field) => [field, decision[field]]),
@@ -666,6 +758,8 @@ function reconcileRoutingDecisions(decisions, jobs) {
 
 function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const state = readJson(telemetryPath, {});
+  const deliveryReceipts = codeModeDeliveryReceipts(state);
+  reconcileCodeModeDeliveries(state, deliveryReceipts);
   const preflight = readJson(statusPath, {});
   const totals = { ...emptyLocalAiTotals(), ...(state.totals || {}) };
   const routingTotals = { ...emptyRoutingTotals(), ...(state.routing?.totals || {}) };
@@ -684,7 +778,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
         || freshness(new Date(job.live_gpu?.at), now, LIVE_GPU_SAMPLE_MAX_AGE_MS).current;
     })
     .sort((left, right) => String(right.started_at).localeCompare(String(left.started_at)));
-  const sanitizedActiveJobs = recentActiveJobs.map(sanitizeLocalAiJob);
+  const sanitizedActiveJobs = recentActiveJobs.map((job) => sanitizeLocalAiJob(job, deliveryReceipts));
   const currentJob = sanitizedActiveJobs[0] || null;
   const preflightState = typeof preflight.state === 'string' ? preflight.state : 'LOCAL_AI_UNKNOWN';
   const preflightFreshness = freshness(new Date(preflight.checked_at), now);
@@ -714,7 +808,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
     .map(([task, value]) => ({ task, ...(value.totals || {}), ...localAiDerived(value.totals || {}) }))
     .sort((left, right) => Number(right.operational_calls || 0) - Number(left.operational_calls || 0));
   const latestJobs = Array.isArray(state.latest_jobs)
-    ? state.latest_jobs.slice(-5).reverse().map(sanitizeLocalAiJob)
+    ? state.latest_jobs.slice(-5).reverse().map((job) => sanitizeLocalAiJob(job, deliveryReceipts))
     : [];
   const latestDecisions = Array.isArray(state.routing?.latest_decisions)
     ? state.routing.latest_decisions.slice(-5).reverse().map(sanitizeRoutingDecision)
@@ -775,11 +869,15 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
     // Five jobs cover the current job plus recent diagnostics, while staying
     // well below the attribute-size limit enforced by Home Assistant.
     latest_jobs: latestJobs,
+    deliveries: {
+      confirmed_code_mode_calls: deliveryReceipts.size,
+    },
   };
 }
 
 function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
   const state = readJson(telemetryPath, {});
+  const deliveryReceipts = codeModeDeliveryReceipts(state);
   const cutoff = now.valueOf() - windowHours * 3_600_000;
   const jobs = Array.isArray(state.latest_jobs) ? state.latest_jobs : [];
   const recent = jobs
@@ -797,6 +895,7 @@ function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
         task: job.task || null,
         model: job.model || null,
         verifier_model: job.verifier_model || null,
+        quality_gate_type: job.quality_gate_type || null,
         status: job.status || null,
         discard_reason: localAiDiscardReason(job),
         duration_seconds: Number.isFinite(Number(job.duration_seconds))
@@ -808,8 +907,11 @@ function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
         quality_score_percent: Number.isFinite(Number(job.quality_score_percent))
           ? Number(job.quality_score_percent)
           : null,
-        primary_context_used: localAiPrimaryContextUsed(job),
-        useful_context_tokens_avoided: localAiPrimaryContextUsed(job)
+        delivery_transport: validCodeModeDelivery(job, deliveryReceipts.get(job?.id))
+          ? 'code-mode-orchestrator-v1'
+          : job.invocation_source === 'post-tool-hook' ? 'post-tool-hook' : null,
+        primary_context_used: localAiPrimaryContextUsed(job, deliveryReceipts),
+        useful_context_tokens_avoided: localAiPrimaryContextUsed(job, deliveryReceipts)
           ? Math.max(0, Number(job.useful_context_tokens_avoided) || 0)
           : 0,
       };

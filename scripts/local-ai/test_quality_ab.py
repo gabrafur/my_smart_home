@@ -32,7 +32,7 @@ class QualityBenchmarkTest(unittest.TestCase):
         )
 
         self.assertEqual(report["benchmark_kind"], "offline_context_compression_with_fidelity_gate")
-        self.assertEqual(report["suite"], "local-ai-quality-benchmark-v4")
+        self.assertEqual(report["suite"], "local-ai-quality-benchmark-v5")
         self.assertFalse(report["end_to_end_primary_model_evaluated"])
         self.assertFalse(report["operational_savings_proven"])
         self.assertEqual(report["confirmed_end_to_end_useful_tokens_avoided"], 0)
@@ -53,6 +53,48 @@ class QualityBenchmarkTest(unittest.TestCase):
         self.assertEqual(report["per_input_size_band"]["1200-2999"]["observations"], 4)
         self.assertEqual(report["uncertainty"]["method"], "fixture_cluster_bootstrap_2000_and_wilson_95")
         self.assertEqual(report["net_gain_tokens_distribution"]["zero_observations"], 2)
+
+    def test_delivery_ab_requires_bound_code_mode_receipt_and_reports_final_percent(self):
+        job_id = "12345678-1234-4234-8234-123456789abc"
+        job = {
+            "id": job_id,
+            "task": "summarize-log",
+            "invocation_source": "mcp",
+            "status": "success",
+            "quality_accepted": True,
+            "quality_validation_tokens_measured": True,
+            "quality_gate_type": "deterministic-log-anchors-v1",
+            "verifier_model": "deterministic:log-anchors-v1",
+            "quality_verification_attempts": 0,
+            "quality_validation_tokens": 0,
+            "context_input_chars": 16293,
+            "context_input_tokens": 4074,
+            "context_output_tokens": 149,
+            "useful_context_tokens_avoided": 3925,
+            "token_count_method": "tiktoken:o200k_base",
+        }
+        state = {
+            "latest_jobs": [job],
+            "deliveries": {"latest_receipts": [{
+                "job_id": job_id,
+                "task": "summarize-log",
+                "transport": "code-mode-orchestrator-v1",
+                "source_output_chars": 16293,
+                "confirmed_at": "2026-08-24T13:17:47Z",
+            }]},
+        }
+
+        report = QUALITY_AB.delivery_ab_report(state, job_id)
+        self.assertEqual(report["suite"], "local-ai-delivery-ab-v6")
+        self.assertTrue(report["operational_savings_proven"])
+        self.assertTrue(report["primary_model_use_confirmed"])
+        self.assertFalse(report["final_answer_quality_evaluated"])
+        self.assertEqual(report["confirmed_end_to_end_useful_tokens_avoided"], 3925)
+        self.assertEqual(report["final_useful_reduction_percent"], 96.3)
+
+        state["deliveries"]["latest_receipts"][0]["source_output_chars"] = 16292
+        with self.assertRaisesRegex(RuntimeError, "evidence_invalid"):
+            QUALITY_AB.delivery_ab_report(state, job_id)
 
     @staticmethod
     def result(task, repetition, *, useful, accepted, efficient):

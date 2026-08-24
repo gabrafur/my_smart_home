@@ -92,7 +92,7 @@ class MemoryContextTest(unittest.TestCase):
             recorder.memory_decision(decision)
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["memory"]["totals"]
-            self.assertEqual(state["schema_version"], 18)
+            self.assertEqual(state["schema_version"], 19)
             self.assertEqual(totals["retrieval_calls"], 1)
             self.assertEqual(totals["memory_tokens_avoided"], 680)
             self.assertEqual(totals["memory_tokens_available"], 900)

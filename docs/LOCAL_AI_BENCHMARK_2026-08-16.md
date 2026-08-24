@@ -1,11 +1,11 @@
 # Benchmark Local AI — 2026-08-16 (atualizado em 2026-08-24)
 
-Decisão vigente: `qwen2.5-coder:14b` permanece como gerador instalado, mas o
-uso operacional é desviado sem inferência enquanto não houver um verificador
-independente que passe simultaneamente pelos gates de fidelidade e economia.
-Nenhum candidato foi promovido na bateria v4. O benchmark histórico abaixo
-explica a seleção anterior de 7B; as seções posteriores registram cada
-reavaliação.
+Decisão vigente: `qwen2.5-coder:14b` permanece como gerador instalado. O perfil
+extrativo `deterministic-log-anchors-v1` foi promovido no runtime 1.3.3 somente
+para `summarize-log` a partir de 3.000 tokens; os demais perfis operacionais
+continuam desabilitados. Nenhum verificador por modelo foi promovido na bateria
+v4. O benchmark histórico abaixo explica a seleção anterior de 7B; as seções
+posteriores registram cada reavaliação.
 
 Endpoint testado: `http://GPU_HOST:11435` (Ollama remoto; endereço real fica
 na configuração privada). GPU: NVIDIA
@@ -318,3 +318,159 @@ do experimento é zero e os 4.096 tokens offline não podem ser somados ao paine
 operacional. Os relatórios completos ficam apenas no histórico privado local;
 o repositório preserva o harness, hashes, parâmetros e estes agregados
 sanitizados para reprodução.
+
+## Gate extrativo de logs e benchmark offline v5 — 2026-08-24
+
+O custo do segundo modelo anulava parte substancial do único estrato lucrativo.
+O v5 substituiu esse passe, somente em logs, por um contrato extrativo: a RTX
+seleciona IDs de uma a quatro linhas rotineiras; código determinístico injeta
+até 16 linhas exatas com sinais e continuação de stack/path, resolve os IDs para
+a fonte, extrai paths e remove toda prosa, ação ou arquivo gerado. Truncamento,
+seletor que não pertença à fonte, ausência de sinal ou excesso de linhas
+críticas rejeitam o candidato e preservam o contexto bruto.
+
+A rodada executou sequencialmente dois fixtures elegíveis (desenvolvimento e
+holdout), quatro vezes cada, com `qwen2.5-coder:14b`, temperatura zero e contexto
+8.192. O gate não executou segunda inferência. O oráculo dos fixtures permaneceu
+separado da decisão do gate.
+
+| Métrica | Resultado |
+| --- | ---: |
+| Observações | 8 |
+| Aceitas e economicamente úteis | 8/8 |
+| Falsos aceites / falsas rejeições | 0 / 0 |
+| Contexto de controle | 25.388 tokens estimados |
+| Contexto efetivo do tratamento | 1.328 tokens estimados |
+| Tokens úteis offline | 24.060 |
+| Gate de validação por inferência | 0 tokens |
+| Redução ponderada / mediana | 94,8% / 94,8% |
+| Intervalo bootstrap agrupado de 95% | 94,7–94,8% |
+| Latência local total | 50,010 s |
+
+| Artefato da rodada | SHA-256 |
+| --- | --- |
+| Fixtures | `1e14c187b835bfb3ccb814383ddd2afc26da0b7921a71c068a1f1e91b539209c` |
+| Prompt | `b7ac494cb658264cd3805193ff61f820def97e67a5770576a1d53923a48e1b9f` |
+| Helper | `51122b79a51f6fc0d6ab59283f74098e3fe6a9703846a581847bb216a4ef5d9a` |
+| Harness | `7a9f1a942c49e8d5b668461197fec5c3654779c8bbaea242b13bc1f3f89bd163` |
+| Roteador | `45a763351531bf2bd173143fac110823aaddf6a79d54ed9230e15807aa34898f` |
+
+O resultado satisfaz os gates de promoção definidos para esse experimento:
+zero falso aceite, mediana positiva e limite inferior do intervalo acima de
+zero. Por isso o perfil foi promovido, mantendo o piso de 3.000 tokens e o
+fallback fechado. Ainda não é um A/B ponta a ponta com o modelo principal:
+`end_to_end_primary_model_evaluated` e `operational_savings_proven` permanecem
+falsos, e os 24.060 tokens offline não entram no painel. Economia confirmada só
+começa em um job real no qual o `PostToolUse` retenha a saída bruta e entregue o
+resultado aceito.
+
+O contrato de aplicação foi auditado junto com a promoção: `AGENTS.md` exige a
+avaliação em cada nova solicitação e a skill exige `local_ai_route` antes de
+`local_ai_compress_context`. Isso cobre por política logs não sensíveis vindos
+do prompt, de arquivos recuperados ou de ferramentas. A garantia automática é
+mais estreita: `Bash` observável depende do hook aprovado, enquanto Code Mode
+mantém a saída aninhada na orquestração e registra um recibo ligado ao job.
+Testes de regressão cobrem a compressão no piso promovido, o recibo e a ausência
+de chamada MCP logo abaixo do piso.
+
+## A/B operacional de entrega Code Mode v6 — 2026-08-24
+
+O v5 media compressão e fidelidade offline, mas não o transporte até o contexto
+principal. Depois da introdução do recibo `code-mode-orchestrator-v1`, o harness
+ganhou um modo metadata-only que compara o controle contrafactual — o mesmo
+corpo bruto — com o tratamento realmente entregue e confirmado no painel. Ele
+falha fechado se `job_id`, tarefa, tamanho, gate ou recibo divergirem.
+
+A primeira observação operacional usou um log sintético com 220 heartbeats e um
+traceback. O gate preservou `RuntimeError`, `/srv/demo/worker.py`, linha 42 e uma
+linha rotineira exata. A auditoria do transcript correlacionou o envelope com o
+resultado MCP pelo mesmo `job_id`.
+
+| Métrica | Resultado |
+| --- | ---: |
+| Observações operacionais | 1 |
+| Controle bruto | 4.074 tokens estimados |
+| Tratamento entregue | 149 tokens estimados |
+| Custo do gate | 0 tokens |
+| Tokens úteis confirmados | 3.925 |
+| **Redução útil final** | **96,3%** |
+| Uso pelo contexto principal | confirmado |
+| Qualidade da resposta final do modelo principal | não avaliada |
+
+Reprodução metadata-only para um job já entregue:
+
+```bash
+python3 scripts/local-ai/quality_ab.py --delivery-job-id <job_id>
+```
+
+O relatório se identifica como `local-ai-delivery-ab-v6`, exige
+`operational_savings_proven=true` e mantém
+`final_answer_quality_evaluated=false`. Portanto, 96,3% é o resultado pareado
+de redução de contexto desta observação, não um intervalo estatístico nem uma
+garantia para todo prompt. A evidência offline mais ampla continua sendo o v5:
+8/8 aceites, 94,8% ponderados e intervalo agrupado de 94,7–94,8%.
+
+## A/B ponderado do sistema completo v8 — 2026-08-24
+
+O v8 substitui o percentual de uma única classe como resultado principal. A
+bateria pareada executou 14 tarefas sintéticas, duas por classe e com os mesmos
+dados, modelo `gpt-5.6-terra`, reasoning `medium`, contrato de resposta e
+oráculo nos braços A e B. O braço A enviou o contexto bruto; o B chamou o
+roteador em todas as tarefas e substituiu o contexto somente quando a rota foi
+elegível. As contagens abaixo vêm de `turn.completed.usage.input_tokens` do
+Codex e incluem a sobrecarga comum do modelo.
+
+O perfil representa 100 tarefas equivalentes com pesos declarados antes da
+execução: logs 18%, outputs de testes 18%, documentação 14%, revisão de diffs
+16%, triagem de arquivos 14%, extração estruturada 10% e casos explicitamente
+inadequados para RTX 10%. É uma carga sintética conservadora e reproduzível,
+não uma estimativa derivada de conversas privadas nem uma distribuição
+universal de uso.
+
+| Classe | Pares | Peso | Baseline GPT | GPT roteado | Economia | Uso RTX | Sucesso RTX | Latência A / B média | Divergências |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Logs | 2 | 18% | 362.169 | 253.152 | 30,1% | 100% | 100% | 6,502 / 15,660 s | 0 |
+| Outputs de testes | 2 | 18% | 280.314 | 282.186 | -0,7% | 0% | n/a | 7,638 / 7,163 s | 0 |
+| Documentação | 2 | 14% | 231.224 | 231.224 | 0,0% | 0% | n/a | 5,060 / 6,102 s | 0 |
+| Revisão de diffs | 2 | 16% | 267.584 | 267.584 | 0,0% | 0% | n/a | 5,671 / 5,455 s | 0 |
+| Triagem de arquivos | 2 | 14% | 232.064 | 232.064 | 0,0% | 0% | n/a | 5,318 / 5,287 s | 0 |
+| Extração estruturada | 2 | 10% | 162.990 | 162.990 | 0,0% | 0% | n/a | 8,098 / 6,469 s | 0 |
+| Não elegíveis | 2 | 10% | 139.275 | 139.275 | 0,0% | 0% | n/a | 6,748 / 5,794 s | 0 |
+
+| Métrica global | Resultado |
+| --- | ---: |
+| Pares / chamadas GPT lógicas | 14 / 28 |
+| `baseline_gpt_tokens` ponderados | 1.675.620 |
+| `routed_gpt_tokens` ponderados | 1.568.475 |
+| **`weighted_token_savings`** | **6,39% (6,4% arredondado)** |
+| **`eligible_task_token_savings`** | **30,10% (30,1% arredondado)** |
+| Passes funcionais A / B | 14/14 / 14/14 |
+| Perdas relevantes / divergências / falhas | 0 / 0 / 0 |
+| Resultado do gate | aprovado |
+
+A diferença de -0,7% nos outputs de testes é ruído conservador da contagem
+total do executor: o contexto era idêntico e não houve RTX. Ela permanece no
+denominador, como solicitado, em vez de ser removida para melhorar o resultado.
+Nos logs, a latência end-to-end subiu em média de 6,502 para 15,660 segundos;
+9,325 segundos vieram do roteamento e processamento local. Assim, a promoção
+mantém ganho de tokens e qualidade, mas troca aproximadamente 9 segundos de
+latência por tarefa elegível neste corpus.
+
+O protocolo inicial v7 foi corretamente reprovado porque o oráculo tratava
+formas semanticamente equivalentes como divergentes e não especificava os
+campos da extração estruturada. O v8 normalizou somente equivalências explícitas
+e repetiu os dois pares dessa classe; as outras medições foram revalidadas sem
+reexecutar uma segunda bateria pesada no host residencial.
+
+Reprodução completa:
+
+```bash
+python3 scripts/local-ai/system_ab.py \
+  --model gpt-5.6-terra \
+  --reasoning medium \
+  --output .agent-history/local-ai-system-ab-v8.json
+```
+
+O relatório privado guarda somente fixtures sintéticas e resultados do teste.
+O harness versionado é o `system_ab.py` do diretório `scripts/local-ai`; os
+testes provam que os perfis não elegíveis permanecem no denominador ponderado.

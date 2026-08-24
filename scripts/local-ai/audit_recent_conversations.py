@@ -17,6 +17,7 @@ from typing import Any, Iterable
 DEFAULT_MAX_CONVERSATIONS = 20
 MAX_ADJUSTMENTS = 12
 DETERMINISTIC_POSTPROCESS_MIN_CHARS = 12_000
+MAX_CODE_MODE_DELIVERY_CHARS = 12_000
 ADJUSTMENT_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
@@ -67,20 +68,40 @@ def tool_output_size(payload: dict[str, Any]) -> int:
     return len(tool_output_text(payload))
 
 
+def canonical_tool_json(output: str) -> dict[str, Any] | None:
+    """Decode plain JSON or the exact runtime-owned functions.exec wrapper."""
+    candidates = [output]
+    wrapped = re.fullmatch(
+        r"Script completed\nWall time [0-9]+(?:\.[0-9]+)? seconds\nOutput:\n\s*(\{.*\})\s*",
+        output,
+        flags=re.DOTALL,
+    )
+    if wrapped:
+        candidates.append(wrapped.group(1))
+    for candidate in candidates:
+        try:
+            value = json.loads(candidate)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if isinstance(value, dict):
+            return value
+    return None
+
+
 def successful_hook_replacement(output: str) -> str | None:
     """Recognize only the canonical, telemetry-backed PostToolUse replacement."""
-    try:
-        value = json.loads(output)
-    except (TypeError, json.JSONDecodeError):
+    value = canonical_tool_json(output)
+    if value is None:
         return None
-    if isinstance(value, dict) and isinstance(value.get("hookSpecificOutput"), dict):
+    wrapped = isinstance(value, dict) and isinstance(value.get("hookSpecificOutput"), dict)
+    if wrapped:
         value = value["hookSpecificOutput"].get("additionalContext")
         if isinstance(value, str):
             try:
                 value = json.loads(value)
             except json.JSONDecodeError:
                 return None
-    if not isinstance(value, dict) or value.get("local_ai_context_replacement") is not True:
+    if not wrapped or not isinstance(value, dict) or value.get("local_ai_context_replacement") is not True:
         return None
     metadata = value.get("local_ai")
     valid = bool(
@@ -93,6 +114,36 @@ def successful_hook_replacement(output: str) -> str | None:
         and isinstance(value.get("result"), dict)
     )
     return str(metadata["job_id"]) if valid else None
+
+
+def code_mode_delivery(output: str) -> dict[str, Any] | None:
+    """Parse a bounded delivery envelope before matching runtime MCP proof."""
+    if len(output) > MAX_CODE_MODE_DELIVERY_CHARS:
+        return None
+    value = canonical_tool_json(output)
+    if value is None:
+        return None
+    if not isinstance(value, dict) or value.get("local_ai_context_replacement") is not True:
+        return None
+    delivery = value.get("delivery")
+    metadata = value.get("local_ai")
+    valid = bool(
+        isinstance(delivery, dict)
+        and delivery.get("schema_version") == 1
+        and delivery.get("transport") == "code-mode-orchestrator-v1"
+        and delivery.get("raw_output_emitted") is False
+        and isinstance(delivery.get("source_output_chars"), int)
+        and delivery["source_output_chars"] >= DETERMINISTIC_POSTPROCESS_MIN_CHARS
+        and isinstance(metadata, dict)
+        and metadata.get("executed") is True
+        and metadata.get("success") is True
+        and metadata.get("telemetry_recorded") is True
+        and isinstance(metadata.get("job_id"), str)
+        and bool(metadata["job_id"])
+        and delivery.get("job_id") == metadata["job_id"]
+        and isinstance(value.get("result"), dict)
+    )
+    return value if valid else None
 
 
 def call_source(payload: dict[str, Any]) -> str:
@@ -179,6 +230,8 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
     candidate = False
     deterministic = False
     successful_job_ids: set[str] = set()
+    successful_mcp_results: dict[str, dict[str, Any]] = {}
+    code_mode_envelopes: list[dict[str, Any]] = []
     candidate_outputs = 0
     deterministic_outputs = 0
     unavailable = False
@@ -202,6 +255,11 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
             hook_job_id = successful_hook_replacement(output)
             if hook_job_id:
                 successful_job_ids.add(hook_job_id)
+            envelope = code_mode_delivery(output)
+            if envelope is not None:
+                code_mode_envelopes.append(envelope)
+                candidate = True
+                candidate_outputs += 1
             eligible_output, deterministic_output = output_profile(source, len(output), output)
             candidate = candidate or eligible_output
             deterministic = deterministic or deterministic_output
@@ -231,9 +289,22 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
                     and isinstance(result.get("result"), dict)
                 )
                 if ok:
-                    successful_job_ids.add(job_id)
+                    successful_mcp_results[job_id] = {
+                        "result": result.get("result"),
+                        "routed": last_route == ("LOCAL_AI_ELIGIBLE", task),
+                    }
                     if last_route == ("DETERMINISTIC", task):
                         unnecessary_calls += 1
+
+    for envelope in code_mode_envelopes:
+        job_id = str(envelope["local_ai"]["job_id"])
+        mcp_result = successful_mcp_results.get(job_id)
+        if (
+            mcp_result
+            and mcp_result.get("routed") is True
+            and mcp_result.get("result") == envelope.get("result")
+        ):
+            successful_job_ids.add(job_id)
 
     successful_compressions = len(successful_job_ids)
     if successful_compressions:
@@ -253,6 +324,7 @@ def audit_vscode_session(rows: list[dict[str, Any]], timestamp: datetime) -> dic
         "category": category,
         "candidate": category in {"RTX_USED_CORRECTLY", "RTX_UNAVAILABLE", "MISSED_OPPORTUNITY"},
         "successful_compressions": successful_compressions,
+        "confirmed_delivery_job_ids": sorted(successful_job_ids),
         "unnecessary_calls": unnecessary_calls,
         "candidate_outputs": candidate_outputs,
         "deterministic_outputs": deterministic_outputs,
@@ -348,7 +420,7 @@ def audit(
         if item.get("missed_reason")
     )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "audited_at": now.isoformat().replace("+00:00", "Z"),
         "window_days": days,
         "conversations_audited": len(selected),
@@ -371,6 +443,12 @@ def audit(
         "candidate_outputs": sum(int(item.get("candidate_outputs", 0)) for item in selected),
         "missed_candidate_outputs": sum(int(item.get("missed_candidate_outputs", 0)) for item in selected),
         "missed_reasons": dict(sorted(missed_reasons.items())),
+        "confirmed_delivery_job_ids": list(dict.fromkeys(
+            job_id
+            for item in selected
+            for job_id in item.get("confirmed_delivery_job_ids", [])
+            if isinstance(job_id, str) and job_id
+        ))[:40],
         "adjustments": [],
     }
 

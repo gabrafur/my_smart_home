@@ -17,16 +17,23 @@ instrução global no bridge; o workspace já fornece o mesmo arquivo pelo
 mecanismo de descoberta do repositório.
 
 A economia útil exibida exclui falhas, descartes e benchmarks; resultado
-descartado equivale ao contexto bruto e economiza zero. Desde o schema 18, ela
-também exige prova de que o `PostToolUse` reteve o corpo bruto e entregou ao
-modelo principal um resultado mensurado, não truncado e aprovado por verificador
-independente. CLI, MCP direto e legado sem prova de entrega preservam valores
+descartado equivale ao contexto bruto e economiza zero. Desde o schema 19, ela
+também exige prova de entrega pelo `PostToolUse` ou pelo recibo metadata-only
+`code-mode-orchestrator-v1`, vinculado ao mesmo job MCP e tamanho exato. O
+resultado precisa ser mensurado, não truncado e aprovado por validador
+independente. Normalmente ele é um modelo distinto do gerador; o perfil de logs
+também admite o gate exato `deterministic-log-anchors-v1`. CLI, MCP direto e
+legado sem prova de entrega preservam valores
 provisórios para auditoria, mas reivindicam zero líquido confirmado. Para cada
 resultado confirmado, a economia útil líquida subtrai do delta bruto os tokens
 locais de entrada e saída consumidos por seus gates. Ela permanece estimada
 porque o overhead do envelope OpenAI não é mensurável pelo helper. Logs longos passam primeiro por filtragem determinística
-de ruído, preservando sinais e contexto; `summarize-log` usa schema limitado e
-no máximo uma repetição compacta para evitar JSON truncado.
+de ruído, preservando sinais e contexto. Desde o runtime 1.3.3,
+`summarize-log` entrega somente extratos: até 16 linhas críticas injetadas
+deterministicamente e de uma a quatro linhas rotineiras escolhidas pela RTX por
+ID e resolvidas de volta para a fonte. Prosa, ações e arquivos gerados são
+substituídos por metadados determinísticos; truncamento, excesso de sinais ou
+seletor não extrativo devolvem o contexto bruto e economizam zero.
 
 O roteamento é uma decisão determinística e registrada antes da inferência:
 tipo de tarefa, tamanho estimado, compressibilidade, economia prevista,
@@ -47,8 +54,8 @@ sobre o corpo bruto antes do limite.
 No modelo vigente, todos os perfis exceto `summarize-log` são
 `LOCAL_AI_NOT_BENEFICIAL` no uso operacional. Continuam disponíveis apenas em
 benchmark forçado. `summarize-log` começa em 3.000 tokens, aplica precheck
-econômico e exige verificador independente; sem um verificador promovido, desvia para o contexto
-original sem inferência e sem alegar economia.
+econômico e usa o validador extrativo independente
+`deterministic:log-anchors-v1`, cujo custo de segunda inferência é zero.
 
 Suficiência determinística significa que nenhuma interpretação por LLM ainda é
 necessária. Coleta determinística pode produzir texto grande que continua
@@ -94,6 +101,24 @@ aumentou ganho e foi mais lento, então nenhum verificador foi promovido. O
 benchmark continua sendo avaliação offline de compressão e fidelidade, não A/B
 ponta a ponta do modelo principal; seus 4.096 tokens valem zero no painel
 operacional. A fonte detalhada é `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
+
+Uma rodada v5 posterior restringiu o corpus aos logs elegíveis de
+3.000–5.999 tokens e executou desenvolvimento e holdout quatro vezes com o
+mesmo gerador. O gate extrativo produziu 8/8 aceites úteis, zero falsos aceites
+ou rejeições, mediana de 94,8%, intervalo bootstrap agrupado de 94,7–94,8% e
+24.060 tokens offline evitados sem segunda inferência. Isso justificou promover
+o perfil 1.3.3, mas continua sem provar economia operacional: até um transporte
+canônico usar o resultado, o valor confirmado permanece zero.
+
+O A/B ponderado v8 mediu o sistema completo com 14 pares, duas fixtures em cada
+uma de sete classes, e manteve tarefas não elegíveis no denominador. No perfil
+sintético declarado de 100 tarefas equivalentes, `gpt-5.6-terra`/`medium`
+passou de 1.675.620 para 1.568.475 tokens ponderados: 6,39% de economia global.
+No estrato elegível, composto somente por logs, a economia foi 30,10%. Os dois
+braços passaram 14/14 oráculos, sem perdas ou divergências; a latência média dos
+logs subiu de 6,502 para 15,660 segundos. Esses pesos não vêm de conversas
+privadas nem garantem a distribuição futura de uso. A fonte detalhada continua
+em `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
 
 Não compare diretamente esse percentual A/B com a redução útil operacional. O
 A/B divide o líquido pelo contexto de controle das fixtures fixas; o indicador

@@ -65,8 +65,9 @@ Ollama.
 
 Os modelos disponíveis podem mudar por instalação. O gerador instalado
 permanece `qwen2.5-coder:14b`, que cumpriu os quatro schemas e não exibiu CPU
-offload, mas nenhum verificador independente está promovido para uso
-operacional. A primeira leitura de 51,5% bruta e a rodada autoavaliada de 23,2%
+offload. Nenhum verificador por modelo está promovido; o único validador novo é
+o gate determinístico e extrativo de logs do runtime 1.3.3. A primeira leitura
+de 51,5% bruta e a rodada autoavaliada de 23,2%
 são históricas. Em 2026-08-24, o benchmark v4 comparou `qwen3:8b` e
 `qwen3:14b` em 16 observações cada, com metade holdout. Ambos selecionaram os
 mesmos 2/16 resultados economicamente úteis, 13,6% ponderados e mediana zero;
@@ -144,8 +145,9 @@ consulta `local_ai_status` de forma preguiçosa e usa o MCP global
 benéfica, `local_ai_compress_context`. Os tipos são
 `summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
 `analyze-tests`, `summarize-log` e `classify-error`. O helper
-`./scripts/local-ai/local-ai` continua disponível apenas para diagnósticos e
-testes locais. Dados secretos, decisões de segurança, migrações, operações
+`./scripts/local-ai/local-ai` continua disponível para diagnósticos, testes e
+para registrar o recibo metadata-only `confirm-delivery`; esse subcomando não
+faz inferência. Dados secretos, decisões de segurança, migrações, operações
 destrutivas e revisão final nunca são enviados ao modelo local.
 
 Contratos, schemas, documentação bilíngue e mudanças multiarquivo também podem
@@ -154,6 +156,41 @@ arquivos, campos, comandos, módulos, headings e nomes de testes, não o código
 bruto inteiro. Esse crosswalk é adequado para cobertura documental e triagem;
 arquitetura, segurança e aprovação final permanecem no modelo principal.
 
+### Cobertura em cada nova solicitação
+
+O Codex carrega a cadeia de `AGENTS.md` uma vez ao iniciar a sessão, mas a regra
+versionada manda reavaliar o roteamento em **cada solicitação do usuário**. Isso
+faz a política alcançar candidatos que apareçam em turnos posteriores sem criar
+um preflight de GPU. O tamanho total do prompt nunca basta: o agente deve
+isolar um corpo não sensível, aplicar ferramentas determinísticas e chamar
+`local_ai_route` antes de qualquer compressão.
+
+| Origem do candidato | Aplicação | Garantia disponível |
+| --- | --- | --- |
+| Saída grande de `Bash` direto | Automática pelo `PostToolUse` | Determinística somente após `/hooks` mostrar `Installed = 1` e `Active = 1` |
+| `exec_command` aninhado no Code Mode | Explícita dentro da mesma orquestração | Recibo `code-mode-orchestrator-v1`; o resultado bruto não pode ser emitido |
+| Texto ou anexo do prompt | Explícita pelo agente conforme `AGENTS.md` | Política; não há interceptor `UserPromptSubmit` |
+| Resultado de outro tool ou MCP | Explícita sobre o menor trecho não sensível | O hook de `Bash` não intercepta esse caminho |
+| Conteúdo pequeno, estruturado, secreto ou privado | Não aplicar RTX | Fallback determinístico/modelo principal |
+
+O único saldo A/B líquido positivo promovido no runtime 1.3.3 é
+`summarize-log` com pelo menos 3.000 tokens estimados e gate
+`deterministic-log-anchors-v1`. Portanto, o `AGENTS.md` aplica a avaliação do MCP
+a toda nova solicitação, mas o roteador falha fechado para os demais perfis. A
+política não equivale a prova de execução: somente o job terminal com metadata
+canônica comprova uso da RTX. Economia operacional exige a substituição pelo
+hook ou o recibo Code Mode vinculado ao mesmo `job_id`, tamanho exato e envelope
+estruturado.
+
+O benchmark misto v8 evita extrapolar a redução de logs para todo o sistema.
+Com 14 pares em sete classes e uma carga sintética ponderada de 100 tarefas
+equivalentes, `gpt-5.6-terra`/`medium` consumiu 1.675.620 tokens ponderados no
+controle e 1.568.475 após o roteamento: 6,39% de economia global. Somente os
+logs foram elegíveis; nesse estrato a economia foi 30,10%. Ambos os braços
+passaram 14/14 oráculos funcionais, sem perda relevante ou divergência. O custo
+foi latência: nos logs, a média end-to-end subiu de 6,502 para 15,660 segundos.
+Pesos e limitações estão em `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
+
 O hook `PostToolUse` é versionado apenas neste projeto e precisa ser aprovado no
 Codex em `/hooks` depois de sua instalação ou de qualquer alteração. Ele atua
 somente quando uma saída grande já foi produzida; não analisa o prompt nem cria
@@ -161,12 +198,16 @@ uma etapa de confirmação. A aprovação é vinculada ao conteúdo do hook; uma
 alteração exige nova revisão. Consulte a documentação oficial de
 [hooks do Codex](https://learn.chatgpt.com/docs/hooks).
 
-### Aprovação obrigatória do hook
+### Aprovação obrigatória do hook por cliente
 
 Esta verificação interativa faz parte da instalação e manutenção, não é uma
 etapa opcional. Repita-a depois de um novo clone ou instalação, da reconstrução
-do contêiner que executa o Codex e sempre que `.codex/hooks.json` mudar. No host
-do projeto, abra o CLI já instalado no bridge:
+ou atualização do cliente que executa o Codex e sempre que `.codex/hooks.json`
+mudar. A confiança fica no estado do cliente: o CLI do `ai-bridge` usa o volume
+com o `HOME` do usuário do contêiner, enquanto a extensão do VS Code usa o
+`HOME` do host. Portanto, aprovar em um deles não ativa o outro.
+
+Para prompts enviados pelo bridge, abra o CLI do contêiner:
 
 ```bash
 cd /mnt/data/docker
@@ -186,11 +227,30 @@ mera presença de `.codex/hooks.json` não comprova que o hook está ativo. Não
 opções de bypass de trust; se a tabela não mostrar `PostToolUse` como instalado
 e ativo, conclua a revisão pela própria interface antes de validar o roteamento.
 
-Quando a compressão é útil, o hook retorna `continue: false` com contexto
-adicional limitado. Assim o resultado bruto é substituído também em code mode
-sem rejeitar a promise da ferramenta. Uma falha mantém o resultado original e
-é registrada pelo helper como `LOCAL_AI_FAILED`; o hook não cria uma segunda
-decisão `skipped`, evitando contabilizar a mesma tentativa também como perda.
+Para prompts enviados pela extensão do VS Code, abra `/hooks` com o Codex que
+vem na própria extensão, usando o `HOME` do host e este checkout. Confirme a
+mesma tabela no cliente da extensão. Neste checkout, o launcher somente localiza
+e abre o binário da extensão; ele não aprova nem contorna a confiança:
+
+```bash
+cd /mnt/data/docker
+./scripts/local-ai/review-vscode-hooks.sh
+```
+
+Depois da aprovação ou de uma atualização da extensão, execute
+`Developer: Reload Window` pela paleta de comandos e abra uma nova conversa. O
+`app-server` mantém o conjunto de hooks e a confiança carregados no início; uma
+conversa já aberta pode continuar reportando `HOOK_NOT_ACTIVE` até a janela ser
+recarregada.
+
+Quando a compressão é útil em uma chamada `Bash` observável, o hook retorna
+`continue: false` com contexto adicional limitado. Entretanto, o Code Mode do
+cliente atual executa `exec_command` dentro da ferramenta programática e não
+propaga esse evento aninhado ao `PostToolUse` do projeto. Nesse caminho o agente
+mantém o resultado bruto dentro da mesma orquestração, roteia/comprime, chama
+`local-ai confirm-delivery` com o `job_id` e a contagem exata de caracteres e
+emite somente o envelope abaixo de 12.000 caracteres. Uma falha não cria recibo
+e vale zero redução útil.
 
 ## Política de roteamento e auditoria
 
@@ -222,11 +282,14 @@ Com o gerador `qwen2.5-coder:14b`, todos os perfis exceto `summarize-log` ficam
 em `LOCAL_AI_NOT_BENEFICIAL` porque não passaram o A/B líquido. Eles só rodam
 com `LOCAL_AI_FORCE=1` em benchmark diagnóstico e não formam oportunidades
 perdidas. `summarize-log` começa em 3.000 tokens, único estrato lucrativo no
-holdout v4, e aplica um precheck que estima saída e gate antes de consumir GPU;
-entradas cuja economia prevista não cobre ambos são desviadas.
-As demais exigem um verificador diferente do gerador. Como nenhum candidato
-foi promovido na bateria v4, a configuração vigente desvia também esse perfil
-como `independent_verifier_required`, sem inferência e sem alegar economia.
+holdout v4, e usa desde o runtime 1.3.3 o gate extrativo
+`deterministic-log-anchors-v1`. O modelo escolhe IDs de linhas rotineiras; código
+determinístico entrega somente essas linhas exatas, injeta todos os sinais e
+vizinhanças de stack/path e descarta toda prosa gerada. O gate falha fechado em
+truncamento, mais de 16 linhas críticas ou seleção não extrativa. Seu custo de
+inferência de validação é zero, então o precheck estima saída sem duplicar o
+contexto em um segundo modelo. As demais tarefas continuam exigindo um
+verificador diferente do gerador e permanecem desabilitadas sem evidência.
 
 JSON grande, busca, listagem de arquivos, parsing e outros dados estruturados
 continuam determinísticos quando a ferramenta aplicável resolve o caso. Por
@@ -315,8 +378,10 @@ comprova elegibilidade. Uso real exige `local_ai_compress_context` concluído,
 `job_id` não vazio, telemetria registrada e job terminal bem-sucedido. O
 contexto substituto do hook inclui essa metadata canônica para que a resposta
 final não confunda disponibilidade ou roteamento com inferência executada. A
-auditoria aceita esse marcador como evidência do job do hook e deduplica o
-mesmo `job_id` caso uma chamada MCP equivalente também esteja visível.
+auditoria aceita esse marcador como evidência do job do hook. Para Code Mode,
+ela só aceita o envelope v1 quando a rota elegível veio antes da compressão e o
+`job_id` e o `result` coincidem com o evento MCP; uma compressão MCP isolada não
+é classificada como entrega.
 
 ## Contexto de memória do repositório
 
@@ -392,17 +457,23 @@ a memória versionada e a restauração de Git continuam disponíveis por retrie
 O helper não grava prompt, diff, código-fonte, resposta do modelo nem
 credenciais. Em `.agent-history/` (ignorado pelo Git) ele preserva somente
 metadados: tarefa, modelo, duração, contagens, status e amostras de GPU/VRAM.
-O schema 18 distingue economia provisória aprovada pelo gate de economia
+O schema 19 distingue economia provisória aprovada pelo gate de economia
 confirmada como contexto realmente utilizado pelo modelo principal. Uma
-confirmação exige sucesso, delta e gate mensurados, verificador independente,
-nenhum truncamento e origem `post-tool-hook`; nesse caminho, `continue: false`
-prova que o corpo bruto foi retido e o resultado estruturado entregue. CLI,
-MCP direto, benchmarks e histórico sem esse vínculo valem zero confirmado.
+confirmação exige sucesso, delta e gate mensurados, validador independente,
+nenhum truncamento e um dos dois transportes: origem `post-tool-hook`, ou recibo
+`code-mode-orchestrator-v1` ligado a um job MCP de mesmo tamanho de entrada.
+CLI, MCP direto, benchmarks e histórico sem esse vínculo valem zero confirmado.
+O recibo guarda somente `job_id`, tarefa, transporte, tamanho e horário; nunca
+persiste comando, entrada ou saída. A auditoria retrospectiva também exige que
+o envelope emitido tenha o mesmo `job_id` e o mesmo `result` do evento MCP.
 Os mesmos totais são agregados por dia, tarefa, gerador e par
-gerador/verificador; pares sem verificador independente permanecem identificados
-e reivindicam zero confirmado.
+gerador/validador; pares sem validação independente permanecem identificados e
+reivindicam zero confirmado. O validador normalmente é um modelo distinto do
+gerador. A única exceção promovida é o gate exato de logs, identificado por
+`verifier_model=deterministic:log-anchors-v1`, sem segunda inferência.
 Cada candidato passa primeiro por validações determinísticas específicas da
-tarefa e depois por um verificador de fidelidade com nota mínima de 90%. A nota
+tarefa; fora do perfil extrativo, passa depois por um verificador de fidelidade
+com nota mínima de 90%. A nota
 mede cobertura do conteúdo, não eficiência econômica. Um candidato fiel pode
 ser descartado como `insufficient_net_savings` quando o delta líquido após o
 custo do gate não alcança o mínimo; esse caso não conta como rejeição de
@@ -423,10 +494,14 @@ Em logs longos, uma etapa determinística preserva início, fim, `ERROR`,
 de contexto ao redor de cada sinal, substituindo apenas trechos rotineiros por
 marcadores de contagem. A economia continua usando o tamanho do contexto bruto
 como baseline; a telemetria também registra quantas linhas rotineiras foram
-omitidas e quantos caracteres chegaram ao modelo local. A validação exige que
-tipos de sinal e identificadores com underscore presentes nessas linhas sejam
-retidos em `summary` ou `errors`; uma omissão consome a única repetição compacta
-e, se persistir, devolve o fluxo ao fallback.
+omitidas e quantos caracteres chegaram ao modelo local. No perfil 1.3.3, o
+modelo recebe IDs estáveis `L0001` etc. e seleciona de uma a quatro linhas
+rotineiras. A saída entregue é reconstruída: `errors` recebe até 16 linhas
+críticas exatas, inclusive continuação de stack/path; `routine_context` recebe
+somente IDs resolvidos para linhas exatas; arquivos são extraídos localmente e
+ações geradas são removidas. Se qualquer seletor não vier da fonte, houver
+truncamento ou o limite crítico for excedido, uma segunda tentativa é permitida
+e depois o corpo bruto segue pelo fallback com economia zero.
 
 O bridge renova sua própria sondagem de saúde a cada minuto (e ao iniciar),
 usando o helper de disponibilidade, não um hook de prompt. Isso impede que uma falha transitória de rede
@@ -522,8 +597,8 @@ apps é configurado nele; isso evita a inicialização do MCP ambiental
 No painel RTX, **chamadas Local AI** e **saldo líquido equivalente** ficam em
 gráficos separados: chamadas contam tentativas de tarefas; o saldo soma somente
 a diferença entre o contexto recebido e resultados que passaram pelo gate de
-qualidade e tiveram uso confirmado pelo `PostToolUse`, descontando o custo
-local do verificador. O waterfall separa resultados com uso não confirmado dos
+qualidade e tiveram uso confirmado pelo `PostToolUse` ou pelo recibo Code Mode,
+descontando o custo local do verificador. O waterfall separa resultados com uso não confirmado dos
 que efetivamente substituíram contexto e mostra a cobertura dessa confirmação.
 Tabelas inferiores expõem a redução ponderada por tarefa e por par
 gerador/verificador, sempre usando as tentativas operacionais do segmento como
@@ -536,6 +611,13 @@ fica explicitamente marcado como não mensurado, portanto o valor não é um
 registro de cobrança oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
 detalhes de endpoint para permanecer abaixo do limite de atributos do Home
 Assistant e preservar a telemetria no Recorder.
+
+O A/B de entrega v6 reproduz, somente por metadados, o controle bruto e o
+tratamento de um job Code Mode confirmado. A primeira observação mediu 4.074
+tokens de controle, 149 no tratamento e 3.925 úteis, ou 96,3%. Esse percentual
+é específico da observação; o benchmark offline v5 mais amplo permanece em
+94,8% com 8/8 aceites. Os limites estão em
+`docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
 
 Além dos jobs, a telemetria privada guarda somente metadados das decisões de
 roteamento: tipo, tamanho estimado, elegibilidade, disponibilidade, motivo,
@@ -583,9 +665,12 @@ tabela. Assim, cada diferença entre duas etapas aparece como uma saída visíve
 em vez de parecer perda de dados.
 Benchmarks ganham contador diagnóstico separado e
 não contaminam chamadas ou falhas operacionais. Depois o waterfall muda
-explicitamente de unidade para contexto total tentado, contexto OpenAI evitado
-com uso confirmado, custo local do gate desses resultados, saldo líquido equivalente e redução útil
-operacional. A regra conservadora continua
+explicitamente de unidade para contexto total tentado, tokens Codex totais,
+contexto OpenAI evitado com uso confirmado, custo local do gate desses resultados,
+saldo líquido equivalente e redução útil operacional. A redução útil divide o
+saldo líquido pela base contrafactual da mesma janela UTC — tokens Codex totais
+observados + saldo útil —, e não pelo contexto tentado pela Local AI. Assim, a
+fórmula é `saldo útil / (tokens totais + saldo útil)`. A regra conservadora continua
 `max(0, contexto evitado - tokens locais do verificador)`, mas o painel explica
 que os tokenizadores são diferentes e que o saldo não é uma contagem faturável.
 Resultados legados cujo custo do verificador ou uso não pode ser provado
@@ -673,9 +758,9 @@ as alturas, contexto/memória fica após o diagnóstico na primeira coluna, enqu
 qualidade e históricos permanecem na terceira. Acumulados, decisões detalhadas, diagnóstico e gráficos físicos ou
 históricos ficam na parte inferior. Métricas prioritárias aparecem uma vez no
 topo; rejeições de qualidade aparecem somente em resultado/qualidade, junto da
-redução útil. Ela divide o saldo líquido equivalente por todo o contexto das
-tentativas operacionais; descartes e falhas entram no denominador com economia
-zero. A referência controlada explicita separadamente redução ponderada, mediana,
+redução útil. Ela divide o saldo líquido equivalente pela base contrafactual
+(`tokens totais + saldo útil`); descartes e falhas entram no
+denominador com economia zero. A referência controlada explicita separadamente redução ponderada, mediana,
 tamanho da amostra, modelos do gerador/verificador e ausência de avaliação
 end-to-end do modelo principal. Os blocos
 inferiores preservam detalhes e histórico sem repetir indicadores. Cada
@@ -729,7 +814,8 @@ segundos.
 | Ollama responde mas sem GPU | `ollama ps`, `nvidia-smi`, driver NVIDIA/WSL e tamanho/quantização do modelo |
 | CPU offload | reduza o modelo/contexto; não assuma que uma resposta rápida significa GPU integral |
 | RTX não aparece no painel | `GET /local-ai/live`, arquivo privado de telemetria e sensores do pacote HA |
-| Roteamento automático do projeto não roda | abra o Codex CLI pelo bridge, execute `/hooks`, revise/aprove `.codex/hooks.json` e confirme `PostToolUse` com `Installed = 1` e `Active = 1` |
+| `HOOK_NOT_ACTIVE` em Code Mode apesar de `/hooks` ativo | use o transporte `code-mode-orchestrator-v1`; hooks do projeto não recebem o `exec_command` aninhado |
+| Roteamento automático de `Bash` direto não roda | identifique o cliente que envia os prompts; execute `/hooks` nesse mesmo cliente e estado, confirme `PostToolUse` com `Installed = 1` e `Active = 1` e, para a extensão do VS Code, recarregue a janela e abra uma conversa nova |
 
 ## Reprodução em um fork
 
@@ -742,9 +828,11 @@ segundos.
 4. Crie o `local-ai.json` privado no host Codex e, se usar o bridge, no volume
    privado do Codex do container; adapte os caminhos do preflight a cada
    ambiente.
-5. Abra o Codex CLI, execute `/hooks`, revise o hook do projeto e confirme
-   obrigatoriamente `PostToolUse` com `Installed = 1` e `Active = 1`; mantenha
-   `AGENTS.md` apontando para o MCP global. Não configure `UserPromptSubmit`.
+5. Em cada cliente Codex que enviará prompts, execute `/hooks`, revise o hook do
+   projeto e confirme obrigatoriamente `PostToolUse` com `Installed = 1` e
+   `Active = 1`. Recarregue o cliente depois da aprovação; no VS Code, use
+   `Developer: Reload Window` e abra uma conversa nova. Mantenha `AGENTS.md`
+   apontando para o MCP global. Não configure `UserPromptSubmit`.
 6. Suba o bridge e o Home Assistant, então valide `/usage`, `/local-ai/live` e
    as duas abas do dashboard.
 

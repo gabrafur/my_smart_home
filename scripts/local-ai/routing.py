@@ -165,6 +165,7 @@ def apply_economic_precheck(
     *,
     context_input_tokens: int,
     model_input_tokens: int,
+    quality_gate_type: str = "llm-verifier",
 ) -> dict[str, Any]:
     """Reject calls whose best conservative net estimate cannot clear the task floor.
 
@@ -189,7 +190,15 @@ def apply_economic_precheck(
     # selected source tokens are measured with the same tokenizer as the raw
     # context. Keep a fixed rubric allowance so borderline calls fail closed.
     estimated_candidate_tokens = max(120, min(800, round(selected_tokens * 0.20)))
-    estimated_gate_tokens = selected_tokens + estimated_candidate_tokens + 240
+    # The extractive log-anchor gate is ordinary local code: it sends no
+    # additional context to a model and therefore has zero inference tokens.
+    # Keep the candidate itself in the estimate because that is the context
+    # ultimately delivered to the primary model.
+    estimated_gate_tokens = (
+        0
+        if quality_gate_type == "deterministic-log-anchors-v1"
+        else selected_tokens + estimated_candidate_tokens + 240
+    )
     estimated_net_tokens = max(
         0,
         raw_tokens - estimated_candidate_tokens - estimated_gate_tokens,
@@ -198,6 +207,7 @@ def apply_economic_precheck(
         "model_input_tokens": selected_tokens,
         "estimated_candidate_tokens": estimated_candidate_tokens,
         "estimated_validation_tokens": estimated_gate_tokens,
+        "quality_gate_type": quality_gate_type,
         "expected_net_tokens_saved": estimated_net_tokens,
     })
     if estimated_net_tokens < profile.min_expected_saved_tokens:

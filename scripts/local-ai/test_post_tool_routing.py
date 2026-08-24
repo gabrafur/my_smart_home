@@ -92,6 +92,27 @@ class PostToolRoutingTest(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(created, [])
 
+    def test_promoted_large_log_routes_and_compresses(self):
+        fake = FakeMcp()
+        source = ("INFO worker heartbeat\n" * 600) + "ERROR request failed at /srv/app.py:42\n"
+        result = HOOK.process_hook(payload("journalctl -u example.service", source), lambda: fake)
+
+        self.assertEqual(
+            [name for name, _ in fake.calls],
+            ["local_ai_status", "local_ai_route", "local_ai_compress_context"],
+        )
+        self.assertEqual(fake.calls[1][1]["task_type"], "summarize-log")
+        self.assertGreaterEqual(fake.calls[1][1]["input_chars"], 12_000)
+        self.assertIs(result["continue"], False)
+
+    def test_log_below_promoted_floor_never_creates_mcp_client(self):
+        created = []
+        source = "I" * (HOOK.TASK_MIN_CHARS["summarize-log"] - 1)
+        result = HOOK.process_hook(payload("journalctl -u example.service", source), lambda: created.append(True))
+
+        self.assertIsNone(result)
+        self.assertEqual(created, [])
+
     def test_medium_deterministic_output_is_final_without_inference(self):
         fake = FakeMcp("DETERMINISTIC")
         result = HOOK.process_hook(payload("rg -n TODO src", "src/a.py:1:TODO\n" * 400), lambda: fake)
@@ -194,6 +215,24 @@ class PostToolRoutingTest(unittest.TestCase):
             with self.subTest(metadata=metadata):
                 with self.assertRaises(RuntimeError):
                     HOOK.bounded_result("inspect-files", metadata, 0)
+
+
+class RepositoryRoutingPolicyTest(unittest.TestCase):
+    def test_agents_policy_covers_every_request_and_declares_hook_scope(self):
+        root = SCRIPT.parents[2]
+        agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+        skill = (root / ".agents/skills/rtx-context-optimizer/SKILL.md").read_text(encoding="utf-8")
+        hooks = json.loads((root / ".codex/hooks.json").read_text(encoding="utf-8"))
+
+        self.assertIn("Apply this decision to every user request", agents)
+        self.assertIn("Always call\n`local_ai_route` before `local_ai_compress_context`", agents)
+        self.assertIn("currently positive promoted A/B result", agents)
+        self.assertIn("aprovar pelo CLI do `ai-bridge` não ativa o hook", agents)
+        self.assertIn("Developer: Reload Window", agents)
+        self.assertIn("Evaluate this routing rule on every user request", skill)
+        self.assertIn("The project has no `UserPromptSubmit` interceptor", skill)
+        self.assertIn("approval in one does not activate the other", skill)
+        self.assertEqual(hooks["hooks"]["PostToolUse"][0]["matcher"], "Bash")
 
 
 if __name__ == "__main__":
