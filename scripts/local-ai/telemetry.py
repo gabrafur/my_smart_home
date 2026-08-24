@@ -71,10 +71,21 @@ def _number(value: Any) -> float | int | None:
 def _event_totals() -> dict[str, float | int]:
     return {
         "calls": 0,
+        "operational_calls": 0,
+        "operational_successful_calls": 0,
+        "operational_failed_calls": 0,
+        "operational_quality_rejected_calls": 0,
+        "operational_not_beneficial_calls": 0,
+        "operational_quality_validated_calls": 0,
+        "operational_quality_validated_measured_calls": 0,
+        "diagnostic_calls": 0,
+        "unclassified_calls": 0,
         "successful_calls": 0,
         "failed_calls": 0,
         "quality_rejected_calls": 0,
+        "not_beneficial_calls": 0,
         "quality_validated_calls": 0,
+        "quality_validated_measured_calls": 0,
         "fallbacks_reported": 0,
         "duration_seconds": 0.0,
         "local_input_tokens": 0,
@@ -147,7 +158,7 @@ def _memory_totals() -> dict[str, float | int]:
 
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 10,
+        "schema_version": 16,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
@@ -577,6 +588,120 @@ def _ensure_bounded_context_accounting(state: dict[str, Any]) -> None:
     state["schema_version"] = 10
 
 
+def _ensure_operational_accounting(state: dict[str, Any], path: Path) -> None:
+    """Separate real context replacements from benchmarks and legacy residue."""
+    if int(state.get("schema_version") or 1) >= 16:
+        return
+
+    events_path = path.with_name("local-ai-events.jsonl")
+    terminal: dict[str, dict[str, Any]] = {}
+    try:
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            event = json.loads(line)
+            if not isinstance(event, dict) or event.get("status") not in {"success", "discarded", "failed"}:
+                continue
+            event_id = str(event.get("id") or "")
+            if event_id:
+                terminal[event_id] = event
+    except (OSError, json.JSONDecodeError):
+        terminal = {}
+
+    def classify(target: dict[str, Any], candidates: list[dict[str, Any]]) -> None:
+        nested_rebuild = target.pop("totals", None)
+        if (
+            isinstance(nested_rebuild, dict)
+            and int(_number(target.get("calls")) or 0) == 0
+            and int(_number(nested_rebuild.get("calls")) or 0) > 0
+        ):
+            target.update(nested_rebuild)
+        calls = int(_number(target.get("calls")) or 0)
+        complete = calls == len(candidates)
+        operational = [event for event in candidates if _counts_as_context_replacement(event)] if complete else []
+        bounded_tasks = {"inspect-files", "review-diff", "summarize-document", "summarize-memory"}
+
+        def effective_status(event: dict[str, Any]) -> str:
+            if (
+                event.get("status") == "success"
+                and event.get("quality_accepted") is True
+                and event.get("input_truncated") is True
+                and str(event.get("task") or "") in bounded_tasks
+            ):
+                return "discarded"
+            return str(event.get("status") or "")
+
+        diagnostic = [
+            event for event in candidates
+            if not _counts_as_context_replacement(event)
+            and str(event.get("task") or "").startswith("benchmark:")
+        ] if complete else []
+        target["operational_calls"] = len(operational)
+        target["operational_successful_calls"] = sum(effective_status(event) == "success" for event in operational)
+        target["operational_failed_calls"] = sum(effective_status(event) == "failed" for event in operational)
+        target["operational_quality_rejected_calls"] = sum(
+            effective_status(event) == "discarded"
+            and event.get("discard_reason") != "insufficient_net_savings"
+            for event in operational
+        )
+        target["operational_not_beneficial_calls"] = sum(
+            effective_status(event) == "discarded"
+            and event.get("discard_reason") == "insufficient_net_savings"
+            for event in operational
+        )
+        target["operational_quality_validated_calls"] = sum(
+            effective_status(event) == "success" and event.get("quality_accepted") is True
+            for event in operational
+        )
+        target["operational_quality_validated_measured_calls"] = sum(
+            effective_status(event) == "success"
+            and event.get("quality_accepted") is True
+            and event.get("quality_validation_tokens_measured") is True
+            for event in operational
+        )
+        target["diagnostic_calls"] = len(diagnostic)
+        target["unclassified_calls"] = max(0, calls - len(operational) - len(diagnostic))
+        target["quality_validated_measured_calls"] = sum(
+            effective_status(event) == "success"
+            and event.get("quality_accepted") is True
+            and event.get("quality_validation_tokens_measured") is True
+            for event in operational
+        ) if complete else 0
+        if complete:
+            rebuilt = {"totals": _event_totals()}
+            for event in candidates:
+                normalized = dict(event)
+                if effective_status(event) == "discarded" and event.get("status") == "success":
+                    normalized.update({
+                        "status": "discarded",
+                        "quality_accepted": False,
+                        "discard_reason": "quality_gate_rejected",
+                        "gross_useful_context_tokens_avoided": 0,
+                        "useful_context_tokens_avoided": 0,
+                    })
+                _add_totals(rebuilt, normalized)
+            target.update(rebuilt["totals"])
+
+    events = list(terminal.values())
+    totals = state.get("totals")
+    if isinstance(totals, dict):
+        classify(totals, events)
+    daily = state.get("daily")
+    if isinstance(daily, dict):
+        for day, entry in daily.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                classify(
+                    entry["totals"],
+                    [event for event in events if str(event.get("finished_at") or event.get("started_at") or "")[:10] == day],
+                )
+    models = state.get("models")
+    if isinstance(models, dict):
+        for model, entry in models.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                classify(entry["totals"], [
+                    event for event in events if str(event.get("model") or "unknown") == model
+                ])
+    state["schema_version"] = 16
+
+
 @contextlib.contextmanager
 def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -591,6 +716,7 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
         _backfill_attempted_context_inputs(state, path)
         _ensure_quality_cost_accounting(state)
         _ensure_bounded_context_accounting(state)
+        _ensure_operational_accounting(state, path)
         try:
             yield state
         finally:
@@ -635,8 +761,32 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
         )
     totals["calls"] = int(totals.get("calls", 0)) + 1
     successful = event.get("status") == "success"
-    quality_rejected = event.get("status") == "discarded"
-    outcome_key = "successful_calls" if successful else "quality_rejected_calls" if quality_rejected else "failed_calls"
+    not_beneficial = (
+        event.get("status") == "discarded"
+        and event.get("discard_reason") == "insufficient_net_savings"
+    )
+    quality_rejected = event.get("status") == "discarded" and not not_beneficial
+    operational = _counts_as_context_replacement(event)
+    diagnostic = not operational and str(event.get("task") or "").startswith("benchmark:")
+    if operational:
+        totals["operational_calls"] = int(totals.get("operational_calls", 0)) + 1
+        operational_key = (
+            "operational_successful_calls" if successful else
+            "operational_quality_rejected_calls" if quality_rejected else
+            "operational_not_beneficial_calls" if not_beneficial else
+            "operational_failed_calls"
+        )
+        totals[operational_key] = int(totals.get(operational_key, 0)) + 1
+    elif diagnostic:
+        totals["diagnostic_calls"] = int(totals.get("diagnostic_calls", 0)) + 1
+    else:
+        totals["unclassified_calls"] = int(totals.get("unclassified_calls", 0)) + 1
+    outcome_key = (
+        "successful_calls" if successful else
+        "quality_rejected_calls" if quality_rejected else
+        "not_beneficial_calls" if not_beneficial else
+        "failed_calls"
+    )
     totals[outcome_key] = int(totals.get(outcome_key, 0)) + 1
     quality_validated = successful and event.get("quality_accepted") is True
     quality_tokens_measured = event.get("quality_validation_tokens_measured") is True
@@ -650,6 +800,18 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
         ) + 1
     if quality_validated:
         totals["quality_validated_calls"] = int(totals.get("quality_validated_calls", 0)) + 1
+        if operational:
+            totals["operational_quality_validated_calls"] = int(
+                totals.get("operational_quality_validated_calls", 0)
+            ) + 1
+        if quality_tokens_measured:
+            totals["quality_validated_measured_calls"] = int(
+                totals.get("quality_validated_measured_calls", 0)
+            ) + 1
+            if operational:
+                totals["operational_quality_validated_measured_calls"] = int(
+                    totals.get("operational_quality_validated_measured_calls", 0)
+                ) + 1
     if event.get("fallback_reported") is True:
         totals["fallbacks_reported"] = int(totals.get("fallbacks_reported", 0)) + 1
     for key in (

@@ -72,17 +72,43 @@ host residencial e somente com preflight disponível.
 
 O A/B de 2026-08-23 demonstrou que schema válido não comprova retenção. Após a
 introdução do gate determinístico e do verificador com nota mínima de 90%, o
-`qwen2.5-coder:14b` foi selecionado: 2/4 fixtures utilizáveis, 3.414 tokens úteis
-evitados e 51,5% de redução efetiva. O 7B obteve 1/4 e 16,8%; `qwen3.5:9b`
-obteve 0/4 e 0%. Diff e inventário rejeitados pelo 14B contaram zero, enquanto
-testes e log foram utilizados. A fonte detalhada é
-`docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
+`qwen2.5-coder:14b` foi selecionado em uma avaliação autoavaliada: 2/4 fixtures
+utilizáveis, 3.414 tokens úteis evitados e 51,5% de redução efetiva. Ao descontar
+o custo do gate, uma repetição aproveitou somente `summarize-log`: 2.230 tokens
+brutos menos 693 do gate, ou 1.537 tokens líquidos e 23,2% no conjunto. Esses
+percentuais são históricos e não constituem previsão operacional independente.
 
-Ao descontar também o custo do verificador dos resultados aprovados, a repetição
-com 14B aproveitou somente `summarize-log`: 2.230 tokens brutos menos 693 do
-gate, ou 1.537 tokens úteis líquidos e 23,2% no conjunto. Os outros três casos
-foram descartados e valeram zero. A taxa anterior de 51,5% é histórica e não é
-a taxa líquida vigente.
+Em 2026-08-24, o benchmark v3 separou os papéis: `qwen2.5-coder:14b` gerou e
+`qwen3:8b` verificou 12 observações sequenciais, três por fixture. Nenhuma foi
+aceita; portanto a redução útil ponderada e a mediana por tentativa foram 0%,
+com 21.516 tokens locais consumidos pelos gates. O verificador independente não
+foi promovido para produção porque rejeitaria todo o trabalho e eliminaria a
+economia operacional. O benchmark continua sendo uma avaliação offline de
+compressão e fidelidade, não um A/B ponta a ponta do modelo principal. A fonte
+detalhada é `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
+
+Não compare diretamente esse percentual A/B com a redução útil operacional. O
+A/B divide o líquido pelo contexto de controle das fixtures fixas; o indicador
+operacional usa a mesma regra de qualidade no numerador, mas divide pelo contexto
+de todas as tentativas de substituição da janela. Descartes, falhas e legado sem
+custo do gate separável permanecem no denominador e valem zero líquido. Taxas de
+falha técnica, aceite ou descarte contam chamadas, enquanto redução útil pondera
+tokens; diferenças entre elas não formam contradição sem reconciliar população,
+janela, numerador e denominador.
+
+Diagnósticos, preflight e benchmarks ficam separados das chamadas operacionais.
+Falha técnica, aproveitamento do gate e waterfall usam somente a população
+operacional; a cobertura de classificação explicita quanto do histórico pôde
+ser atribuído com segurança. Resultados antigos sem custo de gate mensurável não
+entram como aprovados mensuráveis. Como entrada do contexto e custo local podem
+usar tokenizadores diferentes, o saldo líquido é um índice conservador
+equivalente, não uma contagem faturável da OpenAI.
+
+A nota percentual do verificador mede fidelidade, não economia. Um resultado
+pode ter 100% de fidelidade e ainda ser `insufficient_net_savings` quando o
+custo medido do gate consome o delta ou o líquido não alcança o mínimo. Esse
+caso vale zero, aparece como **sem ganho líquido** e não deve inflar descartes
+por qualidade; `quality_gate_rejected` fica reservado a falhas de fidelidade.
 
 Para disponibilidade, o helper versionado `recover-endpoint.mjs` é uma exceção
 estreita: somente uma chamada MCP pode enviar Wake-on-LAN e fazer no máximo duas

@@ -43,17 +43,39 @@ adherence, throughput, GPU/VRAM, processor/offload indication and host RAM;
 only metadata is retained in `.agent-history/`. Run it once per candidate with
 the same settings before changing `LOCAL_AI_MODEL`.
 
-Run `python3 scripts/local-ai/quality_ab.py --model <installed-model>` after the
-schema benchmark. It counts token reduction only for candidates accepted by the
-fidelity gate; a discarded result is charged the full control context and saves
-zero. The current quality-selected model on the RTX 4070 is
-`qwen2.5-coder:14b`.
+Run the offline quality benchmark after the schema benchmark:
+
+```bash
+python3 scripts/local-ai/quality_ab.py \
+  --model <installed-generator> \
+  --verifier-model <installed-independent-verifier> \
+  --repetitions 3
+```
+
+It counts token reduction only for candidates accepted by the fidelity gate; a
+discarded result is charged the full control context and saves zero. The report
+separates token-weighted reduction from the median attempt, identifies models
+and fixture/prompt hashes, and explicitly records that it does not execute an
+end-to-end primary-model A/B. The configured generator on the RTX 4070 remains
+`qwen2.5-coder:14b`. The 2026-08-24 independent-verifier run accepted 0/12
+observations, so the older 23.2% self-verified result is historical rather than
+an operational forecast. `qwen3:8b` was not enabled as the operational verifier.
 
 The current operational policy enables only task profiles with defensible
 quality evidence. `review-diff`, `inspect-files` and `analyze-tests` are routed
 as `LOCAL_AI_NOT_BENEFICIAL` after failing the net quality A/B; they remain
 available to `quality_ab.py` through the diagnostic-only `LOCAL_AI_FORCE=1`.
 Their rejection does not count as a missed RTX opportunity.
+
+Operational telemetry separates real context-replacement attempts from schema
+benchmarks and legacy residue. Technical failure rates use only operational
+attempts; preflight failures retain the input-context denominator because the
+raw context still falls back to the primary model. The dashboard reports
+validated OpenAI-context delta, local verifier work, and the conservative net
+equivalent as distinct indicators because their tokenizers are not identical.
+A faithful candidate discarded because its validation cost eliminates the
+minimum reduction is recorded as `insufficient_net_savings`: it counts as a gate
+acceptance but saves zero and does not inflate fidelity rejections.
 
 ## On-demand endpoint recovery
 

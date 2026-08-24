@@ -290,6 +290,37 @@ test('does not report a stale Local AI preflight as available', (t) => {
   assert.equal(usage.state, 'LOCAL_AI_UNKNOWN');
 });
 
+test('uses only operational calls for technical success and failure rates', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-operational-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'local-ai-telemetry.json');
+  const statusPath = path.join(directory, 'local-ai-status.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({
+    totals: {
+      calls: 10,
+      successful_calls: 7,
+      failed_calls: 3,
+      operational_calls: 5,
+      operational_successful_calls: 2,
+      operational_failed_calls: 1,
+      operational_quality_rejected_calls: 1,
+      operational_quality_validated_calls: 2,
+      operational_not_beneficial_calls: 1,
+      diagnostic_calls: 4,
+      unclassified_calls: 1,
+    },
+  }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-16T12:00:00.000Z',
+  }));
+
+  const usage = scanLocalAiTelemetry(telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'));
+  assert.equal(usage.totals.success_rate_percent, 80);
+  assert.equal(usage.totals.failure_rate_percent, 20);
+  assert.equal(usage.totals.quality_acceptance_rate_percent, 75);
+  assert.equal(usage.totals.operational_accounting_coverage_percent, 90);
+});
+
 test('does not keep an abandoned Local AI job marked as in use', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-job-stale-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -421,18 +452,28 @@ test('returns a bounded quality-aware Local AI history for the last 48 hours', (
       finished_at: '2026-08-14T11:59:00Z', useful_context_tokens_avoided: 500 },
     { id: 'benchmark', task: 'benchmark:review-diff', status: 'success',
       finished_at: '2026-08-16T11:00:00Z' },
-    { id: 'discarded', task: 'inspect-files', status: 'discarded', quality_accepted: false,
-      finished_at: '2026-08-16T11:30:00Z', useful_context_tokens_avoided: 900 },
+    { id: 'discarded-quality', task: 'inspect-files', status: 'discarded', quality_accepted: false,
+      discard_reason: 'quality_gate_rejected', finished_at: '2026-08-16T11:30:00Z',
+      useful_context_tokens_avoided: 900 },
+    { id: 'discarded-savings', task: 'summarize-document', status: 'discarded', quality_accepted: false,
+      finished_at: '2026-08-16T11:40:00Z', context_input_tokens: 2_463,
+      context_output_tokens: 713, quality_validation_tokens: 6_488,
+      quality_validation_tokens_measured: true, quality_score_percent: 100,
+      useful_context_tokens_avoided: 1_750 },
     { id: 'accepted', task: 'summarize-log', status: 'success', quality_accepted: true,
       finished_at: '2026-08-16T11:45:00Z', useful_context_tokens_avoided: 800 },
   ] }));
 
   const history = scanLocalAiHistory(telemetryPath, new Date('2026-08-16T12:00:00Z'));
   assert.equal(history.window_hours, 48);
-  assert.equal(history.count, 2);
+  assert.equal(history.count, 3);
   assert.equal(history.jobs[0].task, 'summarize-log');
   assert.equal(history.jobs[0].useful_context_tokens_avoided, 800);
+  assert.equal(history.jobs[1].discard_reason, 'insufficient_net_savings');
+  assert.equal(history.jobs[1].quality_score_percent, 100);
   assert.equal(history.jobs[1].useful_context_tokens_avoided, 0);
+  assert.equal(history.jobs[2].discard_reason, 'quality_gate_rejected');
+  assert.equal(history.jobs[2].useful_context_tokens_avoided, 0);
 });
 
 test('separates confirmed RTX unavailability from unknown availability', (t) => {

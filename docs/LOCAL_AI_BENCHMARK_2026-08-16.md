@@ -173,9 +173,44 @@ Somente `summarize-log` foi aproveitado: 2.230 tokens brutos menos 693 tokens do
 gate resultaram em 1.537 tokens úteis líquidos. `review-diff`, `analyze-tests` e
 `inspect-files` foram descartados e, portanto, economizaram zero. O resultado
 anterior de 51,5% media o delta aprovado sem descontar o verificador e não deve
-mais ser usado como a taxa vigente. O A/B líquido mostra benefício real, porém
-limitado a 23,2% nesta suíte; o gate conservador continua obrigatório porque
-três quartos dos casos não produziram contexto confiável e econômico.
+mais ser usado como a taxa vigente. Esta rodada com autoavaliação mostrou 23,2%
+na suíte, mas não constitui evidência independente; o gate conservador continua
+obrigatório porque três quartos dos casos não produziram contexto confiável e
+econômico.
+
+## Benchmark offline v3 com verificador independente — 2026-08-24
+
+O executável foi corrigido para não apresentar o benchmark de compressão como
+um A/B end-to-end do Codex. Ele agora registra hashes das fixtures e prompts,
+método de contagem, gerador e verificador, repetições, resultado por tarefa,
+taxa de aproveitamento, redução ponderada por tokens e mediana por tentativa.
+O modelo principal não é executado nos dois braços; o campo
+`end_to_end_primary_model_evaluated: false` torna essa limitação explícita.
+
+A bateria v3 executou as quatro fixtures três vezes, sequencialmente. O gerador
+foi `qwen2.5-coder:14b` e o verificador independente foi `qwen3:8b`, ambos já
+instalados. A telemetria temporária manteve as 12 observações fora dos
+acumulados operacionais.
+
+| Métrica | Resultado |
+| --- | ---: |
+| Observações | 12 |
+| Resultados aprovados e eficientes | 0/12 |
+| Contexto de controle | 19.872 tokens estimados |
+| Trabalho total dos gates | 21.516 tokens locais |
+| Tokens úteis líquidos | 0 |
+| Redução útil ponderada | 0,0% |
+| Mediana por tentativa | 0,0% |
+| Latência local total | 298,245 s |
+
+O verificador independente rejeitou todas as observações, inclusive as três de
+`summarize-log`. Portanto, o antigo 23,2% permanece somente como resultado
+histórico de uma execução com o mesmo modelo nos papéis de gerador e
+verificador. Ele não deve ser usado como previsão da economia operacional nem
+como evidência independente de qualidade. O `qwen3:8b` também não foi promovido
+a verificador operacional: habilitá-lo faria todo resultado cair em fallback.
+O modelo gerador configurado permanece inalterado, e cada uso operacional
+continua dependendo do gate conservador e contabiliza zero quando descartado.
 
 ### Verificação operacional do limite de contexto
 

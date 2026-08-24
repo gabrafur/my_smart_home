@@ -39,11 +39,11 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         )
         self.assertEqual(
             sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            30,
+            31,
         )
         for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Contexto inicial e memória — hoje"):
             self.assertIn(f"title: {title}", columns[0])
-        for title in ("Última atividade", "Economia acumulada (estimativa)", "Waterfall acumulado — até o resultado útil"):
+        for title in ("Última atividade", "Saldo líquido equivalente acumulado", "Waterfall acumulado — até o resultado útil"):
             self.assertIn(f"title: {title}", columns[1])
         for title in ("Economia útil diária — últimos 7 dias", "Taxa média diária de falhas técnicas — últimos 7 dias", "RTX em uso — últimas 48 horas"):
             self.assertIn(f"title: {title}", columns[2])
@@ -58,7 +58,22 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertNotIn("entity: binary_sensor.codex_rtx_em_uso", view)
         self.assertIn("title: RTX em uso — últimas 48 horas", view)
         self.assertIn("state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs')", view)
-        self.assertIn("Tokens úteis líquidos", view)
+        self.assertIn(
+            "| Horário | Tarefa / modelo | Resultado / fidelidade | Duração | Saldo eq. |",
+            view,
+        )
+        self.assertIn("{% for job in jobs -%}", view)
+        self.assertIn("}`<br>`{{ job.get('model', '—') }}`", view)
+        self.assertIn("job.get('discard_reason')", view)
+        self.assertIn("🟠 sem ganho líquido", view)
+        self.assertIn("🟠 qualidade rejeitada", view)
+        self.assertLess(view.index("'🟠 sem ganho líquido' if status == 'discarded'"), view.index("'✅ utilizado' if status == 'success'"))
+        self.assertIn("Fidelidade: {{ quality }}", view)
+        self.assertIn("Fidelidade não é economia", view)
+        self.assertNotIn(
+            "| Horário | Tarefa | Modelo | Resultado | Qualidade | Duração | Tokens úteis líquidos |",
+            view,
+        )
         self.assertLess(
             view.index("title: Taxa média diária de falhas técnicas — últimos 7 dias"),
             view.index("title: RTX em uso — últimas 48 horas"),
@@ -91,8 +106,12 @@ class RtxDashboardLayoutTest(unittest.TestCase):
 
         self.assertEqual(view.count("name: Descartados por qualidade"), 1)
         self.assertNotIn("today.get('quality_rejected_tasks', 0)", view)
-        self.assertIn("name: Redução útil líquida", view)
-        self.assertIn("*Redução útil líquida* segue o A/B", view)
+        self.assertIn("name: Redução útil operacional", view)
+        self.assertIn("*Redução útil operacional*", view)
+        self.assertIn("name: Aproveitamento do gate", view)
+        self.assertEqual(view.count("name: Fiéis sem ganho líquido"), 2)
+        self.assertIn("entity: sensor.codex_falhas_operacionais_local_ai_hoje", view)
+        self.assertIn("'modelo_verificador'", view)
 
     def test_failure_graph_separates_technical_and_quality_outcomes(self):
         view = rtx_view()
@@ -107,7 +126,9 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         ):
             self.assertNotIn(f"entity: {stale_model}", view)
         self.assertIn("resultados não aproveitados", view)
-        self.assertIn("quality_rejected_calls", view)
+        self.assertIn("operational_not_beneficial_calls", view)
+        self.assertIn("sem ganho líquido", view)
+        self.assertIn("operational_quality_rejected_calls", view)
         self.assertIn("seguindo o teste A/B", view)
 
     def test_savings_graph_uses_daily_quality_validated_bars(self):
@@ -126,12 +147,15 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             r"\s+- entity: sensor\.codex_economia_util_liquida_validada_hoje",
         )
         self.assertIn("entity: sensor.codex_economia_util_liquida_validada_hoje", view)
-        self.assertIn("name: Economia útil líquida · hoje", view)
+        self.assertNotIn("name: Economia útil líquida · hoje", view)
         self.assertIn("cujo delta supera o custo local do gate", view)
         self.assertIn("descartes,", view)
         self.assertIn("falhas, benchmarks e legado sem custo separável valem zero", view)
-        self.assertIn("entity: sensor.codex_resultados_local_ai_validados_hoje", view)
+        self.assertIn("entity: sensor.codex_resultados_local_ai_validados_mensuraveis_hoje", view)
         self.assertNotIn("entity: sensor.codex_rtx_usos_hoje", view)
+        self.assertIn("title: Referência controlada de qualidade", view)
+        self.assertIn("0/12 resultados", view)
+        self.assertIn("O antigo **23,2%**", view)
 
         self.assertRegex(
             view,
@@ -163,11 +187,11 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "*elegível* significa",
             "*economia esperada* é",
             "*job* é uma tentativa",
-            "*economia bruta* é",
-            "*tokens úteis líquidos* é",
+            "*contexto evitado validado* é",
+            "*saldo líquido equivalente* é",
             "*startup observável* são",
-            "`failed / chamadas` dentro do dia UTC",
-            "*utilizado* passou pelo gate",
+            "`falhas operacionais / tentativas operacionais` dentro do dia UTC",
+            "*utilizado* passou pela fidelidade",
         ):
             self.assertIn(definition, view)
 
@@ -184,17 +208,21 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         view = rtx_view()
 
         for field in (
-            "totals.get('failed_calls', 0)",
-            "totals.get('quality_rejected_calls', 0)",
-            "totals.get('quality_validated_calls', 0)",
+            "totals.get('operational_failed_calls', 0)",
+            "totals.get('operational_quality_rejected_calls', 0)",
+            "totals.get('operational_not_beneficial_calls', 0)",
+            "totals.get('operational_quality_validated_calls', 0)",
             "totals.get('quality_validation_unmeasured_calls', 0)",
+            "totals.get('diagnostic_calls', 0)",
         ):
             self.assertIn(field, view)
         for entity in (
-            "sensor.codex_chamadas_local_ai",
-            "sensor.codex_chamadas_local_ai_com_sucesso",
+            "sensor.codex_chamadas_operacionais_local_ai",
+            "sensor.codex_conclusoes_operacionais_local_ai",
             "sensor.codex_resultados_local_ai_com_gate",
-            "sensor.codex_resultados_local_ai_validados",
+            "sensor.codex_resultados_local_ai_aprovados_no_gate",
+            "sensor.codex_resultados_local_ai_validados_mensuraveis",
+            "sensor.codex_resultados_local_ai_sem_ganho_liquido",
             "sensor.codex_economia_bruta_validada",
             "sensor.codex_custo_gate_validacao_resultados",
             "sensor.codex_tokens_openai_evitados_estimados",
@@ -202,7 +230,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         ):
             self.assertIn(f"entity: {entity}", view)
         self.assertNotIn("| Etapa | Restante |", view)
-        self.assertIn("economia bruta aprovada − tokens locais", view)
+        self.assertIn("contexto OpenAI evitado e aprovado − tokens locais", view)
         self.assertNotIn("entity: sensor.codex_fallbacks_local_ai_informados", view)
 
     def test_semantic_tile_colors_distinguish_dashboard_signals(self):
@@ -210,7 +238,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
 
         for color in ("blue", "cyan", "purple", "green", "amber", "red"):
             self.assertIn(f"color: {color}", view)
-        self.assertRegex(view, r"name: Tokens úteis líquidos\n\s+color: green")
+        self.assertRegex(view, r"name: Saldo líquido equivalente\n\s+color: green")
         self.assertRegex(view, r"name: Custo do gate nos validados\n\s+color: amber")
         self.assertRegex(view, r"name: Descartados por qualidade\n\s+color: red")
 
@@ -232,3 +260,13 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             self.assertNotIn(f"entity: {contextual_entity}", view)
         self.assertIn("**Disponibilidade nas elegíveis**", view)
         self.assertIn("**Fluxo avaliado:**", view)
+
+        routing_start = view.index("title: Atenção de roteamento — hoje")
+        routing_end = view.index("title: Decisão de roteamento", routing_start)
+        routing_block = view[routing_start:routing_end]
+        self.assertRegex(
+            routing_block,
+            r"\n          - type: markdown\n"
+            r"            content: >-\n"
+            r"(?:.*\n)*?\s+\*\*Fluxo avaliado:\*\*",
+        )

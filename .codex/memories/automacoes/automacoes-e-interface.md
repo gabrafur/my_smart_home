@@ -22,3 +22,18 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
 - Os painéis Lovelace YAML são declarados em `lovelace.dashboards` dentro de
   `homeassistant/configuration.yaml`; as chaves públicas de dashboard usam
   hífen. Para assistentes e chat, consulte `docs/CHAT_CLAUDE_CODE_HA.md`.
+
+## Padrões Lovelace reutilizáveis
+
+Em views nativas `sections`, um card dentro de um `grid` de duas colunas ocupa
+uma célula desse grid. Textos explicativos que precisam preencher a coluna
+inteira devem ser cards irmãos do grid na seção, não o último filho ímpar. Isso
+preserva a responsividade sem CSS customizado e deve ter teste de regressão do
+nível de indentação/layout.
+
+Tabelas Markdown geradas por Jinja precisam manter cabeçalho, separador e linhas
+sem linhas vazias entre eles: use controle de whitespace nos blocos do loop,
+pois uma quebra vazia encerra a tabela e transforma as linhas seguintes em
+texto. Em colunas estreitas, combine campos relacionados na mesma célula com
+`<br>` antes de adicionar rolagem horizontal. Valide o template renderizado com
+dados sintéticos no ambiente do Home Assistant, além de testar o YAML fonte.

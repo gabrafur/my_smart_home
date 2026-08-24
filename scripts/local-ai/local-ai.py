@@ -85,10 +85,13 @@ class QualityRejected(RuntimeError):
         reason: str,
         report: dict[str, Any] | None = None,
         response: dict[str, Any] | None = None,
+        *,
+        reason_code: str = "quality_gate_rejected",
     ):
         super().__init__(reason)
         self.report = report or {}
         self.response = response
+        self.reason_code = reason_code
 
 
 def response_format(task: str, compact: bool = False) -> str | dict[str, Any]:
@@ -236,6 +239,15 @@ def resolved_endpoint(explicit: str | None, settings: dict[str, Any]) -> str:
 def configured_model(explicit: str | None, settings: dict[str, Any]) -> str | None:
     value = explicit or os.getenv("LOCAL_AI_MODEL") or settings.get("model")
     return str(value) if value else None
+
+
+def configured_verifier_model(
+    explicit: str | None,
+    settings: dict[str, Any],
+    generation_model: str,
+) -> str:
+    value = explicit or os.getenv("LOCAL_AI_VERIFIER_MODEL") or settings.get("verifier_model")
+    return str(value) if value else generation_model
 
 
 def local_ai_enabled(settings: dict[str, Any]) -> bool:
@@ -902,6 +914,11 @@ def run_analysis(args: argparse.Namespace) -> int:
             "endpoint": endpoint,
             "status": "failed",
             "error_type": type(error).__name__,
+            "context_input_chars": len(raw_text),
+            "context_input_bytes": len(raw_text.encode("utf-8")),
+            "context_input_tokens": context_input_tokens,
+            "token_count_method": token_method,
+            "context_replacement": True,
         })
         raise
     model = configured_model(args.model, settings) or select_model(models)
@@ -916,9 +933,52 @@ def run_analysis(args: argparse.Namespace) -> int:
                 retrieved_tokens=context_input_tokens, available=False,
                 token_count_method=token_method,
             )
+        recorder.finished({
+            "id": new_event_id(),
+            "started_at": utc_now(),
+            "finished_at": utc_now(),
+            "task": args.task,
+            "model": "unknown",
+            "endpoint": endpoint,
+            "status": "failed",
+            "error_type": "ModelUnavailable",
+            "context_input_chars": len(raw_text),
+            "context_input_bytes": len(raw_text.encode("utf-8")),
+            "context_input_tokens": context_input_tokens,
+            "token_count_method": token_method,
+            "context_replacement": True,
+        })
         raise RuntimeError(
             "no safe default model found. Set LOCAL_AI_MODEL after running `local-ai status` and `local-ai benchmark --model <name>`."
         )
+    verifier_model = configured_verifier_model(getattr(args, "verifier_model", None), settings, model)
+    installed_names = {str(item.get("name")) for item in models}
+    if verifier_model not in installed_names:
+        failed_assessment = assess_routing(args.task, len(raw_text), availability="available")
+        record_routing_outcome(
+            recorder,
+            failed_assessment,
+            outcome="failed",
+            model=model,
+            reason="verifier_model_unavailable",
+        )
+        recorder.finished({
+            "id": new_event_id(),
+            "started_at": utc_now(),
+            "finished_at": utc_now(),
+            "task": args.task,
+            "model": model,
+            "verifier_model": verifier_model,
+            "endpoint": endpoint,
+            "status": "failed",
+            "error_type": "VerifierModelUnavailable",
+            "context_input_chars": len(raw_text),
+            "context_input_bytes": len(raw_text.encode("utf-8")),
+            "context_input_tokens": context_input_tokens,
+            "token_count_method": token_method,
+            "context_replacement": True,
+        })
+        raise RuntimeError(f"configured verifier model is not installed: {verifier_model}")
     routing_assessment = assess_routing(args.task, len(raw_text), availability="available")
     non_beneficial_reason = str(routing_assessment.get("reason") or "")
     force_diagnostic = os.getenv("LOCAL_AI_FORCE", "").strip() == "1"
@@ -966,6 +1026,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         "started_at": utc_now(),
         "task": args.task,
         "model": model,
+        "verifier_model": verifier_model,
         "endpoint": endpoint,
         "status": "running",
         "chat_id": current_chat_id(),
@@ -1030,7 +1091,7 @@ def run_analysis(args: argparse.Namespace) -> int:
                     model_text,
                     parsed,
                     endpoint=endpoint,
-                    model=model,
+                    model=verifier_model,
                     request_call=request_call,
                     minimum_score=minimum_quality_score,
                     context_tokens=args.context_tokens,
@@ -1113,6 +1174,7 @@ def run_analysis(args: argparse.Namespace) -> int:
                     "contradictions": [],
                     "unsupported_claims": [],
                 },
+                reason_code="insufficient_net_savings",
             )
         record_routing_outcome(
             recorder,
@@ -1155,6 +1217,8 @@ def run_analysis(args: argparse.Namespace) -> int:
         return 0
     except Exception as error:
         quality_rejected = isinstance(error, QualityRejected)
+        discard_reason = error.reason_code if quality_rejected else None
+        insufficient_net_savings = discard_reason == "insufficient_net_savings"
         generation_input_tokens, generation_output_tokens, _ = response_token_usage(generation_responses)
         validation_input_tokens, validation_output_tokens, validation_tokens_measured = response_token_usage(
             verification_responses,
@@ -1171,31 +1235,33 @@ def run_analysis(args: argparse.Namespace) -> int:
             "quality_validation_output_tokens": validation_output_tokens,
             "quality_validation_tokens": validation_input_tokens + validation_output_tokens,
             "quality_validation_tokens_measured": validation_tokens_measured,
-            "quality_accepted": False if quality_rejected else None,
+            "quality_accepted": True if insufficient_net_savings else False if quality_rejected else None,
             "quality_score_percent": int(error.report.get("coverage_score") or 0) if quality_rejected else None,
             "gross_useful_context_tokens_avoided": 0,
             "useful_context_tokens_avoided": 0,
         })
+        if discard_reason:
+            event["discard_reason"] = discard_reason
         if not routing_recorded:
             record_routing_outcome(
                 recorder,
                 routing_assessment,
-                outcome="quality-rejected" if quality_rejected else "failed",
+                outcome="unnecessary" if insufficient_net_savings else "quality-rejected" if quality_rejected else "failed",
                 actual_tokens_avoided=0,
                 gross_useful_tokens_avoided=0,
                 quality_validation_tokens=validation_input_tokens + validation_output_tokens,
                 quality_validation_tokens_measured=validation_tokens_measured,
                 useful_tokens_avoided=0,
                 model=model,
-                reason="quality_gate_rejected" if quality_rejected else "local_ai_call_failed",
-                quality_accepted=False if quality_rejected else None,
+                reason=discard_reason or "local_ai_call_failed",
+                quality_accepted=True if insufficient_net_savings else False if quality_rejected else None,
                 quality_score_percent=int(error.report.get("coverage_score") or 0) if quality_rejected else None,
             )
             if memory_task:
                 record_memory_outcome(
                     recorder, topic=memory_topic, files_found=source_files,
                     decision="MEMORY_LOCAL_AI_NOT_BENEFICIAL" if quality_rejected else "MEMORY_LOCAL_AI_UNAVAILABLE",
-                    reason="quality_gate_rejected" if quality_rejected else "local_ai_call_failed",
+                    reason="memory_compression_below_threshold" if insufficient_net_savings else "quality_gate_rejected" if quality_rejected else "local_ai_call_failed",
                     retrieved_tokens=context_input_tokens, sent_to_local_ai_tokens=model_input_tokens,
                     available=quality_rejected, model=model, token_count_method=token_method,
                 )
@@ -1339,6 +1405,10 @@ def parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--endpoint", help="Ollama endpoint; overrides LOCAL_AI_ENDPOINT and user configuration")
     common.add_argument("--model", help="Ollama model; otherwise LOCAL_AI_MODEL or a conservative auto-selection")
+    common.add_argument(
+        "--verifier-model",
+        help="independent Ollama fidelity verifier; otherwise LOCAL_AI_VERIFIER_MODEL, user configuration, or --model",
+    )
     common.add_argument("--context-tokens", type=positive_int, default=int(os.getenv("LOCAL_AI_CONTEXT_TOKENS", "4096")))
     main = argparse.ArgumentParser(description=__doc__)
     subs = main.add_subparsers(dest="command", required=True)

@@ -25,17 +25,21 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
     def test_today_sections_use_daily_entities(self):
         today_entities = (
             "sensor.codex_reducao_de_contexto_local_ai_hoje",
-            "sensor.codex_taxa_de_delegacao_rtx_hoje",
-            "sensor.codex_cobertura_ponderada_de_economia_rtx_hoje",
+            "sensor.codex_contexto_tentado_local_ai_hoje",
+            "sensor.codex_taxa_de_aproveitamento_do_gate_hoje",
+            "sensor.codex_cobertura_do_custo_do_gate_hoje",
+            "sensor.codex_cobertura_da_classificacao_operacional_hoje",
             "sensor.codex_compressao_de_memoria_hoje",
         )
         for entity_id in today_entities:
             self.assertIn(f"entity: {entity_id}", DASHBOARD)
         self.assertIn("today.get('missed_potential_tokens_avoidable', 0)", DASHBOARD)
         self.assertIn("today.get('eligible_and_available_tasks', 0)", DASHBOARD)
-        self.assertIn("today.get('quality_rejected_calls', 0)", DASHBOARD)
+        self.assertIn("today.get('operational_quality_rejected_calls', 0)", DASHBOARD)
         self.assertEqual(DASHBOARD.count("name: Descartados por qualidade"), 1)
-        self.assertIn("name: Redução útil líquida", DASHBOARD)
+        self.assertIn("name: Redução útil operacional", DASHBOARD)
+        self.assertIn("today.get('rtx_delegation_rate_percent', 0)", DASHBOARD)
+        self.assertIn("today.get('weighted_context_savings_coverage_percent', 0)", DASHBOARD)
 
     def test_quality_gate_cost_is_subtracted_from_useful_tokens(self):
         for unique_id, field in (
@@ -47,7 +51,8 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
             start = PACKAGE.index(f"unique_id: {unique_id}")
             self.assertIn(field, PACKAGE[start : start + 900])
         self.assertIn("entity: sensor.codex_custo_gate_validacao_resultados_hoje", DASHBOARD)
-        self.assertIn("name: Tokens úteis líquidos", DASHBOARD)
+        self.assertIn("name: Saldo líquido equivalente", DASHBOARD)
+        self.assertIn("name: Contexto tentado", DASHBOARD)
 
     def test_stale_retrospective_audit_is_not_presented_as_today(self):
         self.assertNotIn("codex_auditoria_retrospectiva_de_roteamento_rtx", PACKAGE)
@@ -68,6 +73,7 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
             "codex_falhas_de_roteamento_local_ai_hoje",
             "codex_tokens_de_oportunidades_rtx_perdidas_hoje",
             "codex_resultados_local_ai_descartados_hoje",
+            "codex_resultados_local_ai_sem_ganho_liquido_hoje",
         ):
             start = PACKAGE.index(f"unique_id: {unique_id}")
             self.assertIn("significado:", PACKAGE[start : start + 1200])
@@ -87,6 +93,14 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         self.assertIn("entity: sensor.codex_taxa_de_falhas_local_ai_hoje", DASHBOARD)
         self.assertIn("Taxa média diária de falhas técnicas — últimos 7 dias", DASHBOARD)
         self.assertIn("resultados não aproveitados", DASHBOARD)
+
+    def test_latest_job_exposes_distinct_discard_reason(self):
+        sensor_start = PACKAGE.index("unique_id: codex_ultimo_job_local_ai")
+        sensor = PACKAGE[sensor_start : sensor_start + 8_000]
+        self.assertIn("motivo_descarte:", sensor)
+        self.assertIn("get('discard_reason')", sensor)
+        self.assertIn("descartada por não gerar ganho líquido suficiente", DASHBOARD)
+        self.assertIn("descartada pelo gate de fidelidade", DASHBOARD)
 
     def test_daily_savings_graph_uses_clean_quality_validated_sensor(self):
         sensor_start = PACKAGE.index("unique_id: codex_economia_util_liquida_validada_hoje")

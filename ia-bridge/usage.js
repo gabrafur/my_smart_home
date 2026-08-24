@@ -205,10 +205,21 @@ function buildAnalytics({ totals, recentTokens, rateLimit, rateLimitSamples = []
 function emptyLocalAiTotals() {
   return {
     calls: 0,
+    operational_calls: 0,
+    operational_successful_calls: 0,
+    operational_failed_calls: 0,
+    operational_quality_rejected_calls: 0,
+    operational_not_beneficial_calls: 0,
+    operational_quality_validated_calls: 0,
+    operational_quality_validated_measured_calls: 0,
+    diagnostic_calls: 0,
+    unclassified_calls: 0,
     successful_calls: 0,
     failed_calls: 0,
     quality_rejected_calls: 0,
+    not_beneficial_calls: 0,
     quality_validated_calls: 0,
+    quality_validated_measured_calls: 0,
     fallbacks_reported: 0,
     duration_seconds: 0,
     local_input_tokens: 0,
@@ -292,16 +303,30 @@ function addLocalAiTotals(target, source) {
 }
 
 function localAiDerived(totals) {
-  const calls = Number(totals.calls) || 0;
-  const successful = Number(totals.successful_calls) || 0;
-  const failed = Number(totals.failed_calls) || 0;
+  const allCalls = Number(totals.calls) || 0;
+  const classifiedCalls = (Number(totals.operational_calls) || 0)
+    + (Number(totals.diagnostic_calls) || 0)
+    + (Number(totals.unclassified_calls) || 0);
+  const hasOperationalAccounting = classifiedCalls > 0 || allCalls === 0;
+  const calls = hasOperationalAccounting ? Number(totals.operational_calls) || 0 : allCalls;
+  const failed = hasOperationalAccounting
+    ? Number(totals.operational_failed_calls) || 0
+    : Number(totals.failed_calls) || 0;
+  const successful = hasOperationalAccounting
+    ? Math.max(0, calls - failed)
+    : Number(totals.successful_calls) || 0;
   const input = Number(totals.context_input_tokens) || 0;
   const avoided = Number(totals.openai_context_tokens_avoided) || 0;
   const qualityInput = Number(totals.quality_validated_context_input_tokens) || 0;
   const attemptedInput = Number(totals.attempted_context_input_tokens) || qualityInput;
   const usefulAvoided = Number(totals.useful_context_tokens_avoided) || 0;
-  const qualityAccepted = Number(totals.quality_validated_calls) || 0;
-  const qualityRejected = Number(totals.quality_rejected_calls) || 0;
+  const qualityAccepted = hasOperationalAccounting
+    ? (Number(totals.operational_quality_validated_calls) || 0)
+      + (Number(totals.operational_not_beneficial_calls) || 0)
+    : Number(totals.quality_validated_calls) || 0;
+  const qualityRejected = hasOperationalAccounting
+    ? Number(totals.operational_quality_rejected_calls) || 0
+    : Number(totals.quality_rejected_calls) || 0;
   const validationMeasured = Number(totals.quality_validation_measured_calls) || 0;
   const validationUnmeasured = Number(totals.quality_validation_unmeasured_calls) || 0;
   const duration = Number(totals.duration_seconds) || 0;
@@ -318,6 +343,9 @@ function localAiDerived(totals) {
       : null,
     quality_validation_cost_coverage_percent: validationMeasured + validationUnmeasured > 0
       ? round((validationMeasured / (validationMeasured + validationUnmeasured)) * 100, 1)
+      : null,
+    operational_accounting_coverage_percent: allCalls > 0
+      ? round(((Number(totals.operational_calls) || 0) + (Number(totals.diagnostic_calls) || 0)) / allCalls * 100, 1)
       : null,
     success_rate_percent: calls > 0 ? round((successful / calls) * 100, 1) : null,
     failure_rate_percent: calls > 0 ? round((failed / calls) * 100, 1) : null,
@@ -442,14 +470,31 @@ function summarizeMemoryMonth(daily, now) {
   return { ...totals, ...memoryDerived(totals) };
 }
 
+function localAiDiscardReason(job) {
+  if (!job || job.status !== 'discarded') return null;
+  if (job.discard_reason === 'insufficient_net_savings') return 'insufficient_net_savings';
+  if (job.discard_reason === 'quality_gate_rejected') return 'quality_gate_rejected';
+  const input = Number(job.context_input_tokens);
+  const output = Number(job.context_output_tokens);
+  const validation = Number(job.quality_validation_tokens);
+  if (
+    job.quality_validation_tokens_measured === true
+    && Number.isFinite(input) && Number.isFinite(output) && Number.isFinite(validation)
+    && Math.max(0, input - output) <= Math.max(0, validation)
+  ) {
+    return 'insufficient_net_savings';
+  }
+  return 'quality_gate_rejected';
+}
+
 function sanitizeLocalAiJob(job) {
   if (!job || typeof job !== 'object') return {};
   // The dashboard needs only operational metadata. Keeping this compact avoids
   // Home Assistant's 16 KiB state-attribute limit and never exposes endpoint
   // details through its state machine or Recorder.
   const fields = [
-    'id', 'status', 'task', 'model', 'chat_id', 'chat_name', 'started_at', 'finished_at',
-    'duration_seconds', 'error_type', 'fallback_reported',
+    'id', 'status', 'task', 'model', 'verifier_model', 'chat_id', 'chat_name', 'started_at', 'finished_at',
+    'duration_seconds', 'error_type', 'discard_reason', 'fallback_reported',
     'context_input_tokens', 'context_output_tokens',
     'context_overhead_tokens', 'context_overhead_method', 'context_savings_estimated',
     'token_count_method', 'context_replacement',
@@ -469,6 +514,9 @@ function sanitizeLocalAiJob(job) {
   );
   if (sanitized.status !== 'success' || sanitized.quality_accepted !== true) {
     sanitized.useful_context_tokens_avoided = 0;
+  }
+  if (sanitized.status === 'discarded') {
+    sanitized.discard_reason = localAiDiscardReason(job);
   }
   // This is operational data only, but unlike the aggregate peaks it is the
   // actual sample for the running job. The one-second RTX card needs it to
@@ -663,6 +711,7 @@ function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
         task: job.task || null,
         model: job.model || null,
         status: job.status || null,
+        discard_reason: localAiDiscardReason(job),
         duration_seconds: Number.isFinite(Number(job.duration_seconds))
           ? Number(job.duration_seconds)
           : null,

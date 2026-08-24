@@ -66,9 +66,12 @@ Ollama.
 Os modelos disponíveis podem mudar por instalação. O modelo padrão selecionado
 após o A/B com gate de qualidade é `qwen2.5-coder:14b`: cumpriu os quatro
 schemas e não exibiu CPU offload. A primeira leitura foi 51,5% bruta do custo
-do verificador; o A/B líquido posterior aprovou 1/4 casos e mediu 23,2% depois
-de descontar 693 tokens locais do gate do resultado aproveitado. O registro comparativo e a
-reavaliação operacional de 2026-08-23 estão em
+do verificador; a rodada líquida com autoavaliação aprovou 1/4 casos e mediu
+23,2%. Em 2026-08-24, o benchmark v3 repetiu as quatro fixtures três vezes com
+`qwen3:8b` como verificador independente e rejeitou 12/12 resultados, medindo
+0,0% de redução útil ponderada e mediana. Assim, 23,2% permanece histórico e
+não é previsão operacional nem evidência independente. O registro comparativo e a
+reavaliação operacional estão em
 [`LOCAL_AI_BENCHMARK_2026-08-16.md`](LOCAL_AI_BENCHMARK_2026-08-16.md). A
 reavaliação restaurou o endpoint e comparou 7B, 14B e `qwen3.5:9b` com o mesmo
 critério conservador. Outros modelos já instalados podem ser avaliados quando
@@ -383,7 +386,11 @@ O helper não grava prompt, diff, código-fonte, resposta do modelo nem
 credenciais. Em `.agent-history/` (ignorado pelo Git) ele preserva somente
 metadados: tarefa, modelo, duração, contagens, status e amostras de GPU/VRAM.
 Cada candidato passa primeiro por validações determinísticas específicas da
-tarefa e depois por um verificador de fidelidade com nota mínima de 90%. Se a
+tarefa e depois por um verificador de fidelidade com nota mínima de 90%. A nota
+mede cobertura do conteúdo, não eficiência econômica. Um candidato fiel pode
+ser descartado como `insufficient_net_savings` quando o delta líquido após o
+custo do gate não alcança o mínimo; esse caso não conta como rejeição de
+qualidade. Se a
 primeira resposta falhar, o helper faz uma segunda geração completa com o
 feedback do gate, sem reduzir silenciosamente o contexto ou o schema. As duas
 gerações e verificações pertencem ao mesmo job. Uma segunda rejeição devolve o
@@ -496,11 +503,13 @@ desativa o recurso `apps` somente para essas execuções, pois nenhum conector d
 apps é configurado nele; isso evita a inicialização do MCP ambiental
 `codex_apps` com credencial expirada sem afetar o Codex fora do bridge.
 
-No painel RTX, **chamadas Local AI** e **tokens OpenAI economizados** ficam em
-gráficos separados: chamadas contam tentativas de tarefas; tokens economizados
-somam somente a diferença entre o contexto recebido e resultados que passaram
-pelo gate de qualidade e foram efetivamente usados. Falhas, descartes e
-benchmarks diagnósticos valem zero. O
+No painel RTX, **chamadas Local AI** e **saldo líquido equivalente** ficam em
+gráficos separados: chamadas contam tentativas de tarefas; o saldo soma somente
+a diferença entre o contexto recebido e resultados que passaram pelo gate de
+qualidade e foram efetivamente usados, descontando o custo local do verificador.
+Como os tokenizadores podem diferir, ele é um índice conservador, não uma
+contagem faturável da OpenAI. Falhas, descartes e benchmarks diagnósticos valem
+zero. O
 overhead do envelope de ferramenta/API da OpenAI não é mensurável pelo helper e
 fica explicitamente marcado como não mensurado, portanto o valor não é um
 registro de cobrança oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
@@ -543,15 +552,19 @@ atenção operacional concreta do dia.
 As entidades acumuladas e as demais seções de atividade, qualidade e histórico
 permanecem separadas.
 
-O bloco **Waterfall acumulado — até o resultado útil** reconcilia chamadas
-registradas, conclusões técnicas, resultados com gate explícito e resultados
-validados em tiles, sem tabela. Depois muda explicitamente de unidade para
-economia bruta, custo local do gate nos resultados aprovados, tokens úteis
-líquidos e redução útil líquida. A regra é `max(0, economia bruta - tokens de
-entrada e saída do verificador)`. O resíduo sem classificação reúne benchmarks e
-histórico anterior ao gate; resultados legados cujo custo do verificador não pode
-ser separado preservam a economia bruta para auditoria, mas valem zero líquido.
-Fallbacks não aparecem porque sua notificação não forma uma etapa reconciliável.
+O bloco **Waterfall acumulado — até o resultado útil** reconcilia somente
+tentativas de substituição de contexto, conclusões técnicas, resultados com gate,
+aprovações de fidelidade, candidatos fiéis sem ganho líquido e aprovados com
+custo mensurado, sem tabela. Benchmarks ganham contador diagnóstico separado e
+não contaminam chamadas ou falhas operacionais. Depois o waterfall muda
+explicitamente de unidade para contexto OpenAI evitado validado, custo local do
+gate nos resultados aprovados, saldo líquido equivalente e redução útil
+operacional. A regra conservadora continua
+`max(0, contexto evitado - tokens locais do verificador)`, mas o painel explica
+que os tokenizadores são diferentes e que o saldo não é uma contagem faturável.
+Resultados legados cujo custo do verificador não pode ser separado preservam a
+economia bruta para auditoria, mas valem zero líquido. Fallbacks não aparecem
+porque sua notificação não forma uma etapa reconciliável.
 
 Os indicadores de GPU, VRAM e potência exibem **ociosa** quando a RTX está
 disponível sem inferência em andamento. Os valores numéricos aparecem somente
@@ -570,8 +583,10 @@ pelos cards de saúde. Uma tolerância de cinco segundos no sinal e no fim do
 uso evita que uma falha isolada de polling fragmente o histórico ou faça o
 card alternar brevemente para **sem sinal**. Ao fim da aba, **RTX em uso —
 últimas 48 horas** é uma tabela de jobs sanitizados: tarefa, modelo, resultado,
-nota do gate, duração e tokens úteis líquidos. Benchmarks são omitidos e todo
-descarte aparece com zero economia.
+fidelidade, duração e tokens úteis líquidos. Benchmarks são omitidos e todo
+descarte aparece com zero economia. O resultado distingue rejeição de fidelidade
+de candidato fiel sem ganho líquido suficiente; uma nota de 100% não implica
+economia.
 
 A coleta ao vivo ocorre a cada dois segundos, com timeout de três segundos. A
 cadência evita sobreposição de comandos observada no intervalo anterior de um
@@ -610,15 +625,17 @@ o painel exibe esse nome no lugar do identificador; ele nunca deriva um nome a
 partir do conteúdo da conversa. Isso dá correlação operacional sem vazar
 conteúdo da conversa.
 
-O painel também registra a **taxa diária de falhas técnicas Local AI**: chamadas
-com status `failed` divididas pelo total de tarefas solicitadas à RTX no dia UTC.
+O painel também registra a **taxa diária de falhas técnicas Local AI**: tentativas
+operacionais com status `failed` divididas somente pelas tentativas que pretendiam
+substituir contexto no dia UTC. Benchmarks e resíduos legados ficam fora.
 O gráfico de barras apresenta a média temporal dessa taxa em cada dia e não
 exibe mais a taxa acumulada total como se fosse o valor de hoje. Logo abaixo, o
 resumo separa falhas técnicas,
 descartes por qualidade e resultados não aproveitados (`failed + discarded`).
 Descartes não são falhas de infraestrutura, mas valem zero economia e reduzem a
-redução útil segundo a mesma lógica do A/B. O A/B também subtrai os tokens locais
-de entrada e saída usados na verificação antes de declarar um caso eficiente.
+redução útil segundo a mesma lógica conservadora do benchmark offline. O painel
+também mostra aproveitamento do gate, cobertura da mensuração de seu custo e
+cobertura da classificação operacional.
 
 Os grids de indicadores usam duas colunas para permanecerem legíveis também em
 telas estreitas. A aba organiza as informações em ordem operacional: saúde da
@@ -628,9 +645,11 @@ as alturas, contexto/memória fica após o diagnóstico na primeira coluna, enqu
 qualidade e históricos permanecem na terceira. Acumulados, decisões detalhadas, diagnóstico e gráficos físicos ou
 históricos ficam na parte inferior. Métricas prioritárias aparecem uma vez no
 topo; rejeições de qualidade aparecem somente em resultado/qualidade, junto da
-redução útil. Como no teste A/B, ela divide os tokens úteis líquidos por todo o
-contexto das tentativas; descartes e falhas entram no denominador com economia
-zero. Os blocos
+redução útil. Ela divide o saldo líquido equivalente por todo o contexto das
+tentativas operacionais; descartes e falhas entram no denominador com economia
+zero. A referência controlada explicita separadamente redução ponderada, mediana,
+tamanho da amostra, modelos do gerador/verificador e ausência de avaliação
+end-to-end do modelo principal. Os blocos
 inferiores preservam detalhes e histórico sem repetir indicadores. Cada
 conjunto de roteamento, qualidade, memória, totais, decisões ou histórico inclui
 uma nota curta de interpretação; saúde, atividade instantânea e os três gráficos

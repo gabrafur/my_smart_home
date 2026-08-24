@@ -265,6 +265,79 @@ diff --git a/docs/label.md b/docs/label.md
             (0, 0, False),
         )
 
+    def test_faithful_result_without_net_savings_has_distinct_discard_reason(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            telemetry_path = root / "canonical-telemetry.json"
+            source_path = root / "document.txt"
+            source_path.write_text("Reusable public contract.\n" * 320, encoding="utf-8")
+            args = SimpleNamespace(
+                task="summarize-document",
+                input_file=str(source_path),
+                input_max_chars=12_000,
+                endpoint=None,
+                model=None,
+                verifier_model=None,
+                max_output_chars=6_000,
+                context_tokens=4_096,
+                output_tokens=700,
+                memory_topic=None,
+                memory_files_found=None,
+            )
+            settings = {
+                "enabled": True,
+                "endpoint": "http://local-ai.invalid",
+                "model": "qwen2.5-coder:14b",
+                "telemetry_path": str(telemetry_path),
+            }
+            candidate = {
+                "summary": "Reusable public contract.",
+                "key_points": ["Reusable public contract."],
+                "decisions": [],
+                "constraints": [],
+                "open_questions": [],
+                "confidence": "high",
+            }
+            fidelity = {
+                "usable": True,
+                "coverage_score": 100,
+                "critical_omissions": [],
+                "contradictions": [],
+                "unsupported_claims": [],
+            }
+
+            def request_success(_endpoint, path, payload=None):
+                if path == "/api/tags":
+                    return {"models": [{"name": "qwen2.5-coder:14b", "size": 9_000_000_000}]}
+                if path == "/api/generate" and payload.get("format") == LOCAL_AI.QUALITY_VERIFICATION_SCHEMA:
+                    return {"response": json.dumps(fidelity), "prompt_eval_count": 5_000, "eval_count": 200}
+                if path == "/api/generate":
+                    return {"response": json.dumps(candidate), "prompt_eval_count": 100, "eval_count": 50}
+                raise AssertionError(path)
+
+            with (
+                patch.object(LOCAL_AI, "user_settings", return_value=settings),
+                patch.object(LOCAL_AI, "request", side_effect=request_success),
+                patch.object(LOCAL_AI, "gpu_snapshot", return_value=None),
+            ):
+                with self.assertRaises(LOCAL_AI.QualityRejected) as raised:
+                    LOCAL_AI.run_analysis(args)
+
+            self.assertEqual(raised.exception.reason_code, "insufficient_net_savings")
+            state = json.loads(telemetry_path.read_text(encoding="utf-8"))
+            job = state["latest_jobs"][-1]
+            self.assertEqual(job["status"], "discarded")
+            self.assertEqual(job["discard_reason"], "insufficient_net_savings")
+            self.assertEqual(job["quality_score_percent"], 100)
+            self.assertEqual(job["useful_context_tokens_avoided"], 0)
+            self.assertEqual(state["totals"]["quality_rejected_calls"], 0)
+            self.assertEqual(state["totals"]["not_beneficial_calls"], 1)
+            self.assertEqual(state["totals"]["operational_not_beneficial_calls"], 1)
+            self.assertEqual(state["totals"]["operational_failed_calls"], 0)
+            decision = state["routing"]["latest_decisions"][0]
+            self.assertEqual(decision["decision"], "LOCAL_AI_UNNECESSARY_CALL")
+            self.assertEqual(decision["reason"], "insufficient_net_savings")
+
     def test_bounded_schemas_limit_normal_and_retry_lists(self):
         normal = LOCAL_AI.response_format("summarize-log")
         compact = LOCAL_AI.response_format("summarize-log", compact=True)
@@ -362,7 +435,13 @@ diff --git a/docs/label.md b/docs/label.md
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["totals"]
             self.assertEqual(totals["quality_validated_calls"], 1)
+            self.assertEqual(totals["quality_validated_measured_calls"], 1)
             self.assertEqual(totals["quality_rejected_calls"], 1)
+            self.assertEqual(totals["operational_calls"], 2)
+            self.assertEqual(totals["operational_successful_calls"], 1)
+            self.assertEqual(totals["operational_quality_rejected_calls"], 1)
+            self.assertEqual(totals["operational_quality_validated_calls"], 1)
+            self.assertEqual(totals["operational_quality_validated_measured_calls"], 1)
             self.assertEqual(totals["gross_useful_context_tokens_avoided"], 90)
             self.assertEqual(totals["quality_validation_tokens"], 10)
             self.assertEqual(totals["quality_validated_validation_tokens"], 5)
@@ -380,7 +459,10 @@ diff --git a/docs/label.md b/docs/label.md
                 "model": "qwen2.5-coder:7b",
                 "context_input_tokens": 100,
             }
-            recorder.finished({**base, "id": "failed", "task": "review-diff", "status": "failed"})
+            recorder.finished({
+                **base, "id": "failed", "task": "review-diff", "status": "failed",
+                "context_replacement": True,
+            })
             recorder.finished({
                 **base, "id": "benchmark", "task": "benchmark:review-diff", "status": "success",
                 "context_output_tokens": 10, "context_replacement": False,
@@ -393,6 +475,11 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(state["totals"]["calls"], 3)
+            self.assertEqual(state["totals"]["operational_calls"], 2)
+            self.assertEqual(state["totals"]["operational_failed_calls"], 1)
+            self.assertEqual(state["totals"]["diagnostic_calls"], 1)
+            self.assertEqual(state["totals"]["unclassified_calls"], 0)
+            self.assertEqual(state["totals"]["attempted_context_input_tokens"], 200)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["context_output_tokens"], 120)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], -20)
@@ -487,7 +574,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-16T12:01:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 10)
+            self.assertEqual(state["schema_version"], 16)
             self.assertEqual(state["totals"]["calls"], 3)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 80)
@@ -501,6 +588,7 @@ diff --git a/docs/label.md b/docs/label.md
                     "id": "accepted", "task": "analyze-tests", "model": "model",
                     "status": "success", "finished_at": "2026-08-23T12:00:00Z",
                     "context_replacement": True, "context_input_tokens": 100,
+                    "quality_accepted": True, "quality_validation_tokens_measured": True,
                 },
                 {
                     "id": "discarded", "task": "review-diff", "model": "model",
@@ -523,10 +611,50 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-23T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 10)
+            self.assertEqual(state["schema_version"], 16)
             self.assertNotIn("attempted_context_input_tokens", state["totals"])
             self.assertEqual(state["daily"]["2026-08-23"]["totals"]["attempted_context_input_tokens"], 400)
             self.assertEqual(state["models"]["model"]["totals"]["attempted_context_input_tokens"], 400)
+            self.assertEqual(state["daily"]["2026-08-23"]["totals"]["operational_calls"], 2)
+            self.assertEqual(state["daily"]["2026-08-23"]["totals"]["operational_quality_validated_calls"], 1)
+            self.assertEqual(state["daily"]["2026-08-23"]["totals"]["operational_quality_validated_measured_calls"], 1)
+            self.assertEqual(state["daily"]["2026-08-23"]["totals"]["operational_quality_rejected_calls"], 1)
+
+    def test_schema_fifteen_recovers_accidentally_nested_aggregates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            events_path = Path(directory) / "local-ai-events.jsonl"
+            event = {
+                "id": "accepted", "task": "analyze-tests", "model": "model",
+                "status": "success", "finished_at": "2026-08-23T12:00:00Z",
+                "context_replacement": True, "context_input_tokens": 100,
+                "context_output_tokens": 20, "quality_accepted": True,
+                "quality_validation_tokens_measured": True,
+                "quality_validation_tokens": 10,
+                "gross_useful_context_tokens_avoided": 80,
+                "useful_context_tokens_avoided": 70,
+            }
+            events_path.write_text(json.dumps(event) + "\n", encoding="utf-8")
+            broken = TELEMETRY._event_totals()
+            broken["totals"] = {**TELEMETRY._event_totals(), "calls": 1}
+            path.write_text(json.dumps({
+                "schema_version": 15,
+                "totals": broken,
+                "daily": {},
+                "models": {},
+            }), encoding="utf-8")
+
+            TELEMETRY.TelemetryRecorder(path).started({
+                "id": "active", "task": "inspect-files", "model": "model",
+                "status": "running", "started_at": "2026-08-23T12:02:00Z",
+            })
+            state = json.loads(path.read_text(encoding="utf-8"))
+            totals = state["totals"]
+            self.assertEqual(state["schema_version"], 16)
+            self.assertNotIn("totals", totals)
+            self.assertEqual(totals["calls"], 1)
+            self.assertEqual(totals["operational_calls"], 1)
+            self.assertEqual(totals["useful_context_tokens_avoided"], 70)
 
     def test_schema_eight_keeps_legacy_gross_but_claims_zero_unmeasured_net(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -553,7 +681,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["totals"]
-            self.assertEqual(state["schema_version"], 10)
+            self.assertEqual(state["schema_version"], 16)
             self.assertEqual(totals["gross_useful_context_tokens_avoided"], 90)
             self.assertEqual(totals["quality_validation_unmeasured_gross_tokens"], 90)
             self.assertEqual(totals["quality_validation_unmeasured_calls"], 2)
@@ -600,6 +728,10 @@ diff --git a/docs/label.md b/docs/label.md
             state["routing"]["latest_decisions"] = [dict(decision)]
             TELEMETRY._add_routing_totals(state["routing"], decision)
             TELEMETRY._add_routing_totals(state["daily"]["2026-08-23"]["routing"], decision)
+            path.with_name("local-ai-events.jsonl").write_text(
+                json.dumps(event) + "\n",
+                encoding="utf-8",
+            )
             path.write_text(json.dumps(state), encoding="utf-8")
 
             TELEMETRY.TelemetryRecorder(path).started({
@@ -609,10 +741,14 @@ diff --git a/docs/label.md b/docs/label.md
             migrated = json.loads(path.read_text(encoding="utf-8"))
             totals = migrated["totals"]
             routing = migrated["routing"]["totals"]
-            self.assertEqual(migrated["schema_version"], 10)
+            self.assertEqual(migrated["schema_version"], 16)
             self.assertEqual(totals["successful_calls"], 0)
             self.assertEqual(totals["quality_rejected_calls"], 1)
             self.assertEqual(totals["quality_validated_calls"], 0)
+            self.assertEqual(totals["operational_successful_calls"], 0)
+            self.assertEqual(totals["operational_quality_rejected_calls"], 1)
+            self.assertEqual(totals["operational_quality_validated_calls"], 0)
+            self.assertEqual(totals["operational_quality_validated_measured_calls"], 0)
             self.assertEqual(totals["attempted_context_input_tokens"], 6910)
             self.assertEqual(totals["gross_useful_context_tokens_avoided"], 0)
             self.assertEqual(totals["quality_validation_tokens"], 4846)
@@ -652,7 +788,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["routing"]["totals"]
-            self.assertEqual(state["schema_version"], 10)
+            self.assertEqual(state["schema_version"], 16)
             self.assertEqual(totals["tasks"], 2)
             self.assertEqual(totals["used_tasks"], 1)
             self.assertEqual(totals["missed_opportunities"], 1)
@@ -702,7 +838,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-17T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 10)
+            self.assertEqual(state["schema_version"], 16)
             self.assertEqual(state["routing"]["totals"]["availability_unknown_tasks"], 1)
             self.assertEqual(state["routing"]["totals"]["confirmed_unavailable_tasks"], 1)
             self.assertEqual(state["daily"]["2026-08-17"]["routing"]["availability_unknown_tasks"], 1)
