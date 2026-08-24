@@ -16,14 +16,14 @@ const repoPrefixes = [
 ];
 const exactRepoPaths = new Set([
   ".env.example", ".gitignore", "AGENTS.md", "MEMORY.md", "Makefile",
-  "compose.modules.yml", "docker-compose.yml", "README.md", "README.en.md",
+  "compose.modules.yml", "docker-compose.yml", "README.md", "README.pt-BR.md",
 ]);
 const privateDocumentedPrefixes = [
   ".agent-history/", ".local-secrets/", "bindings/private/", "homeassistant/.storage/",
   "homeassistant/.git-backup-trigger/", "homeassistant/secrets.yaml", "nodered/flows_cred.json",
 ];
 const rootHumanDocuments = new Set([
-  "README.md", "README.en.md", "CONTRIBUTING.md", "SECURITY.md",
+  "README.md", "README.pt-BR.md", "CONTRIBUTING.md", "SECURITY.md",
   "CODE_OF_CONDUCT.md", "THIRD_PARTY_NOTICES.md", "THIRD_PARTY_NOTICES.pt-BR.md",
 ]);
 const additionalHumanDocuments = new Set([
@@ -150,11 +150,16 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
     try {
       const manifest = JSON.parse(readTracked(i18nManifest));
       if (manifest.schema_version !== 2 || manifest.primary_language !== "pt-BR"
+          || manifest.github_landing_language !== "en"
           || !Array.isArray(manifest.areas) || !Array.isArray(manifest.strategies)
           || !Array.isArray(manifest.documents)) {
         errors.push(`${i18nManifest}: invalid manifest contract`);
       } else {
         documents = manifest.documents;
+        const rootReadme = documents.find((document) => document?.id === "root-readme");
+        if (rootReadme?.en !== "README.md" || rootReadme?.pt !== "README.pt-BR.md") {
+          errors.push(`${i18nManifest}: root-readme must make README.md the English GitHub landing page`);
+        }
         const allowedAreas = new Set(manifest.areas);
         const allowedStrategies = new Set(manifest.strategies);
         const classified = new Map();
@@ -271,7 +276,7 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
     }
   }
 
-  const roots = ["README.md", "README.en.md"].filter((file) => tracked.has(file));
+  const roots = ["README.md", "README.pt-BR.md"].filter((file) => tracked.has(file));
   const reachable = new Set(roots);
   const pending = [...roots];
   while (pending.length) {

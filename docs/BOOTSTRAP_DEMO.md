@@ -107,7 +107,9 @@ importa HTTP, rede, MQTT, subprocessos ou clientes residenciais; não usa
 credenciais, coordenadas nem `entity_id`. O teste substitui `fetch` por uma
 falha, verifica os imports, prova que nenhuma rota real é chamada e mantém a
 [saída de exemplo publicada](demo-output.pt-BR.md) idêntica ao formatter. O
-restart é um modelo em memória.
+restart é um modelo em memória; o
+[tour técnico](ENGINEERING_TOUR.pt-BR.md) aponta para replays isolados do
+Node-RED que testam o estado de recovery das funções reais dos flows.
 
 ## Contexto da IA
 

@@ -10,8 +10,8 @@ function fixture(t) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docs-check-"));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const files = {
-    "README.md": "# Projeto\n\n[English](README.en.md)\n\n[Docs](docs/README.md)\n",
-    "README.en.md": "# Project\n\n[Português](README.md)\n\n[Docs](docs/README.en.md)\n",
+    "README.md": "# Project\n\n[Português](README.pt-BR.md)\n\n[Docs](docs/README.en.md)\n",
+    "README.pt-BR.md": "# Projeto\n\n[English](README.md)\n\n[Docs](docs/README.md)\n",
     "docs/README.md": "# Documentação\n\n[English](README.en.md)\n\n[Guia](GUIDE.md#seção-válida)\n",
     "docs/README.en.md": "# Documentation\n\n[Português](README.md)\n\n[Guide](GUIDE.en.md#valid-section)\n",
     "docs/GUIDE.md": "# Guia\n\n[English](GUIDE.en.md)\n\n## Seção válida\n",
@@ -19,12 +19,13 @@ function fixture(t) {
     "docs/i18n-manifest.json": JSON.stringify({
       schema_version: 2,
       primary_language: "pt-BR",
+      github_landing_language: "en",
       areas: ["overview", "getting-started"],
       strategies: ["full pair", "summary pair", "third-party/not-translated", "archived"],
       documents: [
-        { area: "overview", strategy: "full pair", pt: "README.md", en: "README.en.md" },
-        { area: "overview", strategy: "full pair", pt: "docs/README.md", en: "docs/README.en.md" },
-        { area: "getting-started", strategy: "full pair", pt: "docs/GUIDE.md", en: "docs/GUIDE.en.md" },
+        { id: "root-readme", area: "overview", strategy: "full pair", pt: "README.pt-BR.md", en: "README.md" },
+        { id: "docs-index", area: "overview", strategy: "full pair", pt: "docs/README.md", en: "docs/README.en.md" },
+        { id: "guide", area: "getting-started", strategy: "full pair", pt: "docs/GUIDE.md", en: "docs/GUIDE.en.md" },
       ],
     }),
     "docker-compose.yml": "services:\n  core:\n    image: example.invalid/core\n",

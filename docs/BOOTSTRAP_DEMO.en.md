@@ -108,7 +108,8 @@ imports no HTTP, network, MQTT, subprocess, or household client; it uses no
 credentials, coordinates, or entity IDs. Tests replace `fetch` with a failure,
 inspect imports, prove no real route is called, and keep the
 [published example output](demo-output.md) byte-identical to the formatter. The
-restart is an in-memory model.
+restart is an in-memory model; the [technical tour](ENGINEERING_TOUR.md) links
+to isolated Node-RED replays that test the real flow functions' recovery state.
 
 ## AI context
 

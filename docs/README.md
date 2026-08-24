@@ -12,6 +12,7 @@ placeholders.
 
 | Documento | Quando usar | Inglês |
 | --- | --- | --- |
+| [Tour técnico de portfólio](ENGINEERING_TOUR.pt-BR.md) | Caminhos de evidência para 30 segundos, 5 minutos e 15 minutos | [English](ENGINEERING_TOUR.md) |
 | [Instalação e restauração](INSTALACAO_RESTAURACAO_SMART_HOME.md) | Clone novo, recuperação ou migração de host | [English](INSTALLATION_RESTORE.en.md) |
 | [Contrato determinístico de restore](RESTORE_CONTRACT.md) | Manifesto, bundle, plan/verify/apply e contexto da IA | [English](RESTORE_CONTRACT.en.md) |
 | [Bootstrap, módulos e demo](BOOTSTRAP_DEMO.md) | Clone mínimo, features opcionais e cenário sintético | [English](BOOTSTRAP_DEMO.en.md) |
@@ -60,14 +61,20 @@ cronologia residencial, nomes, rotas ou identificadores privados.
 
 ## Portfólio
 
+- [Tour técnico de portfólio — PT-BR](ENGINEERING_TOUR.pt-BR.md) ·
+  [English](ENGINEERING_TOUR.md)
 - [Projeto para LinkedIn — PT-BR](portfolio/linkedin-project-pt-BR.md) ·
   [English](portfolio/linkedin-project-en.md)
 - [Case técnico — PT-BR](portfolio/technical-case-study-pt-BR.md) ·
   [English](portfolio/technical-case-study-en.md)
+- [Saída determinística da demo — PT-BR](demo-output.pt-BR.md) ·
+  [English](demo-output.md)
 
 ## Política de manutenção
 
-- Português do Brasil é o idioma principal.
+- Português do Brasil continua como idioma principal da documentação
+  operacional; o `README.md` da raiz é inglês para que o GitHub tenha uma
+  landing page internacional.
 - Todo documento humano público declara área e estratégia no
   [`i18n-manifest.json`](i18n-manifest.json).
 - Documentos `full pair` precisam ser atualizados nos dois idiomas na mesma

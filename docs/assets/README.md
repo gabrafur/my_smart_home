@@ -18,8 +18,9 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" \
   -o /data/docs/assets/smart-home-architecture.svg -b transparent
 ```
 
-O diagrama separa core, módulos opcionais, código público, bindings/estado
-privados e o bundle de restore com aplicação aprovada por uma pessoa.
+O diagrama separa repositório público, runtime privado, dispositivos físicos,
+serviços cloud opcionais, backup/restore e a fronteira de agentes/Local AI.
+Core e módulos opcionais continuam visualmente distintos nessas fronteiras.
 
 ## Social preview
 

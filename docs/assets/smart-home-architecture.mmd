@@ -1,43 +1,65 @@
 flowchart TB
-  DEV[Devices and synthetic events]
+  subgraph PHYSICAL[PHYSICAL DEVICES / RESIDENCE]
+    direction LR
+    DEV[Local devices and sensors]
+  end
 
-  subgraph PUBLIC[Public, reviewable repository]
+  subgraph CLOUD[OPTIONAL CLOUD SERVICES]
+    direction LR
+    CLOUDAPI[Vehicle · voice · alarm APIs]
+  end
+
+  subgraph PUBLIC[PUBLIC REPOSITORY / REVIEWABLE PLATFORM]
     direction TB
+    FIXTURES[Synthetic fixtures]
     Z2M[Zigbee2MQTT]
     MQTT[Mosquitto / MQTT]
     HA[Home Assistant]
     NR[Node-RED]
     AD[AppDaemon]
-    AG[Optional agent bridge]
     OBS[Observability and recovery]
     CODE[Compose · config · tests · docs]
   end
 
-  subgraph PRIVATE[Private, never committed]
+  subgraph PRIVATE[PRIVATE RUNTIME STATE / NEVER COMMITTED]
     direction LR
     BIND[Private bindings and secrets]
     STATE[Device registries and runtime state]
   end
 
-  subgraph RECOVERY[Explicit recovery path]
+  subgraph RECOVERY[BACKUP / RESTORE]
     direction LR
     BUNDLE[Encrypted private restore bundle]
     VERIFY[plan → verify → human-approved apply]
   end
 
+  subgraph AGENT[AGENT / LOCAL-AI BOUNDARY]
+    direction LR
+    BRIDGE[Optional agent bridge]
+    RTX[Optional Local AI / RTX]
+    POLICY[Bounded public context · no secrets · no final authority]
+  end
+
   DEV --> Z2M
   DEV --> HA
+  CLOUDAPI -. optional input .-> HA
+  FIXTURES --> HA
+  FIXTURES --> NR
   Z2M --> MQTT
   MQTT <--> HA
   HA <--> NR
   HA <--> AD
-  HA <--> AG
+  HA <--> BRIDGE
+  BRIDGE <--> RTX
+  POLICY --> BRIDGE
+  POLICY --> RTX
   NR --> OBS
   HA --> OBS
   CODE -. defines .-> Z2M
   CODE -. defines .-> MQTT
   CODE -. defines .-> HA
   CODE -. defines .-> NR
+  CODE -. defines .-> BRIDGE
   BIND -. read-only .-> HA
   BIND -. read-only .-> NR
   STATE -. runtime .-> HA
@@ -49,9 +71,13 @@ flowchart TB
   classDef private fill:#5b3a18,stroke:#ffc76b,color:#fff,stroke-width:2px;
   classDef recovery fill:#174f3b,stroke:#68e0a8,color:#fff,stroke-width:2px;
   classDef public fill:#102b46,stroke:#7bb8ef,color:#fff,stroke-width:1px;
+  classDef external fill:#4b304f,stroke:#e9a8f0,color:#fff,stroke-width:2px;
+  classDef boundary fill:#24334f,stroke:#9db7ff,color:#fff,stroke-width:2px,stroke-dasharray:6 4;
 
   class MQTT,HA,NR core;
-  class Z2M,AD,AG optional;
+  class Z2M,AD optional;
   class BIND,STATE private;
   class BUNDLE,VERIFY recovery;
-  class DEV,OBS,CODE public;
+  class CLOUDAPI external;
+  class BRIDGE,RTX,POLICY boundary;
+  class DEV,FIXTURES,OBS,CODE public;

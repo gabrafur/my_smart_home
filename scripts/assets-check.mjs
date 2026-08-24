@@ -87,7 +87,12 @@ export function checkAssets({ repoRoot = defaultRepoRoot, trackedFiles } = {}) {
       if (!/<svg\b/i.test(content)) errors.push(`${file}: invalid SVG document`);
       if (/data:image\//i.test(content)) errors.push(`${file}: embedded raster data is not reproducible`);
       if (file === "docs/assets/smart-home-architecture.svg") {
-        for (const label of ["Home Assistant", "Node-RED", "Optional agent bridge", "Private bindings and secrets", "Encrypted private restore bundle"]) {
+        for (const label of [
+          "PUBLIC REPOSITORY", "PRIVATE RUNTIME STATE", "PHYSICAL DEVICES",
+          "OPTIONAL CLOUD SERVICES", "BACKUP / RESTORE", "AGENT / LOCAL-AI BOUNDARY",
+          "Home Assistant", "Node-RED", "Optional agent bridge",
+          "Private bindings and secrets", "Encrypted private restore bundle",
+        ]) {
           if (!content.includes(label)) errors.push(`${file}: missing architecture label: ${label}`);
         }
       }
@@ -100,7 +105,11 @@ export function checkAssets({ repoRoot = defaultRepoRoot, trackedFiles } = {}) {
     }
     if (extension === ".mmd") {
       const content = data.toString("utf8");
-      for (const label of ["Public, reviewable repository", "Private, never committed", "Explicit recovery path", "Home Assistant", "Node-RED"]) {
+      for (const label of [
+        "PUBLIC REPOSITORY", "PRIVATE RUNTIME STATE", "PHYSICAL DEVICES",
+        "OPTIONAL CLOUD SERVICES", "BACKUP / RESTORE", "AGENT / LOCAL-AI BOUNDARY",
+        "Home Assistant", "Node-RED",
+      ]) {
         if (!content.includes(label)) errors.push(`${file}: missing Mermaid architecture label: ${label}`);
       }
     }

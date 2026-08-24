@@ -1,6 +1,7 @@
 {
   "schema_version": 2,
   "primary_language": "pt-BR",
+  "github_landing_language": "en",
   "areas": [
     "overview",
     "architecture",
@@ -37,8 +38,9 @@
     ]
   },
   "documents": [
-    { "id": "root-readme", "area": "overview", "strategy": "full pair", "pt": "README.md", "en": "README.en.md" },
+    { "id": "root-readme", "area": "overview", "strategy": "full pair", "pt": "README.pt-BR.md", "en": "README.md" },
     { "id": "docs-index", "area": "overview", "strategy": "full pair", "pt": "docs/README.md", "en": "docs/README.en.md" },
+    { "id": "engineering-tour", "area": "portfolio", "strategy": "full pair", "pt": "docs/ENGINEERING_TOUR.pt-BR.md", "en": "docs/ENGINEERING_TOUR.md" },
     { "id": "containers", "area": "architecture", "strategy": "full pair", "pt": "docs/CONTAINERS.md", "en": "docs/CONTAINERS.en.md" },
     { "id": "installation-restore", "area": "installation", "strategy": "full pair", "pt": "docs/INSTALACAO_RESTAURACAO_SMART_HOME.md", "en": "docs/INSTALLATION_RESTORE.en.md" },
     { "id": "weekly-review", "area": "operations", "strategy": "full pair", "pt": "docs/REVISAO_DOCUMENTACAO_SEMANAL.md", "en": "docs/WEEKLY_DOCUMENTATION_REVIEW.en.md" },

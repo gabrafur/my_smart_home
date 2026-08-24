@@ -118,7 +118,7 @@ function gitOutput(args, cwd = repoRoot) {
 }
 
 export function isAllowedReviewPath(file) {
-  if (["README.md", "MEMORY.md"].includes(file)) return true;
+  if (["README.md", "README.pt-BR.md", "MEMORY.md"].includes(file)) return true;
   if (/^\.codex\/memories\/.+\.md$/.test(file)) return true;
   if (/^docs\/.+\.md$/.test(file)) return true;
   return /^docs\/assets\/generated\/.+\.(?:jpe?g|png|svg|webp)$/i.test(file);
@@ -437,6 +437,7 @@ function selfTest() {
   );
   assert.ok(fs.readFileSync(promptPath, "utf8").includes("Português do Brasil"));
   assert.equal(isAllowedReviewPath("README.md"), true);
+  assert.equal(isAllowedReviewPath("README.pt-BR.md"), true);
   assert.equal(isAllowedReviewPath("docs/PRIVACY_MODEL.md"), true);
   assert.equal(isAllowedReviewPath("docs/assets/generated/diagram.svg"), true);
   assert.equal(isAllowedReviewPath("nodered/flows.json"), false);

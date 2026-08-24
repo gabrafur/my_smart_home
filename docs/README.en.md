@@ -11,6 +11,7 @@ physical identifiers must appear only as placeholders.
 
 | Document | Use it for | Portuguese |
 | --- | --- | --- |
+| [Technical portfolio tour](ENGINEERING_TOUR.md) | 30-second, 5-minute, and 15-minute evidence paths | [Português](ENGINEERING_TOUR.pt-BR.md) |
 | [Installation and restore](INSTALLATION_RESTORE.en.md) | Fresh clones, recovery, and host migration | [Português](INSTALACAO_RESTAURACAO_SMART_HOME.md) |
 | [Deterministic restore contract](RESTORE_CONTRACT.en.md) | Manifest, bundle, plan/verify/apply, and AI context | [Português](RESTORE_CONTRACT.md) |
 | [Bootstrap, modules, and demo](BOOTSTRAP_DEMO.en.md) | Minimum clone, optional features, and synthetic scenario | [Português](BOOTSTRAP_DEMO.md) |
@@ -68,14 +69,19 @@ names, routes, or private identifiers.
 
 ## Portfolio
 
+- [Technical portfolio tour — English](ENGINEERING_TOUR.md) ·
+  [Português](ENGINEERING_TOUR.pt-BR.md)
 - [LinkedIn project — English](portfolio/linkedin-project-en.md) ·
   [Português](portfolio/linkedin-project-pt-BR.md)
 - [Technical case study — English](portfolio/technical-case-study-en.md) ·
   [Português](portfolio/technical-case-study-pt-BR.md)
+- [Deterministic demo output — English](demo-output.md) ·
+  [Português](demo-output.pt-BR.md)
 
 ## Maintenance policy
 
-- Brazilian Portuguese is the primary language.
+- Brazilian Portuguese remains the primary operating-documentation language;
+  the root `README.md` is English so GitHub has an international landing page.
 - Every public human document declares its area and strategy in
   [`i18n-manifest.json`](i18n-manifest.json).
 - `full pair` documents must change in both languages; `summary pair`,

@@ -31,8 +31,8 @@ function fixture(t, pngData = png()) {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "asset-check-"));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const files = {
-    "docs/assets/smart-home-architecture.mmd": "Public, reviewable repository\nPrivate, never committed\nExplicit recovery path\nHome Assistant\nNode-RED\n",
-    "docs/assets/smart-home-architecture.svg": "<svg>Home Assistant Node-RED Optional agent bridge Private bindings and secrets Encrypted private restore bundle</svg>",
+    "docs/assets/smart-home-architecture.mmd": "PUBLIC REPOSITORY\nPRIVATE RUNTIME STATE\nPHYSICAL DEVICES\nOPTIONAL CLOUD SERVICES\nBACKUP / RESTORE\nAGENT / LOCAL-AI BOUNDARY\nHome Assistant\nNode-RED\n",
+    "docs/assets/smart-home-architecture.svg": "<svg>PUBLIC REPOSITORY PRIVATE RUNTIME STATE PHYSICAL DEVICES OPTIONAL CLOUD SERVICES BACKUP / RESTORE AGENT / LOCAL-AI BOUNDARY Home Assistant Node-RED Optional agent bridge Private bindings and secrets Encrypted private restore bundle</svg>",
     "docs/assets/github-social-preview.svg": "<svg width=\"1280\" height=\"640\">Self-hosted Smart Home Platform Security · Observability · Recovery · Local AI</svg>",
   };
   for (const [file, content] of Object.entries(files)) {

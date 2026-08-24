@@ -50,7 +50,7 @@ JavaScript/Node.js · Python · YAML/Jinja · GitHub Actions · Mermaid · Local
 
 ## Evidências públicas
 
-- [README e tour técnico](../../README.md)
+- [README e tour técnico](../../README.pt-BR.md)
 - [Arquitetura](../assets/smart-home-architecture.svg)
 - [Estratégia de testes](../ESTRATEGIA_DE_TESTES.md)
 - [Contrato de restore](../RESTORE_CONTRACT.md)

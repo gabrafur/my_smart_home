@@ -18,8 +18,10 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" \
   -o /data/docs/assets/smart-home-architecture.svg -b transparent
 ```
 
-The diagram separates core, optional modules, public code, private
-bindings/state, and the human-approved restore bundle path.
+The diagram separates the public repository, private runtime state, physical
+devices, optional cloud services, backup/restore, and the agent/Local-AI
+boundary. Core and optional modules remain visually distinct inside those
+boundaries.
 
 ## Social preview
 
