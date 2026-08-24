@@ -39,7 +39,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         )
         self.assertEqual(
             sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            28,
+            29,
         )
         for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Histórico de uso da RTX — últimas 48 horas"):
             self.assertIn(f"title: {title}", columns[0])
@@ -117,6 +117,23 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertEqual(view.count("name: Fiéis sem ganho líquido"), 2)
         self.assertIn("entity: sensor.codex_falhas_operacionais_local_ai_hoje", view)
         self.assertIn("'modelo_verificador'", view)
+
+    def test_high_potential_benchmark_is_separate_and_token_weighted(self):
+        view = rtx_view()
+
+        self.assertIn("title: Benchmark RTX — alto potencial além de logs", view)
+        self.assertIn("sensor.codex_benchmark_rtx_alto_potencial", view)
+        self.assertIn("item.get('activity')", view)
+        self.assertIn("totals.get('baseline_gpt_tokens'", view)
+        self.assertIn("totals.get('routed_gpt_tokens'", view)
+        self.assertIn("totals.get('avoided_gpt_tokens'", view)
+        self.assertIn("weighted_token_savings", view)
+        self.assertIn("measured", view)
+        self.assertIn("estimated", view)
+        self.assertIn("simulated", view)
+        self.assertIn("insufficient_sample", view)
+        self.assertIn("não é média simples", view)
+        self.assertIn("`summarize-log` está excluído", view)
 
     def test_daily_operational_flow_reconciles_quality_outcomes(self):
         view = rtx_view()

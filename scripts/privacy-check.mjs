@@ -32,6 +32,7 @@ const ignoredText = [
   /^scripts\/privacy-check(?:\.test)?\.mjs$/,
   /^scripts\/security-scan(?:\.test)?\.(?:mjs|sh)$/,
 ];
+const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:[^/]+\.(?:json|jsonl|csv))|scripts\/local-ai\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
@@ -102,9 +103,14 @@ export function scanEntries(entries, { denylist = [] } = {}) {
     const text = buffer.toString("utf8");
     for (const [rule, category, pattern] of rules) {
       if (rule === "precise-coordinate" && extension === ".svg") continue;
+      // Machine-readable benchmark artifacts contain high-precision scores,
+      // latencies and GPU samples but never persist prompts or source inputs.
+      // Keep every other privacy rule active for these narrowly scoped paths.
+      if (rule === "precise-coordinate" && benchmarkNumericArtifact.test(file)) continue;
       pattern.lastIndex = 0;
       for (const match of text.matchAll(pattern)) {
         if (rule === "mac-address" && match[0].toUpperCase() === "AA:AA:AA:AA:AA:AA") continue;
+        if (rule === "private-email" && match[0].toLowerCase() === "github-actions@github.com") continue;
         if (rule === "private-ipv4" && /(?:example|synthetic|sint[eé]tic)/i.test(text.slice(Math.max(0, match.index - 80), match.index))) continue;
         if (rule === "private-hostname" && /(?:example|synthetic|sint[eé]tic)/i.test(text.slice(Math.max(0, match.index - 80), match.index))) continue;
         if (["private-name-field", "private-account-id"].includes(rule) &&

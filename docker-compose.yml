@@ -194,6 +194,7 @@ services:
       - LOCAL_AI_MCP_RUNTIME_DIR=/opt/codex-local-ai
       - LOCAL_AI_TELEMETRY_PATH=/local-ai-state/local-ai-telemetry.json
       - LOCAL_AI_STATUS_PATH=/workspace/.agent-history/local-ai-status.json
+      - LOCAL_AI_BENCHMARK_PATH=/workspace/docs/benchmarks/local-ai-high-potential/latest.json
       - CODEX_SESSIONS_DIRS=/home/node/.codex/sessions,/host-codex-sessions
       # Metadata-only account read through Codex app-server. It does not start
       # a model turn or consume plan credits.

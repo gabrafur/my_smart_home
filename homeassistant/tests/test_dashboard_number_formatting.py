@@ -52,6 +52,14 @@ NUMERIC_EXPRESSION_MARKERS = (
     "today.get('memory_tokens_",
     "latest.get('files_found')",
     "latest.get('memory_tokens_",
+    "baseline_gpt_tokens",
+    "routed_gpt_tokens",
+    "avoided_gpt_tokens",
+    "useful_rtx_rate",
+    "weighted_token_savings",
+    "latency_p50_seconds",
+    "latency_p95_seconds",
+    "quality_score",
 )
 
 DASHBOARD_COUNTERS = (

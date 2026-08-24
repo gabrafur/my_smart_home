@@ -756,7 +756,69 @@ function reconcileRoutingDecisions(decisions, jobs) {
   });
 }
 
-function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
+function sanitizeHighPotentialBenchmark(benchmarkPath) {
+  const report = readJson(benchmarkPath, null);
+  if (!report || report.suite !== 'local-ai-high-potential-v1'
+      || report.execution_mode !== 'benchmark'
+      || report.excluded_from_production_metrics !== true) {
+    return { available: false, status: 'insufficient_sample', activities: [] };
+  }
+  const safeNumber = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
+  const totals = report.totals && typeof report.totals === 'object' ? report.totals : {};
+  const activities = Object.entries(report.per_activity_class || {}).map(([activity, value]) => ({
+    activity,
+    cases: safeNumber(value?.cases) || 0,
+    rtx_attempted: safeNumber(value?.rtx_attempted) || 0,
+    outputs_accepted: safeNumber(value?.outputs_accepted) || 0,
+    outputs_rejected: safeNumber(value?.outputs_rejected) || 0,
+    fallbacks: safeNumber(value?.fallbacks) || 0,
+    useful_rtx_rate: safeNumber(value?.useful_rtx_rate),
+    baseline_gpt_tokens: safeNumber(value?.baseline_gpt_tokens) || 0,
+    routed_gpt_tokens: safeNumber(value?.routed_gpt_tokens) || 0,
+    avoided_gpt_tokens: safeNumber(value?.avoided_gpt_tokens) || 0,
+    weighted_token_savings: safeNumber(value?.weighted_token_savings),
+    latency_p50_seconds: safeNumber(value?.latency_p50_seconds),
+    latency_p95_seconds: safeNumber(value?.latency_p95_seconds),
+    quality_score: safeNumber(value?.quality_score),
+    decision: typeof value?.decision === 'string' ? value.decision : 'EXPERIMENTAL',
+    sample_status: Number(value?.cases) >= 20 ? 'sufficient' : 'insufficient_sample',
+  }));
+  const localBasis = report.measurement_basis?.local_ai;
+  return {
+    available: true,
+    status: activities.every((item) => item.sample_status === 'sufficient')
+      ? String(localBasis || 'estimated')
+      : 'insufficient_sample',
+    benchmark_run_id: typeof report.benchmark_run_id === 'string' ? report.benchmark_run_id : null,
+    generated_at: typeof report.generated_at === 'string' ? report.generated_at : null,
+    model: typeof report.model === 'string' ? report.model : null,
+    measurement_basis: {
+      gpt_direct: report.measurement_basis?.gpt_direct || 'simulated',
+      gpt_tokens: report.measurement_basis?.gpt_tokens || 'estimated',
+      local_ai: localBasis || 'estimated',
+      deterministic: report.measurement_basis?.deterministic || 'estimated',
+      gpt_final_quality: report.measurement_basis?.gpt_final_quality || 'not_tested',
+    },
+    totals: {
+      cases: safeNumber(totals.cases) || 0,
+      rtx_attempted: safeNumber(totals.rtx_attempted) || 0,
+      outputs_accepted: safeNumber(totals.outputs_accepted) || 0,
+      outputs_rejected: safeNumber(totals.outputs_rejected) || 0,
+      fallbacks: safeNumber(totals.fallbacks) || 0,
+      useful_rtx_rate: safeNumber(totals.useful_rtx_rate),
+      baseline_gpt_tokens: safeNumber(totals.baseline_gpt_tokens) || 0,
+      routed_gpt_tokens: safeNumber(totals.routed_gpt_tokens) || 0,
+      avoided_gpt_tokens: safeNumber(totals.avoided_gpt_tokens) || 0,
+      weighted_token_savings: safeNumber(totals.weighted_token_savings),
+      latency_p50_seconds: safeNumber(totals.latency_p50_seconds),
+      latency_p95_seconds: safeNumber(totals.latency_p95_seconds),
+      quality_score: safeNumber(totals.quality_score),
+    },
+    activities,
+  };
+}
+
+function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date(), benchmarkPath = null) {
   const state = readJson(telemetryPath, {});
   const deliveryReceipts = codeModeDeliveryReceipts(state);
   reconcileCodeModeDeliveries(state, deliveryReceipts);
@@ -872,6 +934,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
     deliveries: {
       confirmed_code_mode_calls: deliveryReceipts.size,
     },
+    benchmark_high_potential: sanitizeHighPotentialBenchmark(benchmarkPath),
   };
 }
 
@@ -1121,10 +1184,17 @@ function scanCodexUsage(sessionsDirectory, now = new Date()) {
 }
 
 class CodexUsageReader {
-  constructor(sessionsDirectory, localAiTelemetryPath = null, localAiStatusPath = null, cacheMs = 5_000) {
+  constructor(
+    sessionsDirectory,
+    localAiTelemetryPath = null,
+    localAiStatusPath = null,
+    cacheMs = 5_000,
+    localAiBenchmarkPath = null,
+  ) {
     this.sessionsDirectories = Array.isArray(sessionsDirectory) ? sessionsDirectory : [sessionsDirectory];
     this.localAiTelemetryPath = localAiTelemetryPath;
     this.localAiStatusPath = localAiStatusPath;
+    this.localAiBenchmarkPath = localAiBenchmarkPath;
     this.cacheMs = cacheMs;
     this.cachedAt = 0;
     this.cached = null;
@@ -1168,14 +1238,24 @@ class CodexUsageReader {
     const now = new Date();
     this.cached = {
       ...this.readCodexUsage(now, liveRateEvent),
-      local_ai: scanLocalAiTelemetry(this.localAiTelemetryPath, this.localAiStatusPath),
+      local_ai: scanLocalAiTelemetry(
+        this.localAiTelemetryPath,
+        this.localAiStatusPath,
+        new Date(),
+        this.localAiBenchmarkPath,
+      ),
     };
     this.cachedAt = Date.now();
     return this.cached;
   }
 
   readLocalAiLive() {
-    return scanLocalAiTelemetry(this.localAiTelemetryPath, this.localAiStatusPath);
+    return scanLocalAiTelemetry(
+      this.localAiTelemetryPath,
+      this.localAiStatusPath,
+      new Date(),
+      this.localAiBenchmarkPath,
+    );
   }
 
   readLocalAiHistory() {

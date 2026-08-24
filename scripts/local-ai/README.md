@@ -91,6 +91,26 @@ input-token savings and 30.1% eligible-task savings, with 14/14 functional
 passes in both arms. The workload weights are a declared synthetic profile,
 not production-traffic telemetry.
 
+For the 100-case benchmark of high-potential activities beyond
+`summarize-log`, use the staged targets below. The complete target runs all
+stages sequentially and keeps benchmark events separate from operational
+telemetry:
+
+```bash
+make benchmark-local-ai-high-potential-unit
+make benchmark-local-ai-high-potential-integration
+make benchmark-local-ai-high-potential-simulated
+make benchmark-local-ai-high-potential-dashboard
+make benchmark-local-ai-high-potential-local-ai
+make benchmark-local-ai-high-potential
+```
+
+The dataset contains 70 anonymized repository-derived fixtures and 30
+deterministic synthetic fixtures, split into calibration and holdout. GPT
+direct context is simulated, while Local AI inference, latency and GPU are
+measured by the real target. See
+[`docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md`](../../docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md).
+
 Calibrate a proposed verifier independently before the generator A/B:
 
 ```bash

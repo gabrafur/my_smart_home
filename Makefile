@@ -5,7 +5,10 @@
 	validate-bootstrap validate-demo validate-git validate-commit-message validate-staged privacy-check \
 	privacy-check-staged bindings-check backup-plan backup-verify restore-plan \
 	restore-verify restore-test restore-apply bootstrap bootstrap-test demo demo-test \
-	modules-check context-recovery-check install-git-hooks
+	modules-check context-recovery-check install-git-hooks \
+	benchmark-local-ai-high-potential benchmark-local-ai-high-potential-unit \
+	benchmark-local-ai-high-potential-integration benchmark-local-ai-high-potential-simulated \
+	benchmark-local-ai-high-potential-local-ai benchmark-local-ai-high-potential-dashboard
 
 PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
 	validate-yaml validate-shell validate-docs validate-assets validate-security \
@@ -19,6 +22,7 @@ DESTINATION ?=
 CONFIRM ?=
 ALLOW_NON_CANARY ?=
 MODULES ?= core
+HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR ?= docs/benchmarks/local-ai-high-potential
 
 validate-public:
 	@./scripts/run-resource-safe.sh $(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
@@ -70,6 +74,30 @@ validate-bridge:
 
 validate-local-ai:
 	python3 -m unittest discover -s scripts/local-ai -p 'test_*.py'
+
+benchmark-local-ai-high-potential-unit:
+	python3 scripts/local-ai/high_potential_dataset.py --check
+	python3 scripts/local-ai/test_high_potential_benchmark.py HighPotentialBenchmarkUnitTests
+
+benchmark-local-ai-high-potential-integration:
+	python3 scripts/local-ai/test_high_potential_benchmark.py HighPotentialBenchmarkIntegrationTests
+
+benchmark-local-ai-high-potential-simulated:
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --mode simulated --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR)"
+
+benchmark-local-ai-high-potential-local-ai:
+	uptime
+	free -h
+	df -h /
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --mode local-ai --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR)"
+
+benchmark-local-ai-high-potential-dashboard:
+	node --test ia-bridge/usage.test.js
+	python3 -m unittest homeassistant.tests.test_chat_rtx_dashboard_layout homeassistant.tests.test_dashboard_number_formatting
+
+benchmark-local-ai-high-potential: benchmark-local-ai-high-potential-unit \
+	benchmark-local-ai-high-potential-integration benchmark-local-ai-high-potential-simulated \
+	benchmark-local-ai-high-potential-dashboard benchmark-local-ai-high-potential-local-ai
 
 validate-homeassistant:
 	python3 -m unittest discover -s homeassistant/tests -p 'test_*.py'

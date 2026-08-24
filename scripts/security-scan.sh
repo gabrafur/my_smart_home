@@ -214,6 +214,19 @@ while IFS=$'\t' read -r rule regex; do
       && "$file" == "homeassistant/custom_components/localtuya/pytuya/__init__.py" ]]; then
       continue
     fi
+    # Artefatos estruturados do benchmark contem taxas, latencias e metricas de
+    # GPU com seis ou mais casas decimais. Ignore apenas a regra de coordenada
+    # nua nesses arquivos gerados; credenciais, IPs e coordenadas rotuladas
+    # continuam passando pelas demais regras.
+    if [[ "$rule" == "coordenada-nua" ]]; then
+      case "$file" in
+        docs/benchmarks/local-ai-high-potential/*.json|\
+        docs/benchmarks/local-ai-high-potential/*.jsonl|\
+        docs/benchmarks/local-ai-high-potential/*.csv|\
+        scripts/local-ai/benchmarks/high-potential/*.json|\
+        scripts/local-ai/benchmarks/high-potential/*.jsonl) continue ;;
+      esac
+    fi
     # package-lock e vendored HACS geram ruido estrutural sem valor de auditoria
     case "$file" in
       # ruido estrutural sem valor de auditoria: lockfile, frontend gerado do

@@ -566,6 +566,29 @@ template:
           {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('preflight') or {}).get('model')) or 'não configurado' }}
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
+      - name: Codex Benchmark RTX Alto Potencial
+        unique_id: codex_benchmark_rtx_alto_potencial
+        icon: mdi:flask-outline
+        state: >-
+          {% set benchmark = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}) %}
+          {{ benchmark.get('status', 'insufficient_sample') }}
+        availability: >-
+          {% set benchmark = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}) %}
+          {{ states('sensor.codex_usage_raw') == 'ok' and benchmark.get('available', false) }}
+        attributes:
+          benchmark_run_id: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('benchmark_run_id')) }}
+          ultima_execucao: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('generated_at')) }}
+          modelo: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('model')) }}
+          base_de_medicao: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('measurement_basis')) or {} }}
+          totais: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('totals')) or {} }}
+          atividades: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('activities')) or [] }}
+
       - name: Codex Chamadas Local AI
         unique_id: codex_chamadas_local_ai
         icon: mdi:counter

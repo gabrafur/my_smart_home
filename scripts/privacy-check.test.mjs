@@ -70,11 +70,17 @@ test("allows documentation-only contact and logical placeholder values", () => {
   const result = scanEntries([entry("fixture.yaml", [
     "email: maintainer@example.com",
     "email: fixture@example.invalid",
+    "email: github-actions@github.com",
     "ssid: CHANGE_ME",
     "owner_name: resident_primary",
     "account_id: synthetic",
   ].join("\n"))]);
   assert.deepEqual(result, []);
+});
+
+test("does not allow arbitrary GitHub-domain email addresses", () => {
+  const result = scanEntries([entry("fixture.yaml", "email: private-fixture@github.com")]);
+  assert.deepEqual(result.map((item) => item.rule), ["private-email"]);
 });
 
 test("detects metadata in a synthetic PNG", () => {
@@ -93,6 +99,15 @@ test("allows the canonical synthetic social preview but rejects arbitrary image 
 test("does not treat SVG drawing coordinates as household coordinates", () => {
   const result = scanEntries([entry("docs/assets/architecture.svg", "<svg><path d=\"M 10.123456 20.123456\"/></svg>")]);
   assert.deepEqual(result, []);
+});
+
+test("allows precise benchmark metrics without allowing private network data", () => {
+  const metric = ["0", "903125"].join(".");
+  const address = ["10", "23", "45", "67"].join(".");
+  const file = "docs/benchmarks/local-ai-high-potential/latest.json";
+  assert.deepEqual(scanEntries([entry(file, `{"quality_score":${metric}}`)]), []);
+  const result = scanEntries([entry(file, `{"quality_score":${metric},"endpoint":"${address}"}`)]);
+  assert.deepEqual(result.map((item) => item.rule), ["private-ipv4"]);
 });
 
 test("rejects private runtime paths and state artifacts", () => {

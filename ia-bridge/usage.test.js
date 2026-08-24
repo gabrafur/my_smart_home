@@ -331,6 +331,56 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.equal(usage.latest_jobs[0].endpoint, undefined);
 });
 
+test('exposes a sanitized high-potential benchmark without mixing operational totals', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-benchmark-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const telemetryPath = path.join(directory, 'telemetry.json');
+  const statusPath = path.join(directory, 'status.json');
+  const benchmarkPath = path.join(directory, 'latest.json');
+  fs.writeFileSync(telemetryPath, JSON.stringify({ totals: { calls: 7 } }));
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: 'LOCAL_AI_AVAILABLE', checked_at: '2026-08-16T11:59:59Z',
+  }));
+  fs.writeFileSync(benchmarkPath, JSON.stringify({
+    suite: 'local-ai-high-potential-v1',
+    execution_mode: 'benchmark',
+    excluded_from_production_metrics: true,
+    benchmark_run_id: 'public-run',
+    generated_at: '2026-08-16T11:00:00Z',
+    model: 'benchmark-model',
+    measurement_basis: {
+      gpt_direct: 'simulated', local_ai: 'measured', deterministic: 'measured',
+      gpt_tokens: 'estimated_utf8_bytes_div_4', gpt_final_quality: 'not_tested',
+    },
+    totals: {
+      cases: 100, rtx_attempted: 75, outputs_accepted: 50, outputs_rejected: 25,
+      fallbacks: 25, useful_rtx_rate: 0.5, baseline_gpt_tokens: 10000,
+      routed_gpt_tokens: 7000, avoided_gpt_tokens: 3000,
+      weighted_token_savings: 0.3, latency_p50_seconds: 2.5,
+      latency_p95_seconds: 4.5, quality_score: 0.95,
+    },
+    per_activity_class: {
+      classification: {
+        cases: 20, rtx_attempted: 15, outputs_accepted: 10, outputs_rejected: 5,
+        fallbacks: 5, useful_rtx_rate: 0.5, baseline_gpt_tokens: 2000,
+        routed_gpt_tokens: 1400, avoided_gpt_tokens: 600,
+        weighted_token_savings: 0.3, latency_p50_seconds: 2,
+        latency_p95_seconds: 4, quality_score: 0.94, decision: 'EXPERIMENTAL',
+      },
+    },
+    results: [{ input: 'must not be exposed' }],
+  }));
+
+  const usage = scanLocalAiTelemetry(
+    telemetryPath, statusPath, new Date('2026-08-16T12:00:00Z'), benchmarkPath,
+  );
+  assert.equal(usage.totals.calls, 7);
+  assert.equal(usage.benchmark_high_potential.status, 'measured');
+  assert.equal(usage.benchmark_high_potential.totals.avoided_gpt_tokens, 3000);
+  assert.equal(usage.benchmark_high_potential.activities[0].sample_status, 'sufficient');
+  assert.equal(usage.benchmark_high_potential.results, undefined);
+});
+
 test('does not report a stale Local AI preflight as available', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-stale-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

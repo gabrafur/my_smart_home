@@ -107,6 +107,23 @@ test("detects private network and physical-location categories", () => {
   assert.equal(`${result.stdout}${result.stderr}`.includes(coordinate), false);
 });
 
+test("allows benchmark metrics without weakening other artifact checks", () => {
+  const item = fixture();
+  const artifact = "docs/benchmarks/local-ai-high-potential/latest.json";
+  const metric = ["0", "903125"].join(".");
+  write(item.root, artifact, `{"quality_score":${metric}}\n`);
+  git(item.root, ["add", artifact]);
+  assert.equal(item.scan(["--staged"]).status, 0);
+
+  const address = ["10", "23", "45", "67"].join(".");
+  write(item.root, artifact, `{"quality_score":${metric},"endpoint":"${address}"}\n`);
+  git(item.root, ["add", artifact]);
+  const result = item.scan(["--staged"]);
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /rule=ipv4-privado/);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(address), false);
+});
+
 test("tracked mode ignores untracked content and staged mode inspects the index", () => {
   const item = fixture();
   const value = ["ghp", "_", "B".repeat(32)].join("");

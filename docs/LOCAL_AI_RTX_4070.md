@@ -191,6 +191,18 @@ passaram 14/14 oráculos funcionais, sem perda relevante ou divergência. O cust
 foi latência: nos logs, a média end-to-end subiu de 6,502 para 15,660 segundos.
 Pesos e limitações estão em `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
 
+O benchmark de alto potencial v1, também em 2026-08-24, excluiu
+`summarize-log` e avaliou 100 casos em extração, classificação, seleção de
+arquivos, agrupamento de erros e resumo factual de diffs. Houve 70 tentativas
+de tarefa e 86 inferências contando o braço local-only de seleção: 27 resultados
+foram utilizáveis, 43 caíram em fallback e 25 tiveram erro crítico. O cenário
+determinístico passou 100/100 casos com latência p50 abaixo de 1 ms. Embora os
+resultados aceitos evitassem 88.748 tokens estimados no contrafactual, o useful
+RTX rate de 38,6%, fallback de 61,4% e as perdas críticas impedem promoção. Todas
+as classes receberam `DETERMINISTIC_FIRST`; o roteamento de produção permanece
+inalterado. O relatório completo está em
+[`LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md`](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md).
+
 O hook `PostToolUse` é versionado apenas neste projeto e precisa ser aprovado no
 Codex em `/hooks` depois de sua instalação ou de qualquer alteração. Ele atua
 somente quando uma saída grande já foi produzida; não analisa o prompt nem cria
@@ -611,6 +623,14 @@ fica explicitamente marcado como não mensurado, portanto o valor não é um
 registro de cobrança oficial. O resumo operacional expõe no máximo cinco jobs recentes e remove
 detalhes de endpoint para permanecer abaixo do limite de atributos do Home
 Assistant e preservar a telemetria no Recorder.
+
+O painel também contém **Benchmark RTX — alto potencial além de logs**. O
+bridge lê somente o agregado versionado e sanitizado, separado da telemetria
+operacional, e mostra por atividade casos, tentativas, aceites, rejeições,
+fallback, useful RTX rate, tokens baseline/roteados/evitados, economia ponderada
+pela soma dos tokens, latências, qualidade, modelo e decisão. A marcação
+`measured`, `estimated`, `simulated` ou `insufficient_sample` impede apresentar
+o braço GPT simulado e tokens estimados como medição real.
 
 O A/B de entrega v6 reproduz, somente por metadados, o controle bruto e o
 tratamento de um job Code Mode confirmado. A primeira observação mediu 4.074

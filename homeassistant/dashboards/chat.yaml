@@ -1023,6 +1023,45 @@ views:
               ambos reivindicam zero sem confirmação independente de uso.
 
           - type: markdown
+            title: Benchmark RTX — alto potencial além de logs
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set basis = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'base_de_medicao') or {} %}
+              {% set totals = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'totais') or {} %}
+              {% set rows = state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'atividades') or [] %}
+              {% set status = states('sensor.codex_benchmark_rtx_alto_potencial') %}
+              {% set badges = {
+                'measured': '🟢 measured',
+                'estimated': '🟡 estimated',
+                'simulated': '🔵 simulated',
+                'insufficient_sample': '⚪ insufficient_sample',
+                'not_tested': '⚪ not_tested'
+              } %}
+              {% if rows %}
+              **Execução:** `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'benchmark_run_id') or '—' }}` · **modelo:** `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'modelo') or '—' }}` · **última execução:** {{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'ultima_execucao') or '—' }}
+
+              **Evidência:** RTX {{ badges.get(basis.get('local_ai'), basis.get('local_ai', '—')) }} · contexto GPT direto {{ badges.get(basis.get('gpt_direct'), basis.get('gpt_direct', '—')) }} · contagem de tokens {{ badges.get('estimated') }} · qualidade final GPT {{ badges.get(basis.get('gpt_final_quality'), basis.get('gpt_final_quality', '—')) }}.
+
+              | Casos | RTX tentada | Aceita | Rejeitada | Fallback | Useful RTX | Baseline | Roteados | Evitados | Economia ponderada | p50 | p95 | Qualidade |
+              |--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+              | {{ format_number_ptbr(totals.get('cases', 0)) }} | {{ format_number_ptbr(totals.get('rtx_attempted', 0)) }} | {{ format_number_ptbr(totals.get('outputs_accepted', 0)) }} | {{ format_number_ptbr(totals.get('outputs_rejected', 0)) }} | {{ format_number_ptbr(totals.get('fallbacks', 0)) }} | {{ format_number_ptbr((totals.get('useful_rtx_rate', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(totals.get('baseline_gpt_tokens', 0)) }} | {{ format_number_ptbr(totals.get('routed_gpt_tokens', 0)) }} | {{ format_number_ptbr(totals.get('avoided_gpt_tokens', 0)) }} | {{ format_number_ptbr((totals.get('weighted_token_savings', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(totals.get('latency_p50_seconds', 0), 2) }} s | {{ format_number_ptbr(totals.get('latency_p95_seconds', 0), 2) }} s | {{ format_number_ptbr((totals.get('quality_score', 0) | float(0)) * 100, 1) }}% |
+
+              | Atividade | Casos | RTX | Aceita | Rejeitada | Fallback | Useful RTX | Baseline | Roteados | Evitados | Economia | p50 | p95 | Qualidade | Decisão |
+              |:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|:--|
+              {% for item in rows -%}
+              | `{{ item.get('activity') }}`{% if item.get('sample_status') == 'insufficient_sample' %} ⚪{% endif %} | {{ format_number_ptbr(item.get('cases', 0)) }} | {{ format_number_ptbr(item.get('rtx_attempted', 0)) }} | {{ format_number_ptbr(item.get('outputs_accepted', 0)) }} | {{ format_number_ptbr(item.get('outputs_rejected', 0)) }} | {{ format_number_ptbr(item.get('fallbacks', 0)) }} | {{ format_number_ptbr((item.get('useful_rtx_rate', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(item.get('baseline_gpt_tokens', 0)) }} | {{ format_number_ptbr(item.get('routed_gpt_tokens', 0)) }} | {{ format_number_ptbr(item.get('avoided_gpt_tokens', 0)) }} | {{ format_number_ptbr((item.get('weighted_token_savings', 0) | float(0)) * 100, 1) }}% | {{ format_number_ptbr(item.get('latency_p50_seconds', 0), 2) }} s | {{ format_number_ptbr(item.get('latency_p95_seconds', 0), 2) }} s | {{ format_number_ptbr((item.get('quality_score', 0) | float(0)) * 100, 1) }}% | `{{ item.get('decision') }}` |
+              {% endfor %}
+
+              A economia global usa `soma(baseline) − soma(roteados)` ponderada
+              pelos pesos do workload; não é média simples das porcentagens.
+              `summarize-log` está excluído desta métrica e estes dados não entram
+              nos contadores operacionais.
+              {% else %}
+              {{ badges.get(status, '⚪ insufficient_sample') }} — nenhum artefato
+              de benchmark sanitizado foi carregado pelo bridge.
+              {% endif %}
+
+          - type: markdown
             title: Referência controlada de qualidade
             content: >-
               **Benchmark offline v4 · 24/08/2026:** gerador
