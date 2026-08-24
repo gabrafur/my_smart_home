@@ -17,6 +17,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import ClaudeCodeChatConfigEntry
 from .const import DEFAULT_NAME, REQUEST_TIMEOUT_SECONDS
+from .context import trusted_context_prompt
+from .permissions import is_user_authorized
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,7 +80,9 @@ class ClaudeCodeConversationEntity(
         response = intent.IntentResponse(language=user_input.language)
         data = self._entry.runtime_data
 
-        if user_input.context.user_id != data.allowed_user_id:
+        if not is_user_authorized(
+            user_input.context.user_id, data.allowed_user_ids
+        ):
             _LOGGER.warning(
                 "Claude Code Chat: usuário não autorizado tentou usar o agente (user_id=%s)",
                 user_input.context.user_id,
@@ -92,8 +96,11 @@ class ClaudeCodeConversationEntity(
             )
 
         session = async_get_clientsession(self.hass)
+        user = await self.hass.auth.async_get_user(user_input.context.user_id)
         payload = {
-            "message": user_input.text,
+            "message": trusted_context_prompt(
+                user_input.text, user.name if user else None, "Claude Code"
+            ),
             "display_message": user_input.text,
             "conversation_id": _persistent_conversation_id("claude", user_input),
             "agent": "claude",
@@ -145,7 +152,9 @@ class CodexConversationEntity(
         response = intent.IntentResponse(language=user_input.language)
         data = self._entry.runtime_data
 
-        if user_input.context.user_id != data.allowed_user_id:
+        if not is_user_authorized(
+            user_input.context.user_id, data.allowed_user_ids
+        ):
             _LOGGER.warning(
                 "Codex: usuário não autorizado tentou usar o agente (user_id=%s)",
                 user_input.context.user_id,
@@ -169,12 +178,9 @@ class CodexConversationEntity(
             )
 
         session = async_get_clientsession(self.hass)
-        message = (
-            "Você está atendendo pelo assistente Codex dentro do Home Assistant. "
-            "Responda diretamente ao usuário, em português quando o pedido estiver "
-            "em português. Quando precisar consultar o ambiente, use as ferramentas "
-            "disponíveis e devolva a resposta final no chat.\n\n"
-            f"Pedido do usuário: {prompt}"
+        user = await self.hass.auth.async_get_user(user_input.context.user_id)
+        message = trusted_context_prompt(
+            prompt, user.name if user else None, "Codex"
         )
         payload = {
             "message": message,

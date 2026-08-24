@@ -23,6 +23,24 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
   `homeassistant/configuration.yaml`; as chaves públicas de dashboard usam
   hífen. Para assistentes e chat, consulte `docs/CHAT_CLAUDE_CODE_HA.md`.
 
+## Chat de agentes no Home Assistant
+
+- Os agentes `Claude Code Chat` e `Codex` têm controle total do host e usam uma
+  allowlist explícita de usuários humanos ativos. Cargo administrativo não
+  concede acesso implicitamente; identificadores permanecem somente no config
+  entry privado da integração.
+- Config entries antigos com um único usuário são migrados preservando esse
+  acesso. Alterações posteriores na allowlist recarregam apenas a integração.
+- Autorização é verificada antes de histórico, limpeza ou envio, e a conversa
+  persistente continua separada por agente e usuário autenticado. O bearer
+  token local do `ai-bridge` forma uma segunda fronteira independente.
+- Card dedicado e entidades do Assist injetam o mesmo contexto confiável: nome
+  do usuário autenticado, escopo limitado ao Raspberry Pi e seus recursos
+  acessíveis (incluindo Home Assistant, Node-RED, Docker e arquivos), e
+  capacidade de alterá-los somente quando o pedido autorizar.
+- Fontes atuais: `homeassistant/custom_components/claude_code_chat/` e
+  `docs/CHAT_CLAUDE_CODE_HA.md`.
+
 ## Padrões Lovelace reutilizáveis
 
 Em views nativas `sections`, um card dentro de um `grid` de duas colunas ocupa

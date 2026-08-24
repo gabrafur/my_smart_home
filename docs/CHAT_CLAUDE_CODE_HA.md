@@ -8,11 +8,14 @@ Docker no host: **Claude Code (Full Access)** e **Codex**. O serviço
 `ai-bridge` executa o CLI selecionado em modo não interativo e mantém as
 sessões separadas por conversa.
 
-No card do Codex, toda solicitação recebe automaticamente um contexto confiável
-com o nome do usuário autenticado no Home Assistant e com a fronteira
-operacional: somente este servidor, o repositório e os softwares, serviços,
-contêineres e integrações instalados nele. O nome é tratado como dado de
-identidade, não como instrução. O card exibe permanentemente essa fronteira e o
+No card dedicado do Codex e nas entidades do Assist, toda solicitação recebe
+automaticamente o mesmo contexto confiável com o nome do usuário autenticado no
+Home Assistant. A fronteira operacional inclui somente este Raspberry Pi e o
+que existe ou está acessível nele: o repositório, Home Assistant, Node-RED,
+serviços, contêineres Docker, integrações e arquivos alcançáveis pelas
+ferramentas instaladas. O contexto informa que esses recursos podem ser
+inspecionados e alterados quando o usuário pedir. O nome é tratado como dado de
+identidade, não como instrução. O card exibe permanentemente a fronteira e o
 usuário atual, sem exigir que a pessoa repita o contexto em cada mensagem.
 O botão **Limpar conversa** pede confirmação antes de remover, no servidor, os
 turnos persistidos e todas as sessões do Codex associadas à conversa. A próxima
@@ -23,13 +26,15 @@ O código-fonte fica em `ia-bridge/`. O serviço e o container usam o
 identificador `ai-bridge`; os volumes de autenticação existentes são
 preservados para compatibilidade com restauração e instalações anteriores.
 
-**Restrito a um único usuário do HA** (o `user_id` do administrador, lido de
-`/config/.storage/auth`). Qualquer outra conta recebe recusa automática do
-agente. O id fica no config entry da integração, nunca no código — este
-repositório é público.
+**Restrito a uma allowlist explícita de usuários humanos ativos do HA**.
+Qualquer outra conta, inclusive outro administrador, recebe recusa automática
+do agente. Os ids ficam no config entry privado da integração, nunca no código
+ou na documentação versionada. Instalações antigas são migradas sem perder o
+usuário que já estava autorizado.
 
-**Risco aceito conscientemente**: quem estiver logado com essa conta no app/navegador
-do HA herda esse poder sem confirmação por ação. Vale considerar 2FA nessa conta.
+**Risco aceito conscientemente**: quem estiver logado com uma dessas contas no
+app/navegador do HA herda esse poder sem confirmação por ação. Vale considerar
+2FA nessas contas.
 
 ## Por que os comandos abaixo precisam ser rodados manualmente
 
@@ -195,14 +200,19 @@ Espere ~30-60s o HA voltar (`docker compose logs -f homeassistant` até ver
    - **bridge_url**: `http://127.0.0.1:8099/chat` (já vem preenchido)
    - **bridge_token**: o mesmo valor do `AI_BRIDGE_TOKEN` no `.env`
      (rode `grep AI_BRIDGE_TOKEN .env` pra copiar)
-   - **allowed_user_id**: cole o `user_id` do administrador. Pegue em
-     `/config/.storage/auth` (chave `users` → `id`) ou em
-     **Configurações → Pessoas → (usuário)**, na URL do navegador
+   - **allowed_user_ids**: selecione um ou mais usuários que realmente precisam
+     dos agentes com controle total. A lista mostra somente contas humanas
+     ativas; cargos administrativos não concedem acesso implicitamente.
 4. Depois de criada, vá em **Configurações → Entidades**, busque por "Claude
    Code" e anote o `entity_id` exato gerado (esperado:
    `conversation.claude_code_full_access`, mas confirme). Se vier diferente,
    ajuste o `entity:` do card **Claude Code (Full Access)** em
    `homeassistant/dashboards/chat.yaml`.
+
+Para alterar a allowlist depois, abra a integração **Claude Code Chat**, escolha
+**Configurar** e atualize **Usuários autorizados**. É obrigatório manter pelo
+menos um usuário. A integração é recarregada automaticamente; o Home Assistant
+e os demais serviços não são reiniciados.
 
 ### 5. Criar o pipeline "Claude Code (Full Access)"
 

@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar o Claude Code Chat",
+        "description": "Somente os usuários do Home Assistant selecionados explicitamente podem acessar os agentes com controle total.",
+        "data": {
+          "bridge_url": "URL do bridge",
+          "bridge_token": "Token do bridge",
+          "allowed_user_ids": "Usuários autorizados"
+        }
+      }
+    },
+    "error": {
+      "required": "Selecione pelo menos um usuário"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Usuários autorizados",
+        "description": "O acesso continua negado a todos os usuários que não forem selecionados explicitamente aqui.",
+        "data": {
+          "allowed_user_ids": "Usuários autorizados"
+        }
+      }
+    },
+    "error": {
+      "required": "Selecione pelo menos um usuário"
+    }
+  }
+}
