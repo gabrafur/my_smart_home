@@ -28,6 +28,7 @@ physical identifiers must appear only as placeholders.
 | [Public/private boundary](PUBLIC_PRIVATE_BOUNDARY.en.md) | Bindings, bootstrap, safe degradation, and compatibility | [Português](PUBLIC_PRIVATE_BOUNDARY.md) |
 | [Testing strategy](TESTING_STRATEGY.en.md) | Levels, discovery, CI, and no-household boundaries | [Português](ESTRATEGIA_DE_TESTES.md) |
 | [Dependency provenance](DEPENDENCY_PROVENANCE.en.md) | Vendored code, licenses, deltas, locks, and digests | [Português](DEPENDENCY_PROVENANCE.md) |
+| [Licensing decision](LICENSING_DECISION.md) | First-party/vendored inventory, realistic options, and template contradiction | [Português](LICENSING_DECISION.pt-BR.md) |
 | [GitHub repository settings](GITHUB_REPOSITORY_SETTINGS.en.md) | Observed state, template, ruleset, and manual checklist | [Português](GITHUB_REPOSITORY_SETTINGS.md) |
 | [Commit convention](COMMIT_CONVENTION.en.md) | Format, types, scopes, breaking changes, and validation | [Português](CONVENCAO_COMMITS.md) |
 | [Documentation assets](assets/README.en.md) | Mermaid source, SVG, social preview, and reproduction | [Português](assets/README.md) |

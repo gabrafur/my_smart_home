@@ -3,14 +3,14 @@
 [Português (principal)](GITHUB_REPOSITORY_SETTINGS.md) · [English](GITHUB_REPOSITORY_SETTINGS.en.md)
 
 Este é um checklist operacional, não configuração como código. O estado atual
-foi lido pela API do GitHub durante a revisão P3; nenhuma opção remota foi
-alterada. Confirme novamente na interface antes de aplicar recomendações.
+foi lido pela API do GitHub em 2026-08-24; nenhuma opção remota foi alterada.
+Confirme novamente na interface antes de aplicar recomendações.
 
 ## Estado observado e recomendado
 
 | Área | Estado observado | Estado recomendado | Motivo |
 | --- | --- | --- | --- |
-| Template repository | desabilitado | **habilitar** | torna “Use this template” o caminho para uma instalação própria |
+| Template repository | **habilitado**, sem licença raiz detectada | desabilitar enquanto a licença estiver indecidida, ou manter somente após licenciar explicitamente o trabalho reutilizável | o controle atual sugere reutilização que os termos não concedem |
 | Proteção/ruleset da `main` | sem proteção e sem ruleset | criar ruleset ativo para `main` | impede force-push e deleção acidentais |
 | Pull request obrigatório | não exigido | exigir para colaboradores; manter bypass explícito do proprietário se o workflow pessoal direto continuar | contribuições externas passam por revisão sem alterar o fluxo autorizado do dono |
 | Check obrigatório | nenhum | exigir **Canonical public validation** após confirmar o nome exibido num PR | alinha merge com `make validate-public` |
@@ -18,11 +18,11 @@ alterada. Confirme novamente na interface antes de aplicar recomendações.
 | Force-push/deleção | permitidos pela ausência de regra | bloquear | protege histórico e branch padrão |
 | Estratégias de merge | merge commit, squash e rebase habilitados | manter **squash**; desabilitar merge commit; rebase é opcional | reduz combinações e mantém histórico coeso |
 | Delete branch on merge | desabilitado | habilitar | remove branches de contribuição já integradas |
-| Private vulnerability reporting | desabilitado | habilitar | dá canal privado compatível com `SECURITY.md` |
+| Private vulnerability reporting | habilitado | manter | dá canal privado compatível com `SECURITY.md` |
 | Actions | habilitado; todas as actions permitidas; pin por SHA não exigido | permitir GitHub e actions verificadas, ou allowlist mínima; exigir pin por SHA se o plano suportar | reduz risco de supply chain |
 | Permissão padrão do workflow | `contents: read`; workflow não aprova PR | manter | aplica menor privilégio |
-| Dependabot alerts/security updates | desabilitados | habilitar grafo, alertas e security updates; avaliar version updates semanais | identifica vulnerabilidades nos locks |
-| Secret scanning/push protection | desabilitados | habilitar recursos disponíveis para repositório público | complementa os scanners locais |
+| Dependabot alerts/security updates | habilitados | manter; avaliar version updates semanais | identifica vulnerabilidades nos locks |
+| Secret scanning/push protection | ambos habilitados | manter; avaliar padrões não-provider e validity checks se úteis | complementa os scanners locais |
 | Topics | 9 topics coerentes | manter; considerar `self-hosted`, `observability`, `disaster-recovery` | melhora descoberta sem claims falsos |
 | Description | preenchida e coerente | manter | descreve stack e caráter event-driven |
 | Homepage | vazia | opcional: documentação publicada, se existir | não inventar site inexistente |
@@ -49,20 +49,24 @@ está integralmente protegida. O CI continua rodando em todo push.
 
 ## Template versus fork
 
-- **Use this template**: recomendado para iniciar outra smart home. Cria um
-  histórico independente e permite substituir bindings, módulos e estado
-  privado sem carregar a relação de contribuição.
-- **Fork**: recomendado para propor mudanças a este projeto. Preserve exemplos
-  sintéticos, trabalhe em branch e abra PR conforme [CONTRIBUTING](../CONTRIBUTING.md).
+O controle atual **Use this template** contradiz a ausência de licença raiz.
+Até o proprietário concluir a
+[decisão de licenciamento](LICENSING_DECISION.pt-BR.md), a posição pública
+coerente é implementação de referência/projeto de portfólio, e a configuração
+não deve permanecer ativa apenas porque o bootstrap é tecnicamente seguro.
+Nenhuma configuração remota foi alterada nesta auditoria.
 
-Depois de habilitar Template repository, valide o fluxo num repositório de
-teste sem inserir dados reais:
+Um **fork** é apropriado para propor mudanças de volta ao repositório. Preserve
+exemplos sintéticos, trabalhe em branch e abra PR conforme
+[CONTRIBUTING](../CONTRIBUTING.md). Se o proprietário licenciar a reutilização
+e mantiver o template, valide o caminho sem inserir dados reais:
 
 ```bash
 git clone URL_DO_NOVO_REPOSITORIO smart-home
 cd smart-home
 make bootstrap-test
 make validate-public
+make demo
 make demo-test
 ```
 
@@ -71,11 +75,12 @@ ausentes e nunca torna o clone uma réplica da residência original.
 
 ## Checklist manual na interface
 
-- [ ] Settings → General → marcar **Template repository**.
+- [ ] Decidir licença raiz e política de template; enquanto estiver indecidida,
+  desabilitar **Template repository** para alinhar a interface aos termos.
 - [ ] Settings → Rules → criar e ativar o ruleset acima.
 - [ ] Settings → General → ajustar merge e **Automatically delete head branches**.
-- [ ] Settings → Security → habilitar private vulnerability reporting,
-  Dependabot alerts/security updates e scanners disponíveis.
+- [ ] Settings → Security → manter private vulnerability reporting, Dependabot
+  alerts/security updates, secret scanning e push protection habilitados.
 - [ ] Settings → Actions → General → restringir actions e manter permissões de
   workflow somente leitura.
 - [ ] About → enviar o social preview, revisar topics, descrição e homepage.

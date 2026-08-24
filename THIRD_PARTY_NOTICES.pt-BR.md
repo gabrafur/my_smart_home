@@ -10,7 +10,7 @@ identificado; eles não concedem licença para o trabalho original do repositór
 
 | Componente | Revisão upstream | Licença | Caminho coberto | Estado local |
 | --- | --- | --- | --- | --- |
-| Alexa Media Player | `v5.15.7` / `eef9f9c95645c485b4028cd2dc7154f9493093de` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | idêntico à tag antes deste aviso |
+| Alexa Media Player | `v5.15.7` / `5365f875c00692771f17c957a58553f30682b5c3` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | idêntico à tag antes deste aviso |
 | HACS | `2.0.5` / `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `homeassistant/custom_components/hacs/**` | metadata de versão e HA mínimo alterada localmente |
 | Kia Uvo / Hyundai Bluelink | `v3.10.1` / `2c602560746318fd001db8fe52347e9398f181ed` | MIT | `homeassistant/custom_components/kia_uvo/**` | modificado; consulte a proveniência |
 | LocalTuya | `v5.2.3` / `5f2c027c1e9421a93dcc937bf151b9456add04c6` | GPL-3.0-only | `homeassistant/custom_components/localtuya/**` | modificado para compatibilidade com Home Assistant |
@@ -35,4 +35,5 @@ padrão de copyright. Partes de terceiros continuam sob as licenças acima.
 A escolha exige decisão explícita do proprietário e, se necessário, revisão
 jurídica—especialmente porque a distribuição contém código GPL-3.0-only e
 componentes upstream modificados. Este aviso é inventário, não aconselhamento
-jurídico.
+jurídico. As opções e o template atualmente habilitado no GitHub estão no
+[memorando de decisão](docs/LICENSING_DECISION.pt-BR.md).

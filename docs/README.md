@@ -29,6 +29,7 @@ placeholders.
 | [Fronteira pública e privada](PUBLIC_PRIVATE_BOUNDARY.md) | Bindings, bootstrap, degradação segura e compatibilidade | [English](PUBLIC_PRIVATE_BOUNDARY.en.md) |
 | [Estratégia de testes](ESTRATEGIA_DE_TESTES.md) | Níveis, descoberta, CI e limites sem residência real | [English](TESTING_STRATEGY.en.md) |
 | [Proveniência de dependências](DEPENDENCY_PROVENANCE.md) | Código vendorizado, licenças, deltas, locks e digests | [English](DEPENDENCY_PROVENANCE.en.md) |
+| [Decisão de licenciamento](LICENSING_DECISION.pt-BR.md) | Inventário first-party/vendorizado, opções e contradição do template | [English](LICENSING_DECISION.md) |
 | [Configuração do GitHub](GITHUB_REPOSITORY_SETTINGS.md) | Estado observado, template, ruleset e checklist manual | [English](GITHUB_REPOSITORY_SETTINGS.en.md) |
 | [Convenção de commits](CONVENCAO_COMMITS.md) | Formato, tipos, escopos, breaking changes e validação | [English](COMMIT_CONVENTION.en.md) |
 | [Ativos de documentação](assets/README.md) | Fonte Mermaid, SVG, social preview e reprodução | [English](assets/README.en.md) |

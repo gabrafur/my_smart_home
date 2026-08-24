@@ -8,12 +8,16 @@ are welcome when they preserve that boundary.
 
 ## Antes de começar / Before you start
 
-- Para criar sua própria instalação, use **Use this template**. O novo
-  repositório nasce sem vínculo de contribuição com este projeto.
+- Este é atualmente um projeto de referência/portfólio sem licença raiz. Não
+  trate o controle **Use this template** do GitHub como permissão geral de
+  reutilização; a decisão está documentada em
+  [LICENSING_DECISION](docs/LICENSING_DECISION.pt-BR.md).
 - Para contribuir aqui, faça um **fork**, crie uma branch curta e envie um
   pull request. O mantenedor pode continuar fazendo alterações próprias
   diretamente na `main`; isso não muda o fluxo externo.
-- For your own installation, choose **Use this template**. To contribute back,
+- This is currently a reference/portfolio project without a root license. Do
+  not treat GitHub's **Use this template** control as general reuse permission;
+  see [LICENSING_DECISION](docs/LICENSING_DECISION.md). To contribute back,
   fork this repository, create a focused branch, and open a pull request.
 - Nunca envie credenciais, IPs privados, coordenadas, MACs, nomes de moradores,
   identificadores físicos, logs ou estado real de dispositivos. / Never submit

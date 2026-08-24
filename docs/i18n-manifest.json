@@ -50,6 +50,7 @@
     { "id": "bootstrap-demo", "area": "getting-started", "strategy": "full pair", "pt": "docs/BOOTSTRAP_DEMO.md", "en": "docs/BOOTSTRAP_DEMO.en.md" },
     { "id": "testing-strategy", "area": "operations", "strategy": "full pair", "pt": "docs/ESTRATEGIA_DE_TESTES.md", "en": "docs/TESTING_STRATEGY.en.md" },
     { "id": "dependency-provenance", "area": "security", "strategy": "full pair", "pt": "docs/DEPENDENCY_PROVENANCE.md", "en": "docs/DEPENDENCY_PROVENANCE.en.md" },
+    { "id": "licensing-decision", "area": "contributing", "strategy": "full pair", "pt": "docs/LICENSING_DECISION.pt-BR.md", "en": "docs/LICENSING_DECISION.md" },
     { "id": "github-settings", "area": "contributing", "strategy": "full pair", "pt": "docs/GITHUB_REPOSITORY_SETTINGS.md", "en": "docs/GITHUB_REPOSITORY_SETTINGS.en.md" },
     { "id": "commit-convention", "area": "contributing", "strategy": "full pair", "pt": "docs/CONVENCAO_COMMITS.md", "en": "docs/COMMIT_CONVENTION.en.md" },
     { "id": "documentation-assets", "area": "architecture", "strategy": "full pair", "pt": "docs/assets/README.md", "en": "docs/assets/README.en.md" },
