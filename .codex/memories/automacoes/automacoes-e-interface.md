@@ -14,6 +14,17 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
 `docs/PORTAO_GARAGEM_RELE_LOCAL.md` e
 `docs/PORTAO_GARAGEM_BOTAO_PULSO.md`.
 
+## Fronteira nativa do Home Assistant
+
+- A lógica residencial comum pertence ao Node-RED, mas automações ligadas ao
+  lifecycle/API interna do Home Assistant ou que fornecem um watchdog
+  independente podem permanecer nativas.
+- O inventário permitido é fechado; verifique `homeassistant/automations.yaml`
+  e os blocos `automation:` de `homeassistant/packages/` antes de adicionar ou
+  migrar uma entrada.
+- O watchdog do relé do portão só pode emitir `OFF`. Mantê-lo fora do runtime
+  que produz pulsos é uma defesa em profundidade, não duplicação de lógica.
+
 ## Alarme e painéis
 
 - A integração Moni Mobile cobre armar, desarmar e ler o estado agregado das
