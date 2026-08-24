@@ -1,0 +1,46 @@
+name: local-ai-audit-export
+
+on:
+  push:
+    paths:
+      - .github/workflows/local-ai-audit-export.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Record sanitized repository state
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'repository=%s\n' "$GITHUB_REPOSITORY"
+          printf 'branch=%s\n' "$GITHUB_REF_NAME"
+          printf 'head=%s\n' "$(git rev-parse HEAD)"
+          printf 'working_tree_entries=%s\n' "$(git status --short | wc -l | tr -d ' ')"
+          git diff --check
+
+      - name: Create immutable tracked-source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --output=my-smart-home-audit-source.zip HEAD
+          sha256sum my-smart-home-audit-source.zip > my-smart-home-audit-source.zip.sha256
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-smart-home-audit-source
+          path: |
+            my-smart-home-audit-source.zip
+            my-smart-home-audit-source.zip.sha256
+          if-no-files-found: error
+          retention-days: 1
