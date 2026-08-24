@@ -32,9 +32,10 @@ command_line:
       # two seconds. Allow a longer first read after a bridge restart, when it
       # must index the local session history once.
       command_timeout: 10
-      # The bridge itself caches for one second. Two-second polling keeps the
-      # panel close to real time without putting load on the Codex CLI.
-      scan_interval: 2
+      # A cold bridge may spend more than two seconds building its first
+      # incremental index. Five-second polling prevents overlapping command
+      # jobs while keeping the human-facing usage panel effectively current.
+      scan_interval: 5
       value_template: "{{ value_json.status }}"
       json_attributes:
         - collected_at

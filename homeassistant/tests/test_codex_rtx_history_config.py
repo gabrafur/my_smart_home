@@ -37,6 +37,13 @@ class CodexRtxHistoryConfigTest(unittest.TestCase):
         self.assertIn("command_timeout: 3", block)
         self.assertIn("scan_interval: 2", block)
 
+    def test_usage_polling_leaves_cold_start_headroom(self):
+        start = self.config.index("unique_id: codex_usage_raw")
+        end = self.config.index("unique_id: codex_rtx_historico_48h_raw", start)
+        block = self.config[start:end]
+        self.assertIn("command_timeout: 10", block)
+        self.assertIn("scan_interval: 5", block)
+
     def test_history_entities_have_stable_numeric_contracts(self):
         for unique_id in (
             "codex_rtx_gpu_historico",
