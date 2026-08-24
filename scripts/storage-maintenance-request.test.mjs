@@ -63,4 +63,6 @@ test("cron installer exposes an idempotent managed block", () => {
   assert.match(result.stdout, /BEGIN Smart home manual storage maintenance/);
   assert.match(result.stdout, /process-storage-maintenance-request\.sh/);
   assert.match(result.stdout, /run-resource-safe\.sh/);
+  assert.match(result.stdout, /23 \*\/6 \* \* \*/);
+  assert.match(result.stdout, /storage-maintenance\.sh --apply --min-age 24 --max-build-cache 2GB/);
 });

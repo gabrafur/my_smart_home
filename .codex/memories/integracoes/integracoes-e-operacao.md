@@ -56,6 +56,19 @@ Não altere credenciais manualmente em consumidores individuais. Use
 `docs/INSTALACAO_RESTAURACAO_SMART_HOME.md` para sincronizar os serviços sem
 expor segredos.
 
+## Armazenamento do host
+
+- O crescimento rápido observado vem principalmente de camadas de build
+  grandes criadas entre execuções, não de volumes Docker ou logs de
+  contêineres. Confirme novamente com métricas antes de atribuir uma regressão
+  futura à mesma causa.
+- `scripts/storage-maintenance.sh` só pode limitar cache BuildKit sem uso e
+  imagens dangling antigas; volumes, contêineres, imagens tagged, backups e
+  bancos permanecem fora do escopo automático.
+- A política preventiva roda a cada seis horas com prioridade reduzida, limite
+  de 2 GB e idade mínima de 24 h. `--apply` também falha fechado sob pressão de
+  memória ou filesystem; o caminho manual coalescente continua disponível.
+
 ## Bluetooth, Matter e energia
 
 Mudanças de Bluetooth, Matter, D-Bus ou controle de energia devem seguir

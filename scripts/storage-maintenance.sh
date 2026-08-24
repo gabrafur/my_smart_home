@@ -6,6 +6,10 @@ MIN_AGE="24h"
 MAX_BUILD_CACHE="2GB"
 STEP="startup"
 LOCK_FILE="${STORAGE_MAINTENANCE_LOCK_FILE:-/tmp/my-smart-home-storage-maintenance.lock}"
+FILESYSTEM="${STORAGE_MAINTENANCE_FILESYSTEM:-/}"
+MEMINFO_FILE="${STORAGE_MAINTENANCE_MEMINFO_FILE:-/proc/meminfo}"
+MIN_AVAILABLE_KB="${STORAGE_MAINTENANCE_MIN_AVAILABLE_KB:-2097152}"
+MAX_DISK_PERCENT="${STORAGE_MAINTENANCE_MAX_DISK_PERCENT:-85}"
 
 usage() {
   echo "Usage: $0 [--dry-run|--apply] [--min-age HOURS] [--max-build-cache SIZE]" >&2
@@ -52,14 +56,28 @@ if command -v flock >/dev/null 2>&1; then
 fi
 
 disk_used_bytes() {
-  df -B1 --output=used / | awk 'NR == 2 {print $1}'
+  df -B1 --output=used "$FILESYSTEM" | awk 'NR == 2 {print $1}'
 }
 
 STEP="preflight"
 command -v docker >/dev/null
 docker info >/dev/null
 BEFORE_BYTES=$(disk_used_bytes)
-log "status=started mode=$MODE min_age=$MIN_AGE max_build_cache=$MAX_BUILD_CACHE filesystem=/ used_bytes=$BEFORE_BYTES"
+log "status=started mode=$MODE min_age=$MIN_AGE max_build_cache=$MAX_BUILD_CACHE filesystem=$FILESYSTEM used_bytes=$BEFORE_BYTES"
+
+if [[ "$MODE" == "apply" ]]; then
+  STEP="resource-safety"
+  AVAILABLE_KB=$(awk '/^MemAvailable:/ { print $2; exit }' "$MEMINFO_FILE" 2>/dev/null || true)
+  DISK_PERCENT=$(df -P "$FILESYSTEM" | awk 'NR == 2 { gsub(/%/, "", $5); print $5 }')
+  if [[ -n "$AVAILABLE_KB" ]] && (( AVAILABLE_KB < MIN_AVAILABLE_KB )); then
+    log "status=skipped reason=low_available_memory available_kb=$AVAILABLE_KB required_kb=$MIN_AVAILABLE_KB"
+    exit 75
+  fi
+  if [[ -n "$DISK_PERCENT" ]] && (( DISK_PERCENT >= MAX_DISK_PERCENT )); then
+    log "status=skipped reason=filesystem_pressure used_percent=$DISK_PERCENT maximum_percent=$MAX_DISK_PERCENT"
+    exit 75
+  fi
+fi
 
 STEP="inventory"
 docker system df
@@ -90,4 +108,4 @@ else
   RECLAIMED_BYTES=0
 fi
 docker system df
-log "status=success mode=$MODE filesystem=/ before_bytes=$BEFORE_BYTES after_bytes=$AFTER_BYTES reclaimed_bytes=$RECLAIMED_BYTES"
+log "status=success mode=$MODE filesystem=$FILESYSTEM before_bytes=$BEFORE_BYTES after_bytes=$AFTER_BYTES reclaimed_bytes=$RECLAIMED_BYTES"

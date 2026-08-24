@@ -118,6 +118,8 @@ views:
                 name: Inodes usados
               - entity: sensor.raspberry_pi_raspberry_storage_status
                 name: Status Node-RED
+              - entity: sensor.raspberry_pi_storage_health_last_run
+                name: Última execução do Storage Health
               - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
                 name: Crescimento em 24 h
               - entity: sensor.raspberry_pi_raspberry_storage_growth_7d

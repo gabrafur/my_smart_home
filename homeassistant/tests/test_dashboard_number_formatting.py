@@ -203,6 +203,15 @@ class DashboardNumberFormattingTest(unittest.TestCase):
         self.assertIn("preserva 2 GB de cache recente", dashboard)
         self.assertIn("entity_id: input_button.storage_health_manual_run", dashboard)
 
+    def test_storage_health_last_run_is_visible_in_storage_section(self):
+        dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")
+
+        heading = dashboard.index("heading: Armazenamento e infraestrutura")
+        next_heading = dashboard.index("heading:", heading + 1)
+        section = dashboard[heading:next_heading]
+        self.assertIn("entity: sensor.raspberry_pi_storage_health_last_run", section)
+        self.assertIn("name: Última execução do Storage Health", section)
+
     def test_manual_action_buttons_expose_running_state(self):
         dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")
 

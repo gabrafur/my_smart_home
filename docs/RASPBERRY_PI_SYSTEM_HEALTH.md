@@ -138,9 +138,11 @@ O Node-RED continua sem acesso ao socket Docker.
 
 O cron instalado por `scripts/install-storage-maintenance-cron.sh` verifica a
 solicitação a cada minuto e chama, com prioridade reduzida,
-`scripts/process-storage-maintenance-request.sh`. Falhas restauram o marcador
-para uma tentativa posterior. Solicitações repetidas antes do processamento
-são coalescidas em uma única execução.
+`scripts/process-storage-maintenance-request.sh`. Ele também executa a política
+preventiva do host a cada seis horas, limitando o crescimento produzido por
+builds interativos entre os ciclos do atualizador diário. Falhas restauram o
+marcador para uma tentativa posterior. Solicitações repetidas antes do
+processamento são coalescidas em uma única execução.
 
 O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
 e uma no celular. Os históricos ficam no fim da página, redistribuídos com os
@@ -165,7 +167,8 @@ No host, `scripts/storage-maintenance.sh` limita o build cache sem uso a 2 GB
 de 24 horas. O limite de tamanho é necessário porque um build recente pode
 manter toda uma cadeia antiga alcançável e tornar ineficaz uma política baseada
 somente em idade. O script valida argumentos, e idempotente,
-registra metricas antes/depois e usa dry-run por padrao:
+registra metricas antes/depois, recusa `--apply` sob pressão de memória ou
+filesystem e usa dry-run por padrao:
 
 ```bash
 scripts/storage-maintenance.sh --dry-run

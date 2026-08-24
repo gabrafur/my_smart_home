@@ -70,6 +70,16 @@ assert.deepEqual(node("storage_exec_maintenance").wires[2], ["storage_maintenanc
 assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(node("storage_request_host_maintenance").command, "/opt/request-host-storage-maintenance.sh");
 assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maintenance.sh --dry-run --deep");
+{
+  const discovery = compile("storage_discovery")({}, memoryFlow(), runtimeNode(), {}, {});
+  const messages = discovery[0];
+  const lastRun = messages.find((message) => message.topic.endsWith("/raspberry_storage_health_last_run/config"));
+  assert.ok(lastRun, "storage health last-run discovery must be published");
+  const payload = JSON.parse(lastRun.payload);
+  assert.equal(payload.default_entity_id, "sensor.raspberry_pi_storage_health_last_run");
+  assert.equal(payload.state_topic, "smart_home/raspberry/storage/health_last_run");
+  assert.equal(payload.device_class, "timestamp");
+}
 for (const [id, role, action] of [
   ["storage_notify", "mobile_primary", "notify_3"],
   ["storage_notify_secondary", "mobile_secondary", "notify_2"],
@@ -120,6 +130,7 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   assert.equal(flow.get("storage_health_state_v1").severity, "normal");
   assert.equal(alert, null);
   assert.equal(mqtt.find((message) => message.topic.endsWith("/status")).payload, "normal");
+  assert.equal(mqtt.find((message) => message.topic.endsWith("/health_last_run")).payload, new Date(NOW).toISOString());
   assert.equal(mqtt.find((message) => message.topic.endsWith("growth_24h_available")).payload, "offline");
   assert.equal(mqtt.find((message) => message.topic.endsWith("growth_7d_available")).payload, "offline");
   assert.equal(mqtt.some((message) => message.topic.endsWith("/growth_24h")), false);
@@ -196,7 +207,8 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
 {
   const flow = configuredFlow();
   const result = health({ payload: { used_percent: "unknown", free_gb: -1 }, testNow: NOW }, flow, runtimeNode(), {}, {});
-  assert.equal(result[0], null);
+  assert.equal(result[0][0].topic, "smart_home/raspberry/storage/health_last_run");
+  assert.equal(result[0][0].payload, new Date(NOW).toISOString());
   assert.match(result[1].payload.message, /metricas validas/);
   assert.equal(flow.get("storage_health_state_v1").lastErrorNotificationAt, 0);
   accept(flow, result[1]);

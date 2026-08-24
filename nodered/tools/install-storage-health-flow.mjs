@@ -101,6 +101,10 @@ const definitions = [
         payload: { name: "Raspberry Storage Status", unique_id: "raspberry_storage_status", object_id: "raspberry_storage_status", state_topic: "smart_home/raspberry/storage/status", json_attributes_topic: "smart_home/raspberry/storage/attributes", icon: "mdi:harddisk", device }
     },
     {
+        topic: "homeassistant/sensor/raspberry_storage_health_last_run/config",
+        payload: { name: "Storage Health Last Run", unique_id: "raspberry_storage_health_last_run", object_id: "raspberry_storage_health_last_run", default_entity_id: "sensor.raspberry_pi_storage_health_last_run", state_topic: "smart_home/raspberry/storage/health_last_run", device_class: "timestamp", icon: "mdi:clock-check-outline", device }
+    },
+    {
         topic: "homeassistant/sensor/raspberry_storage_growth_24h/config",
         payload: { name: "Raspberry Storage Growth 24h", unique_id: "raspberry_storage_growth_24h", object_id: "raspberry_storage_growth_24h", state_topic: "smart_home/raspberry/storage/growth_24h", availability_topic: "smart_home/raspberry/storage/growth_24h_available", payload_available: "online", payload_not_available: "offline", unit_of_measurement: "pp", state_class: "measurement", icon: "mdi:chart-line", device }
     },
@@ -169,6 +173,7 @@ function notification(title, message, fields) {
 
 if (!valid) {
     node.status({ fill: "red", shape: "ring", text: "metrica invalida" });
+    const lastRun = { topic: "smart_home/raspberry/storage/health_last_run", payload: new Date(now).toISOString(), retain: true };
     let alert = null;
     const cooldown = config?.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000;
     if (now - Number(state.lastErrorNotificationAt || 0) >= cooldown) {
@@ -176,7 +181,7 @@ if (!valid) {
         state.pendingAlert = alert;
     }
     flow.set(STATE_KEY, state, "persistent");
-    return [null, alert, { payload: { event: "invalid_metrics", at: new Date(now).toISOString(), input } }];
+    return [[lastRun], alert, { payload: { event: "invalid_metrics", at: new Date(now).toISOString(), input } }];
 }
 
 let history = flow.get(HISTORY_KEY, "persistent");
@@ -275,6 +280,7 @@ function growthMessages(window, value) {
 const mqtt = [
     { topic: "smart_home/raspberry/storage/status", payload: severity, retain: true },
     { topic: "smart_home/raspberry/storage/attributes", payload: JSON.stringify(attributes), retain: true },
+    { topic: "smart_home/raspberry/storage/health_last_run", payload: new Date(now).toISOString(), retain: true },
     ...growthMessages("24h", growth24h),
     ...growthMessages("7d", growth7d)
 ];
