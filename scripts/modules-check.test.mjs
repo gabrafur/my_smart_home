@@ -38,3 +38,13 @@ test("an unknown module dependency fails closed", (t) => {
   assert.equal(result.valid, false);
   assert.ok(result.errors.includes("unknown module dependency unknown-module"));
 });
+
+test("the alarm module tracks local configuration instead of HACS runtime code", () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(repositoryRoot, "modules/features.json"), "utf8"),
+  );
+  const alarm = manifest.modules.find((module) => module.name === "alarm");
+
+  assert.ok(alarm.configuration.includes("homeassistant/packages/moni_mobile_alarm.yaml"));
+  assert.ok(!alarm.configuration.includes("homeassistant/custom_components/moni_mobile"));
+});

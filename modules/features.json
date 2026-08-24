@@ -35,7 +35,7 @@
       "profile": null,
       "services": [],
       "depends_on": ["core"],
-      "configuration": ["homeassistant/custom_components/moni_mobile", "bindings/private-bindings.example.json"],
+      "configuration": ["homeassistant/packages/moni_mobile_alarm.yaml", "bindings/private-bindings.example.json"],
       "degradation": "security panel actions are unavailable; no synthetic success is assumed"
     },
     {
