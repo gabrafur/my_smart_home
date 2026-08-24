@@ -1,4 +1,15 @@
 const { configureLocalAiMcp } = require('./configure-local-ai-mcp');
+const { configureGitWorkspace } = require('./configure-git-workspace');
+
+try {
+  if (configureGitWorkspace()) {
+    console.log(`Git workspace trust recorded for ${process.env.WORKDIR || '/workspace'}`);
+  }
+} catch (error) {
+  // Keep the bridge available for conversational use, but make the degraded
+  // terminal state visible instead of failing every project hook silently.
+  console.warn(`Git workspace trust unavailable: ${error.message}`);
+}
 
 try {
   configureLocalAiMcp();
