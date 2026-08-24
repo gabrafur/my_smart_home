@@ -1,8 +1,11 @@
-# Benchmark Local AI — 2026-08-16 (atualizado em 2026-08-23)
+# Benchmark Local AI — 2026-08-16 (atualizado em 2026-08-24)
 
-Decisão vigente: `qwen2.5-coder:14b`. O benchmark histórico abaixo explica a
-seleção anterior de 7B; a seção **A/B com gate de qualidade — 2026-08-23**
-registra a reavaliação que motivou a troca.
+Decisão vigente: `qwen2.5-coder:14b` permanece como gerador instalado, mas o
+uso operacional é desviado sem inferência enquanto não houver um verificador
+independente que passe simultaneamente pelos gates de fidelidade e economia.
+Nenhum candidato foi promovido na bateria v4. O benchmark histórico abaixo
+explica a seleção anterior de 7B; as seções posteriores registram cada
+reavaliação.
 
 Endpoint testado: `http://GPU_HOST:11435` (Ollama remoto; endereço real fica
 na configuração privada). GPU: NVIDIA
@@ -232,3 +235,86 @@ líquido confiável nesta bateria, o roteamento operacional os marca como
 `task_quality_not_validated`; `LOCAL_AI_FORCE=1` permanece reservado à próxima
 rodada diagnóstica. Assim, rejeições já conhecidas deixam de consumir GPU e não
 aparecem como oportunidades RTX perdidas.
+
+## Baseline estrita e benchmark offline v4 — 2026-08-24
+
+A telemetria foi congelada antes das mudanças com 302 chamadas e hash
+`13b4ace5d25a250752e0cafd5e0ce7f8c51b4f4a10c8b8bdd475dc789255b1bb`.
+Das 260 tentativas operacionais, 146 terminaram com sucesso técnico, 95 foram
+rejeitadas por qualidade, 15 falharam e 4 produziram candidato fiel sem ganho
+líquido. Havia 8 aprovações de qualidade, mas somente uma tinha custo do gate
+mensurado: 2.234 tokens brutos menos 691 tokens do gate, ou 1.543 tokens
+provisórios. Essa chamada veio do CLI e não continha prova de que o resultado
+substituiu o contexto entregue ao modelo principal. Portanto, o baseline
+operacional estrito é **zero**, não 1.543.
+
+O schema 18 separa desde então economia aprovada pelo gate de economia
+efetivamente utilizada. Para confirmar uso, o job precisa ser bem-sucedido,
+mensurado, aprovado por um verificador independente do gerador, não truncado e
+originado pelo `PostToolUse`, que retém a saída bruta e entrega o contexto
+estruturado. CLI, benchmark, MCP direto e histórico sem esse vínculo continuam
+auditáveis, mas reivindicam zero economia operacional confirmada.
+
+Antes do A/B, uma calibração isolada executou 16 decisões por verificador,
+alternando quatro candidatos positivos e quatro negativos em duas repetições:
+
+| Verificador | Falsos aceites | Falsas rejeições | Acurácia | Tokens dos gates | Mediana |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `qwen3:8b` | 0 | 4 | 75,0% | 6.419 | 3,829 s |
+| `qwen3.5:9b` | 0 | 6 | 62,5% | 7.874 | 5,402 s |
+| `qwen3:14b` | 0 | 0 | 100,0% | 6.532 | 4,710 s |
+
+O A/B v4 usou oito fixtures fixas, quatro de desenvolvimento e quatro holdouts,
+duas repetições, ordem determinística alternada, parâmetros idênticos e o mesmo
+gerador `qwen2.5-coder:14b`. O hash das fixtures foi
+`3ad658b714c5c9498a091c49ac19a93c7553924e72c682ac62e6cb9ffee53839`.
+O oráculo determinístico foi mantido separado do gate do modelo para tornar
+falsas aceitações e falsas rejeições observáveis.
+
+| Artefato da rodada | SHA-256 |
+| --- | --- |
+| Prompts | `9e8ba44add7f523bc74667e4bfe56cca7261a3d57512e80c3f67a30075d8b34e` |
+| Helper | `5f876abc8ba0650cac559192e6fea21fe534e5ddd40fb3c6ef1c8f9f4011f4af` |
+| Harness | `157d011bf7008e0f0452e116c23511dceb2284f76ec8f5846db0ac2ee5bfbd4e` |
+| Roteador | `eaffb2ae9e8ca5c9aef1fa93b6074ab2e35eb7721f32d2b5c6375c667bff1a3f` |
+
+Depois da medição, o roteador foi deliberadamente alterado para incorporar o
+resultado: piso de 3.000 tokens para logs, precheck antes de preflight e desvio
+sem inferência quando falta verificador independente. Assim, os hashes acima
+identificam a rodada observada; o runtime `1.3.2` identifica a política promovida
+após o experimento. Prompts, fixtures, parâmetros (`num_ctx=8192`, saída 1.200,
+temperatura zero e seed `20260824`) e harness permaneceram fixos.
+
+| Métrica | `qwen3:8b` | `qwen3:14b` |
+| --- | ---: | ---: |
+| Observações | 16 | 16 |
+| Aceitas pelo gate | 4 | 7 |
+| Aceitas e economicamente úteis | 2 | 2 |
+| Falsos aceites | 0 | 0 |
+| Falsas rejeições | 9 | 6 |
+| Contexto de controle | 30.088 | 30.088 |
+| Tokens úteis líquidos offline | 4.096 | 4.096 |
+| Redução ponderada offline | 13,6% | 13,6% |
+| Mediana por tentativa | 0,0% | 0,0% |
+| Latência total | 401,034 s | 414,610 s |
+
+Todo o ganho apareceu nas duas observações de `summarize-log` entre 3.000 e
+5.999 tokens: 65,8% nesse estrato. As 14 observações abaixo de 3.000 tokens
+economizaram zero. O `qwen3:14b` reduziu falsas rejeições, mas não aumentou
+seleção econômica nem tokens líquidos e consumiu mais latência. Por isso não
+foi promovido. `qwen3.5:9b` também foi descartado após a calibração pior.
+
+O roteamento operacional agora faz um precheck econômico antes da inferência,
+desabilita os perfis sem evidência líquida e exige verificador independente.
+Como a configuração privada ainda não contém um verificador promovido, uma
+chamada operacional é desviada para o contexto original sem consumir GPU. Isso
+reduz desperdício, mas não é contado como economia.
+
+O v4 continua sendo um benchmark offline da compressão e de seu gate. Não
+existe neste ambiente um harness que execute controle e tratamento em sessões
+isoladas do mesmo modelo principal e compare a qualidade final. Assim,
+`end_to_end_primary_model_evaluated` permanece `false`, a economia confirmada
+do experimento é zero e os 4.096 tokens offline não podem ser somados ao painel
+operacional. Os relatórios completos ficam apenas no histórico privado local;
+o repositório preserva o harness, hashes, parâmetros e estes agregados
+sanitizados para reprodução.

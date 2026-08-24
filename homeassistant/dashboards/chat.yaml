@@ -463,6 +463,7 @@ views:
               {% set status = states('sensor.codex_ultimo_job_local_ai') %}
               {% set generator = state_attr('sensor.codex_ultimo_job_local_ai', 'modelo') %}
               {% set verifier = state_attr('sensor.codex_ultimo_job_local_ai', 'modelo_verificador') %}
+              {% set primary_used = state_attr('sensor.codex_ultimo_job_local_ai', 'uso_modelo_principal_confirmado') == true %}
               {% if task and status == 'em andamento' %}
               ## Inferência em andamento
 
@@ -481,10 +482,14 @@ views:
               VRAM pico: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'pico_vram_mib')) }} MiB** ·
               Contexto: **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_entrada')) }} →
               {{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_contexto_saida')) }} tokens** ·
+              {% if primary_used %}
               economia bruta **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'economia_bruta_validada_tokens')) }}** −
               gate **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'custo_gate_validacao_tokens')) }}** =
               útil líquido **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'tokens_openai_evitados_estimados')) }} tokens** ·
               redução útil líquida **~{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'reducao_contexto_percentual'), 1) }}%** ·
+              {% else %}
+              saída aprovada, mas **uso pelo modelo principal não confirmado**; contribuição líquida **0 tokens** ·
+              {% endif %}
               gate de qualidade **{{ format_number_ptbr(state_attr('sensor.codex_ultimo_job_local_ai', 'qualidade_percentual')) }}%** ·
               {{ state_attr('sensor.codex_ultimo_job_local_ai', 'processador') or 'processador não amostrado' }}.
 
@@ -508,7 +513,8 @@ views:
               **Como ler:** este diagnóstico descreve a tentativa mais recente;
               a “última falha” do resumo acima considera somente erros técnicos.
               *job* é uma tentativa de inferência; *success*
-              indica resultado validado e utilizado; *discarded* indica resultado
+              indica que o helper produziu resultado validado, mas somente
+              `uso_modelo_principal_confirmado=true` o torna útil; *discarded* indica resultado
               não utilizado por fidelidade ou ganho líquido insuficiente;
               *failed* indica falha técnica. GPU/VRAM são picos
               amostrados durante o job, não valores de repouso.
@@ -536,7 +542,7 @@ views:
               {% set discard_reason = job.get('discard_reason') -%}
               {% set task = job.get('task', '—') -%}
               {% set task_label = task_names.get(task, task | replace('-', ' ') | capitalize) -%}
-              {% set result = '🟠 Descartado: economia insuficiente' if status == 'discarded' and discard_reason == 'insufficient_net_savings' else '🟠 Descartado: fidelidade insuficiente' if status == 'discarded' else '✅ Aproveitado' if status == 'success' and job.get('quality_accepted') == true else '🔴 Falha técnica' if status == 'failed' else status -%}
+              {% set result = '🟠 Descartado: economia insuficiente' if status == 'discarded' and discard_reason == 'insufficient_net_savings' else '🟠 Descartado: fidelidade insuficiente' if status == 'discarded' else '✅ Aproveitado' if status == 'success' and job.get('primary_context_used') == true else '🟡 Uso não confirmado' if status == 'success' and job.get('quality_accepted') == true else '🔴 Falha técnica' if status == 'failed' else status -%}
               {% set quality = (format_number_ptbr(job.get('quality_score_percent')) ~ '%') if job.get('quality_score_percent') is number else '—' -%}
               | {{ timestamp | timestamp_custom('%d/%m %H:%M', true) if timestamp is number else '—' }} | **{{ task_label }}**<br>Modelo local: `{{ job.get('model', '—') }}` | {{ result }}<br>Qualidade do conteúdo: {{ quality }} | {{ (format_number_ptbr(job.get('duration_seconds'), 1) ~ ' s') if job.get('duration_seconds') is number else '—' }} | {{ format_number_ptbr(job.get('useful_context_tokens_avoided', 0)) }} tokens eq. |
               {% else -%}
@@ -544,7 +550,8 @@ views:
               {% endfor %}
 
               **Como ler:** *aproveitado* significa que o resultado local foi de
-              fato usado após passar pela qualidade e ainda economizar contexto.
+              fato entregue ao modelo principal após passar pela qualidade e ainda economizar contexto.
+              *Uso não confirmado* vale zero mesmo com aprovação do gate.
               *Economia insuficiente* significa que o custo da validação consumiu
               o benefício; *fidelidade insuficiente* significa conteúdo não
               confiável; *falha técnica* significa que a execução não terminou.
@@ -701,6 +708,14 @@ views:
                 name: Aprovados com custo mensurado
                 color: green
               - type: tile
+                entity: sensor.codex_resultados_local_ai_com_uso_nao_confirmado
+                name: Uso pelo modelo não confirmado
+                color: amber
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal
+                name: Utilizados pelo modelo principal
+                color: green
+              - type: tile
                 entity: sensor.codex_contexto_tentado_local_ai
                 name: Contexto tentado
                 color: blue
@@ -736,6 +751,8 @@ views:
               {% set approved = accepted + not_beneficial %}
               {% set accepted_measured = totals.get('operational_quality_validated_measured_calls', 0) | int(0) %}
               {% set accepted_unmeasured = [accepted - accepted_measured, 0] | max %}
+              {% set primary_used = totals.get('operational_primary_context_used_calls', 0) | int(0) %}
+              {% set usage_unconfirmed = totals.get('operational_primary_context_unconfirmed_calls', 0) | int(0) %}
               {% set gate_unmeasured = totals.get('quality_validation_unmeasured_calls', 0) | int(0) %}
               {% set unmeasured_gross = totals.get('quality_validation_unmeasured_gross_tokens', 0) | float(0) %}
               **Reconciliação:** tentativas = sem falha técnica + falhas técnicas;
@@ -749,7 +766,9 @@ views:
               {{ format_number_ptbr(gated) }}; {{ format_number_ptbr(gated) }} =
               {{ format_number_ptbr(rejected) }} + {{ format_number_ptbr(approved) }};
               {{ format_number_ptbr(approved) }} = {{ format_number_ptbr(not_beneficial) }} +
-              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }}.
+              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }};
+              {{ format_number_ptbr(accepted_measured) }} =
+              {{ format_number_ptbr(usage_unconfirmed) }} + {{ format_number_ptbr(primary_used) }}.
 
               {% if accepted_unmeasured > 0 %}
               ⚠️ {{ format_number_ptbr(accepted_unmeasured) }} resultados aprovados
@@ -762,14 +781,19 @@ views:
               **Fora do waterfall operacional:** {{ format_number_ptbr(totals.get('diagnostic_calls', 0)) }}
               benchmarks diagnósticos.
 
+              **Fallbacks explicitamente informados:** {{ format_number_ptbr(totals.get('fallbacks_reported', 0)) }}.
+              Essa contagem se sobrepõe a falhas e descartes; por isso não é
+              somada como uma etapa independente do waterfall.
+
               **Como ler:** os indicadores de chamadas e resultados explicitam
               cada saída do fluxo até um resultado utilizável e mensurável. Os quatro últimos mudam para tokens:
-              contexto OpenAI evitado e aprovado − tokens locais de entrada e
-              saída do gate dos aprovados = saldo líquido equivalente. Como os
+              contexto OpenAI evitado, aprovado e entregue ao modelo principal − tokens locais de entrada e
+              saída do gate desses resultados = saldo líquido equivalente. Como os
               tokenizadores são diferentes, esse saldo é um índice conservador,
               não uma contagem faturável. A redução útil divide o saldo por todo
-              o contexto tentado. Diagnósticos e fallbacks ficam fora porque não
-              substituem contexto operacional.
+              o contexto tentado. Falhas, rejeições, fallbacks e uso não confirmado
+              permanecem no denominador e valem zero no numerador; somente benchmarks
+              diagnósticos ficam fora.
 
           - type: statistics-graph
             title: GPU — últimas 48 horas
@@ -852,6 +876,14 @@ views:
                 name: Aprovados com custo mensurado
                 color: green
               - type: tile
+                entity: sensor.codex_resultados_local_ai_com_uso_nao_confirmado_hoje
+                name: Uso pelo modelo não confirmado
+                color: amber
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal_hoje
+                name: Utilizados pelo modelo principal
+                color: green
+              - type: tile
                 entity: sensor.codex_contexto_tentado_local_ai_hoje
                 name: Contexto tentado
                 color: blue
@@ -887,24 +919,29 @@ views:
               {% set approved = accepted + not_beneficial %}
               {% set accepted_measured = today.get('operational_quality_validated_measured_calls', 0) | int(0) %}
               {% set accepted_unmeasured = [accepted - accepted_measured, 0] | max %}
+              {% set primary_used = today.get('operational_primary_context_used_calls', 0) | int(0) %}
+              {% set usage_unconfirmed = today.get('operational_primary_context_unconfirmed_calls', 0) | int(0) %}
               **Conferência de hoje:** {{ format_number_ptbr(calls) }} =
               {{ format_number_ptbr(completed) }} + {{ format_number_ptbr(failed) }};
               {{ format_number_ptbr(completed) }} = {{ format_number_ptbr(unclassified) }} +
               {{ format_number_ptbr(gated) }}; {{ format_number_ptbr(gated) }} =
               {{ format_number_ptbr(rejected) }} + {{ format_number_ptbr(approved) }};
               {{ format_number_ptbr(approved) }} = {{ format_number_ptbr(not_beneficial) }} +
-              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }}.
+              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }};
+              {{ format_number_ptbr(accepted_measured) }} =
+              {{ format_number_ptbr(usage_unconfirmed) }} + {{ format_number_ptbr(primary_used) }}.
 
               **Como ler:** este bloco usa as mesmas etapas, fórmulas e unidades
               do **Waterfall — total preservado**, mas inclui somente eventos do
               dia UTC atual. *contexto evitado validado* é somente o delta dos
-              resultados aprovados com custo mensurável; contexto evitado validado − custo do gate = saldo
+              resultados aprovados, com custo mensurável e uso confirmado; contexto evitado validado − custo do gate = saldo
               líquido equivalente; a redução útil divide esse saldo por todo o
-              contexto tentado. Descartes e falhas valem zero no numerador.
+              contexto tentado. Uso não confirmado, descartes, fallbacks e falhas
+              valem zero no numerador.
 
           - type: grid
             title: Diagnóstico do gate — hoje · UTC
-            columns: 3
+            columns: 6
             square: false
             cards:
               - type: tile
@@ -919,6 +956,18 @@ views:
                 entity: sensor.codex_cobertura_da_classificacao_operacional_hoje
                 name: Eventos com classificação
                 color: cyan
+              - type: tile
+                entity: sensor.codex_taxa_de_uso_efetivo_local_ai_hoje
+                name: Resultados efetivamente usados
+                color: green
+              - type: tile
+                entity: sensor.codex_cobertura_da_confirmacao_de_uso_hoje
+                name: Uso com confirmação
+                color: amber
+              - type: tile
+                entity: sensor.codex_fallbacks_local_ai_informados_hoje
+                name: Fallbacks informados
+                color: red
 
           - type: markdown
             content: >-
@@ -927,20 +976,63 @@ views:
               resultados fiéis entre os avaliados pelo gate; *gates com custo
               mensurado* mede avaliações cujo custo local foi registrado;
               *eventos com classificação* mede a cobertura da telemetria
-              operacional. Nenhum deles significa economia de tokens.
+              operacional; *resultados efetivamente usados* usa todas as tentativas
+              operacionais como denominador; e *uso com confirmação* mede quanto
+              dos aprovados mensuráveis teve entrega comprovada ao modelo principal.
+              Nenhum deles significa economia de tokens isoladamente.
+
+          - type: markdown
+            title: Redução útil líquida por tarefa — total preservado
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set rows = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('tasks', []) %}
+              {% if rows %}
+              | Tarefa | Tentativas | Uso confirmado | Saldo líquido | Redução ponderada |
+              |:--|--:|--:|--:|--:|
+              {% for item in rows if (item.get('operational_calls', 0) | int(0)) > 0 -%}
+              | `{{ item.get('task') }}` | {{ format_number_ptbr(item.get('operational_calls', 0)) }} | {{ format_number_ptbr(item.get('operational_primary_context_used_calls', 0)) }} | {{ format_number_ptbr(item.get('confirmed_useful_context_tokens_avoided', 0)) }} tokens | {{ format_number_ptbr(item.get('useful_reduction_percent', 0), 1) }}% |
+              {% endfor %}
+              {% else %}
+              Ainda não há agregados por tarefa na versão atual da telemetria.
+              {% endif %}
+
+              Tentativas rejeitadas, falhas, fallbacks e saídas sem confirmação
+              de uso permanecem no denominador da própria tarefa e somam zero.
+
+          - type: markdown
+            title: Redução por gerador / verificador — total preservado
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set pairs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('model_pairs', []) %}
+              {% if pairs %}
+              | Gerador | Verificador | Tentativas | Uso confirmado | Saldo líquido | Redução ponderada |
+              |:--|:--|--:|--:|--:|--:|
+              {% for item in pairs if (item.get('operational_calls', 0) | int(0)) > 0 -%}
+              | `{{ item.get('generator_model') }}` | `{{ item.get('verifier_model') }}`{% if item.get('independent_verifier') != true %} ⚠️{% endif %} | {{ format_number_ptbr(item.get('operational_calls', 0)) }} | {{ format_number_ptbr(item.get('operational_primary_context_used_calls', 0)) }} | {{ format_number_ptbr(item.get('confirmed_useful_context_tokens_avoided', 0)) }} tokens | {{ format_number_ptbr(item.get('useful_reduction_percent', 0), 1) }}% |
+              {% endfor %}
+              {% else %}
+              Ainda não há agregados por par de modelos na versão atual da telemetria.
+              {% endif %}
+
+              ⚠️ indica autoavaliação ou histórico sem verificador mensurado;
+              ambos reivindicam zero sem confirmação independente de uso.
 
           - type: markdown
             title: Referência controlada de qualidade
             content: >-
-              **Benchmark offline v3 · 24/08/2026:** `qwen2.5-coder:14b`
-              com verificador independente `qwen3:8b` · **0/12 resultados
-              utilizáveis** · redução ponderada **0,0%** · mediana por tentativa
-              **0,0%** · 298,2 s de inferência local.
+              **Benchmark offline v4 · 24/08/2026:** gerador
+              `qwen2.5-coder:14b`, 8 fixtures de desenvolvimento/holdout e 2
+              repetições. Tanto `qwen3:8b` quanto `qwen3:14b` produziram **2/16
+              candidatos selecionáveis**, **4.096 tokens líquidos offline** e
+              redução ponderada **13,6%**, com mediana por tentativa **0,0%**.
+              O 14B reduziu falsos rejeites de **9 para 6**, mas elevou a taxa do
+              gate sem aumentar o saldo líquido; portanto não foi promovido.
 
-              O antigo **23,2%** veio de uma única execução com autoavaliação e
-              permanece apenas como histórico. Este benchmark mede compressão e
-              fidelidade das fixtures; não executa o modelo principal nos dois
-              braços e, portanto, não é uma previsão da redução operacional.
+              Somente `summarize-log` de 3.000–5.999 tokens apresentou benefício
+              (65,8% nesta amostra). Os 14 casos abaixo de 3.000 tokens ficaram em
+              0%. O antigo **23,2%** veio de autoavaliação e permanece histórico.
+              O v4 ainda é offline: não executa o modelo principal nos dois braços,
+              logo a economia operacional confirmada desta bateria é **0**.
 
           - type: markdown
             title: Economia útil diária — últimos 7 dias
@@ -983,6 +1075,8 @@ views:
               {% set no_gain = item.get('operational_not_beneficial_calls', 0) | int(0) %}
               {% set accepted = item.get('operational_quality_validated_calls', 0) | int(0) %}
               {% set measured = item.get('operational_quality_validated_measured_calls', 0) | int(0) %}
+              {% set used = item.get('operational_primary_context_used_calls', 0) | int(0) %}
+              {% set usage_unconfirmed = item.get('operational_primary_context_unconfirmed_calls', 0) | int(0) %}
               {% set accepted_unmeasured = [accepted - measured, 0] | max %}
               {% set unclassified = [calls - failed - rejected - no_gain - accepted, 0] | max %}
               **{{ item.get('day')[8:10] }}/{{ item.get('day')[5:7] }} · {{ format_number_ptbr(calls) }} tentativas**
@@ -990,7 +1084,7 @@ views:
               _Sem atividade operacional._
               {% else %}
               {% set ns = namespace(first=true) %}
-              {% if measured > 0 %}🟢 **{{ format_number_ptbr(measured) }} úteis**{% set ns.first = false %}{% endif %}{% if rejected > 0 %}{{ ' · ' if not ns.first else '' }}🟠 **{{ format_number_ptbr(rejected) }} rejeitadas**{% set ns.first = false %}{% endif %}{% if no_gain > 0 %}{{ ' · ' if not ns.first else '' }}⚖️ **{{ format_number_ptbr(no_gain) }} sem ganho**{% set ns.first = false %}{% endif %}{% if failed > 0 %}{{ ' · ' if not ns.first else '' }}🔴 **{{ format_number_ptbr(failed) }} falhas**{% set ns.first = false %}{% endif %}{% if unclassified > 0 %}{{ ' · ' if not ns.first else '' }}⚪ **{{ format_number_ptbr(unclassified) }} sem classificação**{% set ns.first = false %}{% endif %}{% if accepted_unmeasured > 0 %}{{ ' · ' if not ns.first else '' }}🟡 **{{ format_number_ptbr(accepted_unmeasured) }} sem custo mensurado**{% endif %}
+              {% if used > 0 %}🟢 **{{ format_number_ptbr(used) }} usadas**{% set ns.first = false %}{% endif %}{% if usage_unconfirmed > 0 %}{{ ' · ' if not ns.first else '' }}🟡 **{{ format_number_ptbr(usage_unconfirmed) }} sem uso confirmado**{% set ns.first = false %}{% endif %}{% if rejected > 0 %}{{ ' · ' if not ns.first else '' }}🟠 **{{ format_number_ptbr(rejected) }} rejeitadas**{% set ns.first = false %}{% endif %}{% if no_gain > 0 %}{{ ' · ' if not ns.first else '' }}⚖️ **{{ format_number_ptbr(no_gain) }} sem ganho**{% set ns.first = false %}{% endif %}{% if failed > 0 %}{{ ' · ' if not ns.first else '' }}🔴 **{{ format_number_ptbr(failed) }} falhas**{% set ns.first = false %}{% endif %}{% if unclassified > 0 %}{{ ' · ' if not ns.first else '' }}⚪ **{{ format_number_ptbr(unclassified) }} sem classificação**{% set ns.first = false %}{% endif %}{% if accepted_unmeasured > 0 %}{{ ' · ' if not ns.first else '' }}🟡 **{{ format_number_ptbr(accepted_unmeasured) }} sem custo mensurado**{% endif %}
 
               Saldo líquido: **{{ format_number_ptbr(item.get('useful_context_tokens_avoided', 0)) }} tokens**
               {% endif %}
@@ -1006,7 +1100,8 @@ views:
               são ocultadas para facilitar a leitura. *Úteis* são resultados
               utilizados com custo do gate mensurado; rejeições, fiéis sem ganho,
               falhas e itens sem classificação ou custo valem zero na Redução
-              útil líquida. Benchmarks ficam fora.
+              útil líquida. Aprovação sem confirmação de uso também vale zero.
+              Benchmarks ficam fora.
 
   - title: Assistentes
     path: assistentes

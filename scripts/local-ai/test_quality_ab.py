@@ -32,7 +32,10 @@ class QualityBenchmarkTest(unittest.TestCase):
         )
 
         self.assertEqual(report["benchmark_kind"], "offline_context_compression_with_fidelity_gate")
+        self.assertEqual(report["suite"], "local-ai-quality-benchmark-v4")
         self.assertFalse(report["end_to_end_primary_model_evaluated"])
+        self.assertFalse(report["operational_savings_proven"])
+        self.assertEqual(report["confirmed_end_to_end_useful_tokens_avoided"], 0)
         self.assertTrue(report["independent_verifier"])
         self.assertEqual(report["token_weighted_useful_reduction_percent"], 25.0)
         self.assertEqual(report["median_useful_reduction_percent"], 20.0)
@@ -46,13 +49,22 @@ class QualityBenchmarkTest(unittest.TestCase):
             report["per_task"]["summarize-log"]["token_weighted_useful_reduction_percent"],
             50.0,
         )
+        self.assertEqual(report["per_split"]["holdout"]["observations"], 2)
+        self.assertEqual(report["per_input_size_band"]["1200-2999"]["observations"], 4)
+        self.assertEqual(report["uncertainty"]["method"], "fixture_cluster_bootstrap_2000_and_wilson_95")
+        self.assertEqual(report["net_gain_tokens_distribution"]["zero_observations"], 2)
 
     @staticmethod
     def result(task, repetition, *, useful, accepted, efficient):
         return {
             "task": task,
             "repetition": repetition,
+            "fixture_id": f"{task}-{repetition}",
+            "fixture_split": "development" if repetition == 1 else "holdout",
+            "input_size_band": "1200-2999",
             "quality_accepted": accepted,
+            "gate_accepted": accepted,
+            "oracle_accepted": accepted,
             "efficient": efficient,
             "control_tokens": 1000,
             "effective_tokens_sent_to_primary": 1000 - useful,

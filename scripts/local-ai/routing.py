@@ -30,6 +30,7 @@ class TaskProfile:
     default_compressibility: str
     max_input_tokens: int | None = None
     quality_validated: bool = True
+    requires_economic_precheck: bool = False
 
 
 # These starting values come from the bounded helper's effective 8,192-token
@@ -38,18 +39,21 @@ class TaskProfile:
 # or generic file triage, while structured data remains deterministic first.
 TASK_PROFILES: dict[str, TaskProfile] = {
     "analyze-tests": TaskProfile(900, 0.80, 600, "high", quality_validated=False),
-    "classify-error": TaskProfile(800, 0.70, 500, "high"),
+    "classify-error": TaskProfile(800, 0.70, 500, "high", quality_validated=False),
     "inspect-files": TaskProfile(1200, 0.65, 700, "medium", 3000, False),
     "review-diff": TaskProfile(1200, 0.65, 700, "medium", 3000, False),
     # Repository memory is only delegated after deterministic index/search
     # retrieval. Its threshold matches bounded file triage; a small focused
     # memory note should go straight to the primary model.
-    "summarize-memory": TaskProfile(1200, 0.65, 700, "medium", 6000),
+    "summarize-memory": TaskProfile(1200, 0.65, 700, "medium", 6000, False),
     # Long-form documentation follows the bounded, moderately compressible
     # profile of a reviewed file set. Arbitrary prose is never routed by size
     # alone; the caller still has to identify it as documentation.
-    "summarize-document": TaskProfile(1200, 0.65, 700, "medium", 3000),
-    "summarize-log": TaskProfile(900, 0.80, 600, "high"),
+    "summarize-document": TaskProfile(1200, 0.65, 700, "medium", 3000, False),
+    # The v4 holdout found positive net savings only in the 3,000–5,999-token
+    # log band. Smaller log candidates remain diagnostic-only until new
+    # evidence establishes a lower profitable threshold.
+    "summarize-log": TaskProfile(3000, 0.80, 600, "high", requires_economic_precheck=True),
 }
 
 
@@ -104,6 +108,13 @@ def assess_routing(
         "minimum_input_tokens": profile.min_input_tokens,
         "minimum_expected_saved_tokens": profile.min_expected_saved_tokens,
     })
+    if profile.max_input_tokens is not None and input_tokens > profile.max_input_tokens:
+        result.update({
+            "bounded_input_limit_tokens": profile.max_input_tokens,
+            "decision": "LOCAL_AI_NOT_BENEFICIAL",
+            "reason": "input_exceeds_bounded_context",
+        })
+        return result
     if not profile.quality_validated:
         result.update({
             "decision": "LOCAL_AI_NOT_BENEFICIAL",
@@ -123,13 +134,6 @@ def assess_routing(
         result.update({
             "decision": "LOCAL_AI_NOT_BENEFICIAL",
             "reason": "input_below_task_threshold",
-        })
-        return result
-    if profile.max_input_tokens is not None and input_tokens > profile.max_input_tokens:
-        result.update({
-            "bounded_input_limit_tokens": profile.max_input_tokens,
-            "decision": "LOCAL_AI_NOT_BENEFICIAL",
-            "reason": "input_exceeds_bounded_context",
         })
         return result
     if expected < profile.min_expected_saved_tokens:
@@ -153,6 +157,56 @@ def assess_routing(
         "decision": "LOCAL_AI_ELIGIBLE",
         "reason": f"{task.replace('-', '_')}_expected_context_reduction",
     })
+    return result
+
+
+def apply_economic_precheck(
+    assessment: dict[str, Any],
+    *,
+    context_input_tokens: int,
+    model_input_tokens: int,
+) -> dict[str, Any]:
+    """Reject calls whose best conservative net estimate cannot clear the task floor.
+
+    The fidelity verifier sees the deterministically selected model input plus
+    the candidate and rubric.  Profiles without meaningful preprocessing would
+    otherwise pay roughly the entire source again merely to discover after
+    inference that no net saving was possible.
+    """
+    result = dict(assessment)
+    task = str(result.get("task_type") or "")
+    profile = TASK_PROFILES.get(task)
+    if (
+        profile is None
+        or not profile.requires_economic_precheck
+        or result.get("decision") != "LOCAL_AI_ELIGIBLE"
+    ):
+        return result
+
+    raw_tokens = max(0, int(context_input_tokens))
+    selected_tokens = max(0, int(model_input_tokens))
+    # The candidate and compact verifier response are estimates, while the
+    # selected source tokens are measured with the same tokenizer as the raw
+    # context. Keep a fixed rubric allowance so borderline calls fail closed.
+    estimated_candidate_tokens = max(120, min(800, round(selected_tokens * 0.20)))
+    estimated_gate_tokens = selected_tokens + estimated_candidate_tokens + 240
+    estimated_net_tokens = max(
+        0,
+        raw_tokens - estimated_candidate_tokens - estimated_gate_tokens,
+    )
+    result.update({
+        "model_input_tokens": selected_tokens,
+        "estimated_candidate_tokens": estimated_candidate_tokens,
+        "estimated_validation_tokens": estimated_gate_tokens,
+        "expected_net_tokens_saved": estimated_net_tokens,
+    })
+    if estimated_net_tokens < profile.min_expected_saved_tokens:
+        result.update({
+            "eligible": False,
+            "expected_tokens_saved": 0,
+            "decision": "LOCAL_AI_NOT_BENEFICIAL",
+            "reason": "insufficient_expected_net_savings",
+        })
     return result
 
 

@@ -51,6 +51,16 @@ was evaluated, or a route was eligible. Say the RTX was used only when
 `telemetry_recorded=true`, or equivalent canonical hook metadata reports
 `executed=true` and `success=true`.
 
+Keep inference evidence separate from delivery evidence. A successful direct
+MCP or CLI call proves local work, but does not prove that its result replaced
+context sent to the primary model. Count operational useful reduction only when
+the versioned `PostToolUse` hook withholds the raw output, delivers the accepted
+structured result, records `invocation_source=post-tool-hook`, measures the gate
+cost, uses a verifier independent from the generator, and reports no bounded
+truncation. Otherwise retain the job as diagnostic or provisional and assign
+zero confirmed useful tokens, even if the current conversation manually uses
+the result.
+
 For the legacy route field `deterministic_preprocessing_available`, pass `true`
 only when deterministic processing completely resolves the result and no LLM
 interpretation remains. Deterministic collection alone does not make a large
@@ -59,8 +69,9 @@ textual result final.
 Treat `OpenAI tokens avoided` as useful only after the task-specific fidelity
 gate accepts the result. A rejected or discarded result is equivalent to
 passing the original input onward and therefore saves zero tokens. Even an
-accepted delta remains measured or explicitly estimated and does not prove
-monetary savings.
+accepted delta remains measured or explicitly estimated, requires the delivery
+evidence above to become operationally confirmed, and does not prove monetary
+savings.
 
 # Enforce privacy and authority boundaries
 

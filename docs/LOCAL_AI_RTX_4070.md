@@ -63,15 +63,15 @@ Ollama.
 | Bridge | expor somente resumo de uso e estado de job | `ia-bridge/server.js`, `ia-bridge/usage.js` |
 | Home Assistant | mostrar uso do Codex e RTX separadamente | `homeassistant/packages/codex_usage.yaml` e dashboard |
 
-Os modelos disponíveis podem mudar por instalação. O modelo padrão selecionado
-após o A/B com gate de qualidade é `qwen2.5-coder:14b`: cumpriu os quatro
-schemas e não exibiu CPU offload. A primeira leitura foi 51,5% bruta do custo
-do verificador; a rodada líquida com autoavaliação aprovou 1/4 casos e mediu
-23,2%. Em 2026-08-24, o benchmark v3 repetiu as quatro fixtures três vezes com
-`qwen3:8b` como verificador independente e rejeitou 12/12 resultados, medindo
-0,0% de redução útil ponderada e mediana. Assim, 23,2% permanece histórico e
-não é previsão operacional nem evidência independente. O registro comparativo e a
-reavaliação operacional estão em
+Os modelos disponíveis podem mudar por instalação. O gerador instalado
+permanece `qwen2.5-coder:14b`, que cumpriu os quatro schemas e não exibiu CPU
+offload, mas nenhum verificador independente está promovido para uso
+operacional. A primeira leitura de 51,5% bruta e a rodada autoavaliada de 23,2%
+são históricas. Em 2026-08-24, o benchmark v4 comparou `qwen3:8b` e
+`qwen3:14b` em 16 observações cada, com metade holdout. Ambos selecionaram os
+mesmos 2/16 resultados economicamente úteis, 13,6% ponderados e mediana zero;
+o 14B reduziu falsas rejeições, mas não aumentou a economia e foi mais lento.
+Nenhum foi promovido. O registro comparativo e a reavaliação operacional estão em
 [`LOCAL_AI_BENCHMARK_2026-08-16.md`](LOCAL_AI_BENCHMARK_2026-08-16.md). A
 reavaliação restaurou o endpoint e comparou 7B, 14B e `qwen3.5:9b` com o mesmo
 critério conservador. Outros modelos já instalados podem ser avaliados quando
@@ -212,17 +212,21 @@ workloads os protege contra regressão.
 | Tipo | Mínimo estimado | Máximo bruto confiável | Economia mínima | Compressão |
 | --- | ---: | ---: | ---: | --- |
 | `classify-error` | 800 tokens | sem máximo após filtro de sinais | 500 tokens | alta |
-| `analyze-tests` / `summarize-log` | 900 tokens | sem máximo após filtro de sinais | 600 tokens | alta |
+| `analyze-tests` | 900 tokens | sem máximo após filtro de sinais | 600 tokens | alta |
+| `summarize-log` | 3.000 tokens | sem máximo após filtro de sinais | 600 tokens | alta |
 | `review-diff` / `inspect-files` | 1.200 tokens | 3.000 tokens | 700 tokens | média |
 | `summarize-document` | 1.200 tokens | 3.000 tokens | 700 tokens | média |
 | `summarize-memory` pelo MCP | 1.200 tokens | 6.000 tokens | 700 tokens | média |
 
-Com o modelo operacional `qwen2.5-coder:14b`, `review-diff`, `inspect-files` e
-`analyze-tests` ficam temporariamente em `LOCAL_AI_NOT_BENEFICIAL` porque não
-passaram o A/B líquido de qualidade. Eles só rodam com `LOCAL_AI_FORCE=1` em
-benchmark diagnóstico e não formam oportunidades perdidas. `summarize-log` é o
-perfil com redução útil comprovada; documentos e memória mantêm seus gates e
-limites próprios.
+Com o gerador `qwen2.5-coder:14b`, todos os perfis exceto `summarize-log` ficam
+em `LOCAL_AI_NOT_BENEFICIAL` porque não passaram o A/B líquido. Eles só rodam
+com `LOCAL_AI_FORCE=1` em benchmark diagnóstico e não formam oportunidades
+perdidas. `summarize-log` começa em 3.000 tokens, único estrato lucrativo no
+holdout v4, e aplica um precheck que estima saída e gate antes de consumir GPU;
+entradas cuja economia prevista não cobre ambos são desviadas.
+As demais exigem um verificador diferente do gerador. Como nenhum candidato
+foi promovido na bateria v4, a configuração vigente desvia também esse perfil
+como `independent_verifier_required`, sem inferência e sem alegar economia.
 
 JSON grande, busca, listagem de arquivos, parsing e outros dados estruturados
 continuam determinísticos quando a ferramenta aplicável resolve o caso. Por
@@ -388,6 +392,15 @@ a memória versionada e a restauração de Git continuam disponíveis por retrie
 O helper não grava prompt, diff, código-fonte, resposta do modelo nem
 credenciais. Em `.agent-history/` (ignorado pelo Git) ele preserva somente
 metadados: tarefa, modelo, duração, contagens, status e amostras de GPU/VRAM.
+O schema 18 distingue economia provisória aprovada pelo gate de economia
+confirmada como contexto realmente utilizado pelo modelo principal. Uma
+confirmação exige sucesso, delta e gate mensurados, verificador independente,
+nenhum truncamento e origem `post-tool-hook`; nesse caminho, `continue: false`
+prova que o corpo bruto foi retido e o resultado estruturado entregue. CLI,
+MCP direto, benchmarks e histórico sem esse vínculo valem zero confirmado.
+Os mesmos totais são agregados por dia, tarefa, gerador e par
+gerador/verificador; pares sem verificador independente permanecem identificados
+e reivindicam zero confirmado.
 Cada candidato passa primeiro por validações determinísticas específicas da
 tarefa e depois por um verificador de fidelidade com nota mínima de 90%. A nota
 mede cobertura do conteúdo, não eficiência econômica. Um candidato fiel pode
@@ -509,7 +522,12 @@ apps é configurado nele; isso evita a inicialização do MCP ambiental
 No painel RTX, **chamadas Local AI** e **saldo líquido equivalente** ficam em
 gráficos separados: chamadas contam tentativas de tarefas; o saldo soma somente
 a diferença entre o contexto recebido e resultados que passaram pelo gate de
-qualidade e foram efetivamente usados, descontando o custo local do verificador.
+qualidade e tiveram uso confirmado pelo `PostToolUse`, descontando o custo
+local do verificador. O waterfall separa resultados com uso não confirmado dos
+que efetivamente substituíram contexto e mostra a cobertura dessa confirmação.
+Tabelas inferiores expõem a redução ponderada por tarefa e por par
+gerador/verificador, sempre usando as tentativas operacionais do segmento como
+denominador.
 Como os tokenizadores podem diferir, ele é um índice conservador, não uma
 contagem faturável da OpenAI. Falhas, descartes e benchmarks diagnósticos valem
 zero. O
@@ -560,18 +578,20 @@ as mesmas etapas, fórmulas, nomes e unidades; muda apenas a janela temporal.
 Eles reconciliam somente tentativas de substituição de contexto e explicitam falhas técnicas, conclusões
 sem falha, resultados sem classificação de qualidade, avaliações pelo gate,
 rejeições, aprovações de fidelidade, candidatos fiéis sem ganho líquido e
-aprovados com e sem custo mensurado, sem tabela. Assim, cada diferença entre
-duas etapas aparece como uma saída visível, em vez de parecer perda de dados.
+aprovados com e sem custo mensurado, uso não confirmado e uso confirmado, sem
+tabela. Assim, cada diferença entre duas etapas aparece como uma saída visível,
+em vez de parecer perda de dados.
 Benchmarks ganham contador diagnóstico separado e
 não contaminam chamadas ou falhas operacionais. Depois o waterfall muda
 explicitamente de unidade para contexto total tentado, contexto OpenAI evitado
-validado, custo local do gate nos resultados aprovados, saldo líquido equivalente e redução útil
+com uso confirmado, custo local do gate desses resultados, saldo líquido equivalente e redução útil
 operacional. A regra conservadora continua
 `max(0, contexto evitado - tokens locais do verificador)`, mas o painel explica
 que os tokenizadores são diferentes e que o saldo não é uma contagem faturável.
-Resultados legados cujo custo do verificador não pode ser separado preservam a
-economia bruta para auditoria, mas valem zero líquido. Fallbacks não aparecem
-porque sua notificação não forma uma etapa reconciliável.
+Resultados legados cujo custo do verificador ou uso não pode ser provado
+preservam valores provisórios para auditoria, mas valem zero líquido. Fallbacks
+aparecem apenas no diagnóstico, pois a notificação pode se sobrepor a falhas,
+rejeições ou desvios e não forma uma etapa somável do waterfall.
 
 As taxas de aproveitamento da qualidade, cobertura do custo do gate e cobertura
 da classificação ficam em **Diagnóstico do gate — hoje · UTC**. Elas descrevem
@@ -617,13 +637,14 @@ preservados diretamente do bridge. Assim, dias anteriores aparecem de imediato
 mesmo quando a entidade diária do Home Assistant foi criada recentemente e
 ainda não possui histórico suficiente no Recorder. A soma da série reconcilia
 com a janela móvel **Últimos 7 dias**; **Mês atual** continua sendo uma janela
-de calendário UTC e **Total preservado** cobre toda a telemetria. Somente jobs com
-`quality_accepted: true` cujo delta excede o custo medido do verificador aumentam
-o valor; descartes, falhas, benchmarks e legado sem custo separável contribuem
-com zero. `gross_useful_context_tokens_avoided` mantém o delta aprovado antes do
-gate e `quality_validated_validation_tokens` mantém somente o custo dos gates
-que aprovaram resultados, permitindo reconciliar o líquido sem misturar tokens
-de gerações descartadas.
+de calendário UTC e **Total preservado** cobre toda a telemetria. Somente jobs
+com `quality_accepted: true`, uso confirmado e delta superior ao custo medido do
+verificador aumentam o valor; descartes, falhas, benchmarks e legado sem custo
+ou entrega comprováveis contribuem com zero.
+`confirmed_gross_useful_context_tokens_avoided` mantém o delta confirmado antes
+do gate e `confirmed_quality_validation_tokens` mantém o custo correspondente,
+permitindo reconciliar o líquido sem misturar resultados provisórios ou
+gerações descartadas.
 
 Os chats aparecem como identificadores curtos (`Codex #…`), não títulos ou
 prompts. Quando o chamador fornece `CODEX_CHAT_NAME` ou `CODEX_THREAD_NAME`,

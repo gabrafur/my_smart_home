@@ -78,6 +78,8 @@ def _event_totals() -> dict[str, float | int]:
         "operational_not_beneficial_calls": 0,
         "operational_quality_validated_calls": 0,
         "operational_quality_validated_measured_calls": 0,
+        "operational_primary_context_used_calls": 0,
+        "operational_primary_context_unconfirmed_calls": 0,
         "diagnostic_calls": 0,
         "unclassified_calls": 0,
         "successful_calls": 0,
@@ -106,6 +108,9 @@ def _event_totals() -> dict[str, float | int]:
         "quality_validation_unmeasured_calls": 0,
         "quality_validation_unmeasured_gross_tokens": 0,
         "useful_context_tokens_avoided": 0,
+        "confirmed_gross_useful_context_tokens_avoided": 0,
+        "confirmed_quality_validation_tokens": 0,
+        "confirmed_useful_context_tokens_avoided": 0,
     }
 
 
@@ -158,11 +163,13 @@ def _memory_totals() -> dict[str, float | int]:
 
 def _initial_state() -> dict[str, Any]:
     return {
-        "schema_version": 16,
+        "schema_version": 18,
         "updated_at": None,
         "totals": _event_totals(),
         "daily": {},
         "models": {},
+        "model_pairs": {},
+        "tasks": {},
         "seen_event_ids": [],
         "active_jobs": {},
         "latest_jobs": [],
@@ -196,6 +203,26 @@ def _counts_as_context_replacement(event: dict[str, Any]) -> bool:
     # Schema v1 predates the explicit flag. Its normal analysis jobs were
     # context replacements, while benchmark cases were diagnostics only.
     return event.get("status") == "success" and not str(event.get("task") or "").startswith("benchmark:")
+
+
+def _primary_context_use_confirmed(event: dict[str, Any]) -> bool:
+    """Return true only when the hook proves the bounded result replaced raw context."""
+    bounded_truncation = (
+        event.get("input_truncated") is True
+        and str(event.get("task") or "")
+        in {"inspect-files", "review-diff", "summarize-document", "summarize-memory"}
+    )
+    return (
+        _counts_as_context_replacement(event)
+        and event.get("status") == "success"
+        and event.get("quality_accepted") is True
+        and event.get("quality_validation_tokens_measured") is True
+        and bool(str(event.get("verifier_model") or ""))
+        and str(event.get("verifier_model") or "") != str(event.get("model") or "")
+        and str(event.get("invocation_source") or "") == "post-tool-hook"
+        and float(_number(event.get("useful_context_tokens_avoided")) or 0) > 0
+        and not bounded_truncation
+    )
 
 
 def _migrate_complete_v1_history(state: dict[str, Any]) -> None:
@@ -702,6 +729,117 @@ def _ensure_operational_accounting(state: dict[str, Any], path: Path) -> None:
     state["schema_version"] = 16
 
 
+def _ensure_primary_usage_and_task_accounting(state: dict[str, Any], path: Path) -> None:
+    """Add strict primary-use accounting and per-task aggregates conservatively."""
+    if int(state.get("schema_version") or 1) >= 18:
+        return
+
+    events_path = path.with_name("local-ai-events.jsonl")
+    terminal: dict[str, dict[str, Any]] = {}
+    try:
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            event = json.loads(line)
+            if not isinstance(event, dict) or event.get("status") not in {"success", "discarded", "failed"}:
+                continue
+            event_id = str(event.get("id") or "")
+            if event_id:
+                terminal[event_id] = event
+    except (OSError, json.JSONDecodeError):
+        terminal = {}
+
+    usage_keys = (
+        "operational_primary_context_used_calls",
+        "operational_primary_context_unconfirmed_calls",
+        "confirmed_gross_useful_context_tokens_avoided",
+        "confirmed_quality_validation_tokens",
+        "confirmed_useful_context_tokens_avoided",
+    )
+
+    def rebuild_usage(target: dict[str, Any], candidates: list[dict[str, Any]]) -> None:
+        for key in usage_keys:
+            target[key] = 0
+        if int(_number(target.get("calls")) or 0) != len(candidates):
+            return
+        rebuilt = {"totals": _event_totals()}
+        for event in candidates:
+            _add_totals(rebuilt, event)
+        for key in usage_keys:
+            target[key] = rebuilt["totals"][key]
+
+    events = list(terminal.values())
+    totals = state.get("totals")
+    if isinstance(totals, dict):
+        rebuild_usage(totals, events)
+    daily = state.get("daily")
+    if isinstance(daily, dict):
+        for day, entry in daily.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                rebuild_usage(
+                    entry["totals"],
+                    [
+                        event for event in events
+                        if str(event.get("finished_at") or event.get("started_at") or "")[:10] == day
+                    ],
+                )
+    models = state.get("models")
+    if isinstance(models, dict):
+        for model, entry in models.items():
+            if isinstance(entry, dict) and isinstance(entry.get("totals"), dict):
+                rebuild_usage(
+                    entry["totals"],
+                    [event for event in events if str(event.get("model") or "unknown") == model],
+                )
+
+    tasks: dict[str, dict[str, Any]] = {}
+    if isinstance(totals, dict) and int(_number(totals.get("calls")) or 0) == len(events):
+        for event in events:
+            task = str(event.get("task") or "unknown")
+            entry = tasks.setdefault(task, {"totals": _event_totals()})
+            _add_totals(entry, event)
+    state["tasks"] = tasks
+    state["schema_version"] = 18
+
+
+def _model_pair_entry(event: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    generator = str(event.get("model") or "unknown")
+    verifier = str(event.get("verifier_model") or "unmeasured")
+    key = f"{generator}|{verifier}"
+    return key, {
+        "generator_model": generator,
+        "verifier_model": verifier,
+        "independent_verifier": verifier not in {"unmeasured", generator},
+        "totals": _event_totals(),
+    }
+
+
+def _ensure_model_pair_accounting(state: dict[str, Any], path: Path) -> None:
+    """Backfill generator/verifier aggregates when the event log is complete."""
+    if isinstance(state.get("model_pairs"), dict):
+        return
+    events_path = path.with_name("local-ai-events.jsonl")
+    terminal: dict[str, dict[str, Any]] = {}
+    try:
+        for line in events_path.read_text(encoding="utf-8").splitlines():
+            event = json.loads(line)
+            if not isinstance(event, dict) or event.get("status") not in {"success", "discarded", "failed"}:
+                continue
+            event_id = str(event.get("id") or "")
+            if event_id:
+                terminal[event_id] = event
+    except (OSError, json.JSONDecodeError):
+        terminal = {}
+
+    pairs: dict[str, dict[str, Any]] = {}
+    totals = state.get("totals")
+    events = list(terminal.values())
+    if isinstance(totals, dict) and int(_number(totals.get("calls")) or 0) == len(events):
+        for event in events:
+            key, default = _model_pair_entry(event)
+            entry = pairs.setdefault(key, default)
+            _add_totals(entry, event)
+    state["model_pairs"] = pairs
+
+
 @contextlib.contextmanager
 def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -717,6 +855,8 @@ def _locked_state(path: Path) -> Iterator[dict[str, Any]]:
         _ensure_quality_cost_accounting(state)
         _ensure_bounded_context_accounting(state)
         _ensure_operational_accounting(state, path)
+        _ensure_primary_usage_and_task_accounting(state, path)
+        _ensure_model_pair_accounting(state, path)
         try:
             yield state
         finally:
@@ -750,6 +890,21 @@ def _append_event(path: Path, event: dict[str, Any]) -> None:
 
 
 def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
+    if (
+        event.get("status") == "success"
+        and event.get("quality_accepted") is True
+        and event.get("input_truncated") is True
+        and str(event.get("task") or "")
+        in {"inspect-files", "review-diff", "summarize-document", "summarize-memory"}
+    ):
+        event = {
+            **event,
+            "status": "discarded",
+            "quality_accepted": False,
+            "discard_reason": "quality_gate_rejected",
+            "gross_useful_context_tokens_avoided": 0,
+            "useful_context_tokens_avoided": 0,
+        }
     totals = target.setdefault("totals", _event_totals())
     for key, value in _event_totals().items():
         totals.setdefault(key, value)
@@ -812,6 +967,12 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
                 totals["operational_quality_validated_measured_calls"] = int(
                     totals.get("operational_quality_validated_measured_calls", 0)
                 ) + 1
+                usage_key = (
+                    "operational_primary_context_used_calls"
+                    if _primary_context_use_confirmed(event)
+                    else "operational_primary_context_unconfirmed_calls"
+                )
+                totals[usage_key] = int(totals.get(usage_key, 0)) + 1
     if event.get("fallback_reported") is True:
         totals["fallbacks_reported"] = int(totals.get("fallbacks_reported", 0)) + 1
     for key in (
@@ -875,6 +1036,22 @@ def _add_totals(target: dict[str, Any], event: dict[str, Any]) -> None:
                 totals["useful_context_tokens_avoided"] = round(
                     float(totals.get("useful_context_tokens_avoided", 0)) + float(useful), 3,
                 )
+                if _primary_context_use_confirmed(event):
+                    totals["confirmed_gross_useful_context_tokens_avoided"] = round(
+                        float(totals.get("confirmed_gross_useful_context_tokens_avoided", 0))
+                        + float(gross_useful or 0),
+                        3,
+                    )
+                    totals["confirmed_quality_validation_tokens"] = round(
+                        float(totals.get("confirmed_quality_validation_tokens", 0))
+                        + float(validation_tokens),
+                        3,
+                    )
+                    totals["confirmed_useful_context_tokens_avoided"] = round(
+                        float(totals.get("confirmed_useful_context_tokens_avoided", 0))
+                        + float(useful),
+                        3,
+                    )
 
 
 def _add_routing_totals(target: dict[str, Any], decision: dict[str, Any]) -> None:
@@ -1058,6 +1235,14 @@ class TelemetryRecorder:
                     models = state.setdefault("models", {})
                     model_entry = models.setdefault(model, {"totals": _event_totals()})
                     _add_totals(model_entry, event)
+                    pair_key, pair_default = _model_pair_entry(event)
+                    model_pairs = state.setdefault("model_pairs", {})
+                    pair_entry = model_pairs.setdefault(pair_key, pair_default)
+                    _add_totals(pair_entry, event)
+                    task = str(event.get("task") or "unknown")
+                    tasks = state.setdefault("tasks", {})
+                    task_entry = tasks.setdefault(task, {"totals": _event_totals()})
+                    _add_totals(task_entry, event)
                     seen.append(event_id)
                     state["seen_event_ids"] = seen[-MAX_SEEN_IDS:]
                     latest = state.setdefault("latest_jobs", [])
@@ -1077,6 +1262,8 @@ class TelemetryRecorder:
             "compressibility", "compatible_helper", "eligible", "available",
             "expected_tokens_saved", "actual_tokens_avoided", "decision", "reason",
             "minimum_input_tokens", "minimum_expected_saved_tokens", "model",
+            "model_input_tokens", "estimated_candidate_tokens",
+            "estimated_validation_tokens", "expected_net_tokens_saved",
             "quality_accepted", "quality_score_percent", "useful_tokens_avoided",
             "gross_useful_tokens_avoided", "quality_validation_tokens",
             "quality_validation_tokens_measured",

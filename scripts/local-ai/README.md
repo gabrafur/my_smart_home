@@ -49,30 +49,57 @@ Run the offline quality benchmark after the schema benchmark:
 python3 scripts/local-ai/quality_ab.py \
   --model <installed-generator> \
   --verifier-model <installed-independent-verifier> \
-  --repetitions 3
+  --repetitions 2 \
+  --output .agent-history/local-ai-quality-ab.json
 ```
 
 It counts token reduction only for candidates accepted by the fidelity gate; a
 discarded result is charged the full control context and saves zero. The report
-separates token-weighted reduction from the median attempt, identifies models
-and fixture/prompt hashes, and explicitly records that it does not execute an
-end-to-end primary-model A/B. The configured generator on the RTX 4070 remains
-`qwen2.5-coder:14b`. The 2026-08-24 independent-verifier run accepted 0/12
-observations, so the older 23.2% self-verified result is historical rather than
-an operational forecast. `qwen3:8b` was not enabled as the operational verifier.
+uses four development and four holdout fixtures, separates the deterministic
+oracle from the model gate, and reports false accepts/rejects, distributions,
+confidence intervals, size bands, and task/split aggregates. It identifies
+models, parameters and fixture/prompt/helper/harness hashes, and explicitly
+records that it does not execute an end-to-end primary-model A/B. Full reports
+are private metadata under `.agent-history/`; stdout is a sanitized summary.
+
+Calibrate a proposed verifier independently before the generator A/B:
+
+```bash
+python3 scripts/local-ai/gate_calibration.py \
+  --verifier-model <installed-independent-verifier> \
+  --repetitions 2
+```
+
+The configured generator on the RTX 4070 remains `qwen2.5-coder:14b`. In the
+2026-08-24 v4 battery, `qwen3:14b` reduced false rejections compared with
+`qwen3:8b`, but both selected the same 2/16 economically useful results and the
+same 13.6% offline weighted reduction, with a 0% median. Only the two
+`summarize-log` observations in the 3,000–5,999-token band saved context; all
+14 smaller observations saved zero. Neither verifier was promoted. These are
+offline compression results, not operational savings.
 
 The current operational policy enables only task profiles with defensible
-quality evidence. `review-diff`, `inspect-files` and `analyze-tests` are routed
-as `LOCAL_AI_NOT_BENEFICIAL` after failing the net quality A/B; they remain
-available to `quality_ab.py` through the diagnostic-only `LOCAL_AI_FORCE=1`.
-Their rejection does not count as a missed RTX opportunity.
+quality evidence. Every profile except `summarize-log` is routed as
+`LOCAL_AI_NOT_BENEFICIAL`; disabled profiles remain available to the benchmark
+through diagnostic-only `LOCAL_AI_FORCE=1`. `summarize-log` starts at 3,000
+input tokens, first applies a conservative economic precheck, and then requires
+a verifier different from the
+generator. With no promoted independent verifier configured, it bypasses local
+inference as `independent_verifier_required`. Such skips do not count as missed
+RTX opportunities or token savings.
 
-Operational telemetry separates real context-replacement attempts from schema
-benchmarks and legacy residue. Technical failure rates use only operational
-attempts; preflight failures retain the input-context denominator because the
-raw context still falls back to the primary model. The dashboard reports
-validated OpenAI-context delta, local verifier work, and the conservative net
-equivalent as distinct indicators because their tokenizers are not identical.
+Operational telemetry schema 18 separates gate-approved compression from
+confirmed primary-context replacement. A strict useful result must be a
+successful, measured, non-truncated `PostToolUse` replacement approved by a
+verifier independent from the generator. CLI, direct MCP, benchmark and legacy
+jobs without delivery evidence retain diagnostic/provisional metadata but add
+zero to the dashboard's confirmed savings. Aggregates are available by day,
+task, generator, and generator/verifier pair. Technical failure rates use only
+operational attempts; preflight failures retain the input-context denominator
+because the raw context still falls back to the primary model. The dashboard
+reports validated OpenAI-context delta, local verifier work, confirmed use and
+the conservative net equivalent as distinct indicators because their
+tokenizers are not identical.
 A faithful candidate discarded because its validation cost eliminates the
 minimum reduction is recorded as `insufficient_net_savings`: it counts as a gate
 acceptance but saves zero and does not inflate fidelity rejections.
@@ -143,10 +170,12 @@ fidelity checks. Legacy jobs without a separable verifier count retain gross
 telemetry but claim zero net savings. Feed only accepted JSON—not raw logs or
 diagnostics—back to Codex.
 
-Do not describe status or route checks as RTX usage. Only a successful
+Do not describe status or route checks as RTX usage. A successful
 `local_ai_compress_context` result with a non-empty `job_id` and recorded
-telemetry, or the equivalent canonical PostToolUse replacement metadata, proves
-that local inference actually ran.
+telemetry proves only that local inference ran. It does not prove that the
+primary model consumed the result. Confirmed operational savings additionally
+require canonical `PostToolUse` replacement metadata, an independent verifier,
+measured gate cost, and no bounded truncation.
 
 `route` is metadata-only: it never contacts Ollama and never writes its input.
 Use it to preview a candidate or record an explicit skip:

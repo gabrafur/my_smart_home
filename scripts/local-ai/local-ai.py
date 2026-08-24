@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from memory_context import instruction_chain, public_memory_inventory
-from routing import TASK_PROFILES, assess_routing, terminal_decision
+from routing import TASK_PROFILES, apply_economic_precheck, assess_routing, terminal_decision
 from telemetry import RemoteGpuSampler, TelemetryRecorder, new_event_id, private_telemetry_path, utc_now
 
 
@@ -68,9 +68,9 @@ QUALITY_VERIFICATION_SCHEMA = {
     "properties": {
         "usable": {"type": "boolean"},
         "coverage_score": {"type": "integer", "minimum": 0, "maximum": 100},
-        "critical_omissions": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
-        "contradictions": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
-        "unsupported_claims": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
+        "critical_omissions": {"type": "array", "maxItems": 4, "items": {"type": "string"}},
+        "contradictions": {"type": "array", "maxItems": 4, "items": {"type": "string"}},
+        "unsupported_claims": {"type": "array", "maxItems": 4, "items": {"type": "string"}},
     },
     "required": ["usable", "coverage_score", "critical_omissions", "contradictions", "unsupported_claims"],
     "additionalProperties": False,
@@ -273,8 +273,10 @@ def current_chat_name() -> str | None:
 
 def current_invocation_source() -> str:
     """Return bounded provenance without inferring anything from user content."""
+    if os.getenv("LOCAL_AI_CONTEXT_REPLACEMENT_CONFIRMED", "").strip() == "1":
+        return "post-tool-hook"
     source = os.getenv("LOCAL_AI_INVOCATION_SOURCE", "cli").strip().lower()
-    return source if source in {"cli", "mcp"} else "cli"
+    return source if source in {"cli", "mcp", "post-tool-hook"} else "cli"
 
 
 def telemetry_recorder(settings: dict[str, Any] | None = None) -> TelemetryRecorder:
@@ -711,8 +713,10 @@ def quality_verification_prompt(task: str, source_text: str, parsed: dict[str, A
         "Set usable=true only when the candidate preserves every materially actionable fact needed by an "
         "engineering agent: failures, warnings, changed behavior and direction, files, identifiers, numeric "
         "values, constraints, commands, and unresolved risks. Any contradiction, reversed operation, omitted "
-        "critical fact, invented claim, or misleading confidence makes it unusable. Routine repetition may be "
-        "omitted. Return JSON only.\n\n"
+        "critical fact, invented claim, or misleading confidence makes it unusable. Routine repetition and details "
+        "that do not change an engineering decision may be omitted. Judge coverage against the task schema and "
+        "actionable source facts, not against verbatim reproduction or writing style. Set usable=false only when at "
+        "least one required list names a concrete omission, contradiction, or unsupported claim. Return JSON only.\n\n"
         f"TASK: {task}\n\nSOURCE:\n{source_text}\n\nCANDIDATE:\n{candidate}"
     )
 
@@ -737,7 +741,7 @@ def verify_candidate_quality(
         "format": QUALITY_VERIFICATION_SCHEMA,
         "options": {
             "num_ctx": max(context_tokens, 8192),
-            "num_predict": 600,
+            "num_predict": 320,
             "temperature": 0,
         },
     })
@@ -868,6 +872,10 @@ def run_analysis(args: argparse.Namespace) -> int:
     settings = user_settings()
     if not local_ai_enabled(settings):
         raise RuntimeError("Local AI is disabled by LOCAL_AI_ENABLED=0 or machine configuration")
+    force_diagnostic = os.getenv("LOCAL_AI_FORCE", "").strip() == "1"
+    diagnostic_capture = bool(getattr(args, "diagnostic_capture", False))
+    if diagnostic_capture and not force_diagnostic:
+        raise RuntimeError("--diagnostic-capture requires LOCAL_AI_FORCE=1")
     instruction = prompt_for(args.task)
     raw_text, bounded_text, truncated, raw_limited = read_input(args.input_file, args.input_max_chars)
     if args.task in SIGNAL_PREPROCESS_TASKS:
@@ -892,6 +900,42 @@ def run_analysis(args: argparse.Namespace) -> int:
     )
     recorder = telemetry_recorder(settings)
     routing_recorded = False
+    routing_assessment = assess_routing(args.task, len(raw_text), availability="available")
+    routing_assessment = apply_economic_precheck(
+        routing_assessment,
+        context_input_tokens=context_input_tokens,
+        model_input_tokens=model_input_tokens,
+    )
+    non_beneficial_reason = str(routing_assessment.get("reason") or "")
+    if routing_assessment.get("decision") == "LOCAL_AI_NOT_BENEFICIAL" and not force_diagnostic:
+        record_routing_outcome(recorder, routing_assessment)
+        if memory_task:
+            record_memory_outcome(
+                recorder,
+                topic=memory_topic,
+                files_found=source_files,
+                decision="MEMORY_LOCAL_AI_NOT_BENEFICIAL",
+                reason=non_beneficial_reason,
+                retrieved_tokens=context_input_tokens,
+                available=None,
+                model=configured_model(args.model, settings),
+                expected_tokens_saved=0,
+                minimum_input_tokens=int(routing_assessment.get("minimum_input_tokens") or 0),
+                minimum_expected_saved_tokens=int(
+                    routing_assessment.get("minimum_expected_saved_tokens") or 0
+                ),
+                token_count_method=token_method,
+            )
+        limit = int(routing_assessment.get("bounded_input_limit_tokens") or 0)
+        if non_beneficial_reason == "input_exceeds_bounded_context":
+            raise RuntimeError(
+                f"{args.task} input exceeds the bounded reliable context ({context_input_tokens} > {limit} tokens); "
+                "partition it deterministically before Local AI"
+            )
+        raise RuntimeError(
+            f"{args.task} is not beneficial for operational routing ({non_beneficial_reason}); "
+            "use LOCAL_AI_FORCE=1 only for a diagnostic benchmark"
+        )
     try:
         models = tags(endpoint, request_call)
     except Exception as error:
@@ -914,6 +958,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             "endpoint": endpoint,
             "status": "failed",
             "error_type": type(error).__name__,
+            "fallback_reported": True,
             "context_input_chars": len(raw_text),
             "context_input_bytes": len(raw_text.encode("utf-8")),
             "context_input_tokens": context_input_tokens,
@@ -942,6 +987,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             "endpoint": endpoint,
             "status": "failed",
             "error_type": "ModelUnavailable",
+            "fallback_reported": True,
             "context_input_chars": len(raw_text),
             "context_input_bytes": len(raw_text.encode("utf-8")),
             "context_input_tokens": context_input_tokens,
@@ -954,10 +1000,9 @@ def run_analysis(args: argparse.Namespace) -> int:
     verifier_model = configured_verifier_model(getattr(args, "verifier_model", None), settings, model)
     installed_names = {str(item.get("name")) for item in models}
     if verifier_model not in installed_names:
-        failed_assessment = assess_routing(args.task, len(raw_text), availability="available")
         record_routing_outcome(
             recorder,
-            failed_assessment,
+            routing_assessment,
             outcome="failed",
             model=model,
             reason="verifier_model_unavailable",
@@ -972,6 +1017,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             "endpoint": endpoint,
             "status": "failed",
             "error_type": "VerifierModelUnavailable",
+            "fallback_reported": True,
             "context_input_chars": len(raw_text),
             "context_input_bytes": len(raw_text.encode("utf-8")),
             "context_input_tokens": context_input_tokens,
@@ -979,38 +1025,16 @@ def run_analysis(args: argparse.Namespace) -> int:
             "context_replacement": True,
         })
         raise RuntimeError(f"configured verifier model is not installed: {verifier_model}")
-    routing_assessment = assess_routing(args.task, len(raw_text), availability="available")
-    non_beneficial_reason = str(routing_assessment.get("reason") or "")
-    force_diagnostic = os.getenv("LOCAL_AI_FORCE", "").strip() == "1"
-    if non_beneficial_reason in {"input_exceeds_bounded_context", "task_quality_not_validated"} and not force_diagnostic:
-        record_routing_outcome(recorder, routing_assessment)
-        routing_recorded = True
-        if memory_task:
-            record_memory_outcome(
-                recorder,
-                topic=memory_topic,
-                files_found=source_files,
-                decision="MEMORY_LOCAL_AI_NOT_BENEFICIAL",
-                reason=non_beneficial_reason,
-                retrieved_tokens=context_input_tokens,
-                available=True,
-                model=model,
-                expected_tokens_saved=0,
-                minimum_input_tokens=int(routing_assessment.get("minimum_input_tokens") or 0),
-                minimum_expected_saved_tokens=int(
-                    routing_assessment.get("minimum_expected_saved_tokens") or 0
-                ),
-                token_count_method=token_method,
-            )
-        limit = int(routing_assessment.get("bounded_input_limit_tokens") or 0)
-        if non_beneficial_reason == "input_exceeds_bounded_context":
-            raise RuntimeError(
-                f"{args.task} input exceeds the bounded reliable context ({context_input_tokens} > {limit} tokens); "
-                "partition it deterministically before Local AI"
-            )
+    if verifier_model == model and not force_diagnostic:
+        routing_assessment.update({
+            "eligible": False,
+            "expected_tokens_saved": 0,
+            "decision": "LOCAL_AI_NOT_BENEFICIAL",
+            "reason": "independent_verifier_required",
+        })
+        record_routing_outcome(recorder, routing_assessment, model=model)
         raise RuntimeError(
-            f"{args.task} is disabled for operational routing because the current model did not pass its quality A/B; "
-            "use LOCAL_AI_FORCE=1 only for a diagnostic benchmark"
+            f"{args.task} requires an independently validated verifier for operational routing"
         )
     prompt = (
         "You are a non-authoritative local first-pass assistant. "
@@ -1039,6 +1063,7 @@ def run_analysis(args: argparse.Namespace) -> int:
         "input_truncated": truncated,
         "deterministic_omitted_lines": deterministic_omitted_lines,
         "model_input_chars": len(model_text),
+        "model_input_tokens": model_input_tokens,
         "context_replacement": True,
     }
     recorder.started(event)
@@ -1213,7 +1238,11 @@ def run_analysis(args: argparse.Namespace) -> int:
             f"input_truncated={truncated} telemetry_id={event['id']} gpu_before={before_gpu} gpu_after={gpu_snapshot()}",
             file=sys.stderr,
         )
-        print(json.dumps(parsed, ensure_ascii=False, separators=(",", ":")))
+        stdout_payload = (
+            {"candidate": parsed, "gate_report": quality_report}
+            if diagnostic_capture else parsed
+        )
+        print(json.dumps(stdout_payload, ensure_ascii=False, separators=(",", ":")))
         return 0
     except Exception as error:
         quality_rejected = isinstance(error, QualityRejected)
@@ -1239,6 +1268,7 @@ def run_analysis(args: argparse.Namespace) -> int:
             "quality_score_percent": int(error.report.get("coverage_score") or 0) if quality_rejected else None,
             "gross_useful_context_tokens_avoided": 0,
             "useful_context_tokens_avoided": 0,
+            "fallback_reported": True,
         })
         if discard_reason:
             event["discard_reason"] = discard_reason
@@ -1266,6 +1296,12 @@ def run_analysis(args: argparse.Namespace) -> int:
                     available=quality_rejected, model=model, token_count_method=token_method,
                 )
             routing_recorded = True
+        if diagnostic_capture and quality_rejected and isinstance(parsed, dict):
+            print(json.dumps(
+                {"candidate": parsed, "gate_report": error.report},
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ))
         raise
     finally:
         event.update(sampler.stop(model))
@@ -1446,6 +1482,11 @@ def parser() -> argparse.ArgumentParser:
         sub.add_argument("--output-tokens", type=positive_int, default=int(os.getenv("LOCAL_AI_OUTPUT_TOKENS", "700")))
         sub.add_argument("--memory-topic", help="logical public-memory topic; used only for summarize-memory telemetry")
         sub.add_argument("--memory-files-found", type=nonnegative_int, help="selected files count when input was not materialized by memory-context")
+        sub.add_argument(
+            "--diagnostic-capture",
+            action="store_true",
+            help="emit candidate and gate metadata for fixed benchmark fixtures; requires LOCAL_AI_FORCE=1",
+        )
         sub.set_defaults(func=run_analysis, task=task)
     return main
 

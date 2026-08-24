@@ -39,7 +39,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         )
         self.assertEqual(
             sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            26,
+            28,
         )
         for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Histórico de uso da RTX — últimas 48 horas"):
             self.assertIn(f"title: {title}", columns[0])
@@ -165,7 +165,10 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertIn("entity: sensor.codex_resultados_local_ai_validados_mensuraveis_hoje", view)
         self.assertNotIn("entity: sensor.codex_rtx_usos_hoje", view)
         self.assertIn("title: Referência controlada de qualidade", view)
-        self.assertIn("0/12 resultados", view)
+        self.assertIn("title: Redução por gerador / verificador — total preservado", view)
+        self.assertIn("get('model_pairs', [])", view)
+        self.assertIn("2/16", view)
+        self.assertIn("economia operacional confirmada desta bateria é **0**", view)
         self.assertIn("O antigo **23,2%**", view)
 
     def test_indicator_groups_explain_how_to_read_their_metrics(self):
@@ -223,6 +226,8 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "sensor.codex_resultados_local_ai_aprovados_no_gate",
             "sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel",
             "sensor.codex_resultados_local_ai_validados_mensuraveis",
+            "sensor.codex_resultados_local_ai_com_uso_nao_confirmado",
+            "sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal",
             "sensor.codex_resultados_local_ai_sem_ganho_liquido",
             "sensor.codex_contexto_tentado_local_ai",
             "sensor.codex_economia_bruta_validada",
@@ -234,8 +239,9 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertNotIn("| Etapa | Restante |", view)
         self.assertIn("tentativas = sem falha técnica + falhas técnicas", view)
         self.assertIn("fidelidade aprovada =", view)
-        self.assertIn("contexto OpenAI evitado e aprovado − tokens locais", view)
-        self.assertNotIn("entity: sensor.codex_fallbacks_local_ai_informados", view)
+        self.assertIn("contexto OpenAI evitado, aprovado e entregue ao modelo principal − tokens locais", view)
+        self.assertIn("entity: sensor.codex_fallbacks_local_ai_informados_hoje", view)
+        self.assertNotIn("entity: sensor.codex_fallbacks_local_ai_informados\n", view)
 
     def test_today_and_preserved_waterfalls_use_identical_semantics(self):
         view = rtx_view()
@@ -258,6 +264,8 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "sensor.codex_resultados_local_ai_sem_ganho_liquido",
             "sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel",
             "sensor.codex_resultados_local_ai_validados_mensuraveis",
+            "sensor.codex_resultados_local_ai_com_uso_nao_confirmado",
+            "sensor.codex_resultados_local_ai_utilizados_pelo_modelo_principal",
             "sensor.codex_contexto_tentado_local_ai",
             "sensor.codex_economia_bruta_validada",
             "sensor.codex_custo_gate_validacao_resultados",
@@ -266,10 +274,10 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         ]
         expected_today = [f"{entity}_hoje" for entity in expected_total]
         expected_today[5] = "sensor.codex_resultados_local_ai_descartados_hoje"
-        expected_today[11] = "sensor.codex_economia_bruta_validada_hoje"
-        expected_today[12] = "sensor.codex_custo_gate_validacao_resultados_hoje"
-        expected_today[13] = "sensor.codex_tokens_openai_evitados_hoje_estimados"
-        expected_today[14] = "sensor.codex_reducao_de_contexto_local_ai_hoje"
+        expected_today[13] = "sensor.codex_economia_bruta_validada_hoje"
+        expected_today[14] = "sensor.codex_custo_gate_validacao_resultados_hoje"
+        expected_today[15] = "sensor.codex_tokens_openai_evitados_hoje_estimados"
+        expected_today[16] = "sensor.codex_reducao_de_contexto_local_ai_hoje"
 
         self.assertEqual(total_entities, expected_total)
         self.assertEqual(today_entities, expected_today)

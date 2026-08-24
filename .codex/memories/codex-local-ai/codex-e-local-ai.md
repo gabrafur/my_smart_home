@@ -17,10 +17,13 @@ instrução global no bridge; o workspace já fornece o mesmo arquivo pelo
 mecanismo de descoberta do repositório.
 
 A economia útil exibida exclui falhas, descartes e benchmarks; resultado
-descartado equivale ao contexto bruto e economiza zero. Para cada resultado
-aprovado, a economia útil líquida subtrai do delta bruto os tokens locais de
-entrada e saída consumidos por seus gates. Histórico sem separação do custo
-preserva o bruto para auditoria, mas reivindica zero líquido. Ela permanece estimada
+descartado equivale ao contexto bruto e economiza zero. Desde o schema 18, ela
+também exige prova de que o `PostToolUse` reteve o corpo bruto e entregou ao
+modelo principal um resultado mensurado, não truncado e aprovado por verificador
+independente. CLI, MCP direto e legado sem prova de entrega preservam valores
+provisórios para auditoria, mas reivindicam zero líquido confirmado. Para cada
+resultado confirmado, a economia útil líquida subtrai do delta bruto os tokens
+locais de entrada e saída consumidos por seus gates. Ela permanece estimada
 porque o overhead do envelope OpenAI não é mensurável pelo helper. Logs longos passam primeiro por filtragem determinística
 de ruído, preservando sinais e contexto; `summarize-log` usa schema limitado e
 no máximo uma repetição compacta para evitar JSON truncado.
@@ -41,10 +44,11 @@ deterministicamente; o miolo cortado não conta como contexto substituído. Saí
 de testes, erros e logs pode ser maior porque a filtragem de sinais ocorre
 sobre o corpo bruto antes do limite.
 
-No modelo vigente, `review-diff`, `inspect-files` e `analyze-tests` não passaram
-o A/B líquido e são `LOCAL_AI_NOT_BENEFICIAL` no uso operacional. Continuam
-disponíveis apenas em benchmark forçado; `summarize-log` é o perfil do conjunto
-A/B com redução útil comprovada.
+No modelo vigente, todos os perfis exceto `summarize-log` são
+`LOCAL_AI_NOT_BENEFICIAL` no uso operacional. Continuam disponíveis apenas em
+benchmark forçado. `summarize-log` começa em 3.000 tokens, aplica precheck
+econômico e exige verificador independente; sem um verificador promovido, desvia para o contexto
+original sem inferência e sem alegar economia.
 
 Suficiência determinística significa que nenhuma interpretação por LLM ainda é
 necessária. Coleta determinística pode produzir texto grande que continua
@@ -78,14 +82,18 @@ o custo do gate, uma repetição aproveitou somente `summarize-log`: 2.230 token
 brutos menos 693 do gate, ou 1.537 tokens líquidos e 23,2% no conjunto. Esses
 percentuais são históricos e não constituem previsão operacional independente.
 
-Em 2026-08-24, o benchmark v3 separou os papéis: `qwen2.5-coder:14b` gerou e
-`qwen3:8b` verificou 12 observações sequenciais, três por fixture. Nenhuma foi
-aceita; portanto a redução útil ponderada e a mediana por tentativa foram 0%,
-com 21.516 tokens locais consumidos pelos gates. O verificador independente não
-foi promovido para produção porque rejeitaria todo o trabalho e eliminaria a
-economia operacional. O benchmark continua sendo uma avaliação offline de
-compressão e fidelidade, não um A/B ponta a ponta do modelo principal. A fonte
-detalhada é `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
+Em 2026-08-24, a baseline congelada tinha 260 tentativas operacionais. O único
+saldo mensurado era 2.234 tokens brutos menos 691 do gate, ou 1.543 provisórios,
+mas veio do CLI e não provava uso pelo modelo principal. A baseline estrita foi,
+portanto, zero. O benchmark v4 executou oito fixtures, metade holdout, duas vezes
+com `qwen2.5-coder:14b` gerando. `qwen3:8b` e `qwen3:14b` selecionaram os mesmos
+2/16 resultados economicamente úteis: 4.096 tokens offline, 13,6% ponderados e
+mediana 0%. Todo o ganho ficou nos logs de 3.000–5.999 tokens; as 14 observações
+menores economizaram zero. O 14B reduziu falsas rejeições de 9 para 6, mas não
+aumentou ganho e foi mais lento, então nenhum verificador foi promovido. O
+benchmark continua sendo avaliação offline de compressão e fidelidade, não A/B
+ponta a ponta do modelo principal; seus 4.096 tokens valem zero no painel
+operacional. A fonte detalhada é `docs/LOCAL_AI_BENCHMARK_2026-08-16.md`.
 
 Não compare diretamente esse percentual A/B com a redução útil operacional. O
 A/B divide o líquido pelo contexto de controle das fixtures fixas; o indicador

@@ -3,6 +3,7 @@
 
 import importlib.util
 import json
+import os
 import stat
 import sys
 import tempfile
@@ -26,6 +27,18 @@ TELEMETRY_SPEC.loader.exec_module(TELEMETRY)
 
 
 class LocalAiTest(unittest.TestCase):
+    def test_hook_delivery_marker_survives_mcp_source_normalization(self):
+        with patch.dict(os.environ, {
+            "LOCAL_AI_INVOCATION_SOURCE": "mcp",
+            "LOCAL_AI_CONTEXT_REPLACEMENT_CONFIRMED": "1",
+        }):
+            self.assertEqual(LOCAL_AI.current_invocation_source(), "post-tool-hook")
+        with patch.dict(os.environ, {
+            "LOCAL_AI_INVOCATION_SOURCE": "mcp",
+            "LOCAL_AI_CONTEXT_REPLACEMENT_CONFIRMED": "0",
+        }):
+            self.assertEqual(LOCAL_AI.current_invocation_source(), "mcp")
+
     def test_telemetry_files_are_private_and_group_writable_for_bridge_sharing(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "local-ai-telemetry.json"
@@ -316,6 +329,7 @@ diff --git a/docs/label.md b/docs/label.md
                 raise AssertionError(path)
 
             with (
+                patch.dict(os.environ, {"LOCAL_AI_FORCE": "1"}),
                 patch.object(LOCAL_AI, "user_settings", return_value=settings),
                 patch.object(LOCAL_AI, "request", side_effect=request_success),
                 patch.object(LOCAL_AI, "gpu_snapshot", return_value=None),
@@ -337,6 +351,103 @@ diff --git a/docs/label.md b/docs/label.md
             decision = state["routing"]["latest_decisions"][0]
             self.assertEqual(decision["decision"], "LOCAL_AI_UNNECESSARY_CALL")
             self.assertEqual(decision["reason"], "insufficient_net_savings")
+
+    def test_operational_self_verifier_bypasses_before_generation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            telemetry_path = root / "canonical-telemetry.json"
+            source_path = root / "application.log"
+            source_path.write_text(
+                ("INFO routine heartbeat\n" * 800)
+                + "ERROR CACHE_WRITE_TIMEOUT after 30000ms\n",
+                encoding="utf-8",
+            )
+            args = SimpleNamespace(
+                task="summarize-log",
+                input_file=str(source_path),
+                input_max_chars=12_000,
+                endpoint=None,
+                model=None,
+                verifier_model=None,
+                max_output_chars=6_000,
+                context_tokens=8_192,
+                output_tokens=700,
+                memory_topic=None,
+                memory_files_found=None,
+                diagnostic_capture=False,
+            )
+            settings = {
+                "enabled": True,
+                "endpoint": "http://local-ai.invalid",
+                "model": "qwen2.5-coder:14b",
+                "telemetry_path": str(telemetry_path),
+            }
+
+            def tags_only(_endpoint, path, payload=None):
+                self.assertEqual(path, "/api/tags")
+                self.assertIsNone(payload)
+                return {
+                    "models": [
+                        {"name": "qwen2.5-coder:14b", "size": 9_000_000_000},
+                    ],
+                }
+
+            with (
+                patch.dict(os.environ, {}, clear=False),
+                patch.object(LOCAL_AI, "user_settings", return_value=settings),
+                patch.object(LOCAL_AI, "request", side_effect=tags_only) as request_mock,
+            ):
+                os.environ.pop("LOCAL_AI_FORCE", None)
+                os.environ.pop("LOCAL_AI_VERIFIER_MODEL", None)
+                with self.assertRaisesRegex(RuntimeError, "independently validated verifier"):
+                    LOCAL_AI.run_analysis(args)
+
+            self.assertEqual(request_mock.call_count, 1)
+            state = json.loads(telemetry_path.read_text(encoding="utf-8"))
+            self.assertEqual(state["totals"]["calls"], 0)
+            decision = state["routing"]["latest_decisions"][-1]
+            self.assertEqual(decision["decision"], "LOCAL_AI_NOT_BENEFICIAL")
+            self.assertEqual(decision["reason"], "independent_verifier_required")
+
+    def test_quality_disabled_task_bypasses_before_endpoint_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            telemetry_path = root / "canonical-telemetry.json"
+            source_path = root / "change.diff"
+            source_path.write_text("diff --git a/a b/a\n" + "+change\n" * 1_000, encoding="utf-8")
+            args = SimpleNamespace(
+                task="review-diff",
+                input_file=str(source_path),
+                input_max_chars=12_000,
+                endpoint=None,
+                model=None,
+                verifier_model=None,
+                max_output_chars=6_000,
+                context_tokens=8_192,
+                output_tokens=700,
+                memory_topic=None,
+                memory_files_found=None,
+                diagnostic_capture=False,
+            )
+            settings = {
+                "enabled": True,
+                "endpoint": "http://local-ai.invalid",
+                "model": "qwen2.5-coder:14b",
+                "telemetry_path": str(telemetry_path),
+            }
+
+            with (
+                patch.object(LOCAL_AI, "user_settings", return_value=settings),
+                patch.object(LOCAL_AI, "request") as request_mock,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "task_quality_not_validated"):
+                    LOCAL_AI.run_analysis(args)
+
+            request_mock.assert_not_called()
+            state = json.loads(telemetry_path.read_text(encoding="utf-8"))
+            self.assertEqual(state["totals"]["calls"], 0)
+            decision = state["routing"]["latest_decisions"][-1]
+            self.assertEqual(decision["reason"], "task_quality_not_validated")
 
     def test_bounded_schemas_limit_normal_and_retry_lists(self):
         normal = LOCAL_AI.response_format("summarize-log")
@@ -408,7 +519,8 @@ diff --git a/docs/label.md b/docs/label.md
                 "started_at": "2026-08-17T12:00:00Z",
                 "finished_at": "2026-08-17T12:00:01Z",
                 "task": "summarize-log",
-                "model": "model",
+                "model": "generator",
+                "verifier_model": "verifier",
                 "context_input_tokens": 100,
                 "context_output_tokens": 10,
                 "context_replacement": True,
@@ -446,8 +558,46 @@ diff --git a/docs/label.md b/docs/label.md
             self.assertEqual(totals["quality_validation_tokens"], 10)
             self.assertEqual(totals["quality_validated_validation_tokens"], 5)
             self.assertEqual(totals["useful_context_tokens_avoided"], 85)
+            pair = state["model_pairs"]["generator|verifier"]
+            self.assertEqual(pair["generator_model"], "generator")
+            self.assertEqual(pair["verifier_model"], "verifier")
+            self.assertTrue(pair["independent_verifier"])
+            self.assertEqual(pair["totals"]["operational_calls"], 2)
             self.assertEqual(totals["quality_validated_context_input_tokens"], 100)
             self.assertEqual(totals["attempted_context_input_tokens"], 200)
+
+    def test_confirmed_savings_require_post_tool_context_replacement(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "local-ai-telemetry.json"
+            recorder = TELEMETRY.TelemetryRecorder(path)
+            base = {
+                "started_at": "2026-08-24T12:00:00Z",
+                "finished_at": "2026-08-24T12:00:01Z",
+                "task": "summarize-log",
+                "model": "generator",
+                "verifier_model": "verifier",
+                "status": "success",
+                "context_replacement": True,
+                "context_input_tokens": 1000,
+                "context_output_tokens": 100,
+                "quality_accepted": True,
+                "quality_validation_tokens_measured": True,
+                "quality_validation_tokens": 200,
+                "gross_useful_context_tokens_avoided": 900,
+                "useful_context_tokens_avoided": 700,
+            }
+            recorder.finished({**base, "id": "cli", "invocation_source": "cli"})
+            recorder.finished({**base, "id": "hook", "invocation_source": "post-tool-hook"})
+
+            state = json.loads(path.read_text(encoding="utf-8"))
+            totals = state["totals"]
+            self.assertEqual(totals["useful_context_tokens_avoided"], 1400)
+            self.assertEqual(totals["operational_primary_context_used_calls"], 1)
+            self.assertEqual(totals["operational_primary_context_unconfirmed_calls"], 1)
+            self.assertEqual(totals["confirmed_gross_useful_context_tokens_avoided"], 900)
+            self.assertEqual(totals["confirmed_quality_validation_tokens"], 200)
+            self.assertEqual(totals["confirmed_useful_context_tokens_avoided"], 700)
+            self.assertEqual(state["tasks"]["summarize-log"]["totals"]["operational_calls"], 2)
 
     def test_telemetry_excludes_failures_and_benchmarks_from_context_savings(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -520,6 +670,7 @@ diff --git a/docs/label.md b/docs/label.md
                 raise AssertionError(path)
 
             with (
+                patch.dict(os.environ, {"LOCAL_AI_FORCE": "1"}),
                 patch.object(LOCAL_AI, "user_settings", return_value=settings),
                 patch.object(LOCAL_AI, "request", side_effect=request_failure),
                 patch.object(LOCAL_AI, "revalidate_once", return_value=True) as revalidate,
@@ -574,7 +725,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-16T12:01:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 16)
+            self.assertEqual(state["schema_version"], 18)
             self.assertEqual(state["totals"]["calls"], 3)
             self.assertEqual(state["totals"]["context_input_tokens"], 100)
             self.assertEqual(state["totals"]["openai_context_tokens_avoided"], 80)
@@ -611,7 +762,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-23T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 16)
+            self.assertEqual(state["schema_version"], 18)
             self.assertNotIn("attempted_context_input_tokens", state["totals"])
             self.assertEqual(state["daily"]["2026-08-23"]["totals"]["attempted_context_input_tokens"], 400)
             self.assertEqual(state["models"]["model"]["totals"]["attempted_context_input_tokens"], 400)
@@ -650,7 +801,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["totals"]
-            self.assertEqual(state["schema_version"], 16)
+            self.assertEqual(state["schema_version"], 18)
             self.assertNotIn("totals", totals)
             self.assertEqual(totals["calls"], 1)
             self.assertEqual(totals["operational_calls"], 1)
@@ -681,7 +832,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["totals"]
-            self.assertEqual(state["schema_version"], 16)
+            self.assertEqual(state["schema_version"], 18)
             self.assertEqual(totals["gross_useful_context_tokens_avoided"], 90)
             self.assertEqual(totals["quality_validation_unmeasured_gross_tokens"], 90)
             self.assertEqual(totals["quality_validation_unmeasured_calls"], 2)
@@ -741,7 +892,7 @@ diff --git a/docs/label.md b/docs/label.md
             migrated = json.loads(path.read_text(encoding="utf-8"))
             totals = migrated["totals"]
             routing = migrated["routing"]["totals"]
-            self.assertEqual(migrated["schema_version"], 16)
+            self.assertEqual(migrated["schema_version"], 18)
             self.assertEqual(totals["successful_calls"], 0)
             self.assertEqual(totals["quality_rejected_calls"], 1)
             self.assertEqual(totals["quality_validated_calls"], 0)
@@ -788,7 +939,7 @@ diff --git a/docs/label.md b/docs/label.md
             })
             state = json.loads(path.read_text(encoding="utf-8"))
             totals = state["routing"]["totals"]
-            self.assertEqual(state["schema_version"], 16)
+            self.assertEqual(state["schema_version"], 18)
             self.assertEqual(totals["tasks"], 2)
             self.assertEqual(totals["used_tasks"], 1)
             self.assertEqual(totals["missed_opportunities"], 1)
@@ -838,7 +989,7 @@ diff --git a/docs/label.md b/docs/label.md
                 "status": "running", "started_at": "2026-08-17T12:02:00Z",
             })
             state = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(state["schema_version"], 16)
+            self.assertEqual(state["schema_version"], 18)
             self.assertEqual(state["routing"]["totals"]["availability_unknown_tasks"], 1)
             self.assertEqual(state["routing"]["totals"]["confirmed_unavailable_tasks"], 1)
             self.assertEqual(state["daily"]["2026-08-17"]["routing"]["availability_unknown_tasks"], 1)

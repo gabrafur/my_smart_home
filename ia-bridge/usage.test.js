@@ -219,6 +219,10 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
       quality_validation_tokens: 140, quality_validated_validation_tokens: 100,
       quality_validation_measured_calls: 1, quality_validation_unmeasured_calls: 1,
       useful_context_tokens_avoided: 600,
+      operational_primary_context_used_calls: 1,
+      confirmed_gross_useful_context_tokens_avoided: 700,
+      confirmed_quality_validation_tokens: 100,
+      confirmed_useful_context_tokens_avoided: 600,
     },
     daily: {
       '2026-08-16': { totals: {
@@ -233,9 +237,35 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
         quality_validation_tokens: 140, quality_validated_validation_tokens: 100,
         quality_validation_measured_calls: 1, quality_validation_unmeasured_calls: 1,
         useful_context_tokens_avoided: 600,
+        operational_primary_context_used_calls: 1,
+        confirmed_gross_useful_context_tokens_avoided: 700,
+        confirmed_quality_validation_tokens: 100,
+        confirmed_useful_context_tokens_avoided: 600,
       } },
     },
     models: { 'qwen2.5-coder:7b': { totals: { calls: 3, successful_calls: 2 } } },
+    model_pairs: {
+      'qwen2.5-coder:7b|qwen3:8b': {
+        generator_model: 'qwen2.5-coder:7b',
+        verifier_model: 'qwen3:8b',
+        independent_verifier: true,
+        totals: {
+          operational_calls: 2,
+          operational_primary_context_used_calls: 1,
+          attempted_context_input_tokens: 1200,
+          confirmed_useful_context_tokens_avoided: 600,
+        },
+      },
+    },
+    tasks: {
+      'summarize-log': { totals: {
+        operational_calls: 2,
+        operational_primary_context_used_calls: 1,
+        attempted_context_input_tokens: 1200,
+        confirmed_useful_context_tokens_avoided: 600,
+      } },
+      'benchmark:summarize-log': { totals: { calls: 4, diagnostic_calls: 4 } },
+    },
     active_jobs: { running: {
       id: 'running', started_at: '2026-08-16T11:55:00.000Z', task: 'review-diff',
       endpoint: 'http://private.example:11435',
@@ -269,6 +299,7 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.deepEqual(usage.daily_series.at(-1), {
     day: '2026-08-16',
     useful_context_tokens_avoided: 600,
+    provisional_useful_context_tokens_avoided: 600,
     attempted_context_input_tokens: 1200,
     useful_reduction_percent: 50,
     operational_calls: 0,
@@ -277,6 +308,8 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
     operational_not_beneficial_calls: 0,
     operational_quality_validated_calls: 0,
     operational_quality_validated_measured_calls: 0,
+    operational_primary_context_used_calls: 1,
+    operational_primary_context_unconfirmed_calls: 0,
   });
   assert.equal(
     usage.daily_series.reduce((sum, day) => sum + day.useful_context_tokens_avoided, 0),
@@ -287,6 +320,13 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.equal(usage.current_job.live_gpu.gpu_util_percent, 87);
   assert.equal(usage.freshness.preflight.current, false);
   assert.equal(usage.models[0].model, 'qwen2.5-coder:7b');
+  assert.equal(usage.model_pairs.length, 1);
+  assert.equal(usage.model_pairs[0].verifier_model, 'qwen3:8b');
+  assert.equal(usage.model_pairs[0].independent_verifier, true);
+  assert.equal(usage.model_pairs[0].useful_reduction_percent, 50);
+  assert.equal(usage.tasks.length, 1);
+  assert.equal(usage.tasks[0].task, 'summarize-log');
+  assert.equal(usage.tasks[0].useful_reduction_percent, 50);
   assert.equal(usage.latest_jobs[0].id, 'done');
   assert.equal(usage.latest_jobs[0].endpoint, undefined);
 });
@@ -490,6 +530,8 @@ test('returns a bounded quality-aware Local AI history for the last 48 hours', (
       quality_validation_tokens_measured: true, quality_score_percent: 100,
       useful_context_tokens_avoided: 1_750 },
     { id: 'accepted', task: 'summarize-log', status: 'success', quality_accepted: true,
+      model: 'generator', verifier_model: 'verifier',
+      quality_validation_tokens_measured: true, invocation_source: 'post-tool-hook',
       finished_at: '2026-08-16T11:45:00Z', useful_context_tokens_avoided: 800 },
   ] }));
 
@@ -497,6 +539,8 @@ test('returns a bounded quality-aware Local AI history for the last 48 hours', (
   assert.equal(history.window_hours, 48);
   assert.equal(history.count, 3);
   assert.equal(history.jobs[0].task, 'summarize-log');
+  assert.equal(history.jobs[0].verifier_model, 'verifier');
+  assert.equal(history.jobs[0].primary_context_used, true);
   assert.equal(history.jobs[0].useful_context_tokens_avoided, 800);
   assert.equal(history.jobs[1].discard_reason, 'insufficient_net_savings');
   assert.equal(history.jobs[1].quality_score_percent, 100);

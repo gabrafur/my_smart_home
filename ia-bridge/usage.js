@@ -212,6 +212,8 @@ function emptyLocalAiTotals() {
     operational_not_beneficial_calls: 0,
     operational_quality_validated_calls: 0,
     operational_quality_validated_measured_calls: 0,
+    operational_primary_context_used_calls: 0,
+    operational_primary_context_unconfirmed_calls: 0,
     diagnostic_calls: 0,
     unclassified_calls: 0,
     successful_calls: 0,
@@ -240,6 +242,9 @@ function emptyLocalAiTotals() {
     quality_validation_unmeasured_calls: 0,
     quality_validation_unmeasured_gross_tokens: 0,
     useful_context_tokens_avoided: 0,
+    confirmed_gross_useful_context_tokens_avoided: 0,
+    confirmed_quality_validation_tokens: 0,
+    confirmed_useful_context_tokens_avoided: 0,
   };
 }
 
@@ -319,7 +324,10 @@ function localAiDerived(totals) {
   const avoided = Number(totals.openai_context_tokens_avoided) || 0;
   const qualityInput = Number(totals.quality_validated_context_input_tokens) || 0;
   const attemptedInput = Number(totals.attempted_context_input_tokens) || qualityInput;
-  const usefulAvoided = Number(totals.useful_context_tokens_avoided) || 0;
+  const provisionalUseful = Number(totals.useful_context_tokens_avoided) || 0;
+  const usefulAvoided = Number(totals.confirmed_useful_context_tokens_avoided) || 0;
+  const primaryUsed = Number(totals.operational_primary_context_used_calls) || 0;
+  const primaryUnconfirmed = Number(totals.operational_primary_context_unconfirmed_calls) || 0;
   const qualityAccepted = hasOperationalAccounting
     ? (Number(totals.operational_quality_validated_calls) || 0)
       + (Number(totals.operational_not_beneficial_calls) || 0)
@@ -336,6 +344,15 @@ function localAiDerived(totals) {
       : null,
     useful_reduction_percent: attemptedInput > 0
       ? round((usefulAvoided / attemptedInput) * 100, 1)
+      : null,
+    provisional_useful_reduction_percent: attemptedInput > 0
+      ? round((provisionalUseful / attemptedInput) * 100, 1)
+      : null,
+    primary_context_use_rate_percent: calls > 0
+      ? round((primaryUsed / calls) * 100, 1)
+      : null,
+    primary_context_usage_coverage_percent: primaryUsed + primaryUnconfirmed > 0
+      ? round((primaryUsed / (primaryUsed + primaryUnconfirmed)) * 100, 1)
       : null,
     raw_context_reduction_percent: input > 0 ? round((avoided / input) * 100, 1) : null,
     quality_acceptance_rate_percent: qualityAccepted + qualityRejected > 0
@@ -445,7 +462,10 @@ function localAiDailySeries(daily, now, days = 7) {
     const derived = localAiDerived(totals);
     series.push({
       day,
-      useful_context_tokens_avoided: Number(totals.useful_context_tokens_avoided) || 0,
+      useful_context_tokens_avoided:
+        Number(totals.confirmed_useful_context_tokens_avoided) || 0,
+      provisional_useful_context_tokens_avoided:
+        Number(totals.useful_context_tokens_avoided) || 0,
       attempted_context_input_tokens: Number(totals.attempted_context_input_tokens) || 0,
       useful_reduction_percent: derived.useful_reduction_percent,
       operational_calls: Number(totals.operational_calls) || 0,
@@ -455,6 +475,10 @@ function localAiDailySeries(daily, now, days = 7) {
       operational_quality_validated_calls: Number(totals.operational_quality_validated_calls) || 0,
       operational_quality_validated_measured_calls:
         Number(totals.operational_quality_validated_measured_calls) || 0,
+      operational_primary_context_used_calls:
+        Number(totals.operational_primary_context_used_calls) || 0,
+      operational_primary_context_unconfirmed_calls:
+        Number(totals.operational_primary_context_unconfirmed_calls) || 0,
     });
   }
   return series;
@@ -511,6 +535,23 @@ function localAiDiscardReason(job) {
   return 'quality_gate_rejected';
 }
 
+function localAiPrimaryContextUsed(job) {
+  const boundedTask = [
+    'inspect-files', 'review-diff', 'summarize-document', 'summarize-memory',
+  ].includes(String(job?.task || ''));
+  return (
+    job?.status === 'success'
+    && job.quality_accepted === true
+    && job.quality_validation_tokens_measured === true
+    && typeof job.verifier_model === 'string'
+    && job.verifier_model.length > 0
+    && job.verifier_model !== job.model
+    && job.invocation_source === 'post-tool-hook'
+    && Number(job.useful_context_tokens_avoided) > 0
+    && !(boundedTask && job.input_truncated === true)
+  );
+}
+
 function sanitizeLocalAiJob(job) {
   if (!job || typeof job !== 'object') return {};
   // The dashboard needs only operational metadata. Keeping this compact avoids
@@ -518,11 +559,12 @@ function sanitizeLocalAiJob(job) {
   // details through its state machine or Recorder.
   const fields = [
     'id', 'status', 'task', 'model', 'verifier_model', 'chat_id', 'chat_name', 'started_at', 'finished_at',
+    'invocation_source',
     'duration_seconds', 'error_type', 'discard_reason', 'fallback_reported',
     'context_input_tokens', 'context_output_tokens',
     'context_overhead_tokens', 'context_overhead_method', 'context_savings_estimated',
     'token_count_method', 'context_replacement',
-    'deterministic_omitted_lines', 'model_input_chars',
+    'deterministic_omitted_lines', 'model_input_chars', 'model_input_tokens', 'input_truncated',
     'openai_context_tokens_avoided', 'context_reduction_percent',
     'gross_useful_context_tokens_avoided', 'useful_context_tokens_avoided',
     'quality_validation_input_tokens', 'quality_validation_output_tokens',
@@ -536,7 +578,8 @@ function sanitizeLocalAiJob(job) {
   const sanitized = Object.fromEntries(
     fields.filter((field) => Object.hasOwn(job, field)).map((field) => [field, job[field]]),
   );
-  if (sanitized.status !== 'success' || sanitized.quality_accepted !== true) {
+  sanitized.primary_context_used = localAiPrimaryContextUsed(sanitized);
+  if (!sanitized.primary_context_used) {
     sanitized.useful_context_tokens_avoided = 0;
   }
   if (sanitized.status === 'discarded') {
@@ -568,6 +611,8 @@ function sanitizeRoutingDecision(decision) {
     'quality_validation_tokens_measured',
     'quality_accepted', 'quality_score_percent', 'decision', 'reason',
     'minimum_input_tokens', 'minimum_expected_saved_tokens', 'model',
+    'model_input_tokens', 'estimated_candidate_tokens',
+    'estimated_validation_tokens', 'expected_net_tokens_saved',
   ];
   return Object.fromEntries(
     fields.filter((field) => Object.hasOwn(decision, field)).map((field) => [field, decision[field]]),
@@ -654,6 +699,20 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
   const models = Object.entries(state.models || {})
     .map(([model, value]) => ({ model, ...(value.totals || {}), ...localAiDerived(value.totals || {}) }))
     .sort((left, right) => Number(right.calls || 0) - Number(left.calls || 0));
+  const modelPairs = Object.values(state.model_pairs || {})
+    .filter((value) => value && typeof value === 'object')
+    .map((value) => ({
+      generator_model: value.generator_model || 'unknown',
+      verifier_model: value.verifier_model || 'unmeasured',
+      independent_verifier: value.independent_verifier === true,
+      ...(value.totals || {}),
+      ...localAiDerived(value.totals || {}),
+    }))
+    .sort((left, right) => Number(right.operational_calls || 0) - Number(left.operational_calls || 0));
+  const tasks = Object.entries(state.tasks || {})
+    .filter(([task]) => !String(task).startsWith('benchmark:'))
+    .map(([task, value]) => ({ task, ...(value.totals || {}), ...localAiDerived(value.totals || {}) }))
+    .sort((left, right) => Number(right.operational_calls || 0) - Number(left.operational_calls || 0));
   const latestJobs = Array.isArray(state.latest_jobs)
     ? state.latest_jobs.slice(-5).reverse().map(sanitizeLocalAiJob)
     : [];
@@ -711,6 +770,8 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
       latest_decisions: latestMemoryDecisions,
     },
     models,
+    model_pairs: modelPairs,
+    tasks,
     // Five jobs cover the current job plus recent diagnostics, while staying
     // well below the attribute-size limit enforced by Home Assistant.
     latest_jobs: latestJobs,
@@ -735,6 +796,7 @@ function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
         finished_at: job.finished_at || null,
         task: job.task || null,
         model: job.model || null,
+        verifier_model: job.verifier_model || null,
         status: job.status || null,
         discard_reason: localAiDiscardReason(job),
         duration_seconds: Number.isFinite(Number(job.duration_seconds))
@@ -746,7 +808,8 @@ function scanLocalAiHistory(telemetryPath, now = new Date(), windowHours = 48) {
         quality_score_percent: Number.isFinite(Number(job.quality_score_percent))
           ? Number(job.quality_score_percent)
           : null,
-        useful_context_tokens_avoided: job.quality_accepted === true
+        primary_context_used: localAiPrimaryContextUsed(job),
+        useful_context_tokens_avoided: localAiPrimaryContextUsed(job)
           ? Math.max(0, Number(job.useful_context_tokens_avoided) || 0)
           : 0,
       };

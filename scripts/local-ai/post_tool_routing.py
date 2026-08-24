@@ -214,7 +214,18 @@ class McpProcess:
             stderr=subprocess.DEVNULL,
             text=True,
             cwd=base,
-            env={**os.environ, "LOCAL_AI_INVOCATION_SOURCE": "mcp"},
+            # A successful hook replacement withholds the raw tool result and
+            # injects only the bounded candidate into primary-model context.
+            # Telemetry can therefore distinguish proven delivery from a CLI
+            # or direct MCP result whose downstream use is unknown.
+            env={
+                **os.environ,
+                "LOCAL_AI_INVOCATION_SOURCE": "post-tool-hook",
+                # The MCP adapter labels all of its child calls as `mcp`.
+                # This separate marker survives that normalization and is read
+                # only by the versioned helper to prove hook replacement.
+                "LOCAL_AI_CONTEXT_REPLACEMENT_CONFIRMED": "1",
+            },
         )
         self.request_id = 0
 

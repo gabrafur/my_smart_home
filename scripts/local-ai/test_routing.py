@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import unittest
 
-from routing import assess_routing, terminal_decision
+from routing import apply_economic_precheck, assess_routing, terminal_decision
 
 
 class RoutingPolicyTest(unittest.TestCase):
@@ -19,13 +19,14 @@ class RoutingPolicyTest(unittest.TestCase):
             ("pytest-small", "analyze-tests", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("pytest-large", "analyze-tests", 32_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("log-short", "summarize-log", 1_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
+            ("log-below-validated-band", "summarize-log", 10_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("log-repeated-stack", "summarize-log", 36_000, False, "available", "LOCAL_AI_ELIGIBLE"),
             ("json-large", "inspect-files", 80_000, True, "available", "DETERMINISTIC"),
             ("file-triage-too-large", "inspect-files", 40_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
-            ("documentation-bounded", "summarize-document", 10_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("documentation-bounded", "summarize-document", 10_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("documentation-too-large", "summarize-document", 24_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("memory-small-focused", "summarize-memory", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
-            ("memory-bounded-retrieval", "summarize-memory", 20_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("memory-bounded-retrieval", "summarize-memory", 20_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("memory-too-large", "summarize-memory", 32_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("gpu-unavailable", "summarize-log", 32_000, False, "unavailable", "LOCAL_AI_UNAVAILABLE"),
         ]
@@ -62,11 +63,32 @@ class RoutingPolicyTest(unittest.TestCase):
         self.assertEqual(assessment["reason"], "input_exceeds_bounded_context")
 
     def test_tasks_rejected_by_quality_ab_are_not_operational_candidates(self):
-        for task in ("analyze-tests", "inspect-files", "review-diff"):
+        for task in (
+            "analyze-tests", "classify-error", "inspect-files", "review-diff",
+            "summarize-document", "summarize-memory",
+        ):
             with self.subTest(task=task):
                 assessment = assess_routing(task, 10_000, availability="available")
                 self.assertFalse(assessment["eligible"])
                 self.assertEqual(assessment["reason"], "task_quality_not_validated")
+
+    def test_signal_preprocessing_must_leave_positive_expected_net_savings(self):
+        eligible = assess_routing("summarize-log", 40_000, availability="available")
+        rejected = apply_economic_precheck(
+            eligible,
+            context_input_tokens=10_000,
+            model_input_tokens=9_500,
+        )
+        accepted = apply_economic_precheck(
+            eligible,
+            context_input_tokens=10_000,
+            model_input_tokens=1_000,
+        )
+
+        self.assertEqual(rejected["decision"], "LOCAL_AI_NOT_BENEFICIAL")
+        self.assertEqual(rejected["reason"], "insufficient_expected_net_savings")
+        self.assertEqual(accepted["decision"], "LOCAL_AI_ELIGIBLE")
+        self.assertGreaterEqual(accepted["expected_net_tokens_saved"], 600)
 
 
 if __name__ == "__main__":

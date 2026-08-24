@@ -682,6 +682,22 @@ template:
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('operational_quality_validated_measured_calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
+      - name: Codex Resultados Local AI Utilizados pelo Modelo Principal
+        unique_id: codex_resultados_local_ai_utilizados_pelo_modelo_principal
+        icon: mdi:check-decagram-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('operational_primary_context_used_calls', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI com Uso nao Confirmado
+        unique_id: codex_resultados_local_ai_com_uso_nao_confirmado
+        icon: mdi:help-circle-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('operational_primary_context_unconfirmed_calls', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
       - name: Codex Resultados Local AI Aprovados sem Custo Mensuravel
         unique_id: codex_resultados_local_ai_aprovados_sem_custo_mensuravel
         icon: mdi:shield-off-outline
@@ -760,6 +776,22 @@ template:
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_quality_validated_measured_calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
+      - name: Codex Resultados Local AI Utilizados pelo Modelo Principal Hoje
+        unique_id: codex_resultados_local_ai_utilizados_pelo_modelo_principal_hoje
+        icon: mdi:check-decagram-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_primary_context_used_calls', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI com Uso nao Confirmado Hoje
+        unique_id: codex_resultados_local_ai_com_uso_nao_confirmado_hoje
+        icon: mdi:help-circle-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_primary_context_unconfirmed_calls', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
       - name: Codex Taxa de Aproveitamento do Gate Hoje
         unique_id: codex_taxa_de_aproveitamento_do_gate_hoje
         icon: mdi:shield-check
@@ -783,6 +815,22 @@ template:
         state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_accounting_coverage_percent') }}"
         availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_accounting_coverage_percent') is number }}"
+
+      - name: Codex Taxa de Uso Efetivo Local AI Hoje
+        unique_id: codex_taxa_de_uso_efetivo_local_ai_hoje
+        icon: mdi:check-network-outline
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_use_rate_percent') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_use_rate_percent') is number }}"
+
+      - name: Codex Cobertura da Confirmacao de Uso Hoje
+        unique_id: codex_cobertura_da_confirmacao_de_uso_hoje
+        icon: mdi:check-circle-outline
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_usage_coverage_percent') }}"
+        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('primary_context_usage_coverage_percent') is number }}"
 
       - name: Codex Falhas Local AI
         unique_id: codex_falhas_local_ai
@@ -870,6 +918,14 @@ template:
         unit_of_measurement: "fallbacks"
         state_class: total_increasing
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('fallbacks_reported', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Fallbacks Local AI Informados Hoje
+        unique_id: codex_fallbacks_local_ai_informados_hoje
+        icon: mdi:source-branch-sync
+        unit_of_measurement: "fallbacks"
+        state_class: measurement
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('fallbacks_reported', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Decisoes de Roteamento Hoje
@@ -1225,10 +1281,10 @@ template:
         icon: mdi:content-save-outline
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('useful_context_tokens_avoided', 0) }}"
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('confirmed_useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
-          metodologia: "economia bruta dos resultados aprovados menos tokens locais de entrada e saída usados pelo gate desses resultados; legado sem custo separável vale zero; descartes, falhas e benchmarks valem zero"
+          metodologia: "economia bruta dos resultados com custo do gate mensurado e entrega confirmada ao modelo principal menos o custo do gate; uso não confirmado, descartes, falhas e benchmarks valem zero"
 
       - name: Codex Economia Bruta Validada
         unique_id: codex_economia_bruta_validada
@@ -1237,7 +1293,7 @@ template:
         state_class: measurement
         state: >-
           {% set totals = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}) %}
-          {{ [0, (totals.get('gross_useful_context_tokens_avoided', 0) | float(0)) - (totals.get('quality_validation_unmeasured_gross_tokens', 0) | float(0))] | max }}
+          {{ totals.get('confirmed_gross_useful_context_tokens_avoided', 0) }}
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Custo Gate Validacao Resultados
@@ -1245,7 +1301,7 @@ template:
         icon: mdi:shield-search-outline
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('quality_validated_validation_tokens', 0) }}"
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('confirmed_quality_validation_tokens', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens OpenAI Economizados Hoje Estimados
@@ -1253,7 +1309,7 @@ template:
         icon: mdi:calendar-today-outline
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('useful_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('confirmed_useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Contexto Tentado Local AI Hoje
@@ -1279,7 +1335,7 @@ template:
         state_class: measurement
         state: >-
           {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}) %}
-          {{ [0, (today.get('gross_useful_context_tokens_avoided', 0) | float(0)) - (today.get('quality_validation_unmeasured_gross_tokens', 0) | float(0))] | max }}
+          {{ today.get('confirmed_gross_useful_context_tokens_avoided', 0) }}
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Custo Gate Validacao Resultados Hoje
@@ -1287,7 +1343,7 @@ template:
         icon: mdi:shield-search-outline
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_validated_validation_tokens', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('confirmed_quality_validation_tokens', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
           metodologia: "tokens locais de entrada e saída consumidos pelo verificador somente nos resultados aprovados; esses tokens são subtraídos da economia bruta"
@@ -1297,10 +1353,10 @@ template:
         icon: mdi:shield-check-outline
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('useful_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('confirmed_useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
-          metodologia: "economia bruta dos resultados com quality_accepted igual a true menos o custo local medido de seus gates; legado sem separacao mensuravel, descartes, falhas e benchmarks valem zero"
+          metodologia: "economia bruta dos resultados com quality_accepted, custo mensurado e uso confirmado pelo modelo principal menos o custo do gate; demais casos valem zero"
 
       # Série criada após a adoção do custo líquido do gate. A entidade anterior
       # permanece para compatibilidade, mas seu histórico do dia contém amostras
@@ -1310,17 +1366,17 @@ template:
         icon: mdi:shield-check-outline
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('useful_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('confirmed_useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
         attributes:
-          metodologia: "economia bruta validada menos os tokens locais de entrada e saída do gate do resultado aprovado; descartes e legado sem custo separável valem zero"
+          metodologia: "economia bruta validada e entregue ao modelo principal menos os tokens do gate; uso não confirmado, descartes e legado sem custo separável valem zero"
 
       - name: Codex Tokens OpenAI Economizados Semana Estimados
         unique_id: codex_tokens_openai_evitados_semana_estimados
         icon: mdi:calendar-week
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('week') or {}).get('useful_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('week') or {}).get('confirmed_useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Tokens OpenAI Economizados Mes Estimados
@@ -1328,7 +1384,7 @@ template:
         icon: mdi:calendar-month
         unit_of_measurement: "tokens"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('month') or {}).get('useful_context_tokens_avoided', 0) }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('month') or {}).get('confirmed_useful_context_tokens_avoided', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Reducao de Contexto Local AI
@@ -1409,6 +1465,9 @@ template:
           qualidade_aceita: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('quality_accepted') if jobs else none }}
+          uso_modelo_principal_confirmado: >-
+            {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
+            {{ jobs[0].get('primary_context_used') if jobs else none }}
           qualidade_percentual: >-
             {% set jobs = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('latest_jobs') or [] %}
             {{ jobs[0].get('quality_score_percent') if jobs else none }}

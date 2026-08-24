@@ -29,6 +29,9 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
             "sensor.codex_taxa_de_aproveitamento_do_gate_hoje",
             "sensor.codex_cobertura_do_custo_do_gate_hoje",
             "sensor.codex_cobertura_da_classificacao_operacional_hoje",
+            "sensor.codex_taxa_de_uso_efetivo_local_ai_hoje",
+            "sensor.codex_cobertura_da_confirmacao_de_uso_hoje",
+            "sensor.codex_fallbacks_local_ai_informados_hoje",
         )
         for entity_id in today_entities:
             self.assertIn(f"entity: {entity_id}", DASHBOARD)
@@ -42,10 +45,10 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
 
     def test_quality_gate_cost_is_subtracted_from_useful_tokens(self):
         for unique_id, field in (
-            ("codex_economia_bruta_validada_hoje", "gross_useful_context_tokens_avoided"),
-            ("codex_custo_gate_validacao_resultados_hoje", "quality_validated_validation_tokens"),
-            ("codex_economia_util_validada_hoje", "useful_context_tokens_avoided"),
-            ("codex_economia_util_liquida_validada_hoje", "useful_context_tokens_avoided"),
+            ("codex_economia_bruta_validada_hoje", "confirmed_gross_useful_context_tokens_avoided"),
+            ("codex_custo_gate_validacao_resultados_hoje", "confirmed_quality_validation_tokens"),
+            ("codex_economia_util_validada_hoje", "confirmed_useful_context_tokens_avoided"),
+            ("codex_economia_util_liquida_validada_hoje", "confirmed_useful_context_tokens_avoided"),
         ):
             start = PACKAGE.index(f"unique_id: {unique_id}")
             self.assertIn(field, PACKAGE[start : start + 900])
@@ -140,10 +143,21 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         sensor_start = PACKAGE.index("unique_id: codex_economia_util_liquida_validada_hoje")
         sensor = PACKAGE[sensor_start : sensor_start + 850]
         self.assertIn("state_class: measurement", sensor)
-        self.assertIn("get('useful_context_tokens_avoided', 0)", sensor)
+        self.assertIn("get('confirmed_useful_context_tokens_avoided', 0)", sensor)
         self.assertIn("title: Economia útil diária — últimos 7 dias", DASHBOARD)
         self.assertIn("local.get('daily_series', [])", DASHBOARD)
         self.assertIn("agregados diários UTC", DASHBOARD)
+
+    def test_confirmed_use_and_fallback_diagnostics_are_explicit(self):
+        for unique_id, field in (
+            ("codex_resultados_local_ai_utilizados_pelo_modelo_principal", "operational_primary_context_used_calls"),
+            ("codex_resultados_local_ai_com_uso_nao_confirmado", "operational_primary_context_unconfirmed_calls"),
+            ("codex_fallbacks_local_ai_informados_hoje", "fallbacks_reported"),
+        ):
+            start = PACKAGE.index(f"unique_id: {unique_id}")
+            self.assertIn(field, PACKAGE[start : start + 900])
+        self.assertIn("uso pelo modelo principal não confirmado", DASHBOARD)
+        self.assertIn("Fallbacks informados", DASHBOARD)
 
 
 if __name__ == "__main__":
