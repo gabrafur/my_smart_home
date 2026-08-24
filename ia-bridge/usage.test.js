@@ -265,6 +265,23 @@ test('summarizes idempotent Local AI telemetry without treating local tokens as 
   assert.equal(usage.totals.average_duration_seconds, 6.67);
   assert.equal(usage.periods.today.openai_context_tokens_avoided, 600);
   assert.equal(usage.periods.today.useful_reduction_percent, 50);
+  assert.equal(usage.daily_series.length, 7);
+  assert.deepEqual(usage.daily_series.at(-1), {
+    day: '2026-08-16',
+    useful_context_tokens_avoided: 600,
+    attempted_context_input_tokens: 1200,
+    useful_reduction_percent: 50,
+    operational_calls: 0,
+    operational_failed_calls: 0,
+    operational_quality_rejected_calls: 0,
+    operational_not_beneficial_calls: 0,
+    operational_quality_validated_calls: 0,
+    operational_quality_validated_measured_calls: 0,
+  });
+  assert.equal(
+    usage.daily_series.reduce((sum, day) => sum + day.useful_context_tokens_avoided, 0),
+    usage.periods.week.useful_context_tokens_avoided,
+  );
   assert.equal(usage.current_job.task, 'review-diff');
   assert.equal(usage.current_job.endpoint, undefined);
   assert.equal(usage.current_job.live_gpu.gpu_util_percent, 87);
@@ -305,9 +322,20 @@ test('uses only operational calls for technical success and failure rates', (t) 
       operational_failed_calls: 1,
       operational_quality_rejected_calls: 1,
       operational_quality_validated_calls: 2,
+      operational_quality_validated_measured_calls: 1,
       operational_not_beneficial_calls: 1,
       diagnostic_calls: 4,
       unclassified_calls: 1,
+    },
+    daily: {
+      '2026-08-16': { totals: {
+        operational_calls: 5,
+        operational_failed_calls: 1,
+        operational_quality_rejected_calls: 1,
+        operational_quality_validated_calls: 2,
+        operational_quality_validated_measured_calls: 1,
+        operational_not_beneficial_calls: 1,
+      } },
     },
   }));
   fs.writeFileSync(statusPath, JSON.stringify({
@@ -319,6 +347,7 @@ test('uses only operational calls for technical success and failure rates', (t) 
   assert.equal(usage.totals.failure_rate_percent, 20);
   assert.equal(usage.totals.quality_acceptance_rate_percent, 75);
   assert.equal(usage.totals.operational_accounting_coverage_percent, 90);
+  assert.equal(usage.daily_series.at(-1).operational_quality_validated_measured_calls, 1);
 });
 
 test('does not keep an abandoned Local AI job marked as in use', (t) => {

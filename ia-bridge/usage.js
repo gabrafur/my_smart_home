@@ -436,6 +436,30 @@ function summarizeMonth(daily, now) {
   return { ...totals, ...localAiDerived(totals) };
 }
 
+function localAiDailySeries(daily, now, days = 7) {
+  const series = [];
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const day = isoDayOffset(now, offset);
+    const totals = emptyLocalAiTotals();
+    addLocalAiTotals(totals, daily?.[day]?.totals);
+    const derived = localAiDerived(totals);
+    series.push({
+      day,
+      useful_context_tokens_avoided: Number(totals.useful_context_tokens_avoided) || 0,
+      attempted_context_input_tokens: Number(totals.attempted_context_input_tokens) || 0,
+      useful_reduction_percent: derived.useful_reduction_percent,
+      operational_calls: Number(totals.operational_calls) || 0,
+      operational_failed_calls: Number(totals.operational_failed_calls) || 0,
+      operational_quality_rejected_calls: Number(totals.operational_quality_rejected_calls) || 0,
+      operational_not_beneficial_calls: Number(totals.operational_not_beneficial_calls) || 0,
+      operational_quality_validated_calls: Number(totals.operational_quality_validated_calls) || 0,
+      operational_quality_validated_measured_calls:
+        Number(totals.operational_quality_validated_measured_calls) || 0,
+    });
+  }
+  return series;
+}
+
 function summarizeRoutingPeriod(daily, now, days) {
   const totals = emptyRoutingTotals();
   for (let offset = 0; offset < days; offset += 1) {
@@ -664,6 +688,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date()) {
       week: summarizePeriod(state.daily, now, 7),
       month: summarizeMonth(state.daily, now),
     },
+    daily_series: localAiDailySeries(state.daily, now, 7),
     routing: {
       totals: { ...routingTotals, ...routingDerived(routingTotals) },
       periods: {

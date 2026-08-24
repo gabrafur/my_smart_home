@@ -374,10 +374,13 @@ Quando uma anotação antiga divergir da fonte canônica atual, registre a decis
 direta com `memory-route ... --canonical-conflict`; a telemetria guarda somente
 esse sinal e o motivo, não o conteúdo conflitante.
 
-No dashboard **Uso RTX**, o bloco *Contexto e memória* mostra startup
-observável, memória recuperada, enviada ao modelo principal, evitada,
-compressão, sobrecargas e a última decisão. A configuração local do Codex
-mantém memória gerada automaticamente desligada para evitar um segundo preload;
+Essa telemetria permanece disponível no bridge e nos sensores para auditoria,
+mas não aparece no dashboard **Uso RTX**. O delta de memória não possui o mesmo
+contrato líquido do waterfall operacional — especialmente a dedução mensurável
+do custo do gate — e apresentá-lo ao lado da Redução útil líquida induzia uma
+comparação inválida. O startup observável também é uma fotografia de configuração,
+não um sinal operacional acionável. A configuração local do Codex mantém memória
+gerada automaticamente desligada para evitar um segundo preload;
 a memória versionada e a restauração de Git continuam disponíveis por retrieval.
 
 ## Telemetria e painéis
@@ -546,25 +549,33 @@ potenciais dessas perdas, indisponibilidade confirmada, disponibilidade
 desconhecida e falhas técnicas após delegação. Tarefas avaliadas, elegíveis e
 disponíveis permanecem numa linha compacta de contexto, acompanhadas da taxa de
 disponibilidade entre elegíveis; não ocupam cards de atenção. Rejeições de
-qualidade ficam exclusivamente em **Resultado e qualidade — hoje**. A auditoria
+qualidade ficam exclusivamente em **Waterfall — hoje · UTC**. A auditoria
 retrospectiva e o potencial global permanecem fora porque não representam
 atenção operacional concreta do dia.
 As entidades acumuladas e as demais seções de atividade, qualidade e histórico
 permanecem separadas.
 
-O bloco **Waterfall acumulado — até o resultado útil** reconcilia somente
-tentativas de substituição de contexto, conclusões técnicas, resultados com gate,
-aprovações de fidelidade, candidatos fiéis sem ganho líquido e aprovados com
-custo mensurado, sem tabela. Benchmarks ganham contador diagnóstico separado e
+Os blocos **Waterfall — hoje · UTC** e **Waterfall — total preservado** usam
+as mesmas etapas, fórmulas, nomes e unidades; muda apenas a janela temporal.
+Eles reconciliam somente tentativas de substituição de contexto e explicitam falhas técnicas, conclusões
+sem falha, resultados sem classificação de qualidade, avaliações pelo gate,
+rejeições, aprovações de fidelidade, candidatos fiéis sem ganho líquido e
+aprovados com e sem custo mensurado, sem tabela. Assim, cada diferença entre
+duas etapas aparece como uma saída visível, em vez de parecer perda de dados.
+Benchmarks ganham contador diagnóstico separado e
 não contaminam chamadas ou falhas operacionais. Depois o waterfall muda
-explicitamente de unidade para contexto OpenAI evitado validado, custo local do
-gate nos resultados aprovados, saldo líquido equivalente e redução útil
+explicitamente de unidade para contexto total tentado, contexto OpenAI evitado
+validado, custo local do gate nos resultados aprovados, saldo líquido equivalente e redução útil
 operacional. A regra conservadora continua
 `max(0, contexto evitado - tokens locais do verificador)`, mas o painel explica
 que os tokenizadores são diferentes e que o saldo não é uma contagem faturável.
 Resultados legados cujo custo do verificador não pode ser separado preservam a
 economia bruta para auditoria, mas valem zero líquido. Fallbacks não aparecem
 porque sua notificação não forma uma etapa reconciliável.
+
+As taxas de aproveitamento da qualidade, cobertura do custo do gate e cobertura
+da classificação ficam em **Diagnóstico do gate — hoje · UTC**. Elas descrevem
+a qualidade da medição e não são apresentadas como economia de tokens.
 
 Os indicadores de GPU, VRAM e potência exibem **ociosa** quando a RTX está
 disponível sem inferência em andamento. Os valores numéricos aparecem somente
@@ -581,9 +592,10 @@ uma medição do consumo físico em repouso. Assim, o histórico permanece
 contínuo, enquanto indisponibilidade e perda de sinal continuam representadas
 pelos cards de saúde. Uma tolerância de cinco segundos no sinal e no fim do
 uso evita que uma falha isolada de polling fragmente o histórico ou faça o
-card alternar brevemente para **sem sinal**. Ao fim da aba, **RTX em uso —
-últimas 48 horas** é uma tabela de jobs sanitizados: tarefa, modelo, resultado,
-fidelidade, duração e tokens úteis líquidos. Benchmarks são omitidos e todo
+card alternar brevemente para **sem sinal**. Ao fim da aba, **Histórico de uso
+da RTX — últimas 48 horas** é uma tabela de jobs sanitizados: trabalho delegado,
+modelo local, aproveitamento, qualidade do conteúdo, duração e economia líquida
+equivalente. Benchmarks são omitidos e todo
 descarte aparece com zero economia. O resultado distingue rejeição de fidelidade
 de candidato fiel sem ganho líquido suficiente; uma nota de 100% não implica
 economia.
@@ -600,11 +612,12 @@ dias. Contagens, economia e qualidade são consolidadas quando cada decisão ou
 job termina, enquanto GPU, VRAM, potência e estado do job mudam durante a
 execução.
 
-O gráfico **Economia útil diária — últimos 7 dias** usa uma entidade diária
-dedicada, com `state_class: measurement`, alimentada por
-`useful_context_tokens_avoided`. Barras usam o máximo diário do contador, que
-reinicia à meia-noite UTC, sem herdar o histórico da antiga entidade, que já
-teve semântica bruta carregada no Home Assistant. Somente jobs com
+O gráfico **Economia útil diária — últimos 7 dias** lê os sete agregados UTC
+preservados diretamente do bridge. Assim, dias anteriores aparecem de imediato
+mesmo quando a entidade diária do Home Assistant foi criada recentemente e
+ainda não possui histórico suficiente no Recorder. A soma da série reconcilia
+com a janela móvel **Últimos 7 dias**; **Mês atual** continua sendo uma janela
+de calendário UTC e **Total preservado** cobre toda a telemetria. Somente jobs com
 `quality_accepted: true` cujo delta excede o custo medido do verificador aumentam
 o valor; descartes, falhas, benchmarks e legado sem custo separável contribuem
 com zero. `gross_useful_context_tokens_avoided` mantém o delta aprovado antes do
@@ -612,27 +625,21 @@ gate e `quality_validated_validation_tokens` mantém somente o custo dos gates
 que aprovaram resultados, permitindo reconciliar o líquido sem misturar tokens
 de gerações descartadas.
 
-Em **Contexto inicial e memória — hoje**, o startup observável fica separado dos
-agregados diários. Recuperações, ocorrências de arquivos, tokens recuperados,
-enviados ao GPT e evitados formam um fluxo reconciliável; ocorrências não são
-arquivos únicos. Quando a memória recuperada cabe no orçamento direto, enviá-la
-integralmente ao GPT e registrar zero compressões e zero contexto evitado é o
-resultado esperado, não uma falha da RTX.
-
 Os chats aparecem como identificadores curtos (`Codex #…`), não títulos ou
 prompts. Quando o chamador fornece `CODEX_CHAT_NAME` ou `CODEX_THREAD_NAME`,
 o painel exibe esse nome no lugar do identificador; ele nunca deriva um nome a
 partir do conteúdo da conversa. Isso dá correlação operacional sem vazar
 conteúdo da conversa.
 
-O painel também registra a **taxa diária de falhas técnicas Local AI**: tentativas
-operacionais com status `failed` divididas somente pelas tentativas que pretendiam
-substituir contexto no dia UTC. Benchmarks e resíduos legados ficam fora.
-O gráfico de barras apresenta a média temporal dessa taxa em cada dia e não
-exibe mais a taxa acumulada total como se fosse o valor de hoje. Logo abaixo, o
-resumo separa falhas técnicas,
-descartes por qualidade e resultados não aproveitados (`failed + discarded`).
-Descartes não são falhas de infraestrutura, mas valem zero economia e reduzem a
+O bloco **Fluxo operacional diário — últimos 7 dias** lê diretamente a série
+UTC preservada pelo bridge, sem depender da média temporal do Recorder. Cada
+linha reproduz somente as saídas não zeradas do waterfall: resultados úteis e
+mensuráveis, rejeições de fidelidade, candidatos fiéis sem ganho, falhas
+técnicas, resultados sem classificação e aprovações sem custo separável. Dias
+vazios aparecem como sem atividade; o saldo líquido fica separado dos
+resultados do gate.
+Benchmarks ficam fora. Rejeições não são falhas de infraestrutura, mas valem
+zero economia e reduzem a
 redução útil segundo a mesma lógica conservadora do benchmark offline. O painel
 também mostra aproveitamento do gate, cobertura da mensuração de seu custo e
 cobertura da classificação operacional.

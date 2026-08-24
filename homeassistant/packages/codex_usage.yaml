@@ -610,6 +610,14 @@ template:
           {{ [0, (totals.get('operational_calls', 0) | int(0)) - (totals.get('operational_failed_calls', 0) | int(0))] | max }}
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
+      - name: Codex Falhas Operacionais Local AI
+        unique_id: codex_falhas_operacionais_local_ai
+        icon: mdi:alert-circle-outline
+        unit_of_measurement: "chamadas"
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('operational_failed_calls', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
       - name: Codex Resultados Local AI com Gate
         unique_id: codex_resultados_local_ai_com_gate
         icon: mdi:shield-half-full
@@ -618,6 +626,26 @@ template:
         state: >-
           {% set totals = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}) %}
           {{ (totals.get('operational_quality_validated_calls', 0) | int(0)) + (totals.get('operational_quality_rejected_calls', 0) | int(0)) + (totals.get('operational_not_beneficial_calls', 0) | int(0)) }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Operacionais sem Classificacao de Qualidade
+        unique_id: codex_resultados_operacionais_sem_classificacao_de_qualidade
+        icon: mdi:shield-question-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: >-
+          {% set totals = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}) %}
+          {% set completed = [0, (totals.get('operational_calls', 0) | int(0)) - (totals.get('operational_failed_calls', 0) | int(0))] | max %}
+          {% set gated = (totals.get('operational_quality_validated_calls', 0) | int(0)) + (totals.get('operational_quality_rejected_calls', 0) | int(0)) + (totals.get('operational_not_beneficial_calls', 0) | int(0)) %}
+          {{ [0, completed - gated] | max }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI Rejeitados no Gate
+        unique_id: codex_resultados_local_ai_rejeitados_no_gate
+        icon: mdi:shield-alert-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('operational_quality_rejected_calls', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Resultados Local AI Aprovados no Gate
@@ -652,6 +680,68 @@ template:
         unit_of_measurement: "resultados"
         state_class: measurement
         state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('operational_quality_validated_measured_calls', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI Aprovados sem Custo Mensuravel
+        unique_id: codex_resultados_local_ai_aprovados_sem_custo_mensuravel
+        icon: mdi:shield-off-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: >-
+          {% set totals = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}) %}
+          {{ [0, (totals.get('operational_quality_validated_calls', 0) | int(0)) - (totals.get('operational_quality_validated_measured_calls', 0) | int(0))] | max }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Conclusoes Operacionais Local AI Hoje
+        unique_id: codex_conclusoes_operacionais_local_ai_hoje
+        icon: mdi:check-circle-outline
+        unit_of_measurement: "chamadas"
+        state_class: measurement
+        state: >-
+          {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ [0, (today.get('operational_calls', 0) | int(0)) - (today.get('operational_failed_calls', 0) | int(0))] | max }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI com Gate Hoje
+        unique_id: codex_resultados_local_ai_com_gate_hoje
+        icon: mdi:shield-half-full
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: >-
+          {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ (today.get('operational_quality_validated_calls', 0) | int(0)) + (today.get('operational_quality_rejected_calls', 0) | int(0)) + (today.get('operational_not_beneficial_calls', 0) | int(0)) }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Operacionais sem Classificacao de Qualidade Hoje
+        unique_id: codex_resultados_operacionais_sem_classificacao_de_qualidade_hoje
+        icon: mdi:shield-question-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: >-
+          {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}) %}
+          {% set completed = [0, (today.get('operational_calls', 0) | int(0)) - (today.get('operational_failed_calls', 0) | int(0))] | max %}
+          {% set gated = (today.get('operational_quality_validated_calls', 0) | int(0)) + (today.get('operational_quality_rejected_calls', 0) | int(0)) + (today.get('operational_not_beneficial_calls', 0) | int(0)) %}
+          {{ [0, completed - gated] | max }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI Aprovados no Gate Hoje
+        unique_id: codex_resultados_local_ai_aprovados_no_gate_hoje
+        icon: mdi:shield-check
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: >-
+          {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ (today.get('operational_quality_validated_calls', 0) | int(0)) + (today.get('operational_not_beneficial_calls', 0) | int(0)) }}
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Resultados Local AI Aprovados sem Custo Mensuravel Hoje
+        unique_id: codex_resultados_local_ai_aprovados_sem_custo_mensuravel_hoje
+        icon: mdi:shield-off-outline
+        unit_of_measurement: "resultados"
+        state_class: measurement
+        state: >-
+          {% set today = (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}) %}
+          {{ [0, (today.get('operational_quality_validated_calls', 0) | int(0)) - (today.get('operational_quality_validated_measured_calls', 0) | int(0))] | max }}
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Resultados Local AI Validados Hoje
@@ -1172,6 +1262,14 @@ template:
         unit_of_measurement: "tokens"
         state_class: measurement
         state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('attempted_context_input_tokens', 0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
+
+      - name: Codex Contexto Tentado Local AI
+        unique_id: codex_contexto_tentado_local_ai
+        icon: mdi:text-box-search-outline
+        unit_of_measurement: "tokens"
+        state_class: measurement
+        state: "{{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {}).get('attempted_context_input_tokens', 0) }}"
         availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Economia Bruta Validada Hoje

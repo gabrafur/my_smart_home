@@ -34,19 +34,22 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             [
             "Saúde da infraestrutura",
             "Atividade ao vivo",
-            "Resultado e qualidade — hoje",
+            "Waterfall — hoje · UTC",
             ],
         )
         self.assertEqual(
             sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            31,
+            26,
         )
-        for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Contexto inicial e memória — hoje"):
+        for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Histórico de uso da RTX — últimas 48 horas"):
             self.assertIn(f"title: {title}", columns[0])
-        for title in ("Última atividade", "Saldo líquido equivalente acumulado", "Waterfall acumulado — até o resultado útil"):
+        for title in ("Última atividade", "Saldo líquido equivalente acumulado", "Waterfall — total preservado"):
             self.assertIn(f"title: {title}", columns[1])
-        for title in ("Economia útil diária — últimos 7 dias", "Taxa média diária de falhas técnicas — últimos 7 dias", "RTX em uso — últimas 48 horas"):
+        for title in ("Economia útil diária — últimos 7 dias", "Fluxo operacional diário — últimos 7 dias"):
             self.assertIn(f"title: {title}", columns[2])
+        self.assertNotIn("title: Histórico de uso da RTX — últimas 48 horas", columns[2])
+        history = columns[0].index("title: Histórico de uso da RTX — últimas 48 horas")
+        self.assertEqual(columns[0].rfind("          - type:"), columns[0].rfind("          - type:", 0, history))
         self.assertNotIn("title: Última decisão de memória", view)
         self.assertIsNone(re.search(r"^\s+title: \d+ ·", view, re.MULTILINE))
 
@@ -56,27 +59,29 @@ class RtxDashboardLayoutTest(unittest.TestCase):
 
         self.assertIn("title: Atividade ao vivo", view)
         self.assertNotIn("entity: binary_sensor.codex_rtx_em_uso", view)
-        self.assertIn("title: RTX em uso — últimas 48 horas", view)
+        self.assertIn("title: Histórico de uso da RTX — últimas 48 horas", view)
         self.assertIn("state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs')", view)
         self.assertIn(
-            "| Horário | Tarefa / modelo | Resultado / fidelidade | Duração | Saldo eq. |",
+            "| Quando | Trabalho delegado à RTX | Aproveitamento | Tempo | Economia líquida |",
             view,
         )
         self.assertIn("{% for job in jobs -%}", view)
-        self.assertIn("}`<br>`{{ job.get('model', '—') }}`", view)
+        self.assertIn("Modelo local: `{{ job.get('model', '—') }}`", view)
+        self.assertIn("'review-diff': 'Revisão de alterações'", view)
         self.assertIn("job.get('discard_reason')", view)
-        self.assertIn("🟠 sem ganho líquido", view)
-        self.assertIn("🟠 qualidade rejeitada", view)
-        self.assertLess(view.index("'🟠 sem ganho líquido' if status == 'discarded'"), view.index("'✅ utilizado' if status == 'success'"))
-        self.assertIn("Fidelidade: {{ quality }}", view)
-        self.assertIn("Fidelidade não é economia", view)
+        self.assertIn("🟠 Descartado: economia insuficiente", view)
+        self.assertIn("🟠 Descartado: fidelidade insuficiente", view)
+        self.assertLess(view.index("'🟠 Descartado: economia insuficiente' if status == 'discarded'"), view.index("'✅ Aproveitado' if status == 'success'"))
+        self.assertIn("Qualidade do conteúdo: {{ quality }}", view)
+        self.assertIn("mede aderência ao original, não economia", view)
+        self.assertIn("já desconta o custo do gate", view)
         self.assertNotIn(
             "| Horário | Tarefa | Modelo | Resultado | Qualidade | Duração | Tokens úteis líquidos |",
             view,
         )
         self.assertLess(
-            view.index("title: Taxa média diária de falhas técnicas — últimos 7 dias"),
-            view.index("title: RTX em uso — últimas 48 horas"),
+            view.index("title: Diagnóstico da última execução"),
+            view.index("title: Histórico de uso da RTX — últimas 48 horas"),
         )
 
         metric_graphs = re.findall(
@@ -97,27 +102,38 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             ("Potência", "sensor.codex_rtx_potencia_historico"),
         ])
         self.assertLess(
-            view.index("title: Waterfall acumulado — até o resultado útil"),
+            view.index("title: Waterfall — total preservado"),
             view.index("title: GPU — últimas 48 horas"),
         )
 
     def test_quality_rejection_is_not_duplicated_and_useful_reduction_is_explicit(self):
         view = rtx_view()
 
-        self.assertEqual(view.count("name: Descartados por qualidade"), 1)
+        self.assertEqual(view.count("name: Rejeitados pelo gate"), 2)
         self.assertNotIn("today.get('quality_rejected_tasks', 0)", view)
-        self.assertIn("name: Redução útil operacional", view)
-        self.assertIn("*Redução útil operacional*", view)
-        self.assertIn("name: Aproveitamento do gate", view)
+        self.assertEqual(view.count("name: Redução útil líquida"), 2)
+        self.assertIn("name: Aproveitamento de qualidade", view)
         self.assertEqual(view.count("name: Fiéis sem ganho líquido"), 2)
         self.assertIn("entity: sensor.codex_falhas_operacionais_local_ai_hoje", view)
         self.assertIn("'modelo_verificador'", view)
 
-    def test_failure_graph_separates_technical_and_quality_outcomes(self):
+    def test_daily_operational_flow_reconciles_quality_outcomes(self):
         view = rtx_view()
 
-        self.assertIn("entity: sensor.codex_taxa_de_falhas_local_ai_hoje", view)
-        self.assertNotIn("entity: sensor.codex_taxa_de_falhas_local_ai\n", view)
+        flow_start = view.index("title: Fluxo operacional diário — últimos 7 dias")
+        flow = view[flow_start:]
+        self.assertIn("get('daily_series', [])", flow)
+        self.assertIn("operational_failed_calls", flow)
+        self.assertIn("operational_quality_rejected_calls", flow)
+        self.assertIn("operational_not_beneficial_calls", flow)
+        self.assertIn("operational_quality_validated_measured_calls", flow)
+        self.assertIn("accepted_unmeasured", flow)
+        self.assertIn("unclassified", flow)
+        self.assertIn("mesmos agregados preservados", flow)
+        self.assertIn("categorias zeradas", flow)
+        self.assertIn("_Sem atividade operacional._", flow)
+        self.assertNotIn("{{ '█' * blocks }}", flow)
+        self.assertNotIn("type: statistics-graph", flow)
         self.assertNotIn("entity: sensor.codex_taxa_de_falhas_qwen_2_5_coder_14b", view)
         for stale_model in (
             "sensor.codex_taxa_de_falhas_qwen_2_5_coder_7b",
@@ -125,61 +141,43 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "sensor.codex_taxa_de_falhas_qwen_2_5_coder_1_5b",
         ):
             self.assertNotIn(f"entity: {stale_model}", view)
-        self.assertIn("resultados não aproveitados", view)
-        self.assertIn("operational_not_beneficial_calls", view)
-        self.assertIn("sem ganho líquido", view)
-        self.assertIn("operational_quality_rejected_calls", view)
-        self.assertIn("seguindo o teste A/B", view)
+        self.assertIn("fiéis sem ganho", flow)
+        self.assertIn("valem zero na Redução", flow)
+        self.assertIn("útil líquida", flow)
 
     def test_savings_graph_uses_daily_quality_validated_bars(self):
         view = rtx_view()
 
-        self.assertRegex(
-            view,
-            r"type: statistics-graph\n"
-            r"\s+title: Economia útil diária — últimos 7 dias\n"
-            r"\s+chart_type: bar\n"
-            r"\s+period: day\n"
-            r"\s+days_to_show: 7\n"
-            r"\s+stat_types:\n"
-            r"\s+- max\n"
-            r"\s+entities:\n"
-            r"\s+- entity: sensor\.codex_economia_util_liquida_validada_hoje",
-        )
-        self.assertIn("entity: sensor.codex_economia_util_liquida_validada_hoje", view)
+        savings_start = view.index("title: Economia útil diária — últimos 7 dias")
+        savings_end = view.index("title: Fluxo operacional diário — últimos 7 dias", savings_start)
+        savings = view[savings_start:savings_end]
+        self.assertIn("local.get('daily_series', [])", savings)
+        self.assertIn("useful_context_tokens_avoided", savings)
+        self.assertIn("{{ '█' * blocks }}{{ '░' * (20 - blocks) }}", savings)
+        self.assertIn("agregados diários UTC", savings)
+        self.assertIn("não dependem do histórico de uma entidade recém-criada", savings)
+        self.assertNotIn("chart_type: bar", savings)
         self.assertNotIn("name: Economia útil líquida · hoje", view)
-        self.assertIn("cujo delta supera o custo local do gate", view)
+        self.assertIn("com custo mensurado e saldo positivo", view)
         self.assertIn("descartes,", view)
-        self.assertIn("falhas, benchmarks e legado sem custo separável valem zero", view)
+        self.assertIn("falhas, benchmarks e legado sem custo", view)
+        self.assertIn("separável valem zero", view)
         self.assertIn("entity: sensor.codex_resultados_local_ai_validados_mensuraveis_hoje", view)
         self.assertNotIn("entity: sensor.codex_rtx_usos_hoje", view)
         self.assertIn("title: Referência controlada de qualidade", view)
         self.assertIn("0/12 resultados", view)
         self.assertIn("O antigo **23,2%**", view)
 
-        self.assertRegex(
-            view,
-            r"type: statistics-graph\n"
-            r"\s+title: Taxa média diária de falhas técnicas — últimos 7 dias\n"
-            r"\s+chart_type: bar\n"
-            r"\s+period: day\n"
-            r"\s+days_to_show: 7\n"
-            r"\s+stat_types:\n"
-            r"\s+- mean\n"
-            r"\s+entities:\n"
-            r"\s+- entity: sensor\.codex_taxa_de_falhas_local_ai_hoje",
-        )
-
     def test_indicator_groups_explain_how_to_read_their_metrics(self):
         view = rtx_view()
 
-        self.assertEqual(view.count("**Como ler:**"), 14)
+        self.assertEqual(view.count("**Como ler:**"), 12)
         definitions = re.findall(
             r"\*\*Como ler:\*\*(.*?)(?:\n\s*\n|$)",
             view,
             re.DOTALL,
         )
-        self.assertEqual(len(definitions), 14)
+        self.assertEqual(len(definitions), 12)
         for definition_text in definitions:
             self.assertNotIn("{{", definition_text)
             self.assertNotIn("{%", definition_text)
@@ -189,20 +187,18 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "*job* é uma tentativa",
             "*contexto evitado validado* é",
             "*saldo líquido equivalente* é",
-            "*startup observável* são",
-            "`falhas operacionais / tentativas operacionais` dentro do dia UTC",
-            "*utilizado* passou pela fidelidade",
+            "*aproveitado* significa",
         ):
             self.assertIn(definition, view)
 
-    def test_memory_section_reconciles_direct_retrievals(self):
+    def test_memory_telemetry_is_not_mixed_with_net_operational_dashboard(self):
         view = rtx_view()
 
-        self.assertIn("today.get('retrieval_calls', 0)", view)
-        self.assertIn("today.get('files_found', 0)", view)
-        self.assertIn("today.get('memory_tokens_available', 0)", view)
-        self.assertIn("de arquivos* soma seleções", view)
-        self.assertIn("**zero contexto evitado é esperado**", view)
+        self.assertNotIn("title: Contexto inicial e memória — hoje", view)
+        self.assertNotIn("memory_tokens_avoided", view)
+        self.assertNotIn("sensor.codex_contexto_inicial_observavel", view)
+        self.assertNotIn("sensor.codex_ultima_decisao_de_memoria", view)
+        self.assertIn("title: Waterfall — hoje · UTC", view)
 
     def test_accumulated_waterfall_reconciles_every_quality_stage(self):
         view = rtx_view()
@@ -212,6 +208,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             "totals.get('operational_quality_rejected_calls', 0)",
             "totals.get('operational_not_beneficial_calls', 0)",
             "totals.get('operational_quality_validated_calls', 0)",
+            "totals.get('operational_quality_validated_measured_calls', 0)",
             "totals.get('quality_validation_unmeasured_calls', 0)",
             "totals.get('diagnostic_calls', 0)",
         ):
@@ -219,10 +216,15 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         for entity in (
             "sensor.codex_chamadas_operacionais_local_ai",
             "sensor.codex_conclusoes_operacionais_local_ai",
+            "sensor.codex_falhas_operacionais_local_ai",
+            "sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade",
             "sensor.codex_resultados_local_ai_com_gate",
+            "sensor.codex_resultados_local_ai_rejeitados_no_gate",
             "sensor.codex_resultados_local_ai_aprovados_no_gate",
+            "sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel",
             "sensor.codex_resultados_local_ai_validados_mensuraveis",
             "sensor.codex_resultados_local_ai_sem_ganho_liquido",
+            "sensor.codex_contexto_tentado_local_ai",
             "sensor.codex_economia_bruta_validada",
             "sensor.codex_custo_gate_validacao_resultados",
             "sensor.codex_tokens_openai_evitados_estimados",
@@ -230,8 +232,49 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         ):
             self.assertIn(f"entity: {entity}", view)
         self.assertNotIn("| Etapa | Restante |", view)
+        self.assertIn("tentativas = sem falha técnica + falhas técnicas", view)
+        self.assertIn("fidelidade aprovada =", view)
         self.assertIn("contexto OpenAI evitado e aprovado − tokens locais", view)
         self.assertNotIn("entity: sensor.codex_fallbacks_local_ai_informados", view)
+
+    def test_today_and_preserved_waterfalls_use_identical_semantics(self):
+        view = rtx_view()
+
+        total_start = view.index("title: Waterfall — total preservado")
+        total_end = view.index("          - type: markdown", total_start)
+        today_start = view.index("title: Waterfall — hoje · UTC")
+        today_end = view.index("          - type: markdown", today_start)
+        total_entities = re.findall(r"entity: (sensor\.[a-z0-9_]+)", view[total_start:total_end])
+        today_entities = re.findall(r"entity: (sensor\.[a-z0-9_]+)", view[today_start:today_end])
+
+        expected_total = [
+            "sensor.codex_chamadas_operacionais_local_ai",
+            "sensor.codex_conclusoes_operacionais_local_ai",
+            "sensor.codex_falhas_operacionais_local_ai",
+            "sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade",
+            "sensor.codex_resultados_local_ai_com_gate",
+            "sensor.codex_resultados_local_ai_rejeitados_no_gate",
+            "sensor.codex_resultados_local_ai_aprovados_no_gate",
+            "sensor.codex_resultados_local_ai_sem_ganho_liquido",
+            "sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel",
+            "sensor.codex_resultados_local_ai_validados_mensuraveis",
+            "sensor.codex_contexto_tentado_local_ai",
+            "sensor.codex_economia_bruta_validada",
+            "sensor.codex_custo_gate_validacao_resultados",
+            "sensor.codex_tokens_openai_evitados_estimados",
+            "sensor.codex_reducao_de_contexto_local_ai",
+        ]
+        expected_today = [f"{entity}_hoje" for entity in expected_total]
+        expected_today[5] = "sensor.codex_resultados_local_ai_descartados_hoje"
+        expected_today[11] = "sensor.codex_economia_bruta_validada_hoje"
+        expected_today[12] = "sensor.codex_custo_gate_validacao_resultados_hoje"
+        expected_today[13] = "sensor.codex_tokens_openai_evitados_hoje_estimados"
+        expected_today[14] = "sensor.codex_reducao_de_contexto_local_ai_hoje"
+
+        self.assertEqual(total_entities, expected_total)
+        self.assertEqual(today_entities, expected_today)
+        self.assertIn("mesmas etapas, fórmulas e unidades", view)
+        self.assertIn("Nenhum deles significa economia de tokens", view)
 
     def test_semantic_tile_colors_distinguish_dashboard_signals(self):
         view = rtx_view()
@@ -240,7 +283,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
             self.assertIn(f"color: {color}", view)
         self.assertRegex(view, r"name: Saldo líquido equivalente\n\s+color: green")
         self.assertRegex(view, r"name: Custo do gate nos validados\n\s+color: amber")
-        self.assertRegex(view, r"name: Descartados por qualidade\n\s+color: red")
+        self.assertRegex(view, r"name: Rejeitados pelo gate\n\s+color: red")
 
     def test_routing_attention_keeps_only_actionable_signals(self):
         view = rtx_view()

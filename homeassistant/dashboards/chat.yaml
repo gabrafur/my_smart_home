@@ -264,7 +264,7 @@ views:
     path: uso-rtx
     icon: mdi:expansion-card-variant
     # Uma seção contínua por coluna evita que cards altos criem lacunas. A
-    # distribuição equilibra roteamento/memória, atividade/economia e qualidade/histórico.
+    # distribuição equilibra roteamento/diagnóstico, atividade/economia e qualidade/histórico.
     type: sections
     max_columns: 3
     dense_section_placement: false
@@ -385,7 +385,7 @@ views:
               disponível que não chamou o helper. *Falha após delegação*
               confirma erro técnico depois da escolha da RTX. Este bloco
               contém somente sinais acionáveis; rejeições de qualidade
-              aparecem em **Resultado e qualidade — hoje**. *Delegação* mede
+              aparecem em **Waterfall — hoje · UTC**. *Delegação* mede
               usos entre tarefas elegíveis e disponíveis; *realização do
               potencial* compara o saldo útil com a economia estimada do fluxo.
 
@@ -513,112 +513,50 @@ views:
               *failed* indica falha técnica. GPU/VRAM são picos
               amostrados durante o job, não valores de repouso.
 
-          - type: grid
-            title: Contexto inicial e memória — hoje
-            columns: 2
-            square: false
-            cards:
-              - type: tile
-                entity: sensor.codex_contexto_inicial_observavel
-                name: Startup observável
-                color: blue
-              - type: tile
-                entity: sensor.codex_memoria_recuperada_hoje
-                name: Memória recuperada
-                color: purple
-              - type: tile
-                entity: sensor.codex_memoria_enviada_ao_modelo_principal_hoje
-                name: Enviada ao GPT
-                color: cyan
-              - type: tile
-                entity: sensor.codex_contexto_de_memoria_evitado_hoje
-                name: Contexto evitado
-                color: green
-              - type: tile
-                entity: sensor.codex_compressao_de_memoria_hoje
-                name: Compressão de memória
-                color: purple
-              - type: tile
-                entity: sensor.codex_sobrecargas_de_memoria_hoje
-                name: Sobrecargas
-                color: red
-              - type: markdown
-                content: |-
-                  {% from 'formatting.jinja' import format_number_ptbr %}
-                  {% set today = ((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}) %}
-                  **Recuperações**
-
-                  # {{ format_number_ptbr(today.get('retrieval_calls', 0)) }}
-              - type: markdown
-                content: |-
-                  {% from 'formatting.jinja' import format_number_ptbr %}
-                  {% set today = ((((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {}).get('periods') or {}).get('today') or {}) %}
-                  **Ocorrências de arquivos**
-
-                  # {{ format_number_ptbr(today.get('files_found', 0)) }}
-
           - type: markdown
-            content: >-
+            title: Histórico de uso da RTX — últimas 48 horas
+            content: |-
               {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set memory = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('memory') or {} %}
-              {% set startup = memory.get('startup_context') or {} %}
-              {% set today = (memory.get('periods') or {}).get('today') or {} %}
-              ## Contexto inicial
+              {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+              {% set full_history = state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs') %}
+              {% set jobs = full_history if full_history is not none else local.get('latest_jobs', []) %}
+              {% set task_names = {
+                'review-diff': 'Revisão de alterações',
+                'summarize-memory': 'Resumo de memória',
+                'summarize-document': 'Resumo de documento',
+                'summarize-log': 'Resumo de logs',
+                'analyze-tests': 'Análise de testes',
+                'inspect-files': 'Análise de arquivos'
+              } %}
+              | Quando | Trabalho delegado à RTX | Aproveitamento | Tempo | Economia líquida |
+              |:--|:--|:--|--:|--:|
+              {% for job in jobs -%}
+              {% set timestamp = as_timestamp(job.get('finished_at') or job.get('started_at'), none) -%}
+              {% set status = job.get('status', '—') -%}
+              {% set discard_reason = job.get('discard_reason') -%}
+              {% set task = job.get('task', '—') -%}
+              {% set task_label = task_names.get(task, task | replace('-', ' ') | capitalize) -%}
+              {% set result = '🟠 Descartado: economia insuficiente' if status == 'discarded' and discard_reason == 'insufficient_net_savings' else '🟠 Descartado: fidelidade insuficiente' if status == 'discarded' else '✅ Aproveitado' if status == 'success' and job.get('quality_accepted') == true else '🔴 Falha técnica' if status == 'failed' else status -%}
+              {% set quality = (format_number_ptbr(job.get('quality_score_percent')) ~ '%') if job.get('quality_score_percent') is number else '—' -%}
+              | {{ timestamp | timestamp_custom('%d/%m %H:%M', true) if timestamp is number else '—' }} | **{{ task_label }}**<br>Modelo local: `{{ job.get('model', '—') }}` | {{ result }}<br>Qualidade do conteúdo: {{ quality }} | {{ (format_number_ptbr(job.get('duration_seconds'), 1) ~ ' s') if job.get('duration_seconds') is number else '—' }} | {{ format_number_ptbr(job.get('useful_context_tokens_avoided', 0)) }} tokens eq. |
+              {% else -%}
+              | — | Nenhuma inferência registrada nesta janela | — | — | 0 |
+              {% endfor %}
 
-              **AGENTS / instructions observáveis:** ~{{ format_number_ptbr(startup.get('observable_startup_context_tokens', 0)) }} tokens
-              (global: ~{{ format_number_ptbr(startup.get('global_agents_tokens', 0)) }} · repositório: ~{{ format_number_ptbr(startup.get('repo_agents_tokens', 0)) }}).
+              **Como ler:** *aproveitado* significa que o resultado local foi de
+              fato usado após passar pela qualidade e ainda economizar contexto.
+              *Economia insuficiente* significa que o custo da validação consumiu
+              o benefício; *fidelidade insuficiente* significa conteúdo não
+              confiável; *falha técnica* significa que a execução não terminou.
+              **Qualidade do conteúdo** mede aderência ao original, não economia.
+              **Economia líquida** já desconta o custo do gate e vale zero em todo
+              resultado descartado. Os valores são tokens equivalentes estimados,
+              não cobrança oficial. Benchmarks são omitidos e a tabela atualiza a
+              cada 30 segundos.
 
-              **Memória pré-carregada:** {{ format_number_ptbr(startup.get('repo_memory_tokens', 0)) }} tokens ·
-              **corpus indexado:** ~{{ format_number_ptbr(today.get('memory_tokens_available', 0)) }} tokens ·
-              **memória recuperada:** ~{{ format_number_ptbr(today.get('memory_tokens_retrieved', 0)) }} tokens ·
-              **enviada ao GPT:** ~{{ format_number_ptbr(today.get('memory_tokens_sent_to_primary_model', 0)) }} tokens ·
-              **contexto evitado:** ~{{ format_number_ptbr(today.get('memory_tokens_avoided', 0)) }} tokens.
-
-              {% if startup.get('total_startup_context_tokens') is none %}
-              O envelope interno do Codex e a memória privada automática não expõem contagem de tokens; este card mostra somente o contexto observável e indica estimativas quando aplicável.
+              {% if full_history is none %}
+              _Exibindo temporariamente os jobs recentes do feed principal até a próxima recarga programada do Home Assistant._
               {% endif %}
-
-              **Como ler:** *startup observável* são instruções mensuráveis;
-              *recuperações* conta consultas com memória encontrada; *ocorrências
-              de arquivos* soma seleções e não arquivos únicos;
-              *recuperada* é a memória selecionada sob demanda; *enviada ao GPT*
-              é o contexto que realmente seguiu ao modelo principal, integral ou
-              condensado; *evitada* é a diferença útil. *Sobrecarga*
-              registra contexto grande que não foi comprimido localmente.
-
-              {% if today.get('memory_tokens_retrieved', 0) | float(0) > 0 and today.get('compression_events', 0) | int(0) == 0 %}
-              Hoje a memória recuperada foi enviada diretamente porque ficou
-              dentro do orçamento; **zero contexto evitado é esperado**, não
-              uma falha de roteamento.
-              {% endif %}
-
-          - type: markdown
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set decision = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
-              {% set memory = decision.get('memory') or {} %}
-              {% set latest = (memory.get('latest_decisions') or [])[0] if memory.get('latest_decisions') else {} %}
-              {% if latest %}
-              ## Último roteamento de memória
-
-              **Tema:** {{ latest.get('topic') }} · **arquivos encontrados:** {{ format_number_ptbr(latest.get('files_found')) }}
-
-              Memória recuperada: ~{{ format_number_ptbr(latest.get('memory_tokens_retrieved', 0)) }} tokens ·
-              enviada ao Local AI: ~{{ format_number_ptbr(latest.get('memory_tokens_sent_to_local_ai', 0)) }} ·
-              enviada ao GPT: ~{{ format_number_ptbr(latest.get('memory_tokens_sent_to_primary_model', 0)) }} ·
-              contexto evitado: ~{{ format_number_ptbr(latest.get('memory_tokens_avoided', 0)) }}.
-
-              **Decisão:** {{ latest.get('decision') }} · {{ latest.get('reason') }}
-              {% else %}
-              ## Último roteamento de memória
-
-              Memory retrieval: **SKIPPED** — ainda não há decisão registrada nesta telemetria.
-              {% endif %}
-
-              **Como ler:** a decisão informa se a memória foi ignorada,
-              enviada diretamente, comprimida ou descartada. *Arquivos
-              encontrados* mede o retrieval; somente a diferença entre memória
-              recuperada e contexto validado enviado ao GPT conta como economia.
 
       - type: grid
         cards:
@@ -646,7 +584,7 @@ views:
 
           - type: grid
             title: Última atividade
-            columns: 2
+            columns: 3
             square: false
             cards:
               - type: tile
@@ -661,17 +599,12 @@ views:
                 entity: sensor.codex_ultima_falha_local_ai
                 name: Última falha
                 color: red
-              - type: tile
-                entity: sensor.codex_ultima_decisao_de_memoria
-                name: Última memória
-                color: cyan
 
           - type: markdown
             content: >-
               **Como ler:** *Job atual / último* acompanha a inferência; *última
               decisão* mostra a escolha do roteador; *última falha* considera
-              apenas erro técnico; *última memória* descreve o retrieval mais
-              recente. Os horários podem ser diferentes porque são eventos
+              apenas erro técnico. Os horários podem ser diferentes porque são eventos
               independentes.
 
           - type: grid
@@ -681,34 +614,49 @@ views:
             cards:
               - type: tile
                 entity: sensor.codex_tokens_openai_evitados_hoje_estimados
-                name: Hoje
+                name: Hoje · UTC
                 color: green
               - type: tile
                 entity: sensor.codex_tokens_openai_evitados_semana_estimados
-                name: Esta semana
+                name: Últimos 7 dias
                 color: green
               - type: tile
                 entity: sensor.codex_tokens_openai_evitados_mes_estimados
-                name: Este mês
+                name: Mês atual · UTC
                 color: green
               - type: tile
                 entity: sensor.codex_tokens_openai_evitados_estimados
-                name: Total
+                name: Total preservado
                 color: green
 
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
+              {% set daily = local.get('daily_series', []) %}
+              {% set positive = daily | selectattr('useful_context_tokens_avoided', 'gt', 0) | list %}
+              {% set last = positive[-1] if positive else none %}
               **Como ler:** **chamadas** medem quantas tarefas locais foram tentadas; o
               **saldo líquido equivalente** mostra o contexto validado menos os tokens
               locais usados por seus gates de fidelidade.
               São unidades diferentes e não devem ser comparadas no mesmo gráfico. A estimativa
               combina tokenizadores diferentes e não representa cobrança oficial da
               OpenAI; descartes contam zero.
-              *Hoje*, *semana* e *mês* usam janelas UTC; *total* cobre toda a
+              *Hoje* e *mês atual* usam calendário UTC; *últimos 7 dias* é uma
+              janela móvel, não a semana do calendário; *total* cobre toda a
               telemetria preservada.
 
+              {% if last %}
+              **Último dia com saldo positivo:** {{ last.get('day')[8:10] }}/{{ last.get('day')[5:7] }} ·
+              {{ format_number_ptbr(last.get('useful_context_tokens_avoided', 0)) }} tokens equivalentes.
+              Se hoje estiver em zero e as demais janelas repetirem o total, toda
+              a redução útil dessas janelas veio desse dia anterior.
+              {% else %}
+              **Nenhum dos últimos 7 dias teve saldo útil positivo.**
+              {% endif %}
+
           - type: grid
-            title: Waterfall acumulado — até o resultado útil
+            title: Waterfall — total preservado
             columns: 2
             square: false
             cards:
@@ -718,24 +666,44 @@ views:
                 color: blue
               - type: tile
                 entity: sensor.codex_conclusoes_operacionais_local_ai
-                name: Conclusões técnicas
+                name: Sem falha técnica
                 color: cyan
               - type: tile
+                entity: sensor.codex_falhas_operacionais_local_ai
+                name: Falhas técnicas
+                color: red
+              - type: tile
+                entity: sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade
+                name: Sem classificação de qualidade
+                color: amber
+              - type: tile
                 entity: sensor.codex_resultados_local_ai_com_gate
-                name: Resultados com gate
+                name: Avaliados pelo gate
                 color: purple
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_rejeitados_no_gate
+                name: Rejeitados pelo gate
+                color: red
               - type: tile
                 entity: sensor.codex_resultados_local_ai_aprovados_no_gate
                 name: Fidelidade aprovada
                 color: cyan
               - type: tile
+                entity: sensor.codex_resultados_local_ai_sem_ganho_liquido
+                name: Fiéis sem ganho líquido
+                color: amber
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel
+                name: Aprovados sem custo mensurável
+                color: amber
+              - type: tile
                 entity: sensor.codex_resultados_local_ai_validados_mensuraveis
                 name: Aprovados com custo mensurado
                 color: green
               - type: tile
-                entity: sensor.codex_resultados_local_ai_sem_ganho_liquido
-                name: Fiéis sem ganho líquido
-                color: amber
+                entity: sensor.codex_contexto_tentado_local_ai
+                name: Contexto tentado
+                color: blue
               - type: tile
                 entity: sensor.codex_economia_bruta_validada
                 name: Contexto OpenAI evitado validado
@@ -757,25 +725,45 @@ views:
             content: >-
               {% from 'formatting.jinja' import format_number_ptbr %}
               {% set totals = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('totals') or {} %}
-              {% set completed = totals.get('operational_successful_calls', 0) | int(0) %}
+              {% set calls = totals.get('operational_calls', 0) | int(0) %}
+              {% set failed = totals.get('operational_failed_calls', 0) | int(0) %}
+              {% set completed = [calls - failed, 0] | max %}
               {% set accepted = totals.get('operational_quality_validated_calls', 0) | int(0) %}
-              {% set unclassified = [completed - accepted, 0] | max %}
-              {% set unmeasured = totals.get('quality_validation_unmeasured_calls', 0) | int(0) %}
+              {% set rejected = totals.get('operational_quality_rejected_calls', 0) | int(0) %}
+              {% set not_beneficial = totals.get('operational_not_beneficial_calls', 0) | int(0) %}
+              {% set gated = accepted + rejected + not_beneficial %}
+              {% set unclassified = [completed - gated, 0] | max %}
+              {% set approved = accepted + not_beneficial %}
+              {% set accepted_measured = totals.get('operational_quality_validated_measured_calls', 0) | int(0) %}
+              {% set accepted_unmeasured = [accepted - accepted_measured, 0] | max %}
+              {% set gate_unmeasured = totals.get('quality_validation_unmeasured_calls', 0) | int(0) %}
               {% set unmeasured_gross = totals.get('quality_validation_unmeasured_gross_tokens', 0) | float(0) %}
-              **Saídas acumuladas:** {{ format_number_ptbr(totals.get('operational_failed_calls', 0)) }} falhas técnicas ·
-              {{ format_number_ptbr(unclassified) }} sem classificação de qualidade ·
-              {{ format_number_ptbr(totals.get('operational_quality_rejected_calls', 0)) }} descartes pelo gate ·
-              {{ format_number_ptbr(totals.get('operational_not_beneficial_calls', 0)) }} fiéis sem ganho líquido ·
-              {{ format_number_ptbr(totals.get('diagnostic_calls', 0)) }} diagnósticos fora do fluxo.
+              **Reconciliação:** tentativas = sem falha técnica + falhas técnicas;
+              sem falha técnica = sem classificação + avaliados pelo gate;
+              avaliados = rejeitados + fidelidade aprovada; fidelidade aprovada =
+              fiéis sem ganho + aprovados sem custo mensurável + aprovados com custo mensurado.
 
-              {% if unmeasured > 0 %}
-              ⚠️ {{ format_number_ptbr(unmeasured) }} resultados do legado não
-              separam os tokens do verificador. Seus {{ format_number_ptbr(unmeasured_gross) }}
-              tokens brutos ficam fora da etapa mensurável e valem zero líquido.
+              **Conferência atual:** {{ format_number_ptbr(calls) }} =
+              {{ format_number_ptbr(completed) }} + {{ format_number_ptbr(failed) }};
+              {{ format_number_ptbr(completed) }} = {{ format_number_ptbr(unclassified) }} +
+              {{ format_number_ptbr(gated) }}; {{ format_number_ptbr(gated) }} =
+              {{ format_number_ptbr(rejected) }} + {{ format_number_ptbr(approved) }};
+              {{ format_number_ptbr(approved) }} = {{ format_number_ptbr(not_beneficial) }} +
+              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }}.
+
+              {% if accepted_unmeasured > 0 %}
+              ⚠️ {{ format_number_ptbr(accepted_unmeasured) }} resultados aprovados
+              não têm custo do verificador separável. Seus {{ format_number_ptbr(unmeasured_gross) }}
+              tokens brutos auditáveis valem zero no saldo líquido. Ao todo,
+              {{ format_number_ptbr(gate_unmeasured) }} avaliações antigas não têm
+              custo separável, incluindo resultados rejeitados que já valem zero.
               {% endif %}
 
-              **Como ler:** os seis primeiros indicadores acompanham a perda
-              de volume até um resultado utilizável e mensurável. Os quatro últimos mudam para tokens:
+              **Fora do waterfall operacional:** {{ format_number_ptbr(totals.get('diagnostic_calls', 0)) }}
+              benchmarks diagnósticos.
+
+              **Como ler:** os indicadores de chamadas e resultados explicitam
+              cada saída do fluxo até um resultado utilizável e mensurável. Os quatro últimos mudam para tokens:
               contexto OpenAI evitado e aprovado − tokens locais de entrada e
               saída do gate dos aprovados = saldo líquido equivalente. Como os
               tokenizadores são diferentes, esse saldo é um índice conservador,
@@ -819,10 +807,54 @@ views:
       - type: grid
         cards:
           - type: grid
-            title: Resultado e qualidade — hoje
+            title: Waterfall — hoje · UTC
             columns: 2
             square: false
             cards:
+              - type: tile
+                entity: sensor.codex_chamadas_operacionais_local_ai_hoje
+                name: Tentativas operacionais
+                color: blue
+              - type: tile
+                entity: sensor.codex_conclusoes_operacionais_local_ai_hoje
+                name: Sem falha técnica
+                color: cyan
+              - type: tile
+                entity: sensor.codex_falhas_operacionais_local_ai_hoje
+                name: Falhas técnicas
+                color: red
+              - type: tile
+                entity: sensor.codex_resultados_operacionais_sem_classificacao_de_qualidade_hoje
+                name: Sem classificação de qualidade
+                color: amber
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_com_gate_hoje
+                name: Avaliados pelo gate
+                color: purple
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_descartados_hoje
+                name: Rejeitados pelo gate
+                color: red
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_aprovados_no_gate_hoje
+                name: Fidelidade aprovada
+                color: cyan
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_sem_ganho_liquido_hoje
+                name: Fiéis sem ganho líquido
+                color: amber
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_aprovados_sem_custo_mensuravel_hoje
+                name: Aprovados sem custo mensurável
+                color: amber
+              - type: tile
+                entity: sensor.codex_resultados_local_ai_validados_mensuraveis_hoje
+                name: Aprovados com custo mensurado
+                color: green
+              - type: tile
+                entity: sensor.codex_contexto_tentado_local_ai_hoje
+                name: Contexto tentado
+                color: blue
               - type: tile
                 entity: sensor.codex_economia_bruta_validada_hoje
                 name: Contexto OpenAI evitado validado
@@ -836,55 +868,66 @@ views:
                 name: Saldo líquido equivalente
                 color: green
               - type: tile
-                entity: sensor.codex_contexto_tentado_local_ai_hoje
-                name: Contexto tentado
-                color: blue
-              - type: tile
                 entity: sensor.codex_reducao_de_contexto_local_ai_hoje
-                name: Redução útil operacional
+                name: Redução útil líquida
                 color: green
+
+          - type: markdown
+            content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set today = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {} %}
+              {% set calls = today.get('operational_calls', 0) | int(0) %}
+              {% set failed = today.get('operational_failed_calls', 0) | int(0) %}
+              {% set completed = [calls - failed, 0] | max %}
+              {% set accepted = today.get('operational_quality_validated_calls', 0) | int(0) %}
+              {% set rejected = today.get('operational_quality_rejected_calls', 0) | int(0) %}
+              {% set not_beneficial = today.get('operational_not_beneficial_calls', 0) | int(0) %}
+              {% set gated = accepted + rejected + not_beneficial %}
+              {% set unclassified = [completed - gated, 0] | max %}
+              {% set approved = accepted + not_beneficial %}
+              {% set accepted_measured = today.get('operational_quality_validated_measured_calls', 0) | int(0) %}
+              {% set accepted_unmeasured = [accepted - accepted_measured, 0] | max %}
+              **Conferência de hoje:** {{ format_number_ptbr(calls) }} =
+              {{ format_number_ptbr(completed) }} + {{ format_number_ptbr(failed) }};
+              {{ format_number_ptbr(completed) }} = {{ format_number_ptbr(unclassified) }} +
+              {{ format_number_ptbr(gated) }}; {{ format_number_ptbr(gated) }} =
+              {{ format_number_ptbr(rejected) }} + {{ format_number_ptbr(approved) }};
+              {{ format_number_ptbr(approved) }} = {{ format_number_ptbr(not_beneficial) }} +
+              {{ format_number_ptbr(accepted_unmeasured) }} + {{ format_number_ptbr(accepted_measured) }}.
+
+              **Como ler:** este bloco usa as mesmas etapas, fórmulas e unidades
+              do **Waterfall — total preservado**, mas inclui somente eventos do
+              dia UTC atual. *contexto evitado validado* é somente o delta dos
+              resultados aprovados com custo mensurável; contexto evitado validado − custo do gate = saldo
+              líquido equivalente; a redução útil divide esse saldo por todo o
+              contexto tentado. Descartes e falhas valem zero no numerador.
+
+          - type: grid
+            title: Diagnóstico do gate — hoje · UTC
+            columns: 3
+            square: false
+            cards:
               - type: tile
                 entity: sensor.codex_taxa_de_aproveitamento_do_gate_hoje
-                name: Aproveitamento do gate
+                name: Aproveitamento de qualidade
                 color: purple
               - type: tile
-                entity: sensor.codex_resultados_local_ai_validados_mensuraveis_hoje
-                name: Aprovados com custo mensurado
-                color: green
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_descartados_hoje
-                name: Descartados por qualidade
-                color: red
-              - type: tile
-                entity: sensor.codex_resultados_local_ai_sem_ganho_liquido_hoje
-                name: Fiéis sem ganho líquido
-                color: amber
-              - type: tile
-                entity: sensor.codex_falhas_operacionais_local_ai_hoje
-                name: Falhas técnicas
-                color: red
-              - type: tile
                 entity: sensor.codex_cobertura_do_custo_do_gate_hoje
-                name: Cobertura do custo do gate
+                name: Gates com custo mensurado
                 color: amber
               - type: tile
                 entity: sensor.codex_cobertura_da_classificacao_operacional_hoje
-                name: Cobertura da classificação
+                name: Eventos com classificação
                 color: cyan
 
           - type: markdown
             content: >-
-              **Como ler:** *contexto evitado validado* é o delta estimado pelo
-              tokenizer OpenAI somente dos resultados aprovados; *custo do gate*
-              usa tokens locais do verificador; *saldo líquido equivalente* é a
-              diferença conservadora entre ambos. *Redução útil operacional*
-              divide esse saldo por todo o contexto tentado, portanto descartes
-              e falhas valem zero no numerador. *Fiéis sem ganho líquido* passam
-              na qualidade, mas o custo do gate elimina a economia. *Aproveitamento*
-              mede aprovados na fidelidade entre todos os resultados com gate;
-              *cobertura do custo* mostra
-              quanto do gate tem contagem separável; *cobertura da classificação*
-              separa tentativas operacionais, diagnósticos e legado.
+              **Como ler:** estes percentuais diagnosticam a qualidade da medição
+              e ficam separados do waterfall. *Aproveitamento de qualidade* mede
+              resultados fiéis entre os avaliados pelo gate; *gates com custo
+              mensurado* mede avaliações cujo custo local foi registrado;
+              *eventos com classificação* mede a cobertura da telemetria
+              operacional. Nenhum deles significa economia de tokens.
 
           - type: markdown
             title: Referência controlada de qualidade
@@ -899,104 +942,71 @@ views:
               fidelidade das fixtures; não executa o modelo principal nos dois
               braços e, portanto, não é uma previsão da redução operacional.
 
-          - type: statistics-graph
+          - type: markdown
             title: Economia útil diária — últimos 7 dias
-            chart_type: bar
-            period: day
-            days_to_show: 7
-            stat_types:
-              - max
-            entities:
-              - entity: sensor.codex_economia_util_liquida_validada_hoje
-                name: Saldo líquido equivalente
-
-          - type: markdown
             content: >-
-              **Como ler:** cada barra mostra o total útil líquido máximo do dia;
-              o contador reinicia à meia-noite UTC. Somente resultados aprovados
-              cujo delta supera o custo local do gate elevam a série; descartes,
-              falhas, benchmarks e legado sem custo separável valem zero. A entidade diária dedicada evita herdar o histórico bruto
-              da métrica antiga e não representa cobrança oficial da OpenAI.
-
-          - type: statistics-graph
-            title: Chamadas operacionais — últimos 7 dias
-            chart_type: bar
-            period: day
-            days_to_show: 7
-            stat_types:
-              - max
-            entities:
-              - entity: sensor.codex_chamadas_operacionais_local_ai_hoje
-                name: Tentativas operacionais
-
-          - type: markdown
-            content: >-
-              **Como ler:** cada barra é o total diário de tentativas que
-              pretendiam substituir contexto do modelo principal. Resultados
-              aceitos, descartes e falhas entram; benchmarks diagnósticos ficam fora.
-
-          - type: statistics-graph
-            title: Taxa média diária de falhas técnicas — últimos 7 dias
-            chart_type: bar
-            period: day
-            days_to_show: 7
-            stat_types:
-              - mean
-            entities:
-              - entity: sensor.codex_taxa_de_falhas_local_ai_hoje
-                name: Média diária
-
-          - type: markdown
-            content: >-
-              {% from 'formatting.jinja' import format_number_ptbr %}
-              {% set today = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {} %}
-              {% set calls = today.get('operational_calls', 0) | float(0) %}
-              {% set failed = today.get('operational_failed_calls', 0) | float(0) %}
-              {% set rejected = today.get('operational_quality_rejected_calls', 0) | float(0) %}
-              {% set not_beneficial = today.get('operational_not_beneficial_calls', 0) | float(0) %}
-              **Hoje:** falhas técnicas **{{ format_number_ptbr((failed / calls * 100) if calls > 0 else 0, 1) }}%** ·
-              descartes por qualidade **{{ format_number_ptbr((rejected / calls * 100) if calls > 0 else 0, 1) }}%** ·
-              sem ganho líquido **{{ format_number_ptbr((not_beneficial / calls * 100) if calls > 0 else 0, 1) }}%** ·
-              resultados não aproveitados **{{ format_number_ptbr(((failed + rejected + not_beneficial) / calls * 100) if calls > 0 else 0, 1) }}%**.
-
-              **Como ler:** cada barra é a média temporal das leituras de
-              `falhas operacionais / tentativas operacionais` dentro do dia UTC; o valor corrente de hoje
-              aparece acima. O gráfico mostra somente erros técnicos.
-              Rejeições de fidelidade e resultados sem ganho líquido não entram
-              como falha técnica, mas entram em *resultados não aproveitados* e
-              reduzem a **Redução útil** com economia zero, seguindo o teste A/B.
-
-          - type: markdown
-            title: RTX em uso — últimas 48 horas
-            content: |-
               {% from 'formatting.jinja' import format_number_ptbr %}
               {% set local = state_attr('sensor.codex_usage_raw', 'local_ai') or {} %}
-              {% set full_history = state_attr('sensor.codex_rtx_historico_48h_raw', 'jobs') %}
-              {% set jobs = full_history if full_history is not none else local.get('latest_jobs', []) %}
-              | Horário | Tarefa / modelo | Resultado / fidelidade | Duração | Saldo eq. |
-              |:--|:--|:--|--:|--:|
-              {% for job in jobs -%}
-              {% set timestamp = as_timestamp(job.get('finished_at') or job.get('started_at'), none) -%}
-              {% set status = job.get('status', '—') -%}
-              {% set discard_reason = job.get('discard_reason') -%}
-              {% set result = '🟠 sem ganho líquido' if status == 'discarded' and discard_reason == 'insufficient_net_savings' else '🟠 qualidade rejeitada' if status == 'discarded' else '✅ utilizado' if status == 'success' and job.get('quality_accepted') == true else '🔴 falhou' if status == 'failed' else status -%}
-              {% set quality = (format_number_ptbr(job.get('quality_score_percent')) ~ '%') if job.get('quality_score_percent') is number else '—' -%}
-              | {{ timestamp | timestamp_custom('%d/%m %H:%M', true) if timestamp is number else '—' }} | `{{ job.get('task', '—') }}`<br>`{{ job.get('model', '—') }}` | {{ result }}<br>Fidelidade: {{ quality }} | {{ (format_number_ptbr(job.get('duration_seconds'), 1) ~ ' s') if job.get('duration_seconds') is number else '—' }} | {{ format_number_ptbr(job.get('useful_context_tokens_avoided', 0)) }} |
-              {% else -%}
-              | — | Nenhuma inferência registrada nesta janela | — | — | 0 |
+              {% set daily = local.get('daily_series', []) %}
+              {% set values = daily | map(attribute='useful_context_tokens_avoided') | list %}
+              {% set peak = values | max if values else 0 %}
+              {% if daily %}
+              {% for item in daily %}
+              {% set value = item.get('useful_context_tokens_avoided', 0) | float(0) %}
+              {% set reduction = item.get('useful_reduction_percent') %}
+              {% set raw_blocks = ((value * 20 / peak) | int) if peak > 0 else 0 %}
+              {% set blocks = [1, raw_blocks] | max if value > 0 else 0 %}
+              **{{ item.get('day')[8:10] }}/{{ item.get('day')[5:7] }}** `{{ '█' * blocks }}{{ '░' * (20 - blocks) }}` **{{ format_number_ptbr(value) }} tokens** · {{ (format_number_ptbr(reduction, 1) ~ '%') if reduction is number else '—' }}
+
               {% endfor %}
-
-              **Como ler:** *utilizado* passou pela fidelidade e gerou economia
-              líquida suficiente; *sem ganho líquido* preservou o conteúdo, mas
-              o delta após o custo do gate ficou abaixo do mínimo; *qualidade
-              rejeitada* falhou na fidelidade; *falhou* é erro técnico.
-              Fidelidade não é economia. Todo resultado não utilizado aparece
-              com **zero tokens úteis líquidos**. A tabela omite benchmarks e é
-              atualizada a cada 30 segundos.
-
-              {% if full_history is none %}
-              _Exibindo temporariamente os jobs recentes do feed principal até a próxima recarga programada do Home Assistant._
+              {% else %}
+              Série diária ainda não recebida do bridge.
               {% endif %}
+
+              **Como ler:** as barras vêm diretamente dos agregados diários UTC
+              preservados pela telemetria, portanto os dias anteriores aparecem
+              imediatamente e não dependem do histórico de uma entidade recém-criada.
+              Somente resultados utilizados, com custo mensurado e saldo positivo,
+              elevam a barra; descartes, falhas, benchmarks e legado sem custo
+              separável valem zero. O valor é um saldo equivalente, não cobrança oficial.
+
+          - type: markdown
+            title: Fluxo operacional diário — últimos 7 dias
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set daily = (state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('daily_series', []) %}
+              {% if daily %}
+              {% for item in daily %}
+              {% set calls = item.get('operational_calls', 0) | int(0) %}
+              {% set failed = item.get('operational_failed_calls', 0) | int(0) %}
+              {% set rejected = item.get('operational_quality_rejected_calls', 0) | int(0) %}
+              {% set no_gain = item.get('operational_not_beneficial_calls', 0) | int(0) %}
+              {% set accepted = item.get('operational_quality_validated_calls', 0) | int(0) %}
+              {% set measured = item.get('operational_quality_validated_measured_calls', 0) | int(0) %}
+              {% set accepted_unmeasured = [accepted - measured, 0] | max %}
+              {% set unclassified = [calls - failed - rejected - no_gain - accepted, 0] | max %}
+              **{{ item.get('day')[8:10] }}/{{ item.get('day')[5:7] }} · {{ format_number_ptbr(calls) }} tentativas**
+              {% if calls == 0 %}
+              _Sem atividade operacional._
+              {% else %}
+              {% set ns = namespace(first=true) %}
+              {% if measured > 0 %}🟢 **{{ format_number_ptbr(measured) }} úteis**{% set ns.first = false %}{% endif %}{% if rejected > 0 %}{{ ' · ' if not ns.first else '' }}🟠 **{{ format_number_ptbr(rejected) }} rejeitadas**{% set ns.first = false %}{% endif %}{% if no_gain > 0 %}{{ ' · ' if not ns.first else '' }}⚖️ **{{ format_number_ptbr(no_gain) }} sem ganho**{% set ns.first = false %}{% endif %}{% if failed > 0 %}{{ ' · ' if not ns.first else '' }}🔴 **{{ format_number_ptbr(failed) }} falhas**{% set ns.first = false %}{% endif %}{% if unclassified > 0 %}{{ ' · ' if not ns.first else '' }}⚪ **{{ format_number_ptbr(unclassified) }} sem classificação**{% set ns.first = false %}{% endif %}{% if accepted_unmeasured > 0 %}{{ ' · ' if not ns.first else '' }}🟡 **{{ format_number_ptbr(accepted_unmeasured) }} sem custo mensurado**{% endif %}
+
+              Saldo líquido: **{{ format_number_ptbr(item.get('useful_context_tokens_avoided', 0)) }} tokens**
+              {% endif %}
+
+              {% endfor %}
+              {% else %}
+              Série diária ainda não recebida do bridge.
+              {% endif %}
+
+              **Como ler:** cada linha é o waterfall daquele dia UTC e vem dos
+              mesmos agregados preservados usados por **Waterfall — hoje · UTC** e
+              **total preservado**. *Tentativas* mede volume; categorias zeradas
+              são ocultadas para facilitar a leitura. *Úteis* são resultados
+              utilizados com custo do gate mensurado; rejeições, fiéis sem ganho,
+              falhas e itens sem classificação ou custo valem zero na Redução
+              útil líquida. Benchmarks ficam fora.
 
   - title: Assistentes
     path: assistentes
