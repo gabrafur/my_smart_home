@@ -53,6 +53,18 @@ command_line:
         - disk_inodes_total
         - disk_inodes_free
         - disk_inodes_used_percent
+        - storage_maintenance_filesystem_total_bytes
+        - storage_maintenance_filesystem_used_bytes
+        - storage_maintenance_filesystem_free_bytes
+        - storage_maintenance_filesystem_used_percent
+        - storage_maintenance_inodes_total
+        - storage_maintenance_inodes_used
+        - storage_maintenance_docker_logical_bytes
+        - storage_maintenance_known_logs_bytes
+        - storage_maintenance_repository_bytes
+        - storage_maintenance_last_reclaimed_bytes
+        - storage_maintenance_last_at
+        - storage_maintenance_last_result
         - network_interface
         - network_operstate
         - network_ip
@@ -247,6 +259,63 @@ template:
         state_class: measurement
         state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_inodes_used_percent') }}"
         availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_inodes_used_percent') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Docker
+        unique_id: raspberry_pi_storage_maintenance_docker
+        icon: mdi:docker
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_docker_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_docker_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Known Logs
+        unique_id: raspberry_pi_storage_maintenance_known_logs
+        icon: mdi:text-box-outline
+        device_class: data_size
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_known_logs_bytes') %}
+          {{ (value / 1048576) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_known_logs_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Repository
+        unique_id: raspberry_pi_storage_maintenance_repository
+        icon: mdi:source-repository
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_repository_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_repository_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Reclaimed
+        unique_id: raspberry_pi_storage_maintenance_reclaimed
+        icon: mdi:delete-sweep
+        device_class: data_size
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_reclaimed_bytes') %}
+          {{ (value / 1048576) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_reclaimed_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Last Run
+        unique_id: raspberry_pi_storage_maintenance_last_run
+        icon: mdi:clock-check-outline
+        device_class: timestamp
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_at') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_at') not in [none, '', 'unknown', 'unavailable'] }}"
+
+      - name: Raspberry Pi Storage Maintenance Result
+        unique_id: raspberry_pi_storage_maintenance_result
+        icon: mdi:list-status
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_result') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_result') not in [none, '', 'unknown', 'unavailable'] }}"
 
       - name: Raspberry Pi Uptime
         unique_id: raspberry_pi_uptime

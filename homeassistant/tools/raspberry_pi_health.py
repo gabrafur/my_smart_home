@@ -21,6 +21,9 @@ OS_RELEASE_PATHS = (
     Path("/etc/os-release"),
 )
 CONFIG_PATH = Path(os.environ.get("PI_HEALTH_CONFIG_PATH", "/config"))
+STORAGE_MAINTENANCE_STATUS_PATH = Path(
+    os.environ.get("PI_STORAGE_MAINTENANCE_STATUS_PATH", str(CONFIG_PATH / "storage-maintenance-status.json"))
+)
 
 
 def first_existing(path: Path) -> Path:
@@ -193,6 +196,48 @@ def disk_metrics() -> dict:
         "disk_inodes_free": inode_free if inode_total else None,
         "disk_inodes_used_percent": round((inode_used / inode_total) * 100, 1) if inode_total else None,
     }
+
+
+def storage_maintenance_metrics() -> dict:
+    """Read the host-written, non-sensitive maintenance status if available."""
+    keys = (
+        "filesystem_total_bytes",
+        "filesystem_used_bytes",
+        "filesystem_free_bytes",
+        "filesystem_used_percent",
+        "inodes_total",
+        "inodes_used",
+        "docker_logical_bytes",
+        "known_logs_bytes",
+        "repository_bytes",
+        "last_reclaimed_bytes",
+    )
+    metrics: dict[str, int | float | str | None] = {
+        f"storage_maintenance_{key}": None for key in keys
+    }
+    metrics.update(
+        {
+            "storage_maintenance_last_at": None,
+            "storage_maintenance_last_result": None,
+        }
+    )
+    try:
+        payload = json.loads(STORAGE_MAINTENANCE_STATUS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return metrics
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        return metrics
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
+            metrics[f"storage_maintenance_{key}"] = value
+    last_at = payload.get("last_maintenance_at")
+    if isinstance(last_at, str) and last_at:
+        metrics["storage_maintenance_last_at"] = last_at
+    last_result = payload.get("last_result")
+    if last_result in {"success", "partial", "failed"}:
+        metrics["storage_maintenance_last_result"] = last_result
+    return metrics
 
 
 def load_metrics() -> dict:
@@ -440,6 +485,7 @@ def main() -> int:
     metrics.update(load_metrics())
     metrics.update(memory_metrics())
     metrics.update(disk_metrics())
+    metrics.update(storage_maintenance_metrics())
     metrics.update(network_metrics(previous, now))
     metrics.update(throttling_metrics())
     metrics.update(uptime_metrics())

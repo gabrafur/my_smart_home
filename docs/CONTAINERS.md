@@ -214,6 +214,12 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
+Antes de aplicar limpeza manual, consulte a
+[auditoria de armazenamento](operations/storage-audit.md) e rode
+`scripts/storage-maintenance.sh --dry-run`. A execução sem argumentos nunca
+limpa: `--apply` é obrigatório, volumes e dados persistentes não têm ação de
+remoção, e categorias de maior risco permanecem somente como relatório.
+
 O script descobre o próprio diretório, portanto não depende mais de
 `/mnt/data/docker`. Ele faz backup Git, resolve digests, valida Compose e
 Node-RED e só então recria os serviços. Mudanças de banco, fabric ou protocolo

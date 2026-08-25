@@ -210,6 +210,12 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
+Before applying manual cleanup, read the
+[storage audit](operations/storage-audit.md) and run
+`scripts/storage-maintenance.sh --dry-run`. Running without arguments never
+cleans: `--apply` is mandatory, volumes and persistent data have no removal
+action, and higher-risk categories remain report-only.
+
 The cron installer adds an idempotent managed block that processes requests
 from the **Run Storage Health** dashboard button once per minute with reduced
 CPU and I/O priority. Home Assistant and Node-RED do not receive the Docker

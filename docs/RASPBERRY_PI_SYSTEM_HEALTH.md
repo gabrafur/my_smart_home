@@ -29,6 +29,23 @@ O coletor roda a cada 60 segundos via `command_line` e entrega um JSON unico. Os
 
 ## Storage Health e manutencao preventiva
 
+### Auditoria end-to-end de 2026-08-25
+
+A auditoria atual, com medidas em bytes, ranking, Docker/containerd, Recorder,
+backups, checkout Git, política de retenção e pendências manuais, está em
+[`operations/storage-audit.md`](operations/storage-audit.md). Ela substitui os
+valores pontuais abaixo como fotografia corrente, mas preserva o diagnóstico de
+2026-08-13 como histórico.
+
+O script host agora separa as categorias `report`, `logs`, `journald`,
+`apt-cache`, `temporary-files`, `docker-images`, `docker-build-cache`,
+`stopped-containers`, `git`, `project-artifacts` e
+`home-assistant-backups`. Dry-run é o padrão; volumes, bancos, contexto e dados
+persistentes não têm caminho de remoção. Cada apply grava um JSON não sensível
+e ignorado pelo Git, consumido pelo coletor de saúde para expor tamanho lógico
+do Docker, logs conhecidos, checkout, última execução, resultado e espaço
+recuperado.
+
 ### Diagnostico de 2026-08-13
 
 O salto observado no grafico de aproximadamente 36% para 51% foi correlacionado
@@ -163,16 +180,21 @@ entram no escopo. O container continua sem Docker socket, mount do host ou
 `sudo`.
 
 No host, `scripts/storage-maintenance.sh` limita o build cache sem uso a 2 GB
-(`builder prune --all --max-used-space 2GB`) e remove imagens dangling com mais
-de 24 horas. O limite de tamanho é necessário porque um build recente pode
-manter toda uma cadeia antiga alcançável e tornar ineficaz uma política baseada
-somente em idade. O script valida argumentos, e idempotente,
-registra metricas antes/depois, recusa `--apply` sob pressão de memória ou
-filesystem e usa dry-run por padrao:
+(`builder prune --all --max-used-space 2GB`) e remove imagens sem tag com mais
+de 24 horas somente depois de provar que nenhum container as referencia. Essa
+checagem explícita cobre o store containerd atual, no qual uma imagem sem tag
+nem sempre aparece em `docker image ls --filter dangling=true`. O limite de
+tamanho é necessário porque um build recente pode manter toda uma cadeia antiga
+alcançável e tornar ineficaz uma política baseada somente em idade. O script
+valida argumentos, caminhos e symlinks, usa lock, é idempotente, registra
+métricas antes/depois, recusa `--apply` sob pressão de memória ou filesystem e
+usa dry-run por padrão:
 
 ```bash
 scripts/storage-maintenance.sh --dry-run
 scripts/storage-maintenance.sh --apply --min-age 24 --max-build-cache 2GB
+scripts/storage-maintenance.sh --dry-run --category all
+scripts/storage-maintenance.sh --apply --category docker-build-cache --max-build-cache 1GB
 scripts/install-storage-maintenance-cron.sh
 ```
 
@@ -186,6 +208,7 @@ Continuam deliberadamente manuais:
 - limpeza de servidores/extensoes VS Code/Cursor em `/home/resident_primary`;
 - purge/repack do Recorder e exclusao de backups do Home Assistant;
 - vacuum ou mudanca de retencao do journald;
+- limpeza de logs PM2 e caches npm/IDE fora das allowlists do projeto;
 - qualquer `du` completo em `/`.
 
 Para troubleshooting, comece por `df -h`, `df -i`, `docker system df -v`,
