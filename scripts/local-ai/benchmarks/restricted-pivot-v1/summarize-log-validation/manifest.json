@@ -1,0 +1,29 @@
+{
+  "calibration_cases": 30,
+  "cases": 120,
+  "dataset": "restricted-pivot-summarize-log-v1",
+  "dataset_sha256": "a5e5220dba48759d131f585cbe25f97e1a01b701db051a7be636e85eb7d11e8f",
+  "files": {
+    "dataset.jsonl": "4df8fb65ca01de9965d786d0aa8ec3ad557a06ce26753aafa90d2d652cf3b451",
+    "inputs.json": "e3e8b0dc8fc38843706b5bb386e373f5651cdcd2ad1e9060d394e9a69d4c3536",
+    "schema.json": "1a838b0a152af21acac27eff21ee8951ded7ac862c7e84680f49d00b30cd36b6"
+  },
+  "generator_sha256": "3e9c55310c3482c740aab0a74f5839102e0b5f424fc9b337ab9dd1fe583d5a1f",
+  "ground_truth_independence": "VERIFIED_INDEPENDENT",
+  "kinds": {
+    "build_oom": 10,
+    "docker_compose_failure": 10,
+    "git_success": 10,
+    "home_assistant_warning": 10,
+    "multiple_failures": 10,
+    "node_failure": 10,
+    "privacy_scanner_failure": 10,
+    "pytest_failure": 10,
+    "security_scanner_warning": 10,
+    "shell_timeout": 10,
+    "truncated_stacktrace": 10,
+    "yaml_validation_failure": 10
+  },
+  "promotion_holdout_cases": 90,
+  "schema_version": 1
+}

@@ -102,12 +102,24 @@ test("does not treat SVG drawing coordinates as household coordinates", () => {
 });
 
 test("allows precise benchmark metrics without allowing private network data", () => {
-  const metric = ["0", "903125"].join(".");
+  const metric = ["0", "10111111111111111"].join(".");
   const address = ["10", "23", "45", "67"].join(".");
-  const file = "docs/benchmarks/local-ai-high-potential/latest.json";
-  assert.deepEqual(scanEntries([entry(file, `{"quality_score":${metric}}`)]), []);
-  const result = scanEntries([entry(file, `{"quality_score":${metric},"endpoint":"${address}"}`)]);
+  const files = [
+    "docs/benchmarks/local-ai-high-potential/latest.json",
+    "docs/benchmarks/local-ai-restricted-pivot/retrieval-reranking/latest.json",
+  ];
+  for (const file of files) {
+    assert.deepEqual(scanEntries([entry(file, `{"quality_score":${metric}}`)]), []);
+  }
+  const result = scanEntries([entry(files[1], `{"quality_score":${metric},"endpoint":"${address}"}`)]);
   assert.deepEqual(result.map((item) => item.rule), ["private-ipv4"]);
+
+  const vinLike = ["1HGBH41", "JXMN109186"].join("");
+  assert.deepEqual(
+    scanEntries([entry(files[1], `{"quality_score":${metric},"physical_id":"${vinLike}"}`)])
+      .map((item) => item.rule),
+    ["vin-or-serial"],
+  );
 });
 
 test("allows precise metrics in the preserved v1 benchmark artifacts", () => {

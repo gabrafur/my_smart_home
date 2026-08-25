@@ -223,6 +223,10 @@ while IFS=$'\t' read -r rule regex; do
         docs/benchmarks/local-ai-high-potential/*.json|\
         docs/benchmarks/local-ai-high-potential/*.jsonl|\
         docs/benchmarks/local-ai-high-potential/*.csv|\
+        docs/benchmarks/local-ai-restricted-pivot/*.json|\
+        docs/benchmarks/local-ai-restricted-pivot/*/*.json|\
+        docs/benchmarks/local-ai-restricted-pivot/*/*.jsonl|\
+        docs/benchmarks/local-ai-restricted-pivot/*/*.csv|\
         scripts/local-ai/benchmarks/high-potential/*.json|\
         scripts/local-ai/benchmarks/high-potential/*.jsonl) continue ;;
       esac

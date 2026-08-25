@@ -1,0 +1,312 @@
+{
+  "activity": "retrieval_reranking",
+  "benchmark_executed_at": "2026-08-25T20:16:21+00:00",
+  "benchmark_run_id": "fe45c7b8-e653-4b8b-bc31-886e3966a9c9",
+  "calibration": {
+    "deterministic": {
+      "cases": 30,
+      "chunk_recall_at_10": 0.1861111111111111,
+      "context_tokens_at_10": 2492.766666666667,
+      "critical_file_recall_at_10": 0.19696969696969696,
+      "critical_file_recall_at_20": 0.3181818181818182,
+      "critical_file_recall_at_5": 0.15151515151515152,
+      "file_recall_at_10": 0.1979136604136604,
+      "invented_paths": 0,
+      "map_at_10": 0.1306633597883598,
+      "mrr_at_10": 0.1806878306878307,
+      "mrr_at_10_bootstrap_95": [
+        0.0779,
+        0.2926
+      ],
+      "ndcg_at_10": 0.17404872633987006,
+      "ndcg_at_10_bootstrap_95": [
+        0.0878,
+        0.2692
+      ],
+      "needs_more_context_rate": 0.9,
+      "precision_at_10": 0.09000000000000001,
+      "stale_index_cases": 0
+    },
+    "embedding": {
+      "cases": 30,
+      "chunk_recall_at_10": 0.18333333333333332,
+      "context_tokens_at_10": 2280.8333333333335,
+      "critical_file_recall_at_10": 0.13636363636363635,
+      "critical_file_recall_at_20": 0.25757575757575757,
+      "critical_file_recall_at_5": 0.10606060606060606,
+      "file_recall_at_10": 0.18457671957671956,
+      "invented_paths": 0,
+      "map_at_10": 0.07370408163265306,
+      "mrr_at_10": 0.09509259259259259,
+      "mrr_at_10_bootstrap_95": [
+        0.0398,
+        0.1606
+      ],
+      "ndcg_at_10": 0.1151262778994156,
+      "ndcg_at_10_bootstrap_95": [
+        0.0553,
+        0.1824
+      ],
+      "needs_more_context_rate": 0.8666666666666667,
+      "precision_at_10": 0.07,
+      "stale_index_cases": 0
+    },
+    "hybrid": {
+      "cases": 30,
+      "chunk_recall_at_10": 0.175,
+      "context_tokens_at_10": 2422.1666666666665,
+      "critical_file_recall_at_10": 0.18181818181818182,
+      "critical_file_recall_at_20": 0.30303030303030304,
+      "critical_file_recall_at_5": 0.12121212121212122,
+      "file_recall_at_10": 0.24518879268879268,
+      "invented_paths": 0,
+      "map_at_10": 0.12754828042328042,
+      "mrr_at_10": 0.17203703703703704,
+      "mrr_at_10_bootstrap_95": [
+        0.0617,
+        0.3004
+      ],
+      "ndcg_at_10": 0.17719609567372394,
+      "ndcg_at_10_bootstrap_95": [
+        0.0943,
+        0.2743
+      ],
+      "needs_more_context_rate": 0.8333333333333334,
+      "precision_at_10": 0.09666666666666668,
+      "stale_index_cases": 0
+    }
+  },
+  "dataset": {
+    "calibration_cases": 30,
+    "cases": 180,
+    "dataset": "restricted-pivot-retrieval-reranking-v1",
+    "dataset_sha256": "369f8481625ff3c19b218f38a210e58cea88c8022a4b0db635ed4460b075ab91",
+    "files": {
+      "dataset.jsonl": "da5ae330e3baccb82cd4f61d1f2b37edd7c6c50703885f6a9d1b07ca151f2695"
+    },
+    "generator_sha256": "3e9c55310c3482c740aab0a74f5839102e0b5f424fc9b337ab9dd1fe583d5a1f",
+    "ground_truth_independence": "VERIFIED_GIT_DERIVED",
+    "promotion_holdout_cases": 150,
+    "schema_version": 1,
+    "snapshot_consistent_cases": 180,
+    "source_head": "661f631cd4451d67023b138c34b77ed3899c9b10",
+    "task_types": {
+      "configuration": 15,
+      "documentation": 23,
+      "home_assistant": 81,
+      "local_ai": 6,
+      "node_red": 35,
+      "observability": 2,
+      "scripts": 4,
+      "tests": 14
+    }
+  },
+  "decision": "NOT_DEMONSTRATED",
+  "failed_gates": [
+    "critical_file_recall_at_10"
+  ],
+  "frozen_config": {
+    "chunking": {
+      "max_bytes": 6000,
+      "max_lines": 80,
+      "overlap_lines": 10,
+      "symbol_aware": true
+    },
+    "dataset_sha256": "369f8481625ff3c19b218f38a210e58cea88c8022a4b0db635ed4460b075ab91",
+    "document_prefix": "search_document:",
+    "frozen_at": "2026-08-25T19:58:40+00:00",
+    "implementation_sha256": "31e5f2a2b9bf7abe25fad2e2ab2cfc235f63a82e4cefa393bbd3820e39763678",
+    "model": {
+      "capabilities": [
+        "embedding"
+      ],
+      "details": {
+        "context_length": 2048,
+        "embedding_length": 768,
+        "families": [
+          "nomic-bert"
+        ],
+        "family": "nomic-bert",
+        "format": "gguf",
+        "parameter_size": "137M",
+        "parent_model": "",
+        "quantization_level": "F16"
+      },
+      "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+      "license": "Apache-2.0",
+      "model": "nomic-embed-text:latest",
+      "runtime_version": "0.32.1",
+      "size_bytes": 274302450
+    },
+    "normalization": "l2",
+    "query_prefix": "search_query:",
+    "ranking": {
+      "deterministic": "lexical+path+symbol+imports+test_convention",
+      "evaluated_k": [
+        5,
+        10,
+        20
+      ],
+      "hybrid": "rrf_k_60",
+      "primary_k": 10
+    },
+    "similarity": "cosine",
+    "thresholds": {
+      "context_reduction_min": 0.3,
+      "critical_file_recall_at_10": 1,
+      "invented_paths": 0,
+      "stale_index_cases": 0
+    }
+  },
+  "index": {
+    "implemented": false,
+    "reason": "benchmark_first; persistent index requires DEMONSTRATED"
+  },
+  "limitations": [
+    "git_history_snapshot_workload",
+    "no_installed_embedding_challenger",
+    "reranker_runtime_capability_unavailable",
+    "persistent_index_not_implemented",
+    "initial_harness_resource_pressure_fixed_with_batches",
+    "context_tokens_estimated"
+  ],
+  "measurement_basis": {
+    "context_tokens": "ESTIMATED",
+    "embedding_inference": "MEASURED",
+    "gpu": "MEASURED"
+  },
+  "models": {
+    "embedding_baseline": {
+      "capabilities": [
+        "embedding"
+      ],
+      "details": {
+        "context_length": 2048,
+        "embedding_length": 768,
+        "families": [
+          "nomic-bert"
+        ],
+        "family": "nomic-bert",
+        "format": "gguf",
+        "parameter_size": "137M",
+        "parent_model": "",
+        "quantization_level": "F16"
+      },
+      "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+      "license": "Apache-2.0",
+      "model": "nomic-embed-text:latest",
+      "runtime_version": "0.32.1",
+      "size_bytes": 274302450
+    },
+    "embedding_challenger": {
+      "status": "NOT_RUN_NO_INSTALLED_COMPATIBLE_CHALLENGER"
+    },
+    "reranker": {
+      "status": "NOT_RUN_RUNTIME_CAPABILITY_UNAVAILABLE"
+    }
+  },
+  "operational_savings": 0,
+  "production_enabled": false,
+  "promotion_holdout": {
+    "deterministic": {
+      "cases": 150,
+      "chunk_recall_at_10": 0.10111111111111111,
+      "context_tokens_at_10": 3143.653333333333,
+      "critical_file_recall_at_10": 0.19169329073482427,
+      "critical_file_recall_at_20": 0.3258785942492013,
+      "critical_file_recall_at_5": 0.11501597444089456,
+      "file_recall_at_10": 0.23490740740740737,
+      "invented_paths": 0,
+      "map_at_10": 0.09395463592844545,
+      "mrr_at_10": 0.11812698412698412,
+      "mrr_at_10_bootstrap_95": [
+        0.0798,
+        0.1612
+      ],
+      "ndcg_at_10": 0.133405738462567,
+      "ndcg_at_10_bootstrap_95": [
+        0.1036,
+        0.1685
+      ],
+      "needs_more_context_rate": 0.9,
+      "precision_at_10": 0.07933333333333334,
+      "stale_index_cases": 0
+    },
+    "embedding": {
+      "cases": 150,
+      "chunk_recall_at_10": 0.2061111111111111,
+      "context_tokens_at_10": 2449.2266666666665,
+      "critical_file_recall_at_10": 0.22364217252396165,
+      "critical_file_recall_at_20": 0.3546325878594249,
+      "critical_file_recall_at_5": 0.1501597444089457,
+      "file_recall_at_10": 0.25996031746031745,
+      "invented_paths": 0,
+      "map_at_10": 0.13126582892416225,
+      "mrr_at_10": 0.1583095238095238,
+      "mrr_at_10_bootstrap_95": [
+        0.1144,
+        0.2095
+      ],
+      "ndcg_at_10": 0.1767392600631042,
+      "ndcg_at_10_bootstrap_95": [
+        0.1406,
+        0.2188
+      ],
+      "needs_more_context_rate": 0.8466666666666667,
+      "precision_at_10": 0.08733333333333333,
+      "stale_index_cases": 0
+    },
+    "hybrid": {
+      "cases": 150,
+      "chunk_recall_at_10": 0.22388888888888892,
+      "context_tokens_at_10": 2969.4133333333334,
+      "critical_file_recall_at_10": 0.25559105431309903,
+      "critical_file_recall_at_20": 0.4217252396166134,
+      "critical_file_recall_at_5": 0.14057507987220447,
+      "file_recall_at_10": 0.33818518518518514,
+      "invented_paths": 0,
+      "map_at_10": 0.13384219576719575,
+      "mrr_at_10": 0.1466031746031746,
+      "mrr_at_10_bootstrap_95": [
+        0.1081,
+        0.1895
+      ],
+      "ndcg_at_10": 0.18963118155508404,
+      "ndcg_at_10_bootstrap_95": [
+        0.155,
+        0.2273
+      ],
+      "needs_more_context_rate": 0.8,
+      "precision_at_10": 0.10266666666666667,
+      "stale_index_cases": 0
+    },
+    "hybrid_plus_reranker": null
+  },
+  "schema_version": 1,
+  "shadow_enabled": false,
+  "suite": "local-ai-restricted-pivot-v1",
+  "technical": {
+    "cache_hits": 72950,
+    "cache_location": "private_ignored_runtime",
+    "cpu_offload_detected": false,
+    "duration_seconds": 30.984,
+    "embedding_batches": 54,
+    "embedding_dimension": 768,
+    "git_blob_instances_by_batch": 9079,
+    "gpu_peak_percent": 99,
+    "gpu_power_peak_watts": 131.22,
+    "gpu_telemetry_available": true,
+    "gpu_used": true,
+    "index_persisted": false,
+    "new_vectors": 1509,
+    "oom": false,
+    "processor": "100% GPU",
+    "prompt_tokens": 872933,
+    "query_vectors": 134,
+    "ram_peak_bytes": 1969483776,
+    "swap_peak_bytes": 759681024,
+    "timeout": false,
+    "unique_document_vectors": 7922,
+    "vram_peak_mib": 1892
+  }
+}

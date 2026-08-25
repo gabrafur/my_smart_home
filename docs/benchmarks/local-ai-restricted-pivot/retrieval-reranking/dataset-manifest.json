@@ -1,0 +1,25 @@
+{
+  "calibration_cases": 30,
+  "cases": 180,
+  "dataset": "restricted-pivot-retrieval-reranking-v1",
+  "dataset_sha256": "369f8481625ff3c19b218f38a210e58cea88c8022a4b0db635ed4460b075ab91",
+  "files": {
+    "dataset.jsonl": "da5ae330e3baccb82cd4f61d1f2b37edd7c6c50703885f6a9d1b07ca151f2695"
+  },
+  "generator_sha256": "3e9c55310c3482c740aab0a74f5839102e0b5f424fc9b337ab9dd1fe583d5a1f",
+  "ground_truth_independence": "VERIFIED_GIT_DERIVED",
+  "promotion_holdout_cases": 150,
+  "schema_version": 1,
+  "snapshot_consistent_cases": 180,
+  "source_head": "661f631cd4451d67023b138c34b77ed3899c9b10",
+  "task_types": {
+    "configuration": 15,
+    "documentation": 23,
+    "home_assistant": 81,
+    "local_ai": 6,
+    "node_red": 35,
+    "observability": 2,
+    "scripts": 4,
+    "tests": 14
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "chunking": {
+    "max_bytes": 6000,
+    "max_lines": 80,
+    "overlap_lines": 10,
+    "symbol_aware": true
+  },
+  "dataset_sha256": "369f8481625ff3c19b218f38a210e58cea88c8022a4b0db635ed4460b075ab91",
+  "document_prefix": "search_document:",
+  "frozen_at": "2026-08-25T19:58:40+00:00",
+  "implementation_sha256": "31e5f2a2b9bf7abe25fad2e2ab2cfc235f63a82e4cefa393bbd3820e39763678",
+  "model": {
+    "capabilities": [
+      "embedding"
+    ],
+    "details": {
+      "context_length": 2048,
+      "embedding_length": 768,
+      "families": [
+        "nomic-bert"
+      ],
+      "family": "nomic-bert",
+      "format": "gguf",
+      "parameter_size": "137M",
+      "parent_model": "",
+      "quantization_level": "F16"
+    },
+    "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+    "license": "Apache-2.0",
+    "model": "nomic-embed-text:latest",
+    "runtime_version": "0.32.1",
+    "size_bytes": 274302450
+  },
+  "normalization": "l2",
+  "query_prefix": "search_query:",
+  "ranking": {
+    "deterministic": "lexical+path+symbol+imports+test_convention",
+    "evaluated_k": [
+      5,
+      10,
+      20
+    ],
+    "hybrid": "rrf_k_60",
+    "primary_k": 10
+  },
+  "similarity": "cosine",
+  "thresholds": {
+    "context_reduction_min": 0.3,
+    "critical_file_recall_at_10": 1,
+    "invented_paths": 0,
+    "stale_index_cases": 0
+  }
+}

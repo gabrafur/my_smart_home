@@ -1,0 +1,45 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "duration_seconds": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "error_code": {
+      "pattern": "^PVT-[A-Z]{3}-[0-9]{3}$",
+      "type": "string"
+    },
+    "line": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "path": {
+      "type": "string"
+    },
+    "record_id": {
+      "pattern": "^RSP-2026-[0-9]{3}$",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "warning"
+      ]
+    }
+  },
+  "required": [
+    "record_id",
+    "status",
+    "path",
+    "line",
+    "count",
+    "duration_seconds",
+    "error_code"
+  ],
+  "type": "object"
+}

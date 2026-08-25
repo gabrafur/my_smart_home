@@ -1,0 +1,159 @@
+{
+  "activity": "structured_extraction",
+  "benchmark_executed_at": "2026-08-25T20:16:21+00:00",
+  "benchmark_run_id": "fe45c7b8-e653-4b8b-bc31-886e3966a9c9",
+  "calibration": {
+    "cases": 25,
+    "cases_with_critical_error": 0,
+    "cpu_offload_observed": false,
+    "critical_field_recall": 1.0,
+    "critical_omissions": 0,
+    "duration_p50": 2.72,
+    "duration_seconds_total": 80.369,
+    "fallback_rate": 0.0,
+    "gpu_peak": 96,
+    "invented_critical_fields": 0,
+    "numeric_preservation": 1.0,
+    "oom": 0,
+    "power_peak": 180.73,
+    "ram_peak_bytes": 1523396608,
+    "schema_validity": 1.0,
+    "swap_peak_bytes": 759943168,
+    "technical_failures": 0,
+    "timeouts": 0,
+    "useful_rate": 1.0,
+    "vram_peak": 11696
+  },
+  "canary": "OFFLINE_GATE_PASSED_CANARY_NOT_RUN",
+  "dataset": {
+    "calibration_cases": 25,
+    "cases": 125,
+    "dataset": "restricted-pivot-structured-extraction-v1",
+    "dataset_sha256": "c083ced21b4828465f625864ba627fd48a6442f3025c826569e91881dc1fbaeb",
+    "files": {
+      "dataset.jsonl": "90959268bec5345d7416595dc1e307e621b9aaebc63c07d5835cfcc4149bdd03",
+      "inputs.json": "e5981f55f9fc367b0da208f2ad9b261ea3d54d9a20af799cc2d11e825ae99b4b",
+      "schema.json": "eb0ac088e592535351d98abcce2af598ec17110baacf0b94f7fe810ddb929333"
+    },
+    "generator_sha256": "3e9c55310c3482c740aab0a74f5839102e0b5f424fc9b337ab9dd1fe583d5a1f",
+    "ground_truth_independence": "VERIFIED_INDEPENDENT",
+    "initial_head": "661f631cd4451d67023b138c34b77ed3899c9b10",
+    "promotion_holdout_cases": 100,
+    "schema_version": 1,
+    "subtypes": {
+      "command_tool_output": 25,
+      "configuration_documentation": 25,
+      "event_telemetry": 25,
+      "structured_diff_change": 25,
+      "test_build_output": 25
+    }
+  },
+  "decision": "PROMOTE_TO_CANARY",
+  "failed_gates": [],
+  "frozen_config": {
+    "dataset_sha256": "c083ced21b4828465f625864ba627fd48a6442f3025c826569e91881dc1fbaeb",
+    "frozen_at": "2026-08-25T19:58:39+00:00",
+    "implementation_sha256": "ff297f451cab0e3a2bbdc4006d5b20ebb71eb9b94c3fbdc3fdbf818156478368",
+    "profile": {
+      "allowed_activities": [
+        "structured_extraction",
+        "classification",
+        "file_selection",
+        "error_clustering",
+        "diff_summary"
+      ],
+      "digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+      "enabled": true,
+      "execution_mode": "benchmark",
+      "keep_alive": "10m",
+      "model": "qwen2.5-coder:14b",
+      "model_key": "current_baseline",
+      "num_ctx": 8192,
+      "num_predict": 512,
+      "primary_enabled": true,
+      "production_enabled": false,
+      "role": "baseline",
+      "seed": 20260825,
+      "shadow_enabled": false,
+      "structured_output": "json_schema",
+      "temperature": 0,
+      "think": false,
+      "timeout_seconds": 900,
+      "verifier_enabled": false
+    },
+    "prompt_sha256": "89fc93681533c0a4c7500c211fe7ea1150b6eab827174882e94880f3e2119d88",
+    "schema_sha256": "eb0ac088e592535351d98abcce2af598ec17110baacf0b94f7fe810ddb929333",
+    "thresholds": {
+      "cases_with_critical_error": 0,
+      "critical_field_recall": 1,
+      "fallback_rate_max": 0.05,
+      "invented_critical_fields": 0,
+      "numeric_preservation": 1,
+      "oom": 0,
+      "schema_validity": 1,
+      "timeout": 0,
+      "useful_rate_min": 0.95
+    }
+  },
+  "limitations": [
+    "controlled_synthetic_residual_cases",
+    "production_canary_not_run",
+    "gpt_direct_execution_not_tested",
+    "gpt_tokens_not_measured"
+  ],
+  "measurement_basis": {
+    "gpt_tokens": "NOT_TESTED",
+    "gpu": "MEASURED",
+    "local_inference": "MEASURED"
+  },
+  "model": {
+    "capabilities": [
+      "completion",
+      "tools",
+      "insert"
+    ],
+    "details": {
+      "context_length": 32768,
+      "embedding_length": 5120,
+      "families": [
+        "qwen2"
+      ],
+      "family": "qwen2",
+      "format": "gguf",
+      "parameter_size": "14.8B",
+      "parent_model": "",
+      "quantization_level": "Q4_K_M"
+    },
+    "digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+    "license": "Apache-2.0",
+    "model": "qwen2.5-coder:14b",
+    "runtime_version": "0.32.1",
+    "size_bytes": 8988124298
+  },
+  "operational_savings": 0,
+  "production_enabled": false,
+  "promotion_holdout": {
+    "cases": 100,
+    "cases_with_critical_error": 0,
+    "cpu_offload_observed": false,
+    "critical_field_recall": 1.0,
+    "critical_omissions": 0,
+    "duration_p50": 2.4585,
+    "duration_seconds_total": 252.475,
+    "fallback_rate": 0.0,
+    "gpu_peak": 96,
+    "invented_critical_fields": 0,
+    "numeric_preservation": 1.0,
+    "oom": 0,
+    "power_peak": 199.56,
+    "ram_peak_bytes": 1539031040,
+    "schema_validity": 1.0,
+    "swap_peak_bytes": 759943168,
+    "technical_failures": 0,
+    "timeouts": 0,
+    "useful_rate": 1.0,
+    "vram_peak": 11977
+  },
+  "schema_version": 1,
+  "suite": "local-ai-restricted-pivot-v1"
+}

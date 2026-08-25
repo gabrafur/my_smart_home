@@ -1,0 +1,5 @@
+{
+  "canary": "OFFLINE_GATE_PASSED_CANARY_NOT_RUN",
+  "decision": "PROMOTE_TO_CANARY",
+  "failed_gates": []
+}

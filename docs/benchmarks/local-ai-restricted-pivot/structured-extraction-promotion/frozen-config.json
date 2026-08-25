@@ -1,0 +1,45 @@
+{
+  "dataset_sha256": "c083ced21b4828465f625864ba627fd48a6442f3025c826569e91881dc1fbaeb",
+  "frozen_at": "2026-08-25T19:58:39+00:00",
+  "implementation_sha256": "ff297f451cab0e3a2bbdc4006d5b20ebb71eb9b94c3fbdc3fdbf818156478368",
+  "profile": {
+    "allowed_activities": [
+      "structured_extraction",
+      "classification",
+      "file_selection",
+      "error_clustering",
+      "diff_summary"
+    ],
+    "digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+    "enabled": true,
+    "execution_mode": "benchmark",
+    "keep_alive": "10m",
+    "model": "qwen2.5-coder:14b",
+    "model_key": "current_baseline",
+    "num_ctx": 8192,
+    "num_predict": 512,
+    "primary_enabled": true,
+    "production_enabled": false,
+    "role": "baseline",
+    "seed": 20260825,
+    "shadow_enabled": false,
+    "structured_output": "json_schema",
+    "temperature": 0,
+    "think": false,
+    "timeout_seconds": 900,
+    "verifier_enabled": false
+  },
+  "prompt_sha256": "89fc93681533c0a4c7500c211fe7ea1150b6eab827174882e94880f3e2119d88",
+  "schema_sha256": "eb0ac088e592535351d98abcce2af598ec17110baacf0b94f7fe810ddb929333",
+  "thresholds": {
+    "cases_with_critical_error": 0,
+    "critical_field_recall": 1,
+    "fallback_rate_max": 0.05,
+    "invented_critical_fields": 0,
+    "numeric_preservation": 1,
+    "oom": 0,
+    "schema_validity": 1,
+    "timeout": 0,
+    "useful_rate_min": 0.95
+  }
+}

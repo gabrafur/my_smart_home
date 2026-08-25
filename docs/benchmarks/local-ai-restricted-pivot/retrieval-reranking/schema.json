@@ -1,0 +1,49 @@
+{
+  "properties": {
+    "accepted": {
+      "type": "boolean"
+    },
+    "activity": {
+      "const": "retrieval"
+    },
+    "case_id": {
+      "type": "string"
+    },
+    "critical_errors": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "execution_mode": {
+      "const": "benchmark"
+    },
+    "index_freshness": {
+      "const": "snapshot_in_memory"
+    },
+    "model": {
+      "type": "string"
+    },
+    "model_digest": {
+      "type": "string"
+    },
+    "validation_status": {
+      "enum": [
+        "accepted",
+        "unstable"
+      ]
+    }
+  },
+  "required": [
+    "case_id",
+    "activity",
+    "execution_mode",
+    "model",
+    "model_digest",
+    "validation_status",
+    "accepted",
+    "critical_errors",
+    "index_freshness"
+  ],
+  "type": "object"
+}

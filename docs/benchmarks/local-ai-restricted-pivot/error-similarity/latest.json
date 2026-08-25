@@ -1,0 +1,34 @@
+{
+  "activity": "error_similarity",
+  "automatic_merge": false,
+  "benchmark_executed_at": "2026-08-25T20:16:22+00:00",
+  "benchmark_run_id": "fe45c7b8-e653-4b8b-bc31-886e3966a9c9",
+  "dataset": {
+    "cases": 0,
+    "private_runtime_used": false,
+    "reason": "SKIPPED_NO_RETRIEVAL_ADVANTAGE",
+    "status": "NOT_CONSTRUCTED_PHASE_SKIPPED"
+  },
+  "decision": "SKIPPED_NO_RETRIEVAL_ADVANTAGE",
+  "frozen_config": {
+    "automatic_merge": false,
+    "benchmark_run_id": "fe45c7b8-e653-4b8b-bc31-886e3966a9c9",
+    "enabled_by_default": false,
+    "fallback": "exact-signature-only",
+    "feature_flag": "LOCAL_AI_ERROR_SIMILARITY_ENABLED",
+    "observed_parent_decision": "NOT_DEMONSTRATED",
+    "phase_condition": "retrieval_reranking == DEMONSTRATED"
+  },
+  "limitations": [
+    "phase_skipped_by_predeclared_retrieval_gate",
+    "no_similarity_dataset_or_inference"
+  ],
+  "measurement_basis": {
+    "embedding_inference": "NOT_TESTED",
+    "gpu": "NOT_TESTED"
+  },
+  "production_enabled": false,
+  "results": [],
+  "schema_version": 1,
+  "suite": "local-ai-restricted-pivot-v1"
+}

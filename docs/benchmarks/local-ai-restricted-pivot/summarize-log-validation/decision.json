@@ -1,0 +1,7 @@
+{
+  "additional_context_reduction_vs_deterministic": -0.4987300286767718,
+  "decision": "DETERMINISTIC_ONLY",
+  "failed_gates": [
+    "incremental_reduction"
+  ]
+}

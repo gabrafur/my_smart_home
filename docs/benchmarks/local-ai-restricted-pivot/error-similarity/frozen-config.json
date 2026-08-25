@@ -1,0 +1,9 @@
+{
+  "automatic_merge": false,
+  "benchmark_run_id": "fe45c7b8-e653-4b8b-bc31-886e3966a9c9",
+  "enabled_by_default": false,
+  "fallback": "exact-signature-only",
+  "feature_flag": "LOCAL_AI_ERROR_SIMILARITY_ENABLED",
+  "observed_parent_decision": "NOT_DEMONSTRATED",
+  "phase_condition": "retrieval_reranking == DEMONSTRATED"
+}

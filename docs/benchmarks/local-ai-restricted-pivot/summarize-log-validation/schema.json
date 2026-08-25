@@ -1,0 +1,93 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "concise_summary": {
+      "type": "string"
+    },
+    "failures": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "fact_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fact_id",
+          "value"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "hypotheses": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "observed_facts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "fact_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fact_id",
+          "value"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "recommended_next_checks": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "unknowns": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "fact_id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fact_id",
+          "value"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "observed_facts",
+    "failures",
+    "warnings",
+    "hypotheses",
+    "unknowns",
+    "recommended_next_checks",
+    "concise_summary"
+  ],
+  "type": "object"
+}

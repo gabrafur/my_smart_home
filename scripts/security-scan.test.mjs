@@ -109,15 +109,20 @@ test("detects private network and physical-location categories", () => {
 
 test("allows benchmark metrics without weakening other artifact checks", () => {
   const item = fixture();
-  const artifact = "docs/benchmarks/local-ai-high-potential/latest.json";
   const metric = ["0", "903125"].join(".");
-  write(item.root, artifact, `{"quality_score":${metric}}\n`);
-  git(item.root, ["add", artifact]);
+  const artifacts = [
+    "docs/benchmarks/local-ai-high-potential/latest.json",
+    "docs/benchmarks/local-ai-restricted-pivot/retrieval-reranking/latest.json",
+  ];
+  for (const artifact of artifacts) {
+    write(item.root, artifact, `{"quality_score":${metric}}\n`);
+    git(item.root, ["add", artifact]);
+  }
   assert.equal(item.scan(["--staged"]).status, 0);
 
   const address = ["10", "23", "45", "67"].join(".");
-  write(item.root, artifact, `{"quality_score":${metric},"endpoint":"${address}"}\n`);
-  git(item.root, ["add", artifact]);
+  write(item.root, artifacts[1], `{"quality_score":${metric},"endpoint":"${address}"}\n`);
+  git(item.root, ["add", artifacts[1]]);
   const result = item.scan(["--staged"]);
   assert.equal(result.status, 1);
   assert.match(result.stdout, /rule=ipv4-privado/);

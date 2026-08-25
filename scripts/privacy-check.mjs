@@ -32,7 +32,7 @@ const ignoredText = [
   /^scripts\/privacy-check(?:\.test)?\.mjs$/,
   /^scripts\/security-scan(?:\.test)?\.(?:mjs|sh)$/,
 ];
-const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:history\/v1-2026-08-24\/)?(?:[^/]+\.(?:json|jsonl|csv))|scripts\/local-ai\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
+const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:history\/v1-2026-08-24\/)?(?:[^/]+\.(?:json|jsonl|csv))|docs\/benchmarks\/local-ai-restricted-pivot\/(?:[^/]+\/)?[^/]+\.(?:json|jsonl|csv)|scripts\/local-ai\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
 const frozenSyntheticQualityDataset = /^scripts\/local-ai\/benchmarks\/quality-bakeoff-v1\/(?:dataset\.jsonl|inputs\.json)$/;
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
@@ -114,6 +114,11 @@ export function scanEntries(entries, { denylist = [] } = {}) {
       if (rule === "event-timestamp" && frozenSyntheticQualityDataset.test(file)) continue;
       pattern.lastIndex = 0;
       for (const match of text.matchAll(pattern)) {
+        // A 17-digit fractional part can satisfy the VIN heuristic. Suppress
+        // only that numeric shape in benchmark artifacts; VIN-like strings in
+        // the same files remain findings.
+        if (rule === "vin-or-serial" && benchmarkNumericArtifact.test(file) &&
+            match.index > 0 && text[match.index - 1] === ".") continue;
         if (rule === "mac-address" && match[0].toUpperCase() === "AA:AA:AA:AA:AA:AA") continue;
         if (rule === "private-email" && match[0].toLowerCase() === "github-actions@github.com") continue;
         if (rule === "private-ipv4" && /(?:example|synthetic|sint[eé]tic)/i.test(text.slice(Math.max(0, match.index - 80), match.index))) continue;

@@ -1,0 +1,205 @@
+{
+  "activity": "summarize_log",
+  "additional_context_reduction_vs_deterministic": -0.4987300286767718,
+  "benchmark_executed_at": "2026-08-25T20:16:21+00:00",
+  "benchmark_run_id": "fe45c7b8-e653-4b8b-bc31-886e3966a9c9",
+  "calibration": {
+    "deterministic": {
+      "accepted_rate": 1.0,
+      "cases": 30,
+      "critical_fact_recall": 1.0,
+      "critical_omissions": 0,
+      "estimated_context_reduction": 0.8900077033124243,
+      "estimated_context_tokens": 3998,
+      "fallback_rate": 0.0,
+      "numeric_preservation": 1.0,
+      "schema_validity": null,
+      "unsupported_claims": 0
+    },
+    "deterministic_plus_local": {
+      "accepted_rate": 1.0,
+      "cases": 30,
+      "critical_fact_recall": 1.0,
+      "critical_omissions": 0,
+      "estimated_context_reduction": 0.8358369098712446,
+      "estimated_context_tokens": 5967,
+      "fallback_rate": 0.0,
+      "numeric_preservation": 1.0,
+      "schema_validity": 1.0,
+      "unsupported_claims": 0
+    },
+    "raw": {
+      "accepted_rate": 1.0,
+      "cases": 30,
+      "critical_fact_recall": 1.0,
+      "critical_omissions": 0,
+      "estimated_context_reduction": 0.0,
+      "estimated_context_tokens": 36348,
+      "fallback_rate": 0.0,
+      "numeric_preservation": 1.0,
+      "schema_validity": null,
+      "unsupported_claims": 0
+    }
+  },
+  "dataset": {
+    "calibration_cases": 30,
+    "cases": 120,
+    "dataset": "restricted-pivot-summarize-log-v1",
+    "dataset_sha256": "a5e5220dba48759d131f585cbe25f97e1a01b701db051a7be636e85eb7d11e8f",
+    "files": {
+      "dataset.jsonl": "4df8fb65ca01de9965d786d0aa8ec3ad557a06ce26753aafa90d2d652cf3b451",
+      "inputs.json": "e3e8b0dc8fc38843706b5bb386e373f5651cdcd2ad1e9060d394e9a69d4c3536",
+      "schema.json": "1a838b0a152af21acac27eff21ee8951ded7ac862c7e84680f49d00b30cd36b6"
+    },
+    "generator_sha256": "3e9c55310c3482c740aab0a74f5839102e0b5f424fc9b337ab9dd1fe583d5a1f",
+    "ground_truth_independence": "VERIFIED_INDEPENDENT",
+    "kinds": {
+      "build_oom": 10,
+      "docker_compose_failure": 10,
+      "git_success": 10,
+      "home_assistant_warning": 10,
+      "multiple_failures": 10,
+      "node_failure": 10,
+      "privacy_scanner_failure": 10,
+      "pytest_failure": 10,
+      "security_scanner_warning": 10,
+      "shell_timeout": 10,
+      "truncated_stacktrace": 10,
+      "yaml_validation_failure": 10
+    },
+    "promotion_holdout_cases": 90,
+    "schema_version": 1
+  },
+  "decision": "DETERMINISTIC_ONLY",
+  "failed_gates": [
+    "incremental_reduction"
+  ],
+  "frozen_config": {
+    "dataset_sha256": "a5e5220dba48759d131f585cbe25f97e1a01b701db051a7be636e85eb7d11e8f",
+    "frozen_at": "2026-08-25T19:58:40+00:00",
+    "implementation_sha256": "f156a32560af5dfc0a4d1f2379b197c98a12e0efc859e35a342c391e8cce80ce",
+    "profile": {
+      "allowed_activities": [
+        "structured_extraction",
+        "classification",
+        "file_selection",
+        "error_clustering",
+        "diff_summary"
+      ],
+      "digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+      "enabled": true,
+      "execution_mode": "benchmark",
+      "keep_alive": "10m",
+      "model": "qwen2.5-coder:14b",
+      "model_key": "current_baseline",
+      "num_ctx": 8192,
+      "num_predict": 512,
+      "primary_enabled": true,
+      "production_enabled": false,
+      "role": "baseline",
+      "seed": 20260825,
+      "shadow_enabled": false,
+      "structured_output": "json_schema",
+      "temperature": 0,
+      "think": false,
+      "timeout_seconds": 900,
+      "verifier_enabled": false
+    },
+    "prompt_sha256": "c1cb6f1ee252c1009a640aaa581977649aa0f1ce1f6f62f0876272c0c0560571",
+    "schema_sha256": "1a838b0a152af21acac27eff21ee8951ded7ac862c7e84680f49d00b30cd36b6",
+    "thresholds": {
+      "accepted_rate_min": 0.95,
+      "additional_context_reduction_vs_deterministic_min": 0.15,
+      "cases_with_critical_error": 0,
+      "critical_fact_recall": 1,
+      "numeric_preservation": 1,
+      "schema_validity": 1,
+      "unsupported_claims": 0
+    }
+  },
+  "limitations": [
+    "sanitized_synthetic_logs",
+    "context_tokens_estimated",
+    "gpt_direct_execution_not_tested",
+    "operational_savings_zero"
+  ],
+  "measurement_basis": {
+    "context_tokens": "ESTIMATED",
+    "gpt_direct_execution": "NOT_TESTED",
+    "local_inference": "MEASURED"
+  },
+  "model": {
+    "capabilities": [
+      "completion",
+      "tools",
+      "insert"
+    ],
+    "details": {
+      "context_length": 32768,
+      "embedding_length": 5120,
+      "families": [
+        "qwen2"
+      ],
+      "family": "qwen2",
+      "format": "gguf",
+      "parameter_size": "14.8B",
+      "parent_model": "",
+      "quantization_level": "Q4_K_M"
+    },
+    "digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+    "license": "Apache-2.0",
+    "model": "qwen2.5-coder:14b",
+    "runtime_version": "0.32.1",
+    "size_bytes": 8988124298
+  },
+  "operational_savings": 0,
+  "promotion_holdout": {
+    "deterministic": {
+      "accepted_rate": 1.0,
+      "cases": 90,
+      "critical_fact_recall": 1.0,
+      "critical_omissions": 0,
+      "estimated_context_reduction": 0.888293977667948,
+      "estimated_context_tokens": 12205,
+      "fallback_rate": 0.0,
+      "numeric_preservation": 1.0,
+      "schema_validity": null,
+      "unsupported_claims": 0
+    },
+    "deterministic_plus_local": {
+      "accepted_rate": 1.0,
+      "cases": 90,
+      "critical_fact_recall": 1.0,
+      "critical_omissions": 0,
+      "estimated_context_reduction": 0.8325828299469156,
+      "estimated_context_tokens": 18292,
+      "fallback_rate": 0.0,
+      "numeric_preservation": 1.0,
+      "schema_validity": 1.0,
+      "unsupported_claims": 0
+    },
+    "raw": {
+      "accepted_rate": 1.0,
+      "cases": 90,
+      "critical_fact_recall": 1.0,
+      "critical_omissions": 0,
+      "estimated_context_reduction": 0.0,
+      "estimated_context_tokens": 109260,
+      "fallback_rate": 0.0,
+      "numeric_preservation": 1.0,
+      "schema_validity": null,
+      "unsupported_claims": 0
+    }
+  },
+  "schema_version": 1,
+  "suite": "local-ai-restricted-pivot-v1",
+  "technical": {
+    "cpu_offload_observed": false,
+    "duration_seconds_total": 1010.192,
+    "gpu_peak": 100,
+    "oom": 0,
+    "power_peak": 199.77,
+    "timeouts": 0,
+    "vram_peak": 11894
+  }
+}

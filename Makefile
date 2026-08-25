@@ -12,7 +12,13 @@
 	benchmark-local-ai-high-potential-recompute \
 	benchmark-local-ai-quality-bakeoff-unit benchmark-local-ai-quality-bakeoff-calibration \
 	benchmark-local-ai-quality-bakeoff-regression benchmark-local-ai-quality-bakeoff-holdout \
-	benchmark-local-ai-quality-bakeoff-verifier benchmark-local-ai-quality-bakeoff
+	benchmark-local-ai-quality-bakeoff-verifier benchmark-local-ai-quality-bakeoff \
+	local-ai-pivot-help validate-local-ai-pivot \
+	benchmark-local-ai-structured-extraction-calibration benchmark-local-ai-structured-extraction-holdout \
+	benchmark-local-ai-structured-extraction benchmark-local-ai-summarize-log-calibration \
+	benchmark-local-ai-summarize-log-holdout benchmark-local-ai-summarize-log \
+	benchmark-local-ai-retrieval-calibration benchmark-local-ai-retrieval-holdout \
+	benchmark-local-ai-retrieval benchmark-local-ai-error-similarity benchmark-local-ai-restricted-pivot
 
 PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
 	validate-yaml validate-shell validate-docs validate-assets validate-security \
@@ -30,6 +36,7 @@ HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR ?= docs/benchmarks/local-ai-high-potential
 HIGH_POTENTIAL_BENCHMARK_SIMULATED_OUTPUT_DIR ?= /tmp/local-ai-high-potential-simulated
 QUALITY_BAKEOFF_RUN_ID ?=
 QUALITY_BAKEOFF_MODELS ?= current_baseline,qwen3_8_27b,north_mini_code_1_0,devstral_small_2_24b,qwen3_coder_next_optional
+LOCAL_AI_PIVOT_RUN_ID ?=
 
 validate-public:
 	@./scripts/run-resource-safe.sh $(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
@@ -142,6 +149,83 @@ benchmark-local-ai-quality-bakeoff-verifier:
 benchmark-local-ai-quality-bakeoff: benchmark-local-ai-quality-bakeoff-unit \
 	benchmark-local-ai-quality-bakeoff-calibration benchmark-local-ai-quality-bakeoff-regression \
 	benchmark-local-ai-quality-bakeoff-holdout benchmark-local-ai-quality-bakeoff-verifier
+
+local-ai-pivot-help:
+	@echo "validate-local-ai-pivot: validate frozen datasets, harness, runtime, flags and artifacts"
+	@echo "benchmark-local-ai-structured-extraction: run 25 calibration + 100 holdout cases"
+	@echo "benchmark-local-ai-summarize-log: run 30 calibration + 90 holdout A/B/C log cases"
+	@echo "benchmark-local-ai-retrieval: run 30 calibration + 150 holdout snapshot cases"
+	@echo "benchmark-local-ai-error-similarity: finalize Phase D only when the retrieval gate allows it"
+	@echo "benchmark-local-ai-restricted-pivot: run all phases sequentially with LOCAL_AI_PIVOT_RUN_ID=<uuid>"
+
+validate-local-ai-pivot:
+	python3 scripts/local-ai/pivot_dataset.py --check
+	python3 scripts/local-ai/test_pivot_benchmark.py
+	python3 scripts/local-ai/test_restricted_runtime.py
+	python3 scripts/local-ai/test_model_registry.py
+	python3 scripts/local-ai/test_post_tool_routing.py
+
+benchmark-local-ai-structured-extraction-calibration:
+	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
+	uptime
+	free -h
+	df -h /
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py structured-extraction \
+		--phase calibration --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-structured-extraction-holdout:
+	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py structured-extraction \
+		--phase promotion_holdout --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-structured-extraction:
+	@$(MAKE) --no-print-directory benchmark-local-ai-structured-extraction-calibration LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+	@$(MAKE) --no-print-directory benchmark-local-ai-structured-extraction-holdout LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-summarize-log-calibration:
+	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
+	uptime
+	free -h
+	df -h /
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py summarize-log \
+		--phase calibration --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-summarize-log-holdout:
+	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py summarize-log \
+		--phase promotion_holdout --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-summarize-log:
+	@$(MAKE) --no-print-directory benchmark-local-ai-summarize-log-calibration LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+	@$(MAKE) --no-print-directory benchmark-local-ai-summarize-log-holdout LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-retrieval-calibration:
+	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
+	uptime
+	free -h
+	df -h /
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py retrieval \
+		--phase calibration --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-retrieval-holdout:
+	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py retrieval \
+		--phase promotion_holdout --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-retrieval:
+	@$(MAKE) --no-print-directory benchmark-local-ai-retrieval-calibration LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+	@$(MAKE) --no-print-directory benchmark-local-ai-retrieval-holdout LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-error-similarity:
+	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
+	python3 scripts/local-ai/pivot_finalize.py --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+
+benchmark-local-ai-restricted-pivot:
+	@$(MAKE) --no-print-directory validate-local-ai-pivot
+	@$(MAKE) --no-print-directory benchmark-local-ai-structured-extraction LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+	@$(MAKE) --no-print-directory benchmark-local-ai-summarize-log LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+	@$(MAKE) --no-print-directory benchmark-local-ai-retrieval LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
+	@$(MAKE) --no-print-directory benchmark-local-ai-error-similarity LOCAL_AI_PIVOT_RUN_ID="$(LOCAL_AI_PIVOT_RUN_ID)"
 
 validate-homeassistant:
 	python3 -m unittest discover -s homeassistant/tests -p 'test_*.py'
