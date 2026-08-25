@@ -526,6 +526,56 @@ test('sanitizes the restricted pivot without exposing cases or paths', () => {
   assert.equal(pivot.retrieval_reranking.results, undefined);
 });
 
+test('sanitizes structured canary status and preserves unknown metrics', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-structured-canary-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const summaryPath = path.join(directory, 'summary.json');
+  fs.writeFileSync(summaryPath, JSON.stringify({
+    schema_version: 1,
+    status: 'CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE',
+    decision: 'KEEP_AT_10_PERCENT',
+    generated_at: '2026-08-25T12:00:00Z',
+    last_execution_at: null,
+    sample_required: 100,
+    sample_current: 0,
+    configuration: {
+      master_switch: true,
+      structured_extraction: true,
+      rollout_percentage: 10,
+      summarize_log_local: false,
+      retrieval: false,
+      reranker: false,
+      error_similarity: false,
+      classification_local: false,
+      diff_summary_local: false,
+      model: 'qwen2.5-coder:14b',
+      model_digest: 'digest',
+      schema_version: 'structured-extraction-v1',
+      assignment_version: 'structured-extraction-canary-v1',
+      private_input: 'must-not-leak',
+    },
+    circuit_breaker: { status: 'CLOSED', reason: 'initial', updated_at: null },
+    metrics: {
+      residual_eligible_cases: 0,
+      local_inference_attempts: 0,
+      critical_field_recall: null,
+      private_cases: ['must-not-leak'],
+    },
+    raw_events: ['must-not-leak'],
+  }));
+  const usage = scanLocalAiTelemetry(
+    null, null, new Date('2026-08-25T12:00:30Z'), null, null, summaryPath,
+  );
+  const canary = usage.structured_extraction_canary;
+  assert.equal(canary.status, 'CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE');
+  assert.equal(canary.freshness_seconds, 30);
+  assert.equal(canary.configuration.rollout_percentage, 10);
+  assert.equal(canary.metrics.critical_field_recall, null);
+  assert.equal(canary.last_execution_age_seconds, null);
+  assert.equal(canary.configuration.private_input, undefined);
+  assert.equal(canary.raw_events, undefined);
+});
+
 test('does not report a stale Local AI preflight as available', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-stale-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

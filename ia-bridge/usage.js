@@ -1180,12 +1180,74 @@ function sanitizeRestrictedPivot(pivotPath, now = new Date()) {
   };
 }
 
+function sanitizeStructuredCanary(summaryPath, now = new Date()) {
+  const report = readJson(summaryPath, null);
+  if (!report || report.schema_version !== 1 || typeof report.status !== 'string') {
+    return { available: false, status: 'DISABLED' };
+  }
+  const safeNumber = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    return Number.isFinite(Number(value)) ? Number(value) : null;
+  };
+  const safeString = (value) => (typeof value === 'string' ? value : null);
+  const safeBoolean = (value) => (typeof value === 'boolean' ? value : null);
+  const generatedAt = typeof report.generated_at === 'string' ? new Date(report.generated_at) : null;
+  const lastExecutionAt = typeof report.last_execution_at === 'string'
+    ? new Date(report.last_execution_at) : null;
+  const config = report.configuration || {};
+  const metrics = report.metrics || {};
+  return {
+    available: true,
+    schema_version: 1,
+    status: safeString(report.status),
+    decision: safeString(report.decision),
+    generated_at: safeString(report.generated_at),
+    freshness_seconds: !generatedAt || Number.isNaN(generatedAt.valueOf())
+      ? null : Math.max(0, Math.floor((now.valueOf() - generatedAt.valueOf()) / 1000)),
+    last_execution_at: safeString(report.last_execution_at),
+    last_execution_age_seconds: !lastExecutionAt || Number.isNaN(lastExecutionAt.valueOf())
+      ? null : Math.max(0, Math.floor((now.valueOf() - lastExecutionAt.valueOf()) / 1000)),
+    sample_required: safeNumber(report.sample_required),
+    sample_current: safeNumber(report.sample_current),
+    configuration: {
+      master_switch: safeBoolean(config.master_switch),
+      structured_extraction: safeBoolean(config.structured_extraction),
+      rollout_percentage: safeNumber(config.rollout_percentage),
+      summarize_log_local: safeBoolean(config.summarize_log_local),
+      retrieval: safeBoolean(config.retrieval),
+      reranker: safeBoolean(config.reranker),
+      error_similarity: safeBoolean(config.error_similarity),
+      classification_local: safeBoolean(config.classification_local),
+      diff_summary_local: safeBoolean(config.diff_summary_local),
+      model: safeString(config.model),
+      model_digest: safeString(config.model_digest),
+      schema_version: safeString(config.schema_version),
+      assignment_version: safeString(config.assignment_version),
+    },
+    circuit_breaker: {
+      status: safeString(report.circuit_breaker?.status),
+      reason: safeString(report.circuit_breaker?.reason),
+      updated_at: safeString(report.circuit_breaker?.updated_at),
+    },
+    metrics: Object.fromEntries([
+      'residual_eligible_cases', 'canary_selected_cases', 'control_cases', 'control_bypass_cases',
+      'local_inference_attempts', 'local_inference_completed', 'accepted_local_outputs',
+      'rejected_local_outputs', 'safe_fallbacks', 'safe_local_resolutions',
+      'cases_with_critical_error', 'observed_critical_error_occurrences', 'canary_selection_rate',
+      'schema_validity', 'critical_field_recall', 'numeric_preservation', 'invented_critical_fields',
+      'critical_omissions', 'useful_rate', 'fallback_rate', 'critical_case_rate', 'timeout_rate',
+      'oom_rate',
+    ].map((key) => [key, safeNumber(metrics[key])])),
+  };
+}
+
 function scanLocalAiTelemetry(
   telemetryPath,
   statusPath,
   now = new Date(),
   benchmarkPath = null,
   pivotPath = null,
+  canarySummaryPath = null,
 ) {
   const state = readJson(telemetryPath, {});
   const deliveryReceipts = codeModeDeliveryReceipts(state);
@@ -1304,6 +1366,7 @@ function scanLocalAiTelemetry(
     },
     benchmark_high_potential: sanitizeHighPotentialBenchmark(benchmarkPath, now),
     benchmark_restricted_pivot: sanitizeRestrictedPivot(pivotPath, now),
+    structured_extraction_canary: sanitizeStructuredCanary(canarySummaryPath, now),
   };
 }
 
@@ -1560,12 +1623,14 @@ class CodexUsageReader {
     cacheMs = 5_000,
     localAiBenchmarkPath = null,
     localAiPivotPath = null,
+    localAiCanarySummaryPath = null,
   ) {
     this.sessionsDirectories = Array.isArray(sessionsDirectory) ? sessionsDirectory : [sessionsDirectory];
     this.localAiTelemetryPath = localAiTelemetryPath;
     this.localAiStatusPath = localAiStatusPath;
     this.localAiBenchmarkPath = localAiBenchmarkPath;
     this.localAiPivotPath = localAiPivotPath;
+    this.localAiCanarySummaryPath = localAiCanarySummaryPath;
     this.cacheMs = cacheMs;
     this.cachedAt = 0;
     this.cached = null;
@@ -1615,6 +1680,7 @@ class CodexUsageReader {
         new Date(),
         this.localAiBenchmarkPath,
         this.localAiPivotPath,
+        this.localAiCanarySummaryPath,
       ),
     };
     this.cachedAt = Date.now();
@@ -1628,6 +1694,7 @@ class CodexUsageReader {
       new Date(),
       this.localAiBenchmarkPath,
       this.localAiPivotPath,
+      this.localAiCanarySummaryPath,
     );
   }
 

@@ -23,7 +23,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
     def test_restricted_pivot_sensor_exposes_only_bounded_sections(self):
         package = CODEX_PACKAGE.read_text(encoding="utf-8")
         start = package.index("      - name: Codex Pivot RTX Restrito\n")
-        end = package.index("      - name: Codex Chamadas Local AI\n", start)
+        end = package.index("      - name: Codex Canario Extracao Estruturada\n", start)
         sensor = package[start:end]
         for attribute in (
             "schema_version", "benchmark_run_id", "ultima_execucao", "idade_benchmark_s",
@@ -34,6 +34,28 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertNotIn("artifact_hashes", sensor)
         self.assertNotIn("results", sensor)
         self.assertNotIn("operational_calls", sensor)
+
+    def test_structured_canary_sensor_and_card_keep_operational_data_separate(self):
+        package = CODEX_PACKAGE.read_text(encoding="utf-8")
+        start = package.index("      - name: Codex Canario Extracao Estruturada\n")
+        end = package.index("      - name: Codex Chamadas Local AI\n", start)
+        sensor = package[start:end]
+        for attribute in (
+            "schema_version", "decisao", "configuracao", "circuit_breaker", "metricas",
+            "ultima_execucao", "idade_ultima_execucao_s", "idade_telemetria_s",
+            "amostra_minima", "amostra_atual",
+        ):
+            self.assertIn(f"          {attribute}:", sensor)
+        self.assertNotIn("raw_events", sensor)
+        self.assertNotIn("validation_trace", sensor)
+
+        view = rtx_view()
+        self.assertIn("title: Canário de extração residual", view)
+        self.assertIn("sensor.codex_canario_extracao_estruturada", view)
+        self.assertIn("CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE", view)
+        self.assertIn("Probes, benchmark, shadow, controle, parser resolvido", view)
+        self.assertIn("format_number_ptbr", view)
+        self.assertNotIn("CANARY_GATE_PASSED` antes", view)
 
     def test_quality_bakeoff_sensor_exposes_v3_evidence_without_operational_mix(self):
         package = CODEX_PACKAGE.read_text(encoding="utf-8")
@@ -74,7 +96,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         )
         self.assertEqual(
             sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            30,
+            31,
         )
         for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Histórico de uso da RTX — últimas 48 horas"):
             self.assertIn(f"title: {title}", columns[0])

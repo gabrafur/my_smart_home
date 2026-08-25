@@ -659,6 +659,37 @@ template:
           similaridade_de_erros: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('error_similarity')) or {} }}
 
+      - name: Codex Canario Extracao Estruturada
+        unique_id: codex_canario_extracao_estruturada
+        icon: mdi:flask-outline
+        state: >-
+          {% set canary = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}) %}
+          {{ canary.get('status', 'DISABLED') }}
+        availability: >-
+          {% set canary = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}) %}
+          {{ states('sensor.codex_usage_raw') == 'ok' and canary.get('available', false) }}
+        attributes:
+          schema_version: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('schema_version') }}
+          decisao: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('decision') }}
+          configuracao: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('configuration') or {} }}
+          circuit_breaker: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('circuit_breaker') or {} }}
+          metricas: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('metrics') or {} }}
+          ultima_execucao: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('last_execution_at') }}
+          idade_ultima_execucao_s: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('last_execution_age_seconds') }}
+          idade_telemetria_s: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('freshness_seconds') }}
+          amostra_minima: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('sample_required') }}
+          amostra_atual: >-
+            {{ ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('structured_extraction_canary') or {}).get('sample_current') }}
+
       - name: Codex Chamadas Local AI
         unique_id: codex_chamadas_local_ai
         icon: mdi:counter

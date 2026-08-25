@@ -49,6 +49,8 @@ const codexUsage = new CodexUsageReader(
     || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-quality-bakeoff', 'latest.json'),
   process.env.LOCAL_AI_PIVOT_BENCHMARK_PATH
     || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-restricted-pivot', 'latest.json'),
+  process.env.LOCAL_AI_STRUCTURED_EXTRACTION_SUMMARY_PATH
+    || path.join(HISTORY_DIR, 'structured-extraction-canary-summary.json'),
 );
 const codexRateLimits = new CodexRateLimitsPoller({
   refreshMs: Math.min(

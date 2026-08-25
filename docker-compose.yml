@@ -193,6 +193,19 @@ services:
       - LOCAL_AI_CONFIG=/home/node/.codex/local-ai.json
       - LOCAL_AI_MCP_RUNTIME_DIR=/opt/codex-local-ai
       - LOCAL_AI_TELEMETRY_PATH=/local-ai-state/local-ai-telemetry.json
+      - LOCAL_AI_STRUCTURED_EXTRACTION_EVENTS_PATH=/local-ai-state/structured-extraction-canary-events.jsonl
+      - LOCAL_AI_STRUCTURED_EXTRACTION_BREAKER_PATH=/local-ai-state/structured-extraction-canary-breaker.json
+      - LOCAL_AI_STRUCTURED_EXTRACTION_SUMMARY_PATH=/local-ai-state/structured-extraction-canary-summary.json
+      - LOCAL_AI_STRUCTURED_EXTRACTION_RUNTIME_PATH=/local-ai-state/structured-extraction-canary-runtime.json
+      # Public defaults stay fail-closed; machine-local .env activates only
+      # the approved residual structured-extraction canary.
+      - LOCAL_AI_QUALITY_PIPELINE_ENABLED=${LOCAL_AI_QUALITY_PIPELINE_ENABLED:-0}
+      - LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED=${LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED:-0}
+      - LOCAL_AI_STRUCTURED_EXTRACTION_ROLLOUT_PERCENT=${LOCAL_AI_STRUCTURED_EXTRACTION_ROLLOUT_PERCENT:-0}
+      - LOCAL_AI_SUMMARIZE_LOG_ENABLED=${LOCAL_AI_SUMMARIZE_LOG_ENABLED:-0}
+      - LOCAL_AI_RETRIEVAL_ENABLED=${LOCAL_AI_RETRIEVAL_ENABLED:-0}
+      - LOCAL_AI_RERANKER_ENABLED=${LOCAL_AI_RERANKER_ENABLED:-0}
+      - LOCAL_AI_ERROR_SIMILARITY_ENABLED=${LOCAL_AI_ERROR_SIMILARITY_ENABLED:-0}
       - LOCAL_AI_STATUS_PATH=/workspace/.agent-history/local-ai-status.json
       - LOCAL_AI_BENCHMARK_PATH=/workspace/docs/benchmarks/local-ai-high-potential/latest.json
       - CODEX_SESSIONS_DIRS=/home/node/.codex/sessions,/host-codex-sessions

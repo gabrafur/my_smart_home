@@ -1125,7 +1125,7 @@ views:
               |--:|--:|--:|--:|--:|--:|--:|--:|--:|:--:|
               | {{ format_number_ptbr(structured.get('holdout_cases')) if structured.get('holdout_cases') is number else '—' }} | {{ (format_number_ptbr(structured.get('critical_field_recall') * 100, 2) ~ '%') if structured.get('critical_field_recall') is number else '—' }} | {{ (format_number_ptbr(structured.get('schema_validity') * 100, 2) ~ '%') if structured.get('schema_validity') is number else '—' }} | {{ (format_number_ptbr(structured.get('numeric_preservation') * 100, 2) ~ '%') if structured.get('numeric_preservation') is number else '—' }} | {{ (format_number_ptbr(structured.get('useful_rate') * 100, 2) ~ '%') if structured.get('useful_rate') is number else '—' }} | {{ (format_number_ptbr(structured.get('fallback_rate') * 100, 2) ~ '%') if structured.get('fallback_rate') is number else '—' }} | {{ format_number_ptbr(structured.get('cases_with_critical_error')) if structured.get('cases_with_critical_error') is number else '—' }} | {{ (format_number_ptbr(structured.get('duration_p50'), 3) ~ ' s') if structured.get('duration_p50') is number else '—' }} | {{ (format_number_ptbr(structured.get('vram_peak_mib')) ~ ' MiB') if structured.get('vram_peak_mib') is number else '—' }} | {{ 'SIM' if structured.get('production_enabled') == true else 'NÃO' }} |
 
-              Aceitas/úteis: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('useful_rate')) if structured.get('holdout_cases') is number and structured.get('useful_rate') is number else '—' }}**; fallbacks: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('fallback_rate')) if structured.get('holdout_cases') is number and structured.get('fallback_rate') is number else '—' }}**. Canário offline aprovado, ainda não executado; flag independente `{{ flags.get('structured_extraction', '—') }}` permanece desligada por padrão.
+              Aceitas/úteis: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('useful_rate')) if structured.get('holdout_cases') is number and structured.get('useful_rate') is number else '—' }}**; fallbacks: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('fallback_rate')) if structured.get('holdout_cases') is number and structured.get('fallback_rate') is number else '—' }}**. Este bloco preserva a evidência offline; a ativação e a amostra reais aparecem separadamente no card operacional abaixo. A flag independente `{{ flags.get('structured_extraction', '—') }}` permanece desligada por padrão no repositório.
 
               **B · Logs — `{{ decisions.get('summarize_log', 'não informada') }}`**
 
@@ -1159,6 +1159,41 @@ views:
               {% else %}
               ⚪ NÃO MEDIDO — nenhum artefato sanitizado do pivot restrito foi carregado pelo bridge.
               {% endif %}
+
+          - type: markdown
+            title: Canário de extração residual
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set status = states('sensor.codex_canario_extracao_estruturada') %}
+              {% set config = state_attr('sensor.codex_canario_extracao_estruturada', 'configuracao') or {} %}
+              {% set breaker = state_attr('sensor.codex_canario_extracao_estruturada', 'circuit_breaker') or {} %}
+              {% set metrics = state_attr('sensor.codex_canario_extracao_estruturada', 'metricas') or {} %}
+              {% set sample = state_attr('sensor.codex_canario_extracao_estruturada', 'amostra_atual') %}
+              {% set required = state_attr('sensor.codex_canario_extracao_estruturada', 'amostra_minima') %}
+              {% set age = state_attr('sensor.codex_canario_extracao_estruturada', 'idade_telemetria_s') %}
+              {% set last_age = state_attr('sensor.codex_canario_extracao_estruturada', 'idade_ultima_execucao_s') %}
+              {% set badge = {
+                'DISABLED': '⚪',
+                'READY': '🔵',
+                'CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE': '🟡',
+                'CANARY_ACTIVE_GATE_PASSING': '🟢',
+                'MANUAL_HOLD': '🟠',
+                'ROLLBACK_TRIGGERED': '🔴',
+                'CANARY_GATE_PASSED': '🟢'
+              } %}
+              {{ badge.get(status, '⚪') }} **Status:** `{{ status }}` · **decisão:** `{{ state_attr('sensor.codex_canario_extracao_estruturada', 'decisao') or 'HOLD' }}`
+
+              **Roteamento:** parser determinístico → residual `UNSUPPORTED/AMBIGUOUS` → coorte estável **{{ (format_number_ptbr(config.get('rollout_percentage')) ~ '%') if config.get('rollout_percentage') is number else '—' }}** → `{{ config.get('model', '—') }}` → JSON Schema + validação integral → aceite local ou GPT direto.
+
+              **Controles:** master **{{ 'ON' if config.get('master_switch') == true else 'OFF' }}** · flag **{{ 'ON' if config.get('structured_extraction') == true else 'OFF' }}** · circuit breaker `{{ breaker.get('status', '—') }}` · schema `{{ config.get('schema_version', '—') }}` · assignment `{{ config.get('assignment_version', '—') }}` · digest `{{ (config.get('model_digest') or '—')[:12] }}`.
+
+              | Residuais elegíveis | Selecionados | Controle | Bypass | Tentativas | Concluídas | Aceitas | Rejeitadas | Fallbacks | Resolvidas localmente | Erros críticos |
+              |--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+              | {{ format_number_ptbr(metrics.get('residual_eligible_cases')) if metrics.get('residual_eligible_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('canary_selected_cases')) if metrics.get('canary_selected_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('control_cases')) if metrics.get('control_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('control_bypass_cases')) if metrics.get('control_bypass_cases') is number else '—' }} | {{ format_number_ptbr(metrics.get('local_inference_attempts')) if metrics.get('local_inference_attempts') is number else '—' }} | {{ format_number_ptbr(metrics.get('local_inference_completed')) if metrics.get('local_inference_completed') is number else '—' }} | {{ format_number_ptbr(metrics.get('accepted_local_outputs')) if metrics.get('accepted_local_outputs') is number else '—' }} | {{ format_number_ptbr(metrics.get('rejected_local_outputs')) if metrics.get('rejected_local_outputs') is number else '—' }} | {{ format_number_ptbr(metrics.get('safe_fallbacks')) if metrics.get('safe_fallbacks') is number else '—' }} | {{ format_number_ptbr(metrics.get('safe_local_resolutions')) if metrics.get('safe_local_resolutions') is number else '—' }} | {{ format_number_ptbr(metrics.get('cases_with_critical_error')) if metrics.get('cases_with_critical_error') is number else '—' }} |
+
+              **Qualidade:** recall crítico {{ (format_number_ptbr(metrics.get('critical_field_recall') * 100, 2) ~ '% MEDIDO') if metrics.get('critical_field_recall') is number else 'NÃO TESTADO' }} · números {{ (format_number_ptbr(metrics.get('numeric_preservation') * 100, 2) ~ '% MEDIDO') if metrics.get('numeric_preservation') is number else 'NÃO TESTADO' }} · schema {{ (format_number_ptbr(metrics.get('schema_validity') * 100, 2) ~ '% MEDIDO') if metrics.get('schema_validity') is number else 'NÃO TESTADO' }} · útil {{ (format_number_ptbr(metrics.get('useful_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('useful_rate') is number else 'NÃO TESTADO' }} · fallback {{ (format_number_ptbr(metrics.get('fallback_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('fallback_rate') is number else 'NÃO TESTADO' }} · timeout {{ (format_number_ptbr(metrics.get('timeout_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('timeout_rate') is number else 'NÃO TESTADO' }} · OOM {{ (format_number_ptbr(metrics.get('oom_rate') * 100, 2) ~ '% MEDIDO') if metrics.get('oom_rate') is number else 'NÃO TESTADO' }}.
+
+              **Amostra operacional:** {{ format_number_ptbr(sample) if sample is number else '—' }} / {{ format_number_ptbr(required) if required is number else '—' }} tentativas reais selecionadas. Probes, benchmark, shadow, controle, parser resolvido e retries duplicados ficam fora. Telemetria atualizada há {{ (format_number_ptbr(age) ~ ' s') if age is number else '—' }}; última execução real há {{ (format_number_ptbr(last_age) ~ ' s') if last_age is number else 'NÃO TESTADO' }}.
 
           - type: markdown
             title: Referência controlada de qualidade
