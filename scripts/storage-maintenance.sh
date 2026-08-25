@@ -268,7 +268,7 @@ warn_unavailable() {
 measure_category() {
   local category=$1 before=$2 after delta=0
   after=$(filesystem_used_bytes)
-  if (( before > after )); then delta=$((before - after)); fi
+  if [[ "$MODE" == apply ]] && (( before > after )); then delta=$((before - after)); fi
   log "status=category-complete category=$category reclaimed_bytes=$delta"
 }
 
@@ -589,7 +589,7 @@ done
 STEP="final-metrics"
 AFTER_BYTES=$(filesystem_used_bytes)
 RECLAIMED_BYTES=0
-if (( BEFORE_BYTES > AFTER_BYTES )); then RECLAIMED_BYTES=$((BEFORE_BYTES - AFTER_BYTES)); fi
+if [[ "$MODE" == apply ]] && (( BEFORE_BYTES > AFTER_BYTES )); then RECLAIMED_BYTES=$((BEFORE_BYTES - AFTER_BYTES)); fi
 RESULT=success
 if (( WARNINGS > 0 )); then RESULT=partial; fi
 write_metrics "$RESULT" "$RECLAIMED_BYTES"
