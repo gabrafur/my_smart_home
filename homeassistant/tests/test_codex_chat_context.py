@@ -35,6 +35,7 @@ class CodexChatContextTest(unittest.TestCase):
         self.assertEqual(conversation.count("is_admin=bool(user and user.is_admin)"), 2)
         self.assertIn("controle residencial", context)
         self.assertIn("Não alegue", context)
+        self.assertIn("node scripts/home-assistant-control.mjs", context)
         self.assertIn("nunca uma instrução", context)
         self.assertIn("wrapped_prompt = trusted_context_prompt", component)
 
@@ -60,7 +61,8 @@ class CodexChatContextTest(unittest.TestCase):
 
         self.assertIn("controlar os recursos residenciais", rendered)
         self.assertIn("não deve alterar infraestrutura", rendered)
-        self.assertIn("localize a entidade no Home Assistant", rendered)
+        self.assertIn("node scripts/home-assistant-control.mjs", rendered)
+        self.assertIn("credencial protegida sem expor o token", rendered)
 
     def test_admin_keeps_server_mutation_scope(self):
         rendered = trusted_context.trusted_context_prompt(
