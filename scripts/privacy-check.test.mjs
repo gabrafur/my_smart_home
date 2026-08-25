@@ -107,6 +107,7 @@ test("allows precise benchmark metrics without allowing private network data", (
   const files = [
     "docs/benchmarks/local-ai-high-potential/latest.json",
     "docs/benchmarks/local-ai-restricted-pivot/retrieval-reranking/latest.json",
+    "docs/benchmarks/local-ai-structured-extraction-canary/readiness.json",
   ];
   for (const file of files) {
     assert.deepEqual(scanEntries([entry(file, `{"quality_score":${metric}}`)]), []);

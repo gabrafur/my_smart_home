@@ -113,6 +113,7 @@ test("allows benchmark metrics without weakening other artifact checks", () => {
   const artifacts = [
     "docs/benchmarks/local-ai-high-potential/latest.json",
     "docs/benchmarks/local-ai-restricted-pivot/retrieval-reranking/latest.json",
+    "docs/benchmarks/local-ai-structured-extraction-canary/readiness.json",
   ];
   for (const artifact of artifacts) {
     write(item.root, artifact, `{"quality_score":${metric}}\n`);

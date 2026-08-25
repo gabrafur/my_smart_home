@@ -12,12 +12,12 @@ não alteram a amostra operacional.
 
 Arquivos:
 
-- `readiness.json`: checks de prontidão e limites da decisão;
-- `canary-config.json`: configuração pública, override declarado e valor
+- [`readiness.json`](readiness.json): checks de prontidão e limites da decisão;
+- [`canary-config.json`](canary-config.json): configuração pública, override declarado e valor
   efetivo, sem revelar o arquivo privado;
-- `smoke-results.json`: resultados das sondas e prova agregada da RTX;
-- `latest-operational-summary.json`: snapshot sanitizado produzido pelo audit;
-- `report.md`: relatório humano produzido pelo mesmo audit.
+- [`smoke-results.json`](smoke-results.json): resultados das sondas e prova agregada da RTX;
+- [`latest-operational-summary.json`](latest-operational-summary.json): snapshot sanitizado produzido pelo audit;
+- [`report.md`](report.md): relatório humano produzido pelo mesmo audit.
 
 Eventos detalhados permanecem em storage local ignorado pelo Git. Inputs,
 outputs, paths privados, identificadores reversíveis, credenciais e conteúdo

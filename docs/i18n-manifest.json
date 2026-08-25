@@ -100,6 +100,8 @@
     { "path": "docs/benchmarks/local-ai-restricted-pivot/retrieval-reranking/report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
     { "path": "docs/benchmarks/local-ai-restricted-pivot/structured-extraction-promotion/report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
     { "path": "docs/benchmarks/local-ai-restricted-pivot/summarize-log-validation/report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
+    { "path": "docs/benchmarks/local-ai-structured-extraction-canary/README.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "scripts/local-ai/README.md" },
+    { "path": "docs/benchmarks/local-ai-structured-extraction-canary/report.md", "area": "operations", "strategy": "summary pair", "language": "en", "summary": "docs/LOCAL_AI_RTX_4070.md" },
     { "path": "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/README.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
     { "path": "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
     { "path": "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/technical-report.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },
