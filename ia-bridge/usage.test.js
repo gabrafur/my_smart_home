@@ -496,6 +496,36 @@ test('sanitizes the quality-first v3 bake-off without exposing raw events', () =
   assert.equal(benchmark.frozen_profiles, undefined);
 });
 
+test('sanitizes the restricted pivot without exposing cases or paths', () => {
+  const pivotPath = path.resolve(
+    __dirname, '..', 'docs', 'benchmarks', 'local-ai-restricted-pivot', 'latest.json',
+  );
+  const executedAt = new Date(JSON.parse(fs.readFileSync(pivotPath)).benchmark_executed_at);
+  const usage = scanLocalAiTelemetry(
+    null, null, new Date(executedAt.valueOf() + 3_600_000), null, pivotPath,
+  );
+  const pivot = usage.benchmark_restricted_pivot;
+  assert.equal(pivot.schema_version, 1);
+  assert.equal(pivot.status, 'measured');
+  assert.equal(pivot.benchmark_age_seconds, 3600);
+  assert.equal(pivot.decisions.structured_extraction, 'PROMOTE_TO_CANARY');
+  assert.equal(pivot.decisions.summarize_log, 'DETERMINISTIC_ONLY');
+  assert.equal(pivot.decisions.retrieval_reranking, 'NOT_DEMONSTRATED');
+  assert.equal(pivot.decisions.error_similarity, 'SKIPPED');
+  assert.equal(pivot.decisions.local_ai_expansion, 'CONTINUE_RESTRICTED');
+  assert.equal(pivot.structured_extraction.holdout_cases, 100);
+  assert.equal(pivot.structured_extraction.critical_field_recall, 1);
+  assert.equal(pivot.structured_extraction.production_enabled, false);
+  assert.equal(pivot.summarize_log.deterministic.estimated_context_tokens, 12205);
+  assert.equal(pivot.summarize_log.deterministic_plus_local.estimated_context_tokens, 18292);
+  assert.ok(Math.abs(pivot.retrieval_reranking.hybrid.critical_file_recall_at_10 - 0.25559) < 0.00001);
+  assert.equal(pivot.retrieval_reranking.persistent_index_implemented, false);
+  assert.equal(pivot.error_similarity.automatic_merge, false);
+  assert.equal(pivot.artifact_hashes, undefined);
+  assert.equal(pivot.structured_extraction.dataset, undefined);
+  assert.equal(pivot.retrieval_reranking.results, undefined);
+});
+
 test('does not report a stale Local AI preflight as available', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-stale-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

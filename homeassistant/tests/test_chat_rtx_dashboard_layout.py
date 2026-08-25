@@ -20,6 +20,21 @@ def rtx_view() -> str:
 
 
 class RtxDashboardLayoutTest(unittest.TestCase):
+    def test_restricted_pivot_sensor_exposes_only_bounded_sections(self):
+        package = CODEX_PACKAGE.read_text(encoding="utf-8")
+        start = package.index("      - name: Codex Pivot RTX Restrito\n")
+        end = package.index("      - name: Codex Chamadas Local AI\n", start)
+        sensor = package[start:end]
+        for attribute in (
+            "schema_version", "benchmark_run_id", "ultima_execucao", "idade_benchmark_s",
+            "base_de_medicao", "decisoes", "feature_flags", "extracao_estruturada",
+            "resumo_de_logs", "retrieval_reranking", "similaridade_de_erros",
+        ):
+            self.assertIn(f"          {attribute}:", sensor)
+        self.assertNotIn("artifact_hashes", sensor)
+        self.assertNotIn("results", sensor)
+        self.assertNotIn("operational_calls", sensor)
+
     def test_quality_bakeoff_sensor_exposes_v3_evidence_without_operational_mix(self):
         package = CODEX_PACKAGE.read_text(encoding="utf-8")
         start = package.index("      - name: Codex Benchmark RTX Alto Potencial\n")
@@ -59,7 +74,7 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         )
         self.assertEqual(
             sum(len(re.findall(r"^          - type:", column, re.MULTILINE)) for column in columns),
-            29,
+            30,
         )
         for title in ("Atenção de roteamento — hoje", "Decisão de roteamento", "Diagnóstico da última execução", "Histórico de uso da RTX — últimas 48 horas"):
             self.assertIn(f"title: {title}", columns[0])
@@ -166,6 +181,32 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertIn("Estas chamadas não entram nos contadores operacionais", view)
         self.assertNotIn("weighted_token_savings", view)
         self.assertIn("`summarize-log` está excluído", view)
+
+    def test_restricted_pivot_separates_all_four_tracks_and_measurement_basis(self):
+        view = rtx_view()
+
+        self.assertIn("title: Pivot RTX — expansão restrita", view)
+        self.assertIn("sensor.codex_pivot_rtx_restrito", view)
+        for heading in (
+            "A · Extração estruturada", "B · Logs", "C · Retrieval/reranking",
+            "D · Similaridade de erros",
+        ):
+            self.assertIn(heading, view)
+        for decision in (
+            "structured_extraction", "summarize_log", "retrieval_reranking",
+            "error_similarity", "local_ai_expansion",
+        ):
+            self.assertIn(decision, view)
+        for label in ("MEDIDO", "ESTIMADO", "NÃO TESTADO"):
+            self.assertIn(label, view)
+        self.assertIn("não entram no waterfall operacional", view)
+        self.assertIn("format_number_ptbr", view)
+        self.assertIn("persistent_index_implemented", view)
+        self.assertIn("automatic_merge", view)
+        self.assertIn("Aceitas/úteis", view)
+        self.assertIn("resumos locais aceitos", view)
+        self.assertIn("idade, arquivos e chunks do índice", view)
+        self.assertIn("Pares sugeridos, recall e falsos positivos", view)
 
     def test_daily_operational_flow_reconciles_quality_outcomes(self):
         view = rtx_view()

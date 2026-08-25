@@ -626,6 +626,39 @@ template:
           politica_summarize_log: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('summarize_log_policy')) }}
 
+      - name: Codex Pivot RTX Restrito
+        unique_id: codex_pivot_rtx_restrito
+        icon: mdi:transit-connection-variant
+        state: >-
+          {% set pivot = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}) %}
+          {{ (pivot.get('decisions') or {}).get('local_ai_expansion', pivot.get('status', 'not_measured')) }}
+        availability: >-
+          {% set pivot = ((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}) %}
+          {{ states('sensor.codex_usage_raw') == 'ok' and pivot.get('available', false) }}
+        attributes:
+          schema_version: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('schema_version')) }}
+          benchmark_run_id: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('benchmark_run_id')) }}
+          ultima_execucao: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('benchmark_executed_at')) }}
+          idade_benchmark_s: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('benchmark_age_seconds')) }}
+          base_de_medicao: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('measurement_basis')) or {} }}
+          decisoes: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('decisions')) or {} }}
+          feature_flags: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('feature_flags')) or {} }}
+          extracao_estruturada: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('structured_extraction')) or {} }}
+          resumo_de_logs: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('summarize_log')) or {} }}
+          retrieval_reranking: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('retrieval_reranking')) or {} }}
+          similaridade_de_erros: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_restricted_pivot') or {}).get('error_similarity')) or {} }}
+
       - name: Codex Chamadas Local AI
         unique_id: codex_chamadas_local_ai
         icon: mdi:counter

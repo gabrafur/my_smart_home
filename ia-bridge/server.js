@@ -47,6 +47,8 @@ const codexUsage = new CodexUsageReader(
   1_000,
   process.env.LOCAL_AI_BENCHMARK_PATH
     || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-quality-bakeoff', 'latest.json'),
+  process.env.LOCAL_AI_PIVOT_BENCHMARK_PATH
+    || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-restricted-pivot', 'latest.json'),
 );
 const codexRateLimits = new CodexRateLimitsPoller({
   refreshMs: Math.min(

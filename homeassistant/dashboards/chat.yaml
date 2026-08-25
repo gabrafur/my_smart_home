@@ -1089,10 +1089,75 @@ views:
 
               **Inventário:** {% for item in models %}`{{ item.get('model_key') }}`={{ 'EXECUTADO' if item.get('executed') == true else item.get('not_run_status') or 'NÃO EXECUTADO' }}{% if not loop.last %} · {% endif %}{% endfor %}
 
-              **Pipeline:** feature flag `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'feature_flag_pipeline') or 'não informada' }}`; rollback central disponível. `summarize-log` está excluído e permanece inalterado em benchmark separado. Estas chamadas não entram nos contadores operacionais.
+              **Pipeline:** feature flag `{{ state_attr('sensor.codex_benchmark_rtx_alto_potencial', 'feature_flag_pipeline') or 'não informada' }}`; rollback central disponível. `summarize-log` está excluído desta bateria e foi posteriormente substituído pela política determinística mostrada no card do pivot. Estas chamadas não entram nos contadores operacionais.
               {% else %}
               {{ badges.get(status, '⚪ AMOSTRA INSUFICIENTE') }} — nenhum artefato
               de benchmark sanitizado foi carregado pelo bridge.
+              {% endif %}
+
+          - type: markdown
+            title: Pivot RTX — expansão restrita
+            content: |-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set basis = state_attr('sensor.codex_pivot_rtx_restrito', 'base_de_medicao') or {} %}
+              {% set decisions = state_attr('sensor.codex_pivot_rtx_restrito', 'decisoes') or {} %}
+              {% set structured = state_attr('sensor.codex_pivot_rtx_restrito', 'extracao_estruturada') or {} %}
+              {% set logs = state_attr('sensor.codex_pivot_rtx_restrito', 'resumo_de_logs') or {} %}
+              {% set retrieval = state_attr('sensor.codex_pivot_rtx_restrito', 'retrieval_reranking') or {} %}
+              {% set similarity = state_attr('sensor.codex_pivot_rtx_restrito', 'similaridade_de_erros') or {} %}
+              {% set flags = state_attr('sensor.codex_pivot_rtx_restrito', 'feature_flags') or {} %}
+              {% set idade_s = state_attr('sensor.codex_pivot_rtx_restrito', 'idade_benchmark_s') %}
+              {% set labels = {
+                'MEASURED': '🟢 MEDIDO',
+                'ESTIMATED': '🟡 ESTIMADO',
+                'NOT_TESTED': '⚪ NÃO TESTADO'
+              } %}
+              {% if structured %}
+              **Execução offline:** `{{ state_attr('sensor.codex_pivot_rtx_restrito', 'benchmark_run_id') or '—' }}` · **data:** {{ state_attr('sensor.codex_pivot_rtx_restrito', 'ultima_execucao') or 'não informada' }} · **idade:** {{ (format_number_ptbr((idade_s | float(0)) / 86400, 1) ~ ' dias') if idade_s is number else 'não informada' }}
+
+              **Decisão global:** `{{ decisions.get('local_ai_expansion', 'não informada') }}`. Economia operacional deste benchmark: **{{ format_number_ptbr(basis.get('benchmark_operational_savings')) if basis.get('benchmark_operational_savings') is number else 'não medida' }}**; os resultados abaixo não entram no waterfall operacional.
+
+              **A · Extração estruturada — `{{ decisions.get('structured_extraction', 'não informada') }}`**
+
+              Inferência {{ labels.get(basis.get('structured_local_inference'), '⚪ NÃO INFORMADO') }} · modelo `{{ (structured.get('model') or {}).get('model', '—') }}` · digest `{{ ((structured.get('model') or {}).get('digest') or '—')[:12] }}` · ground truth `{{ structured.get('ground_truth_independence', '—') }}`.
+
+              | Holdout | Recall crítico | Schema válido | Números preservados | Úteis | Fallback | Erros críticos | p50 | VRAM | Produção |
+              |--:|--:|--:|--:|--:|--:|--:|--:|--:|:--:|
+              | {{ format_number_ptbr(structured.get('holdout_cases')) if structured.get('holdout_cases') is number else '—' }} | {{ (format_number_ptbr(structured.get('critical_field_recall') * 100, 2) ~ '%') if structured.get('critical_field_recall') is number else '—' }} | {{ (format_number_ptbr(structured.get('schema_validity') * 100, 2) ~ '%') if structured.get('schema_validity') is number else '—' }} | {{ (format_number_ptbr(structured.get('numeric_preservation') * 100, 2) ~ '%') if structured.get('numeric_preservation') is number else '—' }} | {{ (format_number_ptbr(structured.get('useful_rate') * 100, 2) ~ '%') if structured.get('useful_rate') is number else '—' }} | {{ (format_number_ptbr(structured.get('fallback_rate') * 100, 2) ~ '%') if structured.get('fallback_rate') is number else '—' }} | {{ format_number_ptbr(structured.get('cases_with_critical_error')) if structured.get('cases_with_critical_error') is number else '—' }} | {{ (format_number_ptbr(structured.get('duration_p50'), 3) ~ ' s') if structured.get('duration_p50') is number else '—' }} | {{ (format_number_ptbr(structured.get('vram_peak_mib')) ~ ' MiB') if structured.get('vram_peak_mib') is number else '—' }} | {{ 'SIM' if structured.get('production_enabled') == true else 'NÃO' }} |
+
+              Aceitas/úteis: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('useful_rate')) if structured.get('holdout_cases') is number and structured.get('useful_rate') is number else '—' }}**; fallbacks: **{{ format_number_ptbr(structured.get('holdout_cases') * structured.get('fallback_rate')) if structured.get('holdout_cases') is number and structured.get('fallback_rate') is number else '—' }}**. Canário offline aprovado, ainda não executado; flag independente `{{ flags.get('structured_extraction', '—') }}` permanece desligada por padrão.
+
+              **B · Logs — `{{ decisions.get('summarize_log', 'não informada') }}`**
+
+              Inferência local {{ labels.get(basis.get('summarize_log_local_inference'), '⚪ NÃO INFORMADO') }}. O braço determinístico reteve os fatos com menos contexto que o braço local.
+
+              | Braço | Holdout | Recall crítico | Contexto estimado | Redução estimada | Não suportadas |
+              |:--|--:|--:|--:|--:|--:|
+              {% for label, arm in [('raw', logs.get('raw') or {}), ('determinístico', logs.get('deterministic') or {}), ('determinístico + local', logs.get('deterministic_plus_local') or {})] -%}
+              | {{ label }} | {{ format_number_ptbr(arm.get('cases')) if arm.get('cases') is number else '—' }} | {{ (format_number_ptbr(arm.get('critical_fact_recall') * 100, 2) ~ '%') if arm.get('critical_fact_recall') is number else '—' }} | {{ (format_number_ptbr(arm.get('estimated_context_tokens')) ~ ' tokens') if arm.get('estimated_context_tokens') is number else '—' }} | {{ (format_number_ptbr(arm.get('estimated_context_reduction') * 100, 2) ~ '%') if arm.get('estimated_context_reduction') is number else '—' }} | {{ format_number_ptbr(arm.get('unsupported_claims')) if arm.get('unsupported_claims') is number else '—' }} |
+              {% endfor %}
+
+              {% set local_log = logs.get('deterministic_plus_local') or {} %}
+              Logs no dataset: **{{ format_number_ptbr(logs.get('dataset_cases')) if logs.get('dataset_cases') is number else '—' }}**; resumos locais aceitos: **{{ format_number_ptbr(local_log.get('cases') * local_log.get('accepted_rate')) if local_log.get('cases') is number and local_log.get('accepted_rate') is number else '—' }}**; rejeitados: **{{ format_number_ptbr(local_log.get('cases') * (1 - local_log.get('accepted_rate'))) if local_log.get('cases') is number and local_log.get('accepted_rate') is number else '—' }}**; fallbacks: **{{ format_number_ptbr(local_log.get('cases') * local_log.get('fallback_rate')) if local_log.get('cases') is number and local_log.get('fallback_rate') is number else '—' }}**; omissões críticas: **{{ format_number_ptbr(local_log.get('critical_omissions')) if local_log.get('critical_omissions') is number else '—' }}**.
+
+              Ganho incremental local versus determinístico: **{{ (format_number_ptbr(logs.get('additional_context_reduction_vs_deterministic') * 100, 2) ~ '%') if logs.get('additional_context_reduction_vs_deterministic') is number else 'não medido' }}**; política atual `{{ logs.get('production_policy', 'não informada') }}`.
+
+              **C · Retrieval/reranking — `{{ decisions.get('retrieval_reranking', 'não informada') }}`**
+
+              {% set embedding_model = retrieval.get('embedding_baseline') or {} %}
+              Embeddings {{ labels.get(basis.get('embedding_inference'), '⚪ NÃO INFORMADO') }} · modelo `{{ embedding_model.get('model', '—') }}` · dimensão {{ format_number_ptbr(embedding_model.get('embedding_length')) if embedding_model.get('embedding_length') is number else '—' }} · reranking {{ labels.get(basis.get('reranking'), '⚪ NÃO INFORMADO') }} (`{{ retrieval.get('reranker_status', '—') }}`). Índice persistente: **{{ 'SIM' if retrieval.get('persistent_index_implemented') == true else 'NÃO' }}**; idade, arquivos e chunks do índice: **{{ 'não informados' if retrieval.get('persistent_index_implemented') == true else 'não aplicáveis' }}**.
+
+              | Braço | Holdout | Recall crítico@10 | MRR@10 | nDCG@10 | Contexto@10 | Precisa de mais contexto |
+              |:--|--:|--:|--:|--:|--:|--:|
+              {% for label, arm in [('determinístico', retrieval.get('deterministic') or {}), ('embedding', retrieval.get('embedding') or {}), ('híbrido', retrieval.get('hybrid') or {})] -%}
+              | {{ label }} | {{ format_number_ptbr(arm.get('cases')) if arm.get('cases') is number else '—' }} | {{ (format_number_ptbr(arm.get('critical_file_recall_at_10') * 100, 2) ~ '%') if arm.get('critical_file_recall_at_10') is number else '—' }} | {{ format_number_ptbr(arm.get('mrr_at_10'), 4) if arm.get('mrr_at_10') is number else '—' }} | {{ format_number_ptbr(arm.get('ndcg_at_10'), 4) if arm.get('ndcg_at_10') is number else '—' }} | {{ format_number_ptbr(arm.get('context_tokens_at_10')) if arm.get('context_tokens_at_10') is number else '—' }} | {{ (format_number_ptbr(arm.get('needs_more_context_rate') * 100, 2) ~ '%') if arm.get('needs_more_context_rate') is number else '—' }} |
+              {% endfor %}
+
+              **D · Similaridade de erros — `{{ decisions.get('error_similarity', 'não informada') }}`**
+
+              Similaridade {{ labels.get(basis.get('error_similarity'), '⚪ NÃO INFORMADO') }}; `{{ similarity.get('decision', '—') }}` porque retrieval não atingiu o gate. Pares sugeridos, recall e falsos positivos: **não testados**. Modo somente sugestão: **não ativado**; merge automático: **{{ 'SIM' if similarity.get('automatic_merge') == true else 'NÃO' }}**.
+              {% else %}
+              ⚪ NÃO MEDIDO — nenhum artefato sanitizado do pivot restrito foi carregado pelo bridge.
               {% endif %}
 
           - type: markdown

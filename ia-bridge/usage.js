@@ -1031,7 +1031,162 @@ function sanitizeHighPotentialBenchmark(benchmarkPath, now = new Date()) {
   };
 }
 
-function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date(), benchmarkPath = null) {
+function sanitizeRestrictedPivot(pivotPath, now = new Date()) {
+  const report = readJson(pivotPath, null);
+  if (!report || report.schema_version !== 1 || report.suite !== 'local-ai-restricted-pivot-v1') {
+    return { available: false, status: 'not_measured' };
+  }
+  const safeNumber = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    return Number.isFinite(Number(value)) ? Number(value) : null;
+  };
+  const safeString = (value) => (typeof value === 'string' ? value : null);
+  const safeBoolean = (value) => (typeof value === 'boolean' ? value : null);
+  const executedAt = safeString(report.benchmark_executed_at);
+  const executedDate = new Date(executedAt);
+  const ageSeconds = Number.isNaN(executedDate.valueOf())
+    ? null : Math.max(0, Math.floor((now.valueOf() - executedDate.valueOf()) / 1000));
+  const safeDecision = (key) => safeString(report.decisions?.[key]);
+  const safeFlag = (key) => safeString(report.feature_flags?.[key]);
+  const safeModel = (model) => ({
+    model: safeString(model?.model),
+    digest: safeString(model?.digest),
+    license: safeString(model?.license),
+    parameter_size: safeString(model?.details?.parameter_size),
+    quantization_level: safeString(model?.details?.quantization_level),
+    embedding_length: safeNumber(model?.details?.embedding_length),
+  });
+  const safeQualityArm = (arm) => ({
+    cases: safeNumber(arm?.cases),
+    critical_fact_recall: safeNumber(arm?.critical_fact_recall),
+    numeric_preservation: safeNumber(arm?.numeric_preservation),
+    schema_validity: safeNumber(arm?.schema_validity),
+    unsupported_claims: safeNumber(arm?.unsupported_claims),
+    critical_omissions: safeNumber(arm?.critical_omissions),
+    accepted_rate: safeNumber(arm?.accepted_rate),
+    fallback_rate: safeNumber(arm?.fallback_rate),
+    estimated_context_tokens: safeNumber(arm?.estimated_context_tokens),
+    estimated_context_reduction: safeNumber(arm?.estimated_context_reduction),
+  });
+  const safeRetrievalArm = (arm) => {
+    if (!arm || typeof arm !== 'object') return null;
+    return {
+      cases: safeNumber(arm.cases),
+      critical_file_recall_at_5: safeNumber(arm.critical_file_recall_at_5),
+      critical_file_recall_at_10: safeNumber(arm.critical_file_recall_at_10),
+      critical_file_recall_at_20: safeNumber(arm.critical_file_recall_at_20),
+      file_recall_at_10: safeNumber(arm.file_recall_at_10),
+      chunk_recall_at_10: safeNumber(arm.chunk_recall_at_10),
+      precision_at_10: safeNumber(arm.precision_at_10),
+      map_at_10: safeNumber(arm.map_at_10),
+      mrr_at_10: safeNumber(arm.mrr_at_10),
+      ndcg_at_10: safeNumber(arm.ndcg_at_10),
+      context_tokens_at_10: safeNumber(arm.context_tokens_at_10),
+      needs_more_context_rate: safeNumber(arm.needs_more_context_rate),
+      invented_paths: safeNumber(arm.invented_paths),
+      stale_index_cases: safeNumber(arm.stale_index_cases),
+    };
+  };
+  const structured = report.structured_extraction || {};
+  const structuredHoldout = structured.promotion_holdout || {};
+  const summarizeLog = report.summarize_log || {};
+  const logHoldout = summarizeLog.promotion_holdout || {};
+  const retrieval = report.retrieval_reranking || {};
+  const retrievalHoldout = retrieval.promotion_holdout || {};
+  const similarity = report.error_similarity || {};
+  return {
+    available: true,
+    status: 'measured',
+    schema_version: 1,
+    benchmark_run_id: safeString(report.benchmark_run_id),
+    benchmark_executed_at: executedAt,
+    benchmark_age_seconds: ageSeconds,
+    measurement_basis: {
+      structured_local_inference: safeString(report.measurement_basis?.structured_local_inference),
+      summarize_log_local_inference: safeString(report.measurement_basis?.summarize_log_local_inference),
+      embedding_inference: safeString(report.measurement_basis?.embedding_inference),
+      reranking: safeString(report.measurement_basis?.reranking),
+      error_similarity: safeString(report.measurement_basis?.error_similarity),
+      gpt_tokens: safeString(report.measurement_basis?.gpt_tokens),
+      gpt_direct_execution: safeString(report.measurement_basis?.gpt_direct_execution),
+      benchmark_operational_savings: safeNumber(
+        report.measurement_basis?.benchmark_operational_savings,
+      ),
+    },
+    decisions: {
+      structured_extraction: safeDecision('structured_extraction'),
+      summarize_log: safeDecision('summarize_log'),
+      retrieval_reranking: safeDecision('retrieval_reranking'),
+      error_similarity: safeDecision('error_similarity'),
+      local_ai_expansion: safeDecision('local_ai_expansion'),
+    },
+    feature_flags: {
+      structured_extraction: safeFlag('structured_extraction'),
+      summarize_log: safeFlag('summarize_log'),
+      retrieval: safeFlag('retrieval'),
+      reranker: safeFlag('reranker'),
+      error_similarity: safeFlag('error_similarity'),
+    },
+    structured_extraction: {
+      model: safeModel(structured.model),
+      dataset_cases: safeNumber(structured.dataset?.cases),
+      holdout_cases: safeNumber(structured.dataset?.promotion_holdout_cases),
+      ground_truth_independence: safeString(structured.dataset?.ground_truth_independence),
+      canary: safeString(structured.canary),
+      production_enabled: safeBoolean(structured.production_enabled),
+      critical_field_recall: safeNumber(structuredHoldout.critical_field_recall),
+      numeric_preservation: safeNumber(structuredHoldout.numeric_preservation),
+      schema_validity: safeNumber(structuredHoldout.schema_validity),
+      useful_rate: safeNumber(structuredHoldout.useful_rate),
+      fallback_rate: safeNumber(structuredHoldout.fallback_rate),
+      cases_with_critical_error: safeNumber(structuredHoldout.cases_with_critical_error),
+      technical_failures: safeNumber(structuredHoldout.technical_failures),
+      timeouts: safeNumber(structuredHoldout.timeouts),
+      oom: safeNumber(structuredHoldout.oom),
+      duration_p50: safeNumber(structuredHoldout.duration_p50),
+      vram_peak_mib: safeNumber(structuredHoldout.vram_peak),
+      cpu_offload_observed: safeBoolean(structuredHoldout.cpu_offload_observed),
+    },
+    summarize_log: {
+      production_policy: safeString(summarizeLog.production_policy),
+      dataset_cases: safeNumber(summarizeLog.dataset?.cases),
+      holdout_cases: safeNumber(summarizeLog.dataset?.promotion_holdout_cases),
+      additional_context_reduction_vs_deterministic: safeNumber(
+        summarizeLog.additional_context_reduction_vs_deterministic,
+      ),
+      raw: safeQualityArm(logHoldout.raw),
+      deterministic: safeQualityArm(logHoldout.deterministic),
+      deterministic_plus_local: safeQualityArm(logHoldout.deterministic_plus_local),
+    },
+    retrieval_reranking: {
+      dataset_cases: safeNumber(retrieval.dataset?.cases),
+      holdout_cases: safeNumber(retrieval.dataset?.promotion_holdout_cases),
+      ground_truth_independence: safeString(retrieval.dataset?.ground_truth_independence),
+      embedding_baseline: safeModel(retrieval.models?.embedding_baseline),
+      embedding_challenger_status: safeString(retrieval.models?.embedding_challenger?.status),
+      reranker_status: safeString(retrieval.models?.reranker?.status),
+      persistent_index_implemented: safeBoolean(retrieval.index?.implemented),
+      deterministic: safeRetrievalArm(retrievalHoldout.deterministic),
+      embedding: safeRetrievalArm(retrievalHoldout.embedding),
+      hybrid: safeRetrievalArm(retrievalHoldout.hybrid),
+      hybrid_plus_reranker: safeRetrievalArm(retrievalHoldout.hybrid_plus_reranker),
+    },
+    error_similarity: {
+      decision: safeString(similarity.decision),
+      automatic_merge: safeBoolean(similarity.automatic_merge),
+      embedding_inference: safeString(similarity.measurement_basis?.embedding_inference),
+      gpu: safeString(similarity.measurement_basis?.gpu),
+    },
+  };
+}
+
+function scanLocalAiTelemetry(
+  telemetryPath,
+  statusPath,
+  now = new Date(),
+  benchmarkPath = null,
+  pivotPath = null,
+) {
   const state = readJson(telemetryPath, {});
   const deliveryReceipts = codeModeDeliveryReceipts(state);
   reconcileCodeModeDeliveries(state, deliveryReceipts);
@@ -1148,6 +1303,7 @@ function scanLocalAiTelemetry(telemetryPath, statusPath, now = new Date(), bench
       confirmed_code_mode_calls: deliveryReceipts.size,
     },
     benchmark_high_potential: sanitizeHighPotentialBenchmark(benchmarkPath, now),
+    benchmark_restricted_pivot: sanitizeRestrictedPivot(pivotPath, now),
   };
 }
 
@@ -1403,11 +1559,13 @@ class CodexUsageReader {
     localAiStatusPath = null,
     cacheMs = 5_000,
     localAiBenchmarkPath = null,
+    localAiPivotPath = null,
   ) {
     this.sessionsDirectories = Array.isArray(sessionsDirectory) ? sessionsDirectory : [sessionsDirectory];
     this.localAiTelemetryPath = localAiTelemetryPath;
     this.localAiStatusPath = localAiStatusPath;
     this.localAiBenchmarkPath = localAiBenchmarkPath;
+    this.localAiPivotPath = localAiPivotPath;
     this.cacheMs = cacheMs;
     this.cachedAt = 0;
     this.cached = null;
@@ -1456,6 +1614,7 @@ class CodexUsageReader {
         this.localAiStatusPath,
         new Date(),
         this.localAiBenchmarkPath,
+        this.localAiPivotPath,
       ),
     };
     this.cachedAt = Date.now();
@@ -1468,6 +1627,7 @@ class CodexUsageReader {
       this.localAiStatusPath,
       new Date(),
       this.localAiBenchmarkPath,
+      this.localAiPivotPath,
     );
   }
 
