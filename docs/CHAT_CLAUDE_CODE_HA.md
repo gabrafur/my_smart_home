@@ -295,6 +295,66 @@ Os arquivos em `/local` recebem cache longo do navegador; quando o card for
 alterado, atualize esse hash na mesma implantação para que clientes não
 reutilizem um módulo antigo que falhou ao carregar.
 
+#### Layout e estado da conversa Codex
+
+O card Codex ocupa a altura que o `hui-panel-view` disponibiliza e limita essa
+altura pelo viewport dinâmico. Internamente, `ha-card` é um grid com controles
+de tamanho natural, lista de mensagens em `minmax(0, 1fr)` e composer de tamanho
+natural. A lista usa `min-height: 0` e `overflow-y: auto`, portanto é a única
+área que cresce e rola quando o histórico fica longo. O composer inclui as safe
+areas inferiores e laterais. `100dvh` trata mudanças normais da barra do
+navegador; eventos de `visualViewport` ajustam a altura disponível quando o
+teclado virtual ou o chrome móvel reduz a área realmente visível. Não há altura
+fixada para um modelo de aparelho.
+
+As causas anteriores eram três: a lista tinha uma altura própria em `58vh` e
+um `min-height` que não contabilizavam cabeçalho, controles e composer;
+`loadSettings()` sempre devolvia Luna/baixo enquanto `saveSettings()` não
+gravava nada; e o rascunho existia apenas no `textarea`, que era destruído por
+cada `render()`, além de ser esvaziado antes da resposta do backend.
+
+Modelo, reasoning e rascunho agora pertencem ao estado vivo da conversa
+`home-assistant:codex:<user_id>`. Remounts do card no mesmo carregamento usam a
+mesma instância de estado, inclusive enquanto uma requisição está em andamento.
+A parte durável é armazenada no `localStorage` da origem do Home Assistant, em
+uma chave versionada com usuário, assistente e conversation id:
+
+```text
+codex-chat-card-state:v1:user:<user_id>:assistant:codex:chat:<conversation_id>
+```
+
+O rascunho é salvo 300 ms após a última edição e também é descarregado em
+`pagehide`, ao ocultar a página e no unmount. Ele nunca é enviado antes da ação
+de envio e não é registrado em logs ou telemetria. Uma falha preserva o texto.
+Um sucesso o remove somente se ele ainda for o mesmo texto enviado; assim, a
+conclusão de uma requisição antiga não apaga um rascunho mais novo criado após
+um remount. Alterar modelo ou reasoning não altera histórico nem rascunho.
+
+Todo valor restaurado é validado contra as opções atuais. Modelo ausente volta
+ao padrão oficial (Luna); o reasoning é preservado se o modelo resultante o
+aceitar e, caso contrário, volta deterministicamente para baixo. O mesmo valor
+normalizado controla o select e compõe `model`/`reasoning_effort` no WebSocket.
+Se o bridge confirmar outro par válido como efetivamente usado, a interface e
+a persistência passam a refletir esse par.
+
+Depois da confirmação do backend, **Limpar conversa** remove histórico e
+contexto no bridge, zera rascunho e estado vivo, restaura Luna/baixo e remove a
+chave durável somente dessa conversa. Em caso de falha da limpeza, os dados são
+mantidos. Se o armazenamento do navegador estiver indisponível ou corrompido,
+o card recupera padrões válidos e continua funcionando em memória; nesse caso,
+naturalmente não há garantia de restauração após recarregar a página.
+
+Os contratos ficam em `homeassistant/tests/codex_chat_card_behavior.test.mjs`,
+`homeassistant/tests/test_codex_chat_card_browser.py` e
+`homeassistant/tests/test_codex_chat_resource.py`. O teste de navegador cobre
+histórico longo e os viewports 390 × 844, 320 × 667, 430 × 932, 844 × 390 e
+1440 × 900,
+verificando composer visível, scroll exclusivo da lista, ausência de
+sobreposição, safe-area mínima, erros de página e chamadas duplicadas de
+histórico. O teclado virtual é coberto deterministicamente pelo cálculo de
+`visualViewport`; validação tátil em Android/iPhone real continua sendo uma
+etapa manual de implantação.
+
 Depois de alterar ou instalar esses arquivos, reconstrua o bridge e reinicie o
 Home Assistant:
 
