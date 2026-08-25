@@ -173,14 +173,21 @@ isolar um corpo não sensível, aplicar ferramentas determinísticas e chamar
 | Resultado de outro tool ou MCP | Explícita sobre o menor trecho não sensível | O hook de `Bash` não intercepta esse caminho |
 | Conteúdo pequeno, estruturado, secreto ou privado | Não aplicar RTX | Fallback determinístico/modelo principal |
 
-O único saldo A/B líquido positivo promovido no runtime 1.3.3 é
-`summarize-log` com pelo menos 3.000 tokens estimados e gate
-`deterministic-log-anchors-v1`. Portanto, o `AGENTS.md` aplica a avaliação do MCP
-a toda nova solicitação, mas o roteador falha fechado para os demais perfis. A
-política não equivale a prova de execução: somente o job terminal com metadata
-canônica comprova uso da RTX. Economia operacional exige a substituição pelo
-hook ou o recibo Code Mode vinculado ao mesmo `job_id`, tamanho exato e envelope
-estruturado.
+O runtime 1.3.3 promoveu historicamente `summarize-log` com pelo menos 3.000
+tokens estimados e o gate `deterministic-log-anchors-v1`. O pivot restrito de
+2026-08-25 substituiu essa política: em 90 casos de holdout, os fatos
+determinísticos preservaram 100% dos fatos críticos com 12.205 tokens estimados,
+enquanto o braço determinístico + resumo local usou 18.292. Como a etapa local
+aumentou o contexto em 49,87%, a decisão vigente é `DETERMINISTIC_ONLY` e não há
+perfil generativo de compressão promovido. Observações antigas continuam
+auditáveis, mas não autorizam novas chamadas operacionais.
+
+A única expansão local aprovada é um canário separado de extração estruturada
+residual, desligado por padrão. Ele não é rota de compressão: exige parser
+determinístico primeiro, as flags global e independente, bucket estável abaixo
+de 10%, validação campo a campo contra a fonte e fallback GPT direto. A fonte
+canônica da mudança é
+[`LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md`](LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md).
 
 O benchmark misto v8 evita extrapolar a redução de logs para todo o sistema.
 Com 14 pares em sete classes e uma carga sintética ponderada de 100 tarefas
@@ -283,12 +290,11 @@ e vale zero redução útil.
 
 ## Política de roteamento e auditoria
 
-O objetivo não é ocupar a RTX em todos os prompts. A decisão é positiva somente
-quando uma primeira passagem local, limitada e não sensível, tem previsão
-material de reduzir o contexto que chegaria ao modelo principal. A ordem é:
+O objetivo não é ocupar a RTX em todos os prompts. No estado vigente, a ordem
+para compressão de contexto é:
 
 ```text
-ferramenta determinística -> decisão de roteamento -> Local AI quando útil -> Codex/OpenAI
+ferramenta determinística -> fatos determinísticos quando aplicável -> Codex/OpenAI
 ```
 
 `scripts/local-ai/routing.py` torna a decisão reproduzível sem inferência. Ele
@@ -302,23 +308,19 @@ workloads os protege contra regressão.
 | --- | ---: | ---: | ---: | --- |
 | `classify-error` | 800 tokens | sem máximo após filtro de sinais | 500 tokens | alta |
 | `analyze-tests` | 900 tokens | sem máximo após filtro de sinais | 600 tokens | alta |
-| `summarize-log` | 3.000 tokens | sem máximo após filtro de sinais | 600 tokens | alta |
+| `summarize-log` | sem rota generativa | sem máximo após filtro de sinais | fatos determinísticos | alta |
 | `review-diff` / `inspect-files` | 1.200 tokens | 3.000 tokens | 700 tokens | média |
 | `summarize-document` | 1.200 tokens | 3.000 tokens | 700 tokens | média |
 | `summarize-memory` pelo MCP | 1.200 tokens | 6.000 tokens | 700 tokens | média |
 
-Com o gerador `qwen2.5-coder:14b`, todos os perfis exceto `summarize-log` ficam
-em `LOCAL_AI_NOT_BENEFICIAL` porque não passaram o A/B líquido. Eles só rodam
-com `LOCAL_AI_FORCE=1` em benchmark diagnóstico e não formam oportunidades
-perdidas. `summarize-log` começa em 3.000 tokens, único estrato lucrativo no
-holdout v4, e usa desde o runtime 1.3.3 o gate extrativo
-`deterministic-log-anchors-v1`. O modelo escolhe IDs de linhas rotineiras; código
-determinístico entrega somente essas linhas exatas, injeta todos os sinais e
-vizinhanças de stack/path e descarta toda prosa gerada. O gate falha fechado em
-truncamento, mais de 16 linhas críticas ou seleção não extrativa. Seu custo de
-inferência de validação é zero, então o precheck estima saída sem duplicar o
-contexto em um segundo modelo. As demais tarefas continuam exigindo um
-verificador diferente do gerador e permanecem desabilitadas sem evidência.
+Com o gerador `qwen2.5-coder:14b`, todos os perfis generativos de compressão
+ficam em `LOCAL_AI_NOT_BENEFICIAL`; só rodam com `LOCAL_AI_FORCE=1` em benchmark
+diagnóstico e não formam oportunidades perdidas. `summarize-log` agora usa o
+extrator determinístico de fatos, sinais, stack/path e valores críticos, sem
+inferência. Truncamento excessivo, mais sinais do que o limite seguro ou redução
+insuficiente devolvem o contexto bruto. Os antigos jobs com
+`deterministic-log-anchors-v1` permanecem na telemetria histórica com sua prova
+de entrega original, mas não definem o roteamento atual.
 
 JSON grande, busca, listagem de arquivos, parsing e outros dados estruturados
 continuam determinísticos quando a ferramenta aplicável resolve o caso. Por
@@ -647,9 +649,19 @@ operacional, e mostra 15 linhas de primary, dez de verifier, cinco decisões,
 inventário dos modelos, recursos, dataset e hashes. Respostas, thinking,
 perfis completos e os 983 eventos de benchmark não são expostos como atributos
 do Home Assistant. A marcação `measured`, `estimated` ou `not_tested` impede
-apresentar tokens GPT estimados como medição real. `summarize-log` continua
-identificado como benchmark separado e as chamadas do bake-off valem zero nos
-contadores operacionais.
+apresentar tokens GPT estimados como medição real. O resultado histórico de
+`summarize-log` continua identificável separadamente, mas a política vigente é
+determinística; todas as chamadas do bake-off valem zero nos contadores
+operacionais.
+
+O card separado **Pivot RTX — expansão restrita** lê
+`local_ai.benchmark_restricted_pivot`. Ele mostra as quatro linhas de trabalho,
+suas decisões, modelos/digests e agregados sanitizados: extração residual,
+comparação A/B/C dos logs, retrieval determinístico/embedding/híbrido e o skip
+da similaridade de erros. Casos, queries, caminhos recuperados, chunks e eventos
+brutos não entram nos atributos. Valores ausentes continuam ausentes, e cada
+resultado é marcado como `MEASURED`, `ESTIMATED` ou `NOT_TESTED`. O benchmark
+declara economia operacional zero e permanece fora do waterfall.
 
 O A/B de entrega v6 reproduz, somente por metadados, o controle bruto e o
 tratamento de um job Code Mode confirmado. A primeira observação mediu 4.074

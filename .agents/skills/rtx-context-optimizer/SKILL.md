@@ -15,22 +15,25 @@ retrieved from a file, or produced by a tool, but never route the aggregate
 prompt by size alone. The project has no `UserPromptSubmit` interceptor, so
 prompt text and attachments require this explicit agent decision.
 
-At the first large non-sensitive candidate, check `local_ai_status` lazily if
-availability has not yet been established in the conversation. Do not run a
-startup preflight. Recheck status only after an observed failure and retry a
-failed local request at most once.
+Do not check `local_ai_status` merely because a large candidate exists. Select
+the smallest relevant body and apply deterministic extraction first. For
+roughly 1,200 OpenAI tokens or 4,800 ordinary text characters and above,
+`local_ai_route` may record the policy outcome without source content; under the
+current policy it must fall back without calling `local_ai_compress_context`.
+Only a future versioned promotion may restore the lazy status check and local
+compression call, with at most one retry after an observed failure.
 
-Select the smallest relevant body. For roughly 1,200 OpenAI tokens or 4,800
-ordinary text characters and above, call `local_ai_route` with metadata before
-sending the body to the primary-model context. Call
-`local_ai_compress_context` only when the route is eligible and the expected
-reduction is material. Use only its bounded structured result when it preserves
-the facts needed for the task.
+There is currently no promoted generative context-compression profile. The
+restricted pivot showed that deterministic log facts were smaller than the
+validated local-summary arm, so logs now use deterministic extraction and then
+the primary model. The router must return every MCP compression profile to the
+primary-model fallback unless later versioned evidence and routing
+configuration promote it.
 
-The only currently promoted positive A/B profile is `summarize-log` at 3,000
-estimated OpenAI tokens or more with `deterministic-log-anchors-v1`. The router
-must return every other profile to the primary-model fallback unless later
-versioned evidence and routing configuration promote it.
+Residual `structured_extraction` is a separate, default-off 10% canary. It is
+not a context compressor and cannot be used through this skill: production code
+may invoke it only after the deterministic parser returns a residual, with its
+independent feature flag and source-anchored validator.
 
 Map evidence to `task_type` as follows:
 
@@ -50,29 +53,14 @@ files, configuration values, or risks, and continue from deterministic
 evidence.
 
 When orchestrating shell tools through code mode, keep a potentially large raw
-result inside the orchestration call until routing finishes. Do not deliberately
-emit it with `text(...)` first. Treat the project `PostToolUse` hook as a
-complementary guardrail, not a substitute for this decision.
-
-The current Code Mode host does not deliver nested `exec_command` calls to the
-project `PostToolUse` hook. For the promoted `summarize-log` profile, use the
-versioned `code-mode-orchestrator-v1` transport inside one outer orchestration:
-
-1. retain the raw `exec_command` result only in a variable;
-2. call `local_ai_route`, then `local_ai_compress_context`;
-3. require a non-empty UUID `job_id`, `telemetry_recorded=true`, and a structured
-   `result`;
-4. call `./scripts/local-ai/local-ai confirm-delivery --job-id <uuid>
-   --source-output-chars <exact_chars>` as the only metadata-only follow-up
-   shell call;
-5. emit only a JSON object containing `local_ai_context_replacement=true`, the
-   returned receipt under `delivery`, `delivery.raw_output_emitted=false`,
-   canonical `local_ai` execution booleans, and the exact MCP `result`.
-
-Do not invent or manually copy receipt fields. If the receipt command fails,
-fall back without claiming useful reduction. Keep the envelope below 12,000
-characters. The retrospective auditor matches its job and result to runtime MCP
-events; a direct MCP result or unmatched envelope fails closed.
+result inside the orchestration call until deterministic filtering finishes.
+For logs, use the repository's source-anchored fact extractor; emit the bounded
+deterministic result only when it preserves every critical signal and clears its
+reduction guard, otherwise emit the raw result. Do not call
+`local_ai_compress_context` or create a `code-mode-orchestrator-v1` receipt
+under the current unpromoted compression policy. Treat the project
+`PostToolUse` hook as a complementary deterministic guardrail, not a substitute
+for this decision; nested `exec_command` calls are not delivered to that hook.
 
 # Interpret routing and telemetry precisely
 
@@ -87,16 +75,13 @@ MCP or CLI call proves local work, but does not prove that its result replaced
 context sent to the primary model. Count operational useful reduction only when
 the versioned `PostToolUse` hook performs the replacement, or when a
 `code-mode-orchestrator-v1` receipt is bound to the successful MCP job, exact
-input size, and bounded emitted result. Both paths require measured gate cost,
-an independent validator, and no bounded truncation. The
-validator is normally a model distinct from the generator. The sole promoted
-exception is `summarize-log` with
-`quality_gate_type=deterministic-log-anchors-v1`: it may report a zero-token gate
-only when exact signal/stack lines are injected deterministically, routine
-context consists only of source line IDs resolved back to verbatim lines, and
-the job identifies `verifier_model=deterministic:log-anchors-v1`. Otherwise
-retain the job as diagnostic or provisional and assign zero confirmed useful
-tokens, even if the current conversation manually uses the result.
+input size, and bounded emitted result. Both historical delivery paths require
+measured gate cost, an independent validator, and no bounded truncation. The old
+`quality_gate_type=deterministic-log-anchors-v1` observations remain auditable,
+but they do not authorize new generative log compression after the restricted
+pivot. Retain any direct or forced job as diagnostic or provisional and assign
+zero confirmed useful tokens, even if the current conversation manually uses
+the result.
 
 For the legacy route field `deterministic_preprocessing_available`, pass `true`
 only when deterministic processing completely resolves the result and no LLM

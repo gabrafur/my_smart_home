@@ -4,6 +4,14 @@ O modelo local é uma primeira passagem limitada e não autoritativa. Use-o apen
 quando reduzir materialmente contexto não sensível; decisões de arquitetura,
 segurança, produção e ações irreversíveis permanecem sob revisão principal.
 
+Estado vigente desde o pivot restrito de 25/08/2026: não há perfil generativo
+de compressão promovido. Logs usam fatos determinísticos e depois o modelo
+principal. A única promoção é a capacidade default-off de canário a 10% para
+extração estruturada residual com `qwen2.5-coder:14b`, parser-first, validação
+source-anchored e fallback GPT direto. Retrieval/reranking ficou
+`NOT_DEMONSTRATED`; não existe índice operacional, e similaridade de erros foi
+pulada sem auto-merge. A decisão global é `CONTINUE_RESTRICTED`.
+
 Antes de alterar o helper, hook, telemetria ou as abas Codex/RTX, consulte
 `docs/LOCAL_AI_RTX_4070.md`. A publicação LAN usa uma porta proxy própria e
 restrita; não a amplie sem confirmar o escopo.
@@ -51,11 +59,12 @@ deterministicamente; o miolo cortado não conta como contexto substituído. Saí
 de testes, erros e logs pode ser maior porque a filtragem de sinais ocorre
 sobre o corpo bruto antes do limite.
 
-No modelo vigente, todos os perfis exceto `summarize-log` são
-`LOCAL_AI_NOT_BENEFICIAL` no uso operacional. Continuam disponíveis apenas em
-benchmark forçado. `summarize-log` começa em 3.000 tokens, aplica precheck
-econômico e usa o validador extrativo independente
-`deterministic:log-anchors-v1`, cujo custo de segunda inferência é zero.
+No modelo vigente, todos os perfis generativos de compressão são
+`LOCAL_AI_NOT_BENEFICIAL` no uso operacional e continuam disponíveis apenas em
+benchmark forçado. `summarize-log` usa `log_facts.py` sem inferência; se a saída
+determinística não preservar os sinais ou não reduzir o corpo com segurança, o
+contexto bruto segue ao modelo principal. Os jobs antigos com
+`deterministic:log-anchors-v1` são evidência histórica, não rota vigente.
 
 Suficiência determinística significa que nenhuma interpretação por LLM ainda é
 necessária. Coleta determinística pode produzir texto grande que continua
@@ -184,6 +193,18 @@ preservam `shadow/disabled`, `production_enabled=false`, primary/verifier nulos
 e fallback GPT direto. O suporte configurável fica em
 `scripts/local-ai/model-registry.json`, atrás de
 `LOCAL_AI_QUALITY_PIPELINE_ENABLED`, com rollback central e fail-closed.
-`summarize-log` permanece separado e inalterado. A fonte canônica é
+Naquele benchmark, `summarize-log` permaneceu separado e inalterado. A fonte canônica é
 `docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md` e o run id é
 `9b798bb9-612e-4d98-96ca-dca47063c32e`.
+
+O pivot restrito posterior usou o run
+`fe45c7b8-e653-4b8b-bc31-886e3966a9c9`. Extração residual passou 100/100 casos
+de holdout com schema, recall crítico e números em 100%, zero erro, fallback,
+timeout ou OOM; sua decisão foi `PROMOTE_TO_CANARY`, mas o canário real não foi
+executado. Em logs, os fatos determinísticos usaram 12.205 tokens estimados
+contra 18.292 no braço com resumo local, ambos com recall crítico de 100%; a
+etapa local aumentou o contexto em 49,87%, logo `DETERMINISTIC_ONLY`. No
+retrieval de 150 casos snapshot-consistent, o híbrido chegou a somente 25,56%
+de recall crítico@10 e ficou `NOT_DEMONSTRATED`; nenhum índice foi criado. A
+similaridade de erros ficou `SKIPPED_NO_RETRIEVAL_ADVANTAGE`. A fonte canônica é
+`docs/LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md`.

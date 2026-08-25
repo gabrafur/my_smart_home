@@ -189,19 +189,16 @@ repository skill `.agents/skills/rtx-context-optimizer/SKILL.md` and the global
 context.
 
 Apply this decision to every user request. Isolate the smallest candidate.
-Always call
-`local_ai_route` before `local_ai_compress_context`. The only profile with a
-currently positive promoted A/B result is non-sensitive `summarize-log` at
-3,000+ tokens with `deterministic-log-anchors-v1`; all else falls back.
-`PostToolUse` automates large `Bash` output, not prompt or nested Code Mode.
+No generative context-compression profile is promoted. For logs, use the
+versioned deterministic fact extractor; send raw context if it cannot preserve
+critical signals or reduce safely. All MCP compression profiles fail closed
+until versioned evidence and routing promote one. `PostToolUse` may replace
+large `Bash` logs deterministically, but not prompts or nested Code Mode calls.
 
-For eligible Code Mode output, keep the raw result inside `functions.exec`,
-route/compress it, then run the metadata-only `./scripts/local-ai/local-ai
-confirm-delivery --job-id <uuid> --source-output-chars <exact_chars>` in that
-same orchestration. Emit only the exact MCP result in a bounded JSON envelope
-with `local_ai_context_replacement=true`, the receipt under `delivery`,
-`delivery.raw_output_emitted=false`, and canonical execution metadata. Any
-failure creates no delivery evidence and zero useful tokens.
+The residual `structured_extraction` canary is not context compression. It is
+off by default; requires `LOCAL_AI_QUALITY_PIPELINE_ENABLED` and
+`LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED`; runs only on parser residuals in its
+stable 10% bucket; validates source-anchored fields; and otherwise uses GPT.
 
 Never send secrets or private runtime to Local AI and never delegate final
 architecture, security, production, migration, destructive-operation, RCA, or
@@ -215,9 +212,10 @@ use only after successful compression returns the required execution and
 telemetry metadata. Local telemetry is metadata-only and must never persist
 prompts, source input, model output, or secrets.
 
-A direct MCP/CLI success proves only inference. Operational use requires
-`PostToolUse` replacement or a `code-mode-orchestrator-v1` receipt bound to the
-same job and input size; the auditor matches its runtime result by `job_id`.
+MCP/CLI success proves only inference. Historical operational claims require a
+`PostToolUse` replacement or `code-mode-orchestrator-v1` receipt bound to the
+same job and input size and matched by `job_id`.
+Do not create compression receipts while every generative profile is unpromoted.
 
 Count context reduction as useful only when the task-specific fidelity gate
 accepts the result. A rejected or discarded Local AI result must fall back to

@@ -139,9 +139,39 @@ gate in any activity, so all five activities kept their existing
 `shadow`/`disabled` modes and `production_enabled=false`. The central registry
 and `model_registry.py` provide fail-closed per-activity selection behind
 `LOCAL_AI_QUALITY_PIPELINE_ENABLED`; invalid, disabled or unpromoted routes go
-directly to GPT. `summarize-log` is outside this registry decision and remains
-unchanged. See
+directly to GPT. That result is historical; the restricted pivot below now
+supersedes the operational `summarize-log` policy. See
 [`docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md`](../../docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md).
+
+## Restricted RTX pivot
+
+The 2026-08-25 restricted pivot stopped the broad search for larger generative
+models and evaluated residual structured extraction, deterministic-plus-local
+log condensation, and embedding retrieval. Reproduce its stages sequentially
+with one run id:
+
+```bash
+make local-ai-pivot-help
+make validate-local-ai-pivot
+make benchmark-local-ai-structured-extraction LOCAL_AI_PIVOT_RUN_ID=<uuid>
+make benchmark-local-ai-summarize-log LOCAL_AI_PIVOT_RUN_ID=<uuid>
+make benchmark-local-ai-retrieval LOCAL_AI_PIVOT_RUN_ID=<uuid>
+make benchmark-local-ai-error-similarity LOCAL_AI_PIVOT_RUN_ID=<uuid>
+```
+
+The combined target runs the same phases in order:
+
+```bash
+make benchmark-local-ai-restricted-pivot LOCAL_AI_PIVOT_RUN_ID=<uuid>
+```
+
+The frozen datasets contain 125 new residual extraction cases, 120 sanitized
+log cases, and 180 snapshot-consistent Git-derived retrieval cases. The
+decisions are `PROMOTE_TO_CANARY` for residual structured extraction,
+`DETERMINISTIC_ONLY` for logs, `NOT_DEMONSTRATED` for retrieval/reranking, and
+`SKIPPED` for error similarity. No persistent vector index was created. The
+full method, metrics, hashes, resource observations, and limitations are in
+[`docs/LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md`](../../docs/LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md).
 
 Calibrate a proposed verifier independently before the generator A/B:
 
@@ -165,16 +195,19 @@ operational savings. The first delivery-aware v6 observation subsequently
 confirmed 3,925 useful tokens from a 4,074-token control, or 96.3%; it is one
 operational paired observation, not a population estimate.
 
-The current operational policy enables only task profiles with defensible
-quality evidence. Every profile except `summarize-log` is routed as
-`LOCAL_AI_NOT_BENEFICIAL`; disabled profiles remain available to the benchmark
-through diagnostic-only `LOCAL_AI_FORCE=1`. `summarize-log` starts at 3,000
-input tokens and uses an extractive gate. The model selects representative
-routine line IDs; deterministic code replaces generated prose with exact
-signal, stack/path, and selected source lines. Truncation, more than 16 critical
-lines, or a non-extractive selector falls back to the raw context. This gate
-uses zero model-validation tokens; other profiles still require a verifier
-different from the generator.
+The current operational policy has no promoted generative context-compression
+profile. Logs use `log_facts.py` to preserve exact source-anchored facts,
+failures, warnings, paths, lines, numbers, and critical stack context. If the
+bounded deterministic result cannot preserve the signals or reduce the source
+safely, the raw context goes to the primary model. Forced local compression is
+diagnostic only and claims zero operational savings.
+
+Residual structured extraction is separate from context compression. Its
+offline gate passed, so `restricted_runtime.py` provides a source-validated 10%
+canary behind both `LOCAL_AI_QUALITY_PIPELINE_ENABLED` and
+`LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED`. Both are required, the independent
+activity flag defaults off, the deterministic parser always runs first, and
+rejection or an out-of-bucket request falls directly to GPT.
 
 Operational telemetry schema 19 separates gate-approved compression from
 confirmed primary-context replacement. A strict useful result must be a
@@ -246,20 +279,16 @@ LOCAL_AI_MAX_INPUT_CHARS=24000 LOCAL_AI_OUTPUT_TOKENS=1200 local-ai summarize-lo
    `find`, Git, `jq`, or another deterministic collector ran. Large textual
    output that still needs interpretation may be compressed as a post-processing
    step; scalar output and already-structured JSON remain deterministic.
-3. Use local AI only for bounded summarization, classification, repetitive
-   transformations, initial log/test/diff analysis, or narrowing candidate
-   files that clear their task-specific policy threshold.
+3. Do not invoke generative Local AI compression while all such profiles are
+   unpromoted. The only approved local generation path is the separately gated
+   residual structured-extraction canary; benchmark forcing remains diagnostic.
 4. Keep architecture, multi-system debugging, security, destructive changes,
    trade-offs, integration of evidence and final review with Codex/OpenAI.
 
-Treat every local result as untrusted first-pass evidence. The helper validates
-task-specific anchors. Most profiles run a second fidelity check with a minimum
-score of 90%. The promoted log profile instead permits only exact source
-extracts and therefore has no second model call. Rejected output is not returned
-as context and records zero useful token savings. For accepted output, useful
-savings are net: the gross primary-context delta minus the Ollama prompt and
-completion tokens consumed by that output's fidelity checks. Legacy jobs
-without a separable validator count retain gross
+Treat every local result as untrusted first-pass evidence. Diagnostic helper
+profiles retain their task-specific validators but are not operationally
+promoted. Rejected output is not returned as context and records zero useful
+token savings. Legacy jobs without a separable validator count retain gross
 telemetry but claim zero net savings. Feed only accepted JSON—not raw logs or
 diagnostics—back to Codex.
 
@@ -282,10 +311,10 @@ local-ai route review-diff --input-chars 24000 --outcome skipped
 local-ai route inspect-files --input-chars 80000 --deterministic-sufficient
 ```
 
-The first command returns `LOCAL_AI_ELIGIBLE` without recording a pending job;
-the normal helper command records the eventual `LOCAL_AI_USED` or
-`LOCAL_AI_UNNECESSARY_CALL`. Terminal deterministic, small and unavailable
-outcomes are recorded immediately. See
+Under the current policy the first command resolves to deterministic/GPT
+fallback rather than an eligible generative compression job. Terminal
+deterministic, small, disabled, and unavailable outcomes are recorded
+immediately. See
 [`docs/LOCAL_AI_RTX_4070.md`](../../docs/LOCAL_AI_RTX_4070.md) for thresholds,
 coverage metrics, retention and the known hook limitation.
 
