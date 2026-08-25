@@ -20,7 +20,18 @@
       "model_key": "current_baseline",
       "canary_available": true,
       "enabled_by_default": false,
-      "rollout_percentage": 10,
+      "production_enabled": false,
+      "rollout_percentage": 0,
+      "rollout_feature_flag": "LOCAL_AI_STRUCTURED_EXTRACTION_ROLLOUT_PERCENT",
+      "assignment_version": "structured-extraction-canary-v1",
+      "rollout_salt": "residual-structured-extraction-v1",
+      "environment_namespace": "production",
+      "schema_version": "structured-extraction-v1",
+      "maximum_input_chars": 12000,
+      "supported_residual_statuses": [
+        "UNSUPPORTED",
+        "AMBIGUOUS"
+      ],
       "required_validation": true,
       "unresolved_fallback": "gpt-direct"
     },
@@ -62,7 +73,7 @@
       "seed": 20260825,
       "timeout_seconds": 900,
       "keep_alive": "10m",
-      "structured_output": true,
+      "structured_output": "json_schema",
       "execution_mode": "benchmark",
       "allowed_activities": [
         "structured_extraction",

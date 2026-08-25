@@ -31,9 +31,14 @@ primary-model fallback unless later versioned evidence and routing
 configuration promote it.
 
 Residual `structured_extraction` is a separate, default-off 10% canary. It is
-not a context compressor and cannot be used through this skill: production code
-may invoke it only after the deterministic parser returns a residual, with its
-independent feature flag and source-anchored validator.
+not a context compressor, so never substitute it for the routing in this skill.
+The separate MCP tool `local_ai_structured_extract` may be used only when the
+calling workflow already has an explicit supported JSON Schema, has run the
+deterministic parser, and supplies a bounded secret-free residual. The runtime
+enforces the production-only mode, independent flag, stable cohort, one attempt,
+model digest, persistent circuit breaker, source-anchored validator and direct
+primary-model fallback. A fallback result is final for Local AI: do not retry it
+or send it to another local model.
 
 Map evidence to `task_type` as follows:
 

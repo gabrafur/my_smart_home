@@ -35,6 +35,7 @@ class RestrictedRuntimeTests(unittest.TestCase):
         self.environment = {
             "LOCAL_AI_QUALITY_PIPELINE_ENABLED": "1",
             "LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED": "1",
+            "LOCAL_AI_STRUCTURED_EXTRACTION_ROLLOUT_PERCENT": "10",
         }
         self.source = "Registro R-42 em scripts/local-ai/routing.py linha 17 com contagem 9."
         self.output = {"record_id": "R-42", "path": "scripts/local-ai/routing.py", "line": 17, "count": 9}
@@ -53,14 +54,15 @@ class RestrictedRuntimeTests(unittest.TestCase):
         self.assertEqual(result["route"], "LOCAL_PRIMARY_CANARY")
         self.assertFalse(result["fallback"])
         self.assertTrue(result["validation"]["accepted"])
-        self.assertEqual(result["telemetry"]["execution_mode"], "canary")
+        self.assertEqual(result["telemetry"]["execution_mode"], "production_canary")
         for field in (
             "job_id", "task_id", "attempt_id", "activity", "model", "model_digest",
-            "model_role", "dataset", "case_id", "input_tokens", "output_tokens",
+            "parser_status", "residual_eligible", "rollout_percentage", "stable_bucket",
+            "selected_for_canary", "local_input_tokens", "local_output_tokens",
             "estimated_direct_gpt_context", "estimated_routed_gpt_context",
             "estimated_avoided_gpt_tokens", "validation_status", "accepted",
             "fallback_reason", "critical_errors", "gpu_metrics_status", "gpu_peak",
-            "vram_peak", "power_peak", "duration", "index_version", "index_freshness",
+            "vram_peak", "power_peak", "duration", "circuit_breaker_status", "timestamp_utc",
         ):
             self.assertIn(field, result["telemetry"])
 

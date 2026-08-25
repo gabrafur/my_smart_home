@@ -196,9 +196,10 @@ until versioned evidence and routing promote one. `PostToolUse` may replace
 large `Bash` logs deterministically, but not prompts or nested Code Mode calls.
 
 The residual `structured_extraction` canary is not context compression. It is
-off by default; requires `LOCAL_AI_QUALITY_PIPELINE_ENABLED` and
-`LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED`; runs only on parser residuals in its
-stable 10% bucket; validates source-anchored fields; and otherwise uses GPT.
+off by repository defaults (`false`/`0`); only private runtime may activate its
+stable 10%. It requires both flags, a supported-schema parser residual, expected
+model digest, metadata telemetry, source anchors and breaker `CLOSED`; otherwise
+use GPT directly without a local retry.
 
 Never send secrets or private runtime to Local AI and never delegate final
 architecture, security, production, migration, destructive-operation, RCA, or

@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import hashlib
 import os
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -124,8 +126,24 @@ def _validate_restricted_pivot(registry: Mapping[str, Any]) -> None:
         raise RegistryError("restricted_pivot_structured_missing")
     if structured.get("decision") != "PROMOTE_TO_CANARY" or structured.get("canary_available") is not True:
         raise RegistryError("restricted_pivot_structured_not_canary")
-    if structured.get("enabled_by_default") is not False or int(structured.get("rollout_percentage") or 0) != 10:
+    if structured.get("enabled_by_default") is not False or structured.get("production_enabled") is not False:
+        raise RegistryError("restricted_pivot_canary_default_must_be_disabled")
+    if int(structured.get("rollout_percentage") or 0) != 0:
         raise RegistryError("restricted_pivot_canary_rollout_invalid")
+    if structured.get("rollout_feature_flag") != "LOCAL_AI_STRUCTURED_EXTRACTION_ROLLOUT_PERCENT":
+        raise RegistryError("restricted_pivot_canary_rollout_flag_invalid")
+    if not isinstance(structured.get("assignment_version"), str) or not structured.get("assignment_version"):
+        raise RegistryError("restricted_pivot_canary_assignment_version_invalid")
+    if not isinstance(structured.get("rollout_salt"), str) or not structured.get("rollout_salt"):
+        raise RegistryError("restricted_pivot_canary_rollout_salt_invalid")
+    if structured.get("environment_namespace") != "production":
+        raise RegistryError("restricted_pivot_canary_namespace_invalid")
+    if structured.get("schema_version") != "structured-extraction-v1":
+        raise RegistryError("restricted_pivot_canary_schema_version_invalid")
+    if not 1 <= int(structured.get("maximum_input_chars") or 0) <= 12000:
+        raise RegistryError("restricted_pivot_canary_input_limit_invalid")
+    if structured.get("supported_residual_statuses") != ["UNSUPPORTED", "AMBIGUOUS"]:
+        raise RegistryError("restricted_pivot_canary_residual_statuses_invalid")
     if structured.get("required_validation") is not True or structured.get("unresolved_fallback") != "gpt-direct":
         raise RegistryError("restricted_pivot_canary_validation_invalid")
     model_key = structured.get("model_key")
@@ -186,8 +204,71 @@ def feature_enabled(name: str, registry: Mapping[str, Any], environment: Mapping
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def configured_rollout_percentage(
+    registry: Mapping[str, Any],
+    environment: Mapping[str, str] | None = None,
+) -> int:
+    """Resolve the canary percentage; missing and invalid values fail closed."""
+    environment = os.environ if environment is None else environment
+    structured = registry["restricted_pivot"]["structured_extraction"]
+    flag = str(structured["rollout_feature_flag"])
+    raw = environment.get(flag)
+    if raw is None:
+        return int(structured.get("rollout_percentage") or 0)
+    try:
+        value = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return 0
+    return value if 0 <= value <= 100 else 0
+
+
+def _normalized_source(source: str) -> str:
+    normalized = unicodedata.normalize("NFKC", source).replace("\r\n", "\n").replace("\r", "\n")
+    return re.sub(r"[ \t]+", " ", normalized).strip()
+
+
+def stable_canary_assignment(
+    *,
+    activity: str,
+    assignment_version: str,
+    rollout_salt: str,
+    environment_namespace: str,
+    schema_version: str,
+    logical_origin: str,
+    task_id: str | None = None,
+    source: str | None = None,
+) -> dict[str, Any]:
+    """Return a stable anonymous assignment without persisting source or task id."""
+    if task_id:
+        identity = "task:" + hashlib.sha256(task_id.encode("utf-8", errors="replace")).hexdigest()
+    elif source is not None:
+        source_digest = hashlib.sha256(_normalized_source(source).encode("utf-8")).hexdigest()
+        identity = "input:" + source_digest
+    else:
+        raise RegistryError("structured_extraction_canary_identity_required")
+    identity_envelope = "\x1f".join((environment_namespace, activity, logical_origin, schema_version, identity))
+    anonymous_task_id = hashlib.sha256(identity_envelope.encode("utf-8")).hexdigest()
+    assignment_envelope = "\x1f".join((assignment_version, rollout_salt, anonymous_task_id))
+    stable_bucket = int(hashlib.sha256(assignment_envelope.encode("utf-8")).hexdigest(), 16) % 100
+    return {
+        "anonymous_task_id": anonymous_task_id,
+        "stable_bucket": stable_bucket,
+        "canary_assignment_version": assignment_version,
+        "environment_namespace": environment_namespace,
+    }
+
+
 def canary_bucket(routing_key: str) -> int:
-    return int(hashlib.sha256(routing_key.encode("utf-8", errors="replace")).hexdigest()[:8], 16) % 100
+    """Compatibility helper using the current versioned assignment contract."""
+    return int(stable_canary_assignment(
+        activity="structured_extraction",
+        assignment_version="structured-extraction-canary-v1",
+        rollout_salt="residual-structured-extraction-v1",
+        environment_namespace="production",
+        schema_version="structured-extraction-v1",
+        logical_origin="codex",
+        task_id=routing_key,
+    )["stable_bucket"])
 
 
 def select_activity_route(
@@ -197,6 +278,22 @@ def select_activity_route(
     registry: Mapping[str, Any] | None = None,
     environment: Mapping[str, str] | None = None,
     routing_key: str | None = None,
+    task_id: str | None = None,
+    source: str | None = None,
+    schema_version: str | None = None,
+    logical_origin: str = "codex",
+    environment_namespace: str | None = None,
+    execution_mode: str = "production",
+    parser_executed: bool = True,
+    contract_supported: bool = True,
+    model_available: bool = True,
+    digest_matches: bool = True,
+    schema_available: bool = True,
+    validator_available: bool = True,
+    circuit_breaker_status: str = "CLOSED",
+    input_sanitized: bool = True,
+    retry_already_resolved: bool = False,
+    probe_authorized: bool = False,
 ) -> dict[str, Any]:
     """Return a bounded route; never execute a model or recurse into another route."""
     registry = load_registry() if registry is None else dict(registry)
@@ -218,15 +315,48 @@ def select_activity_route(
     if activity == "structured_extraction":
         pivot = registry["restricted_pivot"]["structured_extraction"]
         if not feature_enabled("structured_extraction", registry, environment):
-            return {"route": "GPT_DIRECT", "reason": "structured_extraction_canary_disabled"}
-        if not routing_key:
-            return {"route": "GPT_DIRECT", "reason": "structured_extraction_canary_key_required"}
-        bucket = canary_bucket(routing_key)
-        rollout = int(pivot["rollout_percentage"])
+            return {"route": "GPT_DIRECT", "reason": "structured_extraction_canary_disabled", "route_kind": "control_bypass", "residual_eligible": False}
+        if execution_mode != "production" and not (execution_mode == "canary_probe" and probe_authorized):
+            return {"route": "GPT_DIRECT", "reason": "execution_mode_not_production", "route_kind": "control_bypass", "residual_eligible": False}
+        checks = (
+            (parser_executed, "deterministic_parser_not_executed"),
+            (residual_status in set(pivot["supported_residual_statuses"]), "parser_status_not_canary_residual"),
+            (contract_supported, "input_contract_not_supported"),
+            (model_available, "configured_model_unavailable"),
+            (digest_matches, "configured_model_digest_mismatch"),
+            (schema_available, "schema_unavailable"),
+            (validator_available, "validator_unavailable"),
+            (circuit_breaker_status == "CLOSED", "circuit_breaker_not_closed"),
+            (input_sanitized, "input_not_safely_sanitized"),
+            (not retry_already_resolved, "retry_already_resolved"),
+        )
+        for passed, reason in checks:
+            if not passed:
+                return {"route": "GPT_DIRECT", "reason": reason, "route_kind": "control_bypass", "residual_eligible": False}
+        resolved_schema_version = schema_version or str(pivot["schema_version"])
+        if resolved_schema_version != pivot["schema_version"]:
+            return {"route": "GPT_DIRECT", "reason": "schema_version_not_supported", "route_kind": "control_bypass", "residual_eligible": False}
+        try:
+            assignment = stable_canary_assignment(
+                activity=activity,
+                assignment_version=str(pivot["assignment_version"]),
+                rollout_salt=str(pivot["rollout_salt"]),
+                environment_namespace=environment_namespace or str(pivot["environment_namespace"]),
+                schema_version=resolved_schema_version,
+                logical_origin=logical_origin,
+                task_id=task_id or routing_key,
+                source=source,
+            )
+        except RegistryError:
+            return {"route": "GPT_DIRECT", "reason": "structured_extraction_canary_identity_required", "route_kind": "control_bypass", "residual_eligible": False}
+        bucket = int(assignment["stable_bucket"])
+        rollout = configured_rollout_percentage(registry, environment)
         if bucket >= rollout:
             return {
-                "route": "GPT_DIRECT", "reason": "outside_structured_extraction_canary",
-                "canary_bucket": bucket, "rollout_percentage": rollout,
+                "route": "GPT_DIRECT", "reason": "rollout_zero" if rollout == 0 else "outside_structured_extraction_canary",
+                "route_kind": "canary_control", "residual_eligible": True,
+                "stable_bucket": bucket, "canary_bucket": bucket, "rollout_percentage": rollout,
+                "selected_for_canary": False, **assignment,
             }
         primary_key = str(pivot["model_key"])
         primary = registry["models"][primary_key]
@@ -239,8 +369,12 @@ def select_activity_route(
             "primary_model_digest": primary.get("digest"),
             "maximum_primary_attempts": 1,
             "required_validation": True,
-            "canary_bucket": bucket,
+            "route_kind": "production_canary" if execution_mode == "production" else "canary_probe",
+            "residual_eligible": True,
+            "stable_bucket": bucket, "canary_bucket": bucket,
             "rollout_percentage": rollout,
+            "selected_for_canary": True,
+            **assignment,
             "unresolved_fallback": "gpt-direct",
         }
     if profile.get("production_enabled") is not True or profile.get("local_mode") != "production":

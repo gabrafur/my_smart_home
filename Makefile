@@ -18,7 +18,8 @@
 	benchmark-local-ai-structured-extraction benchmark-local-ai-summarize-log-calibration \
 	benchmark-local-ai-summarize-log-holdout benchmark-local-ai-summarize-log \
 	benchmark-local-ai-retrieval-calibration benchmark-local-ai-retrieval-holdout \
-	benchmark-local-ai-retrieval benchmark-local-ai-error-similarity benchmark-local-ai-restricted-pivot
+	benchmark-local-ai-retrieval benchmark-local-ai-error-similarity benchmark-local-ai-restricted-pivot \
+	local-ai-structured-extraction-canary-audit install-local-ai-runtime
 
 PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
 	validate-yaml validate-shell validate-docs validate-assets validate-security \
@@ -164,6 +165,18 @@ validate-local-ai-pivot:
 	python3 scripts/local-ai/test_restricted_runtime.py
 	python3 scripts/local-ai/test_model_registry.py
 	python3 scripts/local-ai/test_post_tool_routing.py
+	python3 scripts/local-ai/test_canary_state.py
+	python3 scripts/local-ai/test_structured_canary.py
+	python3 scripts/local-ai/test_mcp_server.py
+
+local-ai-structured-extraction-canary-audit:
+	python3 scripts/local-ai/structured_canary.py audit \
+		--json docs/benchmarks/local-ai-structured-extraction-canary/latest-operational-summary.json \
+		--markdown docs/benchmarks/local-ai-structured-extraction-canary/report.md
+
+install-local-ai-runtime:
+	@test -n "$(LOCAL_AI_RUNTIME_TARGET)" || (echo "LOCAL_AI_RUNTIME_TARGET is required" >&2; exit 2)
+	./scripts/local-ai/install-runtime.sh --target "$(LOCAL_AI_RUNTIME_TARGET)"
 
 benchmark-local-ai-structured-extraction-calibration:
 	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
