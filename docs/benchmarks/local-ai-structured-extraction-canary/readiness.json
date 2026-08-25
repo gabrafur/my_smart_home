@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T22:24:43.692316Z",
+  "status": "CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE",
+  "decision": "KEEP_AT_10_PERCENT",
+  "ready_for_current_rollout": true,
+  "ready_for_progression": false,
+  "checks": {
+    "repository_defaults_fail_closed": true,
+    "only_structured_extraction_enabled": true,
+    "rollout_at_or_below_10_percent": true,
+    "stable_assignment": true,
+    "single_local_inference_limit": true,
+    "source_anchored_validation": true,
+    "gpt_fallback": true,
+    "persistent_circuit_breaker": true,
+    "instant_kill_switch_tested": true,
+    "probe_telemetry_separated": true,
+    "real_rtx_inference_observed": true,
+    "bridge_healthy": true,
+    "home_assistant_configuration_valid": true,
+    "home_assistant_sensor_loaded": true,
+    "mqtt_reachable_after_restart": true,
+    "ollama_has_no_idle_model_loaded": true,
+    "raw_operational_events_versioned": false,
+    "nodered_content_hash_preserved": true
+  },
+  "evidence": {
+    "smoke_probes_passed": 21,
+    "smoke_probes_failed": 0,
+    "operational_attempts": 0,
+    "minimum_operational_attempts": 100,
+    "audit_status": "PASS",
+    "nodered_content_sha256": "c8a61f35486243878df679cc2d51cc0c7d0367c323b8edb9cca6c5b5eae1d69c",
+    "runtime_version": "1.5.0"
+  },
+  "limitations": [
+    "No production canary attempt has been observed yet.",
+    "The real RTX proof is a probe and is excluded from operational metrics.",
+    "No real GPT fallback token usage was measured by the probes.",
+    "Rollout progression is prohibited until the operational sample reaches 100."
+  ]
+}

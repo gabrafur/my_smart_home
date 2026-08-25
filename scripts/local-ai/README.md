@@ -209,6 +209,23 @@ canary behind both `LOCAL_AI_QUALITY_PIPELINE_ENABLED` and
 activity flag defaults off, the deterministic parser always runs first, and
 rejection or an out-of-bucket request falls directly to GPT.
 
+The operational entry point is the versioned MCP tool
+`local_ai_structured_extract`. Repository defaults remain disabled with a 0%
+rollout; machine-private runtime overrides may activate the approved 10%
+cohort. `structured_canary.py` owns effective configuration, the persistent
+circuit breaker, audit output and the instantaneous kill switch. It records
+only sanitized metadata in ignored local storage. Probe, benchmark and
+production events have distinct execution modes, and only production events
+contribute to the operational gate. Run the sanitized audit with:
+
+```bash
+make local-ai-structured-extraction-canary-audit
+```
+
+The versioned readiness evidence is under
+`docs/benchmarks/local-ai-structured-extraction-canary/`; raw events and real
+inputs or outputs must never be copied there.
+
 Operational telemetry schema 19 separates gate-approved compression from
 confirmed primary-context replacement. A strict useful result must be a
 successful, measured, non-truncated replacement delivered either by

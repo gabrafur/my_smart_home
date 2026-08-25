@@ -1,0 +1,72 @@
+{
+  "circuit_breaker": {
+    "reason": "initial",
+    "status": "CLOSED",
+    "updated_at": null
+  },
+  "configuration": {
+    "assignment_version": "structured-extraction-canary-v1",
+    "classification_local": false,
+    "diff_summary_local": false,
+    "error_similarity": false,
+    "master_switch": true,
+    "model": "qwen2.5-coder:14b",
+    "model_digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+    "repository_defaults": {
+      "error_similarity": false,
+      "master_switch": false,
+      "reranker": false,
+      "retrieval": false,
+      "rollout_percentage": 0,
+      "structured_extraction": false,
+      "summarize_log_local": false
+    },
+    "reranker": false,
+    "retrieval": false,
+    "rollout_percentage": 10,
+    "runtime_override_present": {
+      "error_similarity": true,
+      "master_switch": true,
+      "reranker": true,
+      "retrieval": true,
+      "rollout_percentage": true,
+      "structured_extraction": true,
+      "summarize_log_local": true
+    },
+    "schema_version": "structured-extraction-v1",
+    "structured_extraction": true,
+    "summarize_log_local": false
+  },
+  "decision": "KEEP_AT_10_PERCENT",
+  "generated_at": "2026-08-25T22:20:17.890948Z",
+  "last_execution_at": null,
+  "metrics": {
+    "accepted_local_outputs": 0,
+    "canary_selected_cases": 0,
+    "canary_selection_rate": null,
+    "cases_with_critical_error": 0,
+    "control_bypass_cases": 0,
+    "control_cases": 0,
+    "critical_case_rate": null,
+    "critical_field_recall": null,
+    "critical_omissions": 0,
+    "fallback_rate": null,
+    "invented_critical_fields": 0,
+    "local_inference_attempts": 0,
+    "local_inference_completed": 0,
+    "numeric_preservation": null,
+    "observed_critical_error_occurrences": 0,
+    "oom_rate": null,
+    "rejected_local_outputs": 0,
+    "residual_eligible_cases": 0,
+    "safe_fallbacks": 0,
+    "safe_local_resolutions": 0,
+    "schema_validity": null,
+    "timeout_rate": null,
+    "useful_rate": null
+  },
+  "sample_current": 0,
+  "sample_required": 100,
+  "schema_version": 1,
+  "status": "CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE"
+}

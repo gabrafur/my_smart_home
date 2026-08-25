@@ -1,0 +1,200 @@
+{
+  "excluded_from_operational_metrics": true,
+  "execution_mode": "canary_probe",
+  "failed": 0,
+  "operational_metrics_affected": false,
+  "passed": 21,
+  "probe_count": 21,
+  "real_rtx_proof": {
+    "attempt_id_present": true,
+    "duration_seconds": 13.123935,
+    "gpu_metrics_status": "observed",
+    "gpu_peak_percent": 92,
+    "inference_completed": true,
+    "inference_started": true,
+    "job_id_present": true,
+    "local_input_tokens": 301,
+    "local_output_tokens": 82,
+    "model": "qwen2.5-coder:14b",
+    "model_digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+    "model_loaded": true,
+    "output_accepted": true,
+    "output_validated": true,
+    "power_peak_watts": 194.7,
+    "vram_peak_mib": 11941
+  },
+  "results": [
+    {
+      "excluded_from_operational_metrics": null,
+      "inference_status": null,
+      "name": "parser_resolves_without_ai",
+      "reason": null,
+      "route": "DETERMINISTIC",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "not_started",
+      "name": "residual_outside_cohort",
+      "reason": "outside_structured_extraction_canary",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "completed",
+      "name": "residual_inside_cohort",
+      "reason": null,
+      "route": "LOCAL_PRIMARY_CANARY",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "completed",
+      "name": "valid_extraction",
+      "reason": null,
+      "route": "LOCAL_PRIMARY_CANARY",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "invalid_json",
+      "name": "invalid_json_rejected",
+      "reason": "invalid_json",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "completed",
+      "name": "critical_field_omitted",
+      "reason": "local_candidate_rejected",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "completed",
+      "name": "changed_number_rejected",
+      "reason": "local_candidate_rejected",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "completed",
+      "name": "invented_field_rejected",
+      "reason": "local_candidate_rejected",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "not_started",
+      "name": "model_unavailable",
+      "reason": "configured_model_unavailable",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "timeout",
+      "name": "timeout_simulated",
+      "reason": "timeout",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "not_started",
+      "name": "circuit_breaker_open",
+      "reason": "circuit_breaker_not_closed",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "not_started",
+      "name": "master_switch_off",
+      "reason": "quality_pipeline_disabled",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "not_started",
+      "name": "structured_flag_off",
+      "reason": "structured_extraction_canary_disabled",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "not_started",
+      "name": "rollout_zero",
+      "reason": "rollout_zero",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "not_started",
+      "name": "rollback_feature_flag",
+      "reason": "structured_extraction_canary_disabled",
+      "route": "GPT_DIRECT",
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": null,
+      "inference_status": null,
+      "name": "retry_same_cohort",
+      "reason": null,
+      "route": null,
+      "stable_bucket": 7,
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": null,
+      "inference_status": null,
+      "name": "restart_same_cohort",
+      "reason": null,
+      "route": null,
+      "stable_bucket": 7,
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": null,
+      "inference_status": null,
+      "name": "summarize_log_deterministic",
+      "reason": null,
+      "route": null,
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": null,
+      "inference_status": null,
+      "name": "retrieval_disabled",
+      "reason": null,
+      "route": null,
+      "status": "PASS"
+    },
+    {
+      "excluded_from_operational_metrics": true,
+      "inference_status": "completed",
+      "name": "real_rtx_inference",
+      "reason": null,
+      "route": "LOCAL_PRIMARY_CANARY",
+      "status": "PASS"
+    },
+    {
+      "concurrent_file_preserved": true,
+      "excluded_from_operational_metrics": null,
+      "inference_status": null,
+      "name": "nodered_unchanged",
+      "reason": null,
+      "route": null,
+      "status": "PASS"
+    }
+  ],
+  "schema_version": 1
+}

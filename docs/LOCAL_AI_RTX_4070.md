@@ -189,6 +189,18 @@ de 10%, validação campo a campo contra a fonte e fallback GPT direto. A fonte
 canônica da mudança é
 [`LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md`](LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md).
 
+Em 2026-08-25, a capacidade operacional foi instalada de forma controlada. Os
+defaults públicos continuam `false` e rollout `0`; o override privado efetivo
+habilita exclusivamente `structured_extraction` em 10%. O tool MCP
+`local_ai_structured_extract` executa parser, residual, coorte SHA-256 estável,
+uma única inferência com `qwen2.5-coder:14b`, validação source-anchored e aceite
+ou fallback GPT. O breaker persistente e o kill switch são fail-closed. As 21
+sondas, incluindo uma inferência real na RTX, ficaram explicitamente excluídas
+das métricas operacionais. Como ainda não houve tentativa de produção, o estado
+é `CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE` e a única decisão permitida é
+`KEEP_AT_10_PERCENT`. Evidências sanitizadas ficam em
+[`benchmarks/local-ai-structured-extraction-canary/`](benchmarks/local-ai-structured-extraction-canary/README.md).
+
 O benchmark misto v8 evita extrapolar a redução de logs para todo o sistema.
 Com 14 pares em sete classes e uma carga sintética ponderada de 100 tarefas
 equivalentes, `gpt-5.6-terra`/`medium` consumiu 1.675.620 tokens ponderados no

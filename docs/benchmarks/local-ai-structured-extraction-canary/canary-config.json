@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-25T22:24:43.692316Z",
+  "activity": "structured_extraction",
+  "execution_mode": "production",
+  "model": {
+    "tag": "qwen2.5-coder:14b",
+    "digest": "9ec8897f747e246e970bc5cfdda85d22f1123dc2e3d34978a010a75968716849",
+    "quantization": "Q4_K_M",
+    "parameters": "14.8B",
+    "context_length": 32768
+  },
+  "assignment": {
+    "algorithm": "sha256",
+    "version": "structured-extraction-canary-v1",
+    "rollout_percent": 10,
+    "retry_stable": true,
+    "restart_stable": true
+  },
+  "repository_defaults": {
+    "master_switch": false,
+    "structured_extraction": false,
+    "rollout_percent": 0,
+    "summarize_log_local": false,
+    "retrieval": false,
+    "reranker": false,
+    "error_similarity": false
+  },
+  "effective_runtime": {
+    "master_switch": true,
+    "structured_extraction": true,
+    "rollout_percent": 10,
+    "summarize_log_local": false,
+    "retrieval": false,
+    "reranker": false,
+    "error_similarity": false
+  },
+  "validation": "source_anchored_fail_closed",
+  "fallback": "gpt_direct",
+  "maximum_local_inferences_per_case": 1,
+  "probe_events_count_toward_operational_metrics": false
+}

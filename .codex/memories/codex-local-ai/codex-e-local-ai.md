@@ -12,6 +12,14 @@ source-anchored e fallback GPT direto. Retrieval/reranking ficou
 `NOT_DEMONSTRATED`; não existe índice operacional, e similaridade de erros foi
 pulada sem auto-merge. A decisão global é `CONTINUE_RESTRICTED`.
 
+A ativação operacional posterior mantém os defaults públicos em `false/0` e
+aplica o rollout de 10% somente por configuração privada. O tool separado
+`local_ai_structured_extract` exige modo de produção, schema v1 suportado,
+residual `UNSUPPORTED/AMBIGUOUS`, fonte sem segredo, digest congelado, coorte
+SHA-256 versionada, telemetria metadata-only e circuit breaker `CLOSED`.
+Controles e fallback seguem ao GPT sem segunda tentativa local; probes não
+entram na amostra real, e o rollout não avança automaticamente.
+
 Antes de alterar o helper, hook, telemetria ou as abas Codex/RTX, consulte
 `docs/LOCAL_AI_RTX_4070.md`. A publicação LAN usa uma porta proxy própria e
 restrita; não a amplie sem confirmar o escopo.

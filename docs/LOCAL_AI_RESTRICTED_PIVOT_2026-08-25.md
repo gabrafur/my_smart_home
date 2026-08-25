@@ -127,7 +127,23 @@ O canário exige as flags global e independente, usa bucket SHA estável abaixo
 de 10%, mantém o parser primeiro e aceita somente campos presentes na fonte.
 Schema inválido, omissão, número alterado, path inventado, campo proibido,
 flag desligada ou bucket fora do rollout retornam a GPT direto. A capacidade
-está implementada, mas desligada por padrão e não foi executada em produção.
+permanece desligada por padrão no repositório.
+
+## Ativação operacional controlada
+
+Em 2026-08-25, um override privado ativou somente a extração estruturada em
+10%. A rota operacional foi publicada como o tool MCP
+`local_ai_structured_extract`, com assignment
+`structured-extraction-canary-v1`, validação fail-closed e breaker persistente.
+Resumo generativo de logs, retrieval, reranker, similaridade de erros,
+classificação e resumo de diff permaneceram desligados. Vinte e uma sondas
+passaram, incluindo inferência medida na RTX, rollback e estabilidade após
+retry/restart; todas usam `execution_mode=canary_probe` e são excluídas da
+amostra real. O audit encontrou zero violações, mas também zero tentativas de
+produção. Portanto, o estado inicial observado é
+`CANARY_ACTIVE_INSUFFICIENT_OPERATIONAL_SAMPLE`, sem autorização para elevar o
+rollout. Os artefatos agregados e sanitizados estão em
+[`benchmarks/local-ai-structured-extraction-canary/`](benchmarks/local-ai-structured-extraction-canary/README.md).
 
 ## Fase B — `summarize-log`
 
