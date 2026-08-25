@@ -224,9 +224,10 @@ scripts/storage-maintenance.sh --dry-run --category all
 ```
 
 O `--apply` padrão inclui agora caches npm/pip, versões obsoletas do VS Code,
-cache VSIX e rotação PM2, além das categorias seguras da primeira fase. O cron
-instalado a cada seis horas usa esse perfil com prioridade reduzida. Imagens
-Docker etiquetadas, backups, recorder, arquivos apagados abertos, containers
+cache VSIX e rotação PM2, além das categorias seguras da primeira fase. O
+Node-RED agenda esse perfil a cada seis horas e cria uma solicitação coalescente;
+o cron de um minuto apenas consome a solicitação no host com prioridade
+reduzida. Imagens Docker etiquetadas, backups, recorder, arquivos apagados abertos, containers
 parados, Git e volumes continuam somente reportados.
 
 O JSON compatível com schema 1 foi estendido com tamanhos de VS Code, Cursor,

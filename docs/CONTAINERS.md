@@ -214,6 +214,11 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
+O Node-RED agenda a manutenção preventiva de storage a cada seis horas e cria
+uma solicitação coalescente para o host. O instalador de cron mantém somente a
+ponte de um minuto que consome essa solicitação com prioridade reduzida; não há
+um segundo agendamento preventivo direto no crontab.
+
 Antes de aplicar limpeza manual, consulte a
 [auditoria de armazenamento](operations/storage-audit.md) e rode
 `scripts/storage-maintenance.sh --dry-run`. A execução sem argumentos nunca

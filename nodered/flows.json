@@ -5423,7 +5423,7 @@
         "type": "inject",
         "z": "storage_health_tab",
         "g": "storage_group_maintenance",
-        "name": "Diario 04:17",
+        "name": "A cada 6h (:23)",
         "props": [
             {
                 "p": "payload"
@@ -5434,7 +5434,7 @@
             }
         ],
         "repeat": "",
-        "crontab": "17 04 * * *",
+        "crontab": "23 */6 * * *",
         "once": false,
         "onceDelay": "0.1",
         "topic": "",
@@ -5444,7 +5444,8 @@
         "y": 500,
         "wires": [
             [
-                "storage_exec_maintenance"
+                "storage_exec_maintenance",
+                "storage_request_host_maintenance"
             ]
         ]
     },

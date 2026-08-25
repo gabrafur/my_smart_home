@@ -142,7 +142,8 @@ uma amostra valida, o fluxo publica o numero e marca o sensor como disponivel.
 ### Frequencias e observabilidade
 
 - health check leve: 15 minutos, usando estados ja coletados pelo Home Assistant;
-- housekeeping Node-RED: diariamente as 04:17;
+- housekeeping Node-RED e solicitação da manutenção segura do host: a cada seis
+  horas, no minuto 23;
 - inspecao profunda restrita a `/data`: domingo as 03:43;
 - manutencao host: ao fim da atualizacao diaria de containers, inclusive quando
   uma etapa anterior falha.
@@ -160,13 +161,15 @@ Git. Em paralelo, atualiza a leitura dos sensores existentes e a avaliação de
 limites/tendência.
 O Node-RED continua sem acesso ao socket Docker.
 
-O cron instalado por `scripts/install-storage-maintenance-cron.sh` verifica a
+O Node-RED é a fonte única do agendamento preventivo de seis em seis horas. No
+mesmo evento, ele executa o housekeeping allowlisted dentro do container e cria
+uma solicitação coalescente para a manutenção segura do host. O cron instalado
+por `scripts/install-storage-maintenance-cron.sh` é somente a ponte: verifica a
 solicitação a cada minuto e chama, com prioridade reduzida,
-`scripts/process-storage-maintenance-request.sh`. Ele também executa a política
-preventiva do host a cada seis horas, limitando o crescimento produzido por
-builds interativos entre os ciclos do atualizador diário. Falhas restauram o
-marcador para uma tentativa posterior. Solicitações repetidas antes do
-processamento são coalescidas em uma única execução.
+`scripts/process-storage-maintenance-request.sh`. Falhas restauram o marcador
+para uma tentativa posterior. Solicitações repetidas antes do processamento são
+coalescidas em uma única execução; não existe um segundo agendamento preventivo
+direto no crontab.
 
 O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
 e uma no celular. Os históricos ficam no fim da página, redistribuídos com os
@@ -200,9 +203,9 @@ usa dry-run por padrão:
 O perfil `--apply` não solicita confirmação interativa e também executa, por
 allowlist, a rotação dos logs PM2 acima de 10 MiB, a limpeza oficial dos caches
 npm/pip, a remoção de downloads VSIX e a retenção do VS Code Server. O VS Code
-preserva todas as versões em uso e no mínimo as duas mais recentes. O cron de
-seis em seis horas usa esse mesmo perfil; `.cursor-server` não faz parte da
-rotina recorrente.
+preserva todas as versões em uso e no mínimo as duas mais recentes. A manutenção
+agendada pelo Node-RED a cada seis horas usa esse mesmo perfil;
+`.cursor-server` não faz parte da rotina recorrente.
 
 ```bash
 scripts/storage-maintenance.sh --dry-run

@@ -62,6 +62,8 @@ const evaluate = (flow, used, now = NOW, free = 20) => health(
 const accept = (flow, alert) => acknowledge(alert, flow, runtimeNode(), {}, {});
 
 assert.equal(node("storage_health_tick").repeat, "900");
+assert.equal(node("storage_daily_maintenance").crontab, "23 */6 * * *");
+assert.deepEqual(node("storage_daily_maintenance").wires, [["storage_exec_maintenance", "storage_request_host_maintenance"]]);
 assert.equal(node("storage_manual_health").type, "server-state-changed");
 assert.deepEqual(node("storage_manual_health").entities.entity, ["input_button.storage_health_manual_run"]);
 assert.deepEqual(node("storage_manual_health").wires, [["storage_manual_start"]]);
