@@ -293,6 +293,91 @@ template:
           {{ (value / 1073741824) | round(3) if value is number else none }}
         availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_repository_bytes') is number }}"
 
+      - name: Raspberry Pi Storage Maintenance VS Code Server
+        unique_id: raspberry_pi_storage_maintenance_vscode_server
+        icon: mdi:microsoft-visual-studio-code
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_vscode_server_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_vscode_server_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Cursor Server
+        unique_id: raspberry_pi_storage_maintenance_cursor_server
+        icon: mdi:folder-remove-outline
+        device_class: data_size
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_cursor_server_logical_bytes') %}
+          {{ (value / 1048576) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_cursor_server_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance NPM Cache
+        unique_id: raspberry_pi_storage_maintenance_npm_cache
+        icon: mdi:npm
+        device_class: data_size
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_npm_cache_logical_bytes') %}
+          {{ (value / 1048576) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_npm_cache_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance PM2 Logs
+        unique_id: raspberry_pi_storage_maintenance_pm2_logs
+        icon: mdi:text-box-multiple-outline
+        device_class: data_size
+        unit_of_measurement: "MiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_pm2_logs_logical_bytes') %}
+          {{ (value / 1048576) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_pm2_logs_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Docker Unused Tagged
+        unique_id: raspberry_pi_storage_maintenance_docker_unused_tagged
+        icon: mdi:docker
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_docker_unused_tagged_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_docker_unused_tagged_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Recorder
+        unique_id: raspberry_pi_storage_maintenance_recorder
+        icon: mdi:database-clock-outline
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_recorder_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_recorder_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Home Assistant Backups
+        unique_id: raspberry_pi_storage_maintenance_home_assistant_backups
+        icon: mdi:backup-restore
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_backups_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_backups_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Deleted Open Files
+        unique_id: raspberry_pi_storage_maintenance_deleted_open_files
+        icon: mdi:file-alert-outline
+        unit_of_measurement: "files"
+        state_class: measurement
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_deleted_open_count') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_deleted_open_count') is number }}"
+
       - name: Raspberry Pi Storage Maintenance Reclaimed
         unique_id: raspberry_pi_storage_maintenance_reclaimed
         icon: mdi:delete-sweep
@@ -310,6 +395,13 @@ template:
         device_class: timestamp
         state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_at') }}"
         availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_last_at') not in [none, '', 'unknown', 'unavailable'] }}"
+
+      - name: Raspberry Pi Storage Maintenance Phase 2 Last Run
+        unique_id: raspberry_pi_storage_maintenance_phase2_last_run
+        icon: mdi:clock-check-outline
+        device_class: timestamp
+        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_phase2_last_at') }}"
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_phase2_last_at') not in [none, '', 'unknown', 'unavailable'] }}"
 
       - name: Raspberry Pi Storage Maintenance Result
         unique_id: raspberry_pi_storage_maintenance_result

@@ -37,14 +37,21 @@ backups, checkout Git, política de retenção e pendências manuais, está em
 valores pontuais abaixo como fotografia corrente, mas preserva o diagnóstico de
 2026-08-13 como histórico.
 
+A segunda fase, incluindo Cursor/VS Code, caches, PM2, imagens etiquetadas e o
+ranking sanitizado do recorder, está em
+[`operations/storage-audit-phase-2.md`](operations/storage-audit-phase-2.md).
+
 O script host agora separa as categorias `report`, `logs`, `journald`,
 `apt-cache`, `temporary-files`, `docker-images`, `docker-build-cache`,
-`stopped-containers`, `git`, `project-artifacts` e
-`home-assistant-backups`. Dry-run é o padrão; volumes, bancos, contexto e dados
+`docker-tagged-images`, `stopped-containers`, `git`, `project-artifacts`,
+`pm2-logs`, `developer-tools`, `user-caches`, `npm-cache`, `python-cache`,
+`vscode-versions`, `vscode-cache`, `deleted-open-files`,
+`home-assistant-recorder` e `home-assistant-backups`. Dry-run é o padrão; volumes, bancos, contexto e dados
 persistentes não têm caminho de remoção. Cada apply grava um JSON não sensível
 e ignorado pelo Git, consumido pelo coletor de saúde para expor tamanho lógico
-do Docker, logs conhecidos, checkout, última execução, resultado e espaço
-recuperado.
+do Docker, logs conhecidos, checkout, ferramentas de desenvolvimento, caches,
+PM2, recorder, backups, arquivos apagados abertos, última execução, resultado,
+delta líquido e janelas por categoria.
 
 ### Diagnostico de 2026-08-13
 
@@ -190,6 +197,13 @@ valida argumentos, caminhos e symlinks, usa lock, é idempotente, registra
 métricas antes/depois, recusa `--apply` sob pressão de memória ou filesystem e
 usa dry-run por padrão:
 
+O perfil `--apply` não solicita confirmação interativa e também executa, por
+allowlist, a rotação dos logs PM2 acima de 10 MiB, a limpeza oficial dos caches
+npm/pip, a remoção de downloads VSIX e a retenção do VS Code Server. O VS Code
+preserva todas as versões em uso e no mínimo as duas mais recentes. O cron de
+seis em seis horas usa esse mesmo perfil; `.cursor-server` não faz parte da
+rotina recorrente.
+
 ```bash
 scripts/storage-maintenance.sh --dry-run
 scripts/storage-maintenance.sh --apply --min-age 24 --max-build-cache 2GB
@@ -205,7 +219,8 @@ Continuam deliberadamente manuais:
 - remocao de qualquer volume ou container;
 - `docker system prune -a`, `docker image prune -a` e qualquer prune com volumes;
 - remocao de imagens tagged mantidas para rollback;
-- limpeza de servidores/extensoes VS Code/Cursor em `/home/resident_primary`;
+- remoção integral de VS Code/Cursor e de extensões que não estejam marcadas
+  como obsoletas pelo próprio VS Code;
 - purge/repack do Recorder e exclusao de backups do Home Assistant;
 - vacuum ou mudanca de retencao do journald;
 - limpeza de logs PM2 e caches npm/IDE fora das allowlists do projeto;

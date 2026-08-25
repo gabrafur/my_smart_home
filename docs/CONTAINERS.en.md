@@ -215,6 +215,9 @@ Before applying manual cleanup, read the
 `scripts/storage-maintenance.sh --dry-run`. Running without arguments never
 cleans: `--apply` is mandatory, volumes and persistent data have no removal
 action, and higher-risk categories remain report-only.
+`--apply` does not prompt interactively and includes the recurring npm, pip,
+VSIX, obsolete VS Code server, and PM2 log allowlists. Every active VS Code
+version and at least the two newest versions are always preserved.
 
 The cron installer adds an idempotent managed block that processes requests
 from the **Run Storage Health** dashboard button once per minute with reduced

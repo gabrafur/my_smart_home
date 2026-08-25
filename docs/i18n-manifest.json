@@ -82,6 +82,7 @@
     { "path": "docs/PORTAO_GARAGEM_RELE_LOCAL.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/RASPBERRY_PI_SYSTEM_HEALTH.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/operations/storage-audit.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/operations/storage-audit-phase-2.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md", "area": "security", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },

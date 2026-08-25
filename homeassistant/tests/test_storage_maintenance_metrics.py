@@ -28,10 +28,29 @@ class StorageMaintenanceMetricsTests(unittest.TestCase):
                         "inodes_total": 100,
                         "inodes_used": 10,
                         "docker_logical_bytes": 200,
+                        "docker_images_logical_bytes": 180,
+                        "docker_unused_tagged_logical_bytes": 80,
+                        "docker_unused_untagged_logical_bytes": 10,
                         "known_logs_bytes": 20,
                         "repository_bytes": 300,
+                        "vscode_server_logical_bytes": 400,
+                        "cursor_server_logical_bytes": 0,
+                        "npm_cache_logical_bytes": 30,
+                        "allowlisted_user_caches_logical_bytes": 60,
+                        "pm2_logs_logical_bytes": 7,
+                        "home_assistant_recorder_logical_bytes": 500,
+                        "home_assistant_backups_logical_bytes": 600,
+                        "deleted_open_bytes": 0,
+                        "deleted_open_count": 0,
+                        "deleted_open_scan_complete": False,
                         "last_reclaimed_bytes": 50,
+                        "last_filesystem_net_reclaimed_bytes": 50,
+                        "last_reclaimed_by_category": {
+                            "npm-cache": 40,
+                            "private-category": 999,
+                        },
                         "last_maintenance_at": "2026-08-25T13:00:00Z",
+                        "phase2_last_maintenance_at": "2026-08-25T14:00:00Z",
                         "last_result": "success",
                         "unapproved_field": "must-not-be-forwarded",
                     }
@@ -42,6 +61,14 @@ class StorageMaintenanceMetricsTests(unittest.TestCase):
                 metrics = HEALTH.storage_maintenance_metrics()
 
         self.assertEqual(metrics["storage_maintenance_docker_logical_bytes"], 200)
+        self.assertEqual(metrics["storage_maintenance_vscode_server_logical_bytes"], 400)
+        self.assertEqual(metrics["storage_maintenance_cursor_server_logical_bytes"], 0)
+        self.assertFalse(metrics["storage_maintenance_deleted_open_scan_complete"])
+        self.assertEqual(
+            metrics["storage_maintenance_last_reclaimed_by_category"],
+            {"npm-cache": 40},
+        )
+        self.assertEqual(metrics["storage_maintenance_phase2_last_at"], "2026-08-25T14:00:00Z")
         self.assertEqual(metrics["storage_maintenance_last_result"], "success")
         self.assertNotIn("unapproved_field", metrics)
 

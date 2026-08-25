@@ -219,6 +219,9 @@ Antes de aplicar limpeza manual, consulte a
 `scripts/storage-maintenance.sh --dry-run`. A execução sem argumentos nunca
 limpa: `--apply` é obrigatório, volumes e dados persistentes não têm ação de
 remoção, e categorias de maior risco permanecem somente como relatório.
+O `--apply` não solicita confirmação interativa e inclui as allowlists
+recorrentes de npm, pip, VSIX, versões obsoletas do VS Code e logs PM2; versões
+ativas e as duas versões mais recentes do VS Code são sempre preservadas.
 
 O script descobre o próprio diretório, portanto não depende mais de
 `/mnt/data/docker`. Ele faz backup Git, resolve digests, valida Compose e

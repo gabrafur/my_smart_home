@@ -68,6 +68,16 @@ Home Assistant e registros recuperáveis do build cache:
 | Build cache | 1,866 GB lógicos | 414,9 MB lógicos | 1.366.536.192 B (1,27 GiB) |
 | Total da execução | 39.095.754.752 B usados | 34.781.016.064 B usados | 4.314.738.688 B (4,02 GiB) |
 
+As duas janelas por categoria somaram 4.314.742.784 B, 4.096 B acima do
+delta global. A revisão da implementação comprovou que não houve mistura com
+`du` nem arredondamento de unidades: os três valores vieram de `df -B1`, mas
+cada categoria coletou seu próprio par antes/depois. Uma alocação concorrente
+de um bloco ext4 de 4.096 B ocorreu entre essas janelas e entrou no delta
+global sem pertencer aos deltas individuais. Assim, 4.314.738.688 B é o delta
+líquido da execução; os valores por categoria são observações independentes e
+não devem ser somados como total exato. O script agora grava o delta líquido
+separadamente e força categorias report-only a 0 B recuperados.
+
 Uma segunda execução idêntica encontrou zero candidatos, removeu zero itens e
 recuperou 0 B. A fotografia final, após o restart controlado do Home Assistant
 e a atividade normal dos serviços, ficou em 34.782.593.024 B usados (32,39 GiB),
@@ -120,9 +130,15 @@ Categorias automáticas de baixo risco:
 - `docker-images`: somente imagens sem tag, antigas e sem referências;
 - `docker-build-cache`: teto configurável, sem tocar imagens/containers ativos;
 - `project-artifacts`: somente logs npm e backups de flows em duas allowlists.
+- `pm2-logs`: `copytruncate`, compressão e sete rotações para logs explícitos
+  que atingirem 10 MiB;
+- `npm-cache` e `python-cache`: somente mecanismos oficiais dos gerenciadores;
+- `vscode-versions`: preserva todas as versões ativas e as duas mais recentes;
+- `vscode-cache`: somente pacotes VSIX já baixados, nunca extensões instaladas.
 
-Categorias report-only: `stopped-containers`, `git` e
-`home-assistant-backups`. `journald` e `apt-cache` só alteram algo quando a
+Categorias report-only: `stopped-containers`, `git`, `developer-tools`,
+`user-caches`, `docker-tagged-images`, `deleted-open-files`,
+`home-assistant-recorder` e `home-assistant-backups`. `journald` e `apt-cache` só alteram algo quando a
 categoria é escolhida com `--apply`, a opção adicional
 `--allow-privileged-cleanup` está presente e o processo já é root; o script
 nunca usa `sudo`. Volumes, overlay/containerd, bancos e dados persistentes não
@@ -142,7 +158,9 @@ Os limites podem ser passados por argumentos ou pelas variáveis
 `STORAGE_MAINTENANCE_*` declaradas no início do script. O apply grava
 atomicamente homeassistant/storage-maintenance-status.json, ignorado pelo Git,
 com bytes totais/livres/usados, percentual, inodes, Docker lógico, logs
-conhecidos, checkout, última execução, resultado e bytes recuperados. O coletor
+conhecidos, checkout, ferramentas de desenvolvimento, caches, PM2, recorder,
+backups, arquivos apagados ainda abertos, última execução, resultado, delta
+líquido e janelas por categoria. O coletor
 do Home Assistant lê apenas esse schema allowlisted. O Compose já aplica
 `json-file` com `max-size=10m` e `max-file=3` aos containers ativos.
 
@@ -197,11 +215,15 @@ dados pessoais ao GitHub.
 Pendências manuais:
 
 - comprovar backup externo e restore antes de reduzir os 3,08 GiB locais;
-- identificar no HA quais entidades justificam ~2,58 milhões de estados;
-- revisar versões antigas de VS Code/Cursor apenas fora de sessões ativas;
-- instalar/configurar rotação do PM2 após revisar o serviço fora do repositório;
+- aplicar a recomendação de frequência do recorder somente após decisão
+  funcional baseada na segunda fase;
+- revisar o `_npx` preservado e os navegadores Puppeteer antes de qualquer
+  limpeza adicional;
 - classificar `/.journal` e medir journald com privilégio administrativo;
 - revisar as imagens tagged sem containers (ferramentas e rollback) antes de
   qualquer remoção;
 - não executar `git gc` enquanto o ganho continuar desprezível e sem margem
   adicional para repack.
+
+Os resultados e evidências posteriores estão em
+[`storage-audit-phase-2.md`](storage-audit-phase-2.md).

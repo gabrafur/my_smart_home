@@ -208,9 +208,22 @@ def storage_maintenance_metrics() -> dict:
         "inodes_total",
         "inodes_used",
         "docker_logical_bytes",
+        "docker_images_logical_bytes",
+        "docker_unused_tagged_logical_bytes",
+        "docker_unused_untagged_logical_bytes",
         "known_logs_bytes",
         "repository_bytes",
+        "vscode_server_logical_bytes",
+        "cursor_server_logical_bytes",
+        "npm_cache_logical_bytes",
+        "allowlisted_user_caches_logical_bytes",
+        "pm2_logs_logical_bytes",
+        "home_assistant_recorder_logical_bytes",
+        "home_assistant_backups_logical_bytes",
+        "deleted_open_bytes",
+        "deleted_open_count",
         "last_reclaimed_bytes",
+        "last_filesystem_net_reclaimed_bytes",
     )
     metrics: dict[str, int | float | str | None] = {
         f"storage_maintenance_{key}": None for key in keys
@@ -218,7 +231,10 @@ def storage_maintenance_metrics() -> dict:
     metrics.update(
         {
             "storage_maintenance_last_at": None,
+            "storage_maintenance_phase2_last_at": None,
             "storage_maintenance_last_result": None,
+            "storage_maintenance_deleted_open_scan_complete": None,
+            "storage_maintenance_last_reclaimed_by_category": None,
         }
     )
     try:
@@ -234,6 +250,46 @@ def storage_maintenance_metrics() -> dict:
     last_at = payload.get("last_maintenance_at")
     if isinstance(last_at, str) and last_at:
         metrics["storage_maintenance_last_at"] = last_at
+    phase2_last_at = payload.get("phase2_last_maintenance_at")
+    if isinstance(phase2_last_at, str) and phase2_last_at:
+        metrics["storage_maintenance_phase2_last_at"] = phase2_last_at
+    deleted_scan_complete = payload.get("deleted_open_scan_complete")
+    if isinstance(deleted_scan_complete, bool):
+        metrics["storage_maintenance_deleted_open_scan_complete"] = deleted_scan_complete
+    allowed_categories = {
+        "report",
+        "logs",
+        "pm2-logs",
+        "journald",
+        "apt-cache",
+        "temporary-files",
+        "docker-images",
+        "docker-build-cache",
+        "docker-tagged-images",
+        "stopped-containers",
+        "git",
+        "project-artifacts",
+        "developer-tools",
+        "user-caches",
+        "npm-cache",
+        "python-cache",
+        "vscode-versions",
+        "vscode-cache",
+        "deleted-open-files",
+        "home-assistant-recorder",
+        "home-assistant-backups",
+    }
+    reclaimed = payload.get("last_reclaimed_by_category")
+    if isinstance(reclaimed, dict):
+        filtered = {
+            key: value
+            for key, value in reclaimed.items()
+            if key in allowed_categories
+            and isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and value >= 0
+        }
+        metrics["storage_maintenance_last_reclaimed_by_category"] = filtered
     last_result = payload.get("last_result")
     if last_result in {"success", "partial", "failed"}:
         metrics["storage_maintenance_last_result"] = last_result

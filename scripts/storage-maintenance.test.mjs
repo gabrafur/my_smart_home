@@ -18,10 +18,21 @@ function fixture({ name = "storage-maintenance-test-" } = {}) {
   const metricsFile = path.join(metricsRoot, "status.json");
   const tempRoot = path.join(root, "temporary");
   const nodeRedRoot = path.join(root, "Node RED data");
+  const userHome = path.join(root, "user home");
+  const userCacheRoot = path.join(userHome, ".cache");
+  const npmCacheRoot = path.join(userHome, ".npm");
+  const pm2Root = path.join(userHome, ".pm2");
+  const vscodeRoot = path.join(userHome, ".vscode-server");
+  const cursorRoot = path.join(userHome, ".cursor-server");
   fs.mkdirSync(bin);
   fs.mkdirSync(filesystem);
   fs.mkdirSync(metricsRoot);
   fs.mkdirSync(tempRoot);
+  fs.mkdirSync(path.join(userCacheRoot, "pip"), { recursive: true });
+  fs.mkdirSync(path.join(npmCacheRoot, "_cacache"), { recursive: true });
+  fs.mkdirSync(path.join(pm2Root, "logs"), { recursive: true });
+  fs.mkdirSync(path.join(vscodeRoot, "cli", "servers"), { recursive: true });
+  fs.mkdirSync(path.join(vscodeRoot, "data", "CachedExtensionVSIXs"), { recursive: true });
   fs.mkdirSync(path.join(nodeRedRoot, ".npm", "_logs"), { recursive: true });
   fs.mkdirSync(path.join(nodeRedRoot, "backups", "codex-flows"), { recursive: true });
   fs.writeFileSync(meminfo, "MemAvailable:       4194304 kB\n");
@@ -44,6 +55,23 @@ case "$1 $2" in
   "ps -a") : ;;
 esac
 `, { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, "npm"), String.raw`#!/bin/sh
+printf '%s\n' "$*" >> "$FAKE_NPM_CALLS"
+case "$1 $2" in
+  "config get") printf '%s\n' "$FAKE_NPM_CACHE" ;;
+  "cache verify") printf '%s\n' 'Cache verified' ;;
+  "cache clean") find "$FAKE_NPM_CACHE/_cacache" -mindepth 1 -delete 2>/dev/null || true ;;
+esac
+`, { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, "python3"), String.raw`#!/bin/sh
+printf '%s\n' "$*" >> "$FAKE_PYTHON_CALLS"
+case "$*" in
+  "-m pip --version") printf '%s\n' 'pip 1.0' ;;
+  "-m pip cache dir") printf '%s\n' "$FAKE_PIP_CACHE" ;;
+  "-m pip cache info") printf '%s\n' 'Package index page cache size: 1 MB' ;;
+  "-m pip cache purge") find "$FAKE_PIP_CACHE" -mindepth 1 -delete 2>/dev/null || true ;;
+esac
+`, { mode: 0o755 });
   fs.writeFileSync(path.join(bin, "df"), String.raw`#!/bin/sh
 case " $* " in
   *" -Pi "*) printf '%s\n' 'Filesystem Inodes IUsed IFree IUse% Mounted on' '/dev/test 10000 1000 9000 10% /test' ;;
@@ -61,11 +89,21 @@ esac
     metricsFile,
     tempRoot,
     nodeRedRoot,
+    userHome,
+    userCacheRoot,
+    npmCacheRoot,
+    pm2Root,
+    vscodeRoot,
+    cursorRoot,
     env: {
       ...process.env,
       PATH: `${bin}:${process.env.PATH}`,
       FAKE_DOCKER_CALLS: calls,
       FAKE_FILESYSTEM: filesystem,
+      FAKE_NPM_CALLS: path.join(root, "npm-calls"),
+      FAKE_NPM_CACHE: npmCacheRoot,
+      FAKE_PYTHON_CALLS: path.join(root, "python-calls"),
+      FAKE_PIP_CACHE: path.join(userCacheRoot, "pip"),
       STORAGE_MAINTENANCE_FILESYSTEM: filesystem,
       STORAGE_MAINTENANCE_LOCK_PATH: root,
       STORAGE_MAINTENANCE_MEMINFO_FILE: meminfo,
@@ -73,6 +111,12 @@ esac
       STORAGE_MAINTENANCE_METRICS_FILE: metricsFile,
       STORAGE_MAINTENANCE_TEMP_ROOT: tempRoot,
       STORAGE_MAINTENANCE_NODE_RED_ROOT: nodeRedRoot,
+      STORAGE_MAINTENANCE_USER_HOME: userHome,
+      STORAGE_MAINTENANCE_USER_CACHE_ROOT: userCacheRoot,
+      STORAGE_MAINTENANCE_NPM_CACHE_ROOT: npmCacheRoot,
+      STORAGE_MAINTENANCE_PM2_ROOT: pm2Root,
+      STORAGE_MAINTENANCE_VSCODE_ROOT: vscodeRoot,
+      STORAGE_MAINTENANCE_CURSOR_ROOT: cursorRoot,
     },
   };
 }
@@ -211,6 +255,103 @@ test("privileged categories do not escalate privileges", () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /apt-cache-requires-root/);
   assert.match(result.stdout, /status=partial mode=apply/);
+  removeFixture(item);
+});
+
+test("supported npm and pip cleanup preserve projects and are idempotent", () => {
+  const item = fixture();
+  const npmCached = path.join(item.npmCacheRoot, "_cacache", "cached package");
+  const pipCached = path.join(item.userCacheRoot, "pip", "cached wheel");
+  const projectModules = path.join(item.root, "project", "node_modules", "kept.txt");
+  fs.writeFileSync(npmCached, "npm cache");
+  fs.writeFileSync(pipCached, "pip cache");
+  fs.mkdirSync(path.dirname(projectModules), { recursive: true });
+  fs.writeFileSync(projectModules, "installed dependency");
+  const args = ["--apply", "--category", "npm-cache", "--category", "python-cache"];
+  const first = spawnSync(script, args, { encoding: "utf8", env: item.env });
+  assert.equal(first.status, 0, first.stdout + first.stderr);
+  assert.ok(!fs.existsSync(npmCached));
+  assert.ok(!fs.existsSync(pipCached));
+  assert.equal(fs.readFileSync(projectModules, "utf8"), "installed dependency");
+  assert.match(fs.readFileSync(item.env.FAKE_NPM_CALLS, "utf8"), /cache clean --force/);
+  assert.match(fs.readFileSync(item.env.FAKE_PYTHON_CALLS, "utf8"), /-m pip cache purge/);
+  const second = spawnSync(script, args, { encoding: "utf8", env: item.env });
+  assert.equal(second.status, 0, second.stdout + second.stderr);
+  removeFixture(item);
+});
+
+test("PM2 logs rotate with copytruncate and bounded compressed retention", () => {
+  const item = fixture();
+  const active = path.join(item.pm2Root, "pm2.log");
+  fs.writeFileSync(active, "active log content");
+  const result = spawnSync(script, [
+    "--apply", "--category", "pm2-logs",
+    "--pm2-log-max-bytes", "1",
+    "--pm2-log-retention-files", "7",
+  ], { encoding: "utf8", env: item.env });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.equal(fs.readFileSync(active, "utf8"), "");
+  const rotations = fs.readdirSync(item.pm2Root).filter((name) => /^pm2\.log\.\d{8}T\d{6}Z\.gz$/.test(name));
+  assert.equal(rotations.length, 1);
+  const second = spawnSync(script, [
+    "--apply", "--category", "pm2-logs", "--pm2-log-max-bytes", "1",
+  ], { encoding: "utf8", env: item.env });
+  assert.equal(second.status, 0, second.stdout + second.stderr);
+  assert.match(second.stdout, /removed_count=0/);
+  removeFixture(item);
+});
+
+test("VS Code cleanup needs no prompt and preserves the newest versions", () => {
+  const item = fixture();
+  const servers = path.join(item.vscodeRoot, "cli", "servers");
+  const versions = ["old-version", "rollback-version", "current-version"];
+  versions.forEach((version, index) => {
+    const directory = path.join(servers, `Stable-${version}`);
+    fs.mkdirSync(directory);
+    fs.writeFileSync(path.join(directory, "server file"), version);
+    const timestamp = new Date((index + 1) * 1000);
+    fs.utimesSync(directory, timestamp, timestamp);
+  });
+  const result = spawnSync(script, [
+    "--apply", "--category", "vscode-versions", "--vscode-keep-versions", "2",
+  ], { encoding: "utf8", env: item.env });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.ok(!fs.existsSync(path.join(servers, "Stable-old-version")));
+  assert.ok(fs.existsSync(path.join(servers, "Stable-rollback-version")));
+  assert.ok(fs.existsSync(path.join(servers, "Stable-current-version")));
+  removeFixture(item);
+});
+
+test("VS Code cache cleanup is allowlisted and does not remove installed extensions", () => {
+  const item = fixture();
+  const cached = path.join(item.vscodeRoot, "data", "CachedExtensionVSIXs", "cached extension with spaces");
+  const installed = path.join(item.vscodeRoot, "extensions", "publisher.extension", "extension.js");
+  fs.writeFileSync(cached, "download cache");
+  fs.mkdirSync(path.dirname(installed), { recursive: true });
+  fs.writeFileSync(installed, "installed");
+  const result = spawnSync(script, ["--apply", "--category", "vscode-cache"], {
+    encoding: "utf8", env: item.env,
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.ok(!fs.existsSync(cached));
+  assert.equal(fs.readFileSync(installed, "utf8"), "installed");
+  removeFixture(item);
+});
+
+test("extended metrics remain schema-compatible and exclude private content", () => {
+  const item = fixture();
+  fs.writeFileSync(path.join(item.pm2Root, "logs", "application.log"), "log");
+  const result = spawnSync(script, [
+    "--apply", "--category", "developer-tools", "--category", "deleted-open-files",
+  ], { encoding: "utf8", env: item.env });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const metrics = JSON.parse(fs.readFileSync(item.metricsFile, "utf8"));
+  assert.equal(metrics.schema_version, 1);
+  assert.equal(metrics.cursor_server_logical_bytes, 0);
+  assert.equal(metrics.pm2_logs_logical_bytes, 3);
+  assert.equal(typeof metrics.last_reclaimed_by_category, "object");
+  assert.equal(metrics.last_filesystem_net_reclaimed_bytes, 0);
+  assert.ok(!JSON.stringify(metrics).includes("application.log"));
   removeFixture(item);
 });
 
