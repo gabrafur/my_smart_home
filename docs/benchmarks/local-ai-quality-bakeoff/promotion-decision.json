@@ -1,0 +1,104 @@
+{
+  "decisions": [
+    {
+      "activity": "structured_extraction",
+      "failed_gates": [
+        "beats_baseline"
+      ],
+      "mode": "shadow",
+      "operational_advantage_status": "NOT_DEMONSTRATED",
+      "production_enabled": false,
+      "unresolved_fallback": "gpt-direct",
+      "verifier": null,
+      "verifier_model_key": null,
+      "verifier_status": "NOT_PROVEN",
+      "winner": "NO_WINNER",
+      "winner_model_key": null
+    },
+    {
+      "activity": "classification",
+      "failed_gates": [
+        "cases_with_critical_error",
+        "observed_critical_error_occurrences",
+        "critical_fact_recall",
+        "useful_rate",
+        "fallback_rate",
+        "macro_f1"
+      ],
+      "mode": "disabled",
+      "operational_advantage_status": "NOT_DEMONSTRATED",
+      "production_enabled": false,
+      "unresolved_fallback": "gpt-direct",
+      "verifier": null,
+      "verifier_model_key": null,
+      "verifier_status": "NOT_PROVEN",
+      "winner": "NO_WINNER",
+      "winner_model_key": null
+    },
+    {
+      "activity": "file_selection",
+      "failed_gates": [
+        "cases_with_critical_error",
+        "observed_critical_error_occurrences",
+        "critical_fact_recall",
+        "useful_rate",
+        "fallback_rate",
+        "beats_baseline",
+        "critical_file_recall"
+      ],
+      "mode": "shadow",
+      "operational_advantage_status": "NOT_DEMONSTRATED",
+      "production_enabled": false,
+      "unresolved_fallback": "gpt-direct",
+      "verifier": null,
+      "verifier_model_key": null,
+      "verifier_status": "NOT_PROVEN",
+      "winner": "NO_WINNER",
+      "winner_model_key": null
+    },
+    {
+      "activity": "error_clustering",
+      "failed_gates": [
+        "cases_with_critical_error",
+        "observed_critical_error_occurrences",
+        "critical_fact_recall",
+        "useful_rate",
+        "fallback_rate",
+        "gpt_avoidance",
+        "beats_baseline",
+        "critical_false_merges",
+        "root_cause_preservation"
+      ],
+      "mode": "shadow",
+      "operational_advantage_status": "NOT_DEMONSTRATED",
+      "production_enabled": false,
+      "unresolved_fallback": "gpt-direct",
+      "verifier": null,
+      "verifier_model_key": null,
+      "verifier_status": "NOT_PROVEN",
+      "winner": "NO_WINNER",
+      "winner_model_key": null
+    },
+    {
+      "activity": "diff_summary",
+      "failed_gates": [
+        "cases_with_critical_error",
+        "observed_critical_error_occurrences",
+        "critical_fact_recall",
+        "useful_rate",
+        "fallback_rate"
+      ],
+      "mode": "disabled",
+      "operational_advantage_status": "NOT_DEMONSTRATED",
+      "production_enabled": false,
+      "unresolved_fallback": "gpt-direct",
+      "verifier": null,
+      "verifier_model_key": null,
+      "verifier_status": "NOT_PROVEN",
+      "winner": "NO_WINNER",
+      "winner_model_key": null
+    }
+  ],
+  "operational_advantage_status": "NOT_DEMONSTRATED",
+  "schema_version": 3
+}

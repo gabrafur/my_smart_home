@@ -1,0 +1,1240 @@
+{
+  "corpus": [
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-06",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-structured_extraction-01"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-07",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-structured_extraction-02"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-08",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-structured_extraction-03"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-09",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-structured_extraction-04"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-10",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-structured_extraction-05"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-11",
+      "expected_error_types": [
+        "altered_number"
+      ],
+      "injected_error_type": "altered_number",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-structured_extraction-06"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-12",
+      "expected_error_types": [
+        "invented_path"
+      ],
+      "injected_error_type": "invented_path",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-structured_extraction-07"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-13",
+      "expected_error_types": [
+        "altered_number"
+      ],
+      "injected_error_type": "altered_number",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-structured_extraction-08"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-14",
+      "expected_error_types": [
+        "invented_path"
+      ],
+      "injected_error_type": "invented_path",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-structured_extraction-09"
+    },
+    {
+      "activity": "structured_extraction",
+      "case_id": "qb-structured-extraction-15",
+      "expected_error_types": [
+        "altered_number"
+      ],
+      "injected_error_type": "altered_number",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-structured_extraction-10"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-06",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-classification-01"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-07",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-classification-02"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-08",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-classification-03"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-09",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-classification-04"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-10",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-classification-05"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-11",
+      "expected_error_types": [
+        "unsafe_route"
+      ],
+      "injected_error_type": "unsafe_route",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-classification-06"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-12",
+      "expected_error_types": [
+        "unsafe_route"
+      ],
+      "injected_error_type": "unsafe_route",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-classification-07"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-13",
+      "expected_error_types": [
+        "unsafe_route"
+      ],
+      "injected_error_type": "unsafe_route",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-classification-08"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-14",
+      "expected_error_types": [
+        "unsafe_route"
+      ],
+      "injected_error_type": "unsafe_route",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-classification-09"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-15",
+      "expected_error_types": [
+        "unsafe_route"
+      ],
+      "injected_error_type": "unsafe_route",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-classification-10"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-06",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-file_selection-01"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-07",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-file_selection-02"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-08",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-file_selection-03"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-09",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-file_selection-04"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-10",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-file_selection-05"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-11",
+      "expected_error_types": [
+        "critical_omission"
+      ],
+      "injected_error_type": "critical_omission",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-file_selection-06"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-12",
+      "expected_error_types": [
+        "invented_path"
+      ],
+      "injected_error_type": "invented_path",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-file_selection-07"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-13",
+      "expected_error_types": [
+        "critical_omission"
+      ],
+      "injected_error_type": "critical_omission",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-file_selection-08"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-14",
+      "expected_error_types": [
+        "invented_path"
+      ],
+      "injected_error_type": "invented_path",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-file_selection-09"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-15",
+      "expected_error_types": [
+        "critical_omission"
+      ],
+      "injected_error_type": "critical_omission",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-file_selection-10"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-06",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-error_clustering-01"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-07",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-error_clustering-02"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-08",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-error_clustering-03"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-09",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-error_clustering-04"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-10",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-error_clustering-05"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-11",
+      "expected_error_types": [
+        "false_merge"
+      ],
+      "injected_error_type": "false_merge",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-error_clustering-06"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-12",
+      "expected_error_types": [
+        "false_merge"
+      ],
+      "injected_error_type": "false_merge",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-error_clustering-07"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-13",
+      "expected_error_types": [
+        "false_merge"
+      ],
+      "injected_error_type": "false_merge",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-error_clustering-08"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-14",
+      "expected_error_types": [
+        "false_merge"
+      ],
+      "injected_error_type": "false_merge",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-error_clustering-09"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-15",
+      "expected_error_types": [
+        "false_merge"
+      ],
+      "injected_error_type": "false_merge",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-error_clustering-10"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-06",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-diff_summary-01"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-07",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-diff_summary-02"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-08",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-diff_summary-03"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-09",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-diff_summary-04"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-10",
+      "expected_error_types": [],
+      "injected_error_type": null,
+      "primary_model_key": null,
+      "proposal_origin": "oracle_correct",
+      "should_accept": true,
+      "verifier_case_id": "verifier-diff_summary-05"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-11",
+      "expected_error_types": [
+        "inference_as_observation"
+      ],
+      "injected_error_type": "inference_as_observation",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-diff_summary-06"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-12",
+      "expected_error_types": [
+        "inference_as_observation"
+      ],
+      "injected_error_type": "inference_as_observation",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-diff_summary-07"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-13",
+      "expected_error_types": [
+        "inference_as_observation"
+      ],
+      "injected_error_type": "inference_as_observation",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-diff_summary-08"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-14",
+      "expected_error_types": [
+        "inference_as_observation"
+      ],
+      "injected_error_type": "inference_as_observation",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-diff_summary-09"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-15",
+      "expected_error_types": [
+        "inference_as_observation"
+      ],
+      "injected_error_type": "inference_as_observation",
+      "primary_model_key": null,
+      "proposal_origin": "controlled_mutation",
+      "should_accept": false,
+      "verifier_case_id": "verifier-diff_summary-10"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-06",
+      "expected_error_types": [
+        "critical_route_mismatch"
+      ],
+      "injected_error_type": "critical_route_mismatch",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-classification-current_baseline-01"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-07",
+      "expected_error_types": [
+        "classification_evidence_mismatch",
+        "critical_route_mismatch"
+      ],
+      "injected_error_type": "classification_evidence_mismatch",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-classification-current_baseline-02"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-06",
+      "expected_error_types": [
+        "critical_file_omission",
+        "file_selection_mismatch"
+      ],
+      "injected_error_type": "critical_file_omission",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-file_selection-current_baseline-01"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-07",
+      "expected_error_types": [
+        "critical_file_omission",
+        "file_selection_mismatch"
+      ],
+      "injected_error_type": "critical_file_omission",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-file_selection-current_baseline-02"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-06",
+      "expected_error_types": [
+        "root_cause_or_group_mismatch"
+      ],
+      "injected_error_type": "root_cause_or_group_mismatch",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-error_clustering-current_baseline-01"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-07",
+      "expected_error_types": [
+        "root_cause_or_group_mismatch"
+      ],
+      "injected_error_type": "root_cause_or_group_mismatch",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-error_clustering-current_baseline-02"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-06",
+      "expected_error_types": [
+        "critical_fact_omission",
+        "critical_hallucination"
+      ],
+      "injected_error_type": "critical_fact_omission",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-diff_summary-current_baseline-01"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-07",
+      "expected_error_types": [
+        "critical_fact_omission",
+        "critical_hallucination"
+      ],
+      "injected_error_type": "critical_fact_omission",
+      "primary_model_key": "current_baseline",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-diff_summary-current_baseline-02"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-08",
+      "expected_error_types": [
+        "classification_evidence_mismatch",
+        "critical_route_mismatch"
+      ],
+      "injected_error_type": "classification_evidence_mismatch",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-classification-north_mini_code_1_0-01"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-10",
+      "expected_error_types": [
+        "critical_route_mismatch"
+      ],
+      "injected_error_type": "critical_route_mismatch",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-classification-north_mini_code_1_0-02"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-06",
+      "expected_error_types": [
+        "file_selection_mismatch"
+      ],
+      "injected_error_type": "file_selection_mismatch",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-file_selection-north_mini_code_1_0-01"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-07",
+      "expected_error_types": [
+        "file_selection_mismatch"
+      ],
+      "injected_error_type": "file_selection_mismatch",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-file_selection-north_mini_code_1_0-02"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-06",
+      "expected_error_types": [
+        "root_cause_or_group_mismatch"
+      ],
+      "injected_error_type": "root_cause_or_group_mismatch",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-error_clustering-north_mini_code_1_0-01"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-07",
+      "expected_error_types": [
+        "root_cause_or_group_mismatch"
+      ],
+      "injected_error_type": "root_cause_or_group_mismatch",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-error_clustering-north_mini_code_1_0-02"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-06",
+      "expected_error_types": [
+        "critical_fact_omission",
+        "critical_hallucination"
+      ],
+      "injected_error_type": "critical_fact_omission",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-diff_summary-north_mini_code_1_0-01"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-07",
+      "expected_error_types": [
+        "critical_fact_omission",
+        "critical_hallucination"
+      ],
+      "injected_error_type": "critical_fact_omission",
+      "primary_model_key": "north_mini_code_1_0",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-diff_summary-north_mini_code_1_0-02"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-10",
+      "expected_error_types": [
+        "critical_route_mismatch"
+      ],
+      "injected_error_type": "critical_route_mismatch",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-classification-devstral_small_2_24b-01"
+    },
+    {
+      "activity": "classification",
+      "case_id": "qb-classification-12",
+      "expected_error_types": [
+        "classification_evidence_mismatch",
+        "critical_route_mismatch"
+      ],
+      "injected_error_type": "classification_evidence_mismatch",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-classification-devstral_small_2_24b-02"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-08",
+      "expected_error_types": [
+        "critical_file_omission",
+        "file_selection_mismatch"
+      ],
+      "injected_error_type": "critical_file_omission",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-file_selection-devstral_small_2_24b-01"
+    },
+    {
+      "activity": "file_selection",
+      "case_id": "qb-file-selection-09",
+      "expected_error_types": [
+        "critical_file_omission",
+        "file_selection_mismatch"
+      ],
+      "injected_error_type": "critical_file_omission",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-file_selection-devstral_small_2_24b-02"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-06",
+      "expected_error_types": [
+        "root_cause_or_group_mismatch"
+      ],
+      "injected_error_type": "root_cause_or_group_mismatch",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-error_clustering-devstral_small_2_24b-01"
+    },
+    {
+      "activity": "error_clustering",
+      "case_id": "qb-error-clustering-07",
+      "expected_error_types": [
+        "root_cause_or_group_mismatch"
+      ],
+      "injected_error_type": "root_cause_or_group_mismatch",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-error_clustering-devstral_small_2_24b-02"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-06",
+      "expected_error_types": [
+        "critical_fact_omission",
+        "critical_hallucination"
+      ],
+      "injected_error_type": "critical_fact_omission",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-diff_summary-devstral_small_2_24b-01"
+    },
+    {
+      "activity": "diff_summary",
+      "case_id": "qb-diff-summary-08",
+      "expected_error_types": [
+        "critical_fact_omission",
+        "critical_hallucination"
+      ],
+      "injected_error_type": "critical_fact_omission",
+      "primary_model_key": "devstral_small_2_24b",
+      "proposal_origin": "natural_primary_error",
+      "should_accept": false,
+      "verifier_case_id": "verifier-natural-diff_summary-devstral_small_2_24b-02"
+    }
+  ],
+  "phase": "verifier",
+  "summaries": [
+    {
+      "activity": "structured_extraction",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": true,
+        "false_reject_rate_at_most_10_percent": false,
+        "zero_critical_false_accepts": true
+      },
+      "approved": false,
+      "critical_error_detection_recall": 1.0,
+      "critical_false_accepts": 0,
+      "false_accept_rate": 0.0,
+      "false_reject_rate": 0.2,
+      "false_rejects": 1,
+      "natural_primary_error_recall": 0.0,
+      "natural_primary_errors_detected": 0,
+      "natural_primary_errors_total": 0,
+      "risk_reduction_by_primary": {},
+      "total_cases": 10,
+      "verifier": "qwen2.5-coder:14b",
+      "verifier_model_key": "current_baseline",
+      "verifier_precision": 0.8333,
+      "verifier_recall": 1.0
+    },
+    {
+      "activity": "structured_extraction",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": true,
+        "false_reject_rate_at_most_10_percent": true,
+        "zero_critical_false_accepts": true
+      },
+      "approved": true,
+      "critical_error_detection_recall": 1.0,
+      "critical_false_accepts": 0,
+      "false_accept_rate": 0.0,
+      "false_reject_rate": 0.0,
+      "false_rejects": 0,
+      "natural_primary_error_recall": 0.0,
+      "natural_primary_errors_detected": 0,
+      "natural_primary_errors_total": 0,
+      "risk_reduction_by_primary": {},
+      "total_cases": 10,
+      "verifier": "north-mini-code-1.0:q4_K_M",
+      "verifier_model_key": "north_mini_code_1_0",
+      "verifier_precision": 1.0,
+      "verifier_recall": 1.0
+    },
+    {
+      "activity": "classification",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": false,
+        "false_reject_rate_at_most_10_percent": true,
+        "zero_critical_false_accepts": false
+      },
+      "approved": false,
+      "critical_error_detection_recall": 0.7273,
+      "critical_false_accepts": 3,
+      "false_accept_rate": 0.2727,
+      "false_reject_rate": 0.0,
+      "false_rejects": 0,
+      "natural_primary_error_recall": 0.6667,
+      "natural_primary_errors_detected": 4,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 1,
+          "recall": 0.5,
+          "risk_reduction_demonstrated": false,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 1,
+          "recall": 0.5,
+          "risk_reduction_demonstrated": false,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "verifier_model_key": "devstral_small_2_24b",
+      "verifier_precision": 1.0,
+      "verifier_recall": 0.7273
+    },
+    {
+      "activity": "classification",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": false,
+        "false_reject_rate_at_most_10_percent": false,
+        "zero_critical_false_accepts": false
+      },
+      "approved": false,
+      "critical_error_detection_recall": 0.9091,
+      "critical_false_accepts": 1,
+      "false_accept_rate": 0.0909,
+      "false_reject_rate": 0.4,
+      "false_rejects": 2,
+      "natural_primary_error_recall": 1.0,
+      "natural_primary_errors_detected": 6,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "north-mini-code-1.0:q4_K_M",
+      "verifier_model_key": "north_mini_code_1_0",
+      "verifier_precision": 0.8333,
+      "verifier_recall": 0.9091
+    },
+    {
+      "activity": "file_selection",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": true,
+        "false_reject_rate_at_most_10_percent": true,
+        "zero_critical_false_accepts": true
+      },
+      "approved": true,
+      "critical_error_detection_recall": 1.0,
+      "critical_false_accepts": 0,
+      "false_accept_rate": 0.0,
+      "false_reject_rate": 0.0,
+      "false_rejects": 0,
+      "natural_primary_error_recall": 1.0,
+      "natural_primary_errors_detected": 6,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "qwen2.5-coder:14b",
+      "verifier_model_key": "current_baseline",
+      "verifier_precision": 1.0,
+      "verifier_recall": 1.0
+    },
+    {
+      "activity": "file_selection",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": true,
+        "false_reject_rate_at_most_10_percent": false,
+        "zero_critical_false_accepts": true
+      },
+      "approved": false,
+      "critical_error_detection_recall": 1.0,
+      "critical_false_accepts": 0,
+      "false_accept_rate": 0.0,
+      "false_reject_rate": 0.8,
+      "false_rejects": 4,
+      "natural_primary_error_recall": 1.0,
+      "natural_primary_errors_detected": 6,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "north-mini-code-1.0:q4_K_M",
+      "verifier_model_key": "north_mini_code_1_0",
+      "verifier_precision": 0.7333,
+      "verifier_recall": 1.0
+    },
+    {
+      "activity": "error_clustering",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": false,
+        "false_reject_rate_at_most_10_percent": false,
+        "zero_critical_false_accepts": false
+      },
+      "approved": false,
+      "critical_error_detection_recall": 0.8182,
+      "critical_false_accepts": 2,
+      "false_accept_rate": 0.1818,
+      "false_reject_rate": 0.4,
+      "false_rejects": 2,
+      "natural_primary_error_recall": 0.6667,
+      "natural_primary_errors_detected": 4,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 1,
+          "recall": 0.5,
+          "risk_reduction_demonstrated": false,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 1,
+          "recall": 0.5,
+          "risk_reduction_demonstrated": false,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "qwen2.5-coder:14b",
+      "verifier_model_key": "current_baseline",
+      "verifier_precision": 0.8182,
+      "verifier_recall": 0.8182
+    },
+    {
+      "activity": "error_clustering",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": false,
+        "false_reject_rate_at_most_10_percent": true,
+        "zero_critical_false_accepts": false
+      },
+      "approved": false,
+      "critical_error_detection_recall": 0.8182,
+      "critical_false_accepts": 2,
+      "false_accept_rate": 0.1818,
+      "false_reject_rate": 0.0,
+      "false_rejects": 0,
+      "natural_primary_error_recall": 0.6667,
+      "natural_primary_errors_detected": 4,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 1,
+          "recall": 0.5,
+          "risk_reduction_demonstrated": false,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 1,
+          "recall": 0.5,
+          "risk_reduction_demonstrated": false,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "verifier_model_key": "devstral_small_2_24b",
+      "verifier_precision": 1.0,
+      "verifier_recall": 0.8182
+    },
+    {
+      "activity": "diff_summary",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": true,
+        "false_reject_rate_at_most_10_percent": false,
+        "zero_critical_false_accepts": true
+      },
+      "approved": false,
+      "critical_error_detection_recall": 1.0,
+      "critical_false_accepts": 0,
+      "false_accept_rate": 0.0,
+      "false_reject_rate": 1.0,
+      "false_rejects": 5,
+      "natural_primary_error_recall": 1.0,
+      "natural_primary_errors_detected": 6,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "north-mini-code-1.0:q4_K_M",
+      "verifier_model_key": "north_mini_code_1_0",
+      "verifier_precision": 0.6875,
+      "verifier_recall": 1.0
+    },
+    {
+      "activity": "diff_summary",
+      "approval_gates": {
+        "critical_error_detection_recall_100_percent": true,
+        "false_reject_rate_at_most_10_percent": false,
+        "zero_critical_false_accepts": true
+      },
+      "approved": false,
+      "critical_error_detection_recall": 1.0,
+      "critical_false_accepts": 0,
+      "false_accept_rate": 0.0,
+      "false_reject_rate": 1.0,
+      "false_rejects": 5,
+      "natural_primary_error_recall": 1.0,
+      "natural_primary_errors_detected": 6,
+      "natural_primary_errors_total": 6,
+      "risk_reduction_by_primary": {
+        "current_baseline": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "devstral_small_2_24b": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        },
+        "north_mini_code_1_0": {
+          "detected": 2,
+          "recall": 1.0,
+          "risk_reduction_demonstrated": true,
+          "total": 2
+        }
+      },
+      "total_cases": 16,
+      "verifier": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "verifier_model_key": "devstral_small_2_24b",
+      "verifier_precision": 0.6875,
+      "verifier_recall": 1.0
+    }
+  ]
+}

@@ -170,3 +170,20 @@ configuração, pendências e avisos. A telemetria mantém memória separada de
 logs/diffs: corpus disponível não é economia; somente o delta entre memória
 recuperada e resultado estruturado enviado ao modelo é contado. Consulte
 `docs/MEMORIA_VERSIONADA_AGENTES.md` e `docs/LOCAL_AI_RTX_4070.md`.
+
+Em 2026-08-25, o bake-off quality-first v3 comparou o baseline
+`qwen2.5-coder:14b` com North Mini Code e Devstral em cinco atividades
+residuais. Foram 983 inferências: 250 calibração, 300 regressão, 285 holdout e
+148 verifier. O dataset público tem 100 casos congelados, 25/75, 20 por
+atividade, com 20 prompt injections e 20 amostras de estabilidade. A autoria
+humana independente/manual externa do ground truth não foi comprovada, então o
+resultado não é acurácia externa independente. Nenhum challenger venceu:
+extração empatou 15/15 e não superou o baseline; classificação, seleção de
+arquivos, clustering e diff falharam gates críticos. As cinco atividades
+preservam `shadow/disabled`, `production_enabled=false`, primary/verifier nulos
+e fallback GPT direto. O suporte configurável fica em
+`scripts/local-ai/model-registry.json`, atrás de
+`LOCAL_AI_QUALITY_PIPELINE_ENABLED`, com rollback central e fail-closed.
+`summarize-log` permanece separado e inalterado. A fonte canônica é
+`docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md` e o run id é
+`9b798bb9-612e-4d98-96ca-dca47063c32e`.

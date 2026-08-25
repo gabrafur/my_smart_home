@@ -9,7 +9,10 @@
 	benchmark-local-ai-high-potential benchmark-local-ai-high-potential-unit \
 	benchmark-local-ai-high-potential-integration benchmark-local-ai-high-potential-simulated \
 	benchmark-local-ai-high-potential-local-ai benchmark-local-ai-high-potential-dashboard \
-	benchmark-local-ai-high-potential-recompute
+	benchmark-local-ai-high-potential-recompute \
+	benchmark-local-ai-quality-bakeoff-unit benchmark-local-ai-quality-bakeoff-calibration \
+	benchmark-local-ai-quality-bakeoff-regression benchmark-local-ai-quality-bakeoff-holdout \
+	benchmark-local-ai-quality-bakeoff-verifier benchmark-local-ai-quality-bakeoff
 
 PUBLIC_VALIDATION_TARGETS := validate-dependencies validate-compose validate-json \
 	validate-yaml validate-shell validate-docs validate-assets validate-security \
@@ -25,6 +28,8 @@ ALLOW_NON_CANARY ?=
 MODULES ?= core
 HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR ?= docs/benchmarks/local-ai-high-potential
 HIGH_POTENTIAL_BENCHMARK_SIMULATED_OUTPUT_DIR ?= /tmp/local-ai-high-potential-simulated
+QUALITY_BAKEOFF_RUN_ID ?=
+QUALITY_BAKEOFF_MODELS ?= current_baseline,qwen3_8_27b,north_mini_code_1_0,devstral_small_2_24b,qwen3_coder_next_optional
 
 validate-public:
 	@./scripts/run-resource-safe.sh $(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
@@ -105,6 +110,38 @@ benchmark-local-ai-high-potential-dashboard:
 benchmark-local-ai-high-potential: benchmark-local-ai-high-potential-unit \
 	benchmark-local-ai-high-potential-integration benchmark-local-ai-high-potential-simulated \
 	benchmark-local-ai-high-potential-dashboard benchmark-local-ai-high-potential-local-ai
+
+benchmark-local-ai-quality-bakeoff-unit:
+	python3 scripts/local-ai/quality_bakeoff_dataset.py --check
+	python3 scripts/local-ai/test_model_registry.py
+	python3 scripts/local-ai/test_quality_bakeoff.py
+
+benchmark-local-ai-quality-bakeoff-calibration:
+	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
+	uptime
+	free -h
+	df -h /
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+		--phase calibration --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
+
+benchmark-local-ai-quality-bakeoff-regression:
+	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+		--phase regression --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
+
+benchmark-local-ai-quality-bakeoff-holdout:
+	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+		--phase holdout --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
+
+benchmark-local-ai-quality-bakeoff-verifier:
+	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
+	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+		--phase verifier --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
+
+benchmark-local-ai-quality-bakeoff: benchmark-local-ai-quality-bakeoff-unit \
+	benchmark-local-ai-quality-bakeoff-calibration benchmark-local-ai-quality-bakeoff-regression \
+	benchmark-local-ai-quality-bakeoff-holdout benchmark-local-ai-quality-bakeoff-verifier
 
 validate-homeassistant:
 	python3 -m unittest discover -s homeassistant/tests -p 'test_*.py'

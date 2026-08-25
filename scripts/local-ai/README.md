@@ -120,6 +120,29 @@ consistency, not an independently verified comparison. No activity has an RTX
 operational advantage or production enablement. See
 [`docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md`](../../docs/LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md).
 
+The quality-first successor compares the current 14B baseline with viable
+current challengers per activity, using a frozen 25-case calibration split,
+75-case promotion holdout, the full 100-case legacy regression suite per model,
+predeclared stability repeats and a separate verifier corpus. Run the stages
+sequentially with one shared run id:
+
+```bash
+make benchmark-local-ai-quality-bakeoff-unit
+make benchmark-local-ai-quality-bakeoff-calibration QUALITY_BAKEOFF_RUN_ID=<uuid>
+make benchmark-local-ai-quality-bakeoff-regression QUALITY_BAKEOFF_RUN_ID=<uuid>
+make benchmark-local-ai-quality-bakeoff-holdout QUALITY_BAKEOFF_RUN_ID=<uuid>
+make benchmark-local-ai-quality-bakeoff-verifier QUALITY_BAKEOFF_RUN_ID=<uuid>
+```
+
+The 2026-08-25 run executed 983 inferences. No challenger beat every promotion
+gate in any activity, so all five activities kept their existing
+`shadow`/`disabled` modes and `production_enabled=false`. The central registry
+and `model_registry.py` provide fail-closed per-activity selection behind
+`LOCAL_AI_QUALITY_PIPELINE_ENABLED`; invalid, disabled or unpromoted routes go
+directly to GPT. `summarize-log` is outside this registry decision and remains
+unchanged. See
+[`docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md`](../../docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md).
+
 Calibrate a proposed verifier independently before the generator A/B:
 
 ```bash

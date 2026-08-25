@@ -1,0 +1,23 @@
+{
+  "activity_independence": {
+    "classification": "PARTIALLY_INDEPENDENT",
+    "diff_summary": "VERIFIED_INDEPENDENT",
+    "error_clustering": "VERIFIED_INDEPENDENT",
+    "file_selection": "PARTIALLY_INDEPENDENT",
+    "structured_extraction": "VERIFIED_INDEPENDENT"
+  },
+  "created_from_deterministic_arm_output": false,
+  "created_from_model_output": false,
+  "critical_facts_objectively_verifiable": {
+    "classification": true,
+    "diff_summary": true,
+    "error_clustering": true,
+    "file_selection": true,
+    "structured_extraction": true
+  },
+  "generator": "quality_bakeoff_dataset.py::frozen_seed_manifest",
+  "independent_authorship_evidence": null,
+  "manual_review_evidence": null,
+  "schema_version": 1,
+  "shares_evaluated_production_implementation": false
+}

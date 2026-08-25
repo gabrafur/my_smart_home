@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "abstain": {
+      "type": "boolean"
+    },
+    "evidence_ids": {
+      "items": {
+        "pattern": "^E[0-9]+$",
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "label": {
+      "enum": [
+        "DETERMINISTIC_ONLY",
+        "LOCAL_SEMANTIC",
+        "PRIMARY_REVIEW_REQUIRED",
+        "ABSTAIN"
+      ]
+    }
+  },
+  "required": [
+    "label",
+    "evidence_ids",
+    "abstain"
+  ],
+  "type": "object"
+}

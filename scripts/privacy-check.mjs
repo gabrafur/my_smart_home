@@ -33,6 +33,7 @@ const ignoredText = [
   /^scripts\/security-scan(?:\.test)?\.(?:mjs|sh)$/,
 ];
 const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:history\/v1-2026-08-24\/)?(?:[^/]+\.(?:json|jsonl|csv))|scripts\/local-ai\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
+const frozenSyntheticQualityDataset = /^scripts\/local-ai\/benchmarks\/quality-bakeoff-v1\/(?:dataset\.jsonl|inputs\.json)$/;
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
@@ -107,6 +108,10 @@ export function scanEntries(entries, { denylist = [] } = {}) {
       // latencies and GPU samples but never persist prompts or source inputs.
       // Keep every other privacy rule active for these narrowly scoped paths.
       if (rule === "precise-coordinate" && benchmarkNumericArtifact.test(file)) continue;
+      // These two generated public fixtures contain fictional event times as
+      // clustering evidence. Keep the frozen benchmark bytes stable after
+      // inference; every non-timestamp privacy rule still applies.
+      if (rule === "event-timestamp" && frozenSyntheticQualityDataset.test(file)) continue;
       pattern.lastIndex = 0;
       for (const match of text.matchAll(pattern)) {
         if (rule === "mac-address" && match[0].toUpperCase() === "AA:AA:AA:AA:AA:AA") continue;

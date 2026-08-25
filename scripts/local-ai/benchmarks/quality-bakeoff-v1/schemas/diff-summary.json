@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "inferred": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "observed": {
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "change_type": {
+            "enum": [
+              "added",
+              "removed",
+              "changed",
+              "renamed"
+            ]
+          },
+          "file": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "subject": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "change_type",
+          "subject"
+        ],
+        "type": "object"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "unknown": {
+      "items": {
+        "enum": [
+          "tests_passed",
+          "regression_safety",
+          "production_usage"
+        ]
+      },
+      "maxItems": 3,
+      "minItems": 3,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "observed",
+    "inferred",
+    "unknown"
+  ],
+  "type": "object"
+}

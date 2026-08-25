@@ -205,6 +205,21 @@ do cenário GPT simulado, não medição do GPT-5.6. Todas as classes receberam
 de produção permanece inalterado. O relatório completo está em
 [`LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md`](LOCAL_AI_HIGH_POTENTIAL_BENCHMARK_2026-08-24.md).
 
+O sucessor quality-first de 2026-08-25 congelou um novo conjunto residual de
+100 casos (25 calibração, 75 holdout), repetiu as 100 fixtures antigas para cada
+modelo e avaliou verifier separadamente. Foram 983 inferências reais com
+`qwen2.5-coder:14b`, `north-mini-code-1.0:q4_K_M` e
+`devstral-small-2:24b-instruct-2512-q4_K_M`. `qwen3.8:27b` ficou
+`NOT_RUN_RUNTIME_INCOMPATIBLE` e `qwen3-coder-next:q4_K_M`,
+`NOT_RUN_RESOURCE_CONSTRAINT`. Nenhum challenger superou todos os gates em
+qualquer atividade. Extração empatou em 15/15 entre os três e, portanto, não
+superou o baseline; as demais classes tiveram erros críticos e fallback alto.
+O roteamento continua `shadow/disabled`, sem primary ou verifier local em
+produção. O registro por atividade existe atrás de
+`LOCAL_AI_QUALITY_PIPELINE_ENABLED` e falha diretamente para GPT quando não há
+promoção válida. O relatório completo e os hashes estão em
+[`LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md`](LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md).
+
 O hook `PostToolUse` é versionado apenas neste projeto e precisa ser aprovado no
 Codex em `/hooks` depois de sua instalação ou de qualquer alteração. Ele atua
 somente quando uma saída grande já foi produzida; não analisa o prompt nem cria
@@ -626,13 +641,15 @@ registro de cobrança oficial. O resumo operacional expõe no máximo cinco jobs
 detalhes de endpoint para permanecer abaixo do limite de atributos do Home
 Assistant e preservar a telemetria no Recorder.
 
-O painel também contém **Benchmark RTX — alto potencial além de logs**. O
+O painel também contém **Benchmark RTX — quality-first por atividade**. O
 bridge lê somente o agregado versionado e sanitizado, separado da telemetria
-operacional, e mostra por atividade casos, tentativas, aceites, rejeições,
-fallback, useful RTX rate, tokens baseline/roteados/evitados, economia ponderada
-pela soma dos tokens, latências, qualidade, modelo e decisão. A marcação
-`measured`, `estimated`, `simulated` ou `insufficient_sample` impede apresentar
-o braço GPT simulado e tokens estimados como medição real.
+operacional, e mostra 15 linhas de primary, dez de verifier, cinco decisões,
+inventário dos modelos, recursos, dataset e hashes. Respostas, thinking,
+perfis completos e os 983 eventos de benchmark não são expostos como atributos
+do Home Assistant. A marcação `measured`, `estimated` ou `not_tested` impede
+apresentar tokens GPT estimados como medição real. `summarize-log` continua
+identificado como benchmark separado e as chamadas do bake-off valem zero nos
+contadores operacionais.
 
 O A/B de entrega v6 reproduz, somente por metadados, o controle bruto e o
 tratamento de um job Code Mode confirmado. A primeira observação mediu 4.074

@@ -1,0 +1,170 @@
+{
+  "phase": "regression",
+  "summaries": [
+    {
+      "activity": "structured_extraction",
+      "critical_cases": 8,
+      "fixture_validation": 0.9,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "qwen2.5-coder:14b",
+      "model_key": "current_baseline",
+      "regression_acceptance": 0.5,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "classification",
+      "critical_cases": 4,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "qwen2.5-coder:14b",
+      "model_key": "current_baseline",
+      "regression_acceptance": 0.0,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "file_selection",
+      "critical_cases": 12,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "qwen2.5-coder:14b",
+      "model_key": "current_baseline",
+      "regression_acceptance": 0.35,
+      "regression_critical_recall": 0.5,
+      "total_cases": 20
+    },
+    {
+      "activity": "error_clustering",
+      "critical_cases": 4,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "qwen2.5-coder:14b",
+      "model_key": "current_baseline",
+      "regression_acceptance": 0.8,
+      "regression_critical_recall": 0.3333,
+      "total_cases": 20
+    },
+    {
+      "activity": "diff_summary",
+      "critical_cases": 4,
+      "fixture_validation": 0.4,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "qwen2.5-coder:14b",
+      "model_key": "current_baseline",
+      "regression_acceptance": 0.2,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "structured_extraction",
+      "critical_cases": 12,
+      "fixture_validation": 0.95,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "north-mini-code-1.0:q4_K_M",
+      "model_key": "north_mini_code_1_0",
+      "regression_acceptance": 0.35,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "classification",
+      "critical_cases": 8,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "north-mini-code-1.0:q4_K_M",
+      "model_key": "north_mini_code_1_0",
+      "regression_acceptance": 0.0,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "file_selection",
+      "critical_cases": 13,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "north-mini-code-1.0:q4_K_M",
+      "model_key": "north_mini_code_1_0",
+      "regression_acceptance": 0.35,
+      "regression_critical_recall": 0.25,
+      "total_cases": 20
+    },
+    {
+      "activity": "error_clustering",
+      "critical_cases": 8,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "north-mini-code-1.0:q4_K_M",
+      "model_key": "north_mini_code_1_0",
+      "regression_acceptance": 0.6,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "diff_summary",
+      "critical_cases": 11,
+      "fixture_validation": 0.75,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "north-mini-code-1.0:q4_K_M",
+      "model_key": "north_mini_code_1_0",
+      "regression_acceptance": 0.0,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "structured_extraction",
+      "critical_cases": 4,
+      "fixture_validation": 0.85,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "model_key": "devstral_small_2_24b",
+      "regression_acceptance": 0.65,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "classification",
+      "critical_cases": 1,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "model_key": "devstral_small_2_24b",
+      "regression_acceptance": 0.0,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    },
+    {
+      "activity": "file_selection",
+      "critical_cases": 15,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "model_key": "devstral_small_2_24b",
+      "regression_acceptance": 0.25,
+      "regression_critical_recall": 0.25,
+      "total_cases": 20
+    },
+    {
+      "activity": "error_clustering",
+      "critical_cases": 4,
+      "fixture_validation": 1.0,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "model_key": "devstral_small_2_24b",
+      "regression_acceptance": 0.8,
+      "regression_critical_recall": 0.3333,
+      "total_cases": 20
+    },
+    {
+      "activity": "diff_summary",
+      "critical_cases": 12,
+      "fixture_validation": 0.65,
+      "ground_truth_independence": "INSUFFICIENT_EVIDENCE",
+      "model": "devstral-small-2:24b-instruct-2512-q4_K_M",
+      "model_key": "devstral_small_2_24b",
+      "regression_acceptance": 0.05,
+      "regression_critical_recall": 0.0,
+      "total_cases": 20
+    }
+  ]
+}
