@@ -20,7 +20,7 @@ def rtx_view() -> str:
 
 
 class RtxDashboardLayoutTest(unittest.TestCase):
-    def test_high_potential_sensor_exposes_v2_evidence_without_operational_mix(self):
+    def test_quality_bakeoff_sensor_exposes_v3_evidence_without_operational_mix(self):
         package = CODEX_PACKAGE.read_text(encoding="utf-8")
         start = package.index("      - name: Codex Benchmark RTX Alto Potencial\n")
         end = package.index("      - name: Codex Chamadas Local AI\n", start)
@@ -28,8 +28,12 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         for attribute in (
             "schema_version", "compatibility_status", "benchmark_run_id",
             "ultima_execucao", "artefato_recalculado_em", "idade_benchmark_s",
+            "total_eventos_benchmark",
             "independencia_ground_truth", "decisao_operacional", "resultados_recalculados",
-            "base_de_medicao", "cenarios_adversariais", "totais", "atividades",
+            "base_de_medicao", "cenarios_adversariais", "totais", "atividades", "modelos",
+            "resultados_primary", "resultados_verifier", "decisoes_promocao", "dataset",
+            "hashes_artefatos", "hash_configuracao", "feature_flag_pipeline",
+            "politica_summarize_log",
         ):
             self.assertIn(f"          {attribute}:", sensor)
         self.assertNotIn("operational_calls", sensor)
@@ -134,31 +138,33 @@ class RtxDashboardLayoutTest(unittest.TestCase):
         self.assertIn("entity: sensor.codex_falhas_operacionais_local_ai_hoje", view)
         self.assertIn("'modelo_verificador'", view)
 
-    def test_high_potential_benchmark_separates_denominators_and_evidence(self):
+    def test_quality_bakeoff_separates_primary_verifier_decision_and_evidence(self):
         view = rtx_view()
 
-        self.assertIn("title: Benchmark RTX — alto potencial além de logs", view)
+        self.assertIn("title: Benchmark RTX — quality-first por atividade", view)
         self.assertIn("sensor.codex_benchmark_rtx_alto_potencial", view)
-        self.assertIn("item.get('activity')", view)
+        for collection in ("resultados_primary", "resultados_verifier", "decisoes_promocao", "modelos", "dataset"):
+            self.assertIn(collection, view)
         for field in (
-            "total_cases", "eligible_cases", "rtx_attempted_cases", "local_inference_calls",
-            "accepted_cases", "useful_rtx_rate_among_attempts", "end_to_end_useful_coverage",
-            "fallback_cases", "critical_error_occurrences", "cases_with_critical_error",
-            "estimated_baseline_gpt_tokens", "estimated_routed_gpt_tokens",
-            "estimated_avoided_gpt_tokens", "estimated_weighted_gpt_context_reduction",
-            "rtx_quality_score", "baseline_quality_score", "rtx_operational_advantage",
+            "total_cases", "local_inference_calls", "accepted_cases", "fallback_cases",
+            "cases_with_critical_error", "pass_at_1", "critical_fact_recall",
+            "run_to_run_consistency", "duration_p50", "vram_peak", "cpu_offload_observed",
+            "critical_false_accepts", "critical_error_detection_recall", "false_reject_rate",
+            "natural_primary_errors_total", "natural_primary_error_recall", "approved",
+            "winner", "verifier", "operational_advantage_status", "production_enabled",
+            "failed_gates", "prompt_injection_cases", "stability_cases",
         ):
             self.assertIn(field, view)
-        for label in ("MEDIDO", "ESTIMADO", "SIMULADO", "NÃO TESTADO"):
+        for label in ("MEDIDO", "ESTIMADO", "NÃO TESTADO"):
             self.assertIn(label, view)
         self.assertIn("indisponível", view)
         self.assertIn("independencia_ground_truth", view)
-        self.assertIn("adversarial_guardrails_passed", view)
-        self.assertIn("adversarial_model_outputs_accepted", view)
-        self.assertIn("Sucesso do guardrail não é sucesso do modelo", view)
-        self.assertIn("Nenhuma das cinco", view)
+        self.assertIn("autoria independente/manual externa não foi comprovada", view)
+        self.assertIn("Primary — promotion holdout", view)
+        self.assertIn("Verifier — corpus controlado + erros naturais", view)
+        self.assertIn("Decisão por atividade", view)
+        self.assertIn("Estas chamadas não entram nos contadores operacionais", view)
         self.assertNotIn("weighted_token_savings", view)
-        self.assertNotIn("totals.get('critical_errors'", view)
         self.assertIn("`summarize-log` está excluído", view)
 
     def test_daily_operational_flow_reconciles_quality_outcomes(self):

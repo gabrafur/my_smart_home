@@ -470,6 +470,32 @@ test('sanitizes the versioned v2 benchmark artifact end to end', () => {
   assert.ok(benchmark.activities.every((item) => item.production_local_ai_enabled === false));
 });
 
+test('sanitizes the quality-first v3 bake-off without exposing raw events', () => {
+  const benchmarkPath = path.resolve(
+    __dirname, '..', 'docs', 'benchmarks', 'local-ai-quality-bakeoff', 'latest.json',
+  );
+  const usage = scanLocalAiTelemetry(
+    null, null, new Date('2026-08-25T18:00:00Z'), benchmarkPath,
+  );
+  const benchmark = usage.benchmark_high_potential;
+  assert.equal(benchmark.schema_version, 3);
+  assert.equal(benchmark.status, 'measured');
+  assert.equal(benchmark.operational_decision, 'NOT_DEMONSTRATED');
+  assert.equal(benchmark.models.length, 5);
+  assert.equal(benchmark.primary_results.length, 15);
+  assert.equal(benchmark.verifier_results.length, 10);
+  assert.equal(benchmark.promotion_decisions.length, 5);
+  assert.equal(benchmark.totals.total_cases, 225);
+  assert.equal(benchmark.totals.local_inference_calls, 285);
+  assert.equal(benchmark.benchmark_event_count, 983);
+  assert.equal(benchmark.dataset.residual_cases, 100);
+  assert.equal(benchmark.dataset.prompt_injection_cases, 20);
+  assert.equal(benchmark.dataset.stability_cases, 20);
+  assert.ok(benchmark.promotion_decisions.every((item) => item.production_enabled === false));
+  assert.equal(benchmark.benchmark_events, undefined);
+  assert.equal(benchmark.frozen_profiles, undefined);
+});
+
 test('does not report a stale Local AI preflight as available', (t) => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-local-ai-stale-'));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));

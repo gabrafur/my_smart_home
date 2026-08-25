@@ -589,6 +589,8 @@ template:
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('artifact_recomputed_at')) }}
           idade_benchmark_s: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('benchmark_age_seconds')) }}
+          total_eventos_benchmark: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('benchmark_event_count')) }}
           modelo: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('model')) }}
           independencia_ground_truth: >-
@@ -605,6 +607,24 @@ template:
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('totals')) or {} }}
           atividades: >-
             {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('activities')) or [] }}
+          modelos: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('models')) or [] }}
+          resultados_primary: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('primary_results')) or [] }}
+          resultados_verifier: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('verifier_results')) or [] }}
+          decisoes_promocao: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('promotion_decisions')) or [] }}
+          dataset: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('dataset')) or {} }}
+          hashes_artefatos: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('artifact_hashes')) or {} }}
+          hash_configuracao: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('configuration_hash')) }}
+          feature_flag_pipeline: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('quality_pipeline_feature_flag')) }}
+          politica_summarize_log: >-
+            {{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('benchmark_high_potential') or {}).get('summarize_log_policy')) }}
 
       - name: Codex Chamadas Local AI
         unique_id: codex_chamadas_local_ai

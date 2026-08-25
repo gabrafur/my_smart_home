@@ -760,7 +760,8 @@ function sanitizeHighPotentialBenchmark(benchmarkPath, now = new Date()) {
   const report = readJson(benchmarkPath, null);
   const isV1 = report?.suite === 'local-ai-high-potential-v1';
   const isV2 = report?.schema_version === 2 && report?.suite === 'local-ai-high-potential-v2';
-  if (!report || (!isV1 && !isV2)
+  const isV3 = report?.schema_version === 3 && report?.suite === 'local-ai-quality-bakeoff-v3';
+  if (!report || (!isV1 && !isV2 && !isV3)
       || report.execution_mode !== 'benchmark'
       || report.excluded_from_production_metrics !== true) {
     return { available: false, status: 'insufficient_sample', activities: [] };
@@ -769,6 +770,148 @@ function sanitizeHighPotentialBenchmark(benchmarkPath, now = new Date()) {
     if (value === null || value === undefined || value === '') return null;
     return Number.isFinite(Number(value)) ? Number(value) : null;
   };
+  if (isV3) {
+    const executedDate = new Date(report.benchmark_executed_at);
+    const ageSeconds = Number.isNaN(executedDate.valueOf())
+      ? null : Math.max(0, Math.floor((now.valueOf() - executedDate.valueOf()) / 1000));
+    const primaryResults = Array.isArray(report.primary_results) ? report.primary_results.map((item) => ({
+      activity: typeof item?.activity === 'string' ? item.activity : null,
+      model_key: typeof item?.model_key === 'string' ? item.model_key : null,
+      model: typeof item?.model === 'string' ? item.model : null,
+      total_cases: safeNumber(item?.total_cases),
+      local_inference_calls: safeNumber(item?.local_inference_calls),
+      accepted_cases: safeNumber(item?.accepted_cases),
+      fallback_cases: safeNumber(item?.fallback_cases),
+      cases_with_critical_error: safeNumber(item?.cases_with_critical_error),
+      pass_at_1: safeNumber(item?.pass_at_1),
+      critical_fact_recall: safeNumber(item?.critical_fact_recall),
+      schema_validity: safeNumber(item?.schema_validity),
+      residual_gpt_avoidance_rate: safeNumber(item?.residual_gpt_avoidance_rate),
+      run_to_run_consistency: safeNumber(item?.run_to_run_consistency),
+      critical_fact_consistency: safeNumber(item?.critical_fact_consistency),
+      duration_p50: safeNumber(item?.duration_p50),
+      duration_p95: safeNumber(item?.duration_p95),
+      tokens_per_second: safeNumber(item?.tokens_per_second),
+      vram_peak: safeNumber(item?.vram_peak),
+      ram_peak: safeNumber(item?.ram_peak),
+      swap_peak: safeNumber(item?.swap_peak),
+      cpu_offload_observed: typeof item?.cpu_offload_observed === 'boolean'
+        ? item.cpu_offload_observed : null,
+      timeouts: safeNumber(item?.timeouts),
+      oom: safeNumber(item?.oom),
+      macro_f1: safeNumber(item?.macro_f1),
+      numeric_value_preservation: safeNumber(item?.numeric_value_preservation),
+      critical_file_recall: safeNumber(item?.critical_file_recall),
+      critical_false_merges: safeNumber(item?.critical_false_merges),
+      root_cause_preservation: safeNumber(item?.root_cause_preservation),
+      unsupported_claims: safeNumber(item?.unsupported_claims),
+    })) : [];
+    const verifierResults = Array.isArray(report.verifier_results) ? report.verifier_results.map((item) => ({
+      activity: typeof item?.activity === 'string' ? item.activity : null,
+      verifier_model_key: typeof item?.verifier_model_key === 'string' ? item.verifier_model_key : null,
+      verifier: typeof item?.verifier === 'string' ? item.verifier : null,
+      total_cases: safeNumber(item?.total_cases),
+      critical_false_accepts: safeNumber(item?.critical_false_accepts),
+      critical_error_detection_recall: safeNumber(item?.critical_error_detection_recall),
+      false_accept_rate: safeNumber(item?.false_accept_rate),
+      false_reject_rate: safeNumber(item?.false_reject_rate),
+      verifier_precision: safeNumber(item?.verifier_precision),
+      verifier_recall: safeNumber(item?.verifier_recall),
+      natural_primary_errors_total: safeNumber(item?.natural_primary_errors_total),
+      natural_primary_error_recall: safeNumber(item?.natural_primary_error_recall),
+      approved: typeof item?.approved === 'boolean' ? item.approved : null,
+    })) : [];
+    const decisions = Array.isArray(report.promotion_decisions) ? report.promotion_decisions.map((item) => ({
+      activity: typeof item?.activity === 'string' ? item.activity : null,
+      winner: typeof item?.winner === 'string' ? item.winner : null,
+      winner_model_key: typeof item?.winner_model_key === 'string' ? item.winner_model_key : null,
+      verifier: typeof item?.verifier === 'string' ? item.verifier : null,
+      verifier_model_key: typeof item?.verifier_model_key === 'string' ? item.verifier_model_key : null,
+      verifier_status: typeof item?.verifier_status === 'string' ? item.verifier_status : null,
+      operational_advantage_status: typeof item?.operational_advantage_status === 'string'
+        ? item.operational_advantage_status : null,
+      mode: typeof item?.mode === 'string' ? item.mode : null,
+      production_enabled: typeof item?.production_enabled === 'boolean'
+        ? item.production_enabled : null,
+      unresolved_fallback: typeof item?.unresolved_fallback === 'string'
+        ? item.unresolved_fallback : null,
+      failed_gates: Array.isArray(item?.failed_gates)
+        ? item.failed_gates.filter((value) => typeof value === 'string') : [],
+    })) : [];
+    const models = Array.isArray(report.models) ? report.models.map((item) => ({
+      model_key: typeof item?.model_key === 'string' ? item.model_key : null,
+      model: typeof item?.model === 'string' ? item.model : null,
+      digest: typeof item?.digest === 'string' ? item.digest : null,
+      size_bytes: safeNumber(item?.size_bytes),
+      executed: item?.executed === true,
+      not_run_status: typeof item?.not_run_status === 'string' ? item.not_run_status : null,
+      capabilities: Array.isArray(item?.capabilities)
+        ? item.capabilities.filter((value) => typeof value === 'string') : [],
+    })) : [];
+    const sum = (field) => primaryResults.reduce((total, item) => total + (item[field] || 0), 0);
+    const dataset = report.dataset && typeof report.dataset === 'object' ? report.dataset : {};
+    return {
+      available: true,
+      status: String(report.measurement_basis?.local_inference || 'not_tested'),
+      schema_version: 3,
+      compatibility_status: 'current',
+      benchmark_run_id: typeof report.benchmark_run_id === 'string' ? report.benchmark_run_id : null,
+      benchmark_executed_at: typeof report.benchmark_executed_at === 'string'
+        ? report.benchmark_executed_at : null,
+      artifact_recomputed_at: null,
+      benchmark_age_seconds: ageSeconds,
+      benchmark_event_count: safeNumber(report.benchmark_event_count),
+      model: 'multi-model',
+      measurement_basis: {
+        gpt_tokens: report.measurement_basis?.gpt_tokens || null,
+        gpt_direct_execution: report.measurement_basis?.gpt_direct_execution || null,
+        local_inference: report.measurement_basis?.local_inference || null,
+        gpu_telemetry: report.measurement_basis?.gpu_telemetry || null,
+        deterministic_execution: report.measurement_basis?.deterministic_execution || null,
+        gpt_final_quality: report.measurement_basis?.gpt_final_quality || null,
+      },
+      ground_truth_independence_status: 'MIXED_VERIFIED_AND_PARTIAL',
+      operational_decision: typeof report.operational_advantage_status === 'string'
+        ? report.operational_advantage_status : null,
+      results_recomputed_from_existing_raw_artifacts: false,
+      adversarial_metrics: {
+        prompt_injection_cases: safeNumber(dataset.prompt_injection_cases),
+        stability_cases: safeNumber(dataset.stability_cases),
+      },
+      totals: {
+        total_cases: sum('total_cases'),
+        local_inference_calls: sum('local_inference_calls'),
+        accepted_cases: sum('accepted_cases'),
+        fallback_cases: sum('fallback_cases'),
+        useful_cases: sum('accepted_cases'),
+        cases_with_critical_error: sum('cases_with_critical_error'),
+      },
+      activities: decisions,
+      primary_results: primaryResults,
+      verifier_results: verifierResults,
+      promotion_decisions: decisions,
+      models,
+      dataset: {
+        residual_cases: safeNumber(dataset.residual_cases),
+        calibration_cases: safeNumber(dataset.calibration_cases),
+        promotion_holdout_cases: safeNumber(dataset.promotion_holdout_cases),
+        prompt_injection_cases: safeNumber(dataset.prompt_injection_cases),
+        stability_cases: safeNumber(dataset.stability_cases),
+        dataset_sha256: typeof dataset.dataset_sha256 === 'string' ? dataset.dataset_sha256 : null,
+        ground_truth_sha256: typeof dataset.ground_truth_sha256 === 'string'
+          ? dataset.ground_truth_sha256 : null,
+        ground_truth_independence: dataset.ground_truth_independence || {},
+      },
+      artifact_hashes: report.artifact_hashes && typeof report.artifact_hashes === 'object'
+        ? report.artifact_hashes : {},
+      configuration_hash: typeof report.configuration_hash === 'string'
+        ? report.configuration_hash : null,
+      quality_pipeline_feature_flag: typeof report.quality_pipeline_feature_flag === 'string'
+        ? report.quality_pipeline_feature_flag : null,
+      summarize_log_policy: typeof report.summarize_log_policy === 'string'
+        ? report.summarize_log_policy : null,
+    };
+  }
   const totals = report.totals && typeof report.totals === 'object' ? report.totals : {};
   const policy = report.operational_policy && typeof report.operational_policy === 'object'
     ? report.operational_policy : {};

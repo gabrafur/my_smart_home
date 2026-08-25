@@ -46,7 +46,7 @@ const codexUsage = new CodexUsageReader(
   process.env.LOCAL_AI_STATUS_PATH || path.join(HISTORY_DIR, 'local-ai-status.json'),
   1_000,
   process.env.LOCAL_AI_BENCHMARK_PATH
-    || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-high-potential', 'latest.json'),
+    || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-quality-bakeoff', 'latest.json'),
 );
 const codexRateLimits = new CodexRateLimitsPoller({
   refreshMs: Math.min(
