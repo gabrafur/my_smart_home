@@ -99,7 +99,10 @@ class ClaudeCodeConversationEntity(
         user = await self.hass.auth.async_get_user(user_input.context.user_id)
         payload = {
             "message": trusted_context_prompt(
-                user_input.text, user.name if user else None, "Claude Code"
+                user_input.text,
+                user.name if user else None,
+                "Claude Code",
+                is_admin=bool(user and user.is_admin),
             ),
             "display_message": user_input.text,
             "conversation_id": _persistent_conversation_id("claude", user_input),
@@ -180,7 +183,10 @@ class CodexConversationEntity(
         session = async_get_clientsession(self.hass)
         user = await self.hass.auth.async_get_user(user_input.context.user_id)
         message = trusted_context_prompt(
-            prompt, user.name if user else None, "Codex"
+            prompt,
+            user.name if user else None,
+            "Codex",
+            is_admin=bool(user and user.is_admin),
         )
         payload = {
             "message": message,

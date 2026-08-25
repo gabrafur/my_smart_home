@@ -137,7 +137,12 @@ async def websocket_process(hass: HomeAssistant, connection: websocket_api.Activ
     if reasoning_effort not in allowed_efforts:
         connection.send_error(msg["id"], "invalid_reasoning", "Reasoning não suportado para o modelo escolhido")
         return
-    wrapped_prompt = trusted_context_prompt(prompt, connection.user.name, "Codex")
+    wrapped_prompt = trusted_context_prompt(
+        prompt,
+        connection.user.name,
+        "Codex",
+        is_admin=connection.user.is_admin,
+    )
     payload = {
         "message": wrapped_prompt,
         "display_message": prompt,
