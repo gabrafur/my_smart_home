@@ -532,7 +532,7 @@ const nodes = [];
 nodes.push(tab(PEOPLE_TAB, "localizacao_pessoas", "Normaliza os trackers dos iPhones, detecta chegada de pessoas e publica security.people-context.v1."));
 nodes.push(group("grp_people_events", PEOPLE_TAB, "1. Eventos dos iPhones", ["people_comment", "people_resident_primary_event", "people_resident_secondary_event", "people_snapshot_in", "people_snapshot"], 34, 59, 382, 302, "#3f7cb5"));
 nodes.push(group("grp_people_context", PEOPLE_TAB, "2. Normalização, presença e chegada", ["people_normalize", "people_context_out", "people_arrival_out", "people_notify_candidate_out"], 454, 99, 702, 222, "#7d6ba8"));
-nodes.push(group("grp_people_refresh", PEOPLE_TAB, "3. Refresh adaptativo dos iPhones", ["people_refresh_in", "people_refresh_decide", "people_refresh_resident_primary", "people_refresh_resident_secondary", "people_vehicle_primary_sync_in"], 34, 419, 922, 242, "#4d9a6a"));
+nodes.push(group("grp_people_refresh", PEOPLE_TAB, "3. Refresh adaptativo dos iPhones", ["people_refresh_in", "people_refresh_decide", "people_refresh_resident_primary", "people_refresh_resident_secondary", "people_refresh_connection_catch", "people_refresh_connection_handler", "people_vehicle_primary_sync_in"], 34, 419, 1162, 282, "#4d9a6a"));
 nodes.push(comment("people_comment", PEOPLE_TAB, "grp_people_events", "Contrato: GPS bruto entra; contexto normalizado sai", "Estados unknown/unavailable nunca viram chegada. HOME_LAT/HOME_LON e GATE_LAT/GATE_LON vêm do ambiente; sem coordenadas, usa-se o estado de zona como fallback.", 210, 100, 330));
 nodes.push(clone("sec_resident_primary_location_changed", { id: "people_resident_primary_event", z: PEOPLE_TAB, g: "grp_people_events", name: "iPhone resident_primary mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("resident_primary"), valueType: "jsonata" }], x: 210, y: 180, wires: [["people_normalize"]] }));
 nodes.push(clone("sec_resident_secondary_location_changed", { id: "people_resident_secondary_event", z: PEOPLE_TAB, g: "grp_people_events", name: "iPhone resident_secondary mudou de zona", outputProperties: [{ property: "payload", propertyType: "msg", value: rawEvent("resident_secondary"), valueType: "jsonata" }], x: 210, y: 240, wires: [["people_normalize"]] }));
@@ -544,8 +544,29 @@ nodes.push(linkOut("people_arrival_out", PEOPLE_TAB, "grp_people_context", "Publ
 nodes.push(linkOut("people_notify_candidate_out", PEOPLE_TAB, "grp_people_context", "Publicar candidato de aviso da resident_secondary", ["context_person_event_in"], 1085, 280));
 nodes.push(linkIn("people_refresh_in", PEOPLE_TAB, "grp_people_refresh", "Política conjunta de refresh", ["context_refresh_command_out"], 95, 490, [["people_refresh_decide"]]));
 nodes.push(functionNode("people_refresh_decide", PEOPLE_TAB, "grp_people_refresh", "Atualizar iPhones agora?", peopleRefresh, 1, 280, 490, [["people_refresh_resident_primary", "people_refresh_resident_secondary"]]));
-nodes.push(clone("sec_request_resident_primary_location", { id: "people_refresh_resident_primary", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone resident_primary", x: 650, y: 460, wires: [[]] }));
-nodes.push(clone("sec_request_resident_secondary_location", { id: "people_refresh_resident_secondary", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone resident_secondary", x: 650, y: 520, wires: [[]] }));
+nodes.push(clone("sec_request_resident_primary_location", { id: "people_refresh_resident_primary", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone resident_primary", queue: "first", x: 650, y: 460, wires: [[]] }));
+nodes.push(clone("sec_request_resident_secondary_location", { id: "people_refresh_resident_secondary", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone resident_secondary", queue: "first", x: 650, y: 520, wires: [[]] }));
+nodes.push({ id: "people_refresh_connection_catch", type: "catch", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Capturar desconexão transitória dos iPhones", scope: ["people_refresh_resident_primary", "people_refresh_resident_secondary"], uncaught: false, x: 770, y: 600, wires: [["people_refresh_connection_handler"]] });
+nodes.push(functionNode("people_refresh_connection_handler", PEOPLE_TAB, "grp_people_refresh", "Tratar desconexão transitória do HA", `const message = String(msg.error?.message ?? "");
+const transient =
+    message.includes("Connection lost") ||
+    message.includes("NoConnectionError");
+
+if (transient) {
+    node.status({
+        fill: "grey",
+        shape: "ring",
+        text: "HA reconectando; refresh preservado"
+    });
+    return null;
+}
+
+node.error(
+    "Falha inesperada ao solicitar localização: " +
+    (message || "erro sem mensagem"),
+    msg
+);
+return null;`, 0, 1080, 600, []));
 nodes.push(linkIn("people_vehicle_primary_sync_in", PEOPLE_TAB, "grp_people_refresh", "Sincronizar trackers após refresh do vehicle_primary", ["vehicle_primary_refresh_people_sync_out"], 180, 600, [[]]));
 
 // contexto_vehicle_primary

@@ -409,7 +409,30 @@ scenario("30 tick de 30 segundos sem mudanca nao cria loop", () => {
   }
 });
 
-scenario("31 movimento na mesma zona solicita refresh sem autorizar iluminação", () => {
+scenario("31 desconexão transitória do HA é enfileirada e tratada", () => {
+  const server = flows.find((item) => item.type === "server" && item.name === "Home Assistant");
+  assert(server, "configuração do Home Assistant ausente");
+  assert.equal(server.heartbeat, true);
+  assert.equal(Number(server.heartbeatInterval), 30);
+
+  const calls = flows.filter((item) =>
+    item.type === "api-call-service" &&
+    item.name?.startsWith("Solicitar localização do iPhone ")
+  );
+  assert.equal(calls.length, 2);
+  assert(calls.every((item) => item.queue === "first"));
+
+  const catcher = flows.find((item) => item.name === "Capturar desconexão transitória dos iPhones");
+  const handler = flows.find((item) => item.name === "Tratar desconexão transitória do HA");
+  assert(catcher && handler, "tratamento de desconexão ausente");
+  assert.deepEqual(new Set(catcher.scope), new Set(calls.map((item) => item.id)));
+  assert.equal(catcher.wires[0][0], handler.id);
+  assert.match(handler.func, /Connection lost/);
+  assert.match(handler.func, /NoConnectionError/);
+  assert.match(handler.func, /Falha inesperada/);
+});
+
+scenario("32 movimento na mesma zona solicita refresh sem autorizar iluminação", () => {
   assert.equal(byId.get("46c2142f93cfc3e1").outputOnlyOnStateChange, false);
   const flow = memoryFlow();
   const staleAt = new Date(Date.now() - 10 * 60_000).toISOString();
@@ -433,6 +456,6 @@ scenario("31 movimento na mesma zona solicita refresh sem autorizar iluminação
   assert.equal(refresh.payload.require_lighting_ready, true);
 });
 
-assert.equal(passed.length, 33);
+assert.equal(passed.length, 34);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

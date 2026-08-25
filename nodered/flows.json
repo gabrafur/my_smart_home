@@ -899,12 +899,14 @@
             "402fd0cc609443b7",
             "564fdc36031eaef8",
             "e0b7c0ecf1d8ee28",
+            "people_refresh_connection_catch",
+            "people_refresh_connection_handler",
             "555422f47d3a742b"
         ],
         "x": 624,
         "y": 279,
-        "w": 732,
-        "h": 222
+        "w": 1062,
+        "h": 282
     },
     {
         "id": "6e71dbc937fe5669",
@@ -1333,7 +1335,7 @@
         ],
         "connectionDelay": true,
         "cacheJson": true,
-        "heartbeat": false,
+        "heartbeat": true,
         "heartbeatInterval": 30,
         "areaSelector": "friendlyName",
         "deviceSelector": "friendlyName",
@@ -6418,7 +6420,7 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "first",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
@@ -6448,7 +6450,7 @@
         "mergeContext": "",
         "mustacheAltTags": false,
         "outputProperties": [],
-        "queue": "none",
+        "queue": "first",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
@@ -6457,6 +6459,42 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "people_refresh_connection_catch",
+        "type": "catch",
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64",
+        "name": "Capturar desconexão transitória dos iPhones",
+        "scope": [
+            "564fdc36031eaef8",
+            "e0b7c0ecf1d8ee28"
+        ],
+        "uncaught": false,
+        "x": 1140,
+        "y": 460,
+        "wires": [
+            [
+                "people_refresh_connection_handler"
+            ]
+        ]
+    },
+    {
+        "id": "people_refresh_connection_handler",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "b35563e0f73e5b64",
+        "name": "Tratar desconexão transitória do HA",
+        "func": "const message = String(msg.error?.message ?? \"\");\nconst transient =\n    message.includes(\"Connection lost\") ||\n    message.includes(\"NoConnectionError\");\n\nif (transient) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"HA reconectando; refresh preservado\"\n    });\n    return null;\n}\n\nnode.error(\n    \"Falha inesperada ao solicitar localização: \" +\n    (message || \"erro sem mensagem\"),\n    msg\n);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1470,
+        "y": 460,
+        "wires": []
     },
     {
         "id": "555422f47d3a742b",
