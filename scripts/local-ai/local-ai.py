@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from log_facts import build_log_context, deterministic_hook_replacement
 from memory_context import instruction_chain, public_memory_inventory
 from routing import TASK_PROFILES, apply_economic_precheck, assess_routing, terminal_decision
 from telemetry import RemoteGpuSampler, TelemetryRecorder, new_event_id, private_telemetry_path, utc_now
@@ -1070,6 +1071,22 @@ def run_analysis(args: argparse.Namespace) -> int:
         raise RuntimeError("--diagnostic-capture requires LOCAL_AI_FORCE=1")
     instruction = prompt_for(args.task)
     raw_text, bounded_text, truncated, raw_limited = read_input(args.input_file, args.input_max_chars)
+    if args.task == "summarize-log" and not force_diagnostic:
+        context = build_log_context(raw_text)
+        if context is None:
+            raise RuntimeError(
+                "deterministic log context is not beneficial or exceeds the safe signal limit; "
+                "pass the raw input directly to the primary model"
+            )
+        assessment = assess_routing(
+            args.task,
+            len(raw_text),
+            availability="unknown",
+            deterministic_sufficient=True,
+        )
+        record_routing_outcome(telemetry_recorder(settings), assessment)
+        print(deterministic_hook_replacement(context))
+        return 0
     if args.task in SIGNAL_PREPROCESS_TASKS:
         preprocessed_text, deterministic_omitted_lines = preprocess_for_task(args.task, raw_text)
         model_text, preprocessed_truncated = clean_and_bound(preprocessed_text, args.input_max_chars)

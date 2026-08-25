@@ -71,20 +71,14 @@ class PostToolRoutingTest(unittest.TestCase):
             os.environ["LOCAL_AI_HOOK_SESSION_STATE"] = self.previous_state
         self.temporary.cleanup()
 
-    def test_large_eligible_test_output_routes_and_compresses(self):
+    def test_unpromoted_test_output_never_starts_mcp(self):
         fake = FakeMcp()
         result = HOOK.process_hook(
             payload("pytest -q", "FAILED test_case\n" * 400),
             lambda: fake,
         )
-        self.assertEqual([name for name, _ in fake.calls], ["local_ai_status", "local_ai_route", "local_ai_compress_context"])
-        self.assertIs(result["continue"], False)
-        context = json.loads(result["hookSpecificOutput"]["additionalContext"])
-        self.assertTrue(context["local_ai_context_replacement"])
-        self.assertEqual(context["local_ai"]["job_id"], "job-test-success")
-        self.assertTrue(context["local_ai"]["executed"])
-        self.assertTrue(context["local_ai"]["success"])
-        self.assertTrue(fake.closed)
+        self.assertIsNone(result)
+        self.assertEqual(fake.calls, [])
 
     def test_small_output_is_not_routed(self):
         created = []
@@ -92,18 +86,18 @@ class PostToolRoutingTest(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(created, [])
 
-    def test_promoted_large_log_routes_and_compresses(self):
+    def test_large_log_uses_deterministic_facts_without_mcp(self):
         fake = FakeMcp()
         source = ("INFO worker heartbeat\n" * 600) + "ERROR request failed at /srv/app.py:42\n"
         result = HOOK.process_hook(payload("journalctl -u example.service", source), lambda: fake)
 
-        self.assertEqual(
-            [name for name, _ in fake.calls],
-            ["local_ai_status", "local_ai_route", "local_ai_compress_context"],
-        )
-        self.assertEqual(fake.calls[1][1]["task_type"], "summarize-log")
-        self.assertGreaterEqual(fake.calls[1][1]["input_chars"], 12_000)
+        self.assertEqual(fake.calls, [])
         self.assertIs(result["continue"], False)
+        context = json.loads(result["hookSpecificOutput"]["additionalContext"])
+        self.assertFalse(context["local_ai_context_replacement"])
+        self.assertTrue(context["deterministic_context_replacement"])
+        self.assertEqual(context["validation"]["critical_fact_recall"], 1)
+        self.assertIn("ERROR request failed", context["result"]["failures"][0]["value"])
 
     def test_log_below_promoted_floor_never_creates_mcp_client(self):
         created = []
@@ -113,54 +107,68 @@ class PostToolRoutingTest(unittest.TestCase):
         self.assertIsNone(result)
         self.assertEqual(created, [])
 
+    def test_log_with_too_many_critical_lines_falls_back_to_raw_context(self):
+        created = []
+        source = ("INFO routine\n" * 900) + ("ERROR distinct failure\n" * 65)
+        result = HOOK.process_hook(
+            payload("journalctl -u example.service", source),
+            lambda: created.append(True),
+        )
+        self.assertIsNone(result)
+        self.assertEqual(created, [])
+
     def test_medium_deterministic_output_is_final_without_inference(self):
         fake = FakeMcp("DETERMINISTIC")
         result = HOOK.process_hook(payload("rg -n TODO src", "src/a.py:1:TODO\n" * 400), lambda: fake)
         self.assertIsNone(result)
-        self.assertEqual([name for name, _ in fake.calls], ["local_ai_route"])
-        self.assertTrue(fake.calls[0][1]["deterministic_preprocessing_available"])
+        self.assertEqual(fake.calls, [])
 
-    def test_large_deterministic_text_output_routes_as_postprocessing(self):
+    def test_large_unpromoted_file_output_does_not_route(self):
         fake = FakeMcp()
         result = HOOK.process_hook(payload("rg -n TODO src", "src/a.py:1:TODO\n" * 900), lambda: fake)
-        self.assertEqual(
-            [name for name, _ in fake.calls],
-            ["local_ai_status", "local_ai_route", "local_ai_compress_context"],
-        )
-        self.assertFalse(fake.calls[1][1]["deterministic_preprocessing_available"])
-        self.assertIs(result["continue"], False)
+        self.assertIsNone(result)
+        self.assertEqual(fake.calls, [])
 
     def test_large_structured_json_remains_deterministic(self):
         fake = FakeMcp("DETERMINISTIC")
         source = json.dumps([{"path": f"src/file-{number}.py"} for number in range(900)])
         result = HOOK.process_hook(payload("jq -c . inventory.json", source), lambda: fake)
         self.assertIsNone(result)
-        self.assertEqual([name for name, _ in fake.calls], ["local_ai_route"])
-        self.assertTrue(fake.calls[0][1]["deterministic_preprocessing_available"])
+        self.assertEqual(fake.calls, [])
 
     def test_unavailable_rtx_falls_back_to_original_result(self):
         fake = FakeMcp("LOCAL_AI_UNAVAILABLE")
         result = HOOK.process_hook(payload("rg -n TODO src", "src/a.py:1:TODO\n" * 900), lambda: fake)
         self.assertIsNone(result)
-        self.assertEqual([name for name, _ in fake.calls], ["local_ai_status", "local_ai_route"])
+        self.assertEqual(fake.calls, [])
 
     def test_failed_compression_falls_back_without_recording_a_second_terminal_decision(self):
         fake = FailingCompressMcp()
         result = HOOK.process_hook(payload("rg -n TODO src", "src/a.py:1:TODO\n" * 900), lambda: fake)
         self.assertIsNone(result)
-        self.assertEqual(
-            [name for name, _ in fake.calls],
-            ["local_ai_status", "local_ai_route", "local_ai_compress_context", "local_ai_status"],
-        )
+        self.assertEqual(fake.calls, [])
 
-    def test_status_is_lazy_and_checked_once_per_session(self):
+    def test_unpromoted_outputs_do_not_check_status_per_session(self):
         first = FakeMcp()
         second = FakeMcp()
         large = "FAILED test_case\n" * 400
         HOOK.process_hook(payload("pytest -q", large, "same-session"), lambda: first)
         HOOK.process_hook(payload("pytest -q", large, "same-session"), lambda: second)
-        self.assertEqual([name for name, _ in first.calls][0], "local_ai_status")
-        self.assertNotIn("local_ai_status", [name for name, _ in second.calls])
+        self.assertEqual(first.calls, [])
+        self.assertEqual(second.calls, [])
+
+    def test_source_file_named_log_facts_is_not_treated_as_runtime_log(self):
+        created = []
+        source = ("OOM timeout ERROR patterns are source constants\n" * 500)
+        result = HOOK.process_hook(
+            payload("sed -n '1,500p' scripts/local-ai/log_facts.py", source),
+            lambda: created.append(True),
+        )
+        self.assertIsNone(result)
+        self.assertEqual(created, [])
+        self.assertEqual(HOOK.classify_task(
+            "sed -n '1,500p' scripts/local-ai/log_facts.py", source,
+        )[0], "inspect-files")
 
     def test_private_history_is_never_delegated(self):
         created = []
@@ -225,8 +233,8 @@ class RepositoryRoutingPolicyTest(unittest.TestCase):
         hooks = json.loads((root / ".codex/hooks.json").read_text(encoding="utf-8"))
 
         self.assertIn("Apply this decision to every user request", agents)
-        self.assertIn("Always call\n`local_ai_route` before `local_ai_compress_context`", agents)
-        self.assertIn("currently positive promoted A/B result", agents)
+        self.assertIn("No generative context-compression profile is promoted", agents)
+        self.assertIn("Do not create compression receipts", agents)
         self.assertIn("aprovar pelo CLI do `ai-bridge` não ativa o hook", agents)
         self.assertIn("Developer: Reload Window", agents)
         self.assertIn("Evaluate this routing rule on every user request", skill)

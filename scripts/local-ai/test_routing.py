@@ -20,7 +20,7 @@ class RoutingPolicyTest(unittest.TestCase):
             ("pytest-large", "analyze-tests", 32_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("log-short", "summarize-log", 1_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("log-below-validated-band", "summarize-log", 10_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
-            ("log-repeated-stack", "summarize-log", 36_000, False, "available", "LOCAL_AI_ELIGIBLE"),
+            ("log-repeated-stack", "summarize-log", 36_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("json-large", "inspect-files", 80_000, True, "available", "DETERMINISTIC"),
             ("file-triage-too-large", "inspect-files", 40_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("documentation-bounded", "summarize-document", 10_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
@@ -28,7 +28,7 @@ class RoutingPolicyTest(unittest.TestCase):
             ("memory-small-focused", "summarize-memory", 2_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("memory-bounded-retrieval", "summarize-memory", 20_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
             ("memory-too-large", "summarize-memory", 32_000, False, "available", "LOCAL_AI_NOT_BENEFICIAL"),
-            ("gpu-unavailable", "summarize-log", 32_000, False, "unavailable", "LOCAL_AI_UNAVAILABLE"),
+            ("gpu-unavailable", "summarize-log", 32_000, False, "unavailable", "LOCAL_AI_NOT_BENEFICIAL"),
         ]
         for name, task, chars, deterministic, availability, expected in cases:
             with self.subTest(name=name):
@@ -40,12 +40,13 @@ class RoutingPolicyTest(unittest.TestCase):
                 )
                 self.assertEqual(actual["decision"], expected)
 
-    def test_missed_opportunity_requires_eligible_and_available_task(self):
-        eligible = assess_routing("summarize-log", 32_000, availability="available")
-        missed = terminal_decision(eligible, "skipped")
-        self.assertEqual(missed["decision"], "ROUTING_MISSED_OPPORTUNITY")
-        unavailable = assess_routing("summarize-log", 32_000, availability="unavailable")
-        self.assertEqual(terminal_decision(unavailable, "skipped")["decision"], "LOCAL_AI_UNAVAILABLE")
+    def test_deterministic_only_log_is_not_a_missed_rtx_opportunity(self):
+        assessment = assess_routing("summarize-log", 32_000, availability="available")
+        self.assertEqual(terminal_decision(assessment, "skipped")["decision"], "LOCAL_AI_NOT_BENEFICIAL")
+        deterministic = assess_routing(
+            "summarize-log", 32_000, availability="available", deterministic_sufficient=True,
+        )
+        self.assertEqual(deterministic["decision"], "DETERMINISTIC")
 
     def test_small_and_low_compressibility_tasks_do_not_look_like_opportunities(self):
         small = assess_routing("summarize-log", 1_000)
@@ -74,6 +75,7 @@ class RoutingPolicyTest(unittest.TestCase):
 
     def test_signal_preprocessing_must_leave_positive_expected_net_savings(self):
         eligible = assess_routing("summarize-log", 40_000, availability="available")
+        eligible.update({"decision": "LOCAL_AI_ELIGIBLE", "eligible": True})
         rejected = apply_economic_precheck(
             eligible,
             context_input_tokens=10_000,
@@ -92,6 +94,7 @@ class RoutingPolicyTest(unittest.TestCase):
 
     def test_extractive_anchor_gate_has_zero_inference_validation_cost(self):
         eligible = assess_routing("summarize-log", 40_000, availability="available")
+        eligible.update({"decision": "LOCAL_AI_ELIGIBLE", "eligible": True})
         accepted = apply_economic_precheck(
             eligible,
             context_input_tokens=10_000,

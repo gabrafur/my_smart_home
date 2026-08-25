@@ -6,6 +6,49 @@
     "maximum_primary_attempts": 1,
     "unresolved_fallback": "gpt-direct"
   },
+  "restricted_pivot": {
+    "schema_version": 1,
+    "feature_flags": {
+      "structured_extraction": "LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED",
+      "summarize_log": "LOCAL_AI_SUMMARIZE_LOG_ENABLED",
+      "retrieval": "LOCAL_AI_RETRIEVAL_ENABLED",
+      "reranker": "LOCAL_AI_RERANKER_ENABLED",
+      "error_similarity": "LOCAL_AI_ERROR_SIMILARITY_ENABLED"
+    },
+    "structured_extraction": {
+      "decision": "PROMOTE_TO_CANARY",
+      "model_key": "current_baseline",
+      "canary_available": true,
+      "enabled_by_default": false,
+      "rollout_percentage": 10,
+      "required_validation": true,
+      "unresolved_fallback": "gpt-direct"
+    },
+    "summarize_log": {
+      "decision": "DETERMINISTIC_ONLY",
+      "enabled_by_default": false,
+      "local_model_approved": false,
+      "deterministic_extractor": "deterministic-log-facts-v1",
+      "unresolved_fallback": "gpt-direct"
+    },
+    "retrieval": {
+      "decision": "NOT_DEMONSTRATED",
+      "enabled_by_default": false,
+      "persistent_index_approved": false,
+      "unresolved_fallback": "deterministic"
+    },
+    "reranker": {
+      "decision": "NOT_TESTED",
+      "enabled_by_default": false,
+      "unresolved_fallback": "deterministic-ranking"
+    },
+    "error_similarity": {
+      "decision": "SKIPPED_NO_RETRIEVAL_ADVANTAGE",
+      "enabled_by_default": false,
+      "automatic_merge": false,
+      "unresolved_fallback": "exact-signature-only"
+    }
+  },
   "models": {
     "current_baseline": {
       "model": "qwen2.5-coder:14b",
@@ -143,7 +186,7 @@
   "activities": {
     "structured_extraction": {
       "deterministic_first": true,
-      "local_model": null,
+      "local_model": "current_baseline",
       "verifier_model": null,
       "local_mode": "shadow",
       "production_enabled": false,
@@ -182,7 +225,10 @@
       "unresolved_fallback": "gpt-direct"
     },
     "summarize_log": {
-      "policy": "separate-benchmark-unchanged"
+      "policy": "deterministic-only",
+      "deterministic_extractor": "deterministic-log-facts-v1",
+      "local_model_approved": false,
+      "unresolved_fallback": "gpt-direct"
     }
   }
 }

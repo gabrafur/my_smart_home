@@ -2,6 +2,7 @@
 """Small offline checks for input bounding and conservative model selection."""
 
 import importlib.util
+import io
 import json
 import os
 import stat
@@ -480,7 +481,7 @@ diff --git a/docs/label.md b/docs/label.md
             self.assertEqual(decision["decision"], "LOCAL_AI_UNNECESSARY_CALL")
             self.assertEqual(decision["reason"], "insufficient_net_savings")
 
-    def test_operational_log_uses_deterministic_anchor_gate_without_second_model(self):
+    def test_operational_log_uses_deterministic_facts_without_local_model(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             telemetry_path = root / "canonical-telemetry.json"
@@ -511,52 +512,28 @@ diff --git a/docs/label.md b/docs/label.md
                 "telemetry_path": str(telemetry_path),
             }
 
-            candidate = {
-                "summary": "A cache timeout occurred.",
-                "errors": ["invented text that the gate must replace"],
-                "routine_context": ["L0001"],
-                "suspected_files": ["invented.py"],
-                "recommended_actions": ["restart everything"],
-                "confidence": "high",
-            }
-
-            def successful_request(_endpoint, path, payload=None):
-                if path == "/api/tags":
-                    self.assertIsNone(payload)
-                    return {
-                        "models": [
-                            {"name": "qwen2.5-coder:14b", "size": 9_000_000_000},
-                        ],
-                    }
-                if path == "/api/generate":
-                    return {
-                        "response": json.dumps(candidate),
-                        "prompt_eval_count": 400,
-                        "eval_count": 80,
-                    }
-                raise AssertionError(path)
-
             with (
                 patch.dict(os.environ, {}, clear=False),
                 patch.object(LOCAL_AI, "user_settings", return_value=settings),
-                patch.object(LOCAL_AI, "request", side_effect=successful_request) as request_mock,
+                patch.object(LOCAL_AI, "request") as request_mock,
                 patch.object(LOCAL_AI, "gpu_snapshot", return_value=None),
+                patch("sys.stdout", new_callable=io.StringIO) as stdout,
             ):
                 os.environ.pop("LOCAL_AI_FORCE", None)
                 os.environ.pop("LOCAL_AI_VERIFIER_MODEL", None)
                 self.assertEqual(LOCAL_AI.run_analysis(args), 0)
 
-            self.assertEqual(request_mock.call_count, 2)
+            self.assertEqual(request_mock.call_count, 0)
+            result = json.loads(stdout.getvalue())
+            self.assertFalse(result["local_ai_context_replacement"])
+            self.assertTrue(result["deterministic_context_replacement"])
+            self.assertEqual(result["validation"]["critical_fact_recall"], 1)
+            self.assertIn("CACHE_WRITE_TIMEOUT", result["result"]["failures"][0]["value"])
             state = json.loads(telemetry_path.read_text(encoding="utf-8"))
-            self.assertEqual(state["totals"]["calls"], 1)
-            job = state["latest_jobs"][-1]
-            self.assertEqual(job["status"], "success")
-            self.assertEqual(job["verifier_model"], LOCAL_AI.LOG_ANCHOR_VERIFIER)
-            self.assertEqual(job["quality_gate_type"], LOCAL_AI.LOG_ANCHOR_GATE_TYPE)
-            self.assertEqual(job["quality_validation_tokens"], 0)
-            self.assertEqual(job["quality_verification_attempts"], 0)
+            self.assertEqual(state["totals"]["calls"], 0)
+            self.assertEqual(state["latest_jobs"], [])
             decision = state["routing"]["latest_decisions"][-1]
-            self.assertEqual(decision["decision"], "LOCAL_AI_USED")
+            self.assertEqual(decision["decision"], "DETERMINISTIC")
 
     def test_quality_disabled_task_bypasses_before_endpoint_preflight(self):
         with tempfile.TemporaryDirectory() as directory:

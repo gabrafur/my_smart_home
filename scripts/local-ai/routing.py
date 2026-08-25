@@ -50,10 +50,12 @@ TASK_PROFILES: dict[str, TaskProfile] = {
     # profile of a reviewed file set. Arbitrary prose is never routed by size
     # alone; the caller still has to identify it as documentation.
     "summarize-document": TaskProfile(1200, 0.65, 700, "medium", 3000, False),
-    # The v4 holdout found positive net savings only in the 3,000–5,999-token
-    # log band. Smaller log candidates remain diagnostic-only until new
-    # evidence establishes a lower profitable threshold.
-    "summarize-log": TaskProfile(3000, 0.80, 600, "high", requires_economic_precheck=True),
+    # The restricted pivot holdout found that validated local summaries were
+    # 49.87% larger than the independently verified deterministic fact output.
+    # Keep the helper available only for diagnostic benchmarks; operational
+    # logs now use deterministic source anchors and facts before the primary
+    # model.
+    "summarize-log": TaskProfile(3000, 0.80, 600, "high", quality_validated=False, requires_economic_precheck=True),
 }
 
 

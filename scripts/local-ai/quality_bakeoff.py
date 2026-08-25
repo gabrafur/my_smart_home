@@ -1377,7 +1377,7 @@ def build_final_report(
         "promotion_decisions": decisions,
         "operational_policy": registry["activities"],
         "quality_pipeline_feature_flag": registry["quality_pipeline"]["feature_flag"],
-        "summarize_log_policy": "separate-benchmark-unchanged",
+        "summarize_log_policy": "deterministic-only-after-restricted-pivot",
         "benchmark_event_count": len(events),
         "benchmark_events": events,
     }

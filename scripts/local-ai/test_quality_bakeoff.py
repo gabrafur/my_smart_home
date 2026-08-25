@@ -281,7 +281,7 @@ class QualityBakeoffPolicyTests(unittest.TestCase):
     def test_summarize_log_is_not_an_activity_in_the_bakeoff(self):
         self.assertNotIn("summarize_log", BENCH.ACTIVITIES)
         registry = BENCH.load_registry()
-        self.assertEqual(registry["activities"]["summarize_log"]["policy"], "separate-benchmark-unchanged")
+        self.assertEqual(registry["activities"]["summarize_log"]["policy"], "deterministic-only")
 
 
 if __name__ == "__main__":

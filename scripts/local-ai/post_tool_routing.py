@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compress eligible large Codex tool output through the canonical Local AI MCP.
+"""Reduce eligible large Codex tool output through deterministic or Local AI paths.
 
 The hook is deliberately conservative: it handles only supported PostToolUse
 events, ignores private-history and credential-bearing commands, redacts common
@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 from typing import Any, Callable
 
+from log_facts import build_log_context, deterministic_hook_replacement
+
 
 TASK_MIN_CHARS = {
     "analyze-tests": 3_600,
@@ -25,9 +27,9 @@ TASK_MIN_CHARS = {
     "inspect-files": 4_800,
     "review-diff": 4_800,
     "summarize-document": 4_800,
-    # The promoted extractive profile was validated only at 3,000+ estimated
-    # OpenAI tokens. Align the hook's character prefilter with that floor so a
-    # smaller log does not even pay MCP routing overhead.
+    # The deterministic-only pivot keeps the former 3,000-token floor. Smaller
+    # logs go directly to the primary model instead of paying replacement
+    # overhead for a result that is already bounded.
     "summarize-log": 12_000,
 }
 DETERMINISTIC_POSTPROCESS_MIN_CHARS = 12_000
@@ -132,6 +134,14 @@ def extract_response(payload: dict[str, Any]) -> str:
         return ""
 
 
+def extract_exit_code(payload: dict[str, Any]) -> int | None:
+    response = payload.get("tool_response")
+    if not isinstance(response, dict):
+        return None
+    value = response.get("exit_code")
+    return int(value) if isinstance(value, int) else None
+
+
 def deterministic_source(command: str) -> bool:
     lowered = command.lower()
     if re.search(r"\b(?:sed|cat|head|tail|pytest|unittest|journalctl)\b|git\s+(?:diff|show)", lowered):
@@ -171,7 +181,10 @@ def classify_task(command: str, response: str) -> tuple[str, bool] | None:
         task = "analyze-tests"
     elif re.search(r"git\s+(?:diff|show\s+--patch)\b|review-diff", lowered):
         task = "review-diff"
-    elif re.search(r"\b(?:journalctl|dmesg)\b|docker\s+logs\b|(?:^|[/_-])logs?(?:[/_.\s]|$)", lowered):
+    elif re.search(r"\b(?:journalctl|dmesg)\b|docker\s+logs\b", lowered) or re.search(
+        r"(?:^|[\s'\"])(?:[^\s'\"]*/logs?/[^\s'\"]+|[^\s'\"]+\.logs?)(?:[\s'\"]|$)",
+        lowered,
+    ):
         task = "summarize-log"
     elif re.search(r"\.(?:md|rst|txt)\b|\bagents\.md\b|\breadme\b", lowered) and re.search(
         r"\b(?:sed|cat|head|tail|awk|rg)\b", lowered
@@ -303,7 +316,7 @@ def process_hook(
     classified = classify_task(command, response)
     if classified is None:
         return None
-    task, deterministic = classified
+    task, _ = classified
     selected, redactions = redact_for_local_ai(response)
     if len(selected) < TASK_MIN_CHARS[task]:
         return None
@@ -312,52 +325,33 @@ def process_hook(
     if redactions:
         return None
 
-    client = mcp_factory()
-    route_arguments = {
-        "task_type": task,
-        "input_chars": len(selected),
-        "compressibility": "high" if task in {"analyze-tests", "classify-error", "summarize-log"} else "medium",
-        # The MCP adapter keeps this legacy field name for compatibility. Here
-        # it means deterministic *finality*, not merely that preprocessing ran.
-        "deterministic_preprocessing_available": deterministic,
-    }
-    try:
-        if not deterministic and not status_already_checked(payload):
-            status = client.call("local_ai_status", {})
-            remember_status_check(payload, str(status.get("state") or "LOCAL_AI_UNKNOWN"))
-        route = client.call(
-            "local_ai_route",
-            route_arguments,
+    if task == "summarize-log":
+        deterministic_context = build_log_context(
+            selected,
+            command=command,
+            exit_code=extract_exit_code(payload),
         )
-        if route.get("decision") != "LOCAL_AI_ELIGIBLE":
+        if deterministic_context is None:
             return None
-        compressed = client.call("local_ai_compress_context", {"task_type": task, "text": selected})
-        context = bounded_result(task, compressed, redactions)
-    except (OSError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError):
-        # Revalidate once so the core can distinguish confirmed infrastructure
-        # unavailability. Do not add a synthetic ``skipped`` decision here:
-        # run_analysis already records LOCAL_AI_FAILED and adding a second
-        # terminal decision would double-count the same attempt as a loss.
-        try:
-            health = client.call("local_ai_status", {})
-            if health.get("available") is not True:
-                client.call("local_ai_route", route_arguments)
-        except (OSError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError):
-            pass
-        return None
-    finally:
-        client.close()
+        context = deterministic_hook_replacement(deterministic_context)
+        if len(context) > MAX_MODEL_CONTEXT_CHARS:
+            return None
+        return {
+            "continue": False,
+            "systemMessage": (
+                "Deterministic log extraction preserved every detected critical source line; "
+                "no Local AI inference ran and the raw repetitive result was withheld from model context."
+            ),
+            "hookSpecificOutput": {
+                "hookEventName": "PostToolUse",
+                "additionalContext": context,
+            },
+        }
 
-    return {
-        # PostToolUse continue=false replaces the raw result with this bounded
-        # feedback without rejecting a nested code-mode tool promise.
-        "continue": False,
-        "systemMessage": "Local AI completed a recorded inference job and compacted an eligible large tool result; the raw result was withheld from model context.",
-        "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
-            "additionalContext": context,
-        },
-    }
+    # The restricted pivot leaves every generative context-compression profile
+    # unpromoted. Keep the original tool result and do not start an MCP client;
+    # diagnostic forcing remains available through the explicit benchmark CLI.
+    return None
 
 
 def main() -> int:
