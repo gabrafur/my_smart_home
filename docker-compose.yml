@@ -184,14 +184,14 @@ services:
       # Canonical metadata-only Local AI telemetry shared by both MCP clients.
       - ${CODEX_LOCAL_AI_STATE_DIR:-./.agent-history}:/local-ai-state
       # The bridge starts the same reviewed global MCP runtime as the host.
-      - ${CODEX_LOCAL_AI_RUNTIME_DIR:-/home/replace_with_host_user/.local/share/codex-local-ai/current}:/opt/codex-local-ai:ro
+      - ${CODEX_LOCAL_AI_RUNTIME_DIR:-/home/replace_with_host_user/.local/share/local-ai-rtx/current}:/opt/local-ai-rtx:ro
     environment:
       - WORKDIR=/workspace
       - HISTORY_DIR=/workspace/.agent-history
       # Machine-local Ollama routing persists in the Codex auth volume, rather
       # than in the image or repository.
       - LOCAL_AI_CONFIG=/home/node/.codex/local-ai.json
-      - LOCAL_AI_MCP_RUNTIME_DIR=/opt/codex-local-ai
+      - LOCAL_AI_MCP_RUNTIME_DIR=/opt/local-ai-rtx
       - LOCAL_AI_TELEMETRY_PATH=/local-ai-state/local-ai-telemetry.json
       - LOCAL_AI_STRUCTURED_EXTRACTION_EVENTS_PATH=/local-ai-state/structured-extraction-canary-events.jsonl
       - LOCAL_AI_STRUCTURED_EXTRACTION_BREAKER_PATH=/local-ai-state/structured-extraction-canary-breaker.json

@@ -62,7 +62,7 @@ configuração, pendências, avisos e referência à fonte. Não crie um cache o
 resumo persistente separado sem hash, referência de origem e detecção de
 staleness; a implementação atual não cria esse cache.
 
-`./scripts/local-ai/local-ai memory-audit` mede somente o startup observável:
+`$HOME/.local/share/local-ai-rtx/current/local-ai memory-audit` mede somente o startup observável:
 arquivos `AGENTS.md` realmente incluídos, limite configurado, memória pública
 do repositório e configuração de memória local. Tokens de instruções internas,
 envelope da plataforma e conteúdo de memória privada não são expostos pelo
@@ -72,7 +72,7 @@ inventário, o índice canônico é classificado como `ROUTING_ONLY`: ele orient
 recuperação quando o histórico é necessário, mas não é payload automático de
 startup.
 
-Use `./scripts/local-ai/memory_context.py retrieve '<tema>' --query '<termos>'`
+Use `$HOME/.local/share/local-ai-rtx/current/memory_context.py retrieve '<tema>' --query '<termos>'`
 para selecionar arquivos pelo índice sem inferência. `materialize` só deve ser
 usado em pipe para `summarize-memory`, nunca para despejar memória bruta no
 contexto principal. Temas e consultas ignoram diferenças entre maiúsculas,

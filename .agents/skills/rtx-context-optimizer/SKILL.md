@@ -128,7 +128,7 @@ primary model.
 # Apply repository-specific safeguards
 
 Use the global `local-ai-rtx` MCP server as the canonical inference interface.
-Keep `./scripts/local-ai/local-ai` for diagnostics, tests, and the metadata-only
+Keep `$HOME/.local/share/local-ai-rtx/current/local-ai` for diagnostics, tests, and the metadata-only
 `confirm-delivery` receipt; it must not perform a second inference. Consult
 `docs/LOCAL_AI_RTX_4070.md` before changing the helper, hook, telemetry, or
 Codex/RTX dashboard cards; do not broaden the restricted LAN proxy without
@@ -139,7 +139,7 @@ require interactive `/hooks` review in the same client and state directory
 used for prompts. The `ai-bridge` CLI and the VS Code extension have separate
 Codex state, so approval in one does not activate the other. For bridge prompts,
 use `docker compose exec -w /workspace ai-bridge codex`. For extension prompts,
-use `./scripts/local-ai/review-vscode-hooks.sh` on the host, reload the VS Code
+use `./local-ai-integration/review-vscode-hooks.sh` on the host, reload the VS Code
 window after approval or extension updates, and start a new conversation. Consider
 `PostToolUse` enabled only when that client reports `Installed = 1` and
 `Active = 1`; never automate or bypass that approval.

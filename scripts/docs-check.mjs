@@ -12,7 +12,8 @@ const assetExtensions = new Set([".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp
 const repoPrefixes = [
   ".agents/", ".codex/memories/", ".github/", "bindings/", "bootstrap/",
   "demo/", "docs/", "homeassistant/", "ia-bridge/", "modules/", "nodered/",
-  "prompts/", "restore/", "scripts/", "templates/", "validation/",
+  "local-ai-integration/", "local-ai-research/", "prompts/", "restore/",
+  "scripts/", "templates/", "validation/",
 ];
 const exactRepoPaths = new Set([
   ".env.example", ".gitignore", "AGENTS.md", "MEMORY.md", "Makefile",
@@ -28,7 +29,8 @@ const rootHumanDocuments = new Set([
 ]);
 const additionalHumanDocuments = new Set([
   ".github/PULL_REQUEST_TEMPLATE.md",
-  "scripts/local-ai/README.md",
+  "local-ai-integration/README.md",
+  "local-ai-research/README.md",
   "homeassistant/custom_components/hacs/validate/README.md",
 ]);
 
@@ -292,6 +294,9 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
 
   const makefile = tracked.has("Makefile") ? readTracked("Makefile") : "";
   const targets = makeTargets(makefile);
+  const archivedDocuments = new Set(
+    documents.filter((document) => document?.strategy === "archived").map((document) => document.path),
+  );
   const packages = new Map();
   for (const packageFile of [...tracked].filter((file) => file.endsWith("/package.json") || file === "package.json")) {
     try { packages.set(path.dirname(packageFile), JSON.parse(readTracked(packageFile))); } catch {}
@@ -316,7 +321,8 @@ export function checkDocumentation({ repoRoot = defaultRepoRoot, trackedFiles } 
       const pathShaped = candidate.endsWith("/") || path.extname(candidate) || candidate.split("/").length > 2;
       const nearby = content.slice(Math.max(0, offset - 100), offset + value.length + 100);
       const explicitlyRemoved = /\b(?:antig[oa]|removid[oa]|former|removed|obsolete|obsoleto)\b/i.test(nearby);
-      if (looksLikeRepoPath(candidate) && pathShaped && !explicitlyRemoved && !trackedPathExists(candidate, tracked)) {
+      if (!archivedDocuments.has(file) && looksLikeRepoPath(candidate) && pathShaped
+          && !explicitlyRemoved && !trackedPathExists(candidate, tracked)) {
         errors.push(`${file}:${lineNumber(content, offset)}: referenced path is missing or untracked: ${candidate}`);
       }
     }

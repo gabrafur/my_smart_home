@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(os.getenv("LOCAL_AI_RUNTIME_DIR", Path.home() / ".local/share/local-ai-rtx/current")).expanduser()
 HELPER = ROOT / "local-ai.py"
 ROUTING = ROOT / "routing.py"
 HARNESS = Path(__file__)

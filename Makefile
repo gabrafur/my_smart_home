@@ -38,6 +38,10 @@ HIGH_POTENTIAL_BENCHMARK_SIMULATED_OUTPUT_DIR ?= /tmp/local-ai-high-potential-si
 QUALITY_BAKEOFF_RUN_ID ?=
 QUALITY_BAKEOFF_MODELS ?= current_baseline,qwen3_8_27b,north_mini_code_1_0,devstral_small_2_24b,qwen3_coder_next_optional
 LOCAL_AI_PIVOT_RUN_ID ?=
+LOCAL_AI_RUNTIME_PREFIX ?= $(HOME)/.local/share/local-ai-rtx
+LOCAL_AI_RUNTIME_DIR ?= $(LOCAL_AI_RUNTIME_PREFIX)/current
+LOCAL_AI_RUNTIME_GROUP ?= docker
+LOCAL_AI_RESEARCH_ENV = PYTHONPATH="$(LOCAL_AI_RUNTIME_DIR)" LOCAL_AI_RUNTIME_DIR="$(LOCAL_AI_RUNTIME_DIR)"
 
 validate-public:
 	@./scripts/run-resource-safe.sh $(MAKE) --no-print-directory $(PUBLIC_VALIDATION_TARGETS)
@@ -88,20 +92,21 @@ validate-bridge:
 	npm --prefix ia-bridge test
 
 validate-local-ai:
-	python3 -m unittest discover -s scripts/local-ai -p 'test_*.py'
+	node local-ai-integration/manage-runtime.mjs validate-lock
+	node --test local-ai-integration/manage-runtime.test.mjs
 
 benchmark-local-ai-high-potential-unit:
-	python3 scripts/local-ai/high_potential_dataset.py --check
-	python3 scripts/local-ai/test_high_potential_benchmark.py HighPotentialBenchmarkUnitTests
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/high_potential_dataset.py --check
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/test_high_potential_benchmark.py HighPotentialBenchmarkUnitTests
 
 benchmark-local-ai-high-potential-integration:
-	python3 scripts/local-ai/test_high_potential_benchmark.py HighPotentialBenchmarkIntegrationTests
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/test_high_potential_benchmark.py HighPotentialBenchmarkIntegrationTests
 
 benchmark-local-ai-high-potential-simulated:
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --mode simulated --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_SIMULATED_OUTPUT_DIR)"
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/high_potential_benchmark.py --mode simulated --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_SIMULATED_OUTPUT_DIR)"
 
 benchmark-local-ai-high-potential-recompute:
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --quiet \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/high_potential_benchmark.py --quiet \
 		--recompute-existing docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/latest.json \
 		--output-dir "$(HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR)"
 
@@ -109,7 +114,7 @@ benchmark-local-ai-high-potential-local-ai:
 	uptime
 	free -h
 	df -h /
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/high_potential_benchmark.py --mode local-ai --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR)"
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/high_potential_benchmark.py --mode local-ai --quiet --output-dir "$(HIGH_POTENTIAL_BENCHMARK_OUTPUT_DIR)"
 
 benchmark-local-ai-high-potential-dashboard:
 	node --test ia-bridge/usage.test.js
@@ -120,31 +125,30 @@ benchmark-local-ai-high-potential: benchmark-local-ai-high-potential-unit \
 	benchmark-local-ai-high-potential-dashboard benchmark-local-ai-high-potential-local-ai
 
 benchmark-local-ai-quality-bakeoff-unit:
-	python3 scripts/local-ai/quality_bakeoff_dataset.py --check
-	python3 scripts/local-ai/test_model_registry.py
-	python3 scripts/local-ai/test_quality_bakeoff.py
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/quality_bakeoff_dataset.py --check
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/test_quality_bakeoff.py
 
 benchmark-local-ai-quality-bakeoff-calibration:
 	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
 	uptime
 	free -h
 	df -h /
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/quality_bakeoff.py \
 		--phase calibration --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
 
 benchmark-local-ai-quality-bakeoff-regression:
 	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/quality_bakeoff.py \
 		--phase regression --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
 
 benchmark-local-ai-quality-bakeoff-holdout:
 	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/quality_bakeoff.py \
 		--phase holdout --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
 
 benchmark-local-ai-quality-bakeoff-verifier:
 	@test -n "$(QUALITY_BAKEOFF_RUN_ID)" || (echo "QUALITY_BAKEOFF_RUN_ID is required" >&2; exit 2)
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/quality_bakeoff.py \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/quality_bakeoff.py \
 		--phase verifier --run-id "$(QUALITY_BAKEOFF_RUN_ID)" --models "$(QUALITY_BAKEOFF_MODELS)"
 
 benchmark-local-ai-quality-bakeoff: benchmark-local-ai-quality-bakeoff-unit \
@@ -160,35 +164,28 @@ local-ai-pivot-help:
 	@echo "benchmark-local-ai-restricted-pivot: run all phases sequentially with LOCAL_AI_PIVOT_RUN_ID=<uuid>"
 
 validate-local-ai-pivot:
-	python3 scripts/local-ai/pivot_dataset.py --check
-	python3 scripts/local-ai/test_pivot_benchmark.py
-	python3 scripts/local-ai/test_restricted_runtime.py
-	python3 scripts/local-ai/test_model_registry.py
-	python3 scripts/local-ai/test_post_tool_routing.py
-	python3 scripts/local-ai/test_canary_state.py
-	python3 scripts/local-ai/test_structured_canary.py
-	python3 scripts/local-ai/test_mcp_server.py
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_dataset.py --check
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/test_pivot_benchmark.py
 
 local-ai-structured-extraction-canary-audit:
-	python3 scripts/local-ai/structured_canary.py audit \
+	python3 "$(LOCAL_AI_RUNTIME_DIR)/structured_canary.py" audit \
 		--json docs/benchmarks/local-ai-structured-extraction-canary/latest-operational-summary.json \
 		--markdown docs/benchmarks/local-ai-structured-extraction-canary/report.md
 
 install-local-ai-runtime:
-	@test -n "$(LOCAL_AI_RUNTIME_TARGET)" || (echo "LOCAL_AI_RUNTIME_TARGET is required" >&2; exit 2)
-	./scripts/local-ai/install-runtime.sh --target "$(LOCAL_AI_RUNTIME_TARGET)"
+	node local-ai-integration/manage-runtime.mjs install --prefix "$(LOCAL_AI_RUNTIME_PREFIX)" --group "$(LOCAL_AI_RUNTIME_GROUP)"
 
 benchmark-local-ai-structured-extraction-calibration:
 	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
 	uptime
 	free -h
 	df -h /
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py structured-extraction \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_benchmark.py structured-extraction \
 		--phase calibration --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
 
 benchmark-local-ai-structured-extraction-holdout:
 	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py structured-extraction \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_benchmark.py structured-extraction \
 		--phase promotion_holdout --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
 
 benchmark-local-ai-structured-extraction:
@@ -200,12 +197,12 @@ benchmark-local-ai-summarize-log-calibration:
 	uptime
 	free -h
 	df -h /
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py summarize-log \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_benchmark.py summarize-log \
 		--phase calibration --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
 
 benchmark-local-ai-summarize-log-holdout:
 	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py summarize-log \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_benchmark.py summarize-log \
 		--phase promotion_holdout --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
 
 benchmark-local-ai-summarize-log:
@@ -217,12 +214,12 @@ benchmark-local-ai-retrieval-calibration:
 	uptime
 	free -h
 	df -h /
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py retrieval \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_benchmark.py retrieval \
 		--phase calibration --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
 
 benchmark-local-ai-retrieval-holdout:
 	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
-	@./scripts/run-resource-safe.sh python3 scripts/local-ai/pivot_benchmark.py retrieval \
+	@./scripts/run-resource-safe.sh env $(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_benchmark.py retrieval \
 		--phase promotion_holdout --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
 
 benchmark-local-ai-retrieval:
@@ -231,7 +228,7 @@ benchmark-local-ai-retrieval:
 
 benchmark-local-ai-error-similarity:
 	@test -n "$(LOCAL_AI_PIVOT_RUN_ID)" || (echo "LOCAL_AI_PIVOT_RUN_ID is required" >&2; exit 2)
-	python3 scripts/local-ai/pivot_finalize.py --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
+	$(LOCAL_AI_RESEARCH_ENV) python3 local-ai-research/pivot_finalize.py --run-id "$(LOCAL_AI_PIVOT_RUN_ID)"
 
 benchmark-local-ai-restricted-pivot:
 	@$(MAKE) --no-print-directory validate-local-ai-pivot

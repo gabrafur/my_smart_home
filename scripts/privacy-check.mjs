@@ -32,8 +32,8 @@ const ignoredText = [
   /^scripts\/privacy-check(?:\.test)?\.mjs$/,
   /^scripts\/security-scan(?:\.test)?\.(?:mjs|sh)$/,
 ];
-const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:history\/v1-2026-08-24\/)?(?:[^/]+\.(?:json|jsonl|csv))|docs\/benchmarks\/local-ai-restricted-pivot\/(?:[^/]+\/)?[^/]+\.(?:json|jsonl|csv)|docs\/benchmarks\/local-ai-structured-extraction-canary\/[^/]+\.json|scripts\/local-ai\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
-const frozenSyntheticQualityDataset = /^scripts\/local-ai\/benchmarks\/quality-bakeoff-v1\/(?:dataset\.jsonl|inputs\.json)$/;
+const benchmarkNumericArtifact = /^(?:docs\/benchmarks\/local-ai-high-potential\/(?:history\/v1-2026-08-24\/)?(?:[^/]+\.(?:json|jsonl|csv))|docs\/benchmarks\/local-ai-restricted-pivot\/(?:[^/]+\/)?[^/]+\.(?:json|jsonl|csv)|docs\/benchmarks\/local-ai-structured-extraction-canary\/[^/]+\.json|local-ai-research\/benchmarks\/high-potential\/(?:[^/]+\.(?:json|jsonl)))$/;
+const frozenSyntheticQualityDataset = /^local-ai-research\/benchmarks\/quality-bakeoff-v1\/(?:dataset\.jsonl|inputs\.json)$/;
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;

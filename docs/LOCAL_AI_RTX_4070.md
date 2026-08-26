@@ -12,6 +12,14 @@ O guia descreve o estado operacional validado em 2026-08-16 e também permite
 recriá-lo em um fork. Endereços, usuários e caminhos de chaves reais ficam na
 configuração privada de cada máquina, nunca neste repositório.
 
+Desde 26/08/2026, o runtime reutilizável é mantido separadamente em
+[`gabrafur/local-ai-rtx`](https://github.com/gabrafur/local-ai-rtx). Esta
+implantação fixa release, commit e SHA-256 em
+[`local-ai-integration/local-ai-rtx.lock.json`](../local-ai-integration/local-ai-rtx.lock.json),
+instala releases imutáveis com `make install-local-ai-runtime` e conserva aqui
+somente integração, política, dashboards e pesquisa específica. Datasets e
+harnesses históricos ficam em [`local-ai-research/`](../local-ai-research/README.md).
+
 ## Arquitetura validada
 
 ```text
@@ -58,7 +66,7 @@ Ollama.
 | --- | --- | --- |
 | Windows + WSL2 | manter Ollama e a GPU disponíveis | configuração privada do host de GPU |
 | Portproxy e firewall | publicar somente a porta LAN restrita | regras privadas do Windows |
-| `local-ai` | executar tarefas limitadas e emitir JSON/telemetria | `scripts/local-ai/` |
+| `local-ai` | executar tarefas limitadas e emitir JSON/telemetria | release fixada de [`local-ai-rtx`](https://github.com/gabrafur/local-ai-rtx) |
 | Política do Codex | decidir quando uma primeira passagem agrega valor | `AGENTS.md` e hook de projeto `.codex/hooks.json` |
 | Bridge | expor somente resumo de uso e estado de job | `ia-bridge/server.js`, `ia-bridge/usage.js` |
 | Home Assistant | mostrar uso do Codex e RTX separadamente | `homeassistant/packages/codex_usage.yaml` e dashboard |
@@ -102,8 +110,9 @@ depender de logon interativo.
 
 ## Configuração do cliente Codex
 
-Cada máquina que executa Codex mantém sua configuração fora do Git, por
-exemplo em `~/.config/codex/local-ai.json`:
+Cada máquina mantém sua configuração fora do Git, por exemplo em
+`~/.config/local-ai-rtx/config.json`. O caminho anterior
+`~/.config/codex/local-ai.json` permanece somente como fallback compatível:
 
 ```json
 {
@@ -112,7 +121,7 @@ exemplo em `~/.config/codex/local-ai.json`:
   "model": "qwen2.5-coder:14b",
   "medium_analysis_min_tokens": 800,
   "preflight_command": "/caminho/privado/local-ai-preflight",
-  "recovery_command": "/workspace/scripts/local-ai/recover-endpoint.mjs",
+  "recovery_command": "/opt/local-ai-rtx/recover-endpoint.mjs",
   "recovery": {
     "enabled": true,
     "attempts": 2,
@@ -145,7 +154,7 @@ consulta `local_ai_status` de forma preguiçosa e usa o MCP global
 benéfica, `local_ai_compress_context`. Os tipos são
 `summarize-document`, `summarize-memory`, `inspect-files`, `review-diff`,
 `analyze-tests`, `summarize-log` e `classify-error`. O helper
-`./scripts/local-ai/local-ai` continua disponível para diagnósticos, testes e
+`$HOME/.local/share/local-ai-rtx/current/local-ai` continua disponível para diagnósticos, testes e
 para registrar o recibo metadata-only `confirm-delivery`; esse subcomando não
 faz inferência. Dados secretos, decisões de segurança, migrações, operações
 destrutivas e revisão final nunca são enviados ao modelo local.
@@ -282,7 +291,7 @@ e abre o binário da extensão; ele não aprova nem contorna a confiança:
 
 ```bash
 cd /mnt/data/docker
-./scripts/local-ai/review-vscode-hooks.sh
+./local-ai-integration/review-vscode-hooks.sh
 ```
 
 Depois da aprovação ou de uma atualização da extensão, execute
@@ -309,7 +318,7 @@ para compressão de contexto é:
 ferramenta determinística -> fatos determinísticos quando aplicável -> Codex/OpenAI
 ```
 
-`scripts/local-ai/routing.py` torna a decisão reproduzível sem inferência. Ele
+O `routing.py` da release fixada torna a decisão reproduzível sem inferência. Ele
 usa tamanho estimado, tipo da tarefa, compressibilidade esperada, helper
 compatível, disponibilidade verificada de forma preguiçosa e suficiência de uma
 ferramenta determinística. Os valores iniciais vêm do helper com contexto
@@ -371,7 +380,7 @@ existentes, sem alegar economia.
 Para pré-visualizar uma decisão sem registrar uma inferência, use:
 
 ```bash
-./scripts/local-ai/local-ai route analyze-tests --input-chars 32000
+$HOME/.local/share/local-ai-rtx/current/local-ai route analyze-tests --input-chars 32000
 ```
 
 O resultado `LOCAL_AI_ELIGIBLE` é apenas uma prévia: a chamada normal ao helper
@@ -380,14 +389,14 @@ registra o resultado final como `LOCAL_AI_USED` ou
 ignorada, registre-a sem fornecer o conteúdo bruto:
 
 ```bash
-./scripts/local-ai/local-ai route review-diff --input-chars 24000 --outcome skipped
+$HOME/.local/share/local-ai-rtx/current/local-ai route review-diff --input-chars 24000 --outcome skipped
 ```
 
 Para testar uma indisponibilidade sem desligar a GPU, use uma avaliação
 controlada e sem chamada de rede:
 
 ```bash
-./scripts/local-ai/local-ai route analyze-tests --input-chars 32000 --availability unavailable
+$HOME/.local/share/local-ai-rtx/current/local-ai route analyze-tests --input-chars 32000 --availability unavailable
 ```
 
 Não existe `UserPromptSubmit`: o envio do prompt não bloqueia, não chama a RTX e
@@ -441,7 +450,7 @@ descoberto como instrução do projeto.
 O auditor reproduzível é:
 
 ```bash
-./scripts/local-ai/local-ai memory-audit
+$HOME/.local/share/local-ai-rtx/current/local-ai memory-audit
 ```
 
 Ele informa apenas tokens observáveis: AGENTS global (esperado como zero nesta
@@ -462,9 +471,9 @@ tarefa -> índice/rg/headings -> arquivos temáticos mínimos -> avaliar tamanho
 Para recuperar por índice sem conteúdo bruto no contexto principal:
 
 ```bash
-./scripts/local-ai/memory_context.py retrieve 'codex local ai' --query 'telemetria RTX'
-./scripts/local-ai/memory_context.py materialize 'codex local ai' --query 'telemetria RTX' \
-  | ./scripts/local-ai/local-ai summarize-memory --memory-topic 'codex-local-ai' --context-tokens 8192
+$HOME/.local/share/local-ai-rtx/current/memory_context.py retrieve 'codex local ai' --query 'telemetria RTX'
+$HOME/.local/share/local-ai-rtx/current/memory_context.py materialize 'codex local ai' --query 'telemetria RTX' \
+  | $HOME/.local/share/local-ai-rtx/current/local-ai summarize-memory --memory-topic 'codex-local-ai' --context-tokens 8192
 ```
 
 `summarize-memory` tem threshold de 1.200 tokens de entrada estimados e 700
@@ -559,7 +568,7 @@ porque o `$HOME` do container do Home Assistant é efêmero: confiar apenas em
 container, mesmo com Ollama e RTX saudáveis.
 
 A imagem `ai-bridge` inclui `python3`, pois o helper versionado
-`./scripts/local-ai/local-ai` é Python. Assim, uma tarefa elegível enviada pelo
+O executável `$HOME/.local/share/local-ai-rtx/current/local-ai` é Python. Assim, uma tarefa elegível enviada pelo
 chat do Home Assistant consegue executar a primeira passagem na RTX, em vez de
 falhar localmente por ausência do interpretador.
 
@@ -567,7 +576,7 @@ O bridge executa o mesmo servidor `local-ai-rtx` instalado no host. No startup,
 um bootstrap idempotente mantém um bloco gerenciado em
 `/home/node/.codex/config.toml`, com aprovação automática das ferramentas e o
 runtime indicado por `CODEX_LOCAL_AI_RUNTIME_DIR` montado em
-`/opt/codex-local-ai` somente para leitura. Se esse runtime não estiver
+`/opt/local-ai-rtx` somente para leitura. Se esse runtime não estiver
 disponível, o bridge continua atendendo e o Codex aplica o fallback normal.
 O diretório privado do runtime precisa permitir leitura e travessia ao grupo
 `docker`; seu conteúdo continua sem permissão de escrita pelo container.
@@ -859,7 +868,7 @@ No host Codex, confirme a conectividade sem alterar estado:
 ```bash
 nc -vz -w 3 GPU_HOST 11435
 curl --fail --connect-timeout 5 http://GPU_HOST:11435/api/tags
-./scripts/local-ai/local-ai status
+$HOME/.local/share/local-ai-rtx/current/local-ai status
 ```
 
 Para um teste real, use um diff não sensível ou uma entrada sintética por
@@ -872,7 +881,7 @@ segundos.
 | Sintoma | Verificações seguras |
 | --- | --- |
 | `11435` não conecta | listener e regra de firewall do Windows; rota LAN; teste `curl /api/tags` |
-| Recuperação do MCP falha | execute `node --test scripts/local-ai/recover-endpoint.test.mjs`; revise a configuração privada sem expor MAC, endpoint, usuário, chave ou `known_hosts` |
+| Recuperação do MCP falha | confirme o CI e os testes da release fixada de `local-ai-rtx`; revise a configuração privada sem expor MAC, endpoint, usuário, chave ou `known_hosts` |
 | `11434` conecta pela LAN | desabilite a exposição direta e mantenha somente o portproxy restrito |
 | Ollama responde mas sem GPU | `ollama ps`, `nvidia-smi`, driver NVIDIA/WSL e tamanho/quantização do modelo |
 | CPU offload | reduza o modelo/contexto; não assuma que uma resposta rápida significa GPU integral |

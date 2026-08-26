@@ -47,6 +47,9 @@ a release HACS é a única fonte canônica do código da integração.
   licenca e proveniencia upstream; o patch nao substitui os arquivos de
   licenca do pacote.
 - `validation/package-lock.json` fixa `yaml@2.9.0`, usado apenas pela validação.
+- `local-ai-integration/local-ai-rtx.lock.json` fixa repositório, release,
+  commit e SHA-256 do runtime externo; o instalador rejeita divergência antes
+  de ativar uma release imutável.
 - Os `requirements` dos manifests do Home Assistant são resolvidos pela
   instalação da integração; eles não são código-fonte vendorizado aqui.
 - As imagens do Compose são fixadas por digest. Origem, versão e política de

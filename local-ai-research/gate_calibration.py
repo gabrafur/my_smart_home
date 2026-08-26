@@ -8,6 +8,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 import random
 import statistics
 import time
@@ -15,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(os.getenv("LOCAL_AI_RUNTIME_DIR", Path.home() / ".local/share/local-ai-rtx/current")).expanduser()
 HELPER = ROOT / "local-ai.py"
 SPEC = importlib.util.spec_from_file_location("local_ai_calibration", HELPER)
 assert SPEC and SPEC.loader

@@ -133,7 +133,7 @@ Consider deterministic tools, local scripts, and local AI/Ollama when available 
 
 Do not create, repair, install, restart, or reconfigure Ollama infrastructure as part of model routing.
 
-The reviewed `scripts/local-ai/recover-endpoint.mjs` is the only exception. If
+The pinned `local-ai-rtx` `recover-endpoint.mjs` is the only exception. If
 machine-private configuration enables it, an MCP invocation may send
 Wake-on-LAN and perform at most two idempotent attempts to start the existing
 WSL/Ollama service and reconcile the exact configured `11435` portproxy. It
@@ -312,15 +312,16 @@ O fluxo determinístico é:
 tarefa -> índice/rg -> memória temática mínima -> Local AI se grande -> JSON estruturado -> modelo principal
 ```
 
-Para medir o estado observável, use `./scripts/local-ai/local-ai memory-audit`.
+Para medir o estado observável, use
+`~/.local/share/local-ai-rtx/current/local-ai memory-audit`.
 Para localizar um tema sem inferência, use
-`./scripts/local-ai/memory_context.py retrieve '<tema>' --query '<termos>'`.
+`~/.local/share/local-ai-rtx/current/memory_context.py retrieve '<tema>' --query '<termos>'`.
 Para uma recuperação ampla e não sensível, materialize apenas os arquivos
 encontrados e faça a primeira passagem local:
 
 ```bash
-./scripts/local-ai/memory_context.py materialize '<tema>' --query '<termos>' \
-  | ./scripts/local-ai/local-ai summarize-memory --memory-topic '<tema>' --context-tokens 8192
+~/.local/share/local-ai-rtx/current/memory_context.py materialize '<tema>' --query '<termos>' \
+  | ~/.local/share/local-ai-rtx/current/local-ai summarize-memory --memory-topic '<tema>' --context-tokens 8192
 ```
 
 `summarize-memory` deve preservar estado atual, decisões, restrições, bugs,
@@ -362,8 +363,7 @@ uma alegação de relevância semântica não mensurada.
 O procedimento canônico fica em
 `.agents/skills/rtx-context-optimizer/SKILL.md`; não mantenha cópia em
 `~/.agents/skills/`. O MCP global `local-ai-rtx` é a interface de inferência e
-`./scripts/local-ai/local-ai` permanece somente para diagnóstico e testes do
-projeto.
+o runtime fixado permanece só para diagnóstico e testes.
 
 Revise o hook interativamente após clone, instalação, reconstrução do cliente
 Codex ou mudança em `.codex/hooks.json`. A confiança é específica por cliente:
@@ -371,7 +371,7 @@ aprovar pelo CLI do `ai-bridge` não ativa o hook na extensão do VS Code, nem o
 inverso. Execute `/hooks` no cliente que recebe os prompts e exija
 `PostToolUse` com `Installed = 1` e `Active = 1`. No bridge, use
 `docker compose exec -w /workspace ai-bridge codex`. Na extensão, use
-`./scripts/local-ai/review-vscode-hooks.sh` no host; após aprovar ou atualizar,
+`./local-ai-integration/review-vscode-hooks.sh` no host; após aprovar ou atualizar,
 execute `Developer: Reload Window` e abra uma conversa nova. Nunca automatize
 nem contorne essa aprovação.
 

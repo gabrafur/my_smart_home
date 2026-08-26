@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[2]
-LOCAL_AI = ROOT / "scripts" / "local-ai" / "local-ai"
+ROOT = Path(__file__).resolve().parents[1]
+LOCAL_AI = Path(os.getenv("LOCAL_AI_RUNTIME_DIR", Path.home() / ".local/share/local-ai-rtx/current")).expanduser() / "local-ai"
 WORKLOAD_WEIGHTS = {
     "logs": 18,
     "test_outputs": 18,

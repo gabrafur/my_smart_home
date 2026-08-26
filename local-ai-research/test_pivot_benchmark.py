@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import hashlib
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -24,7 +25,8 @@ def load_module(name: str, path: Path):
 
 BENCH = load_module("test_pivot_benchmark_module", SCRIPT_DIR / "pivot_benchmark.py")
 DATASET = load_module("test_pivot_dataset_module", SCRIPT_DIR / "pivot_dataset.py")
-LOG_FACTS = load_module("test_log_facts_module", SCRIPT_DIR / "log_facts.py")
+RUNTIME_DIR = Path(os.getenv("LOCAL_AI_RUNTIME_DIR", Path.home() / ".local/share/local-ai-rtx/current")).expanduser()
+LOG_FACTS = load_module("test_log_facts_module", RUNTIME_DIR / "log_facts.py")
 
 
 class PivotDatasetTests(unittest.TestCase):
@@ -233,7 +235,7 @@ class RetrievalTests(unittest.TestCase):
 
 class ArtifactContractTests(unittest.TestCase):
     def test_combined_artifact_records_the_frozen_decisions_and_current_hashes(self):
-        output = SCRIPT_DIR.parents[1] / "docs/benchmarks/local-ai-restricted-pivot"
+        output = SCRIPT_DIR.parent / "docs/benchmarks/local-ai-restricted-pivot"
         combined = BENCH.read_json(output / "latest.json")
         self.assertEqual(combined["decisions"], {
             "error_similarity": "SKIPPED",
@@ -268,7 +270,7 @@ class ArtifactContractTests(unittest.TestCase):
         self.assertFalse(retrieval["technical"]["index_persisted"])
 
     def test_every_public_event_has_bounded_common_fields(self):
-        output = SCRIPT_DIR.parents[1] / "docs/benchmarks/local-ai-restricted-pivot"
+        output = SCRIPT_DIR.parent / "docs/benchmarks/local-ai-restricted-pivot"
         required = {
             "job_id", "task_id", "attempt_id", "activity", "execution_mode", "model",
             "model_digest", "model_role", "dataset", "case_id", "input_tokens",

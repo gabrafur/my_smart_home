@@ -4,6 +4,14 @@ O modelo local é uma primeira passagem limitada e não autoritativa. Use-o apen
 quando reduzir materialmente contexto não sensível; decisões de arquitetura,
 segurança, produção e ações irreversíveis permanecem sob revisão principal.
 
+Desde 26/08/2026, o runtime reutilizável tem código-fonte canônico em
+`https://github.com/gabrafur/local-ai-rtx`. Este repositório conserva somente a
+integração, a política, os dashboards e a pesquisa específica da implantação.
+Release, commit e SHA-256 ficam fixados em
+`local-ai-integration/local-ai-rtx.lock.json`; a instalação imutável padrão é
+`$HOME/.local/share/local-ai-rtx/current`, com releases anteriores preservadas
+para rollback. Não resta uma cópia versionada do runtime no monorepo.
+
 Estado vigente desde o pivot restrito de 25/08/2026: não há perfil generativo
 de compressão promovido. Logs usam fatos determinísticos e depois o modelo
 principal. A única promoção é a capacidade default-off de canário a 10% para
@@ -199,7 +207,7 @@ extração empatou 15/15 e não superou o baseline; classificação, seleção d
 arquivos, clustering e diff falharam gates críticos. As cinco atividades
 preservam `shadow/disabled`, `production_enabled=false`, primary/verifier nulos
 e fallback GPT direto. O suporte configurável fica em
-`scripts/local-ai/model-registry.json`, atrás de
+`model-registry.json` da release fixada de `local-ai-rtx`, atrás de
 `LOCAL_AI_QUALITY_PIPELINE_ENABLED`, com rollback central e fail-closed.
 Naquele benchmark, `summarize-log` permaneceu separado e inalterado. A fonte canônica é
 `docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md` e o run id é

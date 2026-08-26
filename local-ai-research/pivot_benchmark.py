@@ -25,16 +25,18 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 
-ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_DIR = ROOT / "scripts/local-ai"
-DATASET_ROOT = SCRIPT_DIR / "benchmarks/restricted-pivot-v1"
+ROOT = Path(__file__).resolve().parents[1]
+RESEARCH_DIR = Path(__file__).resolve().parent
+RUNTIME_DIR = Path(os.getenv("LOCAL_AI_RUNTIME_DIR", Path.home() / ".local/share/local-ai-rtx/current")).expanduser()
+DATASET_ROOT = RESEARCH_DIR / "benchmarks/restricted-pivot-v1"
 OUTPUT_ROOT = ROOT / "docs/benchmarks/local-ai-restricted-pivot"
 PRIVATE_ROOT = ROOT / ".agent-history/local-ai-restricted-pivot-v1"
 SUITE = "local-ai-restricted-pivot-v1"
 SCHEMA_VERSION = 1
 SEED = 20260825
 
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(RESEARCH_DIR))
+sys.path.insert(0, str(RUNTIME_DIR))
 from model_registry import load_registry  # noqa: E402
 from pivot_dataset import DATASET_ROOT as FROZEN_DATASET_ROOT  # noqa: E402
 from pivot_dataset import eligible_text_path, stable_hash  # noqa: E402
@@ -49,9 +51,9 @@ def load_module(name: str, path: Path) -> Any:
     return module
 
 
-LOCAL_AI = load_module("pivot_local_ai", SCRIPT_DIR / "local-ai.py")
-QUALITY = load_module("pivot_quality_bakeoff", SCRIPT_DIR / "quality_bakeoff.py")
-LEGACY = load_module("pivot_legacy_benchmark", SCRIPT_DIR / "high_potential_benchmark.py")
+LOCAL_AI = load_module("pivot_local_ai", RUNTIME_DIR / "local-ai.py")
+QUALITY = load_module("pivot_quality_bakeoff", RESEARCH_DIR / "quality_bakeoff.py")
+LEGACY = load_module("pivot_legacy_benchmark", RESEARCH_DIR / "high_potential_benchmark.py")
 
 
 def utc_now() -> str:

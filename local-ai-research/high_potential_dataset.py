@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DIR = ROOT / "scripts" / "local-ai" / "benchmarks" / "high-potential"
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DIR = Path(__file__).resolve().parent / "benchmarks" / "high-potential"
 ACTIVITY_CLASSES = {
     "structured_extraction": ("extract-structured",),
     "classification": ("classify-task", "classify-diff"),

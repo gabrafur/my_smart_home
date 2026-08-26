@@ -376,7 +376,7 @@ ativo e a amostra de GPU; `Codex RTX Live Raw` o consulta aproximadamente uma
 vez por segundo. A página mostra tarefa, modelo, GPU, VRAM, potência e os
 identificadores curtos dos chats ativos, sem título ou conteúdo de conversa.
 
-O helper `scripts/local-ai/local-ai` só recebe tarefas delimitadas de primeira
+O helper da release fixada de `local-ai-rtx` só recebe tarefas delimitadas de primeira
 passagem e conserva somente telemetria privada por metadados em
 `.agent-history/`. O guia [Codex + Local AI com RTX
 4070](LOCAL_AI_RTX_4070.md) descreve a rede, o preflight, a política de
@@ -394,7 +394,8 @@ dispara essa notificação.
 
 - `ia-bridge/Dockerfile`, `ia-bridge/server.js`, `ia-bridge/package.json`
 - `ia-bridge/history.js`, `ia-bridge/usage.js`, `scripts/agent-history.mjs`, `AGENTS.md`
-- `scripts/local-ai/` (helper delimitado, prompts, testes e telemetria privada)
+- `local-ai-integration/` (lock, instalação verificada e integração) e
+  `local-ai-research/` (benchmarks e datasets específicos desta implantação)
 - `.env` (variáveis `CLAUDE_CODE_OAUTH_TOKEN`, `AI_BRIDGE_TOKEN`) e `.env.example`
 - `docker-compose.yml` (serviço `ai-bridge`)
 - `homeassistant/custom_components/claude_code_chat/` (integração custom)

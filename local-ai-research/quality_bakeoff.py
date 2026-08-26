@@ -26,11 +26,12 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 
-ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_DIR = ROOT / "scripts/local-ai"
-DATASET_DIR = SCRIPT_DIR / "benchmarks/quality-bakeoff-v1"
-REGRESSION_DATASET_DIR = SCRIPT_DIR / "benchmarks/high-potential"
-REGISTRY_PATH = SCRIPT_DIR / "model-registry.json"
+ROOT = Path(__file__).resolve().parents[1]
+RESEARCH_DIR = Path(__file__).resolve().parent
+RUNTIME_DIR = Path(os.getenv("LOCAL_AI_RUNTIME_DIR", Path.home() / ".local/share/local-ai-rtx/current")).expanduser()
+DATASET_DIR = RESEARCH_DIR / "benchmarks/quality-bakeoff-v1"
+REGRESSION_DATASET_DIR = RESEARCH_DIR / "benchmarks/high-potential"
+REGISTRY_PATH = RUNTIME_DIR / "model-registry.json"
 DEFAULT_OUTPUT_DIR = ROOT / "docs/benchmarks/local-ai-quality-bakeoff"
 DEFAULT_PRIVATE_DIR = ROOT / ".agent-history/local-ai-quality-bakeoff-v1"
 SUITE = "local-ai-quality-bakeoff-v3"
@@ -43,7 +44,8 @@ ACTIVITIES = (
     "diff_summary",
 )
 
-sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(RESEARCH_DIR))
+sys.path.insert(0, str(RUNTIME_DIR))
 from model_registry import load_registry, validate_registry  # noqa: E402
 
 
@@ -56,8 +58,8 @@ def load_module(name: str, path: Path) -> Any:
     return module
 
 
-LOCAL_AI = load_module("quality_bakeoff_local_ai", SCRIPT_DIR / "local-ai.py")
-LEGACY = load_module("quality_bakeoff_legacy", SCRIPT_DIR / "high_potential_benchmark.py")
+LOCAL_AI = load_module("quality_bakeoff_local_ai", RUNTIME_DIR / "local-ai.py")
+LEGACY = load_module("quality_bakeoff_legacy", RESEARCH_DIR / "high_potential_benchmark.py")
 
 
 def utc_now() -> str:

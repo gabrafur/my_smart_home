@@ -25,6 +25,8 @@ physical identifiers must appear only as placeholders.
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Home Assistant agent bridge](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex in the UI | summarized in [Containers](CONTAINERS.en.md) |
 | [Codex + Local AI with RTX 4070](LOCAL_AI_RTX_4070.md) | Local inference, network, telemetry, and fork reproduction | detailed Portuguese guide |
+| [Local AI RTX release integration](../local-ai-integration/README.md) | Lock, checksum, immutable install, and rollback | English summary |
+| [Deployment-specific Local AI research](../local-ai-research/README.md) | Datasets, harnesses, and historical benchmark limits | English summary |
 | [Versioned agent memory](MEMORIA_VERSIONADA_AGENTES.md) | Authority, privacy, maintenance, and validation of AI memory | detailed Portuguese guide |
 | [Privacy model](PRIVACY_MODEL.en.md) | Public roles, sanitization, scanning, and public memory | [Português](PRIVACY_MODEL.md) |
 | [Public/private boundary](PUBLIC_PRIVATE_BOUNDARY.en.md) | Bindings, bootstrap, safe degradation, and compatibility | [Português](PUBLIC_PRIVATE_BOUNDARY.md) |

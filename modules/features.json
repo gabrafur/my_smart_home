@@ -89,7 +89,7 @@
       "profile": null,
       "services": [],
       "depends_on": [],
-      "configuration": ["scripts/local-ai"],
+      "configuration": ["local-ai-integration", "local-ai-research"],
       "degradation": "agent requests use the primary model without local compression"
     },
     {

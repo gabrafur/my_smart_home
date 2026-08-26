@@ -26,6 +26,8 @@ placeholders.
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
 | [Bridge no Home Assistant](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex na interface | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
 | [Codex + Local AI com RTX 4070](LOCAL_AI_RTX_4070.md) | Inferência local, rede, telemetria e reprodução em fork | guia detalhado em português |
+| [Integração da release Local AI RTX](../local-ai-integration/README.md) | Lock, checksum, instalação imutável e rollback | resumo em inglês |
+| [Pesquisa Local AI da implantação](../local-ai-research/README.md) | Datasets, harnesses e limites dos benchmarks históricos | resumo em inglês |
 | [Memória versionada dos agentes](MEMORIA_VERSIONADA_AGENTES.md) | Autoridade, privacidade, manutenção e validação da memória de IA | guia detalhado em português |
 | [Modelo de privacidade](PRIVACY_MODEL.md) | Papéis públicos, sanitização, scanner e memória pública | [English](PRIVACY_MODEL.en.md) |
 | [Fronteira pública e privada](PUBLIC_PRIVATE_BOUNDARY.md) | Bindings, bootstrap, degradação segura e compatibilidade | [English](PUBLIC_PRIVATE_BOUNDARY.en.md) |

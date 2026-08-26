@@ -25,6 +25,15 @@ Full origins, comparison method, modifications, update policy, package-managed
 dependencies, and attribution duties are documented in
 [dependency provenance](docs/DEPENDENCY_PROVENANCE.en.md).
 
+## External Local AI runtime
+
+The optional [`local-ai-rtx`](https://github.com/gabrafur/local-ai-rtx)
+runtime is installed from release `v1.5.1`, commit
+`11431302d840e6eb90c33ed8ea5fe68c430b5948`, under the MIT License. It is not
+vendored in this repository. The exact release archive and SHA-256 are pinned
+in `local-ai-integration/local-ai-rtx.lock.json`; its MIT text accompanies the
+upstream release.
+
 ## Repository-level license status
 
 There is intentionally no root `LICENSE` file. A public GitHub repository is

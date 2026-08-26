@@ -94,3 +94,22 @@ test("validates cited Make and npm commands", (t) => {
   assert.ok(result.errors.some((error) => error.includes("unknown Make target")));
   assert.ok(result.errors.some((error) => error.includes("unknown npm package prefix")));
 });
+
+test("allows historical source paths only in documents declared archived", (t) => {
+  const input = fixture(t);
+  const archive = "docs/ARCHIVE.md";
+  fs.writeFileSync(path.join(input.repoRoot, archive), "# Archive\n\nHistorical source path: `scripts/local-ai/runtime.py`.\n");
+  fs.appendFileSync(path.join(input.repoRoot, "docs/README.md"), "\n[Archive](ARCHIVE.md)\n");
+  input.trackedFiles.push(archive);
+  const manifestPath = path.join(input.repoRoot, "docs/i18n-manifest.json");
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  manifest.documents.push({ path: archive, area: "getting-started", strategy: "archived", language: "en" });
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+
+  assert.deepEqual(checkDocumentation(input).errors, []);
+
+  manifest.documents.at(-1).strategy = "summary pair";
+  manifest.documents.at(-1).summary = "docs/README.md";
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  assert.ok(checkDocumentation(input).errors.some((error) => error.includes("referenced path is missing")));
+});

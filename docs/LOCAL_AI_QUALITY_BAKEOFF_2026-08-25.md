@@ -205,7 +205,7 @@ somente como último desempate, nunca como substituta de qualidade.
 
 ## Roteamento implementado e rollback
 
-`scripts/local-ai/model-registry.json` é o registro central. O helper
+O `model-registry.json` da release fixada de `local-ai-rtx` é o registro central. O helper
 `model_registry.py` valida-o fail-closed e seleciona por atividade:
 
 1. determinístico primeiro;
@@ -270,7 +270,7 @@ instalação em paralelo. Antes da fase completa, verifique `uptime`, `free -h` 
 - `residual-calibration-results.json`, `regression-results.json`,
   `residual-holdout-results.json`, `verifier-results.json`: fases sanitizadas;
 - `frozen-config.json`: configuração congelada;
-- `scripts/local-ai/benchmarks/quality-bakeoff-v1/`: dataset, inputs, schemas e
+- `local-ai-research/benchmarks/quality-bakeoff-v1/`: dataset, inputs, schemas e
   oracle manifest versionados.
 
 Run id canônico:

@@ -228,8 +228,8 @@ while IFS=$'\t' read -r rule regex; do
         docs/benchmarks/local-ai-restricted-pivot/*/*.jsonl|\
         docs/benchmarks/local-ai-restricted-pivot/*/*.csv|\
         docs/benchmarks/local-ai-structured-extraction-canary/*.json|\
-        scripts/local-ai/benchmarks/high-potential/*.json|\
-        scripts/local-ai/benchmarks/high-potential/*.jsonl) continue ;;
+        local-ai-research/benchmarks/high-potential/*.json|\
+        local-ai-research/benchmarks/high-potential/*.jsonl) continue ;;
       esac
     fi
     # package-lock e vendored HACS geram ruido estrutural sem valor de auditoria

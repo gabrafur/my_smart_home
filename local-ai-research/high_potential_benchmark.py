@@ -23,15 +23,16 @@ from pathlib import Path
 from typing import Any, Callable
 
 
-ROOT = Path(__file__).resolve().parents[2]
-SCRIPT_DIR = ROOT / "scripts" / "local-ai"
-DATASET_DIR = SCRIPT_DIR / "benchmarks" / "high-potential"
+ROOT = Path(__file__).resolve().parents[1]
+RESEARCH_DIR = Path(__file__).resolve().parent
+RUNTIME_DIR = Path(os.getenv("LOCAL_AI_RUNTIME_DIR", Path.home() / ".local/share/local-ai-rtx/current")).expanduser()
+DATASET_DIR = RESEARCH_DIR / "benchmarks" / "high-potential"
 DEFAULT_OUTPUT_DIR = ROOT / "docs" / "benchmarks" / "local-ai-high-potential"
 SCHEMA_VERSION = 2
 SUITE_NAME = "local-ai-high-potential-v2"
 GROUND_TRUTH_STATUS = "INSUFFICIENT_EVIDENCE"
-sys.path.insert(0, str(SCRIPT_DIR))
-_SPEC = importlib.util.spec_from_file_location("local_ai_runtime", SCRIPT_DIR / "local-ai.py")
+sys.path.insert(0, str(RUNTIME_DIR))
+_SPEC = importlib.util.spec_from_file_location("local_ai_runtime", RUNTIME_DIR / "local-ai.py")
 if _SPEC is None or _SPEC.loader is None:
     raise RuntimeError("cannot load local-ai runtime")
 LOCAL_AI = importlib.util.module_from_spec(_SPEC)
@@ -1522,7 +1523,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, Any]:
         },
         "implementation_sha256": {
             "benchmark_execution": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-            "dataset_generator": hashlib.sha256((SCRIPT_DIR / "high_potential_dataset.py").read_bytes()).hexdigest(),
+            "dataset_generator": hashlib.sha256((RESEARCH_DIR / "high_potential_dataset.py").read_bytes()).hexdigest(),
             "schemas": stable_hash(schemas),
         },
         "activity_discovery": ACTIVITY_DISCOVERY, "totals": totals,

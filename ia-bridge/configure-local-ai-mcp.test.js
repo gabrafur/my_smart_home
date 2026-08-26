@@ -12,7 +12,7 @@ const {
 
 test('configures the Local AI MCP idempotently while preserving other settings', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'local-ai-mcp-'));
-  const runtimeDir = path.join(directory, 'runtime');
+  const runtimeDir = path.join(directory, 'local-ai-rtx');
   const configPath = path.join(directory, 'codex', 'config.toml');
   fs.mkdirSync(runtimeDir);
   fs.mkdirSync(path.dirname(configPath));

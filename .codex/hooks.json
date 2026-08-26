@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/scripts/local-ai/post_tool_routing.py\"",
+            "command": "python3 \"${LOCAL_AI_MCP_RUNTIME_DIR:-$HOME/.local/share/local-ai-rtx/current}/post_tool_routing.py\"",
             "timeout": 240,
             "statusMessage": "Routing large output through Local AI",
             "additionalContextLimit": 2200

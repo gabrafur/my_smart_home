@@ -48,7 +48,7 @@ sanitizado; respostas e entradas não são persistidas.
   0,80; diff 1,00. Casos pequenos recebem metade do peso.
 
 O dataset está em
-[`scripts/local-ai/benchmarks/high-potential/`](../../../../../scripts/local-ai/benchmarks/high-potential/README.md)
+[`local-ai-research/benchmarks/high-potential/`](../../../../../local-ai-research/benchmarks/high-potential/README.md)
 e é reproduzido por `python3 scripts/local-ai/high_potential_dataset.py --check`.
 
 ## 4. Resultados globais

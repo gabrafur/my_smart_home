@@ -43,6 +43,9 @@ release is the integration code's single canonical source.
   after transient DNS failures. The installed package retains its upstream
   license and provenance; the patch does not replace the package license files.
 - `validation/package-lock.json` pins `yaml@2.9.0` for validation only.
+- `local-ai-integration/local-ai-rtx.lock.json` pins the external runtime's
+  repository, release, commit, and SHA-256; the installer rejects a mismatch
+  before activating an immutable release.
 - Home Assistant manifest requirements are resolved during integration setup;
   their source is not vendored here.
 - Compose images are pinned by digest; [Containers](CONTAINERS.en.md) records

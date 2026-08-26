@@ -37,7 +37,7 @@ function replaceManagedBlock(current, block) {
 }
 
 function configureLocalAiMcp(options = {}) {
-  const runtimeDir = options.runtimeDir || process.env.LOCAL_AI_MCP_RUNTIME_DIR || '/opt/codex-local-ai';
+  const runtimeDir = options.runtimeDir || process.env.LOCAL_AI_MCP_RUNTIME_DIR || '/opt/local-ai-rtx';
   const configPath = options.configPath
     || process.env.CODEX_CONFIG_PATH
     || path.join(os.homedir(), '.codex', 'config.toml');

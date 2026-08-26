@@ -16,7 +16,7 @@ from pathlib import Path
 SCRIPT = Path(__file__).with_name("high_potential_benchmark.py")
 DATASET_GENERATOR = Path(__file__).with_name("high_potential_dataset.py")
 HISTORICAL_V1 = (
-    SCRIPT.parents[2]
+    SCRIPT.parents[1]
     / "docs/benchmarks/local-ai-high-potential/history/v1-2026-08-24/latest.json"
 )
 SPEC = importlib.util.spec_from_file_location("high_potential_benchmark", SCRIPT)

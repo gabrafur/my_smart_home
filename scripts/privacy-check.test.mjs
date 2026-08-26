@@ -132,16 +132,16 @@ test("allows precise metrics in the preserved v1 benchmark artifacts", () => {
 test("allows event times only in the frozen synthetic quality dataset", () => {
   const syntheticEvent = "payload event=2026-08-25T13:00:00Z";
   for (const file of [
-    "scripts/local-ai/benchmarks/quality-bakeoff-v1/inputs.json",
-    "scripts/local-ai/benchmarks/quality-bakeoff-v1/dataset.jsonl",
+    "local-ai-research/benchmarks/quality-bakeoff-v1/inputs.json",
+    "local-ai-research/benchmarks/quality-bakeoff-v1/dataset.jsonl",
   ]) {
     assert.deepEqual(scanEntries([entry(file, syntheticEvent)]), []);
   }
-  const outside = scanEntries([entry("scripts/local-ai/benchmarks/other/inputs.json", syntheticEvent)]);
+  const outside = scanEntries([entry("local-ai-research/benchmarks/other/inputs.json", syntheticEvent)]);
   assert.deepEqual(outside.map((item) => item.rule), ["event-timestamp"]);
   const privateNetwork = ["10", "23", "45", "67"].join(".");
   const guarded = scanEntries([entry(
-    "scripts/local-ai/benchmarks/quality-bakeoff-v1/inputs.json",
+    "local-ai-research/benchmarks/quality-bakeoff-v1/inputs.json",
     `${syntheticEvent}\nendpoint=${privateNetwork}`,
   )]);
   assert.deepEqual(guarded.map((item) => item.rule), ["private-ipv4"]);

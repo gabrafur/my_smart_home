@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-ROOT = Path(__file__).resolve().parents[2]
-DATASET_ROOT = ROOT / "scripts/local-ai/benchmarks/restricted-pivot-v1"
+ROOT = Path(__file__).resolve().parents[1]
+DATASET_ROOT = Path(__file__).resolve().parent / "benchmarks/restricted-pivot-v1"
 INITIAL_HEAD = "661f631cd4451d67023b138c34b77ed3899c9b10"
 
 STRUCTURED_SUBTYPES = (

@@ -24,6 +24,15 @@ Origens, método de comparação, modificações, atualização, dependências
 gerenciadas e deveres de atribuição estão no guia de
 [proveniência](docs/DEPENDENCY_PROVENANCE.md).
 
+## Runtime Local AI externo
+
+O runtime opcional [`local-ai-rtx`](https://github.com/gabrafur/local-ai-rtx)
+é instalado da release `v1.5.1`, commit
+`11431302d840e6eb90c33ed8ea5fe68c430b5948`, sob licença MIT. Seu código não é
+vendorizado neste repositório. O arquivo exato da release e seu SHA-256 ficam
+fixados em `local-ai-integration/local-ai-rtx.lock.json`; o texto MIT acompanha
+a release upstream.
+
 ## Estado da licença do repositório
 
 Não existe `LICENSE` na raiz por decisão intencional. Um repositório público no

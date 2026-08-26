@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DIR = ROOT / "scripts/local-ai/benchmarks/quality-bakeoff-v1"
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DIR = Path(__file__).resolve().parent / "benchmarks/quality-bakeoff-v1"
 ACTIVITIES = (
     "structured_extraction",
     "classification",

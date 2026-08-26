@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_ROOT = ROOT / "docs/benchmarks/local-ai-restricted-pivot"
 FLAGS = {
     "structured_extraction": "LOCAL_AI_STRUCTURED_EXTRACTION_ENABLED",
