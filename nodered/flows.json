@@ -8,180 +8,6 @@
         "env": []
     },
     {
-        "id": "git_backup_group",
-        "type": "group",
-        "z": "git_backup_tab",
-        "name": "Backup Git agendado e execução isolada no host",
-        "style": {
-            "label": true,
-            "color": "#4d9a6a"
-        },
-        "nodes": [
-            "git_backup_architecture",
-            "git_backup_schedule",
-            "git_backup_manual",
-            "git_backup_request",
-            "git_backup_result",
-            "git_backup_error",
-            "git_backup_complete"
-        ],
-        "x": 34,
-        "y": 39,
-        "w": 1272,
-        "h": 262
-    },
-    {
-        "id": "git_backup_architecture",
-        "type": "comment",
-        "z": "git_backup_tab",
-        "g": "git_backup_group",
-        "name": "00:30 America/Sao_Paulo preserva o instante do cron antigo (03:30 UTC). A ponte no host mantém Git e SSH fora do Node-RED.",
-        "info": "A revisão documental semanal usa entidades e status próprios e não é alterada por esta aba.",
-        "x": 610,
-        "y": 80,
-        "wires": []
-    },
-    {
-        "id": "git_backup_schedule",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_group",
-        "name": "Diariamente 00:30 (03:30 UTC)",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "v": "scheduled",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "30 00 * * *",
-        "once": false,
-        "onceDelay": "0.1",
-        "topic": "scheduled",
-        "payload": "",
-        "payloadType": "date",
-        "x": 210,
-        "y": 160,
-        "wires": [
-            [
-                "git_backup_request"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_manual",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_group",
-        "name": "Executar backup agora",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "v": "manual",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": "0.1",
-        "topic": "manual",
-        "payload": "",
-        "payloadType": "date",
-        "x": 190,
-        "y": 240,
-        "wires": [
-            [
-                "git_backup_request"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_request",
-        "type": "exec",
-        "z": "git_backup_tab",
-        "g": "git_backup_group",
-        "command": "/opt/request-host-git-backup.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "240",
-        "winHide": false,
-        "oldrc": false,
-        "name": "Solicitar backup ao host",
-        "x": 520,
-        "y": 200,
-        "wires": [
-            [
-                "git_backup_result"
-            ],
-            [
-                "git_backup_error"
-            ],
-            [
-                "git_backup_complete"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_result",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_group",
-        "name": "Registrar resultado",
-        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return null;\n}\nflow.set(\"git_backup_last_result_v1\", { status, finished_at: finishedAt }, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 890,
-        "y": 150,
-        "wires": []
-    },
-    {
-        "id": "git_backup_error",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_group",
-        "name": "Registrar erro seguro",
-        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"solicitação falhou\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 890,
-        "y": 210,
-        "wires": []
-    },
-    {
-        "id": "git_backup_complete",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_group",
-        "name": "Registrar código de saída",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code === 0) {\n    node.status({ fill: \"green\", shape: \"dot\", text: \"worker finalizado\" });\n} else {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"worker código \" + String(code) });\n}\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 890,
-        "y": 270,
-        "wires": []
-    },
-    {
         "id": "29d64664bf8cbde8",
         "type": "tab",
         "label": "garagem",
@@ -314,6 +140,29 @@
         "color": "#DDAA99"
     },
     {
+        "id": "git_backup_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "Backup Git agendado e execução isolada no host",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a"
+        },
+        "nodes": [
+            "git_backup_architecture",
+            "git_backup_schedule",
+            "git_backup_manual",
+            "git_backup_request",
+            "git_backup_result",
+            "git_backup_error",
+            "git_backup_complete"
+        ],
+        "x": 34,
+        "y": 39,
+        "w": 1032,
+        "h": 272
+    },
+    {
         "id": "storage_group_config",
         "type": "group",
         "z": "storage_health_tab",
@@ -329,8 +178,8 @@
             "storage_discovery",
             "storage_mqtt_discovery"
         ],
-        "x": -16,
-        "y": 39,
+        "x": 54,
+        "y": 99,
         "w": 1042,
         "h": 152
     },
@@ -352,10 +201,10 @@
             "storage_mqtt_state",
             "storage_manual_status_mqtt"
         ],
-        "x": 34,
-        "y": 249,
-        "w": 1352,
-        "h": 202
+        "x": 44,
+        "y": 299,
+        "w": 1302,
+        "h": 257
     },
     {
         "id": "storage_group_alerts",
@@ -374,9 +223,9 @@
             "storage_notification_catch",
             "storage_notification_failure"
         ],
-        "x": 1314,
-        "y": 209,
-        "w": 594,
+        "x": 1544,
+        "y": 239,
+        "w": 612,
         "h": 262
     },
     {
@@ -401,9 +250,9 @@
             "storage_parse_inspection",
             "storage_maintenance_mqtt"
         ],
-        "x": 24,
-        "y": 489,
-        "w": 1392,
+        "x": 54,
+        "y": 629,
+        "w": 1372,
         "h": 279.5
     },
     {
@@ -424,10 +273,10 @@
             "internet_discovery_tick",
             "internet_history_retained"
         ],
-        "x": 44,
-        "y": 79,
-        "w": 252,
-        "h": 302
+        "x": 4,
+        "y": 119,
+        "w": 312,
+        "h": 242
     },
     {
         "id": "grp_internet_ping",
@@ -445,10 +294,10 @@
         "nodes": [
             "internet_ping"
         ],
-        "x": 324,
-        "y": 79,
-        "w": 252,
-        "h": 162
+        "x": 334,
+        "y": 39,
+        "w": 312,
+        "h": 82
     },
     {
         "id": "grp_internet_state",
@@ -467,10 +316,10 @@
             "internet_evaluate",
             "internet_restore_history"
         ],
-        "x": 604,
-        "y": 79,
-        "w": 282,
-        "h": 162
+        "x": 694,
+        "y": 31.5,
+        "w": 392,
+        "h": 149.5
     },
     {
         "id": "grp_internet_notify",
@@ -489,10 +338,10 @@
             "internet_notify_down",
             "internet_notify_recovery"
         ],
-        "x": 914,
-        "y": 59,
-        "w": 342,
-        "h": 222
+        "x": 1144,
+        "y": 19,
+        "w": 292,
+        "h": 162
     },
     {
         "id": "grp_internet_publish",
@@ -511,10 +360,10 @@
             "internet_discovery",
             "internet_mqtt_publish"
         ],
-        "x": 604,
-        "y": 319,
-        "w": 652,
-        "h": 162
+        "x": 634,
+        "y": 279,
+        "w": 572,
+        "h": 82
     },
     {
         "id": "grp_internet_tests",
@@ -532,10 +381,10 @@
         "nodes": [
             "internet_test_note"
         ],
-        "x": 44,
-        "y": 519,
-        "w": 1212,
-        "h": 102
+        "x": 274,
+        "y": 399,
+        "w": 432,
+        "h": 82
     },
     {
         "id": "grp_zigbee_triggers",
@@ -558,10 +407,10 @@
             "zigbee_discovery_tick",
             "zigbee_history_retained"
         ],
-        "x": 44,
-        "y": 79,
-        "w": 292,
-        "h": 482
+        "x": 24,
+        "y": 99,
+        "w": 312,
+        "h": 442
     },
     {
         "id": "grp_zigbee_detect",
@@ -580,10 +429,10 @@
             "zigbee_store_observation",
             "zigbee_component_evaluate"
         ],
-        "x": 364,
-        "y": 79,
-        "w": 272,
-        "h": 482
+        "x": 334,
+        "y": 129,
+        "w": 332,
+        "h": 312
     },
     {
         "id": "grp_zigbee_state",
@@ -602,10 +451,10 @@
             "zigbee_network_evaluate",
             "zigbee_restore_history"
         ],
-        "x": 664,
-        "y": 79,
+        "x": 864,
+        "y": 111.5,
         "w": 292,
-        "h": 202
+        "h": 149.5
     },
     {
         "id": "grp_zigbee_notify",
@@ -626,10 +475,10 @@
             "zigbee_component_notify_down",
             "zigbee_component_notify_recovery"
         ],
-        "x": 984,
-        "y": 59,
-        "w": 352,
-        "h": 502
+        "x": 1164,
+        "y": 99,
+        "w": 292,
+        "h": 422
     },
     {
         "id": "grp_zigbee_publish",
@@ -648,10 +497,10 @@
             "zigbee_discovery",
             "zigbee_mqtt_publish"
         ],
-        "x": 664,
-        "y": 359,
-        "w": 292,
-        "h": 202
+        "x": 754,
+        "y": 499,
+        "w": 272,
+        "h": 142
     },
     {
         "id": "grp_zigbee_tests",
@@ -669,10 +518,10 @@
         "nodes": [
             "zigbee_test_note"
         ],
-        "x": 44,
-        "y": 599,
-        "w": 1292,
-        "h": 102
+        "x": 234,
+        "y": 609,
+        "w": 432,
+        "h": 82
     },
     {
         "id": "c8f8e5b532232a4f",
@@ -852,7 +701,7 @@
             "203ccb69e0a6d24b",
             "cc920126e5845a43"
         ],
-        "x": 84,
+        "x": 184,
         "y": 19,
         "w": 502,
         "h": 282
@@ -876,7 +725,7 @@
             "397c6032b3dad342",
             "4fb2fbdfe36fa899"
         ],
-        "x": 554,
+        "x": 754,
         "y": 59,
         "w": 482,
         "h": 202
@@ -903,8 +752,8 @@
             "people_refresh_connection_handler",
             "555422f47d3a742b"
         ],
-        "x": 624,
-        "y": 279,
+        "x": 174,
+        "y": 319,
         "w": 1062,
         "h": 282
     },
@@ -932,8 +781,8 @@
             "eaccc19a46e6d28a",
             "b74adbc594080fbf"
         ],
-        "x": 24,
-        "y": 339,
+        "x": 164,
+        "y": 579,
         "w": 852,
         "h": 582
     },
@@ -1313,10 +1162,10 @@
             "codex_alert_catch",
             "codex_alert_failure"
         ],
-        "x": 40,
-        "y": 40,
-        "w": 1760,
-        "h": 360
+        "x": 24,
+        "y": 59,
+        "w": 1522,
+        "h": 322
     },
     {
         "id": "4126427d5e161a03",
@@ -1521,6 +1370,157 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "git_backup_architecture",
+        "type": "comment",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "00:30 America/Sao_Paulo preserva o instante do cron antigo (03:30 UTC). A ponte no host mantém Git e SSH fora do Node-RED.",
+        "info": "A revisão documental semanal usa entidades e status próprios e não é alterada por esta aba.",
+        "x": 610,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "git_backup_schedule",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Diariamente 00:30 (03:30 UTC)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "scheduled",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "30 00 * * *",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "scheduled",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 160,
+        "wires": [
+            [
+                "git_backup_request"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_manual",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Executar backup agora",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "manual",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "manual",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 240,
+        "wires": [
+            [
+                "git_backup_request"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_request",
+        "type": "exec",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "command": "/opt/request-host-git-backup.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "240",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar backup ao host",
+        "x": 520,
+        "y": 200,
+        "wires": [
+            [
+                "git_backup_result"
+            ],
+            [
+                "git_backup_error"
+            ],
+            [
+                "git_backup_complete"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_result",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Registrar resultado",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return null;\n}\nflow.set(\"git_backup_last_result_v1\", { status, finished_at: finishedAt }, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 150,
+        "wires": []
+    },
+    {
+        "id": "git_backup_error",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Registrar erro seguro",
+        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"solicitação falhou\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 210,
+        "wires": []
+    },
+    {
+        "id": "git_backup_complete",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Registrar código de saída",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code === 0) {\n    node.status({ fill: \"green\", shape: \"dot\", text: \"worker finalizado\" });\n} else {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"worker código \" + String(code) });\n}\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 270,
+        "wires": []
     },
     {
         "id": "45296e246a57590d",
@@ -2375,6 +2375,224 @@
         "x": 1780,
         "y": 200,
         "wires": []
+    },
+    {
+        "id": "ext_sunset_recovery_boot",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "name": "Verificar pôr do sol perdido no boot",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 15,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 440,
+        "wires": [
+            [
+                "ext_sunset_recovery_sun_check"
+            ]
+        ]
+    },
+    {
+        "id": "ext_sunset_recovery_sun_check",
+        "type": "api-current-state",
+        "z": "ce258dec9814b96b",
+        "name": "Boot ocorreu depois do pôr do sol?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "below_horizon",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sun.sun",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "sun_last_changed",
+                "propertyType": "msg",
+                "value": "$entities(\"sun.sun\").last_changed",
+                "valueType": "jsonata"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 520,
+        "y": 440,
+        "wires": [
+            [
+                "ext_prepare_recovery_confirmation"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "ext_prepare_recovery_confirmation",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Preparar confirmação do pôr do sol perdido",
+        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat('en-US', {\n        timeZone,\n        year: 'numeric',\n        month: '2-digit',\n        day: '2-digit'\n    }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\n\nconst STORE = 'persistent';\nconst PENDING_KEY = 'external_lighting_recovery_pending_v1';\nconst PROMPTED_DATE_KEY = 'external_lighting_recovery_prompted_date_v1';\nconst TTL_MS = 12 * 60 * 60 * 1000;\nconst now = new Date();\nconst sunsetAt = new Date(msg.sun_last_changed);\nconst timeZone = env.get('TZ') || 'America/Sao_Paulo';\n\nif (!Number.isFinite(sunsetAt.getTime())) {\n    node.status({ fill: 'red', shape: 'ring', text: 'horário do pôr do sol ausente' });\n    return null;\n}\n\nconst today = localDate(now, timeZone);\nif (localDate(sunsetAt, timeZone) !== today) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'pôr do sol foi em outro dia' });\n    return null;\n}\n\nconst pending = flow.get(PENDING_KEY, STORE);\nconst promptedDate = flow.get(PROMPTED_DATE_KEY, STORE);\nif (promptedDate === today || (pending?.localDate === today && Number(pending.expiresAt) > now.getTime())) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'confirmação já enviada hoje' });\n    return null;\n}\n\nconst token = (now.getTime().toString(36) + '_' + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst candidate = {\n    version: 1,\n    localDate: today,\n    createdAt: now.getTime(),\n    expiresAt: now.getTime() + TTL_MS,\n    confirmAction: 'ILUMINACAO_EXTERNA_LIGAR_' + token,\n    cancelAction: 'ILUMINACAO_EXTERNA_NAO_LIGAR_' + token\n};\n\nmsg.external_lighting_recovery_candidate = candidate;\nmsg.confirm_action = candidate.confirmAction;\nmsg.cancel_action = candidate.cancelAction;\nmsg.notification_title = 'Iluminação externa';\nmsg.notification_message = 'O Node-RED voltou depois do pôr do sol de hoje. Deseja ligar as lâmpadas externas agora?';\nmsg.notification_tag = 'external_lighting_sunset_recovery';\nmsg.notify_text = 'O Node-RED voltou depois do pôr do sol. Você ainda quer ligar a iluminação externa? Responda pela notificação que enviei ao celular.';\nnode.status({ fill: 'yellow', shape: 'dot', text: 'enviando confirmação' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 440,
+        "wires": [
+            [
+                "ext_send_recovery_mobile"
+            ]
+        ]
+    },
+    {
+        "id": "ext_send_recovery_mobile",
+        "type": "api-call-service",
+        "z": "ce258dec9814b96b",
+        "name": "Perguntar no celular",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\": notification_title, \"message\": notification_message, \"data\": {\"tag\": notification_tag, \"actions\": [{\"action\": confirm_action, \"title\": \"Ligar\"}, {\"action\": cancel_action, \"title\": \"Não ligar\"}]}}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1160,
+        "y": 440,
+        "wires": [
+            [
+                "ext_commit_recovery_confirmation"
+            ]
+        ]
+    },
+    {
+        "id": "ext_commit_recovery_confirmation",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Registrar confirmação enviada",
+        "func": "const STORE = 'persistent';\nconst candidate = msg.external_lighting_recovery_candidate;\nif (!candidate?.localDate || !candidate?.confirmAction || !candidate?.cancelAction) {\n    node.status({ fill: 'red', shape: 'ring', text: 'confirmação inválida' });\n    return null;\n}\nflow.set('external_lighting_recovery_pending_v1', candidate, STORE);\nflow.set('external_lighting_recovery_prompted_date_v1', candidate.localDate, STORE);\nnode.status({ fill: 'yellow', shape: 'dot', text: 'aguardando resposta no celular' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1440,
+        "y": 440,
+        "wires": [
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "ext_recovery_notification_action",
+        "type": "server-events",
+        "z": "ce258dec9814b96b",
+        "name": "Resposta da confirmação no celular",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "exposeAsEntityConfig": "",
+        "eventType": "mobile_app_notification_action",
+        "eventData": "",
+        "waitForRunning": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 230,
+        "y": 520,
+        "wires": [
+            [
+                "ext_validate_recovery_confirmation"
+            ]
+        ]
+    },
+    {
+        "id": "ext_validate_recovery_confirmation",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "name": "Validar confirmação da iluminação",
+        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat('en-US', {\n        timeZone,\n        year: 'numeric',\n        month: '2-digit',\n        day: '2-digit'\n    }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\n\nconst STORE = 'persistent';\nconst PENDING_KEY = 'external_lighting_recovery_pending_v1';\nconst pending = flow.get(PENDING_KEY, STORE);\nconst action = msg.payload?.event?.action ?? msg.payload?.action ?? msg.event?.action ?? null;\n\nif (!pending || typeof action !== 'string') return null;\n\nconst now = new Date();\nconst timeZone = env.get('TZ') || 'America/Sao_Paulo';\nif (Number(pending.expiresAt) <= now.getTime() || pending.localDate !== localDate(now, timeZone)) {\n    flow.set(PENDING_KEY, null, STORE);\n    node.status({ fill: 'grey', shape: 'ring', text: 'confirmação expirada' });\n    return null;\n}\n\nif (action === pending.cancelAction) {\n    flow.set(PENDING_KEY, null, STORE);\n    node.status({ fill: 'blue', shape: 'ring', text: 'usuário optou por não ligar' });\n    return null;\n}\n\nif (action !== pending.confirmAction) return null;\n\nflow.set(PENDING_KEY, null, STORE);\nmsg.external_lighting_recovery_confirmed = true;\nnode.status({ fill: 'green', shape: 'dot', text: 'ligação confirmada' });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 520,
+        "wires": [
+            [
+                "ext_confirm_recovery_sun_check"
+            ]
+        ]
+    },
+    {
+        "id": "ext_confirm_recovery_sun_check",
+        "type": "api-current-state",
+        "z": "ce258dec9814b96b",
+        "name": "Ainda está depois do pôr do sol?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 2,
+        "halt_if": "below_horizon",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sun.sun",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 860,
+        "y": 520,
+        "wires": [
+            [
+                "943c87e6b17f0d68"
+            ],
+            []
+        ]
     },
     {
         "id": "moni_mobile_arm_event",
@@ -5106,8 +5324,8 @@
         "g": "storage_group_config",
         "name": "Reusa sensores HA existentes; MQTT cria somente status/tendencia/manutencao. Node-RED nao recebe Docker socket nem sudo.",
         "info": "",
-        "x": 450,
-        "y": 80,
+        "x": 520,
+        "y": 140,
         "wires": []
     },
     {
@@ -5132,8 +5350,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 150,
+        "x": 230,
+        "y": 210,
         "wires": [
             [
                 "storage_set_config"
@@ -5153,8 +5371,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 410,
-        "y": 150,
+        "x": 480,
+        "y": 210,
         "wires": [
             [
                 "storage_discovery"
@@ -5174,8 +5392,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 650,
-        "y": 150,
+        "x": 720,
+        "y": 210,
         "wires": [
             [
                 "storage_mqtt_discovery"
@@ -5197,8 +5415,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 900,
-        "y": 150,
+        "x": 970,
+        "y": 210,
         "wires": []
     },
     {
@@ -5223,8 +5441,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 310,
+        "x": 170,
+        "y": 430,
         "wires": [
             [
                 "storage_read_ha"
@@ -5263,8 +5481,8 @@
         "ignoreCurrentStateUnknown": true,
         "ignoreCurrentStateUnavailable": true,
         "outputProperties": [],
-        "x": 170,
-        "y": 370,
+        "x": 180,
+        "y": 490,
         "wires": [
             [
                 "storage_manual_start"
@@ -5302,8 +5520,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 430,
-        "y": 310,
+        "x": 450,
+        "y": 400,
         "wires": [
             [
                 "storage_evaluate"
@@ -5323,8 +5541,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 740,
-        "y": 310,
+        "x": 770,
+        "y": 400,
         "wires": [
             [
                 "storage_mqtt_state"
@@ -5352,8 +5570,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1100,
-        "y": 290,
+        "x": 1070,
+        "y": 340,
         "wires": []
     },
     {
@@ -5380,8 +5598,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1480,
-        "y": 250,
+        "x": 1690,
+        "y": 280,
         "wires": [
             [
                 "storage_notification_ack"
@@ -5412,8 +5630,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1480,
-        "y": 310,
+        "x": 1690,
+        "y": 340,
         "wires": [
             [
                 "storage_notification_ack"
@@ -5442,8 +5660,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 150,
-        "y": 500,
+        "x": 180,
+        "y": 700,
         "wires": [
             [
                 "storage_exec_maintenance",
@@ -5464,8 +5682,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "Housekeeping Node-RED allowlisted",
-        "x": 460,
-        "y": 560,
+        "x": 490,
+        "y": 700,
         "wires": [
             [
                 "storage_parse_maintenance"
@@ -5492,8 +5710,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 790,
-        "y": 470,
+        "x": 820,
+        "y": 670,
         "wires": [
             [
                 "storage_maintenance_mqtt"
@@ -5513,8 +5731,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 790,
-        "y": 530,
+        "x": 820,
+        "y": 730,
         "wires": []
     },
     {
@@ -5530,8 +5748,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1090,
-        "y": 530,
+        "x": 1120,
+        "y": 730,
         "wires": [
             [
                 "storage_notify",
@@ -5562,8 +5780,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 660,
+        "x": 190,
+        "y": 860,
         "wires": [
             [
                 "storage_exec_inspection"
@@ -5583,8 +5801,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "Inspecao profunda /data",
-        "x": 460,
-        "y": 660,
+        "x": 490,
+        "y": 860,
         "wires": [
             [
                 "storage_parse_inspection"
@@ -5610,8 +5828,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 770,
-        "y": 620,
+        "x": 800,
+        "y": 820,
         "wires": []
     },
     {
@@ -5629,8 +5847,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1090,
-        "y": 470,
+        "x": 1120,
+        "y": 670,
         "wires": []
     },
     {
@@ -5647,7 +5865,7 @@
         "oldrc": false,
         "name": "Solicitar limpeza Docker no host",
         "x": 470,
-        "y": 570,
+        "y": 780,
         "wires": [
             [],
             [
@@ -5655,6 +5873,162 @@
             ],
             [
                 "storage_maintenance_complete"
+            ]
+        ]
+    },
+    {
+        "id": "storage_notify_persistent",
+        "type": "api-call-service",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Fallback persistente no HA",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":payload.title,\"message\":payload.message,\"notification_id\":\"raspberry_storage_health\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1690,
+        "y": 400,
+        "wires": [
+            [
+                "storage_notification_ack"
+            ]
+        ]
+    },
+    {
+        "id": "storage_notification_ack",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Confirmar entrega e iniciar cooldown",
+        "func": "const ack = msg.notificationAck;\nif (!ack || !Number.isFinite(Number(ack.at)) || !Array.isArray(ack.targets)) return null;\nfor (const target of ack.targets) {\n    if (!target || typeof target.key !== \"string\") continue;\n    if (typeof target.field === \"string\") {\n        const value = flow.get(target.key, \"persistent\") ?? {};\n        value[target.field] = Number(ack.at);\n        if (value.pendingAlert?.notificationAck?.id === ack.id) value.pendingAlert = null;\n        flow.set(target.key, value, \"persistent\");\n    } else {\n        flow.set(target.key, Number(ack.at), \"persistent\");\n    }\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1980,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "storage_notification_catch",
+        "type": "catch",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Capturar falha de notificacao",
+        "scope": [
+            "storage_notify",
+            "storage_notify_secondary",
+            "storage_notify_persistent"
+        ],
+        "uncaught": false,
+        "x": 1690,
+        "y": 460,
+        "wires": [
+            [
+                "storage_notification_failure"
+            ]
+        ]
+    },
+    {
+        "id": "storage_notification_failure",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Registrar falha sem cooldown",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"storage_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1970,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "storage_manual_start",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Iniciar execução manual",
+        "func": "const LOCK = \"storage_manual_running\";\nif (flow.get(LOCK, \"memoryOnly\") === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"execução manual já ativa\" });\n    return [null, null, null, { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true }];\n}\nflow.set(LOCK, true, \"memoryOnly\");\nmsg.storageManualRun = true;\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"running\" });\nconst status = { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true };\nreturn [msg, { ...msg }, { ...msg }, status];",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 500,
+        "wires": [
+            [
+                "storage_exec_maintenance"
+            ],
+            [
+                "storage_request_host_maintenance"
+            ],
+            [
+                "storage_read_ha"
+            ],
+            [
+                "storage_manual_status_mqtt"
+            ]
+        ]
+    },
+    {
+        "id": "storage_manual_status_mqtt",
+        "type": "mqtt out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Publicar execução manual",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1200,
+        "y": 510,
+        "wires": []
+    },
+    {
+        "id": "storage_manual_complete",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Finalizar execução manual",
+        "func": "if (msg.storageManualRun !== true) return null;\nflow.set(\"storage_manual_running\", false, \"memoryOnly\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"idle\" });\nreturn { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1280,
+        "y": 790,
+        "wires": [
+            [
+                "storage_manual_status_mqtt"
             ]
         ]
     },
@@ -5731,8 +6105,8 @@
         "initialize": "",
         "finalize": "flow.set('internet_ping_cycle_running', false, 'memoryOnly');",
         "libs": [],
-        "x": 450,
-        "y": 160,
+        "x": 490,
+        "y": 80,
         "wires": [
             [
                 "internet_evaluate"
@@ -5752,8 +6126,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 745,
-        "y": 160,
+        "x": 890,
+        "y": 80,
         "wires": [
             [
                 "internet_notify_down"
@@ -5773,8 +6147,8 @@
         "g": "grp_internet_notify",
         "name": "Notificar queda (uma vez)",
         "env": [],
-        "x": 1085,
-        "y": 140,
+        "x": 1290,
+        "y": 60,
         "wires": []
     },
     {
@@ -5784,8 +6158,8 @@
         "g": "grp_internet_notify",
         "name": "Notificar retorno confirmado",
         "env": [],
-        "x": 1085,
-        "y": 220,
+        "x": 1290,
+        "y": 140,
         "wires": []
     },
     {
@@ -5801,8 +6175,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 760,
-        "y": 400,
+        "x": 750,
+        "y": 320,
         "wires": [
             [
                 "internet_mqtt_publish"
@@ -5824,8 +6198,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1080,
-        "y": 400,
+        "x": 1070,
+        "y": 320,
         "wires": []
     },
     {
@@ -5835,8 +6209,47 @@
         "g": "grp_internet_tests",
         "name": "Testes automatizados fora do caminho de produção",
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre 1 host falhando, DNS irrelevante (IPs), 3 falhas, dedupe, oscilação, 2 sucessos, duração, segunda queda e restart. O ciclo real nunca aceita mensagens de teste e mantém no máximo três processos ping simultâneos.",
-        "x": 420,
-        "y": 570,
+        "x": 490,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "internet_history_retained",
+        "type": "mqtt in",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_triggers",
+        "name": "Recuperar histórico retained",
+        "topic": "nodered/infrastructure/internet/attributes",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 170,
+        "y": 260,
+        "wires": [
+            [
+                "internet_restore_history"
+            ]
+        ]
+    },
+    {
+        "id": "internet_restore_history",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "grp_internet_state",
+        "name": "Preservar histórico retained",
+        "func": "const HISTORY_KEY = \"internet_monitor_history_v1\";\n  let retained = msg.payload;\n  if (Buffer.isBuffer(retained)) retained = retained.toString(\"utf8\");\n  if (typeof retained === \"string\") {\n    try { retained = JSON.parse(retained); } catch { return null; }\n  }\n  if (!retained || typeof retained !== \"object\") return null;\n  const current = flow.get(HISTORY_KEY, \"persistent\") || {};\n  const isTimestamp = (value) => typeof value === \"string\" && Number.isFinite(Date.parse(value));\n  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;\n  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;\n  const durationValue = retained.last_outage_duration_s;\n  const duration = Number(durationValue);\n  if (durationValue != null && durationValue !== \"\" && Number.isFinite(duration) && duration >= 0) {\n    current.last_outage_duration_s = duration;\n  }\n  flow.set(HISTORY_KEY, current, \"persistent\");\n  return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 890,
+        "y": 140,
         "wires": []
     },
     {
@@ -6018,8 +6431,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 810,
-        "y": 170,
+        "x": 1010,
+        "y": 160,
         "wires": [
             [
                 "zigbee_network_notify_down"
@@ -6039,7 +6452,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar queda da rede",
         "env": [],
-        "x": 1160,
+        "x": 1310,
         "y": 140,
         "wires": []
     },
@@ -6050,7 +6463,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar retorno da rede",
         "env": [],
-        "x": 1160,
+        "x": 1310,
         "y": 220,
         "wires": []
     },
@@ -6061,7 +6474,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente offline",
         "env": [],
-        "x": 1160,
+        "x": 1310,
         "y": 400,
         "wires": []
     },
@@ -6072,7 +6485,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente online",
         "env": [],
-        "x": 1160,
+        "x": 1310,
         "y": 480,
         "wires": []
     },
@@ -6089,8 +6502,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 790,
-        "y": 440,
+        "x": 870,
+        "y": 540,
         "wires": [
             [
                 "zigbee_mqtt_publish"
@@ -6112,8 +6525,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 810,
-        "y": 500,
+        "x": 890,
+        "y": 600,
         "wires": []
     },
     {
@@ -6128,13 +6541,52 @@
         "wires": []
     },
     {
+        "id": "zigbee_history_retained",
+        "type": "mqtt in",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_triggers",
+        "name": "Recuperar histórico retained",
+        "topic": "nodered/infrastructure/zigbee/attributes",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 450,
+        "wires": [
+            [
+                "zigbee_restore_history"
+            ]
+        ]
+    },
+    {
+        "id": "zigbee_restore_history",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_state",
+        "name": "Preservar histórico retained",
+        "func": "const HISTORY_KEY = \"zigbee_network_monitor_history_v1\";\n  let retained = msg.payload;\n  if (Buffer.isBuffer(retained)) retained = retained.toString(\"utf8\");\n  if (typeof retained === \"string\") {\n    try { retained = JSON.parse(retained); } catch { return null; }\n  }\n  if (!retained || typeof retained !== \"object\") return null;\n  const current = flow.get(HISTORY_KEY, \"persistent\") || {};\n  const isTimestamp = (value) => typeof value === \"string\" && Number.isFinite(Date.parse(value));\n  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;\n  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;\n  const durationValue = retained.last_outage_duration_s;\n  const duration = Number(durationValue);\n  if (durationValue != null && durationValue !== \"\" && Number.isFinite(duration) && duration >= 0) {\n    current.last_outage_duration_s = duration;\n  }\n  flow.set(HISTORY_KEY, current, \"persistent\");\n  return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1010,
+        "y": 220,
+        "wires": []
+    },
+    {
         "id": "69adb96460375298",
         "type": "comment",
         "z": "ea0a6aa0d24ff863",
         "g": "98945604e99f7604",
         "name": "Contrato: GPS bruto entra; contexto normalizado sai",
         "info": "Estados unknown/unavailable nunca viram chegada. HOME_LAT/HOME_LON e GATE_LAT/GATE_LON vêm do ambiente; sem coordenadas, usa-se o estado de zona como fallback.",
-        "x": 310,
+        "x": 410,
         "y": 60,
         "wires": []
     },
@@ -6178,7 +6630,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 310,
+        "x": 410,
         "y": 140,
         "wires": [
             [
@@ -6226,7 +6678,7 @@
                 "valueType": "jsonata"
             }
         ],
-        "x": 310,
+        "x": 410,
         "y": 200,
         "wires": [
             [
@@ -6243,7 +6695,7 @@
         "links": [
             "3514854bb1279cbb"
         ],
-        "x": 125,
+        "x": 225,
         "y": 260,
         "wires": [
             [
@@ -6282,7 +6734,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 360,
+        "x": 460,
         "y": 260,
         "wires": [
             [
@@ -6303,7 +6755,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 740,
+        "x": 940,
         "y": 140,
         "wires": [
             [
@@ -6328,7 +6780,7 @@
             "45cb8ce559f5a522",
             "519b09225c268695"
         ],
-        "x": 995,
+        "x": 1195,
         "y": 100,
         "wires": []
     },
@@ -6343,7 +6795,7 @@
             "cf9bc321e0ec89f9",
             "6481cb991b3732f5"
         ],
-        "x": 995,
+        "x": 1195,
         "y": 160,
         "wires": []
     },
@@ -6357,7 +6809,7 @@
         "links": [
             "9acb4f732a4847b7"
         ],
-        "x": 995,
+        "x": 1195,
         "y": 220,
         "wires": []
     },
@@ -6370,8 +6822,8 @@
         "links": [
             "1ba5ecf650ac79b8"
         ],
-        "x": 665,
-        "y": 360,
+        "x": 215,
+        "y": 400,
         "wires": [
             [
                 "402fd0cc609443b7"
@@ -6391,8 +6843,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 820,
-        "y": 360,
+        "x": 370,
+        "y": 400,
         "wires": [
             [
                 "564fdc36031eaef8",
@@ -6424,8 +6876,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1140,
-        "y": 320,
+        "x": 690,
+        "y": 360,
         "wires": [
             []
         ]
@@ -6454,8 +6906,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1140,
-        "y": 380,
+        "x": 690,
+        "y": 420,
         "wires": [
             []
         ]
@@ -6471,8 +6923,8 @@
             "e0b7c0ecf1d8ee28"
         ],
         "uncaught": false,
-        "x": 1140,
-        "y": 460,
+        "x": 760,
+        "y": 500,
         "wires": [
             [
                 "people_refresh_connection_handler"
@@ -6492,8 +6944,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1470,
-        "y": 460,
+        "x": 1070,
+        "y": 500,
         "wires": []
     },
     {
@@ -6505,8 +6957,8 @@
         "links": [
             "eb4b8a519ab0bc28"
         ],
-        "x": 675,
-        "y": 460,
+        "x": 225,
+        "y": 500,
         "wires": [
             []
         ]
@@ -6529,8 +6981,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 240,
-        "y": 380,
+        "x": 380,
+        "y": 620,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6555,8 +7007,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 270,
-        "y": 420,
+        "x": 410,
+        "y": 660,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6581,8 +7033,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 270,
-        "y": 460,
+        "x": 410,
+        "y": 700,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6607,8 +7059,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 250,
-        "y": 500,
+        "x": 390,
+        "y": 740,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6633,8 +7085,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 260,
-        "y": 560,
+        "x": 400,
+        "y": 800,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6659,8 +7111,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 260,
-        "y": 600,
+        "x": 400,
+        "y": 840,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6685,8 +7137,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 250,
-        "y": 640,
+        "x": 390,
+        "y": 880,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6711,8 +7163,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 290,
-        "y": 700,
+        "x": 430,
+        "y": 940,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6737,8 +7189,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 310,
-        "y": 740,
+        "x": 450,
+        "y": 980,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6758,8 +7210,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 670,
-        "y": 540,
+        "x": 810,
+        "y": 780,
         "wires": [
             [
                 "bc2afbce89f5a9d5"
@@ -6777,8 +7229,8 @@
             "9f109b7076619124",
             "882f727e98158ffe"
         ],
-        "x": 835,
-        "y": 540,
+        "x": 975,
+        "y": 780,
         "wires": []
     },
     {
@@ -6799,8 +7251,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 320,
-        "y": 800,
+        "x": 460,
+        "y": 1040,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6825,8 +7277,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 320,
-        "y": 840,
+        "x": 460,
+        "y": 1080,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -6851,8 +7303,8 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 320,
-        "y": 880,
+        "x": 460,
+        "y": 1120,
         "wires": [
             [
                 "131d1f73e8230b27"
@@ -8455,8 +8907,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 2230,
-        "y": 220,
+        "x": 2250,
+        "y": 200,
         "wires": [
             []
         ]
@@ -8485,7 +8937,7 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 2230,
+        "x": 2260,
         "y": 240,
         "wires": [
             []
@@ -9053,7 +9505,7 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1900,
+        "x": 1890,
         "y": 300,
         "wires": [
             []
@@ -9084,7 +9536,7 @@
         "domain": "public_bindings",
         "service": "call",
         "x": 1900,
-        "y": 320,
+        "y": 340,
         "wires": [
             []
         ]
@@ -9651,8 +10103,8 @@
             "b502fda3391bb41f"
         ],
         "uncaught": false,
-        "x": 1210,
-        "y": 320,
+        "x": 1080,
+        "y": 300,
         "wires": [
             [
                 "alarm_arrival_notification_failure_v1"
@@ -9672,8 +10124,8 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 1530,
-        "y": 320,
+        "x": 1720,
+        "y": 300,
         "wires": []
     },
     {
@@ -9692,6 +10144,42 @@
         "x": 480,
         "y": 540,
         "wires": []
+    },
+    {
+        "id": "alarm_arrival_notification_ack_v1",
+        "type": "function",
+        "z": "1f468eaeef0733dd",
+        "name": "Confirmar entrega da solicitacao",
+        "func": "const candidate = msg.alarmConfirmationCandidate;\nif (!candidate || typeof candidate.deliveryId !== \"string\" || !Number.isFinite(Number(candidate.createdAt)) || !Number.isFinite(Number(candidate.expiresAt))) return null;\nconst PENDING_KEY = \"alarm_arrival_pending_confirmation\";\nconst LAST_REQUEST_KEY = \"alarm_arrival_last_confirmation_at\";\nconst INFLIGHT_KEY = \"alarm_arrival_confirmation_inflight\";\nconst existing = flow.get(PENDING_KEY);\nif (!existing || existing.deliveryId === candidate.deliveryId || Number(existing.expiresAt || 0) <= Date.now()) {\n    flow.set(PENDING_KEY, candidate);\n    flow.set(LAST_REQUEST_KEY, Number(candidate.createdAt));\n}\nconst inflight = flow.get(INFLIGHT_KEY);\nif (inflight?.deliveryId === candidate.deliveryId) flow.set(INFLIGHT_KEY, null);\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1900,
+        "y": 150,
+        "wires": []
+    },
+    {
+        "id": "alarm_arrival_notification_failure_v1",
+        "type": "function",
+        "z": "1f468eaeef0733dd",
+        "name": "Registrar falha sem armar cooldown",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"alarm_arrival_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1390,
+        "y": 300,
+        "wires": [
+            [
+                "694a63ad7980fa81"
+            ]
+        ]
     },
     {
         "id": "codex_alert_state",
@@ -9972,198 +10460,6 @@
         ]
     },
     {
-        "id": "storage_notify_persistent",
-        "type": "api-call-service",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Fallback persistente no HA",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\":payload.title,\"message\":payload.message,\"notification_id\":\"raspberry_storage_health\"}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 1480,
-        "y": 370,
-        "wires": [
-            [
-                "storage_notification_ack"
-            ]
-        ]
-    },
-    {
-        "id": "storage_notification_ack",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Confirmar entrega e iniciar cooldown",
-        "func": "const ack = msg.notificationAck;\nif (!ack || !Number.isFinite(Number(ack.at)) || !Array.isArray(ack.targets)) return null;\nfor (const target of ack.targets) {\n    if (!target || typeof target.key !== \"string\") continue;\n    if (typeof target.field === \"string\") {\n        const value = flow.get(target.key, \"persistent\") ?? {};\n        value[target.field] = Number(ack.at);\n        if (value.pendingAlert?.notificationAck?.id === ack.id) value.pendingAlert = null;\n        flow.set(target.key, value, \"persistent\");\n    } else {\n        flow.set(target.key, Number(ack.at), \"persistent\");\n    }\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1770,
-        "y": 310,
-        "wires": []
-    },
-    {
-        "id": "storage_notification_catch",
-        "type": "catch",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Capturar falha de notificacao",
-        "scope": [
-            "storage_notify",
-            "storage_notify_secondary",
-            "storage_notify_persistent"
-        ],
-        "uncaught": false,
-        "x": 1480,
-        "y": 430,
-        "wires": [
-            [
-                "storage_notification_failure"
-            ]
-        ]
-    },
-    {
-        "id": "storage_notification_failure",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Registrar falha sem cooldown",
-        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"storage_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1760,
-        "y": 430,
-        "wires": []
-    },
-    {
-        "id": "storage_manual_start",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Iniciar execução manual",
-        "func": "const LOCK = \"storage_manual_running\";\nif (flow.get(LOCK, \"memoryOnly\") === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"execução manual já ativa\" });\n    return [null, null, null, { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true }];\n}\nflow.set(LOCK, true, \"memoryOnly\");\nmsg.storageManualRun = true;\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"running\" });\nconst status = { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"ON\", retain: true };\nreturn [msg, { ...msg }, { ...msg }, status];",
-        "outputs": 4,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 430,
-        "y": 370,
-        "wires": [
-            [
-                "storage_exec_maintenance"
-            ],
-            [
-                "storage_request_host_maintenance"
-            ],
-            [
-                "storage_read_ha"
-            ],
-            [
-                "storage_manual_status_mqtt"
-            ]
-        ]
-    },
-    {
-        "id": "storage_manual_status_mqtt",
-        "type": "mqtt out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Publicar execução manual",
-        "topic": "",
-        "qos": "1",
-        "retain": "true",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "721c47f31046b8bc",
-        "x": 1190,
-        "y": 390,
-        "wires": []
-    },
-    {
-        "id": "storage_manual_complete",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Finalizar execução manual",
-        "func": "if (msg.storageManualRun !== true) return null;\nflow.set(\"storage_manual_running\", false, \"memoryOnly\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"idle\" });\nreturn { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true };",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1250,
-        "y": 590,
-        "wires": [
-            [
-                "storage_manual_status_mqtt"
-            ]
-        ]
-    },
-    {
-        "id": "alarm_arrival_notification_ack_v1",
-        "type": "function",
-        "z": "1f468eaeef0733dd",
-        "name": "Confirmar entrega da solicitacao",
-        "func": "const candidate = msg.alarmConfirmationCandidate;\nif (!candidate || typeof candidate.deliveryId !== \"string\" || !Number.isFinite(Number(candidate.createdAt)) || !Number.isFinite(Number(candidate.expiresAt))) return null;\nconst PENDING_KEY = \"alarm_arrival_pending_confirmation\";\nconst LAST_REQUEST_KEY = \"alarm_arrival_last_confirmation_at\";\nconst INFLIGHT_KEY = \"alarm_arrival_confirmation_inflight\";\nconst existing = flow.get(PENDING_KEY);\nif (!existing || existing.deliveryId === candidate.deliveryId || Number(existing.expiresAt || 0) <= Date.now()) {\n    flow.set(PENDING_KEY, candidate);\n    flow.set(LAST_REQUEST_KEY, Number(candidate.createdAt));\n}\nconst inflight = flow.get(INFLIGHT_KEY);\nif (inflight?.deliveryId === candidate.deliveryId) flow.set(INFLIGHT_KEY, null);\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1900,
-        "y": 150,
-        "wires": []
-    },
-    {
-        "id": "alarm_arrival_notification_failure_v1",
-        "type": "function",
-        "z": "1f468eaeef0733dd",
-        "name": "Registrar falha sem armar cooldown",
-        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"alarm_arrival_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1510,
-        "y": 320,
-        "wires": [
-            [
-                "694a63ad7980fa81"
-            ]
-        ]
-    },
-    {
         "id": "codex_alert_ack",
         "type": "function",
         "z": "codex_alertas_tab",
@@ -10215,301 +10511,5 @@
         "x": 1260,
         "y": 340,
         "wires": []
-    },
-    {
-        "id": "internet_history_retained",
-        "type": "mqtt in",
-        "z": "monitoramento_internet_tab",
-        "g": "grp_internet_triggers",
-        "name": "Recuperar histórico retained",
-        "topic": "nodered/infrastructure/internet/attributes",
-        "qos": "1",
-        "datatype": "auto-detect",
-        "broker": "721c47f31046b8bc",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 170,
-        "y": 260,
-        "wires": [
-            [
-                "internet_restore_history"
-            ]
-        ]
-    },
-    {
-        "id": "internet_restore_history",
-        "type": "function",
-        "z": "monitoramento_internet_tab",
-        "g": "grp_internet_state",
-        "name": "Preservar histórico retained",
-        "func": "const HISTORY_KEY = \"internet_monitor_history_v1\";\n  let retained = msg.payload;\n  if (Buffer.isBuffer(retained)) retained = retained.toString(\"utf8\");\n  if (typeof retained === \"string\") {\n    try { retained = JSON.parse(retained); } catch { return null; }\n  }\n  if (!retained || typeof retained !== \"object\") return null;\n  const current = flow.get(HISTORY_KEY, \"persistent\") || {};\n  const isTimestamp = (value) => typeof value === \"string\" && Number.isFinite(Date.parse(value));\n  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;\n  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;\n  const durationValue = retained.last_outage_duration_s;\n  const duration = Number(durationValue);\n  if (durationValue != null && durationValue !== \"\" && Number.isFinite(duration) && duration >= 0) {\n    current.last_outage_duration_s = duration;\n  }\n  flow.set(HISTORY_KEY, current, \"persistent\");\n  return null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 745,
-        "y": 220,
-        "wires": []
-    },
-    {
-        "id": "zigbee_history_retained",
-        "type": "mqtt in",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_triggers",
-        "name": "Recuperar histórico retained",
-        "topic": "nodered/infrastructure/zigbee/attributes",
-        "qos": "1",
-        "datatype": "auto-detect",
-        "broker": "721c47f31046b8bc",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 190,
-        "y": 450,
-        "wires": [
-            [
-                "zigbee_restore_history"
-            ]
-        ]
-    },
-    {
-        "id": "zigbee_restore_history",
-        "type": "function",
-        "z": "monitoramento_zigbee_tab",
-        "g": "grp_zigbee_state",
-        "name": "Preservar histórico retained",
-        "func": "const HISTORY_KEY = \"zigbee_network_monitor_history_v1\";\n  let retained = msg.payload;\n  if (Buffer.isBuffer(retained)) retained = retained.toString(\"utf8\");\n  if (typeof retained === \"string\") {\n    try { retained = JSON.parse(retained); } catch { return null; }\n  }\n  if (!retained || typeof retained !== \"object\") return null;\n  const current = flow.get(HISTORY_KEY, \"persistent\") || {};\n  const isTimestamp = (value) => typeof value === \"string\" && Number.isFinite(Date.parse(value));\n  if (isTimestamp(retained.last_outage)) current.last_outage_at = retained.last_outage;\n  if (isTimestamp(retained.last_recovery)) current.last_recovery_at = retained.last_recovery;\n  const durationValue = retained.last_outage_duration_s;\n  const duration = Number(durationValue);\n  if (durationValue != null && durationValue !== \"\" && Number.isFinite(duration) && duration >= 0) {\n    current.last_outage_duration_s = duration;\n  }\n  flow.set(HISTORY_KEY, current, \"persistent\");\n  return null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 810,
-        "y": 230,
-        "wires": []
-    },
-    {
-        "id": "ext_sunset_recovery_boot",
-        "type": "inject",
-        "z": "ce258dec9814b96b",
-        "name": "Verificar pôr do sol perdido no boot",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 15,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 210,
-        "y": 440,
-        "wires": [
-            [
-                "ext_sunset_recovery_sun_check"
-            ]
-        ]
-    },
-    {
-        "id": "ext_sunset_recovery_sun_check",
-        "type": "api-current-state",
-        "z": "ce258dec9814b96b",
-        "name": "Boot ocorreu depois do pôr do sol?",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "outputs": 2,
-        "halt_if": "below_horizon",
-        "halt_if_type": "str",
-        "halt_if_compare": "is",
-        "entity_id": "sun.sun",
-        "state_type": "str",
-        "blockInputOverrides": true,
-        "outputProperties": [
-            {
-                "property": "sun_last_changed",
-                "propertyType": "msg",
-                "value": "$entities(\"sun.sun\").last_changed",
-                "valueType": "jsonata"
-            }
-        ],
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "override_topic": false,
-        "state_location": "payload",
-        "override_payload": "msg",
-        "entity_location": "data",
-        "override_data": "msg",
-        "x": 520,
-        "y": 440,
-        "wires": [
-            [
-                "ext_prepare_recovery_confirmation"
-            ],
-            []
-        ]
-    },
-    {
-        "id": "ext_prepare_recovery_confirmation",
-        "type": "function",
-        "z": "ce258dec9814b96b",
-        "name": "Preparar confirmação do pôr do sol perdido",
-        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat('en-US', {\n        timeZone,\n        year: 'numeric',\n        month: '2-digit',\n        day: '2-digit'\n    }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\n\nconst STORE = 'persistent';\nconst PENDING_KEY = 'external_lighting_recovery_pending_v1';\nconst PROMPTED_DATE_KEY = 'external_lighting_recovery_prompted_date_v1';\nconst TTL_MS = 12 * 60 * 60 * 1000;\nconst now = new Date();\nconst sunsetAt = new Date(msg.sun_last_changed);\nconst timeZone = env.get('TZ') || 'America/Sao_Paulo';\n\nif (!Number.isFinite(sunsetAt.getTime())) {\n    node.status({ fill: 'red', shape: 'ring', text: 'horário do pôr do sol ausente' });\n    return null;\n}\n\nconst today = localDate(now, timeZone);\nif (localDate(sunsetAt, timeZone) !== today) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'pôr do sol foi em outro dia' });\n    return null;\n}\n\nconst pending = flow.get(PENDING_KEY, STORE);\nconst promptedDate = flow.get(PROMPTED_DATE_KEY, STORE);\nif (promptedDate === today || (pending?.localDate === today && Number(pending.expiresAt) > now.getTime())) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'confirmação já enviada hoje' });\n    return null;\n}\n\nconst token = (now.getTime().toString(36) + '_' + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst candidate = {\n    version: 1,\n    localDate: today,\n    createdAt: now.getTime(),\n    expiresAt: now.getTime() + TTL_MS,\n    confirmAction: 'ILUMINACAO_EXTERNA_LIGAR_' + token,\n    cancelAction: 'ILUMINACAO_EXTERNA_NAO_LIGAR_' + token\n};\n\nmsg.external_lighting_recovery_candidate = candidate;\nmsg.confirm_action = candidate.confirmAction;\nmsg.cancel_action = candidate.cancelAction;\nmsg.notification_title = 'Iluminação externa';\nmsg.notification_message = 'O Node-RED voltou depois do pôr do sol de hoje. Deseja ligar as lâmpadas externas agora?';\nmsg.notification_tag = 'external_lighting_sunset_recovery';\nmsg.notify_text = 'O Node-RED voltou depois do pôr do sol. Você ainda quer ligar a iluminação externa? Responda pela notificação que enviei ao celular.';\nnode.status({ fill: 'yellow', shape: 'dot', text: 'enviando confirmação' });\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 850,
-        "y": 440,
-        "wires": [
-            [
-                "ext_send_recovery_mobile"
-            ]
-        ]
-    },
-    {
-        "id": "ext_send_recovery_mobile",
-        "type": "api-call-service",
-        "z": "ce258dec9814b96b",
-        "name": "Perguntar no celular",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "public_bindings.call",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\": notification_title, \"message\": notification_message, \"data\": {\"tag\": notification_tag, \"actions\": [{\"action\": confirm_action, \"title\": \"Ligar\"}, {\"action\": cancel_action, \"title\": \"Não ligar\"}]}}}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "public_bindings",
-        "service": "call",
-        "x": 1160,
-        "y": 440,
-        "wires": [
-            [
-                "ext_commit_recovery_confirmation"
-            ]
-        ]
-    },
-    {
-        "id": "ext_commit_recovery_confirmation",
-        "type": "function",
-        "z": "ce258dec9814b96b",
-        "name": "Registrar confirmação enviada",
-        "func": "const STORE = 'persistent';\nconst candidate = msg.external_lighting_recovery_candidate;\nif (!candidate?.localDate || !candidate?.confirmAction || !candidate?.cancelAction) {\n    node.status({ fill: 'red', shape: 'ring', text: 'confirmação inválida' });\n    return null;\n}\nflow.set('external_lighting_recovery_pending_v1', candidate, STORE);\nflow.set('external_lighting_recovery_prompted_date_v1', candidate.localDate, STORE);\nnode.status({ fill: 'yellow', shape: 'dot', text: 'aguardando resposta no celular' });\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1440,
-        "y": 440,
-        "wires": [
-            [
-                "9d81b75a18d482f1"
-            ]
-        ]
-    },
-    {
-        "id": "ext_recovery_notification_action",
-        "type": "server-events",
-        "z": "ce258dec9814b96b",
-        "name": "Resposta da confirmação no celular",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "exposeAsEntityConfig": "",
-        "eventType": "mobile_app_notification_action",
-        "eventData": "",
-        "waitForRunning": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "eventData"
-            }
-        ],
-        "x": 230,
-        "y": 520,
-        "wires": [
-            [
-                "ext_validate_recovery_confirmation"
-            ]
-        ]
-    },
-    {
-        "id": "ext_validate_recovery_confirmation",
-        "type": "function",
-        "z": "ce258dec9814b96b",
-        "name": "Validar confirmação da iluminação",
-        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat('en-US', {\n        timeZone,\n        year: 'numeric',\n        month: '2-digit',\n        day: '2-digit'\n    }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\n\nconst STORE = 'persistent';\nconst PENDING_KEY = 'external_lighting_recovery_pending_v1';\nconst pending = flow.get(PENDING_KEY, STORE);\nconst action = msg.payload?.event?.action ?? msg.payload?.action ?? msg.event?.action ?? null;\n\nif (!pending || typeof action !== 'string') return null;\n\nconst now = new Date();\nconst timeZone = env.get('TZ') || 'America/Sao_Paulo';\nif (Number(pending.expiresAt) <= now.getTime() || pending.localDate !== localDate(now, timeZone)) {\n    flow.set(PENDING_KEY, null, STORE);\n    node.status({ fill: 'grey', shape: 'ring', text: 'confirmação expirada' });\n    return null;\n}\n\nif (action === pending.cancelAction) {\n    flow.set(PENDING_KEY, null, STORE);\n    node.status({ fill: 'blue', shape: 'ring', text: 'usuário optou por não ligar' });\n    return null;\n}\n\nif (action !== pending.confirmAction) return null;\n\nflow.set(PENDING_KEY, null, STORE);\nmsg.external_lighting_recovery_confirmed = true;\nnode.status({ fill: 'green', shape: 'dot', text: 'ligação confirmada' });\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 550,
-        "y": 520,
-        "wires": [
-            [
-                "ext_confirm_recovery_sun_check"
-            ]
-        ]
-    },
-    {
-        "id": "ext_confirm_recovery_sun_check",
-        "type": "api-current-state",
-        "z": "ce258dec9814b96b",
-        "name": "Ainda está depois do pôr do sol?",
-        "server": "4126427d5e161a03",
-        "version": 3,
-        "outputs": 2,
-        "halt_if": "below_horizon",
-        "halt_if_type": "str",
-        "halt_if_compare": "is",
-        "entity_id": "sun.sun",
-        "state_type": "str",
-        "blockInputOverrides": true,
-        "outputProperties": [],
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "override_topic": false,
-        "state_location": "payload",
-        "override_payload": "msg",
-        "entity_location": "data",
-        "override_data": "msg",
-        "x": 860,
-        "y": 520,
-        "wires": [
-            [
-                "943c87e6b17f0d68"
-            ],
-            []
-        ]
     }
 ]
