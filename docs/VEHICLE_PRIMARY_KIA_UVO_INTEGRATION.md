@@ -38,7 +38,7 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   ignorado para nao criar horarios EV ficticios em 00:00 nem warning por poll.
 - O botao de force refresh conserva um piso de **15 minutos entre wakes reais**.
   Dentro desse intervalo ele faz apenas leitura do cache. Com `options: {}` o
-  scheduler nativo consulta cache a cada 30 minutos e so considera wake proprio
+  scheduler nativo consulta cache a cada 15 minutos e so considera wake proprio
   apos 1440 minutos; a politica Node-RED pede wake a cada 15 minutos quando
   habilitada.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
@@ -130,7 +130,7 @@ real do carro, enquanto o app Bluelink mostrava certo. Investigacao:
 - O sensor `binary_sensor.vehicle_primary_engine` e alimentado pelo campo `engine` do
   endpoint de status (`/status/latest` ou `/ccs2/carstatus/latest`), lido a
   cada poll do coordinator.
-- Por padrao (`options: {}` no config entry, ou seja, tudo default) o
+- Historicamente, com `options: {}` no config entry, o
   coordinator so faz uma leitura *ao vivo* forcada automaticamente **uma vez
   por dia** (`DEFAULT_FORCE_REFRESH_INTERVAL = 1440` min); todo o resto do
   tempo le o cache do servidor da Hyundai (`update_all_vehicles_with_cached_state`).
