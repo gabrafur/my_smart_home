@@ -115,10 +115,12 @@ clone. O instalador configura apenas este checkout, é idempotente e se recusa a
 sobrescrever um `core.hooksPath` personalizado. Nesse caso, integre o hook
 existente manualmente antes de alterar a configuração.
 
-O hook usado é `commit-msg`, porque o hook `pre-commit` é executado antes de a
-mensagem existir. Ele lê a primeira linha preparada pelo Git e chama o mesmo
-validador usado pela CI. Commits feitos pelo terminal e por IDEs que respeitam
-hooks Git são bloqueados quando o assunto é inválido. `--no-verify` consegue
+O hook `commit-msg` é usado porque `pre-commit` executa antes de a mensagem
+existir. Ele lê a primeira linha preparada pelo Git e chama o mesmo validador
+usado pela CI. O hook `pre-push` exige uma árvore limpa, aceita somente o branch
+atualmente em checkout e executa `make validate-public`; qualquer falha impede
+o envio. Commits e pushes feitos pelo terminal ou por IDEs que respeitam hooks
+Git ficam protegidos pelos mesmos contratos da CI. `--no-verify` consegue
 ignorar hooks por design do Git e não deve ser usado no fluxo normal.
 
 Exemplo de bloqueio:

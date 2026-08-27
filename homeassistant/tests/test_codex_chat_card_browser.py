@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -20,9 +21,45 @@ VIEWPORTS = ((390, 844), (320, 667), (430, 932), (844, 390), (1440, 900))
 class CodexChatCardBrowserTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.chromium = shutil.which("chromium") or shutil.which("chromium-browser")
-        if cls.chromium is None:
+        configured = os.environ.get("CODEX_BROWSER")
+        names = [configured] if configured else []
+        names.extend(("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"))
+        candidates = []
+        for name in names:
+            executable = shutil.which(name) if name else None
+            if executable and executable not in candidates:
+                candidates.append(executable)
+        if not candidates:
             raise unittest.SkipTest("Chromium is not available for browser layout checks")
+
+        failures = []
+        for executable in candidates:
+            try:
+                with tempfile.TemporaryDirectory(prefix="codex-browser-probe-") as directory:
+                    process = subprocess.run(
+                        [
+                            executable,
+                            "--headless=new",
+                            "--no-sandbox",
+                            "--disable-gpu",
+                            "--disable-dev-shm-usage",
+                            f"--user-data-dir={Path(directory) / 'profile'}",
+                            "--dump-dom",
+                            "data:text/html,<body>codex-browser-ready</body>",
+                        ],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                if process.returncode == 0 and "codex-browser-ready" in process.stdout:
+                    cls.chromium = executable
+                    return
+                failures.append(f"{Path(executable).name}: exit {process.returncode}")
+            except subprocess.TimeoutExpired:
+                failures.append(f"{Path(executable).name}: timed out")
+
+        raise RuntimeError("No installed browser passed the headless probe: " + "; ".join(failures))
 
     def render_viewport(self, width: int, height: int) -> dict:
         card = CARD.read_text(encoding="utf-8")

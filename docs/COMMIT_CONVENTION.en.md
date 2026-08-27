@@ -115,10 +115,12 @@ refuses to overwrite a custom `core.hooksPath`. If one exists, integrate the
 existing hook manually before changing the configuration.
 
 The repository uses `commit-msg` because `pre-commit` runs before a commit
-message exists. The hook reads the first line prepared by Git and invokes the
-same checker used by CI. Commits made in a terminal or an IDE that honors Git
-hooks are blocked when the subject is invalid. Git provides `--no-verify` as an
-escape hatch; it must not be used in the normal workflow.
+message exists. It reads the first line prepared by Git and invokes the same
+checker used by CI. The `pre-push` hook requires a clean worktree, accepts only
+the currently checked-out branch, and runs `make validate-public`; any failure
+blocks the push. Commits and pushes from terminals or IDEs that honor Git hooks
+are therefore protected by the same CI contracts. Git provides `--no-verify`
+as an escape hatch; it must not be used in the normal workflow.
 
 Example rejection:
 

@@ -181,6 +181,36 @@ test('does not erase a newer draft when an older in-flight send finishes after r
   remounted.flushDraft();
 });
 
+test('renders shared state when the Home Assistant user arrives after mount', () => {
+  const runtime = createRuntime();
+  const first = attachCard(runtime, 'late-user');
+  first.state.messages.push({ role: 'assistant', text: 'histórico preservado' });
+  first.updateDraft('rascunho preservado');
+  first.updateModel('gpt-5.6-terra');
+  first.updateReasoning('ultra');
+  first.flushDraft();
+
+  const remounted = new runtime.Card();
+  const snapshots = [];
+  remounted.isConnected = true;
+  remounted.render = () => snapshots.push({
+    draft: remounted.state.draft,
+    model: remounted.state.settings.model,
+    reasoning: remounted.state.settings.reasoning,
+    messages: remounted.state.messages.length,
+  });
+  remounted.setConfig({ title: 'Codex' });
+  remounted.hass = { user: { id: 'late-user', name: 'User late-user' }, callWS: async () => ({}) };
+
+  assert.equal(remounted.state, first.state);
+  assert.deepEqual(snapshots.at(-1), {
+    draft: 'rascunho preservado',
+    model: 'gpt-5.6-terra',
+    reasoning: 'ultra',
+    messages: 1,
+  });
+});
+
 test('recovers from a synchronous WebSocket failure without leaving request state stuck', async () => {
   const runtime = createRuntime();
   const card = attachCard(runtime, 'synchronous-failure', () => { throw new Error('socket unavailable'); });

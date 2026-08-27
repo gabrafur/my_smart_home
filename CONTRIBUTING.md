@@ -33,16 +33,20 @@ Python 3.
 ```bash
 git clone https://github.com/SEU_USUARIO/my_smart_home.git
 cd my_smart_home
+make install-git-hooks
 make bootstrap-test
 make validate-public
 make demo-test
 ```
 
-`make bootstrap` cria somente templates privados ausentes; revise o plano antes
-de usá-lo numa instalação. `make demo` é sintético, em memória e sem I/O real.
-`make bootstrap` creates missing private templates only; review its plan before
-using it for an installation. `make demo` is synthetic, in-memory, and performs
-no real I/O.
+`make install-git-hooks` ativa as proteções locais de mensagem de commit e
+validação obrigatória antes de push. `make bootstrap` cria somente templates
+privados ausentes; revise o plano antes de usá-lo numa instalação. `make demo`
+é sintético, em memória e sem I/O real. `make install-git-hooks` enables the
+local commit-message and required pre-push validation protections. `make
+bootstrap` creates missing private templates only; review its plan before using
+it for an installation. `make demo` is synthetic, in-memory, and performs no
+real I/O.
 
 ## Pull request
 

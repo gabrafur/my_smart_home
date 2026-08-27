@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(git rev-parse --show-toplevel)
+head_oid=$(git -C "$repository_root" rev-parse HEAD)
+zero_oid=0000000000000000000000000000000000000000
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  case "$local_ref" in
+    refs/heads/*)
+      if [ "$local_oid" != "$zero_oid" ] && [ "$local_oid" != "$head_oid" ]; then
+        printf 'pre-push: refusing to validate %s because it is not the checked-out HEAD\n' "$local_ref" >&2
+        printf 'Check out the branch and push it again so its exact worktree can be validated.\n' >&2
+        exit 1
+      fi
+      ;;
+  esac
+done
+
+worktree_status=$(git -C "$repository_root" status --porcelain --untracked-files=all)
+if [ -n "$worktree_status" ]; then
+  printf 'pre-push: the worktree must be clean before canonical validation\n' >&2
+  printf '%s\n' "$worktree_status" >&2
+  exit 1
+fi
+
+printf 'pre-push: running canonical public validation for %s\n' "$head_oid"
+exec make -C "$repository_root" --no-print-directory validate-public

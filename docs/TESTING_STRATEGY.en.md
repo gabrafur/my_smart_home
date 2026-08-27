@@ -40,10 +40,16 @@ full matrix enables every public profile using `.env.example`. Both run only
 one canonical check, `public-validation / Canonical public validation`, which
 calls only `make validate-public`.
 
+The versioned `pre-push` hook, enabled by `make install-git-hooks`, requires a
+clean worktree and runs that same canonical target before allowing `HEAD` to be
+pushed. The locally validated state therefore matches the commit being sent,
+and any failure blocks the push before it reaches GitHub Actions.
+
 ## Deliberate boundaries
 
 Automation never tests against the real household: it does not read secrets,
 call home endpoints, send notifications, move the gate, change the alarm,
 control the vehicle, or start the stack. Physical tests and post-deployment
 validation remain documented manual procedures. Before a commit, the index can
-also be checked with `make validate-staged`.
+also be checked with `make validate-staged`. Git's `--no-verify` escape hatch
+exists for exceptional recovery and is not part of the normal workflow.

@@ -40,10 +40,17 @@ somente `docker compose ... config --quiet`; nenhum serviço residencial é
 iniciado. A CI tem um check canônico, `public-validation / Canonical public
 validation`, que chama somente `make validate-public`.
 
+O hook versionado `pre-push`, ativado por `make install-git-hooks`, exige uma
+árvore de trabalho limpa e executa esse mesmo alvo canônico antes de permitir
+o envio do `HEAD`. Assim, o estado validado localmente corresponde ao commit
+enviado, e uma falha bloqueia o push antes de chegar ao GitHub Actions.
+
 ## Limites deliberados
 
 A automação nunca testa contra a residência real: não lê secrets, não chama
 endpoints domésticos, não envia notificações, não movimenta portão, não muda
 alarme, não controla veículo e não inicia a stack. Testes físicos e validação
 pós-deploy continuam procedimentos manuais documentados. Antes de um commit,
-o índice também pode ser validado com `make validate-staged`.
+o índice também pode ser validado com `make validate-staged`. O escape
+`--no-verify` do Git existe para recuperação excepcional e não faz parte do
+fluxo normal.

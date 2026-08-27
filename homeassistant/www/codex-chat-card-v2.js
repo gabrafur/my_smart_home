@@ -63,7 +63,10 @@ class CodexChatCard extends HTMLElement {
   set hass(hass) {
     const previousUserId = this._hass?.user?.id;
     this._hass = hass;
-    if (previousUserId !== hass?.user?.id || !this.chatKey) this.attachChatState();
+    if (previousUserId !== hass?.user?.id || !this.chatKey) {
+      this.attachChatState();
+      this.render();
+    }
     if (!this.state.historyLoaded && !this.state.historyPromise) this.loadHistory();
     this.scheduleViewportUpdate();
   }
