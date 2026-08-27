@@ -174,18 +174,24 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     },
     msg: {},
   });
-  assert.equal(result[0].length, 3);
-  assert.equal(result[0][0].topic, "homeassistant/sensor/vehicle_primary_refresh_coordinator_source/config");
+  assert.equal(result[0].length, 4);
+  assert.equal(result[0][0].topic, "homeassistant/sensor/creta_refresh_coordinator/config");
   assert.equal(result[0][0].payload, "");
-  const discovery = JSON.parse(result[0][1].payload);
+  assert.equal(result[0][0].retain, true);
+  assert.equal(
+    result[0][1].topic,
+    "homeassistant/sensor/vehicle_primary_refresh_coordinator_source/config",
+  );
+  assert.equal(result[0][1].payload, "");
+  const discovery = JSON.parse(result[0][2].payload);
   assert.equal(discovery.name, "Refresh Coordinator");
   assert.equal(discovery.object_id, "vehicle_primary_refresh_coordinator");
   assert.equal(discovery.unique_id, "vehicle_primary_refresh_coordinator");
   assert.equal(
-    result[0][1].topic,
+    result[0][2].topic,
     "homeassistant/sensor/vehicle_primary_refresh_coordinator/config",
   );
-  const payload = JSON.parse(result[0][2].payload);
+  const payload = JSON.parse(result[0][3].payload);
   assert.equal(payload.state, "backoff");
   assert.equal(payload.attempt, 3);
   assert.equal(payload.remaining_seconds, 58);
