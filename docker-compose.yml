@@ -8,7 +8,7 @@ services:
 
   portainer:
     logging: *default-logging
-    image: portainer/portainer-ce@sha256:3fa8750ac2b98ce56784ca292df1adc3ec38f0062fd572811ea4b2221beee310
+    image: portainer/portainer-ce@sha256:efdd92144178ac25aa211bb35277157d97301c3734d22e50b64cf9f76674fcee
     container_name: portainer
     restart: always
     ports:
