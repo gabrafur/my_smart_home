@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
@@ -81,8 +80,8 @@ if (!entries.get("DOCKER_GID") || entries.get("DOCKER_GID") === "999") {
 const repoStat = fs.statSync(repoRoot);
 entries.set("REPO_UID", String(repoStat.uid));
 entries.set("REPO_GID", String(repoStat.gid));
-const defaultSshKey = path.join(os.homedir(), ".ssh", "id_ed25519");
-const defaultKnownHosts = path.join(os.homedir(), ".ssh", "known_hosts");
+const defaultSshKey = path.join(repoRoot, ".ssh", "id_ed25519");
+const defaultKnownHosts = path.join(repoRoot, ".ssh", "known_hosts");
 if (!entries.get("WEEKLY_DOCS_REVIEW_SSH_KEY") && fs.existsSync(defaultSshKey)) {
     entries.set("WEEKLY_DOCS_REVIEW_SSH_KEY", defaultSshKey);
 }

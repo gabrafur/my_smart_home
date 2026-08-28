@@ -17,6 +17,7 @@
 .env
 .env.*
 !.env.example
+/.ssh/
 .local-secrets/
 .local-state/
 homeassistant/.storage-maintenance-trigger/
