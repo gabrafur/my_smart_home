@@ -85,6 +85,7 @@ validate-memory:
 validate-node-red:
 	npm --prefix nodered ci --ignore-scripts --no-audit --no-fund
 	npm --prefix nodered run flows:validate
+	npm --prefix nodered run flows:validate-layout
 	node --check nodered/settings.js
 	npm --prefix nodered run test:all
 

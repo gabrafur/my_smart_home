@@ -51,6 +51,7 @@ const internetFlow = context();
 assert.match(flows.find((item) => item.id === "internet_evaluate").func, /persistent/);
 assert.match(flows.find((item) => item.id === "zigbee_network_evaluate").func, /persistent/);
 assert.match(flows.find((item) => item.id === "zigbee_component_evaluate").func, /persistent/);
+assert.match(flows.find((item) => item.id === "tuya_device_evaluate").func, /persistent/);
 let now = Date.UTC(2026, 7, 13, 12, 0, 0);
 
 // Healthy baseline and one external host failing: still online, no recovery.
@@ -179,6 +180,7 @@ const observeZigbee = getFunction("zigbee_store_observation");
 const zigbee = getFunction("zigbee_network_evaluate");
 const restoreZigbeeHistory = getFunction("zigbee_restore_history");
 const zigbeeComponent = getFunction("zigbee_component_evaluate");
+const zigbeeComponentReminders = getFunction("zigbee_component_reminders");
 const zigbeeFlow = context();
 now = Date.UTC(2026, 7, 13, 13, 0, 0);
 zigbeeFlow.set("zigbee_bridge_observation", { state: "unknown", changed_at: now }, "memoryOnly");
@@ -235,6 +237,19 @@ assert.equal(result[1], null);
 result = run(zigbee, restartedZigbeeFlow, { monitor_now: now + 270_000 });
 assert.ok(result[1], "restart deve recuperar incidente persistido uma única vez");
 
+// An unresolved Zigbee network incident repeats the same alert every 24 hours.
+const zigbeeReminderFlow = context();
+zigbeeReminderFlow.set("zigbee_bridge_observation", { state: "offline", changed_at: now }, "memoryOnly");
+result = run(zigbee, zigbeeReminderFlow, { monitor_now: now + 30_000 });
+assert.equal(result[0].notification.id, "zigbee_network_failure");
+result = run(zigbee, zigbeeReminderFlow, { monitor_now: now + 30_000 + 24 * 60 * 60 * 1000 - 1 });
+assert.equal(result[0], null);
+result = run(zigbee, zigbeeReminderFlow, { monitor_now: now + 30_000 + 24 * 60 * 60 * 1000 });
+assert.equal(result[0].notification.id, "zigbee_network_failure");
+assert.match(result[0].notification.title, /persiste/);
+result = run(zigbee, zigbeeReminderFlow, { monitor_now: now + 30_000 + 24 * 60 * 60 * 1000 + 1 });
+assert.equal(result[0], null, "lembrete Zigbee de 24 h não pode duplicar no mesmo período");
+
 // Component retained online at startup is silent; offline/duplicate/online is one pair.
 const componentTopic = "zigbee2mqtt/teste/sensor/availability";
 result = run(zigbeeComponent, zigbeeFlow, { topic: componentTopic, payload: "online", monitor_now: now });
@@ -249,6 +264,21 @@ result = run(zigbeeComponent, zigbeeFlow, { topic: componentTopic, payload: "onl
 assert.equal(result, null);
 result = run(zigbeeComponent, zigbeeFlow, { topic: componentTopic, payload: "offline", monitor_now: now + 5_000 });
 assert.ok(result[0], "nova queda do componente após recuperação deve alertar");
+
+// Component reminders are driven by the periodic tick even without a new MQTT availability message.
+const componentReminderFlow = context();
+const componentReminderStart = now + 300_000;
+run(zigbeeComponent, componentReminderFlow, { topic: componentTopic, payload: "offline", monitor_now: componentReminderStart });
+result = run(zigbeeComponentReminders, componentReminderFlow, { monitor_now: componentReminderStart + 24 * 60 * 60 * 1000 - 1 });
+assert.equal(result, null);
+result = run(zigbeeComponentReminders, componentReminderFlow, { monitor_now: componentReminderStart + 24 * 60 * 60 * 1000 });
+assert.equal(result[0].length, 1);
+assert.match(result[0][0].notification.title, /continua indisponível/);
+result = run(zigbeeComponentReminders, componentReminderFlow, { monitor_now: componentReminderStart + 24 * 60 * 60 * 1000 + 1 });
+assert.equal(result, null);
+run(zigbeeComponent, componentReminderFlow, { topic: componentTopic, payload: "online", monitor_now: componentReminderStart + 24 * 60 * 60 * 1000 + 2 });
+result = run(zigbeeComponentReminders, componentReminderFlow, { monitor_now: componentReminderStart + 48 * 60 * 60 * 1000 });
+assert.equal(result, null, "componente recuperado não pode gerar lembrete");
 
 // Hierarchical friendly names keep the complete path and cannot collide after slugification.
 const hierarchicalFlow = context();
@@ -266,17 +296,111 @@ assert.equal(new Set(hierarchical.map((item) => item.id)).size, hierarchical.len
 assert.match(hierarchical[0].message, /andar1\/cozinha\/sensor/);
 assert.match(hierarchical[1].message, /externo\/portao\/sensor/);
 
+const tuya = getFunction("tuya_device_evaluate");
+const tuyaQueryFailure = getFunction("tuya_query_failure");
+const tuyaFlow = context();
+const tuyaEntities = [
+  { entity_id: "sensor.comedouro_nivel", device_id: "device-feeder", platform: "tuya", disabled_by: null, original_name: "Nível" },
+  { entity_id: "button.comedouro_alimentar", device_id: "device-feeder", platform: "tuya", disabled_by: null, original_name: "Alimentar" },
+  { entity_id: "switch.rele_local", device_id: "device-relay", platform: "localtuya", disabled_by: null, original_name: "Relé" },
+  { entity_id: "sensor.tuya_desabilitado", device_id: "device-disabled", platform: "tuya", disabled_by: "integration", original_name: "Desabilitado" },
+  { entity_id: "sensor.zigbee_ignorado", device_id: "device-zigbee", platform: "mqtt", disabled_by: null, original_name: "Zigbee" },
+];
+const tuyaDevices = [
+  { id: "device-feeder", name_by_user: "Comedouro" },
+  { id: "device-relay", name: "Relé local" },
+  { id: "device-disabled", name: "Desabilitado" },
+];
+function tuyaSnapshot(clock, feederState = "42", relayState = "on") {
+  return {
+    monitor_now: clock,
+    tuya_entity_registry: structuredClone(tuyaEntities),
+    tuya_device_registry: structuredClone(tuyaDevices),
+    tuya_states: [
+      { entity_id: "sensor.comedouro_nivel", state: feederState, attributes: { friendly_name: "Comedouro Nível" } },
+      { entity_id: "button.comedouro_alimentar", state: "unknown", attributes: {} },
+      { entity_id: "switch.rele_local", state: relayState, attributes: { friendly_name: "Relé local" } },
+    ],
+  };
+}
+
+let tuyaNow = Date.UTC(2026, 7, 13, 14, 0, 0);
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow));
+assert.equal(result[0], null);
+assert.equal(result[1], null);
+let tuyaAttributes = JSON.parse(result[2].find((message) => message.topic.endsWith("/attributes")).payload);
+assert.equal(tuyaAttributes.state, "online");
+assert.equal(tuyaAttributes.monitored_device_count, 2, "plataformas alheias e entidades desabilitadas devem ser ignoradas");
+
+// A transient unavailable is visible as checking, but only 30 seconds opens an incident.
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 10_000, "unavailable"));
+assert.equal(result[0], null);
+tuyaAttributes = JSON.parse(result[2].find((message) => message.topic.endsWith("/attributes")).payload);
+assert.equal(tuyaAttributes.state, "checking");
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 29_000, "unavailable"));
+assert.equal(result[0], null);
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 1_000, "unavailable"));
+assert.equal(result[0].length, 1);
+assert.match(result[0][0].notification.message, /Comedouro/);
+assert.equal(tuyaFlow.get("tuya_device_incidents_v1", "persistent")["device-feeder"].incident_open, true);
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 30_000, "unavailable"));
+assert.equal(result[0], null, "indisponibilidade Tuya contínua não pode duplicar alerta");
+
+// Recovery is notified only after 60 stable seconds and dismisses the down alert.
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 10_000, "42"));
+assert.equal(result[1], null);
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 59_000, "42"));
+assert.equal(result[1], null);
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 1_000, "42"));
+assert.equal(result[1].length, 1);
+assert.equal(result[1][0].notification.dismiss_id, result[1][0].notification.id.replace(/_recovered$/, ""));
+
+// A persistent incident survives restart; volatile observations restart the 60-second confirmation.
+run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 10_000, "unavailable"));
+result = run(tuya, tuyaFlow, tuyaSnapshot(tuyaNow += 30_000, "unavailable"));
+assert.equal(result[0].length, 1);
+const restartedTuyaFlow = context(tuyaFlow.stores.default, new Map());
+result = run(tuya, restartedTuyaFlow, tuyaSnapshot(tuyaNow += 10_000, "42"));
+assert.equal(result[1], null);
+result = run(tuya, restartedTuyaFlow, tuyaSnapshot(tuyaNow += 60_000, "42"));
+assert.equal(result[1].length, 1);
+
+// An unresolved Tuya incident repeats the same alert every 24 hours.
+const tuyaReminderFlow = context();
+const tuyaReminderStart = Date.UTC(2026, 7, 14, 14, 0, 0);
+run(tuya, tuyaReminderFlow, tuyaSnapshot(tuyaReminderStart, "42"));
+run(tuya, tuyaReminderFlow, tuyaSnapshot(tuyaReminderStart + 10_000, "unavailable"));
+result = run(tuya, tuyaReminderFlow, tuyaSnapshot(tuyaReminderStart + 40_000, "unavailable"));
+const tuyaFailureId = result[0][0].notification.id;
+result = run(tuya, tuyaReminderFlow, tuyaSnapshot(tuyaReminderStart + 40_000 + 24 * 60 * 60 * 1000 - 1, "unavailable"));
+assert.equal(result[0], null);
+result = run(tuya, tuyaReminderFlow, tuyaSnapshot(tuyaReminderStart + 40_000 + 24 * 60 * 60 * 1000, "unavailable"));
+assert.equal(result[0][0].notification.id, tuyaFailureId);
+assert.match(result[0][0].notification.title, /continua indisponível/);
+result = run(tuya, tuyaReminderFlow, tuyaSnapshot(tuyaReminderStart + 40_001 + 24 * 60 * 60 * 1000, "unavailable"));
+assert.equal(result[0], null, "lembrete Tuya de 24 h não pode duplicar no mesmo período");
+
+const queryFailurePublications = run(tuyaQueryFailure, context(), {
+  monitor_now: tuyaNow,
+  error: { message: "Home Assistant disconnected" },
+})[0];
+assert.equal(queryFailurePublications.find((message) => message.topic.endsWith("/state")).payload, "checking");
+assert.equal(queryFailurePublications.find((message) => message.topic.endsWith("/connection")).payload, "OFF");
+
 // Home Assistant 2026.x prefixes device names unless discovery explicitly
-// supplies default_entity_id. Keep the dashboard's four entity IDs stable.
+// supplies default_entity_id. Keep all infrastructure entity IDs stable.
 const discoveryMessages = [
   ...run(getFunction("internet_discovery"), context(), {})[0],
   ...run(getFunction("zigbee_discovery"), context(), {})[0],
+  ...run(getFunction("tuya_discovery"), context(), {})[0],
 ];
 const discoveryByTopic = new Map(discoveryMessages.map((message) => [message.topic, JSON.parse(message.payload)]));
 assert.equal(discoveryByTopic.get("homeassistant/binary_sensor/internet_connection/config")?.default_entity_id, "binary_sensor.internet_connection");
 assert.equal(discoveryByTopic.get("homeassistant/sensor/internet_connection_state/config")?.default_entity_id, "sensor.internet_connection_state");
 assert.equal(discoveryByTopic.get("homeassistant/binary_sensor/zigbee_network/config")?.default_entity_id, "binary_sensor.zigbee_network");
 assert.equal(discoveryByTopic.get("homeassistant/sensor/zigbee_network_state/config")?.default_entity_id, "sensor.zigbee_network_state");
+assert.equal(discoveryByTopic.get("homeassistant/binary_sensor/tuya_devices/config")?.default_entity_id, "binary_sensor.tuya_devices");
+assert.equal(discoveryByTopic.get("homeassistant/sensor/tuya_devices_state/config")?.default_entity_id, "sensor.tuya_devices_state");
 
 // Structural review: unique ids, valid wires, shared notifier and left-to-right layout.
 const ids = flows.map((item) => item.id);
@@ -287,17 +411,18 @@ for (const item of flows) {
     for (const target of output) assert.ok(idSet.has(target), `wire órfão: ${item.id} -> ${target}`);
   }
 }
-for (const item of flows.filter((entry) => entry.type === "group" && ["monitoramento_internet_tab", "monitoramento_zigbee_tab"].includes(entry.z))) {
+for (const item of flows.filter((entry) => entry.type === "group" && ["monitoramento_internet_tab", "monitoramento_zigbee_tab", "monitoramento_tuya_tab"].includes(entry.z))) {
   for (const member of item.nodes) {
     const memberNode = flows.find((entry) => entry.id === member);
     assert.ok(memberNode, `grupo ${item.id} contém node ausente: ${member}`);
     assert.equal(memberNode.g, item.id, `node ${member} não referencia seu grupo`);
   }
 }
-assert.equal(flows.filter((item) => item.type === "subflow:infra_notify_all_mobiles").length, 6);
+assert.equal(flows.filter((item) => item.type === "subflow:infra_notify_all_mobiles").length, 8);
 for (const [id, role, action] of [
   ["infra_notify_mobile", "mobile_primary", "notify_3"],
   ["infra_notify_mobile_secondary", "mobile_secondary", "notify_2"],
+  ["infra_notify_echo", "mobile_primary", "notify"],
 ]) {
   const notifier = flows.find((item) => item.id === id);
   assert.equal(notifier?.action, "public_bindings.call");
@@ -310,8 +435,15 @@ for (const [id, role, action] of [
 assert.deepEqual(flows.find((item) => item.id === "infra_notify_route")?.wires[1], [
   "infra_notify_mobile",
   "infra_notify_mobile_secondary",
+  "infra_notify_echo",
 ]);
+assert.match(flows.find((item) => item.id === "infra_notify_echo")?.data ?? "", /notification\.title/);
+assert.match(flows.find((item) => item.id === "infra_notify_echo")?.data ?? "", /notification\.message/);
 assert.ok(flows.find((item) => item.id === "internet_ping").x < flows.find((item) => item.id === "internet_evaluate").x);
 assert.ok(flows.find((item) => item.id === "zigbee_store_observation").x < flows.find((item) => item.id === "zigbee_network_evaluate").x);
+assert.deepEqual(JSON.parse(flows.find((item) => item.id === "tuya_entity_registry").data), { type: "config/entity_registry/list" });
+assert.deepEqual(JSON.parse(flows.find((item) => item.id === "tuya_device_registry").data), { type: "config/device_registry/list" });
+assert.deepEqual(JSON.parse(flows.find((item) => item.id === "tuya_states").data), { type: "get_states" });
+assert.ok(flows.find((item) => item.id === "tuya_entity_registry").x < flows.find((item) => item.id === "tuya_device_evaluate").x);
 
 console.log("Infrastructure monitoring tests: state, restart, dedupe and layout scenarios passed.");

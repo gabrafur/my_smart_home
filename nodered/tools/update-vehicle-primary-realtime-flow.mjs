@@ -198,7 +198,8 @@ msg.payload.retry_attempt = state.attempts;`,
 
 const group = byId.get("43a2bc9c218353ae");
 assert(group?.type === "group", "grupo de refresh do vehicle_primary ausente");
-group.h = 402;
+group.y = 525;
+group.h = 456;
 const catchId = "vehicle_primary_api_error_catch_v1";
 const loggerId = "vehicle_primary_api_error_log_v1";
 assert(!byId.has(catchId) && !byId.has(loggerId), "nodes de erro já existem");

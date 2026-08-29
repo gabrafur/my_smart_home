@@ -23,32 +23,10 @@ constraints, technical context, and optionality.
 
 ## Chat Title Policy
 
-Suggest one concise title only when the user explicitly asks for one.
-
-The title should:
-
-* describe the actual task;
-* normally use 3 to 8 words;
-* be easy to identify later in conversation history;
-* use the same language as the user's request unless there is a strong reason not to.
-
-Prefer specific titles such as:
-
-* `Corrigir bateria e consumo do Creta`
-* `Refatorar contexto de segurança Node-RED`
-* `Investigar crescimento de storage Raspberry`
-* `Adicionar observabilidade ao pipeline Grow`
-
-Avoid generic titles such as:
-
-* `Fix issue`
-* `New task`
-* `Code changes`
-* `Investigation`
-
-Do not attempt to rename the conversation automatically.
-
-The title is only a suggestion so the user can rename the Codex chat manually.
+Only when explicitly asked, suggest one specific, easy-to-find title of normally
+3 to 8 words in the user's language. Describe the actual task; avoid generic
+titles such as `Fix issue` or `New task`. Never rename the conversation; the
+title is only a suggestion for the user.
 
 ---
 
@@ -58,74 +36,28 @@ Use the cheapest option with a high probability of completing the task correctly
 
 ### GPT-5.6 Luna (`gpt-5.6-luna`)
 
-Use for:
-
-* clear and small tasks;
-* localized changes;
-* repetitive or mechanical work;
-* easily validated transformations;
-* extraction;
-* simple documentation;
-* small code changes;
-* boilerplate;
-* simple tests.
-
-Prefer `low`.
-
-Use `medium` for ordinary bounded work.
-
-Use `high` only with concrete justification.
+Use for clear, small or localized changes, mechanical or easily validated
+transformations, extraction, simple documentation, boilerplate and tests.
+Prefer `low`; use `medium` for ordinary bounded work and `high` only with
+concrete justification.
 
 ### GPT-5.6 Terra (`gpt-5.6-terra`)
 
-Use for:
-
-* substantial engineering;
-* multi-file changes;
-* debugging;
-* implementation plus tests;
-* refactoring;
-* repository exploration;
-* Git;
-* CI/CD;
-* infrastructure;
-* integrations;
-* moderate architecture;
-* PR analysis.
-
-Prefer `medium`.
-
-Use `high` for multi-step debugging or architecture.
-
-Use `xhigh` only for unusually difficult problems.
+Use for substantial or multi-file engineering, debugging, implementation plus
+tests, refactoring, repository/Git/CI work, infrastructure, integrations,
+moderate architecture and PR analysis. Prefer `medium`; use `high` for
+multi-step debugging or architecture and `xhigh` only when unusually difficult.
 
 ### GPT-5.6 Sol (`gpt-5.6-sol`)
 
-Use for:
+Use for materially difficult or ambiguous work, unresolved complex debugging,
+broad analysis, high-risk migrations, security-sensitive reasoning, complex
+architecture, multi-system RCA or demonstrated Terra limitations. Prefer
+`medium` for substantial but clear work, `high` for complex work, `xhigh` for
+very difficult work and `max` only exceptionally.
 
-* materially difficult or ambiguous work;
-* unresolved complex debugging;
-* broad repository analysis;
-* high-risk migrations;
-* security-sensitive reasoning;
-* complex architecture;
-* multi-system root-cause investigation;
-* cases where Terra has demonstrated limitations.
-
-Prefer `medium` for substantial but clear work.
-
-Use `high` for complex work.
-
-Use `xhigh` for very difficult work.
-
-Use `max` only exceptionally.
-
-Do not select a stronger model merely because a task:
-
-* involves code;
-* has a long prompt;
-* references a large repository;
-* may touch many files.
+Do not select a stronger model merely because a task involves code, a long
+prompt, a large repository or many files.
 
 For large but deterministic extraction or transformation, keep the cheapest sufficient option.
 
@@ -248,6 +180,15 @@ sobre auditorias, builds e testes.
 
 Essas regras também valem quando o usuário pede persistência ou validação
 completa: persistência não autoriza sacrificar a disponibilidade residencial.
+
+## Organização obrigatória dos canvases Node-RED
+
+Antes de deploy, commit ou push de Node-RED, organize grupos e direção de
+leitura; não sobreponha nós/grupos nem deixe nós fora do grupo. Altere também a
+fonte geradora e regenere `nodered/flows.json`. Execute
+`npm --prefix nodered run flows:validate-layout` e renderize/inspecione os tabs
+alterados com `npm --prefix nodered run flows:render -- <tab...>`.
+`validate-node-red` inclui esse gate no `pre-push`; nunca o ignore ou remova.
 
 ## Formatação numérica dos dashboards
 

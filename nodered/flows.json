@@ -120,13 +120,13 @@
     {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
-        "name": "Notificar todos os dispositivos móveis",
-        "info": "Contrato de entrada:\n\nmsg.notification = {\n  id: string obrigatório,\n  title: string obrigatório,\n  message: string obrigatório,\n  dismiss_id?: string\n}\n\nCria/atualiza uma notificação persistente e envia um push aos iPhones de resident_primary e resident_secondary. Em recuperação, dismiss_id remove o alerta persistente da falha anterior. O subflow não decide estado, retry ou deduplicação; essas responsabilidades pertencem ao monitor chamador.",
+        "name": "Notificar celulares, Echo e Home Assistant",
+        "info": "Contrato de entrada:\n\nmsg.notification = {\n  id: string obrigatório,\n  title: string obrigatório,\n  message: string obrigatório,\n  dismiss_id?: string\n}\n\nCria/atualiza uma notificação persistente, envia push aos iPhones de resident_primary e resident_secondary e anuncia a mensagem na Echo Dot pelo binding lógico existente. Em recuperação, dismiss_id remove o alerta persistente da falha anterior. O subflow não decide estado, retry ou deduplicação; essas responsabilidades pertencem ao monitor chamador.",
         "category": "infraestrutura",
         "in": [
             {
                 "x": 60,
-                "y": 80,
+                "y": 140,
                 "wires": [
                     {
                         "id": "infra_notify_route"
@@ -407,10 +407,10 @@
             "zigbee_discovery_tick",
             "zigbee_history_retained"
         ],
-        "x": 24,
-        "y": 99,
-        "w": 312,
-        "h": 442
+        "x": 40,
+        "y": 80,
+        "w": 280,
+        "h": 460
     },
     {
         "id": "grp_zigbee_detect",
@@ -429,10 +429,10 @@
             "zigbee_store_observation",
             "zigbee_component_evaluate"
         ],
-        "x": 334,
-        "y": 129,
-        "w": 332,
-        "h": 312
+        "x": 350,
+        "y": 80,
+        "w": 320,
+        "h": 460
     },
     {
         "id": "grp_zigbee_state",
@@ -449,12 +449,13 @@
         },
         "nodes": [
             "zigbee_network_evaluate",
-            "zigbee_restore_history"
+            "zigbee_restore_history",
+            "zigbee_component_reminders"
         ],
-        "x": 864,
-        "y": 111.5,
-        "w": 292,
-        "h": 149.5
+        "x": 700,
+        "y": 80,
+        "w": 340,
+        "h": 460
     },
     {
         "id": "grp_zigbee_notify",
@@ -475,10 +476,10 @@
             "zigbee_component_notify_down",
             "zigbee_component_notify_recovery"
         ],
-        "x": 1164,
-        "y": 99,
-        "w": 292,
-        "h": 422
+        "x": 1070,
+        "y": 80,
+        "w": 340,
+        "h": 460
     },
     {
         "id": "grp_zigbee_publish",
@@ -497,10 +498,10 @@
             "zigbee_discovery",
             "zigbee_mqtt_publish"
         ],
-        "x": 754,
-        "y": 499,
-        "w": 272,
-        "h": 142
+        "x": 700,
+        "y": 580,
+        "w": 710,
+        "h": 120
     },
     {
         "id": "grp_zigbee_tests",
@@ -518,10 +519,10 @@
         "nodes": [
             "zigbee_test_note"
         ],
-        "x": 234,
-        "y": 609,
-        "w": 432,
-        "h": 82
+        "x": 40,
+        "y": 580,
+        "w": 630,
+        "h": 120
     },
     {
         "id": "c8f8e5b532232a4f",
@@ -755,7 +756,7 @@
         "x": 174,
         "y": 319,
         "w": 1062,
-        "h": 282
+        "h": 240
     },
     {
         "id": "6e71dbc937fe5669",
@@ -872,9 +873,9 @@
             "vehicle_primary_manual_refresh_blocked_notification_v1"
         ],
         "x": 154,
-        "y": 519,
+        "y": 525,
         "w": 1612,
-        "h": 462
+        "h": 456
     },
     {
         "id": "5df25064f701ecd2",
@@ -1241,14 +1242,15 @@
         "finalize": "",
         "libs": [],
         "x": 220,
-        "y": 80,
+        "y": 140,
         "wires": [
             [
                 "infra_notify_persistent"
             ],
             [
                 "infra_notify_mobile",
-                "infra_notify_mobile_secondary"
+                "infra_notify_mobile_secondary",
+                "infra_notify_echo"
             ],
             [
                 "infra_notify_dismiss"
@@ -1307,8 +1309,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 500,
-        "y": 70,
+        "x": 520,
+        "y": 90,
         "wires": [
             []
         ]
@@ -1336,8 +1338,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 500,
-        "y": 100,
+        "x": 520,
+        "y": 140,
         "wires": [
             []
         ]
@@ -1365,8 +1367,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "dismiss",
-        "x": 500,
-        "y": 130,
+        "x": 520,
+        "y": 240,
         "wires": [
             []
         ]
@@ -6266,7 +6268,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 190,
+        "x": 180,
         "y": 140,
         "wires": [
             [
@@ -6317,7 +6319,8 @@
         "y": 260,
         "wires": [
             [
-                "zigbee_network_evaluate"
+                "zigbee_network_evaluate",
+                "zigbee_component_reminders"
             ]
         ]
     },
@@ -6335,8 +6338,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 190,
-        "y": 400,
+        "x": 180,
+        "y": 360,
         "wires": [
             [
                 "zigbee_component_evaluate"
@@ -6365,8 +6368,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 190,
-        "y": 500,
+        "x": 180,
+        "y": 480,
         "wires": [
             [
                 "zigbee_discovery"
@@ -6386,8 +6389,8 @@
         "initialize": "flow.set('zigbee_bridge_observation', { state: 'unknown', changed_at: Date.now() }, 'memoryOnly');",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 170,
+        "x": 510,
+        "y": 140,
         "wires": [
             [
                 "zigbee_network_evaluate"
@@ -6400,15 +6403,15 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_detect",
         "name": "Dedupe por componente",
-        "func": "const KEY = \"zigbee_component_incidents_v1\";\n  if (!String(msg.topic || \"\").endsWith(\"/availability\")) return null;\n  let value = msg.payload;\n  if (Buffer.isBuffer(value)) value = value.toString(\"utf8\");\n  if (typeof value === \"string\") {\n    try {\n      const parsed = JSON.parse(value);\n      value = parsed?.state ?? parsed;\n    } catch {\n      // Plain online/offline is valid.\n    }\n  }\n  if (value && typeof value === \"object\") value = value.state;\n  const availability = String(value || \"\").toLowerCase();\n  if (!new Set([\"online\", \"offline\"]).has(availability)) return null;\n\n  const component = String(msg.topic).slice(\"zigbee2mqtt/\".length, -\"/availability\".length);\n  if (!component) return null;\n  const slug = component.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\n  // Separator/accent normalization is not injective. Keep the readable slug,\n  // but append a stable hash of the exact friendly name so distinct MQTT\n  // topics cannot overwrite or dismiss each other's persistent notification.\n  let hash = 0x811c9dc5;\n  for (const byte of Buffer.from(component, \"utf8\")) {\n    hash ^= byte;\n    hash = Math.imul(hash, 0x01000193) >>> 0;\n  }\n  const notificationKey = `${slug || \"component\"}_${hash.toString(16).padStart(8, \"0\")}`;\n  const incidents = flow.get(KEY, \"persistent\") || {};\n  const current = incidents[component] || { offline: false };\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n\n  if (availability === \"offline\") {\n    if (current.offline) return null;\n    incidents[component] = { offline: true, outage_started_at: nowIso, last_seen_at: nowIso };\n    flow.set(KEY, incidents, \"persistent\");\n    return [{\n      notification: {\n        id: `zigbee_component_${notificationKey}`,\n        title: \"Componente Zigbee indisponível\",\n        message: `O componente Zigbee “${component}” ficou indisponível em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique alimentação, alcance, bateria e a malha Zigbee.`,\n      },\n    }, null];\n  }\n\n  incidents[component] = { ...current, offline: false, recovered_at: nowIso, last_seen_at: nowIso };\n  flow.set(KEY, incidents, \"persistent\");\n  if (!current.offline) return null;\n  return [null, {\n    notification: {\n      id: `zigbee_component_recovered_${notificationKey}`,\n      dismiss_id: `zigbee_component_${notificationKey}`,\n      title: \"Componente Zigbee recuperado\",\n      message: `O componente Zigbee “${component}” voltou a ficar disponível em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n    },\n  }];",
+        "func": "const KEY = \"zigbee_component_incidents_v1\";\n  const REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;\n  if (!String(msg.topic || \"\").endsWith(\"/availability\")) return null;\n  let value = msg.payload;\n  if (Buffer.isBuffer(value)) value = value.toString(\"utf8\");\n  if (typeof value === \"string\") {\n    try {\n      const parsed = JSON.parse(value);\n      value = parsed?.state ?? parsed;\n    } catch {\n      // Plain online/offline is valid.\n    }\n  }\n  if (value && typeof value === \"object\") value = value.state;\n  const availability = String(value || \"\").toLowerCase();\n  if (!new Set([\"online\", \"offline\"]).has(availability)) return null;\n\n  const component = String(msg.topic).slice(\"zigbee2mqtt/\".length, -\"/availability\".length);\n  if (!component) return null;\n  const slug = component.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\n  // Separator/accent normalization is not injective. Keep the readable slug,\n  // but append a stable hash of the exact friendly name so distinct MQTT\n  // topics cannot overwrite or dismiss each other's persistent notification.\n  let hash = 0x811c9dc5;\n  for (const byte of Buffer.from(component, \"utf8\")) {\n    hash ^= byte;\n    hash = Math.imul(hash, 0x01000193) >>> 0;\n  }\n  const notificationKey = `${slug || \"component\"}_${hash.toString(16).padStart(8, \"0\")}`;\n  const incidents = flow.get(KEY, \"persistent\") || {};\n  const current = incidents[component] || { offline: false };\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n\n  if (availability === \"offline\") {\n    if (current.offline) {\n      const lastNotificationMs = Date.parse(current.last_notification_at || current.outage_started_at || \"\");\n      incidents[component] = {\n        ...current,\n        last_seen_at: nowIso,\n        next_reminder_at: current.next_reminder_at || new Date(\n          Number.isFinite(lastNotificationMs) ? lastNotificationMs + REMINDER_INTERVAL_MS : now + REMINDER_INTERVAL_MS,\n        ).toISOString(),\n      };\n      flow.set(KEY, incidents, \"persistent\");\n      return null;\n    }\n    incidents[component] = {\n      offline: true,\n      outage_started_at: nowIso,\n      last_seen_at: nowIso,\n      last_notification_at: nowIso,\n      next_reminder_at: new Date(now + REMINDER_INTERVAL_MS).toISOString(),\n    };\n    flow.set(KEY, incidents, \"persistent\");\n    return [{\n      notification: {\n        id: `zigbee_component_${notificationKey}`,\n        title: \"Componente Zigbee indisponível\",\n        message: `O componente Zigbee “${component}” ficou indisponível em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique alimentação, alcance, bateria e a malha Zigbee.`,\n      },\n    }, null];\n  }\n\n  incidents[component] = { ...current, offline: false, recovered_at: nowIso, last_seen_at: nowIso, next_reminder_at: null };\n  flow.set(KEY, incidents, \"persistent\");\n  if (!current.offline) return null;\n  return [null, {\n    notification: {\n      id: `zigbee_component_recovered_${notificationKey}`,\n      dismiss_id: `zigbee_component_${notificationKey}`,\n      title: \"Componente Zigbee recuperado\",\n      message: `O componente Zigbee “${component}” voltou a ficar disponível em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n    },\n  }];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 400,
+        "x": 510,
+        "y": 360,
         "wires": [
             [
                 "zigbee_component_notify_down"
@@ -6424,15 +6427,15 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_state",
         "name": "30 s queda / 60 s retorno",
-        "func": "const KEY = \"zigbee_network_monitor_state_v1\";\n  const HISTORY_KEY = \"zigbee_network_monitor_history_v1\";\n  const OBSERVATION_KEY = \"zigbee_bridge_observation\";\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const observation = flow.get(OBSERVATION_KEY, \"memoryOnly\") || { state: \"unknown\", changed_at: now };\n  const rawState = observation.state;\n  const stableForMs = Math.max(0, now - Number(observation.changed_at || now));\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n  };\n  const retainedHistory = flow.get(HISTORY_KEY, \"persistent\") || {};\n  if (!state.last_outage_at && retainedHistory.last_outage_at) state.last_outage_at = retainedHistory.last_outage_at;\n  if (!state.last_recovery_at && retainedHistory.last_recovery_at) state.last_recovery_at = retainedHistory.last_recovery_at;\n  if (state.last_outage_duration_s == null && retainedHistory.last_outage_duration_s != null) {\n    state.last_outage_duration_s = retainedHistory.last_outage_duration_s;\n  }\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (rawState === \"online\") {\n    if (state.incident_open) {\n      state.phase = \"recovering\";\n      if (stableForMs >= 60_000) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        state.last_outage_duration_s = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.last_recovery_at = nowIso;\n        recoveryNotification = {\n          notification: {\n            id: \"zigbee_network_recovered\",\n            dismiss_id: \"zigbee_network_failure\",\n            title: \"Rede Zigbee recuperada\",\n            message: `A rede Zigbee voltou a funcionar e permaneceu conectada por 1 minuto. Recuperada em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n          },\n        };\n      }\n    } else {\n      // Retained online at startup establishes baseline without false recovery.\n      state.phase = \"online\";\n    }\n  } else if (state.incident_open) {\n    state.phase = \"offline\";\n  } else if (stableForMs >= 30_000) {\n    state.phase = \"offline\";\n    state.incident_open = true;\n    state.outage_started_at = new Date(Number(observation.changed_at || now)).toISOString();\n    state.last_outage_at = state.outage_started_at;\n    downNotification = {\n      notification: {\n        id: \"zigbee_network_failure\",\n        title: \"Falha na rede Zigbee\",\n        message: `A rede Zigbee está indisponível. O Zigbee2MQTT perdeu a conexão com a antena/coordenador ou parou de funcionar. Detectado em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n      },\n    };\n  } else {\n    state.phase = \"checking\";\n  }\n\n  state.raw_state = rawState;\n  state.last_checked_at = nowIso;\n  state.stable_for_s = Math.floor(stableForMs / 1000);\n  flow.set(KEY, state, \"persistent\");\n  flow.set(HISTORY_KEY, {\n    last_outage_at: state.last_outage_at,\n    last_recovery_at: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n  }, \"persistent\");\n  const attributes = {\n    state: state.phase,\n    raw_state: rawState,\n    stable_for_s: state.stable_for_s,\n    checked_at: nowIso,\n    last_outage: state.last_outage_at || \"Nenhuma queda confirmada\",\n    last_recovery: state.last_recovery_at || \"Nenhuma recuperação registrada\",\n    last_outage_duration_s: state.last_outage_duration_s,\n    failure_confirmation_s: 30,\n    recovery_confirmation_s: 60,\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${rawState}`,\n  });\n  return [downNotification, recoveryNotification, publications];",
+        "func": "const KEY = \"zigbee_network_monitor_state_v1\";\n  const HISTORY_KEY = \"zigbee_network_monitor_history_v1\";\n  const OBSERVATION_KEY = \"zigbee_bridge_observation\";\n  const REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const observation = flow.get(OBSERVATION_KEY, \"memoryOnly\") || { state: \"unknown\", changed_at: now };\n  const rawState = observation.state;\n  const stableForMs = Math.max(0, now - Number(observation.changed_at || now));\n  let state = flow.get(KEY, \"persistent\") || {\n    phase: \"checking\",\n    incident_open: false,\n    outage_started_at: null,\n    last_outage_at: null,\n    last_recovery_at: null,\n    last_outage_duration_s: null,\n  };\n  const retainedHistory = flow.get(HISTORY_KEY, \"persistent\") || {};\n  if (!state.last_outage_at && retainedHistory.last_outage_at) state.last_outage_at = retainedHistory.last_outage_at;\n  if (!state.last_recovery_at && retainedHistory.last_recovery_at) state.last_recovery_at = retainedHistory.last_recovery_at;\n  if (state.last_outage_duration_s == null && retainedHistory.last_outage_duration_s != null) {\n    state.last_outage_duration_s = retainedHistory.last_outage_duration_s;\n  }\n  let downNotification = null;\n  let recoveryNotification = null;\n\n  if (rawState === \"online\") {\n    if (state.incident_open) {\n      state.phase = \"recovering\";\n      if (stableForMs >= 60_000) {\n        const outageStartMs = Date.parse(state.outage_started_at || state.last_outage_at || nowIso);\n        state.last_outage_duration_s = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        state.phase = \"online\";\n        state.incident_open = false;\n        state.last_recovery_at = nowIso;\n        state.next_reminder_at = null;\n        recoveryNotification = {\n          notification: {\n            id: \"zigbee_network_recovered\",\n            dismiss_id: \"zigbee_network_failure\",\n            title: \"Rede Zigbee recuperada\",\n            message: `A rede Zigbee voltou a funcionar e permaneceu conectada por 1 minuto. Recuperada em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n          },\n        };\n      }\n    } else {\n      // Retained online at startup establishes baseline without false recovery.\n      state.phase = \"online\";\n    }\n  } else if (state.incident_open) {\n    state.phase = \"offline\";\n    const lastNotificationMs = Date.parse(state.last_notification_at || \"\");\n    let nextReminderMs = Date.parse(state.next_reminder_at || \"\");\n    if (!Number.isFinite(nextReminderMs)) {\n      nextReminderMs = Number.isFinite(lastNotificationMs) ? lastNotificationMs + REMINDER_INTERVAL_MS : now + REMINDER_INTERVAL_MS;\n      state.next_reminder_at = new Date(nextReminderMs).toISOString();\n    }\n    if (now >= nextReminderMs) {\n      state.last_notification_at = nowIso;\n      state.next_reminder_at = new Date(now + REMINDER_INTERVAL_MS).toISOString();\n      downNotification = {\n        notification: {\n          id: \"zigbee_network_failure\",\n          title: \"Falha na rede Zigbee persiste\",\n          message: `A rede Zigbee continua indisponível há pelo menos 24 horas. Novo lembrete em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique o Zigbee2MQTT, a antena/coordenador e a conexão MQTT.`,\n        },\n      };\n    }\n  } else if (stableForMs >= 30_000) {\n    state.phase = \"offline\";\n    state.incident_open = true;\n    state.outage_started_at = new Date(Number(observation.changed_at || now)).toISOString();\n    state.last_outage_at = state.outage_started_at;\n    state.last_notification_at = nowIso;\n    state.next_reminder_at = new Date(now + REMINDER_INTERVAL_MS).toISOString();\n    downNotification = {\n      notification: {\n        id: \"zigbee_network_failure\",\n        title: \"Falha na rede Zigbee\",\n        message: `A rede Zigbee está indisponível. O Zigbee2MQTT perdeu a conexão com a antena/coordenador ou parou de funcionar. Detectado em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n      },\n    };\n  } else {\n    state.phase = \"checking\";\n  }\n\n  state.raw_state = rawState;\n  state.last_checked_at = nowIso;\n  state.stable_for_s = Math.floor(stableForMs / 1000);\n  flow.set(KEY, state, \"persistent\");\n  flow.set(HISTORY_KEY, {\n    last_outage_at: state.last_outage_at,\n    last_recovery_at: state.last_recovery_at,\n    last_outage_duration_s: state.last_outage_duration_s,\n  }, \"persistent\");\n  const attributes = {\n    state: state.phase,\n    raw_state: rawState,\n    stable_for_s: state.stable_for_s,\n    checked_at: nowIso,\n    last_outage: state.last_outage_at || \"Nenhuma queda confirmada\",\n    last_recovery: state.last_recovery_at || \"Nenhuma recuperação registrada\",\n    last_outage_duration_s: state.last_outage_duration_s,\n    failure_confirmation_s: 30,\n    recovery_confirmation_s: 60,\n    reminder_interval_h: REMINDER_INTERVAL_MS / (60 * 60 * 1000),\n    next_reminder: state.incident_open ? state.next_reminder_at : null,\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/zigbee/connection\", payload: state.phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/zigbee/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/zigbee/state\", payload: state.phase },\n  ];\n  node.status({\n    fill: state.phase === \"online\" ? \"green\" : state.phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: state.phase === \"online\" ? \"dot\" : \"ring\",\n    text: `${state.phase}: ${rawState}`,\n  });\n  return [downNotification, recoveryNotification, publications];",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1010,
-        "y": 160,
+        "x": 870,
+        "y": 140,
         "wires": [
             [
                 "zigbee_network_notify_down"
@@ -6452,8 +6455,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar queda da rede",
         "env": [],
-        "x": 1310,
-        "y": 140,
+        "x": 1240,
+        "y": 120,
         "wires": []
     },
     {
@@ -6463,8 +6466,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar retorno da rede",
         "env": [],
-        "x": 1310,
-        "y": 220,
+        "x": 1240,
+        "y": 200,
         "wires": []
     },
     {
@@ -6474,8 +6477,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente offline",
         "env": [],
-        "x": 1310,
-        "y": 400,
+        "x": 1240,
+        "y": 340,
         "wires": []
     },
     {
@@ -6485,8 +6488,8 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente online",
         "env": [],
-        "x": 1310,
-        "y": 480,
+        "x": 1240,
+        "y": 420,
         "wires": []
     },
     {
@@ -6502,8 +6505,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 870,
-        "y": 540,
+        "x": 850,
+        "y": 640,
         "wires": [
             [
                 "zigbee_mqtt_publish"
@@ -6525,8 +6528,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 890,
-        "y": 600,
+        "x": 1220,
+        "y": 640,
         "wires": []
     },
     {
@@ -6535,9 +6538,9 @@
         "z": "monitoramento_zigbee_tab",
         "g": "grp_zigbee_tests",
         "name": "Testes automatizados fora do caminho de produção",
-        "info": "Execute `npm run flows:test-infrastructure`. O teste cobre startup, falha momentânea, 30 s offline, dedupe, 60 s de recuperação, restart persistente, componente offline/online e nova queda. Teste MQTT ponta a ponta deve usar um componente fictício retained, conforme a documentação.",
-        "x": 450,
-        "y": 650,
+        "info": "Execute `npm run flows:test-infrastructure`. O teste cobre startup, falha momentânea, 30 s offline, dedupe, lembretes a cada 24 h, 60 s de recuperação, restart persistente, componente offline/online e nova queda. Teste MQTT ponta a ponta deve usar um componente fictício retained, conforme a documentação.",
+        "x": 355,
+        "y": 640,
         "wires": []
     },
     {
@@ -6554,8 +6557,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 190,
-        "y": 450,
+        "x": 180,
+        "y": 420,
         "wires": [
             [
                 "zigbee_restore_history"
@@ -6575,8 +6578,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1010,
-        "y": 220,
+        "x": 870,
+        "y": 420,
         "wires": []
     },
     {
@@ -8212,7 +8215,7 @@
         "z": "c22d8b12055e87f7",
         "g": "43a2bc9c218353ae",
         "name": "Espelhar estado real do refresh",
-        "func": "const raw = flow.get(\"security_vehicle_primary_refresh_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nlet state = raw.state ?? \"idle\";\nlet deadline = null;\n\nif (raw.awaiting_evidence === true) {\n    deadline = Number(raw.next_retry_at ?? raw.next_allowed_at ?? 0) || null;\n    if (state !== \"refreshing\" || now - Number(raw.last_attempt_at ?? 0) >= 30 * 1000) {\n        state = \"backoff\";\n    }\n} else if (Number(raw.cooldown_until ?? raw.next_allowed_at ?? 0) > now) {\n    deadline = Number(raw.cooldown_until ?? raw.next_allowed_at);\n    state = \"cooldown\";\n} else if (state === \"cooldown\") {\n    state = \"idle\";\n}\n\nconst remainingSeconds = deadline && deadline > now\n    ? Math.max(0, Math.ceil((deadline - now) / 1000))\n    : 0;\nconst iso = (value) => Number(value) > 0\n    ? new Date(Number(value)).toISOString()\n    : null;\n\nconst status = {\n    state,\n    reason: raw.reason ?? raw.recovery_reason ?? null,\n    attempt: Number(raw.attempts ?? 0),\n    last_request_at: iso(raw.last_request_at ?? raw.last_attempt_at),\n    last_success_at: iso(raw.last_success_at),\n    next_retry_at: raw.awaiting_evidence === true\n        ? iso(raw.next_retry_at ?? raw.next_allowed_at)\n        : null,\n    cooldown_until: raw.awaiting_evidence !== true\n        ? iso(raw.cooldown_until ?? raw.next_allowed_at)\n        : null,\n    remaining_seconds: remainingSeconds,\n    awaiting_evidence: raw.awaiting_evidence === true,\n    manual_force: raw.manual_force === true,\n    updated_at: new Date(now).toISOString()\n};\n\nconst discovery = {\n    name: \"Refresh Coordinator\",\n    unique_id: \"vehicle_primary_refresh_coordinator\",\n    object_id: \"vehicle_primary_refresh_coordinator\",\n    state_topic: \"homeassistant/vehicle_primary/refresh/state\",\n    value_template: \"{{ value_json.state }}\",\n    json_attributes_topic: \"homeassistant/vehicle_primary/refresh/state\",\n    icon: \"mdi:car-clock\",\n    device: {\n        identifiers: [\"vehicle_primary_bluelink\"],\n        name: \"vehicle_primary\",\n        manufacturer: \"Hyundai\"\n    }\n};\n\nreturn [[\n    {\n        topic: \"homeassistant/sensor/creta_refresh_coordinator/config\",\n        payload: \"\",\n        retain: true,\n        qos: 1\n    },\n    {\n        topic: \"homeassistant/sensor/vehicle_primary_refresh_coordinator_source/config\",\n        payload: \"\",\n        retain: true,\n        qos: 1\n    },\n    {\n        topic: \"homeassistant/sensor/vehicle_primary_refresh_coordinator/config\",\n        payload: JSON.stringify(discovery),\n        retain: true,\n        qos: 1\n    },\n    {\n        topic: \"homeassistant/vehicle_primary/refresh/state\",\n        payload: JSON.stringify(status),\n        retain: true,\n        qos: 1\n    }\n]];",
+        "func": "const raw = flow.get(\"security_vehicle_primary_refresh_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nlet state = raw.state ?? \"idle\";\nlet deadline = null;\n\nif (raw.awaiting_evidence === true) {\n    deadline = Number(raw.next_retry_at ?? raw.next_allowed_at ?? 0) || null;\n    if (state !== \"refreshing\" || now - Number(raw.last_attempt_at ?? 0) >= 30 * 1000) {\n        state = \"backoff\";\n    }\n} else if (Number(raw.cooldown_until ?? raw.next_allowed_at ?? 0) > now) {\n    deadline = Number(raw.cooldown_until ?? raw.next_allowed_at);\n    state = \"cooldown\";\n} else if (state === \"cooldown\") {\n    state = \"idle\";\n}\n\nconst remainingSeconds = deadline && deadline > now\n    ? Math.max(0, Math.ceil((deadline - now) / 1000))\n    : 0;\nconst iso = (value) => Number(value) > 0\n    ? new Date(Number(value)).toISOString()\n    : null;\n\nconst status = {\n    state,\n    reason: raw.reason ?? raw.recovery_reason ?? null,\n    attempt: Number(raw.attempts ?? 0),\n    last_request_at: iso(raw.last_request_at ?? raw.last_attempt_at),\n    last_success_at: iso(raw.last_success_at),\n    next_retry_at: raw.awaiting_evidence === true\n        ? iso(raw.next_retry_at ?? raw.next_allowed_at)\n        : null,\n    cooldown_until: raw.awaiting_evidence !== true\n        ? iso(raw.cooldown_until ?? raw.next_allowed_at)\n        : null,\n    remaining_seconds: remainingSeconds,\n    awaiting_evidence: raw.awaiting_evidence === true,\n    manual_force: raw.manual_force === true,\n    updated_at: new Date(now).toISOString()\n};\n\nconst discovery = {\n    name: \"Refresh Coordinator\",\n    unique_id: \"vehicle_primary_refresh_coordinator\",\n    object_id: \"vehicle_primary_refresh_coordinator\",\n    state_topic: \"homeassistant/vehicle_primary/refresh/state\",\n    value_template: \"{{ value_json.state }}\",\n    json_attributes_topic: \"homeassistant/vehicle_primary/refresh/state\",\n    icon: \"mdi:car-clock\",\n    device: {\n        identifiers: [\"vehicle_primary_bluelink\"],\n        name: \"vehicle_primary\",\n        manufacturer: \"Hyundai\"\n    }\n};\n\nreturn [[\n    {\n        topic: \"homeassistant/sensor/vehicle_primary_refresh_coordinator_source/config\",\n        payload: \"\",\n        retain: true,\n        qos: 1\n    },\n    {\n        topic: \"homeassistant/sensor/vehicle_primary_refresh_coordinator/config\",\n        payload: JSON.stringify(discovery),\n        retain: true,\n        qos: 1\n    },\n    {\n        topic: \"homeassistant/vehicle_primary/refresh/state\",\n        payload: JSON.stringify(status),\n        retain: true,\n        qos: 1\n    }\n]];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -8514,7 +8517,7 @@
             "54b3d667ae845416",
             "f3bc2e5083769579"
         ],
-        "x": 250,
+        "x": 65,
         "y": 300,
         "wires": [
             [
@@ -8561,7 +8564,7 @@
                 "valueType": "json"
             }
         ],
-        "x": 215,
+        "x": 230,
         "y": 300,
         "wires": [
             [
@@ -10511,5 +10514,490 @@
         "x": 1260,
         "y": 340,
         "wires": []
+    },
+    {
+        "id": "monitoramento_tuya_tab",
+        "type": "tab",
+        "label": "monitoramento_tuya",
+        "disabled": false,
+        "info": "Descobre dispositivos Tuya/LocalTuya pelo registro do Home Assistant, confirma indisponibilidade e recuperação e envia notificações deduplicadas.",
+        "env": []
+    },
+    {
+        "id": "grp_tuya_triggers",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "1. Check periódico",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "tuya_cycle",
+            "tuya_discovery_tick",
+            "tuya_query_catch"
+        ],
+        "x": 44,
+        "y": 79,
+        "w": 252,
+        "h": 302
+    },
+    {
+        "id": "grp_tuya_query",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "2. Consultar Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "tuya_entity_registry",
+            "tuya_device_registry",
+            "tuya_states"
+        ],
+        "x": 324,
+        "y": 79,
+        "w": 302,
+        "h": 302
+    },
+    {
+        "id": "grp_tuya_state",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "3. Confirmar falha / recuperação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "tuya_device_evaluate",
+            "tuya_query_failure"
+        ],
+        "x": 654,
+        "y": 79,
+        "w": 322,
+        "h": 302
+    },
+    {
+        "id": "grp_tuya_notify",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "4. Notificação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#b5563f",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "tuya_device_notify_down",
+            "tuya_device_notify_recovery"
+        ],
+        "x": 1004,
+        "y": 79,
+        "w": 332,
+        "h": 302
+    },
+    {
+        "id": "grp_tuya_publish",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "5. Entidades do Home Assistant",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c98a2b",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "tuya_discovery",
+            "tuya_mqtt_publish"
+        ],
+        "x": 654,
+        "y": 419,
+        "w": 682,
+        "h": 162
+    },
+    {
+        "id": "grp_tuya_tests",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "6. Testes",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#8a8a8a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "tuya_test_note"
+        ],
+        "x": 44,
+        "y": 619,
+        "w": 1292,
+        "h": 102
+    },
+    {
+        "id": "tuya_cycle",
+        "type": "inject",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_triggers",
+        "name": "A cada 30 s + startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 5,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 160,
+        "wires": [
+            [
+                "tuya_entity_registry"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_discovery_tick",
+        "type": "inject",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_triggers",
+        "name": "Publicar discovery no startup",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 260,
+        "wires": [
+            [
+                "tuya_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_query_catch",
+        "type": "catch",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_triggers",
+        "name": "Falha nas consultas HA",
+        "scope": [
+            "tuya_entity_registry",
+            "tuya_device_registry",
+            "tuya_states"
+        ],
+        "uncaught": false,
+        "x": 170,
+        "y": 320,
+        "wires": [
+            [
+                "tuya_query_failure"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_entity_registry",
+        "type": "ha-api",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_query",
+        "name": "Registro de entidades",
+        "server": "4126427d5e161a03",
+        "version": 1,
+        "debugenabled": false,
+        "protocol": "websocket",
+        "method": "get",
+        "path": "",
+        "data": "{\"type\":\"config/entity_registry/list\"}",
+        "dataType": "json",
+        "responseType": "json",
+        "outputProperties": [
+            {
+                "property": "tuya_entity_registry",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "results"
+            }
+        ],
+        "x": 470,
+        "y": 140,
+        "wires": [
+            [
+                "tuya_device_registry"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_device_registry",
+        "type": "ha-api",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_query",
+        "name": "Registro de dispositivos",
+        "server": "4126427d5e161a03",
+        "version": 1,
+        "debugenabled": false,
+        "protocol": "websocket",
+        "method": "get",
+        "path": "",
+        "data": "{\"type\":\"config/device_registry/list\"}",
+        "dataType": "json",
+        "responseType": "json",
+        "outputProperties": [
+            {
+                "property": "tuya_device_registry",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "results"
+            }
+        ],
+        "x": 470,
+        "y": 220,
+        "wires": [
+            [
+                "tuya_states"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_states",
+        "type": "ha-api",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_query",
+        "name": "Estados atuais",
+        "server": "4126427d5e161a03",
+        "version": 1,
+        "debugenabled": false,
+        "protocol": "websocket",
+        "method": "get",
+        "path": "",
+        "data": "{\"type\":\"get_states\"}",
+        "dataType": "json",
+        "responseType": "json",
+        "outputProperties": [
+            {
+                "property": "tuya_states",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "results"
+            }
+        ],
+        "x": 470,
+        "y": 300,
+        "wires": [
+            [
+                "tuya_device_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_device_evaluate",
+        "type": "function",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_state",
+        "name": "30 s queda / 60 s retorno por dispositivo",
+        "func": "const INCIDENTS_KEY = \"tuya_device_incidents_v1\";\n  const OBSERVATIONS_KEY = \"tuya_device_observations_v1\";\n  const SUMMARY_KEY = \"tuya_device_monitor_summary_v1\";\n  const STORE = \"memoryOnly\";\n  const FAILURE_CONFIRMATION_MS = 30_000;\n  const RECOVERY_CONFIRMATION_MS = 60_000;\n  const REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;\n  const PLATFORMS = new Set([\"tuya\", \"localtuya\"]);\n  const UNRELIABLE_DOMAINS = new Set([\"button\", \"event\"]);\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const entityRegistry = msg.tuya_entity_registry;\n  const deviceRegistry = msg.tuya_device_registry;\n  const states = msg.tuya_states;\n\n  if (!Array.isArray(entityRegistry) || !Array.isArray(deviceRegistry) || !Array.isArray(states)) {\n    node.error(\"Monitor Tuya recebeu uma resposta inválida do Home Assistant.\", msg);\n    return null;\n  }\n\n  const cleanLabel = (value, fallback) => {\n    const label = String(value || \"\").replace(/[\\u0000-\\u001f\\u007f]/g, \" \").replace(/\\s+/g, \" \").trim();\n    return (label || fallback).slice(0, 120);\n  };\n  const hashKey = (value) => {\n    let hash = 0x811c9dc5;\n    for (const byte of Buffer.from(String(value), \"utf8\")) {\n      hash ^= byte;\n      hash = Math.imul(hash, 0x01000193) >>> 0;\n    }\n    return hash.toString(16).padStart(8, \"0\");\n  };\n  const stateByEntity = new Map(states.map((entity) => [entity.entity_id, entity]));\n  const deviceById = new Map(deviceRegistry.map((device) => [device.id, device]));\n  const grouped = new Map();\n\n  for (const entity of entityRegistry) {\n    if (!PLATFORMS.has(String(entity.platform || \"\").toLowerCase())) continue;\n    if (entity.disabled_by != null || !entity.entity_id) continue;\n    const deviceKey = entity.device_id || `entity:${entity.entity_id}`;\n    const current = grouped.get(deviceKey) || { key: deviceKey, entities: [], platforms: new Set() };\n    current.entities.push(entity);\n    current.platforms.add(String(entity.platform).toLowerCase());\n    grouped.set(deviceKey, current);\n  }\n\n  const observations = flow.get(OBSERVATIONS_KEY, STORE) || {};\n  const incidents = flow.get(INCIDENTS_KEY, \"persistent\") || {};\n  const summary = flow.get(SUMMARY_KEY, \"persistent\") || {\n    last_outage_at: null,\n    last_recovery_at: null,\n  };\n  const downMessages = [];\n  const recoveryMessages = [];\n  const monitored = [];\n\n  for (const group of grouped.values()) {\n    const reliableEntities = group.entities.filter((entity) => {\n      const domain = String(entity.entity_id).split(\".\", 1)[0];\n      return !UNRELIABLE_DOMAINS.has(domain);\n    });\n    if (!reliableEntities.length) continue;\n\n    const device = deviceById.get(group.key) || {};\n    const firstState = stateByEntity.get(reliableEntities[0].entity_id);\n    const name = cleanLabel(\n      device.name_by_user || device.name || firstState?.attributes?.friendly_name || reliableEntities[0].original_name,\n      \"Dispositivo Tuya\",\n    );\n    const entityStates = reliableEntities.map((entity) => {\n      const current = stateByEntity.get(entity.entity_id);\n      return current ? String(current.state || \"unknown\").toLowerCase() : \"unavailable\";\n    });\n    const rawState = entityStates.some((state) => !new Set([\"unknown\", \"unavailable\"]).has(state))\n      ? \"online\"\n      : \"offline\";\n    const previousObservation = observations[group.key];\n    const observation = {\n      state: rawState,\n      changed_at: previousObservation?.state === rawState ? previousObservation.changed_at : now,\n    };\n    observations[group.key] = observation;\n    const stableForMs = Math.max(0, now - Number(observation.changed_at || now));\n    const current = incidents[group.key] || { incident_open: false };\n    const notificationKey = `tuya_device_${hashKey(group.key)}`;\n\n    if (rawState === \"offline\") {\n      if (current.incident_open) {\n        current.phase = \"offline\";\n        const lastNotificationMs = Date.parse(current.last_notification_at || \"\");\n        let nextReminderMs = Date.parse(current.next_reminder_at || \"\");\n        if (!Number.isFinite(nextReminderMs)) {\n          nextReminderMs = Number.isFinite(lastNotificationMs) ? lastNotificationMs + REMINDER_INTERVAL_MS : now + REMINDER_INTERVAL_MS;\n          current.next_reminder_at = new Date(nextReminderMs).toISOString();\n        }\n        if (now >= nextReminderMs) {\n          current.last_notification_at = nowIso;\n          current.next_reminder_at = new Date(now + REMINDER_INTERVAL_MS).toISOString();\n          downMessages.push({\n            notification: {\n              id: notificationKey,\n              title: \"Dispositivo Tuya continua indisponível\",\n              message: `O dispositivo Tuya “${name}” continua indisponível há pelo menos 24 horas. Novo lembrete em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique energia, Wi-Fi e a integração Tuya no Home Assistant.`,\n            },\n          });\n        }\n      } else if (stableForMs >= FAILURE_CONFIRMATION_MS) {\n        current.phase = \"offline\";\n        current.incident_open = true;\n        current.outage_started_at = new Date(Number(observation.changed_at || now)).toISOString();\n        current.last_outage_at = current.outage_started_at;\n        current.last_notification_at = nowIso;\n        current.next_reminder_at = new Date(now + REMINDER_INTERVAL_MS).toISOString();\n        summary.last_outage_at = current.outage_started_at;\n        downMessages.push({\n          notification: {\n            id: notificationKey,\n            title: \"Dispositivo Tuya indisponível\",\n            message: `O dispositivo Tuya “${name}” está indisponível há pelo menos 30 segundos. Detectado em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique energia, Wi-Fi e a integração Tuya no Home Assistant.`,\n          },\n        });\n      } else {\n        current.phase = \"checking\";\n      }\n    } else if (current.incident_open) {\n      current.phase = \"recovering\";\n      if (stableForMs >= RECOVERY_CONFIRMATION_MS) {\n        const outageStartMs = Date.parse(current.outage_started_at || current.last_outage_at || nowIso);\n        current.last_outage_duration_s = Number.isFinite(outageStartMs)\n          ? Math.max(0, Math.round((now - outageStartMs) / 1000))\n          : null;\n        current.phase = \"online\";\n        current.incident_open = false;\n        current.last_recovery_at = nowIso;\n        current.next_reminder_at = null;\n        summary.last_recovery_at = nowIso;\n        recoveryMessages.push({\n          notification: {\n            id: `${notificationKey}_recovered`,\n            dismiss_id: notificationKey,\n            title: \"Dispositivo Tuya recuperado\",\n            message: `O dispositivo Tuya “${name}” voltou a ficar disponível e permaneceu estável por 1 minuto. Recuperado em ${new Date(now).toLocaleString(\"pt-BR\")}.`,\n          },\n        });\n      }\n    } else {\n      current.phase = \"online\";\n    }\n\n    incidents[group.key] = {\n      ...current,\n      name,\n      platforms: [...group.platforms].sort(),\n      raw_state: rawState,\n      stable_for_s: Math.floor(stableForMs / 1000),\n      last_checked_at: nowIso,\n    };\n    monitored.push({ key: group.key, name, raw_state: rawState, phase: incidents[group.key].phase });\n  }\n\n  flow.set(OBSERVATIONS_KEY, observations, STORE);\n  flow.set(INCIDENTS_KEY, incidents, \"persistent\");\n  summary.last_checked_at = nowIso;\n  summary.last_success_at = nowIso;\n  flow.set(SUMMARY_KEY, summary, \"persistent\");\n\n  const offline = monitored.filter((device) => device.raw_state === \"offline\");\n  const recovering = monitored.filter((device) => device.phase === \"recovering\");\n  const confirmedOffline = monitored.filter((device) => device.phase === \"offline\");\n  const phase = monitored.length === 0\n    ? \"checking\"\n    : confirmedOffline.length > 0\n      ? \"offline\"\n      : offline.length > 0\n        ? \"checking\"\n        : recovering.length > 0\n          ? \"recovering\"\n          : \"online\";\n  const attributes = {\n    state: phase,\n    checked_at: nowIso,\n    monitored_device_count: monitored.length,\n    offline_device_count: offline.length,\n    confirmed_offline_device_count: confirmedOffline.length,\n    offline_devices: offline.map((device) => device.name).sort((a, b) => a.localeCompare(b, \"pt-BR\")),\n    platforms: [...new Set(monitored.flatMap((device) => incidents[device.key].platforms))].sort(),\n    last_outage: summary.last_outage_at || \"Nenhuma queda confirmada\",\n    last_recovery: summary.last_recovery_at || \"Nenhuma recuperação registrada\",\n    failure_confirmation_s: FAILURE_CONFIRMATION_MS / 1000,\n    recovery_confirmation_s: RECOVERY_CONFIRMATION_MS / 1000,\n    reminder_interval_h: REMINDER_INTERVAL_MS / (60 * 60 * 1000),\n    next_reminders: confirmedOffline\n      .map((device) => incidents[device.key].next_reminder_at)\n      .filter(Boolean)\n      .sort(),\n  };\n  const publications = [\n    { topic: \"nodered/infrastructure/tuya/connection\", payload: phase === \"online\" ? \"ON\" : \"OFF\" },\n    { topic: \"nodered/infrastructure/tuya/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/tuya/state\", payload: phase },\n  ];\n  node.status({\n    fill: phase === \"online\" ? \"green\" : phase === \"offline\" ? \"red\" : \"yellow\",\n    shape: phase === \"online\" ? \"dot\" : \"ring\",\n    text: monitored.length ? `${phase}: ${offline.length}/${monitored.length} indisponível(is)` : \"nenhum dispositivo Tuya monitorável\",\n  });\n  return [downMessages.length ? downMessages : null, recoveryMessages.length ? recoveryMessages : null, publications];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "flow.set('tuya_device_observations_v1', {}, 'memoryOnly');",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 170,
+        "wires": [
+            [
+                "tuya_device_notify_down"
+            ],
+            [
+                "tuya_device_notify_recovery"
+            ],
+            [
+                "tuya_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_query_failure",
+        "type": "function",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_state",
+        "name": "Publicar falha da consulta",
+        "func": "const now = Number(msg.monitor_now || Date.now());\n  const summary = flow.get(\"tuya_device_monitor_summary_v1\", \"persistent\") || {};\n  const error = String(msg.error?.message || msg.error || \"consulta indisponível\")\n    .replace(/[\\u0000-\\u001f\\u007f]/g, \" \")\n    .replace(/\\s+/g, \" \")\n    .trim()\n    .slice(0, 240);\n  const attributes = {\n    state: \"checking\",\n    checked_at: new Date(now).toISOString(),\n    last_success: summary.last_success_at || \"Nenhuma consulta concluída\",\n    error,\n  };\n  node.status({ fill: \"yellow\", shape: \"ring\", text: \"consulta ao Home Assistant falhou\" });\n  return [[\n    { topic: \"nodered/infrastructure/tuya/connection\", payload: \"OFF\" },\n    { topic: \"nodered/infrastructure/tuya/attributes\", payload: JSON.stringify(attributes) },\n    { topic: \"nodered/infrastructure/tuya/state\", payload: \"checking\" },\n  ]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 300,
+        "wires": [
+            [
+                "tuya_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_device_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_notify",
+        "name": "Notificar dispositivo offline",
+        "env": [],
+        "x": 1170,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "tuya_device_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_notify",
+        "name": "Notificar dispositivo recuperado",
+        "env": [],
+        "x": 1170,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "tuya_discovery",
+        "type": "function",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_publish",
+        "name": "Discovery: Tuya",
+        "func": "const device = {\n    identifiers: [\"node_red_infrastructure_monitoring\"],\n    name: \"Monitoramento de infraestrutura\",\n    manufacturer: \"Node-RED\",\n    model: \"Flows de disponibilidade\",\n  };\n  const availability = {\n    availability_topic: \"nodered/status\",\n    payload_available: \"online\",\n    payload_not_available: \"offline\",\n  };\n  return [[\n    {\n      topic: \"homeassistant/binary_sensor/tuya_devices/config\",\n      payload: JSON.stringify({\n        name: \"Dispositivos Tuya\",\n        object_id: \"tuya_devices\",\n        default_entity_id: \"binary_sensor.tuya_devices\",\n        unique_id: \"node_red_tuya_devices\",\n        device_class: \"connectivity\",\n        state_topic: \"nodered/infrastructure/tuya/connection\",\n        json_attributes_topic: \"nodered/infrastructure/tuya/attributes\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        ...availability,\n        device,\n      }),\n    },\n    {\n      topic: \"homeassistant/sensor/tuya_devices_state/config\",\n      payload: JSON.stringify({\n        name: \"Estado dos dispositivos Tuya\",\n        object_id: \"tuya_devices_state\",\n        default_entity_id: \"sensor.tuya_devices_state\",\n        unique_id: \"node_red_tuya_devices_state\",\n        icon: \"mdi:access-point-network\",\n        entity_category: \"diagnostic\",\n        state_topic: \"nodered/infrastructure/tuya/state\",\n        json_attributes_topic: \"nodered/infrastructure/tuya/attributes\",\n        ...availability,\n        device,\n      }),\n    },\n  ]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 500,
+        "wires": [
+            [
+                "tuya_mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "tuya_mqtt_publish",
+        "type": "mqtt out",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_publish",
+        "name": "Publicar estado retained",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1140,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "tuya_test_note",
+        "type": "comment",
+        "z": "monitoramento_tuya_tab",
+        "g": "grp_tuya_tests",
+        "name": "Testes automatizados fora do caminho de produção",
+        "info": "Execute `npm run flows:test-infrastructure`. O teste cobre descoberta dinâmica de Tuya/LocalTuya, startup saudável, 30 s offline, dedupe, lembrete a cada 24 h, 60 s de recuperação, restart persistente, falha de consulta, MQTT Discovery e a rota compartilhada de celular/Echo.",
+        "x": 450,
+        "y": 670,
+        "wires": []
+    },
+    {
+        "id": "infra_notify_echo",
+        "type": "api-call-service",
+        "z": "infra_notify_all_mobiles",
+        "name": "Anunciar na Echo Dot",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify\",\"data\":{\"message\":notification.title & \". \" & notification.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 520,
+        "y": 190,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "zigbee_component_reminders",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "grp_zigbee_state",
+        "name": "Lembretes de componentes a cada 24 h",
+        "func": "const KEY = \"zigbee_component_incidents_v1\";\n  const REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;\n  const incidents = flow.get(KEY, \"persistent\") || {};\n  const now = Number(msg.monitor_now || Date.now());\n  const nowIso = new Date(now).toISOString();\n  const reminders = [];\n  let changed = false;\n\n  for (const [component, incident] of Object.entries(incidents)) {\n    if (incident?.offline !== true) continue;\n    const lastNotificationMs = Date.parse(incident.last_notification_at || incident.outage_started_at || \"\");\n    let nextReminderMs = Date.parse(incident.next_reminder_at || \"\");\n    if (!Number.isFinite(nextReminderMs)) {\n      nextReminderMs = Number.isFinite(lastNotificationMs) ? lastNotificationMs + REMINDER_INTERVAL_MS : now + REMINDER_INTERVAL_MS;\n      incident.next_reminder_at = new Date(nextReminderMs).toISOString();\n      changed = true;\n    }\n    if (now < nextReminderMs) continue;\n\n    const slug = component.normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_|_$/g, \"\");\n    let hash = 0x811c9dc5;\n    for (const byte of Buffer.from(component, \"utf8\")) {\n      hash ^= byte;\n      hash = Math.imul(hash, 0x01000193) >>> 0;\n    }\n    const notificationKey = `${slug || \"component\"}_${hash.toString(16).padStart(8, \"0\")}`;\n    incident.last_notification_at = nowIso;\n    incident.next_reminder_at = new Date(now + REMINDER_INTERVAL_MS).toISOString();\n    changed = true;\n    reminders.push({\n      notification: {\n        id: `zigbee_component_${notificationKey}`,\n        title: \"Componente Zigbee continua indisponível\",\n        message: `O componente Zigbee “${component}” continua indisponível há pelo menos 24 horas. Novo lembrete em ${new Date(now).toLocaleString(\"pt-BR\")}. Verifique alimentação, alcance, bateria e a malha Zigbee.`,\n      },\n    });\n  }\n\n  if (changed) flow.set(KEY, incidents, \"persistent\");\n  return reminders.length ? [reminders] : null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 870,
+        "y": 300,
+        "wires": [
+            [
+                "zigbee_component_notify_down"
+            ]
+        ]
     }
 ]

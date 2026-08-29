@@ -234,10 +234,12 @@ availability:
   enabled: true
 ```
 
-Confirme também os destinos do subflow `Notificar todos os dispositivos móveis`
+Confirme também os destinos do subflow `Notificar celulares, Echo e Home Assistant`
 e execute `npm --prefix nodered run flows:test-infrastructure`. As entidades
-`binary_sensor.internet_connection` e `binary_sensor.zigbee_network` são
-descobertas por MQTT depois do Node-RED iniciar. Veja o guia de
+`binary_sensor.internet_connection`, `binary_sensor.zigbee_network` e
+`binary_sensor.tuya_devices` são descobertas por MQTT depois do Node-RED
+iniciar. O flow `monitoramento_tuya` descobre automaticamente dispositivos das
+plataformas `tuya` e `localtuya` cadastrados no Home Assistant. Veja o guia de
 [monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md).
 
 ## 9. Dependências Node

@@ -3,20 +3,23 @@
 [Português (primary)](ZIGBEE_HEALTH_NOTIFICATIONS.md) ·
 [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 
-The `monitoramento_zigbee` and `monitoramento_internet` flows in
-`nodered/flows.json` are the source of availability decisions. Home Assistant
-exposes retained MQTT-discovery entities and runs notification services; it no
-longer detects, confirms, or closes these incidents. The former
+The `monitoramento_zigbee`, `monitoramento_tuya`, and
+`monitoramento_internet` flows in `nodered/flows.json` are the source of
+availability decisions. Home Assistant exposes retained MQTT-discovery
+entities and runs notification services; it no longer detects, confirms, or
+closes these incidents. The former
 `homeassistant/packages/zigbee_health_notifications.yaml` package was removed.
 
 ## Shared architecture and notifications
 
-Both tabs read left to right: trigger, collection, state/confirmation,
+The three tabs read left to right: trigger, collection, state/confirmation,
 failure/recovery, notification, and retained MQTT publication. The shared
-`Notificar todos os dispositivos móveis` subflow creates a persistent Home
+`Notificar celulares, Echo e Home Assistant` subflow creates a persistent Home
 Assistant notification and sends the same message to
 the logical roles `mobile_primary` and `mobile_secondary` through
-`public_bindings.call`. Recovery also
+`public_bindings.call`. It also announces the title and message on the Echo Dot
+through the existing logical `mobile_primary/notify` binding; no private Echo
+entity ID is stored in the flow. Recovery also
 dismisses the prior failure alert. Home Assistant calls use the connector's
 `all` queue during short HA restarts. That connector queue does not retain a
 mobile push merely because the WAN is down.
@@ -81,10 +84,17 @@ retained online value at startup establishes a baseline without a recovery
 alert. States are exposed through `binary_sensor.zigbee_network` and
 `sensor.zigbee_network_state`.
 
+An unresolved network incident updates the same persistent alert and repeats
+mobile push and Echo voice delivery every 24 hours. Recovery stops reminders.
+
 Retained `zigbee2mqtt/.../availability` messages cover components, including
 friendly names containing `/`. The first offline value opens one persisted
 incident; duplicate offline values are ignored; the first later online value
 produces one recovery; retained online at startup is silent.
+
+A periodic tick repeats the same component alert every 24 hours while it stays
+offline, even when no new MQTT availability message arrives. Recovery cancels
+the reminder schedule.
 
 Notification identifiers combine a readable slug with a stable hash of the
 complete friendly name. Hierarchical names remain readable and distinct names
@@ -104,6 +114,34 @@ availability:
   enabled: true
 ```
 
+## Tuya and LocalTuya monitor
+
+The `monitoramento_tuya` flow does not contain a private entity list. Every 30
+seconds it uses the existing Node-RED Home Assistant WebSocket connection to
+read the entity registry, device registry, and current states. Enabled entities
+from the `tuya` and `localtuya` platforms are grouped by device.
+
+`button` and `event` entities are not health evidence because they commonly
+remain `unknown` while their device is online. A device with no other observable
+entity is skipped. A monitored device is online when at least one observable
+entity is neither `unknown` nor `unavailable`. If all observable entities are
+unavailable, 30 continuous seconds confirm failure and 60 continuous online
+seconds confirm recovery.
+
+Each device has its own persisted incident and deduplication state. Notification
+IDs use a stable hash of the Home Assistant registry ID, while messages use the
+device's current Home Assistant name. This discovers the feeder and future Tuya
+devices without committing their IDs or names to the repository. A failed Home
+Assistant query publishes `checking` but does not open or close device incidents,
+so loss of the observation channel is not misclassified as every device failing.
+Each unresolved device incident updates the same alert and repeats mobile push
+and Echo voice delivery every 24 hours; confirmed recovery stops reminders.
+
+MQTT discovery exposes `binary_sensor.tuya_devices` and
+`sensor.tuya_devices_state`. Their attributes include monitored and unavailable
+counts, current offline device names, platforms, thresholds, and the last
+confirmed outage and recovery times.
+
 ## Persistence and restarts
 
 `nodered/settings.js` keeps `default`/`memoryOnly` volatile. Infrastructure
@@ -117,6 +155,8 @@ An online startup does not announce recovery. An offline startup is detected
 normally. A restart during a persisted incident does not duplicate failure and
 can later confirm recovery. Retained discovery/state rebuilds entities after an
 HA restart. Zigbee2MQTT startup transients must cross the 30-second threshold.
+After a Node-RED restart during a confirmed Tuya incident, the failure is not
+duplicated; only the volatile 60-second recovery-observation window restarts.
 The retained MQTT attribute payload also backs up the last confirmed outage,
 recovery, and duration. On startup the monitor restores those historical fields
 before publishing fresh health data, so a missing flow-context file cannot
@@ -145,7 +185,9 @@ docker exec homeassistant \
 
 Static automated tests cover quorum, consecutive failures, deduplication,
 oscillation, recovery, duration, second outages, persisted restart behavior,
-Zigbee startup, 30/60-second thresholds, and component cycles. The isolated
+Zigbee startup, 30/60-second thresholds, network/component 24-hour reminders,
+dynamic Tuya/LocalTuya discovery, failure, recovery, reminders and query-error
+behavior, and the Echo voice branch. The isolated
 runtime test loads the exact Function bodies into Node-RED containers, exercises
 flapping and ping concurrency/error paths, and performs real container restarts
 against `localfilesystem`; it never connects to production MQTT or Home

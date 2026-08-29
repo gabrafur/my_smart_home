@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
+import { nodeDimensions as dimensions } from "./flow-layout-validator.mjs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
@@ -12,12 +13,6 @@ fs.mkdirSync(outputDir, { recursive: true });
 
 function escape(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
-
-function dimensions(node) {
-  if (node.type === "link in" || node.type === "link out") return { width: 34, height: 28 };
-  const width = Math.max(120, Math.min(260, 34 + String(node.name || node.type).length * 7));
-  return { width, height: node.type === "comment" ? 42 : 34 };
 }
 
 function crc32(buffer) {
@@ -104,16 +99,17 @@ const palette = {
   change: "#9ec9e8", "link in": "#c7c7c7", "link out": "#c7c7c7", comment: "#f4f1c9",
 };
 
-for (const tab of flows.filter((node) => node.type === "tab" && (!selected.size || selected.has(node.label) || selected.has(node.id)))) {
-  const nodes = flows.filter((node) => node.z === tab.id && node.type !== "group");
-  const groups = flows.filter((node) => node.z === tab.id && node.type === "group");
+for (const canvas of flows.filter((node) => ["tab", "subflow"].includes(node.type) && (!selected.size || selected.has(node.label || node.name) || selected.has(node.id)))) {
+  const canvasName = canvas.label || canvas.name || canvas.id;
+  const nodes = flows.filter((node) => node.z === canvas.id && node.type !== "group");
+  const groups = flows.filter((node) => node.z === canvas.id && node.type === "group");
   if (!nodes.length) continue;
   const maxX = Math.max(...groups.map((g) => g.x + g.w), ...nodes.map((n) => n.x + dimensions(n).width / 2)) + 50;
   const maxY = Math.max(...groups.map((g) => g.y + g.h), ...nodes.map((n) => n.y + 30)) + 50;
   const parts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${maxX}" height="${maxY}" viewBox="0 0 ${maxX} ${maxY}">`,
     `<rect width="100%" height="100%" fill="#1f1f1f"/>`,
     `<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#8fb9d8"/></marker></defs>`,
-    `<text x="20" y="30" fill="#fff" font-family="sans-serif" font-size="20">${escape(tab.label)}</text>`];
+    `<text x="20" y="30" fill="#fff" font-family="sans-serif" font-size="20">${escape(canvasName)}</text>`];
   for (const group of groups) {
     parts.push(`<rect x="${group.x}" y="${group.y}" width="${group.w}" height="${group.h}" rx="8" fill="none" stroke="${group.style?.stroke ?? "#777"}" stroke-width="2"/>`);
     parts.push(`<text x="${group.x + 10}" y="${group.y + 20}" fill="#ddd" font-family="sans-serif" font-size="14">${escape(group.name)}</text>`);
@@ -125,7 +121,7 @@ for (const tab of flows.filter((node) => node.type === "tab" && (!selected.size 
     const from = dimensions(node);
     for (const targetId of (node.wires ?? []).flat()) {
       const target = byId.get(targetId);
-      if (!target || target.z !== tab.id) continue;
+      if (!target || target.z !== canvas.id) continue;
       const to = dimensions(target);
       const x1 = node.x + from.width / 2;
       const y1 = node.y;
@@ -148,9 +144,9 @@ for (const tab of flows.filter((node) => node.type === "tab" && (!selected.size 
     parts.push(`<text x="${node.x}" y="${node.y + 5}" fill="#222" text-anchor="middle" font-family="sans-serif" font-size="12">${escape(node.name || node.type)}</text>`);
   }
   parts.push(`</svg>`);
-  const target = path.join(outputDir, `${tab.label}.svg`);
+  const target = path.join(outputDir, `${canvasName}.svg`);
   fs.writeFileSync(target, parts.join("\n"));
-  const pngTarget = path.join(outputDir, `${tab.label}.png`);
+  const pngTarget = path.join(outputDir, `${canvasName}.png`);
   renderPng(pngTarget, Math.ceil(maxX), Math.ceil(maxY), groups, nodes, rasterWires);
-  console.log(`${tab.label}: ${nodes.length} nodes, ${groups.length} groups, ${longWires} wires >500px, ${reverseWires} wires de retorno -> ${target}, ${pngTarget}`);
+  console.log(`${canvasName}: ${nodes.length} nodes, ${groups.length} groups, ${longWires} wires >500px, ${reverseWires} wires de retorno -> ${target}, ${pngTarget}`);
 }

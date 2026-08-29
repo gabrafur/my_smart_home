@@ -3,10 +3,11 @@
 [Português (principal)](ZIGBEE_HEALTH_NOTIFICATIONS.md) ·
 [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md)
 
-Os flows `monitoramento_zigbee` e `monitoramento_internet`, em
-`nodered/flows.json`, são a fonte da lógica de disponibilidade da casa. O Home
-Assistant recebe estados por MQTT discovery e executa os serviços de
-notificação, mas não detecta, confirma nem encerra incidentes.
+Os flows `monitoramento_zigbee`, `monitoramento_tuya` e
+`monitoramento_internet`, em `nodered/flows.json`, são a fonte da lógica de
+disponibilidade da casa. O Home Assistant recebe estados por MQTT discovery e
+executa os serviços de notificação, mas não detecta, confirma nem encerra
+incidentes.
 
 O antigo package
 `homeassistant/packages/zigbee_health_notifications.yaml` foi removido. Não
@@ -21,13 +22,18 @@ gatilho -> coleta -> avaliação/estado -> queda ou retorno -> notificação
                               `-> MQTT retained -> Home Assistant
 ```
 
-O subflow `Notificar todos os dispositivos móveis` é reutilizado pelos dois
+O subflow `Notificar celulares, Echo e Home Assistant` é reutilizado pelos três
 monitores. Para cada evento ele:
 
 1. cria ou atualiza uma notificação persistente no Home Assistant;
 2. envia push para os papéis lógicos `mobile_primary` e `mobile_secondary`
    pelo serviço `public_bindings.call`;
-3. em uma recuperação, remove o alerta persistente da falha anterior.
+3. anuncia o título e a mensagem na Echo Dot pelo binding lógico
+   `mobile_primary/notify`, já usado pelos avisos Alexa do repositório;
+4. em uma recuperação, remove o alerta persistente da falha anterior.
+
+Nenhum entity ID da Echo é gravado no flow. O destino real continua na
+configuração privada de bindings.
 
 O contrato de entrada, também documentado visualmente no subflow, é:
 
@@ -137,7 +143,8 @@ Os critérios anteriores foram preservados:
 - `online` contínuo por 60 segundos confirma a recuperação;
 - `online` retained no startup estabelece apenas o estado inicial e não gera
   falsa recuperação;
-- um incidente aberto não gera outra notificação de queda.
+- um incidente aberto não duplica a queda dentro da janela e, se continuar
+  aberto, atualiza o mesmo alerta e repete push/voz a cada 24 horas.
 
 O estado é exposto como:
 
@@ -158,6 +165,10 @@ componente, o Node-RED persiste se há incidente aberto:
 - primeiro `online` após o incidente: uma recuperação;
 - `online` no startup sem incidente: ignorado.
 
+Enquanto o componente permanecer offline, o tick periódico da aba repete o
+mesmo alerta a cada 24 horas, mesmo que nenhuma nova mensagem MQTT de
+availability seja recebida. A recuperação encerra o agendamento.
+
 O identificador da notificação combina um slug legível com um hash estável do
 friendly name completo. Assim, caminhos como `andar1/cozinha/sensor` são
 preservados na mensagem e não colidem com nomes diferentes que gerariam o mesmo
@@ -177,6 +188,45 @@ Requer no arquivo privado do Zigbee2MQTT:
 availability:
   enabled: true
 ```
+
+## Tuya e LocalTuya
+
+O flow `monitoramento_tuya` não contém uma lista privada de entidades. A cada
+30 segundos ele consulta, pela conexão WebSocket já configurada entre Node-RED
+e Home Assistant:
+
+- o registro de entidades;
+- o registro de dispositivos;
+- os estados atuais.
+
+Entidades habilitadas das plataformas `tuya` e `localtuya` são agrupadas por
+dispositivo. Entidades `button` e `event` não são usadas como prova de saúde,
+pois normalmente permanecem `unknown` mesmo quando o dispositivo está online.
+Um dispositivo sem nenhuma outra entidade observável não entra no monitor.
+
+O dispositivo é considerado disponível quando ao menos uma entidade observável
+tem estado diferente de `unknown` e `unavailable`. Quando todas estão
+indisponíveis, a queda precisa permanecer por 30 segundos para abrir o
+incidente. O retorno precisa permanecer estável por 60 segundos. Cada
+dispositivo tem deduplicação e contexto persistente próprios; o identificador
+da notificação usa um hash estável do ID do registro, enquanto a mensagem usa o
+nome atual do dispositivo no Home Assistant. Assim, o comedouro e novos
+dispositivos Tuya passam a ser descobertos sem gravar seus IDs no repositório.
+Um incidente que continuar aberto atualiza o mesmo alerta e repete push e voz a
+cada 24 horas; a recuperação confirmada encerra os lembretes.
+
+Uma falha na própria consulta ao Home Assistant publica `checking`, mas não
+abre nem encerra incidentes de dispositivos. Isso evita interpretar uma queda
+do canal de observação como falha simultânea de todos os equipamentos.
+
+MQTT discovery expõe:
+
+- `binary_sensor.tuya_devices`;
+- `sensor.tuya_devices_state`.
+
+Os atributos incluem quantidades monitoradas e indisponíveis, nomes dos
+dispositivos atualmente offline, plataformas, limiares e horários da última
+queda e recuperação confirmadas.
 
 ## Restart e persistência
 
@@ -201,6 +251,8 @@ Comportamentos esperados:
   entidades; serviços são enfileirados durante indisponibilidade curta;
 - Zigbee2MQTT reinicia: a ponte precisa ficar offline por 30 segundos para
   alertar e online por 60 segundos para recuperar;
+- Node-RED reinicia durante uma queda Tuya confirmada: não duplica a queda e
+  reinicia apenas a janela volátil de 60 segundos que confirma o retorno;
 - roteador reinicia: pings continuam na cadência normal.
 
 O payload MQTT retained de atributos também funciona como cópia de segurança
@@ -221,8 +273,9 @@ observação. Reduzir o flush diminuiria, mas não eliminaria, essa janela.
 
 ## Dashboard
 
-O dashboard `Raspberry Pi - System Health` mostra os quatro estados e os
-atributos de última queda/recuperação. A interface é somente leitura.
+O dashboard `Raspberry Pi - System Health` continua mostrando os quatro estados
+de internet e Zigbee. As duas novas entidades Tuya ficam disponíveis para cards
+diagnósticos sem colocar lógica de incidente no dashboard.
 
 ## Validação
 
@@ -239,8 +292,10 @@ docker exec homeassistant \
 O teste automatizado estático cobre internet normal, um destino falho, três
 falhas, queda única, offline prolongado, recuperação inicial, oscilação,
 recuperação confirmada, duração, segunda queda, restart com incidente, startup
-Zigbee, falha momentânea, 30 segundos offline, dedupe, 60 segundos online e
-ciclo de componente. O teste de runtime carrega os corpos exatos das Functions
+Zigbee, falha momentânea, 30 segundos offline, dedupe, 60 segundos online,
+ciclo e lembrete de 24 horas de componente, lembrete de 24 horas da rede,
+descoberta/queda/recuperação/lembrete de dispositivos Tuya e LocalTuya e a
+ramificação de voz da Echo Dot. O teste de runtime carrega os corpos exatos das Functions
 em containers Node-RED isolados, força flapping e concorrência, verifica erro
 síncrono ao criar `ping` e faz restarts reais do container com o contexto
 `localfilesystem`. Ele não se conecta ao MQTT ou Home Assistant de produção.

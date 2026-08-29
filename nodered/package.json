@@ -19,6 +19,8 @@
         "flows:test-storage": "node tools/test-storage-health-flow.mjs",
         "flows:test-security-recovery": "node tools/test-security-recovery-flow.mjs",
         "flows:test-security-adversarial": "node tools/test-security-recovery-adversarial.mjs",
+        "flows:render": "node tools/render-flow-layout.mjs",
+        "flows:validate-layout": "node tools/validate-flow-layout.mjs",
         "flows:validate": "node tools/validate-flows.mjs",
         "flows:summary": "node tools/summarize-flows.mjs",
         "test:all": "node tools/test-all.mjs"
