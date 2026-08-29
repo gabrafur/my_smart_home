@@ -12,7 +12,7 @@
         "type": "tab",
         "label": "garagem",
         "disabled": false,
-        "info": "",
+        "info": "Um único controlador recebe o botão Zigbee e o botão do dashboard. Aplica dedupe de 900 ms, cooldown de 1 s e publica um pulso de 700 ms no relé, sem retry de ON.",
         "env": []
     },
     {
@@ -1538,12 +1538,13 @@
         "rh": 0,
         "inputs": 0,
         "x": 260,
-        "y": 120,
+        "y": 100,
         "wires": [
             [
                 "gar_portao_normalizar_click"
             ]
-        ]
+        ],
+        "g": "gar_group_pulse"
     },
     {
         "id": "gar_portao_action_topic_in",
@@ -1559,32 +1560,39 @@
         "rh": 0,
         "inputs": 0,
         "x": 260,
-        "y": 180,
+        "y": 160,
         "wires": [
             [
                 "gar_portao_normalizar_click"
             ]
-        ]
+        ],
+        "g": "gar_group_pulse"
     },
     {
         "id": "gar_portao_normalizar_click",
         "type": "function",
         "z": "29d64664bf8cbde8",
-        "name": "normalizar clique (dedupe + cooldown compartilhado)",
-        "func": "// Deixa passar no maximo um clique por vez, e so se nenhum pulso (deste\n// fluxo OU do botao do Home Assistant) tiver acontecido ha pouco.\n// Cada ON no rele e' uma acao fisica real no motor.\nconst now = Date.now();\n// Retransmissao Zigbee do MESMO aperto (o botao publica em dois topicos).\nconst dedupeMs = 900;\n// Janela morta apos um pulso de QUALQUER origem. Espelha cooldown_s do\n// script.portao_garagem_pulso no HA — mantenha os dois iguais.\nconst cooldownMs = 3000;\nlet action;\n\nif (typeof msg.payload === 'string') {\n    action = msg.payload;\n} else if (msg.payload && typeof msg.payload === 'object') {\n    action = msg.payload.action;\n}\n\nif (action !== 'single') {\n    return null;\n}\n\nconst lastAccepted = Number(flow.get('portao_garagem_last_click_ms') || 0);\nif (now - lastAccepted < dedupeMs) {\n    return null;\n}\n\n// Cooldown compartilhado: carimbado pelo no 'carimbar pulso' a cada ON do\n// rele, inclusive os que vieram do botao do dashboard.\nconst lastPulse = Number(flow.get('portao_garagem_last_pulse_ms') || 0);\nif (now - lastPulse < cooldownMs) {\n    node.status({ fill: 'yellow', shape: 'ring', text: 'clique ignorado (cooldown)' });\n    node.warn('portao: clique ignorado — pulso ha ' + (now - lastPulse) + 'ms (cooldown ' + cooldownMs + 'ms)');\n    return null;\n}\n\nflow.set('portao_garagem_last_click_ms', now);\nnode.status({ fill: 'green', shape: 'dot', text: 'pulso ' + new Date(now).toLocaleTimeString() });\nmsg.payload = {\n    action,\n    source_topic: msg.topic,\n    received_at: new Date(now).toISOString(),\n};\nreturn msg;",
-        "outputs": 1,
+        "name": "validar pedido (dedupe + cooldown 1 s)",
+        "func": "// Um unico gate protege os pedidos do botao Zigbee e do dashboard.\nconst now = Date.now();\nconst dedupeMs = 900;\nconst cooldownMs = 1000;\nlet action;\nlet origem;\n\nif (typeof msg.payload === \"string\") {\n    action = msg.payload;\n} else if (msg.payload && typeof msg.payload === \"object\") {\n    // server-events entrega o evento customizado no envelope payload.event;\n    // as entradas MQTT continuam usando o objeto diretamente.\n    const request = msg.payload.event && typeof msg.payload.event === \"object\"\n        ? msg.payload.event\n        : msg.payload;\n    action = request.action;\n    origem = request.origem;\n}\n\nif (action === \"probe\") {\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"evento do dashboard recebido\" });\n    node.log(\"portao: evento de diagnóstico recebido — nenhum comando enviado\");\n    return null;\n}\nif (action !== \"single\") return null;\n\nconst lastAccepted = Number(flow.get(\"portao_garagem_last_click_ms\") || 0);\nif (now - lastAccepted < dedupeMs) return null;\n\nconst lastPulse = Number(flow.get(\"portao_garagem_last_pulse_ms\") || 0);\nif (now - lastPulse < cooldownMs) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"ignorado: cooldown 1 s\" });\n    node.warn(\"portao: pedido ignorado — pulso ha \" + (now - lastPulse) + \"ms\");\n    return null;\n}\n\nif (flow.get(\"portao_garagem_relay_state\") === \"ON\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"relé já estava ON\" });\n    node.warn(\"portao: relé já estava ON; enviado somente OFF\");\n    msg.payload = { origem: origem || \"desconhecida\" };\n    return [null, msg];\n}\n\n// Carimba antes de publicar para fechar a corrida entre duas entradas.\nflow.set(\"portao_garagem_last_click_ms\", now);\nflow.set(\"portao_garagem_last_pulse_ms\", now);\nnode.status({ fill: \"green\", shape: \"dot\", text: \"pulso \" + new Date(now).toLocaleTimeString() });\nmsg.payload = {\n    action,\n    origem: origem || (msg.topic ? \"botao_zigbee\" : \"desconhecida\"),\n    received_at: new Date(now).toISOString()\n};\nreturn msg;",
+        "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
         "x": 610,
-        "y": 120,
+        "y": 140,
         "wires": [
             [
-                "gar_relay_pulse_on"
+                "gar_relay_pulse_on",
+                "gar_log_pulse_started"
+            ],
+            [
+                "gar_relay_pulse_off",
+                "gar_notify_relay_on"
             ]
-        ]
+        ],
+        "g": "gar_group_pulse"
     },
     {
         "id": "gar_relay_pulse_on",
@@ -1599,13 +1607,14 @@
         "finalize": "",
         "libs": [],
         "x": 980,
-        "y": 120,
+        "y": 140,
         "wires": [
             [
                 "gar_relay_mqtt_out",
                 "gar_relay_safety_delay"
             ]
-        ]
+        ],
+        "g": "gar_group_pulse"
     },
     {
         "id": "gar_relay_mqtt_out",
@@ -1622,8 +1631,9 @@
         "expiry": "",
         "broker": "721c47f31046b8bc",
         "x": 1930,
-        "y": 120,
-        "wires": []
+        "y": 140,
+        "wires": [],
+        "g": "gar_group_pulse"
     },
     {
         "id": "gar_relay_safety_delay",
@@ -1643,12 +1653,13 @@
         "allowrate": false,
         "outputs": 1,
         "x": 1300,
-        "y": 180,
+        "y": 140,
         "wires": [
             [
                 "gar_relay_pulse_off"
             ]
-        ]
+        ],
+        "g": "gar_group_pulse"
     },
     {
         "id": "gar_relay_pulse_off",
@@ -1663,22 +1674,24 @@
         "finalize": "",
         "libs": [],
         "x": 1610,
-        "y": 180,
+        "y": 140,
         "wires": [
             [
                 "gar_relay_mqtt_out"
             ]
-        ]
+        ],
+        "g": "gar_group_pulse"
     },
     {
         "id": "gar_pulse_watch_note",
         "type": "comment",
         "z": "29d64664bf8cbde8",
-        "name": "Cooldown compartilhado com o botao do Home Assistant",
-        "info": "Duas fontes pulsam o mesmo rele:\n\n  - este fluxo (botao Zigbee fisico), publicando {\"state\":\"ON\"};\n  - button.acionar_portao_da_garagem no HA, publicando ON cru.\n\nOs nos abaixo observam o MQTT do rele e carimbam\nflow.portao_garagem_last_pulse_ms a cada ON, de qualquer origem. O\nnormalizador de clique respeita essa janela, entao um pulso vindo do HA\ntambem bloqueia este fluxo (e nao so o contrario).\n\nA janela (3s) espelha cooldown_s de script.portao_garagem_pulso.\nVer docs/PORTAO_GARAGEM_BOTAO_PULSO.md.",
-        "x": 290,
-        "y": 260,
-        "wires": []
+        "name": "Observação independente do relé",
+        "info": "Os tópicos de comando e estado carimbam todo ON, inclusive comandos manuais. O estado reportado também impede um novo ON quando o relé ainda estiver ligado. O cooldown único é de 1 s.",
+        "x": 300,
+        "y": 340,
+        "wires": [],
+        "g": "gar_group_observer"
     },
     {
         "id": "gar_pulse_watch_set_in",
@@ -1694,12 +1707,13 @@
         "rh": 0,
         "inputs": 0,
         "x": 280,
-        "y": 300,
+        "y": 400,
         "wires": [
             [
                 "gar_pulse_watch_stamp"
             ]
-        ]
+        ],
+        "g": "gar_group_observer"
     },
     {
         "id": "gar_pulse_watch_state_in",
@@ -1714,31 +1728,31 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 270,
-        "y": 360,
+        "x": 280,
+        "y": 460,
         "wires": [
             [
                 "gar_pulse_watch_stamp"
             ]
-        ]
+        ],
+        "g": "gar_group_observer"
     },
     {
         "id": "gar_pulse_watch_stamp",
         "type": "function",
         "z": "29d64664bf8cbde8",
-        "name": "carimbar pulso (arma cooldown compartilhado)",
-        "func": "// Carimba o instante de qualquer pulso do rele, venha do HA, deste\n// fluxo ou de um comando manual. Nao publica nada — so registra.\nconst samePulseMs = 500;\nconst now = Date.now();\n\n// O payload pode ser 'ON' cru (o HA publica assim, via switch.turn_on)\n// ou {\"state\":\"ON\"} (formato deste fluxo e do topico de estado).\nlet state;\nif (typeof msg.payload === 'string') {\n    state = msg.payload;\n} else if (msg.payload && typeof msg.payload === 'object') {\n    state = msg.payload.state;\n}\n\nif (String(state).toUpperCase() !== 'ON') {\n    return null;\n}\n\n// O mesmo pulso chega duas vezes (comando + estado). Conta uma so.\nconst last = Number(flow.get('portao_garagem_last_pulse_ms') || 0);\nif (now - last < samePulseMs) {\n    return null;\n}\n\nflow.set('portao_garagem_last_pulse_ms', now);\nnode.status({ fill: 'blue', shape: 'dot', text: 'pulso ' + new Date(now).toLocaleTimeString() });\nreturn null;",
-        "outputs": 1,
+        "name": "observar pulso e estado do relé",
+        "func": "const now = Date.now();\nconst samePulseMs = 500;\nconst stateTopic = global.get(\"publicBindings\")?.roles?.garage_gate?.topics?.state;\nlet state;\nif (typeof msg.payload === \"string\") state = msg.payload;\nelse if (msg.payload && typeof msg.payload === \"object\") state = msg.payload.state;\nstate = String(state || \"\").toUpperCase();\nif (!['ON', 'OFF'].includes(state)) return null;\n\n// Somente o tópico reportado representa o estado observado do dispositivo.\nif (stateTopic && msg.topic === stateTopic) {\n    flow.set(\"portao_garagem_relay_state\", state);\n    flow.set(\"portao_garagem_relay_state_at\", now);\n}\nif (state === \"ON\") {\n    const lastPulse = Number(flow.get(\"portao_garagem_last_pulse_ms\") || 0);\n    if (now - lastPulse >= samePulseMs) flow.set(\"portao_garagem_last_pulse_ms\", now);\n}\nnode.status({ fill: state === \"ON\" ? \"blue\" : \"grey\", shape: \"dot\", text: state + \" \" + new Date(now).toLocaleTimeString() });\nreturn null;",
+        "outputs": 0,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 640,
-        "y": 330,
-        "wires": [
-            []
-        ]
+        "x": 650,
+        "y": 430,
+        "wires": [],
+        "g": "gar_group_observer"
     },
     {
         "id": "70e147e6b7df9826",
@@ -10999,5 +11013,141 @@
                 "zigbee_component_notify_down"
             ]
         ]
+    },
+    {
+        "id": "gar_dashboard_request_in",
+        "type": "server-events",
+        "z": "29d64664bf8cbde8",
+        "g": "gar_group_pulse",
+        "name": "botão do dashboard",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "exposeAsEntityConfig": "",
+        "eventType": "portao_garagem_pulso_solicitado",
+        "eventData": "",
+        "waitForRunning": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 260,
+        "y": 220,
+        "wires": [
+            [
+                "gar_portao_normalizar_click"
+            ]
+        ]
+    },
+    {
+        "id": "gar_log_pulse_started",
+        "type": "api-call-service",
+        "z": "29d64664bf8cbde8",
+        "g": "gar_group_pulse",
+        "name": "registrar pulso no Logbook",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "logbook.log",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"name\":\"Portão garagem\",\"message\":\"pulso ÚNICO iniciado (origem: \" & payload.origem & \") — largura 700 ms, cooldown 1 s.\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "logbook",
+        "service": "log",
+        "x": 980,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gar_notify_relay_on",
+        "type": "api-call-service",
+        "z": "29d64664bf8cbde8",
+        "g": "gar_group_pulse",
+        "name": "alertar relé já ligado",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\":\"portao_garagem_rele_preso\",\"title\":\"Portão da garagem - relé estava ligado\",\"message\":\"O relé já estava ON. O Node-RED enviou somente OFF e recusou um novo pulso.\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1300,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gar_group_pulse",
+        "type": "group",
+        "z": "29d64664bf8cbde8",
+        "name": "1. Entradas e pulso único — cooldown 1 s",
+        "style": {
+            "label": true,
+            "stroke": "#5b8ff9",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "45296e246a57590d",
+            "gar_portao_action_topic_in",
+            "gar_dashboard_request_in",
+            "gar_portao_normalizar_click",
+            "gar_relay_pulse_on",
+            "gar_relay_safety_delay",
+            "gar_relay_pulse_off",
+            "gar_relay_mqtt_out",
+            "gar_log_pulse_started",
+            "gar_notify_relay_on"
+        ],
+        "x": 120,
+        "y": 60,
+        "w": 1930,
+        "h": 200
+    },
+    {
+        "id": "gar_group_observer",
+        "type": "group",
+        "z": "29d64664bf8cbde8",
+        "name": "2. Estado e proteção contra pulsos externos",
+        "style": {
+            "label": true,
+            "stroke": "#7aa36f",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "gar_pulse_watch_note",
+            "gar_pulse_watch_set_in",
+            "gar_pulse_watch_state_in",
+            "gar_pulse_watch_stamp"
+        ],
+        "x": 120,
+        "y": 300,
+        "w": 700,
+        "h": 200
     }
 ]

@@ -6,7 +6,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_NATIVE_AUTOMATIONS = {
     "1783799940000",
-    "portao_garagem_carimba_pulso_externo",
     "portao_garagem_rele_preso_em_on",
     "raspberry_pi_health_problem_notification",
     "raspberry_pi_health_recovery_notification",

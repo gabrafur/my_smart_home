@@ -3,7 +3,7 @@
 [Português (principal)](AUTOMACOES_NATIVAS_HOME_ASSISTANT.md) · [English](HOME_ASSISTANT_NATIVE_AUTOMATIONS.en.md)
 
 O Node-RED concentra as automações residenciais e a orquestração normal. O
-Home Assistant mantém somente seis automações que pertencem à fronteira da
+Home Assistant mantém somente cinco automações que pertencem à fronteira da
 própria plataforma ou funcionam como proteção independente do Node-RED.
 
 | ID | Responsabilidade | Motivo para permanecer nativa |
@@ -12,7 +12,6 @@ própria plataforma ou funcionam como proteção independente do Node-RED.
 | `raspberry_pi_health_problem_notification` | avisar quando um sensor derivado de saúde entra em alerta | mantém observabilidade quando o Node-RED ou seu websocket estiver indisponível |
 | `raspberry_pi_health_recovery_notification` | encerrar o alerta e avisar a recuperação | compartilha os mesmos sensores, IDs de notificação e fila da automação de falha |
 | `raspberry_pi_home_assistant_started` | registrar que o Home Assistant iniciou | o evento de lifecycle pertence ao processo que acabou de iniciar e confirma sua própria recuperação |
-| `portao_garagem_carimba_pulso_externo` | carimbar qualquer fechamento do relé no cooldown compartilhado | faz a ponte entre pulsos do Node-RED e comandos do Home Assistant sem emitir `ON` |
 | `portao_garagem_rele_preso_em_on` | abrir o contato se o relé permanecer fechado por 5 s | é um watchdog independente que só envia `OFF`; movê-lo para o mesmo runtime que produz pulsos reduziria a defesa em profundidade |
 
 Essas exceções não autorizam novas automações nativas por conveniência. Uma
@@ -23,10 +22,10 @@ alguns invariantes críticos.
 
 ## Rollback e validação
 
-Nenhuma das seis automações foi desativada ou duplicada. O rollback desta
-decisão é apenas documental: qualquer migração futura deve primeiro criar e
-testar o flow substituto desabilitado, depois fazer uma troca única e
-reversível, nunca manter os dois caminhos capazes de executar a mesma ação.
+As cinco automações restantes não estão duplicadas. Para reverter a migração
+do pulso do portão, restaure a automação de cooldown no Home Assistant e remova
+a entrada equivalente do Node-RED em uma única troca; nunca mantenha os dois
+caminhos capazes de executar a mesma ação.
 
 Valide a fronteira com:
 

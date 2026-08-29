@@ -33,12 +33,13 @@ nuvem, latência esperada < 100 ms.
 
 ## Comportamento de "botoeira de campainha" (pulso momentâneo)
 
-Implementado na aba `garagem` do Node-RED (ver `tools/install-garage-relay-botoeira.mjs`
-para a criação dos nós e `tools/fix-garage-relay-software-pulse.mjs` para o pulso final):
+Implementado na aba `garagem` do Node-RED. A fonte geradora canônica é
+`tools/configure-garage-gate-flow.mjs`:
 
 ```
 botao_portao_garagem (JSON) ─┐
-botao_portao_garagem/action ─┴─▶ normalizar clique (debounce 900ms)
+botao_portao_garagem/action ──┤
+botão do dashboard (evento) ─┴─▶ validar pedido (dedupe 900ms + cooldown 1s)
         └─▶ botoeira: liga o rele  ──▶ mqtt out (rele set)
                     └─(delay 0.7s)─▶ botoeira: solta o contato (OFF) ──▶ mqtt out
 ```
@@ -57,6 +58,8 @@ Solução adotada (rápida e confiável):
 - **Desliga**: publica `{"state":"OFF"}` — fecha o pulso de ~0,7 s.
 - **Debounce**: reaproveita a função `normalizar clique e evitar duplicado`
   (janela de 900 ms). Ajustável na constante `dedupeMs` da função.
+- **Cooldown**: 1 s desde o início do último pulso aceito, compartilhado pelas
+  entradas física e do dashboard.
 - **Largura do pulso**: 700 ms, ajustável no nó `pulso: manter fechado ~0.7s`.
 
 > Não usar `on_time`/`onWithTimedOff` neste relé — só comandos `state` ON/OFF.
@@ -71,27 +74,22 @@ ou pelo backup `/data/flows.json.bak-relay` (dentro do container nodered).
 O `script.portao_garagem_acionar` e a `scene.acionar_portao` continuam existindo no
 HA porém **não são mais usados** pelo Node-RED.
 
-> **Atualização 2026-08-07:** a `scene.acionar_portao` foi **desabilitada** no
-> registry (não excluída — o rollback é reabilitar a entidade) depois que o botão
-> de pulso do lado do HA foi validado. Ver
+> **Atualização 2026-08-29:** a `scene.acionar_portao` segue **desabilitada** no
+> registry. O botão do dashboard agora só emite um evento local; o pulso e suas
+> guardas pertencem à aba `garagem` do Node-RED. Ver
 > [`PORTAO_GARAGEM_BOTAO_PULSO.md`](PORTAO_GARAGEM_BOTAO_PULSO.md) para o botão
 > `button.acionar_portao_da_garagem`, as guardas contra pulso duplicado e o
 > procedimento de rollback.
 
 ## Deploy e teste
 
-1. **Testar o relé isolado** (valida a fiação na botoeira + o pulso) — HA →
-   Ferramentas de Desenvolvedor → Ações → `mqtt.publish`:
-   ```yaml
-   topic: zigbee2mqtt/example_garage_gate/set
-   payload: '{"state":"ON","on_time":1,"off_wait_time":0}'
-   ```
-   ⚠️ o portão vai acionar — área livre.
-2. **Deploy do fluxo**: `docker restart nodered` (recarrega o `flows.json`).
-3. **Testar o botão físico / app** → portão deve acionar localmente, sem atraso.
+Valide primeiro com o replay offline descrito em
+[`PORTAO_GARAGEM_BOTAO_PULSO.md`](PORTAO_GARAGEM_BOTAO_PULSO.md). Ele não publica
+no broker. Qualquer teste direto por MQTT movimenta o portão e deve ser feito
+somente de forma deliberada, com a área livre.
 
 ## Arquivo de ownership
 
-`nodered/flows.json` pertence a `node-red` (uid 1000) — não é editável direto pelo
-host (`resident_primary`). Edite via `tools/*.mjs` gerando um arquivo de saída e escreva no
-container: `docker exec -i nodered sh -c 'cat > /data/flows.json' < saida.json`.
+`nodered/flows.json` pertence a `node-red` (uid 1000). Regenere a aba com o
+script canônico dentro do container ou gere um arquivo alternativo para revisão;
+não mantenha uma segunda cópia manual do fluxo.
