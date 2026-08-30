@@ -15,10 +15,14 @@ function node(id) {
 
 function runFunction(id, msg, flowValues = {}) {
   const statuses = [];
+  const warnings = [];
   const globalValues = {};
   const context = {
     msg,
-    node: { status: (status) => statuses.push(status) },
+    node: {
+      status: (status) => statuses.push(status),
+      warn: (warning) => warnings.push(warning),
+    },
     flow: {
       get: (key) => flowValues[key],
       set: (key, value) => {
@@ -41,7 +45,7 @@ function runFunction(id, msg, flowValues = {}) {
     `(function () { ${node(id).func}\n})()`,
     context,
   );
-  return { result, flowValues, statuses };
+  return { result, flowValues, statuses, warnings };
 }
 
 const arrivalTab = "1f468eaeef0733dd";
@@ -59,6 +63,13 @@ const notificationFailure = "alarm_arrival_notification_failure_v1";
 const confirmationEvent = "9d0d42f03aa9013d";
 const validateConfirmation = "815c14ef3c054b25";
 const disarmOut = "dcd87a69ec3c6008";
+const prepareTest = "99644e301cd49e45";
+const routeTestOut = "alarm_arrival_test_route_out_v1";
+const routeTestIn = "alarm_arrival_test_route_in_v1";
+const simulateConfirmation = "alarm_arrival_test_simulate_confirmation_v1";
+const confirmationOut = "alarm_arrival_test_confirmation_out_v1";
+const confirmationIn = "alarm_arrival_test_confirmation_in_v1";
+const dryRunTerminal = "alarm_arrival_test_dry_run_terminal_v1";
 
 assert.equal(node(arrivalTab).type, "tab");
 assert.equal(node(arrivalTab).label, "alarme_desarme_chegada");
@@ -88,6 +99,7 @@ const confirmationActions = arrivalActions.filter((action) =>
   [primaryNotification, secondaryNotification].includes(action.id));
 assert.equal(confirmationActions.length, 2);
 for (const action of confirmationActions) {
+  assert.match(action.data, /"action":"notify_actionable"/);
   assert.match(action.data, /confirm_action/);
   assert.match(action.data, /cancel_action/);
 }
@@ -104,6 +116,18 @@ assert.equal(node(primaryNotification).queue, "all");
 assert.equal(node(secondaryNotification).queue, "all");
 assert.deepEqual(node("7a19b058661ba5f8").wires, [[notificationFailure]]);
 assert.deepEqual(node(validateConfirmation).wires[0], [disarmOut]);
+assert.deepEqual(node(validateArrival).wires[1], [routeTestOut]);
+assert.deepEqual(node(routeTestOut).links, [routeTestIn]);
+assert.deepEqual(node(routeTestIn).wires, [[prepareTest]]);
+assert.deepEqual(node(prepareTest).wires, [[simulateConfirmation]]);
+assert.deepEqual(node(simulateConfirmation).wires, [[confirmationOut]]);
+assert.deepEqual(node(confirmationOut).links, [confirmationIn]);
+assert.deepEqual(node(confirmationIn).wires, [[validateConfirmation]]);
+assert.deepEqual(node(validateConfirmation).wires[1], [dryRunTerminal]);
+assert.equal(node(dryRunTerminal).outputs, 0);
+assert.equal((node(dryRunTerminal).wires ?? []).flat().length, 0);
+assert.equal(byId.has("40ab3b2f97adac58"), false);
+assert.equal(byId.has("b502fda3391bb41f"), false);
 
 const valid = runFunction(validateArrival, {
   payload: {
@@ -221,4 +245,45 @@ const expired = runFunction(
 assert.deepEqual(Array.from(expired.result), [null, null]);
 assert.equal(expired.flowValues.alarm_arrival_pending_confirmation, null);
 
-console.log("Confirmed alarm disarm-on-arrival flow tests passed.");
+const testPrepared = runFunction(prepareTest, {
+  _location_test: true,
+  _location_test_case: "vehicle_primary_approach",
+  arrival_source: "vehicle_primary",
+  arrival_stage: "approach",
+  payload: {
+    test_mode: true,
+    source: "vehicle_primary",
+    arrival_stage: "approach",
+  },
+});
+assert.match(testPrepared.result.confirm_action, /^ALARME_TESTE_CONFIRMAR_/);
+assert.ok(testPrepared.flowValues.alarm_arrival_test_pending_confirmation);
+
+const testSimulated = runFunction(
+  simulateConfirmation,
+  testPrepared.result,
+  testPrepared.flowValues,
+);
+assert.equal(testSimulated.result.payload.simulated, true);
+assert.equal(testSimulated.result.payload.dispatched, false);
+
+const testValidated = runFunction(
+  validateConfirmation,
+  testSimulated.result,
+  testPrepared.flowValues,
+);
+assert.equal(testValidated.result[0], null, "TESTE nunca pode alcançar o desarme");
+assert.equal(testValidated.result[1].alarm_arrival_test_result, "confirmado");
+
+const testFinished = runFunction(
+  dryRunTerminal,
+  testValidated.result[1],
+  testPrepared.flowValues,
+);
+assert.equal(testFinished.result, null);
+assert.equal(testFinished.flowValues.alarm_arrival_last_dry_run_v1.simulated, true);
+assert.equal(testFinished.flowValues.alarm_arrival_last_dry_run_v1.dispatched, false);
+assert.equal(testFinished.flowValues.alarm_arrival_last_dry_run_v1.actions.length, 4);
+assert.match(testFinished.warnings.at(-1), /dispatched=false/);
+
+console.log("Fluxo real e dry-run completo do alarme passaram sem efeitos em dispositivos.");

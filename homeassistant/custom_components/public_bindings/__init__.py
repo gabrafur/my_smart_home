@@ -107,9 +107,17 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         if hass.is_running:
             return
         started = asyncio.Event()
+        listener_fired = False
+
+        @callback
+        def mark_started(_event: Any) -> None:
+            nonlocal listener_fired
+            listener_fired = True
+            started.set()
+
         remove_listener = hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_STARTED,
-            lambda _event: started.set(),
+            mark_started,
         )
         if hass.is_running:
             started.set()
@@ -118,7 +126,11 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         except TimeoutError:
             pass
         finally:
-            remove_listener()
+            # A one-shot listener removes itself before invoking the callback.
+            # Calling its remover again makes Home Assistant log an unknown-job
+            # error when several binding calls wait during startup.
+            if not listener_fired:
+                remove_listener()
 
     async def call_binding(call: ServiceCall) -> None:
         binding = services.get((call.data["role"], call.data["action"]))

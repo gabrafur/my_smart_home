@@ -9,6 +9,12 @@ const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.ur
 const byId = new Map(flows.map((node) => [node.id, node]));
 const selected = new Set(process.argv.slice(2));
 const outputDir = process.env.FLOW_LAYOUT_DIR || "/tmp/nodered-flow-layouts";
+const enforceLinks = process.env.FLOW_LAYOUT_ENFORCE_LINKS === "1";
+const benchmarkUrl = new URL("./flow-layout-benchmark.json", import.meta.url);
+const layoutBenchmark = fs.existsSync(benchmarkUrl)
+  ? JSON.parse(fs.readFileSync(benchmarkUrl, "utf8"))
+  : { canvases: {} };
+let linkPolicyFailed = false;
 fs.mkdirSync(outputDir, { recursive: true });
 
 function escape(value) {
@@ -149,4 +155,28 @@ for (const canvas of flows.filter((node) => ["tab", "subflow"].includes(node.typ
   const pngTarget = path.join(outputDir, `${canvasName}.png`);
   renderPng(pngTarget, Math.ceil(maxX), Math.ceil(maxY), groups, nodes, rasterWires);
   console.log(`${canvasName}: ${nodes.length} nodes, ${groups.length} groups, ${longWires} wires >500px, ${reverseWires} wires de retorno -> ${target}, ${pngTarget}`);
+  const baseline = layoutBenchmark.canvases?.[canvas.id] ?? {
+    max_long_wires: 0,
+    max_reverse_wires: 0,
+  };
+  const leftMargin = groups.length
+    ? Math.min(...groups.map((group) => group.x))
+    : Math.min(...nodes.map((node) => node.x - dimensions(node).width / 2));
+  if (
+    enforceLinks &&
+    (
+      longWires > baseline.max_long_wires ||
+      reverseWires > baseline.max_reverse_wires ||
+      leftMargin < 64
+    )
+  ) {
+    console.error(
+      `${canvasName}: regressão visual; benchmark permite ` +
+      `${baseline.max_long_wires} fios longos e ${baseline.max_reverse_wires} de retorno; ` +
+      `margem esquerda mínima 64px (atual ${leftMargin}px)`,
+    );
+    linkPolicyFailed = true;
+  }
 }
+
+if (linkPolicyFailed) process.exitCode = 1;

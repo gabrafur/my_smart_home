@@ -35,7 +35,7 @@ for (const node of flows) {
       if (!/"role":"[a-z0-9_]+"/.test(node.data) || !/"action":"[a-z0-9_]+"/.test(node.data)) {
         throw new Error(`Contrato incompleto de public_bindings.call: ${node.id}`);
       }
-      const mobilePush = /"action":"notify_[23]"/.test(node.data);
+      const mobilePush = /"action":"(?:notify_[23]|notify_actionable)"/.test(node.data);
       const transientCommand = /request_location_update|clear_notification/.test(node.data);
       if (mobilePush && !transientCommand && node.queue !== "all") {
         throw new Error(`Push móvel pode se perder durante reconexão: ${node.id}`);

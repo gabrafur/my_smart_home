@@ -188,7 +188,6 @@ scenario("14 restart com iPhone resident_secondary stale", () => {
   assert.equal(output[0].payload.context.resident_secondary.stale, true);
   assert.equal(output[0].payload.context.ready, false);
   assert.equal(output[1], null);
-  assert.equal(output[2], null);
 });
 
 scenario("15 restart com HA indisponível", () => {
@@ -358,12 +357,13 @@ scenario("36 evento de chegada duplicado após restart", () => {
   assert.equal(run("people_normalize", structuredClone(input), flow)[1], null);
 });
 
-scenario("37 aviso da resident_secondary duplicado após restart", () => {
-  const firstFlow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_secondary: true } } });
+scenario("37 normalizador de pessoas não envia notificações laterais", () => {
+  const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_secondary: true } } });
   const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "chegando", distance: 1_400 });
-  assert(run("people_normalize", structuredClone(input), firstFlow)[2]);
-  const restartFlow = memoryFlow({ security_people_recovery_v1: structuredClone(firstFlow.get("security_people_recovery_v1")) });
-  assert.equal(run("people_normalize", structuredClone(input), restartFlow)[2], null);
+  const result = run("people_normalize", structuredClone(input), flow);
+  assert.equal(result.length, 3);
+  assert(result[1]);
+  assert.equal(result[2], null);
 });
 
 scenario("38 condição de desligamento desaparece durante 90 s", () => {

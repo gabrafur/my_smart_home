@@ -1,0 +1,135 @@
+{
+    "version": 2,
+    "tabs": {
+        "git_backup_tab": {
+            "strategy": "manual_explicit_side_effect",
+            "legacy": true,
+            "evidence_node_ids": ["git_backup_group", "git_backup_manual"],
+            "automated_test": "test-git-backup-flow.mjs",
+            "reason": "A execução manual dispara somente o mecanismo isolado e allowlisted de backup do repositório."
+        },
+        "29d64664bf8cbde8": {
+            "strategy": "automated_only",
+            "evidence_node_ids": [],
+            "automated_test": "test-garage-gate-flow.mjs",
+            "reason": "Um inject manual acionaria fisicamente o portão; dedupe, cooldown e pulso são validados por replay offline."
+        },
+        "shared_integrations_tab": {
+            "strategy": "not_applicable",
+            "evidence_node_ids": [],
+            "reason": "Tab de infraestrutura compartilhada sem automação ou efeito próprio."
+        },
+        "ce258dec9814b96b": {
+            "strategy": "automated_only",
+            "evidence_node_ids": [],
+            "automated_test": "test-external-lighting-alarm-flow.mjs",
+            "reason": "Os caminhos comandam iluminação externa real; cenários de alarme, pôr do sol e recovery usam replay offline."
+        },
+        "alarm_house_tab": {
+            "strategy": "automated_only",
+            "evidence_node_ids": [],
+            "automated_test": "test-alarm-house-flow.mjs",
+            "reason": "Armar, desarmar e disparar a sirene são efeitos de segurança; a lógica é validada offline."
+        },
+        "456b32bd5d59b0d6": {
+            "strategy": "automated_only",
+            "evidence_node_ids": [],
+            "automated_test": "test-raspberry-pi-cooling-flow.mjs",
+            "reason": "Forçar estados térmicos ou GPIO no host residencial não é um teste manual seguro."
+        },
+        "storage_health_tab": {
+            "strategy": "automated_only",
+            "evidence_node_ids": [],
+            "automated_test": "test-storage-health-flow.mjs",
+            "reason": "Housekeeping e inspeção de storage permanecem agendados/allowlisted e são validados offline."
+        },
+        "monitoramento_internet_tab": {
+            "strategy": "automated_only",
+            "evidence_node_ids": ["grp_internet_tests"],
+            "automated_test": "test-infrastructure-monitoring-flows.mjs",
+            "reason": "Falha e recuperação são injetadas no harness automatizado sem derrubar a conectividade da casa."
+        },
+        "monitoramento_zigbee_tab": {
+            "strategy": "automated_only",
+            "evidence_node_ids": ["grp_zigbee_tests"],
+            "automated_test": "test-infrastructure-monitoring-flows.mjs",
+            "reason": "Falha e recuperação são simuladas sem desligar a rede Zigbee residencial."
+        },
+        "ea0a6aa0d24ff863": {
+            "strategy": "manual_safe",
+            "legacy": true,
+            "evidence_node_ids": ["6e71dbc937fe5669", "19a91d7fce3b9db2"],
+            "automated_test": "test-security-light-flow.mjs",
+            "reason": "Estados sintéticos cumulativos são isolados por test_mode e não alteram trackers reais."
+        },
+        "c22d8b12055e87f7": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "5df25064f701ecd2",
+                "9501b32f01ed802b",
+                "vehicle_primary_manual_engine_on_test_v1",
+                "vehicle_primary_manual_engine_off_test_v1"
+            ],
+            "dry_run_terminal_ids": ["light_full_dry_run_terminal_v1"],
+            "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
+            "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação até o terminal dry-run compartilhado, sem acionar dispositivos."
+        },
+        "62bb822e033d1623": {
+            "strategy": "not_applicable",
+            "evidence_node_ids": [],
+            "automated_test": "test-security-light-flow.mjs",
+            "reason": "O tab apenas coordena contratos; seus testes entram pelos domínios produtores."
+        },
+        "6b7552efb85343f4": {
+            "strategy": "manual_explicit_side_effect",
+            "explicit_exception": "notification_delivery_under_test",
+            "evidence_node_ids": [
+                "ed8fa1d49205cbdb",
+                "2f8ac8be8e84a548",
+                "light_full_dry_run_terminal_v1"
+            ],
+            "delivery_node_ids": [
+                "04007cc1732f60c9",
+                "light_notify_unavailable_secondary"
+            ],
+            "automated_test": "test-security-light-flow.mjs",
+            "reason": "Testes percorrem gates e lifecycle; quando o atuador impedir o acendimento, apenas os dois pushes marcados TESTE são enviados, enquanto refletor, timers e demais dispositivos permanecem simulados."
+        },
+        "1f468eaeef0733dd": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": ["alarm_arrival_full_flow_group", "68bef52acfe15ef6", "89896182d31675a1", "alarm_arrival_test_dry_run_terminal_v1"],
+            "dry_run_terminal_ids": ["alarm_arrival_test_dry_run_terminal_v1"],
+            "automated_test": "test-alarm-arrival-disarm-flow.mjs",
+            "reason": "A trilha manual percorre pendência e confirmação, simula notificações e desarme e termina sem alcançar dispositivos."
+        },
+        "codex_alertas_tab": {
+            "strategy": "manual_explicit_side_effect",
+            "legacy": true,
+            "evidence_node_ids": ["codex_alertas_group", "codex_alert_manual_test"],
+            "automated_test": "test-notification-reliability.mjs",
+            "reason": "O efeito explícito e limitado é apenas uma notificação de teste no dispositivo configurado."
+        },
+        "monitoramento_tuya_tab": {
+            "strategy": "automated_only",
+            "evidence_node_ids": ["grp_tuya_tests"],
+            "automated_test": "test-infrastructure-monitoring-flows.mjs",
+            "reason": "A indisponibilidade é simulada sem desconectar dispositivos residenciais."
+        },
+        "resident_notifications_tab": {
+            "strategy": "manual_explicit_side_effect",
+            "explicit_exception": "notification_delivery_under_test",
+            "evidence_node_ids": [
+                "resident_notifications_test_group",
+                "resident_notifications_test_primary",
+                "resident_notifications_test_secondary",
+                "resident_notifications_delivery_ack"
+            ],
+            "delivery_node_ids": [
+                "resident_notifications_notify_primary",
+                "resident_notifications_notify_secondary"
+            ],
+            "automated_test": "test-resident-approach-notifications.mjs",
+            "reason": "Por solicitação explícita, o push móvel identificado como TESTE é o próprio efeito sob teste; refletor, alarme e demais dispositivos permanecem bloqueados."
+        }
+    }
+}

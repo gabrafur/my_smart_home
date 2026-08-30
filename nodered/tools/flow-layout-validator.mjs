@@ -1,5 +1,6 @@
 const DEFAULT_NODE_HEIGHT = 34;
 const COMMENT_HEIGHT = 42;
+const MIN_LEFT_MARGIN = 64;
 
 export function nodeDimensions(node) {
   if (node.type === "link in" || node.type === "link out") {
@@ -46,6 +47,14 @@ export function validateFlowLayout(flows) {
     const rootName = root.label || root.name || root.id;
     const groups = flows.filter((node) => node.z === root.id && node.type === "group" && positioned(node));
     const nodes = flows.filter((node) => node.z === root.id && node.type !== "group" && positioned(node));
+    const marginAnchors = groups.length > 0 ? groups : nodes;
+
+    if (
+      marginAnchors.length > 0 &&
+      Math.min(...marginAnchors.map((node) => node.x)) < MIN_LEFT_MARGIN
+    ) {
+      issues.push(`${rootName}: left margin below ${MIN_LEFT_MARGIN}px`);
+    }
 
     for (let index = 0; index < groups.length; index += 1) {
       for (let candidate = index + 1; candidate < groups.length; candidate += 1) {

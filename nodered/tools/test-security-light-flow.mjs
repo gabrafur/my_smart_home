@@ -227,9 +227,8 @@ scenario("05 resident_primary aproximando-se", () => {
 });
 
 scenario("06 resident_secondary aproximando-se", () => {
-  const [, detected, notification] = run("people_normalize", peopleInput({ source: "resident_secondary" }), memoryFlow(), geoEnv);
+  const [, detected] = run("people_normalize", peopleInput({ source: "resident_secondary" }), memoryFlow(), geoEnv);
   assert.deepEqual(detected.payload.arriving, ["resident_secondary"]);
-  assert.equal(notification.payload.kind, "resident_secondary_approach_notification");
 });
 
 scenario("07 resident_primary ja em casa", () => {
@@ -276,7 +275,7 @@ scenario("12 vehicle_primary destravado em casa apaga apos filtro do evento", ()
 
 scenario("13 refletor ja ligado antes da chegada", () => {
   const output = run("light_check_inactive", { payload: {} }, activeLightFlow(), geoEnv);
-  assert.deepEqual(output, [null, null]);
+  assert.deepEqual(output, [null, null, null]);
 });
 
 scenario("14 ambiente ainda claro", () => {
@@ -456,6 +455,251 @@ scenario("32 movimento na mesma zona solicita refresh sem autorizar iluminação
   assert.equal(refresh.payload.require_lighting_ready, true);
 });
 
-assert.equal(passed.length, 34);
+scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () => {
+  const now = Date.now();
+  const vehicleOff = {
+    ready: true,
+    lighting_ready: true,
+    in_use: false,
+    engine_on: false,
+    engine_state_valid: true,
+    engine_stale: false,
+    updated_at: now,
+  };
+  const flow = readyLightFlow({ vehicle_primary_context_v1: vehicleOff });
+
+  const preparedOff = run(
+    "light_prepare_arrival",
+    arrival("resident_primary", "approach"),
+    flow,
+    geoEnv,
+  )[0];
+  assert(preparedOff, "motor OFF atual é contexto válido para decidir");
+  assert.equal(run("light_check_vehicle_primary_in_use", preparedOff, flow, geoEnv), null);
+
+  const pendingKey = "security_light_pending_arrival_v1";
+  const pending = flow.get(pendingKey);
+  assert(pending, "chegada real deve ser preservada enquanto o motor está OFF");
+  assert.equal(pending.wait_reason, "vehicle_engine_on_after_arrival");
+
+  const stillOffAt = now + 1;
+  const stillOff = run("light_merge_context", {
+    payload: {
+      kind: "vehicle_primary_context",
+      updated_at: stillOffAt,
+      context: { ...vehicleOff, updated_at: stillOffAt },
+    },
+  }, flow, geoEnv);
+  assert.equal(stillOff[2], null);
+  assert(flow.get(pendingKey), "contexto ainda OFF não pode consumir a chegada");
+
+  const engineOnAt = now + 2;
+  const engineOn = run("light_merge_context", {
+    payload: {
+      kind: "vehicle_primary_context",
+      updated_at: engineOnAt,
+      context: {
+        ...vehicleOff,
+        in_use: true,
+        engine_on: true,
+        updated_at: engineOnAt,
+      },
+    },
+  }, flow, geoEnv);
+  assert(engineOn[2], "contexto real ON deve reprocessar a chegada preservada");
+  assert.equal(engineOn[2].payload.arrival_replayed_after_context_recovery, true);
+  assert.equal(flow.get(pendingKey), null);
+
+  const preparedOn = run("light_prepare_arrival", engineOn[2], flow, geoEnv)[0];
+  assert(run("light_check_vehicle_primary_in_use", preparedOn, flow, geoEnv));
+});
+
+scenario("34 pessoa chegando aciona com motor ON sem o carro estar chegando", () => {
+  for (const source of ["resident_primary", "resident_secondary"]) {
+    const flow = readyLightFlow({
+      vehicle_primary_context_v1: {
+        ready: true,
+        lighting_ready: true,
+        in_use: true,
+        engine_on: true,
+        engine_state_valid: true,
+        engine_stale: false,
+        location: { state: "not_home" },
+        home: false,
+        away: true,
+        approaching_home: false,
+        updated_at: Date.now(),
+      },
+    });
+    const prepared = run(
+      "light_prepare_arrival",
+      arrival(source, "approach"),
+      flow,
+      geoEnv,
+    )[0];
+    assert(prepared, `${source} deve entrar na decisão de acendimento`);
+    assert.equal(prepared.payload.vehicle_primary_engine_on, true);
+    assert.equal(prepared.payload.vehicle_primary_in_use, true);
+    assert(run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv));
+  }
+});
+
+scenario("35 chegando exige predecessor permitido e recovery fica só na iluminação", () => {
+  assert.deepEqual(
+    byId.get("people_lighting_tracker_recovery_arrival_out").links,
+    ["cf9bc321e0ec89f9"],
+  );
+  assert.equal(
+    byId.get("people_lighting_tracker_recovery_arrival_out").links.includes(
+      "6481cb991b3732f5",
+    ),
+    false,
+    "recovery unknown/unavailable não pode alcançar o alarme",
+  );
+  const peopleTestCoordinator = byId.get("131d1f73e8230b27");
+  for (const testCase of [
+    "resident_primary_unknown_approach",
+    "resident_secondary_unknown_approach",
+    "resident_primary_unavailable_approach",
+    "resident_secondary_invalid_approach",
+  ]) {
+    assert.match(peopleTestCoordinator.func, new RegExp(testCase));
+  }
+
+  for (const source of ["resident_primary", "resident_secondary"]) {
+    for (const previous of ["unknown", "unavailable"]) {
+      const result = run(
+        "people_normalize",
+        peopleInput({ source, previous, current: "chegando" }),
+        memoryFlow(),
+        geoEnv,
+      );
+      assert.equal(result[1], null, `${previous} não pode virar chegada geral`);
+      assert(result[2], `${previous} → chegando deve ir à iluminação`);
+      assert.equal(result[2].payload.illumination_only, true);
+      assert.equal(result[2].payload.arrival_previous_state, previous);
+    }
+
+    const armedFlow = memoryFlow({
+      people_arrival_armed: { [source]: true },
+    });
+    const fromAway = run(
+      "people_normalize",
+      peopleInput({ source, previous: "not_home", current: "chegando" }),
+      armedFlow,
+      geoEnv,
+    );
+    assert(fromAway[1], "not_home → chegando deve continuar como chegada geral");
+    assert.equal(fromAway[2], null);
+
+    for (const previous of ["home", "chegando", "work"]) {
+      const blocked = run(
+        "people_normalize",
+        peopleInput({ source, previous, current: "chegando" }),
+        memoryFlow({ people_arrival_armed: { [source]: true } }),
+        geoEnv,
+      );
+      assert.equal(blocked[1], null, `${previous} → chegando não pode ser chegada geral`);
+      assert.equal(blocked[2], null, `${previous} → chegando não pode acionar iluminação`);
+    }
+  }
+});
+
+scenario("36 aviso de turn on fica travado até confirmação física de OFF", () => {
+  const unavailableFlow = readyLightFlow({
+    security_light_physical_state: "unavailable",
+    light_reconciled: false,
+  });
+  const candidate = {
+    payload: {
+      arrival_key: "resident_secondary:approach:1",
+      source: "resident_secondary",
+    },
+  };
+
+  const first = run(
+    "light_check_inactive",
+    structuredClone(candidate),
+    unavailableFlow,
+    geoEnv,
+  );
+  assert(first[1], "primeira falha deve emitir um único aviso de indisponibilidade");
+  assert.equal(first[0], null);
+  assert.equal(first[2], null);
+  assert.equal(
+    unavailableFlow.get("security_light_turn_on_notification_latch_v1").latched,
+    true,
+  );
+
+  assert.deepEqual(
+    run(
+      "light_check_inactive",
+      { payload: { arrival_key: "resident_primary:approach:2" } },
+      unavailableFlow,
+      geoEnv,
+    ),
+    [null, null, null],
+    "novas chegadas não podem repetir aviso enquanto o latch estiver ativo",
+  );
+
+  run("light_reconcile", {
+    payload: {
+      kind: "light_physical",
+      state: "off",
+      updated_at: Date.now(),
+    },
+  }, unavailableFlow, geoEnv);
+  assert.equal(
+    unavailableFlow.get("security_light_turn_on_notification_latch_v1"),
+    null,
+  );
+  assert(
+    run("light_check_inactive", structuredClone(candidate), unavailableFlow, geoEnv)[0],
+    "OFF físico deve liberar um novo ciclo de acendimento",
+  );
+
+  const testFlow = readyLightFlow({
+    security_light_physical_state: "unavailable",
+    light_reconciled: false,
+  });
+  const testResult = run("light_check_inactive", {
+    _location_test: true,
+    payload: {
+      test_mode: true,
+      arrival_key: "test:resident_secondary:approach",
+    },
+  }, testFlow, geoEnv);
+  assert.equal(testResult[1], null, "TESTE não pode usar o ramo de produção");
+  assert(testResult[2], "TESTE indisponível deve solicitar somente os pushes TESTE");
+
+  const onFlow = readyLightFlow({
+    security_light_physical_state: "on",
+    security_light_lifecycle_v1: {
+      version: 1,
+      active_by_arrival: false,
+      updated_at: Date.now(),
+    },
+  });
+  run("light_reconcile", {
+    payload: {
+      kind: "light_physical",
+      state: "on",
+      updated_at: Date.now(),
+    },
+  }, onFlow, geoEnv);
+  assert.equal(
+    onFlow.get("security_light_turn_on_notification_latch_v1").reason,
+    "physical_on",
+  );
+  onFlow.set("security_light_physical_state", "unavailable");
+  onFlow.set("light_reconciled", false);
+  assert.deepEqual(
+    run("light_check_inactive", structuredClone(candidate), onFlow, geoEnv),
+    [null, null, null],
+    "estado ON observado deve continuar suprimindo após indisponibilidade",
+  );
+});
+
+assert.equal(passed.length, 38);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

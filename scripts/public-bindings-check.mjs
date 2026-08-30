@@ -68,8 +68,12 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       if (!service || typeof service !== "object" || !servicePattern.test(service.target_service ?? "")) {
         issues.push(issue("target-service", location, "binding"));
       }
-      if (/^notify\.mobile_app_/.test(service?.target_service ?? "")) {
+      const legacyMobileNotify = /^notify\.mobile_app_/.test(service?.target_service ?? "");
+      if (legacyMobileNotify && action !== "notify_actionable") {
         issues.push(issue("legacy-mobile-notify-service", location, "binding"));
+      }
+      if (action === "notify_actionable" && !legacyMobileNotify) {
+        issues.push(issue("actionable-mobile-notify-service", location, "binding"));
       }
       if (service?.target_service === "notify.send_message" && !service?.target_entity_id) {
         issues.push(issue("notify-target-entity", location, "binding"));

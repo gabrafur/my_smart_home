@@ -6,6 +6,18 @@ const flows = JSON.parse(
 );
 const byId = new Map(flows.map((node) => [node.id, node]));
 
+for (const candidate of flows.filter((item) =>
+  item.action === "public_bindings.call" &&
+  typeof item.data === "string" &&
+  /["']data["']\s*:\s*\{[^}]*["']data["']\s*:/.test(item.data)
+)) {
+  assert.match(
+    candidate.data,
+    /"action":"notify_actionable"/,
+    `${candidate.name} precisa do binding móvel acionável`,
+  );
+}
+
 function node(id) {
   const value = byId.get(id);
   assert.ok(value, `missing node ${id}`);

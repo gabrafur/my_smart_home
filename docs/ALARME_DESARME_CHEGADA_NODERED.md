@@ -42,7 +42,7 @@ ou duplicação durante a ordem variável do startup.
    juntos no anel.
 5. `Pedir confirmacao no Home Assistant` envia a notificacao aos entities
    os papéis `mobile_primary` e `mobile_secondary` via
-   `public_bindings.call`, com os
+   `public_bindings.call` / `notify_actionable`, com os
    botoes `Desarmar` e `Manter armado`.
 6. `Resposta da notificacao` escuta
    `mobile_app_notification_action`. `Validar confirmacao pendente` aceita
@@ -56,6 +56,18 @@ ou duplicação durante a ordem variável do startup.
 
 O flow nao contem nem duplica o codigo de acionamento do alarme. Ele apenas
 valida a chegada e a confirmacao humana antes de chamar a cadeia compartilhada.
+
+## Testes manuais sem dispositivos
+
+Os testes de localização e o botão `TESTE manual - pedir confirmação`
+percorrem a validação da chegada, a criação da pendência, a confirmação do
+token e a decisão final. A entrega e a resposta mobile são simuladas dentro do
+flow. O caminho termina em `TESTE FINAL: notificação e desarme simulados`, que
+registra `simulated: true` e `dispatched: false` sem enviar notificações, limpar
+notificações existentes ou solicitar o desarme.
+
+Use `RESETAR teste do alarme` antes de repetir um cenário. O resultado esperado
+no terminal é `TESTE FINAL: 4 ações simuladas; 0 dispositivos`.
 
 Limitação: a própria confirmação pendente e seus tokens continuam em flow
 context volátil. Depois de restart ela expira sem ser retomada; o usuário deve

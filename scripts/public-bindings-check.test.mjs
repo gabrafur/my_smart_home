@@ -159,6 +159,27 @@ test("requires modern mobile notification entities", () => {
   assert.deepEqual(validateBindings(document), []);
 });
 
+test("reserves the legacy mobile service for actionable notifications", () => {
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      mobile_primary: {
+        services: {
+          notify_actionable: { target_service: "notify.send_message" },
+        },
+      },
+    },
+  };
+  assert.ok(validateBindings(document).some((item) =>
+    item.rule === "actionable-mobile-notify-service"));
+
+  document.roles.mobile_primary.services.notify_actionable = {
+    target_service: "notify.mobile_app_example",
+  };
+  assert.deepEqual(validateBindings(document), []);
+});
+
 test("rejects a service pointing to a missing public entity binding", () => {
   const document = {
     schema_version: 1,

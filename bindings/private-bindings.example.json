@@ -32,6 +32,9 @@
         "notify_3": {
           "target_service": "notify.send_message",
           "target_entity_id": "notify.example_mobile_primary"
+        },
+        "notify_actionable": {
+          "target_service": "notify.mobile_app_example_primary"
         }
       }
     },
@@ -42,6 +45,9 @@
         "notify_2": {
           "target_service": "notify.send_message",
           "target_entity_id": "notify.example_mobile_secondary"
+        },
+        "notify_actionable": {
+          "target_service": "notify.mobile_app_example_secondary"
         }
       }
     },

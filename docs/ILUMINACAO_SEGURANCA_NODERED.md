@@ -1,13 +1,14 @@
 # Contexto de chegada e iluminação de segurança no Node-RED
 
-Os flows relacionados ficam em `nodered/flows.json` e são divididos em quatro
+Os flows relacionados ficam em `nodered/flows.json` e são divididos em cinco
 abas:
 
 | Flow | Responsabilidade |
 | --- | --- |
 | `localizacao_pessoas` | Ler e normalizar os trackers de resident_primary e resident_secondary, manter o armado individual, detectar aproximação/chegada e controlar o refresh dos iPhones. |
 | `contexto_vehicle_primary` | Normalizar localização, motor e trava do vehicle_primary, manter `vehicle_primary_in_use`, detectar chegada, atualizar viagens e controlar o refresh do veículo. |
-| `contexto_chegadas` | Sincronizar os snapshots periódicos, calcular somente a política conjunta `anyone_away` e enriquecer o aviso da resident_secondary. Não interpreta GPS bruto. |
+| `contexto_chegadas` | Sincronizar os snapshots periódicos e calcular somente a política conjunta `anyone_away`. Não interpreta GPS bruto nem envia notificações entre residentes. |
+| `notificacoes_chegadas_residentes` | Avisar `resident_primary` quando `resident_secondary` entra em `chegando` e vice-versa, durante as 24 horas do dia e sem depender do veículo, iluminação ou reconciliação de contexto. |
 | `iluminacao_seguranca` | Consumir os contratos de alto nível e decidir ligar/desligar `switch.refletor_portao_carros`, incluindo carência, timeout e anti-religamento. |
 
 Essa separação impede que a iluminação conheça trackers, coordenadas, refresh
@@ -18,6 +19,8 @@ da Kia ou detalhes de viagem.
 ```mermaid
 flowchart LR
     IP[iPhones / iCloud] --> P[localizacao_pessoas]
+    IP --> N[notificacoes_chegadas_residentes]
+    N --> M[push para o outro residente]
     K[Hyundai Bluelink] --> C[contexto_vehicle_primary]
     T[Tick de 30 s] --> O[contexto_chegadas]
 
@@ -104,8 +107,8 @@ conserva-se o fallback anterior: vence o tracker que reporta a maior distância
 de casa, porque a falha
 observada foi o Companion App congelado numa posição antiga em casa. Se um
 tracker disser `home`, `any_tracker_home` bloqueia uma entrada falsa no anel.
-Uma saída completa observada ainda permite o aviso de retorno da resident_secondary mesmo
-com o iCloud atrasado.
+Uma saída completa observada ainda permite o aviso de retorno de qualquer um
+dos residentes mesmo com o outro tracker atrasado.
 
 ### vehicle_primary
 
@@ -164,6 +167,29 @@ depois `not_home` como fallback. O checker de bindings rejeita
   das precisões GPS) solicita refresh do contexto, mas nunca autoriza sozinho
   a iluminação ou outra ação física.
 
+## Notificações entre residentes
+
+O tab `notificacoes_chegadas_residentes` observa diretamente os dois trackers
+de cada residente. A transição de fora para `chegando` notifica o outro
+residente imediatamente, sem consultar horário, sol, veículo ou os snapshots de
+`contexto_chegadas`. A transição `home -> chegando` continua sendo tratada como
+saída e não gera aviso. Um latch persistente evita duplicidade entre os dois
+trackers e após restart; uma nova passagem por `not_home` rearma o aviso.
+
+Os testes sintéticos de `localizacao_pessoas` também entram nesse tab. Eles
+percorrem a mesma validação e o mesmo dedupe usando memória isolada de teste,
+e enviam o push real porque a entrega da notificação é o efeito sob teste. O
+título e a mensagem são identificados com `TESTE`; após o Home Assistant
+aceitar a chamada, o status termina em `TESTE FINAL: push para <resident>
+enviado`. O binding usa diretamente o serviço Mobile App para que a aceitação
+corresponda ao caminho de push do celular, sem passar pela entidade intermediária
+`notify.send_message`.
+
+Quando o teste também satisfaz as condições de acendimento, mas o atuador está
+`unknown`, `unavailable`, stale ou não reconciliado, os avisos de “seria ligado”
+também são enviados com `TESTE` no título e na mensagem. O refletor, o alarme,
+timers e todos os demais dispositivos continuam em dry-run.
+
 ## Freshness e `vehicle_primary_in_use`
 
 Freshness é calculada com `last_updated` (ou `last_changed` como fallback),
@@ -193,6 +219,14 @@ Mudanças confirmadas de motor são observadas simetricamente: `on` por 5 s e
 próximo snapshot periódico para iniciar ou encerrar o contexto de uso, mantendo
 o mesmo filtro contra oscilações nos dois sentidos.
 
+Quando uma chegada `not_home -> chegando` chega antes de a integração atualizar
+o motor de `off` para `on`, `iluminacao_seguranca` preserva o evento por até 2
+minutos. Um contexto posterior só faz replay se `in_use=true`, motor `on` atual,
+válido e não stale, além de luminosidade ready. Enquanto o motor continuar
+`off`, a chegada permanece pendente e não acende o refletor; ao expirar, é
+descartada. O timestamp original é preservado, portanto atualizações repetidas
+não estendem a janela.
+
 O gate não usa apenas a leitura ao vivo do motor porque o backend brasileiro
 pode manter esse sensor antigo durante uma viagem. A iluminação recebe apenas
 `context.in_use` e não sabe como a trava foi calculada.
@@ -212,7 +246,7 @@ verdadeiras:
 
 1. há um evento `security.arrival.v1`;
 2. `sun.sun` está `below_horizon`;
-3. `vehicle_primary_in_use` é verdadeiro;
+3. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`;
 4. pessoas, vehicle_primary, sol e estado físico do refletor estão ready/reconciliados;
 5. o refletor físico está `off` e não foi marcado como ativo por chegada;
 6. não há supressão pós-desligamento ativa.
@@ -222,8 +256,23 @@ Depois de todos os gates, a ação grava no store `persistent` o lifecycle
 `force_off_at`, dedupe recente e `updated_at`. Eventos barrados por claridade,
 readiness ou estado do vehicle_primary não consomem o dedupe do refletor.
 
+A origem da chegada pode ser `resident_primary`, `resident_secondary` ou
+`vehicle_primary`. Quando o motor atual está `on`, a entrada de qualquer
+residente em `chegando` aciona a avaliação mesmo que o tracker do veículo ainda
+esteja em `not_home`, `home` ou outra zona válida; o veículo não precisa entrar
+em `chegando` primeiro. Para residentes, `chegando` precisa ser precedido por
+`not_home`, `unknown` ou `unavailable`. As duas transições de recuperação ficam
+restritas à iluminação e não são publicadas como chegada geral para o desarme.
+
 Também chama `switch.turn_on`, avisa os moradores e inicia o backstop de 15
 minutos.
+
+O primeiro ciclo que liga o refletor — ou que determinaria o acendimento, mas
+encontra o atuador `unknown`, `unavailable`, stale ou não reconciliado — grava
+um latch persistente de notificação. Enquanto esse latch estiver ativo, novas
+chegadas não repetem avisos de `turn on` nem de “seria ligado”. Uma observação
+física confirmada em `off` libera o latch; `on` o mantém mesmo que o Zigbee
+fique indisponível logo depois.
 
 ## Cinco condições independentes de desligamento
 
@@ -333,6 +382,39 @@ reconstroem o mesmo estado. Lifecycle corrompido, futuro absurdo ou com mais de
 
 ## Organização visual
 
+## Teste manual do motor e da chegada
+
+Na aba `contexto_vehicle_primary`, o grupo de testes manuais mantém um estado
+sintético cumulativo e isolado das entidades reais. A sequência recomendada é:
+
+1. `RESETAR testes do vehicle_primary` (o motor sintético volta para `OFF`);
+2. selecionar `Motor sintético do vehicle_primary → ON` ou `→ OFF`;
+3. executar `vehicle_primary 1/3 → not_home`, `2/3 → chegando` e
+   `3/3 → home`.
+
+Os passos de localização de qualquer residente e do veículo preservam o último
+estado de motor escolhido. Assim,
+o mesmo cenário exercita o gate `vehicle_primary está em uso?` em
+`iluminacao_seguranca`: `ON` produz contexto `in_use=true` com motor atual
+válido e mostra `TESTE: vehicle_primary em uso — gate aprovado`; `OFF` produz
+`in_use=false` e mostra `TESTE: aguardando motor ON — chegada preservada`. Se
+o controle for alterado para `ON` dentro de 2 minutos, a mesma chegada é
+reprocessada e o status muda para `TESTE: gate aprovado — continuando dry-run`.
+O `test_mode` então atravessa disponibilidade do refletor, dedupe e lifecycle
+isolado, chegando a `TESTE FINAL: ações simuladas — nenhum dispositivo
+acionado`. Esse terminal registra que refletor, dois avisos e backstop seriam
+executados, todos com `simulated=true` e `dispatched=false`; nenhum serviço de
+dispositivo é chamado.
+
+A cobertura manual e as exceções de segurança de todos os tabs Node-RED ficam
+declaradas em `nodered/tools/manual-test-policy.json`. Um tab novo sem
+estratégia, evidência e regressão correspondente falha em `flows:validate`.
+Tabs novos ou alterados devem usar `manual_full_dry_run`: o teste percorre o
+mesmo caminho lógico da produção e se separa apenas na fronteira final, para um
+terminal sem fios de saída que declara `simulated=true` e
+`dispatched=false`. Fluxos cujo replay completo não seja seguro permanecem
+automatizados e documentam a justificativa, em vez de ganhar um botão físico.
+
 As abas seguem `Eventos -> Normalização -> Contexto -> Decisão -> Ação`.
 Grupos delimitam cada responsabilidade. `link nodes` são usados somente nas
 fronteiras de domínio, no salto entre detecção e ações do vehicle_primary, no timeout e
@@ -357,10 +439,11 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa 33 cenários de regressão, incluindo
+`flows:test-security` executa 35 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
 de refresh, inclusive movimento dentro da mesma zona, simetria de motor
-`on`/`off` e preservação de `home`/`chegando`/`not_home` com `away` derivado.
+`on`/`off`, replay real de chegada após atraso `off -> on` e preservação de
+`home`/`chegando`/`not_home` com `away` derivado.
 `flows:test-security-recovery` acrescenta 40 cenários de restart e recuperação;
 `flows:test-security-adversarial`, mais 23 casos adversariais com relógio
 controlado para reconciliação e deadlines. São replays offline dos

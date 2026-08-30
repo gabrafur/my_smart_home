@@ -80,7 +80,7 @@ assert.deepEqual(recoverySunCheck.wires, [["ext_prepare_recovery_confirmation"],
 const mobileQuestion = getNode("ext_send_recovery_mobile");
 assert.equal(mobileQuestion.action, "public_bindings.call");
 assert.match(mobileQuestion.data, /"role":"mobile_primary"/);
-assert.match(mobileQuestion.data, /"action":"notify_3"/);
+assert.match(mobileQuestion.data, /"action":"notify_actionable"/);
 assert.match(mobileQuestion.data, /confirm_action/);
 assert.match(mobileQuestion.data, /cancel_action/);
 assert.deepEqual(mobileQuestion.wires, [["ext_commit_recovery_confirmation"]]);

@@ -19,8 +19,9 @@ const CATCH = "7a19b058661ba5f8";
 const DEBUG = "694a63ad7980fa81";
 const ACK = "alarm_arrival_notification_ack_v1";
 const FAILURE = "alarm_arrival_notification_failure_v1";
+const GROUP = "alarm_arrival_full_flow_group";
 
-required(TAB).info = "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary estão chegando.\n\nv10: pendência e cooldown só começam após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.";
+required(TAB).info = "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary estão chegando. Testes percorrem validação, pendência e confirmação, mas simulam toda interação mobile e terminam em dry-run sem notificação nem desarme.\n\nv11: produção preserva pendência e cooldown somente após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.";
 
 required(PREPARE).func = String.raw`const COOLDOWN_MS = 60 * 1000;
 const CONFIRMATION_TTL_MS = 5 * 60 * 1000;
@@ -82,6 +83,7 @@ return msg;`;
 
 for (const id of [PRIMARY, SECONDARY]) {
   const node = required(id);
+  node.data = node.data.replace(/"action":"notify_[23]"/, '"action":"notify_actionable"');
   node.queue = "all";
   node.wires = [[ACK]];
 }
@@ -92,6 +94,7 @@ const ackNode = {
   id: ACK,
   type: "function",
   z: TAB,
+  g: GROUP,
   name: "Confirmar entrega da solicitacao",
   func: String.raw`const candidate = msg.alarmConfirmationCandidate;
 if (!candidate || typeof candidate.deliveryId !== "string" || !Number.isFinite(Number(candidate.createdAt)) || !Number.isFinite(Number(candidate.expiresAt))) return null;
@@ -122,6 +125,7 @@ const failureNode = {
   id: FAILURE,
   type: "function",
   z: TAB,
+  g: GROUP,
   name: "Registrar falha sem armar cooldown",
   func: String.raw`const source = String(msg.error?.source?.name ?? "notificacao").replace(/[^a-zA-Z0-9 _-]/g, "");
 const detail = String(msg.error?.message ?? "erro desconhecido").replace(/[\r\n]+/g, " ").slice(0, 240);

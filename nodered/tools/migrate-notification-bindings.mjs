@@ -132,26 +132,26 @@ publicBinding("8261c7cfb6756ca8", {
 
 publicBinding("2818bf202b397612", {
   role: "mobile_primary",
-  action: "notify_3",
+  action: "notify_actionable",
   name: "Avisar resident_primary: refletor ligado",
   data: "{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE\" : \"Casa inteligente\",\"message\":payload.test_mode=true ? \"[TESTE] O refletor da garagem foi ligado.\" : \"O refletor da garagem foi ligado.\"}",
 });
 upsertClone("2818bf202b397612", "light_notify_on_secondary", {
   name: "Avisar resident_secondary: refletor ligado",
-  data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE\" : \"Casa inteligente\",\"message\":payload.test_mode=true ? \"[TESTE] O refletor da garagem foi ligado.\" : \"O refletor da garagem foi ligado.\"}}",
+  data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_actionable\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE\" : \"Casa inteligente\",\"message\":payload.test_mode=true ? \"[TESTE] O refletor da garagem foi ligado.\" : \"O refletor da garagem foi ligado.\"}}",
   y: 240,
   queue: "all",
 });
 
 publicBinding("04007cc1732f60c9", {
   role: "mobile_primary",
-  action: "notify_3",
+  action: "notify_actionable",
   name: "Avisar resident_primary: refletor indisponível",
   data: "{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE — erro no refletor\" : \"Casa inteligente — erro no refletor\",\"message\":payload.message}",
 });
 upsertClone("04007cc1732f60c9", "light_notify_unavailable_secondary", {
   name: "Avisar resident_secondary: refletor indisponível",
-  data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_2\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE — erro no refletor\" : \"Casa inteligente — erro no refletor\",\"message\":payload.message}}",
+  data: "{\"role\":\"mobile_secondary\",\"action\":\"notify_actionable\",\"data\":{\"title\":payload.test_mode=true ? \"Casa inteligente — TESTE — erro no refletor\" : \"Casa inteligente — erro no refletor\",\"message\":payload.message}}",
   y: 320,
   queue: "all",
 });

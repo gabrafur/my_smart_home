@@ -59,6 +59,13 @@ entidade do mesmo papel por `target_public_entity_id`. A segunda forma mantém o
 alvo privado em um único binding e é adequada para pares seguros como
 `switch.turn_on` / `switch.turn_off`.
 
+Pushes simples usam `notify.send_message` com uma entidade `notify.*`. O schema
+desse serviço aceita apenas título e mensagem. Botões, tags e
+`clear_notification` usam a ação lógica `notify_actionable`, cujo alvo privado
+é o serviço legado específico do Mobile App; somente essa ação pode usar um
+`notify.mobile_app_*`. Assim os parâmetros móveis permanecem funcionais sem
+expor o nome privado do serviço nos flows.
+
 Arquivo ausente, versão inválida, papel desabilitado ou ação não configurada
 resultam em ausência de proxy/ação. O adapter falha fechado e não revela o alvo
 privado em atributos públicos.

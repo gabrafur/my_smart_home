@@ -239,15 +239,11 @@ scenario("13 snapshot mais novo ready false prevalece por seguranca", () => {
   assert.equal(flow.get("people_context_v1").anyone_away, null);
 });
 
-scenario("14 aviso da resident_secondary aguarda vehicle_primary e sai uma unica vez", () => {
+scenario("14 contexto_chegadas ignora o antigo candidato de aviso", () => {
   const flow = memoryFlow();
   const candidate = { payload: { kind: "resident_secondary_approach_notification", notification_key: "resident_secondary:chegando:200", event_at: 200 } };
   assert.equal(run("context_coordinator", structuredClone(candidate), flow), null);
-  assert(flow.get("security_pending_resident_secondary_notification_v1"));
-  const released = run("context_coordinator", { payload: { kind: "vehicle_primary_context", updated_at: 210, ready: true, context: { ready: true, updated_at: 210, arrival_armed: true, distance_home_m: 1_000 } } }, flow);
-  assert.equal(released[2].payload.by_car, true);
-  assert.equal(flow.get("security_pending_resident_secondary_notification_v1"), null);
-  assert.equal(run("context_coordinator", { payload: { kind: "vehicle_primary_context", updated_at: 211, ready: true, context: { ready: true, updated_at: 211 } } }, flow), null);
+  assert.equal(flow.get("security_pending_resident_secondary_notification_v1"), undefined);
 });
 
 scenario("15 backoff Bluelink segue 1 2 4 8 15 minutos", () => {
@@ -265,17 +261,45 @@ scenario("15 backoff Bluelink segue 1 2 4 8 15 minutos", () => {
 });
 
 scenario("16 side effects criticos estao ligados aos gates corretos", () => {
-  assert.deepEqual(wireNames("light_mark_active"), [
+  assert.deepEqual(wireNames("light_mark_active", 0), [
     "Ligar refletor do portão",
     "Aguardar backstop de 15 min",
     "Avisar resident_primary: refletor ligado",
     "Avisar resident_secondary: refletor ligado",
   ]);
+  assert.deepEqual(wireNames("light_mark_active", 1), [
+    "Teste → terminal dry-run",
+  ]);
+  assert.deepEqual(wireNames("light_check_inactive", 2), [
+    "Erro simulado → terminal dry-run",
+  ]);
+  const unavailableDryOut = flows.find(
+    (node) => node.name === "Erro simulado → terminal dry-run",
+  );
+  const unavailableDryIn = flows.find(
+    (node) => node.name === "Receber erro simulado seguro",
+  );
+  assert(unavailableDryOut && unavailableDryIn);
+  assert.deepEqual(unavailableDryOut.links, [unavailableDryIn.id]);
+  assert.deepEqual(unavailableDryIn.links, [unavailableDryOut.id]);
+  assert.deepEqual(wireNames(unavailableDryIn.id), [
+    "Avisar resident_primary: refletor indisponível",
+    "Avisar resident_secondary: refletor indisponível",
+    "Teste → terminal dry-run",
+  ]);
+  const unavailableTerminalOut = byId.get("light_test_to_terminal_out_v1");
+  const unavailableTerminalIn = byId.get("light_test_to_terminal_in_v1");
+  assert(unavailableTerminalOut && unavailableTerminalIn);
+  assert.deepEqual(unavailableTerminalOut.links, [unavailableTerminalIn.id]);
+  assert.deepEqual(unavailableTerminalIn.links, [unavailableTerminalOut.id]);
+  assert.deepEqual(wireNames(unavailableTerminalIn.id), [
+    "TESTE FINAL: ações simuladas — nenhum dispositivo acionado",
+  ]);
   assert.deepEqual(wireNames("light_turn_off_if_active"), ["Desligar refletor do portão"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 0), ["Forçar refresh do vehicle_primary"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 1), ["Atualizar viagens do dia após chegada"]);
   assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Forçar refresh do vehicle_primary"]);
-  assert.deepEqual(wireNames("context_coordinator", 2), ["Avisar resident_primary: resident_secondary se aproxima"]);
+  assert.deepEqual(wireNames("context_coordinator", 2), []);
 });
 
 scenario("17 store nomeado nao muda o default global", () => {
@@ -323,13 +347,12 @@ scenario("21 confirmacao com timestamp zero expira e limpa viagem", () => {
   assert.equal(flow.get("security_vehicle_primary_recovery_v1").in_use, undefined);
 });
 
-scenario("22 aviso persistido incompleto expira sem notificacao", () => {
+scenario("22 estado legado de aviso não interfere no coordenador", () => {
   const flow = memoryFlow({
     vehicle_primary_context_v1: { ready: true, updated_at: 210 },
     security_pending_resident_secondary_notification_v1: { version: 1, queued_at: clock, payload: { kind: "resident_secondary_approach_notification" } },
   });
   assert.equal(run("context_coordinator", { payload: { kind: "vehicle_primary_context", updated_at: 211, ready: true, context: { ready: true, updated_at: 211 } } }, flow), null);
-  assert.equal(flow.get("security_pending_resident_secondary_notification_v1"), null);
 });
 
 scenario("23 snapshot rejeitado nao propaga transicao para side effect", () => {

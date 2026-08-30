@@ -47,6 +47,13 @@ example contains all eight required roles.
 - normalizes presence and boolean state when configured;
 - forwards allowlisted actions through `public_bindings.call`.
 
+Simple pushes use `notify.send_message` with a `notify.*` entity; that service
+accepts only a title and message. Buttons, tags, and `clear_notification` use
+the logical `notify_actionable` action, whose private target is the
+device-specific legacy Mobile App service. Only this action may target a
+`notify.mobile_app_*`, keeping mobile parameters functional without exposing
+the private service name in flows.
+
 A missing file, invalid version, disabled role, or unconfigured action produces
 no proxy/action. The adapter fails closed and does not expose the private target
 in public attributes.
