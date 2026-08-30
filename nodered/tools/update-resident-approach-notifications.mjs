@@ -313,6 +313,34 @@ const residents = {
     }
 };
 
+function privateDisplayName(role) {
+    const alias = global.get("publicBindings")
+        ?.roles?.[role]?.source_alias;
+
+    if (typeof alias !== "string") return role;
+
+    const words = alias
+        .trim()
+        .split(/[\s_-]+/u)
+        .filter(Boolean);
+
+    if (
+        words.length === 0 ||
+        words.some((word) =>
+            !/^[\p{L}\p{M}.'’]+$/u.test(word)
+        )
+    ) {
+        return role;
+    }
+
+    return words
+        .map((word) =>
+            word.charAt(0).toLocaleUpperCase("pt-BR") +
+            word.slice(1)
+        )
+        .join(" ");
+}
+
 function validZoneState(value) {
     return typeof value === "string" &&
         !["", "unknown", "unavailable"].includes(value);
@@ -420,7 +448,7 @@ msg.payload = {
     recipient: resident.recipient,
     notification_key: notificationKey,
     event_at: eventAt,
-    message: source + " está chegando."
+    message: privateDisplayName(source) + " está chegando."
 };
 
 if (TEST_MODE) {
@@ -642,11 +670,11 @@ if (!testCycleOut.links.includes(ids.testCycleIn)) {
 
 flows.push(
   { id: ids.tab, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false, info: "Avisa cada residente quando o outro entra na zona chegando. Funciona 24 horas por dia e não depende de veículo, iluminação ou contexto_chegadas. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.", env: [] },
-  group(ids.triggerGroup, "1. Mudanças de zona", [ids.note, ids.primaryEvent, ids.secondaryEvent], 64, 79, 392, 202, "#3f7cb5"),
-  group(ids.decisionGroup, "2. Validar aproximação e deduplicar", [ids.prepare, ids.testEventIn], 524, 139, 360, 142, "#7d6ba8"),
-  group(ids.outputGroup, "3. Notificar o outro residente", [ids.primaryNotify, ids.secondaryNotify, ids.deliveryAck], 894, 119, 742, 182, "#4d9a6a"),
-  group(ids.testGroup, "4. Testes manuais — envia push marcado TESTE", [ids.testPrimary, ids.testSecondary, ids.testCycleIn, ids.testAdapter, ids.testEventOut], 464, 339, 586, 202, "#a87932"),
-  { id: ids.note, type: "comment", z: ids.tab, g: ids.triggerGroup, name: "Sem restrição de horário", info: "A entrada not_home → chegando é avaliada a qualquer hora. home → chegando é saída e não gera aviso.", x: 250, y: 120, wires: [], width: 300 },
+  group(ids.triggerGroup, "1. Mudanças de zona", [ids.note, ids.primaryEvent, ids.secondaryEvent], 64, 79, 432, 202, "#3f7cb5"),
+  group(ids.decisionGroup, "2. Validar aproximação e deduplicar", [ids.prepare, ids.testEventIn], 519, 124, 317, 157, "#7d6ba8"),
+  group(ids.outputGroup, "3. Notificar o outro residente", [ids.primaryNotify, ids.secondaryNotify, ids.deliveryAck], 894, 119, 742, 142, "#4d9a6a"),
+  group(ids.testGroup, "4. Testes manuais — envia push marcado TESTE", [ids.testPrimary, ids.testSecondary, ids.testCycleIn, ids.testAdapter, ids.testEventOut], 434, 339, 607, 202, "#a87932"),
+  { id: ids.note, type: "comment", z: ids.tab, g: ids.triggerGroup, name: "Sem restrição de horário", info: "A entrada not_home → chegando é avaliada a qualquer hora. home → chegando é saída e não gera aviso.", x: 250, y: 120, wires: [] },
   primaryEvent,
   secondaryEvent,
   { id: ids.prepare, type: "function", z: ids.tab, g: ids.decisionGroup, name: "Preparar avisos de aproximação", func: prepareFunction, outputs: 4, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 680, y: 180, wires: [[ids.primaryNotify], [ids.secondaryNotify], [ids.primaryNotify], [ids.secondaryNotify]] },

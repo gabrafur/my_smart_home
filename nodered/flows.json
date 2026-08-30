@@ -126,14 +126,6 @@
         "env": []
     },
     {
-        "id": "resident_notifications_tab",
-        "type": "tab",
-        "label": "notificacoes_chegadas_residentes",
-        "disabled": false,
-        "info": "Avisa cada residente quando o outro entra na zona chegando. Funciona 24 horas por dia e não depende de veículo, iluminação ou contexto_chegadas. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.",
-        "env": []
-    },
-    {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
         "name": "Notificar celulares, Echo e Home Assistant",
@@ -1484,99 +1476,6 @@
         "x": 124,
         "y": 299,
         "w": 682,
-        "h": 202
-    },
-    {
-        "id": "resident_notifications_triggers_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "1. Mudanças de zona",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_note",
-            "resident_notifications_primary_event",
-            "resident_notifications_secondary_event"
-        ],
-        "x": 64,
-        "y": 79,
-        "w": 432,
-        "h": 202
-    },
-    {
-        "id": "resident_notifications_decision_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "2. Validar aproximação e deduplicar",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_prepare",
-            "resident_notifications_test_event_in"
-        ],
-        "x": 519,
-        "y": 124,
-        "w": 317,
-        "h": 157
-    },
-    {
-        "id": "resident_notifications_output_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "3. Notificar o outro residente",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_notify_primary",
-            "resident_notifications_notify_secondary",
-            "resident_notifications_delivery_ack"
-        ],
-        "x": 894,
-        "y": 119,
-        "w": 742,
-        "h": 142
-    },
-    {
-        "id": "resident_notifications_test_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "4. Testes manuais — envia push marcado TESTE",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#a87932",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_test_primary",
-            "resident_notifications_test_secondary",
-            "resident_notifications_test_cycle_in",
-            "resident_notifications_test_adapter",
-            "resident_notifications_test_event_out"
-        ],
-        "x": 434,
-        "y": 339,
-        "w": 607,
         "h": 202
     },
     {
@@ -7895,129 +7794,6 @@
         ]
     },
     {
-        "id": "people_lighting_tracker_recovery_arrival_out",
-        "type": "link out",
-        "z": "ea0a6aa0d24ff863",
-        "g": "8e1c3a19399ad44d",
-        "name": "Tracker recuperado chegando → iluminação",
-        "mode": "link",
-        "links": [
-            "cf9bc321e0ec89f9"
-        ],
-        "x": 1195,
-        "y": 220,
-        "wires": []
-    },
-    {
-        "id": "people_primary_unknown_approach_test_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "resident_primary unknown → chegando (motor ON)",
-        "props": [
-            {
-                "p": "test_case",
-                "v": "resident_primary_unknown_approach",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 450,
-        "y": 1180,
-        "wires": [
-            [
-                "people_tracker_recovery_tests_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_secondary_unknown_approach_test_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "resident_secondary unknown → chegando (motor ON)",
-        "props": [
-            {
-                "p": "test_case",
-                "v": "resident_secondary_unknown_approach",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 450,
-        "y": 1220,
-        "wires": [
-            [
-                "people_tracker_recovery_tests_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_primary_unavailable_approach_test_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "resident_primary unavailable → chegando (motor ON)",
-        "props": [
-            {
-                "p": "test_case",
-                "v": "resident_primary_unavailable_approach",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 450,
-        "y": 1260,
-        "wires": [
-            [
-                "people_tracker_recovery_tests_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_tracker_recovery_tests_out_v1",
-        "type": "link out",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "Recovery de tracker → coordenador",
-        "mode": "link",
-        "links": [
-            "people_tracker_recovery_tests_in_v1"
-        ],
-        "x": 700,
-        "y": 1300,
-        "wires": []
-    },
-    {
-        "id": "people_tracker_recovery_tests_in_v1",
-        "type": "link in",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "Receber teste de recovery do tracker",
-        "links": [
-            "people_tracker_recovery_tests_out_v1"
-        ],
-        "x": 650,
-        "y": 900,
-        "wires": [
-            [
-                "131d1f73e8230b27"
-            ]
-        ]
-    },
-    {
         "id": "e1df5b6e59c2e349",
         "type": "comment",
         "z": "c22d8b12055e87f7",
@@ -11844,6 +11620,121 @@
         "wires": []
     },
     {
+        "id": "people_lighting_tracker_recovery_arrival_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Tracker recuperado chegando → iluminação",
+        "mode": "link",
+        "links": [
+            "cf9bc321e0ec89f9"
+        ],
+        "x": 1195,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "resident_notifications_tab",
+        "type": "tab",
+        "label": "notificacoes_chegadas_residentes",
+        "disabled": false,
+        "info": "Avisa cada residente quando o outro entra na zona chegando. Funciona 24 horas por dia e não depende de veículo, iluminação ou contexto_chegadas. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.",
+        "env": []
+    },
+    {
+        "id": "resident_notifications_triggers_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "1. Mudanças de zona",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_note",
+            "resident_notifications_primary_event",
+            "resident_notifications_secondary_event"
+        ],
+        "x": 64,
+        "y": 79,
+        "w": 432,
+        "h": 202
+    },
+    {
+        "id": "resident_notifications_decision_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "2. Validar aproximação e deduplicar",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_prepare",
+            "resident_notifications_test_event_in"
+        ],
+        "x": 519,
+        "y": 124,
+        "w": 317,
+        "h": 157
+    },
+    {
+        "id": "resident_notifications_output_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "3. Notificar o outro residente",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_notify_primary",
+            "resident_notifications_notify_secondary",
+            "resident_notifications_delivery_ack"
+        ],
+        "x": 894,
+        "y": 119,
+        "w": 742,
+        "h": 142
+    },
+    {
+        "id": "resident_notifications_test_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "4. Testes manuais — envia push marcado TESTE",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#a87932",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_test_primary",
+            "resident_notifications_test_secondary",
+            "resident_notifications_test_cycle_in",
+            "resident_notifications_test_adapter",
+            "resident_notifications_test_event_out"
+        ],
+        "x": 434,
+        "y": 339,
+        "w": 607,
+        "h": 202
+    },
+    {
         "id": "resident_notifications_note",
         "type": "comment",
         "z": "resident_notifications_tab",
@@ -11956,7 +11847,7 @@
         "z": "resident_notifications_tab",
         "g": "resident_notifications_decision_group",
         "name": "Preparar avisos de aproximação",
-        "func": "const APPROACH_ZONE = \"chegando\";\nconst RECOVERY_KEY = \"resident_approach_notification_recovery_v1\";\nconst PERSISTENT = \"persistent\";\nconst DEDUPE_TTL_MS = 10 * 60 * 1000;\nconst MAX_EVENT_AGE_MS = 15 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\nconst ACTIVE_RECOVERY_KEY = TEST_MODE\n    ? RECOVERY_KEY + \"__test\"\n    : RECOVERY_KEY;\n\nconst residents = {\n    resident_primary: {\n        recipient: \"resident_secondary\",\n        states: [\n            msg.payload?.resident_primary_source_1,\n            msg.payload?.resident_primary_source_2\n        ]\n    },\n    resident_secondary: {\n        recipient: \"resident_primary\",\n        states: [\n            msg.payload?.resident_secondary_source_1,\n            msg.payload?.resident_secondary_source_2\n        ]\n    }\n};\n\nfunction validZoneState(value) {\n    return typeof value === \"string\" &&\n        ![\"\", \"unknown\", \"unavailable\"].includes(value);\n}\n\nfunction persist(value) {\n    value.updated_at = Date.now();\n    return TEST_MODE\n        ? flow.set(ACTIVE_RECOVERY_KEY, value)\n        : flow.set(ACTIVE_RECOVERY_KEY, value, PERSISTENT);\n}\n\nif (TEST_MODE && msg.payload?.event === \"test_reset\") {\n    flow.set(ACTIVE_RECOVERY_KEY, null);\n    flow.set(\n        \"resident_notifications_last_test_delivery_v1__test\",\n        null\n    );\n    return null;\n}\n\nconst source = msg.payload?.source;\nconst resident = residents[source];\nconst current = msg.payload?.trigger_state;\nconst previous = msg.payload?.trigger_prev_state;\n\nif (!resident || !validZoneState(current) || !validZoneState(previous)) {\n    return null;\n}\n\nconst parsedEventAt = Date.parse(msg.payload?.observed_at ?? \"\");\nconst eventAt = Number.isFinite(parsedEventAt) ? parsedEventAt : Date.now();\nif (\n    eventAt > Date.now() + FUTURE_TOLERANCE_MS ||\n    Date.now() - eventAt > MAX_EVENT_AGE_MS\n) {\n    node.warn(\"notificacoes_chegadas_residentes: evento antigo ou futuro descartado\");\n    return null;\n}\n\nlet recovery = TEST_MODE\n    ? flow.get(ACTIVE_RECOVERY_KEY)\n    : flow.get(ACTIVE_RECOVERY_KEY, PERSISTENT);\nif (!recovery || recovery.version !== 1 || typeof recovery.residents !== \"object\") {\n    recovery = { version: 1, residents: {} };\n}\n\nconst state = recovery.residents[source] ?? {\n    notified: false,\n    away_cycle: false,\n    last_notification_key: null,\n    last_notification_at: 0\n};\n\nif (current === \"not_home\") {\n    state.notified = false;\n    if (previous === APPROACH_ZONE || previous === \"home\") {\n        state.away_cycle = true;\n    }\n    recovery.residents[source] = state;\n    persist(recovery);\n    return null;\n}\n\nif (current === \"home\") {\n    state.away_cycle = false;\n    recovery.residents[source] = state;\n    persist(recovery);\n    return null;\n}\n\nconst enteringApproach =\n    current === APPROACH_ZONE &&\n    previous !== APPROACH_ZONE &&\n    previous !== \"home\";\n\nconst anyTrackerHome = resident.states.some((value) => value === \"home\");\nconst notificationKey = [source, current, eventAt].join(\":\");\nconst duplicate =\n    state.last_notification_key === notificationKey &&\n    Number.isFinite(state.last_notification_at) &&\n    Date.now() - state.last_notification_at < DEDUPE_TTL_MS;\n\nif (\n    !enteringApproach ||\n    (anyTrackerHome && state.away_cycle !== true) ||\n    state.notified === true ||\n    duplicate\n) {\n    recovery.residents[source] = state;\n    persist(recovery);\n    return null;\n}\n\nstate.notified = true;\nstate.last_notification_key = notificationKey;\nstate.last_notification_at = Date.now();\nrecovery.residents[source] = state;\npersist(recovery);\n\nmsg.payload = {\n    contract: \"security.resident-approach-notification.v1\",\n    kind: \"resident_approach_notification\",\n    source,\n    recipient: resident.recipient,\n    notification_key: notificationKey,\n    event_at: eventAt,\n    message: source + \" está chegando.\"\n};\n\nif (TEST_MODE) {\n    msg.payload.test_mode = true;\n    msg.payload.message = \"[TESTE] \" + msg.payload.message;\n    msg.payload.simulated = false;\n    msg.payload.dispatched = false;\n}\n\nif (resident.recipient === \"resident_primary\") {\n    return TEST_MODE\n        ? [null, null, msg, null]\n        : [msg, null, null, null];\n}\n\nreturn TEST_MODE\n    ? [null, null, null, msg]\n    : [null, msg, null, null];",
+        "func": "const APPROACH_ZONE = \"chegando\";\nconst RECOVERY_KEY = \"resident_approach_notification_recovery_v1\";\nconst PERSISTENT = \"persistent\";\nconst DEDUPE_TTL_MS = 10 * 60 * 1000;\nconst MAX_EVENT_AGE_MS = 15 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\nconst ACTIVE_RECOVERY_KEY = TEST_MODE\n    ? RECOVERY_KEY + \"__test\"\n    : RECOVERY_KEY;\n\nconst residents = {\n    resident_primary: {\n        recipient: \"resident_secondary\",\n        states: [\n            msg.payload?.resident_primary_source_1,\n            msg.payload?.resident_primary_source_2\n        ]\n    },\n    resident_secondary: {\n        recipient: \"resident_primary\",\n        states: [\n            msg.payload?.resident_secondary_source_1,\n            msg.payload?.resident_secondary_source_2\n        ]\n    }\n};\n\nfunction privateDisplayName(role) {\n    const alias = global.get(\"publicBindings\")\n        ?.roles?.[role]?.source_alias;\n\n    if (typeof alias !== \"string\") return role;\n\n    const words = alias\n        .trim()\n        .split(/[\\s_-]+/u)\n        .filter(Boolean);\n\n    if (\n        words.length === 0 ||\n        words.some((word) =>\n            !/^[\\p{L}\\p{M}.'’]+$/u.test(word)\n        )\n    ) {\n        return role;\n    }\n\n    return words\n        .map((word) =>\n            word.charAt(0).toLocaleUpperCase(\"pt-BR\") +\n            word.slice(1)\n        )\n        .join(\" \");\n}\n\nfunction validZoneState(value) {\n    return typeof value === \"string\" &&\n        ![\"\", \"unknown\", \"unavailable\"].includes(value);\n}\n\nfunction persist(value) {\n    value.updated_at = Date.now();\n    return TEST_MODE\n        ? flow.set(ACTIVE_RECOVERY_KEY, value)\n        : flow.set(ACTIVE_RECOVERY_KEY, value, PERSISTENT);\n}\n\nif (TEST_MODE && msg.payload?.event === \"test_reset\") {\n    flow.set(ACTIVE_RECOVERY_KEY, null);\n    flow.set(\n        \"resident_notifications_last_test_delivery_v1__test\",\n        null\n    );\n    return null;\n}\n\nconst source = msg.payload?.source;\nconst resident = residents[source];\nconst current = msg.payload?.trigger_state;\nconst previous = msg.payload?.trigger_prev_state;\n\nif (!resident || !validZoneState(current) || !validZoneState(previous)) {\n    return null;\n}\n\nconst parsedEventAt = Date.parse(msg.payload?.observed_at ?? \"\");\nconst eventAt = Number.isFinite(parsedEventAt) ? parsedEventAt : Date.now();\nif (\n    eventAt > Date.now() + FUTURE_TOLERANCE_MS ||\n    Date.now() - eventAt > MAX_EVENT_AGE_MS\n) {\n    node.warn(\"notificacoes_chegadas_residentes: evento antigo ou futuro descartado\");\n    return null;\n}\n\nlet recovery = TEST_MODE\n    ? flow.get(ACTIVE_RECOVERY_KEY)\n    : flow.get(ACTIVE_RECOVERY_KEY, PERSISTENT);\nif (!recovery || recovery.version !== 1 || typeof recovery.residents !== \"object\") {\n    recovery = { version: 1, residents: {} };\n}\n\nconst state = recovery.residents[source] ?? {\n    notified: false,\n    away_cycle: false,\n    last_notification_key: null,\n    last_notification_at: 0\n};\n\nif (current === \"not_home\") {\n    state.notified = false;\n    if (previous === APPROACH_ZONE || previous === \"home\") {\n        state.away_cycle = true;\n    }\n    recovery.residents[source] = state;\n    persist(recovery);\n    return null;\n}\n\nif (current === \"home\") {\n    state.away_cycle = false;\n    recovery.residents[source] = state;\n    persist(recovery);\n    return null;\n}\n\nconst enteringApproach =\n    current === APPROACH_ZONE &&\n    previous !== APPROACH_ZONE &&\n    previous !== \"home\";\n\nconst anyTrackerHome = resident.states.some((value) => value === \"home\");\nconst notificationKey = [source, current, eventAt].join(\":\");\nconst duplicate =\n    state.last_notification_key === notificationKey &&\n    Number.isFinite(state.last_notification_at) &&\n    Date.now() - state.last_notification_at < DEDUPE_TTL_MS;\n\nif (\n    !enteringApproach ||\n    (anyTrackerHome && state.away_cycle !== true) ||\n    state.notified === true ||\n    duplicate\n) {\n    recovery.residents[source] = state;\n    persist(recovery);\n    return null;\n}\n\nstate.notified = true;\nstate.last_notification_key = notificationKey;\nstate.last_notification_at = Date.now();\nrecovery.residents[source] = state;\npersist(recovery);\n\nmsg.payload = {\n    contract: \"security.resident-approach-notification.v1\",\n    kind: \"resident_approach_notification\",\n    source,\n    recipient: resident.recipient,\n    notification_key: notificationKey,\n    event_at: eventAt,\n    message: privateDisplayName(source) + \" está chegando.\"\n};\n\nif (TEST_MODE) {\n    msg.payload.test_mode = true;\n    msg.payload.message = \"[TESTE] \" + msg.payload.message;\n    msg.payload.simulated = false;\n    msg.payload.dispatched = false;\n}\n\nif (resident.recipient === \"resident_primary\") {\n    return TEST_MODE\n        ? [null, null, msg, null]\n        : [msg, null, null, null];\n}\n\nreturn TEST_MODE\n    ? [null, null, null, msg]\n    : [null, msg, null, null];",
         "outputs": 4,
         "timeout": "",
         "noerr": 0,
@@ -12001,7 +11892,6 @@
         "id": "resident_notifications_notify_primary",
         "type": "api-call-service",
         "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
         "name": "Avisar resident_primary: resident_secondary se aproxima",
         "server": "4126427d5e161a03",
         "version": 7,
@@ -12027,13 +11917,13 @@
             [
                 "resident_notifications_delivery_ack"
             ]
-        ]
+        ],
+        "g": "resident_notifications_output_group"
     },
     {
         "id": "resident_notifications_notify_secondary",
         "type": "api-call-service",
         "z": "resident_notifications_tab",
-        "g": "resident_notifications_output_group",
         "name": "Avisar resident_secondary: resident_primary se aproxima",
         "server": "4126427d5e161a03",
         "version": 7,
@@ -12059,7 +11949,8 @@
             [
                 "resident_notifications_delivery_ack"
             ]
-        ]
+        ],
+        "g": "resident_notifications_output_group"
     },
     {
         "id": "resident_notifications_delivery_ack",
@@ -12191,5 +12082,114 @@
         "x": 1000,
         "y": 500,
         "wires": []
+    },
+    {
+        "id": "people_primary_unknown_approach_test_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "resident_primary unknown → chegando (motor ON)",
+        "props": [
+            {
+                "p": "test_case",
+                "v": "resident_primary_unknown_approach",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 450,
+        "y": 1180,
+        "wires": [
+            [
+                "people_tracker_recovery_tests_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_secondary_unknown_approach_test_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "resident_secondary unknown → chegando (motor ON)",
+        "props": [
+            {
+                "p": "test_case",
+                "v": "resident_secondary_unknown_approach",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 450,
+        "y": 1220,
+        "wires": [
+            [
+                "people_tracker_recovery_tests_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_primary_unavailable_approach_test_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "resident_primary unavailable → chegando (motor ON)",
+        "props": [
+            {
+                "p": "test_case",
+                "v": "resident_primary_unavailable_approach",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 450,
+        "y": 1260,
+        "wires": [
+            [
+                "people_tracker_recovery_tests_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_tracker_recovery_tests_out_v1",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "Recovery de tracker → coordenador",
+        "mode": "link",
+        "links": [
+            "people_tracker_recovery_tests_in_v1"
+        ],
+        "x": 700,
+        "y": 1300,
+        "wires": []
+    },
+    {
+        "id": "people_tracker_recovery_tests_in_v1",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "Receber teste de recovery do tracker",
+        "links": [
+            "people_tracker_recovery_tests_out_v1"
+        ],
+        "x": 650,
+        "y": 900,
+        "wires": [
+            [
+                "131d1f73e8230b27"
+            ]
+        ]
     }
 ]

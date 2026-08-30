@@ -1,0 +1,53 @@
+<script type="text/javascript">
+RED.nodes.registerType("private-flow-labels", {
+    category: "config",
+    defaults: {},
+    label: function () {
+        return "private flow labels";
+    },
+});
+
+(function installPrivateFlowLabels() {
+    const labels = new Map();
+    const originalGetNodeLabel = RED.utils.getNodeLabel;
+
+    RED.utils.getNodeLabel = function getPrivateNodeLabel(node, defaultLabel) {
+        const privateLabel = labels.get(node?.id);
+
+        if (!privateLabel) {
+            return originalGetNodeLabel.call(this, node, defaultLabel);
+        }
+
+        return originalGetNodeLabel.call(
+            this,
+            { ...node, name: privateLabel },
+            defaultLabel,
+        );
+    };
+
+    const apiRoot = RED.settings.apiRootUrl || "";
+    fetch(`${apiRoot}private-flow-labels`, {
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`private labels request failed (${response.status})`);
+            }
+            return response.json();
+        })
+        .then((payload) => {
+            for (const [nodeId, label] of Object.entries(payload?.labels ?? {})) {
+                if (typeof label === "string" && label.length > 0) {
+                    labels.set(nodeId, label);
+                }
+            }
+            RED.view.redraw(true);
+        })
+        .catch(() => {
+            // A projeção visual é opcional. O flow público continua funcional
+            // com os papéis lógicos quando o binding privado estiver ausente.
+        });
+})();
+</script>

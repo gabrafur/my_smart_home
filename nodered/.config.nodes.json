@@ -424,6 +424,17 @@
                 "user": false,
                 "module": "node-red",
                 "file": "/usr/src/node-red/node_modules/@node-red/nodes/core/storage/23-watch.js"
+            },
+            "private-flow-labels": {
+                "name": "private-flow-labels",
+                "types": [
+                    "private-flow-labels"
+                ],
+                "enabled": true,
+                "local": false,
+                "user": false,
+                "module": "node-red",
+                "file": "/data/tools/nodes/private-flow-labels.js"
             }
         }
     },

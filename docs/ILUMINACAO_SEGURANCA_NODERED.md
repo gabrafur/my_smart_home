@@ -186,6 +186,11 @@ enviado`. O binding usa diretamente o serviço Mobile App para que a aceitação
 corresponda ao caminho de push do celular, sem passar pela entidade intermediária
 `notify.send_message`.
 
+O nome exibido na mensagem é resolvido em runtime a partir do `source_alias`
+privado do residente. O flow versionado preserva apenas os papéis lógicos; se o
+alias estiver ausente ou for inválido, a mensagem falha fechado para o papel sem
+persistir dados privados no repositório.
+
 Quando o teste também satisfaz as condições de acendimento, mas o atuador está
 `unknown`, `unavailable`, stale ou não reconciliado, os avisos de “seria ligado”
 também são enviados com `TESTE` no título e na mensagem. O refletor, o alarme,

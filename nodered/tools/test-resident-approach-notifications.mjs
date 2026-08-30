@@ -25,8 +25,20 @@ function runNode(id, msg, flow = memoryFlow(), global = memoryFlow()) {
   return execute(msg, { warn() {}, error() {}, status() {} }, {}, flow, global, {}, setTimeout, clearTimeout);
 }
 
-function run(msg, flow = memoryFlow()) {
-  return runNode(prepare.id, msg, flow);
+function run(msg, flow = memoryFlow(), global = memoryFlow()) {
+  return runNode(prepare.id, msg, flow, global);
+}
+
+function privateBindingsGlobal(extra = {}) {
+  return memoryFlow({
+    publicBindings: {
+      roles: {
+        resident_primary: { source_alias: "example_primary" },
+        resident_secondary: { source_alias: "example_secondary" },
+      },
+    },
+    ...extra,
+  });
 }
 
 const NOW = Date.parse("2026-08-29T03:00:00.000Z");
@@ -72,19 +84,27 @@ scenario("01 fluxo é independente de contexto, veículo e iluminação", () => 
 });
 
 scenario("02 resident_secondary avisa resident_primary também de madrugada", () => {
-  const output = run(event("resident_secondary"));
+  const output = run(
+    event("resident_secondary"),
+    memoryFlow(),
+    privateBindingsGlobal(),
+  );
   assert(output[0]);
   assert.equal(output[1], null);
   assert.equal(output[0].payload.recipient, "resident_primary");
-  assert.equal(output[0].payload.message, "resident_secondary está chegando.");
+  assert.equal(output[0].payload.message, "Example Secondary está chegando.");
 });
 
 scenario("03 resident_primary avisa resident_secondary", () => {
-  const output = run(event("resident_primary"));
+  const output = run(
+    event("resident_primary"),
+    memoryFlow(),
+    privateBindingsGlobal(),
+  );
   assert.equal(output[0], null);
   assert(output[1]);
   assert.equal(output[1].payload.recipient, "resident_secondary");
-  assert.equal(output[1].payload.message, "resident_primary está chegando.");
+  assert.equal(output[1].payload.message, "Example Primary está chegando.");
 });
 
 scenario("04 saída de casa não é confundida com chegada", () => {
@@ -134,7 +154,7 @@ scenario("09 teste de localização percorre validação e confirma o push", () 
   assert.equal(deliveryAck.outputs, 0);
   assert.equal((deliveryAck.wires ?? []).flat().length, 0);
 
-  const global = memoryFlow({
+  const global = privateBindingsGlobal({
     security_location_test_state_v1: {
       version: 1,
       resident_primary: "not_home",
@@ -165,7 +185,10 @@ scenario("09 teste de localização percorre validação e confirma o push", () 
   assert.equal(output[0], null);
   assert.equal(output[1], null);
   assert.equal(output[2].payload.recipient, "resident_primary");
-  assert.match(output[2].payload.message, /^\[TESTE\]/);
+  assert.equal(
+    output[2].payload.message,
+    "[TESTE] Example Secondary está chegando.",
+  );
   assert.equal(output[2].payload.simulated, false);
   assert.equal(output[2].payload.dispatched, false);
 
@@ -183,6 +206,18 @@ scenario("10 botões manuais também passam pelo adaptador seguro", () => {
   ]) {
     assert.deepEqual(byId.get(id).wires, [["resident_notifications_test_adapter"]]);
   }
+});
+
+scenario("11 alias privado inválido falha fechado para o papel lógico", () => {
+  const global = memoryFlow({
+    publicBindings: {
+      roles: {
+        resident_secondary: { source_alias: "<script>" },
+      },
+    },
+  });
+  const output = run(event("resident_secondary"), memoryFlow(), global);
+  assert.equal(output[0].payload.message, "resident_secondary está chegando.");
 });
 
 Date.now = originalNow;

@@ -78,6 +78,13 @@ esse contexto; nós MQTT estáticos recebem apenas variáveis derivadas dos
 bindings. Binding ausente bloqueia o comando ou deixa o nó sem tópico real,
 preservando degradação segura.
 
+No editor autenticado, `nodered/tools/nodes/private-flow-labels.*` projeta os
+`source_alias` privados nos cabeçalhos dos dois nós que notificam aproximação
+entre residentes. A projeção é somente visual, tem resposta `no-store` e não
+altera o modelo do editor: `nodered/flows.json`, exports e deploys continuam
+contendo apenas `resident_primary` e `resident_secondary`. Sem os dois aliases,
+os rótulos públicos permanecem inalterados.
+
 ## Bootstrap e restauração
 
 1. Execute `make bootstrap-test` e, quando autorizado, `make bootstrap`.

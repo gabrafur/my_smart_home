@@ -66,6 +66,14 @@ that context; static MQTT nodes receive only variables derived from bindings. A
 missing binding blocks the command or leaves the node without a real topic,
 preserving safe degradation.
 
+In the authenticated editor, `nodered/tools/nodes/private-flow-labels.*`
+projects the private `source_alias` values onto the headers of the two
+resident-approach notification nodes. This projection is visual only, uses a
+`no-store` response, and does not change the editor model:
+`nodered/flows.json`, exports, and deploys continue to contain only
+`resident_primary` and `resident_secondary`. If either alias is missing, the
+public labels remain unchanged.
+
 ## Bootstrap and restoration
 
 1. Run `make bootstrap-test` and, when authorized, `make bootstrap`.

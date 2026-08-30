@@ -8,6 +8,12 @@ const directory = fs.mkdtempSync(path.join(os.tmpdir(), "public-bindings-setting
 const binding = {
   schema_version: 1,
   roles: {
+    resident_primary: {
+      source_alias: "example_primary",
+    },
+    resident_secondary: {
+      source_alias: "example_secondary",
+    },
     garage_gate: {
       topics: {
         relay_state: "zigbee2mqtt/example_garage_gate_relay/state",
@@ -34,6 +40,14 @@ try {
   assert.deepEqual(
     settings.functionGlobalContext.publicBindings.roles.exterior_light.mqtt_topics,
     [{ topic: binding.roles.exterior_light.mqtt_topics[0] }],
+  );
+  assert.equal(
+    settings.functionGlobalContext.publicBindings.roles.resident_primary.source_alias,
+    binding.roles.resident_primary.source_alias,
+  );
+  assert.equal(
+    settings.functionGlobalContext.publicBindings.roles.resident_secondary.source_alias,
+    binding.roles.resident_secondary.source_alias,
   );
   for (const [environmentSuffix, bindingKey] of [
     ["RELAY_STATE", "relay_state"],
