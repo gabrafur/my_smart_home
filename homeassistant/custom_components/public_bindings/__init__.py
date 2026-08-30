@@ -88,6 +88,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             public_id,
             _state_value(binding.get("state_mode", "passthrough"), source.state),
             attributes,
+            force_update=binding.get("force_update", False),
         )
 
     target_to_public: dict[str, list[str]] = {}

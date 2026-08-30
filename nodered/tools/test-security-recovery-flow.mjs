@@ -390,7 +390,64 @@ scenario("40 cooldown expirou enquanto Node-RED estava offline", () => {
   assert.equal(corrupt.get("security_light_lifecycle_v1").cooldown_until, null);
 });
 
+scenario("41 tracker stale perde para localização alternativa atual", () => {
+  const mobile = entity("chegando", 231, 3 * 24 * 60 * 60_000, 10);
+  mobile.entity_id = "device_tracker.mobile_primary_source_1";
+  const icloud = entity("home", 25, 0, 4);
+  icloud.entity_id = "device_tracker.mobile_primary_source_2";
+  const input = peopleInput({ event: "context_snapshot" });
+  input.payload.resident_primary = mobile;
+  input.payload.resident_primary_icloud = icloud;
+
+  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  assert.equal(context.resident_primary.entity_id, icloud.entity_id);
+  assert.equal(context.resident_primary.state, "home");
+  assert.equal(context.resident_primary.distance_m, 25);
+});
+
+scenario("42 trackers quase simultâneos usam a melhor precisão", () => {
+  const mobile = entity("chegando", 231, 5_000, 10);
+  mobile.entity_id = "device_tracker.mobile_secondary_source_1";
+  const icloud = entity("home", 25, 0, 4);
+  icloud.entity_id = "device_tracker.mobile_secondary_source_2";
+  const input = peopleInput({ event: "context_snapshot" });
+  input.payload.resident_secondary = mobile;
+  input.payload.resident_secondary_icloud = icloud;
+
+  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  assert.equal(context.resident_secondary.entity_id, icloud.entity_id);
+  assert.equal(context.resident_secondary.state, "home");
+});
+
+scenario("43 atualização materialmente mais nova vence precisão menor", () => {
+  const mobile = entity("not_home", 2_000, 0, 10);
+  mobile.entity_id = "device_tracker.mobile_primary_source_1";
+  const icloud = entity("home", 25, 2 * 60_000, 4);
+  icloud.entity_id = "device_tracker.mobile_primary_source_2";
+  const input = peopleInput({ event: "context_snapshot" });
+  input.payload.resident_primary = mobile;
+  input.payload.resident_primary_icloud = icloud;
+
+  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  assert.equal(context.resident_primary.entity_id, mobile.entity_id);
+  assert.equal(context.resident_primary.state, "not_home");
+});
+
+scenario("44 coordenadas confiáveis vencem tracker impreciso", () => {
+  const mobile = entity("chegando", 1_400, 0, 999);
+  mobile.entity_id = "device_tracker.mobile_primary_source_1";
+  const icloud = entity("home", 25, 0, 10);
+  icloud.entity_id = "device_tracker.mobile_primary_source_2";
+  const input = peopleInput({ event: "context_snapshot" });
+  input.payload.resident_primary = mobile;
+  input.payload.resident_primary_icloud = icloud;
+
+  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  assert.equal(context.resident_primary.entity_id, icloud.entity_id);
+  assert.equal(context.resident_primary.location_reliable, true);
+});
+
 Date.now = originalNow;
-assert.equal(passed.length, 40);
+assert.equal(passed.length, 44);
 console.log(`security recovery replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

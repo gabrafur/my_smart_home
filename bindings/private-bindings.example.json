@@ -7,6 +7,28 @@
         "person.resident_primary": {
           "target_entity_id": "person.example_resident_primary",
           "state_mode": "home_away"
+        },
+        "device_tracker.mobile_primary_source_1": {
+          "target_entity_id": "device_tracker.example_mobile_primary",
+          "state_mode": "passthrough",
+          "force_update": true,
+          "attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude",
+            "source_type"
+          ]
+        },
+        "device_tracker.mobile_primary_source_2": {
+          "target_entity_id": "device_tracker.example_mobile_primary_fallback",
+          "state_mode": "passthrough",
+          "force_update": true,
+          "attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude",
+            "source_type"
+          ]
         }
       }
     },
@@ -16,6 +38,28 @@
         "person.resident_secondary": {
           "target_entity_id": "person.example_resident_secondary",
           "state_mode": "home_away"
+        },
+        "device_tracker.mobile_secondary_source_1": {
+          "target_entity_id": "device_tracker.example_mobile_secondary",
+          "state_mode": "passthrough",
+          "force_update": true,
+          "attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude",
+            "source_type"
+          ]
+        },
+        "device_tracker.mobile_secondary_source_2": {
+          "target_entity_id": "device_tracker.example_mobile_secondary_fallback",
+          "state_mode": "passthrough",
+          "force_update": true,
+          "attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude",
+            "source_type"
+          ]
         }
       }
     },

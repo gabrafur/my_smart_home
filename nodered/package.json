@@ -9,6 +9,7 @@
         "flows:fix-actionable-notifications": "node tools/fix-actionable-notification-bindings.mjs",
         "flows:organize-actionable-tabs": "node tools/organize-actionable-notification-tabs.mjs",
         "flows:refactor-security": "node tools/refactor-security-context-flows.mjs",
+        "flows:update-people-location-selection": "node tools/update-people-location-selection.mjs",
         "flows:update-resident-notifications": "node tools/update-resident-approach-notifications.mjs",
     "flows:update-vehicle-primary-manual-engine-tests": "node tools/update-vehicle-primary-manual-engine-tests.mjs",
     "flows:update-vehicle-primary-refresh": "node tools/install-vehicle-primary-dashboard-controls.mjs",

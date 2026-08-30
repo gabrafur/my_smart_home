@@ -70,6 +70,9 @@
         "state_mode": {
           "enum": ["passthrough", "home_away", "boolean"]
         },
+        "force_update": {
+          "type": "boolean"
+        },
         "attributes": {
           "type": "array",
           "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
