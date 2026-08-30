@@ -411,14 +411,14 @@ for (const item of flows) {
     for (const target of output) assert.ok(idSet.has(target), `wire órfão: ${item.id} -> ${target}`);
   }
 }
-for (const item of flows.filter((entry) => entry.type === "group" && ["monitoramento_internet_tab", "monitoramento_zigbee_tab", "monitoramento_tuya_tab"].includes(entry.z))) {
+for (const item of flows.filter((entry) => entry.type === "group" && ["monitoramento_internet_tab", "monitoramento_vpn_tab", "monitoramento_zigbee_tab", "monitoramento_tuya_tab"].includes(entry.z))) {
   for (const member of item.nodes) {
     const memberNode = flows.find((entry) => entry.id === member);
     assert.ok(memberNode, `grupo ${item.id} contém node ausente: ${member}`);
     assert.equal(memberNode.g, item.id, `node ${member} não referencia seu grupo`);
   }
 }
-assert.equal(flows.filter((item) => item.type === "subflow:infra_notify_all_mobiles").length, 8);
+assert.equal(flows.filter((item) => item.type === "subflow:infra_notify_all_mobiles").length, 10);
 for (const [id, role, action] of [
   ["infra_notify_mobile", "mobile_primary", "notify_3"],
   ["infra_notify_mobile_secondary", "mobile_secondary", "notify_2"],

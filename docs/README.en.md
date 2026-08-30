@@ -24,6 +24,7 @@ physical identifiers must appear only as placeholders.
 | [Storage audit — phase 2](operations/storage-audit-phase-2.md) | Developer tools, cache, PM2, Docker cleanup, and recorder analysis | Portuguese detailed record |
 | [Infrastructure monitoring](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) | Zigbee, Tuya, and Internet failure/recovery in Node-RED | [Português](ZIGBEE_HEALTH_NOTIFICATIONS.md) |
 | [Global Node-RED failure notifications](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Portuguese runbook for flow errors, runtime unavailability, and the mandatory mobile delivery test | Portuguese source |
+| [VPN health notifications](VPN_HEALTH_NOTIFICATIONS.md) | Portuguese runbook for sanitized host health, internet-outage suppression, and deduplicated VPN alerts | Portuguese source |
 | [Home Assistant agent bridge](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex in the UI | summarized in [Containers](CONTAINERS.en.md) |
 | [Codex + Local AI with RTX 4070](LOCAL_AI_RTX_4070.md) | Local inference, network, telemetry, and fork reproduction | detailed Portuguese guide |
 | [Local AI RTX release integration](../local-ai-integration/README.md) | Lock, checksum, immutable install, and rollback | English summary |

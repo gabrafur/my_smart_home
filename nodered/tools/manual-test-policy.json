@@ -55,6 +55,22 @@
             "automated_test": "test-infrastructure-monitoring-flows.mjs",
             "reason": "Falha e recuperação são injetadas no harness automatizado sem derrubar a conectividade da casa."
         },
+        "monitoramento_vpn_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "vpn_monitor_test_group",
+                "vpn_monitor_test_reset",
+                "vpn_monitor_test_internet_online",
+                "vpn_monitor_test_internet_offline",
+                "vpn_monitor_test_vpn_down",
+                "vpn_monitor_test_confirm_down",
+                "vpn_monitor_test_vpn_up",
+                "vpn_monitor_test_confirm_up"
+            ],
+            "dry_run_terminal_ids": ["vpn_monitor_dry_run_terminal"],
+            "automated_test": "test-vpn-monitor-flow.mjs",
+            "reason": "Queda, supressão durante indisponibilidade da internet e recuperação percorrem a lógica real até o terminal dry-run, sem publicar MQTT nem enviar notificações."
+        },
         "monitoramento_zigbee_tab": {
             "strategy": "automated_only",
             "evidence_node_ids": ["grp_zigbee_tests"],

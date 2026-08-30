@@ -1,0 +1,13 @@
+const TEST_MODE = msg._vpn_test === true || msg.payload?.test_mode === true;
+const KEY = TEST_MODE ? "vpn_monitor_internet_v1__test" : "vpn_monitor_internet_v1";
+const STORE = TEST_MODE ? undefined : "persistent";
+let value = msg.payload;
+if (Buffer.isBuffer(value)) value = value.toString("utf8");
+if (value && typeof value === "object") value = value.state ?? value.phase;
+const phase = String(value ?? "unknown").toLowerCase();
+if (!new Set(["online", "offline", "checking", "recovering"]).has(phase)) return null;
+const state = { phase, updated_at: Number(msg.vpn_now ?? Date.now()) };
+if (STORE) flow.set(KEY, state, STORE);
+else flow.set(KEY, state);
+msg.payload = { test_mode: TEST_MODE, observer_kind: "internet_state", phase };
+return msg;

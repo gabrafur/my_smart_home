@@ -90,6 +90,7 @@
     { "path": "docs/SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md", "area": "security", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/VEHICLE_PRIMARY_KIA_UVO_UPDATE_RUNBOOK.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/VPN_HEALTH_NOTIFICATIONS.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/WAKE_ON_LAN_TV_SALA.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
 
     { "path": "docs/AUDITORIA_SEGURANCA_REPO_PUBLICO.md", "area": "historical-case-studies", "strategy": "archived", "language": "pt-BR" },

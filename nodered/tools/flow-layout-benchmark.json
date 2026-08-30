@@ -39,6 +39,12 @@
             "max_reverse_wires": 0,
             "min_left_margin": 64
         },
+        "monitoramento_vpn_tab": {
+            "label": "monitoramento_vpn",
+            "max_long_wires": 0,
+            "max_reverse_wires": 0,
+            "min_left_margin": 64
+        },
         "monitoramento_zigbee_tab": {
             "label": "monitoramento_zigbee",
             "max_long_wires": 7,

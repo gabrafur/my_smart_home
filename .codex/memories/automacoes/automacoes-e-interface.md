@@ -33,6 +33,11 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
   dry-run e um único smoke test real marcado `TESTE` no canal central. O aceite
   do HA aparece como `NODERED_GLOBAL_NOTIFICATION_ACCEPTED`; apresentação no
   celular continua sendo uma confirmação manual de última milha.
+- O tab `monitoramento_vpn` recebe do host somente o estado sanitizado de
+  `vpn_primary`. Ele suprime falhas enquanto `monitoramento_internet` não está
+  online, confirma queda e recuperação antes de notificar e nunca persiste
+  endereços, peers ou topologia da VPN. A fonte operacional é
+  `docs/VPN_HEALTH_NOTIFICATIONS.md`.
 
 ## Alarme e painéis
 

@@ -25,6 +25,7 @@ placeholders.
 | [Auditoria de armazenamento — fase 2](operations/storage-audit-phase-2.md) | Limpeza de ferramentas de desenvolvimento, caches, PM2, Docker e análise do recorder | resumo no [índice em inglês](README.en.md) |
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee, Tuya e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
 | [Notificações globais de falha do Node-RED](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Erros de fluxos, indisponibilidade do runtime e teste obrigatório de entrega ao celular | Resumo em inglês abaixo |
+| [Monitoramento e notificações das VPNs](VPN_HEALTH_NOTIFICATIONS.md) | Estado sanitizado do host, correlação com queda da internet e alertas deduplicados | Resumo em inglês abaixo |
 | [Bridge no Home Assistant](CHAT_CLAUDE_CODE_HA.md) | Claude Code/Codex na interface | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
 | [Codex + Local AI com RTX 4070](LOCAL_AI_RTX_4070.md) | Inferência local, rede, telemetria e reprodução em fork | guia detalhado em português |
 | [Integração da release Local AI RTX](../local-ai-integration/README.md) | Lock, checksum, instalação imutável e rollback | resumo em inglês |

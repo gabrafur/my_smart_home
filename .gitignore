@@ -23,6 +23,8 @@
 homeassistant/.storage-maintenance-trigger/
 homeassistant/storage-maintenance-status.json
 homeassistant/.git-backup-trigger/
+.vpn-health-publisher.lock
+.vpn-health-publisher.cron.log
 .kia-uvo-updater-state/
 restore/bundles/
 restore/private-bundles/

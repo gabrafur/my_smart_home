@@ -12539,6 +12539,916 @@
         ]
     },
     {
+        "id": "vpn_monitor_input_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "1. Estado do host, internet e decisão",
+        "style": {
+            "label": true,
+            "color": "#5b8db8",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_health_in",
+            "vpn_monitor_report_ingest",
+            "vpn_monitor_internet_in",
+            "vpn_monitor_internet_ingest",
+            "vpn_monitor_tick",
+            "vpn_monitor_evaluate",
+            "vpn_monitor_test_report_in",
+            "vpn_monitor_test_internet_in",
+            "vpn_monitor_test_evaluate_in"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 750,
+        "h": 300
+    },
+    {
+        "id": "vpn_monitor_notify_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "2. Notificações deduplicadas",
+        "style": {
+            "label": true,
+            "color": "#b5563f",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_down_guard",
+            "vpn_monitor_notify_down",
+            "vpn_monitor_recovery_guard",
+            "vpn_monitor_notify_recovery",
+            "vpn_monitor_dry_out"
+        ],
+        "x": 850,
+        "y": 20,
+        "w": 650,
+        "h": 250
+    },
+    {
+        "id": "vpn_monitor_publish_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "3. MQTT Discovery e estado",
+        "style": {
+            "label": true,
+            "color": "#6aa84f",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_mqtt_guard",
+            "vpn_monitor_state_out",
+            "vpn_monitor_publish_dry_out",
+            "vpn_monitor_discovery_tick",
+            "vpn_monitor_discovery",
+            "vpn_monitor_discovery_out"
+        ],
+        "x": 850,
+        "y": 310,
+        "w": 800,
+        "h": 280
+    },
+    {
+        "id": "vpn_monitor_test_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "TESTE — fluxo completo em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_test_instructions",
+            "vpn_monitor_test_reset",
+            "vpn_monitor_test_reset_state",
+            "vpn_monitor_test_internet_online",
+            "vpn_monitor_test_internet_offline",
+            "vpn_monitor_test_vpn_down",
+            "vpn_monitor_test_confirm_down",
+            "vpn_monitor_test_vpn_up",
+            "vpn_monitor_test_confirm_up",
+            "vpn_monitor_test_router",
+            "vpn_monitor_test_internet_out",
+            "vpn_monitor_test_report_out",
+            "vpn_monitor_test_evaluate_out",
+            "vpn_monitor_dry_in",
+            "vpn_monitor_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 360,
+        "w": 750,
+        "h": 380
+    },
+    {
+        "id": "monitoramento_vpn_tab",
+        "type": "tab",
+        "label": "monitoramento_vpn",
+        "disabled": false,
+        "info": "Monitora as VPNs instaladas no host sem expor topologia privada. Correlaciona com o monitor de internet, confirma falha e recuperação e notifica por canais compartilhados.",
+        "env": []
+    },
+    {
+        "id": "vpn_monitor_health_in",
+        "type": "mqtt in",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Saúde sanitizada das VPNs",
+        "topic": "nodered/infrastructure/vpn/host-health",
+        "qos": "1",
+        "datatype": "auto-detect",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 185,
+        "y": 80,
+        "wires": [
+            [
+                "vpn_monitor_report_ingest"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_report_ingest",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Validar relatório do host",
+        "func": "const TEST_MODE = msg._vpn_test === true || msg.payload?.test_mode === true;\nconst KEY = TEST_MODE ? \"vpn_monitor_report_v1__test\" : \"vpn_monitor_report_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst setValue = (value) => STORE ? flow.set(KEY, value, STORE) : flow.set(KEY, value);\n\nlet payload = msg.payload;\nif (Buffer.isBuffer(payload)) payload = payload.toString(\"utf8\");\nif (typeof payload === \"string\") {\n    try {\n        payload = JSON.parse(payload);\n    } catch {\n        node.warn(\"VPN_MONITOR_INVALID_REPORT invalid_json\");\n        return null;\n    }\n}\nif (payload?.schema_version !== 1 || !Array.isArray(payload.vpns)) {\n    node.warn(\"VPN_MONITOR_INVALID_REPORT invalid_schema\");\n    return null;\n}\n\nconst vpns = payload.vpns\n    .filter((vpn) => vpn && vpn.installed === true)\n    .map((vpn) => ({\n        role: String(vpn.role ?? \"\").slice(0, 80),\n        kind: String(vpn.kind ?? \"\").slice(0, 80),\n        installed: true,\n        healthy: vpn.healthy === true,\n        status: vpn.healthy === true ? \"online\" : \"offline\",\n        reason: String(vpn.reason ?? \"unknown\").slice(0, 80),\n        checked_at: String(vpn.checked_at ?? payload.checked_at ?? \"\").slice(0, 40)\n    }))\n    .filter((vpn) => vpn.role && vpn.kind);\n\nsetValue({\n    schema_version: 1,\n    checked_at: String(payload.checked_at ?? \"\").slice(0, 40),\n    received_at: Number(msg.vpn_now ?? Date.now()),\n    vpns\n});\nmsg.payload = { test_mode: TEST_MODE, observer_kind: \"vpn_report\" };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 80,
+        "wires": [
+            [
+                "vpn_monitor_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_internet_in",
+        "type": "mqtt in",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Estado do monitor de internet",
+        "topic": "nodered/infrastructure/internet/state",
+        "qos": "1",
+        "datatype": "utf8",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 160,
+        "wires": [
+            [
+                "vpn_monitor_internet_ingest"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_internet_ingest",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Correlacionar internet",
+        "func": "const TEST_MODE = msg._vpn_test === true || msg.payload?.test_mode === true;\nconst KEY = TEST_MODE ? \"vpn_monitor_internet_v1__test\" : \"vpn_monitor_internet_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nlet value = msg.payload;\nif (Buffer.isBuffer(value)) value = value.toString(\"utf8\");\nif (value && typeof value === \"object\") value = value.state ?? value.phase;\nconst phase = String(value ?? \"unknown\").toLowerCase();\nif (!new Set([\"online\", \"offline\", \"checking\", \"recovering\"]).has(phase)) return null;\nconst state = { phase, updated_at: Number(msg.vpn_now ?? Date.now()) };\nif (STORE) flow.set(KEY, state, STORE);\nelse flow.set(KEY, state);\nmsg.payload = { test_mode: TEST_MODE, observer_kind: \"internet_state\", phase };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 435,
+        "y": 160,
+        "wires": [
+            [
+                "vpn_monitor_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_tick",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Avaliar a cada 30 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "x": 195,
+        "y": 240,
+        "wires": [
+            [
+                "vpn_monitor_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_evaluate",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Confirmar falha e recuperação",
+        "func": "const TEST_MODE = msg._vpn_test === true || msg.payload?.test_mode === true;\nconst suffix = TEST_MODE ? \"__test\" : \"\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst now = Number(msg.vpn_now ?? Date.now());\nconst get = (key) => STORE ? flow.get(`${key}${suffix}`, STORE) : flow.get(`${key}${suffix}`);\nconst set = (key, value) => STORE ? flow.set(`${key}${suffix}`, value, STORE) : flow.set(`${key}${suffix}`, value);\nconst EXPECTED = [{ role: \"vpn_primary\", kind: \"tailscale\", label: \"Tailscale\" }];\nconst FAILURE_CONFIRM_MS = 2 * 60 * 1000;\nconst RECOVERY_CONFIRM_MS = 60 * 1000;\nconst REPORT_STALE_MS = 3 * 60 * 1000;\nconst REMINDER_MS = 24 * 60 * 60 * 1000;\n\nconst report = get(\"vpn_monitor_report_v1\") ?? { checked_at: null, received_at: 0, vpns: [] };\nconst internet = get(\"vpn_monitor_internet_v1\") ?? { phase: \"unknown\" };\nconst states = get(\"vpn_monitor_state_v1\") ?? {};\nconst reportCheckedAt = Date.parse(report.checked_at ?? \"\");\nconst reportFresh = Number.isFinite(reportCheckedAt) && now - reportCheckedAt <= REPORT_STALE_MS;\nconst samples = new Map((report.vpns ?? []).map((vpn) => [vpn.role, vpn]));\nconst internetOnline = internet.phase === \"online\";\nconst down = [];\nconst recovery = [];\nconst publications = [];\n\nconst reasonText = {\n    authentication_required: \"a VPN requer nova autenticação\",\n    backend_stopped: \"o serviço da VPN está parado\",\n    backend_unavailable: \"o backend da VPN não está operacional\",\n    status_command_failed: \"a consulta local de estado falhou\",\n    status_timeout: \"a consulta local de estado excedeu o tempo limite\",\n    invalid_status: \"o serviço retornou estado inválido\",\n    vpn_not_detected: \"a VPN instalada não foi detectada pelo publicador\",\n    telemetry_stale: \"o monitor do host deixou de atualizar o estado\",\n    not_online: \"a VPN não está conectada\"\n};\n\nfor (const expected of EXPECTED) {\n    const previous = states[expected.role] ?? {\n        phase: \"checking\",\n        incident_open: false,\n        failure_started_at: null,\n        recovery_started_at: null,\n        last_notification_at: null\n    };\n    const sample = samples.get(expected.role);\n    const healthy = reportFresh && sample?.healthy === true;\n    const failureReason = !reportFresh\n        ? \"telemetry_stale\"\n        : sample\n            ? String(sample.reason ?? \"not_online\")\n            : \"vpn_not_detected\";\n    const current = { ...previous, kind: expected.kind, label: expected.label };\n\n    if (!internetOnline) {\n        current.phase = \"suppressed_internet\";\n        current.failure_started_at = null;\n        current.recovery_started_at = null;\n        current.reason = `internet_${internet.phase ?? \"unknown\"}`;\n    } else if (!healthy) {\n        current.recovery_started_at = null;\n        current.reason = failureReason;\n        if (!Number.isFinite(current.failure_started_at)) current.failure_started_at = now;\n        const confirmed = now - current.failure_started_at >= FAILURE_CONFIRM_MS;\n        current.phase = confirmed ? \"offline\" : \"checking\";\n        const reminderDue =\n            current.incident_open === true &&\n            now - Number(current.last_notification_at ?? now) >= REMINDER_MS;\n        if (confirmed && (current.incident_open !== true || reminderDue)) {\n            current.incident_open = true;\n            current.last_notification_at = now;\n            current.last_outage_at = current.last_outage_at ?? new Date(current.failure_started_at).toISOString();\n            down.push({\n                _vpn_test: TEST_MODE,\n                _vpn_side_effect: \"notification\",\n                payload: { test_mode: TEST_MODE, observer_kind: \"vpn_unavailable\", vpn_role: expected.role },\n                notification: {\n                    id: `vpn_${expected.role}_failure`,\n                    title: TEST_MODE ? `TESTE — VPN ${expected.label} indisponível` : `VPN ${expected.label} indisponível`,\n                    message:\n                        `A internet está disponível, mas a VPN ${expected.label} permanece ` +\n                        `fora do ar há pelo menos 2 minutos: ${reasonText[failureReason] ?? reasonText.not_online}.`\n                }\n            });\n        }\n    } else {\n        current.failure_started_at = null;\n        current.reason = \"running\";\n        if (current.incident_open === true) {\n            if (!Number.isFinite(current.recovery_started_at)) current.recovery_started_at = now;\n            if (now - current.recovery_started_at >= RECOVERY_CONFIRM_MS) {\n                current.phase = \"online\";\n                current.incident_open = false;\n                current.last_recovery_at = new Date(now).toISOString();\n                current.last_outage_at = null;\n                current.last_notification_at = null;\n                current.recovery_started_at = null;\n                recovery.push({\n                    _vpn_test: TEST_MODE,\n                    _vpn_side_effect: \"notification\",\n                    payload: { test_mode: TEST_MODE, observer_kind: \"vpn_recovered\", vpn_role: expected.role },\n                    notification: {\n                        id: `vpn_${expected.role}_recovered`,\n                        dismiss_id: `vpn_${expected.role}_failure`,\n                        title: TEST_MODE ? `TESTE — VPN ${expected.label} recuperada` : `VPN ${expected.label} recuperada`,\n                        message: `A VPN ${expected.label} voltou a ficar online e permaneceu estável por 1 minuto.`\n                    }\n                });\n            } else {\n                current.phase = \"recovering\";\n            }\n        } else {\n            current.phase = \"online\";\n            current.recovery_started_at = null;\n        }\n    }\n\n    current.last_checked_at = report.checked_at ?? null;\n    states[expected.role] = current;\n    const online = current.phase === \"online\" || current.phase === \"recovering\";\n    const attributes = {\n        state: current.phase,\n        reason: current.reason,\n        internet_state: internet.phase ?? \"unknown\",\n        last_checked_at: current.last_checked_at,\n        last_outage: current.last_outage_at ?? null,\n        last_recovery: current.last_recovery_at ?? null\n    };\n    publications.push(\n        { topic: `nodered/infrastructure/vpn/${expected.role}/connection`, payload: online ? \"ON\" : \"OFF\" },\n        { topic: `nodered/infrastructure/vpn/${expected.role}/state`, payload: current.phase },\n        { topic: `nodered/infrastructure/vpn/${expected.role}/attributes`, payload: JSON.stringify(attributes) }\n    );\n}\n\nset(\"vpn_monitor_state_v1\", states);\nconst phases = Object.values(states).map((state) => state.phase);\nnode.status({\n    fill: phases.every((phase) => phase === \"online\") ? \"green\" : phases.some((phase) => phase === \"offline\") ? \"red\" : \"yellow\",\n    shape: phases.every((phase) => phase === \"online\") ? \"dot\" : \"ring\",\n    text: phases.join(\", \") || \"sem VPN configurada\"\n});\n\nconst wrapPublications = publications.map((publication) => ({\n    _vpn_test: TEST_MODE,\n    _vpn_side_effect: \"mqtt\",\n    _vpn_payload_meta: { test_mode: TEST_MODE, observer_kind: \"vpn_mqtt\" },\n    topic: publication.topic,\n    payload: publication.payload\n}));\nreturn [down.length ? down : null, recovery.length ? recovery : null, wrapPublications.length ? wrapPublications : null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 675,
+        "y": 160,
+        "wires": [
+            [
+                "vpn_monitor_down_guard"
+            ],
+            [
+                "vpn_monitor_recovery_guard"
+            ],
+            [
+                "vpn_monitor_mqtt_guard"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_down_guard",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_notify_group",
+        "name": "Separar queda real e TESTE",
+        "func": "const TEST_MODE = msg._vpn_test === true || msg.payload?.test_mode === true || msg._vpn_payload_meta?.test_mode === true;\nif (!TEST_MODE) return [msg, null];\nmsg.payload = {\n    test_mode: true,\n    observer_kind: msg.payload?.observer_kind ?? msg._vpn_payload_meta?.observer_kind ?? \"vpn_side_effect\",\n    side_effect: msg._vpn_side_effect ?? \"unknown\",\n    simulated: true,\n    dispatched: false\n};\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1015,
+        "y": 80,
+        "wires": [
+            [
+                "vpn_monitor_notify_down"
+            ],
+            [
+                "vpn_monitor_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_notify_down",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_notify_group",
+        "name": "Notificar VPN indisponível",
+        "env": [],
+        "x": 1320,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_recovery_guard",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_notify_group",
+        "name": "Separar recuperação e TESTE",
+        "func": "const TEST_MODE = msg._vpn_test === true || msg.payload?.test_mode === true || msg._vpn_payload_meta?.test_mode === true;\nif (!TEST_MODE) return [msg, null];\nmsg.payload = {\n    test_mode: true,\n    observer_kind: msg.payload?.observer_kind ?? msg._vpn_payload_meta?.observer_kind ?? \"vpn_side_effect\",\n    side_effect: msg._vpn_side_effect ?? \"unknown\",\n    simulated: true,\n    dispatched: false\n};\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1025,
+        "y": 160,
+        "wires": [
+            [
+                "vpn_monitor_notify_recovery"
+            ],
+            [
+                "vpn_monitor_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_notify_recovery",
+        "type": "subflow:infra_notify_all_mobiles",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_notify_group",
+        "name": "Notificar VPN recuperada",
+        "env": [],
+        "x": 1320,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_dry_out",
+        "type": "link out",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_notify_group",
+        "name": "TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "vpn_monitor_dry_in"
+        ],
+        "x": 1435,
+        "y": 235,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_mqtt_guard",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_publish_group",
+        "name": "Separar MQTT real e TESTE",
+        "func": "const TEST_MODE = msg._vpn_test === true || msg.payload?.test_mode === true || msg._vpn_payload_meta?.test_mode === true;\nif (!TEST_MODE) return [msg, null];\nmsg.payload = {\n    test_mode: true,\n    observer_kind: msg.payload?.observer_kind ?? msg._vpn_payload_meta?.observer_kind ?? \"vpn_side_effect\",\n    side_effect: msg._vpn_side_effect ?? \"unknown\",\n    simulated: true,\n    dispatched: false\n};\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1030,
+        "y": 380,
+        "wires": [
+            [
+                "vpn_monitor_state_out"
+            ],
+            [
+                "vpn_monitor_publish_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_state_out",
+        "type": "mqtt out",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_publish_group",
+        "name": "Publicar estado retained",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1320,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_publish_dry_out",
+        "type": "link out",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_publish_group",
+        "name": "MQTT TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "vpn_monitor_dry_in"
+        ],
+        "x": 1285,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_discovery_tick",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_publish_group",
+        "name": "Discovery no startup",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "5",
+        "topic": "",
+        "x": 970,
+        "y": 520,
+        "wires": [
+            [
+                "vpn_monitor_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_discovery",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_publish_group",
+        "name": "Criar sensores diagnósticos",
+        "func": "const availability = {\n    availability_topic: \"nodered/status\",\n    payload_available: \"online\",\n    payload_not_available: \"offline\"\n};\nconst device = {\n    identifiers: [\"node_red_vpn_monitoring\"],\n    name: \"Monitoramento de VPN\",\n    manufacturer: \"Node-RED\",\n    model: \"Disponibilidade de túneis privados\"\n};\nreturn [[\n    {\n        topic: \"homeassistant/binary_sensor/vpn_primary_connection/config\",\n        payload: JSON.stringify({\n            name: \"Conexão VPN principal\",\n            object_id: \"vpn_primary_connection\",\n            default_entity_id: \"binary_sensor.vpn_primary_connection\",\n            unique_id: \"node_red_vpn_primary_connection\",\n            device_class: \"connectivity\",\n            state_topic: \"nodered/infrastructure/vpn/vpn_primary/connection\",\n            json_attributes_topic: \"nodered/infrastructure/vpn/vpn_primary/attributes\",\n            payload_on: \"ON\",\n            payload_off: \"OFF\",\n            ...availability,\n            device\n        })\n    },\n    {\n        topic: \"homeassistant/sensor/vpn_primary_connection_state/config\",\n        payload: JSON.stringify({\n            name: \"Estado da VPN principal\",\n            object_id: \"vpn_primary_connection_state\",\n            default_entity_id: \"sensor.vpn_primary_connection_state\",\n            unique_id: \"node_red_vpn_primary_connection_state\",\n            icon: \"mdi:vpn\",\n            entity_category: \"diagnostic\",\n            state_topic: \"nodered/infrastructure/vpn/vpn_primary/state\",\n            json_attributes_topic: \"nodered/infrastructure/vpn/vpn_primary/attributes\",\n            ...availability,\n            device\n        })\n    }\n]];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1210,
+        "y": 520,
+        "wires": [
+            [
+                "vpn_monitor_discovery_out"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_discovery_out",
+        "type": "mqtt out",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_publish_group",
+        "name": "Publicar discovery retained",
+        "topic": "",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1510,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_test_instructions",
+        "type": "comment",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "Ordem: reset → internet online → VPN offline → +121 s → VPN online → +61 s. Negativo: reset → internet offline → VPN offline → +121 s.",
+        "info": "Todos os efeitos terminam em dry-run. O cenário negativo comprova que uma queda geral da internet não duplica o alerta como falha de VPN.",
+        "x": 390,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_test_reset",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 170,
+        "y": 450,
+        "wires": [
+            [
+                "vpn_monitor_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_reset_state",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "Resetar estado sintético",
+        "func": "for (const key of [\n    \"vpn_monitor_report_v1__test\",\n    \"vpn_monitor_internet_v1__test\",\n    \"vpn_monitor_state_v1__test\",\n    \"vpn_monitor_last_dry_run_v1\"\n]) flow.set(key, undefined);\nflow.set(\"vpn_monitor_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    events: [],\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 450,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_test_internet_online",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE 2: internet online",
+        "props": [
+            {
+                "p": "_vpn_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_vpn_test_kind",
+                "v": "internet",
+                "vt": "str"
+            },
+            {
+                "p": "vpn_now",
+                "v": "100000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "online",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 195,
+        "y": 500,
+        "wires": [
+            [
+                "vpn_monitor_test_router"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_internet_offline",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE 2B: internet offline",
+        "props": [
+            {
+                "p": "_vpn_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_vpn_test_kind",
+                "v": "internet",
+                "vt": "str"
+            },
+            {
+                "p": "vpn_now",
+                "v": "100000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "offline",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 195,
+        "y": 540,
+        "wires": [
+            [
+                "vpn_monitor_test_router"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_vpn_down",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE 3: VPN offline",
+        "props": [
+            {
+                "p": "_vpn_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_vpn_test_kind",
+                "v": "report",
+                "vt": "str"
+            },
+            {
+                "p": "vpn_now",
+                "v": "100000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"checked_at\":\"1970-01-01T00:01:40.000Z\",\"vpns\":[{\"role\":\"vpn_primary\",\"kind\":\"tailscale\",\"installed\":true,\"healthy\":false,\"reason\":\"backend_stopped\",\"checked_at\":\"1970-01-01T00:01:40.000Z\"}]}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 195,
+        "y": 580,
+        "wires": [
+            [
+                "vpn_monitor_test_router"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_confirm_down",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE 4: avaliar +121 s",
+        "props": [
+            {
+                "p": "_vpn_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_vpn_test_kind",
+                "v": "evaluate",
+                "vt": "str"
+            },
+            {
+                "p": "vpn_now",
+                "v": "221000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 195,
+        "y": 620,
+        "wires": [
+            [
+                "vpn_monitor_test_router"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_vpn_up",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE 5: VPN online",
+        "props": [
+            {
+                "p": "_vpn_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_vpn_test_kind",
+                "v": "report",
+                "vt": "str"
+            },
+            {
+                "p": "vpn_now",
+                "v": "230000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "{\"schema_version\":1,\"checked_at\":\"1970-01-01T00:03:50.000Z\",\"vpns\":[{\"role\":\"vpn_primary\",\"kind\":\"tailscale\",\"installed\":true,\"healthy\":true,\"reason\":\"running\",\"checked_at\":\"1970-01-01T00:03:50.000Z\"}]}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 195,
+        "y": 660,
+        "wires": [
+            [
+                "vpn_monitor_test_router"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_confirm_up",
+        "type": "inject",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE 6: avaliar +61 s",
+        "props": [
+            {
+                "p": "_vpn_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_vpn_test_kind",
+                "v": "evaluate",
+                "vt": "str"
+            },
+            {
+                "p": "vpn_now",
+                "v": "291000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 195,
+        "y": 700,
+        "wires": [
+            [
+                "vpn_monitor_test_router"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_router",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "Rotear estado sintético",
+        "func": "if (msg._vpn_test !== true) return null;\nif (msg._vpn_test_kind === \"internet\") return [msg, null, null];\nif (msg._vpn_test_kind === \"report\") return [null, msg, null];\nif (msg._vpn_test_kind === \"evaluate\") return [null, null, msg];\nreturn null;",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 590,
+        "wires": [
+            [
+                "vpn_monitor_test_internet_out"
+            ],
+            [
+                "vpn_monitor_test_report_out"
+            ],
+            [
+                "vpn_monitor_test_evaluate_out"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_internet_out",
+        "type": "link out",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "Internet TESTE → produção",
+        "mode": "link",
+        "links": [
+            "vpn_monitor_test_internet_in"
+        ],
+        "x": 770,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_test_report_out",
+        "type": "link out",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "VPN TESTE → produção",
+        "mode": "link",
+        "links": [
+            "vpn_monitor_test_report_in"
+        ],
+        "x": 770,
+        "y": 590,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_test_evaluate_out",
+        "type": "link out",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "Avaliar TESTE → produção",
+        "mode": "link",
+        "links": [
+            "vpn_monitor_test_evaluate_in"
+        ],
+        "x": 770,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "vpn_monitor_test_report_in",
+        "type": "link in",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Receber VPN TESTE",
+        "links": [
+            "vpn_monitor_test_report_out"
+        ],
+        "x": 100,
+        "y": 120,
+        "wires": [
+            [
+                "vpn_monitor_report_ingest"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_internet_in",
+        "type": "link in",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Receber internet TESTE",
+        "links": [
+            "vpn_monitor_test_internet_out"
+        ],
+        "x": 100,
+        "y": 200,
+        "wires": [
+            [
+                "vpn_monitor_internet_ingest"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_test_evaluate_in",
+        "type": "link in",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_input_group",
+        "name": "Receber avaliação TESTE",
+        "links": [
+            "vpn_monitor_test_evaluate_out"
+        ],
+        "x": 520,
+        "y": 240,
+        "wires": [
+            [
+                "vpn_monitor_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_dry_in",
+        "type": "link in",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "Receber side effects TESTE",
+        "links": [
+            "vpn_monitor_dry_out",
+            "vpn_monitor_publish_dry_out"
+        ],
+        "x": 480,
+        "y": 720,
+        "wires": [
+            [
+                "vpn_monitor_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "vpn_monitor_dry_run_terminal",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "vpn_monitor_test_group",
+        "name": "TESTE FINAL: nenhum efeito enviado",
+        "func": "const KEY = \"vpn_monitor_last_dry_run_v1\";\nconst previous = flow.get(KEY) ?? { events: [] };\nconst event = {\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    notification_sent: false,\n    observer_kind: msg.payload?.observer_kind ?? \"unknown\",\n    side_effect: msg.payload?.side_effect ?? msg._vpn_side_effect ?? \"unknown\",\n    completed_at: Date.now()\n};\nconst events = [...(previous.events ?? []), event].slice(-20);\nflow.set(KEY, { version: 1, events, ...event });\nnode.status({ fill: \"blue\", shape: \"dot\", text: `TESTE ${event.observer_kind}: bloqueado` });\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 650,
+        "y": 720,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__git_backup_tab__group",
         "type": "group",
         "z": "git_backup_tab",
@@ -14001,6 +14911,92 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_vpn_tab__catch",
+            "global_observer_coverage__monitoramento_vpn_tab__status",
+            "global_observer_coverage__monitoramento_vpn_tab__annotate",
+            "global_observer_coverage__monitoramento_vpn_tab__out"
+        ],
+        "x": 1700,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1840,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_vpn_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__status",
+        "type": "status",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1850,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_vpn_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_vpn_tab\",\"flow_label\":\"monitoramento_vpn\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2120,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_vpn_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__out",
+        "type": "link out",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2365,
+        "y": 130,
+        "wires": []
+    },
+    {
         "id": "global_flow_observer_tab",
         "type": "tab",
         "label": "observabilidade_global",
@@ -14072,6 +15068,7 @@
             "global_observer_coverage__codex_alertas_tab__out",
             "global_observer_coverage__monitoramento_tuya_tab__out",
             "global_observer_coverage__resident_notifications_tab__out",
+            "global_observer_coverage__monitoramento_vpn_tab__out",
             "global_observer_test_event_out"
         ],
         "x": 120,
