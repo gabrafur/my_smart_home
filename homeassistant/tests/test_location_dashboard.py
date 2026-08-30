@@ -30,6 +30,8 @@ class LocationDashboardTest(unittest.TestCase):
     def test_status_and_source_are_combined_and_freshness_stays_separate(self):
         dashboard = DASHBOARD.read_text(encoding="utf-8")
 
+        self.assertEqual(dashboard.count("content: |-"), 2)
+        self.assertNotIn("content: >-", dashboard)
         self.assertIn("title: Current status and source", dashboard)
         self.assertIn("item.state", dashboard)
         self.assertEqual(
