@@ -9,7 +9,7 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
 [docs/ILUMINACAO_SEGURANCA_NODERED.md](ILUMINACAO_SEGURANCA_NODERED.md)
 (uso das entidades `vehicle_primary_*` no fluxo de chegada/seguranca).
 
-## Estado atual (2026-08-19)
+## Estado atual (2026-08-30)
 
 - Componente sincronizado com o upstream `kia_uvo` **3.10.1** e
   `hyundai_kia_connect_api` **4.26.5**. O diff oficial 3.10.0 -> 3.10.1
@@ -36,11 +36,16 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   como horario regional e desloca somente a entidade de localizacao em +3 h.
   O stub reservado `OffPeakTime: {Mode: 1}` dos modelos a combustao tambem e
   ignorado para nao criar horarios EV ficticios em 00:00 nem warning por poll.
-- O botao de force refresh conserva um piso de **15 minutos entre wakes reais**.
-  Dentro desse intervalo ele faz apenas leitura do cache. Com `options: {}` o
-  scheduler nativo consulta cache a cada 15 minutos e so considera wake proprio
-  apos 1440 minutos; a politica Node-RED pede wake a cada 15 minutos quando
-  habilitada.
+- O Node-RED e o unico coordenador do agendamento de wakes reais. O polling do
+  `kia_uvo` continua a cada 15 minutos para renovar token, ler o cache do
+  backend e manter as entidades publicadas, mas `_async_update_data` nao chama
+  mais `check_and_force_update_vehicles`, nem no intervalo legado de 1440
+  minutos. As opcoes antigas de force refresh permanecem aceitas apenas por
+  compatibilidade de config entry.
+- O botao privado conserva um piso de **15 minutos entre wakes reais** e um
+  lock de processo; requests concorrentes sao coalescidos. No Node-RED,
+  agendamento, manual, recovery, chegada e movimento convergem no mesmo estado
+  persistente e passam por um guard final antes do binding publico.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
   odometro avanca e na chegada do vehicle_primary. O dashboard nao depende mais de press
   manual para voltar a exibir viagens depois de restart.
@@ -69,10 +74,16 @@ concorrentes. O retry reaplica o novo identificador tanto nos headers quanto no
 payload de comandos e o token atualizado é salvo pelo loop do Home Assistant.
 Esse recovery não acorda o carro e não amplia a frequência normal de polling.
 
-O refresh grava baseline dos timestamps de localizacao, motor e trava. Uma
-tentativa so vira sucesso quando pelo menos um deles avanca e o alvo de
+O refresh grava baseline dos timestamps de localizacao, motor e trava. O
+retorno de `public_bindings.call` significa apenas que o Home Assistant aceitou
+a chamada e limpa somente o marcador `request_in_flight`. Uma tentativa so
+vira sucesso quando pelo menos um deles avanca e o alvo de
 readiness e atingido. Sem evidencia, o mesmo recovery segue backoff de
 1, 2, 4, 8 e 15 minutos; o contador satura sem criar rajadas ou loops.
+`request_in_flight`, seu lease e `next_allowed_at` sobrevivem a restart. Erros
+`401 Unauthorized` e timeout sao classificados, liberam o lock logico e
+mantem o deadline; o polling BR reavalia autenticacao a cada 15 minutos sem
+descarregar o config entry, permitindo recuperacao posterior sem tempestade.
 Eventos operacionais usam `VEHICLE_PRIMARY_LOCATION_CHANGED`,
 `VEHICLE_PRIMARY_MOVEMENT_DETECTED`, `VEHICLE_PRIMARY_REFRESH_REQUESTED`,
 `VEHICLE_PRIMARY_REFRESH_RETRY`, `VEHICLE_PRIMARY_NEW_DATA_RECEIVED`, `VEHICLE_PRIMARY_TRIP_UPDATED` e
@@ -82,7 +93,8 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 `contexto_vehicle_primary.refresh` e o sensor MQTT
 `sensor.vehicle_primary_refresh_coordinator`. Os campos publicados sao `state`,
 `reason`, `attempt`, `last_request_at`, `last_success_at`, `next_retry_at` e
-`cooldown_until`. O ticker MQTT de 5 s somente calcula o tempo restante a
+`cooldown_until`, alem de `request_in_flight`, `in_flight_until`,
+`service_accepted_at` e `last_failure_class`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
 `input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
 `reason=manual_force`: pode quebrar cooldown de sucesso, mas nunca o backoff de
@@ -117,6 +129,12 @@ de ID e sufixos dependentes da ordem de inicialização. A descoberta publica um
 tombstone para o tópico-fonte transitório usado durante a migração. No painel,
 o backoff da atualização e o comando independente de luzes/buzina são exibidos
 em cards separados.
+
+A chegada nao chama mais `vehicle_primary.force_refresh` diretamente. O ramo
+usa `link out`/`link in` para retornar ao mesmo coordenador, e o despacho final
+separa producao e `test_mode`. No teste manual, force refresh e tripinfo chegam
+ao terminal dry-run com `simulated: true`, `dispatched: false` e
+`external_call_sent: false`, sem alcancar o binding ou a API Bluelink.
 
 As secoes datadas abaixo preservam o historico da investigacao. Onde falarem
 em `_force_ccs2_status_endpoint()` ou `_install_br_wake_force_refresh()`, leia

@@ -52,10 +52,28 @@ refreshDecision.name = "Coordenar refresh do vehicle_primary";
 refreshDecision.func = source("vehicle-primary-refresh-coordinator.js");
 refreshDecision.outputs = 3;
 refreshDecision.wires = [
-  ["8907830bb7f6c40c"],
+  ["vehicle_primary_refresh_dispatch_guard_v1"],
   ["eb4b8a519ab0bc28"],
   ["vehicle_primary_manual_refresh_blocked_notification_v1"],
 ];
+
+upsert({
+  id: "vehicle_primary_refresh_dispatch_guard_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Separar refresh real e dry-run",
+  func: source("vehicle-primary-refresh-dispatch-guard.js"),
+  outputs: 2,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 715,
+  y: 700,
+  wires: [["8907830bb7f6c40c"], ["vehicle_primary_refresh_dry_run_out_v1"]],
+});
 
 const forceRefresh = required("8907830bb7f6c40c");
 Object.assign(forceRefresh, {
@@ -65,7 +83,35 @@ Object.assign(forceRefresh, {
   dataType: "json",
   domain: "public_bindings",
   service: "call",
+  x: 990,
+  y: 700,
+  wires: [["vehicle_primary_refresh_accepted_v1"]],
 });
+
+upsert({
+  id: "vehicle_primary_refresh_accepted_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Registrar serviço aceito",
+  func: source("vehicle-primary-refresh-accepted.js"),
+  outputs: 1,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 1260,
+  y: 700,
+  wires: [["7a99920b093547ea"]],
+});
+
+const waitForEvidence = required("7a99920b093547ea");
+Object.assign(waitForEvidence, { x: 1510, y: 700 });
+const recheck = required("ba55143f392aa361");
+Object.assign(recheck, { x: 1370, y: 780 });
+const recheckOut = required("f3bc2e5083769579");
+Object.assign(recheckOut, { x: 1655, y: 780 });
 
 const tripRefresh = required("16396e34ff530ac7");
 Object.assign(tripRefresh, {
@@ -75,12 +121,157 @@ Object.assign(tripRefresh, {
   dataType: "json",
   domain: "public_bindings",
   service: "call",
+  x: 1110,
+  y: 860,
+});
+
+const arrivalActions = required("727be3d871cf85f0");
+Object.assign(arrivalActions, {
+  func: source("vehicle-primary-arrival-actions.js"),
+  outputs: 2,
+  x: 500,
+  y: 840,
+  wires: [["vehicle_primary_arrival_refresh_out_v1"], ["vehicle_primary_trip_dispatch_guard_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_arrival_refresh_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Chegada → coordenador único de refresh",
+  mode: "link",
+  links: ["vehicle_primary_arrival_refresh_in_v1"],
+  x: 705,
+  y: 820,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_arrival_refresh_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Receber refresh de chegada",
+  links: ["vehicle_primary_arrival_refresh_out_v1"],
+  x: 215,
+  y: 760,
+  wires: [["b33e117e55bdb5ed"]],
+});
+
+upsert({
+  id: "vehicle_primary_trip_dispatch_guard_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Separar viagens reais e dry-run",
+  func: source("vehicle-primary-trip-dispatch-guard.js"),
+  outputs: 2,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 795,
+  y: 860,
+  wires: [["16396e34ff530ac7"], ["vehicle_primary_trip_dry_run_out_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_dry_run_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Refresh TESTE → terminal dry-run",
+  mode: "link",
+  links: ["vehicle_primary_dry_run_in_v1"],
+  x: 875,
+  y: 740,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_trip_dry_run_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Tripinfo TESTE → terminal dry-run",
+  mode: "link",
+  links: ["vehicle_primary_dry_run_in_v1"],
+  x: 990,
+  y: 900,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_dry_run_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Receber efeitos simulados",
+  links: [
+    "vehicle_primary_refresh_dry_run_out_v1",
+    "vehicle_primary_trip_dry_run_out_v1",
+  ],
+  x: 1320,
+  y: 860,
+  wires: [["vehicle_primary_refresh_dry_run_terminal_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_dry_run_terminal_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Terminal dry-run do vehicle_primary",
+  func: source("vehicle-primary-dry-run-terminal.js"),
+  outputs: 0,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 1530,
+  y: 860,
+  wires: [],
 });
 
 removeNode("77cf2dfe4ff36964");
 removeNode("684feca0f1585885");
 
 const normalizer = required("092625f2eb5cc156");
+normalizer.func = normalizer.func.replace(
+  '        "security_vehicle_primary_test_clock"',
+  '        "security_vehicle_primary_test_clock",\n        "security_vehicle_primary_refresh_v1__test"',
+);
+normalizer.func = normalizer.func.replace(
+  'if (!TEST_MODE) {\n    const refreshKey = "security_vehicle_primary_refresh_v1";\n    let refreshState =\n        flow.get(refreshKey, "persistent");',
+  ' {\n    const refreshKey = TEST_MODE\n        ? "security_vehicle_primary_refresh_v1__test"\n        : "security_vehicle_primary_refresh_v1";\n    let refreshState = TEST_MODE\n        ? flow.get(refreshKey)\n        : flow.get(refreshKey, "persistent");\n    const setRefreshState = (value) => TEST_MODE\n        ? flow.set(refreshKey, value)\n        : flow.set(refreshKey, value, "persistent");',
+);
+normalizer.func = normalizer.func.replaceAll(
+  '            flow.set(\n                refreshKey,\n                refreshState,\n                "persistent"\n            );',
+  '            setRefreshState(refreshState);',
+);
+normalizer.func = normalizer.func.replace(
+  '                next_allowed_at:\n                    Date.now() + 15 * 60 * 1000,',
+  '                next_allowed_at: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),',
+);
+normalizer.func = normalizer.func.replace(
+  '                awaiting_evidence: false,\n                state: "cooldown",',
+  '                awaiting_evidence: false,\n                request_in_flight: false,\n                in_flight_until: null,\n                state: "cooldown",',
+);
+normalizer.func = normalizer.func.replace(
+  '                cooldown_until: Date.now() + 15 * 60 * 1000,',
+  '                cooldown_until: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),',
+);
+normalizer.func = normalizer.func.replace(
+  'const sharedRefreshState =\n    flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};',
+  'const sharedRefreshState = TEST_MODE\n    ? flow.get("security_vehicle_primary_refresh_v1__test") ?? {}\n    : flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};',
+);
+normalizer.func = normalizer.func.replace(
+  '    awaiting_evidence: sharedRefreshState.awaiting_evidence === true,\n    manual_force: sharedRefreshState.manual_force === true\n};',
+  '    awaiting_evidence: sharedRefreshState.awaiting_evidence === true,\n    request_in_flight: sharedRefreshState.request_in_flight === true,\n    in_flight_until: Number(sharedRefreshState.in_flight_until ?? 0) || null,\n    last_failure_class: sharedRefreshState.last_failure_class ?? null,\n    manual_force: sharedRefreshState.manual_force === true\n};',
+);
 if (!normalizer.func.includes("refresh_state_contract_v1")) {
   normalizer.func = normalizer.func.replace(
     "                awaiting_evidence: false,\n                last_evidence_at: Date.now(),",
@@ -100,7 +291,15 @@ if (!normalizer.func.includes("refresh_state_contract_v1")) {
 }
 
 const errorLogger = required("vehicle_primary_api_error_log_v1");
-errorLogger.func = `const source = String(msg.error?.source?.name ?? "unknown")\n    .replace(/[^a-zA-Z0-9 _-]/g, "");\nconst message = String(msg.error?.message ?? "unknown")\n    .replace(/[\\r\\n]+/g, " ")\n    .slice(0, 240);\nconst key = "security_vehicle_primary_refresh_v1";\nconst state = flow.get(key, "persistent") ?? {};\nconst now = Date.now();\nstate.state = "backoff";\nstate.reason = "api_error";\nstate.failure_at = now;\nstate.failure_source = source;\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nflow.set(key, state, "persistent");\nnode.error("VEHICLE_PRIMARY_API_ERROR source=" + source + " message=" + message);\nreturn null;`;
+errorLogger.func = source("vehicle-primary-refresh-error.js");
+Object.assign(errorLogger, { x: 1580, y: 940 });
+const errorCatch = required("vehicle_primary_api_error_catch_v1");
+Object.assign(errorCatch, {
+  name: "Erros do force_refresh do vehicle_primary",
+  scope: ["8907830bb7f6c40c"],
+  x: 1220,
+  y: 940,
+});
 
 upsert({
   id: "vehicle_primary_manual_refresh_button_v1",
@@ -130,8 +329,8 @@ upsert({
   outputProperties: [
     { property: "payload", propertyType: "msg", value: '{"event_type":"manual_refresh"}', valueType: "json" },
   ],
-  x: 215,
-  y: 300,
+  x: 315,
+  y: 120,
   wires: [["vehicle_primary_manual_refresh_request_v1"]],
 });
 
@@ -148,8 +347,8 @@ upsert({
   initialize: "",
   finalize: "",
   libs: [],
-  x: 230,
-  y: 300,
+  x: 650,
+  y: 120,
   wires: [["5b3d363c0035297b"]],
 });
 
@@ -168,7 +367,7 @@ upsert({
   payload: "",
   payloadType: "date",
   x: 350,
-  y: 860,
+  y: 1000,
   wires: [["vehicle_primary_refresh_telemetry_v1"]],
 });
 
@@ -185,8 +384,8 @@ upsert({
   initialize: "",
   finalize: "",
   libs: [],
-  x: 635,
-  y: 860,
+  x: 650,
+  y: 1000,
   wires: [["vehicle_primary_refresh_mqtt_v1"]],
 });
 
@@ -205,8 +404,8 @@ upsert({
   correl: "",
   expiry: "",
   broker: "721c47f31046b8bc",
-  x: 925,
-  y: 860,
+  x: 960,
+  y: 1000,
   wires: [],
 });
 
@@ -234,8 +433,8 @@ upsert({
   blockInputOverrides: true,
   domain: "persistent_notification",
   service: "create",
-  x: 1010,
-  y: 900,
+  x: 930,
+  y: 940,
   wires: [[]],
 });
 
@@ -246,11 +445,26 @@ addToGroup(
 );
 addToGroup(
   "43a2bc9c218353ae",
+  "vehicle_primary_refresh_dispatch_guard_v1",
+  "vehicle_primary_refresh_accepted_v1",
+  "vehicle_primary_arrival_refresh_out_v1",
+  "vehicle_primary_arrival_refresh_in_v1",
+  "vehicle_primary_trip_dispatch_guard_v1",
+  "vehicle_primary_refresh_dry_run_out_v1",
+  "vehicle_primary_trip_dry_run_out_v1",
+  "vehicle_primary_dry_run_in_v1",
+  "vehicle_primary_refresh_dry_run_terminal_v1",
   "vehicle_primary_refresh_telemetry_tick_v1",
   "vehicle_primary_refresh_telemetry_v1",
   "vehicle_primary_refresh_mqtt_v1",
   "vehicle_primary_manual_refresh_blocked_notification_v1",
 );
+
+const refreshGroup = required("43a2bc9c218353ae");
+Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 462 });
+
+const immediateRecovery = required("6473697c19342f07");
+Object.assign(immediateRecovery, { x: 570, y: 240 });
 
 fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Controles e telemetria do vehicle_primary instalados sem duplicar o coordenador.");

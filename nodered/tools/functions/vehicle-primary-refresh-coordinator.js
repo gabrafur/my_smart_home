@@ -2,21 +2,39 @@ const TEST_MODE =
     msg._location_test === true ||
     msg.payload?.test_mode === true;
 
-if (TEST_MODE || msg.payload?.kind !== "refresh_command") return null;
+if (msg.payload?.kind !== "refresh_command") return null;
 
-const vehicleContext = flow.get("vehicle_primary_context_v1") ?? {};
 const INTERVAL_MS = 15 * 60 * 1000;
 const BASE_RETRY_MS = 60 * 1000;
+const IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
-const key = "security_vehicle_primary_refresh_v1";
-const now = Date.now();
+const key = TEST_MODE
+    ? "security_vehicle_primary_refresh_v1__test"
+    : "security_vehicle_primary_refresh_v1";
+const nowCandidate = Number(msg.payload?.test_now);
+const now = TEST_MODE && Number.isFinite(nowCandidate)
+    ? nowCandidate
+    : Date.now();
+const vehicleContext = TEST_MODE
+    ? flow.get("vehicle_primary_context_v1__test") ?? {}
+    : flow.get("vehicle_primary_context_v1") ?? {};
 
-let state = flow.get(key, "persistent");
+function stateGet() {
+    return TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
+}
+
+function stateSet(value) {
+    return TEST_MODE
+        ? flow.set(key, value)
+        : flow.set(key, value, "persistent");
+}
+
+let state = stateGet();
 if (!state || typeof state !== "object" || Array.isArray(state)) {
     state = {};
 }
 
-state.version = 2;
+state.version = 3;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -32,6 +50,10 @@ state.last_attempt_at = Number.isFinite(state.last_attempt_at) &&
     state.last_attempt_at <= now + FUTURE_TOLERANCE_MS
         ? state.last_attempt_at
         : 0;
+state.in_flight_until = Number.isFinite(state.in_flight_until) &&
+    state.in_flight_until <= now + IN_FLIGHT_LEASE_MS
+        ? state.in_flight_until
+        : 0;
 
 function save(displayState, reason, extra = {}) {
     state.state = displayState;
@@ -46,25 +68,59 @@ function save(displayState, reason, extra = {}) {
             ? state.next_allowed_at
             : null;
     Object.assign(state, extra);
-    flow.set(key, state, "persistent");
+    stateSet(state);
 }
 
-const contextReady = vehicleContext.ready === true;
-const outstandingRecovery =
-    state.awaiting_evidence === true &&
-    (
-        state.require_lighting_ready === true ||
-        (
-            typeof state.recovery_reason === "string" &&
-            state.recovery_reason.includes("recovery")
-        )
+function blockedNotification(reason, waitS) {
+    if (msg.payload?.reason !== "manual_force") return null;
+    const retryAt = new Date(now + waitS * 1000).toLocaleTimeString(
+        "pt-BR",
+        { hour: "2-digit", minute: "2-digit", second: "2-digit" }
     );
+    msg.notification = {
+        title: "Atualização do vehicle_primary não enviada",
+        message:
+            "Já existe uma tentativa de atualização " +
+            (reason === "in_flight" ? "em andamento" : "aguardando resposta") +
+            ". O clique foi recebido, mas nenhuma nova consulta foi enviada. " +
+            `Próxima avaliação em ${waitS} s, às ${retryAt}.`,
+        id: "vehicle_primary_refresh_blocked"
+    };
+    node.log?.(
+        "VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard " +
+        `reason=${reason} remaining_seconds=${waitS}`
+    );
+    return [null, null, msg];
+}
+
+if (state.request_in_flight === true && now < state.in_flight_until) {
+    const waitS = Math.max(1, Math.ceil((state.in_flight_until - now) / 1000));
+    save("in_flight", state.recovery_reason ?? "request_in_flight", {
+        enabled: true
+    });
+    node.status({
+        fill: "yellow",
+        shape: "ring",
+        text: `Bluelink em andamento ${waitS}s`
+    });
+    return blockedNotification("in_flight", waitS);
+}
+
+if (state.request_in_flight === true) {
+    state.request_in_flight = false;
+    state.in_flight_until = null;
+    state.last_failure_class = "in_flight_lease_expired";
+}
+
+const contextReady =
+    msg.payload?.vehicle_primary_ready === true ||
+    vehicleContext.ready === true;
 const recoveryNeeded =
     msg.payload?.recovery_needed === true ||
     msg.payload?.force_recovery === true ||
     msg.payload?.vehicle_primary_ready === false ||
     contextReady !== true ||
-    outstandingRecovery;
+    state.awaiting_evidence === true;
 const requireLightingReady =
     msg.payload?.require_lighting_ready === true ||
     (
@@ -76,7 +132,7 @@ const requestedReason = msg.payload?.reason ??
     (recoveryNeeded ? "readiness_recovery_needed" : "scheduled_refresh");
 
 /* Recovery explícito, inclusive manual_force, quebra apenas cooldown de
- * sucesso. Nunca quebra o backoff de uma tentativa aguardando evidência. */
+ * sucesso. Nunca quebra backoff nem uma chamada em andamento. */
 const successCooldownActive =
     state.awaiting_evidence !== true &&
     state.last_success_at > 0 &&
@@ -91,7 +147,7 @@ const enabled =
     daytime;
 
 if (!enabled) {
-    save("waiting", "waiting_for_movement", {
+    save("waiting", "waiting_for_day_or_away", {
         enabled: false,
         next_retry_at: null,
         cooldown_until: null
@@ -99,7 +155,7 @@ if (!enabled) {
     node.status({
         fill: "grey",
         shape: "ring",
-        text: "refresh vehicle_primary: aguardando movimento"
+        text: "refresh vehicle_primary: noite com todos em casa"
     });
     return null;
 }
@@ -117,27 +173,9 @@ if (now < state.next_allowed_at) {
             ? `retry Bluelink em ${waitS}s`
             : `refresh vehicle_primary cooldown ${waitS}s`
     });
-    if (requestedReason === "manual_force" && waitingEvidence) {
-        const retryAt = new Date(state.next_allowed_at).toLocaleTimeString(
-            "pt-BR",
-            { hour: "2-digit", minute: "2-digit", second: "2-digit" }
-        );
-        msg.notification = {
-            title: "Atualização do Creta não enviada",
-            message:
-                "Já existe uma tentativa de atualização aguardando resposta " +
-                `do Bluelink. O clique foi recebido, mas uma nova consulta não ` +
-                `foi enviada para evitar excesso de chamadas. Próxima tentativa ` +
-                `automática em ${waitS} s, às ${retryAt}.`,
-            id: "vehicle_primary_refresh_blocked"
-        };
-        node.log?.(
-            "VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard " +
-            `reason=backoff remaining_seconds=${waitS}`
-        );
-        return [null, null, msg];
-    }
-    return null;
+    return waitingEvidence
+        ? blockedNotification("backoff", waitS)
+        : null;
 }
 
 state.baseline_observed_at = {
@@ -153,6 +191,8 @@ state.next_allowed_at = now + Math.min(
     BASE_RETRY_MS * (2 ** (state.attempts - 1))
 );
 state.awaiting_evidence = true;
+state.request_in_flight = true;
+state.in_flight_until = now + IN_FLIGHT_LEASE_MS;
 state.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;
 state.require_lighting_ready = requireLightingReady;
 state.recovery_reason = requestedReason;
@@ -166,7 +206,8 @@ node.log?.(
     " attempt=" + state.attempts +
     " reason=" + requestedReason +
     " recovery=" + String(recoveryNeeded) +
-    " require_lighting_ready=" + String(requireLightingReady)
+    " require_lighting_ready=" + String(requireLightingReady) +
+    " test_mode=" + String(TEST_MODE)
 );
 
 msg.payload.retry_attempt = state.attempts;
@@ -174,13 +215,16 @@ msg.payload.refresh_requested_at = now;
 msg.payload.vehicle_primary_refresh_recovery = recoveryNeeded;
 msg.payload.require_lighting_ready = requireLightingReady;
 msg.payload.origin = msg.payload.origin ?? "contexto_chegadas";
+msg.payload.test_mode = TEST_MODE;
 
 node.status({
-    fill: recoveryNeeded ? "yellow" : "green",
+    fill: TEST_MODE ? "blue" : (recoveryNeeded ? "yellow" : "green"),
     shape: "dot",
-    text: recoveryNeeded
-        ? `Bluelink #${state.attempts}: ${requestedReason}`
-        : `Bluelink #${state.attempts}: refresh real`
+    text: TEST_MODE
+        ? `TESTE Bluelink #${state.attempts}: dry-run`
+        : (recoveryNeeded
+            ? `Bluelink #${state.attempts}: ${requestedReason}`
+            : `Bluelink #${state.attempts}: refresh real`)
 });
 
-return [msg, msg, null];
+return [msg, TEST_MODE ? null : msg, null];

@@ -3,9 +3,18 @@ const now = Date.now();
 let state = raw.state ?? "idle";
 let deadline = null;
 
-if (raw.awaiting_evidence === true) {
+if (
+    raw.request_in_flight === true &&
+    Number(raw.in_flight_until ?? 0) > now
+) {
+    deadline = Number(raw.in_flight_until);
+    state = "in_flight";
+} else if (raw.awaiting_evidence === true) {
     deadline = Number(raw.next_retry_at ?? raw.next_allowed_at ?? 0) || null;
-    if (state !== "refreshing" || now - Number(raw.last_attempt_at ?? 0) >= 30 * 1000) {
+    if (
+        !["refreshing", "awaiting_evidence"].includes(state) ||
+        now - Number(raw.last_attempt_at ?? 0) >= 30 * 1000
+    ) {
         state = "backoff";
     }
 } else if (Number(raw.cooldown_until ?? raw.next_allowed_at ?? 0) > now) {
@@ -36,6 +45,12 @@ const status = {
         : null,
     remaining_seconds: remainingSeconds,
     awaiting_evidence: raw.awaiting_evidence === true,
+    request_in_flight: raw.request_in_flight === true,
+    in_flight_until: raw.request_in_flight === true
+        ? iso(raw.in_flight_until)
+        : null,
+    service_accepted_at: iso(raw.service_accepted_at),
+    last_failure_class: raw.last_failure_class ?? null,
     manual_force: raw.manual_force === true,
     updated_at: new Date(now).toISOString()
 };

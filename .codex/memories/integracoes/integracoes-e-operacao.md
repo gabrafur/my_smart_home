@@ -12,6 +12,14 @@ Wakes manuais e automáticos compartilham o mesmo coordenador e o piso definido
 no código; não crie timers paralelos. Movimento significativo pode solicitar
 refresh, mas nunca serve sozinho como evidência para ações físicas.
 
+O Node-RED é o único agendador de wakes reais do `vehicle_primary`. O
+coordinator `kia_uvo` do Home Assistant continua consultando o cache a cada 15
+minutos para publicar as entidades, mas não executa force refresh periódico.
+Agendamento, manual, recovery, chegada e movimento convergem no estado
+persistente do Node-RED; retorno do serviço é apenas aceite e sucesso exige
+timestamp novo de localização, motor ou trava. A integração e o fluxo mantêm
+locks/lease para uma única chamada em andamento e backoff 1, 2, 4, 8, 15 min.
+
 Atualizações usam `scripts/kia-uvo-safe-update.mjs`: `check` prepara e verifica
 a nova versão em staging; `apply` é explícito, faz backup, usa o instalador
 HACS, reaplica o delta versionado e possui rollback. A rotina automática pode

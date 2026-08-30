@@ -70,7 +70,10 @@
                 "vehicle_primary_manual_engine_on_test_v1",
                 "vehicle_primary_manual_engine_off_test_v1"
             ],
-            "dry_run_terminal_ids": ["light_full_dry_run_terminal_v1"],
+            "dry_run_terminal_ids": [
+                "vehicle_primary_refresh_dry_run_terminal_v1",
+                "light_full_dry_run_terminal_v1"
+            ],
             "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
             "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação até o terminal dry-run compartilhado, sem acionar dispositivos."
         },

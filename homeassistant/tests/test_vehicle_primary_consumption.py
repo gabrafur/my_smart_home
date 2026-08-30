@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime as dt
 import importlib.util
 import sys
@@ -45,10 +46,15 @@ def _load_coordinator_without_home_assistant():
     )
     _module("homeassistant.helpers", __path__=[])
     _module("homeassistant.helpers.entity_registry", async_get=lambda _hass: None)
+    class FakeUpdateFailed(Exception):
+        def __init__(self, message, *, retry_after=None):
+            super().__init__(message)
+            self.retry_after = retry_after
+
     _module(
         "homeassistant.helpers.update_coordinator",
         DataUpdateCoordinator=type("DataUpdateCoordinator", (), {}),
-        UpdateFailed=type("UpdateFailed", (Exception,), {}),
+        UpdateFailed=FakeUpdateFailed,
     )
     _module("homeassistant.util", __path__=[])
     _module(
@@ -479,6 +485,152 @@ class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
 
         assert response.status_code == 400
         assert len(api.session.requests) == 1
+
+
+class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
+    """Keep cache polling in HA while Node-RED owns real-wake scheduling."""
+
+    async def test_periodic_coordinator_reads_cache_without_native_wake(self):
+        calls = []
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+
+            @staticmethod
+            def update_all_vehicles_with_cached_state():
+                calls.append("cache")
+
+            @staticmethod
+            def check_and_force_update_vehicles(*_args):
+                raise AssertionError("Home Assistant must not schedule a real wake")
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            scan_interval=15 * 60,
+            force_refresh_interval=24 * 60 * 60,
+            data={},
+            async_check_and_refresh_token=no_op,
+            _install_br_parser_compatibility=lambda: None,
+            _async_refresh_trip_info_on_new_distance=no_op,
+            _async_save_token=no_op,
+        )
+        result = await HyundaiKiaConnectDataUpdateCoordinator._async_update_data(
+            coordinator
+        )
+        assert result == {}
+        assert calls == ["cache"]
+
+    async def test_force_refresh_rejects_a_concurrent_request(self):
+        started = asyncio.Event()
+        release = asyncio.Event()
+        calls = []
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+            vehicles = {VEHICLE_ID: SimpleNamespace(last_updated_at=None)}
+
+            @staticmethod
+            def force_refresh_vehicle_state(vehicle_id):
+                calls.append(vehicle_id)
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def wait_for_release():
+            started.set()
+            await release.wait()
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _br_last_button_wake_at=None,
+            async_check_and_refresh_token=wait_for_release,
+            data={},
+            async_set_updated_data=lambda _data: None,
+        )
+        first = asyncio.create_task(
+            HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                coordinator, VEHICLE_ID
+            )
+        )
+        await started.wait()
+        with self.assertRaisesRegex(Exception, "already in progress"):
+            await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                coordinator, VEHICLE_ID
+            )
+        release.set()
+        await first
+        assert calls == [VEHICLE_ID]
+
+    async def test_force_refresh_failure_preserves_cache_and_is_surfaced(self):
+        calls = []
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+            vehicles = {VEHICLE_ID: SimpleNamespace(last_updated_at=None)}
+
+            @staticmethod
+            def force_refresh_vehicle_state(_vehicle_id):
+                calls.append("wake")
+                raise TimeoutError("synthetic timeout")
+
+            @staticmethod
+            def update_vehicle_with_cached_state(_vehicle_id):
+                calls.append("cache")
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _br_last_button_wake_at=None,
+            async_check_and_refresh_token=no_op,
+            data={},
+            async_set_updated_data=lambda _data: None,
+        )
+        with self.assertRaisesRegex(Exception, "Vehicle refresh failed"):
+            await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                coordinator, VEHICLE_ID
+            )
+        assert calls == ["wake", "cache"]
+
+    async def test_br_authentication_failure_retries_without_unloading_entry(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+
+        async def fail_auth():
+            raise coordinator_module.AuthenticationError("401 Unauthorized")
+
+        coordinator = SimpleNamespace(
+            vehicle_manager=Manager(),
+            scan_interval=15 * 60,
+            force_refresh_interval=24 * 60 * 60,
+            async_check_and_refresh_token=fail_auth,
+        )
+        with self.assertRaises(coordinator_module.UpdateFailed) as raised:
+            await HyundaiKiaConnectDataUpdateCoordinator._async_update_data(coordinator)
+        assert raised.exception.retry_after == 15 * 60
 
 
 if __name__ == "__main__":

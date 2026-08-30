@@ -86,10 +86,11 @@ chegada. Preserva o contrato consumido pelo alarme:
 ### Snapshot e refresh
 
 `contexto_chegadas` cria um `refresh_cycle_id`, solicita os dois snapshots e
-só publica `security.refresh-command.v1` quando ambos retornam `ready: true` no
-mesmo ciclo. O comando inclui `origin`, `reason`, `issued_at` e `ready`; isso
-evita duplicação e torna loops diagnosticáveis. Cada domínio continua dono de
-seu cooldown. Snapshots com `updated_at` anterior ao cache são ignorados.
+publica `security.refresh-command.v1` depois que ambos respondem no mesmo
+ciclo. `ready: false` não bloqueia o comando: ele o promove a recovery. O
+comando inclui `origin`, `reason`, `issued_at` e readiness; isso evita
+duplicação e torna loops diagnosticáveis. Cada domínio continua dono de seu
+cooldown. Snapshots com `updated_at` anterior ao cache são ignorados.
 
 ## Entidades
 
@@ -297,18 +298,30 @@ depende exclusivamente de um `delay` residente em memória.
   menor distância dos trackers de pessoas é até 2000 m.
 - vehicle_primary: 15 min quando alguém está fora; se todos estão em casa, 15 min apenas
   entre 07h e 22h.
-- Entrada no anel: wake pontual do vehicle_primary, ainda protegido pelo cooldown do
-  coordinator Kia/Hyundai.
+- O Node-RED é o único agendador de wake real. O polling de 15 min do
+  `kia_uvo` no Home Assistant lê somente o cache do Bluelink para manter as
+  entidades publicadas; ele não chama mais o agendador nativo de force refresh.
+- Entrada no anel/chegada: a solicitação volta por um par `link out`/`link in`
+  ao mesmo coordenador persistente, em vez de chamar o binding diretamente.
 - Mudança de zona ou deslocamento GPS significativo: solicita refresh imediato
   e marca motor/contexto como potencialmente stale. A posição de referência é
   persistida somente para dedupe; logs registram tipo de movimento e distância
   arredondada, nunca latitude/longitude.
 - O timestamp dos iPhones é otimista, preservando o comportamento anterior.
 - O refresh do vehicle_primary persiste tentativa, próxima tentativa e último sucesso.
+  Também persiste `request_in_flight` com lease conservador; o Home Assistant
+  mantém um lock adicional no botão privado. Assim, duas entradas simultâneas
+  são coalescidas e no máximo uma chamada alcança a API.
   Falhas usam backoff exponencial de 1, 2, 4, 8 e no máximo 15 min; sucesso
   limpa tentativas e aplica o intervalo normal de 15 min. Depois do quinto
   estágio, o contador satura e as novas tentativas continuam limitadas a uma a
   cada 15 min; não há rajada no restart porque `next_allowed_at` é persistido.
+- O retorno de `public_bindings.call` muda o estado apenas para
+  `awaiting_evidence`. Sucesso exige que localização, motor ou trava tenham
+  timestamp posterior ao baseline e que o alvo de readiness seja atingido.
+  `401 Unauthorized`, timeout e aceite sem dado novo mantêm backoff; 401 no
+  polling de cache do backend BR é reavaliado a cada 15 min sem descarregar o
+  config entry.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
   vehicle_primary continua sincronizando os dois trackers de iPhone, mas agora por um
   contrato explícito `contexto_vehicle_primary -> localizacao_pessoas`; nenhuma entidade
@@ -405,6 +418,12 @@ isolado, chegando a `TESTE FINAL: ações simuladas — nenhum dispositivo
 acionado`. Esse terminal registra que refletor, dois avisos e backstop seriam
 executados, todos com `simulated=true` e `dispatched=false`; nenhum serviço de
 dispositivo é chamado.
+
+Quando a sequência de aproximação do veículo solicita wake ou atualização de
+viagens, ela também atravessa o coordenador e os guards de despacho. No modo de
+teste, ambos terminam em `Terminal dry-run do vehicle_primary`, com
+`external_call_sent=false`, `simulated=true` e `dispatched=false`; nem o
+binding público nem a API Bluelink são chamados.
 
 A cobertura manual e as exceções de segurança de todos os tabs Node-RED ficam
 declaradas em `nodered/tools/manual-test-policy.json`. Um tab novo sem

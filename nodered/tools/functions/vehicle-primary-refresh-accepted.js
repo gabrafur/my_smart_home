@@ -1,0 +1,21 @@
+/* O retorno do serviço prova apenas aceitação da chamada pelo Home Assistant.
+ * Sucesso depende de timestamps novos nas entidades e é confirmado pelo
+ * normalizador após a rechecagem. */
+const key = "security_vehicle_primary_refresh_v1";
+const state = flow.get(key, "persistent") ?? {};
+const now = Date.now();
+state.request_in_flight = false;
+state.in_flight_until = null;
+state.service_accepted_at = now;
+state.state = "awaiting_evidence";
+state.reason = state.recovery_reason ?? "service_accepted_awaiting_evidence";
+state.next_retry_at = Number(state.next_allowed_at ?? 0) || null;
+state.cooldown_until = null;
+state.updated_at = now;
+flow.set(key, state, "persistent");
+node.status({
+    fill: "yellow",
+    shape: "ring",
+    text: "serviço aceito; aguardando evidência nova"
+});
+return msg;

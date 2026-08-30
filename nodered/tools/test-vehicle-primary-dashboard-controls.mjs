@@ -109,11 +109,11 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   assert.equal(second.result[0], null);
   assert.equal(second.result[1], null);
   assert.equal(second.result[2].notification.id, "vehicle_primary_refresh_blocked");
-  assert.match(second.result[2].notification.message, /nova consulta não foi enviada/i);
-  assert.match(second.result[2].notification.message, /59 s/);
+  assert.match(second.result[2].notification.message, /nenhuma nova consulta foi enviada/i);
+  assert.match(second.result[2].notification.message, /119 s/);
   assert.ok(second.logs.some((line) => line.includes("VEHICLE_PRIMARY_REFRESH_SUPPRESSED")));
   assert.equal(second.store.get("security_vehicle_primary_refresh_v1").attempts, 1);
-  assert.equal(second.store.get("security_vehicle_primary_refresh_v1").state, "backoff");
+  assert.equal(second.store.get("security_vehicle_primary_refresh_v1").state, "in_flight");
 }
 
 {
@@ -134,7 +134,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   assert.equal(store.get("security_vehicle_primary_refresh_v1").state, "waiting");
   assert.equal(
     store.get("security_vehicle_primary_refresh_v1").reason,
-    "waiting_for_movement",
+    "waiting_for_day_or_away",
   );
 }
 
@@ -215,7 +215,7 @@ assert.match(normalizer.func, /vehicleContext\.refresh/);
 
 const refreshDecision = flows.find((node) => node.id === "b33e117e55bdb5ed");
 assert.equal(refreshDecision.outputs, 3);
-assert.deepEqual(refreshDecision.wires[0], ["8907830bb7f6c40c"]);
+assert.deepEqual(refreshDecision.wires[0], ["vehicle_primary_refresh_dispatch_guard_v1"]);
 assert.deepEqual(
   refreshDecision.wires[2],
   ["vehicle_primary_manual_refresh_blocked_notification_v1"],
@@ -226,6 +226,24 @@ const blockedNotification = flows.find(
 );
 assert.equal(blockedNotification.action, "persistent_notification.create");
 assert.equal(blockedNotification.dataType, "jsonata");
+
+const dispatchGuard = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_dispatch_guard_v1",
+);
+assert.deepEqual(dispatchGuard.wires, [
+  ["8907830bb7f6c40c"],
+  ["vehicle_primary_refresh_dry_run_out_v1"],
+]);
+assert.match(dispatchGuard.func, /simulated:\s*true/);
+assert.match(dispatchGuard.func, /dispatched:\s*false/);
+
+const forceRefresh = flows.find((node) => node.id === "8907830bb7f6c40c");
+assert.deepEqual(forceRefresh.wires, [["vehicle_primary_refresh_accepted_v1"]]);
+const accepted = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_accepted_v1",
+);
+assert.match(accepted.func, /aceitação da chamada/);
+assert.match(accepted.func, /awaiting_evidence/);
 
 for (const [id, action] of [
   ["8907830bb7f6c40c", "force_refresh"],

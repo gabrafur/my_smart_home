@@ -254,6 +254,11 @@ scenario("15 backoff Bluelink segue 1 2 4 8 15 minutos", () => {
     assert(output);
     const state = flow.get("security_vehicle_primary_refresh_v1");
     assert.equal(state.next_allowed_at - clock, minutes * 60_000);
+    // Simula o término com erro do serviço. O backoff continua aguardando
+    // evidência, mas não mantém a chamada marcada como em andamento.
+    state.request_in_flight = false;
+    state.in_flight_until = null;
+    flow.set("security_vehicle_primary_refresh_v1", state);
     clock = state.next_allowed_at;
   }
   const state = flow.get("security_vehicle_primary_refresh_v1");
@@ -296,9 +301,9 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
     "TESTE FINAL: ações simuladas — nenhum dispositivo acionado",
   ]);
   assert.deepEqual(wireNames("light_turn_off_if_active"), ["Desligar refletor do portão"]);
-  assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 0), ["Forçar refresh do vehicle_primary"]);
-  assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 1), ["Atualizar viagens do dia após chegada"]);
-  assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Forçar refresh do vehicle_primary"]);
+  assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 0), ["Chegada → coordenador único de refresh"]);
+  assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 1), ["Separar viagens reais e dry-run"]);
+  assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Separar refresh real e dry-run"]);
   assert.deepEqual(wireNames("context_coordinator", 2), []);
 });
 
