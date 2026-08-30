@@ -17,9 +17,10 @@ scripts/install-git-backup-nodered-bridge.sh
 ```
 
 Ele remove entradas que executem diretamente `scripts/git-backup.sh` e mantém
-um bloco gerenciado apenas para a ponte. O backup preventivo chamado por
-`scripts/docker-auto-update.mjs` antes de atualizações continua existindo e usa
-o mesmo lock; ele não é o agendamento diário da aba.
+um bloco gerenciado apenas para a ponte. Quando o backup agendado termina com
+sucesso, um link nomeado aciona a aba separada `atualizacoes_diarias`. Backup
+manual não dispara updates. Se os digests dos containers mudarem, o worker de
+updates chama um novo backup ao final para registrar o Compose reconciliado.
 
 ## Operação e diagnóstico
 

@@ -370,12 +370,19 @@ node scripts/docker-auto-update.mjs daily --dry-run
 Depois de revisar o resultado e garantir backup:
 
 ```bash
-node scripts/docker-auto-update.mjs daily
+sudo scripts/install-dietpi-daily-upgrade-helper.sh
+scripts/install-daily-update-nodered-bridge.sh
+scripts/install-git-backup-nodered-bridge.sh
 scripts/install-storage-maintenance-cron.sh
 ```
 
-O script resolve tags de canal para digests, atualiza o Compose, valida e
-recria. Leia notas de versão antes de migrações de banco ou protocolo. O Matter
+A aba `backup_git` agenda o backup diário e, somente após sucesso, aciona a aba
+separada `atualizacoes_diarias`. A ponte atualiza o índice e os pacotes do
+DietPi, chama `dietpi-update 1` para aplicar uma versão nova do próprio DietPi
+quando disponível, sem reboot automático, e depois usa o script para resolver tags de canal
+para digests, atualizar o Compose, validar e recriar. O Node-RED não recebe
+`sudo` nem socket Docker. Qualquer falha entra em `observabilidade_global` e
+notifica `resident_primary`. Leia notas de versão antes de migrações de banco ou protocolo. O Matter
 Server legado não deve ser trocado pelo sucessor matter.js sem plano específico
 de migração da fabric.
 

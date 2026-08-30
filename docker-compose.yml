@@ -128,8 +128,11 @@ services:
     volumes:
       - ./homeassistant/.git-backup-trigger:/run/git-backup-trigger
       - ./homeassistant/.storage-maintenance-trigger:/run/storage-maintenance-trigger
+      - ./homeassistant/.daily-update-trigger:/run/daily-update-trigger
       - ./scripts/request-host-git-backup.sh:/opt/request-host-git-backup.sh:ro
       - ./scripts/request-host-storage-maintenance.sh:/opt/request-host-storage-maintenance.sh:ro
+      - ./scripts/request-host-daily-update.sh:/opt/request-host-daily-update.sh:ro
+      - ./scripts/read-host-daily-update-result.sh:/opt/read-host-daily-update-result.sh:ro
       - ./nodered:/data
       - ./bindings/private:/run/private-bindings:ro
       - ./scripts/storage-health-maintenance.sh:/opt/storage-health-maintenance.sh:ro

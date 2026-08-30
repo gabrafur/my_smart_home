@@ -26,7 +26,9 @@ assert.ok(!JSON.stringify(node("git_backup_request")).includes("/data/.git-backu
 assert.deepEqual(node("git_backup_result").wires, [
   ["git_backup_notify_primary"],
   ["git_backup_dry_run_terminal"],
+  ["git_backup_daily_update_out"],
 ]);
+assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after_backup_in"]);
 assert.match(node("git_backup_notify_primary").data, /"role":"mobile_primary"/);
 assert.deepEqual(node("git_backup_test_success").wires, [["git_backup_test_result_out"]]);
 assert.deepEqual(node("git_backup_test_failure").wires, [["git_backup_test_result_out"]]);
@@ -54,6 +56,23 @@ const testFailure = runResult(
 assert.equal(testFailure[0], null);
 assert.equal(testFailure[1].payload.test_mode, true);
 assert.equal(testFailure[1].payload.status, "failed");
+assert.equal(testFailure[2], null);
+
+const scheduledSuccess = runResult(
+  { topic: "scheduled", payload: "git-backup status=success request_id=prod finished_at=synthetic" },
+  { warn() {}, log() {}, status() {} },
+  flow,
+);
+assert.equal(scheduledSuccess[0], null);
+assert.equal(scheduledSuccess[1], null);
+assert.equal(scheduledSuccess[2].payload.event, "git_backup_completed");
+
+const manualSuccess = runResult(
+  { topic: "manual", payload: "git-backup status=success request_id=manual finished_at=synthetic" },
+  { warn() {}, log() {}, status() {} },
+  flow,
+);
+assert.equal(manualSuccess[2], null);
 
 const productionFailure = runResult(
   { payload: "git-backup status=failed request_id=prod finished_at=synthetic" },

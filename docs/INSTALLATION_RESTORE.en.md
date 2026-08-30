@@ -337,12 +337,20 @@ the Raspberry Pi. Git, even private Git, is not the right storage for this data.
 
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
-node scripts/docker-auto-update.mjs daily
+sudo scripts/install-dietpi-daily-upgrade-helper.sh
+scripts/install-daily-update-nodered-bridge.sh
+scripts/install-git-backup-nodered-bridge.sh
 scripts/install-storage-maintenance-cron.sh
 ```
 
-The script resolves channel tags to digests, updates Compose, validates, and
-recreates. Read upstream release notes for database or protocol migrations. Do
+The `backup_git` tab schedules the daily backup and starts the separate
+`atualizacoes_diarias` tab only after success. Its host bridge updates the
+DietPi package index and packages, runs `dietpi-update 1` to apply a new DietPi
+version when available without an automatic reboot, then uses the
+script to resolve channel tags to digests, update Compose, validate, and
+recreate services. Node-RED receives neither `sudo` nor the Docker socket. Any
+failure enters `observabilidade_global` and notifies `resident_primary`. Read
+upstream release notes for database or protocol migrations. Do
 not replace the legacy Matter Server with the matter.js successor without a
 specific fabric migration plan.
 

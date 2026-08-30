@@ -209,10 +209,32 @@ política explícita de chaves e retenção.
 
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
-node scripts/docker-auto-update.mjs daily
+sudo scripts/install-dietpi-daily-upgrade-helper.sh
+scripts/install-daily-update-nodered-bridge.sh
 scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
+
+A aba separada `atualizacoes_diarias` não possui relógio próprio: o backup
+agendado na aba `backup_git` inicia o ciclo somente depois de concluir com
+sucesso. A ponte do host executa primeiro `apt-get update` e
+`apt-get --with-new-pkgs upgrade` pelo helper root-owned. Em seguida, executa
+`/boot/dietpi/dietpi-update 1`, que verifica e aplica de forma não interativa
+uma atualização do próprio DietPi quando disponível, e depois chama
+`scripts/docker-auto-update.mjs daily` para reconciliar os sete provedores de
+imagem. Não há reboot automático. O instalador da ponte remove do `crontab`
+somente a chamada diária direta de `docker-auto-update.mjs`; o watcher
+`ha-updates` de 30 minutos permanece independente.
+
+O Node-RED não recebe `sudo`, checkout nem socket Docker. O helper instalado em
+`/usr/local/sbin` pertence a `root`, e o arquivo de `sudoers` autoriza somente
+esse comando exato. `scripts/docker-auto-update.mjs` continua sendo o worker
+limitado do host: o dry-run acima permanece disponível para diagnóstico, e um
+novo digest é registrado por backup Git ao final da reconciliação.
+Falhas em `apt`, `dietpi-update`, na ponte ou nos containers chamam `node.error`
+com a etapa sanitizada e são entregues a `resident_primary` pelo fluxo
+`observabilidade_global`, com a mesma deduplicação de seis horas dos demais
+fluxos.
 
 O Node-RED agenda a manutenção preventiva de storage a cada seis horas e cria
 uma solicitação coalescente para o host. O instalador de cron mantém somente a
@@ -229,8 +251,9 @@ recorrentes de npm, pip, VSIX, versões obsoletas do VS Code e logs PM2; versõe
 ativas e as duas versões mais recentes do VS Code são sempre preservadas.
 
 O script descobre o próprio diretório, portanto não depende mais de
-`/mnt/data/docker`. Ele faz backup Git, resolve digests, valida Compose e
-Node-RED e só então recria os serviços. Mudanças de banco, fabric ou protocolo
+`/mnt/data/docker`. Depois do backup diário orquestrado pelo Node-RED, ele
+resolve digests, valida Compose e Node-RED e só então recria os serviços; se
+houver mudança, faz um novo backup para registrar os digests. Mudanças de banco, fabric ou protocolo
 ainda exigem leitura das notas upstream e backup externo.
 
 O instalador de cron acrescenta um bloco idempotente que processa, a cada

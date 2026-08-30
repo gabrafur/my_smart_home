@@ -30,6 +30,7 @@ const ownedIds = new Set([
   "git_backup_test_reset",
   "git_backup_test_reset_state",
   "git_backup_dry_run_terminal",
+  "git_backup_daily_update_out",
 ]);
 
 const functionNode = (id, name, func, outputs, x, y, wires) => ({
@@ -57,7 +58,7 @@ const finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;
 if (!status) {
     node.warn("git_backup_result_unrecognized");
     node.status({ fill: "yellow", shape: "ring", text: "resultado não reconhecido" });
-    return [null, TEST_MODE ? msg : null];
+    return [null, TEST_MODE ? msg : null, null];
 }
 const result = { status, finished_at: finishedAt };
 if (TEST_MODE) flow.set("git_backup_last_result_v1__test", result);
@@ -70,14 +71,18 @@ node.status({
 node.log("git_backup_completed status=" + status + (finishedAt ? " finished_at=" + finishedAt : ""));
 if (TEST_MODE) {
     msg.payload = { ...result, test_mode: true };
-    return [null, msg];
+    return [null, msg, null];
 }
-if (status !== "failed") return [null, null];
+if (status === "success") {
+    const startDailyUpdate = msg.topic === "scheduled";
+    msg.payload = { event: "git_backup_completed", status, finished_at: finishedAt };
+    return [null, null, startDailyUpdate ? msg : null];
+}
 msg.alert = {
     title: "Falha no backup Git",
     message: "O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host."
 };
-return [msg, null];`;
+return [msg, null, null];`;
 
 const recordError = `const detail = String(msg.payload ?? "erro desconhecido").replace(/[\\r\\n]+/g, " ").slice(0, 240);
 node.error("git_backup_request_failed detail=" + detail);
@@ -156,6 +161,7 @@ const nodes = [
       "git_backup_test_reset",
       "git_backup_test_reset_state",
       "git_backup_dry_run_terminal",
+      "git_backup_daily_update_out",
     ],
     x: 64,
     y: 39,
@@ -236,7 +242,7 @@ const nodes = [
       ["git_backup_complete"],
     ],
   },
-  functionNode("git_backup_result", "Registrar resultado", recordResult, 2, 880, 150, [["git_backup_notify_primary"], ["git_backup_dry_run_terminal"]]),
+  functionNode("git_backup_result", "Registrar resultado", recordResult, 3, 880, 150, [["git_backup_notify_primary"], ["git_backup_dry_run_terminal"], ["git_backup_daily_update_out"]]),
   functionNode("git_backup_error", "Registrar erro seguro", recordError, 1, 880, 210, [["git_backup_notify_primary"]]),
   functionNode("git_backup_complete", "Registrar código de saída", recordCompletion, 0, 920, 270, []),
   {
@@ -363,6 +369,18 @@ const nodes = [
     wires: [["git_backup_result"]],
   },
   functionNode("git_backup_dry_run_terminal", "TESTE FINAL: push e aviso simulados", dryRunTerminal, 0, 1240, 470, []),
+  {
+    id: "git_backup_daily_update_out",
+    type: "link out",
+    z: TAB,
+    g: GROUP,
+    name: "Backup diário concluído → updates",
+    mode: "link",
+    links: ["daily_update_after_backup_in"],
+    x: 1225,
+    y: 120,
+    wires: [],
+  },
 ];
 
 const replacements = new Map(nodes.map((node) => [node.id, node]));

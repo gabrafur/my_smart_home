@@ -147,7 +147,6 @@ function validateAfterComposeEdit() {
 
 function dailyUpdate() {
   try {
-    run("bash", ["scripts/git-backup.sh"], { mutates: true });
     const changed = updateComposeDigests();
     validateAfterComposeEdit();
 

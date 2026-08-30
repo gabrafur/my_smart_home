@@ -23,6 +23,9 @@
 homeassistant/.storage-maintenance-trigger/
 homeassistant/storage-maintenance-status.json
 homeassistant/.git-backup-trigger/
+homeassistant/.daily-update-trigger/
+.daily-update-request-worker.lock
+.daily-update-request.cron.log
 .vpn-health-publisher.lock
 .vpn-health-publisher.cron.log
 .kia-uvo-updater-state/

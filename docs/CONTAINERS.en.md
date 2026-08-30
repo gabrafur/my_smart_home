@@ -205,10 +205,31 @@ and retention policy.
 
 ```bash
 node scripts/docker-auto-update.mjs daily --dry-run
-node scripts/docker-auto-update.mjs daily
+sudo scripts/install-dietpi-daily-upgrade-helper.sh
+scripts/install-daily-update-nodered-bridge.sh
 scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
+
+The separate `atualizacoes_diarias` tab has no independent clock. The scheduled
+job in `backup_git` starts this cycle only after a successful backup. The host
+bridge runs `apt-get update` and `apt-get --with-new-pkgs upgrade` through the
+root-owned helper first. It then runs `/boot/dietpi/dietpi-update 1`, which
+noninteractively checks for and applies a DietPi update when one is available,
+and finally calls `scripts/docker-auto-update.mjs daily` to
+reconcile all seven container image providers. It never reboots automatically.
+The bridge installer removes only the direct daily `docker-auto-update.mjs`
+cron entry; the independent 30-minute `ha-updates` watcher remains in place.
+
+Node-RED receives neither `sudo`, the checkout, nor the Docker socket. The
+installed `/usr/local/sbin` helper belongs to `root`, and its sudoers rule
+allows only that exact command. `scripts/docker-auto-update.mjs` remains the
+bounded host worker: the dry-run above is still available for diagnostics, and
+changed digests are recorded by a final Git backup.
+Failures in `apt`, `dietpi-update`, the bridge, or container reconciliation
+raise `node.error` with a sanitized stage and are delivered to
+`resident_primary` through `observabilidade_global`, using the same six-hour
+deduplication as other flows.
 
 Node-RED schedules preventive storage maintenance every six hours and creates a
 coalesced host request. The cron installer keeps only the one-minute bridge
@@ -230,8 +251,9 @@ CPU and I/O priority. Home Assistant and Node-RED do not receive the Docker
 socket.
 
 The script discovers its repository path and no longer depends on
-`/mnt/data/docker`. It backs up Git, resolves digests, validates Compose and
-Node-RED, and only then recreates services. Database, fabric, or protocol
+`/mnt/data/docker`. After the daily backup orchestrated by Node-RED, it resolves
+digests, validates Compose and Node-RED, and only then recreates services; when
+digests change, a final backup records them. Database, fabric, or protocol
 migrations still require upstream release-note review and an external backup.
 
 For rollback, restore both Compose and compatible volumes. Reverting only an

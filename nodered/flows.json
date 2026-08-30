@@ -172,12 +172,13 @@
             "git_backup_test_result_in",
             "git_backup_test_reset",
             "git_backup_test_reset_state",
-            "git_backup_dry_run_terminal"
+            "git_backup_dry_run_terminal",
+            "git_backup_daily_update_out"
         ],
         "x": 64,
         "y": 39,
-        "w": 1572,
-        "h": 552
+        "w": 1352,
+        "h": 532
     },
     {
         "id": "storage_group_config",
@@ -807,7 +808,7 @@
         "x": 164,
         "y": 579,
         "w": 852,
-        "h": 782
+        "h": 762
     },
     {
         "id": "c1e3fc50d8ed0093",
@@ -910,9 +911,9 @@
             "vehicle_primary_refresh_notification_in_v1"
         ],
         "x": 174,
-        "y": 579,
-        "w": 1662,
-        "h": 582
+        "y": 599,
+        "w": 1672,
+        "h": 542
     },
     {
         "id": "5df25064f701ecd2",
@@ -1494,6 +1495,659 @@
         "h": 202
     },
     {
+        "id": "daily_host_updates_tab",
+        "type": "tab",
+        "label": "atualizacoes_diarias",
+        "disabled": false,
+        "info": "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. O Node-RED não recebe sudo nem socket Docker.",
+        "env": []
+    },
+    {
+        "id": "daily_update_production_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "1. Depois do backup: solicitar atualização isolada no host",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a"
+        },
+        "nodes": [
+            "daily_update_architecture",
+            "daily_update_after_backup_in",
+            "daily_update_test_request_in",
+            "daily_update_prepare_request",
+            "daily_update_route_test",
+            "daily_update_request_host",
+            "daily_update_request_ack",
+            "daily_update_request_error",
+            "daily_update_request_complete",
+            "daily_update_request_test_out"
+        ],
+        "x": 124,
+        "y": 39,
+        "w": 1212,
+        "h": 262
+    },
+    {
+        "id": "daily_update_architecture",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Executa somente após sucesso do backup diário; DietPi primeiro, containers depois; sem reboot automático",
+        "info": "A ponte coalesce solicitações. O helper root-owned limita sudo ao apt-get update/upgrade e o worker atual preserva o isolamento do Docker.",
+        "x": 670,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "daily_update_after_backup_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Receber backup diário concluído",
+        "links": [
+            "git_backup_daily_update_out"
+        ],
+        "x": 165,
+        "y": 160,
+        "wires": [
+            [
+                "daily_update_prepare_request"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_request_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Receber solicitação TESTE",
+        "links": [
+            "daily_update_test_request_out"
+        ],
+        "x": 165,
+        "y": 220,
+        "wires": [
+            [
+                "daily_update_prepare_request"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_prepare_request",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Validar backup e preparar ciclo",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst event = msg.payload?.event ?? \"git_backup_completed\";\nif (!TEST_MODE && (event !== \"git_backup_completed\" || msg.payload?.status !== \"success\")) {\n    node.warn(\"daily_update_ignored_without_successful_backup\");\n    return null;\n}\nmsg._daily_update_test = TEST_MODE;\nmsg.payload = {\n    version: 1,\n    event: \"daily_update_requested\",\n    source: TEST_MODE ? \"manual_test\" : \"git_backup\",\n    backup_finished_at: msg.payload?.finished_at ?? null,\n    test_mode: TEST_MODE\n};\nnode.status({ fill: TEST_MODE ? \"blue\" : \"green\", shape: \"dot\", text: TEST_MODE ? \"TESTE preparado\" : \"backup concluído; solicitando\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 190,
+        "wires": [
+            [
+                "daily_update_route_test"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_route_test",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Produção ou TESTE?",
+        "property": "_daily_update_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 680,
+        "y": 190,
+        "wires": [
+            [
+                "daily_update_request_test_out"
+            ],
+            [
+                "daily_update_request_host"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_request_host",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "command": "/opt/request-host-daily-update.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar ciclo ao host",
+        "x": 940,
+        "y": 200,
+        "wires": [
+            [
+                "daily_update_request_ack"
+            ],
+            [
+                "daily_update_request_error"
+            ],
+            [
+                "daily_update_request_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_request_ack",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Registrar solicitação",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"daily_update_request_unrecognized\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({ fill: status === \"accepted\" ? \"green\" : \"yellow\", shape: \"dot\", text: status === \"accepted\" ? \"solicitação aceita\" : \"solicitação coalescida\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "daily_update_request_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Falha segura da ponte",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "daily_update_request_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Registrar código da ponte",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "daily_update_request_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Solicitação TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 895,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "daily_update_result_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "2. Acompanhar resultado do worker do host",
+        "style": {
+            "label": true,
+            "color": "#3f7cb5"
+        },
+        "nodes": [
+            "daily_update_result_startup",
+            "daily_update_result_poll",
+            "daily_update_read_result",
+            "daily_update_read_error",
+            "daily_update_read_complete",
+            "daily_update_test_result_in",
+            "daily_update_parse_result",
+            "daily_update_result_test_out"
+        ],
+        "x": 74,
+        "y": 399,
+        "w": 1072,
+        "h": 192
+    },
+    {
+        "id": "daily_update_result_startup",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Ler resultado ao subir",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "15",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 440,
+        "wires": [
+            [
+                "daily_update_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_result_poll",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "A cada 5 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 500,
+        "wires": [
+            [
+                "daily_update_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_read_result",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "command": "/opt/read-host-daily-update-result.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Ler resultado seguro",
+        "x": 490,
+        "y": 470,
+        "wires": [
+            [
+                "daily_update_parse_result"
+            ],
+            [
+                "daily_update_read_error"
+            ],
+            [
+                "daily_update_read_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_read_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Falha ao ler resultado",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 550,
+        "wires": []
+    },
+    {
+        "id": "daily_update_read_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Código da leitura",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 960,
+        "y": 550,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_result_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Receber resultado TESTE",
+        "links": [
+            "daily_update_test_result_out"
+        ],
+        "x": 475,
+        "y": 550,
+        "wires": [
+            [
+                "daily_update_parse_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_parse_result",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Normalizar, deduplicar e observar",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 600);\nif (!text) return null;\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst dietpiExit = Number(text.match(/\\bdietpi_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst dietpiStage = text.match(/\\bdietpi_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nconst containersExit = Number(text.match(/\\bcontainers_exit=(\\d+)\\b/)?.[1] ?? NaN);\nif (!status) {\n    if (!TEST_MODE) node.error(\"daily_update_result_unrecognized\");\n    return null;\n}\nconst signature = requestId + \":\" + status;\nconst key = TEST_MODE ? \"daily_update_last_result_v1__test\" : \"daily_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return null;\nconst result = {\n    version: 1, signature, request_id: requestId, status,\n    dietpi_exit: Number.isFinite(dietpiExit) ? dietpiExit : null,\n    dietpi_stage: dietpiStage,\n    containers_exit: Number.isFinite(containersExit) ? containersExit : null,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"DietPi e containers atualizados\" : status\n});\nif (TEST_MODE) {\n    msg.payload = result;\n    return msg;\n}\nif (failed) {\n    node.error(\"daily_update_failed request_id=\" + requestId + \" dietpi_stage=\" + String(result.dietpi_stage) + \" dietpi_exit=\" + String(result.dietpi_exit) + \" containers_exit=\" + String(result.containers_exit));\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 460,
+        "wires": [
+            [
+                "daily_update_result_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_result_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Resultado TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1105,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "3. TESTES manuais completos sem sudo, apt, Docker ou reboot",
+        "style": {
+            "label": true,
+            "color": "#7d6ba8"
+        },
+        "nodes": [
+            "daily_update_test_instructions",
+            "daily_update_test_reset",
+            "daily_update_test_reset_state",
+            "daily_update_test_request",
+            "daily_update_test_failure",
+            "daily_update_test_unavailable",
+            "daily_update_test_request_out",
+            "daily_update_test_result_out",
+            "daily_update_dry_run_in",
+            "daily_update_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 659,
+        "w": 1132,
+        "h": 342
+    },
+    {
+        "id": "daily_update_test_instructions",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE: 1) reset 2) solicitação, falha ou indisponibilidade 3) confira o terminal; todos os efeitos ficam bloqueados",
+        "info": "Os testes entram nos mesmos validadores, roteadores e parser da produção. O terminal grava simulated=true e dispatched=false.",
+        "x": 680,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_reset",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 780,
+        "wires": [
+            [
+                "daily_update_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_reset_state",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Resetar teste",
+        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_request",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 2A: ciclo após backup",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"event\":\"git_backup_completed\",\"status\":\"success\",\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 840,
+        "wires": [
+            [
+                "daily_update_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_failure",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 2B: falha DietPi",
+        "props": [
+            {
+                "p": "payload",
+                "v": "daily-update status=failed request_id=test-failed dietpi_exit=100 dietpi_stage=dietpi-update containers_exit=0",
+                "vt": "str"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 900,
+        "wires": [
+            [
+                "daily_update_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_unavailable",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 2C: worker indisponível",
+        "props": [
+            {
+                "p": "payload",
+                "v": "daily-update status=unavailable request_id=test-unavailable",
+                "vt": "str"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 960,
+        "wires": [
+            [
+                "daily_update_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_request_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Solicitação TESTE → validador",
+        "mode": "link",
+        "links": [
+            "daily_update_test_request_in"
+        ],
+        "x": 525,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_result_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Resultado TESTE → parser",
+        "mode": "link",
+        "links": [
+            "daily_update_test_result_in"
+        ],
+        "x": 525,
+        "y": 930,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dry_run_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Receber efeito TESTE",
+        "links": [
+            "daily_update_request_test_out",
+            "daily_update_result_test_out"
+        ],
+        "x": 735,
+        "y": 870,
+        "wires": [
+            [
+                "daily_update_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dry_run_terminal",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE FINAL: host simulado",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    apt_commands_sent: false,\n    docker_update_sent: false,\n    status: msg.payload?.status ?? msg.payload?.event ?? \"request_prepared\",\n    completed_at: Date.now()\n};\nflow.set(\"daily_update_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; host bloqueado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 870,
+        "wires": []
+    },
+    {
         "id": "4126427d5e161a03",
         "type": "server",
         "name": "Home Assistant",
@@ -1833,8 +2487,8 @@
         "z": "git_backup_tab",
         "g": "git_backup_group",
         "name": "Registrar resultado",
-        "func": "const TEST_MODE = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return [null, TEST_MODE ? msg : null];\n}\nconst result = { status, finished_at: finishedAt };\nif (TEST_MODE) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nif (TEST_MODE) {\n    msg.payload = { ...result, test_mode: true };\n    return [null, msg];\n}\nif (status !== \"failed\") return [null, null];\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn [msg, null];",
-        "outputs": 2,
+        "func": "const TEST_MODE = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return [null, TEST_MODE ? msg : null, null];\n}\nconst result = { status, finished_at: finishedAt };\nif (TEST_MODE) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nif (TEST_MODE) {\n    msg.payload = { ...result, test_mode: true };\n    return [null, msg, null];\n}\nif (status === \"success\") {\n    const startDailyUpdate = msg.topic === \"scheduled\";\n    msg.payload = { event: \"git_backup_completed\", status, finished_at: finishedAt };\n    return [null, null, startDailyUpdate ? msg : null];\n}\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn [msg, null, null];",
+        "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -1848,6 +2502,9 @@
             ],
             [
                 "git_backup_dry_run_terminal"
+            ],
+            [
+                "git_backup_daily_update_out"
             ]
         ]
     },
@@ -2086,6 +2743,20 @@
                 "git_backup_result"
             ]
         ]
+    },
+    {
+        "id": "git_backup_daily_update_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Backup diário concluído → updates",
+        "mode": "link",
+        "links": [
+            "daily_update_after_backup_in"
+        ],
+        "x": 1225,
+        "y": 120,
+        "wires": []
     },
     {
         "id": "45296e246a57590d",
@@ -8517,8 +9188,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 990,
-        "y": 700,
+        "x": 1140,
+        "y": 660,
         "wires": [
             [
                 "vehicle_primary_refresh_accepted_v1"
@@ -8786,8 +9457,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1510,
-        "y": 700,
+        "x": 1700,
+        "y": 660,
         "wires": [
             [
                 "ba55143f392aa361"
@@ -9064,8 +9735,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 715,
-        "y": 700,
+        "x": 790,
+        "y": 660,
         "wires": [
             [
                 "8907830bb7f6c40c"
@@ -9088,8 +9759,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1260,
-        "y": 700,
+        "x": 1430,
+        "y": 660,
         "wires": [
             [
                 "7a99920b093547ea"
@@ -9178,7 +9849,7 @@
         "links": [
             "vehicle_primary_dry_run_in_v1"
         ],
-        "x": 875,
+        "x": 765,
         "y": 740,
         "wires": []
     },
@@ -12560,10 +13231,10 @@
             "vpn_monitor_test_internet_in",
             "vpn_monitor_test_evaluate_in"
         ],
-        "x": 64,
-        "y": 20,
-        "w": 750,
-        "h": 300
+        "x": 199,
+        "y": 39,
+        "w": 792,
+        "h": 242
     },
     {
         "id": "vpn_monitor_notify_group",
@@ -12583,10 +13254,10 @@
             "vpn_monitor_notify_recovery",
             "vpn_monitor_dry_out"
         ],
-        "x": 850,
-        "y": 20,
-        "w": 650,
-        "h": 250
+        "x": 1029,
+        "y": 39,
+        "w": 607,
+        "h": 237
     },
     {
         "id": "vpn_monitor_publish_group",
@@ -12607,10 +13278,10 @@
             "vpn_monitor_discovery",
             "vpn_monitor_discovery_out"
         ],
-        "x": 850,
-        "y": 310,
-        "w": 800,
-        "h": 280
+        "x": 1114,
+        "y": 379,
+        "w": 832,
+        "h": 222
     },
     {
         "id": "vpn_monitor_test_group",
@@ -12641,9 +13312,9 @@
             "vpn_monitor_dry_run_terminal"
         ],
         "x": 64,
-        "y": 360,
-        "w": 750,
-        "h": 380
+        "y": 359,
+        "w": 972,
+        "h": 402
     },
     {
         "id": "monitoramento_vpn_tab",
@@ -12667,7 +13338,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 185,
+        "x": 345,
         "y": 80,
         "wires": [
             [
@@ -12688,7 +13359,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 600,
         "y": 80,
         "wires": [
             [
@@ -12710,7 +13381,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 190,
+        "x": 350,
         "y": 160,
         "wires": [
             [
@@ -12731,7 +13402,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 435,
+        "x": 595,
         "y": 160,
         "wires": [
             [
@@ -12755,7 +13426,7 @@
         "once": true,
         "onceDelay": "10",
         "topic": "",
-        "x": 195,
+        "x": 355,
         "y": 240,
         "wires": [
             [
@@ -12776,7 +13447,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 675,
+        "x": 835,
         "y": 160,
         "wires": [
             [
@@ -12803,7 +13474,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1015,
+        "x": 1175,
         "y": 80,
         "wires": [
             [
@@ -12821,7 +13492,7 @@
         "g": "vpn_monitor_notify_group",
         "name": "Notificar VPN indisponível",
         "env": [],
-        "x": 1320,
+        "x": 1480,
         "y": 80,
         "wires": []
     },
@@ -12838,7 +13509,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1025,
+        "x": 1185,
         "y": 160,
         "wires": [
             [
@@ -12856,7 +13527,7 @@
         "g": "vpn_monitor_notify_group",
         "name": "Notificar VPN recuperada",
         "env": [],
-        "x": 1320,
+        "x": 1480,
         "y": 160,
         "wires": []
     },
@@ -12870,7 +13541,7 @@
         "links": [
             "vpn_monitor_dry_in"
         ],
-        "x": 1435,
+        "x": 1595,
         "y": 235,
         "wires": []
     },
@@ -12887,8 +13558,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1030,
-        "y": 380,
+        "x": 1260,
+        "y": 420,
         "wires": [
             [
                 "vpn_monitor_state_out"
@@ -12913,8 +13584,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1320,
-        "y": 380,
+        "x": 1610,
+        "y": 420,
         "wires": []
     },
     {
@@ -12927,8 +13598,8 @@
         "links": [
             "vpn_monitor_dry_in"
         ],
-        "x": 1285,
-        "y": 440,
+        "x": 1575,
+        "y": 480,
         "wires": []
     },
     {
@@ -12947,8 +13618,8 @@
         "once": true,
         "onceDelay": "5",
         "topic": "",
-        "x": 970,
-        "y": 520,
+        "x": 1260,
+        "y": 560,
         "wires": [
             [
                 "vpn_monitor_discovery"
@@ -12968,8 +13639,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1210,
-        "y": 520,
+        "x": 1500,
+        "y": 560,
         "wires": [
             [
                 "vpn_monitor_discovery_out"
@@ -12991,8 +13662,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1510,
-        "y": 520,
+        "x": 1800,
+        "y": 560,
         "wires": []
     },
     {
@@ -13002,7 +13673,7 @@
         "g": "vpn_monitor_test_group",
         "name": "Ordem: reset → internet online → VPN offline → +121 s → VPN online → +61 s. Negativo: reset → internet offline → VPN offline → +121 s.",
         "info": "Todos os efeitos terminam em dry-run. O cenário negativo comprova que uma queda geral da internet não duplica o alerta como falha de VPN.",
-        "x": 390,
+        "x": 550,
         "y": 400,
         "wires": []
     },
@@ -13022,7 +13693,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 170,
+        "x": 330,
         "y": 450,
         "wires": [
             [
@@ -13043,7 +13714,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 420,
+        "x": 580,
         "y": 450,
         "wires": []
     },
@@ -13080,7 +13751,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 195,
+        "x": 355,
         "y": 500,
         "wires": [
             [
@@ -13121,7 +13792,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 195,
+        "x": 355,
         "y": 540,
         "wires": [
             [
@@ -13162,7 +13833,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 195,
+        "x": 355,
         "y": 580,
         "wires": [
             [
@@ -13203,7 +13874,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 195,
+        "x": 355,
         "y": 620,
         "wires": [
             [
@@ -13244,7 +13915,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 195,
+        "x": 355,
         "y": 660,
         "wires": [
             [
@@ -13285,7 +13956,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 195,
+        "x": 355,
         "y": 700,
         "wires": [
             [
@@ -13306,7 +13977,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
+        "x": 660,
         "y": 590,
         "wires": [
             [
@@ -13330,7 +14001,7 @@
         "links": [
             "vpn_monitor_test_internet_in"
         ],
-        "x": 770,
+        "x": 930,
         "y": 540,
         "wires": []
     },
@@ -13344,7 +14015,7 @@
         "links": [
             "vpn_monitor_test_report_in"
         ],
-        "x": 770,
+        "x": 930,
         "y": 590,
         "wires": []
     },
@@ -13358,7 +14029,7 @@
         "links": [
             "vpn_monitor_test_evaluate_in"
         ],
-        "x": 770,
+        "x": 930,
         "y": 640,
         "wires": []
     },
@@ -13371,7 +14042,7 @@
         "links": [
             "vpn_monitor_test_report_out"
         ],
-        "x": 100,
+        "x": 260,
         "y": 120,
         "wires": [
             [
@@ -13388,7 +14059,7 @@
         "links": [
             "vpn_monitor_test_internet_out"
         ],
-        "x": 100,
+        "x": 260,
         "y": 200,
         "wires": [
             [
@@ -13405,7 +14076,7 @@
         "links": [
             "vpn_monitor_test_evaluate_out"
         ],
-        "x": 520,
+        "x": 680,
         "y": 240,
         "wires": [
             [
@@ -13423,7 +14094,7 @@
             "vpn_monitor_dry_out",
             "vpn_monitor_publish_dry_out"
         ],
-        "x": 480,
+        "x": 640,
         "y": 720,
         "wires": [
             [
@@ -13444,7 +14115,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 650,
+        "x": 810,
         "y": 720,
         "wires": []
     },
@@ -13463,7 +14134,7 @@
             "global_observer_coverage__git_backup_tab__annotate",
             "global_observer_coverage__git_backup_tab__out"
         ],
-        "x": 1680,
+        "x": 1460,
         "y": 40,
         "w": 720,
         "h": 162
@@ -13476,7 +14147,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1820,
+        "x": 1600,
         "y": 100,
         "wires": [
             [
@@ -13491,7 +14162,7 @@
         "g": "global_observer_coverage__git_backup_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1830,
+        "x": 1610,
         "y": 160,
         "wires": [
             [
@@ -13512,7 +14183,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2100,
+        "x": 1880,
         "y": 130,
         "wires": [
             [
@@ -13530,7 +14201,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2345,
+        "x": 2125,
         "y": 130,
         "wires": []
     },
@@ -14825,6 +15496,92 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__daily_host_updates_tab__group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__daily_host_updates_tab__catch",
+            "global_observer_coverage__daily_host_updates_tab__status",
+            "global_observer_coverage__daily_host_updates_tab__annotate",
+            "global_observer_coverage__daily_host_updates_tab__out"
+        ],
+        "x": 1380,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__catch",
+        "type": "catch",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1520,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__daily_host_updates_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__status",
+        "type": "status",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1530,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__daily_host_updates_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__annotate",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"daily_host_updates_tab\",\"flow_label\":\"atualizacoes_diarias\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1800,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__daily_host_updates_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2045,
+        "y": 130,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__resident_notifications_tab__group",
         "type": "group",
         "z": "resident_notifications_tab",
@@ -14925,7 +15682,7 @@
             "global_observer_coverage__monitoramento_vpn_tab__annotate",
             "global_observer_coverage__monitoramento_vpn_tab__out"
         ],
-        "x": 1700,
+        "x": 2000,
         "y": 40,
         "w": 720,
         "h": 162
@@ -14938,7 +15695,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1840,
+        "x": 2140,
         "y": 100,
         "wires": [
             [
@@ -14953,7 +15710,7 @@
         "g": "global_observer_coverage__monitoramento_vpn_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1850,
+        "x": 2150,
         "y": 160,
         "wires": [
             [
@@ -14974,7 +15731,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2120,
+        "x": 2420,
         "y": 130,
         "wires": [
             [
@@ -14992,7 +15749,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2365,
+        "x": 2665,
         "y": 130,
         "wires": []
     },
@@ -15067,6 +15824,7 @@
             "global_observer_coverage__1f468eaeef0733dd__out",
             "global_observer_coverage__codex_alertas_tab__out",
             "global_observer_coverage__monitoramento_tuya_tab__out",
+            "global_observer_coverage__daily_host_updates_tab__out",
             "global_observer_coverage__resident_notifications_tab__out",
             "global_observer_coverage__monitoramento_vpn_tab__out",
             "global_observer_test_event_out"

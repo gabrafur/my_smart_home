@@ -14,6 +14,19 @@
             "dry_run_terminal_ids": ["git_backup_dry_run_terminal"],
             "reason": "Sucesso e falha sintéticos atravessam o parser real; push, SSH e notificação são bloqueados no terminal dry-run."
         },
+        "daily_host_updates_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "daily_update_test_group",
+                "daily_update_test_reset",
+                "daily_update_test_request",
+                "daily_update_test_failure",
+                "daily_update_test_unavailable"
+            ],
+            "automated_test": "test-daily-host-update-flow.mjs",
+            "dry_run_terminal_ids": ["daily_update_dry_run_terminal"],
+            "reason": "Solicitação, falha do DietPi e indisponibilidade percorrem os validadores e o parser reais; sudo, apt, Docker e reboot permanecem bloqueados no terminal dry-run."
+        },
         "29d64664bf8cbde8": {
             "strategy": "automated_only",
             "evidence_node_ids": [],

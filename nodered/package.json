@@ -5,6 +5,7 @@
     "private": true,
     "scripts": {
         "flows:backup": "node tools/backup-flows.mjs",
+        "flows:update-daily-host-updates": "node tools/install-daily-host-update-flow.mjs flows.json flows.json && node tools/install-git-backup-flow.mjs flows.json flows.json && node tools/install-global-flow-observer.mjs",
         "flows:fix-actionable-notifications": "node tools/fix-actionable-notification-bindings.mjs",
         "flows:organize-actionable-tabs": "node tools/organize-actionable-notification-tabs.mjs",
         "flows:refactor-security": "node tools/refactor-security-context-flows.mjs",
@@ -21,6 +22,7 @@
         "flows:test-alarm-house": "node tools/test-alarm-house-flow.mjs",
         "flows:test-external-lighting": "node tools/test-external-lighting-alarm-flow.mjs",
         "flows:test-git-backup": "node tools/test-git-backup-flow.mjs",
+        "flows:test-daily-host-updates": "node tools/test-daily-host-update-flow.mjs",
         "flows:test-global-observer": "node tools/test-global-flow-observer.mjs",
         "flows:test-vpn-monitor": "node tools/test-vpn-monitor-flow.mjs",
         "flows:test-infrastructure": "node tools/test-infrastructure-monitoring-flows.mjs",
