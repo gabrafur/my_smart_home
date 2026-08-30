@@ -78,8 +78,9 @@ O refresh grava baseline dos timestamps de localizacao, motor e trava. O
 retorno de `public_bindings.call` significa apenas que o Home Assistant aceitou
 a chamada e limpa somente o marcador `request_in_flight`. Uma tentativa so
 vira sucesso quando pelo menos um deles avanca e o alvo de
-readiness e atingido. Sem evidencia, o mesmo recovery segue backoff de
-1, 2, 4, 8 e 15 minutos; o contador satura sem criar rajadas ou loops.
+readiness e atingido. Sem evidencia, o mesmo recovery permanece em backoff,
+mas toda nova chamada respeita o piso de 15 minutos do backend brasileiro; o
+contador satura sem criar rajadas ou loops.
 `request_in_flight`, seu lease e `next_allowed_at` sobrevivem a restart. Erros
 inesperados sao classificados pelo catch do Node-RED, liberam o lock logico e
 mantem o deadline. O resultado BR esperado em que o wake foi aceito mas o
@@ -102,9 +103,10 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 `service_accepted_at` e `last_failure_class`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
 `input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
-`reason=manual_force`: pode quebrar cooldown de sucesso, mas nunca o backoff de
-uma tentativa em voo nem o piso de 15 minutos do coordinator Python. Se o clique
-manual for bloqueado por uma tentativa em backoff, o Home Assistant cria
+`reason=manual_force`: solicita avaliacao imediata, mas nunca quebra uma
+tentativa em voo, o backoff nem o piso de 15 minutos do coordinator Python. Se
+o clique manual for bloqueado pelo intervalo minimo ou por uma tentativa em
+backoff, o Home Assistant cria
 imediatamente uma notificação persistente informando que nenhuma nova consulta
 foi enviada e mostrando o tempo e o horário da próxima tentativa automática.
 
@@ -391,9 +393,12 @@ confirmação sem timestamp. A confirmação expira após 24 h sem revalidação
 limpeza publica contexto pending e não dispara ações físicas.
 
 O refresh Bluelink persiste `attempts`, `next_allowed_at` e
-`last_success_at`. Falhas usam backoff de 1, 2, 4, 8 e no máximo 15 minutos;
-sucesso limpa tentativas e volta ao cooldown normal de 15 minutos. Isso evita
-storm após restart e não registra viagem falsa durante indisponibilidade.
+`last_success_at`. Falhas mantêm backoff de 15 minutos, igual ao menor intervalo
+em que o backend brasileiro permite outro wake real; sucesso limpa tentativas e
+volta ao mesmo cooldown normal. O TTL de 5 minutos de motor/trava continua
+bloqueando efeitos físicos, mas não quebra esse piso nem cria chamadas de cache
+que seriam contabilizadas como novas falhas. Isso evita storm após restart e
+não registra viagem falsa durante indisponibilidade.
 
 ## Update do fork removeu e depois reportou o sensor de trip-log (2026-07-19)
 

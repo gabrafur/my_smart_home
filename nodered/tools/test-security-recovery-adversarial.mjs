@@ -246,9 +246,9 @@ scenario("14 contexto_chegadas ignora o antigo candidato de aviso", () => {
   assert.equal(flow.get("security_pending_resident_secondary_notification_v1"), undefined);
 });
 
-scenario("15 backoff Bluelink segue 1 2 4 8 15 minutos", () => {
+scenario("15 backoff Bluelink respeita piso de 15 minutos", () => {
   const flow = memoryFlow({ vehicle_primary_context_v1: { away: true } });
-  const expectedMinutes = [1, 2, 4, 8, 15];
+  const expectedMinutes = [15, 15, 15, 15, 15];
   for (const minutes of expectedMinutes) {
     const output = run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow);
     assert(output);

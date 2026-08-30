@@ -315,7 +315,7 @@ scenario("32 retry repetido de Bluelink", () => {
   run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow);
   const state = flow.get("security_vehicle_primary_refresh_v1");
   assert.equal(state.attempts, 1);
-  assert.equal(state.next_allowed_at, NOW + 60_000);
+  assert.equal(state.next_allowed_at, NOW + 15 * 60_000);
 });
 
 scenario("33 recuperação posterior do Bluelink", () => {

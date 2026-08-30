@@ -177,22 +177,30 @@ scenario("04 alguém fora de casa", () => {
   assert(coordinator(store, NIGHT, { anyone_away: true }));
 });
 
-scenario("05 refresh manual preservado e serializado", () => {
+scenario("05 refresh manual respeita piso e permanece serializado", () => {
   const store = memory({
     vehicle_primary_context_v1: readyContext(DAY),
     [KEY]: {
       attempts: 0,
       awaiting_evidence: false,
       last_success_at: DAY,
+      last_request_at: DAY,
       next_allowed_at: DAY + 15 * 60_000,
     },
   });
-  const first = coordinator(store, DAY + 1_000, {
+  const blocked = coordinator(store, DAY + 1_000, {
+    reason: "manual_force",
+    force_recovery: true,
+  });
+  assert.equal(blocked[0], null);
+  assert.equal(blocked[2].notification.id, "vehicle_primary_refresh_blocked");
+
+  const first = coordinator(store, DAY + 15 * 60_000, {
     reason: "manual_force",
     force_recovery: true,
   });
   assert(first[0]);
-  const second = coordinator(store, DAY + 2_000, {
+  const second = coordinator(store, DAY + 15 * 60_000 + 1_000, {
     reason: "manual_force",
     force_recovery: true,
   });
@@ -364,14 +372,15 @@ scenario("16 serviço aceito sem evidência nova não é sucesso", () => {
 });
 
 scenario("17 recuperação posterior da integração", () => {
-  const baseline = DAY - 60_000;
+  const baseline = DAY - 17 * 60_000;
   const store = memory({
     vehicle_primary_context_v1: readyContext(baseline),
     [KEY]: {
       attempts: 1,
       awaiting_evidence: true,
       request_in_flight: false,
-      last_attempt_at: DAY - 60_000,
+      last_attempt_at: DAY - 16 * 60_000,
+      last_request_at: DAY - 16 * 60_000,
       next_allowed_at: DAY,
       last_failure_class: "authentication",
       baseline_observed_at: {
@@ -391,7 +400,7 @@ scenario("17 recuperação posterior da integração", () => {
   assert.equal(store.get(KEY).attempts, 0);
 });
 
-scenario("18 backoff persistente 1, 2, 4, 8 e 15 minutos", () => {
+scenario("18 toda retentativa respeita o piso Bluelink de 15 minutos", () => {
   let now = DAY;
   const store = memory({ vehicle_primary_context_v1: readyContext(DAY) });
   const observed = [];
@@ -419,10 +428,38 @@ scenario("18 backoff persistente 1, 2, 4, 8 e 15 minutos", () => {
     });
     now = state.next_allowed_at;
   }
-  assert.deepEqual(observed, [1, 2, 4, 8, 15]);
+  assert.deepEqual(observed, [15, 15, 15, 15, 15]);
   const saturated = store.get(KEY);
   assert.equal(saturated.attempts, 5);
   assert.equal(coordinator(store, now - 1, { anyone_away: true }), null);
+});
+
+scenario("21 stale de segurança não quebra cooldown do último wake", () => {
+  const store = memory({
+    vehicle_primary_context_v1: {
+      ready: false,
+      stale: true,
+      engine_stale: true,
+    },
+    [KEY]: {
+      attempts: 0,
+      awaiting_evidence: false,
+      last_success_at: DAY,
+      last_request_at: DAY,
+      next_allowed_at: DAY + 15 * 60_000,
+    },
+  });
+  assert.equal(coordinator(store, DAY + 5 * 60_000, {
+    vehicle_primary_ready: false,
+    recovery_needed: true,
+    reason: "startup_or_periodic_reconciliation",
+  }), null);
+  assert.equal(store.get(KEY).state, "cooldown");
+  assert(coordinator(store, DAY + 15 * 60_000, {
+    vehicle_primary_ready: false,
+    recovery_needed: true,
+    reason: "startup_or_periodic_reconciliation",
+  })[0]);
 });
 
 scenario("19 dry-run percorre a fronteira final sem chamada externa", () => {

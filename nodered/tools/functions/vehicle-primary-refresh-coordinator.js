@@ -5,7 +5,6 @@ const TEST_MODE =
 if (msg.payload?.kind !== "refresh_command") return null;
 
 const INTERVAL_MS = 15 * 60 * 1000;
-const BASE_RETRY_MS = 60 * 1000;
 const IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
 const key = TEST_MODE
@@ -34,7 +33,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
     state = {};
 }
 
-state.version = 3;
+state.version = 4;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -50,6 +49,17 @@ state.last_attempt_at = Number.isFinite(state.last_attempt_at) &&
     state.last_attempt_at <= now + FUTURE_TOLERANCE_MS
         ? state.last_attempt_at
         : 0;
+state.last_request_at = Number.isFinite(state.last_request_at) &&
+    state.last_request_at <= now + FUTURE_TOLERANCE_MS
+        ? state.last_request_at
+        : state.last_attempt_at;
+const requestFloorAt = state.last_request_at > 0
+    ? state.last_request_at + INTERVAL_MS
+    : 0;
+state.next_allowed_at = Math.max(
+    state.next_allowed_at,
+    requestFloorAt
+);
 state.in_flight_until = Number.isFinite(state.in_flight_until) &&
     state.in_flight_until <= now + IN_FLIGHT_LEASE_MS
         ? state.in_flight_until
@@ -85,7 +95,11 @@ function blockedNotification(reason, waitS) {
         title: "Atualização do vehicle_primary não enviada",
         message:
             "Já existe uma tentativa de atualização " +
-            (reason === "in_flight" ? "em andamento" : "aguardando resposta") +
+            (reason === "in_flight"
+                ? "em andamento"
+                : reason === "minimum_interval"
+                    ? "dentro do intervalo mínimo do Bluelink"
+                    : "aguardando resposta") +
             ". O clique foi recebido, mas nenhuma nova consulta foi enviada. " +
             `Próxima avaliação em ${waitS} s, às ${retryAt}.`,
         id: "vehicle_primary_refresh_blocked"
@@ -135,13 +149,13 @@ const requestedReason = msg.payload?.reason ??
     msg.payload?.recovery_reason ??
     (recoveryNeeded ? "readiness_recovery_needed" : "scheduled_refresh");
 
-/* Recovery explícito, inclusive manual_force, quebra apenas cooldown de
- * sucesso. Nunca quebra backoff nem uma chamada em andamento. */
-const successCooldownActive =
-    state.awaiting_evidence !== true &&
-    state.last_success_at > 0 &&
-    now < state.next_allowed_at;
-if (recoveryNeeded && successCooldownActive) state.next_allowed_at = 0;
+/*
+ * O backend brasileiro e o coordinator Python impõem 15 minutos entre
+ * wakes reais. Stale de segurança, movimento, chegada e clique manual podem
+ * pedir uma avaliação imediata, mas nunca tornam útil despachar outra chamada
+ * antes desse piso: ela leria somente o mesmo cache e seria contada como uma
+ * nova falha sem qualquer chance de acordar o veículo.
+ */
 
 const hour = new Date(now).getHours();
 const daytime = hour >= 7 && hour < 22;
@@ -177,9 +191,10 @@ if (now < state.next_allowed_at) {
             ? `retry Bluelink em ${waitS}s`
             : `refresh vehicle_primary cooldown ${waitS}s`
     });
-    return waitingEvidence
-        ? blockedNotification("backoff", waitS)
-        : null;
+    if (waitingEvidence) {
+        return blockedNotification("backoff", waitS);
+    }
+    return blockedNotification("minimum_interval", waitS);
 }
 
 state.baseline_observed_at = {
@@ -190,10 +205,7 @@ state.baseline_observed_at = {
 state.attempts = Math.min(5, state.attempts + 1);
 state.last_attempt_at = now;
 state.last_request_at = now;
-state.next_allowed_at = now + Math.min(
-    INTERVAL_MS,
-    BASE_RETRY_MS * (2 ** (state.attempts - 1))
-);
+state.next_allowed_at = now + INTERVAL_MS;
 state.awaiting_evidence = true;
 state.request_in_flight = true;
 state.in_flight_until = now + IN_FLIGHT_LEASE_MS;

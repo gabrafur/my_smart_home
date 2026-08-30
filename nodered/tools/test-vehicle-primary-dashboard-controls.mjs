@@ -68,14 +68,34 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   const state = {
     attempts: 0,
     last_success_at: now - 60_000,
+    last_request_at: now - 60_000,
     next_allowed_at: now + 600_000,
     awaiting_evidence: false,
   };
-  const first = runtime(coordinator, {
+  const blocked = runtime(coordinator, {
     now,
     values: {
       vehicle_primary_context_v1: { ready: true, location: {}, engine_updated_at: 1, lock_updated_at: 1 },
       security_vehicle_primary_refresh_v1: state,
+    },
+    msg: {
+      payload: {
+        kind: "refresh_command",
+        reason: "manual_force",
+        force_recovery: true,
+      },
+    },
+  });
+  assert.ok(Array.isArray(blocked.result));
+  assert.equal(blocked.result[0], null);
+  assert.equal(blocked.result[2].notification.id, "vehicle_primary_refresh_blocked");
+  assert.match(blocked.result[2].notification.message, /intervalo mínimo/i);
+
+  const first = runtime(coordinator, {
+    now: now + 14 * 60_000,
+    values: {
+      vehicle_primary_context_v1: { ready: true, location: {}, engine_updated_at: 1, lock_updated_at: 1 },
+      security_vehicle_primary_refresh_v1: blocked.store.get("security_vehicle_primary_refresh_v1"),
     },
     msg: {
       payload: {
@@ -92,7 +112,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   assert.equal(stored.manual_force, true);
 
   const second = runtime(coordinator, {
-    now: now + 1_000,
+    now: now + 14 * 60_000 + 1_000,
     values: {
       vehicle_primary_context_v1: { ready: true },
       security_vehicle_primary_refresh_v1: stored,
@@ -147,7 +167,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
         attempts: 2,
         awaiting_evidence: true,
         recovery_reason: "movement_recovery",
-        last_attempt_at: now - 120_000,
+        last_attempt_at: now - 16 * 60_000,
         next_allowed_at: now - 1,
       },
     },
@@ -156,7 +176,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   const state = store.get("security_vehicle_primary_refresh_v1");
   assert.equal(state.attempts, 3);
   assert.equal(state.state, "refreshing");
-  assert.equal(state.next_retry_at, now + 240_000);
+  assert.equal(state.next_retry_at, now + 15 * 60_000);
 }
 
 {

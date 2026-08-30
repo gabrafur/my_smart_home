@@ -308,19 +308,21 @@ depende exclusivamente de um `delay` residente em memória.
   entidades publicadas; ele não chama mais o agendador nativo de force refresh.
 - Entrada no anel/chegada: a solicitação volta por um par `link out`/`link in`
   ao mesmo coordenador persistente, em vez de chamar o binding diretamente.
-- Mudança de zona ou deslocamento GPS significativo: solicita refresh imediato
-  e marca motor/contexto como potencialmente stale. A posição de referência é
-  persistida somente para dedupe; logs registram tipo de movimento e distância
-  arredondada, nunca latitude/longitude.
+- Mudança de zona ou deslocamento GPS significativo: solicita avaliação
+  imediata do refresh e marca motor/contexto como potencialmente stale. O wake
+  ainda respeita o piso de 15 min. A posição de referência é persistida somente
+  para dedupe; logs registram tipo de movimento e distância arredondada, nunca
+  latitude/longitude.
 - O timestamp dos iPhones é otimista, preservando o comportamento anterior.
 - O refresh do vehicle_primary persiste tentativa, próxima tentativa e último sucesso.
   Também persiste `request_in_flight` com lease conservador; o Home Assistant
   mantém um lock adicional no botão privado. Assim, duas entradas simultâneas
   são coalescidas e no máximo uma chamada alcança a API.
-  Falhas usam backoff exponencial de 1, 2, 4, 8 e no máximo 15 min; sucesso
-  limpa tentativas e aplica o intervalo normal de 15 min. Depois do quinto
-  estágio, o contador satura e as novas tentativas continuam limitadas a uma a
-  cada 15 min; não há rajada no restart porque `next_allowed_at` é persistido.
+  Falhas usam backoff de 15 min, o menor intervalo em que o backend brasileiro
+  permite outro wake real; sucesso limpa tentativas e aplica o mesmo intervalo
+  normal. O contador satura no quinto estágio. Não há rajada no restart porque
+  `last_request_at` e `next_allowed_at` são persistidos e o piso é reconstruído
+  a partir do último despacho.
 - O retorno de `public_bindings.call` muda o estado apenas para
   `awaiting_evidence`. Sucesso exige que localização, motor ou trava tenham
   timestamp posterior ao baseline e que o alvo de readiness seja atingido.
