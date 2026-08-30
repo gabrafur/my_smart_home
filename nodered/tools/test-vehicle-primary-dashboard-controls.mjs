@@ -205,6 +205,12 @@ for (const expected of [
   "vehicle_primary_refresh_telemetry_v1",
   "vehicle_primary_refresh_mqtt_v1",
   "vehicle_primary_manual_refresh_blocked_notification_v1",
+  "vehicle_primary_refresh_notification_requested_out_v1",
+  "vehicle_primary_refresh_error_notification_out_v1",
+  "vehicle_primary_refresh_notification_in_v1",
+  "vehicle_primary_refresh_notification_guard_v1",
+  "vehicle_primary_refresh_notify_primary_v1",
+  "vehicle_primary_refresh_notification_dry_run_out_v1",
 ]) {
   assert.equal(ids.filter((id) => id === expected).length, 1, expected);
 }
@@ -214,11 +220,15 @@ assert.match(normalizer.func, /refresh_state_contract_v1/);
 assert.match(normalizer.func, /vehicleContext\.refresh/);
 
 const refreshDecision = flows.find((node) => node.id === "b33e117e55bdb5ed");
-assert.equal(refreshDecision.outputs, 3);
+assert.equal(refreshDecision.outputs, 4);
 assert.deepEqual(refreshDecision.wires[0], ["vehicle_primary_refresh_dispatch_guard_v1"]);
 assert.deepEqual(
   refreshDecision.wires[2],
   ["vehicle_primary_manual_refresh_blocked_notification_v1"],
+);
+assert.deepEqual(
+  refreshDecision.wires[3],
+  ["vehicle_primary_refresh_notification_requested_out_v1"],
 );
 
 const blockedNotification = flows.find(
@@ -244,6 +254,16 @@ const accepted = flows.find(
 );
 assert.match(accepted.func, /aceitação da chamada/);
 assert.match(accepted.func, /awaiting_evidence/);
+
+const refreshNotification = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_notify_primary_v1",
+);
+assert.equal(refreshNotification.action, "public_bindings.call");
+assert.match(refreshNotification.data, /"role":"mobile_primary"/);
+assert.match(refreshNotification.data, /"action":"notify_3"/);
+assert.match(refreshNotification.data, /"title":alert\.title/);
+assert.match(refreshNotification.data, /"message":alert\.message/);
+assert.equal(refreshNotification.queue, "all");
 
 for (const [id, action] of [
   ["8907830bb7f6c40c", "force_refresh"],

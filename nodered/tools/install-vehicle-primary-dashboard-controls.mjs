@@ -50,12 +50,15 @@ function removeNode(id) {
 const refreshDecision = required("b33e117e55bdb5ed");
 refreshDecision.name = "Coordenar refresh do vehicle_primary";
 refreshDecision.func = source("vehicle-primary-refresh-coordinator.js");
-refreshDecision.outputs = 3;
+refreshDecision.outputs = 4;
 refreshDecision.wires = [
   ["vehicle_primary_refresh_dispatch_guard_v1"],
   ["eb4b8a519ab0bc28"],
   ["vehicle_primary_manual_refresh_blocked_notification_v1"],
+  ["vehicle_primary_refresh_notification_requested_out_v1"],
 ];
+Object.assign(required("25ca02f8c1de32d0"), { x: 215, y: 680 });
+Object.assign(required("eb4b8a519ab0bc28"), { x: 630, y: 780 });
 
 upsert({
   id: "vehicle_primary_refresh_dispatch_guard_v1",
@@ -212,6 +215,7 @@ upsert({
   links: [
     "vehicle_primary_refresh_dry_run_out_v1",
     "vehicle_primary_trip_dry_run_out_v1",
+    "vehicle_primary_refresh_notification_dry_run_out_v1",
   ],
   x: 1320,
   y: 860,
@@ -240,6 +244,10 @@ removeNode("77cf2dfe4ff36964");
 removeNode("684feca0f1585885");
 
 const normalizer = required("092625f2eb5cc156");
+normalizer.func = normalizer.func.replaceAll(
+  '\n        "security_vehicle_primary_refresh_v1__test",',
+  "",
+);
 normalizer.func = normalizer.func.replace(
   '        "security_vehicle_primary_test_clock"',
   '        "security_vehicle_primary_test_clock",\n        "security_vehicle_primary_refresh_v1__test"',
@@ -259,6 +267,10 @@ normalizer.func = normalizer.func.replace(
 normalizer.func = normalizer.func.replace(
   '                awaiting_evidence: false,\n                state: "cooldown",',
   '                awaiting_evidence: false,\n                request_in_flight: false,\n                in_flight_until: null,\n                state: "cooldown",',
+);
+normalizer.func = normalizer.func.replace(
+  '                request_in_flight: false,\n                in_flight_until: null,\n                state: "cooldown",',
+  '                request_in_flight: false,\n                in_flight_until: null,\n                failure_notified_at: null,\n                last_failure_class: null,\n                state: "cooldown",',
 );
 normalizer.func = normalizer.func.replace(
   '                cooldown_until: Date.now() + 15 * 60 * 1000,',
@@ -292,13 +304,18 @@ if (!normalizer.func.includes("refresh_state_contract_v1")) {
 
 const errorLogger = required("vehicle_primary_api_error_log_v1");
 errorLogger.func = source("vehicle-primary-refresh-error.js");
-Object.assign(errorLogger, { x: 1580, y: 940 });
+Object.assign(errorLogger, {
+  outputs: 1,
+  wires: [["vehicle_primary_refresh_error_notification_out_v1"]],
+  x: 1520,
+  y: 960,
+});
 const errorCatch = required("vehicle_primary_api_error_catch_v1");
 Object.assign(errorCatch, {
   name: "Erros do force_refresh do vehicle_primary",
   scope: ["8907830bb7f6c40c"],
-  x: 1220,
-  y: 940,
+  x: 1240,
+  y: 920,
 });
 
 upsert({
@@ -438,6 +455,110 @@ upsert({
   wires: [[]],
 });
 
+upsert({
+  id: "vehicle_primary_refresh_notification_requested_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Falha de refresh → alerta",
+  mode: "link",
+  links: ["vehicle_primary_refresh_notification_in_v1"],
+  x: 635,
+  y: 640,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_error_notification_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Erro do serviço → alerta",
+  mode: "link",
+  links: ["vehicle_primary_refresh_notification_in_v1"],
+  x: 1745,
+  y: 960,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_notification_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Receber falha para alerta",
+  links: [
+    "vehicle_primary_refresh_notification_requested_out_v1",
+    "vehicle_primary_refresh_error_notification_out_v1",
+  ],
+  x: 795,
+  y: 1060,
+  wires: [["vehicle_primary_refresh_notification_guard_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_notification_guard_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Separar alerta real e dry-run",
+  func: source("vehicle-primary-notification-dispatch-guard.js"),
+  outputs: 2,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 1010,
+  y: 1060,
+  wires: [
+    ["vehicle_primary_refresh_notify_primary_v1"],
+    ["vehicle_primary_refresh_notification_dry_run_out_v1"],
+  ],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_notify_primary_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Avisar resident_primary",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "public_bindings.call",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"role":"mobile_primary","action":"notify_3","data":{"title":alert.title,"message":alert.message}}',
+  dataType: "jsonata",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "all",
+  blockInputOverrides: true,
+  domain: "public_bindings",
+  service: "call",
+  x: 1310,
+  y: 1040,
+  wires: [[]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_notification_dry_run_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Alerta TESTE → terminal dry-run",
+  mode: "link",
+  links: ["vehicle_primary_dry_run_in_v1"],
+  x: 1325,
+  y: 1100,
+  wires: [],
+});
+
 addToGroup(
   "790bea5f55d43bd0",
   "vehicle_primary_manual_refresh_button_v1",
@@ -458,10 +579,26 @@ addToGroup(
   "vehicle_primary_refresh_telemetry_v1",
   "vehicle_primary_refresh_mqtt_v1",
   "vehicle_primary_manual_refresh_blocked_notification_v1",
+  "vehicle_primary_refresh_notification_requested_out_v1",
+  "vehicle_primary_refresh_error_notification_out_v1",
+  "vehicle_primary_refresh_notification_in_v1",
+  "vehicle_primary_refresh_notification_guard_v1",
+  "vehicle_primary_refresh_notify_primary_v1",
+  "vehicle_primary_refresh_notification_dry_run_out_v1",
 );
 
 const refreshGroup = required("43a2bc9c218353ae");
-Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 462 });
+Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 582 });
+
+const manualTestGroup = required("5df25064f701ecd2");
+const manualTestShift = Math.max(0, 1199 - manualTestGroup.y);
+if (manualTestShift > 0) {
+  manualTestGroup.y += manualTestShift;
+  for (const id of manualTestGroup.nodes ?? []) {
+    const node = required(id);
+    node.y += manualTestShift;
+  }
+}
 
 const immediateRecovery = required("6473697c19342f07");
 Object.assign(immediateRecovery, { x: 570, y: 240 });

@@ -75,6 +75,7 @@
     { "path": "docs/ILUMINACAO_EXTERNA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/ILUMINACAO_SEGURANCA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/INTEGRACAO_MONI_MOBILE_INTELBRAS.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
+    { "path": "docs/NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/LOCAL_AI_RTX_4070.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "local-ai-integration/README.md" },
     { "path": "docs/LOCAL_AI_QUALITY_BAKEOFF_2026-08-25.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "local-ai-research/README.md" },
     { "path": "docs/LOCAL_AI_RESTRICTED_PIVOT_2026-08-25.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "local-ai-research/README.md" },

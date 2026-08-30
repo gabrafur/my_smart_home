@@ -41,6 +41,7 @@ from hyundai_kia_connect_api import (
 )
 from hyundai_kia_connect_api.const import WINDOW_STATE
 from hyundai_kia_connect_api.exceptions import (
+    APIError,
     AuthenticationError,
     UnsupportedControlError,
 )
@@ -352,9 +353,23 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
         async with self._force_refresh_lock:
-            await self.async_check_and_refresh_token()
-            vehicle = self.vehicle_manager.vehicles[vehicle_id]
             api = self.vehicle_manager.api
+            try:
+                await self.async_check_and_refresh_token()
+            except AuthenticationError as err:
+                if type(api).__name__ != "HyundaiBlueLinkApiBR":
+                    raise
+                # A transient BR sign-in failure is not a programming error.
+                # Node-RED still requires newer entity timestamps before it
+                # declares success, so preserving the cache safely drives the
+                # same retry/backoff without an unhandled WebSocket error.
+                _LOGGER.warning(
+                    "CRETA_REFRESH_AUTH_UNAVAILABLE keeping cached state: %s",
+                    err,
+                )
+                self.async_set_updated_data(self.data)
+                return
+            vehicle = self.vehicle_manager.vehicles[vehicle_id]
             now = dt_util.utcnow()
             recent = self._br_last_button_wake_at
             cooldown_active = (
@@ -383,13 +398,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                         self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
                     )
                 except Exception as err:
-                    # Preserve the last cached state, but surface the failure to
-                    # Node-RED. A service return is only an acknowledgement;
-                    # success still requires newer entity timestamps.
-                    _LOGGER.warning(
-                        "CRETA_REFRESH_FAILED vehicle_id=%s; keeping cached state: %s",
-                        vehicle_id,
-                        err,
+                    no_fresh_data = (
+                        type(api).__name__ == "HyundaiBlueLinkApiBR"
+                        and isinstance(err, APIError)
+                        and "did not return fresh data in time" in str(err)
                     )
                     try:
                         await self.hass.async_add_executor_job(
@@ -401,6 +413,22 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                             "Cached vehicle read after force-refresh failure also failed"
                         )
                     self.async_set_updated_data(self.data)
+                    if no_fresh_data:
+                        # The BR wake can be accepted while the parked vehicle
+                        # remains unreachable. Absence of fresh timestamps is
+                        # the scheduler's failure signal and remains in backoff.
+                        _LOGGER.warning(
+                            "CRETA_REFRESH_NO_FRESH_DATA vehicle_id=%s; "
+                            "keeping cached state: %s",
+                            vehicle_id,
+                            err,
+                        )
+                        return
+                    _LOGGER.warning(
+                        "CRETA_REFRESH_FAILED vehicle_id=%s; keeping cached state: %s",
+                        vehicle_id,
+                        err,
+                    )
                     raise HomeAssistantError(
                         f"Vehicle refresh failed: {type(err).__name__}"
                     ) from err

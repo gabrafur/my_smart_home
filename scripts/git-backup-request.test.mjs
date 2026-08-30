@@ -93,6 +93,84 @@ test("host bridge publishes a failed result without retaining the request", () =
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
+test("host bridge retains a temporarily deferred backup for retry", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-deferred-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const backup = path.join(fixture, "backup.sh");
+  const attempts = path.join(fixture, "attempts");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(path.join(triggerDir, "requested"), "20260818T003000Z-43\n");
+  fs.writeFileSync(
+    backup,
+    `#!/bin/sh\ncount=$(cat "${attempts}" 2>/dev/null || echo 0)\ncount=$((count + 1))\nprintf '%s\\n' "$count" > "${attempts}"\n[ "$count" -gt 1 ] || exit 75\n`,
+  );
+  fs.chmodSync(backup, 0o755);
+  const env = {
+    ...process.env,
+    GIT_BACKUP_TRIGGER_DIR: triggerDir,
+    GIT_BACKUP_SCRIPT: backup,
+  };
+  const deferred = spawnSync(processScript, [], { encoding: "utf8", env });
+  assert.equal(deferred.status, 75);
+  assert.equal(fs.existsSync(path.join(triggerDir, "processing")), true);
+  assert.equal(fs.existsSync(path.join(triggerDir, "result")), false);
+
+  const completed = spawnSync(processScript, [], { encoding: "utf8", env });
+  assert.equal(completed.status, 0, completed.stderr);
+  assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /status=success/);
+  assert.equal(fs.existsSync(path.join(triggerDir, "processing")), false);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("backup retries an existing local commit after validation contention", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-push-retry-test-"));
+  const repo = path.join(fixture, "repo");
+  const remote = path.join(fixture, "remote.git");
+  fs.mkdirSync(repo);
+  fs.mkdirSync(path.join(repo, "scripts"));
+  fs.mkdirSync(path.join(repo, ".githooks"));
+  fs.copyFileSync(backupScript, path.join(repo, "scripts", "git-backup.sh"));
+  fs.chmodSync(path.join(repo, "scripts", "git-backup.sh"), 0o755);
+  fs.writeFileSync(path.join(repo, "scripts", "security-scan.sh"), "#!/bin/sh\nexit 0\n");
+  fs.chmodSync(path.join(repo, "scripts", "security-scan.sh"), 0o755);
+  assert.equal(spawnSync("git", ["init", "--bare", "-q", remote]).status, 0);
+  assert.equal(spawnSync("git", ["init", "-q", repo]).status, 0);
+  const git = (...args) => spawnSync("git", args, { cwd: repo, encoding: "utf8" });
+  assert.equal(git("config", "user.name", "Backup Test").status, 0);
+  assert.equal(git("config", "user.email", "backup@example.invalid").status, 0);
+  assert.equal(git("remote", "add", "origin", remote).status, 0);
+  fs.writeFileSync(
+    path.join(repo, ".gitignore"),
+    ".git-backup.log\n.git-backup.lock\n.push-hook-attempted\n",
+  );
+  fs.writeFileSync(path.join(repo, "state.txt"), "initial\n");
+  assert.equal(git("add", ".").status, 0);
+  assert.equal(git("commit", "-m", "test: create backup retry fixture").status, 0);
+  assert.equal(git("branch", "-M", "main").status, 0);
+  assert.equal(git("push", "-u", "origin", "main").status, 0);
+
+  const hook = path.join(repo, ".githooks", "pre-push");
+  fs.writeFileSync(
+    hook,
+    "#!/bin/sh\nif [ ! -f .push-hook-attempted ]; then\n" +
+      "  touch .push-hook-attempted\n" +
+      "  echo 'resource-safe: another broad validation is already running' >&2\n" +
+      "  exit 75\nfi\n",
+  );
+  fs.chmodSync(hook, 0o755);
+  assert.equal(git("config", "core.hooksPath", ".githooks").status, 0);
+  fs.writeFileSync(path.join(repo, "state.txt"), "changed\n");
+
+  const first = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
+  assert.equal(first.status, 75, first.stderr);
+  assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "1");
+  const second = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
+  assert.equal(second.status, 0, second.stderr);
+  assert.equal(git("rev-list", "--count", "origin/main..HEAD").stdout.trim(), "0");
+  assert.match(fs.readFileSync(path.join(repo, ".git-backup.log"), "utf8"), /backup deferred/);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
 test("cron installer replaces the direct schedule with one managed bridge", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-cron-test-"));
   const bin = path.join(fixture, "bin");

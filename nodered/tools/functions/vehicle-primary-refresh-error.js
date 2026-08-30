@@ -24,9 +24,26 @@ state.last_failure_class = failureClass;
 state.next_retry_at = Number(state.next_allowed_at ?? 0) || null;
 state.cooldown_until = null;
 state.updated_at = now;
+let notification = null;
+if (!Number.isFinite(state.failure_notified_at)) {
+    state.failure_notified_at = now;
+    msg.payload = {
+        ...(msg.payload ?? {}),
+        test_mode: false,
+        side_effect: "notify:resident_primary"
+    };
+    msg.alert = {
+        title: "Erro ao atualizar veículo",
+        message:
+            "A atualização do veículo falhou antes de receber novos dados. " +
+            "As retentativas automáticas permanecem em backoff; verifique " +
+            "a integração Bluelink."
+    };
+    notification = msg;
+}
 flow.set(key, state, "persistent");
 node.error(
     "VEHICLE_PRIMARY_API_ERROR class=" + failureClass +
     " source=" + source + " message=" + message
 );
-return null;
+return notification;

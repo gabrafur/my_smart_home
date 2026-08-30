@@ -24,6 +24,15 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
   migrar uma entrada.
 - O watchdog do relé do portão só pode emitir `OFF`. Mantê-lo fora do runtime
   que produz pulsos é uma defesa em profundidade, não duplicação de lógica.
+- Todas as abas funcionais do Node-RED convergem erros e indisponibilidade no
+  tab `observabilidade_global`, com dedupe e push para `resident_primary`. O
+  Home Assistant observa o tópico MQTT “nodered/status” diretamente para detectar
+  a queda do próprio runtime após 90 segundos; esse watchdog permanece nativo
+  porque não pode depender do componente que monitora.
+- Mudanças Node-RED exigem cobertura pelo gerador/validador global, replay
+  dry-run e um único smoke test real marcado `TESTE` no canal central. O aceite
+  do HA aparece como `NODERED_GLOBAL_NOTIFICATION_ACCEPTED`; apresentação no
+  celular continua sendo uma confirmação manual de última milha.
 
 ## Alarme e painéis
 

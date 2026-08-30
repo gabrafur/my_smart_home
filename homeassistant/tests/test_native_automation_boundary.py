@@ -10,6 +10,7 @@ EXPECTED_NATIVE_AUTOMATIONS = {
     "raspberry_pi_health_problem_notification",
     "raspberry_pi_health_recovery_notification",
     "raspberry_pi_home_assistant_started",
+    "nodered_runtime_availability_notification",
 }
 
 
@@ -46,6 +47,17 @@ class NativeAutomationBoundaryTests(unittest.TestCase):
         self.assertIn("trigger: samsungtv.turn_on", automation)
         self.assertIn("action: wake_on_lan.send_magic_packet", automation)
         self.assertIn("mac: !secret tv_sala_mac", automation)
+
+    def test_nodered_watchdog_is_independent_and_notifies_primary(self):
+        package = (
+            ROOT / "homeassistant" / "packages" / "nodered_flow_health.yaml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("topic: nodered/status", package)
+        self.assertIn('delay: "00:01:30"', package)
+        self.assertIn("entity_id: input_boolean.nodered_runtime_incident", package)
+        self.assertIn("role: mobile_primary", package)
+        self.assertIn("action: notify_3", package)
+        self.assertNotIn("mobile_secondary", package)
 
 
 if __name__ == "__main__":

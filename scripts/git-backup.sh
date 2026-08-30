@@ -33,8 +33,8 @@ cd "$REPO_DIR"
     exit 1
   }
 
-  if ! git merge-base --is-ancestor HEAD "$REMOTE/$BRANCH"; then
-    log "backup failed: local branch is behind $REMOTE/$BRANCH"
+  if ! git merge-base --is-ancestor "$REMOTE/$BRANCH" HEAD; then
+    log "backup failed: local branch is behind or diverged from $REMOTE/$BRANCH"
     exit 1
   fi
 
@@ -51,13 +51,35 @@ cd "$REPO_DIR"
   fi
 
   if git diff --cached --quiet; then
+    :
+  else
+    commit_message="chore: create automated smart home backup"
+    git commit -m "$commit_message" --quiet
+  fi
+
+  ahead_count=$(git rev-list --count "$REMOTE/$BRANCH..HEAD")
+  if [ "$ahead_count" -eq 0 ]; then
     log "backup finished: no changes"
     exit 0
   fi
 
-  commit_message="chore: create automated smart home backup"
-  git commit -m "$commit_message" --quiet
-  git push "$REMOTE" "$BRANCH" --quiet
+  # A validação canônica do pre-push pode estar ocupada por uma tarefa
+  # interativa. Preserve o commit local e sinalize indisponibilidade
+  # temporária para que a ponte tente novamente, em vez de esquecer um HEAD
+  # já criado e depois falhar como "behind" quando o remoto avançar.
+  if ! push_output=$(git push "$REMOTE" "$BRANCH" --quiet 2>&1); then
+    case "$push_output" in
+      *"resource-safe: another broad validation is already running"*|\
+      *"resource-safe: refusing validation"*)
+        log "backup deferred: canonical validation resources are busy"
+        exit 75
+        ;;
+      *)
+        log "backup failed: could not push $REMOTE/$BRANCH"
+        exit 1
+        ;;
+    esac
+  fi
 
   log "backup finished: pushed $(git rev-parse --short HEAD)"
 } 9>"$LOCK_FILE"

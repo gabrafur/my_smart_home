@@ -54,6 +54,10 @@ state.in_flight_until = Number.isFinite(state.in_flight_until) &&
     state.in_flight_until <= now + IN_FLIGHT_LEASE_MS
         ? state.in_flight_until
         : 0;
+state.failure_notified_at = Number.isFinite(state.failure_notified_at) &&
+    state.failure_notified_at <= now + FUTURE_TOLERANCE_MS
+        ? state.failure_notified_at
+        : 0;
 
 function save(displayState, reason, extra = {}) {
     state.state = displayState;
@@ -90,7 +94,7 @@ function blockedNotification(reason, waitS) {
         "VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard " +
         `reason=${reason} remaining_seconds=${waitS}`
     );
-    return [null, null, msg];
+    return [null, null, msg, null];
 }
 
 if (state.request_in_flight === true && now < state.in_flight_until) {
@@ -197,6 +201,31 @@ state.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;
 state.require_lighting_ready = requireLightingReady;
 state.recovery_reason = requestedReason;
 state.manual_force = requestedReason === "manual_force";
+let failureNotification = null;
+if (state.attempts >= 2 && !state.failure_notified_at) {
+    state.failure_notified_at = now;
+    state.last_failure_class = state.last_failure_class ?? "no_fresh_data";
+    failureNotification = {
+        ...msg,
+        payload: (msg.payload && typeof msg.payload === "object")
+            ? { ...msg.payload }
+            : msg.payload
+    };
+    failureNotification.payload = {
+        ...failureNotification.payload,
+        test_mode: TEST_MODE,
+        side_effect: "notify:resident_primary"
+    };
+    failureNotification.alert = {
+        title: TEST_MODE
+            ? "TESTE — Falha ao atualizar veículo"
+            : "Falha ao atualizar veículo",
+        message:
+            "O Bluelink não publicou dados novos após a atualização. " +
+            "As retentativas automáticas continuam com backoff; " +
+            "verifique a conectividade do veículo e o serviço da Hyundai."
+    };
+}
 save("refreshing", requestedReason, { enabled: true });
 
 node.log?.(
@@ -227,4 +256,4 @@ node.status({
             : `Bluelink #${state.attempts}: refresh real`)
 });
 
-return [msg, TEST_MODE ? null : msg, null];
+return [msg, TEST_MODE ? null : msg, null, failureNotification];

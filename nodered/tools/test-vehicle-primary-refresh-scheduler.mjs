@@ -25,6 +25,7 @@ const code = {
   dispatchGuard: source("vehicle-primary-refresh-dispatch-guard.js"),
   tripGuard: source("vehicle-primary-trip-dispatch-guard.js"),
   dryRun: source("vehicle-primary-dry-run-terminal.js"),
+  notificationGuard: source("vehicle-primary-notification-dispatch-guard.js"),
   arrival: source("vehicle-primary-arrival-actions.js"),
   normalizer: flows.find((node) => node.id === "092625f2eb5cc156")?.func,
 };
@@ -395,7 +396,20 @@ scenario("18 backoff persistente 1, 2, 4, 8 e 15 minutos", () => {
   const store = memory({ vehicle_primary_context_v1: readyContext(DAY) });
   const observed = [];
   for (let attempt = 1; attempt <= 5; attempt += 1) {
-    assert(coordinator(store, now, { anyone_away: true })[0]);
+    const coordinated = coordinator(store, now, { anyone_away: true });
+    assert(coordinated[0]);
+    if (attempt === 1) assert.equal(coordinated[3], null);
+    if (attempt === 2) {
+      assert.match(coordinated[3].alert.title, /Falha ao atualizar veículo/);
+      const guarded = execute(code.notificationGuard, {
+        now,
+        store,
+        msg: coordinated[3],
+      });
+      assert(guarded[0]);
+      assert.equal(guarded[1], null);
+    }
+    if (attempt > 2) assert.equal(coordinated[3], null);
     const state = store.get(KEY);
     observed.push((state.next_allowed_at - now) / 60_000);
     execute(code.error, {
@@ -437,6 +451,32 @@ scenario("19 dry-run percorre a fronteira final sem chamada externa", () => {
   });
   assert.equal(trip[0], null);
   assert.equal(trip[1].payload.dispatched, false);
+});
+
+scenario("20 alerta sintético chega somente ao terminal dry-run", () => {
+  const store = memory({
+    vehicle_primary_context_v1__test: readyContext(DAY),
+    [`${KEY}__test`]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      next_allowed_at: DAY,
+    },
+  });
+  const coordinated = execute(code.coordinator, {
+    now: DAY,
+    store,
+    msg: command({ test_mode: true, test_now: DAY, anyone_away: true }),
+  });
+  assert(coordinated[3]);
+  const guarded = execute(code.notificationGuard, {
+    now: DAY,
+    store,
+    msg: coordinated[3],
+  });
+  assert.equal(guarded[0], null);
+  assert.equal(guarded[1].payload.notification_sent, false);
+  execute(code.dryRun, { now: DAY, store, msg: guarded[1] });
+  assert.equal(store.get("vehicle_primary_last_dry_run_v1").dispatched, false);
 });
 
 console.log(

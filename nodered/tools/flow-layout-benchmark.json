@@ -1,11 +1,53 @@
 {
     "version": 1,
-    "captured_at": "2026-08-29",
-    "description": "Baseline visual aprovado pelo usuário para os canvases alterados; novas ligações não podem aumentar fios longos ou de retorno.",
+    "captured_at": "2026-08-30",
+    "description": "Baseline visual dos canvases antes/depois da instrumentação global; a cobertura adicionou somente links locais/virtuais e preservou exatamente as contagens anteriores de fios longos e de retorno.",
     "canvases": {
+        "29d64664bf8cbde8": {
+            "label": "garagem",
+            "max_long_wires": 2,
+            "max_reverse_wires": 0,
+            "min_left_margin": 64
+        },
+        "ce258dec9814b96b": {
+            "label": "iluminacao_externa",
+            "max_long_wires": 3,
+            "max_reverse_wires": 1,
+            "min_left_margin": 64
+        },
+        "alarm_house_tab": {
+            "label": "alarme_casa",
+            "max_long_wires": 5,
+            "max_reverse_wires": 3,
+            "min_left_margin": 64
+        },
+        "456b32bd5d59b0d6": {
+            "label": "resfriamento_raspberry_pi",
+            "max_long_wires": 21,
+            "max_reverse_wires": 11,
+            "min_left_margin": 64
+        },
+        "storage_health_tab": {
+            "label": "storage_health",
+            "max_long_wires": 11,
+            "max_reverse_wires": 2,
+            "min_left_margin": 64
+        },
+        "monitoramento_internet_tab": {
+            "label": "monitoramento_internet",
+            "max_long_wires": 2,
+            "max_reverse_wires": 0,
+            "min_left_margin": 64
+        },
+        "monitoramento_zigbee_tab": {
+            "label": "monitoramento_zigbee",
+            "max_long_wires": 7,
+            "max_reverse_wires": 0,
+            "min_left_margin": 64
+        },
         "c22d8b12055e87f7": {
             "label": "contexto_vehicle_primary",
-            "max_long_wires": 8,
+            "max_long_wires": 7,
             "max_reverse_wires": 1,
             "min_left_margin": 64
         },
@@ -23,13 +65,19 @@
         },
         "1f468eaeef0733dd": {
             "label": "alarme_desarme_chegada",
-            "max_long_wires": 1,
+            "max_long_wires": 0,
             "max_reverse_wires": 0,
             "min_left_margin": 64
         },
         "resident_notifications_tab": {
             "label": "notificacoes_chegadas_residentes",
-            "max_long_wires": 1,
+            "max_long_wires": 0,
+            "max_reverse_wires": 0,
+            "min_left_margin": 64
+        },
+        "monitoramento_tuya_tab": {
+            "label": "monitoramento_tuya",
+            "max_long_wires": 2,
             "max_reverse_wires": 0,
             "min_left_margin": 64
         }

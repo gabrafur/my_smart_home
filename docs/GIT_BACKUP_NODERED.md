@@ -24,6 +24,9 @@ o mesmo lock; ele não é o agendamento diário da aba.
 ## Operação e diagnóstico
 
 - O botão **Executar backup agora** na aba permite uma solicitação manual.
+- Falha definitiva ou timeout da ponte envia push somente para
+  `resident_primary`, pelo binding lógico `mobile_primary`; os controles
+  `TESTE` exercitam sucesso e falha sem executar push Git nem notificação.
 - `.git-backup.log` registra o resultado do script no host.
 - `.git-backup-request.cron.log` registra falhas do worker da ponte.
 - A aba não publica nem altera entidades do Home Assistant.
@@ -34,3 +37,9 @@ o mesmo lock; ele não é o agendamento diário da aba.
 O Git cobre somente os arquivos públicos versionáveis. Ele não substitui o
 backup privado e criptografado do estado do Home Assistant, Node-RED, Zigbee,
 MQTT, Matter ou das credenciais.
+
+Se o `pre-push` encontrar a validação canônica ocupada ou recursos abaixo do
+limite seguro, o commit local permanece pendente e o worker retoma a mesma
+solicitação nos minutos seguintes. Uma execução sem novas mudanças também
+publica commits locais ainda à frente do remoto; isso evita perder um push
+adiado e depois bloquear o backup quando `origin/main` avançar.

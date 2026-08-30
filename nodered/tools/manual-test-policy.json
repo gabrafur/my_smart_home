@@ -2,11 +2,17 @@
     "version": 2,
     "tabs": {
         "git_backup_tab": {
-            "strategy": "manual_explicit_side_effect",
-            "legacy": true,
-            "evidence_node_ids": ["git_backup_group", "git_backup_manual"],
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "git_backup_group",
+                "git_backup_test_instructions",
+                "git_backup_test_reset",
+                "git_backup_test_success",
+                "git_backup_test_failure"
+            ],
             "automated_test": "test-git-backup-flow.mjs",
-            "reason": "A execução manual dispara somente o mecanismo isolado e allowlisted de backup do repositório."
+            "dry_run_terminal_ids": ["git_backup_dry_run_terminal"],
+            "reason": "Sucesso e falha sintéticos atravessam o parser real; push, SSH e notificação são bloqueados no terminal dry-run."
         },
         "29d64664bf8cbde8": {
             "strategy": "automated_only",
@@ -133,6 +139,26 @@
             ],
             "automated_test": "test-resident-approach-notifications.mjs",
             "reason": "Por solicitação explícita, o push móvel identificado como TESTE é o próprio efeito sob teste; refletor, alarme e demais dispositivos permanecem bloqueados."
+        },
+        "global_flow_observer_tab": {
+            "strategy": "manual_explicit_side_effect",
+            "explicit_exception": "notification_delivery_under_test",
+            "evidence_node_ids": [
+                "global_observer_test_group",
+                "global_observer_test_reset",
+                "global_observer_test_error",
+                "global_observer_test_status_failure",
+                "global_observer_test_evaluate",
+                "global_observer_test_delivery"
+            ],
+            "dry_run_terminal_ids": [
+                "global_observer_dry_run_terminal"
+            ],
+            "delivery_node_ids": [
+                "global_observer_notify_primary"
+            ],
+            "automated_test": "test-global-flow-observer.mjs",
+            "reason": "Erro e indisponibilidade sintéticos atravessam classificação, dedupe e guard até o dry-run; por solicitação explícita, um único push marcado TESTE valida o canal central compartilhado por todas as abas."
         }
     }
 }

@@ -1,0 +1,70 @@
+input_boolean:
+  nodered_runtime_incident:
+    name: Incidente de disponibilidade do Node-RED
+    icon: mdi:alert-circle-outline
+
+automation:
+  - id: nodered_runtime_availability_notification
+    alias: Node-RED - watchdog independente de disponibilidade
+    description: >-
+      Observa o birth/close/LWT retained do Node-RED diretamente pelo MQTT.
+      O debounce evita alerta durante deploy curto e o Home Assistant continua
+      capaz de avisar mesmo quando o runtime do Node-RED está parado.
+    mode: restart
+    triggers:
+      - trigger: mqtt
+        topic: nodered/status
+    actions:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.payload | lower == 'offline' }}"
+            sequence:
+              - delay: "00:01:30"
+              - condition: state
+                entity_id: input_boolean.nodered_runtime_incident
+                state: "off"
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.nodered_runtime_incident
+              - action: persistent_notification.create
+                data:
+                  title: Node-RED indisponível
+                  message: >-
+                    O Home Assistant não recebeu o status online do Node-RED
+                    por pelo menos 90 segundos. Verifique o container, o broker
+                    MQTT e os logs do runtime.
+                  notification_id: nodered_runtime_unavailable
+              - action: public_bindings.call
+                continue_on_error: true
+                data:
+                  role: mobile_primary
+                  action: notify_3
+                  data:
+                    title: Node-RED indisponível
+                    message: >-
+                      O Node-RED permanece offline há pelo menos 90 segundos.
+                      Verifique o container, o MQTT e os logs do runtime.
+          - conditions:
+              - condition: template
+                value_template: "{{ trigger.payload | lower == 'online' }}"
+              - condition: state
+                entity_id: input_boolean.nodered_runtime_incident
+                state: "on"
+            sequence:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.nodered_runtime_incident
+              - action: persistent_notification.dismiss
+                data:
+                  notification_id: nodered_runtime_unavailable
+              - action: public_bindings.call
+                continue_on_error: true
+                data:
+                  role: mobile_primary
+                  action: notify_3
+                  data:
+                    title: Node-RED recuperado
+                    message: >-
+                      O Node-RED voltou a publicar status online e os fluxos
+                      residenciais foram restaurados.

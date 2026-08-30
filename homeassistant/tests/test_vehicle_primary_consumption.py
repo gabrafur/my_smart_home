@@ -85,6 +85,7 @@ def _load_coordinator_without_home_assistant():
     )
     _module(
         "hyundai_kia_connect_api.exceptions",
+        APIError=type("APIError", (Exception,), {}),
         AuthenticationError=type("AuthenticationError", (Exception,), {}),
         UnsupportedControlError=type("UnsupportedControlError", (Exception,), {}),
     )
@@ -574,8 +575,9 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
         await first
         assert calls == [VEHICLE_ID]
 
-    async def test_force_refresh_failure_preserves_cache_and_is_surfaced(self):
+    async def test_force_refresh_without_fresh_br_data_preserves_cache(self):
         calls = []
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
 
         class Manager:
             api = HyundaiBlueLinkApiBR([])
@@ -584,7 +586,10 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             @staticmethod
             def force_refresh_vehicle_state(_vehicle_id):
                 calls.append("wake")
-                raise TimeoutError("synthetic timeout")
+                raise coordinator_module.APIError(
+                    "Brazilian Hyundai force refresh did not return fresh data in time; "
+                    "vehicle may be unreachable."
+                )
 
             @staticmethod
             def update_vehicle_with_cached_state(_vehicle_id):
@@ -607,11 +612,67 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             data={},
             async_set_updated_data=lambda _data: None,
         )
+        await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+            coordinator, VEHICLE_ID
+        )
+        assert calls == ["wake", "cache"]
+
+    async def test_force_refresh_unexpected_failure_is_surfaced(self):
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+            vehicles = {VEHICLE_ID: SimpleNamespace(last_updated_at=None)}
+
+            @staticmethod
+            def force_refresh_vehicle_state(_vehicle_id):
+                raise RuntimeError("synthetic programming failure")
+
+            @staticmethod
+            def update_vehicle_with_cached_state(_vehicle_id):
+                return None
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _br_last_button_wake_at=None,
+            async_check_and_refresh_token=no_op,
+            data={},
+            async_set_updated_data=lambda _data: None,
+        )
         with self.assertRaisesRegex(Exception, "Vehicle refresh failed"):
             await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
                 coordinator, VEHICLE_ID
             )
-        assert calls == ["wake", "cache"]
+
+    async def test_force_refresh_br_auth_failure_uses_evidence_backoff(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+
+        async def fail_auth():
+            raise coordinator_module.AuthenticationError("temporary sign-in failure")
+
+        published = []
+        coordinator = SimpleNamespace(
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            async_check_and_refresh_token=fail_auth,
+            data={"cached": True},
+            async_set_updated_data=published.append,
+        )
+        await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+            coordinator, VEHICLE_ID
+        )
+        assert published == [{"cached": True}]
 
     async def test_br_authentication_failure_retries_without_unloading_entry(self):
         coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]

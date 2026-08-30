@@ -81,9 +81,14 @@ vira sucesso quando pelo menos um deles avanca e o alvo de
 readiness e atingido. Sem evidencia, o mesmo recovery segue backoff de
 1, 2, 4, 8 e 15 minutos; o contador satura sem criar rajadas ou loops.
 `request_in_flight`, seu lease e `next_allowed_at` sobrevivem a restart. Erros
-`401 Unauthorized` e timeout sao classificados, liberam o lock logico e
-mantem o deadline; o polling BR reavalia autenticacao a cada 15 minutos sem
-descarregar o config entry, permitindo recuperacao posterior sem tempestade.
+inesperados sao classificados pelo catch do Node-RED, liberam o lock logico e
+mantem o deadline. O resultado BR esperado em que o wake foi aceito mas o
+veiculo nao publicou telemetria fresca, assim como uma indisponibilidade
+transitoria de autenticacao, preserva o cache e retorna sem criar erro
+WebSocket; a ausencia de timestamps novos mantem o mesmo backoff e gera um
+alerta deduplicado para `resident_primary`. O polling BR reavalia autenticacao
+a cada 15 minutos sem descarregar o config entry, permitindo recuperacao
+posterior sem tempestade.
 Eventos operacionais usam `VEHICLE_PRIMARY_LOCATION_CHANGED`,
 `VEHICLE_PRIMARY_MOVEMENT_DETECTED`, `VEHICLE_PRIMARY_REFRESH_REQUESTED`,
 `VEHICLE_PRIMARY_REFRESH_RETRY`, `VEHICLE_PRIMARY_NEW_DATA_RECEIVED`, `VEHICLE_PRIMARY_TRIP_UPDATED` e

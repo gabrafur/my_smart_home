@@ -285,6 +285,45 @@ sem depender de uma ocorrência real. A política versionada fica em
   confirmados em casos automatizados reutilizáveis, sem registrar dados
   privados do teste residencial.
 
+## Observabilidade e notificação obrigatórias
+
+Todo tab funcional versionado deve participar do observador global de falhas.
+Erros de nós, status persistente de indisponibilidade e perda da conexão com o
+Home Assistant ou MQTT precisam convergir no canal central que notifica
+`resident_primary` pelo binding lógico `mobile_primary`. A indisponibilidade do
+próprio Node-RED deve ser detectada por watchdog nativo no Home Assistant,
+independente do runtime observado.
+
+- Depois de criar, remover ou alterar materialmente um tab, execute
+  `npm --prefix nodered run flows:update-global-observer` e regenere
+  `nodered/flows.json`. O gerador deve permanecer idempotente.
+- Execute `npm --prefix nodered run flows:validate-observability`; o gate deve
+  falhar se qualquer tab não tiver `catch`, `status`, identificação do tab e
+  rota nomeada para o monitor central. Nunca exclua um tab funcional para fazer
+  o gate passar.
+- O monitor deve deduplicar incidentes, confirmar status transitório antes do
+  push e impedir recursão se o próprio canal de notificação falhar. Quando o
+  Home Assistant estiver indisponível, preserve `queue: all`; o alerta só pode
+  ser entregue quando o serviço voltar e essa limitação deve continuar
+  documentada.
+- Status vermelho isolado, condição de domínio e erro de chamada de serviço não
+  provam queda da conexão compartilhada. Incidentes de Home Assistant e MQTT
+  devem exigir texto explícito de desconexão ou indisponibilidade e possuir
+  regressão que impeça o alerta duplicado de erro mais queda global falsa.
+- Todo tab novo ou materialmente alterado deve manter replay automatizado de
+  falha e indisponibilidade até o terminal dry-run compartilhado, sem produzir
+  efeitos residenciais.
+- Antes de deploy, commit ou push de qualquer alteração Node-RED, execute uma
+  única vez o inject canônico `TESTE 5: enviar push real` do tab
+  `observabilidade_global`. Confirme no log
+  `NODERED_GLOBAL_NOTIFICATION_ACCEPTED ... delivery_test=true` e solicite ao
+  usuário a confirmação visual no celular quando a tarefa exigir confirmação
+  ponta a ponta. O título e a mensagem devem conter `TESTE`; não use nós de
+  produção individuais para esse smoke test.
+- Se o smoke test não puder ser entregue porque Home Assistant, MQTT, WAN ou o
+  binding estão indisponíveis, não declare a validação concluída nem contorne o
+  gate: mantenha o resultado pendente e repita somente após a recuperação.
+
 ---
 
 # Memória pública e privacidade

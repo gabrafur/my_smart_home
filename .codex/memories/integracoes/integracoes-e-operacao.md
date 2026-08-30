@@ -19,6 +19,9 @@ Agendamento, manual, recovery, chegada e movimento convergem no estado
 persistente do Node-RED; retorno do serviço é apenas aceite e sucesso exige
 timestamp novo de localização, motor ou trava. A integração e o fluxo mantêm
 locks/lease para uma única chamada em andamento e backoff 1, 2, 4, 8, 15 min.
+Depois da primeira tentativa sem evidência, o ciclo envia um único alerta ao
+papel `resident_primary`; novas tentativas do mesmo incidente não repetem o
+push, e uma atualização confirmada libera o alerta do próximo incidente.
 
 Atualizações usam `scripts/kia-uvo-safe-update.mjs`: `check` prepara e verifica
 a nova versão em staging; `apply` é explícito, faz backup, usa o instalador

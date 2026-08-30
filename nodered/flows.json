@@ -163,12 +163,21 @@
             "git_backup_request",
             "git_backup_result",
             "git_backup_error",
-            "git_backup_complete"
+            "git_backup_complete",
+            "git_backup_notify_primary",
+            "git_backup_test_instructions",
+            "git_backup_test_success",
+            "git_backup_test_failure",
+            "git_backup_test_result_out",
+            "git_backup_test_result_in",
+            "git_backup_test_reset",
+            "git_backup_test_reset_state",
+            "git_backup_dry_run_terminal"
         ],
         "x": 64,
         "y": 39,
-        "w": 1032,
-        "h": 272
+        "w": 1572,
+        "h": 552
     },
     {
         "id": "storage_group_config",
@@ -892,12 +901,18 @@
             "vehicle_primary_refresh_dry_run_terminal_v1",
             "vehicle_primary_refresh_dry_run_out_v1",
             "vehicle_primary_trip_dry_run_out_v1",
-            "vehicle_primary_dry_run_in_v1"
+            "vehicle_primary_dry_run_in_v1",
+            "vehicle_primary_refresh_notification_guard_v1",
+            "vehicle_primary_refresh_notify_primary_v1",
+            "vehicle_primary_refresh_notification_dry_run_out_v1",
+            "vehicle_primary_refresh_notification_requested_out_v1",
+            "vehicle_primary_refresh_error_notification_out_v1",
+            "vehicle_primary_refresh_notification_in_v1"
         ],
-        "x": 114,
-        "y": 619,
-        "w": 1792,
-        "h": 422
+        "x": 174,
+        "y": 579,
+        "w": 1662,
+        "h": 582
     },
     {
         "id": "5df25064f701ecd2",
@@ -925,7 +940,7 @@
             "2ff281276fc1d020"
         ],
         "x": 174,
-        "y": 1079,
+        "y": 1199,
         "w": 992,
         "h": 402
     },
@@ -1818,16 +1833,23 @@
         "z": "git_backup_tab",
         "g": "git_backup_group",
         "name": "Registrar resultado",
-        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return null;\n}\nflow.set(\"git_backup_last_result_v1\", { status, finished_at: finishedAt }, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nreturn null;",
-        "outputs": 0,
+        "func": "const TEST_MODE = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return [null, TEST_MODE ? msg : null];\n}\nconst result = { status, finished_at: finishedAt };\nif (TEST_MODE) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nif (TEST_MODE) {\n    msg.payload = { ...result, test_mode: true };\n    return [null, msg];\n}\nif (status !== \"failed\") return [null, null];\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn [msg, null];",
+        "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 920,
+        "x": 880,
         "y": 150,
-        "wires": []
+        "wires": [
+            [
+                "git_backup_notify_primary"
+            ],
+            [
+                "git_backup_dry_run_terminal"
+            ]
+        ]
     },
     {
         "id": "git_backup_error",
@@ -1835,16 +1857,20 @@
         "z": "git_backup_tab",
         "g": "git_backup_group",
         "name": "Registrar erro seguro",
-        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"solicitação falhou\" });\nreturn null;",
-        "outputs": 0,
+        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"solicitação falhou\" });\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"A solicitação de backup não terminou no prazo ou o worker do host ficou indisponível. Verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn msg;",
+        "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 920,
+        "x": 880,
         "y": 210,
-        "wires": []
+        "wires": [
+            [
+                "git_backup_notify_primary"
+            ]
+        ]
     },
     {
         "id": "git_backup_complete",
@@ -1862,6 +1888,204 @@
         "x": 920,
         "y": 270,
         "wires": []
+    },
+    {
+        "id": "git_backup_notify_primary",
+        "type": "api-call-service",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Avisar resident_primary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1240,
+        "y": 180,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "git_backup_test_instructions",
+        "type": "comment",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "TESTE: 1) reset 2) sucesso ou falha 3) confira terminal dry-run; nenhum push ou aviso é enviado",
+        "info": "Os cenários sintéticos entram no mesmo parser de resultado. A fronteira final bloqueia Git, SSH e a notificação mobile.",
+        "x": 630,
+        "y": 350,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_reset",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 410,
+        "wires": [
+            [
+                "git_backup_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_reset_state",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Resetar teste",
+        "func": "flow.set(\"git_backup_last_result_v1__test\", undefined);\nflow.set(\"git_backup_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 410,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_success",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "TESTE 2A: sucesso",
+        "props": [
+            {
+                "p": "payload",
+                "v": "git-backup status=success request_id=test finished_at=synthetic",
+                "vt": "str"
+            },
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 470,
+        "wires": [
+            [
+                "git_backup_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_failure",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "TESTE 2B: falha",
+        "props": [
+            {
+                "p": "payload",
+                "v": "git-backup status=failed request_id=test finished_at=synthetic",
+                "vt": "str"
+            },
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 530,
+        "wires": [
+            [
+                "git_backup_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_dry_run_terminal",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "TESTE FINAL: push e aviso simulados",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    notification_sent: false,\n    status: msg.payload?.status ?? \"unknown\",\n    completed_at: Date.now()\n};\nflow.set(\"git_backup_last_dry_run_v1\", result);\nnode.status({\n    fill: result.status === \"failed\" ? \"yellow\" : \"green\",\n    shape: \"dot\",\n    text: \"TESTE: \" + result.status + \"; push e aviso bloqueados\"\n});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1240,
+        "y": 470,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_result_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Resultado TESTE → parser",
+        "mode": "link",
+        "links": [
+            "git_backup_test_result_in"
+        ],
+        "x": 445,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_result_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Receber resultado TESTE",
+        "links": [
+            "git_backup_test_result_out"
+        ],
+        "x": 715,
+        "y": 150,
+        "wires": [
+            [
+                "git_backup_result"
+            ]
+        ]
     },
     {
         "id": "45296e246a57590d",
@@ -8101,7 +8325,7 @@
         "z": "c22d8b12055e87f7",
         "g": "d860cb4ad0d1fd89",
         "name": "Normalizar vehicle_primary e detectar transições",
-        "func": "const HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst GATE_LAT = Number(env.get(\"GATE_LAT\"));\nconst GATE_LON = Number(env.get(\"GATE_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\nconst GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);\nconst ARM_DISTANCE_M = 100;\nconst ARRIVAL_DISTANCE_M = 300;\nconst MAX_GPS_ACCURACY_M = 100;\nconst MOVEMENT_THRESHOLD_M = 250;\nconst APPROACH_ZONE = \"chegando\";\nconst PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;\nconst LOCATION_FRESH_MS = 30 * 60 * 1000;\nconst SIGNAL_FRESH_MS = 5 * 60 * 1000;\nconst RECOVERY_TTL_MS = 24 * 60 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst RECOVERY_KEY = \"security_vehicle_primary_recovery_v1\";\nconst PERSISTENT = \"persistent\";\nconst ARMED_KEY = \"vehicle_primary_arrival_armed\";\nconst IN_USE_KEY = \"vehicle_primary_in_use\";\nconst LOCATION_OBSERVATION_KEY = \"vehicle_primary_location_observation_v1\";\n\n\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nconst SHARED_TEST_KEY = \"security_location_test_state_v1\";\n\nfunction testBaseline(now = Date.now()) {\n    return {\n        version: 1,\n        resident_primary: \"home\",\n        resident_secondary: \"home\",\n        vehicle_primary: \"home\",\n        vehicle_primary_engine: \"off\",\n        vehicle_primary_lock: \"locked\",\n        observed_at: now,\n        transitions: {}\n    };\n}\n\nfunction clearvehicle_primaryTestState() {\n    [\n        \"security_vehicle_primary_recovery_v1__test\",\n        \"vehicle_primary_arrival_armed__test\",\n        \"vehicle_primary_in_use__test\",\n        \"vehicle_primary_context_v1__test\",\n        \"security_vehicle_primary_recovery_logged__test\",\n        \"security_vehicle_primary_ready_logged__test\",\n        \"vehicle_primary_location_observation_v1__test\",\n        \"security_vehicle_primary_test_clock\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\"\n    ].forEach((key) => flow.set(key, undefined));\n}\n\nif (\n    TEST_MODE &&\n    msg.payload?.event === \"context_snapshot\"\n) {\n    if (msg._location_test_reset === true) {\n        clearvehicle_primaryTestState();\n    }\n\n    let shared = global.get(SHARED_TEST_KEY);\n    if (!shared || shared.version !== 1) {\n        shared = testBaseline();\n        global.set(SHARED_TEST_KEY, shared);\n    }\n\n    const refreshCycleId = msg.payload?.refresh_cycle_id;\n    const testAt = Math.max(\n        Date.now(),\n        Number(shared.observed_at || 0)\n    );\n    const now = new Date(testAt).toISOString();\n\n    function testEntity(entityId, state, attributes = {}) {\n        return {\n            entity_id: entityId,\n            state,\n            attributes,\n            last_changed: now,\n            last_updated: now\n        };\n    }\n\n    const transition = shared.transitions?.vehicle_primary;\n    const activeTransition =\n        transition?.domain === \"vehicle_primary\" &&\n        transition?.test_case === msg._location_test_case &&\n        msg._location_test_reset !== true;\n\n    msg.payload = {\n        event: activeTransition\n            ? \"location_update\"\n            : \"context_snapshot\",\n        source: activeTransition ? \"vehicle_primary\" : \"refresh\",\n        refresh_cycle_id: refreshCycleId,\n        trigger_entity: activeTransition\n            ? \"device_tracker.vehicle_primary\"\n            : undefined,\n        trigger_state: activeTransition\n            ? transition.state\n            : undefined,\n        trigger_prev_state: activeTransition\n            ? transition.prev\n            : undefined,\n        vehicle_primary: testEntity(\n            \"device_tracker.vehicle_primary\",\n            shared.vehicle_primary,\n            { gps_accuracy: 20 }\n        ),\n        vehicle_primary_engine: testEntity(\n            \"binary_sensor.vehicle_primary_engine\",\n            shared.vehicle_primary_engine\n        ),\n        vehicle_primary_lock: testEntity(\n            \"lock.vehicle_primary_door_lock\",\n            shared.vehicle_primary_lock\n        )\n    };\n}\n\nfunction contextKey(base) {\n    return TEST_MODE ? `${base}__test` : base;\n}\n\nfunction ctxGet(base, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.get(key)\n        : flow.get(key, store);\n}\n\nfunction ctxSet(base, value, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.set(key, value)\n        : flow.set(key, value, store);\n}\n\nfunction validZoneState(value) {\n    return (\n        typeof value === \"string\" &&\n        ![\"\", \"unknown\", \"unavailable\"].includes(value)\n    );\n}\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\nfunction reliableCoords(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const accuracy = Number(attrs.gps_accuracy);\n    const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasAccuracy = Number.isFinite(accuracy);\n    return hasCoords && (!hasAccuracy || accuracy <= MAX_GPS_ACCURACY_M) ? { lat, lon } : null;\n}\nfunction primaryHome(entity) {\n    const coords = reliableCoords(entity);\n    if (HOME_KNOWN && coords) return distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon) <= ARM_DISTANCE_M;\n    const accuracy = Number(entity?.attributes?.gps_accuracy);\n    if (Number.isFinite(accuracy) && accuracy > MAX_GPS_ACCURACY_M) return false;\n    return entity?.state === \"home\";\n}\nfunction homeForMs(entity) {\n    const changedAt = Date.parse(entity?.last_changed ?? \"\");\n    return Number.isFinite(changedAt) ? Date.now() - changedAt : null;\n}\nfunction observedAt(entity) {\n    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? \"\");\n    return Number.isFinite(value) ? value : null;\n}\nfunction fresh(entity, ttl) {\n    const value = observedAt(entity);\n    return value !== null && value <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - value <= ttl;\n}\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const coords = reliableCoords(entity);\n    const accuracy = Number(attrs.gps_accuracy);\n    const state = entity?.state;\n    const validState = typeof state === \"string\" && ![\"unknown\", \"unavailable\", \"\"].includes(state);\n    const updatedAt = observedAt(entity);\n    const stale = !fresh(entity, LOCATION_FRESH_MS);\n    return {\n        entity_id: entity?.entity_id, state,\n        latitude: coords?.lat ?? null, longitude: coords?.lon ?? null,\n        gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n        location_reliable: Boolean(coords),\n        state_valid: validState && !stale && (Boolean(coords) || [\"home\", \"not_home\", APPROACH_ZONE].includes(state)),\n        updated_at: updatedAt, stale, ready: validState && !stale,\n        distance_m: HOME_KNOWN && coords ? Math.round(distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon)) : null,\n        gate_distance_m: GATE_KNOWN && coords ? Math.round(distanceMeters(GATE_LAT, GATE_LON, coords.lat, coords.lon)) : null,\n        primary_home: primaryHome(entity), primary_home_for_ms: homeForMs(entity),\n    };\n}\nfunction isAway(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m > ARM_DISTANCE_M;\n    return item?.state === \"not_home\";\n}\nfunction isArmingHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m <= ARM_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\nfunction isArrivalHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.gate_distance_m !== null && item.gate_distance_m <= ARRIVAL_DISTANCE_M) return true;\n    if (item?.distance_m !== null) return item.distance_m <= ARRIVAL_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\n\n\nconst vehicle_primary = position(msg.payload?.vehicle_primary);\nconst engineState = msg.payload?.vehicle_primary_engine?.state;\nconst lockState = msg.payload?.vehicle_primary_lock?.state;\nconst engineFresh = fresh(msg.payload?.vehicle_primary_engine, SIGNAL_FRESH_MS);\nconst lockFresh = fresh(msg.payload?.vehicle_primary_lock, SIGNAL_FRESH_MS);\nconst engineOn = engineFresh && [\"on\", \"running\"].includes(engineState);\nconst engineOff = engineFresh && [\"off\", \"stopped\", \"idle\"].includes(engineState);\nconst unlocked = lockFresh && lockState === \"unlocked\";\n\nconst isLocationEvent = msg.payload?.event === \"location_update\";\nconst triggerState = msg.payload?.trigger_state;\nconst triggerPrevState = msg.payload?.trigger_prev_state;\nconst triggerPrevValid = validZoneState(triggerPrevState);\nconst previousLocation =\n    ctxGet(LOCATION_OBSERVATION_KEY, PERSISTENT);\nconst zoneChanged =\n    triggerPrevValid &&\n    triggerState !== triggerPrevState &&\n    [\"home\", \"not_home\", APPROACH_ZONE].includes(triggerState);\nconst movementDistanceM =\n    previousLocation &&\n    Number.isFinite(previousLocation.latitude) &&\n    Number.isFinite(previousLocation.longitude) &&\n    Number.isFinite(vehicle_primary.latitude) &&\n    Number.isFinite(vehicle_primary.longitude)\n        ? distanceMeters(\n            previousLocation.latitude,\n            previousLocation.longitude,\n            vehicle_primary.latitude,\n            vehicle_primary.longitude\n        )\n        : null;\nconst movementAccuracyM = Math.max(\n    MOVEMENT_THRESHOLD_M,\n    Number(previousLocation?.gps_accuracy || 0) +\n        Number(vehicle_primary.gps_accuracy || 0)\n);\nconst significantCoordinateMovement =\n    Number.isFinite(movementDistanceM) &&\n    movementDistanceM >= movementAccuracyM &&\n    Number(vehicle_primary.updated_at || 0) >\n        Number(previousLocation?.updated_at || 0);\nconst freshVehicleMovement =\n    isLocationEvent &&\n    vehicle_primary.ready === true &&\n    (zoneChanged || significantCoordinateMovement);\n\nif (\n    isLocationEvent &&\n    vehicle_primary.location_reliable === true &&\n    (\n        !previousLocation ||\n        zoneChanged ||\n        significantCoordinateMovement\n    )\n) {\n    ctxSet(\n        LOCATION_OBSERVATION_KEY,\n        {\n            version: 1,\n            latitude: vehicle_primary.latitude,\n            longitude: vehicle_primary.longitude,\n            gps_accuracy: vehicle_primary.gps_accuracy,\n            state: vehicle_primary.state,\n            updated_at: vehicle_primary.updated_at\n        },\n        PERSISTENT\n    );\n}\n\nif (!TEST_MODE && freshVehicleMovement) {\n    const movementKind = zoneChanged ? \"zone\" : \"distance\";\n    const distanceBucketM = Number.isFinite(movementDistanceM)\n        ? Math.ceil(movementDistanceM / 100) * 100\n        : null;\n    node.log?.(\n        \"VEHICLE_PRIMARY_LOCATION_CHANGED kind=\" + movementKind +\n        (distanceBucketM === null\n            ? \"\"\n            : \" displacement_bucket_m=\" + distanceBucketM)\n    );\n    node.log?.(\n        \"VEHICLE_PRIMARY_MOVEMENT_DETECTED source=device_tracker \" +\n        \"engine_stale=\" + String(engineFresh !== true)\n    );\n}\nlet recovery = ctxGet(RECOVERY_KEY, PERSISTENT);\nconst recoveryIsObject = recovery && typeof recovery === \"object\" && !Array.isArray(recovery);\nconst inUseTypeValid = recovery?.in_use === undefined || typeof recovery.in_use === \"boolean\";\nconst confirmedAt = Number(recovery?.last_confirmed_at ?? 0);\nconst confirmedAtValid = recovery?.in_use === undefined || Number.isFinite(recovery.last_confirmed_at) && confirmedAt > 0;\nconst confirmedAtCurrent = recovery?.in_use === undefined || confirmedAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - confirmedAt <= RECOVERY_TTL_MS;\nif (!recoveryIsObject || recovery.version !== 1 || !inUseTypeValid || !confirmedAtValid || !confirmedAtCurrent) {\n    if (recovery !== undefined) node.warn(\"contexto_vehicle_primary: recovery persistido invalido ou expirado; descartado\");\n    recovery = { version: 1 };\n}\nif (recovery.trip_active !== undefined && typeof recovery.trip_active !== \"boolean\") recovery.trip_active = false;\nif (recovery.in_use !== true) {\n    recovery.trip_active = false;\n    recovery.trip_started_at = null;\n}\nif (recovery.arrival_armed !== undefined && typeof recovery.arrival_armed !== \"boolean\") recovery.arrival_armed = false;\nif (recovery.trip_started_at !== undefined && recovery.trip_started_at !== null && (!Number.isFinite(recovery.trip_started_at) || recovery.trip_started_at > Date.now() + FUTURE_TOLERANCE_MS)) recovery.trip_started_at = null;\nif (typeof recovery.in_use === \"boolean\" && ctxGet(\"security_vehicle_primary_recovery_logged\") !== true) {\n    node.log?.(\"contexto_vehicle_primary: estado persistido carregado; aguardando revalidacao pelas entidades atuais\");\n    ctxSet(\"security_vehicle_primary_recovery_logged\", true);\n}\nlet inUse = null;\nlet inUseReason = \"insufficient_current_evidence\";\n\n/*\n * Prioridade de evidências:\n * 1) motor atual ON/RUNNING;\n * 2) motor atual OFF/STOPPED/IDLE;\n * 3) viagem persistida revalidada por localização atual;\n * 4) chegada em casa + porta destravada como evidência de fim de uso.\n *\n * IMPORTANTE v9:\n * movimento do tracker do vehicle_primary NÃO transforma sozinho in_use em true.\n * Ele apenas solicita recovery imediato do motor/contexto. Assim, o\n * refletor físico nunca é autorizado só porque o carro mudou de zona.\n */\nif (engineOn) {\n    inUse = true;\n    inUseReason = \"fresh_engine_on\";\n} else if (engineOff) {\n    inUse = false;\n    inUseReason = \"fresh_engine_off\";\n} else if (recovery.in_use === true && vehicle_primary.ready && isAway(vehicle_primary)) {\n    inUse = true;\n    inUseReason = \"persisted_trip_revalidated_by_fresh_away_location\";\n} else if (lockFresh && unlocked && vehicle_primary.ready && isArrivalHome(vehicle_primary)) {\n    inUse = false;\n    inUseReason = \"fresh_home_unlocked_engine_pending\";\n}\nctxSet(IN_USE_KEY, inUse);\n\nlet armed = ctxGet(ARMED_KEY);\nif (typeof armed !== \"boolean\") armed = recovery.arrival_armed === true;\nif (isAway(vehicle_primary)) armed = true;\nlet arrival = null;\nif (isLocationEvent && vehicle_primary.ready === true && triggerPrevValid) {\n    const approachEntry = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== \"home\";\n    const leavingHome = triggerPrevState === \"home\";\n    const staleCatchUp = !approachEntry && vehicle_primary.primary_home === true && typeof vehicle_primary.primary_home_for_ms === \"number\" && vehicle_primary.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;\n    if (!leavingHome && !staleCatchUp && (approachEntry || isArrivalHome(vehicle_primary)) && armed) {\n        arrival = { payload: {\n            contract: \"security.arrival.v1\", kind: \"arrival\", source: \"vehicle_primary\", arriving: [\"vehicle_primary\"],\n            arrival_source_type: \"vehicle_primary\", arrival_stage: approachEntry ? \"approach\" : \"home\",\n            request_vehicle_primary_wake: approachEntry, event_at: vehicle_primary.updated_at ?? Date.now(),\n            refresh_cycle_id: msg.payload?.refresh_cycle_id,\n        } };\n    }\n    if (!approachEntry && isArrivalHome(vehicle_primary)) armed = false;\n} else if (isArmingHome(vehicle_primary)) {\n    armed = false;\n}\nif (arrival) {\n    const eventAt = vehicle_primary.updated_at ?? Date.now();\n    const key = [\"vehicle_primary\", arrival.payload.arrival_stage, triggerState ?? \"?\", eventAt].join(\":\");\n    const previousAt = Number(recovery.last_arrival_at ?? 0);\n    const duplicate = recovery.last_arrival_key === key && previousAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - previousAt < 10 * 60 * 1000;\n    if (duplicate) arrival = null;\n    else {\n        recovery.last_arrival_key = key;\n        recovery.last_arrival_at = Date.now();\n    }\n}\nctxSet(ARMED_KEY, armed);\nrecovery.arrival_armed = armed;\nif (inUse !== null) {\n    recovery.in_use = inUse;\n    recovery.last_confirmed_at = Date.now();\n}\nrecovery.in_use_reason = inUseReason;\nif (inUse !== null) recovery.trip_active = inUse === true && isAway(vehicle_primary);\nif (recovery.trip_active && !Number.isFinite(recovery.trip_started_at)) recovery.trip_started_at = Date.now();\nif (inUse === false) recovery.trip_started_at = null;\nrecovery.updated_at = Date.now();\nctxSet(RECOVERY_KEY, recovery, PERSISTENT);\n\nconst engineUpdatedAt =\n    observedAt(msg.payload?.vehicle_primary_engine);\n\nconst lockUpdatedAt =\n    observedAt(msg.payload?.vehicle_primary_lock);\n\nconst lightingReady =\n    vehicle_primary.ready === true &&\n    engineFresh === true &&\n    (engineOn || engineOff);\n\nconst vehicleContext = {\n    location: vehicle_primary,\n    distance_home_m: vehicle_primary.distance_m,\n    home: vehicle_primary.ready ? isArrivalHome(vehicle_primary) : null,\n    away: vehicle_primary.ready ? isAway(vehicle_primary) : null,\n    approaching_home:\n        arrival?.payload?.arrival_stage === \"approach\",\n    arrived_home:\n        arrival?.payload?.arrival_stage === \"home\",\n\n    engine_on: engineOn,\n    engine_state: engineState,\n    engine_state_valid: engineOn || engineOff,\n    engine_stale: !engineFresh,\n    engine_updated_at: engineUpdatedAt,\n\n    lock_state: lockState,\n    unlocked,\n    lock_state_valid:\n        lockFresh &&\n        [\"locked\", \"unlocked\"].includes(lockState),\n    lock_stale: !lockFresh,\n    lock_updated_at: lockUpdatedAt,\n\n    in_use: inUse,\n    in_use_pending: inUse === null,\n    in_use_reason: inUseReason,\n\n    trip_active:\n        inUse === true &&\n        recovery.trip_active === true,\n    trip_started_at:\n        recovery.trip_started_at ?? null,\n\n    state_valid: vehicle_primary.state_valid,\n    ready: vehicle_primary.ready && inUse !== null,\n    lighting_ready: lightingReady,\n    stale: vehicle_primary.stale || inUse === null,\n\n    updated_at: Math.max(\n        ...[\n            vehicle_primary.updated_at,\n            engineUpdatedAt,\n            lockUpdatedAt\n        ].filter(Number.isFinite),\n        0\n    ),\n\n    arrival_armed: armed,\n};\n\n/*\n * Confirma sucesso de refresh somente com evidência observável:\n * pelo menos um timestamp de localização/motor/trava precisa avançar\n * em relação ao baseline capturado imediatamente antes da tentativa.\n *\n * Se houve atualização, mas o alvo de readiness ainda não foi atingido,\n * NÃO cria cooldown de sucesso. Mantém o backoff da tentativa corrente\n * e permite novo retry.\n */\n {\n    const refreshKey = TEST_MODE\n        ? \"security_vehicle_primary_refresh_v1__test\"\n        : \"security_vehicle_primary_refresh_v1\";\n    let refreshState = TEST_MODE\n        ? flow.get(refreshKey)\n        : flow.get(refreshKey, \"persistent\");\n    const setRefreshState = (value) => TEST_MODE\n        ? flow.set(refreshKey, value)\n        : flow.set(refreshKey, value, \"persistent\");\n\n    if (\n        refreshState &&\n        typeof refreshState === \"object\" &&\n        refreshState.awaiting_evidence === true\n    ) {\n        const baseline =\n            refreshState.baseline_observed_at ?? {};\n\n        const currentObservedAt = {\n            location:\n                Number(vehicleContext.location?.updated_at ?? 0),\n            engine:\n                Number(vehicleContext.engine_updated_at ?? 0),\n            lock:\n                Number(vehicleContext.lock_updated_at ?? 0)\n        };\n\n        const changedDomains = [];\n\n        for (const domain of [\"location\", \"engine\", \"lock\"]) {\n            const before =\n                Number(baseline[domain] ?? 0);\n            const after =\n                Number(currentObservedAt[domain] ?? 0);\n\n            if (\n                Number.isFinite(after) &&\n                after > 0 &&\n                (\n                    !Number.isFinite(before) ||\n                    before <= 0 ||\n                    after > before\n                )\n            ) {\n                changedDomains.push(domain);\n            }\n        }\n\n        const lastAttemptAt =\n            Number(refreshState.last_attempt_at ?? 0);\n\n        const attemptCurrent =\n            lastAttemptAt > 0 &&\n            lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&\n            Date.now() - lastAttemptAt <= 5 * 60 * 1000;\n\n        const evidenceObserved =\n            attemptCurrent &&\n            changedDomains.length > 0;\n\n        const targetReady =\n            vehicleContext.ready === true &&\n            (\n                refreshState.require_lighting_ready !== true ||\n                vehicleContext.lighting_ready === true\n            );\n\n        if (evidenceObserved && targetReady) {\n            refreshState = {\n                ...refreshState,\n                attempts: 0,\n                last_success_at: Date.now(),\n                next_allowed_at: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),\n                awaiting_evidence: false,\n                request_in_flight: false,\n                in_flight_until: null,\n                state: \"cooldown\",\n                reason: refreshState.recovery_reason ?? \"refresh_success\",\n                cooldown_until: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),\n                next_retry_at: null,\n                last_evidence_at: Date.now(),\n                last_evidence_domains: changedDomains,\n                last_success_reason:\n                    refreshState.require_lighting_ready === true\n                        ? \"fresh_entities_lighting_ready\"\n                        : \"fresh_entities_context_ready\",\n                baseline_observed_at: null,\n                require_lighting_ready: false,\n                recovery_reason: null\n            };\n\n            setRefreshState(refreshState);\n\n            node.log?.(\n                \"VEHICLE_PRIMARY_NEW_DATA_RECEIVED domains=\" +\n                changedDomains.join(\",\") +\n                \" readiness=\" + refreshState.last_success_reason\n            );\n\n            node.status({\n                fill: \"green\",\n                shape: \"dot\",\n                text:\n                    refreshState.last_success_reason ===\n                    \"fresh_entities_lighting_ready\"\n                        ? \"refresh confirmado; motor/contexto ready\"\n                        : \"refresh confirmado; vehicle_primary ready\"\n            });\n        } else if (evidenceObserved) {\n            /*\n             * Evidência parcial NÃO é sucesso. Não altera\n             * next_allowed_at: o backoff calculado pela tentativa\n             * corrente continua válido e haverá novo retry.\n             */\n            refreshState.state = \"backoff\";\n            refreshState.reason =\n                refreshState.recovery_reason ?? \"partial_evidence\";\n            refreshState.next_retry_at =\n                refreshState.next_allowed_at ?? null;\n            refreshState.cooldown_until = null;\n            refreshState.last_partial_evidence_at =\n                Date.now();\n            refreshState.last_evidence_domains =\n                changedDomains;\n            refreshState.last_partial_reason =\n                vehicleContext.ready !== true\n                    ? \"vehicle_context_still_pending\"\n                    : \"lighting_context_still_pending\";\n\n            setRefreshState(refreshState);\n\n            node.status({\n                fill: \"yellow\",\n                shape: \"ring\",\n                text:\n                    \"refresh parcial; retry continuará\"\n            });\n        }\n    }\n}\n/* refresh_state_contract_v1: o contexto apenas espelha o estado\n * persistente do único coordenador; não calcula deadlines próprios. */\nconst sharedRefreshState = TEST_MODE\n    ? flow.get(\"security_vehicle_primary_refresh_v1__test\") ?? {}\n    : flow.get(\"security_vehicle_primary_refresh_v1\", \"persistent\") ?? {};\nvehicleContext.refresh = {\n    state: sharedRefreshState.state ?? \"idle\",\n    reason: sharedRefreshState.reason ??\n        sharedRefreshState.recovery_reason ?? null,\n    attempt: Number(sharedRefreshState.attempts ?? 0),\n    last_request_at: Number(sharedRefreshState.last_request_at ??\n        sharedRefreshState.last_attempt_at ?? 0) || null,\n    last_success_at: Number(sharedRefreshState.last_success_at ?? 0) || null,\n    next_retry_at: Number(sharedRefreshState.next_retry_at ?? 0) || null,\n    cooldown_until: Number(sharedRefreshState.cooldown_until ?? 0) || null,\n    awaiting_evidence: sharedRefreshState.awaiting_evidence === true,\n    request_in_flight: sharedRefreshState.request_in_flight === true,\n    in_flight_until: Number(sharedRefreshState.in_flight_until ?? 0) || null,\n    last_failure_class: sharedRefreshState.last_failure_class ?? null,\n    manual_force: sharedRefreshState.manual_force === true\n};\nctxSet(\"vehicle_primary_context_v1\", vehicleContext);\nconst previousReady = ctxGet(\"security_vehicle_primary_ready_logged\");\nif (previousReady !== vehicleContext.ready) {\n    node.log?.(\"contexto_vehicle_primary: contexto \" + (vehicleContext.ready ? \"ready (\" + vehicleContext.in_use_reason + \")\" : \"pending/stale\"));\n    ctxSet(\"security_vehicle_primary_ready_logged\", vehicleContext.ready);\n}\nmsg.payload = {\n    contract: \"security.vehicle_primary-context.v1\", kind: \"vehicle_primary_context\", context: vehicleContext,\n    event: msg.payload?.event, reason: msg.payload?.reason ?? (vehicleContext.ready ? vehicleContext.in_use_reason : \"vehicle_context_pending\"), source: \"vehicle_primary\",\n    trigger_entity: msg.payload?.trigger_entity, trigger_state: triggerState, trigger_prev_state: triggerPrevState,\n    confirmed_home_transition: isLocationEvent && vehicle_primary.ready === true && triggerPrevValid && triggerState === \"home\" && triggerPrevState !== \"home\",\n    refresh_cycle_id: msg.payload?.refresh_cycle_id,\n    updated_at: vehicleContext.updated_at,\n    valid: vehicleContext.state_valid,\n    ready: vehicleContext.ready,\n    lighting_ready: vehicleContext.lighting_ready,\n    stale: vehicleContext.stale,\n    readiness_reason:\n        vehicleContext.ready\n            ? vehicleContext.in_use_reason\n            : \"vehicle_context_pending\",\n};\n\nif (TEST_MODE) {\n    msg._location_test = true;\n    msg._location_test_case = msg._location_test_case ?? null;\n    msg.payload.test_mode = true;\n    msg.payload.test_case = msg._location_test_case;\n\n    if (arrival?.payload) {\n        arrival._location_test = true;\n        arrival._location_test_case = msg._location_test_case;\n        arrival.payload.test_mode = true;\n        arrival.payload.test_case = msg._location_test_case;\n    }\n}\n\nlet recoveryRequest = null;\n\n/*\n * Se o próprio tracker do vehicle_primary acabou de se mover, mas o motor está\n * stale, pedir recovery imediatamente. Isso reduz a chance de o carro\n * já estar desligado quando o próximo tick periódico tentar atualizar.\n */\nif (\n    !TEST_MODE &&\n    freshVehicleMovement\n) {\n    recoveryRequest = {\n        payload: {\n            kind: \"refresh_tick\",\n            origin: \"contexto_vehicle_primary\",\n            reason: engineFresh === true\n                ? \"vehicle_primary_location_changed\"\n                : \"vehicle_primary_location_changed_engine_stale\",\n            force_recovery: true,\n            require_lighting_ready: engineFresh !== true,\n            requested_at: Date.now()\n        }\n    };\n\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text:\n            \"movimento do vehicle_primary; refresh solicitado\"\n    });\n}\n\nreturn [msg, arrival, recoveryRequest];",
+        "func": "const HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst GATE_LAT = Number(env.get(\"GATE_LAT\"));\nconst GATE_LON = Number(env.get(\"GATE_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\nconst GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);\nconst ARM_DISTANCE_M = 100;\nconst ARRIVAL_DISTANCE_M = 300;\nconst MAX_GPS_ACCURACY_M = 100;\nconst MOVEMENT_THRESHOLD_M = 250;\nconst APPROACH_ZONE = \"chegando\";\nconst PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;\nconst LOCATION_FRESH_MS = 30 * 60 * 1000;\nconst SIGNAL_FRESH_MS = 5 * 60 * 1000;\nconst RECOVERY_TTL_MS = 24 * 60 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst RECOVERY_KEY = \"security_vehicle_primary_recovery_v1\";\nconst PERSISTENT = \"persistent\";\nconst ARMED_KEY = \"vehicle_primary_arrival_armed\";\nconst IN_USE_KEY = \"vehicle_primary_in_use\";\nconst LOCATION_OBSERVATION_KEY = \"vehicle_primary_location_observation_v1\";\n\n\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nconst SHARED_TEST_KEY = \"security_location_test_state_v1\";\n\nfunction testBaseline(now = Date.now()) {\n    return {\n        version: 1,\n        resident_primary: \"home\",\n        resident_secondary: \"home\",\n        vehicle_primary: \"home\",\n        vehicle_primary_engine: \"off\",\n        vehicle_primary_lock: \"locked\",\n        observed_at: now,\n        transitions: {}\n    };\n}\n\nfunction clearvehicle_primaryTestState() {\n    [\n        \"security_vehicle_primary_recovery_v1__test\",\n        \"vehicle_primary_arrival_armed__test\",\n        \"vehicle_primary_in_use__test\",\n        \"vehicle_primary_context_v1__test\",\n        \"security_vehicle_primary_recovery_logged__test\",\n        \"security_vehicle_primary_ready_logged__test\",\n        \"vehicle_primary_location_observation_v1__test\",\n        \"security_vehicle_primary_test_clock\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\"\n    ].forEach((key) => flow.set(key, undefined));\n}\n\nif (\n    TEST_MODE &&\n    msg.payload?.event === \"context_snapshot\"\n) {\n    if (msg._location_test_reset === true) {\n        clearvehicle_primaryTestState();\n    }\n\n    let shared = global.get(SHARED_TEST_KEY);\n    if (!shared || shared.version !== 1) {\n        shared = testBaseline();\n        global.set(SHARED_TEST_KEY, shared);\n    }\n\n    const refreshCycleId = msg.payload?.refresh_cycle_id;\n    const testAt = Math.max(\n        Date.now(),\n        Number(shared.observed_at || 0)\n    );\n    const now = new Date(testAt).toISOString();\n\n    function testEntity(entityId, state, attributes = {}) {\n        return {\n            entity_id: entityId,\n            state,\n            attributes,\n            last_changed: now,\n            last_updated: now\n        };\n    }\n\n    const transition = shared.transitions?.vehicle_primary;\n    const activeTransition =\n        transition?.domain === \"vehicle_primary\" &&\n        transition?.test_case === msg._location_test_case &&\n        msg._location_test_reset !== true;\n\n    msg.payload = {\n        event: activeTransition\n            ? \"location_update\"\n            : \"context_snapshot\",\n        source: activeTransition ? \"vehicle_primary\" : \"refresh\",\n        refresh_cycle_id: refreshCycleId,\n        trigger_entity: activeTransition\n            ? \"device_tracker.vehicle_primary\"\n            : undefined,\n        trigger_state: activeTransition\n            ? transition.state\n            : undefined,\n        trigger_prev_state: activeTransition\n            ? transition.prev\n            : undefined,\n        vehicle_primary: testEntity(\n            \"device_tracker.vehicle_primary\",\n            shared.vehicle_primary,\n            { gps_accuracy: 20 }\n        ),\n        vehicle_primary_engine: testEntity(\n            \"binary_sensor.vehicle_primary_engine\",\n            shared.vehicle_primary_engine\n        ),\n        vehicle_primary_lock: testEntity(\n            \"lock.vehicle_primary_door_lock\",\n            shared.vehicle_primary_lock\n        )\n    };\n}\n\nfunction contextKey(base) {\n    return TEST_MODE ? `${base}__test` : base;\n}\n\nfunction ctxGet(base, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.get(key)\n        : flow.get(key, store);\n}\n\nfunction ctxSet(base, value, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.set(key, value)\n        : flow.set(key, value, store);\n}\n\nfunction validZoneState(value) {\n    return (\n        typeof value === \"string\" &&\n        ![\"\", \"unknown\", \"unavailable\"].includes(value)\n    );\n}\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\nfunction reliableCoords(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const accuracy = Number(attrs.gps_accuracy);\n    const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasAccuracy = Number.isFinite(accuracy);\n    return hasCoords && (!hasAccuracy || accuracy <= MAX_GPS_ACCURACY_M) ? { lat, lon } : null;\n}\nfunction primaryHome(entity) {\n    const coords = reliableCoords(entity);\n    if (HOME_KNOWN && coords) return distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon) <= ARM_DISTANCE_M;\n    const accuracy = Number(entity?.attributes?.gps_accuracy);\n    if (Number.isFinite(accuracy) && accuracy > MAX_GPS_ACCURACY_M) return false;\n    return entity?.state === \"home\";\n}\nfunction homeForMs(entity) {\n    const changedAt = Date.parse(entity?.last_changed ?? \"\");\n    return Number.isFinite(changedAt) ? Date.now() - changedAt : null;\n}\nfunction observedAt(entity) {\n    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? \"\");\n    return Number.isFinite(value) ? value : null;\n}\nfunction fresh(entity, ttl) {\n    const value = observedAt(entity);\n    return value !== null && value <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - value <= ttl;\n}\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const coords = reliableCoords(entity);\n    const accuracy = Number(attrs.gps_accuracy);\n    const state = entity?.state;\n    const validState = typeof state === \"string\" && ![\"unknown\", \"unavailable\", \"\"].includes(state);\n    const updatedAt = observedAt(entity);\n    const stale = !fresh(entity, LOCATION_FRESH_MS);\n    return {\n        entity_id: entity?.entity_id, state,\n        latitude: coords?.lat ?? null, longitude: coords?.lon ?? null,\n        gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n        location_reliable: Boolean(coords),\n        state_valid: validState && !stale && (Boolean(coords) || [\"home\", \"not_home\", APPROACH_ZONE].includes(state)),\n        updated_at: updatedAt, stale, ready: validState && !stale,\n        distance_m: HOME_KNOWN && coords ? Math.round(distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon)) : null,\n        gate_distance_m: GATE_KNOWN && coords ? Math.round(distanceMeters(GATE_LAT, GATE_LON, coords.lat, coords.lon)) : null,\n        primary_home: primaryHome(entity), primary_home_for_ms: homeForMs(entity),\n    };\n}\nfunction isAway(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m > ARM_DISTANCE_M;\n    return item?.state === \"not_home\";\n}\nfunction isArmingHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m <= ARM_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\nfunction isArrivalHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.gate_distance_m !== null && item.gate_distance_m <= ARRIVAL_DISTANCE_M) return true;\n    if (item?.distance_m !== null) return item.distance_m <= ARRIVAL_DISTANCE_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\n\n\nconst vehicle_primary = position(msg.payload?.vehicle_primary);\nconst engineState = msg.payload?.vehicle_primary_engine?.state;\nconst lockState = msg.payload?.vehicle_primary_lock?.state;\nconst engineFresh = fresh(msg.payload?.vehicle_primary_engine, SIGNAL_FRESH_MS);\nconst lockFresh = fresh(msg.payload?.vehicle_primary_lock, SIGNAL_FRESH_MS);\nconst engineOn = engineFresh && [\"on\", \"running\"].includes(engineState);\nconst engineOff = engineFresh && [\"off\", \"stopped\", \"idle\"].includes(engineState);\nconst unlocked = lockFresh && lockState === \"unlocked\";\n\nconst isLocationEvent = msg.payload?.event === \"location_update\";\nconst triggerState = msg.payload?.trigger_state;\nconst triggerPrevState = msg.payload?.trigger_prev_state;\nconst triggerPrevValid = validZoneState(triggerPrevState);\nconst previousLocation =\n    ctxGet(LOCATION_OBSERVATION_KEY, PERSISTENT);\nconst zoneChanged =\n    triggerPrevValid &&\n    triggerState !== triggerPrevState &&\n    [\"home\", \"not_home\", APPROACH_ZONE].includes(triggerState);\nconst movementDistanceM =\n    previousLocation &&\n    Number.isFinite(previousLocation.latitude) &&\n    Number.isFinite(previousLocation.longitude) &&\n    Number.isFinite(vehicle_primary.latitude) &&\n    Number.isFinite(vehicle_primary.longitude)\n        ? distanceMeters(\n            previousLocation.latitude,\n            previousLocation.longitude,\n            vehicle_primary.latitude,\n            vehicle_primary.longitude\n        )\n        : null;\nconst movementAccuracyM = Math.max(\n    MOVEMENT_THRESHOLD_M,\n    Number(previousLocation?.gps_accuracy || 0) +\n        Number(vehicle_primary.gps_accuracy || 0)\n);\nconst significantCoordinateMovement =\n    Number.isFinite(movementDistanceM) &&\n    movementDistanceM >= movementAccuracyM &&\n    Number(vehicle_primary.updated_at || 0) >\n        Number(previousLocation?.updated_at || 0);\nconst freshVehicleMovement =\n    isLocationEvent &&\n    vehicle_primary.ready === true &&\n    (zoneChanged || significantCoordinateMovement);\n\nif (\n    isLocationEvent &&\n    vehicle_primary.location_reliable === true &&\n    (\n        !previousLocation ||\n        zoneChanged ||\n        significantCoordinateMovement\n    )\n) {\n    ctxSet(\n        LOCATION_OBSERVATION_KEY,\n        {\n            version: 1,\n            latitude: vehicle_primary.latitude,\n            longitude: vehicle_primary.longitude,\n            gps_accuracy: vehicle_primary.gps_accuracy,\n            state: vehicle_primary.state,\n            updated_at: vehicle_primary.updated_at\n        },\n        PERSISTENT\n    );\n}\n\nif (!TEST_MODE && freshVehicleMovement) {\n    const movementKind = zoneChanged ? \"zone\" : \"distance\";\n    const distanceBucketM = Number.isFinite(movementDistanceM)\n        ? Math.ceil(movementDistanceM / 100) * 100\n        : null;\n    node.log?.(\n        \"VEHICLE_PRIMARY_LOCATION_CHANGED kind=\" + movementKind +\n        (distanceBucketM === null\n            ? \"\"\n            : \" displacement_bucket_m=\" + distanceBucketM)\n    );\n    node.log?.(\n        \"VEHICLE_PRIMARY_MOVEMENT_DETECTED source=device_tracker \" +\n        \"engine_stale=\" + String(engineFresh !== true)\n    );\n}\nlet recovery = ctxGet(RECOVERY_KEY, PERSISTENT);\nconst recoveryIsObject = recovery && typeof recovery === \"object\" && !Array.isArray(recovery);\nconst inUseTypeValid = recovery?.in_use === undefined || typeof recovery.in_use === \"boolean\";\nconst confirmedAt = Number(recovery?.last_confirmed_at ?? 0);\nconst confirmedAtValid = recovery?.in_use === undefined || Number.isFinite(recovery.last_confirmed_at) && confirmedAt > 0;\nconst confirmedAtCurrent = recovery?.in_use === undefined || confirmedAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - confirmedAt <= RECOVERY_TTL_MS;\nif (!recoveryIsObject || recovery.version !== 1 || !inUseTypeValid || !confirmedAtValid || !confirmedAtCurrent) {\n    if (recovery !== undefined) node.warn(\"contexto_vehicle_primary: recovery persistido invalido ou expirado; descartado\");\n    recovery = { version: 1 };\n}\nif (recovery.trip_active !== undefined && typeof recovery.trip_active !== \"boolean\") recovery.trip_active = false;\nif (recovery.in_use !== true) {\n    recovery.trip_active = false;\n    recovery.trip_started_at = null;\n}\nif (recovery.arrival_armed !== undefined && typeof recovery.arrival_armed !== \"boolean\") recovery.arrival_armed = false;\nif (recovery.trip_started_at !== undefined && recovery.trip_started_at !== null && (!Number.isFinite(recovery.trip_started_at) || recovery.trip_started_at > Date.now() + FUTURE_TOLERANCE_MS)) recovery.trip_started_at = null;\nif (typeof recovery.in_use === \"boolean\" && ctxGet(\"security_vehicle_primary_recovery_logged\") !== true) {\n    node.log?.(\"contexto_vehicle_primary: estado persistido carregado; aguardando revalidacao pelas entidades atuais\");\n    ctxSet(\"security_vehicle_primary_recovery_logged\", true);\n}\nlet inUse = null;\nlet inUseReason = \"insufficient_current_evidence\";\n\n/*\n * Prioridade de evidências:\n * 1) motor atual ON/RUNNING;\n * 2) motor atual OFF/STOPPED/IDLE;\n * 3) viagem persistida revalidada por localização atual;\n * 4) chegada em casa + porta destravada como evidência de fim de uso.\n *\n * IMPORTANTE v9:\n * movimento do tracker do vehicle_primary NÃO transforma sozinho in_use em true.\n * Ele apenas solicita recovery imediato do motor/contexto. Assim, o\n * refletor físico nunca é autorizado só porque o carro mudou de zona.\n */\nif (engineOn) {\n    inUse = true;\n    inUseReason = \"fresh_engine_on\";\n} else if (engineOff) {\n    inUse = false;\n    inUseReason = \"fresh_engine_off\";\n} else if (recovery.in_use === true && vehicle_primary.ready && isAway(vehicle_primary)) {\n    inUse = true;\n    inUseReason = \"persisted_trip_revalidated_by_fresh_away_location\";\n} else if (lockFresh && unlocked && vehicle_primary.ready && isArrivalHome(vehicle_primary)) {\n    inUse = false;\n    inUseReason = \"fresh_home_unlocked_engine_pending\";\n}\nctxSet(IN_USE_KEY, inUse);\n\nlet armed = ctxGet(ARMED_KEY);\nif (typeof armed !== \"boolean\") armed = recovery.arrival_armed === true;\nif (isAway(vehicle_primary)) armed = true;\nlet arrival = null;\nif (isLocationEvent && vehicle_primary.ready === true && triggerPrevValid) {\n    const approachEntry = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== \"home\";\n    const leavingHome = triggerPrevState === \"home\";\n    const staleCatchUp = !approachEntry && vehicle_primary.primary_home === true && typeof vehicle_primary.primary_home_for_ms === \"number\" && vehicle_primary.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;\n    if (!leavingHome && !staleCatchUp && (approachEntry || isArrivalHome(vehicle_primary)) && armed) {\n        arrival = { payload: {\n            contract: \"security.arrival.v1\", kind: \"arrival\", source: \"vehicle_primary\", arriving: [\"vehicle_primary\"],\n            arrival_source_type: \"vehicle_primary\", arrival_stage: approachEntry ? \"approach\" : \"home\",\n            request_vehicle_primary_wake: approachEntry, event_at: vehicle_primary.updated_at ?? Date.now(),\n            refresh_cycle_id: msg.payload?.refresh_cycle_id,\n        } };\n    }\n    if (!approachEntry && isArrivalHome(vehicle_primary)) armed = false;\n} else if (isArmingHome(vehicle_primary)) {\n    armed = false;\n}\nif (arrival) {\n    const eventAt = vehicle_primary.updated_at ?? Date.now();\n    const key = [\"vehicle_primary\", arrival.payload.arrival_stage, triggerState ?? \"?\", eventAt].join(\":\");\n    const previousAt = Number(recovery.last_arrival_at ?? 0);\n    const duplicate = recovery.last_arrival_key === key && previousAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - previousAt < 10 * 60 * 1000;\n    if (duplicate) arrival = null;\n    else {\n        recovery.last_arrival_key = key;\n        recovery.last_arrival_at = Date.now();\n    }\n}\nctxSet(ARMED_KEY, armed);\nrecovery.arrival_armed = armed;\nif (inUse !== null) {\n    recovery.in_use = inUse;\n    recovery.last_confirmed_at = Date.now();\n}\nrecovery.in_use_reason = inUseReason;\nif (inUse !== null) recovery.trip_active = inUse === true && isAway(vehicle_primary);\nif (recovery.trip_active && !Number.isFinite(recovery.trip_started_at)) recovery.trip_started_at = Date.now();\nif (inUse === false) recovery.trip_started_at = null;\nrecovery.updated_at = Date.now();\nctxSet(RECOVERY_KEY, recovery, PERSISTENT);\n\nconst engineUpdatedAt =\n    observedAt(msg.payload?.vehicle_primary_engine);\n\nconst lockUpdatedAt =\n    observedAt(msg.payload?.vehicle_primary_lock);\n\nconst lightingReady =\n    vehicle_primary.ready === true &&\n    engineFresh === true &&\n    (engineOn || engineOff);\n\nconst vehicleContext = {\n    location: vehicle_primary,\n    distance_home_m: vehicle_primary.distance_m,\n    home: vehicle_primary.ready ? isArrivalHome(vehicle_primary) : null,\n    away: vehicle_primary.ready ? isAway(vehicle_primary) : null,\n    approaching_home:\n        arrival?.payload?.arrival_stage === \"approach\",\n    arrived_home:\n        arrival?.payload?.arrival_stage === \"home\",\n\n    engine_on: engineOn,\n    engine_state: engineState,\n    engine_state_valid: engineOn || engineOff,\n    engine_stale: !engineFresh,\n    engine_updated_at: engineUpdatedAt,\n\n    lock_state: lockState,\n    unlocked,\n    lock_state_valid:\n        lockFresh &&\n        [\"locked\", \"unlocked\"].includes(lockState),\n    lock_stale: !lockFresh,\n    lock_updated_at: lockUpdatedAt,\n\n    in_use: inUse,\n    in_use_pending: inUse === null,\n    in_use_reason: inUseReason,\n\n    trip_active:\n        inUse === true &&\n        recovery.trip_active === true,\n    trip_started_at:\n        recovery.trip_started_at ?? null,\n\n    state_valid: vehicle_primary.state_valid,\n    ready: vehicle_primary.ready && inUse !== null,\n    lighting_ready: lightingReady,\n    stale: vehicle_primary.stale || inUse === null,\n\n    updated_at: Math.max(\n        ...[\n            vehicle_primary.updated_at,\n            engineUpdatedAt,\n            lockUpdatedAt\n        ].filter(Number.isFinite),\n        0\n    ),\n\n    arrival_armed: armed,\n};\n\n/*\n * Confirma sucesso de refresh somente com evidência observável:\n * pelo menos um timestamp de localização/motor/trava precisa avançar\n * em relação ao baseline capturado imediatamente antes da tentativa.\n *\n * Se houve atualização, mas o alvo de readiness ainda não foi atingido,\n * NÃO cria cooldown de sucesso. Mantém o backoff da tentativa corrente\n * e permite novo retry.\n */\n {\n    const refreshKey = TEST_MODE\n        ? \"security_vehicle_primary_refresh_v1__test\"\n        : \"security_vehicle_primary_refresh_v1\";\n    let refreshState = TEST_MODE\n        ? flow.get(refreshKey)\n        : flow.get(refreshKey, \"persistent\");\n    const setRefreshState = (value) => TEST_MODE\n        ? flow.set(refreshKey, value)\n        : flow.set(refreshKey, value, \"persistent\");\n\n    if (\n        refreshState &&\n        typeof refreshState === \"object\" &&\n        refreshState.awaiting_evidence === true\n    ) {\n        const baseline =\n            refreshState.baseline_observed_at ?? {};\n\n        const currentObservedAt = {\n            location:\n                Number(vehicleContext.location?.updated_at ?? 0),\n            engine:\n                Number(vehicleContext.engine_updated_at ?? 0),\n            lock:\n                Number(vehicleContext.lock_updated_at ?? 0)\n        };\n\n        const changedDomains = [];\n\n        for (const domain of [\"location\", \"engine\", \"lock\"]) {\n            const before =\n                Number(baseline[domain] ?? 0);\n            const after =\n                Number(currentObservedAt[domain] ?? 0);\n\n            if (\n                Number.isFinite(after) &&\n                after > 0 &&\n                (\n                    !Number.isFinite(before) ||\n                    before <= 0 ||\n                    after > before\n                )\n            ) {\n                changedDomains.push(domain);\n            }\n        }\n\n        const lastAttemptAt =\n            Number(refreshState.last_attempt_at ?? 0);\n\n        const attemptCurrent =\n            lastAttemptAt > 0 &&\n            lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&\n            Date.now() - lastAttemptAt <= 5 * 60 * 1000;\n\n        const evidenceObserved =\n            attemptCurrent &&\n            changedDomains.length > 0;\n\n        const targetReady =\n            vehicleContext.ready === true &&\n            (\n                refreshState.require_lighting_ready !== true ||\n                vehicleContext.lighting_ready === true\n            );\n\n        if (evidenceObserved && targetReady) {\n            refreshState = {\n                ...refreshState,\n                attempts: 0,\n                last_success_at: Date.now(),\n                next_allowed_at: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),\n                awaiting_evidence: false,\n                request_in_flight: false,\n                in_flight_until: null,\n                failure_notified_at: null,\n                last_failure_class: null,\n                state: \"cooldown\",\n                reason: refreshState.recovery_reason ?? \"refresh_success\",\n                cooldown_until: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),\n                next_retry_at: null,\n                last_evidence_at: Date.now(),\n                last_evidence_domains: changedDomains,\n                last_success_reason:\n                    refreshState.require_lighting_ready === true\n                        ? \"fresh_entities_lighting_ready\"\n                        : \"fresh_entities_context_ready\",\n                baseline_observed_at: null,\n                require_lighting_ready: false,\n                recovery_reason: null\n            };\n\n            setRefreshState(refreshState);\n\n            node.log?.(\n                \"VEHICLE_PRIMARY_NEW_DATA_RECEIVED domains=\" +\n                changedDomains.join(\",\") +\n                \" readiness=\" + refreshState.last_success_reason\n            );\n\n            node.status({\n                fill: \"green\",\n                shape: \"dot\",\n                text:\n                    refreshState.last_success_reason ===\n                    \"fresh_entities_lighting_ready\"\n                        ? \"refresh confirmado; motor/contexto ready\"\n                        : \"refresh confirmado; vehicle_primary ready\"\n            });\n        } else if (evidenceObserved) {\n            /*\n             * Evidência parcial NÃO é sucesso. Não altera\n             * next_allowed_at: o backoff calculado pela tentativa\n             * corrente continua válido e haverá novo retry.\n             */\n            refreshState.state = \"backoff\";\n            refreshState.reason =\n                refreshState.recovery_reason ?? \"partial_evidence\";\n            refreshState.next_retry_at =\n                refreshState.next_allowed_at ?? null;\n            refreshState.cooldown_until = null;\n            refreshState.last_partial_evidence_at =\n                Date.now();\n            refreshState.last_evidence_domains =\n                changedDomains;\n            refreshState.last_partial_reason =\n                vehicleContext.ready !== true\n                    ? \"vehicle_context_still_pending\"\n                    : \"lighting_context_still_pending\";\n\n            setRefreshState(refreshState);\n\n            node.status({\n                fill: \"yellow\",\n                shape: \"ring\",\n                text:\n                    \"refresh parcial; retry continuará\"\n            });\n        }\n    }\n}\n/* refresh_state_contract_v1: o contexto apenas espelha o estado\n * persistente do único coordenador; não calcula deadlines próprios. */\nconst sharedRefreshState = TEST_MODE\n    ? flow.get(\"security_vehicle_primary_refresh_v1__test\") ?? {}\n    : flow.get(\"security_vehicle_primary_refresh_v1\", \"persistent\") ?? {};\nvehicleContext.refresh = {\n    state: sharedRefreshState.state ?? \"idle\",\n    reason: sharedRefreshState.reason ??\n        sharedRefreshState.recovery_reason ?? null,\n    attempt: Number(sharedRefreshState.attempts ?? 0),\n    last_request_at: Number(sharedRefreshState.last_request_at ??\n        sharedRefreshState.last_attempt_at ?? 0) || null,\n    last_success_at: Number(sharedRefreshState.last_success_at ?? 0) || null,\n    next_retry_at: Number(sharedRefreshState.next_retry_at ?? 0) || null,\n    cooldown_until: Number(sharedRefreshState.cooldown_until ?? 0) || null,\n    awaiting_evidence: sharedRefreshState.awaiting_evidence === true,\n    request_in_flight: sharedRefreshState.request_in_flight === true,\n    in_flight_until: Number(sharedRefreshState.in_flight_until ?? 0) || null,\n    last_failure_class: sharedRefreshState.last_failure_class ?? null,\n    manual_force: sharedRefreshState.manual_force === true\n};\nctxSet(\"vehicle_primary_context_v1\", vehicleContext);\nconst previousReady = ctxGet(\"security_vehicle_primary_ready_logged\");\nif (previousReady !== vehicleContext.ready) {\n    node.log?.(\"contexto_vehicle_primary: contexto \" + (vehicleContext.ready ? \"ready (\" + vehicleContext.in_use_reason + \")\" : \"pending/stale\"));\n    ctxSet(\"security_vehicle_primary_ready_logged\", vehicleContext.ready);\n}\nmsg.payload = {\n    contract: \"security.vehicle_primary-context.v1\", kind: \"vehicle_primary_context\", context: vehicleContext,\n    event: msg.payload?.event, reason: msg.payload?.reason ?? (vehicleContext.ready ? vehicleContext.in_use_reason : \"vehicle_context_pending\"), source: \"vehicle_primary\",\n    trigger_entity: msg.payload?.trigger_entity, trigger_state: triggerState, trigger_prev_state: triggerPrevState,\n    confirmed_home_transition: isLocationEvent && vehicle_primary.ready === true && triggerPrevValid && triggerState === \"home\" && triggerPrevState !== \"home\",\n    refresh_cycle_id: msg.payload?.refresh_cycle_id,\n    updated_at: vehicleContext.updated_at,\n    valid: vehicleContext.state_valid,\n    ready: vehicleContext.ready,\n    lighting_ready: vehicleContext.lighting_ready,\n    stale: vehicleContext.stale,\n    readiness_reason:\n        vehicleContext.ready\n            ? vehicleContext.in_use_reason\n            : \"vehicle_context_pending\",\n};\n\nif (TEST_MODE) {\n    msg._location_test = true;\n    msg._location_test_case = msg._location_test_case ?? null;\n    msg.payload.test_mode = true;\n    msg.payload.test_case = msg._location_test_case;\n\n    if (arrival?.payload) {\n        arrival._location_test = true;\n        arrival._location_test_case = msg._location_test_case;\n        arrival.payload.test_mode = true;\n        arrival.payload.test_case = msg._location_test_case;\n    }\n}\n\nlet recoveryRequest = null;\n\n/*\n * Se o próprio tracker do vehicle_primary acabou de se mover, mas o motor está\n * stale, pedir recovery imediatamente. Isso reduz a chance de o carro\n * já estar desligado quando o próximo tick periódico tentar atualizar.\n */\nif (\n    !TEST_MODE &&\n    freshVehicleMovement\n) {\n    recoveryRequest = {\n        payload: {\n            kind: \"refresh_tick\",\n            origin: \"contexto_vehicle_primary\",\n            reason: engineFresh === true\n                ? \"vehicle_primary_location_changed\"\n                : \"vehicle_primary_location_changed_engine_stale\",\n            force_recovery: true,\n            require_lighting_ready: engineFresh !== true,\n            requested_at: Date.now()\n        }\n    };\n\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text:\n            \"movimento do vehicle_primary; refresh solicitado\"\n    });\n}\n\nreturn [msg, arrival, recoveryRequest];",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,
@@ -8176,7 +8400,7 @@
         "links": [
             "1ba5ecf650ac79b8"
         ],
-        "x": 155,
+        "x": 215,
         "y": 680,
         "wires": [
             [
@@ -8190,8 +8414,8 @@
         "z": "c22d8b12055e87f7",
         "g": "43a2bc9c218353ae",
         "name": "Coordenar refresh do vehicle_primary",
-        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg.payload?.kind !== \"refresh_command\") return null;\n\nconst INTERVAL_MS = 15 * 60 * 1000;\nconst BASE_RETRY_MS = 60 * 1000;\nconst IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst key = TEST_MODE\n    ? \"security_vehicle_primary_refresh_v1__test\"\n    : \"security_vehicle_primary_refresh_v1\";\nconst nowCandidate = Number(msg.payload?.test_now);\nconst now = TEST_MODE && Number.isFinite(nowCandidate)\n    ? nowCandidate\n    : Date.now();\nconst vehicleContext = TEST_MODE\n    ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n    : flow.get(\"vehicle_primary_context_v1\") ?? {};\n\nfunction stateGet() {\n    return TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\n}\n\nfunction stateSet(value) {\n    return TEST_MODE\n        ? flow.set(key, value)\n        : flow.set(key, value, \"persistent\");\n}\n\nlet state = stateGet();\nif (!state || typeof state !== \"object\" || Array.isArray(state)) {\n    state = {};\n}\n\nstate.version = 3;\nstate.attempts = Number.isFinite(state.attempts)\n    ? Math.max(0, Math.min(5, state.attempts))\n    : 0;\nstate.last_success_at = Number.isFinite(state.last_success_at) &&\n    state.last_success_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_success_at\n        : 0;\nstate.next_allowed_at = Number.isFinite(state.next_allowed_at) &&\n    state.next_allowed_at <= now + INTERVAL_MS\n        ? state.next_allowed_at\n        : 0;\nstate.last_attempt_at = Number.isFinite(state.last_attempt_at) &&\n    state.last_attempt_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_attempt_at\n        : 0;\nstate.in_flight_until = Number.isFinite(state.in_flight_until) &&\n    state.in_flight_until <= now + IN_FLIGHT_LEASE_MS\n        ? state.in_flight_until\n        : 0;\n\nfunction save(displayState, reason, extra = {}) {\n    state.state = displayState;\n    state.reason = reason ?? null;\n    state.updated_at = now;\n    state.next_retry_at = state.awaiting_evidence === true\n        ? state.next_allowed_at || null\n        : null;\n    state.cooldown_until = state.awaiting_evidence !== true &&\n        state.last_success_at > 0 &&\n        state.next_allowed_at > now\n            ? state.next_allowed_at\n            : null;\n    Object.assign(state, extra);\n    stateSet(state);\n}\n\nfunction blockedNotification(reason, waitS) {\n    if (msg.payload?.reason !== \"manual_force\") return null;\n    const retryAt = new Date(now + waitS * 1000).toLocaleTimeString(\n        \"pt-BR\",\n        { hour: \"2-digit\", minute: \"2-digit\", second: \"2-digit\" }\n    );\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message:\n            \"Já existe uma tentativa de atualização \" +\n            (reason === \"in_flight\" ? \"em andamento\" : \"aguardando resposta\") +\n            \". O clique foi recebido, mas nenhuma nova consulta foi enviada. \" +\n            `Próxima avaliação em ${waitS} s, às ${retryAt}.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    node.log?.(\n        \"VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard \" +\n        `reason=${reason} remaining_seconds=${waitS}`\n    );\n    return [null, null, msg];\n}\n\nif (state.request_in_flight === true && now < state.in_flight_until) {\n    const waitS = Math.max(1, Math.ceil((state.in_flight_until - now) / 1000));\n    save(\"in_flight\", state.recovery_reason ?? \"request_in_flight\", {\n        enabled: true\n    });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `Bluelink em andamento ${waitS}s`\n    });\n    return blockedNotification(\"in_flight\", waitS);\n}\n\nif (state.request_in_flight === true) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\n\nconst contextReady =\n    msg.payload?.vehicle_primary_ready === true ||\n    vehicleContext.ready === true;\nconst recoveryNeeded =\n    msg.payload?.recovery_needed === true ||\n    msg.payload?.force_recovery === true ||\n    msg.payload?.vehicle_primary_ready === false ||\n    contextReady !== true ||\n    state.awaiting_evidence === true;\nconst requireLightingReady =\n    msg.payload?.require_lighting_ready === true ||\n    (\n        state.awaiting_evidence === true &&\n        state.require_lighting_ready === true\n    );\nconst requestedReason = msg.payload?.reason ??\n    msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\n\n/* Recovery explícito, inclusive manual_force, quebra apenas cooldown de\n * sucesso. Nunca quebra backoff nem uma chamada em andamento. */\nconst successCooldownActive =\n    state.awaiting_evidence !== true &&\n    state.last_success_at > 0 &&\n    now < state.next_allowed_at;\nif (recoveryNeeded && successCooldownActive) state.next_allowed_at = 0;\n\nconst hour = new Date(now).getHours();\nconst daytime = hour >= 7 && hour < 22;\nconst enabled =\n    recoveryNeeded ||\n    msg.payload?.anyone_away === true ||\n    daytime;\n\nif (!enabled) {\n    save(\"waiting\", \"waiting_for_day_or_away\", {\n        enabled: false,\n        next_retry_at: null,\n        cooldown_until: null\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh vehicle_primary: noite com todos em casa\"\n    });\n    return null;\n}\n\nif (now < state.next_allowed_at) {\n    const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));\n    const waitingEvidence = state.awaiting_evidence === true;\n    save(waitingEvidence ? \"backoff\" : \"cooldown\", requestedReason, {\n        enabled: true\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: waitingEvidence\n            ? `retry Bluelink em ${waitS}s`\n            : `refresh vehicle_primary cooldown ${waitS}s`\n    });\n    return waitingEvidence\n        ? blockedNotification(\"backoff\", waitS)\n        : null;\n}\n\nstate.baseline_observed_at = {\n    location: Number(vehicleContext.location?.updated_at ?? 0),\n    engine: Number(vehicleContext.engine_updated_at ?? 0),\n    lock: Number(vehicleContext.lock_updated_at ?? 0)\n};\nstate.attempts = Math.min(5, state.attempts + 1);\nstate.last_attempt_at = now;\nstate.last_request_at = now;\nstate.next_allowed_at = now + Math.min(\n    INTERVAL_MS,\n    BASE_RETRY_MS * (2 ** (state.attempts - 1))\n);\nstate.awaiting_evidence = true;\nstate.request_in_flight = true;\nstate.in_flight_until = now + IN_FLIGHT_LEASE_MS;\nstate.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;\nstate.require_lighting_ready = requireLightingReady;\nstate.recovery_reason = requestedReason;\nstate.manual_force = requestedReason === \"manual_force\";\nsave(\"refreshing\", requestedReason, { enabled: true });\n\nnode.log?.(\n    (state.attempts > 1\n        ? \"VEHICLE_PRIMARY_REFRESH_RETRY\"\n        : \"VEHICLE_PRIMARY_REFRESH_REQUESTED\") +\n    \" attempt=\" + state.attempts +\n    \" reason=\" + requestedReason +\n    \" recovery=\" + String(recoveryNeeded) +\n    \" require_lighting_ready=\" + String(requireLightingReady) +\n    \" test_mode=\" + String(TEST_MODE)\n);\n\nmsg.payload.retry_attempt = state.attempts;\nmsg.payload.refresh_requested_at = now;\nmsg.payload.vehicle_primary_refresh_recovery = recoveryNeeded;\nmsg.payload.require_lighting_ready = requireLightingReady;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.test_mode = TEST_MODE;\n\nnode.status({\n    fill: TEST_MODE ? \"blue\" : (recoveryNeeded ? \"yellow\" : \"green\"),\n    shape: \"dot\",\n    text: TEST_MODE\n        ? `TESTE Bluelink #${state.attempts}: dry-run`\n        : (recoveryNeeded\n            ? `Bluelink #${state.attempts}: ${requestedReason}`\n            : `Bluelink #${state.attempts}: refresh real`)\n});\n\nreturn [msg, TEST_MODE ? null : msg, null];",
-        "outputs": 3,
+        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg.payload?.kind !== \"refresh_command\") return null;\n\nconst INTERVAL_MS = 15 * 60 * 1000;\nconst BASE_RETRY_MS = 60 * 1000;\nconst IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst key = TEST_MODE\n    ? \"security_vehicle_primary_refresh_v1__test\"\n    : \"security_vehicle_primary_refresh_v1\";\nconst nowCandidate = Number(msg.payload?.test_now);\nconst now = TEST_MODE && Number.isFinite(nowCandidate)\n    ? nowCandidate\n    : Date.now();\nconst vehicleContext = TEST_MODE\n    ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n    : flow.get(\"vehicle_primary_context_v1\") ?? {};\n\nfunction stateGet() {\n    return TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\n}\n\nfunction stateSet(value) {\n    return TEST_MODE\n        ? flow.set(key, value)\n        : flow.set(key, value, \"persistent\");\n}\n\nlet state = stateGet();\nif (!state || typeof state !== \"object\" || Array.isArray(state)) {\n    state = {};\n}\n\nstate.version = 3;\nstate.attempts = Number.isFinite(state.attempts)\n    ? Math.max(0, Math.min(5, state.attempts))\n    : 0;\nstate.last_success_at = Number.isFinite(state.last_success_at) &&\n    state.last_success_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_success_at\n        : 0;\nstate.next_allowed_at = Number.isFinite(state.next_allowed_at) &&\n    state.next_allowed_at <= now + INTERVAL_MS\n        ? state.next_allowed_at\n        : 0;\nstate.last_attempt_at = Number.isFinite(state.last_attempt_at) &&\n    state.last_attempt_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_attempt_at\n        : 0;\nstate.in_flight_until = Number.isFinite(state.in_flight_until) &&\n    state.in_flight_until <= now + IN_FLIGHT_LEASE_MS\n        ? state.in_flight_until\n        : 0;\nstate.failure_notified_at = Number.isFinite(state.failure_notified_at) &&\n    state.failure_notified_at <= now + FUTURE_TOLERANCE_MS\n        ? state.failure_notified_at\n        : 0;\n\nfunction save(displayState, reason, extra = {}) {\n    state.state = displayState;\n    state.reason = reason ?? null;\n    state.updated_at = now;\n    state.next_retry_at = state.awaiting_evidence === true\n        ? state.next_allowed_at || null\n        : null;\n    state.cooldown_until = state.awaiting_evidence !== true &&\n        state.last_success_at > 0 &&\n        state.next_allowed_at > now\n            ? state.next_allowed_at\n            : null;\n    Object.assign(state, extra);\n    stateSet(state);\n}\n\nfunction blockedNotification(reason, waitS) {\n    if (msg.payload?.reason !== \"manual_force\") return null;\n    const retryAt = new Date(now + waitS * 1000).toLocaleTimeString(\n        \"pt-BR\",\n        { hour: \"2-digit\", minute: \"2-digit\", second: \"2-digit\" }\n    );\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message:\n            \"Já existe uma tentativa de atualização \" +\n            (reason === \"in_flight\" ? \"em andamento\" : \"aguardando resposta\") +\n            \". O clique foi recebido, mas nenhuma nova consulta foi enviada. \" +\n            `Próxima avaliação em ${waitS} s, às ${retryAt}.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    node.log?.(\n        \"VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard \" +\n        `reason=${reason} remaining_seconds=${waitS}`\n    );\n    return [null, null, msg, null];\n}\n\nif (state.request_in_flight === true && now < state.in_flight_until) {\n    const waitS = Math.max(1, Math.ceil((state.in_flight_until - now) / 1000));\n    save(\"in_flight\", state.recovery_reason ?? \"request_in_flight\", {\n        enabled: true\n    });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `Bluelink em andamento ${waitS}s`\n    });\n    return blockedNotification(\"in_flight\", waitS);\n}\n\nif (state.request_in_flight === true) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\n\nconst contextReady =\n    msg.payload?.vehicle_primary_ready === true ||\n    vehicleContext.ready === true;\nconst recoveryNeeded =\n    msg.payload?.recovery_needed === true ||\n    msg.payload?.force_recovery === true ||\n    msg.payload?.vehicle_primary_ready === false ||\n    contextReady !== true ||\n    state.awaiting_evidence === true;\nconst requireLightingReady =\n    msg.payload?.require_lighting_ready === true ||\n    (\n        state.awaiting_evidence === true &&\n        state.require_lighting_ready === true\n    );\nconst requestedReason = msg.payload?.reason ??\n    msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\n\n/* Recovery explícito, inclusive manual_force, quebra apenas cooldown de\n * sucesso. Nunca quebra backoff nem uma chamada em andamento. */\nconst successCooldownActive =\n    state.awaiting_evidence !== true &&\n    state.last_success_at > 0 &&\n    now < state.next_allowed_at;\nif (recoveryNeeded && successCooldownActive) state.next_allowed_at = 0;\n\nconst hour = new Date(now).getHours();\nconst daytime = hour >= 7 && hour < 22;\nconst enabled =\n    recoveryNeeded ||\n    msg.payload?.anyone_away === true ||\n    daytime;\n\nif (!enabled) {\n    save(\"waiting\", \"waiting_for_day_or_away\", {\n        enabled: false,\n        next_retry_at: null,\n        cooldown_until: null\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh vehicle_primary: noite com todos em casa\"\n    });\n    return null;\n}\n\nif (now < state.next_allowed_at) {\n    const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));\n    const waitingEvidence = state.awaiting_evidence === true;\n    save(waitingEvidence ? \"backoff\" : \"cooldown\", requestedReason, {\n        enabled: true\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: waitingEvidence\n            ? `retry Bluelink em ${waitS}s`\n            : `refresh vehicle_primary cooldown ${waitS}s`\n    });\n    return waitingEvidence\n        ? blockedNotification(\"backoff\", waitS)\n        : null;\n}\n\nstate.baseline_observed_at = {\n    location: Number(vehicleContext.location?.updated_at ?? 0),\n    engine: Number(vehicleContext.engine_updated_at ?? 0),\n    lock: Number(vehicleContext.lock_updated_at ?? 0)\n};\nstate.attempts = Math.min(5, state.attempts + 1);\nstate.last_attempt_at = now;\nstate.last_request_at = now;\nstate.next_allowed_at = now + Math.min(\n    INTERVAL_MS,\n    BASE_RETRY_MS * (2 ** (state.attempts - 1))\n);\nstate.awaiting_evidence = true;\nstate.request_in_flight = true;\nstate.in_flight_until = now + IN_FLIGHT_LEASE_MS;\nstate.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;\nstate.require_lighting_ready = requireLightingReady;\nstate.recovery_reason = requestedReason;\nstate.manual_force = requestedReason === \"manual_force\";\nlet failureNotification = null;\nif (state.attempts >= 2 && !state.failure_notified_at) {\n    state.failure_notified_at = now;\n    state.last_failure_class = state.last_failure_class ?? \"no_fresh_data\";\n    failureNotification = {\n        ...msg,\n        payload: (msg.payload && typeof msg.payload === \"object\")\n            ? { ...msg.payload }\n            : msg.payload\n    };\n    failureNotification.payload = {\n        ...failureNotification.payload,\n        test_mode: TEST_MODE,\n        side_effect: \"notify:resident_primary\"\n    };\n    failureNotification.alert = {\n        title: TEST_MODE\n            ? \"TESTE — Falha ao atualizar veículo\"\n            : \"Falha ao atualizar veículo\",\n        message:\n            \"O Bluelink não publicou dados novos após a atualização. \" +\n            \"As retentativas automáticas continuam com backoff; \" +\n            \"verifique a conectividade do veículo e o serviço da Hyundai.\"\n    };\n}\nsave(\"refreshing\", requestedReason, { enabled: true });\n\nnode.log?.(\n    (state.attempts > 1\n        ? \"VEHICLE_PRIMARY_REFRESH_RETRY\"\n        : \"VEHICLE_PRIMARY_REFRESH_REQUESTED\") +\n    \" attempt=\" + state.attempts +\n    \" reason=\" + requestedReason +\n    \" recovery=\" + String(recoveryNeeded) +\n    \" require_lighting_ready=\" + String(requireLightingReady) +\n    \" test_mode=\" + String(TEST_MODE)\n);\n\nmsg.payload.retry_attempt = state.attempts;\nmsg.payload.refresh_requested_at = now;\nmsg.payload.vehicle_primary_refresh_recovery = recoveryNeeded;\nmsg.payload.require_lighting_ready = requireLightingReady;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.test_mode = TEST_MODE;\n\nnode.status({\n    fill: TEST_MODE ? \"blue\" : (recoveryNeeded ? \"yellow\" : \"green\"),\n    shape: \"dot\",\n    text: TEST_MODE\n        ? `TESTE Bluelink #${state.attempts}: dry-run`\n        : (recoveryNeeded\n            ? `Bluelink #${state.attempts}: ${requestedReason}`\n            : `Bluelink #${state.attempts}: refresh real`)\n});\n\nreturn [msg, TEST_MODE ? null : msg, null, failureNotification];",
+        "outputs": 4,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -8208,6 +8432,9 @@
             ],
             [
                 "vehicle_primary_manual_refresh_blocked_notification_v1"
+            ],
+            [
+                "vehicle_primary_refresh_notification_requested_out_v1"
             ]
         ]
     },
@@ -8221,8 +8448,8 @@
         "links": [
             "555422f47d3a742b"
         ],
-        "x": 645,
-        "y": 720,
+        "x": 630,
+        "y": 780,
         "wires": []
     },
     {
@@ -8255,8 +8482,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 880,
+        "x": 500,
+        "y": 840,
         "wires": [
             [
                 "vehicle_primary_arrival_refresh_out_v1"
@@ -8290,8 +8517,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1100,
-        "y": 660,
+        "x": 990,
+        "y": 700,
         "wires": [
             [
                 "vehicle_primary_refresh_accepted_v1"
@@ -8368,7 +8595,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1120,
+        "y": 1240,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8394,7 +8621,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1260,
+        "y": 1380,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8420,7 +8647,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1300,
+        "y": 1420,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8446,7 +8673,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1340,
+        "y": 1460,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8472,7 +8699,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1400,
+        "y": 1520,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8498,7 +8725,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1440,
+        "y": 1560,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8519,7 +8746,7 @@
         "finalize": "",
         "libs": [],
         "x": 820,
-        "y": 1300,
+        "y": 1420,
         "wires": [
             [
                 "2ff281276fc1d020"
@@ -8538,7 +8765,7 @@
             "882f727e98158ffe"
         ],
         "x": 1110,
-        "y": 1300,
+        "y": 1420,
         "wires": []
     },
     {
@@ -8559,8 +8786,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1760,
-        "y": 660,
+        "x": 1510,
+        "y": 700,
         "wires": [
             [
                 "ba55143f392aa361"
@@ -8636,8 +8863,8 @@
             "8907830bb7f6c40c"
         ],
         "uncaught": false,
-        "x": 1220,
-        "y": 940,
+        "x": 1240,
+        "y": 920,
         "wires": [
             [
                 "vehicle_primary_api_error_log_v1"
@@ -8650,16 +8877,20 @@
         "z": "c22d8b12055e87f7",
         "g": "43a2bc9c218353ae",
         "name": "Registrar erro da API do vehicle_primary",
-        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst failureClass = /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.last_failure_class = failureClass;\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nflow.set(key, state, \"persistent\");\nnode.error(\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message\n);\nreturn null;",
-        "outputs": 0,
+        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst failureClass = /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.last_failure_class = failureClass;\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nlet notification = null;\nif (!Number.isFinite(state.failure_notified_at)) {\n    state.failure_notified_at = now;\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: false,\n        side_effect: \"notify:resident_primary\"\n    };\n    msg.alert = {\n        title: \"Erro ao atualizar veículo\",\n        message:\n            \"A atualização do veículo falhou antes de receber novos dados. \" +\n            \"As retentativas automáticas permanecem em backoff; verifique \" +\n            \"a integração Bluelink.\"\n    };\n    notification = msg;\n}\nflow.set(key, state, \"persistent\");\nnode.error(\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message\n);\nreturn notification;",
+        "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1580,
-        "y": 940,
-        "wires": []
+        "x": 1520,
+        "y": 960,
+        "wires": [
+            [
+                "vehicle_primary_refresh_error_notification_out_v1"
+            ]
+        ]
     },
     {
         "id": "vehicle_primary_refresh_telemetry_tick_v1",
@@ -8751,8 +8982,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 500,
-        "y": 800,
+        "x": 930,
+        "y": 940,
         "wires": [
             []
         ]
@@ -8765,7 +8996,7 @@
         "name": "1) RESETAR  2) escolher motor ON/OFF  3) executar 1/3 → 2/3 → 3/3",
         "info": "O motor sintético é cumulativo: os passos de localização preservam o último estado ON/OFF escolhido. Todo o cenário usa test_mode e não altera as entidades reais do veículo.",
         "x": 890,
-        "y": 1200,
+        "y": 1320,
         "wires": []
     },
     {
@@ -8787,7 +9018,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1160,
+        "y": 1280,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8813,7 +9044,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1200,
+        "y": 1320,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -8833,8 +9064,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 750,
-        "y": 660,
+        "x": 715,
+        "y": 700,
         "wires": [
             [
                 "8907830bb7f6c40c"
@@ -8857,8 +9088,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1410,
-        "y": 660,
+        "x": 1260,
+        "y": 700,
         "wires": [
             [
                 "7a99920b093547ea"
@@ -8875,8 +9106,8 @@
         "links": [
             "vehicle_primary_arrival_refresh_in_v1"
         ],
-        "x": 635,
-        "y": 860,
+        "x": 705,
+        "y": 820,
         "wires": []
     },
     {
@@ -8888,7 +9119,7 @@
         "links": [
             "vehicle_primary_arrival_refresh_out_v1"
         ],
-        "x": 175,
+        "x": 215,
         "y": 760,
         "wires": [
             [
@@ -8909,8 +9140,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 750,
-        "y": 900,
+        "x": 795,
+        "y": 860,
         "wires": [
             [
                 "16396e34ff530ac7"
@@ -8973,7 +9204,8 @@
         "name": "Receber efeitos simulados",
         "links": [
             "vehicle_primary_refresh_dry_run_out_v1",
-            "vehicle_primary_trip_dry_run_out_v1"
+            "vehicle_primary_trip_dry_run_out_v1",
+            "vehicle_primary_refresh_notification_dry_run_out_v1"
         ],
         "x": 1320,
         "y": 860,
@@ -12191,5 +12423,2194 @@
                 "131d1f73e8230b27"
             ]
         ]
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_guard_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Separar alerta real e dry-run",
+        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (!TEST_MODE) return [msg, null];\n\nmsg.payload = {\n    ...msg.payload,\n    test_mode: true,\n    side_effect: \"notify:resident_primary\",\n    simulated: true,\n    dispatched: false,\n    notification_sent: false\n};\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1010,
+        "y": 1060,
+        "wires": [
+            [
+                "vehicle_primary_refresh_notify_primary_v1"
+            ],
+            [
+                "vehicle_primary_refresh_notification_dry_run_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_refresh_notify_primary_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Avisar resident_primary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1310,
+        "y": 1040,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_dry_run_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Alerta TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_dry_run_in_v1"
+        ],
+        "x": 1325,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_requested_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Falha de refresh → alerta",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_refresh_notification_in_v1"
+        ],
+        "x": 635,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_refresh_error_notification_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Erro do serviço → alerta",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_refresh_notification_in_v1"
+        ],
+        "x": 1745,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_in_v1",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Receber falha para alerta",
+        "links": [
+            "vehicle_primary_refresh_notification_requested_out_v1",
+            "vehicle_primary_refresh_error_notification_out_v1"
+        ],
+        "x": 795,
+        "y": 1060,
+        "wires": [
+            [
+                "vehicle_primary_refresh_notification_guard_v1"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__git_backup_tab__catch",
+            "global_observer_coverage__git_backup_tab__status",
+            "global_observer_coverage__git_backup_tab__annotate",
+            "global_observer_coverage__git_backup_tab__out"
+        ],
+        "x": 1680,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__catch",
+        "type": "catch",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1820,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__status",
+        "type": "status",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1830,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__annotate",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"git_backup_tab\",\"flow_label\":\"backup_git\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2100,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2345,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__group",
+        "type": "group",
+        "z": "29d64664bf8cbde8",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__29d64664bf8cbde8__catch",
+            "global_observer_coverage__29d64664bf8cbde8__status",
+            "global_observer_coverage__29d64664bf8cbde8__annotate",
+            "global_observer_coverage__29d64664bf8cbde8__out"
+        ],
+        "x": 2040,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__catch",
+        "type": "catch",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2180,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__29d64664bf8cbde8__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__status",
+        "type": "status",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2190,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__29d64664bf8cbde8__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__annotate",
+        "type": "function",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"29d64664bf8cbde8\",\"flow_label\":\"garagem\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2460,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__29d64664bf8cbde8__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__out",
+        "type": "link out",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2705,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__group",
+        "type": "group",
+        "z": "shared_integrations_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__shared_integrations_tab__catch",
+            "global_observer_coverage__shared_integrations_tab__status",
+            "global_observer_coverage__shared_integrations_tab__annotate",
+            "global_observer_coverage__shared_integrations_tab__out"
+        ],
+        "x": 740,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__catch",
+        "type": "catch",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 880,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__shared_integrations_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__status",
+        "type": "status",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 890,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__shared_integrations_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__annotate",
+        "type": "function",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"shared_integrations_tab\",\"flow_label\":\"integracoes_compartilhadas\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__shared_integrations_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__out",
+        "type": "link out",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 1405,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__group",
+        "type": "group",
+        "z": "ce258dec9814b96b",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__ce258dec9814b96b__catch",
+            "global_observer_coverage__ce258dec9814b96b__status",
+            "global_observer_coverage__ce258dec9814b96b__annotate",
+            "global_observer_coverage__ce258dec9814b96b__out"
+        ],
+        "x": 2300,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__catch",
+        "type": "catch",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2440,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__ce258dec9814b96b__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__status",
+        "type": "status",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2450,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__ce258dec9814b96b__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__annotate",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"ce258dec9814b96b\",\"flow_label\":\"iluminacao_externa\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2720,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__ce258dec9814b96b__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2965,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__group",
+        "type": "group",
+        "z": "alarm_house_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__alarm_house_tab__catch",
+            "global_observer_coverage__alarm_house_tab__status",
+            "global_observer_coverage__alarm_house_tab__annotate",
+            "global_observer_coverage__alarm_house_tab__out"
+        ],
+        "x": 1960,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__catch",
+        "type": "catch",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2100,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__alarm_house_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__status",
+        "type": "status",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2110,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__alarm_house_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__annotate",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"alarm_house_tab\",\"flow_label\":\"alarme_casa\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2380,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__alarm_house_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2625,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "type": "group",
+        "z": "456b32bd5d59b0d6",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__456b32bd5d59b0d6__catch",
+            "global_observer_coverage__456b32bd5d59b0d6__status",
+            "global_observer_coverage__456b32bd5d59b0d6__annotate",
+            "global_observer_coverage__456b32bd5d59b0d6__out"
+        ],
+        "x": 5320,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__catch",
+        "type": "catch",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 5460,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__456b32bd5d59b0d6__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__status",
+        "type": "status",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 5470,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__456b32bd5d59b0d6__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__annotate",
+        "type": "function",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"456b32bd5d59b0d6\",\"flow_label\":\"resfriamento_raspberry_pi\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5740,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__456b32bd5d59b0d6__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 5985,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__group",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__storage_health_tab__catch",
+            "global_observer_coverage__storage_health_tab__status",
+            "global_observer_coverage__storage_health_tab__annotate",
+            "global_observer_coverage__storage_health_tab__out"
+        ],
+        "x": 2220,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__catch",
+        "type": "catch",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2360,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__storage_health_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__status",
+        "type": "status",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2370,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__storage_health_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__annotate",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"storage_health_tab\",\"flow_label\":\"storage_health\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2640,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__storage_health_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2885,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__group",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_internet_tab__catch",
+            "global_observer_coverage__monitoramento_internet_tab__status",
+            "global_observer_coverage__monitoramento_internet_tab__annotate",
+            "global_observer_coverage__monitoramento_internet_tab__out"
+        ],
+        "x": 1540,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1680,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_internet_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__status",
+        "type": "status",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1690,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_internet_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_internet_tab\",\"flow_label\":\"monitoramento_internet\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1960,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_internet_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__out",
+        "type": "link out",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2205,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_zigbee_tab__catch",
+            "global_observer_coverage__monitoramento_zigbee_tab__status",
+            "global_observer_coverage__monitoramento_zigbee_tab__annotate",
+            "global_observer_coverage__monitoramento_zigbee_tab__out"
+        ],
+        "x": 1480,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1620,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__status",
+        "type": "status",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1630,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_zigbee_tab\",\"flow_label\":\"monitoramento_zigbee\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1900,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2145,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "type": "group",
+        "z": "ea0a6aa0d24ff863",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__ea0a6aa0d24ff863__catch",
+            "global_observer_coverage__ea0a6aa0d24ff863__status",
+            "global_observer_coverage__ea0a6aa0d24ff863__annotate",
+            "global_observer_coverage__ea0a6aa0d24ff863__out"
+        ],
+        "x": 1380,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__catch",
+        "type": "catch",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1520,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__ea0a6aa0d24ff863__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__status",
+        "type": "status",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1530,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__ea0a6aa0d24ff863__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__annotate",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"ea0a6aa0d24ff863\",\"flow_label\":\"localizacao_pessoas\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1800,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__ea0a6aa0d24ff863__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2045,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__group",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__c22d8b12055e87f7__catch",
+            "global_observer_coverage__c22d8b12055e87f7__status",
+            "global_observer_coverage__c22d8b12055e87f7__annotate",
+            "global_observer_coverage__c22d8b12055e87f7__out"
+        ],
+        "x": 1940,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__catch",
+        "type": "catch",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2080,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__c22d8b12055e87f7__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__status",
+        "type": "status",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2090,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__c22d8b12055e87f7__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__annotate",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"c22d8b12055e87f7\",\"flow_label\":\"contexto_vehicle_primary\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2360,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__c22d8b12055e87f7__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2605,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__group",
+        "type": "group",
+        "z": "62bb822e033d1623",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__62bb822e033d1623__catch",
+            "global_observer_coverage__62bb822e033d1623__status",
+            "global_observer_coverage__62bb822e033d1623__annotate",
+            "global_observer_coverage__62bb822e033d1623__out"
+        ],
+        "x": 1220,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__catch",
+        "type": "catch",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1360,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__62bb822e033d1623__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__status",
+        "type": "status",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1370,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__62bb822e033d1623__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__annotate",
+        "type": "function",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"62bb822e033d1623\",\"flow_label\":\"contexto_chegadas\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1640,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__62bb822e033d1623__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__out",
+        "type": "link out",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 1885,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__group",
+        "type": "group",
+        "z": "6b7552efb85343f4",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__6b7552efb85343f4__catch",
+            "global_observer_coverage__6b7552efb85343f4__status",
+            "global_observer_coverage__6b7552efb85343f4__annotate",
+            "global_observer_coverage__6b7552efb85343f4__out"
+        ],
+        "x": 3160,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__catch",
+        "type": "catch",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 3300,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__6b7552efb85343f4__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__status",
+        "type": "status",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 3310,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__6b7552efb85343f4__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__annotate",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"6b7552efb85343f4\",\"flow_label\":\"iluminacao_seguranca\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3580,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__6b7552efb85343f4__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3825,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__group",
+        "type": "group",
+        "z": "1f468eaeef0733dd",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__1f468eaeef0733dd__catch",
+            "global_observer_coverage__1f468eaeef0733dd__status",
+            "global_observer_coverage__1f468eaeef0733dd__annotate",
+            "global_observer_coverage__1f468eaeef0733dd__out"
+        ],
+        "x": 2160,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__catch",
+        "type": "catch",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2300,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__1f468eaeef0733dd__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__status",
+        "type": "status",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2310,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__1f468eaeef0733dd__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__annotate",
+        "type": "function",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"1f468eaeef0733dd\",\"flow_label\":\"alarme_desarme_chegada\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2580,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__1f468eaeef0733dd__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__out",
+        "type": "link out",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2825,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__group",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__codex_alertas_tab__catch",
+            "global_observer_coverage__codex_alertas_tab__status",
+            "global_observer_coverage__codex_alertas_tab__annotate",
+            "global_observer_coverage__codex_alertas_tab__out"
+        ],
+        "x": 1640,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__catch",
+        "type": "catch",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1780,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__status",
+        "type": "status",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1790,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__annotate",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"codex_alertas_tab\",\"flow_label\":\"alertas_codex\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2060,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__out",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2305,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_tuya_tab__catch",
+            "global_observer_coverage__monitoramento_tuya_tab__status",
+            "global_observer_coverage__monitoramento_tuya_tab__annotate",
+            "global_observer_coverage__monitoramento_tuya_tab__out"
+        ],
+        "x": 1440,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1580,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_tuya_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__status",
+        "type": "status",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1590,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_tuya_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_tuya_tab\",\"flow_label\":\"monitoramento_tuya\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1860,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_tuya_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__out",
+        "type": "link out",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2105,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__resident_notifications_tab__catch",
+            "global_observer_coverage__resident_notifications_tab__status",
+            "global_observer_coverage__resident_notifications_tab__annotate",
+            "global_observer_coverage__resident_notifications_tab__out"
+        ],
+        "x": 1680,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__catch",
+        "type": "catch",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1820,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__resident_notifications_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__status",
+        "type": "status",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1830,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__resident_notifications_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__annotate",
+        "type": "function",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"resident_notifications_tab\",\"flow_label\":\"notificacoes_chegadas_residentes\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2100,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__resident_notifications_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__out",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2345,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_flow_observer_tab",
+        "type": "tab",
+        "label": "observabilidade_global",
+        "disabled": false,
+        "info": "Recebe erros e estados de indisponibilidade de todas as abas, deduplica incidentes e notifica resident_primary via Home Assistant.",
+        "env": []
+    },
+    {
+        "id": "global_observer_production_group",
+        "type": "group",
+        "z": "global_flow_observer_tab",
+        "name": "Monitor global e entrega central pelo Home Assistant",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_architecture",
+            "global_observer_events_in",
+            "global_observer_test_evaluate_in",
+            "global_observer_test_delivery_in",
+            "global_observer_ingest",
+            "global_observer_tick",
+            "global_observer_evaluate",
+            "global_observer_dispatch_guard",
+            "global_observer_dry_run_out",
+            "global_observer_notify_primary",
+            "global_observer_notification_ack",
+            "global_observer_notification_catch",
+            "global_observer_notification_failure"
+        ],
+        "x": 64,
+        "y": 39,
+        "w": 1570,
+        "h": 302
+    },
+    {
+        "id": "global_observer_architecture",
+        "type": "comment",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Erros alertam imediatamente; status de falha exige 1 min; incidentes repetidos silenciam por 6 h. HA indisponível usa queue=all.",
+        "info": "Cada aba possui catch/status universais e um link nomeado. O watchdog do próprio Node-RED permanece no Home Assistant, fora deste runtime.",
+        "x": 690,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "global_observer_events_in",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Receber falhas de todas as abas",
+        "links": [
+            "global_observer_coverage__git_backup_tab__out",
+            "global_observer_coverage__29d64664bf8cbde8__out",
+            "global_observer_coverage__shared_integrations_tab__out",
+            "global_observer_coverage__ce258dec9814b96b__out",
+            "global_observer_coverage__alarm_house_tab__out",
+            "global_observer_coverage__456b32bd5d59b0d6__out",
+            "global_observer_coverage__storage_health_tab__out",
+            "global_observer_coverage__monitoramento_internet_tab__out",
+            "global_observer_coverage__monitoramento_zigbee_tab__out",
+            "global_observer_coverage__ea0a6aa0d24ff863__out",
+            "global_observer_coverage__c22d8b12055e87f7__out",
+            "global_observer_coverage__62bb822e033d1623__out",
+            "global_observer_coverage__6b7552efb85343f4__out",
+            "global_observer_coverage__1f468eaeef0733dd__out",
+            "global_observer_coverage__codex_alertas_tab__out",
+            "global_observer_coverage__monitoramento_tuya_tab__out",
+            "global_observer_coverage__resident_notifications_tab__out",
+            "global_observer_test_event_out"
+        ],
+        "x": 120,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_ingest"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_ingest",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Classificar erro ou status",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_v1__test\"\n    : \"global_flow_observer_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst now = Number(msg.observer_now ?? Date.now());\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\nconst previousState = getState();\nconst state = previousState?.version === 2\n    ? previousState\n    : {\n        version: 2,\n        errors: previousState?.errors ?? {},\n        status_sources: {},\n        status_incidents: {}\n    };\nstate.errors = state.errors ?? {};\nstate.status_sources = state.status_sources ?? {};\nstate.status_incidents = state.status_incidents ?? {};\n\nconst observer = msg._global_observer ?? {};\nconst flowId = String(observer.flow_id ?? \"unknown\").slice(0, 100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceType = String(source.type ?? \"unknown\").slice(0, 80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\n\nfunction hash(value) {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n}\n\nfunction failureClass(value) {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) {\n        return \"autenticação\";\n    }\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) {\n        return \"indisponibilidade\";\n    }\n    return \"erro de execução\";\n}\n\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = failureClass(errorText);\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    const notificationDue =\n        !Number.isFinite(previous.notified_at) ||\n        now - previous.notified_at >= 6 * 60 * 60 * 1000;\n    state.errors[key] = {\n        flow_id: flowId,\n        flow_label: flowLabel,\n        source_id: sourceId,\n        source_type: sourceType,\n        source_name: sourceName,\n        failure_class: classification,\n        first_seen_at: previous.first_seen_at ?? now,\n        last_seen_at: now,\n        notified_at: notificationDue ? now : previous.notified_at\n    };\n    for (const [entryKey, entry] of Object.entries(state.errors)) {\n        if (now - Number(entry.last_seen_at ?? now) > 7 * 24 * 60 * 60 * 1000) {\n            delete state.errors[entryKey];\n        }\n    }\n    setState(state);\n    if (!notificationDue) return null;\n    msg.payload = {\n        test_mode: TEST_MODE,\n        observer_kind: \"node_error\",\n        flow_id: flowId,\n        source_id: sourceId\n    };\n    msg.alert = {\n        title: TEST_MODE\n            ? \"TESTE — Falha em fluxo Node-RED\"\n            : \"Falha em fluxo Node-RED\",\n        message:\n            `O fluxo “${flowLabel}” registrou ${classification} no nó ` +\n            `“${sourceName}”. O mesmo erro será silenciado por 6 horas ` +\n            \"para evitar notificações repetidas.\"\n    };\n    return msg;\n}\n\nif (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const haTypes = new Set([\n        \"api-call-service\",\n        \"api-current-state\",\n        \"api-get-history\",\n        \"api-render-template\",\n        \"events-all\",\n        \"ha-api\",\n        \"poll-state\",\n        \"server-events\",\n        \"server-state-changed\",\n        \"trigger-state\"\n    ]);\n    const monitoredConnectionType =\n        haTypes.has(sourceType) ||\n        sourceType.startsWith(\"ha-\") ||\n        sourceType === \"mqtt in\" ||\n        sourceType === \"mqtt out\" ||\n        sourceType === \"DuloNodeDevice\" ||\n        sourceType === \"DuloNodeHub\";\n    if (!monitoredConnectionType) {\n        delete state.status_sources[`${flowId}:${sourceId}`];\n        setState(state);\n        return null;\n    }\n    const sharedConnectionType =\n        haTypes.has(sourceType) ||\n        sourceType.startsWith(\"ha-\") ||\n        sourceType === \"mqtt in\" ||\n        sourceType === \"mqtt out\";\n    const connectionFailure =\n        /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect|connecting|conectando)/.test(text);\n    const nodeFailure =\n        connectionFailure ||\n        msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    // HA nodes also use red status for domain conditions and rejected service\n    // calls. Those failures are handled by catch and must not masquerade as a\n    // shared Home Assistant outage.\n    const failing = sharedConnectionType ? connectionFailure : nodeFailure;\n    let incidentKey = `node:${flowId}:${sourceId}`;\n    let incidentKind = \"node_status\";\n    if (haTypes.has(sourceType) || sourceType.startsWith(\"ha-\")) {\n        incidentKey = \"connection:home_assistant\";\n        incidentKind = \"home_assistant\";\n    } else if (sourceType === \"mqtt in\" || sourceType === \"mqtt out\") {\n        incidentKey = \"connection:mqtt\";\n        incidentKind = \"mqtt\";\n    }\n    const key = `${flowId}:${sourceId}`;\n    if (failing) {\n        const previous = state.status_sources[key];\n        state.status_sources[key] = {\n            flow_id: flowId,\n            flow_label: flowLabel,\n            source_id: sourceId,\n            source_type: sourceType,\n            source_name: sourceName,\n            incident_key: incidentKey,\n            incident_kind: incidentKind,\n            first_seen_at:\n                previous?.incident_key === incidentKey\n                    ? previous.first_seen_at\n                    : now,\n            last_seen_at: now\n        };\n    } else {\n        delete state.status_sources[key];\n    }\n    setState(state);\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_dispatch_guard"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_tick",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Confirmar indisponibilidade a cada 30 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "10",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 260,
+        "wires": [
+            [
+                "global_observer_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_evaluate_in",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Receber avaliação TESTE",
+        "links": [
+            "global_observer_test_evaluate_out"
+        ],
+        "x": 305,
+        "y": 300,
+        "wires": [
+            [
+                "global_observer_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_evaluate",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Confirmar falhas persistentes",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_v1__test\"\n    : \"global_flow_observer_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst now = Number(msg.observer_now ?? Date.now());\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\nconst previousState = getState();\nconst state = previousState?.version === 2\n    ? previousState\n    : {\n        version: 2,\n        errors: previousState?.errors ?? {},\n        status_sources: {},\n        status_incidents: {}\n    };\nstate.status_sources = state.status_sources ?? {};\nstate.status_incidents = state.status_incidents ?? {};\n\nconst grouped = new Map();\nfor (const source of Object.values(state.status_sources)) {\n    const key = source.incident_key;\n    const current = grouped.get(key) ?? {\n        kind: source.incident_kind,\n        first_seen_at: Number(source.first_seen_at ?? now),\n        sources: []\n    };\n    current.first_seen_at = Math.min(\n        current.first_seen_at,\n        Number(source.first_seen_at ?? now)\n    );\n    current.sources.push(source);\n    grouped.set(key, current);\n}\n\nconst alerts = [];\nfor (const [key, incident] of grouped) {\n    if (now - incident.first_seen_at < 60 * 1000) continue;\n    const previous = state.status_incidents[key] ?? {};\n    const notificationDue =\n        !Number.isFinite(previous.notified_at) ||\n        now - previous.notified_at >= 6 * 60 * 60 * 1000;\n    state.status_incidents[key] = {\n        kind: incident.kind,\n        first_seen_at: previous.first_seen_at ?? incident.first_seen_at,\n        last_seen_at: now,\n        notified_at: notificationDue ? now : previous.notified_at\n    };\n    if (!notificationDue) continue;\n\n    const first = incident.sources[0];\n    let title = \"Nó Node-RED indisponível\";\n    let message =\n        `O nó “${first.source_name}” do fluxo “${first.flow_label}” ` +\n        \"permanece em estado de falha há pelo menos 1 minuto.\";\n    if (incident.kind === \"home_assistant\") {\n        title = \"Node-RED sem Home Assistant\";\n        message =\n            \"Os fluxos perderam a conexão com o Home Assistant por pelo \" +\n            \"menos 1 minuto. As chamadas configuradas com fila serão \" +\n            \"retomadas e este push será entregue quando a conexão voltar.\";\n    } else if (incident.kind === \"mqtt\") {\n        title = \"Node-RED sem MQTT\";\n        message =\n            \"Os fluxos perderam a conexão com o broker MQTT por pelo menos \" +\n            \"1 minuto. Verifique o Mosquitto e a rede local.\";\n    }\n    alerts.push({\n        _global_observer_test: TEST_MODE,\n        payload: {\n            test_mode: TEST_MODE,\n            observer_kind: \"node_unavailable\",\n            incident_key: key\n        },\n        alert: {\n            title: TEST_MODE ? `TESTE — ${title}` : title,\n            message\n        }\n    });\n}\n\nfor (const key of Object.keys(state.status_incidents)) {\n    if (!grouped.has(key)) delete state.status_incidents[key];\n}\nsetState(state);\nreturn [alerts.length ? alerts : null];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 260,
+        "wires": [
+            [
+                "global_observer_dispatch_guard"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_delivery_in",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Receber smoke test real",
+        "links": [
+            "global_observer_test_delivery_out"
+        ],
+        "x": 615,
+        "y": 120,
+        "wires": [
+            [
+                "global_observer_dispatch_guard"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_dispatch_guard",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Separar produção, TESTE real e dry-run",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst DELIVERY_TEST = msg._observer_delivery_test === true;\n\nif (TEST_MODE && !DELIVERY_TEST) return [null, msg];\n\nif (DELIVERY_TEST) {\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: true,\n        notification_delivery_under_test: true\n    };\n    msg.alert = {\n        title: \"TESTE — Monitor global do Node-RED\",\n        message:\n            \"TESTE de entrega: o canal central de falhas dos fluxos \" +\n            \"Node-RED conseguiu solicitar esta notificação ao Home Assistant.\"\n    };\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 180,
+        "wires": [
+            [
+                "global_observer_notify_primary"
+            ],
+            [
+                "global_observer_dry_run_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_dry_run_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "TESTE simulado → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "global_observer_dry_run_in"
+        ],
+        "x": 1015,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "global_observer_notify_primary",
+        "type": "api-call-service",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Avisar resident_primary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":_observer_delivery_test=true ? \"TESTE — Monitor global do Node-RED\" : alert.title,\"message\":_observer_delivery_test=true ? \"TESTE de entrega do canal central de falhas do Node-RED via Home Assistant.\" : alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1110,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_notification_ack"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_notification_ack",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Confirmar aceite pelo Home Assistant",
+        "func": "const deliveryTest = msg._observer_delivery_test === true;\nnode.log(\"NODERED_GLOBAL_NOTIFICATION_ACCEPTED kind=\" + String(msg.payload?.observer_kind ?? \"unknown\") + \" delivery_test=\" + String(deliveryTest));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1410,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "global_observer_notification_catch",
+        "type": "catch",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Capturar falha do canal de notificação",
+        "scope": [
+            "global_observer_notify_primary"
+        ],
+        "uncaught": false,
+        "x": 1120,
+        "y": 280,
+        "wires": [
+            [
+                "global_observer_notification_failure"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_notification_failure",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Registrar falha sem recursão",
+        "func": "node.warn(\"NODERED_GLOBAL_NOTIFICATION_FAILED source=\" + String(msg.error?.source?.type ?? \"unknown\"));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1410,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "global_observer_test_group",
+        "type": "group",
+        "z": "global_flow_observer_tab",
+        "name": "Testes: dry-run completo e smoke test explícito de entrega",
+        "style": {
+            "label": true,
+            "color": "#4b93d1"
+        },
+        "nodes": [
+            "global_observer_test_instructions",
+            "global_observer_test_reset",
+            "global_observer_test_reset_state",
+            "global_observer_test_error",
+            "global_observer_test_status_failure",
+            "global_observer_test_event_out",
+            "global_observer_test_evaluate",
+            "global_observer_test_evaluate_out",
+            "global_observer_test_delivery",
+            "global_observer_test_delivery_out",
+            "global_observer_dry_run_in",
+            "global_observer_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 379,
+        "w": 1570,
+        "h": 322
+    },
+    {
+        "id": "global_observer_test_instructions",
+        "type": "comment",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE: 1 reset; 2 erro; 3 status indisponível; 4 avaliar 1 min; 5 opcional: push real identificado como TESTE",
+        "info": "Erro e status atravessam classificação, dedupe e guard até o dry-run. Somente o passo 5 chama o Home Assistant; é o smoke test do canal.",
+        "x": 710,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "global_observer_test_reset",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 500,
+        "wires": [
+            [
+                "global_observer_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_reset_state",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "Resetar estado de teste",
+        "func": "flow.set(\"global_flow_observer_v1__test\", undefined);\nflow.set(\"global_flow_observer_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "global_observer_test_error",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 2: erro de nó",
+        "props": [
+            {
+                "p": "error",
+                "v": "{\"message\":\"synthetic failure\",\"source\":{\"id\":\"test_node\",\"type\":\"function\",\"name\":\"Nó sintético\"}}",
+                "vt": "json"
+            },
+            {
+                "p": "_global_observer",
+                "v": "{\"flow_id\":\"test_flow\",\"flow_label\":\"Fluxo sintético\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "observer_now",
+                "v": "100000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 190,
+        "y": 560,
+        "wires": [
+            [
+                "global_observer_test_event_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_status_failure",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 3: indisponível",
+        "props": [
+            {
+                "p": "status",
+                "v": "{\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"disconnected\",\"source\":{\"id\":\"test_ha_node\",\"type\":\"api-call-service\",\"name\":\"HA sintético\"}}",
+                "vt": "json"
+            },
+            {
+                "p": "_global_observer",
+                "v": "{\"flow_id\":\"test_flow\",\"flow_label\":\"Fluxo sintético\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "observer_now",
+                "v": "200000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 200,
+        "y": 620,
+        "wires": [
+            [
+                "global_observer_test_event_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_event_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "Eventos TESTE → classificador",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 465,
+        "y": 590,
+        "wires": []
+    },
+    {
+        "id": "global_observer_test_evaluate",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 4: avaliar após 1 min",
+        "props": [
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "observer_now",
+                "v": "261000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 730,
+        "y": 620,
+        "wires": [
+            [
+                "global_observer_test_evaluate_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_evaluate_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "Avaliação TESTE → produção",
+        "mode": "link",
+        "links": [
+            "global_observer_test_evaluate_in"
+        ],
+        "x": 985,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "global_observer_test_delivery",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 5: enviar push real",
+        "props": [
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_observer_delivery_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "payload.observer_kind",
+                "v": "delivery_smoke_test",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 740,
+        "y": 540,
+        "wires": [
+            [
+                "global_observer_test_delivery_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_delivery_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "Smoke test → canal real",
+        "mode": "link",
+        "links": [
+            "global_observer_test_delivery_in"
+        ],
+        "x": 985,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "global_observer_dry_run_in",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "Receber efeito simulado",
+        "links": [
+            "global_observer_dry_run_out"
+        ],
+        "x": 1160,
+        "y": 640,
+        "wires": [
+            [
+                "global_observer_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_dry_run_terminal",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE FINAL: notificação simulada",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    notification_sent: false,\n    observer_kind: msg.payload?.observer_kind ?? \"unknown\",\n    completed_at: Date.now()\n};\nflow.set(\"global_flow_observer_last_dry_run_v1\", result);\nnode.status({\n    fill: \"blue\",\n    shape: \"dot\",\n    text: `TESTE ${result.observer_kind}: push bloqueado`\n});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1410,
+        "y": 640,
+        "wires": []
     }
 ]

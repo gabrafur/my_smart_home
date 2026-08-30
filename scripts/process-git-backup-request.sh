@@ -33,6 +33,11 @@ if "$backup_script"; then
   :
 else
   exit_code=$?
+  if [ "$exit_code" -eq 75 ]; then
+    # Keep the claimed request in place. The minute worker will resume it
+    # after the shared validation slot or resource preflight becomes free.
+    exit 75
+  fi
   status=failed
 fi
 
