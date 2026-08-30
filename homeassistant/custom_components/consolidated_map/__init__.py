@@ -17,11 +17,6 @@ from homeassistant.util.yaml import Secrets, load_yaml_dict
 DOMAIN = "consolidated_map"
 DEFAULT_PATH = "dashboards/location.yaml"
 NATIVE_MAP_PATH = "map"
-EXPECTED_ENTITIES = (
-    "device_tracker.resident_primary_location",
-    "device_tracker.resident_secondary_location",
-    "device_tracker.vehicle_primary",
-)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -44,26 +39,27 @@ def _load_dashboard(config_dir: Path, relative_path: str) -> dict[str, Any]:
         raise ValueError("consolidated map must contain exactly one view")
 
     cards = views[0].get("cards") if isinstance(views[0], dict) else None
-    if not isinstance(cards, list) or len(cards) < 2:
-        raise ValueError("consolidated map must contain a map and entity list")
+    if not isinstance(cards, list) or len(cards) < 3:
+        raise ValueError("consolidated map must contain a map and two source cards")
 
-    for card_type in ("map", "entities"):
-        card = next(
-            (
-                candidate
-                for candidate in cards
-                if isinstance(candidate, dict) and candidate.get("type") == card_type
-            ),
-            None,
-        )
-        entities = card.get("entities") if card else None
-        entity_ids = tuple(
-            item.get("entity") for item in entities or () if isinstance(item, dict)
-        )
-        if entity_ids != EXPECTED_ENTITIES:
-            raise ValueError(
-                f"consolidated {card_type} card must use the three canonical entities"
-            )
+    map_card = next(
+        (
+            card
+            for card in cards
+            if isinstance(card, dict) and card.get("type") == "map"
+        ),
+        None,
+    )
+    if not map_card or map_card.get("show_all") is not True or "entities" in map_card:
+        raise ValueError("consolidated map must automatically include map entities")
+
+    markdown = "\n".join(
+        str(card.get("content", ""))
+        for card in cards
+        if isinstance(card, dict) and card.get("type") == "markdown"
+    )
+    if "selected_location_source" not in markdown or "location_sources" not in markdown:
+        raise ValueError("consolidated map must expose source selection and freshness")
 
     return dashboard
 
@@ -94,7 +90,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         return False
 
     hass.data[DOMAIN] = {
-        "entities": EXPECTED_ENTITIES,
         "path": relative_path,
     }
     return True

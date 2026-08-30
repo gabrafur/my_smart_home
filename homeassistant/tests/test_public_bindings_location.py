@@ -96,6 +96,24 @@ class BestLocationSelectionTest(unittest.TestCase):
                 "string_attributes",
                 entities[f"device_tracker.{role}_location"],
             )
+            self.assertEqual(
+                entities[f"device_tracker.{role}_location"]["source_names"],
+                ["Home Assistant App", "iCloud"],
+            )
+            self.assertTrue(
+                entities[f"device_tracker.{role}_location"]["display_name"]
+            )
+            self.assertIs(
+                entities[f"device_tracker.{role}_location"]["hide_targets"],
+                True,
+            )
+
+        vehicle = document["roles"]["vehicle_primary"]["entities"][
+            "device_tracker.vehicle_primary"
+        ]
+        self.assertEqual(vehicle["source_names"], ["Bluelink"])
+        self.assertTrue(vehicle["display_name"])
+        self.assertIs(vehicle["hide_targets"], True)
 
 
 if __name__ == "__main__":

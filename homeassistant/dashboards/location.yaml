@@ -1,32 +1,60 @@
-title: Localização
+title: Mapa
 views:
-  - title: Localização
-    path: localizacao
+  - title: Mapa
+    path: mapa
     icon: mdi:map-marker-multiple
     cards:
       - type: map
-        title: Localizações consolidadas
-        entities:
-          - entity: device_tracker.resident_primary_location
-            name: !secret resident_primary_display_name
-            label_mode: name
-          - entity: device_tracker.resident_secondary_location
-            name: !secret resident_secondary_display_name
-            label_mode: name
-          - entity: device_tracker.vehicle_primary
-            name: Creta
-            label_mode: name
+        title: Localizações
+        show_all: true
         hours_to_show: 0
         default_zoom: 15
         auto_fit: true
         cluster: false
-      - type: entities
-        title: Localizações consolidadas
-        show_header_toggle: false
-        entities:
-          - entity: device_tracker.resident_primary_location
-            name: !secret resident_primary_display_name
-          - entity: device_tracker.resident_secondary_location
-            name: !secret resident_secondary_display_name
-          - entity: device_tracker.vehicle_primary
-            name: Creta
+      - type: markdown
+        title: Estado atual
+        content: >-
+          {% set items = states.device_tracker
+            | selectattr('attributes.selected_location_source', 'defined')
+            | sort(attribute='name') | list %}
+          {% if items %}
+          {% for item in items %}
+          **{{ item.name }}:** `{{ item.state }}`
+
+          {% endfor %}
+          {% else %}
+          Nenhuma localização consolidada está disponível.
+          {% endif %}
+      - type: markdown
+        title: Fonte em uso
+        content: >-
+          {% set items = states.device_tracker
+            | selectattr('attributes.selected_location_source', 'defined')
+            | sort(attribute='name') | list %}
+          {% if items %}
+          {% for item in items %}
+          **{{ item.name }}:** {{ item.attributes.selected_location_source }}
+
+          {% endfor %}
+          {% else %}
+          Nenhuma fonte de localização consolidada está disponível.
+          {% endif %}
+      - type: markdown
+        title: Última atualização de cada fonte
+        content: >-
+          {% set items = states.device_tracker
+            | selectattr('attributes.location_sources', 'defined')
+            | sort(attribute='name') | list %}
+          {% if items %}
+          {% for item in items %}
+          **{{ item.name }}**
+
+          {% for source in item.attributes.location_sources %}
+          - {{ source.name }}: {{ as_timestamp(source.last_updated)
+            | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}
+          {% endfor %}
+
+          {% endfor %}
+          {% else %}
+          Nenhuma atualização de fonte está disponível.
+          {% endif %}

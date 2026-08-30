@@ -94,6 +94,19 @@
         "force_update": {
           "type": "boolean"
         },
+        "display_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_names": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "hide_targets": {
+          "type": "boolean"
+        },
         "attributes": {
           "type": "array",
           "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },

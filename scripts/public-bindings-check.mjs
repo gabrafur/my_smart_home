@@ -70,6 +70,31 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       if (publicId.startsWith("device_tracker.") && entity.state_mode !== "passthrough") {
         issues.push(issue("location-state-mode", location, "binding"));
       }
+      if (
+        entity.display_name !== undefined &&
+        (typeof entity.display_name !== "string" || entity.display_name.length === 0)
+      ) {
+        issues.push(issue("display-name", location, "binding"));
+      }
+      if (entity.source_names !== undefined) {
+        const expectedSources = locationTargets ? entity.target_entity_ids.length : 1;
+        if (
+          !Array.isArray(entity.source_names) ||
+          entity.source_names.length !== expectedSources ||
+          new Set(entity.source_names).size !== entity.source_names.length ||
+          entity.source_names.some(
+            (sourceName) => typeof sourceName !== "string" || sourceName.length === 0,
+          )
+        ) {
+          issues.push(issue("source-names", location, "binding"));
+        }
+      }
+      if (
+        entity.hide_targets !== undefined &&
+        typeof entity.hide_targets !== "boolean"
+      ) {
+        issues.push(issue("hide-targets", location, "binding"));
+      }
       const allowedAttributes = new Set(entity.attributes ?? []);
       const stringAttributes = entity.string_attributes ?? [];
       if (

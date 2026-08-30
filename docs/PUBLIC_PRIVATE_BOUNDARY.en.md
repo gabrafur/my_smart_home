@@ -56,14 +56,27 @@ accuracy. Each private `person` entity points only to its role's consolidated
 tracker.
 
 The native Map panel omits entities whose current state is `home`. The
-`mapa-localizacao` YAML dashboard therefore explicitly declares both resident
-consolidated trackers and `device_tracker.vehicle_primary` instead of relying
-on frontend auto-discovery. Resident labels come from private secrets, while
-the public vehicle label is `Creta`. The entity list below the map keeps all
-three consolidated locations verifiable even when markers share a position.
+`dashboards/location.yaml` file therefore uses a `map` card with
+`show_all: true`, automatically including every current or future entity that
+exposes a numeric location, including entities at home. Display names and
+public source labels stay in private bindings; the vehicle is shown as `Creta`.
+
+Location bindings may declare `source_names` in target order. The adapter
+publishes only the winning label in `selected_location_source` and a sanitized
+`location_sources` list containing each public label and last-update time. Two
+dynamic Markdown cards show this information without exposing private IDs.
+
+Consolidated bindings use `hide_targets: true` to hide only their private input
+trackers from visual discovery. Those trackers remain active and available to
+the adapter and Node-RED but no longer become duplicate markers. A third
+dynamic card preserves `home`, `not_home`, `chegando`, or any current named
+zone. New entities with coordinates still enter the map automatically through
+`show_all`.
+
 The `consolidated_map` component idempotently applies that same YAML file to
-the native `/map` dashboard during startup. The Map and Location tabs therefore
-share one canonical entity list and do not implement another source selector.
+the native `/map` dashboard during startup. The file is not registered as a
+second sidebar panel: the native Map tab is the only exposed interface and does
+not implement another source selector.
 
 Intermediate aliases consumed by `localizacao_pessoas` keep `latitude`,
 `longitude`, and `gps_accuracy` in `string_attributes`. Node-RED explicitly

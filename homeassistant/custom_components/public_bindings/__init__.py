@@ -13,6 +13,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import entity_registry as er
 
 from .location import select_best_location
 
@@ -114,6 +115,20 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         for key in binding.get("string_attributes", []):
             if key in attributes:
                 attributes[key] = str(attributes[key])
+        if display_name := binding.get("display_name"):
+            attributes["friendly_name"] = display_name
+        source_names = binding.get("source_names")
+        if isinstance(source_names, list) and len(source_names) == len(targets):
+            selected_index = targets.index(source.entity_id)
+            attributes["selected_location_source"] = source_names[selected_index]
+            attributes["location_sources"] = [
+                {
+                    "name": source_name,
+                    "last_updated": source_state.last_updated.isoformat(),
+                }
+                for target, source_name in zip(targets, source_names, strict=True)
+                if (source_state := hass.states.get(target)) is not None
+            ]
         attributes["binding_role"] = role
         hass.states.async_set(
             public_id,
@@ -126,10 +141,29 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         )
 
     target_to_public: dict[str, list[str]] = {}
+    targets_to_hide: set[str] = set()
     for public_id, (role, binding) in entities.items():
         for target in _binding_targets(binding):
             target_to_public.setdefault(target, []).append(public_id)
+            if binding.get("hide_targets"):
+                targets_to_hide.add(target)
         sync_entity(public_id, role, binding)
+
+    @callback
+    def hide_private_targets(_event: Any = None) -> None:
+        """Hide private inputs after their owning integrations finish setup."""
+        registry = er.async_get(hass)
+        for target in targets_to_hide:
+            entry = registry.async_get(target)
+            if entry is not None and entry.hidden_by is None:
+                registry.async_update_entity(
+                    target,
+                    hidden_by=er.RegistryEntryHider.INTEGRATION,
+                )
+
+    hide_private_targets()
+    if not hass.is_running:
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, hide_private_targets)
 
     @callback
     def state_changed(event: Any) -> None:

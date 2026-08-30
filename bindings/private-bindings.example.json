@@ -48,6 +48,12 @@
           "selection_mode": "best_location",
           "state_mode": "passthrough",
           "force_update": true,
+          "display_name": "Example Primary Resident",
+          "hide_targets": true,
+          "source_names": [
+            "Home Assistant App",
+            "iCloud"
+          ],
           "attributes": [
             "gps_accuracy",
             "latitude",
@@ -104,6 +110,12 @@
           "selection_mode": "best_location",
           "state_mode": "passthrough",
           "force_update": true,
+          "display_name": "Example Secondary Resident",
+          "hide_targets": true,
+          "source_names": [
+            "Home Assistant App",
+            "iCloud"
+          ],
           "attributes": [
             "gps_accuracy",
             "latitude",
@@ -151,6 +163,9 @@
         "device_tracker.vehicle_primary": {
           "target_entity_id": "device_tracker.example_vehicle_primary",
           "state_mode": "passthrough",
+          "display_name": "Example Vehicle",
+          "hide_targets": true,
+          "source_names": ["Bluelink"],
           "attributes": [
             "gps_accuracy",
             "latitude",

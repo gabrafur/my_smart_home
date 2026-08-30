@@ -75,6 +75,9 @@ test("accepts a best-location binding with multiple private sources", () => {
             ],
             selection_mode: "best_location",
             state_mode: "passthrough",
+            display_name: "Example Primary Resident",
+            hide_targets: true,
+            source_names: ["Home Assistant App", "iCloud"],
           },
         },
       },
@@ -88,6 +91,52 @@ test("accepts a best-location binding with multiple private sources", () => {
   assert.ok(
     validateBindings(document).some((item) => item.rule === "selection-mode"),
   );
+});
+
+test("requires hide_targets to be an explicit boolean", () => {
+  const entity = {
+    target_entity_id: "device_tracker.example_vehicle",
+    state_mode: "passthrough",
+    hide_targets: "yes",
+  };
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      vehicle_primary: {
+        entities: { "device_tracker.vehicle_primary": entity },
+      },
+    },
+  };
+
+  assert.ok(validateBindings(document).some((item) => item.rule === "hide-targets"));
+  entity.hide_targets = true;
+  assert.deepEqual(validateBindings(document), []);
+});
+
+test("requires one public source name for every private location target", () => {
+  const entity = {
+    target_entity_ids: [
+      "device_tracker.example_mobile_app",
+      "device_tracker.example_icloud",
+    ],
+    selection_mode: "best_location",
+    state_mode: "passthrough",
+    source_names: ["Home Assistant App"],
+  };
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      resident_primary: {
+        entities: { "device_tracker.resident_primary_location": entity },
+      },
+    },
+  };
+
+  assert.ok(validateBindings(document).some((item) => item.rule === "source-names"));
+  entity.source_names.push("iCloud");
+  assert.deepEqual(validateBindings(document), []);
 });
 
 test("accepts string-projected source coordinates only when allowlisted", () => {

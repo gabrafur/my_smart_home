@@ -62,15 +62,29 @@ entidade `person` privada deve apontar somente para o tracker público
 consolidado do respectivo papel.
 
 O painel nativo Mapa omite entidades cujo estado atual é `home`. Por isso, o
-dashboard YAML `mapa-localizacao` declara explicitamente os dois trackers
-consolidados dos moradores e `device_tracker.vehicle_primary`, sem depender da
-descoberta automática do frontend. Os nomes dos moradores vêm de secrets
-privados; o nome público do veículo é `Creta`. A lista abaixo do mapa torna os
-três consolidados verificáveis mesmo quando marcadores ocupam a mesma posição.
+arquivo YAML `dashboards/location.yaml` usa um card `map` com `show_all: true`:
+ele inclui automaticamente toda entidade atual ou futura que exponha uma
+localização numérica, inclusive em casa. Os nomes de exibição e os rótulos
+públicos das fontes ficam no binding privado; o veículo é exibido como
+`Creta`.
+
+Bindings de localização podem declarar `source_names`, na mesma ordem dos
+alvos. O adapter publica apenas o rótulo vencedor em
+`selected_location_source` e uma lista sanitizada `location_sources` com o
+rótulo e a última atualização de cada fonte. Dois cards Markdown dinâmicos
+mostram essas informações sem expor IDs privados.
+
+Bindings consolidados usam `hide_targets: true` para ocultar da descoberta
+visual somente os trackers privados que alimentam o consolidado. Eles continuam
+ativos e disponíveis para o adapter e para o Node-RED, mas não viram marcadores
+duplicados. Um terceiro card dinâmico preserva o estado `home`, `not_home`,
+`chegando` ou qualquer zona atual. Entidades novas com coordenadas continuam
+entrando automaticamente no mapa por `show_all`.
+
 O componente `consolidated_map` aplica o mesmo arquivo YAML ao dashboard nativo
-`/map` durante a inicialização, de forma idempotente. Assim as abas Mapa e
-Localização compartilham a mesma lista canônica e não implementam outra seleção
-de fontes.
+`/map` durante a inicialização, de forma idempotente. O arquivo não é registrado
+como outro painel lateral: a aba nativa Mapa é a única interface exposta e não
+implementa outra seleção de fontes.
 
 Os aliases intermediários consumidos por `localizacao_pessoas` mantêm
 `latitude`, `longitude` e `gps_accuracy` em `string_attributes`. O Node-RED os
