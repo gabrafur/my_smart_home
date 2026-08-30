@@ -5,6 +5,8 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { instructionFiles } from "./public-memory-check.mjs";
+
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requiredContext = ["AGENTS.md", "MEMORY.md", ".codex/memories/projeto/indice.md"];
 
@@ -62,6 +64,13 @@ export function verifyAgentContext(root = repoRoot, { commit = null, mode = "wor
   }
   const adapters = { trackedFiles, commitFiles };
   const contents = new Map(requiredContext.map((file) => [file, readContext(root, file, mode, resolvedCommit, adapters)]));
+  const indexedInstructions = [...instructionFiles];
+  for (const file of indexedInstructions) {
+    const module = readContext(root, file, mode, resolvedCommit, adapters).trim();
+    if (!contents.get("AGENTS.md").includes(module)) {
+      fail(`AGENTS.md does not contain canonical instruction module: ${file}`);
+    }
+  }
   const indexedLinks = [...new Set(memoryLinks(contents.get("MEMORY.md")))];
   if (!indexedLinks.length) fail("MEMORY.md does not reference thematic public memory");
   const links = indexedLinks.filter((file) => topics.some((topic) => file.includes(`/${topic}/`) || path.basename(file, ".md").includes(topic)));
@@ -80,12 +89,14 @@ export function verifyAgentContext(root = repoRoot, { commit = null, mode = "wor
       { step: "configuration_validated", status: "operator-prerequisite" },
       { step: "repository_commit_identified", status: "verified" },
       { step: "agents_loaded", status: "verified" },
+      { step: "modular_instructions_loaded", status: "verified" },
       { step: "memory_index_loaded", status: "verified" },
       { step: "relevant_thematic_memory_loaded", status: "verified" },
       { step: "memory_verified_against_commit", status: "verified" },
       { step: "agent_context_ready", status: "verified" }
     ],
     repository_commit: resolvedCommit,
+    instruction_files: indexedInstructions.length,
     memory_topics: topics,
     thematic_memories: links.length,
     private_runtime_read: false,

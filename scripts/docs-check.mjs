@@ -10,7 +10,7 @@ const i18nManifest = "docs/i18n-manifest.json";
 const markdownExtensions = new Set([".md", ".markdown"]);
 const assetExtensions = new Set([".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"]);
 const repoPrefixes = [
-  ".agents/", ".codex/memories/", ".github/", "bindings/", "bootstrap/",
+  ".agents/", ".codex/instructions/", ".codex/memories/", ".github/", "bindings/", "bootstrap/",
   "demo/", "docs/", "homeassistant/", "ia-bridge/", "modules/", "nodered/",
   "local-ai-integration/", "local-ai-research/", "prompts/", "restore/",
   "scripts/", "templates/", "validation/",

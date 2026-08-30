@@ -18,6 +18,7 @@ migrações, alterações de runtime ou correções executáveis diretamente em
 
 1. Leia:
    - `AGENTS.md`;
+   - `.codex/instructions/**`;
    - `MEMORY.md`;
    - `.codex/memories/projeto/indice.md`;
    - `docs/PRIVACY_MODEL.md`;
@@ -321,6 +322,7 @@ Revise obrigatoriamente:
 
 ```text
 AGENTS.md
+.codex/instructions/**
 MEMORY.md
 .codex/memories/**
 ```
@@ -485,6 +487,7 @@ Compare os commits da semana com:
 
 ```text
 AGENTS.md
+.codex/instructions/**
 MEMORY.md
 .codex/memories/**
 ```

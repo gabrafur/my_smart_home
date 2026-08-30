@@ -5,18 +5,24 @@ import path from "node:path";
 import test from "node:test";
 
 import { memoryLinks, verifyAgentContext } from "./ai-context-recovery.mjs";
+import { instructionFiles, renderAgentInstructions } from "./public-memory-check.mjs";
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "ai-context-test-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, ".codex/memories/projeto"), { recursive: true });
   fs.mkdirSync(path.join(root, ".codex/memories/restore"), { recursive: true });
-  fs.writeFileSync(path.join(root, "AGENTS.md"), "# Synthetic agent rules\n");
+  fs.mkdirSync(path.join(root, ".codex/instructions"), { recursive: true });
+  for (const [index, file] of instructionFiles.entries()) {
+    fs.writeFileSync(path.join(root, file), `# Synthetic agent rules ${index + 1}\n`);
+  }
+  fs.writeFileSync(path.join(root, "AGENTS.md"), renderAgentInstructions(root));
   fs.writeFileSync(path.join(root, "MEMORY.md"), "[Restore](.codex/memories/restore/restore-contract.md)\n");
   fs.writeFileSync(path.join(root, ".codex/memories/projeto/indice.md"), "[Restore](../restore/restore-contract.md)\n");
   fs.writeFileSync(path.join(root, ".codex/memories/restore/restore-contract.md"), "# Synthetic restore contract\n");
   const trackedFiles = new Set([
     "AGENTS.md",
+    ...instructionFiles,
     "MEMORY.md",
     ".codex/memories/projeto/indice.md",
     ".codex/memories/restore/restore-contract.md",
@@ -35,7 +41,14 @@ test("context recovery verifies the complete public chain at a commit", (t) => {
   assert.equal(result.agent_context_ready, true);
   assert.equal(result.private_runtime_read, false);
   assert.equal(result.thematic_memories, 1);
+  assert.equal(result.instruction_files, instructionFiles.length);
   assert.ok(result.sequence.every((entry) => entry.status === "verified" || entry.status === "operator-prerequisite"));
+});
+
+test("untracked modular instruction cannot satisfy worktree recovery", (t) => {
+  const { root, trackedFiles } = fixture(t);
+  trackedFiles.delete(instructionFiles[0]);
+  assert.throws(() => verifyAgentContext(root, { mode: "worktree", trackedFiles }), /not tracked/);
 });
 
 test("untracked thematic memory cannot satisfy worktree recovery", (t) => {

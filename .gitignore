@@ -36,9 +36,12 @@ bindings/private/
 !.agents/skills/prompt-improver/**
 !.agents/skills/rtx-context-optimizer/
 !.agents/skills/rtx-context-optimizer/**
-# Preserve Codex runtime state as private while versioning the project memory.
+# Preserve Codex runtime state as private while versioning public instructions
+# and project memory.
 .codex/*
 !.codex/hooks.json
+!.codex/instructions/
+!.codex/instructions/*.md
 !.codex/memories/
 !.codex/memories/**/
 !.codex/memories/**/*.md

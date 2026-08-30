@@ -24,15 +24,18 @@ vigente.
 
 | Componente | Papel |
 | --- | --- |
-| `AGENTS.md` | instruções obrigatórias para agentes e política de manutenção |
+| `AGENTS.md` | agregado gerado que o Codex carrega ao iniciar uma sessão |
+| `.codex/instructions/*.md` | fontes canônicas das instruções normativas atuais |
 | `MEMORY.md` | índice de compatibilidade curto para ferramentas e pessoas |
 | `.codex/memories/projeto/indice.md` | índice canônico dos assuntos |
 | `.codex/memories/<assunto>/<nome-descritivo>.md` | decisões temáticas reutilizáveis |
 
-`.codex/memories/` é uma exceção pública, explícita e limitada dentro de
-`.codex/`. Os demais conteúdos desse diretório continuam sendo runtime privado.
-Cada memória temática deve ser Markdown, ter nome descritivo em kebab-case e
-estar listada nos dois índices.
+`.codex/instructions/` e `.codex/memories/` são exceções públicas, explícitas e
+limitadas dentro de `.codex/`. Instruções e memórias não se misturam: instruções
+são regras normativas atuais, enquanto memórias são conhecimento recuperável de
+baixa autoridade. Os demais conteúdos de `.codex/` continuam sendo runtime
+privado. Cada memória temática deve ser Markdown, ter nome descritivo em
+kebab-case e estar listada nos dois índices.
 
 ## Contexto de startup e retrieval
 
@@ -41,12 +44,15 @@ do prompt. A única peça sempre pequena o bastante para consulta inicial é o
 índice canônico `.codex/memories/projeto/indice.md`; `MEMORY.md` existe para
 compatibilidade e é conceitualmente redundante, não outra fonte canônica.
 
-Regras que precisam valer antes de qualquer recuperação permanecem no
-`AGENTS.md` da raiz. Procedimentos especializados e acionados sob demanda ficam
-nas skills públicas explicitamente autorizadas em `.agents/skills/`; eles não
-devem ser duplicados como memória temática. Assim, memória continua sendo
-conhecimento recuperável, enquanto instruções obrigatórias e workflows mantêm
-seus próprios mecanismos de descoberta.
+Regras que precisam valer antes de qualquer recuperação ficam nos módulos de
+`.codex/instructions/`. Como o Codex não expande links Markdown ao descobrir
+instruções, `AGENTS.md` é regenerado deterministicamente com o conteúdo integral
+desses módulos e não deve ser editado diretamente. Procedimentos especializados
+e acionados sob demanda ficam nas skills públicas explicitamente autorizadas em
+`.agents/skills/`; nenhum desses conteúdos deve ser duplicado como memória
+temática. Assim, memória continua sendo conhecimento recuperável, enquanto
+instruções obrigatórias e workflows mantêm seus próprios mecanismos de
+descoberta.
 
 Para cada tarefa, o agente deve primeiro decidir se histórico do repositório é
 necessário. Em caso negativo, não carrega memória temática. Em caso positivo,
@@ -152,11 +158,13 @@ varre diretórios privados. O checker verifica:
 - links relativos e caminhos públicos referenciados;
 - existência dos targets `make` citados pela memória;
 - padrões mecanicamente detectáveis de IP, MAC, coordenada, chave e token;
-- ordem de autoridade em `AGENTS.md`;
-- uso do caminho canônico no prompt semanal;
+- sincronização do agregado `AGENTS.md` com todos os módulos canônicos;
+- ordem de autoridade no conjunto de instruções do Codex;
+- uso dos caminhos canônicos de instruções e memória no prompt semanal;
 - headings duplicados nas instruções de agente;
 - ausência de arquivos rastreados nos diretórios privados de runtime, com a
-  única exceção de Markdown sob `.codex/memories/`.
+  exceção dos módulos canônicos sob `.codex/instructions/` e de Markdown sob
+  `.codex/memories/`.
 
 Os testes negativos ficam em `scripts/public-memory-check.test.mjs`. O target
 `make validate-public` também executa o checker documental, o self-test da

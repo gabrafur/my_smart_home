@@ -37,7 +37,7 @@ const frozenSyntheticQualityDataset = /^local-ai-research\/benchmarks\/quality-b
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".heic", ".tiff"]);
 const allowedSyntheticImages = new Set(["docs/assets/github-social-preview.png"]);
 const privateRuntimePath = /(?:^|\/)(?:\.agent-history|\.claude|\.local-secrets|homeassistant\/\.storage|matter-server|portainer|backups)(?:\/|$)/;
-const privateCodexPath = /^\.codex\/(?!(?:hooks\.json$|memories(?:\/|$)))/;
+const privateCodexPath = /^\.codex\/(?!(?:hooks\.json$|instructions\/[a-z0-9]+(?:-[a-z0-9]+)*\.md$|memories(?:\/|$)))/;
 const sensitiveArtifactPath = /(?:^|\/)(?:secrets\.ya?ml|password\.txt|coordinator_backup\.json|\.env)(?:$|\/)|\.(?:bak|backup|db|sqlite\d*|log|tar|tgz|zip)$/i;
 
 function git(args, input, root = repoRoot) {

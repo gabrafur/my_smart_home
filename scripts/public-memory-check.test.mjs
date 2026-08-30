@@ -4,12 +4,24 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { checkPublicMemory } from "./public-memory-check.mjs";
+import { checkPublicMemory, renderAgentInstructions } from "./public-memory-check.mjs";
 
 function createFixture() {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), "public-memory-check-"));
   const files = {
-    "AGENTS.md": `# Agents
+    "AGENTS.md": "generated below\n",
+    ".codex/instructions/codex-general.md": `# Geral
+
+\`.agents/skills/prompt-improver/SKILL.md\`
+`,
+    ".codex/instructions/dashboards.md": "# Dashboards\n",
+    ".codex/instructions/host-safety.md": "# Host\n\nNunca use `make -j`.\n",
+    ".codex/instructions/local-ai.md": `# Local AI
+
+\`.agents/skills/rtx-context-optimizer/SKILL.md\`
+`,
+    ".codex/instructions/node-red.md": "# Node-RED\n",
+    ".codex/instructions/project-memory.md": `# Memória
 
 \`.codex/memories/<assunto>/<nome-descritivo>.md\`
 
@@ -18,10 +30,8 @@ function createFixture() {
 3. documentação operacional atual;
 4. decisões arquiteturais vigentes;
 5. memória versionada dos agentes.
-
-\`.agents/skills/prompt-improver/SKILL.md\`
-\`.agents/skills/rtx-context-optimizer/SKILL.md\`
 `,
+    ".codex/instructions/weekly-docs-review.md": "# Revisão semanal\n",
     "MEMORY.md": `# Índice
 
 Fonte: \`.codex/memories/projeto/indice.md\`.
@@ -50,6 +60,7 @@ Consulte [o guia](../../../docs/MEMORIA_VERSIONADA_AGENTES.md) e rode \`make val
 
 ## Memória versionada dos agentes
 
+Consulte \`.codex/instructions/**\`.
 Consulte \`.codex/memories/projeto/indice.md\`.
 Revise \`.codex/memories/**\`.
 `,
@@ -63,6 +74,7 @@ Revise \`.codex/memories/**\`.
     fs.mkdirSync(path.dirname(absolute), { recursive: true });
     fs.writeFileSync(absolute, content);
   }
+  fs.writeFileSync(path.join(repoRoot, "AGENTS.md"), renderAgentInstructions(repoRoot));
   return { repoRoot, trackedFiles: Object.keys(files) };
 }
 
@@ -71,6 +83,7 @@ test("accepts a coherent public memory graph", () => {
   const result = checkPublicMemory(fixture);
   assert.deepEqual(result.errors, []);
   assert.equal(result.stats.thematicMemories, 2);
+  assert.equal(result.stats.instructionFiles, 7);
 });
 
 test("reports an orphaned thematic memory", () => {
@@ -171,19 +184,31 @@ memories/**
   const result = checkPublicMemory(fixture);
   assert.ok(result.errors.some((error) => error.includes("duplicate level-two heading")));
   assert.ok(result.errors.some((error) => error.includes("canonical memory glob is missing")));
+  assert.ok(result.errors.some((error) => error.includes("canonical instruction glob is missing")));
   assert.ok(result.errors.some((error) => error.includes("obsolete memory glob")));
 });
 
 test("rejects oversized preload and missing canonical skill references", () => {
   const fixture = createFixture();
   const agentsPath = path.join(fixture.repoRoot, "AGENTS.md");
-  const agents = fs.readFileSync(agentsPath, "utf8")
+  const generalPath = path.join(fixture.repoRoot, ".codex/instructions/codex-general.md");
+  const general = fs.readFileSync(generalPath, "utf8")
     .replace(".agents/skills/prompt-improver/SKILL.md", "prompt skill removed");
-  fs.writeFileSync(agentsPath, `${agents}\n${"x".repeat(17_000)}\n`);
+  fs.writeFileSync(generalPath, general);
+  fs.appendFileSync(agentsPath, `\n${"x".repeat(33_000)}\n`);
 
   const result = checkPublicMemory(fixture);
   assert.ok(result.errors.some((error) => error.includes("instruction preload exceeds")));
   assert.ok(result.errors.some((error) => error.includes("prompt-improver/SKILL.md")));
+});
+
+test("rejects a stale generated instruction aggregate", () => {
+  const fixture = createFixture();
+  const agentsPath = path.join(fixture.repoRoot, "AGENTS.md");
+  fs.appendFileSync(agentsPath, "\nstale manual edit\n");
+
+  const result = checkPublicMemory(fixture);
+  assert.ok(result.errors.some((error) => error.includes("generated instruction aggregate is stale")));
 });
 
 test("rejects a weekly prompt that treats MEMORY.md as canonical", () => {
