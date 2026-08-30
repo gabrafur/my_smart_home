@@ -67,6 +67,10 @@ consolidados dos moradores e `device_tracker.vehicle_primary`, sem depender da
 descoberta automática do frontend. Os nomes dos moradores vêm de secrets
 privados; o nome público do veículo é `Creta`. A lista abaixo do mapa torna os
 três consolidados verificáveis mesmo quando marcadores ocupam a mesma posição.
+O componente `consolidated_map` aplica o mesmo arquivo YAML ao dashboard nativo
+`/map` durante a inicialização, de forma idempotente. Assim as abas Mapa e
+Localização compartilham a mesma lista canônica e não implementam outra seleção
+de fontes.
 
 Os aliases intermediários consumidos por `localizacao_pessoas` mantêm
 `latitude`, `longitude` e `gps_accuracy` em `string_attributes`. O Node-RED os

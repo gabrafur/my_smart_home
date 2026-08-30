@@ -19,6 +19,10 @@ homeassistant:
 public_bindings:
   path: /run/private-bindings/private-bindings.json
 
+# Keep the native /map dashboard aligned with the explicit consolidated map.
+consolidated_map:
+  path: dashboards/location.yaml
+
 lovelace:
   # Load custom cards through Lovelace's resource registry so the dashboard
   # waits for the module before instantiating the card. The version is the first

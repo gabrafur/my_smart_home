@@ -61,6 +61,9 @@ consolidated trackers and `device_tracker.vehicle_primary` instead of relying
 on frontend auto-discovery. Resident labels come from private secrets, while
 the public vehicle label is `Creta`. The entity list below the map keeps all
 three consolidated locations verifiable even when markers share a position.
+The `consolidated_map` component idempotently applies that same YAML file to
+the native `/map` dashboard during startup. The Map and Location tabs therefore
+share one canonical entity list and do not implement another source selector.
 
 Intermediate aliases consumed by `localizacao_pessoas` keep `latitude`,
 `longitude`, and `gps_accuracy` in `string_attributes`. Node-RED explicitly

@@ -9,6 +9,9 @@ import unittest
 HOMEASSISTANT = Path(__file__).resolve().parents[1]
 DASHBOARD = HOMEASSISTANT / "dashboards" / "location.yaml"
 CONFIGURATION = HOMEASSISTANT / "configuration.yaml"
+SYNC_COMPONENT = (
+    HOMEASSISTANT / "custom_components" / "consolidated_map" / "__init__.py"
+)
 
 
 class LocationDashboardTest(unittest.TestCase):
@@ -47,6 +50,21 @@ class LocationDashboardTest(unittest.TestCase):
         self.assertIn("mapa-localizacao:", configuration)
         self.assertIn("title: Localização", configuration)
         self.assertIn("filename: dashboards/location.yaml", configuration)
+
+    def test_native_map_uses_the_same_dashboard(self):
+        configuration = CONFIGURATION.read_text(encoding="utf-8")
+        component = SYNC_COMPONENT.read_text(encoding="utf-8")
+
+        self.assertIn("consolidated_map:", configuration)
+        self.assertIn("path: dashboards/location.yaml", configuration)
+        self.assertIn('NATIVE_MAP_PATH = "map"', component)
+        self.assertIn("await native_map.async_save(dashboard)", component)
+        for entity_id in (
+            "device_tracker.resident_primary_location",
+            "device_tracker.resident_secondary_location",
+            "device_tracker.vehicle_primary",
+        ):
+            self.assertIn(entity_id, component)
 
 
 if __name__ == "__main__":
