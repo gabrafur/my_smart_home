@@ -53,8 +53,14 @@ binding uses `target_entity_ids` with `selection_mode: best_location`. It
 follows the same contract as `localizacao_pessoas`: prefer a current source,
 reliable coordinates, a materially newer observation, and then better GPS
 accuracy. Each private `person` entity points only to its role's consolidated
-tracker, so the Map panel keeps the private Home Assistant names while showing
-one position per resident.
+tracker.
+
+The native Map panel omits entities whose current state is `home`. The
+`mapa-localizacao` YAML dashboard therefore explicitly declares both resident
+consolidated trackers and `device_tracker.vehicle_primary` instead of relying
+on frontend auto-discovery. Resident labels come from private secrets, while
+the public vehicle label is `Creta`. The entity list below the map keeps all
+three consolidated locations verifiable even when markers share a position.
 
 Intermediate aliases consumed by `localizacao_pessoas` keep `latitude`,
 `longitude`, and `gps_accuracy` in `string_attributes`. Node-RED explicitly

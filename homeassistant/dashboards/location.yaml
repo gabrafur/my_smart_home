@@ -1,0 +1,32 @@
+title: Localização
+views:
+  - title: Localização
+    path: localizacao
+    icon: mdi:map-marker-multiple
+    cards:
+      - type: map
+        title: Localizações consolidadas
+        entities:
+          - entity: device_tracker.resident_primary_location
+            name: !secret resident_primary_display_name
+            label_mode: name
+          - entity: device_tracker.resident_secondary_location
+            name: !secret resident_secondary_display_name
+            label_mode: name
+          - entity: device_tracker.vehicle_primary
+            name: Creta
+            label_mode: name
+        hours_to_show: 0
+        default_zoom: 15
+        auto_fit: true
+        cluster: false
+      - type: entities
+        title: Localizações consolidadas
+        show_header_toggle: false
+        entities:
+          - entity: device_tracker.resident_primary_location
+            name: !secret resident_primary_display_name
+          - entity: device_tracker.resident_secondary_location
+            name: !secret resident_secondary_display_name
+          - entity: device_tracker.vehicle_primary
+            name: Creta

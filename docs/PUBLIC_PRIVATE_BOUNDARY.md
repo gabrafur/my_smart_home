@@ -59,8 +59,14 @@ Quando uma pessoa possui mais de uma fonte GPS, o binding consolidado usa
 mesmo contrato de `localizacao_pessoas`: prefere fonte atual, coordenadas
 confiáveis, atualização materialmente mais recente e melhor precisão. Cada
 entidade `person` privada deve apontar somente para o tracker público
-consolidado do respectivo papel. Assim o painel Mapa preserva os nomes privados
-cadastrados no Home Assistant e mostra uma única posição por morador.
+consolidado do respectivo papel.
+
+O painel nativo Mapa omite entidades cujo estado atual é `home`. Por isso, o
+dashboard YAML `mapa-localizacao` declara explicitamente os dois trackers
+consolidados dos moradores e `device_tracker.vehicle_primary`, sem depender da
+descoberta automática do frontend. Os nomes dos moradores vêm de secrets
+privados; o nome público do veículo é `Creta`. A lista abaixo do mapa torna os
+três consolidados verificáveis mesmo quando marcadores ocupam a mesma posição.
 
 Os aliases intermediários consumidos por `localizacao_pessoas` mantêm
 `latitude`, `longitude` e `gps_accuracy` em `string_attributes`. O Node-RED os

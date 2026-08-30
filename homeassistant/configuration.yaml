@@ -28,6 +28,12 @@ lovelace:
     - url: /local/codex-chat-card-v2.js?v=a4284ee80630
       type: module
   dashboards:
+    mapa-localizacao:
+      mode: yaml
+      title: Localização
+      icon: mdi:map-marker-multiple
+      show_in_sidebar: true
+      filename: dashboards/location.yaml
     chat-assistants:
       mode: yaml
       title: Chat
