@@ -1,60 +1,95 @@
-title: Mapa
+title: Map
 views:
-  - title: Mapa
-    path: mapa
+  - title: Map
+    path: map
     icon: mdi:map-marker-multiple
-    cards:
-      - type: map
-        title: Localizações
-        show_all: true
-        hours_to_show: 0
-        default_zoom: 15
-        auto_fit: true
-        cluster: false
-      - type: markdown
-        title: Estado atual
-        content: >-
-          {% set items = states.device_tracker
-            | selectattr('attributes.selected_location_source', 'defined')
-            | sort(attribute='name') | list %}
-          {% if items %}
-          {% for item in items %}
-          **{{ item.name }}:** `{{ item.state }}`
+    type: sections
+    max_columns: 2
+    dense_section_placement: true
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: heading
+            heading: Live locations
+            heading_style: title
+            icon: mdi:map-marker-radius
+          - type: map
+            title: Locations
+            show_all: true
+            hours_to_show: 0
+            default_zoom: 15
+            auto_fit: true
+            fit_zones: false
+            cluster: false
+            theme_mode: auto
+            grid_options:
+              columns: full
+              rows: 6
+      - type: grid
+        cards:
+          - type: heading
+            heading: Current location
+            heading_style: subtitle
+            icon: mdi:crosshairs-gps
+          - type: markdown
+            title: Current status and source
+            content: >-
+              {% set items = states.device_tracker
+                | selectattr('attributes.selected_location_source', 'defined')
+                | sort(attribute='name') | list %}
+              {% if items %}
+              {% for item in items %}
+              {% if item.state == 'home' %}
+                {% set status = '🏠 Home' %}
+              {% elif item.state == 'not_home' %}
+                {% set status = '📍 Away' %}
+              {% elif item.state == 'chegando' %}
+                {% set status = '🚗 Arriving' %}
+              {% elif item.state == 'unavailable' %}
+                {% set status = '⚠️ Unavailable' %}
+              {% elif item.state == 'unknown' %}
+                {% set status = '❔ Unknown' %}
+              {% else %}
+                {% set status = '📍 ' ~ item.state
+                  | replace('_', ' ') | title %}
+              {% endif %}
+              ### {{ item.name }}
 
-          {% endfor %}
-          {% else %}
-          Nenhuma localização consolidada está disponível.
-          {% endif %}
-      - type: markdown
-        title: Fonte em uso
-        content: >-
-          {% set items = states.device_tracker
-            | selectattr('attributes.selected_location_source', 'defined')
-            | sort(attribute='name') | list %}
-          {% if items %}
-          {% for item in items %}
-          **{{ item.name }}:** {{ item.attributes.selected_location_source }}
+              | Status | Source in use |
+              | :-- | :-- |
+              | **{{ status }}** | **{{ item.attributes.selected_location_source }}** |
 
-          {% endfor %}
-          {% else %}
-          Nenhuma fonte de localização consolidada está disponível.
-          {% endif %}
-      - type: markdown
-        title: Última atualização de cada fonte
-        content: >-
-          {% set items = states.device_tracker
-            | selectattr('attributes.location_sources', 'defined')
-            | sort(attribute='name') | list %}
-          {% if items %}
-          {% for item in items %}
-          **{{ item.name }}**
+              {% if not loop.last %}---{% endif %}
+              {% endfor %}
+              {% else %}
+              No consolidated locations are available.
+              {% endif %}
+      - type: grid
+        cards:
+          - type: heading
+            heading: Source health
+            heading_style: subtitle
+            icon: mdi:clock-check-outline
+          - type: markdown
+            title: Last update by source
+            content: >-
+              {% set items = states.device_tracker
+                | selectattr('attributes.location_sources', 'defined')
+                | sort(attribute='name') | list %}
+              {% if items %}
+              {% for item in items %}
+              ### {{ item.name }}
 
-          {% for source in item.attributes.location_sources %}
-          - {{ source.name }}: {{ as_timestamp(source.last_updated)
-            | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}
-          {% endfor %}
+              | Source | Last update |
+              | :-- | --: |
+              {% for source in item.attributes.location_sources %}
+              | **{{ source.name }}** | {{ as_timestamp(source.last_updated)
+                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }} |
+              {% endfor %}
 
-          {% endfor %}
-          {% else %}
-          Nenhuma atualização de fonte está disponível.
-          {% endif %}
+              {% if not loop.last %}---{% endif %}
+              {% endfor %}
+              {% else %}
+              No source updates are available.
+              {% endif %}

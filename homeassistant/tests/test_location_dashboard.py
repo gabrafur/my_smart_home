@@ -16,28 +16,43 @@ SYNC_COMPONENT = (
 class LocationDashboardTest(unittest.TestCase):
     def test_dashboard_automatically_includes_location_entities(self):
         dashboard = DASHBOARD.read_text(encoding="utf-8")
+        component = SYNC_COMPONENT.read_text(encoding="utf-8")
 
         self.assertIn("show_all: true", dashboard)
         self.assertNotIn("          - entity:", dashboard)
         self.assertIn("cluster: false", dashboard)
         self.assertIn("hours_to_show: 0", dashboard)
+        self.assertIn('entity_id.startswith("zone.")', component)
+        self.assertIn('hass.bus.async_listen(EVENT_STATE_CHANGED', component)
+        self.assertIn("EVENT_ENTITY_REGISTRY_UPDATED", component)
+        self.assertIn('map_card["entities"] = list(entity_ids)', component)
 
-    def test_source_selection_and_freshness_have_separate_cards(self):
+    def test_status_and_source_are_combined_and_freshness_stays_separate(self):
         dashboard = DASHBOARD.read_text(encoding="utf-8")
 
-        self.assertIn("title: Estado atual", dashboard)
+        self.assertIn("title: Current status and source", dashboard)
         self.assertIn("item.state", dashboard)
-        self.assertGreaterEqual(
+        self.assertEqual(
             dashboard.count(
                 "selectattr('attributes.selected_location_source', 'defined')"
             ),
-            2,
+            1,
         )
-        self.assertIn("title: Fonte em uso", dashboard)
         self.assertIn("selected_location_source", dashboard)
-        self.assertIn("title: Última atualização de cada fonte", dashboard)
+        self.assertIn("title: Last update by source", dashboard)
         self.assertIn("location_sources", dashboard)
         self.assertIn("source.last_updated", dashboard)
+
+    def test_dashboard_labels_are_english_only(self):
+        dashboard = DASHBOARD.read_text(encoding="utf-8")
+
+        self.assertIn("title: Map", dashboard)
+        self.assertIn("heading: Live locations", dashboard)
+        self.assertIn("heading: Source health", dashboard)
+        self.assertNotIn("title: Mapa", dashboard)
+        self.assertNotIn("Estado atual", dashboard)
+        self.assertNotIn("Fonte em uso", dashboard)
+        self.assertNotIn("Última atualização", dashboard)
 
     def test_dashboard_is_not_registered_as_a_second_sidebar_panel(self):
         configuration = CONFIGURATION.read_text(encoding="utf-8")
@@ -51,7 +66,7 @@ class LocationDashboardTest(unittest.TestCase):
         self.assertIn("consolidated_map:", configuration)
         self.assertIn("path: dashboards/location.yaml", configuration)
         self.assertIn('NATIVE_MAP_PATH = "map"', component)
-        self.assertIn("await native_map.async_save(dashboard)", component)
+        self.assertIn("await native_map.async_save(rendered)", component)
         self.assertIn('map_card.get("show_all") is not True', component)
 
 
