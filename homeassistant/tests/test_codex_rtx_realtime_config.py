@@ -225,6 +225,17 @@ class CodexRtxRealtimeConfigTest(unittest.TestCase):
         self.assertIn("uso pelo modelo principal não confirmado", DASHBOARD)
         self.assertIn("Fallbacks informados", DASHBOARD)
 
+    def test_daily_gate_diagnostics_render_null_metrics_as_zero(self):
+        for unique_id, field in (
+            ("codex_taxa_de_aproveitamento_do_gate_hoje", "quality_acceptance_rate_percent"),
+            ("codex_cobertura_do_custo_do_gate_hoje", "quality_validation_cost_coverage_percent"),
+            ("codex_cobertura_da_classificacao_operacional_hoje", "operational_accounting_coverage_percent"),
+        ):
+            start = PACKAGE.index(f"unique_id: {unique_id}")
+            sensor = PACKAGE[start : start + 850]
+            self.assertIn(f"get('{field}') | float(0)", sensor)
+            self.assertIn("availability: \"{{ states('sensor.codex_usage_raw') == 'ok' }}\"", sensor)
+
 
 if __name__ == "__main__":
     unittest.main()

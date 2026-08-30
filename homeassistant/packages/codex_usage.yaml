@@ -934,24 +934,24 @@ template:
         icon: mdi:shield-check
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_acceptance_rate_percent') }}"
-        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_acceptance_rate_percent') is number }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_acceptance_rate_percent') | float(0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Cobertura do Custo do Gate Hoje
         unique_id: codex_cobertura_do_custo_do_gate_hoje
         icon: mdi:shield-sync-outline
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_validation_cost_coverage_percent') }}"
-        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_validation_cost_coverage_percent') is number }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('quality_validation_cost_coverage_percent') | float(0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Cobertura da Classificacao Operacional Hoje
         unique_id: codex_cobertura_da_classificacao_operacional_hoje
         icon: mdi:database-check-outline
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_accounting_coverage_percent') }}"
-        availability: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_accounting_coverage_percent') is number }}"
+        state: "{{ (((state_attr('sensor.codex_usage_raw', 'local_ai') or {}).get('periods') or {}).get('today') or {}).get('operational_accounting_coverage_percent') | float(0) }}"
+        availability: "{{ states('sensor.codex_usage_raw') == 'ok' }}"
 
       - name: Codex Taxa de Uso Efetivo Local AI Hoje
         unique_id: codex_taxa_de_uso_efetivo_local_ai_hoje
