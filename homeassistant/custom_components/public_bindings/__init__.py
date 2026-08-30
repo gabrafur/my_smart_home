@@ -111,6 +111,9 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             return
         allowed = binding.get("attributes", [])
         attributes = {key: source.attributes[key] for key in allowed if key in source.attributes}
+        for key in binding.get("string_attributes", []):
+            if key in attributes:
+                attributes[key] = str(attributes[key])
         attributes["binding_role"] = role
         hass.states.async_set(
             public_id,

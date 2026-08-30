@@ -70,6 +70,18 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       if (publicId.startsWith("device_tracker.") && entity.state_mode !== "passthrough") {
         issues.push(issue("location-state-mode", location, "binding"));
       }
+      const allowedAttributes = new Set(entity.attributes ?? []);
+      const stringAttributes = entity.string_attributes ?? [];
+      if (
+        !Array.isArray(stringAttributes) ||
+        new Set(stringAttributes).size !== stringAttributes.length ||
+        stringAttributes.some(
+          (attribute) =>
+            !/^[a-z0-9_]+$/.test(attribute) || !allowedAttributes.has(attribute),
+        )
+      ) {
+        issues.push(issue("string-attributes", location, "binding"));
+      }
       for (const service of entity.allowed_services ?? []) {
         if (!servicePattern.test(service)) issues.push(issue("allowed-service", location, "binding"));
       }

@@ -99,6 +99,11 @@
           "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
           "uniqueItems": true
         },
+        "string_attributes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "uniqueItems": true
+        },
         "allowed_services": {
           "type": "array",
           "items": { "type": "string", "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$" },

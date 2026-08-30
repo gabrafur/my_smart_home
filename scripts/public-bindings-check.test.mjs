@@ -90,6 +90,30 @@ test("accepts a best-location binding with multiple private sources", () => {
   );
 });
 
+test("accepts string-projected source coordinates only when allowlisted", () => {
+  const entity = {
+    target_entity_id: "device_tracker.example_mobile_app",
+    state_mode: "passthrough",
+    attributes: ["latitude", "longitude", "gps_accuracy"],
+    string_attributes: ["latitude", "longitude", "gps_accuracy"],
+  };
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      resident_primary: {
+        entities: { "device_tracker.mobile_primary_source_1": entity },
+      },
+    },
+  };
+  assert.deepEqual(validateBindings(document), []);
+
+  entity.string_attributes.push("source_type");
+  assert.ok(
+    validateBindings(document).some((item) => item.rule === "string-attributes"),
+  );
+});
+
 test("validates optional MQTT bindings without exposing their values", () => {
   const document = {
     schema_version: 1,

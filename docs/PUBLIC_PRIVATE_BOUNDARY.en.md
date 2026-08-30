@@ -56,6 +56,12 @@ accuracy. Each private `person` entity points only to its role's consolidated
 tracker, so the Map panel keeps the private Home Assistant names while showing
 one position per resident.
 
+Intermediate aliases consumed by `localizacao_pessoas` keep `latitude`,
+`longitude`, and `gps_accuracy` in `string_attributes`. Node-RED explicitly
+normalizes them with `Number(...)`, while the Map frontend accepts only numeric
+coordinates as a location. This keeps Mobile App and iCloud from appearing as
+additional markers without removing their data from the normalizer.
+
 Simple pushes use `notify.send_message` with a `notify.*` entity; that service
 accepts only a title and message. Buttons, tags, and `clear_notification` use
 the logical `notify_actionable` action, whose private target is the

@@ -17,6 +17,11 @@
             "latitude",
             "longitude",
             "source_type"
+          ],
+          "string_attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude"
           ]
         },
         "device_tracker.mobile_primary_source_2": {
@@ -28,6 +33,11 @@
             "latitude",
             "longitude",
             "source_type"
+          ],
+          "string_attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude"
           ]
         },
         "device_tracker.resident_primary_location": {
@@ -63,6 +73,11 @@
             "latitude",
             "longitude",
             "source_type"
+          ],
+          "string_attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude"
           ]
         },
         "device_tracker.mobile_secondary_source_2": {
@@ -74,6 +89,11 @@
             "latitude",
             "longitude",
             "source_type"
+          ],
+          "string_attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude"
           ]
         },
         "device_tracker.resident_secondary_location": {

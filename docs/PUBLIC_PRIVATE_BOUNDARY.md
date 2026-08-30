@@ -62,6 +62,12 @@ entidade `person` privada deve apontar somente para o tracker público
 consolidado do respectivo papel. Assim o painel Mapa preserva os nomes privados
 cadastrados no Home Assistant e mostra uma única posição por morador.
 
+Os aliases intermediários consumidos por `localizacao_pessoas` mantêm
+`latitude`, `longitude` e `gps_accuracy` em `string_attributes`. O Node-RED os
+normaliza explicitamente com `Number(...)`, mas o frontend do Mapa aceita como
+localização apenas coordenadas numéricas. Isso impede que Mobile App e iCloud
+apareçam como marcadores adicionais sem retirar os dados do normalizador.
+
 Uma ação pode apontar diretamente para `target_entity_id` ou reutilizar uma
 entidade do mesmo papel por `target_public_entity_id`. A segunda forma mantém o
 alvo privado em um único binding e é adequada para pares seguros como
