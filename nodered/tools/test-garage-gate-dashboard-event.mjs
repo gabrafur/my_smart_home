@@ -51,7 +51,8 @@ try {
       event: { action: "single", origem: "botao_dashboard" },
     },
   }, state);
-  assert.equal(accepted.payload.origem, "botao_dashboard", "envelope real de server-events deve ser aceito");
+  assert(accepted?.[0], "envelope real de server-events deve sair pelo ramo de pulso");
+  assert.equal(accepted[0].payload.origem, "botao_dashboard", "envelope real de server-events deve ser aceito");
   assert.equal(state.get("portao_garagem_last_pulse_ms"), now, "cooldown deve ser armado antes do ON");
   assert.equal(execute("gar_portao_normalizar_click", { payload: { event: { action: "probe" } } }, memory()), null, "probe nunca deve alcançar o relé");
 
