@@ -47,6 +47,15 @@ example contains all eight required roles.
 - normalizes presence and boolean state when configured;
 - forwards allowlisted actions through `public_bindings.call`.
 
+Public `device_tracker` aliases use `state_mode: passthrough` so named zones
+remain intact. When a resident has multiple GPS sources, the consolidated
+binding uses `target_entity_ids` with `selection_mode: best_location`. It
+follows the same contract as `localizacao_pessoas`: prefer a current source,
+reliable coordinates, a materially newer observation, and then better GPS
+accuracy. Each private `person` entity points only to its role's consolidated
+tracker, so the Map panel keeps the private Home Assistant names while showing
+one position per resident.
+
 Simple pushes use `notify.send_message` with a `notify.*` entity; that service
 accepts only a title and message. Buttons, tags, and `clear_notification` use
 the logical `notify_actionable` action, whose private target is the

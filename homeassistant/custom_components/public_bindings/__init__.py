@@ -14,6 +14,8 @@ from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 
+from .location import select_best_location
+
 DOMAIN = "public_bindings"
 DEFAULT_PATH = "/run/private-bindings/private-bindings.json"
 CONFIG_SCHEMA = vol.Schema(
@@ -56,6 +58,21 @@ def _state_value(mode: str, state: str) -> str:
     return state
 
 
+def _binding_targets(binding: dict[str, Any]) -> tuple[str, ...]:
+    target = binding.get("target_entity_id")
+    if isinstance(target, str):
+        return (target,)
+    targets = binding.get("target_entity_ids")
+    if (
+        binding.get("selection_mode") == "best_location"
+        and isinstance(targets, list)
+        and len(targets) >= 2
+        and all(isinstance(item, str) for item in targets)
+    ):
+        return tuple(targets)
+    return ()
+
+
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     settings = config.get(DOMAIN, {})
     document = await hass.async_add_executor_job(
@@ -69,15 +86,26 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         if not isinstance(role_binding, dict) or role_binding.get("enabled", True) is False:
             continue
         for public_id, binding in role_binding.get("entities", {}).items():
-            if isinstance(binding, dict) and isinstance(binding.get("target_entity_id"), str):
+            if isinstance(binding, dict) and _binding_targets(binding):
                 entities[public_id] = (role, binding)
         for action, binding in role_binding.get("services", {}).items():
             if isinstance(binding, dict) and isinstance(binding.get("target_service"), str):
                 services[(role, action)] = binding
 
     @callback
-    def sync_entity(public_id: str, role: str, binding: dict[str, Any]) -> None:
-        source = hass.states.get(binding["target_entity_id"])
+    def sync_entity(
+        public_id: str,
+        role: str,
+        binding: dict[str, Any],
+        changed_target_id: str | None = None,
+    ) -> None:
+        targets = _binding_targets(binding)
+        sources = [source for target in targets if (source := hass.states.get(target))]
+        source = (
+            select_best_location(sources)
+            if binding.get("selection_mode") == "best_location"
+            else (sources[0] if sources else None)
+        )
         if source is None:
             hass.states.async_remove(public_id)
             return
@@ -88,19 +116,24 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             public_id,
             _state_value(binding.get("state_mode", "passthrough"), source.state),
             attributes,
-            force_update=binding.get("force_update", False),
+            force_update=(
+                binding.get("force_update", False)
+                and source.entity_id == changed_target_id
+            ),
         )
 
     target_to_public: dict[str, list[str]] = {}
     for public_id, (role, binding) in entities.items():
-        target_to_public.setdefault(binding["target_entity_id"], []).append(public_id)
+        for target in _binding_targets(binding):
+            target_to_public.setdefault(target, []).append(public_id)
         sync_entity(public_id, role, binding)
 
     @callback
     def state_changed(event: Any) -> None:
-        for public_id in target_to_public.get(event.data.get("entity_id"), []):
+        changed_target_id = event.data.get("entity_id")
+        for public_id in target_to_public.get(changed_target_id, []):
             role, binding = entities[public_id]
-            sync_entity(public_id, role, binding)
+            sync_entity(public_id, role, binding, changed_target_id)
 
     hass.bus.async_listen(EVENT_STATE_CHANGED, state_changed)
 
@@ -146,7 +179,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             entity_binding = entities.get(target_public_id)
             if entity_binding is None or entity_binding[0] != call.data["role"]:
                 raise HomeAssistantError("Public binding target is unavailable")
-            data["entity_id"] = entity_binding[1]["target_entity_id"]
+            targets = _binding_targets(entity_binding[1])
+            if len(targets) != 1:
+                raise HomeAssistantError("Public binding target is not actionable")
+            data["entity_id"] = targets[0]
         elif binding.get("target_entity_id"):
             data["entity_id"] = binding["target_entity_id"]
         await hass.services.async_call(domain, service, data, blocking=True)

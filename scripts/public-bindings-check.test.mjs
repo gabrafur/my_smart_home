@@ -61,6 +61,35 @@ test("preserves named Home Assistant zones on public device trackers", () => {
   assert.deepEqual(validateBindings(document), []);
 });
 
+test("accepts a best-location binding with multiple private sources", () => {
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      resident_primary: {
+        entities: {
+          "device_tracker.resident_primary_location": {
+            target_entity_ids: [
+              "device_tracker.example_mobile_app",
+              "device_tracker.example_icloud",
+            ],
+            selection_mode: "best_location",
+            state_mode: "passthrough",
+          },
+        },
+      },
+    },
+  };
+  assert.deepEqual(validateBindings(document), []);
+
+  delete document.roles.resident_primary.entities[
+    "device_tracker.resident_primary_location"
+  ].selection_mode;
+  assert.ok(
+    validateBindings(document).some((item) => item.rule === "selection-mode"),
+  );
+});
+
 test("validates optional MQTT bindings without exposing their values", () => {
   const document = {
     schema_version: 1,

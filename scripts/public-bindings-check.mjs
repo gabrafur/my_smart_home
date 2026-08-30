@@ -49,8 +49,20 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       if (!entityIdPattern.test(publicId) || !publicRolePattern.test(publicId)) {
         issues.push(issue("public-entity-id", location, "binding"));
       }
-      if (!entity || typeof entity !== "object" || !entityIdPattern.test(entity.target_entity_id ?? "")) {
+      const scalarTarget = entityIdPattern.test(entity?.target_entity_id ?? "");
+      const locationTargets =
+        Array.isArray(entity?.target_entity_ids) &&
+        entity.target_entity_ids.length >= 2 &&
+        new Set(entity.target_entity_ids).size === entity.target_entity_ids.length &&
+        entity.target_entity_ids.every((target) => entityIdPattern.test(target));
+      if (!entity || typeof entity !== "object" || scalarTarget === locationTargets) {
         issues.push(issue("target-entity-id", location, "binding"));
+      }
+      if (locationTargets && entity.selection_mode !== "best_location") {
+        issues.push(issue("selection-mode", location, "binding"));
+      }
+      if (!locationTargets && entity?.selection_mode !== undefined) {
+        issues.push(issue("selection-mode", location, "binding"));
       }
       if (entity.state_mode && !["passthrough", "home_away", "boolean"].includes(entity.state_mode)) {
         issues.push(issue("state-mode", location, "binding"));

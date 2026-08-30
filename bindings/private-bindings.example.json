@@ -29,6 +29,21 @@
             "longitude",
             "source_type"
           ]
+        },
+        "device_tracker.resident_primary_location": {
+          "target_entity_ids": [
+            "device_tracker.example_mobile_primary",
+            "device_tracker.example_mobile_primary_fallback"
+          ],
+          "selection_mode": "best_location",
+          "state_mode": "passthrough",
+          "force_update": true,
+          "attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude",
+            "source_type"
+          ]
         }
       }
     },
@@ -52,6 +67,21 @@
         },
         "device_tracker.mobile_secondary_source_2": {
           "target_entity_id": "device_tracker.example_mobile_secondary_fallback",
+          "state_mode": "passthrough",
+          "force_update": true,
+          "attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude",
+            "source_type"
+          ]
+        },
+        "device_tracker.resident_secondary_location": {
+          "target_entity_ids": [
+            "device_tracker.example_mobile_secondary",
+            "device_tracker.example_mobile_secondary_fallback"
+          ],
+          "selection_mode": "best_location",
           "state_mode": "passthrough",
           "force_update": true,
           "attributes": [

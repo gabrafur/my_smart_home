@@ -54,6 +54,14 @@ zonas a `not_home`. Os atributos de localização necessários por automações
 na allowlist do binding privado. Os valores continuam apenas no runtime e não
 são versionados.
 
+Quando uma pessoa possui mais de uma fonte GPS, o binding consolidado usa
+`target_entity_ids` com `selection_mode: best_location`. A escolha segue o
+mesmo contrato de `localizacao_pessoas`: prefere fonte atual, coordenadas
+confiáveis, atualização materialmente mais recente e melhor precisão. Cada
+entidade `person` privada deve apontar somente para o tracker público
+consolidado do respectivo papel. Assim o painel Mapa preserva os nomes privados
+cadastrados no Home Assistant e mostra uma única posição por morador.
+
 Uma ação pode apontar diretamente para `target_entity_id` ou reutilizar uma
 entidade do mesmo papel por `target_public_entity_id`. A segunda forma mantém o
 alvo privado em um único binding e é adequada para pares seguros como
