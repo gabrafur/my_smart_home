@@ -19,17 +19,21 @@ views:
               {% set updated = states('sensor.vehicle_primary_last_updated_at') %}
               {% set updated_ts = as_timestamp(updated, none) %}
               {% set age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
+              {% set refresh_state = states('sensor.vehicle_primary_refresh_coordinator') %}
+              {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
 
               # {{ 'Em uso' if engine else 'Estacionado' }}
 
-              {% if age_min is none %}
-              🔴 Sem telemetria válida
-              {% elif age_min <= 15 %}
-              🟢 Atualizado há {{ format_number_ptbr(age_min) }} min
+              {% if refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}
+              🟢 **Pausa noturna programada** · ambos em casa; o próximo wake pode ocorrer a partir das 06h{% if age_min is not none %}. Último dado do carro há {{ format_number_ptbr(age_min) }} min{% endif %}.
+              {% elif age_min is none %}
+              🔴 **Sem telemetria válida** · o Bluelink ainda não forneceu uma leitura utilizável.
+              {% elif age_min <= 30 %}
+              🟢 **Dados atualizados** · leitura confirmada há {{ format_number_ptbr(age_min) }} min.
               {% elif age_min <= 90 %}
-              🟡 Leitura de {{ format_number_ptbr(age_min) }} min atrás
+              🟡 **Leitura ficando antiga** · última confirmação há {{ format_number_ptbr(age_min) }} min.
               {% else %}
-              🔴 Leitura de {{ format_number_ptbr(age_min) }} min atrás
+              🔴 **Telemetria desatualizada** · última confirmação há {{ format_number_ptbr(age_min) }} min.
               {% endif %}
           - type: grid
             columns: 2
@@ -95,19 +99,13 @@ views:
               {% set location_ts = as_timestamp(location_updated, none) %}
               {% set age_min = ((as_timestamp(now()) - location_ts) / 60) | round(0) if location_ts else none %}
               {% if engine %}
-              ⚠️ **Veículo em uso**
-
-              O mapa mostra o **último estacionamento confirmado**{% if age_min is not none %}, há {{ format_number_ptbr(age_min) }} min{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
+              🔵 **Veículo em uso** · o mapa mostra o último estacionamento confirmado{% if age_min is not none %}, há {{ format_number_ptbr(age_min) }} min{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
               {% elif age_min is none %}
-              🔴 **Estacionamento ainda não confirmado**
-
-              A posição será exibida depois que o Bluelink confirmar o veículo estacionado.
-              {% elif age_min <= 15 %}
-              🟢 **Último estacionamento confirmado há {{ format_number_ptbr(age_min) }} min**
+              🔴 **Estacionamento ainda não confirmado** · a posição será exibida quando o Bluelink confirmar o veículo estacionado.
+              {% elif age_min <= 30 %}
+              🟢 **Estacionamento confirmado** · última posição estacionada recebida há {{ format_number_ptbr(age_min) }} min.
               {% else %}
-              🟡 **Último estacionamento confirmado há {{ format_number_ptbr(age_min) }} min**
-
-              Esta é a última posição estacionada informada pelo Bluelink, não uma localização GPS em tempo real.
+              🟡 **Posição estacionada antiga** · última confirmação há {{ format_number_ptbr(age_min) }} min. Esta não é uma localização GPS em tempo real.
               {% endif %}
           - type: map
             entities:
@@ -203,10 +201,11 @@ views:
               {% set command = states('sensor.garagem_vehicle_primary_remote_command_status') %}
               **Localizar por luz e buzina**
 
-              {% if command == 'requesting' %}↻ Comando em andamento.
-              {% elif command == 'accepted' %}🟢 Comando aceito pelo veículo.
-              {% elif command in ['failed', 'cooldown'] %}🔴 O último comando falhou ou ainda está em cooldown.
-              {% else %}Segure o botão **Localizar (segure)** e confirme para acionar luzes e buzina.
+              {% if command == 'requesting' %}🔵 **Comando em andamento** · aguardando a resposta do veículo.
+              {% elif command == 'accepted' %}🟢 **Comando aceito** · o veículo confirmou a solicitação.
+              {% elif command == 'cooldown' %}🟡 **Comando em espera** · aguarde o cooldown antes de tentar novamente.
+              {% elif command == 'failed' %}🔴 **Falha no último comando** · o veículo não confirmou a solicitação.
+              {% else %}🔵 Segure o botão **Localizar (segure)** e confirme para acionar luzes e buzina.
               {% endif %}
           - type: grid
             columns: 2
@@ -267,19 +266,27 @@ views:
               {% from 'formatting.jinja' import format_number_ptbr %}
               {% set refresh = states.sensor.vehicle_primary_refresh_coordinator %}
               {% set refresh_state = refresh.state if refresh else 'unavailable' %}
+              {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
               {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
               {% set attempt = state_attr('sensor.vehicle_primary_refresh_coordinator', 'attempt') | int(0) %}
+              {% set scanned = states('sensor.vehicle_primary_last_scanned_at') %}
+              {% set scanned_ts = as_timestamp(scanned, none) %}
+              {% set cache_age_s = (as_timestamp(now()) - scanned_ts) | round(0) if scanned_ts else none %}
 
               **Atualização dos dados**
 
-              {% if refresh_state == 'refreshing' %}↻ **Atualizando dados**
-              {% elif refresh_state == 'backoff' %}🟡 O Bluelink ainda não confirmou uma leitura nova.
+              {% if refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] %}🔵 **Wake em andamento** · o pedido foi enviado e aguarda confirmação do Bluelink.
+              {% elif refresh_state == 'backoff' %}🟡 **Wake sem leitura nova confirmada** · nova tentativa automática em {{ format_number_ptbr(remaining) }} s{% if attempt > 0 %} · tentativa {{ format_number_ptbr(attempt) }}{% endif %}.
+              {% elif refresh_state == 'cooldown' %}🟢 **Wake em cooldown normal**{% if remaining > 0 %} · próximo wake permitido em {{ format_number_ptbr(remaining) }} s{% endif %}.
+              {% elif refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa. O botão **Atualizar agora** continua disponível.
+              {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.
+              {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Coordenador de wake indisponível**.
+              {% else %}🟢 **Wake pronto** · nenhuma falha ativa no coordenador.
+              {% endif %}
 
-              **Nova tentativa automática em {{ format_number_ptbr(remaining) }} s**{% if attempt > 0 %} · tentativa {{ format_number_ptbr(attempt) }}{% endif %}
-              {% elif refresh_state == 'cooldown' %}🟢 **Dados atualizados**
-              {% elif refresh_state == 'waiting' %}⚪ **Aguardando movimento**
-              {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Atualização indisponível**
-              {% else %}⚪ **Atualização pronta**
+              {% if cache_age_s is not none and cache_age_s <= 90 %}🟢 **Cache do servidor consultado há {{ format_number_ptbr(cache_age_s) }} s** · essa leitura não acorda o carro.
+              {% elif cache_age_s is not none %}🟡 **Cache sem consulta há {{ format_number_ptbr(cache_age_s) }} s** · o polling deveria ocorrer a cada 30 s.
+              {% else %}🔴 **Horário da última consulta ao cache indisponível**.
               {% endif %}
           - type: tile
             entity: sensor.vehicle_primary_car_battery_level
@@ -379,7 +386,7 @@ views:
             content: >-
               **Atualização automática orientada a eventos**
 
-              Mudanças de zona ou deslocamentos GPS significativos solicitam uma nova leitura. O coordenador evita chamadas simultâneas: usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** quando ambos estão em casa. Com os dois em casa, as atualizações periódicas ficam pausadas entre **00h e 06h**. O botão **Atualizar agora** pode antecipar qualquer prazo e funciona também nessa janela.
+              O cache do servidor Bluelink é consultado a cada **30 segundos** sem acordar o carro. Separadamente, o wake real usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** quando ambos estão em casa. Com os dois em casa, wakes periódicos ficam pausados entre **00h e 06h**. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo.
 
               A consulta ao cache pode republicar entidades sem acordar o carro; o refresh só é concluído quando o timestamp do próprio Bluelink (`Última atualização`) realmente avança.
           - type: entities
@@ -388,7 +395,7 @@ views:
               - entity: sensor.vehicle_primary_last_updated_at
                 name: Estado confirmado em
               - entity: sensor.vehicle_primary_last_scanned_at
-                name: Consulta executada em
+                name: Cache consultado em
               - entity: sensor.vehicle_primary_location_last_updated
                 name: Último estacionamento confirmado
               - entity: sensor.garagem_vehicle_primary_recent_trip_info

@@ -36,12 +36,16 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   como horario regional e desloca somente a entidade de localizacao em +3 h.
   O stub reservado `OffPeakTime: {Mode: 1}` dos modelos a combustao tambem e
   ignorado para nao criar horarios EV ficticios em 00:00 nem warning por poll.
-- O Node-RED e o unico coordenador do agendamento de wakes reais. O polling do
-  `kia_uvo` continua a cada 15 minutos para renovar token, ler o cache do
-  backend e manter as entidades publicadas, mas `_async_update_data` nao chama
+- O Node-RED e o unico coordenador do agendamento de wakes reais. No backend
+  brasileiro, o `kia_uvo` consulta o cache do servidor a cada 30 segundos para
+  renovar token e manter as entidades publicadas quase em tempo real, mas
+  `_async_update_data` nao chama
   mais `check_and_force_update_vehicles`, nem no intervalo legado de 1440
   minutos. As opcoes antigas de force refresh permanecem aceitas apenas por
-  compatibilidade de config entry.
+  compatibilidade de config entry. `sensor.vehicle_primary_last_scanned_at`
+  registra a consulta mais recente ao cache e pode avancar mesmo sem mudar o
+  snapshot semantico; `sensor.vehicle_primary_last_updated_at` continua sendo
+  a evidencia de dado novo produzido pelo carro.
 - O Node-RED usa **15 minutos** quando algum morador esta `not_home` ou
   `chegando` e **30 minutos** quando ambos estao `home`. Com os dois em casa,
   wakes periodicos ficam suspensos entre 00:00 e 05:59. O
@@ -55,7 +59,8 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
 - O backend BR pode publicar o snapshot mais de dois minutos depois de aceitar
   o wake. Se o aguardo fixo de 25 segundos da biblioteca expirar, o coordinator
   agenda seis releituras limitadas de `/latest` ao longo dos 150 segundos
-  seguintes. Essas releituras consultam somente o cache, nao emitem outro wake
+  seguintes. Essas releituras e o polling contínuo de 30 segundos consultam
+  somente o cache, nao emitem outro wake
   e param assim que o timestamp semantico do veiculo comprova dado posterior
   a solicitacao.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
@@ -109,7 +114,7 @@ veiculo nao publicou telemetria fresca, assim como uma indisponibilidade
 transitoria de autenticacao, preserva o cache e retorna sem criar erro
 WebSocket; a ausencia de timestamp semantico novo mantem o mesmo backoff e gera um
 alerta deduplicado para `resident_primary`. O polling BR reavalia autenticacao
-a cada 15 minutos sem descarregar o config entry, permitindo recuperacao
+em ate 60 segundos sem descarregar o config entry, permitindo recuperacao
 posterior sem tempestade.
 Eventos operacionais usam `VEHICLE_PRIMARY_LOCATION_CHANGED`,
 `VEHICLE_PRIMARY_MOVEMENT_DETECTED`, `VEHICLE_PRIMARY_REFRESH_REQUESTED`,

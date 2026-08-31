@@ -304,9 +304,10 @@ depende exclusivamente de um `delay` residente em memória.
 - vehicle_primary: 15 min quando `resident_primary` ou `resident_secondary`
   está `not_home`/`chegando`; 30 min quando ambos estão `home`, com os wakes
   periódicos suspensos das 00:00 às 05:59 nessa última condição.
-- O Node-RED é o único agendador de wake real. O polling de 15 min do
-  `kia_uvo` no Home Assistant lê somente o cache do Bluelink para manter as
-  entidades publicadas; ele não chama mais o agendador nativo de force refresh.
+- O Node-RED é o único agendador de wake real. No backend brasileiro, o
+  `kia_uvo` no Home Assistant lê somente o cache do Bluelink a cada 30 s para
+  manter as entidades publicadas quase em tempo real; esse polling não acorda
+  o carro nem chama o agendador nativo de force refresh.
 - Entrada no anel/chegada: a solicitação volta por um par `link out`/`link in`
   ao mesmo coordenador persistente, em vez de chamar o binding diretamente.
 - Mudança de zona ou deslocamento GPS significativo: solicita avaliação
@@ -345,7 +346,7 @@ depende exclusivamente de um `delay` residente em memória.
   exige timestamp semântico posterior ao baseline e à solicitação; isso cobre
   reconexão/restart sem permitir que cache histórico confirme a tentativa.
   `401 Unauthorized`, timeout e aceite sem dado novo mantêm backoff; 401 no
-  polling de cache do backend BR é reavaliado a cada 15 min sem descarregar o
+  polling de cache do backend BR é reavaliado em até 60 s sem descarregar o
   config entry.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
   vehicle_primary continua sincronizando os dois trackers de iPhone, mas agora por um

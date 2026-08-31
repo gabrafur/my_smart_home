@@ -72,6 +72,8 @@ BR_CURRENT_USER_AGENT = (
     "Mobile Safari/535.19_CCS_APP_AOS"
 )
 BR_DEVICE_REGISTRATION_PATH = "/spa/notifications/register"
+BR_CACHE_POLL_INTERVAL_S = 30
+BR_CACHE_RETRY_INTERVAL_S = 60
 BR_FRESH_DATA_RECHECK_DELAYS_S = (15, 15, 30, 30, 30, 30)
 BR_FRESH_DATA_CLOCK_TOLERANCE = timedelta(seconds=60)
 TRIP_INFO_BACKGROUND_TIMEOUT_S = 120
@@ -96,6 +98,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.platforms: set[str] = set()
         self._action_lock = asyncio.Lock()
         self._force_refresh_lock = asyncio.Lock()
+        self._cache_refresh_lock = asyncio.Lock()
         self._br_fresh_data_recheck_tasks: dict[str, asyncio.Task] = {}
         # The Brazilian API exposes one calendar day per request. Keep the
         # dashboard window separate from vehicle.day_trip_info so that the
@@ -129,6 +132,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.scan_interval: int = (
             config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL) * 60
         )
+        self.cache_poll_interval: int = self._cache_poll_interval_seconds(
+            self.vehicle_manager.api,
+            self.scan_interval,
+        )
         self.force_refresh_interval: int = (
             config_entry.options.get(
                 CONF_FORCE_REFRESH_INTERVAL, DEFAULT_FORCE_REFRESH_INTERVAL
@@ -156,21 +163,40 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             # O polling do coordinator publica o cache Bluelink no Home
             # Assistant. Ele nunca agenda um wake real; esse papel pertence ao
             # coordenador persistente do Node-RED.
-            update_interval=timedelta(seconds=self.scan_interval),
+            update_interval=timedelta(seconds=self.cache_poll_interval),
         )
         _LOGGER.debug(
-            "%s - Polling configured: scan_interval=%ds, "
+            "%s - Polling configured: scan_interval=%ds, cache_poll_interval=%ds, "
             "force_refresh_interval=%ds, update_interval=%ds, "
             "no_force_refresh_hours=%d-%d",
             DOMAIN,
             self.scan_interval,
+            self.cache_poll_interval,
             self.force_refresh_interval,
-            self.scan_interval,
+            self.cache_poll_interval,
             self.no_force_refresh_hour_start,
             self.no_force_refresh_hour_finish,
         )
 
+    @staticmethod
+    def _cache_poll_interval_seconds(api: Any, configured_seconds: int) -> int:
+        """Return a fast cache-only cadence for the Brazilian backend."""
+        if type(api).__name__ == "HyundaiBlueLinkApiBR":
+            return BR_CACHE_POLL_INTERVAL_S
+        return configured_seconds
+
     async def _async_update_data(self):
+        """Read service cache without competing with a real vehicle wake."""
+        if self._force_refresh_lock.locked():
+            _LOGGER.debug("CRETA_CACHE_POLL_COALESCED wake_in_progress=true")
+            return self.data
+        async with self._cache_refresh_lock:
+            if self._force_refresh_lock.locked():
+                _LOGGER.debug("CRETA_CACHE_POLL_COALESCED wake_in_progress=true")
+                return self.data
+            return await self._async_update_data_from_cache()
+
+    async def _async_update_data_from_cache(self):
         """Update data via library. Called by update_coordinator periodically.
 
         Allow to update for the first time without further checking
@@ -187,12 +213,13 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         except AuthenticationError as auth_error:
             # The BR backend can invalidate a server-side session or client
             # identifier transiently (observed as 401/4002). Keep the config
-            # entry loaded and retry slowly so entities can recover without a
-            # reload; other regions retain the upstream re-auth behavior.
+            # entry loaded and retry the cache path so entities can recover
+            # without a reload; other regions retain the upstream re-auth
+            # behavior.
             if type(self.vehicle_manager.api).__name__ == "HyundaiBlueLinkApiBR":
                 raise UpdateFailed(
                     "Bluelink authentication session unavailable; will retry",
-                    retry_after=15 * 60,
+                    retry_after=BR_CACHE_RETRY_INTERVAL_S,
                 ) from auth_error
             raise ConfigEntryAuthFailed(auth_error) from auth_error
         except Exception as err:
@@ -219,7 +246,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.exception("Cached vehicle update failed")
             raise UpdateFailed(
                 "Error reading Hyundai/Kia Connect cached state; will retry",
-                retry_after=15 * 60,
+                retry_after=BR_CACHE_RETRY_INTERVAL_S,
             ) from err
 
         await self._async_refresh_trip_info_on_new_distance()
@@ -323,10 +350,11 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def async_update_all(self) -> None:
         """Update vehicle data."""
-        await self.async_check_and_refresh_token()
-        await self.hass.async_add_executor_job(
-            self.vehicle_manager.update_all_vehicles_with_cached_state
-        )
+        async with self._cache_refresh_lock:
+            await self.async_check_and_refresh_token()
+            await self.hass.async_add_executor_job(
+                self.vehicle_manager.update_all_vehicles_with_cached_state
+            )
         self.async_set_updated_data(self.data)
 
     async def async_force_update_all(self) -> None:
@@ -336,10 +364,11 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 "A vehicle refresh is already in progress; request coalesced"
             )
         async with self._force_refresh_lock:
-            await self.async_check_and_refresh_token()
-            await self.hass.async_add_executor_job(
-                self.vehicle_manager.force_refresh_all_vehicles_states
-            )
+            async with self._cache_refresh_lock:
+                await self.async_check_and_refresh_token()
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.force_refresh_all_vehicles_states
+                )
             self.async_set_updated_data(self.data)
 
     async def async_force_refresh_vehicle(self, vehicle_id: str) -> None:
@@ -352,7 +381,8 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         async with self._force_refresh_lock:
             api = self.vehicle_manager.api
             try:
-                await self.async_check_and_refresh_token()
+                async with self._cache_refresh_lock:
+                    await self.async_check_and_refresh_token()
             except AuthenticationError as err:
                 if type(api).__name__ != "HyundaiBlueLinkApiBR":
                     raise
@@ -371,9 +401,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             requested_at = dt.datetime.now(dt.UTC)
             _LOGGER.info("CRETA_REFRESH_REQUESTED source=force_refresh_button")
             try:
-                await self.hass.async_add_executor_job(
-                    self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
-                )
+                async with self._cache_refresh_lock:
+                    await self.hass.async_add_executor_job(
+                        self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+                    )
             except Exception as err:
                 no_fresh_data = (
                     type(api).__name__ == "HyundaiBlueLinkApiBR"
@@ -381,10 +412,11 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     and "did not return fresh data in time" in str(err)
                 )
                 try:
-                    await self.hass.async_add_executor_job(
-                        self.vehicle_manager.update_vehicle_with_cached_state,
-                        vehicle_id,
-                    )
+                    async with self._cache_refresh_lock:
+                        await self.hass.async_add_executor_job(
+                            self.vehicle_manager.update_vehicle_with_cached_state,
+                            vehicle_id,
+                        )
                 except Exception:
                     _LOGGER.exception(
                         "Cached vehicle read after force-refresh failure also failed"
@@ -480,7 +512,9 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 if self._force_refresh_lock.locked():
                     continue
                 try:
-                    async with self._force_refresh_lock:
+                    async with self._cache_refresh_lock:
+                        if self._force_refresh_lock.locked():
+                            continue
                         await self.hass.async_add_executor_job(
                             self.vehicle_manager.update_vehicle_with_cached_state,
                             vehicle_id,
@@ -1059,9 +1093,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         finally:
             async with self._force_refresh_lock:
                 try:
-                    await self.hass.async_add_executor_job(
-                        self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
-                    )
+                    async with self._cache_refresh_lock:
+                        await self.hass.async_add_executor_job(
+                            self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+                        )
                 except Exception:
                     _LOGGER.exception("Force refresh after call failed")
             self.async_set_updated_data(self.data)

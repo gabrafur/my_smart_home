@@ -516,6 +516,8 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
         coordinator = SimpleNamespace(
             hass=Hass(),
             vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             scan_interval=15 * 60,
             force_refresh_interval=24 * 60 * 60,
             data={},
@@ -524,11 +526,36 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             _async_refresh_trip_info_on_new_distance=no_op,
             _async_save_token=no_op,
         )
-        result = await HyundaiKiaConnectDataUpdateCoordinator._async_update_data(
-            coordinator
+        coordinator._async_update_data_from_cache = MethodType(
+            HyundaiKiaConnectDataUpdateCoordinator._async_update_data_from_cache,
+            coordinator,
         )
-        assert result == {}
-        assert calls == ["cache"]
+        for _ in range(3):
+            result = await HyundaiKiaConnectDataUpdateCoordinator._async_update_data(
+                coordinator
+            )
+            assert result == {}
+        assert calls == ["cache", "cache", "cache"]
+
+    def test_br_cache_poll_uses_independent_30_second_cadence(self):
+        assert (
+            HyundaiKiaConnectDataUpdateCoordinator._cache_poll_interval_seconds(
+                HyundaiBlueLinkApiBR([]),
+                15 * 60,
+            )
+            == 30
+        )
+
+        class OtherRegionApi:
+            pass
+
+        assert (
+            HyundaiKiaConnectDataUpdateCoordinator._cache_poll_interval_seconds(
+                OtherRegionApi(),
+                15 * 60,
+            )
+            == 15 * 60
+        )
 
     async def test_force_refresh_rejects_a_concurrent_request(self):
         started = asyncio.Event()
@@ -556,6 +583,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             hass=Hass(),
             vehicle_manager=Manager(),
             _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             _br_last_button_wake_at=None,
             async_check_and_refresh_token=wait_for_release,
             data={},
@@ -614,6 +642,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             hass=Hass(),
             vehicle_manager=Manager(),
             _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             _br_fresh_data_recheck_tasks={},
             _br_last_button_wake_at=None,
             async_check_and_refresh_token=no_op,
@@ -685,6 +714,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             hass=Hass(),
             vehicle_manager=Manager(),
             _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             _br_fresh_data_recheck_tasks={},
             async_check_and_refresh_token=no_op,
             data={"cached": True},
@@ -740,6 +770,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             hass=Hass(),
             vehicle_manager=Manager(),
             _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             async_check_and_refresh_token=no_op,
             data={},
             async_set_updated_data=lambda _data: None,
@@ -777,6 +808,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             hass=Hass(),
             vehicle_manager=Manager(),
             _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             _br_last_button_wake_at=None,
             async_check_and_refresh_token=no_op,
             data={},
@@ -800,6 +832,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
         coordinator = SimpleNamespace(
             vehicle_manager=Manager(),
             _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             async_check_and_refresh_token=fail_auth,
             data={"cached": True},
             async_set_updated_data=published.append,
@@ -820,13 +853,19 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
 
         coordinator = SimpleNamespace(
             vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
             scan_interval=15 * 60,
             force_refresh_interval=24 * 60 * 60,
             async_check_and_refresh_token=fail_auth,
         )
+        coordinator._async_update_data_from_cache = MethodType(
+            HyundaiKiaConnectDataUpdateCoordinator._async_update_data_from_cache,
+            coordinator,
+        )
         with self.assertRaises(coordinator_module.UpdateFailed) as raised:
             await HyundaiKiaConnectDataUpdateCoordinator._async_update_data(coordinator)
-        assert raised.exception.retry_after == 15 * 60
+        assert raised.exception.retry_after == 60
 
 
 if __name__ == "__main__":
