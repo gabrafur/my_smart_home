@@ -47,6 +47,13 @@ function assertAction(id, action, entityId, data = undefined) {
   }
 }
 
+function assertVirtualRoute(sourceId, outputIndex, outputId, inputId, targetId) {
+  assert.deepEqual(get(sourceId).wires[outputIndex], [outputId]);
+  assert.deepEqual(get(outputId, "link out").links, [inputId]);
+  assert(get(inputId, "link in").links.includes(outputId));
+  assert.deepEqual(get(inputId).wires[0], [targetId]);
+}
+
 function climate(state, temperature = 23, fanMode = "auto") {
   return { state, attributes: { temperature, fan_mode: fanMode } };
 }
@@ -70,7 +77,7 @@ for (const groupId of [
 ]) {
   const group = get(groupId, "group");
   for (const memberId of group.nodes) assert.equal(get(memberId).g, groupId);
-  assert(group.w <= 5200, `${groupId} excede a largura organizada do canvas`);
+  assert(group.w <= 4600, `${groupId} excede a largura organizada do canvas`);
 }
 for (const item of flows.filter(
   (candidate) => candidate.z === "456b32bd5d59b0d6" && candidate.type !== "group",
@@ -190,8 +197,20 @@ for (const stored_snapshot of ["", "unknown", "unavailable", "none", "null"]) {
 const startupTimer = get("a35f9d7d54ac6026", "trigger");
 assert.equal(startupTimer.duration, "10");
 assert.equal(startupTimer.units, "min");
-assert.deepEqual(normal.wires[1], ["29b85bea56c558c5"]);
-assert.deepEqual(startupTimer.wires[0], ["c1b98e075390aee0"]);
+assertVirtualRoute(
+  normal.id,
+  1,
+  "rpi_layout_cancel_timer_out",
+  "rpi_layout_cancel_timer_in",
+  "29b85bea56c558c5",
+);
+assertVirtualRoute(
+  startupTimer.id,
+  0,
+  "rpi_layout_startup_timer_out",
+  "rpi_layout_startup_timer_in",
+  "c1b98e075390aee0",
+);
 
 // Idempotencia: evento comum nao reaplica comandos quando ja existe ownership;
 // startup pode reconciliar, e um lock impede duas sequencias concorrentes.
@@ -365,7 +384,13 @@ for (const retryId of ["2715a6cbdf6f5683", "7a46b455ab19f6f1", "b69a6887788d1c54
   assert.equal(retry.timeoutUnits, "seconds");
 }
 assert.deepEqual(get("2715a6cbdf6f5683").wires[0], ["426ce86b78602275"]);
-assert.deepEqual(get("426ce86b78602275").wires[0], ["4a38415ec9862e2e"]);
+assertVirtualRoute(
+  "426ce86b78602275",
+  0,
+  "rpi_layout_hot_retry_out",
+  "rpi_layout_hot_retry_in",
+  "4a38415ec9862e2e",
+);
 
 // Encerramento: helper off bloqueia o caminho destrutivo por wiring; lock evita concorrencia.
 assert.deepEqual(get("8a59f82d6ce4aadf").wires, [["6162b449cc4a318b"], []]);
@@ -429,14 +454,33 @@ assertAction("58fc2938de8879ce", "climate.turn_off", "climate.ar_condicionado_es
 assert.equal(get("54e8149a2939446d").dataType, "jsonata");
 assert.equal(get("abef0869bb9f8954").dataType, "jsonata");
 assert.equal(get("94cf8f23337b9e97").dataType, "jsonata");
-assert.deepEqual(get("58fc2938de8879ce").wires[0], ["d4a1580cc965ba33"]);
+assertVirtualRoute(
+  "58fc2938de8879ce",
+  0,
+  "rpi_layout_restore_off_wait_out",
+  "rpi_layout_restore_wait_in",
+  "d4a1580cc965ba33",
+);
 assert.deepEqual(get("94cf8f23337b9e97").wires[0], ["d4a1580cc965ba33"]);
-assert.deepEqual(get("9db243616c0d9256").wires[1], ["d4a1580cc965ba33"]);
+assertVirtualRoute(
+  "9db243616c0d9256",
+  1,
+  "rpi_layout_restore_fan_wait_out",
+  "rpi_layout_restore_wait_in",
+  "d4a1580cc965ba33",
+);
 assert.equal(get("d4a1580cc965ba33", "delay").timeout, "5");
 assert.deepEqual(get("ff9a68d5d76c1aab").wires, [
   ["6e624c181ac580f8"],
-  ["3653df579248c807"],
+  ["rpi_layout_restore_validation_failure_out"],
 ]);
+assertVirtualRoute(
+  "ff9a68d5d76c1aab",
+  1,
+  "rpi_layout_restore_validation_failure_out",
+  "rpi_layout_restore_failure_in",
+  "3653df579248c807",
+);
 {
   const restoredOff = run("ff9a68d5d76c1aab", {
     restore: { state: "off", temperature: 24, fan_mode: "auto" },

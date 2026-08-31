@@ -1219,12 +1219,18 @@
             "4a38415ec9862e2e",
             "482e20c891bc1dd8",
             "a35f9d7d54ac6026",
-            "29b85bea56c558c5"
+            "29b85bea56c558c5",
+            "rpi_layout_lock_failure_out",
+            "rpi_layout_classifier_rollback_out",
+            "rpi_layout_startup_timer_out",
+            "rpi_layout_startup_retry_in",
+            "rpi_layout_hot_retry_in",
+            "rpi_layout_cancel_timer_in"
         ],
         "x": 74,
-        "y": 59,
-        "w": 1412,
-        "h": 272
+        "y": 79,
+        "w": 1587,
+        "h": 312
     },
     {
         "id": "5ae977feca8f9b01",
@@ -1263,12 +1269,18 @@
             "b826f528fd92e2bd",
             "048e2325e2e65944",
             "2721ff200d00c0f6",
-            "93a520c87fdd951a"
+            "93a520c87fdd951a",
+            "rpi_layout_start_failure_in",
+            "rpi_layout_snapshot_failure_out",
+            "rpi_layout_validation_failure_out",
+            "rpi_layout_failure_rollback_out",
+            "rpi_layout_startup_retry_out",
+            "rpi_layout_hot_retry_out"
         ],
-        "x": 64,
-        "y": 361.5,
-        "w": 4712,
-        "h": 429.5
+        "x": 74,
+        "y": 419,
+        "w": 4152,
+        "h": 442
     },
     {
         "id": "4afb66a093b1940d",
@@ -1313,12 +1325,23 @@
             "611069891a9aa1ad",
             "787769d2959d6ad5",
             "c23c6d5c4ce5c532",
-            "429438d87ff983ef"
+            "429438d87ff983ef",
+            "rpi_layout_startup_rollback_in",
+            "rpi_layout_startup_timer_in",
+            "rpi_layout_cancel_timer_out",
+            "rpi_layout_stop_prepare_in",
+            "rpi_layout_stop_prepare_out",
+            "rpi_layout_restore_failure_in",
+            "rpi_layout_restore_decision_failure_out",
+            "rpi_layout_restore_validation_failure_out",
+            "rpi_layout_restore_wait_in",
+            "rpi_layout_restore_off_wait_out",
+            "rpi_layout_restore_fan_wait_out"
         ],
-        "x": 74,
-        "y": 869,
-        "w": 5107,
-        "h": 432
+        "x": 64,
+        "y": 879,
+        "w": 4517,
+        "h": 422
     },
     {
         "id": "f79ed8df25162bcf",
@@ -1349,10 +1372,10 @@
             "ed15af8740df7acc",
             "1e4e450ccd8e4ab6"
         ],
-        "x": 74,
+        "x": 64,
         "y": 1399,
-        "w": 2422,
-        "h": 102
+        "w": 1592,
+        "h": 182
     },
     {
         "id": "98945604e99f7604",
@@ -5716,7 +5739,7 @@
             }
         ],
         "x": 220,
-        "y": 100,
+        "y": 120,
         "wires": [
             [
                 "05a75234a5e2020d"
@@ -5738,7 +5761,7 @@
         "finalize": "",
         "libs": [],
         "x": 500,
-        "y": 100,
+        "y": 120,
         "wires": [
             [
                 "4a38415ec9862e2e"
@@ -5764,7 +5787,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 220,
-        "y": 200,
+        "y": 220,
         "wires": [
             [
                 "7e00437eb45c44bc"
@@ -5785,7 +5808,7 @@
         "finalize": "",
         "libs": [],
         "x": 500,
-        "y": 200,
+        "y": 220,
         "wires": [
             [
                 "338e309762aa7a99"
@@ -5835,8 +5858,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 780,
-        "y": 200,
+        "x": 800,
+        "y": 220,
         "wires": [
             [
                 "566d191a914b687b"
@@ -5856,8 +5879,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1060,
-        "y": 200,
+        "x": 1100,
+        "y": 220,
         "wires": [
             [
                 "4a38415ec9862e2e"
@@ -5866,7 +5889,7 @@
                 "a35f9d7d54ac6026"
             ],
             [
-                "0547960da622f030"
+                "rpi_layout_classifier_rollback_out"
             ]
         ]
     },
@@ -5901,8 +5924,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1060,
-        "y": 100,
+        "x": 800,
+        "y": 120,
         "wires": [
             [
                 "482e20c891bc1dd8"
@@ -5922,14 +5945,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1340,
-        "y": 100,
+        "x": 1100,
+        "y": 120,
         "wires": [
             [
                 "54b8e92dac5342a4"
             ],
             [
-                "065453aa19652afe"
+                "rpi_layout_lock_failure_out"
             ]
         ]
     },
@@ -5951,11 +5974,11 @@
         "bytopic": "all",
         "topic": "topic",
         "outputs": 1,
-        "x": 500,
-        "y": 290,
+        "x": 1420,
+        "y": 220,
         "wires": [
             [
-                "c1b98e075390aee0"
+                "rpi_layout_startup_timer_out"
             ]
         ]
     },
@@ -5972,8 +5995,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 800,
-        "y": 290,
+        "x": 1420,
+        "y": 310,
         "wires": [
             [
                 "a35f9d7d54ac6026"
@@ -6023,8 +6046,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1330,
-        "y": 460,
+        "x": 1100,
+        "y": 500,
         "wires": [
             [
                 "b8c032f35ca26623"
@@ -6044,8 +6067,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1610,
-        "y": 460,
+        "x": 1380,
+        "y": 500,
         "wires": [
             [
                 "26d9d7195ce14910"
@@ -6054,7 +6077,7 @@
                 "8c3d9e9163059731"
             ],
             [
-                "065453aa19652afe"
+                "rpi_layout_snapshot_failure_out"
             ]
         ]
     },
@@ -6084,8 +6107,8 @@
         "blockInputOverrides": true,
         "domain": "input_text",
         "service": "set_value",
-        "x": 1890,
-        "y": 410,
+        "x": 1660,
+        "y": 460,
         "wires": [
             [
                 "8c3d9e9163059731"
@@ -6105,8 +6128,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2170,
-        "y": 460,
+        "x": 1740,
+        "y": 560,
         "wires": [
             [
                 "2e77d30f5abbb9e8"
@@ -6139,8 +6162,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_hvac_mode",
-        "x": 2450,
-        "y": 460,
+        "x": 1980,
+        "y": 560,
         "wires": [
             [
                 "cc598d0965e30fe5"
@@ -6173,8 +6196,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_temperature",
-        "x": 2710,
-        "y": 460,
+        "x": 2200,
+        "y": 560,
         "wires": [
             [
                 "a32c4cc997cdaee0"
@@ -6207,8 +6230,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_fan_mode",
-        "x": 2970,
-        "y": 460,
+        "x": 2460,
+        "y": 560,
         "wires": [
             [
                 "47cae39680ac8969"
@@ -6233,8 +6256,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 3230,
-        "y": 460,
+        "x": 2720,
+        "y": 560,
         "wires": [
             [
                 "c57195edaf731fea"
@@ -6278,8 +6301,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 3510,
-        "y": 460,
+        "x": 3000,
+        "y": 560,
         "wires": [
             [
                 "303ec8403542617c"
@@ -6299,14 +6322,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3820,
-        "y": 460,
+        "x": 3280,
+        "y": 560,
         "wires": [
             [
                 "bed05acc4339b69c"
             ],
             [
-                "065453aa19652afe"
+                "rpi_layout_validation_failure_out"
             ]
         ]
     },
@@ -6323,8 +6346,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4120,
-        "y": 460,
+        "x": 3550,
+        "y": 560,
         "wires": [
             [
                 "a6f0fa154aac7b84"
@@ -6364,8 +6387,8 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_on",
-        "x": 4410,
-        "y": 410,
+        "x": 3840,
+        "y": 540,
         "wires": [
             [
                 "0cca7636547bd45c"
@@ -6385,8 +6408,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4670,
-        "y": 410,
+        "x": 4120,
+        "y": 540,
         "wires": [
             [
                 "aa1a0d2a4b3dfd43"
@@ -6418,8 +6441,8 @@
             "338e309762aa7a99"
         ],
         "uncaught": false,
-        "x": 210,
-        "y": 650,
+        "x": 220,
+        "y": 760,
         "wires": [
             [
                 "065453aa19652afe"
@@ -6439,8 +6462,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 650,
+        "x": 520,
+        "y": 760,
         "wires": [
             [
                 "2715a6cbdf6f5683"
@@ -6449,7 +6472,7 @@
                 "7a46b455ab19f6f1"
             ],
             [
-                "0547960da622f030"
+                "rpi_layout_failure_rollback_out"
             ],
             [
                 "2721ff200d00c0f6"
@@ -6477,8 +6500,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 790,
-        "y": 610,
+        "x": 760,
+        "y": 620,
         "wires": [
             [
                 "426ce86b78602275"
@@ -6503,11 +6526,11 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 790,
-        "y": 740,
+        "x": 830,
+        "y": 700,
         "wires": [
             [
-                "338e309762aa7a99"
+                "rpi_layout_startup_retry_out"
             ]
         ]
     },
@@ -6542,11 +6565,11 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1070,
-        "y": 610,
+        "x": 1040,
+        "y": 620,
         "wires": [
             [
-                "4a38415ec9862e2e"
+                "rpi_layout_hot_retry_out"
             ],
             [
                 "80a75ea8907407b3"
@@ -6566,8 +6589,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1330,
-        "y": 650,
+        "x": 1380,
+        "y": 720,
         "wires": [
             [
                 "0547960da622f030"
@@ -6628,14 +6651,14 @@
                 "valueType": "triggerId"
             }
         ],
-        "x": 210,
-        "y": 970,
+        "x": 200,
+        "y": 980,
         "wires": [
             [
                 "aaa9ce1abce5f4a2"
             ],
             [
-                "29b85bea56c558c5"
+                "rpi_layout_cancel_timer_out"
             ]
         ]
     },
@@ -6670,11 +6693,11 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 470,
-        "y": 1070,
+        "x": 1100,
+        "y": 1160,
         "wires": [
             [
-                "aaa9ce1abce5f4a2"
+                "rpi_layout_stop_prepare_out"
             ],
             [
                 "030e7e2e244bc035"
@@ -6694,8 +6717,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 750,
-        "y": 970,
+        "x": 440,
+        "y": 980,
         "wires": [
             [
                 "8a59f82d6ce4aadf"
@@ -6733,8 +6756,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1010,
-        "y": 970,
+        "x": 680,
+        "y": 980,
         "wires": [
             [
                 "6162b449cc4a318b"
@@ -6755,8 +6778,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1270,
-        "y": 970,
+        "x": 920,
+        "y": 980,
         "wires": [
             [
                 "0547960da622f030"
@@ -6806,8 +6829,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1550,
-        "y": 970,
+        "x": 1160,
+        "y": 980,
         "wires": [
             [
                 "3fbbfda5d4519a8a"
@@ -6827,8 +6850,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1840,
-        "y": 970,
+        "x": 1400,
+        "y": 980,
         "wires": [
             [
                 "58fc2938de8879ce"
@@ -6837,7 +6860,7 @@
                 "54e8149a2939446d"
             ],
             [
-                "3653df579248c807"
+                "rpi_layout_restore_decision_failure_out"
             ]
         ]
     },
@@ -6867,11 +6890,11 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "turn_off",
-        "x": 2130,
-        "y": 910,
+        "x": 1660,
+        "y": 940,
         "wires": [
             [
-                "d4a1580cc965ba33"
+                "rpi_layout_restore_off_wait_out"
             ]
         ]
     },
@@ -6901,8 +6924,8 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_hvac_mode",
-        "x": 2130,
-        "y": 1030,
+        "x": 1700,
+        "y": 1040,
         "wires": [
             [
                 "2d4e5f16992b02a3"
@@ -6922,8 +6945,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2410,
-        "y": 1030,
+        "x": 1950,
+        "y": 1040,
         "wires": [
             [
                 "abef0869bb9f8954"
@@ -6959,7 +6982,7 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_temperature",
-        "x": 2680,
+        "x": 2160,
         "y": 960,
         "wires": [
             [
@@ -6980,14 +7003,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2950,
-        "y": 1030,
+        "x": 2320,
+        "y": 1040,
         "wires": [
             [
                 "94cf8f23337b9e97"
             ],
             [
-                "d4a1580cc965ba33"
+                "rpi_layout_restore_fan_wait_out"
             ]
         ]
     },
@@ -7017,7 +7040,7 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_fan_mode",
-        "x": 3220,
+        "x": 2580,
         "y": 960,
         "wires": [
             [
@@ -7043,8 +7066,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 3490,
-        "y": 990,
+        "x": 2870,
+        "y": 1040,
         "wires": [
             [
                 "feff1e28b5cf244b"
@@ -7088,8 +7111,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 3770,
-        "y": 990,
+        "x": 3160,
+        "y": 1040,
         "wires": [
             [
                 "ff9a68d5d76c1aab"
@@ -7109,14 +7132,14 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4060,
-        "y": 990,
+        "x": 3430,
+        "y": 1040,
         "wires": [
             [
                 "6e624c181ac580f8"
             ],
             [
-                "3653df579248c807"
+                "rpi_layout_restore_validation_failure_out"
             ]
         ]
     },
@@ -7133,8 +7156,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4340,
-        "y": 990,
+        "x": 3700,
+        "y": 1040,
         "wires": [
             [
                 "b9a3beb0d37aad9a"
@@ -7170,8 +7193,8 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_off",
-        "x": 4620,
-        "y": 1080,
+        "x": 4020,
+        "y": 1100,
         "wires": [
             [
                 "87c69add421941ca"
@@ -7191,8 +7214,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4900,
-        "y": 1080,
+        "x": 4300,
+        "y": 1100,
         "wires": [
             [
                 "3f9982ee3d4d2c9a"
@@ -7225,8 +7248,8 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_off",
-        "x": 4620,
-        "y": 940,
+        "x": 4020,
+        "y": 980,
         "wires": [
             [
                 "33cff748799e2546"
@@ -7246,8 +7269,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4900,
-        "y": 940,
+        "x": 4300,
+        "y": 980,
         "wires": [
             [
                 "3f9982ee3d4d2c9a"
@@ -7282,7 +7305,7 @@
             "c1b98e075390aee0"
         ],
         "uncaught": false,
-        "x": 210,
+        "x": 220,
         "y": 1260,
         "wires": [
             [
@@ -7303,7 +7326,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
+        "x": 550,
         "y": 1260,
         "wires": [
             [
@@ -7332,8 +7355,8 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 790,
-        "y": 1260,
+        "x": 810,
+        "y": 1160,
         "wires": [
             [
                 "c1b98e075390aee0"
@@ -7353,8 +7376,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 750,
-        "y": 1110,
+        "x": 1400,
+        "y": 1180,
         "wires": [
             []
         ]
@@ -7385,8 +7408,8 @@
         "blockInputOverrides": true,
         "domain": "input_text",
         "service": "set_value",
-        "x": 270,
-        "y": 1460,
+        "x": 260,
+        "y": 1440,
         "wires": [
             []
         ]
@@ -7415,7 +7438,7 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 610,
+        "x": 680,
         "y": 1440,
         "wires": [
             []
@@ -7445,7 +7468,7 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 920,
+        "x": 1100,
         "y": 1440,
         "wires": [
             []
@@ -7475,7 +7498,7 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "create",
-        "x": 1250,
+        "x": 1520,
         "y": 1440,
         "wires": [
             []
@@ -7505,8 +7528,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "dismiss",
-        "x": 1610,
-        "y": 1440,
+        "x": 280,
+        "y": 1540,
         "wires": [
             []
         ]
@@ -7535,8 +7558,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "dismiss",
-        "x": 1930,
-        "y": 1440,
+        "x": 700,
+        "y": 1540,
         "wires": [
             []
         ]
@@ -7565,8 +7588,8 @@
         "blockInputOverrides": true,
         "domain": "persistent_notification",
         "service": "dismiss",
-        "x": 2310,
-        "y": 1440,
+        "x": 1140,
+        "y": 1540,
         "wires": [
             []
         ]
@@ -7581,8 +7604,8 @@
             "2721ff200d00c0f6",
             "3f9982ee3d4d2c9a"
         ],
-        "x": 115,
-        "y": 1460,
+        "x": 105,
+        "y": 1440,
         "wires": [
             [
                 "ca55bd1e9433732e"
@@ -7598,7 +7621,7 @@
         "links": [
             "aa1a0d2a4b3dfd43"
         ],
-        "x": 420,
+        "x": 525,
         "y": 1440,
         "wires": [
             [
@@ -7615,7 +7638,7 @@
         "links": [
             "c23c6d5c4ce5c532"
         ],
-        "x": 750,
+        "x": 945,
         "y": 1440,
         "wires": [
             [
@@ -7633,7 +7656,7 @@
             "93a520c87fdd951a",
             "429438d87ff983ef"
         ],
-        "x": 1080,
+        "x": 1365,
         "y": 1440,
         "wires": [
             [
@@ -7650,8 +7673,8 @@
         "links": [
             "611069891a9aa1ad"
         ],
-        "x": 1440,
-        "y": 1440,
+        "x": 105,
+        "y": 1540,
         "wires": [
             [
                 "5dd0deebdc474035"
@@ -7668,8 +7691,8 @@
             "b826f528fd92e2bd",
             "787769d2959d6ad5"
         ],
-        "x": 1760,
-        "y": 1440,
+        "x": 525,
+        "y": 1540,
         "wires": [
             [
                 "36968b4881eab9d3"
@@ -7685,8 +7708,8 @@
         "links": [
             "048e2325e2e65944"
         ],
-        "x": 2085,
-        "y": 1440,
+        "x": 965,
+        "y": 1540,
         "wires": [
             [
                 "4b48bc3c0c58d87c"
@@ -7703,8 +7726,8 @@
         "links": [
             "adb240fe59ad2ae7"
         ],
-        "x": 4420,
-        "y": 560,
+        "x": 3825,
+        "y": 660,
         "wires": []
     },
     {
@@ -7717,8 +7740,8 @@
         "links": [
             "ed15af8740df7acc"
         ],
-        "x": 4420,
-        "y": 610,
+        "x": 3825,
+        "y": 700,
         "wires": []
     },
     {
@@ -7731,8 +7754,8 @@
         "links": [
             "1e4e450ccd8e4ab6"
         ],
-        "x": 4420,
-        "y": 660,
+        "x": 3825,
+        "y": 740,
         "wires": []
     },
     {
@@ -7745,8 +7768,8 @@
         "links": [
             "f9be08e865d2c10e"
         ],
-        "x": 1660,
-        "y": 700,
+        "x": 900,
+        "y": 800,
         "wires": []
     },
     {
@@ -7759,8 +7782,8 @@
         "links": [
             "12141375e10fc751"
         ],
-        "x": 1660,
-        "y": 750,
+        "x": 735,
+        "y": 820,
         "wires": []
     },
     {
@@ -7773,8 +7796,8 @@
         "links": [
             "f9be08e865d2c10e"
         ],
-        "x": 5140,
-        "y": 910,
+        "x": 4540,
+        "y": 950,
         "wires": []
     },
     {
@@ -7787,8 +7810,8 @@
         "links": [
             "7e7a1b1cebdb498a"
         ],
-        "x": 5140,
-        "y": 960,
+        "x": 4540,
+        "y": 990,
         "wires": []
     },
     {
@@ -7801,8 +7824,8 @@
         "links": [
             "ed15af8740df7acc"
         ],
-        "x": 5140,
-        "y": 1010,
+        "x": 4540,
+        "y": 1030,
         "wires": []
     },
     {
@@ -7815,8 +7838,8 @@
         "links": [
             "fb7ee906fa3b1033"
         ],
-        "x": 5140,
-        "y": 1060,
+        "x": 4540,
+        "y": 1070,
         "wires": []
     },
     {
@@ -7829,7 +7852,7 @@
         "links": [
             "12141375e10fc751"
         ],
-        "x": 1130,
+        "x": 795,
         "y": 1260,
         "wires": []
     },
@@ -15803,10 +15826,10 @@
             "global_observer_coverage__456b32bd5d59b0d6__annotate",
             "global_observer_coverage__456b32bd5d59b0d6__out"
         ],
-        "x": 5320,
-        "y": 40,
-        "w": 720,
-        "h": 162
+        "x": 4524,
+        "y": 59,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "global_observer_coverage__456b32bd5d59b0d6__catch",
@@ -15816,7 +15839,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 5460,
+        "x": 4680,
         "y": 100,
         "wires": [
             [
@@ -15831,7 +15854,7 @@
         "g": "global_observer_coverage__456b32bd5d59b0d6__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 5470,
+        "x": 4690,
         "y": 160,
         "wires": [
             [
@@ -15852,7 +15875,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5740,
+        "x": 4960,
         "y": 130,
         "wires": [
             [
@@ -15870,8 +15893,362 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 5985,
+        "x": 5205,
         "y": 130,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_start_failure_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Retorno: tratar falha de início",
+        "links": [
+            "rpi_layout_lock_failure_out",
+            "rpi_layout_snapshot_failure_out",
+            "rpi_layout_validation_failure_out"
+        ],
+        "x": 360,
+        "y": 760,
+        "wires": [
+            [
+                "065453aa19652afe"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_lock_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Ir para falha de início",
+        "mode": "link",
+        "links": [
+            "rpi_layout_start_failure_in"
+        ],
+        "x": 1280,
+        "y": 150,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_snapshot_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para falha de início",
+        "mode": "link",
+        "links": [
+            "rpi_layout_start_failure_in"
+        ],
+        "x": 1560,
+        "y": 630,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_validation_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para falha de início",
+        "mode": "link",
+        "links": [
+            "rpi_layout_start_failure_in"
+        ],
+        "x": 3465,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_startup_rollback_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: restaurar snapshot",
+        "links": [
+            "rpi_layout_classifier_rollback_out",
+            "rpi_layout_failure_rollback_out"
+        ],
+        "x": 1040,
+        "y": 940,
+        "wires": [
+            [
+                "0547960da622f030"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_classifier_rollback_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Ir para restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_rollback_in"
+        ],
+        "x": 1280,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_failure_rollback_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_rollback_in"
+        ],
+        "x": 755,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_startup_timer_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: confirmar CPU normal",
+        "links": [
+            "rpi_layout_startup_timer_out"
+        ],
+        "x": 925,
+        "y": 1240,
+        "wires": [
+            [
+                "c1b98e075390aee0"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_startup_timer_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Ir para confirmação de CPU",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_timer_in"
+        ],
+        "x": 1620,
+        "y": 250,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_startup_retry_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Retorno: reconciliar startup",
+        "links": [
+            "rpi_layout_startup_retry_out"
+        ],
+        "x": 585,
+        "y": 280,
+        "wires": [
+            [
+                "338e309762aa7a99"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_startup_retry_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para reconciliação",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_retry_in"
+        ],
+        "x": 1005,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_hot_retry_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Retorno: reler ownership",
+        "links": [
+            "rpi_layout_hot_retry_out"
+        ],
+        "x": 660,
+        "y": 150,
+        "wires": [
+            [
+                "4a38415ec9862e2e"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_hot_retry_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para ownership",
+        "mode": "link",
+        "links": [
+            "rpi_layout_hot_retry_in"
+        ],
+        "x": 1225,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_cancel_timer_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Retorno: cancelar janela retomada",
+        "links": [
+            "rpi_layout_cancel_timer_out"
+        ],
+        "x": 1320,
+        "y": 350,
+        "wires": [
+            [
+                "29b85bea56c558c5"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_cancel_timer_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para cancelamento da janela",
+        "mode": "link",
+        "links": [
+            "rpi_layout_cancel_timer_in"
+        ],
+        "x": 360,
+        "y": 1040,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_stop_prepare_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: preparar encerramento",
+        "links": [
+            "rpi_layout_stop_prepare_out"
+        ],
+        "x": 340,
+        "y": 940,
+        "wires": [
+            [
+                "aaa9ce1abce5f4a2"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_stop_prepare_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para preparação da saída",
+        "mode": "link",
+        "links": [
+            "rpi_layout_stop_prepare_in"
+        ],
+        "x": 1285,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_failure_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: tratar falha de restauração",
+        "links": [
+            "rpi_layout_restore_decision_failure_out",
+            "rpi_layout_restore_validation_failure_out"
+        ],
+        "x": 345,
+        "y": 1220,
+        "wires": [
+            [
+                "3653df579248c807"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_restore_decision_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para falha de restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_failure_in"
+        ],
+        "x": 1540,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_validation_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para falha de restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_failure_in"
+        ],
+        "x": 3625,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_wait_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: aguardar confirmação",
+        "links": [
+            "rpi_layout_restore_off_wait_out",
+            "rpi_layout_restore_fan_wait_out"
+        ],
+        "x": 2680,
+        "y": 1080,
+        "wires": [
+            [
+                "d4a1580cc965ba33"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_restore_off_wait_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para confirmação",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_wait_in"
+        ],
+        "x": 1820,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_fan_wait_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para confirmação",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_wait_in"
+        ],
+        "x": 2485,
+        "y": 1080,
         "wires": []
     },
     {

@@ -23,8 +23,8 @@
         },
         "456b32bd5d59b0d6": {
             "label": "resfriamento_raspberry_pi",
-            "max_long_wires": 21,
-            "max_reverse_wires": 11,
+            "max_long_wires": 0,
+            "max_reverse_wires": 6,
             "min_left_margin": 64
         },
         "storage_health_tab": {
