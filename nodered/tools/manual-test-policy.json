@@ -28,7 +28,7 @@
             ],
             "automated_test": "test-daily-host-update-flow.mjs",
             "dry_run_terminal_ids": ["daily_update_dry_run_terminal"],
-            "reason": "Solicitação, falha do DietPi, indisponibilidade e análise Kia UVO percorrem os validadores e parsers reais; sudo, apt, Docker, update.install e reboot permanecem bloqueados no terminal dry-run."
+            "reason": "Solicitação, falha do DietPi, indisponibilidade e conflito Kia UVO percorrem os validadores e parsers reais; sudo, apt, Docker, Codex, commit, push, update.install e reboot permanecem bloqueados no terminal dry-run."
         },
         "weekly_docs_review_tab": {
             "strategy": "manual_full_dry_run",

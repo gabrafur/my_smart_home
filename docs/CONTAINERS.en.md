@@ -19,6 +19,7 @@ host requirements, and private files that cannot be inferred from YAML alone.
 | `zigbee2mqtt` | digest-pinned image | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, database, coordinator backup |
 | `ai-bridge` | local build | `127.0.0.1:8099` only | auth volumes and workspace | `.env` bridge token and optional OAuth token |
 | `docs-review-scheduler` | worker using the same local bridge build | no published port | workspace, Codex auth, and `.local-state/docs-review` | narrow-scope SSH key and `known_hosts` outside Git |
+| `kia-uvo-codex-merge` | worker using the same local bridge build | no published port | read-only checkout, Codex auth, and `.local-state/kia-uvo-merge` | narrow-scope SSH key and `known_hosts` outside Git |
 
 Published ports use `HOST_LAN_IP`; when it is absent, they bind to loopback.
 Home Assistant, AppDaemon, and Matter use host networking because they require
@@ -37,7 +38,7 @@ Tags such as `stable` and `latest` are used only as channels checked by
 mutable tag directly.
 
 The bridge uses Node.js 22 Bookworm Slim, includes Git/SSH/GNU Make for the
-documentation worker, and pins the Claude Code and Codex CLI versions in its Dockerfile.
+documentation and Kia UVO merge workers, and pins the Claude Code and Codex CLI versions in its Dockerfile.
 Debian packages still come from the official APT repository during builds, so
 critical components are pinned but builds are not byte-for-byte APT snapshots.
 
@@ -76,9 +77,10 @@ The socket GID differs between hosts. Set `DOCKER_GID` to:
 stat -c '%g' /var/run/docker.sock
 ```
 
-Compose adds that supplementary group to the bridge at runtime. The documentation worker
-does not receive the socket, clears every supplementary group after a short
-bootstrap, and assumes the non-root UID/GID that owns the checkout. When
+Compose adds that supplementary group to the bridge at runtime. The
+documentation and Kia UVO merge workers do not receive the socket, clear every
+supplementary group after a short bootstrap, and assume the non-root UID/GID
+that owns the checkout. When
 needed, it creates a local no-login identity so OpenSSH can resolve that UID.
 No host-specific GID is baked into the image.
 
@@ -98,7 +100,8 @@ agent token from being copied into Node-RED when Node-RED does not need it.
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude CLI | optional if auth volume is used |
 | `HA_LONG_LIVED_TOKEN` | host update script | optional; prefer `.local-secrets/` |
 | `WEEKLY_DOCS_REVIEW_*` | documentation worker | branch/timeout have defaults; SSH paths are required |
-| `REPO_UID`, `REPO_GID` | documentation worker | yes; non-root checkout owner |
+| `KIA_UVO_MERGE_*` | Kia UVO merge worker | timeout/push have defaults; reuses the documentation worker's restricted SSH paths |
+| `REPO_UID`, `REPO_GID` | automation workers | yes; non-root checkout owner |
 
 `ANTHROPIC_API_KEY` is explicitly blanked inside the bridge so the CLI cannot
 accidentally choose API billing when OAuth is intended.
@@ -127,6 +130,8 @@ flowchart TD
     HA --> BR[ai-bridge / integration]
     NR -->|weekly/manual trigger| SCH[docs-review-scheduler worker]
     SCH --> GIT[Git remote]
+    NR -->|Kia UVO conflict| KIA[kia-uvo-codex-merge worker]
+    KIA -->|codex/kia-uvo-* branch| GIT
 ```
 
 `depends_on` is not a health check. Home Assistant and Node-RED may need extra
@@ -149,9 +154,16 @@ docker compose up -d
 docker compose ps
 ```
 
-The default `up -d` does not include `docs-review-scheduler`, which belongs to
-the optional `automation` profile. Enable it only after preparing credentials
+The default `up -d` does not include `docs-review-scheduler` or
+`kia-uvo-codex-merge`; both belong to the optional `automation` profile. Enable
+them only after preparing credentials
 as described in the [weekly review guide](WEEKLY_DOCUMENTATION_REVIEW.en.md).
+
+The Kia UVO worker receives only a validated target version from Node-RED,
+works in a disposable clone, limits changes to the component and upstream
+metadata, and may publish only a unique `codex/kia-uvo-*` candidate branch. It
+cannot change `main`, receives no Docker socket, and neither installs nor
+restarts Home Assistant.
 
 Home Assistant receives `.local-state/docs-review` read-only to expose the
 routine's sensor. This operational status is regenerable, Git-ignored, and does

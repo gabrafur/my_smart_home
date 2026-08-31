@@ -12,6 +12,7 @@ export const instructionFiles = [
   `${instructionRoot}/dashboards.md`,
   `${instructionRoot}/host-safety.md`,
   `${instructionRoot}/local-ai.md`,
+  `${instructionRoot}/kia-uvo-codex-merge.md`,
   `${instructionRoot}/node-red.md`,
   `${instructionRoot}/project-memory.md`,
   `${instructionRoot}/weekly-docs-review.md`,

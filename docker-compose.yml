@@ -128,12 +128,15 @@ services:
       - ./homeassistant/.storage-maintenance-trigger:/run/storage-maintenance-trigger
       - ./homeassistant/.daily-update-trigger:/run/daily-update-trigger
       - ./.local-state/docs-review-trigger:/run/docs-review-trigger
+      - ./.local-state/kia-uvo-merge:/run/kia-uvo-merge:ro
+      - ./.local-state/kia-uvo-merge-trigger:/run/kia-uvo-merge-trigger
       - ./scripts/request-host-git-backup.sh:/opt/request-host-git-backup.sh:ro
       - ./scripts/request-host-storage-maintenance.sh:/opt/request-host-storage-maintenance.sh:ro
       - ./scripts/request-host-daily-update.sh:/opt/request-host-daily-update.sh:ro
       - ./scripts/read-host-daily-update-result.sh:/opt/read-host-daily-update-result.sh:ro
       - ./scripts/request-host-kia-uvo-update-check.sh:/opt/request-host-kia-uvo-update-check.sh:ro
       - ./scripts/read-host-kia-uvo-update-result.sh:/opt/read-host-kia-uvo-update-result.sh:ro
+      - ./scripts/request-kia-uvo-codex-merge.sh:/opt/request-kia-uvo-codex-merge.sh:ro
       - ./scripts/request-weekly-docs-review.sh:/opt/request-weekly-docs-review.sh:ro
       - ./nodered:/data
       - ./bindings/private:/run/private-bindings:ro
@@ -276,6 +279,44 @@ services:
       - REPO_GID=${REPO_GID:-1000}
     entrypoint: ["/bin/sh", "/workspace/scripts/weekly-docs-review-entrypoint.sh"]
     command: ["node", "scripts/weekly-docs-review.mjs"]
+
+  kia-uvo-codex-merge:
+    logging: *default-logging
+    # Codex works only in a disposable clone. The live checkout is read-only;
+    # the worker may push a unique candidate branch, never main.
+    build:
+      context: ./ia-bridge
+    container_name: kia-uvo-codex-merge
+    profiles: ["automation"]
+    restart: always
+    cpus: "1.0"
+    cpu_shares: 256
+    mem_limit: 1536m
+    mem_reservation: 256m
+    pids_limit: 256
+    oom_score_adj: 500
+    user: "0:0"
+    working_dir: /workspace
+    volumes:
+      - .:/workspace:ro
+      - ./.local-state/kia-uvo-merge:/run/kia-uvo-merge
+      - ./.local-state/kia-uvo-merge-trigger:/run/kia-uvo-merge-trigger
+      - codex-bridge-auth:/worker-auth/codex:ro
+      - ${WEEKLY_DOCS_REVIEW_SSH_KEY:-/dev/null}:/worker-auth/id_ed25519:ro
+      - ${WEEKLY_DOCS_REVIEW_KNOWN_HOSTS:-/dev/null}:/worker-auth/known_hosts:ro
+    environment:
+      - TZ=${TZ:-America/Sao_Paulo}
+      - KIA_UVO_MERGE_TIMEOUT_MS=${KIA_UVO_MERGE_TIMEOUT_MS:-10800000}
+      - KIA_UVO_MERGE_PUSH=${KIA_UVO_MERGE_PUSH:-true}
+      - KIA_UVO_MERGE_STATUS_PATH=/run/kia-uvo-merge/status.json
+      - KIA_UVO_MERGE_PATCH_PATH=/run/kia-uvo-merge/candidate.patch
+      - KIA_UVO_MERGE_TRIGGER_PATH=/run/kia-uvo-merge-trigger/requested
+      - KIA_UVO_MERGE_PROCESSING_PATH=/run/kia-uvo-merge-trigger/processing
+      - REPO_UID=${REPO_UID:-1000}
+      - REPO_GID=${REPO_GID:-1000}
+      - NODE_RED_UID=${NODE_RED_UID:-1000}
+    entrypoint: ["/bin/sh", "/workspace/scripts/kia-uvo-codex-merge-entrypoint.sh"]
+    command: ["node", "scripts/kia-uvo-codex-merge.mjs"]
 
 volumes:
   claude-bridge-auth:

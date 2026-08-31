@@ -6,7 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const flows = JSON.parse(fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"));
+const flowsPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
+const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
 const node = (id) => {
   const found = flows.find((entry) => entry.id === id);
   assert.ok(found, `missing node ${id}`);
@@ -32,6 +33,14 @@ assert.equal(node("daily_update_kia_schedule").once, true);
 assert.equal(node("daily_update_kia_request_host").command, "/opt/request-host-kia-uvo-update-check.sh");
 assert.equal(node("daily_update_kia_read_result").command, "/opt/read-host-kia-uvo-update-result.sh");
 assert.equal(node("daily_update_kia_result_poll").repeat, "60");
+assert.equal(node("daily_update_kia_parse_result").outputs, 2);
+assert.deepEqual(node("daily_update_kia_parse_result").wires, [
+  ["daily_update_kia_result_test_out"],
+  ["daily_update_kia_codex_request_out"],
+]);
+assert.deepEqual(node("daily_update_kia_codex_request_out").links, ["daily_update_kia_codex_request_in"]);
+assert.equal(node("daily_update_kia_codex_request").command, "/opt/request-kia-uvo-codex-merge.sh");
+assert.equal(node("daily_update_kia_codex_request").addpay, "payload");
 assert.deepEqual(node("daily_update_kia_route_test").wires, [
   ["daily_update_kia_test_out"],
   ["daily_update_kia_request_host"],
@@ -68,6 +77,9 @@ assert.match(node("daily_update_dry_run_terminal").func, /dispatched: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /apt_commands_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /docker_update_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /kia_uvo_update_check_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /kia_uvo_codex_merge_requested: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /codex_worker_started: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /git_push_sent: false/);
 assert.deepEqual(node("daily_update_dry_run_terminal").wires, []);
 
 const values = new Map();
@@ -138,14 +150,23 @@ const kiaTestConflict = parseKia(
   runtimeNode,
   flow,
 );
-assert.equal(kiaTestConflict.payload.status, "conflict");
-assert.equal(kiaTestConflict.payload.conflicts, 1);
+assert.equal(kiaTestConflict[0].payload.status, "conflict");
+assert.equal(kiaTestConflict[0].payload.conflicts, 1);
+assert.equal(kiaTestConflict[1], null, "synthetic conflicts must not reach Codex");
 assert.equal(errors.length, 1, "synthetic Kia conflicts must not alert production observers");
-assert.equal(parseKia(
+const kiaProductionConflict = parseKia(
+  { payload: "kia-uvo-update status=conflict request_id=prod-conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T01:00:00.000Z" },
+  runtimeNode,
+  flow,
+);
+assert.equal(kiaProductionConflict[0], null);
+assert.equal(kiaProductionConflict[1].payload, "v3.11.0");
+assert.equal(kiaProductionConflict[1].kia_uvo_update.status, "conflict");
+assert.deepEqual(parseKia(
   { payload: "kia-uvo-update status=failed request_id=prod-kia" },
   runtimeNode,
   flow,
-), null);
+), [null, null]);
 assert.match(errors.at(-1), /kia_uvo_update_check_failed/);
 
 const compose = fs.readFileSync(path.resolve(here, "..", "..", "docker-compose.yml"), "utf8");
@@ -154,5 +175,9 @@ assert.match(compose, /request-host-daily-update\.sh:\/opt\/request-host-daily-u
 assert.match(compose, /read-host-daily-update-result\.sh:\/opt\/read-host-daily-update-result\.sh:ro/);
 assert.match(compose, /request-host-kia-uvo-update-check\.sh:\/opt\/request-host-kia-uvo-update-check\.sh:ro/);
 assert.match(compose, /read-host-kia-uvo-update-result\.sh:\/opt\/read-host-kia-uvo-update-result\.sh:ro/);
+assert.match(compose, /request-kia-uvo-codex-merge\.sh:\/opt\/request-kia-uvo-codex-merge\.sh:ro/);
+assert.match(compose, /\.\/\.local-state\/kia-uvo-merge-trigger:\/run\/kia-uvo-merge-trigger/);
+assert.match(compose, /kia-uvo-codex-merge:/);
+assert.match(compose, /KIA_UVO_MERGE_PUSH=\$\{KIA_UVO_MERGE_PUSH:-true\}/);
 
 console.log("Daily host update flow contracts are valid");

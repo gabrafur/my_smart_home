@@ -10,9 +10,9 @@ const tabId = "456b32bd5d59b0d6";
 const groups = {
   c8f8e5b532232a4f: { x: 74, y: 79, w: 1587, h: 312 },
   "5ae977feca8f9b01": { x: 74, y: 419, w: 4152, h: 442 },
-  "4afb66a093b1940d": { x: 64, y: 879, w: 4517, h: 422 },
+  "4afb66a093b1940d": { x: 64, y: 879, w: 4677, h: 422 },
   f79ed8df25162bcf: { x: 64, y: 1399, w: 1592, h: 182 },
-  global_observer_coverage__456b32bd5d59b0d6__group: { x: 4524, y: 59, w: 722, h: 142 },
+  global_observer_coverage__456b32bd5d59b0d6__group: { x: 4704, y: 59, w: 722, h: 142 },
 };
 
 const positions = {
@@ -51,7 +51,7 @@ const positions = {
   "7a46b455ab19f6f1": [830, 700],
   "426ce86b78602275": [1040, 620],
   "80a75ea8907407b3": [1380, 720],
-  "2721ff200d00c0f6": [900, 800],
+  "2721ff200d00c0f6": [845, 800],
   "93a520c87fdd951a": [735, 820],
 
   // 3. Restaurar o snapshot; decisões paralelas ficam em trilhas distintas.
@@ -59,26 +59,26 @@ const positions = {
   aaa9ce1abce5f4a2: [440, 980],
   "8a59f82d6ce4aadf": [680, 980],
   "6162b449cc4a318b": [920, 980],
-  "0547960da622f030": [1160, 980],
-  "3fbbfda5d4519a8a": [1400, 980],
-  "58fc2938de8879ce": [1660, 940],
-  "54e8149a2939446d": [1700, 1040],
-  "2d4e5f16992b02a3": [1950, 1040],
-  abef0869bb9f8954: [2160, 960],
-  "9db243616c0d9256": [2320, 1040],
-  "94cf8f23337b9e97": [2580, 960],
-  d4a1580cc965ba33: [2870, 1040],
-  feff1e28b5cf244b: [3160, 1040],
-  ff9a68d5d76c1aab: [3430, 1040],
-  "6e624c181ac580f8": [3700, 1040],
-  b9a3beb0d37aad9a: [4020, 980],
-  "33cff748799e2546": [4300, 980],
-  "9b036ac57fe732eb": [4020, 1100],
-  "87c69add421941ca": [4300, 1100],
-  "3f9982ee3d4d2c9a": [4540, 950],
-  "611069891a9aa1ad": [4540, 990],
-  "787769d2959d6ad5": [4540, 1030],
-  c23c6d5c4ce5c532: [4540, 1070],
+  "0547960da622f030": [1240, 980],
+  "3fbbfda5d4519a8a": [1540, 980],
+  "58fc2938de8879ce": [1820, 940],
+  "54e8149a2939446d": [1860, 1040],
+  "2d4e5f16992b02a3": [2110, 1040],
+  abef0869bb9f8954: [2320, 960],
+  "9db243616c0d9256": [2480, 1040],
+  "94cf8f23337b9e97": [2740, 960],
+  d4a1580cc965ba33: [3030, 1040],
+  feff1e28b5cf244b: [3320, 1040],
+  ff9a68d5d76c1aab: [3590, 1040],
+  "6e624c181ac580f8": [3860, 1040],
+  b9a3beb0d37aad9a: [4180, 980],
+  "33cff748799e2546": [4460, 980],
+  "9b036ac57fe732eb": [4180, 1100],
+  "87c69add421941ca": [4460, 1100],
+  "3f9982ee3d4d2c9a": [4700, 950],
+  "611069891a9aa1ad": [4700, 990],
+  "787769d2959d6ad5": [4700, 1030],
+  c23c6d5c4ce5c532: [4700, 1070],
   ff69bc148fd602ce: [220, 1260],
   "3653df579248c807": [550, 1260],
   b69a6887788d1c54: [810, 1160],
@@ -103,10 +103,10 @@ const positions = {
   "4b48bc3c0c58d87c": [1140, 1540],
 
   // Observador global permanece isolado do fluxo funcional.
-  global_observer_coverage__456b32bd5d59b0d6__catch: [4680, 100],
-  global_observer_coverage__456b32bd5d59b0d6__status: [4690, 160],
-  global_observer_coverage__456b32bd5d59b0d6__annotate: [4960, 130],
-  global_observer_coverage__456b32bd5d59b0d6__out: [5205, 130],
+  global_observer_coverage__456b32bd5d59b0d6__catch: [4860, 100],
+  global_observer_coverage__456b32bd5d59b0d6__status: [4870, 160],
+  global_observer_coverage__456b32bd5d59b0d6__annotate: [5140, 130],
+  global_observer_coverage__456b32bd5d59b0d6__out: [5385, 130],
 };
 
 const virtualRoutes = [
@@ -159,14 +159,14 @@ const virtualRoutes = [
     input: ["rpi_layout_restore_failure_in", "Retorno: tratar falha de restauração", "4afb66a093b1940d", 345, 1220, "3653df579248c807"],
     outputs: [
       ["rpi_layout_restore_decision_failure_out", "Ir para falha de restauração", "4afb66a093b1940d", 1540, 1100, "3fbbfda5d4519a8a", 2],
-      ["rpi_layout_restore_validation_failure_out", "Ir para falha de restauração", "4afb66a093b1940d", 3625, 1080, "ff9a68d5d76c1aab", 1],
+      ["rpi_layout_restore_validation_failure_out", "Ir para falha de restauração", "4afb66a093b1940d", 3785, 1080, "ff9a68d5d76c1aab", 1],
     ],
   },
   {
-    input: ["rpi_layout_restore_wait_in", "Retorno: aguardar confirmação", "4afb66a093b1940d", 2680, 1080, "d4a1580cc965ba33"],
+    input: ["rpi_layout_restore_wait_in", "Retorno: aguardar confirmação", "4afb66a093b1940d", 2840, 1080, "d4a1580cc965ba33"],
     outputs: [
-      ["rpi_layout_restore_off_wait_out", "Ir para confirmação", "4afb66a093b1940d", 1820, 920, "58fc2938de8879ce", 0],
-      ["rpi_layout_restore_fan_wait_out", "Ir para confirmação", "4afb66a093b1940d", 2485, 1080, "9db243616c0d9256", 1],
+      ["rpi_layout_restore_off_wait_out", "Ir para confirmação", "4afb66a093b1940d", 1980, 920, "58fc2938de8879ce", 0],
+      ["rpi_layout_restore_fan_wait_out", "Ir para confirmação", "4afb66a093b1940d", 2645, 1080, "9db243616c0d9256", 1],
     ],
   },
 ];

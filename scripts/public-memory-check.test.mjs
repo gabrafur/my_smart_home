@@ -20,6 +20,7 @@ function createFixture() {
 
 \`.agents/skills/rtx-context-optimizer/SKILL.md\`
 `,
+    ".codex/instructions/kia-uvo-codex-merge.md": "# Merge Kia UVO\n",
     ".codex/instructions/node-red.md": "# Node-RED\n",
     ".codex/instructions/project-memory.md": `# Memória
 
@@ -83,7 +84,7 @@ test("accepts a coherent public memory graph", () => {
   const result = checkPublicMemory(fixture);
   assert.deepEqual(result.errors, []);
   assert.equal(result.stats.thematicMemories, 2);
-  assert.equal(result.stats.instructionFiles, 7);
+  assert.equal(result.stats.instructionFiles, 8);
 });
 
 test("reports an orphaned thematic memory", () => {

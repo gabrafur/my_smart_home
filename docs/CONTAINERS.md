@@ -19,6 +19,7 @@ pré-requisitos e arquivos privados que não podem ser deduzidos apenas do YAML.
 | `zigbee2mqtt` | imagem por digest | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, banco e backup do coordenador |
 | `ai-bridge` | build local | somente `127.0.0.1:8099` | volumes de autenticação e workspace | `.env` com token do bridge e, opcionalmente, OAuth |
 | `docs-review-scheduler` | worker do mesmo build local do bridge | nenhuma porta publicada | workspace, autenticação Codex e `.local-state/docs-review` | chave SSH de escopo restrito e `known_hosts` fora do Git |
+| `kia-uvo-codex-merge` | worker do mesmo build local do bridge | nenhuma porta publicada | checkout somente leitura, autenticação Codex e `.local-state/kia-uvo-merge` | chave SSH de escopo restrito e `known_hosts` fora do Git |
 
 As portas publicadas usam `HOST_LAN_IP`. A ausência da variável faz o bind em
 loopback. Home Assistant, AppDaemon e Matter usam rede do host porque dependem
@@ -36,8 +37,8 @@ Todas as imagens externas, inclusive a base do bridge, usam digest. Tags como
 `scripts/docker-auto-update.mjs`; não são usadas para recriar containers
 diretamente.
 
-O bridge usa Node.js 22 Bookworm Slim, inclui Git/SSH/GNU Make para o worker
-documental e fixa as versões do Claude Code e Codex no Dockerfile. Pacotes
+O bridge usa Node.js 22 Bookworm Slim, inclui Git/SSH/GNU Make para os workers
+documental e de merge Kia UVO e fixa as versões do Claude Code e Codex no Dockerfile. Pacotes
 Debian continuam vindo do repositório oficial durante o build, portanto o build
 é determinístico para as partes críticas, mas não é uma reprodução byte a byte
 de um snapshot APT.
@@ -77,8 +78,9 @@ O GID do socket varia por host. Preencha `DOCKER_GID` com:
 stat -c '%g' /var/run/docker.sock
 ```
 
-O Compose adiciona esse grupo ao bridge em runtime. O worker documental não recebe o
-socket, descarta todos os grupos suplementares após um bootstrap curto e assume
+O Compose adiciona esse grupo ao bridge em runtime. Os workers de documentação
+e merge Kia UVO não recebem o socket, descartam todos os grupos suplementares
+após um bootstrap curto e assumem
 o UID/GID não-root que possui o checkout. Se necessário, cria uma identidade
 local sem shell para o OpenSSH resolver esse UID. Nenhum GID fica gravado na
 imagem.
@@ -99,7 +101,8 @@ token de agente seja copiado para o ambiente do Node-RED sem necessidade.
 | `CLAUDE_CODE_OAUTH_TOKEN` | CLI Claude no bridge | opcional se autenticado pelo volume |
 | `HA_LONG_LIVED_TOKEN` | script no host | opcional; prefira arquivo em `.local-secrets/` |
 | `WEEKLY_DOCS_REVIEW_*` | worker documental | branch/timeout têm padrão; caminhos SSH são obrigatórios |
-| `REPO_UID`, `REPO_GID` | worker documental | sim; proprietário não-root do checkout |
+| `KIA_UVO_MERGE_*` | worker de merge Kia UVO | timeout/push têm padrão; reutiliza os caminhos SSH restritos do worker documental |
+| `REPO_UID`, `REPO_GID` | workers automatizados | sim; proprietário não-root do checkout |
 
 O `ANTHROPIC_API_KEY` é explicitamente esvaziado dentro do bridge para evitar
 que a CLI escolha por acidente a cobrança por API quando a instalação usa OAuth.
@@ -128,6 +131,8 @@ flowchart TD
     HA --> BR[ai-bridge / integração]
     NR -->|gatilho semanal/manual| SCH[docs-review-scheduler worker]
     SCH --> GIT[remoto Git]
+    NR -->|conflito Kia UVO| KIA[kia-uvo-codex-merge worker]
+    KIA -->|branch codex/kia-uvo-*| GIT
 ```
 
 `depends_on` não é health check. Após `docker compose up -d`, Home Assistant e
@@ -151,9 +156,15 @@ docker compose up -d
 docker compose ps
 ```
 
-O `up -d` padrão não inclui `docs-review-scheduler`, que pertence ao profile
-opcional `automation`. Ative-o somente após preparar suas credenciais conforme
+O `up -d` padrão não inclui `docs-review-scheduler` nem
+`kia-uvo-codex-merge`, que pertencem ao profile opcional `automation`. Ative-os
+somente após preparar suas credenciais conforme
 o [guia da revisão semanal](REVISAO_DOCUMENTACAO_SEMANAL.md).
+
+O worker Kia UVO recebe do Node-RED apenas uma versão validada, trabalha em
+clone descartável, limita alterações ao componente e ao metadado upstream e
+pode publicar somente uma branch candidata única `codex/kia-uvo-*`. Ele não
+altera `main`, não recebe Docker e não instala ou reinicia o Home Assistant.
 
 O Home Assistant recebe `.local-state/docs-review` como somente leitura para
 expor o sensor da rotina. Esse status operacional é regenerável, ignorado pelo

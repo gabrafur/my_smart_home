@@ -74,6 +74,18 @@ if (!status) {
 node.status({ fill: status === "accepted" ? "green" : "yellow", shape: "dot", text: status === "accepted" ? "análise aceita" : "análise já pendente" });
 return null;`;
 
+const recordKiaCodexMergeRequest = `const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 400);
+const status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];
+const target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? "unknown";
+if (!status) {
+    node.error("kia_uvo_codex_merge_request_unrecognized");
+    node.status({ fill: "red", shape: "ring", text: "resposta inválida" });
+    return null;
+}
+node.status({ fill: status === "accepted" ? "green" : "yellow", shape: "dot", text: status === "accepted" ? "Codex solicitado: " + target : "merge já pendente/concluído" });
+node.log("kia_uvo_codex_merge_request status=" + status + " target=" + target);
+return null;`;
+
 const parseKiaUpdateResult = `const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
 if (!text) return null;
@@ -112,11 +124,20 @@ node.status({
 });
 if (TEST_MODE) {
     msg.payload = result;
-    return msg;
+    return [msg, null];
 }
 if (failed) node.error("kia_uvo_update_check_failed status=" + status + " request_id=" + result.request_id);
-else if (status === "conflict") node.warn("kia_uvo_update_requires_manual_merge latest=" + String(result.latest_version));
-return null;`;
+else if (status === "conflict") {
+    node.warn("kia_uvo_update_requires_codex_merge latest=" + String(result.latest_version));
+    if (!result.latest_version) {
+        node.error("kia_uvo_codex_merge_missing_target");
+        return [null, null];
+    }
+    msg.payload = result.latest_version;
+    msg.kia_uvo_update = result;
+    return [null, msg];
+}
+return [null, null];`;
 
 const parseResult = `const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 600);
@@ -176,6 +197,9 @@ const dryRunTerminal = `const result = {
     apt_commands_sent: false,
     docker_update_sent: false,
     kia_uvo_update_check_sent: false,
+    kia_uvo_codex_merge_requested: false,
+    codex_worker_started: false,
+    git_push_sent: false,
     status: msg.payload?.status ?? msg.payload?.event ?? "request_prepared",
     completed_at: Date.now()
 };
@@ -187,10 +211,11 @@ const productionGroup = "daily_update_production_group";
 const resultGroup = "daily_update_result_group";
 const testGroup = "daily_update_test_group";
 const kiaUpdateGroup = "daily_update_kia_group";
+const kiaCodexGroup = "daily_update_kia_codex_group";
 const nodes = [
   {
     id: TAB, type: "tab", label: "atualizacoes_diarias", disabled: false,
-    info: "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a análise segura do fork Kia UVO/Hyundai Bluelink a cada 30 minutos sem instalar o upstream. O Node-RED não recebe sudo, checkout nem socket Docker.",
+    info: "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a análise segura do fork Kia UVO/Hyundai Bluelink; conflitos acionam um Codex isolado que pode publicar somente uma branch candidata. O Node-RED não recebe sudo, checkout, credenciais nem socket Docker.",
     env: [],
   },
   {
@@ -203,7 +228,7 @@ const nodes = [
       "daily_update_request_ack", "daily_update_request_error", "daily_update_request_complete",
       "daily_update_request_test_out",
     ],
-    x: 64, y: 39, w: 1252, h: 302,
+    x: 104, y: 39, w: 1212, h: 262,
   },
   {
     id: "daily_update_architecture", type: "comment", z: TAB, g: productionGroup,
@@ -232,7 +257,7 @@ const nodes = [
     id: "daily_update_request_host", type: "exec", z: TAB, g: productionGroup,
     command: "/opt/request-host-daily-update.sh", addpay: "", append: "", useSpawn: "false",
     timer: "30", winHide: false, oldrc: false, name: "Solicitar ciclo ao host",
-    x: 920, y: 160,
+    x: 920, y: 200,
     wires: [["daily_update_request_ack"], ["daily_update_request_error"], ["daily_update_request_complete"]],
   },
   functionNode("daily_update_request_ack", productionGroup, "Registrar solicitação", recordRequest, 0, 1180, 120, []),
@@ -252,7 +277,7 @@ const nodes = [
       "daily_update_read_error", "daily_update_read_complete", "daily_update_test_result_in",
       "daily_update_parse_result", "daily_update_result_test_out",
     ],
-    x: 64, y: 379, w: 1252, h: 242,
+    x: 54, y: 399, w: 1072, h: 192,
   },
   {
     id: "daily_update_result_startup", type: "inject", z: TAB, g: resultGroup,
@@ -296,7 +321,7 @@ const nodes = [
       "daily_update_test_request_out", "daily_update_test_result_out", "daily_update_dry_run_in",
       "daily_update_dry_run_terminal",
     ],
-    x: 64, y: 659, w: 1252, h: 362,
+    x: 44, y: 659, w: 1132, h: 342,
   },
   {
     id: "daily_update_test_instructions", type: "comment", z: TAB, g: testGroup,
@@ -366,13 +391,14 @@ const nodes = [
       "daily_update_kia_result_poll", "daily_update_kia_read_result", "daily_update_kia_read_error",
       "daily_update_kia_read_complete", "daily_update_kia_parse_result", "daily_update_kia_test_result",
       "daily_update_kia_test_result_out", "daily_update_kia_test_result_in", "daily_update_kia_result_test_out",
+      "daily_update_kia_codex_request_out",
     ],
-    x: 64, y: 1059, w: 1252, h: 582,
+    x: 44, y: 1059, w: 1402, h: 552,
   },
   {
     id: "daily_update_kia_architecture", type: "comment", z: TAB, g: kiaUpdateGroup,
-    name: "A cada 30 min: staging + overlay local + testes; conflito preserva v3.10.1; apply continua exclusivamente manual",
-    info: "O Node-RED apenas cria uma solicitação coalescente. O worker do host executa o watcher HA existente: Kia/Hyundai segue somente para staging e as demais entidades seguras preservam a política anterior. Nunca chama update.install para a entidade protegida.",
+    name: "A cada 30 min: staging + overlay; conflito preserva a instalação e solicita Codex isolado",
+    info: "O Node-RED cria solicitações coalescentes. O check Kia/Hyundai segue somente para staging. Em conflito, uma segunda ponte aciona o Codex num clone descartável; ele nunca chama update.install e só pode publicar uma branch candidata.",
     x: 670, y: 1100, wires: [],
   },
   {
@@ -406,16 +432,16 @@ const nodes = [
     id: "daily_update_kia_request_host", type: "exec", z: TAB, g: kiaUpdateGroup,
     command: "/opt/request-host-kia-uvo-update-check.sh", addpay: "", append: "", useSpawn: "false",
     timer: "30", winHide: false, oldrc: false, name: "Solicitar check ao host",
-    x: 970, y: 1180,
+    x: 1020, y: 1220,
     wires: [["daily_update_kia_request_ack"], ["daily_update_kia_request_error"], ["daily_update_kia_request_complete"]],
   },
-  functionNode("daily_update_kia_request_ack", kiaUpdateGroup, "Registrar solicitação Kia", recordKiaUpdateRequest, 0, 1200, 1140, []),
-  functionNode("daily_update_kia_request_error", kiaUpdateGroup, "Falha segura da ponte Kia", recordExecError, 0, 1200, 1200, []),
-  functionNode("daily_update_kia_request_complete", kiaUpdateGroup, "Código da ponte Kia", recordCompletion, 0, 1200, 1260, []),
+  functionNode("daily_update_kia_request_ack", kiaUpdateGroup, "Registrar solicitação Kia", recordKiaUpdateRequest, 0, 1290, 1140, []),
+  functionNode("daily_update_kia_request_error", kiaUpdateGroup, "Falha segura da ponte Kia", recordExecError, 0, 1300, 1220, []),
+  functionNode("daily_update_kia_request_complete", kiaUpdateGroup, "Código da ponte Kia", recordCompletion, 0, 1280, 1280, []),
   {
     id: "daily_update_kia_test_out", type: "link out", z: TAB, g: kiaUpdateGroup,
     name: "Solicitação Kia TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
-    x: 965, y: 1300, wires: [],
+    x: 885, y: 1180, wires: [],
   },
   {
     id: "daily_update_kia_result_startup", type: "inject", z: TAB, g: kiaUpdateGroup,
@@ -436,13 +462,18 @@ const nodes = [
     x: 480, y: 1430,
     wires: [["daily_update_kia_parse_result"], ["daily_update_kia_read_error"], ["daily_update_kia_read_complete"]],
   },
-  functionNode("daily_update_kia_read_error", kiaUpdateGroup, "Falha ao ler resultado Kia", recordExecError, 0, 750, 1510, []),
-  functionNode("daily_update_kia_read_complete", kiaUpdateGroup, "Código da leitura Kia", recordCompletion, 0, 970, 1510, []),
-  functionNode("daily_update_kia_parse_result", kiaUpdateGroup, "Normalizar e observar check Kia", parseKiaUpdateResult, 1, 800, 1430, [["daily_update_kia_result_test_out"]]),
+  functionNode("daily_update_kia_read_error", kiaUpdateGroup, "Falha ao ler resultado Kia", recordExecError, 0, 810, 1480, []),
+  functionNode("daily_update_kia_read_complete", kiaUpdateGroup, "Código da leitura Kia", recordCompletion, 0, 800, 1540, []),
+  functionNode("daily_update_kia_parse_result", kiaUpdateGroup, "Normalizar e rotear conflito", parseKiaUpdateResult, 2, 830, 1420, [["daily_update_kia_result_test_out"], ["daily_update_kia_codex_request_out"]]),
   {
     id: "daily_update_kia_result_test_out", type: "link out", z: TAB, g: kiaUpdateGroup,
     name: "Resultado Kia TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
     x: 1095, y: 1430, wires: [],
+  },
+  {
+    id: "daily_update_kia_codex_request_out", type: "link out", z: TAB, g: kiaUpdateGroup,
+    name: "Conflito real → worker Codex", mode: "link", links: ["daily_update_kia_codex_request_in"],
+    x: 1125, y: 1490, wires: [],
   },
   {
     id: "daily_update_kia_test_result", type: "inject", z: TAB, g: kiaUpdateGroup,
@@ -460,9 +491,47 @@ const nodes = [
   {
     id: "daily_update_kia_test_result_in", type: "link in", z: TAB, g: kiaUpdateGroup,
     name: "Receber resultado Kia TESTE", links: ["daily_update_kia_test_result_out"],
-    x: 625, y: 1570, wires: [["daily_update_kia_parse_result"]],
+    x: 595, y: 1360, wires: [["daily_update_kia_parse_result"]],
   },
+  {
+    id: kiaCodexGroup, type: "group", z: TAB,
+    name: "5. Conflito real: Codex prepara e publica branch candidata",
+    style: { label: true, color: "#8f6bb3" },
+    nodes: [
+      "daily_update_kia_codex_architecture", "daily_update_kia_codex_request_in",
+      "daily_update_kia_codex_request", "daily_update_kia_codex_ack",
+      "daily_update_kia_codex_error", "daily_update_kia_codex_complete",
+    ],
+    x: 64, y: 1679, w: 1252, h: 262,
+  },
+  {
+    id: "daily_update_kia_codex_architecture", type: "comment", z: TAB, g: kiaCodexGroup,
+    name: "Clone descartável; allowlist Kia; push só em codex/kia-uvo-*; main e runtime intactos",
+    info: "O helper recebe apenas a versão alvo. Credenciais, checkout e Git ficam no worker isolado. O teste sintético nunca alcança este grupo.",
+    x: 660, y: 1720, wires: [],
+  },
+  {
+    id: "daily_update_kia_codex_request_in", type: "link in", z: TAB, g: kiaCodexGroup,
+    name: "Receber conflito real", links: ["daily_update_kia_codex_request_out"],
+    x: 145, y: 1820, wires: [["daily_update_kia_codex_request"]],
+  },
+  {
+    id: "daily_update_kia_codex_request", type: "exec", z: TAB, g: kiaCodexGroup,
+    command: "/opt/request-kia-uvo-codex-merge.sh", addpay: "payload", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Solicitar merge ao Codex",
+    x: 500, y: 1820,
+    wires: [["daily_update_kia_codex_ack"], ["daily_update_kia_codex_error"], ["daily_update_kia_codex_complete"]],
+  },
+  functionNode("daily_update_kia_codex_ack", kiaCodexGroup, "Registrar acionamento Codex", recordKiaCodexMergeRequest, 0, 840, 1780, []),
+  functionNode("daily_update_kia_codex_error", kiaCodexGroup, "Falha segura da ponte Codex", recordExecError, 0, 850, 1840, []),
+  functionNode("daily_update_kia_codex_complete", kiaCodexGroup, "Código da ponte Codex", recordCompletion, 0, 840, 1900, []),
 ];
+
+// Preserve the manually approved canvas placement after the repository-wide
+// 64 px left-margin normalization shifted this tab as a single unit.
+for (const node of nodes) {
+  if (node.z === TAB && Number.isFinite(node.x)) node.x += 20;
+}
 
 let next = flows.filter((node) => !owned(node.id));
 for (const node of next) {

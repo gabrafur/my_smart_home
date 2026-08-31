@@ -77,7 +77,7 @@ for (const groupId of [
 ]) {
   const group = get(groupId, "group");
   for (const memberId of group.nodes) assert.equal(get(memberId).g, groupId);
-  assert(group.w <= 4600, `${groupId} excede a largura organizada do canvas`);
+  assert(group.w <= 4800, `${groupId} excede a largura organizada do canvas`);
 }
 for (const item of flows.filter(
   (candidate) => candidate.z === "456b32bd5d59b0d6" && candidate.type !== "group",
