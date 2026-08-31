@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "repository": "https://github.com/gabrafur/local-ai-rtx",
-  "version": "1.5.1",
-  "tag": "v1.5.1",
-  "commit": "11431302d840e6eb90c33ed8ea5fe68c430b5948",
-  "asset_url": "https://github.com/gabrafur/local-ai-rtx/releases/download/v1.5.1/local-ai-rtx-1.5.1.tar.gz",
-  "asset_sha256": "cf1ac8c318527ba10b3c97d094696e63f16957381e1fd41e64396da8e68b4c67"
+  "version": "1.5.2",
+  "tag": "v1.5.2",
+  "commit": "76126f5f52533fb9c394e78906fc6d2b8b4298e9",
+  "asset_url": "https://github.com/gabrafur/local-ai-rtx/releases/download/v1.5.2/local-ai-rtx-1.5.2.tar.gz",
+  "asset_sha256": "333fa26cf06053d2370ecf1bc1ce38d588d8873e606802784e1d3018f3c1e498"
 }

@@ -21,3 +21,15 @@ upstream release, its verified SHA-256, a lockfile change, integration tests,
 and an explicit install. `make install-local-ai-runtime` assigns the configured
 `LOCAL_AI_RUNTIME_GROUP` (default `docker`) so the bridge keeps read access. The
 active stack is never restarted by the installer.
+
+The pinned runtime includes both `local-ai-preflight.mjs` and
+`recover-endpoint.mjs`. Bridge bootstrap rewrites only the private command paths
+to the read-only `/opt/local-ai-rtx` mount, removing dependency on legacy
+`codex-local-ai/current` or checkout paths without copying private endpoint or
+SSH data into the repository.
+
+The versioned Node-RED tab `recuperacao_rtx` observes bridge health passively.
+Only its explicit manual recovery inject calls the authenticated bridge
+endpoint, which invokes `local_ai_status` through real MCP JSON-RPC. Passive
+polling never triggers recovery, and Node-RED never runs the Windows mutations
+itself.

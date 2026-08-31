@@ -187,6 +187,14 @@ exato. Polling passivo não desperta o host; nenhuma tentativa instala software,
 amplia firewall/listener ou reinicia a máquina, e duas falhas encerram no
 fallback normal. Endereço, MAC e credenciais permanecem em configuração privada.
 
+O tab Node-RED `recuperacao_rtx` observa passivamente a saúde do bridge. Somente
+um inject manual explícito solicita o endpoint autenticado que chama
+`local_ai_status` por uma sessão MCP real; polling passivo nunca dispara
+recovery. O
+Node-RED não reproduz mutações remotas; mostra o motivo sanitizado e mantém seus
+testes manuais em dry-run. O preflight e o recovery são resolvidos na mesma
+release imutável, evitando dependência de `codex-local-ai/current` ou checkout.
+
 Memória pública do repositório é recuperada por índice e busca determinística,
 nunca carregada integralmente no startup. `local-ai memory-audit` mede somente
 o contexto observável e `summarize-memory` comprime recuperação ampla antes do

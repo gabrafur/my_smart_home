@@ -55,10 +55,35 @@ function configureLocalAiMcp(options = {}) {
   fs.chmodSync(configPath, 0o600);
 }
 
+function configureLocalAiRuntimePaths(options = {}) {
+  const runtimeDir = options.runtimeDir || process.env.LOCAL_AI_MCP_RUNTIME_DIR || '/opt/local-ai-rtx';
+  const configPath = options.localAiConfigPath || process.env.LOCAL_AI_CONFIG;
+  if (!configPath || !fs.existsSync(configPath)) return false;
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const expected = {
+    preflight_command: path.join(runtimeDir, 'local-ai-preflight.mjs'),
+    recovery_command: path.join(runtimeDir, 'recover-endpoint.mjs'),
+  };
+  if (!Object.values(expected).every((filename) => fs.existsSync(filename))) {
+    throw new Error('portable Local AI runtime helpers are unavailable');
+  }
+  let changed = false;
+  for (const [key, value] of Object.entries(expected)) {
+    if (config[key] !== value) { config[key] = value; changed = true; }
+  }
+  if (!changed) return false;
+  const temporary = `${configPath}.tmp-${process.pid}`;
+  fs.writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
+  fs.renameSync(temporary, configPath);
+  fs.chmodSync(configPath, 0o600);
+  return true;
+}
+
 module.exports = {
   END_MARKER,
   START_MARKER,
   configureLocalAiMcp,
+  configureLocalAiRuntimePaths,
   managedBlock,
   replaceManagedBlock,
 };

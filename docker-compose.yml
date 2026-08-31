@@ -146,6 +146,9 @@ services:
       - NODE_RED_ADMIN_USER=${NODE_RED_ADMIN_USER:-admin}
       - NODE_RED_ADMIN_PASSWORD_HASH=${NODE_RED_ADMIN_PASSWORD_HASH:-}
       - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET:-}
+      # Used only by the RTX recovery tab to call the authenticated bridge
+      # endpoint; the token never appears in the versioned flow.
+      - BRIDGE_TOKEN=${AI_BRIDGE_TOKEN:-${CLAUDE_BRIDGE_TOKEN:-}}
       - HOME_LAT=${HOME_LAT:-}
       - HOME_LON=${HOME_LON:-}
       - GATE_LAT=${GATE_LAT:-}

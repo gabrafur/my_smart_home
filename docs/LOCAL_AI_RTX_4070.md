@@ -120,7 +120,7 @@ Cada máquina mantém sua configuração fora do Git, por exemplo em
   "endpoint": "http://GPU_HOST:11435",
   "model": "qwen2.5-coder:14b",
   "medium_analysis_min_tokens": 800,
-  "preflight_command": "/caminho/privado/local-ai-preflight",
+  "preflight_command": "/opt/local-ai-rtx/local-ai-preflight.mjs",
   "recovery_command": "/opt/local-ai-rtx/recover-endpoint.mjs",
   "recovery": {
     "enabled": true,
@@ -145,6 +145,14 @@ instala software, amplia firewall/listener nem reinicia o host. As
 variáveis `LOCAL_AI_ENABLED=0`, `LOCAL_AI_ENDPOINT`, `LOCAL_AI_MODEL` e
 `LOCAL_AI_FORCE` permitem controle local; `LOCAL_AI_FORCE` é diagnóstico e não
 autoriza delegação inadequada.
+
+O runtime distribui `local-ai-preflight.mjs` e resolve o helper de recovery no
+mesmo diretório imutável antes de considerar um caminho privado antigo. No
+container, o bootstrap do bridge migra de forma idempotente
+`preflight_command` e `recovery_command` para `/opt/local-ai-rtx`; no host, o
+instalador aponta para a release ativa. Assim, caminhos legados como
+`codex-local-ai/current` ou caminhos de checkout não mantêm o health check
+dependente de fallback.
 
 Não há hook global nem preflight no envio do prompt. O Codex começa a trabalhar
 imediatamente. Quando o pré-processamento determinístico encontra pela primeira
@@ -555,11 +563,27 @@ ações geradas são removidas. Se qualquer seletor não vier da fonte, houver
 truncamento ou o limite crítico for excedido, uma segunda tentativa é permitida
 e depois o corpo bruto segue pelo fallback com economia zero.
 
-O bridge renova sua própria sondagem de saúde a cada minuto (e ao iniciar),
-usando o helper de disponibilidade, não um hook de prompt. Isso impede que uma falha transitória de rede
-deixe a aba RTX presa em **indisponível** depois de o Ollama voltar. A checagem
-só consulta endpoint/GPU e não inicia modelo, não gera carga artificial e não
-reinicia nem reconfigura o host remoto.
+O bridge renova sua própria sondagem passiva de saúde a cada minuto (e ao
+iniciar), usando o helper de disponibilidade, não um hook de prompt. Essa
+checagem só consulta endpoint/GPU: não inicia modelo, não gera carga artificial
+e não reinicia nem reconfigura o host remoto.
+
+O tab versionado `recuperacao_rtx` do Node-RED acompanha esse estado a cada
+minuto sem disparar recuperação. Somente o inject manual explícito do tab pode
+chamar o endpoint autenticado `POST /local-ai/recover` do bridge. O bridge abre
+uma sessão JSON-RPC real com o MCP `local-ai-rtx` e solicita
+`local_ai_status`; somente então o helper pode executar Wake-on-LAN e as duas
+tentativas limitadas de recuperação.
+O canvas mostra saúde, despacho, resultado e motivo sanitizado, incluindo
+comando ausente, SSH indisponível, falha de WSL/Ollama, portproxy, timeout ou
+listener ausente. Requisições concorrentes compartilham a mesma recuperação.
+
+Os controles `TESTE` do tab atravessam a mesma normalização e decisão, mas o
+gate final os envia exclusivamente ao terminal dry-run (`simulated: true`,
+`dispatched: false`). O fluxo não contém SSH, PowerShell, Wake-on-LAN nem
+credenciais; o token do bridge vem apenas do ambiente do container. Desse modo,
+o polling passivo nunca acorda nem altera o host; a recuperação exige a ação
+manual e não cria uma segunda rotina mutável fora do MCP auditável.
 
 A sondagem de GPU mantém `StrictHostKeyChecking=yes` e usa por padrão o arquivo
 `known_hosts` persistente ao lado de `gpu_probe.ssh_key_path`. Isso é necessário
@@ -584,13 +608,14 @@ Portanto, tanto o Codex do IDE quanto o chat do Home Assistant aplicam `local_ai
 `local_ai_route` e `local_ai_compress_context` sem o usuário precisar pedir o
 uso da RTX.
 
-O bridge expõe três endpoints locais sem conteúdo de conversa:
+O bridge expõe quatro endpoints locais sem conteúdo de conversa:
 
 | Endpoint | Dados | Atualização usada no HA |
 | --- | --- | --- |
 | `GET /usage` | uso/limites do Codex e histórico agregado Local AI | 2 s |
 | `GET /local-ai/live` | job atual, amostra instantânea e chats ativos | 1 s |
 | `GET /local-ai/history` | até 40 jobs sanitizados das últimas 48 horas | 30 s |
+| `POST /local-ai/recover` | recovery autenticado via `local_ai_status` do MCP | inject manual explícito no Node-RED |
 
 O diretório privado definido por `CODEX_LOCAL_AI_STATE_DIR` é a fonte canônica
 da telemetria agregada gerada pelos dois clientes MCP. O Compose monta esse

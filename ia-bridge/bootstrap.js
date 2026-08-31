@@ -1,4 +1,4 @@
-const { configureLocalAiMcp } = require('./configure-local-ai-mcp');
+const { configureLocalAiMcp, configureLocalAiRuntimePaths } = require('./configure-local-ai-mcp');
 const { configureGitWorkspace } = require('./configure-git-workspace');
 
 try {
@@ -13,6 +13,7 @@ try {
 
 try {
   configureLocalAiMcp();
+  configureLocalAiRuntimePaths();
   console.log('Local AI MCP configuration synchronized');
 } catch (error) {
   // Local AI is an optimization, not a bridge dependency. Keep chat service

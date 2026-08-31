@@ -23,7 +23,7 @@ RUN mkdir -p /home/node/.claude /home/node/.codex && \
     chown -R node:node /home/node/.claude /home/node/.codex
 
 WORKDIR /app
-COPY server.js history.js usage.js codex-options.js codex-rate-limits.js agent-errors.js \
+COPY server.js history.js usage.js codex-options.js codex-rate-limits.js agent-errors.js local-ai-mcp-health.js \
   configure-git-workspace.js configure-local-ai-mcp.js bootstrap.js package.json ./
 RUN chown -R node:node /app
 

@@ -204,6 +204,21 @@
             ],
             "automated_test": "test-global-flow-observer.mjs",
             "reason": "Erro e indisponibilidade sintéticos atravessam classificação, dedupe e guard até o dry-run; por solicitação explícita, um único push marcado TESTE valida o canal central compartilhado por todas as abas."
+        },
+        "local_ai_rtx_recovery_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "local_ai_rtx_test_group",
+                "local_ai_rtx_test_instructions",
+                "local_ai_rtx_test_reset",
+                "local_ai_rtx_test_available",
+                "local_ai_rtx_test_unavailable",
+                "local_ai_rtx_test_recovered",
+                "local_ai_rtx_test_failed"
+            ],
+            "dry_run_terminal_ids": ["local_ai_rtx_dry_run_terminal"],
+            "automated_test": "test-local-ai-rtx-recovery-flow.mjs",
+            "reason": "Disponibilidade, listener ausente, sucesso e falhas do recovery atravessam normalização, decisão, cooldown, guard e lifecycle reais; a chamada HTTP/MCP fica bloqueada no terminal dry-run."
         }
     }
 }

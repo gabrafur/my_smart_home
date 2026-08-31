@@ -6,6 +6,7 @@ const path = require('path');
 const { SharedHistoryStore } = require('./history');
 const { CodexUsageReader } = require('./usage');
 const { CodexRateLimitsPoller } = require('./codex-rate-limits');
+const { runLocalAiMcpStatus } = require('./local-ai-mcp-health');
 const {
   codexExecArgs,
   codexSessionKey,
@@ -33,6 +34,8 @@ const LOCAL_AI_HEALTH_REFRESH_MS = Math.min(
   Math.max(Number(process.env.LOCAL_AI_HEALTH_REFRESH_MS || 60_000), 30_000),
   5 * 60 * 1000,
 );
+const LOCAL_AI_STATUS_PATH = process.env.LOCAL_AI_STATUS_PATH
+  || path.join(HISTORY_DIR, 'local-ai-status.json');
 
 if (!BRIDGE_TOKEN) {
   console.error('BRIDGE_TOKEN not set, refusing to start');
@@ -43,7 +46,7 @@ const history = new SharedHistoryStore(HISTORY_DIR);
 const codexUsage = new CodexUsageReader(
   CODEX_SESSIONS_DIRS,
   process.env.LOCAL_AI_TELEMETRY_PATH || path.join(HISTORY_DIR, 'local-ai-telemetry.json'),
-  process.env.LOCAL_AI_STATUS_PATH || path.join(HISTORY_DIR, 'local-ai-status.json'),
+  LOCAL_AI_STATUS_PATH,
   1_000,
   process.env.LOCAL_AI_BENCHMARK_PATH
     || path.join(WORKDIR, 'docs', 'benchmarks', 'local-ai-quality-bakeoff', 'latest.json'),
@@ -61,6 +64,7 @@ const codexRateLimits = new CodexRateLimitsPoller({
   env: process.env,
 });
 const sessionQueues = new Map();
+let localAiRecoveryPromise = null;
 
 function enqueueSession(sessionKey, task) {
   if (!sessionKey) return task();
@@ -131,24 +135,47 @@ function spawnCli(command, args) {
 }
 
 function localAiPreflightCommand() {
-  const fallback = path.join(os.homedir(), '.codex', 'hooks', 'local-ai-preflight.mjs');
+  const runtimeFallback = path.join(
+    process.env.LOCAL_AI_MCP_RUNTIME_DIR || '/opt/local-ai-rtx',
+    'local-ai-preflight.mjs',
+  );
+  const hookFallback = path.join(os.homedir(), '.codex', 'hooks', 'local-ai-preflight.mjs');
   const configPath = process.env.LOCAL_AI_CONFIG;
-  if (!configPath) return fs.existsSync(fallback) ? fallback : null;
+  if (!configPath) {
+    if (fs.existsSync(runtimeFallback)) return runtimeFallback;
+    return fs.existsSync(hookFallback) ? hookFallback : null;
+  }
   try {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     const command = typeof config.preflight_command === 'string'
       ? config.preflight_command.trim()
       : '';
     if (command && path.isAbsolute(command) && fs.existsSync(command)) return command;
-    if (fs.existsSync(fallback)) {
+    if (fs.existsSync(runtimeFallback)) {
+      console.warn('Configured Local AI preflight command is unavailable; using mounted runtime helper');
+      return runtimeFallback;
+    }
+    if (fs.existsSync(hookFallback)) {
       console.warn('Configured Local AI preflight command is unavailable; using installed Codex hook');
-      return fallback;
+      return hookFallback;
     }
     return null;
   } catch (err) {
     console.warn(`Local AI health refresh is not configured: ${err.message}`);
     return null;
   }
+}
+
+function recoverLocalAiViaMcp() {
+  if (localAiRecoveryPromise) return localAiRecoveryPromise;
+  localAiRecoveryPromise = runLocalAiMcpStatus({
+    runtimeDir: process.env.LOCAL_AI_MCP_RUNTIME_DIR || '/opt/local-ai-rtx',
+    env: {
+      ...process.env,
+      LOCAL_AI_TELEMETRY_PATH: path.join(HISTORY_DIR, 'local-ai-telemetry.json'),
+    },
+  }).finally(() => { localAiRecoveryPromise = null; });
+  return localAiRecoveryPromise;
 }
 
 let localAiHealthRefreshRunning = false;
@@ -376,6 +403,7 @@ const server = http.createServer((req, res) => {
   }
   const supportedRoute = (
     (req.method === 'POST' && requestUrl.pathname === '/chat')
+    || (req.method === 'POST' && requestUrl.pathname === '/local-ai/recover')
     || (req.method === 'DELETE' && requestUrl.pathname === '/history')
     || (req.method === 'GET' && requestUrl.pathname === '/history')
     || (req.method === 'GET' && requestUrl.pathname === '/history/conversations')
@@ -390,6 +418,17 @@ const server = http.createServer((req, res) => {
   if (auth !== `Bearer ${BRIDGE_TOKEN}`) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'unauthorized' }));
+    return;
+  }
+
+  if (req.method === 'POST' && requestUrl.pathname === '/local-ai/recover') {
+    recoverLocalAiViaMcp().then((status) => {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ status: 'ok', local_ai: status }));
+    }).catch(() => {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify({ status: 'error', error: 'local_ai_mcp_recovery_failed' }));
+    });
     return;
   }
 
