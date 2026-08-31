@@ -54,6 +54,16 @@ function updateStatus(patch) {
   fs.writeFileSync(temporary, JSON.stringify(next) + "\n", { mode: 0o644 });
   fs.renameSync(temporary, statusPath);
 }
+function readStatus() {
+  try { return JSON.parse(fs.readFileSync(statusPath, "utf8")); } catch { return {}; }
+}
+export function startupStatusPatch(existing) {
+  if (["success", "failed"].includes(existing?.state)) return null;
+  if (existing?.state === "running") {
+    return { ...existing, state: "failed", reason: "worker_restarted", finished_at: new Date().toISOString() };
+  }
+  return { state: "waiting" };
+}
 function changedPaths(worktree) {
   const tracked = git(["diff", "--name-only", "-z", "HEAD"], worktree).split("\0").filter(Boolean);
   const untracked = git(["ls-files", "--others", "--exclude-standard", "-z"], worktree).split("\0").filter(Boolean);
@@ -166,5 +176,10 @@ if (invoked) {
   process.on("SIGINT", shutdown);
   if (process.argv.includes("--self-test")) selfTest();
   else if (process.argv.includes("--run-now")) process.exitCode = (await runMerge(process.argv.at(-1))) ? 0 : 1;
-  else { updateStatus({ state: "waiting" }); timer = setInterval(consume, 2_000); await consume(); }
+  else {
+    const initialPatch = startupStatusPatch(readStatus());
+    if (initialPatch) updateStatus(initialPatch);
+    timer = setInterval(consume, 2_000);
+    await consume();
+  }
 }
