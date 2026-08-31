@@ -104,6 +104,7 @@ test("the host cycle runs DietPi before container reconciliation", () => {
   const helper = path.join(fixture, "dietpi-helper");
   const node = path.join(fixture, "node");
   const dockerUpdater = path.join(fixture, "docker-auto-update.mjs");
+  const dietpiStatus = path.join(fixture, "dietpi-status");
   const detail = path.join(fixture, "detail");
   fs.writeFileSync(sudo, `#!/bin/sh\n[ "$1" = "-n" ] && shift\n"$@"\n`);
   fs.writeFileSync(helper, `#!/bin/sh\nprintf 'dietpi\\n' >> "${calls}"\n`);
@@ -118,6 +119,7 @@ test("the host cycle runs DietPi before container reconciliation", () => {
       DIETPI_UPDATE_HELPER: helper,
       DAILY_UPDATE_NODE_BIN: node,
       DOCKER_UPDATE_SCRIPT: dockerUpdater,
+      DIETPI_UPDATE_STATUS_FILE: dietpiStatus,
       DAILY_UPDATE_DETAIL_FILE: detail,
     },
   });
