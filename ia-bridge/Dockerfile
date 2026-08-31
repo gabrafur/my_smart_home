@@ -9,7 +9,7 @@ RUN apt-get update && \
       > /etc/apt/sources.list.d/docker.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-      docker-ce-cli docker-compose-plugin git openssh-client python3 && \
+      docker-ce-cli docker-compose-plugin git make openssh-client python3 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g \

@@ -26,8 +26,9 @@ function write(target, content, mode = 0o644) {
   fs.writeFileSync(target, content, { mode });
 }
 
-function fixture({ branch = "main" } = {}) {
+function fixture(t, { branch = "main" } = {}) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "weekly-review-test-"));
+  t.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
   const repo = path.join(temporaryRoot, "repo");
   const remote = path.join(temporaryRoot, "remote.git");
   const control = path.join(temporaryRoot, "control");
@@ -120,8 +121,8 @@ function fixture({ branch = "main" } = {}) {
   };
 }
 
-test("uses automatic approval without a conflicting sandbox option", () => {
-  const item = fixture();
+test("uses automatic approval without a conflicting sandbox option", (t) => {
+  const item = fixture(t);
   const result = item.run("no_changes");
   assert.equal(result.status, 0, result.stderr);
   const args = fs.readFileSync(item.argsPath, "utf8").trim().split("\n");
@@ -129,8 +130,8 @@ test("uses automatic approval without a conflicting sandbox option", () => {
   assert.equal(args.includes("--sandbox"), false);
 });
 
-test("allows a documentation-only diff, validates it and publishes one commit", () => {
-  const item = fixture();
+test("allows a documentation-only diff, validates it and publishes one commit", (t) => {
+  const item = fixture(t);
   const before = item.remoteCount();
   const result = item.run("allowed");
   assert.equal(result.status, 0, result.stderr);
@@ -139,8 +140,8 @@ test("allows a documentation-only diff, validates it and publishes one commit", 
 });
 
 for (const scenario of ["forbidden", "mixed"]) {
-  test(`rejects ${scenario} diffs without publishing`, () => {
-    const item = fixture();
+  test(`rejects ${scenario} diffs without publishing`, (t) => {
+    const item = fixture(t);
     const before = item.remoteCount();
     const result = item.run(scenario);
     assert.equal(result.status, 1);
@@ -150,16 +151,16 @@ for (const scenario of ["forbidden", "mixed"]) {
   });
 }
 
-test("rejects an unexpected branch before running the agent", () => {
-  const item = fixture({ branch: "feature" });
+test("rejects an unexpected branch before running the agent", (t) => {
+  const item = fixture(t, { branch: "feature" });
   const result = item.run("allowed");
   assert.equal(result.status, 1);
   assert.match(result.stdout, /expected branch main/);
   assert.equal(item.remoteCount(), 1);
 });
 
-test("rejects delivery when the remote advances during review", () => {
-  const item = fixture();
+test("rejects delivery when the remote advances during review", (t) => {
+  const item = fixture(t);
   const result = item.run("remote_advanced");
   assert.equal(result.status, 1);
   assert.match(`${result.stdout}\n${result.stderr}`, /remote_advanced/);
@@ -172,8 +173,8 @@ for (const [scenario, marker] of [
   ["privacy_failure", "synthetic-privacy-failure"],
   ["security_failure", "synthetic-security-failure"],
 ]) {
-  test(`does not publish after ${scenario}`, () => {
-    const item = fixture();
+  test(`does not publish after ${scenario}`, (t) => {
+    const item = fixture(t);
     const before = item.remoteCount();
     const result = item.run(scenario);
     assert.equal(result.status, 1);
@@ -183,20 +184,37 @@ for (const [scenario, marker] of [
   });
 }
 
-test("an agent code change is rejected by the executable allowlist", () => {
-  const item = fixture();
+test("an agent code change is rejected by the executable allowlist", (t) => {
+  const item = fixture(t);
   const result = item.run("forbidden");
   assert.equal(result.status, 1);
   assert.match(result.stdout, /unapproved_paths/);
   assert.equal(git(item.repo, ["rev-parse", "HEAD"]), item.baseline);
 });
 
-test("a no-change review creates no commit", () => {
-  const item = fixture();
+test("a no-change review creates no commit", (t) => {
+  const item = fixture(t);
   const before = item.remoteCount();
   const result = item.run("no_changes");
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /completed with no changes/);
   assert.equal(item.remoteCount(), before);
   assert.equal(git(item.repo, ["rev-parse", "HEAD"]), item.baseline);
+});
+
+test("Node-RED owns the continuous schedule without starting the internal timer", (t) => {
+  const item = fixture(t);
+  const result = spawnSync(process.execPath, ["scripts/weekly-docs-review.mjs"], {
+    cwd: item.repo,
+    encoding: "utf8",
+    timeout: 500,
+    killSignal: "SIGTERM",
+    env: {
+      ...process.env,
+      WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER: "node-red",
+      WEEKLY_DOCS_REVIEW_STATUS_PATH: path.join(item.temporaryRoot, "status.json"),
+    },
+  });
+  assert.match(result.stdout, /weekly documentation schedule managed by Node-RED/);
+  assert.doesNotMatch(result.stdout, /next weekly documentation review:/);
 });

@@ -95,7 +95,9 @@ views:
                 state_color: true
                 tap_action:
                   action: perform-action
-                  perform_action: shell_command.solicitar_revisao_documental_manual
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.weekly_documentation_review_run
                   confirmation:
                     text: A revisão pode editar, criar commit e enviar alterações. Deseja continuar?
 

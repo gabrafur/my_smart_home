@@ -18,6 +18,10 @@ const schedule = {
   hour: integerEnv("WEEKLY_DOCS_REVIEW_HOUR_UTC", 6, 0, 23),
   minute: integerEnv("WEEKLY_DOCS_REVIEW_MINUTE_UTC", 0, 0, 59),
 };
+const scheduleOwner = process.env.WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER || "internal";
+if (!new Set(["internal", "node-red"]).has(scheduleOwner)) {
+  throw new Error("WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER must be internal or node-red");
+}
 
 let scheduledTimer;
 let heartbeatTimer;
@@ -387,24 +391,33 @@ function scheduleNext() {
   }, delay);
 }
 
+function startNodeRedManagedSchedule() {
+  const next = nextWeeklyRun(new Date(), schedule);
+  log(`weekly documentation schedule managed by Node-RED; next expected request: ${next.toISOString()}`);
+  updateStatus(waitingStatus());
+}
+
 function startManualTriggerWatcher() {
   if (!triggerPath) return;
   triggerTimer = setInterval(async () => {
     if (!fs.existsSync(triggerPath)) return;
+    let source = "manual";
     try {
+      const requestedSource = fs.readFileSync(triggerPath, "utf8").trim();
+      if (requestedSource === "manual" || requestedSource === "scheduled") source = requestedSource;
       fs.rmSync(triggerPath);
     } catch (error) {
-      log(`cannot consume manual review trigger: ${error.message}`);
+      log(`cannot consume documentation review trigger: ${error.message}`);
       return;
     }
     if (reviewInProgress) {
-      log("manual documentation review request coalesced: a review is already running");
+      log(`${source} documentation review request coalesced: a review is already running`);
       return;
     }
     try {
-      await runManagedReview("manual");
+      await runManagedReview(source);
     } catch (error) {
-      log(`manual review failed unexpectedly: ${error.message}`);
+      log(`${source} review failed unexpectedly: ${error.message}`);
       updateStatus({
         state: "failed",
         last_finished: new Date().toISOString(),
@@ -419,7 +432,10 @@ function startManualTriggerWatcher() {
 }
 
 function startHeartbeat() {
-  heartbeatTimer = setInterval(() => updateStatus({}), 60_000);
+  heartbeatTimer = setInterval(() => {
+    if (scheduleOwner === "node-red" && !reviewInProgress) updateStatus(waitingStatus());
+    else updateStatus({});
+  }, 60_000);
 }
 
 function selfTest() {
@@ -474,7 +490,8 @@ if (process.argv.includes("--self-test")) {
 } else if (process.argv.includes("--run-now")) {
   process.exitCode = (await runReview()) ? 0 : 1;
 } else {
-  scheduleNext();
+  if (scheduleOwner === "node-red") startNodeRedManagedSchedule();
+  else scheduleNext();
   startHeartbeat();
   startManualTriggerWatcher();
 }

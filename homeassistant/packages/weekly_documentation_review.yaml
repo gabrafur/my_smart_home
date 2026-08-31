@@ -49,6 +49,7 @@ template:
         icon: mdi:file-document-refresh-outline
         state: "{{ states('sensor.revisao_semanal_da_documentacao') == 'executando' }}"
 
-shell_command:
-  solicitar_revisao_documental_manual: >-
-    /bin/sh /config/request-weekly-docs-review.sh
+input_button:
+  weekly_documentation_review_run:
+    name: Rodar revisão documental
+    icon: mdi:file-document-refresh-outline

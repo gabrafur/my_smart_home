@@ -1,5 +1,659 @@
 [
     {
+        "id": "weekly_docs_review_tab",
+        "type": "tab",
+        "label": "revisao_documental_semanal",
+        "disabled": false,
+        "info": "Node-RED é a fonte única do agendamento e do acionamento manual. O worker isolado conserva Git, Codex, validação e credenciais fora deste container.",
+        "env": []
+    },
+    {
+        "id": "weekly_docs_review_production_group",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "1. Agendamento, painel e ponte para o worker isolado",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a"
+        },
+        "nodes": [
+            "weekly_docs_review_architecture",
+            "weekly_docs_review_schedule",
+            "weekly_docs_review_schedule_out",
+            "weekly_docs_review_schedule_in",
+            "weekly_docs_review_manual",
+            "weekly_docs_review_mark_manual",
+            "weekly_docs_review_status_watch",
+            "weekly_docs_review_track_status",
+            "weekly_docs_review_test_request_in",
+            "weekly_docs_review_prepare",
+            "weekly_docs_review_request",
+            "weekly_docs_review_result",
+            "weekly_docs_review_error",
+            "weekly_docs_review_complete",
+            "weekly_docs_review_dry_run_out",
+            "weekly_docs_review_error_dry_run_out",
+            "weekly_docs_review_test_failure_in"
+        ],
+        "x": 64,
+        "y": 39,
+        "w": 1532,
+        "h": 342
+    },
+    {
+        "id": "weekly_docs_review_test_group",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "2. Testes manuais completos sem Codex, Git ou push",
+        "style": {
+            "label": true,
+            "color": "#7d6ba8"
+        },
+        "nodes": [
+            "weekly_docs_review_test_instructions",
+            "weekly_docs_review_test_reset",
+            "weekly_docs_review_test_reset_state",
+            "weekly_docs_review_test_scheduled",
+            "weekly_docs_review_test_manual",
+            "weekly_docs_review_test_request_out",
+            "weekly_docs_review_test_failure",
+            "weekly_docs_review_test_failure_out",
+            "weekly_docs_review_dry_run_in",
+            "weekly_docs_review_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 439,
+        "w": 1532,
+        "h": 252
+    },
+    {
+        "id": "weekly_docs_review_architecture",
+        "type": "comment",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Segunda 03:00 America/Sao_Paulo (06:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
+        "info": "O container Node-RED recebe apenas o diretório de gatilho e um helper allowlisted. Checkout, autenticação Codex, chave SSH e socket Docker não são expostos.",
+        "x": 760,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_schedule",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Segunda 03:00 (06:00 UTC)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_weekly_docs_source",
+                "v": "scheduled",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 03 * * 1",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 160,
+        "wires": [
+            [
+                "weekly_docs_review_schedule_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_schedule_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Agendamento → normalização",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_schedule_in"
+        ],
+        "x": 415,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_schedule_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Receber agendamento",
+        "links": [
+            "weekly_docs_review_schedule_out"
+        ],
+        "x": 515,
+        "y": 120,
+        "wires": [
+            [
+                "weekly_docs_review_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_manual",
+        "type": "server-state-changed",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Rodar pelo painel HA",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_button.weekly_documentation_review_run"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": true,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [],
+        "x": 210,
+        "y": 230,
+        "wires": [
+            [
+                "weekly_docs_review_mark_manual"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_mark_manual",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Marcar origem manual",
+        "func": "msg._weekly_docs_source = \"manual\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 230,
+        "wires": [
+            [
+                "weekly_docs_review_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_status_watch",
+        "type": "server-state-changed",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Acompanhar status do worker",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.revisao_semanal_da_documentacao"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 230,
+        "y": 320,
+        "wires": [
+            [
+                "weekly_docs_review_track_status"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_track_status",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Exibir lifecycle do worker",
+        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_request_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Receber solicitação TESTE",
+        "links": [
+            "weekly_docs_review_test_request_out"
+        ],
+        "x": 515,
+        "y": 160,
+        "wires": [
+            [
+                "weekly_docs_review_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_prepare",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Validar origem e separar TESTE",
+        "func": "const TEST_MODE = msg._weekly_docs_test === true;\nconst source = String(msg._weekly_docs_source ?? \"\");\nif (source !== \"manual\" && source !== \"scheduled\") {\n    node.error(\"weekly_docs_review_invalid_source\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"origem inválida\" });\n    return null;\n}\nmsg._weekly_docs_test = TEST_MODE;\nmsg.payload = source;\nnode.status({\n    fill: TEST_MODE ? \"blue\" : \"green\",\n    shape: \"dot\",\n    text: TEST_MODE ? \"TESTE preparado: \" + source : \"solicitando: \" + source\n});\nreturn TEST_MODE ? [null, msg] : [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 190,
+        "wires": [
+            [
+                "weekly_docs_review_request"
+            ],
+            [
+                "weekly_docs_review_dry_run_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_request",
+        "type": "exec",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "command": "/opt/request-weekly-docs-review.sh",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar worker isolado",
+        "x": 1020,
+        "y": 160,
+        "wires": [
+            [
+                "weekly_docs_review_result"
+            ],
+            [
+                "weekly_docs_review_error"
+            ],
+            [
+                "weekly_docs_review_complete"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_result",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Registrar solicitação aceita",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 300);\nconst source = text.match(/source=(manual|scheduled)/)?.[1] ?? \"unknown\";\nconst pending = /already pending/.test(text);\nconst accepted = /Documentation review (?:requested|already pending)/.test(text);\nif (!accepted) {\n    node.error(\"weekly_docs_review_result_unrecognized\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta não reconhecida\" });\n    return null;\n}\nconst result = {\n    version: 1,\n    status: pending ? \"coalesced\" : \"requested\",\n    source,\n    requested_at: Date.now()\n};\nflow.set(\"weekly_docs_review_last_request_v1\", result, \"persistent\");\nnode.status({\n    fill: pending ? \"yellow\" : \"green\",\n    shape: pending ? \"ring\" : \"dot\",\n    text: pending ? \"solicitação agrupada\" : \"worker solicitado\"\n});\nnode.log(\"weekly_docs_review_request status=\" + result.status + \" source=\" + source);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1330,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_error",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Registrar falha segura",
+        "func": "const TEST_MODE = msg._weekly_docs_test === true;\nconst detail = String(msg.payload ?? msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: TEST_MODE ? \"yellow\" : \"red\", shape: \"ring\", text: TEST_MODE ? \"TESTE: falha simulada\" : \"solicitação falhou\" });\nif (TEST_MODE) {\n    msg.payload = { status: \"failed\", detail, source: \"synthetic\" };\n    return msg;\n}\nnode.error(\"weekly_docs_review_request_failed detail=\" + detail, msg);\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1310,
+        "y": 180,
+        "wires": [
+            [
+                "weekly_docs_review_error_dry_run_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_complete",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Registrar código da ponte",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code === 0) node.status({ fill: \"green\", shape: \"dot\", text: \"ponte finalizada\" });\nelse node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1310,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_dry_run_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_dry_run_in"
+        ],
+        "x": 1025,
+        "y": 250,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_error_dry_run_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Falha TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_dry_run_in"
+        ],
+        "x": 1515,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_failure_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Receber falha TESTE",
+        "links": [
+            "weekly_docs_review_test_failure_out"
+        ],
+        "x": 1075,
+        "y": 310,
+        "wires": [
+            [
+                "weekly_docs_review_error"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_instructions",
+        "type": "comment",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE: 1) reset 2) agendada/manual/falha 3) confira terminal; nenhum Codex, Git, commit, push ou trigger é executado",
+        "info": "Os cenários usam a mesma normalização e tratamento de erro da produção. O link final desvia antes do helper externo e registra simulated=true/dispatched=false.",
+        "x": 760,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_reset",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 540,
+        "wires": [
+            [
+                "weekly_docs_review_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_reset_state",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Resetar teste",
+        "func": "flow.set(\"weekly_docs_review_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_scheduled",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 2A: agendada",
+        "props": [
+            {
+                "p": "_weekly_docs_source",
+                "v": "scheduled",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 600,
+        "wires": [
+            [
+                "weekly_docs_review_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_manual",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 2B: manual",
+        "props": [
+            {
+                "p": "_weekly_docs_source",
+                "v": "manual",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 650,
+        "wires": [
+            [
+                "weekly_docs_review_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_request_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Solicitação TESTE → normalização",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_test_request_in"
+        ],
+        "x": 485,
+        "y": 625,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_failure",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 2C: falha da ponte",
+        "props": [
+            {
+                "p": "payload",
+                "v": "synthetic bridge unavailable",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_weekly_docs_source",
+                "v": "manual",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 760,
+        "y": 620,
+        "wires": [
+            [
+                "weekly_docs_review_test_failure_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_failure_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Falha TESTE → handler",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_test_failure_in"
+        ],
+        "x": 1005,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_dry_run_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Receber terminal TESTE",
+        "links": [
+            "weekly_docs_review_dry_run_out",
+            "weekly_docs_review_error_dry_run_out"
+        ],
+        "x": 1155,
+        "y": 560,
+        "wires": [
+            [
+                "weekly_docs_review_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_dry_run_terminal",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE FINAL: worker bloqueado",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    worker_started: false,\n    source: msg._weekly_docs_source ?? msg.payload?.source ?? \"unknown\",\n    status: msg.payload?.status ?? \"request_simulated\",\n    completed_at: Date.now()\n};\nflow.set(\"weekly_docs_review_last_dry_run_v1\", result);\nnode.status({ fill: result.status === \"failed\" ? \"yellow\" : \"green\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; worker bloqueado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1400,
+        "y": 560,
+        "wires": []
+    },
+    {
         "id": "git_backup_tab",
         "type": "tab",
         "label": "backup_git",
@@ -14121,6 +14775,92 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__weekly_docs_review_tab__group",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__weekly_docs_review_tab__catch",
+            "global_observer_coverage__weekly_docs_review_tab__status",
+            "global_observer_coverage__weekly_docs_review_tab__annotate",
+            "global_observer_coverage__weekly_docs_review_tab__out"
+        ],
+        "x": 1700,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__catch",
+        "type": "catch",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1840,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__weekly_docs_review_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__status",
+        "type": "status",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1850,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__weekly_docs_review_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__annotate",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"weekly_docs_review_tab\",\"flow_label\":\"revisao_documental_semanal\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2120,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__weekly_docs_review_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2365,
+        "y": 130,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__git_backup_tab__group",
         "type": "group",
         "z": "git_backup_tab",
@@ -15809,6 +16549,7 @@
         "g": "global_observer_production_group",
         "name": "Receber falhas de todas as abas",
         "links": [
+            "global_observer_coverage__weekly_docs_review_tab__out",
             "global_observer_coverage__git_backup_tab__out",
             "global_observer_coverage__29d64664bf8cbde8__out",
             "global_observer_coverage__shared_integrations_tab__out",

@@ -116,8 +116,8 @@
       "profile": "automation",
       "services": ["docs-review-scheduler"],
       "depends_on": ["agent-bridge"],
-      "configuration": ["scripts/weekly-docs-review.mjs", "scripts/weekly-docs-review.prompt.md"],
-      "degradation": "weekly documentation review is not scheduled"
+      "configuration": ["nodered/tools/install-weekly-docs-review-flow.mjs", "scripts/weekly-docs-review.mjs", "scripts/weekly-docs-review.prompt.md"],
+      "degradation": "weekly documentation review requests are not processed"
     }
   ]
 }

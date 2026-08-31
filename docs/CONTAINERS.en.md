@@ -15,10 +15,10 @@ host requirements, and private files that cannot be inferred from YAML alone.
 | `homeassistant` | digest-pinned image | host network, UI 8123 | `./homeassistant:/config`, read-only documentation status | `secrets.yaml`, `.storage/`, optional databases |
 | `matter_server` | digest-pinned image | host network, WebSocket on `127.0.0.1:5580` | `./matter-server:/data` | full Matter fabric volume |
 | `appdaemon` | digest-pinned image | host network, UI on `127.0.0.1:5050` only | runtime in `./appdaemon`, config in `./templates/appdaemon` | `.local-secrets/appdaemon-secrets.yaml` |
-| `nodered` | digest-pinned image | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` after credentials are configured |
+| `nodered` | digest-pinned image | `${HOST_LAN_IP}:1880` | `./nodered:/data`, documentation trigger | `flows_cred.json` after credentials are configured |
 | `zigbee2mqtt` | digest-pinned image | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, database, coordinator backup |
 | `ai-bridge` | local build | `127.0.0.1:8099` only | auth volumes and workspace | `.env` bridge token and optional OAuth token |
-| `docs-review-scheduler` | same local bridge build | no published port | workspace, Codex auth, and `.local-state/docs-review` | narrow-scope SSH key and `known_hosts` outside Git |
+| `docs-review-scheduler` | worker using the same local bridge build | no published port | workspace, Codex auth, and `.local-state/docs-review` | narrow-scope SSH key and `known_hosts` outside Git |
 
 Published ports use `HOST_LAN_IP`; when it is absent, they bind to loopback.
 Home Assistant, AppDaemon, and Matter use host networking because they require
@@ -36,8 +36,8 @@ Tags such as `stable` and `latest` are used only as channels checked by
 `scripts/docker-auto-update.mjs`; containers are never recreated from a
 mutable tag directly.
 
-The bridge uses Node.js 22 Bookworm Slim, includes Git/SSH for the scheduler's
-remote, and pins the Claude Code and Codex CLI versions in its Dockerfile.
+The bridge uses Node.js 22 Bookworm Slim, includes Git/SSH/GNU Make for the
+documentation worker, and pins the Claude Code and Codex CLI versions in its Dockerfile.
 Debian packages still come from the official APT repository during builds, so
 critical components are pinned but builds are not byte-for-byte APT snapshots.
 
@@ -76,7 +76,7 @@ The socket GID differs between hosts. Set `DOCKER_GID` to:
 stat -c '%g' /var/run/docker.sock
 ```
 
-Compose adds that supplementary group to the bridge at runtime. The scheduler
+Compose adds that supplementary group to the bridge at runtime. The documentation worker
 does not receive the socket, clears every supplementary group after a short
 bootstrap, and assumes the non-root UID/GID that owns the checkout. When
 needed, it creates a local no-login identity so OpenSSH can resolve that UID.
@@ -97,8 +97,8 @@ agent token from being copied into Node-RED when Node-RED does not need it.
 | `AI_BRIDGE_TOKEN` | bridge and HA integration | yes to use the endpoint |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude CLI | optional if auth volume is used |
 | `HA_LONG_LIVED_TOKEN` | host update script | optional; prefer `.local-secrets/` |
-| `WEEKLY_DOCS_REVIEW_*` | documentation scheduler | time/branch have defaults; SSH paths are required |
-| `REPO_UID`, `REPO_GID` | documentation scheduler | yes; non-root checkout owner |
+| `WEEKLY_DOCS_REVIEW_*` | documentation worker | branch/timeout have defaults; SSH paths are required |
+| `REPO_UID`, `REPO_GID` | documentation worker | yes; non-root checkout owner |
 
 `ANTHROPIC_API_KEY` is explicitly blanked inside the bridge so the CLI cannot
 accidentally choose API billing when OAuth is intended.
@@ -125,7 +125,8 @@ flowchart TD
     HA --> NR
     HA --> AD[appdaemon]
     HA --> BR[ai-bridge / integration]
-    SCH[docs-review-scheduler] --> GIT[Git remote]
+    NR -->|weekly/manual trigger| SCH[docs-review-scheduler worker]
+    SCH --> GIT[Git remote]
 ```
 
 `depends_on` is not a health check. Home Assistant and Node-RED may need extra
@@ -180,7 +181,7 @@ docker compose logs --tail=100 portainer ai-bridge
 - AppDaemon: logs show no secret or app-loading errors.
 - Portainer: onboarding or restored state is available only on LAN/VPN.
 - Bridge: loopback `GET /health` and one authenticated test request.
-- Scheduler: logs show the next run and `--check` verifies a clean tree, branch,
+- Documentation worker: logs confirm Node-RED-managed scheduling and `--check` verifies a clean tree, branch,
   and remote authentication; see the
   [weekly review guide](WEEKLY_DOCUMENTATION_REVIEW.en.md).
 
@@ -196,7 +197,7 @@ Git covers configuration, not runtime state. Privately and securely back up:
   `coordinator_backup.json`;
 - `.local-secrets/appdaemon-secrets.yaml`;
 - the `matter-server/` and `portainer/` directories.
-- the scheduler's dedicated SSH credential, stored outside the checkout.
+- the documentation worker's dedicated SSH credential, stored outside the checkout.
 
 Do not commit that backup, even encrypted, without an explicit key-management
 and retention policy.
@@ -235,6 +236,11 @@ Node-RED schedules preventive storage maintenance every six hours and creates a
 coalesced host request. The cron installer keeps only the one-minute bridge
 that consumes this request at reduced priority; there is no second preventive
 schedule directly in crontab.
+
+The weekly documentation review follows the same least-privilege principle:
+the `revisao_documental_semanal` tab owns the cron and reacts to the dashboard
+`input_button`, but receives only an allowlisted helper and trigger volume. The
+separate worker retains the checkout, Codex, SSH, validation, and push.
 
 Before applying manual cleanup, read the
 [storage audit](operations/storage-audit.md) and run

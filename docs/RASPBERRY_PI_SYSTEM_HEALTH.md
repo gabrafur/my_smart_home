@@ -22,7 +22,9 @@
 
 O mesmo dashboard também apresenta
 `sensor.revisao_semanal_da_documentacao`, alimentado pelo status local e não
-sensível do `docs-review-scheduler`. Os detalhes da entidade estão no guia de
+sensível do worker `docs-review-scheduler`. O cron e o botão manual pertencem à
+aba Node-RED `revisao_documental_semanal`; o `entity_id`, atributos e histórico
+do sensor permanecem inalterados. Os detalhes da entidade estão no guia de
 [revisão semanal da documentação](REVISAO_DOCUMENTACAO_SEMANAL.md).
 
 O coletor roda a cada 60 segundos via `command_line` e entrega um JSON unico. Os sensores derivados usam `template`, evitando varias chamadas shell separadas.

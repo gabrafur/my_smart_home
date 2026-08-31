@@ -31,9 +31,10 @@
 
 ## Revisão documental automatizada
 
-- `scripts/weekly-docs-review.mjs` é a implementação canônica; o prompt
-  versionado instrui o agente, mas o scheduler conserva a autoridade para
-  allowlist, validação, commit e push.
+- A aba `revisao_documental_semanal` do Node-RED é a fonte única do agendamento
+  e do acionamento manual. `scripts/weekly-docs-review.mjs` permanece como
+  worker canônico; o prompt instrui o agente, mas o worker conserva a autoridade
+  para allowlist, validação, commit e push.
 - Na versão atual do CLI, `codex exec --approve-for-me` já usa revisão
   automática com sandbox `workspace-write`. Não combine essa opção com
   `--sandbox`; a regressão fica em `scripts/weekly-docs-review.test.mjs`.

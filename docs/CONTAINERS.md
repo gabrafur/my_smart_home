@@ -15,10 +15,10 @@ pré-requisitos e arquivos privados que não podem ser deduzidos apenas do YAML.
 | `homeassistant` | imagem por digest | `network_mode: host`, UI 8123 | `./homeassistant:/config`, status documental somente leitura | `secrets.yaml`, `.storage/`, bancos opcionais |
 | `matter_server` | imagem por digest | `network_mode: host`, WebSocket em `127.0.0.1:5580` | `./matter-server:/data` | volume inteiro da fabric |
 | `appdaemon` | imagem por digest | `network_mode: host`, UI somente em `127.0.0.1:5050` | runtime em `./appdaemon`, config em `./templates/appdaemon` | `.local-secrets/appdaemon-secrets.yaml` |
-| `nodered` | imagem por digest | `${HOST_LAN_IP}:1880` | `./nodered:/data` | `flows_cred.json` quando houver credenciais já configuradas |
+| `nodered` | imagem por digest | `${HOST_LAN_IP}:1880` | `./nodered:/data`, gatilho documental | `flows_cred.json` quando houver credenciais já configuradas |
 | `zigbee2mqtt` | imagem por digest | `${HOST_LAN_IP}:8080` | `./zigbee2mqtt:/app/data` | `configuration.yaml`, banco e backup do coordenador |
 | `ai-bridge` | build local | somente `127.0.0.1:8099` | volumes de autenticação e workspace | `.env` com token do bridge e, opcionalmente, OAuth |
-| `docs-review-scheduler` | mesmo build local do bridge | nenhuma porta publicada | workspace, autenticação Codex e `.local-state/docs-review` | chave SSH de escopo restrito e `known_hosts` fora do Git |
+| `docs-review-scheduler` | worker do mesmo build local do bridge | nenhuma porta publicada | workspace, autenticação Codex e `.local-state/docs-review` | chave SSH de escopo restrito e `known_hosts` fora do Git |
 
 As portas publicadas usam `HOST_LAN_IP`. A ausência da variável faz o bind em
 loopback. Home Assistant, AppDaemon e Matter usam rede do host porque dependem
@@ -36,8 +36,8 @@ Todas as imagens externas, inclusive a base do bridge, usam digest. Tags como
 `scripts/docker-auto-update.mjs`; não são usadas para recriar containers
 diretamente.
 
-O bridge usa Node.js 22 Bookworm Slim, inclui Git/SSH para o remoto do
-agendador e fixa as versões do Claude Code e Codex no Dockerfile. Pacotes
+O bridge usa Node.js 22 Bookworm Slim, inclui Git/SSH/GNU Make para o worker
+documental e fixa as versões do Claude Code e Codex no Dockerfile. Pacotes
 Debian continuam vindo do repositório oficial durante o build, portanto o build
 é determinístico para as partes críticas, mas não é uma reprodução byte a byte
 de um snapshot APT.
@@ -77,7 +77,7 @@ O GID do socket varia por host. Preencha `DOCKER_GID` com:
 stat -c '%g' /var/run/docker.sock
 ```
 
-O Compose adiciona esse grupo ao bridge em runtime. O agendador não recebe o
+O Compose adiciona esse grupo ao bridge em runtime. O worker documental não recebe o
 socket, descarta todos os grupos suplementares após um bootstrap curto e assume
 o UID/GID não-root que possui o checkout. Se necessário, cria uma identidade
 local sem shell para o OpenSSH resolver esse UID. Nenhum GID fica gravado na
@@ -98,8 +98,8 @@ token de agente seja copiado para o ambiente do Node-RED sem necessidade.
 | `AI_BRIDGE_TOKEN` | bridge e integração HA | sim para usar o endpoint |
 | `CLAUDE_CODE_OAUTH_TOKEN` | CLI Claude no bridge | opcional se autenticado pelo volume |
 | `HA_LONG_LIVED_TOKEN` | script no host | opcional; prefira arquivo em `.local-secrets/` |
-| `WEEKLY_DOCS_REVIEW_*` | agendador documental | horário/branch têm padrão; caminhos SSH são obrigatórios |
-| `REPO_UID`, `REPO_GID` | agendador documental | sim; proprietário não-root do checkout |
+| `WEEKLY_DOCS_REVIEW_*` | worker documental | branch/timeout têm padrão; caminhos SSH são obrigatórios |
+| `REPO_UID`, `REPO_GID` | worker documental | sim; proprietário não-root do checkout |
 
 O `ANTHROPIC_API_KEY` é explicitamente esvaziado dentro do bridge para evitar
 que a CLI escolha por acidente a cobrança por API quando a instalação usa OAuth.
@@ -126,7 +126,8 @@ flowchart TD
     HA --> NR
     HA --> AD[appdaemon]
     HA --> BR[ai-bridge / integração]
-    SCH[docs-review-scheduler] --> GIT[remoto Git]
+    NR -->|gatilho semanal/manual| SCH[docs-review-scheduler worker]
+    SCH --> GIT[remoto Git]
 ```
 
 `depends_on` não é health check. Após `docker compose up -d`, Home Assistant e
@@ -184,7 +185,7 @@ docker compose logs --tail=100 portainer ai-bridge
 - AppDaemon: log não contém erro de segredo ou carregamento de app.
 - Portainer: onboarding ou estado restaurado aparece somente na LAN/VPN.
 - Bridge: `GET /health` em loopback e uma chamada autenticada de teste.
-- Agendador: log mostra a próxima execução e `--check` confirma árvore limpa,
+- Worker documental: log confirma agenda gerida pelo Node-RED e `--check` confirma árvore limpa,
   branch e autenticação remota; veja a
   [revisão semanal](REVISAO_DOCUMENTACAO_SEMANAL.md).
 
@@ -200,7 +201,7 @@ O Git cobre configuração, não estado. Faça backup privado e criptografado de
   `coordinator_backup.json`;
 - `.local-secrets/appdaemon-secrets.yaml`;
 - diretórios `matter-server/` e `portainer/`.
-- credencial SSH exclusiva do agendador, armazenada fora do checkout.
+- credencial SSH exclusiva do worker documental, armazenada fora do checkout.
 
 Não coloque esse arquivo de backup no repositório, mesmo criptografado, sem uma
 política explícita de chaves e retenção.
@@ -265,6 +266,11 @@ O backup Git diário é agendado na aba `backup_git` do Node-RED. Uma ponte
 allowlisted no host processa a solicitação sem expor checkout ou credenciais ao
 container; veja [Backup Git no Node-RED](GIT_BACKUP_NODERED.md). Essa aba não
 altera os sensores nem os cards da revisão documental semanal.
+
+A revisão documental semanal segue o mesmo princípio de privilégio mínimo: a
+aba `revisao_documental_semanal` possui o cron e reage ao `input_button` do
+dashboard, mas recebe somente um helper allowlisted e o volume de gatilho. O
+worker separado conserva checkout, Codex, SSH, validação e push.
 
 Para rollback, restaure o Compose e os volumes compatíveis. Reverter apenas o
 digest pode não funcionar depois que uma aplicação migra seu banco.

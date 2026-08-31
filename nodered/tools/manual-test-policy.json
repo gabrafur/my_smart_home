@@ -27,6 +27,19 @@
             "dry_run_terminal_ids": ["daily_update_dry_run_terminal"],
             "reason": "Solicitação, falha do DietPi e indisponibilidade percorrem os validadores e o parser reais; sudo, apt, Docker e reboot permanecem bloqueados no terminal dry-run."
         },
+        "weekly_docs_review_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "weekly_docs_review_test_group",
+                "weekly_docs_review_test_reset",
+                "weekly_docs_review_test_scheduled",
+                "weekly_docs_review_test_manual",
+                "weekly_docs_review_test_failure"
+            ],
+            "automated_test": "test-weekly-docs-review-flow.mjs",
+            "dry_run_terminal_ids": ["weekly_docs_review_dry_run_terminal"],
+            "reason": "Agendamento, acionamento manual e falha sintéticos usam a normalização real; Codex, Git, commit, push e o trigger externo permanecem bloqueados no terminal dry-run."
+        },
         "29d64664bf8cbde8": {
             "strategy": "automated_only",
             "evidence_node_ids": [],

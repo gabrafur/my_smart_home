@@ -65,8 +65,6 @@ services:
       - /usr/bin/vcgencmd:/usr/bin/vcgencmd:ro
       - /run/dbus:/run/dbus:ro
       - ./.local-state/docs-review:/run/docs-review:ro
-      - ./.local-state/docs-review-trigger:/run/docs-review-trigger
-      - ./scripts/request-weekly-docs-review.sh:/config/request-weekly-docs-review.sh:ro
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
       - PI_HEALTH_PROC_ROOT=/host/proc
@@ -129,10 +127,12 @@ services:
       - ./homeassistant/.git-backup-trigger:/run/git-backup-trigger
       - ./homeassistant/.storage-maintenance-trigger:/run/storage-maintenance-trigger
       - ./homeassistant/.daily-update-trigger:/run/daily-update-trigger
+      - ./.local-state/docs-review-trigger:/run/docs-review-trigger
       - ./scripts/request-host-git-backup.sh:/opt/request-host-git-backup.sh:ro
       - ./scripts/request-host-storage-maintenance.sh:/opt/request-host-storage-maintenance.sh:ro
       - ./scripts/request-host-daily-update.sh:/opt/request-host-daily-update.sh:ro
       - ./scripts/read-host-daily-update-result.sh:/opt/read-host-daily-update-result.sh:ro
+      - ./scripts/request-weekly-docs-review.sh:/opt/request-weekly-docs-review.sh:ro
       - ./nodered:/data
       - ./bindings/private:/run/private-bindings:ro
       - ./scripts/storage-health-maintenance.sh:/opt/storage-health-maintenance.sh:ro
@@ -238,8 +238,8 @@ services:
 
   docs-review-scheduler:
     logging: *default-logging
-    # Separate process, same pinned agent toolchain. It has no published port
-    # and runs Codex only at the configured weekly UTC window.
+    # Separate worker, same pinned agent toolchain. Node-RED owns the weekly
+    # schedule and requests work through the dedicated trigger volume.
     build:
       context: ./ia-bridge
     container_name: docs-review-scheduler
@@ -264,9 +264,7 @@ services:
       - ${WEEKLY_DOCS_REVIEW_KNOWN_HOSTS:-/dev/null}:/scheduler-auth/known_hosts:ro
     environment:
       - TZ=${TZ:-America/Sao_Paulo}
-      - WEEKLY_DOCS_REVIEW_DAY_UTC=${WEEKLY_DOCS_REVIEW_DAY_UTC:-1}
-      - WEEKLY_DOCS_REVIEW_HOUR_UTC=${WEEKLY_DOCS_REVIEW_HOUR_UTC:-6}
-      - WEEKLY_DOCS_REVIEW_MINUTE_UTC=${WEEKLY_DOCS_REVIEW_MINUTE_UTC:-0}
+      - WEEKLY_DOCS_REVIEW_SCHEDULE_OWNER=node-red
       - WEEKLY_DOCS_REVIEW_BRANCH=${WEEKLY_DOCS_REVIEW_BRANCH:-main}
       - WEEKLY_DOCS_REVIEW_REMOTE=${WEEKLY_DOCS_REVIEW_REMOTE:-origin}
       - WEEKLY_DOCS_REVIEW_TIMEOUT_MS=${WEEKLY_DOCS_REVIEW_TIMEOUT_MS:-10800000}
