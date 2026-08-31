@@ -15,6 +15,15 @@ refresh, mas nunca serve sozinho como evidência para ações físicas.
 O Node-RED é o único agendador de wakes reais do `vehicle_primary`. O
 coordinator `kia_uvo` do Home Assistant continua consultando o cache a cada 15
 minutos para publicar as entidades, mas não executa force refresh periódico.
+O backend brasileiro aplica backoff progressivo de 15 minutos a 6 horas quando
+retorna rate limit; durante esse prazo, polling, wakes e releituras tardias não
+fazem novas chamadas. O estado é compartilhado entre recriações do coordinator
+durante retry de setup, para que uma nova instância não burle o prazo. O
+dashboard e as automações continuam tratando a idade da telemetria como
+evidência obrigatória, sem promover cache antigo a estado atual.
+Na biblioteca 4.27.2, o refresh token genérico não conhece os atributos e o
+formato de bearer do cliente BR. A camada local adapta esse contrato e impede
+que um `5091` no refresh dispare login completo na mesma tentativa.
 Agendamento, manual, recovery, chegada e movimento convergem no estado
 persistente do Node-RED; retorno do serviço é apenas aceite e sucesso exige
 timestamp novo de localização, motor ou trava. A integração e o fluxo mantêm

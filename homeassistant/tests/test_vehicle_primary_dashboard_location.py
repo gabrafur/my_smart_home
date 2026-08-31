@@ -43,13 +43,14 @@ def main() -> None:
     assert "O último comando falhou ou ainda está em cooldown" not in dashboard
     assert "Servidor consultado há" in dashboard
     assert "esta consulta não acorda o carro" in dashboard
-    assert "o esperado é uma consulta a cada 30 s" in dashboard
+    assert "o esperado é uma consulta a cada 15 min" in dashboard
     assert "Último wake confirmado por dados novos" in dashboard
     assert "O último wake ainda não produziu dados novos" in dashboard
-    assert "ignora o prazo periódico e a pausa noturna" in dashboard
+    assert "ignora o prazo periódico e a pausa noturna" not in dashboard
     assert "Cache consultado em" in dashboard
     assert "Consulta executada em" not in dashboard
-    assert "consultado a cada **30 segundos** sem acordar o carro" in dashboard
+    assert "consultado a cada **15 minutos** sem acordar o carro" in dashboard
+    assert "backoff progressivo de até **6 horas**" in dashboard
     assert "O botão **Atualizar agora** força um wake" in dashboard
     assert "**Localizar por luz e buzina**" in dashboard
     assert "name: Localizar (segure)" in dashboard
@@ -69,7 +70,7 @@ def main() -> None:
     assert "previous_state != current_state or moved_outside_zone" in controls
     assert "movement_threshold_m: 250" in controls
 
-    print("vehicle_primary dashboard: 49 verificações aprovadas.")
+    print("vehicle_primary dashboard: 50 verificações aprovadas.")
 
 
 class VehiclePrimaryDashboardLocationTest(unittest.TestCase):

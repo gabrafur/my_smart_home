@@ -6,6 +6,7 @@ import asyncio
 import copy
 import datetime as dt
 import logging
+import math
 import threading
 import time
 import traceback
@@ -43,6 +44,7 @@ from hyundai_kia_connect_api.const import WINDOW_STATE
 from hyundai_kia_connect_api.exceptions import (
     APIError,
     AuthenticationError,
+    RateLimitingError,
     UnsupportedControlError,
 )
 from .const import (
@@ -72,8 +74,16 @@ BR_CURRENT_USER_AGENT = (
     "Mobile Safari/535.19_CCS_APP_AOS"
 )
 BR_DEVICE_REGISTRATION_PATH = "/spa/notifications/register"
-BR_CACHE_POLL_INTERVAL_S = 30
+BR_CACHE_POLL_INTERVAL_S = 15 * 60
 BR_CACHE_RETRY_INTERVAL_S = 60
+BR_RATE_LIMIT_BACKOFF_S = (
+    15 * 60,
+    30 * 60,
+    60 * 60,
+    2 * 60 * 60,
+    4 * 60 * 60,
+    6 * 60 * 60,
+)
 BR_FRESH_DATA_RECHECK_DELAYS_S = (15, 15, 30, 30, 30, 30)
 BR_FRESH_DATA_CLOCK_TOLERANCE = timedelta(seconds=60)
 TRIP_INFO_BACKGROUND_TIMEOUT_S = 120
@@ -89,6 +99,11 @@ MAX_EFFICIENCY_SAMPLE_GAP = timedelta(minutes=5)
 MIN_PLAUSIBLE_KM_PER_L = 3.0
 MAX_PLAUSIBLE_KM_PER_L = 25.0
 
+# Home Assistant recreates the coordinator while retrying a failed config-entry
+# setup. Keep provider cooldowns at module scope so a new instance cannot bypass
+# a rate limit that the preceding setup attempt already observed.
+_BR_RATE_LIMIT_STATE: dict[str, dict[str, float | int]] = {}
+
 
 class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching data from the API."""
@@ -99,6 +114,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self._action_lock = asyncio.Lock()
         self._force_refresh_lock = asyncio.Lock()
         self._cache_refresh_lock = asyncio.Lock()
+        self._br_rate_limit_key = config_entry.entry_id
         self._br_fresh_data_recheck_tasks: dict[str, asyncio.Task] = {}
         # The Brazilian API exposes one calendar day per request. Keep the
         # dashboard window separate from vehicle.day_trip_info so that the
@@ -180,10 +196,64 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
     @staticmethod
     def _cache_poll_interval_seconds(api: Any, configured_seconds: int) -> int:
-        """Return a fast cache-only cadence for the Brazilian backend."""
+        """Return the bounded cache-only cadence for the Brazilian backend."""
         if type(api).__name__ == "HyundaiBlueLinkApiBR":
             return BR_CACHE_POLL_INTERVAL_S
         return configured_seconds
+
+    def _br_rate_limit_remaining_seconds(self) -> int:
+        """Return the active in-process BR rate-limit delay."""
+        state = _BR_RATE_LIMIT_STATE.get(
+            str(getattr(self, "_br_rate_limit_key", "default")),
+            {},
+        )
+        remaining = float(state.get("until_monotonic", 0.0)) - time.monotonic()
+        return max(0, math.ceil(remaining))
+
+    def _record_br_rate_limit(self) -> int:
+        """Advance the bounded BR rate-limit backoff and return its delay."""
+        key = str(getattr(self, "_br_rate_limit_key", "default"))
+        state = _BR_RATE_LIMIT_STATE.setdefault(key, {})
+        failures = int(state.get("failures", 0)) + 1
+        delay = BR_RATE_LIMIT_BACKOFF_S[
+            min(failures - 1, len(BR_RATE_LIMIT_BACKOFF_S) - 1)
+        ]
+        state.update(
+            failures=failures,
+            until_monotonic=max(
+                float(state.get("until_monotonic", 0.0)),
+                time.monotonic() + delay,
+            ),
+        )
+        _LOGGER.warning(
+            "CRETA_RATE_LIMITED consecutive=%d backoff_seconds=%d",
+            failures,
+            delay,
+        )
+        return HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+            self
+        )
+
+    def _clear_br_rate_limit(self) -> None:
+        """Clear BR rate-limit state after a confirmed successful API read."""
+        key = str(getattr(self, "_br_rate_limit_key", "default"))
+        state = _BR_RATE_LIMIT_STATE.pop(key, {})
+        if int(state.get("failures", 0)):
+            _LOGGER.info("CRETA_RATE_LIMIT_RECOVERED")
+
+    def _raise_if_br_rate_limited(self) -> None:
+        """Reject explicit BR calls while the provider backoff is active."""
+        if type(self.vehicle_manager.api).__name__ != "HyundaiBlueLinkApiBR":
+            return
+        remaining = (
+            HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                self
+            )
+        )
+        if remaining:
+            raise HomeAssistantError(
+                f"Bluelink rate limit backoff is active for {remaining} seconds"
+            )
 
     async def _async_update_data(self):
         """Read service cache without competing with a real vehicle wake."""
@@ -208,8 +278,25 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             self.scan_interval,
             self.force_refresh_interval,
         )
+        if type(self.vehicle_manager.api).__name__ == "HyundaiBlueLinkApiBR":
+            remaining = (
+                HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                    self
+                )
+            )
+            if remaining:
+                raise UpdateFailed(
+                    "Bluelink rate limit backoff is active; cached polling paused",
+                    retry_after=remaining,
+                )
         try:
             await self.async_check_and_refresh_token()
+        except RateLimitingError as err:
+            delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+            raise UpdateFailed(
+                "Bluelink rate limit reached; cached polling paused",
+                retry_after=delay,
+            ) from err
         except AuthenticationError as auth_error:
             # The BR backend can invalidate a server-side session or client
             # identifier transiently (observed as 401/4002). Keep the config
@@ -242,12 +329,19 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             await self.hass.async_add_executor_job(
                 self.vehicle_manager.update_all_vehicles_with_cached_state
             )
+        except RateLimitingError as err:
+            delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+            raise UpdateFailed(
+                "Bluelink rate limit reached; cached polling paused",
+                retry_after=delay,
+            ) from err
         except Exception as err:
             _LOGGER.exception("Cached vehicle update failed")
             raise UpdateFailed(
                 "Error reading Hyundai/Kia Connect cached state; will retry",
                 retry_after=BR_CACHE_RETRY_INTERVAL_S,
             ) from err
+        HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(self)
 
         await self._async_refresh_trip_info_on_new_distance()
         await self._async_save_token()
@@ -338,6 +432,36 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                 except asyncio.CancelledError:
                     raise
+                except RateLimitingError:
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
+                        self
+                    )
+                    _LOGGER.warning(
+                        "CRETA_TRIP_BACKGROUND_RATE_LIMITED reason=%s attempt=%d",
+                        reason,
+                        attempt,
+                    )
+                    return
+                except HomeAssistantError as err:
+                    remaining = (
+                        HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                            self
+                        )
+                    )
+                    if remaining:
+                        _LOGGER.warning(
+                            "CRETA_TRIP_BACKGROUND_RATE_LIMITED "
+                            "reason=%s attempt=%d",
+                            reason,
+                            attempt,
+                        )
+                        return
+                    _LOGGER.warning(
+                        "CRETA_TRIP_BACKGROUND_FAILED reason=%s attempt=%d: %s",
+                        reason,
+                        attempt,
+                        err,
+                    )
                 except Exception as err:
                     _LOGGER.warning(
                         "CRETA_TRIP_BACKGROUND_FAILED reason=%s attempt=%d: %s",
@@ -350,29 +474,48 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def async_update_all(self) -> None:
         """Update vehicle data."""
+        HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
         async with self._cache_refresh_lock:
-            await self.async_check_and_refresh_token()
-            await self.hass.async_add_executor_job(
-                self.vehicle_manager.update_all_vehicles_with_cached_state
-            )
+            try:
+                await self.async_check_and_refresh_token()
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.update_all_vehicles_with_cached_state
+                )
+            except RateLimitingError as err:
+                HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                raise HomeAssistantError(
+                    "Bluelink rate limit reached; cached polling paused"
+                ) from err
+        HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(self)
         self.async_set_updated_data(self.data)
 
     async def async_force_update_all(self) -> None:
         """Force refresh vehicle data and update it."""
+        HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
         if self._force_refresh_lock.locked():
             raise HomeAssistantError(
                 "A vehicle refresh is already in progress; request coalesced"
             )
         async with self._force_refresh_lock:
             async with self._cache_refresh_lock:
-                await self.async_check_and_refresh_token()
-                await self.hass.async_add_executor_job(
-                    self.vehicle_manager.force_refresh_all_vehicles_states
-                )
-            self.async_set_updated_data(self.data)
+                try:
+                    await self.async_check_and_refresh_token()
+                    await self.hass.async_add_executor_job(
+                        self.vehicle_manager.force_refresh_all_vehicles_states
+                    )
+                except RateLimitingError as err:
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
+                        self
+                    )
+                    raise HomeAssistantError(
+                        "Bluelink rate limit reached; vehicle refresh paused"
+                    ) from err
+        HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(self)
+        self.async_set_updated_data(self.data)
 
     async def async_force_refresh_vehicle(self, vehicle_id: str) -> None:
         """Force refresh a single vehicle's state."""
+        HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
         if self._force_refresh_lock.locked():
             raise HomeAssistantError(
                 "A vehicle refresh is already in progress; request coalesced"
@@ -383,6 +526,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             try:
                 async with self._cache_refresh_lock:
                     await self.async_check_and_refresh_token()
+            except RateLimitingError as err:
+                HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                self.async_set_updated_data(self.data)
+                raise HomeAssistantError(
+                    "Bluelink rate limit reached; vehicle refresh paused"
+                ) from err
             except AuthenticationError as err:
                 if type(api).__name__ != "HyundaiBlueLinkApiBR":
                     raise
@@ -406,6 +555,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                         self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
                     )
             except Exception as err:
+                if isinstance(err, RateLimitingError):
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                    self.async_set_updated_data(self.data)
+                    raise HomeAssistantError(
+                        "Bluelink rate limit reached; vehicle refresh paused"
+                    ) from err
                 no_fresh_data = (
                     type(api).__name__ == "HyundaiBlueLinkApiBR"
                     and isinstance(err, APIError)
@@ -417,6 +572,13 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                             self.vehicle_manager.update_vehicle_with_cached_state,
                             vehicle_id,
                         )
+                except RateLimitingError:
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                    self.async_set_updated_data(self.data)
+                    _LOGGER.warning(
+                        "CRETA_REFRESH_CACHE_RATE_LIMITED rechecks_cancelled=true"
+                    )
+                    return
                 except Exception:
                     _LOGGER.exception(
                         "Cached vehicle read after force-refresh failure also failed"
@@ -511,6 +673,13 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 await asyncio.sleep(delay_s)
                 if self._force_refresh_lock.locked():
                     continue
+                if HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                    self
+                ):
+                    _LOGGER.warning(
+                        "CRETA_REFRESH_RECHECK_CANCELLED reason=rate_limit_backoff"
+                    )
+                    return
                 try:
                     async with self._cache_refresh_lock:
                         if self._force_refresh_lock.locked():
@@ -521,6 +690,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                         )
                 except asyncio.CancelledError:
                     raise
+                except RateLimitingError:
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                    _LOGGER.warning(
+                        "CRETA_REFRESH_RECHECK_CANCELLED reason=rate_limited"
+                    )
+                    return
                 except Exception as err:
                     _LOGGER.warning(
                         "CRETA_REFRESH_RECHECK_FAILED attempt=%d error=%s",
@@ -563,7 +738,14 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         Bluelink app's own trip history is built from, so it matches the
         app regardless of polling luck.
         """
-        await self.async_check_and_refresh_token()
+        HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
+        try:
+            await self.async_check_and_refresh_token()
+        except RateLimitingError as err:
+            HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+            raise HomeAssistantError(
+                "Bluelink rate limit reached; trip refresh paused"
+            ) from err
         today = dt_util.now().date()
         requested_days = (today, today - dt.timedelta(days=1))
         vehicle = self.vehicle_manager.vehicles[vehicle_id]
@@ -575,11 +757,17 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             # API returns no trips. Clear it first to avoid displaying stale
             # trips under the other date.
             vehicle.day_trip_info = None
-            await self.hass.async_add_executor_job(
-                self.vehicle_manager.update_day_trip_info,
-                vehicle_id,
-                yyyymmdd_string,
-            )
+            try:
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.update_day_trip_info,
+                    vehicle_id,
+                    yyyymmdd_string,
+                )
+            except RateLimitingError as err:
+                HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                raise HomeAssistantError(
+                    "Bluelink rate limit reached; trip refresh paused"
+                ) from err
             info = vehicle.day_trip_info
             trips: list[dict[str, Any]] = []
             if info is not None:
@@ -881,8 +1069,77 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         api.ccsp_application_id = BR_CURRENT_APPLICATION_ID
         api.api_headers["User-Agent"] = BR_CURRENT_USER_AGENT
         registration_lock = threading.Lock()
+        refresh_context = threading.local()
         original_request = api.session.request
         coordinator = self
+
+        # API 4.27.2 moved refresh-token exchange into ApiImplType1, whose
+        # generic implementation expects uppercase endpoint attributes and
+        # prepends the OAuth token type. HyundaiBlueLinkApiBR still exposes
+        # lowercase names and expects the raw token because its authenticated
+        # headers add "Bearer" themselves. Bridge that mismatch locally until
+        # upstream provides a BR override.
+        original_login = getattr(api, "login", None)
+        original_refresh_access_token = getattr(api, "refresh_access_token", None)
+        refresh_patch_supported = (
+            callable(original_login)
+            and callable(original_refresh_access_token)
+            and hasattr(api, "api_url")
+            and hasattr(api, "basic_authorization_header")
+            and hasattr(api, "base_url")
+        )
+        if refresh_patch_supported:
+            api.USER_API_URL = api._build_api_url("/user/")
+            api.BASIC_AUTHORIZATION = api.basic_authorization_header
+            api.BASE_URL = api.base_url
+
+            def _br_refresh_headers(api_self) -> dict[str, str]:
+                return {"User-Agent": api_self.api_headers["User-Agent"]}
+
+            api._refresh_access_token_headers = types.MethodType(
+                _br_refresh_headers,
+                api,
+            )
+
+            def _login_without_rate_limit_fallback(api_self, *args, **kwargs):
+                del api_self
+                rate_limit_message = getattr(
+                    refresh_context,
+                    "rate_limit_message",
+                    None,
+                )
+                if rate_limit_message:
+                    del refresh_context.rate_limit_message
+                    raise RateLimitingError(rate_limit_message)
+                if (
+                    getattr(refresh_context, "refresh_in_progress", False)
+                    and len(args) == 3
+                    and "otp_handler" not in kwargs
+                    and "pin" not in kwargs
+                ):
+                    username, password, pin = args
+                    return original_login(username, password, pin=pin)
+                return original_login(*args, **kwargs)
+
+            api.login = types.MethodType(_login_without_rate_limit_fallback, api)
+
+            def _refresh_access_token_br(api_self, token):
+                del api_self
+                refresh_context.rate_limit_message = None
+                refresh_context.refresh_in_progress = True
+                try:
+                    result = original_refresh_access_token(token)
+                finally:
+                    refresh_context.refresh_in_progress = False
+                access_token = getattr(result, "access_token", None)
+                if isinstance(access_token, str) and access_token.startswith("Bearer "):
+                    result.access_token = access_token.removeprefix("Bearer ")
+                return result
+
+            api.refresh_access_token = types.MethodType(
+                _refresh_access_token_br,
+                api,
+            )
 
         def _is_invalid_device(response) -> bool:
             if response.status_code != 400:
@@ -892,6 +1149,28 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             except ValueError:
                 return False
             return isinstance(payload, dict) and payload.get("resCode") == "4002"
+
+        def _refresh_rate_limit_message(response, request_data) -> str | None:
+            is_refresh_grant = (
+                isinstance(request_data, str)
+                and "grant_type=refresh_token" in request_data
+            ) or (
+                isinstance(request_data, dict)
+                and request_data.get("grant_type") == "refresh_token"
+            )
+            if not is_refresh_grant:
+                return None
+            try:
+                payload = response.json()
+            except ValueError:
+                return None
+            if (
+                not isinstance(payload, dict)
+                or payload.get("retCode") != "F"
+                or payload.get("resCode") != "5091"
+            ):
+                return None
+            return str(payload.get("resMsg") or "Exceeds number of requests")
 
         def _register_device() -> str:
             headers = dict(api.api_headers)
@@ -936,6 +1215,13 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         def _request_with_device_recovery(session_self, method, url, **kwargs):
             del session_self
             response = original_request(method, url, **kwargs)
+            if refresh_patch_supported:
+                rate_limit_message = _refresh_rate_limit_message(
+                    response,
+                    kwargs.get("data"),
+                )
+                if rate_limit_message:
+                    refresh_context.rate_limit_message = rate_limit_message
             if (
                 BR_DEVICE_REGISTRATION_PATH in url
                 or not _is_invalid_device(response)
@@ -1066,8 +1352,16 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 True,
                 60,
             )
+        except RateLimitingError:
+            HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+            raise
         finally:
-            await self.async_refresh()
+            if HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                self
+            ):
+                self.async_set_updated_data(self.data)
+            else:
+                await self.async_refresh()
 
     async def async_await_action_and_force_refresh(self, vehicle_id, action_id):
         """Wait for action then force refresh to get fresh vehicle data.
@@ -1081,6 +1375,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         vehicle objects in-place (rems/rvs + cmm/gvi), so we just need to
         notify HA entities to re-read their state.
         """
+        confirmation_rate_limited = False
         try:
             await asyncio.sleep(5)
             await self.hass.async_add_executor_job(
@@ -1090,15 +1385,34 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 True,
                 60,
             )
+        except RateLimitingError:
+            confirmation_rate_limited = True
+            HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+            raise
         finally:
-            async with self._force_refresh_lock:
-                try:
-                    async with self._cache_refresh_lock:
-                        await self.hass.async_add_executor_job(
-                            self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+            if confirmation_rate_limited:
+                _LOGGER.warning(
+                    "CRETA_ACTION_CONFIRMATION_RATE_LIMITED "
+                    "refresh_suppressed=true"
+                )
+            else:
+                async with self._force_refresh_lock:
+                    try:
+                        async with self._cache_refresh_lock:
+                            await self.hass.async_add_executor_job(
+                                self.vehicle_manager.force_refresh_vehicle_state,
+                                vehicle_id,
+                            )
+                    except RateLimitingError:
+                        HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
+                            self
                         )
-                except Exception:
-                    _LOGGER.exception("Force refresh after call failed")
+                        _LOGGER.warning(
+                            "CRETA_ACTION_CONFIRMATION_RATE_LIMITED "
+                            "refresh_suppressed=true"
+                        )
+                    except Exception:
+                        _LOGGER.exception("Force refresh after call failed")
             self.async_set_updated_data(self.data)
 
     async def _async_send_action(
@@ -1117,6 +1431,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         already in progress, raises HomeAssistantError immediately so
         the user gets a clear message instead of a mysterious long wait.
         """
+        HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
         if self._action_lock.locked():
             _LOGGER.warning(
                 "Vehicle action '%s' rejected: another action is already in progress",
@@ -1127,12 +1442,17 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 "Please wait for it to complete and try again."
             )
         async with self._action_lock:
-            await self.async_check_and_refresh_token()
             try:
+                await self.async_check_and_refresh_token()
                 action_id = await self.hass.async_add_executor_job(action_fn)
             except UnsupportedControlError as err:
                 raise HomeAssistantError(
                     f"Vehicle does not support this action: {err}"
+                ) from err
+            except RateLimitingError as err:
+                HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                raise HomeAssistantError(
+                    "Bluelink rate limit reached; vehicle action paused"
                 ) from err
             except Exception as err:
                 raise HomeAssistantError(f"Failed to {error_label}: {err}") from err

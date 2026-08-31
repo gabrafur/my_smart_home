@@ -9,13 +9,12 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
 [docs/ILUMINACAO_SEGURANCA_NODERED.md](ILUMINACAO_SEGURANCA_NODERED.md)
 (uso das entidades `vehicle_primary_*` no fluxo de chegada/seguranca).
 
-## Estado atual (2026-08-30)
+## Estado atual (2026-08-31)
 
-- Componente sincronizado com o upstream `kia_uvo` **3.10.1** e
-  `hyundai_kia_connect_api` **4.26.5**. O diff oficial 3.10.0 -> 3.10.1
-  altera somente essa dependencia. Entre 4.26.1 e 4.26.5 nao houve mudanca
-  no backend Brasil nem no comando horn/light; entraram correcoes EU, USA e
-  do sentinel de agenda CCS2.
+- Componente sincronizado com o upstream `kia_uvo` **3.11.0** e
+  `hyundai_kia_connect_api` **4.27.2**. A promocao preserva o delta local,
+  valida uma leitura inicial e observa a consulta periodica seguinte ao cache
+  antes de aceitar o runtime, sem forcar uma chamada adicional.
 - A biblioteca 4.26.x incorporou o suporte nativo ao vehicle_primary brasileiro:
   `/ccs2/carstatus/latest`, parser CCS2, wake real por
   `/ccs2/carstatus`, rejeicao de snapshot que nao avancou e interpretacao do
@@ -37,8 +36,8 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   O stub reservado `OffPeakTime: {Mode: 1}` dos modelos a combustao tambem e
   ignorado para nao criar horarios EV ficticios em 00:00 nem warning por poll.
 - O Node-RED e o unico coordenador do agendamento de wakes reais. No backend
-  brasileiro, o `kia_uvo` consulta o cache do servidor a cada 30 segundos para
-  renovar token e manter as entidades publicadas quase em tempo real, mas
+  brasileiro, o `kia_uvo` consulta o cache do servidor a cada 15 minutos para
+  renovar token e manter as entidades publicadas, mas
   `_async_update_data` nao chama
   mais `check_and_force_update_vehicles`, nem no intervalo legado de 1440
   minutos. As opcoes antigas de force refresh permanecem aceitas apenas por
@@ -68,10 +67,22 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
 - O backend BR pode publicar o snapshot mais de dois minutos depois de aceitar
   o wake. Se o aguardo fixo de 25 segundos da biblioteca expirar, o coordinator
   agenda seis releituras limitadas de `/latest` ao longo dos 150 segundos
-  seguintes. Essas releituras e o polling contínuo de 30 segundos consultam
+  seguintes. Essas releituras e o polling contínuo de 15 minutos consultam
   somente o cache, nao emitem outro wake
   e param assim que o timestamp semantico do veiculo comprova dado posterior
   a solicitacao.
+- Se o backend responder `RateLimitingError`, o coordinator interrompe polling,
+  wakes e releituras tardias com backoff progressivo de 15 min, 30 min, 1 h,
+  2 h, 4 h e 6 h. O estado e compartilhado entre as instancias recriadas pelo
+  retry de setup do Home Assistant, portanto um novo coordinator nao contorna
+  o prazo. Uma leitura posterior bem-sucedida zera o contador. O erro nao
+  dispara uma segunda leitura de fallback nem produz traceback por minuto.
+- A API 4.27.2 moveu a troca de refresh token para uma implementacao generica
+  que espera atributos ausentes no cliente BR e prefixa `Bearer` onde o backend
+  brasileiro espera o token cru. A compatibilidade local fornece os endpoints
+  BR, preserva o token no formato correto e, se o refresh receber `5091`,
+  propaga o rate limit sem cair imediatamente em um login completo. Isso evita
+  varias chamadas de autenticacao dentro de uma unica tentativa do coordinator.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
   odometro avanca e na chegada do vehicle_primary. O dashboard nao depende mais de press
   manual para voltar a exibir viagens depois de restart.
@@ -82,7 +93,7 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
 ### Fluxo de dados e contratos
 
 ```text
-Bluelink BR -> hyundai_kia_connect_api 4.26.5 -> coordinator kia_uvo
+Bluelink BR -> hyundai_kia_connect_api 4.27.2 -> coordinator kia_uvo
              -> entidades Home Assistant -> contexto_vehicle_primary (Node-RED)
              -> security.vehicle_primary-context.v1 -> chegada/iluminacao
 ```
@@ -747,7 +758,10 @@ alvo para diretorio temporario, gera o delta local, aplica com `git apply` no
 alvo, compila e verifica marcadores. Conflito para antes de tocar na instalacao.
 Em `apply`, que exige token e comando explicitos, cria backup do componente e
 dos metadados HACS, chama o servico oficial `update.install`, reaplica o staging,
-reinicia somente o Home Assistant e valida entidades/biblioteca/HACS. Qualquer
+reinicia somente o Home Assistant, valida entidades/biblioteca/HACS e faz uma
+segunda observacao por ate 18 minutos, aguardando o polling natural de 15
+minutos. A promocao so e aceita quando `last_scanned_at` avanca e o combustivel
+continua disponivel, sem injetar uma segunda chamada ao provedor. Qualquer
 falha restaura componente e metadata e reinicia a versao anterior.
 
 O tab Node-RED `atualizacoes_diarias` agenda a analise Kia/Hyundai a cada 30

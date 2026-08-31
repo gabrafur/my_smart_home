@@ -87,6 +87,7 @@ def _load_coordinator_without_home_assistant():
         "hyundai_kia_connect_api.exceptions",
         APIError=type("APIError", (Exception,), {}),
         AuthenticationError=type("AuthenticationError", (Exception,), {}),
+        RateLimitingError=type("RateLimitingError", (Exception,), {}),
         UnsupportedControlError=type("UnsupportedControlError", (Exception,), {}),
     )
 
@@ -407,6 +408,9 @@ class FakeSession:
     def get(self, url, **kwargs):
         return self.request("GET", url, **kwargs)
 
+    def post(self, url, **kwargs):
+        return self.request("POST", url, **kwargs)
+
 
 class HyundaiBlueLinkApiBR:
     """Minimum BR API surface used by the compatibility installer."""
@@ -415,15 +419,138 @@ class HyundaiBlueLinkApiBR:
     ccsp_service_id = "service-id"
 
     def __init__(self, responses):
+        self.api_url = "https://example.invalid/api/v1/"
+        self.basic_authorization_header = "synthetic-basic"
+        self.base_url = "example.invalid"
         self.api_headers = {"User-Agent": "legacy-agent"}
         self.session = FakeSession(responses)
+        self.login_calls = 0
+        self.login_arguments = []
 
     @staticmethod
     def _build_api_url(path):
         return f"https://example.invalid/api/v1/{path.lstrip('/')}"
 
+    def login(self, username, password, otp_handler=None, pin=None):
+        self.login_calls += 1
+        self.login_arguments.append(
+            {
+                "username": username,
+                "password": password,
+                "otp_handler": otp_handler,
+                "pin": pin,
+            }
+        )
+        return "full-login"
+
+    def refresh_access_token(self, token):
+        response = self.session.post(
+            self.USER_API_URL + "oauth2/token",
+            data="grant_type=refresh_token&refresh_token=synthetic",
+        )
+        payload = response.json()
+        if payload.get("retCode") == "F":
+            try:
+                coordinator_module = sys.modules[
+                    "custom_components.kia_uvo.coordinator"
+                ]
+                if payload.get("resCode") == "5091":
+                    raise coordinator_module.RateLimitingError(payload["resMsg"])
+                raise coordinator_module.APIError(payload.get("resMsg", "failed"))
+            except Exception:
+                return self.login(token.username, token.password, token.pin)
+        return SimpleNamespace(access_token="Bearer refreshed-token")
+
 
 class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
+    def test_refresh_rate_limit_does_not_fall_back_to_full_login(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        api = HyundaiBlueLinkApiBR(
+            [
+                FakeResponse(
+                    200,
+                    {
+                        "retCode": "F",
+                        "resCode": "5091",
+                        "resMsg": "Exceeds number of requests",
+                    },
+                )
+            ]
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(api=api, token=None)
+        )
+        token = SimpleNamespace(
+            username="synthetic-user",
+            password="placeholder",
+            pin="synthetic-pin",
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+
+        with self.assertRaises(coordinator_module.RateLimitingError):
+            api.refresh_access_token(token)
+        assert api.login_calls == 0
+        assert len(api.session.requests) == 1
+        assert api.USER_API_URL.endswith("/user/")
+        assert api.BASIC_AUTHORIZATION == "synthetic-basic"
+        assert api.BASE_URL == "example.invalid"
+
+    def test_refresh_fallback_passes_pin_by_keyword_for_br_login(self):
+        api = HyundaiBlueLinkApiBR(
+            [
+                FakeResponse(
+                    200,
+                    {
+                        "retCode": "F",
+                        "resCode": "5000",
+                        "resMsg": "Synthetic refresh failure",
+                    },
+                )
+            ]
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(api=api, token=None)
+        )
+        token = SimpleNamespace(
+            username="synthetic-user",
+            password="placeholder",
+            pin="synthetic-pin",
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+
+        assert api.refresh_access_token(token) == "full-login"
+        assert api.login_calls == 1
+        assert api.login_arguments == [
+            {
+                "username": "synthetic-user",
+                "password": "placeholder",
+                "otp_handler": None,
+                "pin": "synthetic-pin",
+            }
+        ]
+
+    def test_successful_refresh_keeps_raw_br_access_token(self):
+        api = HyundaiBlueLinkApiBR(
+            [FakeResponse(200, {"access_token": "synthetic"})]
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(api=api, token=None)
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+        result = api.refresh_access_token(SimpleNamespace())
+
+        assert result.access_token == "refreshed-token"
+        assert api.login_calls == 0
+
     def test_invalid_device_is_registered_persisted_and_retried_once(self):
         api = HyundaiBlueLinkApiBR(
             [
@@ -537,13 +664,13 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             assert result == {}
         assert calls == ["cache", "cache", "cache"]
 
-    def test_br_cache_poll_uses_independent_30_second_cadence(self):
+    def test_br_cache_poll_uses_bounded_15_minute_cadence(self):
         assert (
             HyundaiKiaConnectDataUpdateCoordinator._cache_poll_interval_seconds(
                 HyundaiBlueLinkApiBR([]),
                 15 * 60,
             )
-            == 30
+            == 15 * 60
         )
 
         class OtherRegionApi:
@@ -556,6 +683,129 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             )
             == 15 * 60
         )
+
+    async def test_br_rate_limit_backs_off_without_repolling(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        calls = []
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+
+            @staticmethod
+            def update_all_vehicles_with_cached_state():
+                calls.append("cache")
+                raise coordinator_module.RateLimitingError("synthetic limit")
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _br_rate_limit_key="shared-retry-test",
+            scan_interval=15 * 60,
+            force_refresh_interval=24 * 60 * 60,
+            async_check_and_refresh_token=no_op,
+            _install_br_parser_compatibility=lambda: None,
+            _async_refresh_trip_info_on_new_distance=no_op,
+            _async_save_token=no_op,
+        )
+        for method in (
+            "_br_rate_limit_remaining_seconds",
+            "_record_br_rate_limit",
+            "_clear_br_rate_limit",
+        ):
+            setattr(
+                coordinator,
+                method,
+                MethodType(
+                    getattr(HyundaiKiaConnectDataUpdateCoordinator, method),
+                    coordinator,
+                ),
+            )
+
+        with patch.object(coordinator_module.time, "monotonic", return_value=1_000):
+            with self.assertRaises(coordinator_module.UpdateFailed) as first:
+                await HyundaiKiaConnectDataUpdateCoordinator._async_update_data_from_cache(
+                    coordinator
+                )
+        assert first.exception.retry_after == 15 * 60
+        assert calls == ["cache"]
+
+        retrying_coordinator = SimpleNamespace(
+            vehicle_manager=Manager(),
+            _br_rate_limit_key="shared-retry-test",
+            scan_interval=15 * 60,
+            force_refresh_interval=24 * 60 * 60,
+        )
+        with patch.object(coordinator_module.time, "monotonic", return_value=1_001):
+            with self.assertRaises(coordinator_module.UpdateFailed) as second:
+                await HyundaiKiaConnectDataUpdateCoordinator._async_update_data_from_cache(
+                    retrying_coordinator
+                )
+        assert second.exception.retry_after == 15 * 60 - 1
+        assert calls == ["cache"]
+        HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(coordinator)
+
+    async def test_force_refresh_rate_limit_skips_cached_fallback(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        calls = []
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+            vehicles = {VEHICLE_ID: SimpleNamespace(last_updated_at=None)}
+
+            @staticmethod
+            def force_refresh_vehicle_state(_vehicle_id):
+                calls.append("wake")
+                raise coordinator_module.RateLimitingError("synthetic limit")
+
+            @staticmethod
+            def update_vehicle_with_cached_state(_vehicle_id):
+                calls.append("cache")
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
+            _br_rate_limit_key="force-refresh-test",
+            async_check_and_refresh_token=no_op,
+            data={"cached": True},
+            async_set_updated_data=lambda _data: None,
+        )
+        for method in (
+            "_br_rate_limit_remaining_seconds",
+            "_record_br_rate_limit",
+            "_raise_if_br_rate_limited",
+        ):
+            setattr(
+                coordinator,
+                method,
+                MethodType(
+                    getattr(HyundaiKiaConnectDataUpdateCoordinator, method),
+                    coordinator,
+                ),
+            )
+
+        with self.assertRaisesRegex(Exception, "rate limit"):
+            await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                coordinator, VEHICLE_ID
+            )
+        assert calls == ["wake"]
 
     async def test_force_refresh_rejects_a_concurrent_request(self):
         started = asyncio.Event()

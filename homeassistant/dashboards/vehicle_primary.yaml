@@ -272,6 +272,7 @@ views:
               {% set scanned = states('sensor.vehicle_primary_last_scanned_at') %}
               {% set scanned_ts = as_timestamp(scanned, none) %}
               {% set cache_age_s = (as_timestamp(now()) - scanned_ts) | round(0) if scanned_ts else none %}
+              {% set cache_age_min = (cache_age_s / 60) | round(0) if cache_age_s is not none else none %}
               {% set updated = states('sensor.vehicle_primary_last_updated_at') %}
               {% set updated_ts = as_timestamp(updated, none) %}
               {% set data_age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
@@ -283,8 +284,8 @@ views:
 
               **Atualização dos dados**
 
-              {% if cache_age_s is not none and cache_age_s <= 90 %}🟢 **Servidor consultado há {{ format_number_ptbr(cache_age_s) }} s** · esta consulta não acorda o carro.
-              {% elif cache_age_s is not none %}🟡 **Servidor sem consulta há {{ format_number_ptbr(cache_age_s) }} s** · o esperado é uma consulta a cada 30 s.
+              {% if cache_age_s is not none and cache_age_s <= 1080 %}🟢 **Servidor consultado há {{ format_number_ptbr(cache_age_min) }} min** · esta consulta não acorda o carro.
+              {% elif cache_age_s is not none %}🟡 **Servidor sem consulta há {{ format_number_ptbr(cache_age_min) }} min** · o esperado é uma consulta a cada 15 min.
               {% else %}🔴 **Consulta ao servidor indisponível**.
               {% endif %}
 
@@ -304,7 +305,6 @@ views:
               {% else %}🟢 **Wake pronto** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
               {% endif %}
 
-              O botão **Atualizar agora** ignora o prazo periódico e a pausa noturna; ele só aguarda se já houver uma chamada em andamento.
           - type: tile
             entity: sensor.vehicle_primary_car_battery_level
             name: Bateria 12 V
@@ -403,7 +403,7 @@ views:
             content: >-
               **Atualização automática orientada a eventos**
 
-              O cache do servidor Bluelink é consultado a cada **30 segundos** sem acordar o carro. Separadamente, o wake real usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** quando ambos estão em casa. Com os dois em casa, wakes periódicos ficam pausados entre **00h e 06h**. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo.
+              O cache do servidor Bluelink é consultado a cada **15 minutos** sem acordar o carro. Se o provedor limitar as chamadas, o polling entra em backoff progressivo de até **6 horas** sem criar novas rajadas. Separadamente, o wake real usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** quando ambos estão em casa. Com os dois em casa, wakes periódicos ficam pausados entre **00h e 06h**. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo quando não há backoff do provedor.
 
               A consulta ao cache pode republicar entidades sem acordar o carro; o refresh só é concluído quando o timestamp do próprio Bluelink (`Última atualização`) realmente avança.
           - type: entities

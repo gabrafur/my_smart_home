@@ -26,6 +26,7 @@ const REQUIRED_MARKERS = [
   ["coordinator.py", "async_refresh_day_trip_info"],
   ["coordinator.py", "_async_update_fuel_efficiency"],
   ["coordinator.py", "REMOTE_LOCATE_MIN_INTERVAL_S = 60"],
+  ["coordinator.py", "BR_RATE_LIMIT_BACKOFF_S"],
   ["sensor.py", "RecentTripInfoEntity"],
   ["sensor.py", "RemoteCommandStatusEntity"],
 ];
@@ -417,24 +418,70 @@ async function check(targetVersion, options = {}) {
   return status;
 }
 
-async function waitForHomeAssistant(token, timeoutMs = 240_000) {
+const runtimeRequiredEntities = [
+  "sensor.vehicle_primary_fuel_level",
+  "sensor.vehicle_primary_last_scanned_at",
+  "button.vehicle_primary_force_refresh",
+  "button.vehicle_primary_start_hazard_lights_and_horn",
+  "sensor.garagem_vehicle_primary_recent_trip_info",
+  "sensor.garagem_vehicle_primary_remote_command_status",
+];
+
+export function assessKiaRuntimeStates(states, scannedAfter = null) {
+  const byId = new Map(states.map((state) => [state.entity_id, state]));
+  const missing = runtimeRequiredEntities.filter(
+    (entityId) => !byId.has(entityId),
+  );
+  if (missing.length) {
+    return { healthy: false, reason: "missing_entities", missing };
+  }
+  const unavailable = runtimeRequiredEntities.filter(
+    (entityId) => byId.get(entityId)?.state === "unavailable",
+  );
+  if (unavailable.length) {
+    return { healthy: false, reason: "entities_unavailable", unavailable };
+  }
+
+  const fuel = byId.get("sensor.vehicle_primary_fuel_level")?.state;
+  if (["unknown", "unavailable", undefined].includes(fuel)) {
+    return {
+      healthy: false,
+      reason: "fuel_unavailable",
+      fuel_state: fuel ?? null,
+    };
+  }
+
+  const scanned = byId.get("sensor.vehicle_primary_last_scanned_at")?.state;
+  const scannedAt = Date.parse(scanned ?? "");
+  if (!Number.isFinite(scannedAt)) {
+    return {
+      healthy: false,
+      reason: "scan_timestamp_invalid",
+      scanned_state: scanned ?? null,
+    };
+  }
+  if (scannedAfter !== null && scannedAt <= Date.parse(scannedAfter)) {
+    return {
+      healthy: false,
+      reason: "cache_probe_not_observed",
+      scanned_state: scanned,
+    };
+  }
+  return { healthy: true, fuel_state: fuel, scanned_state: scanned };
+}
+
+async function waitForHomeAssistant(token, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 240_000;
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     try {
       const states = await haRequest("GET", "/api/states", token);
-      const required = [
-        "sensor.vehicle_primary_fuel_level",
-        "button.vehicle_primary_force_refresh",
-        "button.vehicle_primary_start_hazard_lights_and_horn",
-        "sensor.garagem_vehicle_primary_recent_trip_info",
-        "sensor.garagem_vehicle_primary_remote_command_status",
-      ];
-      const missing = required.filter(
-        (entityId) => !states.some((state) => state.entity_id === entityId),
+      const assessment = assessKiaRuntimeStates(
+        states,
+        options.scannedAfter ?? null,
       );
-      const fuel = states.find((state) => state.entity_id === "sensor.vehicle_primary_fuel_level");
-      if (!missing.length && fuel && !["unknown", "unavailable"].includes(fuel.state)) {
-        return { entities: "passed", fuel_state: fuel.state };
+      if (assessment.healthy) {
+        return assessment;
       }
     } catch {
       // Home Assistant may still be starting.
@@ -442,6 +489,23 @@ async function waitForHomeAssistant(token, timeoutMs = 240_000) {
     await new Promise((resolve) => setTimeout(resolve, 10_000));
   }
   throw new Error("Home Assistant runtime validation timed out");
+}
+
+async function validateKiaRuntime(token) {
+  const initial = await waitForHomeAssistant(token);
+  // Observe the coordinator's own 15-minute cache cadence instead of forcing
+  // an extra provider request shortly after startup. This proves the runtime
+  // remains healthy across a second real poll without creating a burst.
+  const probed = await waitForHomeAssistant(token, {
+    timeoutMs: 18 * 60_000,
+    scannedAfter: initial.scanned_state,
+  });
+  return {
+    entities: "passed",
+    fuel_state: probed.fuel_state,
+    cache_probe: "passed",
+    cache_probe_scanned_at: probed.scanned_state,
+  };
 }
 
 async function applyPrepared(prepared, token, options = {}) {
@@ -494,7 +558,7 @@ async function applyPrepared(prepared, token, options = {}) {
     copyComponent(prepared.mergedRoot, componentDir);
     command("python3", ["-m", "compileall", "-q", componentDir]);
     command("docker", ["compose", "start", "homeassistant"]);
-    const runtimeTests = await waitForHomeAssistant(token);
+    const runtimeTests = await validateKiaRuntime(token);
     const libraryVersion = command(
       "docker",
       [

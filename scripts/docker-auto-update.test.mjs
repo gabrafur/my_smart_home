@@ -8,11 +8,36 @@ import {
   updateIsProtected,
 } from "./docker-auto-update.mjs";
 import {
+  assessKiaRuntimeStates,
   candidateMetadataMatchesTarget,
   preferFullCommit,
   statusLine,
   updateMatchesTarget,
 } from "./kia-uvo-safe-update.mjs";
+
+const healthyKiaRuntimeStates = [
+  { entity_id: "sensor.vehicle_primary_fuel_level", state: "29" },
+  {
+    entity_id: "sensor.vehicle_primary_last_scanned_at",
+    state: "2026-08-31T18:00:00Z",
+  },
+  {
+    entity_id: "button.vehicle_primary_force_refresh",
+    state: "2026-08-31T17:00:00Z",
+  },
+  {
+    entity_id: "button.vehicle_primary_start_hazard_lights_and_horn",
+    state: "unknown",
+  },
+  {
+    entity_id: "sensor.garagem_vehicle_primary_recent_trip_info",
+    state: "ready",
+  },
+  {
+    entity_id: "sensor.garagem_vehicle_primary_remote_command_status",
+    state: "idle",
+  },
+];
 
 test("replaces an image even when comments precede it", () => {
   const compose = `services:
@@ -67,6 +92,44 @@ test("recognizes an already installed Kia UVO target", () => {
   assert.equal(
     updateMatchesTarget(entity, { version_installed: "v3.9.0" }, "v3.10.1"),
     false,
+  );
+});
+
+test("requires a fresh healthy cache probe before accepting Kia runtime", () => {
+  assert.equal(assessKiaRuntimeStates(healthyKiaRuntimeStates).healthy, true);
+  assert.equal(
+    assessKiaRuntimeStates(
+      healthyKiaRuntimeStates,
+      "2026-08-31T17:59:59Z",
+    ).healthy,
+    true,
+  );
+  assert.equal(
+    assessKiaRuntimeStates(
+      healthyKiaRuntimeStates,
+      "2026-08-31T18:00:00Z",
+    ).reason,
+    "cache_probe_not_observed",
+  );
+  assert.equal(
+    assessKiaRuntimeStates(
+      healthyKiaRuntimeStates.map((state) =>
+        state.entity_id === "sensor.vehicle_primary_fuel_level"
+          ? { ...state, state: "unavailable" }
+          : state
+      ),
+    ).reason,
+    "entities_unavailable",
+  );
+  assert.equal(
+    assessKiaRuntimeStates(
+      healthyKiaRuntimeStates.map((state) =>
+        state.entity_id === "sensor.garagem_vehicle_primary_recent_trip_info"
+          ? { ...state, state: "unavailable" }
+          : state
+      ),
+    ).reason,
+    "entities_unavailable",
   );
 });
 

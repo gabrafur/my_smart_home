@@ -24,6 +24,7 @@ const requiredMarkers = [
   ["coordinator.py", "async_refresh_day_trip_info"],
   ["coordinator.py", "_async_update_fuel_efficiency"],
   ["coordinator.py", "REMOTE_LOCATE_MIN_INTERVAL_S = 60"],
+  ["coordinator.py", "BR_RATE_LIMIT_BACKOFF_S"],
   ["sensor.py", "RecentTripInfoEntity"],
   ["sensor.py", "RemoteCommandStatusEntity"],
 ];
