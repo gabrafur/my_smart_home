@@ -49,6 +49,7 @@ test("preserves named Home Assistant zones on public device trackers", () => {
           "device_tracker.vehicle_primary": {
             target_entity_id: "device_tracker.example_vehicle_primary",
             state_mode: "home_away",
+            hide_targets: true,
           },
         },
       },
@@ -110,6 +111,30 @@ test("requires hide_targets to be an explicit boolean", () => {
   };
 
   assert.ok(validateBindings(document).some((item) => item.rule === "hide-targets"));
+  entity.hide_targets = true;
+  assert.deepEqual(validateBindings(document), []);
+});
+
+test("requires every vehicle alias to hide its native target", () => {
+  const entity = {
+    target_entity_id: "sensor.example_vehicle_fuel_level",
+    state_mode: "passthrough",
+  };
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      vehicle_primary: {
+        entities: { "sensor.vehicle_primary_fuel_level": entity },
+      },
+    },
+  };
+
+  assert.ok(
+    validateBindings(document).some(
+      (item) => item.rule === "vehicle-target-visible",
+    ),
+  );
   entity.hide_targets = true;
   assert.deepEqual(validateBindings(document), []);
 });
@@ -221,6 +246,7 @@ test("resolves a service through an entity binding in the same role", () => {
         entities: {
           "switch.vehicle_primary_climate": {
             target_entity_id: "switch.example_vehicle_climate",
+            hide_targets: true,
           },
         },
         services: {

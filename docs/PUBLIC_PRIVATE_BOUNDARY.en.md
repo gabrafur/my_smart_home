@@ -73,6 +73,11 @@ dynamic card preserves `home`, `not_home`, `chegando`, or any current named
 zone. New entities with coordinates still enter the map automatically through
 `show_all`.
 
+All `vehicle_primary` bindings also use `hide_targets: true`. Native Bluelink
+entities remain active as internal targets, while only the vehicle's public
+aliases appear in visual discovery, avoiding duplicate `creta_*` and
+`vehicle_primary_*` pairs.
+
 The `consolidated_map` component idempotently applies that same YAML file to
 the native `/map` dashboard during startup. The file is not registered as a
 second sidebar panel: the native Map tab is the only exposed interface and does

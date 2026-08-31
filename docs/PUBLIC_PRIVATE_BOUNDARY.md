@@ -81,6 +81,11 @@ duplicados. Um terceiro card dinâmico preserva o estado `home`, `not_home`,
 `chegando` ou qualquer zona atual. Entidades novas com coordenadas continuam
 entrando automaticamente no mapa por `show_all`.
 
+Todos os bindings de `vehicle_primary` também usam `hide_targets: true`. Assim,
+as entidades nativas do Bluelink continuam ativas como alvos internos, enquanto
+somente os aliases públicos do veículo aparecem na descoberta visual, sem pares
+duplicados como `creta_*` e `vehicle_primary_*`.
+
 O componente `consolidated_map` aplica o mesmo arquivo YAML ao dashboard nativo
 `/map` durante a inicialização, de forma idempotente. O arquivo não é registrado
 como outro painel lateral: a aba nativa Mapa é a única interface exposta e não

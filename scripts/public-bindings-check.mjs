@@ -95,6 +95,9 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       ) {
         issues.push(issue("hide-targets", location, "binding"));
       }
+      if (role === "vehicle_primary" && entity.hide_targets !== true) {
+        issues.push(issue("vehicle-target-visible", location, "binding"));
+      }
       const allowedAttributes = new Set(entity.attributes ?? []);
       const stringAttributes = entity.string_attributes ?? [];
       if (

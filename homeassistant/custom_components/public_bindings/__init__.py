@@ -162,6 +162,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 )
 
     hide_private_targets()
+    hass.bus.async_listen(
+        er.EVENT_ENTITY_REGISTRY_UPDATED,
+        hide_private_targets,
+    )
     if not hass.is_running:
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, hide_private_targets)
 

@@ -15,6 +15,7 @@ MODULE_PATH = (
     / "public_bindings"
     / "location.py"
 )
+COMPONENT_PATH = MODULE_PATH.with_name("__init__.py")
 BINDINGS_EXAMPLE = (
     Path(__file__).resolve().parents[2]
     / "bindings"
@@ -46,6 +47,11 @@ def state(
 
 
 class BestLocationSelectionTest(unittest.TestCase):
+    def test_hidden_targets_follow_late_entity_registration(self):
+        component = COMPONENT_PATH.read_text(encoding="utf-8")
+        self.assertIn("er.EVENT_ENTITY_REGISTRY_UPDATED", component)
+        self.assertIn("hide_private_targets", component)
+
     def test_current_source_wins_over_stale_source(self):
         mobile_app = state("chegando", age=timedelta(days=3), accuracy=4)
         icloud = state("home", accuracy=25)
@@ -108,12 +114,13 @@ class BestLocationSelectionTest(unittest.TestCase):
                 True,
             )
 
-        vehicle = document["roles"]["vehicle_primary"]["entities"][
-            "device_tracker.vehicle_primary"
-        ]
+        vehicle_entities = document["roles"]["vehicle_primary"]["entities"]
+        vehicle = vehicle_entities["device_tracker.vehicle_primary"]
         self.assertEqual(vehicle["source_names"], ["Bluelink"])
         self.assertTrue(vehicle["display_name"])
-        self.assertIs(vehicle["hide_targets"], True)
+        self.assertTrue(vehicle_entities)
+        for binding in vehicle_entities.values():
+            self.assertIs(binding["hide_targets"], True)
 
 
 if __name__ == "__main__":
