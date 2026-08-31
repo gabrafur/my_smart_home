@@ -457,6 +457,37 @@ normalizer.func = normalizer.func.replace(
 if (!normalizer.func.includes("15 * 60 * 1000 + FUTURE_TOLERANCE_MS")) {
   throw new Error("Normalizer sem janela para telemetria BR atrasada");
 }
+const readinessMarker =
+  "semantic_wake_confirmation_independent_of_derived_readiness_v1";
+if (!normalizer.func.includes(readinessMarker)) {
+  const previousReadinessGate = `        const targetReady =
+            vehicleContext.ready === true &&
+            (
+                refreshState.require_lighting_ready !== true ||
+                vehicleContext.lighting_ready === true
+            );`;
+  const semanticReadinessGate = `        /* ${readinessMarker}:
+         * telemetria semântica nova confirma um wake comum mesmo quando
+         * motor/trava mantêm o mesmo estado no Home Assistant. Readiness
+         * derivado continua obrigatório somente quando a iluminação pediu
+         * explicitamente essa recuperação. */
+        const targetReady =
+            refreshState.require_lighting_ready !== true ||
+            (
+                vehicleContext.ready === true &&
+                vehicleContext.lighting_ready === true
+            );`;
+  if (!normalizer.func.includes(previousReadinessGate)) {
+    throw new Error("Gate de readiness do wake não encontrado");
+  }
+  normalizer.func = normalizer.func.replace(
+    previousReadinessGate,
+    semanticReadinessGate,
+  );
+}
+if (!normalizer.func.includes(readinessMarker)) {
+  throw new Error("Confirmação semântica independente de readiness ausente");
+}
 normalizer.func = normalizer.func.replace(
   '        "security_vehicle_primary_test_clock"',
   '        "security_vehicle_primary_test_clock",\n        "security_vehicle_primary_refresh_v1__test"',

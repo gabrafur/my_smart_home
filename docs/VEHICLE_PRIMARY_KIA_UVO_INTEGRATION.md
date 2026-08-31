@@ -46,6 +46,15 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   registra a consulta mais recente ao cache e pode avancar mesmo sem mudar o
   snapshot semantico; `sensor.vehicle_primary_last_updated_at` continua sendo
   a evidencia de dado novo produzido pelo carro.
+- A confirmacao de um wake periodico depende do avanco desse timestamp
+  semantico, mesmo quando motor e trava continuam com o mesmo estado e por isso
+  nao ganham um novo `last_updated` no Home Assistant. Readiness completo de
+  motor/localizacao permanece obrigatorio somente quando uma recuperacao da
+  iluminacao o solicita explicitamente.
+- `sensor.vehicle_primary_current_location_since` preserva o instante em que o
+  carro entrou na localizacao atual. Republicacoes do mesmo ponto nao alteram
+  esse horario; fora de zonas nomeadas, um deslocamento de aproximadamente
+  250 m abre uma nova permanencia.
 - O Node-RED usa **15 minutos** quando algum morador esta `not_home` ou
   `chegando` e **30 minutos** quando ambos estao `home`. Com os dois em casa,
   wakes periodicos ficam suspensos entre 00:00 e 05:59. O

@@ -3,6 +3,77 @@ input_button:
     name: Forçar atualização do vehicle_primary agora
     icon: mdi:car-connected
 
+template:
+  - triggers:
+      - trigger: state
+        entity_id: device_tracker.vehicle_primary
+    sensor:
+      - name: Vehicle primary current location since
+        unique_id: vehicle_primary_current_location_since
+        device_class: timestamp
+        icon: mdi:map-marker-check-outline
+        state: >-
+          {% set current = trigger.to_state %}
+          {% set current_state = current.state if current is not none else none %}
+          {% set previous_state = this.attributes.get('location_state') if this is defined else none %}
+          {% set current_lat = current.attributes.get('latitude') | float(none) if current is not none else none %}
+          {% set current_lon = current.attributes.get('longitude') | float(none) if current is not none else none %}
+          {% set anchor_lat = this.attributes.get('anchor_latitude') | float(none) if this is defined else none %}
+          {% set anchor_lon = this.attributes.get('anchor_longitude') | float(none) if this is defined else none %}
+          {% set moved_outside_zone =
+            current_state == 'not_home' and
+            current_lat is not none and current_lon is not none and
+            anchor_lat is not none and anchor_lon is not none and
+            ((current_lat - anchor_lat) | abs > 0.0023 or
+             (current_lon - anchor_lon) | abs > 0.0023) %}
+          {% set location_changed =
+            current_state not in [none, 'unknown', 'unavailable', ''] and
+            (previous_state != current_state or moved_outside_zone) %}
+          {% set previous_timestamp = as_timestamp(this.state, none) if this is defined else none %}
+          {% if current_state in [none, 'unknown', 'unavailable', ''] %}
+            {{ this.state if previous_timestamp is not none else none }}
+          {% elif previous_timestamp is not none and not location_changed %}
+            {{ this.state }}
+          {% else %}
+            {{ current.last_changed.isoformat() }}
+          {% endif %}
+        attributes:
+          location_state: >-
+            {% set current = trigger.to_state %}
+            {% set current_state = current.state if current is not none else none %}
+            {{ current_state if current_state not in [none, 'unknown', 'unavailable', ''] else this.attributes.get('location_state') }}
+          anchor_latitude: >-
+            {% set current = trigger.to_state %}
+            {% set current_state = current.state if current is not none else none %}
+            {% set previous_state = this.attributes.get('location_state') %}
+            {% set current_lat = current.attributes.get('latitude') | float(none) if current is not none else none %}
+            {% set current_lon = current.attributes.get('longitude') | float(none) if current is not none else none %}
+            {% set anchor_lat = this.attributes.get('anchor_latitude') | float(none) %}
+            {% set anchor_lon = this.attributes.get('anchor_longitude') | float(none) %}
+            {% set moved_outside_zone =
+              current_state == 'not_home' and
+              current_lat is not none and current_lon is not none and
+              anchor_lat is not none and anchor_lon is not none and
+              ((current_lat - anchor_lat) | abs > 0.0023 or
+               (current_lon - anchor_lon) | abs > 0.0023) %}
+            {{ current_lat if previous_state != current_state or moved_outside_zone else anchor_lat }}
+          anchor_longitude: >-
+            {% set current = trigger.to_state %}
+            {% set current_state = current.state if current is not none else none %}
+            {% set previous_state = this.attributes.get('location_state') %}
+            {% set current_lat = current.attributes.get('latitude') | float(none) if current is not none else none %}
+            {% set current_lon = current.attributes.get('longitude') | float(none) if current is not none else none %}
+            {% set anchor_lat = this.attributes.get('anchor_latitude') | float(none) %}
+            {% set anchor_lon = this.attributes.get('anchor_longitude') | float(none) %}
+            {% set moved_outside_zone =
+              current_state == 'not_home' and
+              current_lat is not none and current_lon is not none and
+              anchor_lat is not none and anchor_lon is not none and
+              ((current_lat - anchor_lat) | abs > 0.0023 or
+               (current_lon - anchor_lon) | abs > 0.0023) %}
+            {{ current_lon if previous_state != current_state or moved_outside_zone else anchor_lon }}
+          movement_threshold_m: 250
+
 command_line:
   - sensor:
       name: Integração vehicle_primary

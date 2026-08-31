@@ -121,7 +121,13 @@ function entity(state, updatedAt, attributes = {}) {
   };
 }
 
-function normalize(store, now, observedAt, telemetryAt = observedAt) {
+function normalize(
+  store,
+  now,
+  observedAt,
+  telemetryAt = observedAt,
+  { engineAt = observedAt, lockAt = observedAt } = {},
+) {
   return execute(code.normalizer, {
     now,
     store,
@@ -136,8 +142,8 @@ function normalize(store, now, observedAt, telemetryAt = observedAt) {
           longitude: 0,
           gps_accuracy: 10,
         }),
-        vehicle_primary_engine: entity("off", observedAt),
-        vehicle_primary_lock: entity("locked", observedAt),
+        vehicle_primary_engine: entity("off", engineAt),
+        vehicle_primary_lock: entity("locked", lockAt),
         vehicle_primary_last_updated: entity(
           new Date(telemetryAt).toISOString(),
           observedAt,
@@ -552,6 +558,64 @@ scenario("25 telemetria do wake processada após seis minutos confirma sucesso",
   assert.equal(state.awaiting_evidence, false);
   assert.equal(state.attempts, 0);
   assert.equal(state.last_success_at, DAY);
+});
+
+scenario("30 telemetria nova confirma wake comum com motor sem mudança", () => {
+  const baseline = DAY - 10 * 60_000;
+  const requestAt = DAY - 5 * 60_000;
+  const staleSignalAt = DAY - 20 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 5,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: requestAt + 30 * 60_000,
+      interval_ms: 30 * 60_000,
+      require_lighting_ready: false,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  normalize(store, DAY, DAY, requestAt + 4 * 60_000, {
+    engineAt: staleSignalAt,
+    lockAt: staleSignalAt,
+  });
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.attempts, 0);
+  assert.equal(state.state, "cooldown");
+  assert.deepEqual([...state.last_evidence_domains], ["telemetry"]);
+});
+
+scenario("31 recovery de iluminação ainda exige sinais derivados atuais", () => {
+  const baseline = DAY - 10 * 60_000;
+  const requestAt = DAY - 5 * 60_000;
+  const staleSignalAt = DAY - 20 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: requestAt + 15 * 60_000,
+      require_lighting_ready: true,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  normalize(store, DAY, DAY, requestAt + 4 * 60_000, {
+    engineAt: staleSignalAt,
+    lockAt: staleSignalAt,
+  });
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, true);
+  assert.equal(state.attempts, 1);
+  assert.equal(state.state, "backoff");
 });
 
 scenario("17 recuperação posterior da integração", () => {

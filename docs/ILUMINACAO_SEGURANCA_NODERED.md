@@ -348,6 +348,10 @@ depende exclusivamente de um `delay` residente em memória.
   `401 Unauthorized`, timeout e aceite sem dado novo mantêm backoff; 401 no
   polling de cache do backend BR é reavaliado em até 60 s sem descarregar o
   config entry.
+- Telemetria semântica nova confirma wakes comuns mesmo quando motor e trava
+  permanecem no mesmo estado e o Home Assistant não renova o `last_updated`
+  dessas entidades. A exigência de readiness completo continua aplicada aos
+  pedidos explícitos de recuperação da iluminação.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
   vehicle_primary continua sincronizando os dois trackers de iPhone, mas agora por um
   contrato explícito `contexto_vehicle_primary -> localizacao_pessoas`; nenhuma entidade

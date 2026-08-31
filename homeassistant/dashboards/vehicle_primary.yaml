@@ -95,17 +95,18 @@ views:
             content: >-
               {% from 'formatting.jinja' import format_number_ptbr %}
               {% set engine = is_state('binary_sensor.vehicle_primary_engine', 'on') %}
-              {% set location_updated = states('sensor.vehicle_primary_location_last_updated') %}
-              {% set location_ts = as_timestamp(location_updated, none) %}
-              {% set age_min = ((as_timestamp(now()) - location_ts) / 60) | round(0) if location_ts else none %}
+              {% set tracker = states.device_tracker.vehicle_primary %}
+              {% set persistent_since = states('sensor.vehicle_primary_current_location_since') %}
+              {% set persistent_since_ts = as_timestamp(persistent_since, none) %}
+              {% set tracker_since_ts = as_timestamp(tracker.last_changed, none) if tracker and tracker.state not in ['unknown', 'unavailable'] else none %}
+              {% set location_since_ts = persistent_since_ts if persistent_since_ts else tracker_since_ts %}
+              {% set location_since_text = location_since_ts | timestamp_custom('%d/%m às %H:%M', true) if location_since_ts else none %}
               {% if engine %}
-              🔵 **Veículo em uso** · o mapa mostra o último estacionamento confirmado{% if age_min is not none %}, há {{ format_number_ptbr(age_min) }} min{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
-              {% elif age_min is none %}
+              🔵 **Veículo em uso** · o mapa mostra o último estacionamento confirmado{% if location_since_text %}, nesta localização desde {{ location_since_text }}{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
+              {% elif not tracker or tracker.state in ['unknown', 'unavailable'] or location_since_ts is none %}
               🔴 **Estacionamento ainda não confirmado** · a posição será exibida quando o Bluelink confirmar o veículo estacionado.
-              {% elif age_min <= 30 %}
-              🟢 **Estacionamento confirmado** · última posição estacionada recebida há {{ format_number_ptbr(age_min) }} min.
               {% else %}
-              🟡 **Posição estacionada antiga** · última confirmação há {{ format_number_ptbr(age_min) }} min. Esta não é uma localização GPS em tempo real.
+              🟢 **Estacionamento confirmado** · nesta localização desde {{ location_since_text }}. O horário permanece fixo enquanto a localização não mudar.
               {% endif %}
           - type: map
             entities:
@@ -268,26 +269,42 @@ views:
               {% set refresh_state = refresh.state if refresh else 'unavailable' %}
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
               {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
-              {% set attempt = state_attr('sensor.vehicle_primary_refresh_coordinator', 'attempt') | int(0) %}
               {% set scanned = states('sensor.vehicle_primary_last_scanned_at') %}
               {% set scanned_ts = as_timestamp(scanned, none) %}
               {% set cache_age_s = (as_timestamp(now()) - scanned_ts) | round(0) if scanned_ts else none %}
+              {% set updated = states('sensor.vehicle_primary_last_updated_at') %}
+              {% set updated_ts = as_timestamp(updated, none) %}
+              {% set data_age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
+              {% set request_ts = as_timestamp(state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_request_at'), none) %}
+              {% set data_after_wake = updated_ts is not none and request_ts is not none and updated_ts >= request_ts - 60 %}
+              {% set remaining_min = ((remaining + 59) / 60) | int if remaining > 0 else 0 %}
+              {% set both_home = is_state('device_tracker.resident_primary_location', 'home') and is_state('device_tracker.resident_secondary_location', 'home') %}
+              {% set interval_min = 30 if both_home else 15 %}
 
               **Atualização dos dados**
 
-              {% if refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] %}🔵 **Wake em andamento** · o pedido foi enviado e aguarda confirmação do Bluelink.
-              {% elif refresh_state == 'backoff' %}🟡 **Wake sem leitura nova confirmada** · nova tentativa automática em {{ format_number_ptbr(remaining) }} s{% if attempt > 0 %} · tentativa {{ format_number_ptbr(attempt) }}{% endif %}.
-              {% elif refresh_state == 'cooldown' %}🟢 **Wake em cooldown normal**{% if remaining > 0 %} · próximo wake permitido em {{ format_number_ptbr(remaining) }} s{% endif %}.
-              {% elif refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa. O botão **Atualizar agora** continua disponível.
-              {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.
-              {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Coordenador de wake indisponível**.
-              {% else %}🟢 **Wake pronto** · nenhuma falha ativa no coordenador.
+              {% if cache_age_s is not none and cache_age_s <= 90 %}🟢 **Servidor consultado há {{ format_number_ptbr(cache_age_s) }} s** · esta consulta não acorda o carro.
+              {% elif cache_age_s is not none %}🟡 **Servidor sem consulta há {{ format_number_ptbr(cache_age_s) }} s** · o esperado é uma consulta a cada 30 s.
+              {% else %}🔴 **Consulta ao servidor indisponível**.
               {% endif %}
 
-              {% if cache_age_s is not none and cache_age_s <= 90 %}🟢 **Cache do servidor consultado há {{ format_number_ptbr(cache_age_s) }} s** · essa leitura não acorda o carro.
-              {% elif cache_age_s is not none %}🟡 **Cache sem consulta há {{ format_number_ptbr(cache_age_s) }} s** · o polling deveria ocorrer a cada 30 s.
-              {% else %}🔴 **Horário da última consulta ao cache indisponível**.
+              {% if data_age_min is none %}🔴 **Sem dados confirmados do carro**.
+              {% elif data_age_min <= 30 %}🟢 **Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.
+              {% elif data_age_min <= 90 %}🟡 **Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.
+              {% else %}🔴 **Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.
               {% endif %}
+
+              {% if refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa.
+              {% elif refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] %}🔵 **Wake em andamento** · aguardando o Bluelink publicar dados do carro.
+              {% elif data_after_wake %}🟢 **Último wake confirmado por dados novos**{% if remaining_min > 0 %} · próximo ciclo em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
+              {% elif refresh_state == 'backoff' %}🟡 **O último wake ainda não produziu dados novos**{% if remaining_min > 0 %} · nova tentativa em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
+              {% elif refresh_state == 'cooldown' %}🟢 **Próximo wake periódico em cerca de {{ format_number_ptbr(remaining_min) }} min** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
+              {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.
+              {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Coordenador de wake indisponível**.
+              {% else %}🟢 **Wake pronto** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
+              {% endif %}
+
+              O botão **Atualizar agora** ignora o prazo periódico e a pausa noturna; ele só aguarda se já houver uma chamada em andamento.
           - type: tile
             entity: sensor.vehicle_primary_car_battery_level
             name: Bateria 12 V
@@ -396,8 +413,8 @@ views:
                 name: Estado confirmado em
               - entity: sensor.vehicle_primary_last_scanned_at
                 name: Cache consultado em
-              - entity: sensor.vehicle_primary_location_last_updated
-                name: Último estacionamento confirmado
+              - entity: sensor.vehicle_primary_current_location_since
+                name: Nesta localização desde
               - entity: sensor.garagem_vehicle_primary_recent_trip_info
                 name: Viagens carregadas
               - entity: sensor.garagem_vehicle_primary_estimated_fuel_efficiency
