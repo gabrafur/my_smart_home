@@ -27,7 +27,7 @@ def main() -> None:
     assert "tracker.last_changed" in dashboard
     assert "persistent_since_ts if persistent_since_ts else tracker_since_ts" in dashboard
     assert "nesta localização desde" in dashboard
-    assert "O horário permanece fixo enquanto a localização não mudar" in dashboard
+    assert "O horário permanece fixo enquanto a localização não mudar" not in dashboard
     assert "última posição estacionada recebida há" not in dashboard
     assert "binary_sensor.vehicle_primary_engine" in dashboard
     assert "**Atualização dos dados**" in dashboard

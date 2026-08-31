@@ -106,7 +106,7 @@ views:
               {% elif not tracker or tracker.state in ['unknown', 'unavailable'] or location_since_ts is none %}
               🔴 **Estacionamento ainda não confirmado** · a posição será exibida quando o Bluelink confirmar o veículo estacionado.
               {% else %}
-              🟢 **Estacionamento confirmado** · nesta localização desde {{ location_since_text }}. O horário permanece fixo enquanto a localização não mudar.
+              🟢 **Estacionamento confirmado** · nesta localização desde {{ location_since_text }}.
               {% endif %}
           - type: map
             entities:

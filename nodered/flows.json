@@ -1462,7 +1462,7 @@
         "x": 164,
         "y": 579,
         "w": 852,
-        "h": 762
+        "h": 722
     },
     {
         "id": "c1e3fc50d8ed0093",
@@ -1565,9 +1565,9 @@
             "vehicle_primary_refresh_notification_in_v1"
         ],
         "x": 174,
-        "y": 579,
-        "w": 1662,
-        "h": 582
+        "y": 599,
+        "w": 1682,
+        "h": 542
     },
     {
         "id": "5df25064f701ecd2",
@@ -1622,9 +1622,9 @@
             "vehicle_primary_manual_refresh_button_v1",
             "vehicle_primary_manual_refresh_request_v1"
         ],
-        "x": 134,
+        "x": 149,
         "y": 19,
-        "w": 942,
+        "w": 927,
         "h": 322
     },
     {
@@ -1665,9 +1665,9 @@
         "nodes": [
             "1ba5ecf650ac79b8"
         ],
-        "x": 734,
+        "x": 894,
         "y": 379,
-        "w": 322,
+        "w": 91,
         "h": 82
     },
     {
@@ -1727,8 +1727,8 @@
         ],
         "x": 454,
         "y": 79,
-        "w": 1232,
-        "h": 342
+        "w": 1312,
+        "h": 322
     },
     {
         "id": "95e7527bc7a0a9a1",
@@ -2503,8 +2503,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 960,
-        "y": 550,
+        "x": 970,
+        "y": 520,
         "wires": []
     },
     {
@@ -9774,8 +9774,8 @@
         "links": [
             "555422f47d3a742b"
         ],
-        "x": 630,
-        "y": 780,
+        "x": 635,
+        "y": 680,
         "wires": []
     },
     {
@@ -9787,8 +9787,8 @@
         "links": [
             "67d24b1f56447c94"
         ],
-        "x": 215,
-        "y": 820,
+        "x": 225,
+        "y": 840,
         "wires": [
             [
                 "727be3d871cf85f0"
@@ -9808,7 +9808,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
+        "x": 390,
         "y": 840,
         "wires": [
             [
@@ -10210,8 +10210,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1520,
-        "y": 960,
+        "x": 1600,
+        "y": 920,
         "wires": [
             [
                 "vehicle_primary_refresh_error_notification_out_v1"
@@ -10390,8 +10390,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 715,
-        "y": 700,
+        "x": 790,
+        "y": 640,
         "wires": [
             [
                 "8907830bb7f6c40c"
@@ -10432,7 +10432,7 @@
         "links": [
             "vehicle_primary_arrival_refresh_in_v1"
         ],
-        "x": 705,
+        "x": 595,
         "y": 820,
         "wires": []
     },
@@ -11833,8 +11833,8 @@
         "links": [
             "light_unavailable_test_dry_run_in_v1"
         ],
-        "x": 1640,
-        "y": 380,
+        "x": 1725,
+        "y": 320,
         "wires": []
     },
     {
@@ -11897,8 +11897,8 @@
         "links": [
             "light_unavailable_to_output_in_v1"
         ],
-        "x": 1640,
-        "y": 320,
+        "x": 1725,
+        "y": 280,
         "wires": []
     },
     {
@@ -11943,7 +11943,7 @@
         "links": [
             "light_test_to_terminal_out_v1"
         ],
-        "x": 2680,
+        "x": 2555,
         "y": 400,
         "wires": [
             [
@@ -13450,6 +13450,7 @@
         "id": "resident_notifications_notify_primary",
         "type": "api-call-service",
         "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
         "name": "Avisar resident_primary: resident_secondary se aproxima",
         "server": "4126427d5e161a03",
         "version": 7,
@@ -13475,13 +13476,13 @@
             [
                 "resident_notifications_delivery_ack"
             ]
-        ],
-        "g": "resident_notifications_output_group"
+        ]
     },
     {
         "id": "resident_notifications_notify_secondary",
         "type": "api-call-service",
         "z": "resident_notifications_tab",
+        "g": "resident_notifications_output_group",
         "name": "Avisar resident_secondary: resident_primary se aproxima",
         "server": "4126427d5e161a03",
         "version": 7,
@@ -13507,8 +13508,7 @@
             [
                 "resident_notifications_delivery_ack"
             ]
-        ],
-        "g": "resident_notifications_output_group"
+        ]
     },
     {
         "id": "resident_notifications_delivery_ack",
@@ -13729,8 +13729,8 @@
         "links": [
             "people_tracker_recovery_tests_in_v1"
         ],
-        "x": 700,
-        "y": 1300,
+        "x": 745,
+        "y": 1220,
         "wires": []
     },
     {
@@ -13828,8 +13828,8 @@
         "links": [
             "vehicle_primary_refresh_notification_in_v1"
         ],
-        "x": 635,
-        "y": 640,
+        "x": 595,
+        "y": 780,
         "wires": []
     },
     {
@@ -13842,8 +13842,8 @@
         "links": [
             "vehicle_primary_refresh_notification_in_v1"
         ],
-        "x": 1745,
-        "y": 960,
+        "x": 1815,
+        "y": 920,
         "wires": []
     },
     {
@@ -13886,10 +13886,10 @@
             "vpn_monitor_test_internet_in",
             "vpn_monitor_test_evaluate_in"
         ],
-        "x": 199,
+        "x": 194,
         "y": 39,
-        "w": 792,
-        "h": 242
+        "w": 892,
+        "h": 282
     },
     {
         "id": "vpn_monitor_notify_group",
@@ -13909,8 +13909,8 @@
             "vpn_monitor_notify_recovery",
             "vpn_monitor_dry_out"
         ],
-        "x": 1029,
-        "y": 39,
+        "x": 1214,
+        "y": 59,
         "w": 607,
         "h": 237
     },
@@ -14014,7 +14014,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 600,
+        "x": 670,
         "y": 80,
         "wires": [
             [
@@ -14036,8 +14036,8 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 350,
-        "y": 160,
+        "x": 340,
+        "y": 180,
         "wires": [
             [
                 "vpn_monitor_internet_ingest"
@@ -14057,8 +14057,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 595,
-        "y": 160,
+        "x": 620,
+        "y": 180,
         "wires": [
             [
                 "vpn_monitor_evaluate"
@@ -14081,8 +14081,8 @@
         "once": true,
         "onceDelay": "10",
         "topic": "",
-        "x": 355,
-        "y": 240,
+        "x": 620,
+        "y": 260,
         "wires": [
             [
                 "vpn_monitor_evaluate"
@@ -14102,7 +14102,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 835,
+        "x": 930,
         "y": 160,
         "wires": [
             [
@@ -14129,8 +14129,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1175,
-        "y": 80,
+        "x": 1360,
+        "y": 100,
         "wires": [
             [
                 "vpn_monitor_notify_down"
@@ -14147,8 +14147,8 @@
         "g": "vpn_monitor_notify_group",
         "name": "Notificar VPN indisponível",
         "env": [],
-        "x": 1480,
-        "y": 80,
+        "x": 1665,
+        "y": 100,
         "wires": []
     },
     {
@@ -14164,8 +14164,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1185,
-        "y": 160,
+        "x": 1370,
+        "y": 180,
         "wires": [
             [
                 "vpn_monitor_notify_recovery"
@@ -14182,8 +14182,8 @@
         "g": "vpn_monitor_notify_group",
         "name": "Notificar VPN recuperada",
         "env": [],
-        "x": 1480,
-        "y": 160,
+        "x": 1665,
+        "y": 180,
         "wires": []
     },
     {
@@ -14196,8 +14196,8 @@
         "links": [
             "vpn_monitor_dry_in"
         ],
-        "x": 1595,
-        "y": 235,
+        "x": 1780,
+        "y": 255,
         "wires": []
     },
     {
@@ -14371,7 +14371,9 @@
         "libs": [],
         "x": 580,
         "y": 450,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "vpn_monitor_test_internet_online",
@@ -14697,7 +14699,7 @@
         "links": [
             "vpn_monitor_test_report_out"
         ],
-        "x": 260,
+        "x": 505,
         "y": 120,
         "wires": [
             [
@@ -14714,8 +14716,8 @@
         "links": [
             "vpn_monitor_test_internet_out"
         ],
-        "x": 260,
-        "y": 200,
+        "x": 375,
+        "y": 240,
         "wires": [
             [
                 "vpn_monitor_internet_ingest"
@@ -14731,8 +14733,8 @@
         "links": [
             "vpn_monitor_test_evaluate_out"
         ],
-        "x": 680,
-        "y": 240,
+        "x": 805,
+        "y": 280,
         "wires": [
             [
                 "vpn_monitor_evaluate"
@@ -14749,7 +14751,7 @@
             "vpn_monitor_dry_out",
             "vpn_monitor_publish_dry_out"
         ],
-        "x": 640,
+        "x": 595,
         "y": 720,
         "wires": [
             [
@@ -14772,7 +14774,9 @@
         "libs": [],
         "x": 810,
         "y": 720,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "global_observer_coverage__weekly_docs_review_tab__group",
@@ -15735,7 +15739,7 @@
             "global_observer_coverage__c22d8b12055e87f7__annotate",
             "global_observer_coverage__c22d8b12055e87f7__out"
         ],
-        "x": 1940,
+        "x": 2000,
         "y": 40,
         "w": 720,
         "h": 162
@@ -15748,7 +15752,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 2080,
+        "x": 2140,
         "y": 100,
         "wires": [
             [
@@ -15763,7 +15767,7 @@
         "g": "global_observer_coverage__c22d8b12055e87f7__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 2090,
+        "x": 2150,
         "y": 160,
         "wires": [
             [
@@ -15784,7 +15788,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2360,
+        "x": 2420,
         "y": 130,
         "wires": [
             [
@@ -15802,7 +15806,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2605,
+        "x": 2665,
         "y": 130,
         "wires": []
     },
