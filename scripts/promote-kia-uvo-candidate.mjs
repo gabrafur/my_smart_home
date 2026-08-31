@@ -178,7 +178,8 @@ function assertCandidateContent(candidate, paths) {
   for (const file of paths) {
     const expected = run("git", ["show", `${candidate.commit}:${file}`], { encoding: null });
     const actualPath = path.join(repoRoot, file);
-    if (!fs.existsSync(actualPath) || !expected.equals(fs.readFileSync(actualPath))) {
+    if (!fs.existsSync(actualPath) ||
+        !Buffer.from(expected).equals(fs.readFileSync(actualPath))) {
       throw new Error(`runtime result differs from candidate content: ${file}`);
     }
   }
