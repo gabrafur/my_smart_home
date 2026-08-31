@@ -22,6 +22,7 @@ placeholders.
 | [Auditoria de segurança](AUDITORIA_SEGURANCA_REPO_PUBLICO.md) | Publicação, rotação e histórico Git | resumo no [índice em inglês](README.en.md) |
 | [Bluetooth e Matter](BLUETOOTH_MATTER.md) | D-Bus, rede do host e comissionamento | resumo no [guia de containers em inglês](CONTAINERS.en.md) |
 | [Saúde do Raspberry Pi](RASPBERRY_PI_SYSTEM_HEALTH.md) | Métricas e alertas do host | resumo no [índice em inglês](README.en.md) |
+| [Guardião de memória do host](HOST_MEMORY_GUARDIAN.md) | Alívio conservador de memória para sessões remotas abandonadas | resumo no [índice em inglês](README.en.md) |
 | [Auditoria de armazenamento — fase 2](operations/storage-audit-phase-2.md) | Limpeza de ferramentas de desenvolvimento, caches, PM2, Docker e análise do recorder | resumo no [índice em inglês](README.en.md) |
 | [Monitoramento de infraestrutura](ZIGBEE_HEALTH_NOTIFICATIONS.md) | Queda e recuperação de Zigbee, Tuya e Internet no Node-RED | [English](ZIGBEE_HEALTH_NOTIFICATIONS.en.md) |
 | [Notificações globais de falha do Node-RED](NODERED_GLOBAL_FAILURE_NOTIFICATIONS.md) | Erros de fluxos, indisponibilidade do runtime e teste obrigatório de entrega ao celular | Resumo em inglês abaixo |

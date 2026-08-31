@@ -128,6 +128,7 @@ services:
       - ./homeassistant/.storage-maintenance-trigger:/run/storage-maintenance-trigger
       - ./homeassistant/.daily-update-trigger:/run/daily-update-trigger
       - ./.local-state/docs-review-trigger:/run/docs-review-trigger
+      - ./.local-state/host-memory-guardian:/run/host-memory-guardian
       - ./.local-state/kia-uvo-merge:/run/kia-uvo-merge:ro
       - ./.local-state/kia-uvo-merge-trigger:/run/kia-uvo-merge-trigger
       - ./scripts/request-host-git-backup.sh:/opt/request-host-git-backup.sh:ro
@@ -138,6 +139,8 @@ services:
       - ./scripts/read-host-kia-uvo-update-result.sh:/opt/read-host-kia-uvo-update-result.sh:ro
       - ./scripts/request-kia-uvo-codex-merge.sh:/opt/request-kia-uvo-codex-merge.sh:ro
       - ./scripts/request-weekly-docs-review.sh:/opt/request-weekly-docs-review.sh:ro
+      - ./scripts/request-host-memory-guardian.sh:/opt/request-host-memory-guardian.sh:ro
+      - ./scripts/read-host-memory-guardian-result.sh:/opt/read-host-memory-guardian-result.sh:ro
       - ./nodered:/data
       - ./bindings/private:/run/private-bindings:ro
       - ./scripts/storage-health-maintenance.sh:/opt/storage-health-maintenance.sh:ro

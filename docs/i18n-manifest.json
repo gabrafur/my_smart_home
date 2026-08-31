@@ -72,6 +72,7 @@
     { "path": "docs/CHAT_CLAUDE_CODE_HA.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/CONTAINERS.en.md" },
     { "path": "docs/CONTROLE_ENERGIA_HOME_ASSISTANT.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/GIT_BACKUP_NODERED.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/CONTAINERS.en.md" },
+    { "path": "docs/HOST_MEMORY_GUARDIAN.md", "area": "operations", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/ILUMINACAO_EXTERNA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/ILUMINACAO_SEGURANCA_NODERED.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
     { "path": "docs/INTEGRACAO_MONI_MOBILE_INTELBRAS.md", "area": "features", "strategy": "summary pair", "language": "pt-BR", "summary": "docs/README.en.md" },
