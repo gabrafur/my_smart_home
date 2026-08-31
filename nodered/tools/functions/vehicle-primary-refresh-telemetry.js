@@ -4,6 +4,15 @@ let state = raw.state ?? "idle";
 let deadline = null;
 
 if (
+    raw.cache_probe_in_flight === true &&
+    Number(raw.cache_probe_in_flight_until ?? 0) > now
+) {
+    deadline = Number(raw.cache_probe_in_flight_until);
+    state = "probing_cache";
+} else if (Number(raw.cache_probe_settle_until ?? 0) > now) {
+    deadline = Number(raw.cache_probe_settle_until);
+    state = "probing_cache";
+} else if (
     raw.request_in_flight === true &&
     Number(raw.in_flight_until ?? 0) > now
 ) {
@@ -12,7 +21,7 @@ if (
 } else if (raw.awaiting_evidence === true) {
     deadline = Number(raw.next_retry_at ?? raw.next_allowed_at ?? 0) || null;
     if (
-        !["refreshing", "awaiting_evidence"].includes(state) ||
+        !["refreshing", "awaiting_evidence", "probing_cache"].includes(state) ||
         now - Number(raw.last_attempt_at ?? 0) >= 30 * 1000
     ) {
         state = "backoff";
@@ -45,11 +54,15 @@ const status = {
         : null,
     remaining_seconds: remainingSeconds,
     awaiting_evidence: raw.awaiting_evidence === true,
+    interval_minutes: Number(raw.interval_ms ?? 0) / 60_000 || null,
+    interval_policy: raw.interval_policy ?? null,
     request_in_flight: raw.request_in_flight === true,
     in_flight_until: raw.request_in_flight === true
         ? iso(raw.in_flight_until)
         : null,
     service_accepted_at: iso(raw.service_accepted_at),
+    cache_probe_in_flight: raw.cache_probe_in_flight === true,
+    cache_probe_accepted_at: iso(raw.cache_probe_accepted_at),
     last_failure_class: raw.last_failure_class ?? null,
     manual_force: raw.manual_force === true,
     updated_at: new Date(now).toISOString()

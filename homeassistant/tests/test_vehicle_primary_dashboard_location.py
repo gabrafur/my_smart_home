@@ -31,7 +31,8 @@ def main() -> None:
     assert "última posição estacionada recebida há" not in dashboard
     assert "binary_sensor.vehicle_primary_engine" in dashboard
     assert "**Atualização dos dados**" in dashboard
-    assert "nova tentativa em cerca de" in dashboard
+    assert "nova verificação em cerca de" in dashboard
+    assert "verificando agora o cache do servidor antes de outro wake" in dashboard
     assert "<ha-alert" not in dashboard
     assert "🟢" in dashboard
     assert "🔵" in dashboard

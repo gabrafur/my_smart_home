@@ -163,9 +163,10 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     msg: { payload: { kind: "refresh_command", anyone_away: true } },
   });
   const state = store.get("security_vehicle_primary_refresh_v1");
-  assert.equal(state.attempts, 3);
-  assert.equal(state.state, "refreshing");
-  assert.equal(state.next_retry_at, now + 15 * 60_000);
+  assert.equal(state.attempts, 2);
+  assert.equal(state.state, "probing_cache");
+  assert.equal(state.interval_policy, "recovery_15m");
+  assert.equal(state.next_retry_at, now - 1);
 }
 
 {
@@ -220,6 +221,9 @@ for (const expected of [
   "vehicle_primary_refresh_notification_guard_v1",
   "vehicle_primary_refresh_notify_primary_v1",
   "vehicle_primary_refresh_notification_dry_run_out_v1",
+  "vehicle_primary_cache_probe_dispatch_guard_v1",
+  "vehicle_primary_cache_probe_call_v1",
+  "vehicle_primary_cache_probe_accepted_v1",
 ]) {
   assert.equal(ids.filter((id) => id === expected).length, 1, expected);
 }
@@ -229,7 +233,7 @@ assert.match(normalizer.func, /refresh_state_contract_v1/);
 assert.match(normalizer.func, /vehicleContext\.refresh/);
 
 const refreshDecision = flows.find((node) => node.id === "b33e117e55bdb5ed");
-assert.equal(refreshDecision.outputs, 4);
+assert.equal(refreshDecision.outputs, 5);
 assert.deepEqual(refreshDecision.wires[0], ["vehicle_primary_refresh_dispatch_guard_v1"]);
 assert.deepEqual(
   refreshDecision.wires[2],
@@ -238,6 +242,10 @@ assert.deepEqual(
 assert.deepEqual(
   refreshDecision.wires[3],
   ["vehicle_primary_refresh_notification_requested_out_v1"],
+);
+assert.deepEqual(
+  refreshDecision.wires[4],
+  ["vehicle_primary_cache_probe_dispatch_guard_v1"],
 );
 
 const blockedNotification = flows.find(
@@ -258,6 +266,24 @@ assert.match(dispatchGuard.func, /dispatched:\s*false/);
 
 const forceRefresh = flows.find((node) => node.id === "8907830bb7f6c40c");
 assert.deepEqual(forceRefresh.wires, [["vehicle_primary_refresh_accepted_v1"]]);
+const cacheProbeGuard = flows.find(
+  (node) => node.id === "vehicle_primary_cache_probe_dispatch_guard_v1",
+);
+assert.deepEqual(cacheProbeGuard.wires, [
+  ["vehicle_primary_cache_probe_call_v1"],
+  ["vehicle_primary_refresh_dry_run_out_v1"],
+]);
+assert.match(cacheProbeGuard.func, /vehicle_primary\.cache_probe/);
+const cacheProbe = flows.find(
+  (node) => node.id === "vehicle_primary_cache_probe_call_v1",
+);
+assert.equal(cacheProbe.action, "kia_uvo.update");
+assert.equal(cacheProbe.queue, "all");
+assert.deepEqual(cacheProbe.wires, [["vehicle_primary_cache_probe_accepted_v1"]]);
+const cacheProbeAccepted = flows.find(
+  (node) => node.id === "vehicle_primary_cache_probe_accepted_v1",
+);
+assert.match(cacheProbeAccepted.func, /cache_probe_settle_until/);
 const semanticTelemetryEvent = flows.find(
   (node) => node.id === "46c2142f93cfc3e1",
 );

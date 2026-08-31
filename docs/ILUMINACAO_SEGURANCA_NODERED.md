@@ -302,8 +302,10 @@ depende exclusivamente de um `delay` residente em memória.
 - iPhones: quando qualquer pessoa ou o vehicle_primary está fora, 60 s; 30 s quando a
   menor distância dos trackers de pessoas é até 2000 m.
 - vehicle_primary: 15 min quando `resident_primary` ou `resident_secondary`
-  está `not_home`/`chegando`; 30 min quando ambos estão `home`, com os wakes
-  periódicos suspensos das 00:00 às 05:59 nessa última condição.
+  está `not_home`/`chegando`; 30 min no ciclo saudável quando ambos estão
+  `home`, com os wakes periódicos suspensos das 00:00 às 05:59 nessa última
+  condição. Recuperação e backoff usam 15 min, inclusive em casa, fora dessa
+  pausa noturna.
 - O Node-RED é o único agendador de wake real. No backend brasileiro, o
   `kia_uvo` no Home Assistant lê somente o cache do Bluelink a cada 15 min;
   esse polling não acorda o carro nem chama o agendador nativo de force
@@ -321,8 +323,10 @@ depende exclusivamente de um `delay` residente em memória.
   Também persiste `request_in_flight` com lease conservador; o Home Assistant
   mantém um lock adicional no botão privado. Assim, duas entradas simultâneas
   são coalescidas e no máximo uma chamada alcança a API.
-  Falhas usam o intervalo vigente de 15 min fora/chegando ou 30 min em casa;
-  com ambos em casa, a janela 00:00–05:59 não produz wake periódico. Sucesso
+  Falhas usam 15 min fora da pausa noturna; com ambos em casa, a janela
+  00:00–05:59 não produz wake automático. Antes de repetir um wake vencido, o fluxo
+  relê o cache com `kia_uvo.update`, aguarda 15 s e reavalia a telemetria;
+  somente cache ainda antigo libera a nova tentativa. Sucesso
   limpa tentativas e aplica o mesmo intervalo normal. O contador satura no
   quinto estágio. Não há rajada no restart porque
   `last_request_at` e `next_allowed_at` são persistidos e o piso é reconstruído

@@ -298,7 +298,7 @@ views:
               {% if refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa.
               {% elif refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] %}🔵 **Wake em andamento** · aguardando o Bluelink publicar dados do carro.
               {% elif data_after_wake %}🟢 **Último wake confirmado por dados novos**{% if remaining_min > 0 %} · próximo ciclo em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
-              {% elif refresh_state == 'backoff' %}🟡 **O último wake ainda não produziu dados novos**{% if remaining_min > 0 %} · nova tentativa em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
+              {% elif refresh_state in ['probing_cache', 'backoff'] %}🟡 **O último wake ainda não produziu dados novos**{% if refresh_state == 'probing_cache' %} · verificando agora o cache do servidor antes de outro wake{% elif remaining_min > 0 %} · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
               {% elif refresh_state == 'cooldown' %}🟢 **Próximo wake periódico em cerca de {{ format_number_ptbr(remaining_min) }} min** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
               {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.
               {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Coordenador de wake indisponível**.
@@ -403,7 +403,7 @@ views:
             content: >-
               **Atualização automática orientada a eventos**
 
-              O cache do servidor Bluelink é consultado a cada **15 minutos** sem acordar o carro. Se o provedor limitar as chamadas, o polling entra em backoff progressivo de até **6 horas** sem criar novas rajadas. Separadamente, o wake real usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** quando ambos estão em casa. Com os dois em casa, wakes periódicos ficam pausados entre **00h e 06h**. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo quando não há backoff do provedor.
+              O cache do servidor Bluelink é consultado a cada **15 minutos** sem acordar o carro. Se o provedor limitar as chamadas, o polling entra em backoff progressivo de até **6 horas** sem criar novas rajadas. Separadamente, o wake real usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** no ciclo saudável quando ambos estão em casa; recuperação e backoff usam **15 minutos** fora da pausa noturna. Antes de repetir um wake sem evidência, o fluxo relê o cache e só acorda o carro se os dados continuarem antigos. Com os dois em casa, wakes automáticos ficam pausados entre **00h e 06h**. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo quando não há backoff do provedor.
 
               A consulta ao cache pode republicar entidades sem acordar o carro; o refresh só é concluído quando o timestamp do próprio Bluelink (`Última atualização`) realmente avança.
           - type: entities

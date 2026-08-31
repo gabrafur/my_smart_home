@@ -55,8 +55,11 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   esse horario; fora de zonas nomeadas, um deslocamento de aproximadamente
   250 m abre uma nova permanencia.
 - O Node-RED usa **15 minutos** quando algum morador esta `not_home` ou
-  `chegando` e **30 minutos** quando ambos estao `home`. Com os dois em casa,
-  wakes periodicos ficam suspensos entre 00:00 e 05:59. O
+  `chegando` e **30 minutos** no ciclo saudável quando ambos estao `home`.
+  Recuperação e backoff usam o piso de 15 minutos, inclusive em casa, enquanto
+  a janela de wake está ativa, para não prolongar uma indisponibilidade
+  confirmada. Com os dois em casa, wakes automaticos ficam suspensos entre
+  00:00 e 05:59. O
   coordinator Python mantém um lock de processo; requests concorrentes sao
   coalescidos. Agendamento, manual, recovery, chegada e movimento convergem no
   mesmo estado persistente e passam por um guard final antes do binding
@@ -71,6 +74,12 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   somente o cache, nao emitem outro wake
   e param assim que o timestamp semantico do veiculo comprova dado posterior
   a solicitacao.
+- Ao vencer o prazo de uma tentativa que ainda aguarda evidência, o Node-RED
+  chama primeiro `kia_uvo.update`, que relê somente o cache, aguarda 15 s pela
+  republicação e executa outro snapshot. Telemetria semântica nova confirma o
+  wake anterior e cancela o wake redundante; cache antigo libera exatamente
+  uma nova tentativa. Essa sondagem não altera `last_request_at`, não aumenta
+  `attempts` e também passa pelo terminal dry-run nos testes.
 - Se o backend responder `RateLimitingError`, o coordinator interrompe polling,
   wakes e releituras tardias com backoff progressivo de 15 min, 30 min, 1 h,
   2 h, 4 h e 6 h. O estado e compartilhado entre as instancias recriadas pelo
@@ -120,9 +129,12 @@ vira sucesso quando esse relogio avanca, e posterior ao wake avaliado e o alvo
 de readiness e atingido.
 Mudancas em `last_updated` das entidades do Home Assistant nao contam: elas
 tambem ocorrem em reload e republicacao do mesmo cache. Sem evidencia, o mesmo recovery permanece em backoff e
-as retentativas automaticas respeitam 15 minutos com alguem fora ou chegando e
-30 minutos com ambos em casa; nessa ultima condicao tambem ficam suspensas das
-00:00 as 05:59. O contador satura sem criar rajadas ou loops. Somente o clique
+as retentativas automaticas de recuperação respeitam 15 minutos fora da pausa
+noturna; o ciclo saudável continua em 30 minutos com ambos em casa. Com ambos
+em casa, qualquer wake automático fica suspenso das 00:00 as 05:59. Antes de
+repetir o wake, o vencimento relê o
+cache e aguarda sua propagação para aproveitar uma resposta tardia do wake
+anterior. O contador satura sem criar rajadas ou loops. Somente o clique
 manual explicito pode antecipar prazo ou janela. O aceite estende
 `next_allowed_at` pelo intervalo selecionado depois da conclusao da chamada.
 Uma evidencia nova posterior pode confirmar sucesso, mas nunca encurta esse
@@ -440,9 +452,10 @@ confirmação sem timestamp. A confirmação expira após 24 h sem revalidação
 limpeza publica contexto pending e não dispara ações físicas.
 
 O refresh Bluelink persiste `attempts`, `next_allowed_at` e
-`last_success_at`. Falhas mantêm backoff automático de 15 minutos com alguém
-fora/chegando e 30 minutos com ambos em casa; nessa última condição, o backoff
-periódico também pausa entre 00:00 e 05:59. Sucesso limpa tentativas e volta ao
+`last_success_at`. Falhas mantêm backoff automático de 15 minutos em qualquer
+estado de presença fora da pausa noturna; o ciclo saudável usa 30 minutos com
+ambos em casa. Nessa condição, todo wake automático pausa entre 00:00 e 05:59.
+Sucesso limpa tentativas e volta ao
 cooldown normal. O clique manual pode
 antecipar ambos, sem atravessar uma chamada em andamento. O TTL de 5 minutos de motor/trava continua
 bloqueando efeitos físicos, mas não quebra esse piso nem cria chamadas de cache

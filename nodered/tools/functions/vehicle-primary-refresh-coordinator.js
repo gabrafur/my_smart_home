@@ -7,6 +7,7 @@ if (msg.payload?.kind !== "refresh_command") return null;
 const AWAY_INTERVAL_MS = 15 * 60 * 1000;
 const HOME_INTERVAL_MS = 30 * 60 * 1000;
 const IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;
+const CACHE_PROBE_SETTLE_MS = 15 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
 const key = TEST_MODE
     ? "security_vehicle_primary_refresh_v1__test"
@@ -41,7 +42,7 @@ const anyoneAwayOrApproaching =
     peopleContext.anyone_away === true ||
     awayOrApproachingStates.has(residentPrimaryState) ||
     awayOrApproachingStates.has(residentSecondaryState);
-const selectedIntervalMs = bothResidentsHome
+const presenceIntervalMs = bothResidentsHome
     ? HOME_INTERVAL_MS
     : AWAY_INTERVAL_MS;
 
@@ -60,7 +61,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
     state = {};
 }
 
-state.version = 7;
+state.version = 8;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -84,6 +85,31 @@ state.service_accepted_at = Number.isFinite(state.service_accepted_at) &&
     state.service_accepted_at <= now + FUTURE_TOLERANCE_MS
         ? state.service_accepted_at
         : 0;
+const contextReady =
+    msg.payload?.vehicle_primary_ready === true ||
+    vehicleContext.ready === true;
+const recoveryNeeded =
+    msg.payload?.recovery_needed === true ||
+    msg.payload?.force_recovery === true ||
+    msg.payload?.vehicle_primary_ready === false ||
+    contextReady !== true ||
+    state.awaiting_evidence === true;
+const requireLightingReady =
+    msg.payload?.require_lighting_ready === true ||
+    (
+        state.awaiting_evidence === true &&
+        state.require_lighting_ready === true
+    );
+const requestedReason = msg.payload?.reason ??
+    msg.payload?.recovery_reason ??
+    (recoveryNeeded ? "readiness_recovery_needed" : "scheduled_refresh");
+const manualBypass = requestedReason === "manual_force";
+/* O intervalo de 30 min economiza wakes somente no ciclo saudável em casa.
+ * Recuperação e backoff usam o piso suportado de 15 min para não prolongar
+ * artificialmente uma indisponibilidade já confirmada. */
+const selectedIntervalMs = recoveryNeeded && !manualBypass
+    ? AWAY_INTERVAL_MS
+    : presenceIntervalMs;
 const previousIntervalMs = [AWAY_INTERVAL_MS, HOME_INTERVAL_MS]
     .includes(Number(state.interval_ms))
         ? Number(state.interval_ms)
@@ -92,10 +118,13 @@ const intervalChanged = previousIntervalMs !== selectedIntervalMs;
 state.interval_ms = selectedIntervalMs;
 state.interval_policy = selectedIntervalMs === HOME_INTERVAL_MS
     ? "both_home_30m"
-    : "away_or_approaching_15m";
+    : (recoveryNeeded && !manualBypass
+        ? "recovery_15m"
+        : "away_or_approaching_15m");
 const intervalAnchorAt = Math.max(
     state.last_request_at,
-    state.service_accepted_at
+    state.service_accepted_at,
+    state.last_success_at
 );
 const requestFloorAt = intervalAnchorAt > 0
     ? intervalAnchorAt + selectedIntervalMs
@@ -107,6 +136,26 @@ state.in_flight_until = Number.isFinite(state.in_flight_until) &&
     state.in_flight_until <= now + IN_FLIGHT_LEASE_MS
         ? state.in_flight_until
         : 0;
+state.cache_probe_for_request_at = Number.isFinite(
+    state.cache_probe_for_request_at
+) && state.cache_probe_for_request_at <= now + FUTURE_TOLERANCE_MS
+    ? state.cache_probe_for_request_at
+    : 0;
+state.cache_probe_completed_for_request_at = Number.isFinite(
+    state.cache_probe_completed_for_request_at
+) && state.cache_probe_completed_for_request_at <= now + FUTURE_TOLERANCE_MS
+    ? state.cache_probe_completed_for_request_at
+    : 0;
+state.cache_probe_in_flight_until = Number.isFinite(
+    state.cache_probe_in_flight_until
+) && state.cache_probe_in_flight_until <= now + IN_FLIGHT_LEASE_MS
+    ? state.cache_probe_in_flight_until
+    : 0;
+state.cache_probe_settle_until = Number.isFinite(
+    state.cache_probe_settle_until
+) && state.cache_probe_settle_until <= now + CACHE_PROBE_SETTLE_MS
+    ? state.cache_probe_settle_until
+    : 0;
 state.failure_notified_at = Number.isFinite(state.failure_notified_at) &&
     state.failure_notified_at <= now + FUTURE_TOLERANCE_MS
         ? state.failure_notified_at
@@ -151,7 +200,49 @@ function blockedNotification(reason, waitS) {
         "VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard " +
         `reason=${reason} remaining_seconds=${waitS}`
     );
-    return [null, null, msg, null];
+    return [null, null, msg, null, null];
+}
+
+if (
+    state.cache_probe_in_flight === true &&
+    now < state.cache_probe_in_flight_until
+) {
+    const waitS = Math.max(
+        1,
+        Math.ceil((state.cache_probe_in_flight_until - now) / 1000)
+    );
+    save("probing_cache", "cache_probe_in_flight", { enabled: true });
+    node.status({
+        fill: "yellow",
+        shape: "ring",
+        text: `releitura do cache em andamento ${waitS}s`
+    });
+    return blockedNotification("in_flight", waitS);
+}
+
+if (state.cache_probe_in_flight === true) {
+    state.cache_probe_in_flight = false;
+    state.cache_probe_in_flight_until = null;
+    state.cache_probe_for_request_at = null;
+    state.last_failure_class = "cache_probe_lease_expired";
+    state.next_allowed_at = Math.max(
+        state.next_allowed_at,
+        now + selectedIntervalMs
+    );
+}
+
+if (now < state.cache_probe_settle_until) {
+    const waitS = Math.max(
+        1,
+        Math.ceil((state.cache_probe_settle_until - now) / 1000)
+    );
+    save("probing_cache", "cache_probe_settling", { enabled: true });
+    node.status({
+        fill: "yellow",
+        shape: "ring",
+        text: `aguardando cache ${waitS}s`
+    });
+    return blockedNotification("cache_probe_settling", waitS);
 }
 
 if (state.request_in_flight === true && now < state.in_flight_until) {
@@ -173,33 +264,12 @@ if (state.request_in_flight === true) {
     state.last_failure_class = "in_flight_lease_expired";
 }
 
-const contextReady =
-    msg.payload?.vehicle_primary_ready === true ||
-    vehicleContext.ready === true;
-const recoveryNeeded =
-    msg.payload?.recovery_needed === true ||
-    msg.payload?.force_recovery === true ||
-    msg.payload?.vehicle_primary_ready === false ||
-    contextReady !== true ||
-    state.awaiting_evidence === true;
-const requireLightingReady =
-    msg.payload?.require_lighting_ready === true ||
-    (
-        state.awaiting_evidence === true &&
-        state.require_lighting_ready === true
-    );
-const requestedReason = msg.payload?.reason ??
-    msg.payload?.recovery_reason ??
-    (recoveryNeeded ? "readiness_recovery_needed" : "scheduled_refresh");
-
 /*
  * Entradas automáticas usam 30 minutos quando os dois moradores estão em casa
  * e 15 minutos quando alguém está fora ou chegando. Entre 00:00 e 05:59, os
  * wakes periódicos ficam suspensos se ambos estão em casa. O clique explícito
  * do dashboard ignora prazo e janela, mas nunca atravessa o lease acima.
  */
-const manualBypass = requestedReason === "manual_force";
-
 const hour = new Date(now).getHours();
 const quietHours = hour >= 0 && hour < 6;
 const legacyDaytime = hour >= 7 && hour < 22;
@@ -256,6 +326,53 @@ if (!manualBypass && now < state.next_allowed_at) {
     }
     return blockedNotification("minimum_interval", waitS);
 }
+
+/*
+ * Antes de repetir um wake automático, peça ao Home Assistant uma leitura
+ * somente do cache. Isso alinha os dois ciclos de 15 minutos: se a telemetria
+ * do wake anterior já chegou ao provedor, o snapshot seguinte a confirmará e
+ * o novo wake será evitado. O clique manual continua explícito e não passa por
+ * esta etapa.
+ */
+const pendingRequestAt = Number(state.last_request_at ?? 0);
+const cacheProbeCompletedForPendingRequest =
+    pendingRequestAt > 0 &&
+    state.cache_probe_completed_for_request_at === pendingRequestAt;
+if (
+    !manualBypass &&
+    state.awaiting_evidence === true &&
+    pendingRequestAt > 0 &&
+    !cacheProbeCompletedForPendingRequest
+) {
+    state.cache_probe_in_flight = true;
+    state.cache_probe_in_flight_until = now + IN_FLIGHT_LEASE_MS;
+    state.cache_probe_for_request_at = pendingRequestAt;
+    state.cache_probe_settle_until = null;
+    save("probing_cache", "pre_wake_cache_probe", { enabled: true });
+    msg.payload.cache_probe_for_request_at = pendingRequestAt;
+    msg.payload.origin = msg.payload.origin ?? "contexto_chegadas";
+    msg.payload.test_mode = TEST_MODE;
+    msg.payload.side_effect = "vehicle_primary.cache_probe";
+    node.log?.(
+        "VEHICLE_PRIMARY_CACHE_PROBE_REQUESTED" +
+        " previous_request_at=" + pendingRequestAt +
+        " test_mode=" + String(TEST_MODE)
+    );
+    node.status({
+        fill: TEST_MODE ? "blue" : "yellow",
+        shape: "dot",
+        text: TEST_MODE
+            ? "TESTE: releitura de cache em dry-run"
+            : "relendo cache antes de novo wake"
+    });
+    return [null, null, null, null, msg];
+}
+
+state.cache_probe_in_flight = false;
+state.cache_probe_in_flight_until = null;
+state.cache_probe_for_request_at = null;
+state.cache_probe_completed_for_request_at = null;
+state.cache_probe_settle_until = null;
 
 state.baseline_observed_at = {
     telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)
@@ -328,4 +445,4 @@ node.status({
             : `Bluelink #${state.attempts}: refresh real`)
 });
 
-return [msg, TEST_MODE ? null : msg, null, failureNotification];
+return [msg, TEST_MODE ? null : msg, null, failureNotification, null];

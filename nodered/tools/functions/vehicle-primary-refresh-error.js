@@ -13,14 +13,29 @@ const failureClass = /(?:401|unauthori[sz]ed|authentic)/i.test(message)
 const key = "security_vehicle_primary_refresh_v1";
 const state = flow.get(key, "persistent") ?? {};
 const now = Date.now();
+const cacheProbeFailure = /cache|reler/i.test(source);
+const intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]
+    .includes(Number(state.interval_ms))
+        ? Number(state.interval_ms)
+        : 15 * 60 * 1000;
 state.request_in_flight = false;
 state.in_flight_until = null;
+state.cache_probe_in_flight = false;
+state.cache_probe_in_flight_until = null;
+state.cache_probe_for_request_at = null;
+state.cache_probe_settle_until = null;
 state.awaiting_evidence = true;
 state.state = "backoff";
 state.reason = failureClass;
 state.failure_at = now;
 state.failure_source = source;
 state.last_failure_class = failureClass;
+if (cacheProbeFailure) {
+    state.next_allowed_at = Math.max(
+        Number(state.next_allowed_at ?? 0),
+        now + intervalMs
+    );
+}
 state.next_retry_at = Number(state.next_allowed_at ?? 0) || null;
 state.cooldown_until = null;
 state.updated_at = now;

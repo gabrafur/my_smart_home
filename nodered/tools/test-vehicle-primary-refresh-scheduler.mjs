@@ -21,8 +21,10 @@ function source(name) {
 const code = {
   coordinator: source("vehicle-primary-refresh-coordinator.js"),
   accepted: source("vehicle-primary-refresh-accepted.js"),
+  cacheProbeAccepted: source("vehicle-primary-cache-probe-accepted.js"),
   error: source("vehicle-primary-refresh-error.js"),
   dispatchGuard: source("vehicle-primary-refresh-dispatch-guard.js"),
+  cacheProbeGuard: source("vehicle-primary-cache-probe-dispatch-guard.js"),
   tripGuard: source("vehicle-primary-trip-dispatch-guard.js"),
   dryRun: source("vehicle-primary-dry-run-terminal.js"),
   notificationGuard: source("vehicle-primary-notification-dispatch-guard.js"),
@@ -635,11 +637,24 @@ scenario("17 recuperação posterior da integração", () => {
       },
     },
   });
-  assert(coordinator(store, DAY, {
+  const probe = coordinator(store, DAY, {
     anyone_away: true,
     reason: "authentication_recovery",
-  })[0]);
-  execute(code.accepted, { now: DAY + 10_000, store, msg: command() });
+  });
+  assert.equal(probe[0], null);
+  assert(probe[4]);
+  const guarded = execute(code.cacheProbeGuard, {
+    now: DAY,
+    store,
+    msg: probe[4],
+  });
+  assert(guarded[0]);
+  assert.equal(guarded[1], null);
+  execute(code.cacheProbeAccepted, {
+    now: DAY,
+    store,
+    msg: guarded[0],
+  });
   normalize(store, DAY + 15_000, DAY + 15_000);
   assert.equal(store.get(KEY).awaiting_evidence, false);
   assert.equal(store.get(KEY).attempts, 0);
@@ -650,7 +665,22 @@ scenario("18 toda retentativa respeita o piso Bluelink de 15 minutos", () => {
   const store = memory({ vehicle_primary_context_v1: readyContext(DAY) });
   const observed = [];
   for (let attempt = 1; attempt <= 5; attempt += 1) {
-    const coordinated = coordinator(store, now, { anyone_away: true });
+    let coordinated = coordinator(store, now, { anyone_away: true });
+    if (attempt > 1) {
+      assert.equal(coordinated[0], null);
+      assert(coordinated[4]);
+      execute(code.cacheProbeAccepted, {
+        now,
+        store,
+        msg: coordinated[4],
+      });
+      assert.equal(
+        coordinator(store, now + 1_000, { anyone_away: true }),
+        null,
+      );
+      now += 15_000;
+      coordinated = coordinator(store, now, { anyone_away: true });
+    }
     assert(coordinated[0]);
     if (attempt === 1) assert.equal(coordinated[3], null);
     if (attempt === 2) {
@@ -736,12 +766,16 @@ scenario("19 dry-run percorre a fronteira final sem chamada externa", () => {
 });
 
 scenario("20 alerta sintético chega somente ao terminal dry-run", () => {
+  const previousRequestAt = DAY - 15 * 60_000;
   const store = memory({
     vehicle_primary_context_v1__test: readyContext(DAY),
     [`${KEY}__test`]: {
       attempts: 1,
       awaiting_evidence: true,
+      last_attempt_at: previousRequestAt,
+      last_request_at: previousRequestAt,
       next_allowed_at: DAY,
+      cache_probe_completed_for_request_at: previousRequestAt,
     },
   });
   const coordinated = execute(code.coordinator, {
@@ -759,6 +793,106 @@ scenario("20 alerta sintético chega somente ao terminal dry-run", () => {
   assert.equal(guarded[1].payload.notification_sent, false);
   execute(code.dryRun, { now: DAY, store, msg: guarded[1] });
   assert.equal(store.get("vehicle_primary_last_dry_run_v1").dispatched, false);
+});
+
+scenario("32 cache novo evita wake redundante no vencimento do retry", () => {
+  const baseline = DAY - 20 * 60_000;
+  const previousRequestAt = DAY - 16 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: previousRequestAt,
+      last_request_at: previousRequestAt,
+      next_allowed_at: DAY,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  const probe = coordinator(store, DAY, { anyone_away: true });
+  assert.equal(probe[0], null);
+  assert(probe[4]);
+  execute(code.cacheProbeAccepted, {
+    now: DAY,
+    store,
+    msg: probe[4],
+  });
+  normalize(store, DAY + 15_000, DAY + 15_000);
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.attempts, 0);
+  assert.equal(state.cache_probe_completed_for_request_at, null);
+  assert.equal(
+    coordinator(store, DAY + 15_001, { anyone_away: true }),
+    null,
+  );
+});
+
+scenario("33 cache antigo libera um único wake após a propagação", () => {
+  const baseline = DAY - 20 * 60_000;
+  const previousRequestAt = DAY - 15 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: previousRequestAt,
+      last_request_at: previousRequestAt,
+      next_allowed_at: DAY,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  const probe = coordinator(store, DAY, { anyone_away: true });
+  execute(code.cacheProbeAccepted, {
+    now: DAY,
+    store,
+    msg: probe[4],
+  });
+  normalize(store, DAY + 15_000, DAY + 15_000, baseline);
+  const wake = coordinator(store, DAY + 15_000, { anyone_away: true });
+  assert(wake[0]);
+  assert.equal(wake[4], null);
+  assert.equal(store.get(KEY).attempts, 2);
+  assert.equal(
+    coordinator(store, DAY + 15_001, { anyone_away: true }),
+    null,
+  );
+});
+
+scenario("34 erro ao reler cache adia a sondagem sem enviar wake", () => {
+  const previousRequestAt = DAY - 15 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY - 20 * 60_000),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      last_attempt_at: previousRequestAt,
+      last_request_at: previousRequestAt,
+      next_allowed_at: DAY,
+      interval_ms: 15 * 60_000,
+    },
+  });
+  const probe = coordinator(store, DAY, { anyone_away: true });
+  assert(probe[4]);
+  execute(code.error, {
+    now: DAY,
+    store,
+    msg: {
+      error: {
+        source: { name: "Reler cache do vehicle_primary" },
+        message: "service unavailable",
+      },
+    },
+  });
+  assert.equal(store.get(KEY).next_allowed_at, DAY + 15 * 60_000);
+  assert.equal(
+    coordinator(store, DAY + 1_000, { anyone_away: true }),
+    null,
+  );
 });
 
 console.log(

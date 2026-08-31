@@ -50,12 +50,13 @@ function removeNode(id) {
 const refreshDecision = required("b33e117e55bdb5ed");
 refreshDecision.name = "Coordenar refresh do vehicle_primary";
 refreshDecision.func = source("vehicle-primary-refresh-coordinator.js");
-refreshDecision.outputs = 4;
+refreshDecision.outputs = 5;
 refreshDecision.wires = [
   ["vehicle_primary_refresh_dispatch_guard_v1"],
   ["eb4b8a519ab0bc28"],
   ["vehicle_primary_manual_refresh_blocked_notification_v1"],
   ["vehicle_primary_refresh_notification_requested_out_v1"],
+  ["vehicle_primary_cache_probe_dispatch_guard_v1"],
 ];
 
 const contextCoordinator = flows.find((node) =>
@@ -101,6 +102,71 @@ upsert({
   x: 715,
   y: 700,
   wires: [["8907830bb7f6c40c"], ["vehicle_primary_refresh_dry_run_out_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_cache_probe_dispatch_guard_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Separar releitura de cache real e dry-run",
+  func: source("vehicle-primary-cache-probe-dispatch-guard.js"),
+  outputs: 2,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 720,
+  y: 660,
+  wires: [["vehicle_primary_cache_probe_call_v1"], ["vehicle_primary_refresh_dry_run_out_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_cache_probe_call_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Reler cache do vehicle_primary",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "kia_uvo.update",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: "{}",
+  dataType: "json",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "all",
+  blockInputOverrides: true,
+  domain: "kia_uvo",
+  service: "update",
+  x: 1010,
+  y: 660,
+  wires: [["vehicle_primary_cache_probe_accepted_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_cache_probe_accepted_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Registrar cache relido",
+  func: source("vehicle-primary-cache-probe-accepted.js"),
+  outputs: 1,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 1270,
+  y: 660,
+  wires: [["7a99920b093547ea"]],
 });
 
 const forceRefresh = required("8907830bb7f6c40c");
@@ -457,6 +523,33 @@ normalizer.func = normalizer.func.replace(
 if (!normalizer.func.includes("15 * 60 * 1000 + FUTURE_TOLERANCE_MS")) {
   throw new Error("Normalizer sem janela para telemetria BR atrasada");
 }
+if (!normalizer.func.includes("cache_probe_evidence_window_v1")) {
+  normalizer.func = normalizer.func.replace(
+    `        const attemptCurrent =
+            lastAttemptAt > 0 &&
+            lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&
+            Date.now() - lastAttemptAt <=
+        15 * 60 * 1000 + FUTURE_TOLERANCE_MS;`,
+    `        /* cache_probe_evidence_window_v1: uma sondagem concluída torna
+         * válida a evidência semântica do wake correspondente mesmo se o
+         * tick do agendador chegou ligeiramente depois da janela nominal. */
+        const cacheProbeCurrentForAttempt =
+            Number(refreshState.cache_probe_completed_for_request_at ?? 0) ===
+                requestAt &&
+            Number(refreshState.cache_probe_accepted_at ?? 0) > 0;
+        const attemptCurrent =
+            lastAttemptAt > 0 &&
+            lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&
+            (
+                Date.now() - lastAttemptAt <=
+                    15 * 60 * 1000 + FUTURE_TOLERANCE_MS ||
+                cacheProbeCurrentForAttempt
+            );`,
+  );
+}
+if (!normalizer.func.includes("cache_probe_evidence_window_v1")) {
+  throw new Error("Normalizer sem janela vinculada à sondagem de cache");
+}
 const readinessMarker =
   "semantic_wake_confirmation_independent_of_derived_readiness_v1";
 if (!normalizer.func.includes(readinessMarker)) {
@@ -513,6 +606,13 @@ normalizer.func = normalizer.func.replace(
   '                request_in_flight: false,\n                in_flight_until: null,\n                failure_notified_at: null,\n                last_failure_class: null,\n                state: "cooldown",',
 );
 normalizer.func = normalizer.func.replace(
+  '                in_flight_until: null,\n                failure_notified_at: null,',
+  '                in_flight_until: null,\n                cache_probe_in_flight: false,\n                cache_probe_in_flight_until: null,\n                cache_probe_for_request_at: null,\n                cache_probe_completed_for_request_at: null,\n                cache_probe_settle_until: null,\n                failure_notified_at: null,',
+);
+if (!normalizer.func.includes("cache_probe_completed_for_request_at: null")) {
+  throw new Error("Normalizer sem limpeza do estado da sondagem de cache");
+}
+normalizer.func = normalizer.func.replace(
   '                cooldown_until: Date.now() + 15 * 60 * 1000,',
   '                cooldown_until: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),',
 );
@@ -520,9 +620,15 @@ const dispatchAnchoredDeadline =
   'Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                )';
 const acceptedAnchoredDeadline =
   'Math.max(\n                    Date.now(),\n                    Number(refreshState.next_allowed_at ?? 0),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                )';
+const cacheProbeAnchoredDeadline =
+  'Math.max(\n                    Date.now(),\n                    Number(refreshState.next_allowed_at ?? 0),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000,\n                    cacheProbeCurrentForAttempt\n                        ? Date.now() + 15 * 60 * 1000\n                        : 0\n                )';
+normalizer.func = normalizer.func.replaceAll(
+  acceptedAnchoredDeadline,
+  cacheProbeAnchoredDeadline,
+);
 normalizer.func = normalizer.func.replaceAll(
   dispatchAnchoredDeadline,
-  acceptedAnchoredDeadline,
+  cacheProbeAnchoredDeadline,
 );
 if (!normalizer.func.includes("Number(refreshState.next_allowed_at ?? 0)")) {
   throw new Error("Não foi possível preservar o deadline após aceite do refresh");
@@ -563,8 +669,8 @@ Object.assign(errorLogger, {
 });
 const errorCatch = required("vehicle_primary_api_error_catch_v1");
 Object.assign(errorCatch, {
-  name: "Erros do force_refresh do vehicle_primary",
-  scope: ["8907830bb7f6c40c"],
+  name: "Erros do refresh e cache do vehicle_primary",
+  scope: ["8907830bb7f6c40c", "vehicle_primary_cache_probe_call_v1"],
   x: 1240,
   y: 920,
 });
@@ -715,7 +821,7 @@ upsert({
   mode: "link",
   links: ["vehicle_primary_refresh_notification_in_v1"],
   x: 635,
-  y: 640,
+  y: 620,
   wires: [],
 });
 
@@ -818,6 +924,9 @@ addToGroup(
 addToGroup(
   "43a2bc9c218353ae",
   "vehicle_primary_refresh_dispatch_guard_v1",
+  "vehicle_primary_cache_probe_dispatch_guard_v1",
+  "vehicle_primary_cache_probe_call_v1",
+  "vehicle_primary_cache_probe_accepted_v1",
   "vehicle_primary_refresh_accepted_v1",
   "vehicle_primary_arrival_refresh_out_v1",
   "vehicle_primary_arrival_refresh_in_v1",
