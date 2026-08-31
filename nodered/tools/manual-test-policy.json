@@ -21,11 +21,14 @@
                 "daily_update_test_reset",
                 "daily_update_test_request",
                 "daily_update_test_failure",
-                "daily_update_test_unavailable"
+                "daily_update_test_unavailable",
+                "daily_update_kia_group",
+                "daily_update_kia_test_request",
+                "daily_update_kia_test_result"
             ],
             "automated_test": "test-daily-host-update-flow.mjs",
             "dry_run_terminal_ids": ["daily_update_dry_run_terminal"],
-            "reason": "Solicitação, falha do DietPi e indisponibilidade percorrem os validadores e o parser reais; sudo, apt, Docker e reboot permanecem bloqueados no terminal dry-run."
+            "reason": "Solicitação, falha do DietPi, indisponibilidade e análise Kia UVO percorrem os validadores e parsers reais; sudo, apt, Docker, update.install e reboot permanecem bloqueados no terminal dry-run."
         },
         "weekly_docs_review_tab": {
             "strategy": "manual_full_dry_run",

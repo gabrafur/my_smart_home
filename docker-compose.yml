@@ -132,6 +132,8 @@ services:
       - ./scripts/request-host-storage-maintenance.sh:/opt/request-host-storage-maintenance.sh:ro
       - ./scripts/request-host-daily-update.sh:/opt/request-host-daily-update.sh:ro
       - ./scripts/read-host-daily-update-result.sh:/opt/read-host-daily-update-result.sh:ro
+      - ./scripts/request-host-kia-uvo-update-check.sh:/opt/request-host-kia-uvo-update-check.sh:ro
+      - ./scripts/read-host-kia-uvo-update-result.sh:/opt/read-host-kia-uvo-update-result.sh:ro
       - ./scripts/request-weekly-docs-review.sh:/opt/request-weekly-docs-review.sh:ro
       - ./nodered:/data
       - ./bindings/private:/run/private-bindings:ro

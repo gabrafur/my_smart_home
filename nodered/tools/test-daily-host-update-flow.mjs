@@ -23,7 +23,24 @@ assert.equal(node("daily_update_request_host").command, "/opt/request-host-daily
 assert.equal(node("daily_update_read_result").command, "/opt/read-host-daily-update-result.sh");
 assert.equal(node("daily_update_result_poll").repeat, "300");
 assert.equal(node("daily_update_result_startup").once, true);
-assert.equal(flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.crontab).length, 0);
+assert.deepEqual(
+  flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.crontab).map((entry) => entry.id),
+  ["daily_update_kia_schedule"],
+);
+assert.equal(node("daily_update_kia_schedule").crontab, "*/30 * * * *");
+assert.equal(node("daily_update_kia_schedule").once, true);
+assert.equal(node("daily_update_kia_request_host").command, "/opt/request-host-kia-uvo-update-check.sh");
+assert.equal(node("daily_update_kia_read_result").command, "/opt/read-host-kia-uvo-update-result.sh");
+assert.equal(node("daily_update_kia_result_poll").repeat, "60");
+assert.deepEqual(node("daily_update_kia_route_test").wires, [
+  ["daily_update_kia_test_out"],
+  ["daily_update_kia_request_host"],
+]);
+assert.ok(!JSON.stringify([
+  node("daily_update_kia_test_request"),
+  node("daily_update_kia_test_result"),
+]).includes("daily_update_kia_request_host"));
+assert.doesNotMatch(JSON.stringify(node("daily_update_kia_request_host")), /update\.install|ha-updates/);
 
 const serializedProduction = JSON.stringify([
   node("daily_update_request_host"),
@@ -50,6 +67,7 @@ assert.match(node("daily_update_dry_run_terminal").func, /simulated: true/);
 assert.match(node("daily_update_dry_run_terminal").func, /dispatched: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /apt_commands_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /docker_update_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /kia_uvo_update_check_sent: false/);
 assert.deepEqual(node("daily_update_dry_run_terminal").wires, []);
 
 const values = new Map();
@@ -114,9 +132,27 @@ const productionDuplicate = parse(
 assert.equal(productionDuplicate, null);
 assert.equal(errors.length, 1, "duplicate results must be deduplicated");
 
+const parseKia = new Function("msg", "node", "flow", node("daily_update_kia_parse_result").func);
+const kiaTestConflict = parseKia(
+  { _kia_update_test: true, payload: "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T00:00:00.000Z" },
+  runtimeNode,
+  flow,
+);
+assert.equal(kiaTestConflict.payload.status, "conflict");
+assert.equal(kiaTestConflict.payload.conflicts, 1);
+assert.equal(errors.length, 1, "synthetic Kia conflicts must not alert production observers");
+assert.equal(parseKia(
+  { payload: "kia-uvo-update status=failed request_id=prod-kia" },
+  runtimeNode,
+  flow,
+), null);
+assert.match(errors.at(-1), /kia_uvo_update_check_failed/);
+
 const compose = fs.readFileSync(path.resolve(here, "..", "..", "docker-compose.yml"), "utf8");
 assert.match(compose, /\.\/homeassistant\/\.daily-update-trigger:\/run\/daily-update-trigger/);
 assert.match(compose, /request-host-daily-update\.sh:\/opt\/request-host-daily-update\.sh:ro/);
 assert.match(compose, /read-host-daily-update-result\.sh:\/opt\/read-host-daily-update-result\.sh:ro/);
+assert.match(compose, /request-host-kia-uvo-update-check\.sh:\/opt\/request-host-kia-uvo-update-check\.sh:ro/);
+assert.match(compose, /read-host-kia-uvo-update-result\.sh:\/opt\/read-host-kia-uvo-update-result\.sh:ro/);
 
 console.log("Daily host update flow contracts are valid");

@@ -9,19 +9,27 @@ repositorio, sem manter uma copia manual de patch que possa ficar stale.
 
 ## Deteccao
 
-O job `scripts/docker-auto-update.mjs ha-updates` continua bloqueando a
-instalacao automatica de entidades com `kia_uvo`, `hyundai`, `bluelink` ou
-`uvo`. Quando uma delas fica `on`, ele registra
-`VEHICLE_PRIMARY_INTEGRATION_UPDATE_AVAILABLE` e executa somente:
+O tab Node-RED `atualizacoes_diarias` agenda a analise a cada 30 minutos e ao
+subir. Ele usa uma ponte coalescente sem Docker socket, token ou checkout no
+container; o worker do host executa o watcher HA existente, que para a entidade
+protegida executa somente:
 
 ```bash
-node scripts/kia-uvo-safe-update.mjs check --target vX.Y.Z
+node scripts/kia-uvo-safe-update.mjs check
 ```
 
-O check baixa base e alvo oficiais em `/tmp`, calcula o delta local, tenta
+O alvo vem do atributo `latest_version` da entidade oficial `update.*` do HACS,
+consultada pelo worker com o token host-only. O check baixa base e alvo oficiais
+em `/tmp`, calcula o delta local, tenta
 aplica-lo no alvo e executa `compileall` e os marcadores obrigatorios. O
 resultado fica em `/config/.storage/kia_uvo_safe_update` e e exibido por
 `sensor.integracao_vehicle_primary`.
+
+O mesmo ciclo preserva a política anterior para outras entidades HA consideradas
+seguras. O instalador `scripts/install-daily-update-nodered-bridge.sh` remove o
+antigo cron direto `docker-auto-update.mjs ha-updates`. Para Kia/Hyundai, o
+Node-RED nunca chama `update.install`; `compatible` apenas informa que a
+aplicacao explicita pode ser revisada.
 
 Estados possiveis: `compatible`, `conflict`, `applying`, `applied` e
 `rollback`. `conflict` nunca altera o componente em uso.

@@ -212,15 +212,18 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
-The separate `atualizacoes_diarias` tab has no independent clock. The scheduled
+The daily host-update path in the `atualizacoes_diarias` tab has no independent clock. The scheduled
 job in `backup_git` starts this cycle only after a successful backup. The host
 bridge runs `apt-get update` and `apt-get --with-new-pkgs upgrade` through the
 root-owned helper first. It then runs `/boot/dietpi/dietpi-update 1`, which
 noninteractively checks for and applies a DietPi update when one is available,
 and finally calls `scripts/docker-auto-update.mjs daily` to
 reconcile all seven container image providers. It never reboots automatically.
-The bridge installer removes only the direct daily `docker-auto-update.mjs`
-cron entry; the independent 30-minute `ha-updates` watcher remains in place.
+The same tab owns a separate 30-minute Kia UVO/Hyundai Bluelink safe-analysis
+schedule. It invokes the existing HA watcher through a coalescing host bridge;
+Kia/Hyundai is routed only to `kia-uvo-safe-update.mjs check`, never
+`update.install`, while other safe entities retain the prior policy. The bridge installer removes
+the legacy direct `daily` and `ha-updates` cron entries.
 
 Node-RED receives neither `sudo`, the checkout, nor the Docker socket. The
 installed `/usr/local/sbin` helper belongs to `root`, and its sudoers rule

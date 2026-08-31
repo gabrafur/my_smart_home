@@ -750,12 +750,17 @@ dos metadados HACS, chama o servico oficial `update.install`, reaplica o staging
 reinicia somente o Home Assistant e valida entidades/biblioteca/HACS. Qualquer
 falha restaura componente e metadata e reinicia a versao anterior.
 
-O modo `ha-updates` de `scripts/docker-auto-update.mjs` continua proibido de
-instalar Kia/Hyundai cegamente. Quando a entidade protegida fica `on`, ele
-registra `VEHICLE_PRIMARY_INTEGRATION_UPDATE_AVAILABLE` e chama apenas `check`. O estado
-fica em `/config/.storage/kia_uvo_safe_update` e aparece como
-`sensor.integracao_vehicle_primary`; `apply` permanece uma decisao explicita apos revisar
-compatibilidade.
+O tab Node-RED `atualizacoes_diarias` agenda a analise Kia/Hyundai a cada 30
+minutos e ao subir. A ponte coalescente solicita ao host somente
+o watcher `scripts/docker-auto-update.mjs ha-updates`; o container Node-RED nao
+recebe token, checkout nem Docker socket. Para Kia/Hyundai, o watcher executa
+somente `scripts/kia-uvo-safe-update.mjs check` e resolve o alvo pelo `latest_version` da
+entidade oficial `update.*`, sem depender do metadata HACS possivelmente stale.
+O antigo cron direto `ha-updates` e removido pelo
+instalador da ponte. O estado fica em
+`/config/.storage/kia_uvo_safe_update` e aparece como
+`sensor.integracao_vehicle_primary`; `apply` permanece uma decisao explicita
+apos revisar compatibilidade e nunca e chamado pelo fluxo.
 
 O estado do motor no recorder continua sendo telemetria amostrada, nao um log
 de ignicao garantido. Para saber quando o carro rodou, o `/tripinfo` permanece

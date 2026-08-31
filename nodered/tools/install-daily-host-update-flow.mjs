@@ -52,6 +52,72 @@ const recordCompletion = `const code = Number(msg.payload?.code ?? msg.payload ?
 if (code !== 0) node.status({ fill: "red", shape: "ring", text: "ponte código " + String(code) });
 return null;`;
 
+const prepareKiaUpdateCheck = `const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;
+msg._kia_update_test = TEST_MODE;
+msg.payload = {
+    version: 1,
+    event: "kia_uvo_update_check_requested",
+    source: TEST_MODE ? "manual_test" : (msg.payload?.source ?? "node_red_schedule"),
+    test_mode: TEST_MODE,
+    requested_at: new Date().toISOString()
+};
+node.status({ fill: TEST_MODE ? "blue" : "green", shape: "dot", text: TEST_MODE ? "TESTE preparado" : "análise segura solicitada" });
+return msg;`;
+
+const recordKiaUpdateRequest = `const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 400);
+const status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];
+if (!status) {
+    node.error("kia_uvo_update_request_unrecognized");
+    node.status({ fill: "red", shape: "ring", text: "resposta inválida" });
+    return null;
+}
+node.status({ fill: status === "accepted" ? "green" : "yellow", shape: "dot", text: status === "accepted" ? "análise aceita" : "análise já pendente" });
+return null;`;
+
+const parseKiaUpdateResult = `const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;
+const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
+if (!text) return null;
+const status = text.match(/\\bstatus=(running|compatible|conflict|applied|rollback|failed|deferred|unavailable|unknown)\\b/)?.[1];
+if (!status) {
+    if (!TEST_MODE) node.error("kia_uvo_update_result_unrecognized");
+    return null;
+}
+const result = {
+    version: 1,
+    status,
+    request_id: text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? "unknown",
+    installed_version: text.match(/\\binstalled_version=([^ ]+)\\b/)?.[1] ?? null,
+    latest_version: text.match(/\\blatest_version=([^ ]+)\\b/)?.[1] ?? null,
+    patch_state: text.match(/\\bpatch_state=([^ ]+)\\b/)?.[1] ?? null,
+    conflicts: Number(text.match(/\\bconflicts=(\\d+)\\b/)?.[1] ?? 0),
+    checked_at: text.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? null,
+    test_mode: TEST_MODE,
+    observed_at: Date.now()
+};
+const signature = [result.request_id, result.status, result.latest_version, result.checked_at].join(":");
+const key = TEST_MODE ? "kia_uvo_update_last_result_v1__test" : "kia_uvo_update_last_result_v1";
+const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
+if (!TEST_MODE && previous?.signature === signature) return null;
+result.signature = signature;
+if (TEST_MODE) flow.set(key, result);
+else flow.set(key, result, "persistent");
+const failed = ["failed", "unavailable", "rollback"].includes(status);
+const compatible = ["compatible", "applied"].includes(status);
+node.status({
+    fill: failed ? "red" : compatible ? "green" : status === "conflict" ? "yellow" : "blue",
+    shape: failed || status === "conflict" ? "ring" : "dot",
+    text: status === "conflict"
+        ? "v" + String(result.latest_version ?? "?") + ": conflito; preservado"
+        : status
+});
+if (TEST_MODE) {
+    msg.payload = result;
+    return msg;
+}
+if (failed) node.error("kia_uvo_update_check_failed status=" + status + " request_id=" + result.request_id);
+else if (status === "conflict") node.warn("kia_uvo_update_requires_manual_merge latest=" + String(result.latest_version));
+return null;`;
+
 const parseResult = `const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 600);
 if (!text) return null;
@@ -94,6 +160,7 @@ if (failed) {
 return null;`;
 
 const resetTest = `flow.set("daily_update_last_result_v1__test", undefined);
+flow.set("kia_uvo_update_last_result_v1__test", undefined);
 flow.set("daily_update_last_dry_run_v1", {
     version: 1, reset: true, simulated: true, dispatched: false,
     completed_at: Date.now()
@@ -108,6 +175,7 @@ const dryRunTerminal = `const result = {
     host_request_sent: false,
     apt_commands_sent: false,
     docker_update_sent: false,
+    kia_uvo_update_check_sent: false,
     status: msg.payload?.status ?? msg.payload?.event ?? "request_prepared",
     completed_at: Date.now()
 };
@@ -118,10 +186,11 @@ return null;`;
 const productionGroup = "daily_update_production_group";
 const resultGroup = "daily_update_result_group";
 const testGroup = "daily_update_test_group";
+const kiaUpdateGroup = "daily_update_kia_group";
 const nodes = [
   {
     id: TAB, type: "tab", label: "atualizacoes_diarias", disabled: false,
-    info: "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. O Node-RED não recebe sudo nem socket Docker.",
+    info: "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a análise segura do fork Kia UVO/Hyundai Bluelink a cada 30 minutos sem instalar o upstream. O Node-RED não recebe sudo, checkout nem socket Docker.",
     env: [],
   },
   {
@@ -278,10 +347,121 @@ const nodes = [
   },
   {
     id: "daily_update_dry_run_in", type: "link in", z: TAB, g: testGroup,
-    name: "Receber efeito TESTE", links: ["daily_update_request_test_out", "daily_update_result_test_out"],
+    name: "Receber efeito TESTE", links: [
+      "daily_update_request_test_out", "daily_update_result_test_out",
+      "daily_update_kia_test_out", "daily_update_kia_result_test_out",
+    ],
     x: 715, y: 870, wires: [["daily_update_dry_run_terminal"]],
   },
   functionNode("daily_update_dry_run_terminal", testGroup, "TESTE FINAL: host simulado", dryRunTerminal, 0, 1030, 870, []),
+  {
+    id: kiaUpdateGroup, type: "group", z: TAB,
+    name: "4. Kia UVO / Hyundai Bluelink: analisar upstream sem sobrescrever o fork",
+    style: { label: true, color: "#b58b3f" },
+    nodes: [
+      "daily_update_kia_architecture", "daily_update_kia_schedule", "daily_update_kia_manual",
+      "daily_update_kia_test_request", "daily_update_kia_prepare", "daily_update_kia_route_test",
+      "daily_update_kia_request_host", "daily_update_kia_request_ack", "daily_update_kia_request_error",
+      "daily_update_kia_request_complete", "daily_update_kia_test_out", "daily_update_kia_result_startup",
+      "daily_update_kia_result_poll", "daily_update_kia_read_result", "daily_update_kia_read_error",
+      "daily_update_kia_read_complete", "daily_update_kia_parse_result", "daily_update_kia_test_result",
+      "daily_update_kia_test_result_out", "daily_update_kia_test_result_in", "daily_update_kia_result_test_out",
+    ],
+    x: 64, y: 1059, w: 1252, h: 582,
+  },
+  {
+    id: "daily_update_kia_architecture", type: "comment", z: TAB, g: kiaUpdateGroup,
+    name: "A cada 30 min: staging + overlay local + testes; conflito preserva v3.10.1; apply continua exclusivamente manual",
+    info: "O Node-RED apenas cria uma solicitação coalescente. O worker do host executa o watcher HA existente: Kia/Hyundai segue somente para staging e as demais entidades seguras preservam a política anterior. Nunca chama update.install para a entidade protegida.",
+    x: 670, y: 1100, wires: [],
+  },
+  {
+    id: "daily_update_kia_schedule", type: "inject", z: TAB, g: kiaUpdateGroup,
+    name: "A cada 30 min + ao subir", props: [{ p: "payload.source", v: "node_red_schedule", vt: "str" }],
+    repeat: "", crontab: "*/30 * * * *", once: true, onceDelay: "20", topic: "",
+    payload: "", payloadType: "date", x: 200, y: 1180, wires: [["daily_update_kia_prepare"]],
+  },
+  {
+    id: "daily_update_kia_manual", type: "inject", z: TAB, g: kiaUpdateGroup,
+    name: "Verificar agora (seguro)", props: [{ p: "payload.source", v: "manual", vt: "str" }],
+    repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
+    payload: "", payloadType: "date", x: 200, y: 1240, wires: [["daily_update_kia_prepare"]],
+  },
+  {
+    id: "daily_update_kia_test_request", type: "inject", z: TAB, g: kiaUpdateGroup,
+    name: "TESTE: solicitação bloqueada", props: [
+      { p: "payload", v: '{"source":"manual_test","test_mode":true}', vt: "json" },
+      { p: "_kia_update_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
+    payload: "", payloadType: "date", x: 220, y: 1300, wires: [["daily_update_kia_prepare"]],
+  },
+  functionNode("daily_update_kia_prepare", kiaUpdateGroup, "Preparar análise segura", prepareKiaUpdateCheck, 1, 470, 1240, [["daily_update_kia_route_test"]]),
+  {
+    id: "daily_update_kia_route_test", type: "switch", z: TAB, g: kiaUpdateGroup,
+    name: "Produção ou TESTE?", property: "_kia_update_test", propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 710, y: 1240, wires: [["daily_update_kia_test_out"], ["daily_update_kia_request_host"]],
+  },
+  {
+    id: "daily_update_kia_request_host", type: "exec", z: TAB, g: kiaUpdateGroup,
+    command: "/opt/request-host-kia-uvo-update-check.sh", addpay: "", append: "", useSpawn: "false",
+    timer: "30", winHide: false, oldrc: false, name: "Solicitar check ao host",
+    x: 970, y: 1180,
+    wires: [["daily_update_kia_request_ack"], ["daily_update_kia_request_error"], ["daily_update_kia_request_complete"]],
+  },
+  functionNode("daily_update_kia_request_ack", kiaUpdateGroup, "Registrar solicitação Kia", recordKiaUpdateRequest, 0, 1200, 1140, []),
+  functionNode("daily_update_kia_request_error", kiaUpdateGroup, "Falha segura da ponte Kia", recordExecError, 0, 1200, 1200, []),
+  functionNode("daily_update_kia_request_complete", kiaUpdateGroup, "Código da ponte Kia", recordCompletion, 0, 1200, 1260, []),
+  {
+    id: "daily_update_kia_test_out", type: "link out", z: TAB, g: kiaUpdateGroup,
+    name: "Solicitação Kia TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 965, y: 1300, wires: [],
+  },
+  {
+    id: "daily_update_kia_result_startup", type: "inject", z: TAB, g: kiaUpdateGroup,
+    name: "Ler resultado ao subir", props: [{ p: "payload" }], repeat: "", crontab: "",
+    once: true, onceDelay: "50", topic: "", payload: "", payloadType: "date",
+    x: 200, y: 1400, wires: [["daily_update_kia_read_result"]],
+  },
+  {
+    id: "daily_update_kia_result_poll", type: "inject", z: TAB, g: kiaUpdateGroup,
+    name: "Resultado a cada 1 min", props: [{ p: "payload" }], repeat: "60", crontab: "",
+    once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 200, y: 1460, wires: [["daily_update_kia_read_result"]],
+  },
+  {
+    id: "daily_update_kia_read_result", type: "exec", z: TAB, g: kiaUpdateGroup,
+    command: "/opt/read-host-kia-uvo-update-result.sh", addpay: "", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Ler resultado Kia seguro",
+    x: 480, y: 1430,
+    wires: [["daily_update_kia_parse_result"], ["daily_update_kia_read_error"], ["daily_update_kia_read_complete"]],
+  },
+  functionNode("daily_update_kia_read_error", kiaUpdateGroup, "Falha ao ler resultado Kia", recordExecError, 0, 750, 1510, []),
+  functionNode("daily_update_kia_read_complete", kiaUpdateGroup, "Código da leitura Kia", recordCompletion, 0, 970, 1510, []),
+  functionNode("daily_update_kia_parse_result", kiaUpdateGroup, "Normalizar e observar check Kia", parseKiaUpdateResult, 1, 800, 1430, [["daily_update_kia_result_test_out"]]),
+  {
+    id: "daily_update_kia_result_test_out", type: "link out", z: TAB, g: kiaUpdateGroup,
+    name: "Resultado Kia TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 1095, y: 1430, wires: [],
+  },
+  {
+    id: "daily_update_kia_test_result", type: "inject", z: TAB, g: kiaUpdateGroup,
+    name: "TESTE: conflito preservado", props: [
+      { p: "payload", v: "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T00:00:00.000Z", vt: "str" },
+      { p: "_kia_update_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
+    payload: "", payloadType: "date", x: 220, y: 1570, wires: [["daily_update_kia_test_result_out"]],
+  },
+  {
+    id: "daily_update_kia_test_result_out", type: "link out", z: TAB, g: kiaUpdateGroup,
+    name: "Resultado Kia TESTE → parser", mode: "link", links: ["daily_update_kia_test_result_in"],
+    x: 505, y: 1570, wires: [],
+  },
+  {
+    id: "daily_update_kia_test_result_in", type: "link in", z: TAB, g: kiaUpdateGroup,
+    name: "Receber resultado Kia TESTE", links: ["daily_update_kia_test_result_out"],
+    x: 625, y: 1570, wires: [["daily_update_kia_parse_result"]],
+  },
 ];
 
 let next = flows.filter((node) => !owned(node.id));

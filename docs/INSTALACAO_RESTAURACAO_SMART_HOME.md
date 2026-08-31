@@ -386,6 +386,13 @@ notifica `resident_primary`. Leia notas de versão antes de migrações de banco
 Server legado não deve ser trocado pelo sucessor matter.js sem plano específico
 de migração da fabric.
 
+No mesmo tab, a análise do fork Kia UVO/Hyundai Bluelink roda a cada 30 minutos
+e ao subir. Ela aciona o watcher HA no host; a entidade protegida segue apenas
+para `kia-uvo-safe-update.mjs check`, enquanto outras entidades seguras mantêm a
+política anterior. O resultado Kia é sanitizado e qualquer `apply` permanece
+uma operação manual explícita.
+O instalador da ponte remove o cron legado `docker-auto-update.mjs ha-updates`.
+
 ## 16. Diagnóstico
 
 ```bash

@@ -9,6 +9,7 @@ import {
 } from "./docker-auto-update.mjs";
 import {
   preferFullCommit,
+  statusLine,
   updateMatchesTarget,
 } from "./kia-uvo-safe-update.mjs";
 
@@ -72,4 +73,17 @@ test("preserves the full upstream commit when HACS reports a prefix", () => {
   const full = "2c602560746318fd001db8fe52347e9398f181ed";
   assert.equal(preferFullCommit(full, "2c60256"), full);
   assert.equal(preferFullCommit("2c60256", full), full);
+});
+
+test("publishes only sanitized Kia UVO status fields to Node-RED", () => {
+  assert.equal(statusLine({
+    state: "conflict",
+    installed_version: "3.10.1",
+    latest_version: "v3.11.0",
+    patch_state: "conflict",
+    conflicts: ["private detail", "another detail"],
+    checked_at: "2026-08-31T13:30:04.072Z",
+    message: "must not leave the host",
+  }), "kia-uvo-update status=conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=2 checked_at=2026-08-31T13:30:04.072Z");
+  assert.equal(statusLine(null), "kia-uvo-update status=unavailable");
 });

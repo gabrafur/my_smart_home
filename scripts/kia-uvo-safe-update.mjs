@@ -125,6 +125,26 @@ function writeStatus(value) {
   }
 }
 
+function safeStatusValue(value, fallback = "unknown") {
+  const normalized = String(value ?? "").trim();
+  return normalized && /^[A-Za-z0-9_.:+-]+$/.test(normalized)
+    ? normalized
+    : fallback;
+}
+
+export function statusLine(status) {
+  if (!status) return "kia-uvo-update status=unavailable";
+  return [
+    "kia-uvo-update",
+    `status=${safeStatusValue(status.state, "unknown")}`,
+    `installed_version=${safeStatusValue(status.installed_version)}`,
+    `latest_version=${safeStatusValue(status.latest_version)}`,
+    `patch_state=${safeStatusValue(status.patch_state)}`,
+    `conflicts=${Array.isArray(status.conflicts) ? status.conflicts.length : 0}`,
+    `checked_at=${safeStatusValue(status.checked_at)}`,
+  ].join(" ");
+}
+
 async function downloadArchive(version, destination) {
   const normalized = normalizeVersion(version);
   const url = `https://github.com/Hyundai-Kia-Connect/kia_uvo/archive/refs/tags/${normalized}.tar.gz`;
@@ -514,7 +534,9 @@ if (invoked) {
     await check(target, { force: args.includes("--force") });
   } else if (mode === "apply") {
     await apply(target);
+  } else if (mode === "status") {
+    console.log(statusLine(readStatus()));
   } else {
-    throw new Error("usage: kia-uvo-safe-update.mjs check|apply [--target vX.Y.Z]");
+    throw new Error("usage: kia-uvo-safe-update.mjs check|apply|status [--target vX.Y.Z]");
   }
 }

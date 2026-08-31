@@ -16,6 +16,9 @@ const runScript = path.join(scriptsDir, "run-daily-host-update.sh");
 const dietpiScript = path.join(scriptsDir, "dietpi-daily-upgrade.sh");
 const installBridge = path.join(scriptsDir, "install-daily-update-nodered-bridge.sh");
 const installHelper = path.join(scriptsDir, "install-dietpi-daily-upgrade-helper.sh");
+const requestKiaUpdate = path.join(scriptsDir, "request-host-kia-uvo-update-check.sh");
+const readKiaUpdate = path.join(scriptsDir, "read-host-kia-uvo-update-result.sh");
+const processKiaUpdate = path.join(scriptsDir, "process-kia-uvo-update-request.sh");
 
 test("Node-RED requests are coalesced and expose the final host result", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "daily-update-request-test-"));
@@ -34,6 +37,7 @@ test("Node-RED requests are coalesced and expose the final host result", () => {
   const first = spawnSync(requestScript, [], { encoding: "utf8", env });
   assert.equal(first.status, 0, first.stderr);
   assert.match(first.stdout, /status=accepted/);
+  assert.equal(fs.statSync(path.join(triggerDir, "requested")).mode & 0o060, 0o060);
   const requestId = fs.readFileSync(path.join(triggerDir, "requested"), "utf8").trim();
 
   const second = spawnSync(requestScript, [], { encoding: "utf8", env });
@@ -46,6 +50,7 @@ test("Node-RED requests are coalesced and expose the final host result", () => {
   const read = spawnSync(readScript, [], { encoding: "utf8", env });
   assert.equal(read.status, 0, read.stderr);
   assert.match(read.stdout, new RegExp(`status=success request_id=${requestId}`));
+  assert.equal(fs.statSync(path.join(triggerDir, "result")).mode & 0o060, 0o060);
   assert.match(read.stdout, /dietpi_exit=0 containers_exit=0/);
   assert.equal(spawnSync(processScript, [], { encoding: "utf8", env }).status, 0);
   assert.equal(fs.readFileSync(calls, "utf8"), "called\n");
@@ -94,6 +99,46 @@ test("a failed host update records a terminal result without an infinite retry",
   assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /exit_code=23/);
   assert.ok(!fs.existsSync(path.join(triggerDir, "requested")));
   assert.ok(!fs.existsSync(path.join(triggerDir, "processing")));
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("Node-RED Kia requests run only the safe checker and expose a sanitized result", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-update-request-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const fakeNode = path.join(fixture, "node");
+  const fakeUpdater = path.join(fixture, "kia-uvo-safe-update.mjs");
+  const fakeDetector = path.join(fixture, "docker-auto-update.mjs");
+  const calls = path.join(fixture, "calls");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(fakeUpdater, "fixture\n");
+  fs.writeFileSync(fakeDetector, "fixture\n");
+  fs.writeFileSync(fakeNode, `#!/bin/sh\nprintf '%s\\n' "$2" >> "${calls}"\nif [ "$2" = "status" ]; then\n  echo 'kia-uvo-update status=conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T13:30:04.072Z'\nfi\n`);
+  fs.chmodSync(fakeNode, 0o755);
+  const env = {
+    ...process.env,
+    DAILY_UPDATE_TRIGGER_DIR: triggerDir,
+    KIA_UVO_UPDATE_NODE_BIN: fakeNode,
+    KIA_UVO_UPDATE_SCRIPT: fakeUpdater,
+    KIA_UVO_UPDATE_DETECTOR: fakeDetector,
+  };
+
+  const request = spawnSync(requestKiaUpdate, [], { encoding: "utf8", env });
+  assert.equal(request.status, 0, request.stderr);
+  assert.match(request.stdout, /status=accepted/);
+  assert.equal(fs.statSync(path.join(triggerDir, "kia-uvo-requested")).mode & 0o060, 0o060);
+  const duplicate = spawnSync(requestKiaUpdate, [], { encoding: "utf8", env });
+  assert.equal(duplicate.status, 0, duplicate.stderr);
+  assert.match(duplicate.stdout, /status=coalesced/);
+
+  const processed = spawnSync(processKiaUpdate, [], { encoding: "utf8", env });
+  assert.equal(processed.status, 0, processed.stderr);
+  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), ["ha-updates", "status"]);
+  const read = spawnSync(readKiaUpdate, [], { encoding: "utf8", env });
+  assert.equal(read.status, 0, read.stderr);
+  assert.match(read.stdout, /status=conflict/);
+  assert.match(read.stdout, /request_id=/);
+  assert.equal(fs.statSync(path.join(triggerDir, "kia-uvo-result")).mode & 0o060, 0o060);
+  assert.doesNotMatch(read.stdout, /private|message=/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
@@ -177,7 +222,7 @@ test("the DietPi helper uses update then bounded non-removing upgrade", () => {
   assert.match(installer, /visudo -cf/);
 });
 
-test("the cron installer replaces only the direct daily container schedule", () => {
+test("the cron installer migrates direct update schedules to Node-RED bridges", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "daily-update-cron-test-"));
   const bin = path.join(fixture, "bin");
   const state = path.join(fixture, "crontab");
@@ -201,11 +246,13 @@ test("the cron installer replaces only the direct daily container schedule", () 
     const result = spawnSync(installBridge, [], { encoding: "utf8", env });
     assert.equal(result.status, 0, result.stderr);
   }
+  assert.equal(fs.statSync(triggerDir).mode & 0o2770, 0o2770);
   const installed = fs.readFileSync(state, "utf8");
   assert.equal((installed.match(/BEGIN Smart home Node-RED daily update bridge/g) ?? []).length, 1);
   assert.doesNotMatch(installed, /docker-auto-update\.mjs daily/);
-  assert.match(installed, /docker-auto-update\.mjs ha-updates/);
+  assert.doesNotMatch(installed, /docker-auto-update\.mjs ha-updates/);
   assert.match(installed, /process-daily-update-request\.sh/);
+  assert.match(installed, /process-kia-uvo-update-request\.sh/);
   assert.match(installed, /nice -n 15 .*ionice -c 3/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });

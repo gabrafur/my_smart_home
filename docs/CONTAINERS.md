@@ -223,9 +223,12 @@ sucesso. A ponte do host executa primeiro `apt-get update` e
 `/boot/dietpi/dietpi-update 1`, que verifica e aplica de forma não interativa
 uma atualização do próprio DietPi quando disponível, e depois chama
 `scripts/docker-auto-update.mjs daily` para reconciliar os sete provedores de
-imagem. Não há reboot automático. O instalador da ponte remove do `crontab`
-somente a chamada diária direta de `docker-auto-update.mjs`; o watcher
-`ha-updates` de 30 minutos permanece independente.
+imagem. Não há reboot automático. No mesmo tab, um agendamento de 30 minutos
+aciona o watcher HA no host. Kia UVO/Hyundai Bluelink recebe somente análise
+segura, sem `update.install`, enquanto as demais entidades seguras preservam a
+política anterior. O instalador da ponte remove do `crontab` as chamadas
+diretas de `docker-auto-update.mjs daily` e `ha-updates`; permanecem apenas os
+workers coalescentes de um minuto acionados pelo Node-RED.
 
 O Node-RED não recebe `sudo`, checkout nem socket Docker. O helper instalado em
 `/usr/local/sbin` pertence a `root`, e o arquivo de `sudoers` autoriza somente

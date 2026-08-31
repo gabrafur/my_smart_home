@@ -4,17 +4,19 @@ set -eu
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repo_root=$(dirname "$script_dir")
 trigger_dir="${DAILY_UPDATE_TRIGGER_DIR:-$repo_root/homeassistant/.daily-update-trigger}"
-update_script="${HOST_DAILY_UPDATE_SCRIPT:-$script_dir/run-daily-host-update.sh}"
-request_file="$trigger_dir/requested"
-processing_file="$trigger_dir/processing"
-result_file="$trigger_dir/result"
-detail_file="$trigger_dir/detail"
+node_bin="${KIA_UVO_UPDATE_NODE_BIN:-/usr/bin/node}"
+detector_script="${KIA_UVO_UPDATE_DETECTOR:-$script_dir/docker-auto-update.mjs}"
+status_script="${KIA_UVO_UPDATE_SCRIPT:-$script_dir/kia-uvo-safe-update.mjs}"
+request_file="$trigger_dir/kia-uvo-requested"
+processing_file="$trigger_dir/kia-uvo-processing"
+result_file="$trigger_dir/kia-uvo-result"
 
 case "$trigger_dir" in
   /*) ;;
   *) echo "DAILY_UPDATE_TRIGGER_DIR must be absolute" >&2; exit 64 ;;
 esac
-[ -x "$update_script" ] || { echo "Daily update script is unavailable: $update_script" >&2; exit 66; }
+[ -r "$detector_script" ] || { echo "Kia UVO update detector is unavailable: $detector_script" >&2; exit 66; }
+[ -r "$status_script" ] || { echo "Kia UVO safe updater is unavailable: $status_script" >&2; exit 66; }
 mkdir -p "$trigger_dir"
 
 if [ ! -f "$processing_file" ]; then
@@ -30,10 +32,9 @@ else
   request_id="unreadable"
 fi
 [ -n "$request_id" ] || request_id="invalid"
-started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 publish_result() {
-  temporary="$trigger_dir/result.$$"
+  temporary="$trigger_dir/kia-uvo-result.$$"
   umask 007
   printf '%s\n' "$1" > "$temporary"
   mv "$temporary" "$result_file"
@@ -44,22 +45,15 @@ restore_request() {
     rm -f -- "$request_file"
     mv "$processing_file" "$request_file"
   fi
-  publish_result "daily-update status=deferred request_id=$request_id started_at=$started_at finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  publish_result "kia-uvo-update status=deferred request_id=$request_id"
 }
 trap 'restore_request; exit 75' HUP INT TERM
 
-publish_result "daily-update status=running request_id=$request_id started_at=$started_at"
-rm -f -- "$detail_file"
+publish_result "kia-uvo-update status=running request_id=$request_id"
 set +e
-DAILY_UPDATE_DETAIL_FILE="$detail_file" "$update_script"
+"$node_bin" "$detector_script" ha-updates
 status=$?
 set -e
-
-detail=""
-if [ -r "$detail_file" ]; then
-  detail=$(sed -n '1p' "$detail_file" | tr -cd 'A-Za-z0-9_.:= -')
-fi
-finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
 if [ "$status" -eq 75 ]; then
   restore_request
@@ -70,9 +64,10 @@ fi
 rm -f -- "$processing_file"
 trap - HUP INT TERM
 if [ "$status" -eq 0 ]; then
-  publish_result "daily-update status=success request_id=$request_id started_at=$started_at finished_at=$finished_at $detail"
+  summary=$("$node_bin" "$status_script" status)
+  publish_result "$summary request_id=$request_id"
   exit 0
 fi
 
-publish_result "daily-update status=failed request_id=$request_id started_at=$started_at finished_at=$finished_at exit_code=$status $detail"
+publish_result "kia-uvo-update status=failed request_id=$request_id exit_code=$status"
 exit "$status"
