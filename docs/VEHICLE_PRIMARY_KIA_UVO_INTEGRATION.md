@@ -49,6 +49,12 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   publico. O clique manual `Atualizar agora` ignora somente o cooldown; ele
   nunca atravessa uma chamada em andamento. Depois de qualquer wake, o prazo
   automatico seguinte e ancorado no aceite da chamada pelo Home Assistant.
+- O backend BR pode publicar o snapshot mais de dois minutos depois de aceitar
+  o wake. Se o aguardo fixo de 25 segundos da biblioteca expirar, o coordinator
+  agenda seis releituras limitadas de `/latest` ao longo dos 150 segundos
+  seguintes. Essas releituras consultam somente o cache, nao emitem outro wake
+  e param assim que o timestamp semantico do veiculo comprova dado posterior
+  a solicitacao.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
   odometro avanca e na chegada do vehicle_primary. O dashboard nao depende mais de press
   manual para voltar a exibir viagens depois de restart.

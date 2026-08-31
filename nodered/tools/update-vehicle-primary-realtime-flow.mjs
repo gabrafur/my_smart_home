@@ -12,7 +12,15 @@ function replaceOnce(source, before, after, label) {
 
 const locationEvent = byId.get("46c2142f93cfc3e1");
 assert(locationEvent, "evento de localização do vehicle_primary ausente");
-locationEvent.name = "Localização do vehicle_primary atualizada";
+locationEvent.name = "Localização ou telemetria do vehicle_primary mudou";
+locationEvent.entities = {
+  entity: [
+    "device_tracker.vehicle_primary",
+    "sensor.vehicle_primary_last_updated_at",
+  ],
+  substring: [],
+  regex: [],
+};
 locationEvent.outputOnlyOnStateChange = false;
 
 const normalizer = byId.get("092625f2eb5cc156");

@@ -447,6 +447,30 @@ scenario("24 cache atrasado posterior ao baseline não confirma wake", () => {
   assert.equal(state.last_success_at ?? 0, 0);
 });
 
+scenario("25 telemetria do wake processada após seis minutos confirma sucesso", () => {
+  const baseline = DAY - 10 * 60_000;
+  const requestAt = DAY - 6 * 60_000;
+  const delayedTelemetry = requestAt + 2 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 2,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: requestAt + 15 * 60_000,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  normalize(store, DAY, DAY, delayedTelemetry);
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.attempts, 0);
+  assert.equal(state.last_success_at, DAY);
+});
+
 scenario("17 recuperação posterior da integração", () => {
   const baseline = DAY - 17 * 60_000;
   const store = memory({

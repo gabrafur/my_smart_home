@@ -244,6 +244,16 @@ removeNode("77cf2dfe4ff36964");
 removeNode("684feca0f1585885");
 
 const normalizer = required("092625f2eb5cc156");
+const locationOrTelemetryEvent = required("46c2142f93cfc3e1");
+locationOrTelemetryEvent.name = "Localização ou telemetria do vehicle_primary mudou";
+locationOrTelemetryEvent.entities = {
+  entity: [
+    "device_tracker.vehicle_primary",
+    "sensor.vehicle_primary_last_updated_at",
+  ],
+  substring: [],
+  regex: [],
+};
 const semanticEvidenceInputIds = [
   "46c2142f93cfc3e1",
   "94164ea9e4f5c8d1",
@@ -413,6 +423,14 @@ for (const marker of [
   if (!normalizer.func.includes(marker)) {
     throw new Error(`Contrato de evidência semântica ausente: ${marker}`);
   }
+}
+normalizer.func = normalizer.func.replace(
+  "Date.now() - lastAttemptAt <= 5 * 60 * 1000;",
+  `Date.now() - lastAttemptAt <=
+        15 * 60 * 1000 + FUTURE_TOLERANCE_MS;`,
+);
+if (!normalizer.func.includes("15 * 60 * 1000 + FUTURE_TOLERANCE_MS")) {
+  throw new Error("Normalizer sem janela para telemetria BR atrasada");
 }
 normalizer.func = normalizer.func.replace(
   '        "security_vehicle_primary_test_clock"',

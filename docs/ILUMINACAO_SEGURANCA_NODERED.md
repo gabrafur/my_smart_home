@@ -335,7 +335,12 @@ depende exclusivamente de um `delay` residente em memória.
   dados associados a um `sensor.vehicle_primary_last_updated_at` posterior ao
   baseline e ao wake avaliado, e que o alvo de readiness seja atingido. O `last_updated` interno
   das entidades não serve como prova, pois também avança ao reler o cache ou
-  recarregar a integração.
+  recarregar a integração. A mudança do próprio sensor semântico entra como
+  evento no normalizador, mesmo quando localização, motor e trava mantêm o
+  mesmo valor, para que uma resposta atrasada confirme o wake imediatamente.
+  A confirmação aceita processamento atrasado por até 15 minutos, mas ainda
+  exige timestamp semântico posterior ao baseline e à solicitação; isso cobre
+  reconexão/restart sem permitir que cache histórico confirme a tentativa.
   `401 Unauthorized`, timeout e aceite sem dado novo mantêm backoff; 401 no
   polling de cache do backend BR é reavaliado a cada 15 min sem descarregar o
   config entry.

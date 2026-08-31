@@ -13,7 +13,7 @@ const aliasesByName = {
   vehicle_primary_unlock_event: "Porta destravada por 5 s",
   vehicle_primary_engine_on_event: "Motor ligado por 5 s",
   vehicle_primary_engine_off_event: "Motor desligado por 5 s",
-  vehicle_primary_location_event: "Localização do vehicle_primary atualizada",
+  vehicle_primary_location_event: "Localização ou telemetria do vehicle_primary mudou",
   context_coordinator: "Coordenar snapshot e refresh",
   context_tick: "Reavaliar contextos a cada 30 s",
   light_merge_context: "Atualizar contexto de alto nível",
@@ -193,9 +193,12 @@ scenario("02a eventos de motor ON e OFF são simétricos com filtro de 5 s", () 
   }
 });
 
-scenario("02b localização preserva home, chegando e not_home; away é derivado", () => {
+scenario("02b localização e telemetria alimentam o contexto do veículo", () => {
   const locationEvent = byId.get("vehicle_primary_location_event");
-  assert.deepEqual(locationEvent.entities.entity, ["device_tracker.vehicle_primary"]);
+  assert.deepEqual(locationEvent.entities.entity, [
+    "device_tracker.vehicle_primary",
+    "sensor.vehicle_primary_last_updated_at",
+  ]);
   assert.equal(locationEvent.outputOnlyOnStateChange, false);
 
   const home = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "context_snapshot", current: "home", distance: null }), memoryFlow(), geoEnv)[0];

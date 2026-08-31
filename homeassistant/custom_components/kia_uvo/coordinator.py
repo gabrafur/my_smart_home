@@ -72,6 +72,8 @@ BR_CURRENT_USER_AGENT = (
     "Mobile Safari/535.19_CCS_APP_AOS"
 )
 BR_DEVICE_REGISTRATION_PATH = "/spa/notifications/register"
+BR_FRESH_DATA_RECHECK_DELAYS_S = (15, 15, 30, 30, 30, 30)
+BR_FRESH_DATA_CLOCK_TOLERANCE = timedelta(seconds=60)
 TRIP_INFO_BACKGROUND_TIMEOUT_S = 120
 TRIP_INFO_RETRY_DELAY_S = 60
 TRIP_INFO_MAX_AGE = timedelta(hours=6)
@@ -94,6 +96,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.platforms: set[str] = set()
         self._action_lock = asyncio.Lock()
         self._force_refresh_lock = asyncio.Lock()
+        self._br_fresh_data_recheck_tasks: dict[str, asyncio.Task] = {}
         # The Brazilian API exposes one calendar day per request. Keep the
         # dashboard window separate from vehicle.day_trip_info so that the
         # existing entity continues to mean "today".
@@ -363,6 +366,9 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 self.async_set_updated_data(self.data)
                 return
+            vehicle = self.vehicle_manager.vehicles.get(vehicle_id)
+            baseline_updated_at = getattr(vehicle, "last_updated_at", None)
+            requested_at = dt.datetime.now(dt.UTC)
             _LOGGER.info("CRETA_REFRESH_REQUESTED source=force_refresh_button")
             try:
                 await self.hass.async_add_executor_job(
@@ -385,12 +391,20 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                 self.async_set_updated_data(self.data)
                 if no_fresh_data:
-                    # The BR wake can be accepted while the parked vehicle
-                    # remains unreachable. Absence of fresh timestamps is
-                    # the scheduler's failure signal and remains in backoff.
+                    # The BR wake is asynchronous and this vehicle has been
+                    # observed publishing more than two minutes after the
+                    # library's fixed 25-second wait. Keep the service call
+                    # bounded, then re-read /latest in the background without
+                    # issuing another wake. Node-RED still requires the
+                    # semantic vehicle timestamp before declaring success.
+                    self._schedule_br_fresh_data_recheck(
+                        vehicle_id,
+                        baseline_updated_at,
+                        requested_at,
+                    )
                     _LOGGER.warning(
                         "CRETA_REFRESH_NO_FRESH_DATA vehicle_id=%s; "
-                        "keeping cached state: %s",
+                        "scheduled bounded cached rechecks: %s",
                         vehicle_id,
                         err,
                     )
@@ -404,6 +418,104 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     f"Vehicle refresh failed: {type(err).__name__}"
                 ) from err
             self.async_set_updated_data(self.data)
+
+    @staticmethod
+    def _br_timestamp_is_fresh(
+        current: dt.datetime | None,
+        baseline: dt.datetime | None,
+        requested_at: dt.datetime,
+    ) -> bool:
+        """Return whether a BR timestamp proves data from the current wake."""
+
+        def as_utc(value: dt.datetime | None) -> dt.datetime | None:
+            if not isinstance(value, dt.datetime):
+                return None
+            if value.tzinfo is None:
+                return value.replace(tzinfo=dt.UTC)
+            return value.astimezone(dt.UTC)
+
+        current_utc = as_utc(current)
+        baseline_utc = as_utc(baseline)
+        requested_utc = as_utc(requested_at)
+        if current_utc is None or requested_utc is None:
+            return False
+        return (
+            (baseline_utc is None or current_utc > baseline_utc)
+            and current_utc >= requested_utc - BR_FRESH_DATA_CLOCK_TOLERANCE
+        )
+
+    def _schedule_br_fresh_data_recheck(
+        self,
+        vehicle_id: str,
+        baseline_updated_at: dt.datetime | None,
+        requested_at: dt.datetime,
+    ) -> None:
+        """Schedule bounded cached reads after a slow asynchronous BR wake."""
+        current = self._br_fresh_data_recheck_tasks.get(vehicle_id)
+        if current is not None and not current.done():
+            current.cancel()
+        task = self.hass.async_create_background_task(
+            self._async_recheck_br_fresh_data(
+                vehicle_id,
+                baseline_updated_at,
+                requested_at,
+            ),
+            "kia_uvo BR fresh-data recheck",
+        )
+        self._br_fresh_data_recheck_tasks[vehicle_id] = task
+
+    async def _async_recheck_br_fresh_data(
+        self,
+        vehicle_id: str,
+        baseline_updated_at: dt.datetime | None,
+        requested_at: dt.datetime,
+    ) -> None:
+        """Poll only the cached endpoint until the delayed wake appears."""
+        try:
+            for attempt, delay_s in enumerate(
+                BR_FRESH_DATA_RECHECK_DELAYS_S,
+                start=1,
+            ):
+                await asyncio.sleep(delay_s)
+                if self._force_refresh_lock.locked():
+                    continue
+                try:
+                    async with self._force_refresh_lock:
+                        await self.hass.async_add_executor_job(
+                            self.vehicle_manager.update_vehicle_with_cached_state,
+                            vehicle_id,
+                        )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as err:
+                    _LOGGER.warning(
+                        "CRETA_REFRESH_RECHECK_FAILED attempt=%d error=%s",
+                        attempt,
+                        type(err).__name__,
+                    )
+                    continue
+
+                vehicle = self.vehicle_manager.vehicles.get(vehicle_id)
+                current_updated_at = getattr(vehicle, "last_updated_at", None)
+                if not self._br_timestamp_is_fresh(
+                    current_updated_at,
+                    baseline_updated_at,
+                    requested_at,
+                ):
+                    continue
+                self.async_set_updated_data(self.data)
+                _LOGGER.info(
+                    "CRETA_REFRESH_DELAYED_DATA_RECEIVED attempt=%d",
+                    attempt,
+                )
+                return
+            _LOGGER.warning(
+                "CRETA_REFRESH_RECHECK_EXHAUSTED no fresh semantic timestamp"
+            )
+        finally:
+            current = self._br_fresh_data_recheck_tasks.get(vehicle_id)
+            if current is asyncio.current_task():
+                self._br_fresh_data_recheck_tasks.pop(vehicle_id, None)
 
     async def async_refresh_day_trip_info(self, vehicle_id: str) -> None:
         """Fetch today's trip log and the preceding calendar day.

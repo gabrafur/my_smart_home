@@ -253,6 +253,15 @@ assert.match(dispatchGuard.func, /dispatched:\s*false/);
 
 const forceRefresh = flows.find((node) => node.id === "8907830bb7f6c40c");
 assert.deepEqual(forceRefresh.wires, [["vehicle_primary_refresh_accepted_v1"]]);
+const semanticTelemetryEvent = flows.find(
+  (node) => node.id === "46c2142f93cfc3e1",
+);
+assert.ok(
+  semanticTelemetryEvent.entities.entity.includes(
+    "sensor.vehicle_primary_last_updated_at",
+  ),
+  "o timestamp semântico precisa disparar a confirmação do wake",
+);
 const accepted = flows.find(
   (node) => node.id === "vehicle_primary_refresh_accepted_v1",
 );
@@ -306,4 +315,4 @@ for (const node of flows.filter((item) => item.type === "api-call-service")) {
   }
 }
 
-console.log("vehicle_primary dashboard controls: 7 cenários aprovados.");
+console.log("vehicle_primary dashboard controls: 8 cenários aprovados.");
