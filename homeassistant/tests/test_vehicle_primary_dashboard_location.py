@@ -33,6 +33,10 @@ def main() -> None:
     assert "**Atualização dos dados**" in dashboard
     assert "nova verificação em cerca de" in dashboard
     assert "verificando agora o cache do servidor antes de outro wake" in dashboard
+    assert "Integração Bluelink ainda indisponível" in dashboard
+    assert "próximo retry automático em cerca de" in dashboard
+    assert "nenhuma consulta ao servidor está em andamento" in dashboard
+    assert "refresh_failure == 'api_error' and cache_age_s is none" in dashboard
     assert "<ha-alert" not in dashboard
     assert "🟢" in dashboard
     assert "🔵" in dashboard

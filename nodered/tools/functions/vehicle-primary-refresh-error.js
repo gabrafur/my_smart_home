@@ -3,7 +3,9 @@ const source = String(msg.error?.source?.name ?? "unknown")
 const message = String(msg.error?.message ?? "unknown")
     .replace(/[\r\n]+/g, " ")
     .slice(0, 240);
-const failureClass = /(?:401|unauthori[sz]ed|authentic)/i.test(message)
+const failureClass = /service\s+kia_uvo\.update\s+not\s+found/i.test(message)
+    ? "integration_unavailable"
+    : /(?:401|unauthori[sz]ed|authentic)/i.test(message)
     ? "authentication"
     : /(?:timeout|timed out|readtimeout)/i.test(message)
         ? "timeout"

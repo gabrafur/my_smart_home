@@ -352,6 +352,7 @@ for (const [number, state] of [["08", "unknown"], ["09", "unavailable"]]) {
 for (const [number, message, expected] of [
   ["10", "401 Unauthorized", "authentication"],
   ["11", "ReadTimeout while contacting Bluelink", "timeout"],
+  ["35", "HomeAssistantError: Service kia_uvo.update not found.", "integration_unavailable"],
 ]) {
   scenario(`${number} ${message}`, () => {
     const store = memory({

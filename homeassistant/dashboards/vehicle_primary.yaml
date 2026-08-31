@@ -21,6 +21,7 @@ views:
               {% set age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
               {% set refresh_state = states('sensor.vehicle_primary_refresh_coordinator') %}
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
+              {% set refresh_failure = state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_failure_class') %}
 
               # {{ 'Em uso' if engine else 'Estacionado' }}
 
@@ -298,6 +299,7 @@ views:
               {% if refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa.
               {% elif refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] %}🔵 **Wake em andamento** · aguardando o Bluelink publicar dados do carro.
               {% elif data_after_wake %}🟢 **Último wake confirmado por dados novos**{% if remaining_min > 0 %} · próximo ciclo em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
+              {% elif refresh_state == 'backoff' and (refresh_failure == 'integration_unavailable' or (refresh_failure == 'api_error' and cache_age_s is none and data_age_min is none)) %}🟡 **Integração Bluelink ainda indisponível**{% if remaining_min > 0 %} · próximo retry automático em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}; nenhuma consulta ao servidor está em andamento.
               {% elif refresh_state in ['probing_cache', 'backoff'] %}🟡 **O último wake ainda não produziu dados novos**{% if refresh_state == 'probing_cache' %} · verificando agora o cache do servidor antes de outro wake{% elif remaining_min > 0 %} · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
               {% elif refresh_state == 'cooldown' %}🟢 **Próximo wake periódico em cerca de {{ format_number_ptbr(remaining_min) }} min** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
               {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.

@@ -160,6 +160,12 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 `cooldown_until`, alem de `request_in_flight`, `in_flight_until`,
 `service_accepted_at` e `last_failure_class`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
+Quando o serviço `kia_uvo.update` ainda não existe porque o config entry não
+conseguiu carregar, a falha é publicada como `integration_unavailable`. Nesse
+estado, o dashboard não apresenta o próximo tick local como se fosse uma
+consulta ao servidor: apresenta o tempo restante como `próximo retry
+automático`, informa explicitamente que nenhuma consulta está em andamento e
+que o Home Assistant tentará carregar a integração novamente.
 `input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
 `reason=manual_force`: ignora `next_allowed_at`, inclusive durante cooldown ou
 backoff, e envia um novo wake. Ele nao quebra uma tentativa em voo; nesse unico
