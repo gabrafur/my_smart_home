@@ -2,11 +2,16 @@
  * Sucesso depende de timestamps novos nas entidades e é confirmado pelo
  * normalizador após a rechecagem. */
 const key = "security_vehicle_primary_refresh_v1";
+const INTERVAL_MS = 15 * 60 * 1000;
 const state = flow.get(key, "persistent") ?? {};
 const now = Date.now();
 state.request_in_flight = false;
 state.in_flight_until = null;
 state.service_accepted_at = now;
+state.next_allowed_at = Math.max(
+    Number(state.next_allowed_at ?? 0),
+    now + INTERVAL_MS
+);
 state.state = "awaiting_evidence";
 state.reason = state.recovery_reason ?? "service_accepted_awaiting_evidence";
 state.next_retry_at = Number(state.next_allowed_at ?? 0) || null;

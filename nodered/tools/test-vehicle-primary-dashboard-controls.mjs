@@ -72,7 +72,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     next_allowed_at: now + 600_000,
     awaiting_evidence: false,
   };
-  const blocked = runtime(coordinator, {
+  const first = runtime(coordinator, {
     now,
     values: {
       vehicle_primary_context_v1: { ready: true, location: {}, engine_updated_at: 1, lock_updated_at: 1 },
@@ -86,33 +86,17 @@ const now = Date.parse("2026-08-17T03:00:00Z");
       },
     },
   });
-  assert.ok(Array.isArray(blocked.result));
-  assert.equal(blocked.result[0], null);
-  assert.equal(blocked.result[2].notification.id, "vehicle_primary_refresh_blocked");
-  assert.match(blocked.result[2].notification.message, /intervalo mínimo/i);
-
-  const first = runtime(coordinator, {
-    now: now + 14 * 60_000,
-    values: {
-      vehicle_primary_context_v1: { ready: true, location: {}, engine_updated_at: 1, lock_updated_at: 1 },
-      security_vehicle_primary_refresh_v1: blocked.store.get("security_vehicle_primary_refresh_v1"),
-    },
-    msg: {
-      payload: {
-        kind: "refresh_command",
-        reason: "manual_force",
-        force_recovery: true,
-      },
-    },
-  });
   assert.ok(Array.isArray(first.result));
+  assert.ok(first.result[0]);
+  assert.ok(first.result[1]);
+  assert.equal(first.result[2], null);
   const stored = first.store.get("security_vehicle_primary_refresh_v1");
   assert.equal(stored.state, "refreshing");
   assert.equal(stored.attempts, 1);
   assert.equal(stored.manual_force, true);
 
   const second = runtime(coordinator, {
-    now: now + 14 * 60_000 + 1_000,
+    now: now + 1_000,
     values: {
       vehicle_primary_context_v1: { ready: true },
       security_vehicle_primary_refresh_v1: stored,

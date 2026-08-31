@@ -617,6 +617,41 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
         )
         assert calls == ["wake", "cache"]
 
+    async def test_force_refresh_allows_sequential_manual_wakes(self):
+        calls = []
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+            vehicles = {VEHICLE_ID: SimpleNamespace(last_updated_at=None)}
+
+            @staticmethod
+            def force_refresh_vehicle_state(vehicle_id):
+                calls.append(vehicle_id)
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            async_check_and_refresh_token=no_op,
+            data={},
+            async_set_updated_data=lambda _data: None,
+        )
+        await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+            coordinator, VEHICLE_ID
+        )
+        await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+            coordinator, VEHICLE_ID
+        )
+        assert calls == [VEHICLE_ID, VEHICLE_ID]
+
     async def test_force_refresh_unexpected_failure_is_surfaced(self):
         class Manager:
             api = HyundaiBlueLinkApiBR([])

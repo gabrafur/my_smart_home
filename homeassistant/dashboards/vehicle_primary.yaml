@@ -148,7 +148,7 @@ views:
             cards:
               - type: tile
                 entity: input_button.vehicle_primary_force_refresh_now
-                name: Atualizar
+                name: Atualizar agora
                 icon: mdi:refresh
                 hide_state: true
                 tap_action:

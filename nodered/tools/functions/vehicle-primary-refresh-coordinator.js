@@ -33,7 +33,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
     state = {};
 }
 
-state.version = 4;
+state.version = 5;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -150,12 +150,11 @@ const requestedReason = msg.payload?.reason ??
     (recoveryNeeded ? "readiness_recovery_needed" : "scheduled_refresh");
 
 /*
- * O backend brasileiro e o coordinator Python impõem 15 minutos entre
- * wakes reais. Stale de segurança, movimento, chegada e clique manual podem
- * pedir uma avaliação imediata, mas nunca tornam útil despachar outra chamada
- * antes desse piso: ela leria somente o mesmo cache e seria contada como uma
- * nova falha sem qualquer chance de acordar o veículo.
+ * Entradas automáticas respeitam 15 minutos entre wakes. O clique explícito
+ * do dashboard ignora esse deadline, mas continua passando pelo lease acima:
+ * uma chamada em andamento nunca recebe concorrência.
  */
+const manualBypass = requestedReason === "manual_force";
 
 const hour = new Date(now).getHours();
 const daytime = hour >= 7 && hour < 22;
@@ -178,7 +177,7 @@ if (!enabled) {
     return null;
 }
 
-if (now < state.next_allowed_at) {
+if (!manualBypass && now < state.next_allowed_at) {
     const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));
     const waitingEvidence = state.awaiting_evidence === true;
     save(waitingEvidence ? "backoff" : "cooldown", requestedReason, {

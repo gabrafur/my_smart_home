@@ -177,7 +177,7 @@ scenario("04 alguém fora de casa", () => {
   assert(coordinator(store, NIGHT, { anyone_away: true }));
 });
 
-scenario("05 refresh manual respeita piso e permanece serializado", () => {
+scenario("05 refresh manual ignora cooldown e permanece serializado", () => {
   const store = memory({
     vehicle_primary_context_v1: readyContext(DAY),
     [KEY]: {
@@ -188,19 +188,16 @@ scenario("05 refresh manual respeita piso e permanece serializado", () => {
       next_allowed_at: DAY + 15 * 60_000,
     },
   });
-  const blocked = coordinator(store, DAY + 1_000, {
-    reason: "manual_force",
-    force_recovery: true,
-  });
-  assert.equal(blocked[0], null);
-  assert.equal(blocked[2].notification.id, "vehicle_primary_refresh_blocked");
-
-  const first = coordinator(store, DAY + 15 * 60_000, {
+  const first = coordinator(store, DAY + 1_000, {
     reason: "manual_force",
     force_recovery: true,
   });
   assert(first[0]);
-  const second = coordinator(store, DAY + 15 * 60_000 + 1_000, {
+  assert(first[1]);
+  assert.equal(first[2], null);
+  assert.equal(store.get(KEY).last_request_at, DAY + 1_000);
+
+  const second = coordinator(store, DAY + 2_000, {
     reason: "manual_force",
     force_recovery: true,
   });
@@ -364,11 +361,44 @@ scenario("16 serviço aceito sem evidência nova não é sucesso", () => {
     },
   });
   execute(code.accepted, { now: DAY, store, msg: command() });
+  assert.equal(store.get(KEY).next_allowed_at, DAY + 15 * 60_000);
   normalize(store, DAY + 15_000, baseline);
   const state = store.get(KEY);
   assert.equal(state.awaiting_evidence, true);
   assert.equal(state.last_success_at ?? 0, 0);
   assert.equal(state.state, "awaiting_evidence");
+  assert.equal(state.next_allowed_at, DAY + 15 * 60_000);
+});
+
+scenario("22 aceite tardio ancora e evidência não encurta o piso", () => {
+  const baseline = DAY - 30_000;
+  const dispatchAt = DAY;
+  const acceptedAt = DAY + 26_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: true,
+      last_attempt_at: dispatchAt,
+      last_request_at: dispatchAt,
+      next_allowed_at: dispatchAt + 15 * 60_000,
+      baseline_observed_at: {
+        location: baseline,
+        engine: baseline,
+        lock: baseline,
+      },
+    },
+  });
+  execute(code.accepted, { now: acceptedAt, store, msg: command() });
+  const acceptedDeadline = acceptedAt + 15 * 60_000;
+  assert.equal(store.get(KEY).next_allowed_at, acceptedDeadline);
+
+  normalize(store, acceptedAt + 4_000, acceptedAt + 4_000);
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.next_allowed_at, acceptedDeadline);
+  assert.equal(state.cooldown_until, acceptedDeadline);
 });
 
 scenario("17 recuperação posterior da integração", () => {

@@ -65,10 +65,6 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# Piso de seguranca entre dois wakes reais. O Node-RED e o unico agendador de
-# wakes periodicos, mas este piso continua sendo uma defesa local para chamadas
-# manuais ou clientes que atinjam o botao privado por engano.
-BR_WAKE_MIN_INTERVAL_S = 15 * 60
 BR_CURRENT_APPLICATION_ID = "213a491a-0d7c-4d6a-ac03-a2df127d73b0"
 BR_CURRENT_USER_AGENT = (
     "Mozilla/5.0 (Linux; Android 4.1.1; Galaxy Nexus Build/JRO03C) "
@@ -109,8 +105,6 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self._trip_history_initialized: set[str] = set()
         self._trip_refresh_tasks: dict[str, asyncio.Task] = {}
         self._last_trip_refresh_success_at: dict[str, dt.datetime] = {}
-        self._br_last_button_wake_at: dt.datetime | None = None
-
         self.vehicle_manager = VehicleManager(
             region=config_entry.data.get(CONF_REGION),
             brand=config_entry.data.get(CONF_BRAND),
@@ -369,69 +363,46 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 )
                 self.async_set_updated_data(self.data)
                 return
-            vehicle = self.vehicle_manager.vehicles[vehicle_id]
-            now = dt_util.utcnow()
-            recent = self._br_last_button_wake_at
-            cooldown_active = (
-                type(api).__name__ == "HyundaiBlueLinkApiBR"
-                and recent is not None
-                and (now - dt_util.as_utc(recent)).total_seconds()
-                < BR_WAKE_MIN_INTERVAL_S
-            )
-            if cooldown_active:
-                age = (now - dt_util.as_utc(recent)).total_seconds()
-                _LOGGER.info(
-                    "CRETA_REFRESH_SUPPRESSED cooldown_active=true age_seconds=%.0f "
-                    "minimum_seconds=%d",
-                    age,
-                    BR_WAKE_MIN_INTERVAL_S,
-                )
+            _LOGGER.info("CRETA_REFRESH_REQUESTED source=force_refresh_button")
+            try:
                 await self.hass.async_add_executor_job(
-                    self.vehicle_manager.update_vehicle_with_cached_state, vehicle_id
+                    self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
                 )
-            else:
-                _LOGGER.info("CRETA_REFRESH_REQUESTED source=force_refresh_button")
-                if type(api).__name__ == "HyundaiBlueLinkApiBR":
-                    self._br_last_button_wake_at = now
+            except Exception as err:
+                no_fresh_data = (
+                    type(api).__name__ == "HyundaiBlueLinkApiBR"
+                    and isinstance(err, APIError)
+                    and "did not return fresh data in time" in str(err)
+                )
                 try:
                     await self.hass.async_add_executor_job(
-                        self.vehicle_manager.force_refresh_vehicle_state, vehicle_id
+                        self.vehicle_manager.update_vehicle_with_cached_state,
+                        vehicle_id,
                     )
-                except Exception as err:
-                    no_fresh_data = (
-                        type(api).__name__ == "HyundaiBlueLinkApiBR"
-                        and isinstance(err, APIError)
-                        and "did not return fresh data in time" in str(err)
+                except Exception:
+                    _LOGGER.exception(
+                        "Cached vehicle read after force-refresh failure also failed"
                     )
-                    try:
-                        await self.hass.async_add_executor_job(
-                            self.vehicle_manager.update_vehicle_with_cached_state,
-                            vehicle_id,
-                        )
-                    except Exception:
-                        _LOGGER.exception(
-                            "Cached vehicle read after force-refresh failure also failed"
-                        )
-                    self.async_set_updated_data(self.data)
-                    if no_fresh_data:
-                        # The BR wake can be accepted while the parked vehicle
-                        # remains unreachable. Absence of fresh timestamps is
-                        # the scheduler's failure signal and remains in backoff.
-                        _LOGGER.warning(
-                            "CRETA_REFRESH_NO_FRESH_DATA vehicle_id=%s; "
-                            "keeping cached state: %s",
-                            vehicle_id,
-                            err,
-                        )
-                        return
+                self.async_set_updated_data(self.data)
+                if no_fresh_data:
+                    # The BR wake can be accepted while the parked vehicle
+                    # remains unreachable. Absence of fresh timestamps is
+                    # the scheduler's failure signal and remains in backoff.
                     _LOGGER.warning(
-                        "CRETA_REFRESH_FAILED vehicle_id=%s; keeping cached state: %s",
+                        "CRETA_REFRESH_NO_FRESH_DATA vehicle_id=%s; "
+                        "keeping cached state: %s",
                         vehicle_id,
                         err,
                     )
-                    raise HomeAssistantError(
-                        f"Vehicle refresh failed: {type(err).__name__}"
-                    ) from err
+                    return
+                _LOGGER.warning(
+                    "CRETA_REFRESH_FAILED vehicle_id=%s; keeping cached state: %s",
+                    vehicle_id,
+                    err,
+                )
+                raise HomeAssistantError(
+                    f"Vehicle refresh failed: {type(err).__name__}"
+                ) from err
             self.async_set_updated_data(self.data)
 
     async def async_refresh_day_trip_info(self, vehicle_id: str) -> None:

@@ -276,6 +276,17 @@ normalizer.func = normalizer.func.replace(
   '                cooldown_until: Date.now() + 15 * 60 * 1000,',
   '                cooldown_until: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),',
 );
+const dispatchAnchoredDeadline =
+  'Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                )';
+const acceptedAnchoredDeadline =
+  'Math.max(\n                    Date.now(),\n                    Number(refreshState.next_allowed_at ?? 0),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                )';
+normalizer.func = normalizer.func.replaceAll(
+  dispatchAnchoredDeadline,
+  acceptedAnchoredDeadline,
+);
+if (!normalizer.func.includes("Number(refreshState.next_allowed_at ?? 0)")) {
+  throw new Error("Não foi possível preservar o deadline após aceite do refresh");
+}
 normalizer.func = normalizer.func.replace(
   'const sharedRefreshState =\n    flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};',
   'const sharedRefreshState = TEST_MODE\n    ? flow.get("security_vehicle_primary_refresh_v1__test") ?? {}\n    : flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};',

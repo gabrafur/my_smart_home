@@ -42,10 +42,13 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   mais `check_and_force_update_vehicles`, nem no intervalo legado de 1440
   minutos. As opcoes antigas de force refresh permanecem aceitas apenas por
   compatibilidade de config entry.
-- O botao privado conserva um piso de **15 minutos entre wakes reais** e um
-  lock de processo; requests concorrentes sao coalescidos. No Node-RED,
-  agendamento, manual, recovery, chegada e movimento convergem no mesmo estado
-  persistente e passam por um guard final antes do binding publico.
+- O Node-RED conserva um piso de **15 minutos entre wakes automaticos** e o
+  coordinator Python mantém um lock de processo; requests concorrentes sao
+  coalescidos. Agendamento, manual, recovery, chegada e movimento convergem no
+  mesmo estado persistente e passam por um guard final antes do binding
+  publico. O clique manual `Atualizar agora` ignora somente o cooldown; ele
+  nunca atravessa uma chamada em andamento. Depois de qualquer wake, o prazo
+  automatico seguinte e ancorado no aceite da chamada pelo Home Assistant.
 - O historico de viagens e carregado uma vez ao iniciar a integracao, quando o
   odometro avanca e na chegada do vehicle_primary. O dashboard nao depende mais de press
   manual para voltar a exibir viagens depois de restart.
@@ -78,9 +81,12 @@ O refresh grava baseline dos timestamps de localizacao, motor e trava. O
 retorno de `public_bindings.call` significa apenas que o Home Assistant aceitou
 a chamada e limpa somente o marcador `request_in_flight`. Uma tentativa so
 vira sucesso quando pelo menos um deles avanca e o alvo de
-readiness e atingido. Sem evidencia, o mesmo recovery permanece em backoff,
-mas toda nova chamada respeita o piso de 15 minutos do backend brasileiro; o
-contador satura sem criar rajadas ou loops.
+readiness e atingido. Sem evidencia, o mesmo recovery permanece em backoff e
+as retentativas automaticas respeitam 15 minutos; o contador satura sem criar
+rajadas ou loops. Somente o clique manual explicito pode antecipar esse prazo.
+O aceite estende `next_allowed_at` para 15 minutos depois da conclusao da
+chamada. Uma evidencia nova posterior pode confirmar sucesso, mas nunca
+encurta esse deadline para o instante do despacho.
 `request_in_flight`, seu lease e `next_allowed_at` sobrevivem a restart. Erros
 inesperados sao classificados pelo catch do Node-RED, liberam o lock logico e
 mantem o deadline. O resultado BR esperado em que o wake foi aceito mas o
@@ -103,12 +109,11 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 `service_accepted_at` e `last_failure_class`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
 `input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
-`reason=manual_force`: solicita avaliacao imediata, mas nunca quebra uma
-tentativa em voo, o backoff nem o piso de 15 minutos do coordinator Python. Se
-o clique manual for bloqueado pelo intervalo minimo ou por uma tentativa em
-backoff, o Home Assistant cria
-imediatamente uma notificação persistente informando que nenhuma nova consulta
-foi enviada e mostrando o tempo e o horário da próxima tentativa automática.
+`reason=manual_force`: ignora `next_allowed_at`, inclusive durante cooldown ou
+backoff, e envia um novo wake. Ele nao quebra uma tentativa em voo; nesse unico
+caso bloqueado, o Home Assistant cria imediatamente uma notificacao persistente
+informando que nenhuma nova consulta foi enviada. O aceite do wake manual
+reinicia os 15 minutos da agenda automatica.
 
 O carregamento inicial da integração não espera por `/tripinfo`. Esse endpoint
 é opcional e pode responder muito lentamente no backend brasileiro; bloquear
@@ -252,12 +257,11 @@ comando de wake foi aceito pelo backend.
   classe), nunca do atributo ja instalado na instancia. `_async_update_data`
   reinstala isto a cada ciclo, e envolver o wrapper anterior empilharia mais um
   `sleep(25)` por ciclo.
-- **Piso de 15 min entre wakes reais** (`BR_WAKE_MIN_INTERVAL_S`). Acordar o
-  carro puxa a bateria de 12 V e conta contra o rate limit — e' por isso que o
-  options flow trava o force interval proprio da integracao em 90 min. Quem
-  aperta o botão direto (o flow `contexto_vehicle_primary` no Node-RED, a cada 15 min,
-  além do wake pontual na entrada da zona) também passa por esse piso.
-  Dentro do cooldown a chamada degrada para a leitura em cache.
+- **Piso automatico de 15 min no Node-RED.** Acordar o carro puxa a bateria de
+  12 V e conta contra o rate limit — e' por isso que a agenda automatica
+  continua conservadora. O botao `Atualizar agora` e deliberadamente uma
+  excecao: ele faz wake mesmo dentro do cooldown, mas o lock do coordinator
+  ainda rejeita concorrencia. Cada aceite manual reinicia o prazo automatico.
 - O `sleep(25)` e o valor medido pelo upstream EU. Um refinamento possivel e
   trocar por `check_action_status(vehicle_id, msgId, ...)`, que ja e usado
   neste coordinator para comandos remotos e esperaria o tempo exato em vez de
@@ -393,12 +397,14 @@ confirmação sem timestamp. A confirmação expira após 24 h sem revalidação
 limpeza publica contexto pending e não dispara ações físicas.
 
 O refresh Bluelink persiste `attempts`, `next_allowed_at` e
-`last_success_at`. Falhas mantêm backoff de 15 minutos, igual ao menor intervalo
-em que o backend brasileiro permite outro wake real; sucesso limpa tentativas e
-volta ao mesmo cooldown normal. O TTL de 5 minutos de motor/trava continua
+`last_success_at`. Falhas mantêm backoff automático de 15 minutos; sucesso
+limpa tentativas e volta ao mesmo cooldown normal. O clique manual pode
+antecipar ambos, sem atravessar uma chamada em andamento. O TTL de 5 minutos de motor/trava continua
 bloqueando efeitos físicos, mas não quebra esse piso nem cria chamadas de cache
 que seriam contabilizadas como novas falhas. Isso evita storm após restart e
-não registra viagem falsa durante indisponibilidade.
+não registra viagem falsa durante indisponibilidade. O cooldown começa no
+aceite da chamada, incluindo no intervalo o tempo que o serviço levou para
+retornar; a confirmação posterior de telemetria preserva esse prazo.
 
 ## Update do fork removeu e depois reportou o sensor de trip-log (2026-07-19)
 

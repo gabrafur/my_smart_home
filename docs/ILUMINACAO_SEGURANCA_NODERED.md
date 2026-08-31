@@ -119,7 +119,7 @@ dos residentes mesmo com o outro tracker atrasado.
 - `button.vehicle_primary_force_refresh`
 - `button.garagem_vehicle_primary_refresh_trip_info`
 - `input_button.vehicle_primary_force_refresh_now` (solicitacao manual pelo mesmo
-  coordenador; nao chama Bluelink diretamente)
+  coordenador; ignora cooldown/backoff, mas nao uma chamada em andamento)
 - `sensor.vehicle_primary_refresh_coordinator` (espelho MQTT do estado/deadlines reais)
 - entidades do dispositivo atualizadas pelo serviço `homeassistant.update_entity`
 
@@ -322,7 +322,14 @@ depende exclusivamente de um `delay` residente em memória.
   permite outro wake real; sucesso limpa tentativas e aplica o mesmo intervalo
   normal. O contador satura no quinto estágio. Não há rajada no restart porque
   `last_request_at` e `next_allowed_at` são persistidos e o piso é reconstruído
-  a partir do último despacho.
+  a partir do último despacho e estendido no aceite da chamada. Assim, os 15
+  minutos começam quando o serviço retorna, sem uma próxima tentativa alguns
+  segundos antes do piso interno do backend. Evidência posterior confirma o
+  sucesso sem encurtar esse deadline.
+- O clique `Atualizar agora` usa `reason=manual_force` e ignora o deadline
+  automatico. O lease do Node-RED e o lock do Home Assistant continuam
+  serializando chamadas; depois do aceite manual, a agenda automatica recomeça
+  em 15 minutos.
 - O retorno de `public_bindings.call` muda o estado apenas para
   `awaiting_evidence`. Sucesso exige que localização, motor ou trava tenham
   timestamp posterior ao baseline e que o alvo de readiness seja atingido.
