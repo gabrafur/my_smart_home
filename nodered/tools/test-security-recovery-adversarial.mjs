@@ -248,7 +248,7 @@ scenario("14 contexto_chegadas ignora o antigo candidato de aviso", () => {
 });
 
 scenario("15 backoff Bluelink respeita piso de 15 minutos", () => {
-  const flow = memoryFlow({ vehicle_primary_context_v1: { away: true } });
+  const flow = memoryFlow({ vehicle_primary_context_v1: { ready: true, away: true } });
   const expectedMinutes = [15, 15, 15, 15, 15];
   for (const minutes of expectedMinutes) {
     const output = run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow);
@@ -259,6 +259,9 @@ scenario("15 backoff Bluelink respeita piso de 15 minutos", () => {
     // evidência, mas não mantém a chamada marcada como em andamento.
     state.request_in_flight = false;
     state.in_flight_until = null;
+    // A retentativa seguinte só ocorre depois da releitura conservadora do
+    // cache. Este cenário testa o piso do backoff após essa etapa concluída.
+    state.cache_probe_completed_for_request_at = state.last_request_at;
     flow.set("security_vehicle_primary_refresh_v1", state);
     clock = state.next_allowed_at;
   }
