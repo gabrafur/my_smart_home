@@ -353,7 +353,7 @@ const nodes = [
   functionNode("storage_discovery", "storage_group_config", "Publicar discovery", discovery, 1, 650, 150, [["storage_mqtt_discovery"]]),
   { id: "storage_mqtt_discovery", type: "mqtt out", z: TAB, g: "storage_group_config", name: "HA MQTT discovery", topic: "", qos: "1", retain: "true", respTopic: "", contentType: "application/json", userProps: "", correl: "", expiry: "", broker: MQTT, x: 900, y: 150, wires: [] },
   { id: "storage_health_tick", type: "inject", z: TAB, g: "storage_group_health", name: "A cada 15 min", props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "900", crontab: "", once: true, onceDelay: "10", topic: "", payload: "", payloadType: "date", x: 160, y: 310, wires: [["storage_read_ha"]] },
-  { id: "storage_manual_health", type: "server-state-changed", z: TAB, g: "storage_group_health", name: "Executar pelo painel HA", server: SERVER, version: 6, outputs: 1, exposeAsEntityConfig: "", entities: { entity: ["input_button.storage_health_manual_run"], substring: [], regex: [] }, outputInitially: false, stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is", outputOnlyOnStateChange: true, for: "0", forType: "num", forUnits: "minutes", ignorePrevStateNull: true, ignorePrevStateUnknown: true, ignorePrevStateUnavailable: true, ignoreCurrentStateUnknown: true, ignoreCurrentStateUnavailable: true, outputProperties: [], x: 170, y: 370, wires: [["storage_manual_start"]] },
+  { id: "storage_manual_health", type: "server-state-changed", z: TAB, g: "storage_group_health", name: "Executar pelo painel HA", server: SERVER, version: 6, outputs: 1, exposeAsEntityConfig: "", entities: { entity: ["input_button.storage_health_manual_run"], substring: [], regex: [] }, outputInitially: false, stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is", outputOnlyOnStateChange: true, for: "0", forType: "num", forUnits: "minutes", ignorePrevStateNull: false, ignorePrevStateUnknown: false, ignorePrevStateUnavailable: false, ignoreCurrentStateUnknown: true, ignoreCurrentStateUnavailable: true, outputProperties: [], x: 170, y: 370, wires: [["storage_manual_start"]] },
   functionNode("storage_manual_start", "storage_group_health", "Iniciar execução manual", manualStart, 4, 430, 370, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_read_ha"], ["storage_manual_status_mqtt"]]),
   { id: "storage_read_ha", type: "api-current-state", z: TAB, g: "storage_group_health", name: "Ler storage existente no HA", server: SERVER, version: 3, outputs: 1, halt_if: "", halt_if_type: "str", halt_if_compare: "is", entity_id: "sensor.raspberry_pi_storage_usage", state_type: "str", blockInputOverrides: true, outputProperties: [{ property: "payload", propertyType: "msg", value: "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at\n}", valueType: "jsonata" }], for: "0", forType: "num", forUnits: "minutes", override_topic: false, state_location: "payload", override_payload: "msg", entity_location: "data", override_data: "msg", x: 430, y: 310, wires: [["storage_evaluate"]] },
   functionNode("storage_evaluate", "storage_group_health", "Thresholds + histerese + tendencia", evaluate, 3, 740, 310, [["storage_mqtt_state"], ["storage_notify", "storage_notify_secondary", "storage_notify_persistent"], []]),
@@ -378,7 +378,47 @@ const nodes = [
   { id: "storage_maintenance_mqtt", type: "mqtt out", z: TAB, g: "storage_group_maintenance", name: "Publicar manutencao", topic: "", qos: "1", retain: "true", respTopic: "", contentType: "", userProps: "", correl: "", expiry: "", broker: MQTT, x: 1090, y: 470, wires: [] },
 ];
 
-const replacements = new Map(nodes.map((node) => [node.id, node]));
+const canonicalLayout = new Map([
+  ["storage_group_config", { x: 74, y: 99, w: 1042, h: 152 }],
+  ["storage_group_health", { x: 64, y: 299, w: 1302, h: 257 }],
+  ["storage_group_alerts", { x: 1564, y: 239, w: 612, h: 262 }],
+  ["storage_group_maintenance", { x: 74, y: 629, w: 1372, h: 279.5 }],
+  ["storage_comment_architecture", { x: 540, y: 140 }],
+  ["storage_init", { x: 250, y: 210 }],
+  ["storage_set_config", { x: 500, y: 210 }],
+  ["storage_discovery", { x: 740, y: 210 }],
+  ["storage_mqtt_discovery", { x: 990, y: 210 }],
+  ["storage_health_tick", { x: 190, y: 430 }],
+  ["storage_manual_health", { x: 200, y: 490 }],
+  ["storage_read_ha", { x: 470, y: 400 }],
+  ["storage_evaluate", { x: 790, y: 400 }],
+  ["storage_mqtt_state", { x: 1090, y: 340 }],
+  ["storage_notify", { x: 1710, y: 280 }],
+  ["storage_notify_secondary", { x: 1710, y: 340 }],
+  ["storage_daily_maintenance", { x: 200, y: 700 }],
+  ["storage_exec_maintenance", { x: 510, y: 700 }],
+  ["storage_parse_maintenance", { x: 840, y: 670 }],
+  ["storage_store_maintenance_stderr", { x: 840, y: 730 }],
+  ["storage_maintenance_complete", { x: 1140, y: 730 }],
+  ["storage_weekly_inspection", { x: 210, y: 860 }],
+  ["storage_exec_inspection", { x: 510, y: 860 }],
+  ["storage_parse_inspection", { x: 820, y: 820 }],
+  ["storage_maintenance_mqtt", { x: 1140, y: 670 }],
+  ["storage_request_host_maintenance", { x: 490, y: 780 }],
+  ["storage_notify_persistent", { x: 1710, y: 400 }],
+  ["storage_notification_ack", { x: 2000, y: 340 }],
+  ["storage_notification_catch", { x: 1710, y: 460 }],
+  ["storage_notification_failure", { x: 1990, y: 460 }],
+  ["storage_manual_start", { x: 520, y: 500 }],
+  ["storage_manual_status_mqtt", { x: 1220, y: 510 }],
+  ["storage_manual_complete", { x: 1300, y: 790 }],
+]);
+const canonicalNodes = nodes.map((node) => ({
+  ...node,
+  ...(canonicalLayout.get(node.id) ?? {}),
+}));
+
+const replacements = new Map(canonicalNodes.map((node) => [node.id, node]));
 const installed = new Set();
 const updated = [];
 let lastOwnedIndex = -1;
@@ -394,7 +434,7 @@ for (const node of flows) {
     lastOwnedIndex = updated.length - 1;
   }
 }
-const missing = nodes.filter((node) => !installed.has(node.id));
+const missing = canonicalNodes.filter((node) => !installed.has(node.id));
 updated.splice(lastOwnedIndex + 1, 0, ...missing);
 fs.writeFileSync(flowsPath, `${JSON.stringify(updated, null, 4)}\n`);
-console.log(`Installed ${nodes.length} Storage Health nodes in ${flowsPath}`);
+console.log(`Installed ${canonicalNodes.length} Storage Health nodes in ${flowsPath}`);

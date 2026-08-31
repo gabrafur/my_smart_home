@@ -23,6 +23,11 @@ assert.deepEqual(node("weekly_docs_review_schedule").wires, [["weekly_docs_revie
 assert.deepEqual(node("weekly_docs_review_schedule_out").links, ["weekly_docs_review_schedule_in"]);
 assert.deepEqual(node("weekly_docs_review_schedule_in").links, ["weekly_docs_review_schedule_out"]);
 assert.deepEqual(node("weekly_docs_review_manual").entities.entity, ["input_button.weekly_documentation_review_run"]);
+assert.equal(node("weekly_docs_review_manual").ignorePrevStateNull, false);
+assert.equal(node("weekly_docs_review_manual").ignorePrevStateUnknown, false);
+assert.equal(node("weekly_docs_review_manual").ignorePrevStateUnavailable, false);
+assert.equal(node("weekly_docs_review_manual").ignoreCurrentStateUnknown, true);
+assert.equal(node("weekly_docs_review_manual").ignoreCurrentStateUnavailable, true);
 assert.equal(node("weekly_docs_review_request").command, "/opt/request-weekly-docs-review.sh");
 assert.equal(node("weekly_docs_review_request").addpay, "payload");
 assert.equal(node("weekly_docs_review_request").timer, "15");
