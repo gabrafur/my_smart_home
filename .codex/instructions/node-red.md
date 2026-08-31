@@ -90,13 +90,11 @@ independente do runtime observado.
 - Todo tab novo ou materialmente alterado deve manter replay automatizado de
   falha e indisponibilidade até o terminal dry-run compartilhado, sem produzir
   efeitos residenciais.
-- Antes de deploy, commit ou push de qualquer alteração Node-RED, execute uma
-  única vez o inject canônico `TESTE 5: enviar push real` do tab
-  `observabilidade_global`. Confirme no log
+- O inject canônico `TESTE 5: enviar push real` do tab
+  `observabilidade_global` é opcional. Use-o somente quando o usuário pedir
+  confirmação ponta a ponta ou quando a própria rota de entrega de notificações
+  for materialmente alterada. Sua execução não é requisito para deploy, commit
+  ou push de outras alterações Node-RED. Quando executado, confirme no log
   `NODERED_GLOBAL_NOTIFICATION_ACCEPTED ... delivery_test=true` e solicite ao
-  usuário a confirmação visual no celular quando a tarefa exigir confirmação
-  ponta a ponta. O título e a mensagem devem conter `TESTE`; não use nós de
-  produção individuais para esse smoke test.
-- Se o smoke test não puder ser entregue porque Home Assistant, MQTT, WAN ou o
-  binding estão indisponíveis, não declare a validação concluída nem contorne o
-  gate: mantenha o resultado pendente e repita somente após a recuperação.
+  usuário a confirmação visual no celular. O título e a mensagem devem conter
+  `TESTE`; não use nós de produção individuais para esse smoke test.

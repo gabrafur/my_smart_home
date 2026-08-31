@@ -66,14 +66,16 @@ No tab `observabilidade_global`:
 2. use `TESTE 2: erro de nó` e confira o terminal dry-run;
 3. use `TESTE 3: indisponível`;
 4. use `TESTE 4: avaliar após 1 min` e confira o terminal dry-run;
-5. use `TESTE 5: enviar push real` para o smoke test do canal central.
+5. opcionalmente, use `TESTE 5: enviar push real` para o smoke test do canal
+   central quando for necessária confirmação ponta a ponta.
 
 Os quatro primeiros passos nunca chamam o Home Assistant. O quinto é a exceção
 explícita `notification_delivery_under_test`: envia um único push com `TESTE`
 no título e na mensagem, sem executar qualquer outro efeito residencial. O log
 `NODERED_GLOBAL_NOTIFICATION_ACCEPTED ... delivery_test=true` confirma que o
 Home Assistant aceitou a chamada; a confirmação visual no celular valida a
-última milha.
+última milha. Esse smoke test não é requisito para deploy, commit ou push de
+alterações Node-RED que não modifiquem materialmente a rota de notificações.
 
 Validação canônica:
 
