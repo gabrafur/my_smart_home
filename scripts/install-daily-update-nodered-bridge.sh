@@ -8,9 +8,10 @@ begin="# BEGIN Smart home Node-RED daily update bridge"
 end="# END Smart home Node-RED daily update bridge"
 request_job="* * * * * /usr/bin/flock -n $repo_root/.daily-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-daily-update-request.sh >> $repo_root/.daily-update-request.cron.log 2>&1"
 kia_update_job="* * * * * /usr/bin/flock -n $repo_root/.kia-uvo-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-kia-uvo-update-request.sh >> $repo_root/.kia-uvo-update-check.cron.log 2>&1"
+kia_promotion_job="* * * * * /usr/bin/flock -n $repo_root/.kia-uvo-promotion-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 /usr/bin/node $repo_root/scripts/promote-kia-uvo-candidate.mjs >> $repo_root/.kia-uvo-promotion.cron.log 2>&1"
 
 if [ "${1:-}" = "--dry-run" ]; then
-  printf '%s\n%s\n%s\n%s\n' "$begin" "$request_job" "$kia_update_job" "$end"
+  printf '%s\n%s\n%s\n%s\n%s\n' "$begin" "$request_job" "$kia_update_job" "$kia_promotion_job" "$end"
   exit 0
 fi
 [ "$#" -eq 0 ] || { echo "Usage: $0 [--dry-run]" >&2; exit 64; }
@@ -35,6 +36,7 @@ awk -v begin="$begin" -v end="$end" '
   printf '%s\n' "$begin"
   printf '%s\n' "$request_job"
   printf '%s\n' "$kia_update_job"
+  printf '%s\n' "$kia_promotion_job"
   printf '%s\n' "$end"
 } >> "$updated"
 crontab "$updated"

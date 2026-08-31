@@ -164,6 +164,12 @@ works in a disposable clone, limits changes to the component and upstream
 metadata, and may publish only a unique `codex/kia-uvo-*` candidate branch. It
 cannot change `main`, receives no Docker socket, and neither installs nor
 restarts Home Assistant.
+A host promotion worker revalidates that candidate and the official tag,
+requires a clean up-to-date `main`, applies the integration with backup and
+rollback, validates the entities and library, and only then creates the local
+commit and pushes `main`. Failures before confirmation preserve the previous
+version; Git failures after confirmation leave resumable state without
+reinstalling the runtime.
 
 Home Assistant receives `.local-state/docs-review` read-only to expose the
 routine's sensor. This operational status is regenerable, Git-ignored, and does
@@ -232,10 +238,13 @@ noninteractively checks for and applies a DietPi update when one is available,
 and finally calls `scripts/docker-auto-update.mjs daily` to
 reconcile all seven container image providers. It never reboots automatically.
 The same tab owns a separate 30-minute Kia UVO/Hyundai Bluelink safe-analysis
-schedule. It invokes the existing HA watcher through a coalescing host bridge;
-Kia/Hyundai is routed only to `kia-uvo-safe-update.mjs check`, never
-`update.install`, while other safe entities retain the prior policy. The bridge installer removes
-the legacy direct `daily` and `ha-updates` cron entries.
+schedule. It invokes the existing HA watcher through a coalescing host bridge.
+Kia/Hyundai first goes through `kia-uvo-safe-update.mjs check`; a conflict
+requests the isolated Codex worker, and the resulting candidate is applied by
+the host with rollback before it is promoted to `main`. Other safe entities
+retain the prior policy. The bridge installer removes the legacy direct
+`daily` and `ha-updates` cron entries and installs the one-minute Kia promotion
+worker.
 
 Node-RED receives neither `sudo`, the checkout, nor the Docker socket. The
 installed `/usr/local/sbin` helper belongs to `root`, and its sudoers rule

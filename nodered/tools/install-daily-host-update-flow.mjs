@@ -215,7 +215,7 @@ const kiaCodexGroup = "daily_update_kia_codex_group";
 const nodes = [
   {
     id: TAB, type: "tab", label: "atualizacoes_diarias", disabled: false,
-    info: "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a análise segura do fork Kia UVO/Hyundai Bluelink; conflitos acionam um Codex isolado que pode publicar somente uma branch candidata. O Node-RED não recebe sudo, checkout, credenciais nem socket Docker.",
+    info: "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a atualização segura do fork Kia UVO/Hyundai Bluelink; conflitos acionam um Codex isolado e o host promove a candidata somente depois de aplicar e validar o runtime. O Node-RED não recebe sudo, checkout, credenciais nem socket Docker.",
     env: [],
   },
   {
@@ -397,8 +397,8 @@ const nodes = [
   },
   {
     id: "daily_update_kia_architecture", type: "comment", z: TAB, g: kiaUpdateGroup,
-    name: "A cada 30 min: staging + overlay; conflito preserva a instalação e solicita Codex isolado",
-    info: "O Node-RED cria solicitações coalescentes. O check Kia/Hyundai segue somente para staging. Em conflito, uma segunda ponte aciona o Codex num clone descartável; ele nunca chama update.install e só pode publicar uma branch candidata.",
+    name: "A cada 30 min: staging + overlay; conflito solicita Codex e promoção segura no host",
+    info: "O Node-RED cria solicitações coalescentes. Em conflito, uma segunda ponte aciona o Codex num clone descartável. O worker publica somente uma branch candidata; o host a revalida, aplica com rollback, confirma o runtime e então envia main.",
     x: 670, y: 1100, wires: [],
   },
   {
@@ -495,7 +495,7 @@ const nodes = [
   },
   {
     id: kiaCodexGroup, type: "group", z: TAB,
-    name: "5. Conflito real: Codex prepara e publica branch candidata",
+    name: "5. Conflito real: Codex prepara; host aplica, valida e promove",
     style: { label: true, color: "#8f6bb3" },
     nodes: [
       "daily_update_kia_codex_architecture", "daily_update_kia_codex_request_in",
@@ -506,8 +506,8 @@ const nodes = [
   },
   {
     id: "daily_update_kia_codex_architecture", type: "comment", z: TAB, g: kiaCodexGroup,
-    name: "Clone descartável; allowlist Kia; push só em codex/kia-uvo-*; main e runtime intactos",
-    info: "O helper recebe apenas a versão alvo. Credenciais, checkout e Git ficam no worker isolado. O teste sintético nunca alcança este grupo.",
+    name: "Codex isolado publica candidata; host aplica com rollback antes de promover main",
+    info: "O helper recebe apenas a versão alvo. O Codex não recebe Docker nem token HA. Um worker separado no host revalida a candidata e só envia main após validar a instalação ativa. O teste sintético nunca alcança este grupo.",
     x: 660, y: 1720, wires: [],
   },
   {
@@ -533,14 +533,33 @@ for (const node of nodes) {
   if (node.z === TAB && Number.isFinite(node.x)) node.x += 20;
 }
 
-let next = flows.filter((node) => !owned(node.id));
-for (const node of next) {
-  if (Array.isArray(node.nodes)) node.nodes = node.nodes.filter((id) => !owned(id));
-  if (Array.isArray(node.scope)) node.scope = node.scope.filter((id) => !owned(id));
-  if (Array.isArray(node.wires)) node.wires = node.wires.map((wire) => Array.isArray(wire) ? wire.filter((id) => !owned(id)) : wire);
-  if (Array.isArray(node.links)) node.links = node.links.filter((id) => !owned(id));
+const replacements = new Map(nodes.map((node) => [node.id, node]));
+const liveOwnedIds = new Set(replacements.keys());
+const keepReference = (id) => !owned(id) || liveOwnedIds.has(id);
+const next = [];
+let lastOwnedPosition = -1;
+for (const existing of flows) {
+  if (owned(existing.id)) {
+    const replacement = replacements.get(existing.id);
+    if (replacement) {
+      next.push(replacement);
+      replacements.delete(existing.id);
+      lastOwnedPosition = next.length;
+    }
+    continue;
+  }
+  if (Array.isArray(existing.nodes)) existing.nodes = existing.nodes.filter(keepReference);
+  if (Array.isArray(existing.scope)) existing.scope = existing.scope.filter(keepReference);
+  if (Array.isArray(existing.wires)) existing.wires = existing.wires.map((wire) => Array.isArray(wire) ? wire.filter(keepReference) : wire);
+  if (Array.isArray(existing.links)) existing.links = existing.links.filter(keepReference);
+  next.push(existing);
 }
-const firstConfig = next.findIndex((node) => node.z === undefined && !["tab", "subflow"].includes(node.type));
-next.splice(firstConfig === -1 ? next.length : firstConfig, 0, ...nodes);
+if (replacements.size) {
+  const firstConfig = next.findIndex((node) => node.z === undefined && !["tab", "subflow"].includes(node.type));
+  const insertion = lastOwnedPosition >= 0
+    ? lastOwnedPosition
+    : firstConfig === -1 ? next.length : firstConfig;
+  next.splice(insertion, 0, ...replacements.values());
+}
 fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
 console.log(`Installed ${nodes.length} daily host update nodes in ${outputPath}`);

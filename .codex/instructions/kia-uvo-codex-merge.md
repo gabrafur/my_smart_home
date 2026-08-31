@@ -14,6 +14,9 @@ respeitando integralmente o prompt versionado e os limites abaixo.
   ativo.
 - Não faça commit nem push. O worker valida, cria o commit e pode publicar
   somente uma branch candidata única sob `codex/kia-uvo-*`; `main` nunca é
-  destino desse processo.
+  destino direto do worker Codex.
+- Depois do sucesso do worker, `scripts/promote-kia-uvo-candidate.mjs` deve
+  revalidar a candidata no host, exigir checkout limpo, aplicar com backup e
+  rollback, confirmar o runtime e somente então commitar e enviar `main`.
 - Se o merge seguro não puder ser comprovado, pare com falha e deixe a versão
   instalada intacta.

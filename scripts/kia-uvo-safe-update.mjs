@@ -253,6 +253,38 @@ function validateMerged(mergedDir, targetVersion) {
   };
 }
 
+export function candidateMetadataMatchesTarget(metadata, targetVersion) {
+  return normalizeVersion(metadata?.base_version) === normalizeVersion(targetVersion) &&
+    typeof metadata?.base_commit === "string" &&
+    /^[0-9a-f]{40}$/.test(metadata.base_commit);
+}
+
+export function prepareCandidate(targetVersion, candidateRoot) {
+  const target = normalizeVersion(targetVersion);
+  const sourceComponent = path.join(
+    candidateRoot,
+    "homeassistant/custom_components/kia_uvo",
+  );
+  const sourceMetadata = path.join(candidateRoot, "scripts/kia-uvo-upstream.json");
+  const metadata = readJson(sourceMetadata);
+  if (!candidateMetadataMatchesTarget(metadata, target)) {
+    throw new Error("candidate upstream metadata does not match target");
+  }
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-candidate-"));
+  const mergedRoot = path.join(workspace, "kia_uvo");
+  copyComponent(sourceComponent, mergedRoot);
+  const tests = validateMerged(mergedRoot, target);
+  return {
+    workspace,
+    mergedRoot,
+    target,
+    patch: { state: "resolved_by_codex", conflicts: [] },
+    changedFiles: [],
+    tests,
+    metadata,
+  };
+}
+
 export async function prepareUpdate(targetVersion) {
   const config = readJson(statePath);
   const target = normalizeVersion(targetVersion);
@@ -412,12 +444,7 @@ async function waitForHomeAssistant(token, timeoutMs = 240_000) {
   throw new Error("Home Assistant runtime validation timed out");
 }
 
-async function apply(targetVersion) {
-  const token = process.env.HA_LONG_LIVED_TOKEN?.trim();
-  if (!token) {
-    throw new Error("HA_LONG_LIVED_TOKEN is required for explicit --apply");
-  }
-  const prepared = await prepareUpdate(targetVersion);
+async function applyPrepared(prepared, token, options = {}) {
   if (prepared.patch.state === "conflict") {
     const status = statusFor(prepared, "conflict", {
       message: "Conflitos detectados; instalação atual preservada.",
@@ -442,6 +469,7 @@ async function apply(targetVersion) {
 
   const stamp = new Date().toISOString().replaceAll(":", "-");
   const backupDir = path.join(backupRoot, stamp);
+  const metadataBefore = readJson(statePath);
   fs.mkdirSync(backupDir, { recursive: true });
   copyComponent(componentDir, path.join(backupDir, "kia_uvo"));
   command("docker", [
@@ -484,17 +512,21 @@ async function apply(targetVersion) {
         `HACS still reports ${hacsAfter?.version_installed ?? "unknown"}`,
       );
     }
-    const config = readJson(statePath);
+    const config = options.metadata ? structuredClone(options.metadata) : readJson(statePath);
     config.base_version = prepared.target;
-    config.base_commit = preferFullCommit(
-      config.base_commit,
-      hacsAfter?.installed_commit ?? hacsAfter?.last_commit ?? null,
-    );
+    if (!options.metadata) {
+      config.base_commit = preferFullCommit(
+        config.base_commit,
+        hacsAfter?.installed_commit ?? hacsAfter?.last_commit ?? null,
+      );
+    }
     writeJson(statePath, config);
     const status = statusFor(prepared, "applied", {
       applied_at: new Date().toISOString(),
       tests: { ...prepared.tests, ...runtimeTests, library_version: libraryVersion },
-      message: "HACS instalou a versão oficial e o delta local foi reaplicado.",
+      message: options.metadata
+        ? "HACS instalou a versão oficial e a candidata Codex validada foi promovida."
+        : "HACS instalou a versão oficial e o delta local foi reaplicado.",
     });
     writeStatus(status);
     await publishEvent(token, "vehicle_primary_integration_update_applied", status);
@@ -506,6 +538,7 @@ async function apply(targetVersion) {
     makeComponentWritable();
     fs.rmSync(componentDir, { recursive: true, force: true });
     copyComponent(path.join(backupDir, "kia_uvo"), componentDir);
+    writeJson(statePath, metadataBefore);
     command("docker", [
       "cp",
       path.join(backupDir, "hacs.repositories"),
@@ -523,6 +556,46 @@ async function apply(targetVersion) {
   }
 }
 
+async function apply(targetVersion) {
+  const token = process.env.HA_LONG_LIVED_TOKEN?.trim();
+  if (!token) {
+    throw new Error("HA_LONG_LIVED_TOKEN is required for explicit --apply");
+  }
+  const prepared = await prepareUpdate(targetVersion);
+  try {
+    return await applyPrepared(prepared, token);
+  } finally {
+    fs.rmSync(prepared.workspace, { recursive: true, force: true });
+  }
+}
+
+async function applyCandidate(targetVersion, candidateRoot) {
+  const token = process.env.HA_LONG_LIVED_TOKEN?.trim();
+  if (!token) {
+    throw new Error("HA_LONG_LIVED_TOKEN is required for explicit --apply-candidate");
+  }
+  const prepared = prepareCandidate(targetVersion, candidateRoot);
+  try {
+    return await applyPrepared(prepared, token, { metadata: prepared.metadata });
+  } finally {
+    fs.rmSync(prepared.workspace, { recursive: true, force: true });
+  }
+}
+
+function checkCandidate(targetVersion, candidateRoot) {
+  const prepared = prepareCandidate(targetVersion, candidateRoot);
+  try {
+    console.log(JSON.stringify({
+      state: "candidate_valid",
+      target: prepared.target,
+      patch_state: prepared.patch.state,
+      tests: prepared.tests,
+    }, null, 2));
+  } finally {
+    fs.rmSync(prepared.workspace, { recursive: true, force: true });
+  }
+}
+
 const invoked = process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invoked) {
@@ -534,9 +607,19 @@ if (invoked) {
     await check(target, { force: args.includes("--force") });
   } else if (mode === "apply") {
     await apply(target);
+  } else if (mode === "apply-candidate") {
+    const candidateIndex = args.indexOf("--candidate-root");
+    const candidateRoot = candidateIndex >= 0 ? args[candidateIndex + 1] : null;
+    if (!candidateRoot) throw new Error("--candidate-root is required");
+    await applyCandidate(target, path.resolve(candidateRoot));
+  } else if (mode === "check-candidate") {
+    const candidateIndex = args.indexOf("--candidate-root");
+    const candidateRoot = candidateIndex >= 0 ? args[candidateIndex + 1] : null;
+    if (!candidateRoot) throw new Error("--candidate-root is required");
+    checkCandidate(target, path.resolve(candidateRoot));
   } else if (mode === "status") {
     console.log(statusLine(readStatus()));
   } else {
-    throw new Error("usage: kia-uvo-safe-update.mjs check|apply|status [--target vX.Y.Z]");
+    throw new Error("usage: kia-uvo-safe-update.mjs check|apply|check-candidate|apply-candidate|status [--target vX.Y.Z]");
   }
 }

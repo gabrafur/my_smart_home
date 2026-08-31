@@ -28,6 +28,8 @@ homeassistant/.daily-update-trigger/
 .daily-update-request.cron.log
 .kia-uvo-update-request-worker.lock
 .kia-uvo-update-check.cron.log
+.kia-uvo-promotion-worker.lock
+.kia-uvo-promotion.cron.log
 .vpn-health-publisher.lock
 .vpn-health-publisher.cron.log
 .kia-uvo-updater-state/

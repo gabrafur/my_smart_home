@@ -165,6 +165,11 @@ O worker Kia UVO recebe do Node-RED apenas uma versão validada, trabalha em
 clone descartável, limita alterações ao componente e ao metadado upstream e
 pode publicar somente uma branch candidata única `codex/kia-uvo-*`. Ele não
 altera `main`, não recebe Docker e não instala ou reinicia o Home Assistant.
+Um worker de promoção no host revalida essa candidata e a tag oficial, exige
+`main` limpo e atualizado, aplica a integração com backup e rollback, valida
+as entidades e a biblioteca e somente depois cria o commit local e envia
+`main`. Falhas antes da confirmação preservam a versão anterior; falhas de Git
+depois da confirmação deixam um estado retomável sem reinstalar o runtime.
 
 O Home Assistant recebe `.local-state/docs-review` como somente leitura para
 expor o sensor da rotina. Esse status operacional é regenerável, ignorado pelo
@@ -235,11 +240,12 @@ sucesso. A ponte do host executa primeiro `apt-get update` e
 uma atualização do próprio DietPi quando disponível, e depois chama
 `scripts/docker-auto-update.mjs daily` para reconciliar os sete provedores de
 imagem. Não há reboot automático. No mesmo tab, um agendamento de 30 minutos
-aciona o watcher HA no host. Kia UVO/Hyundai Bluelink recebe somente análise
-segura, sem `update.install`, enquanto as demais entidades seguras preservam a
-política anterior. O instalador da ponte remove do `crontab` as chamadas
-diretas de `docker-auto-update.mjs daily` e `ha-updates`; permanecem apenas os
-workers coalescentes de um minuto acionados pelo Node-RED.
+aciona o watcher HA no host. Kia UVO/Hyundai Bluelink passa por análise segura;
+um conflito solicita o worker Codex isolado e a candidata resultante é aplicada
+pelo host com rollback antes de ser promovida a `main`. As demais entidades
+seguras preservam a política anterior. O instalador da ponte remove do
+`crontab` as chamadas diretas de `docker-auto-update.mjs daily` e `ha-updates`;
+permanecem os workers coalescentes e o promotor Kia de um minuto.
 
 O Node-RED não recebe `sudo`, checkout nem socket Docker. O helper instalado em
 `/usr/local/sbin` pertence a `root`, e o arquivo de `sudoers` autoriza somente

@@ -253,6 +253,7 @@ test("the cron installer migrates direct update schedules to Node-RED bridges", 
   assert.doesNotMatch(installed, /docker-auto-update\.mjs ha-updates/);
   assert.match(installed, /process-daily-update-request\.sh/);
   assert.match(installed, /process-kia-uvo-update-request\.sh/);
+  assert.match(installed, /promote-kia-uvo-candidate\.mjs/);
   assert.match(installed, /nice -n 15 .*ionice -c 3/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });

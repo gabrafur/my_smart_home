@@ -154,7 +154,7 @@
         "type": "tab",
         "label": "atualizacoes_diarias",
         "disabled": false,
-        "info": "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a análise segura do fork Kia UVO/Hyundai Bluelink; conflitos acionam um Codex isolado que pode publicar somente uma branch candidata. O Node-RED não recebe sudo, checkout, credenciais nem socket Docker.",
+        "info": "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a atualização segura do fork Kia UVO/Hyundai Bluelink; conflitos acionam um Codex isolado e o host promove a candidata somente depois de aplicar e validar o runtime. O Node-RED não recebe sudo, checkout, credenciais nem socket Docker.",
         "env": []
     },
     {
@@ -1934,7 +1934,7 @@
         "id": "daily_update_kia_codex_group",
         "type": "group",
         "z": "daily_host_updates_tab",
-        "name": "5. Conflito real: Codex prepara e publica branch candidata",
+        "name": "5. Conflito real: Codex prepara; host aplica, valida e promove",
         "style": {
             "label": true,
             "color": "#8f6bb3"
@@ -16941,8 +16941,8 @@
         "type": "comment",
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_group",
-        "name": "A cada 30 min: staging + overlay; conflito preserva a instalação e solicita Codex isolado",
-        "info": "O Node-RED cria solicitações coalescentes. O check Kia/Hyundai segue somente para staging. Em conflito, uma segunda ponte aciona o Codex num clone descartável; ele nunca chama update.install e só pode publicar uma branch candidata.",
+        "name": "A cada 30 min: staging + overlay; conflito solicita Codex e promoção segura no host",
+        "info": "O Node-RED cria solicitações coalescentes. Em conflito, uma segunda ponte aciona o Codex num clone descartável. O worker publica somente uma branch candidata; o host a revalida, aplica com rollback, confirma o runtime e então envia main.",
         "x": 690,
         "y": 1100,
         "wires": []
@@ -17413,8 +17413,8 @@
         "type": "comment",
         "z": "daily_host_updates_tab",
         "g": "daily_update_kia_codex_group",
-        "name": "Clone descartável; allowlist Kia; push só em codex/kia-uvo-*; main e runtime intactos",
-        "info": "O helper recebe apenas a versão alvo. Credenciais, checkout e Git ficam no worker isolado. O teste sintético nunca alcança este grupo.",
+        "name": "Codex isolado publica candidata; host aplica com rollback antes de promover main",
+        "info": "O helper recebe apenas a versão alvo. O Codex não recebe Docker nem token HA. Um worker separado no host revalida a candidata e só envia main após validar a instalação ativa. O teste sintético nunca alcança este grupo.",
         "x": 680,
         "y": 1720,
         "wires": []

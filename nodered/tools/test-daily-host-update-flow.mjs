@@ -31,6 +31,7 @@ assert.deepEqual(
 assert.equal(node("daily_update_kia_schedule").crontab, "*/30 * * * *");
 assert.equal(node("daily_update_kia_schedule").once, true);
 assert.equal(node("daily_update_kia_request_host").command, "/opt/request-host-kia-uvo-update-check.sh");
+assert.ok(node("git_backup_daily_update_out").links.includes("daily_update_after_backup_in"));
 assert.equal(node("daily_update_kia_read_result").command, "/opt/read-host-kia-uvo-update-result.sh");
 assert.equal(node("daily_update_kia_result_poll").repeat, "60");
 assert.equal(node("daily_update_kia_parse_result").outputs, 2);

@@ -8,6 +8,7 @@ import {
   updateIsProtected,
 } from "./docker-auto-update.mjs";
 import {
+  candidateMetadataMatchesTarget,
   preferFullCommit,
   statusLine,
   updateMatchesTarget,
@@ -73,6 +74,21 @@ test("preserves the full upstream commit when HACS reports a prefix", () => {
   const full = "2c602560746318fd001db8fe52347e9398f181ed";
   assert.equal(preferFullCommit(full, "2c60256"), full);
   assert.equal(preferFullCommit("2c60256", full), full);
+});
+
+test("binds a Codex candidate to a semantic target and full upstream commit", () => {
+  assert.equal(candidateMetadataMatchesTarget({
+    base_version: "v3.11.0",
+    base_commit: "04b92423e779f26f169858dfa5a14f7750731759",
+  }, "3.11.0"), true);
+  assert.equal(candidateMetadataMatchesTarget({
+    base_version: "v3.11.0",
+    base_commit: "04b9242",
+  }, "v3.11.0"), false);
+  assert.equal(candidateMetadataMatchesTarget({
+    base_version: "v3.12.0",
+    base_commit: "04b92423e779f26f169858dfa5a14f7750731759",
+  }, "v3.11.0"), false);
 });
 
 test("publishes only sanitized Kia UVO status fields to Node-RED", () => {
