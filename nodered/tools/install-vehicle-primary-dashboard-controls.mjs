@@ -57,6 +57,31 @@ refreshDecision.wires = [
   ["vehicle_primary_manual_refresh_blocked_notification_v1"],
   ["vehicle_primary_refresh_notification_requested_out_v1"],
 ];
+
+const contextCoordinator = flows.find((node) =>
+  node.type === "function" &&
+  node.name === "Coordenar snapshot e refresh" &&
+  node.func?.includes('contract: "security.refresh-command.v1"'),
+);
+if (!contextCoordinator) {
+  throw new Error("Coordenador de snapshots ausente");
+}
+if (!contextCoordinator.func.includes("resident_primary_state:")) {
+  const presenceMarker = `                    anyone_away:
+                        people?.anyone_away === true ||
+                        vehicle_primary?.away === true,`;
+  if (!contextCoordinator.func.includes(presenceMarker)) {
+    throw new Error("Contrato de presença do coordenador não encontrado");
+  }
+  contextCoordinator.func = contextCoordinator.func.replace(
+    presenceMarker,
+    `${presenceMarker}
+                    resident_primary_state:
+                        people?.resident_primary?.state ?? null,
+                    resident_secondary_state:
+                        people?.resident_secondary?.state ?? null,`,
+  );
+}
 Object.assign(required("25ca02f8c1de32d0"), { x: 215, y: 680 });
 Object.assign(required("eb4b8a519ab0bc28"), { x: 630, y: 780 });
 

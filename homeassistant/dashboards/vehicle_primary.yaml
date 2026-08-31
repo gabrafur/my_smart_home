@@ -379,7 +379,7 @@ views:
             content: >-
               **Atualização automática orientada a eventos**
 
-              Mudanças de zona ou deslocamentos GPS significativos solicitam uma nova leitura. O coordenador evita chamadas simultâneas e mantém **15 minutos** entre tentativas automáticas. O botão **Atualizar agora** pode antecipar esse prazo.
+              Mudanças de zona ou deslocamentos GPS significativos solicitam uma nova leitura. O coordenador evita chamadas simultâneas: usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** quando ambos estão em casa. Com os dois em casa, as atualizações periódicas ficam pausadas entre **00h e 06h**. O botão **Atualizar agora** pode antecipar qualquer prazo e funciona também nessa janela.
 
               A consulta ao cache pode republicar entidades sem acordar o carro; o refresh só é concluído quando o timestamp do próprio Bluelink (`Última atualização`) realmente avança.
           - type: entities

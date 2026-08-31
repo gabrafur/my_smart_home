@@ -132,13 +132,18 @@ const now = Date.parse("2026-08-17T03:00:00Z");
         next_allowed_at: 0,
       },
     },
-    msg: { payload: { kind: "refresh_command", anyone_away: false } },
+    msg: { payload: {
+      kind: "refresh_command",
+      anyone_away: false,
+      resident_primary_state: "home",
+      resident_secondary_state: "home",
+    } },
   });
   assert.equal(result, null);
   assert.equal(store.get("security_vehicle_primary_refresh_v1").state, "waiting");
   assert.equal(
     store.get("security_vehicle_primary_refresh_v1").reason,
-    "waiting_for_day_or_away",
+    "quiet_hours_both_home",
   );
 }
 

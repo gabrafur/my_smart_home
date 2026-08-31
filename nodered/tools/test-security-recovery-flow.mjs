@@ -297,10 +297,21 @@ scenario("30 snapshots duplicados no startup", () => {
   const flow = memoryFlow();
   const request = run("context_coordinator", { payload: { kind: "refresh_tick" } }, flow)[0];
   const cycle = request.payload.refresh_cycle_id;
-  run("context_coordinator", { payload: { kind: "people_context", ready: true, refresh_cycle_id: cycle, context: { ready: true } } }, flow);
+  run("context_coordinator", { payload: {
+    kind: "people_context",
+    ready: true,
+    refresh_cycle_id: cycle,
+    context: {
+      ready: true,
+      resident_primary: { state: "home" },
+      resident_secondary: { state: "chegando" },
+    },
+  } }, flow);
   const first = run("context_coordinator", { payload: { kind: "vehicle_primary_context", ready: true, refresh_cycle_id: cycle, context: { ready: true } } }, flow);
   const duplicate = run("context_coordinator", { payload: { kind: "vehicle_primary_context", ready: true, refresh_cycle_id: cycle, context: { ready: true } } }, flow);
   assert(first[1]);
+  assert.equal(first[1].payload.resident_primary_state, "home");
+  assert.equal(first[1].payload.resident_secondary_state, "chegando");
   assert.equal(duplicate, null);
 });
 

@@ -80,6 +80,8 @@ function execute(body, { msg, store, now, logs = [] }) {
 
 const DAY = Date.parse("2026-08-30T15:00:00Z"); // 12:00 America/Sao_Paulo
 const NIGHT = Date.parse("2026-08-30T03:00:00Z"); // 00:00 America/Sao_Paulo
+const BEFORE_SIX = Date.parse("2026-08-30T08:59:00Z"); // 05:59 America/Sao_Paulo
+const SIX = Date.parse("2026-08-30T09:00:00Z"); // 06:00 America/Sao_Paulo
 const KEY = "security_vehicle_primary_refresh_v1";
 
 function readyContext(at) {
@@ -151,7 +153,7 @@ function scenario(name, callback) {
   passed.push(name);
 }
 
-scenario("01 intervalo normal de 15 minutos", () => {
+scenario("01 intervalo de 15 minutos com alguém fora", () => {
   const store = memory({
     vehicle_primary_context_v1: readyContext(DAY - 1_000),
     [KEY]: {
@@ -161,24 +163,44 @@ scenario("01 intervalo normal de 15 minutos", () => {
       next_allowed_at: DAY + 15 * 60_000,
     },
   });
-  assert.equal(coordinator(store, DAY + 14 * 60_000), null);
-  assert(coordinator(store, DAY + 15 * 60_000));
+  const residentStates = {
+    resident_primary_state: "not_home",
+    resident_secondary_state: "home",
+  };
+  assert.equal(coordinator(store, DAY + 14 * 60_000, residentStates), null);
+  assert(coordinator(store, DAY + 15 * 60_000, residentStates));
 });
 
-scenario("02 todos em casa durante o dia", () => {
+scenario("02 ambos em casa usam intervalo de 30 minutos", () => {
   const store = memory({ vehicle_primary_context_v1: readyContext(DAY) });
-  assert(coordinator(store, DAY, { anyone_away: false }));
+  assert(coordinator(store, DAY, {
+    anyone_away: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  }));
+  const state = store.get(KEY);
+  assert.equal(state.interval_ms, 30 * 60_000);
+  assert.equal(state.interval_policy, "both_home_30m");
+  assert.equal(state.next_allowed_at, DAY + 30 * 60_000);
 });
 
-scenario("03 todos em casa durante a noite", () => {
+scenario("03 ambos em casa ficam pausados entre 00h e 06h", () => {
   const store = memory({ vehicle_primary_context_v1: readyContext(NIGHT) });
-  assert.equal(coordinator(store, NIGHT, { anyone_away: false }), null);
-  assert.equal(store.get(KEY).reason, "waiting_for_day_or_away");
+  assert.equal(coordinator(store, NIGHT, {
+    anyone_away: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  }), null);
+  assert.equal(store.get(KEY).reason, "quiet_hours_both_home");
 });
 
-scenario("04 alguém fora de casa", () => {
+scenario("04 not_home mantém intervalo de 15 minutos durante a madrugada", () => {
   const store = memory({ vehicle_primary_context_v1: readyContext(NIGHT) });
-  assert(coordinator(store, NIGHT, { anyone_away: true }));
+  assert(coordinator(store, NIGHT, {
+    resident_primary_state: "not_home",
+    resident_secondary_state: "home",
+  }));
+  assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
 });
 
 scenario("05 refresh manual ignora cooldown e permanece serializado", () => {
@@ -195,6 +217,8 @@ scenario("05 refresh manual ignora cooldown e permanece serializado", () => {
   const first = coordinator(store, DAY + 1_000, {
     reason: "manual_force",
     force_recovery: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
   });
   assert(first[0]);
   assert(first[1]);
@@ -204,9 +228,68 @@ scenario("05 refresh manual ignora cooldown e permanece serializado", () => {
   const second = coordinator(store, DAY + 2_000, {
     reason: "manual_force",
     force_recovery: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
   });
   assert.equal(second[0], null);
   assert.equal(second[2].notification.id, "vehicle_primary_refresh_blocked");
+});
+
+scenario("26 refresh manual ignora a pausa da madrugada", () => {
+  const store = memory({ vehicle_primary_context_v1: readyContext(NIGHT) });
+  const result = coordinator(store, NIGHT, {
+    reason: "manual_force",
+    force_recovery: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  });
+  assert(result[0]);
+  assert.equal(store.get(KEY).interval_ms, 30 * 60_000);
+});
+
+scenario("27 política diurna começa exatamente às 06h", () => {
+  const beforeStore = memory({
+    vehicle_primary_context_v1: readyContext(BEFORE_SIX),
+  });
+  const states = {
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  };
+  assert.equal(coordinator(beforeStore, BEFORE_SIX, states), null);
+
+  const sixStore = memory({ vehicle_primary_context_v1: readyContext(SIX) });
+  assert(coordinator(sixStore, SIX, states));
+  assert.equal(sixStore.get(KEY).next_allowed_at, SIX + 30 * 60_000);
+});
+
+scenario("28 estado chegando mantém intervalo de 15 minutos", () => {
+  const store = memory({ vehicle_primary_context_v1: readyContext(NIGHT) });
+  assert(coordinator(store, NIGHT, {
+    resident_primary_state: "home",
+    resident_secondary_state: "chegando",
+  }));
+  assert.equal(store.get(KEY).interval_policy, "away_or_approaching_15m");
+});
+
+scenario("29 saída reduz cooldown persistido de 30 para 15 minutos", () => {
+  const acceptedAt = DAY + 10_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY),
+    [KEY]: {
+      attempts: 0,
+      awaiting_evidence: false,
+      last_request_at: DAY,
+      service_accepted_at: acceptedAt,
+      next_allowed_at: acceptedAt + 30 * 60_000,
+      interval_ms: 30 * 60_000,
+    },
+  });
+  const result = coordinator(store, acceptedAt + 15 * 60_000, {
+    resident_primary_state: "not_home",
+    resident_secondary_state: "home",
+  });
+  assert(result[0]);
+  assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
 });
 
 scenario("06 chegada e movimento entram no coordenador", () => {

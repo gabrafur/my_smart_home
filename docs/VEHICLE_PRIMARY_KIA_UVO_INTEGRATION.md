@@ -42,13 +42,16 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   mais `check_and_force_update_vehicles`, nem no intervalo legado de 1440
   minutos. As opcoes antigas de force refresh permanecem aceitas apenas por
   compatibilidade de config entry.
-- O Node-RED conserva um piso de **15 minutos entre wakes automaticos** e o
+- O Node-RED usa **15 minutos** quando algum morador esta `not_home` ou
+  `chegando` e **30 minutos** quando ambos estao `home`. Com os dois em casa,
+  wakes periodicos ficam suspensos entre 00:00 e 05:59. O
   coordinator Python mantém um lock de processo; requests concorrentes sao
   coalescidos. Agendamento, manual, recovery, chegada e movimento convergem no
   mesmo estado persistente e passam por um guard final antes do binding
-  publico. O clique manual `Atualizar agora` ignora somente o cooldown; ele
-  nunca atravessa uma chamada em andamento. Depois de qualquer wake, o prazo
-  automatico seguinte e ancorado no aceite da chamada pelo Home Assistant.
+  publico. O clique manual `Atualizar agora` ignora o cooldown e a janela
+  noturna; ele nunca atravessa uma chamada em andamento. Depois de qualquer
+  wake, o prazo automatico seguinte e ancorado no aceite da chamada pelo Home
+  Assistant e usa a politica de presença corrente.
 - O backend BR pode publicar o snapshot mais de dois minutos depois de aceitar
   o wake. Se o aguardo fixo de 25 segundos da biblioteca expirar, o coordinator
   agenda seis releituras limitadas de `/latest` ao longo dos 150 segundos
@@ -92,11 +95,13 @@ vira sucesso quando esse relogio avanca, e posterior ao wake avaliado e o alvo
 de readiness e atingido.
 Mudancas em `last_updated` das entidades do Home Assistant nao contam: elas
 tambem ocorrem em reload e republicacao do mesmo cache. Sem evidencia, o mesmo recovery permanece em backoff e
-as retentativas automaticas respeitam 15 minutos; o contador satura sem criar
-rajadas ou loops. Somente o clique manual explicito pode antecipar esse prazo.
-O aceite estende `next_allowed_at` para 15 minutos depois da conclusao da
-chamada. Uma evidencia nova posterior pode confirmar sucesso, mas nunca
-encurta esse deadline para o instante do despacho.
+as retentativas automaticas respeitam 15 minutos com alguem fora ou chegando e
+30 minutos com ambos em casa; nessa ultima condicao tambem ficam suspensas das
+00:00 as 05:59. O contador satura sem criar rajadas ou loops. Somente o clique
+manual explicito pode antecipar prazo ou janela. O aceite estende
+`next_allowed_at` pelo intervalo selecionado depois da conclusao da chamada.
+Uma evidencia nova posterior pode confirmar sucesso, mas nunca encurta esse
+deadline para o instante do despacho.
 `request_in_flight`, seu lease e `next_allowed_at` sobrevivem a restart. Erros
 inesperados sao classificados pelo catch do Node-RED, liberam o lock logico e
 mantem o deadline. O resultado BR esperado em que o wake foi aceito mas o
@@ -123,7 +128,7 @@ partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
 backoff, e envia um novo wake. Ele nao quebra uma tentativa em voo; nesse unico
 caso bloqueado, o Home Assistant cria imediatamente uma notificacao persistente
 informando que nenhuma nova consulta foi enviada. O aceite do wake manual
-reinicia os 15 minutos da agenda automatica.
+reinicia a agenda automatica em 15 ou 30 minutos conforme a presença corrente.
 
 O carregamento inicial da integração não espera por `/tripinfo`. Esse endpoint
 é opcional e pode responder muito lentamente no backend brasileiro; bloquear
@@ -177,8 +182,9 @@ real do carro, enquanto o app Bluelink mostrava certo. Investigacao:
   As leituras ao vivo "extras" vêm do `button.vehicle_primary_force_refresh`
   (`nodered/flows.json`, flow `contexto_vehicle_primary`, node
   `vehicle_primary_force_refresh`). A política conjunta em `contexto_chegadas` pede o
-  refresh periódico a cada 15 min quando alguém está fora, ou entre 07h e
-  22h quando todos estão em casa — ver "Refresh" em
+  refresh periódico a cada 15 min quando alguém está fora ou chegando e a cada
+  30 min quando ambos estão em casa, com pausa entre 00h e 06h nesse último
+  caso — ver "Refresh" em
   ILUMINACAO_SEGURANCA_NODERED.md.
 - Verificado ao vivo: um `button.press` manual em `button.vehicle_primary_force_refresh`
   de fato busca dado fresco (timestamp `sensor.vehicle_primary_last_updated_at`
@@ -267,11 +273,13 @@ comando de wake foi aceito pelo backend.
   classe), nunca do atributo ja instalado na instancia. `_async_update_data`
   reinstala isto a cada ciclo, e envolver o wrapper anterior empilharia mais um
   `sleep(25)` por ciclo.
-- **Piso automatico de 15 min no Node-RED.** Acordar o carro puxa a bateria de
-  12 V e conta contra o rate limit — e' por isso que a agenda automatica
-  continua conservadora. O botao `Atualizar agora` e deliberadamente uma
-  excecao: ele faz wake mesmo dentro do cooldown, mas o lock do coordinator
-  ainda rejeita concorrencia. Cada aceite manual reinicia o prazo automatico.
+- **Agenda automatica orientada a presença no Node-RED.** Acordar o carro puxa
+  a bateria de 12 V e conta contra o rate limit: o intervalo e de 15 min com
+  alguem fora/chegando, 30 min com ambos em casa e fica suspenso de 00:00 a
+  05:59 se os dois continuarem em casa. O botao `Atualizar agora` e
+  deliberadamente uma excecao: ele faz wake mesmo dentro do cooldown ou da
+  pausa noturna, mas o lock do coordinator ainda rejeita concorrencia. Cada
+  aceite manual reinicia o prazo conforme a presença corrente.
 - O `sleep(25)` e o valor medido pelo upstream EU. Um refinamento possivel e
   trocar por `check_action_status(vehicle_id, msgId, ...)`, que ja e usado
   neste coordinator para comandos remotos e esperaria o tempo exato em vez de
@@ -407,8 +415,10 @@ confirmação sem timestamp. A confirmação expira após 24 h sem revalidação
 limpeza publica contexto pending e não dispara ações físicas.
 
 O refresh Bluelink persiste `attempts`, `next_allowed_at` e
-`last_success_at`. Falhas mantêm backoff automático de 15 minutos; sucesso
-limpa tentativas e volta ao mesmo cooldown normal. O clique manual pode
+`last_success_at`. Falhas mantêm backoff automático de 15 minutos com alguém
+fora/chegando e 30 minutos com ambos em casa; nessa última condição, o backoff
+periódico também pausa entre 00:00 e 05:59. Sucesso limpa tentativas e volta ao
+cooldown normal. O clique manual pode
 antecipar ambos, sem atravessar uma chamada em andamento. O TTL de 5 minutos de motor/trava continua
 bloqueando efeitos físicos, mas não quebra esse piso nem cria chamadas de cache
 que seriam contabilizadas como novas falhas. Isso evita storm após restart e

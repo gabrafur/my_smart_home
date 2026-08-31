@@ -4,7 +4,8 @@ const TEST_MODE =
 
 if (msg.payload?.kind !== "refresh_command") return null;
 
-const INTERVAL_MS = 15 * 60 * 1000;
+const AWAY_INTERVAL_MS = 15 * 60 * 1000;
+const HOME_INTERVAL_MS = 30 * 60 * 1000;
 const IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
 const key = TEST_MODE
@@ -17,6 +18,32 @@ const now = TEST_MODE && Number.isFinite(nowCandidate)
 const vehicleContext = TEST_MODE
     ? flow.get("vehicle_primary_context_v1__test") ?? {}
     : flow.get("vehicle_primary_context_v1") ?? {};
+const peopleContext = TEST_MODE
+    ? flow.get("people_context_v1__test") ?? {}
+    : flow.get("people_context_v1") ?? {};
+const residentPrimaryState = String(
+    msg.payload?.resident_primary_state ??
+    peopleContext.resident_primary?.state ??
+    ""
+).toLowerCase();
+const residentSecondaryState = String(
+    msg.payload?.resident_secondary_state ??
+    peopleContext.resident_secondary?.state ??
+    ""
+).toLowerCase();
+const residentStatesKnown =
+    residentPrimaryState.length > 0 && residentSecondaryState.length > 0;
+const bothResidentsHome =
+    residentPrimaryState === "home" && residentSecondaryState === "home";
+const awayOrApproachingStates = new Set(["not_home", "chegando"]);
+const anyoneAwayOrApproaching =
+    msg.payload?.anyone_away === true ||
+    peopleContext.anyone_away === true ||
+    awayOrApproachingStates.has(residentPrimaryState) ||
+    awayOrApproachingStates.has(residentSecondaryState);
+const selectedIntervalMs = bothResidentsHome
+    ? HOME_INTERVAL_MS
+    : AWAY_INTERVAL_MS;
 
 function stateGet() {
     return TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
@@ -33,7 +60,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
     state = {};
 }
 
-state.version = 6;
+state.version = 7;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -42,7 +69,7 @@ state.last_success_at = Number.isFinite(state.last_success_at) &&
         ? state.last_success_at
         : 0;
 state.next_allowed_at = Number.isFinite(state.next_allowed_at) &&
-    state.next_allowed_at <= now + INTERVAL_MS
+    state.next_allowed_at <= now + HOME_INTERVAL_MS + FUTURE_TOLERANCE_MS
         ? state.next_allowed_at
         : 0;
 state.last_attempt_at = Number.isFinite(state.last_attempt_at) &&
@@ -53,13 +80,29 @@ state.last_request_at = Number.isFinite(state.last_request_at) &&
     state.last_request_at <= now + FUTURE_TOLERANCE_MS
         ? state.last_request_at
         : state.last_attempt_at;
-const requestFloorAt = state.last_request_at > 0
-    ? state.last_request_at + INTERVAL_MS
-    : 0;
-state.next_allowed_at = Math.max(
-    state.next_allowed_at,
-    requestFloorAt
+state.service_accepted_at = Number.isFinite(state.service_accepted_at) &&
+    state.service_accepted_at <= now + FUTURE_TOLERANCE_MS
+        ? state.service_accepted_at
+        : 0;
+const previousIntervalMs = [AWAY_INTERVAL_MS, HOME_INTERVAL_MS]
+    .includes(Number(state.interval_ms))
+        ? Number(state.interval_ms)
+        : AWAY_INTERVAL_MS;
+const intervalChanged = previousIntervalMs !== selectedIntervalMs;
+state.interval_ms = selectedIntervalMs;
+state.interval_policy = selectedIntervalMs === HOME_INTERVAL_MS
+    ? "both_home_30m"
+    : "away_or_approaching_15m";
+const intervalAnchorAt = Math.max(
+    state.last_request_at,
+    state.service_accepted_at
 );
+const requestFloorAt = intervalAnchorAt > 0
+    ? intervalAnchorAt + selectedIntervalMs
+    : 0;
+state.next_allowed_at = intervalChanged
+    ? requestFloorAt
+    : Math.max(state.next_allowed_at, requestFloorAt);
 state.in_flight_until = Number.isFinite(state.in_flight_until) &&
     state.in_flight_until <= now + IN_FLIGHT_LEASE_MS
         ? state.in_flight_until
@@ -150,21 +193,19 @@ const requestedReason = msg.payload?.reason ??
     (recoveryNeeded ? "readiness_recovery_needed" : "scheduled_refresh");
 
 /*
- * Entradas automáticas respeitam 15 minutos entre wakes. O clique explícito
- * do dashboard ignora esse deadline, mas continua passando pelo lease acima:
- * uma chamada em andamento nunca recebe concorrência.
+ * Entradas automáticas usam 30 minutos quando os dois moradores estão em casa
+ * e 15 minutos quando alguém está fora ou chegando. Entre 00:00 e 05:59, os
+ * wakes periódicos ficam suspensos se ambos estão em casa. O clique explícito
+ * do dashboard ignora prazo e janela, mas nunca atravessa o lease acima.
  */
 const manualBypass = requestedReason === "manual_force";
 
 const hour = new Date(now).getHours();
-const daytime = hour >= 7 && hour < 22;
-const enabled =
-    recoveryNeeded ||
-    msg.payload?.anyone_away === true ||
-    daytime;
+const quietHours = hour >= 0 && hour < 6;
+const legacyDaytime = hour >= 7 && hour < 22;
 
-if (!enabled) {
-    save("waiting", "waiting_for_day_or_away", {
+if (!manualBypass && bothResidentsHome && quietHours) {
+    save("waiting", "quiet_hours_both_home", {
         enabled: false,
         next_retry_at: null,
         cooldown_until: null
@@ -172,7 +213,27 @@ if (!enabled) {
     node.status({
         fill: "grey",
         shape: "ring",
-        text: "refresh vehicle_primary: noite com todos em casa"
+        text: "refresh vehicle_primary: pausado até 06h"
+    });
+    return null;
+}
+
+const enabled =
+    recoveryNeeded ||
+    anyoneAwayOrApproaching ||
+    bothResidentsHome ||
+    (!residentStatesKnown && legacyDaytime);
+
+if (!enabled) {
+    save("waiting", "waiting_for_resident_location", {
+        enabled: false,
+        next_retry_at: null,
+        cooldown_until: null
+    });
+    node.status({
+        fill: "grey",
+        shape: "ring",
+        text: "refresh vehicle_primary: aguardando localização"
     });
     return null;
 }
@@ -202,7 +263,7 @@ state.baseline_observed_at = {
 state.attempts = Math.min(5, state.attempts + 1);
 state.last_attempt_at = now;
 state.last_request_at = now;
-state.next_allowed_at = now + INTERVAL_MS;
+state.next_allowed_at = now + selectedIntervalMs;
 state.awaiting_evidence = true;
 state.request_in_flight = true;
 state.in_flight_until = now + IN_FLIGHT_LEASE_MS;
@@ -244,6 +305,8 @@ node.log?.(
     " attempt=" + state.attempts +
     " reason=" + requestedReason +
     " recovery=" + String(recoveryNeeded) +
+    " interval_minutes=" + String(selectedIntervalMs / 60_000) +
+    " both_home=" + String(bothResidentsHome) +
     " require_lighting_ready=" + String(requireLightingReady) +
     " test_mode=" + String(TEST_MODE)
 );

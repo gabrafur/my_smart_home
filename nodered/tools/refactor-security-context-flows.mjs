@@ -451,6 +451,8 @@ if (kind === "people_context" || kind === "vehicle_primary_context") {
                 contract: "security.refresh-command.v1", kind: "refresh_command",
                 refresh_cycle_id: pending.cycle,
                 anyone_away: people?.anyone_away === true || vehicle_primary?.away === true,
+                resident_primary_state: people?.resident_primary?.state ?? null,
+                resident_secondary_state: people?.resident_secondary?.state ?? null,
             } }, null];
         }
         flow.set("refresh_pending", pending);

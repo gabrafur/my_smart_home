@@ -301,8 +301,9 @@ depende exclusivamente de um `delay` residente em memória.
 - Tick base: 30 s, com snapshot de pessoas e vehicle_primary.
 - iPhones: quando qualquer pessoa ou o vehicle_primary está fora, 60 s; 30 s quando a
   menor distância dos trackers de pessoas é até 2000 m.
-- vehicle_primary: 15 min quando alguém está fora; se todos estão em casa, 15 min apenas
-  entre 07h e 22h.
+- vehicle_primary: 15 min quando `resident_primary` ou `resident_secondary`
+  está `not_home`/`chegando`; 30 min quando ambos estão `home`, com os wakes
+  periódicos suspensos das 00:00 às 05:59 nessa última condição.
 - O Node-RED é o único agendador de wake real. O polling de 15 min do
   `kia_uvo` no Home Assistant lê somente o cache do Bluelink para manter as
   entidades publicadas; ele não chama mais o agendador nativo de force refresh.
@@ -310,7 +311,7 @@ depende exclusivamente de um `delay` residente em memória.
   ao mesmo coordenador persistente, em vez de chamar o binding diretamente.
 - Mudança de zona ou deslocamento GPS significativo: solicita avaliação
   imediata do refresh e marca motor/contexto como potencialmente stale. O wake
-  ainda respeita o piso de 15 min. A posição de referência é persistida somente
+  ainda respeita o intervalo vigente de 15 ou 30 min. A posição de referência é persistida somente
   para dedupe; logs registram tipo de movimento e distância arredondada, nunca
   latitude/longitude.
 - O timestamp dos iPhones é otimista, preservando o comportamento anterior.
@@ -318,18 +319,20 @@ depende exclusivamente de um `delay` residente em memória.
   Também persiste `request_in_flight` com lease conservador; o Home Assistant
   mantém um lock adicional no botão privado. Assim, duas entradas simultâneas
   são coalescidas e no máximo uma chamada alcança a API.
-  Falhas usam backoff de 15 min, o menor intervalo em que o backend brasileiro
-  permite outro wake real; sucesso limpa tentativas e aplica o mesmo intervalo
-  normal. O contador satura no quinto estágio. Não há rajada no restart porque
+  Falhas usam o intervalo vigente de 15 min fora/chegando ou 30 min em casa;
+  com ambos em casa, a janela 00:00–05:59 não produz wake periódico. Sucesso
+  limpa tentativas e aplica o mesmo intervalo normal. O contador satura no
+  quinto estágio. Não há rajada no restart porque
   `last_request_at` e `next_allowed_at` são persistidos e o piso é reconstruído
-  a partir do último despacho e estendido no aceite da chamada. Assim, os 15
-  minutos começam quando o serviço retorna, sem uma próxima tentativa alguns
+  a partir do último despacho e estendido no aceite da chamada. Assim, o prazo
+  selecionado começa quando o serviço retorna, sem uma próxima tentativa alguns
   segundos antes do piso interno do backend. Evidência posterior confirma o
   sucesso sem encurtar esse deadline.
 - O clique `Atualizar agora` usa `reason=manual_force` e ignora o deadline
   automatico. O lease do Node-RED e o lock do Home Assistant continuam
   serializando chamadas; depois do aceite manual, a agenda automatica recomeça
-  em 15 minutos.
+  em 15 ou 30 minutos conforme a presença atual. O botão também funciona na
+  pausa noturna.
 - O retorno de `public_bindings.call` muda o estado apenas para
   `awaiting_evidence`. Sucesso exige que localização, motor ou trava tenham
   dados associados a um `sensor.vehicle_primary_last_updated_at` posterior ao
