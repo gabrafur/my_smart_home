@@ -158,14 +158,6 @@
         "env": []
     },
     {
-        "id": "global_flow_observer_tab",
-        "type": "tab",
-        "label": "observabilidade_global",
-        "disabled": false,
-        "info": "Recebe erros e estados de indisponibilidade de todas as abas, deduplica incidentes e notifica resident_primary via Home Assistant.",
-        "env": []
-    },
-    {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
         "name": "Notificar celulares, Echo e Home Assistant",
@@ -1953,463 +1945,6 @@
         "h": 262
     },
     {
-        "id": "global_observer_coverage__weekly_docs_review_tab__group",
-        "type": "group",
-        "z": "weekly_docs_review_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__weekly_docs_review_tab__catch",
-            "global_observer_coverage__weekly_docs_review_tab__status",
-            "global_observer_coverage__weekly_docs_review_tab__annotate",
-            "global_observer_coverage__weekly_docs_review_tab__out"
-        ],
-        "x": 1674,
-        "y": 59,
-        "w": 752,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__group",
-        "type": "group",
-        "z": "git_backup_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__git_backup_tab__catch",
-            "global_observer_coverage__git_backup_tab__status",
-            "global_observer_coverage__git_backup_tab__annotate",
-            "global_observer_coverage__git_backup_tab__out"
-        ],
-        "x": 1680,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__29d64664bf8cbde8__group",
-        "type": "group",
-        "z": "29d64664bf8cbde8",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__29d64664bf8cbde8__catch",
-            "global_observer_coverage__29d64664bf8cbde8__status",
-            "global_observer_coverage__29d64664bf8cbde8__annotate",
-            "global_observer_coverage__29d64664bf8cbde8__out"
-        ],
-        "x": 2040,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__shared_integrations_tab__group",
-        "type": "group",
-        "z": "shared_integrations_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__shared_integrations_tab__catch",
-            "global_observer_coverage__shared_integrations_tab__status",
-            "global_observer_coverage__shared_integrations_tab__annotate",
-            "global_observer_coverage__shared_integrations_tab__out"
-        ],
-        "x": 740,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__ce258dec9814b96b__group",
-        "type": "group",
-        "z": "ce258dec9814b96b",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__ce258dec9814b96b__catch",
-            "global_observer_coverage__ce258dec9814b96b__status",
-            "global_observer_coverage__ce258dec9814b96b__annotate",
-            "global_observer_coverage__ce258dec9814b96b__out"
-        ],
-        "x": 2300,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__alarm_house_tab__group",
-        "type": "group",
-        "z": "alarm_house_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__alarm_house_tab__catch",
-            "global_observer_coverage__alarm_house_tab__status",
-            "global_observer_coverage__alarm_house_tab__annotate",
-            "global_observer_coverage__alarm_house_tab__out"
-        ],
-        "x": 1960,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__456b32bd5d59b0d6__group",
-        "type": "group",
-        "z": "456b32bd5d59b0d6",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__456b32bd5d59b0d6__catch",
-            "global_observer_coverage__456b32bd5d59b0d6__status",
-            "global_observer_coverage__456b32bd5d59b0d6__annotate",
-            "global_observer_coverage__456b32bd5d59b0d6__out"
-        ],
-        "x": 4704,
-        "y": 59,
-        "w": 722,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__storage_health_tab__group",
-        "type": "group",
-        "z": "storage_health_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__storage_health_tab__catch",
-            "global_observer_coverage__storage_health_tab__status",
-            "global_observer_coverage__storage_health_tab__annotate",
-            "global_observer_coverage__storage_health_tab__out"
-        ],
-        "x": 2320,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_internet_tab__group",
-        "type": "group",
-        "z": "monitoramento_internet_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__monitoramento_internet_tab__catch",
-            "global_observer_coverage__monitoramento_internet_tab__status",
-            "global_observer_coverage__monitoramento_internet_tab__annotate",
-            "global_observer_coverage__monitoramento_internet_tab__out"
-        ],
-        "x": 1524,
-        "y": 59,
-        "w": 722,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "type": "group",
-        "z": "monitoramento_zigbee_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__monitoramento_zigbee_tab__catch",
-            "global_observer_coverage__monitoramento_zigbee_tab__status",
-            "global_observer_coverage__monitoramento_zigbee_tab__annotate",
-            "global_observer_coverage__monitoramento_zigbee_tab__out"
-        ],
-        "x": 1464,
-        "y": 59,
-        "w": 722,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__ea0a6aa0d24ff863__group",
-        "type": "group",
-        "z": "ea0a6aa0d24ff863",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__ea0a6aa0d24ff863__catch",
-            "global_observer_coverage__ea0a6aa0d24ff863__status",
-            "global_observer_coverage__ea0a6aa0d24ff863__annotate",
-            "global_observer_coverage__ea0a6aa0d24ff863__out"
-        ],
-        "x": 1364,
-        "y": 59,
-        "w": 722,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__c22d8b12055e87f7__group",
-        "type": "group",
-        "z": "c22d8b12055e87f7",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__c22d8b12055e87f7__catch",
-            "global_observer_coverage__c22d8b12055e87f7__status",
-            "global_observer_coverage__c22d8b12055e87f7__annotate",
-            "global_observer_coverage__c22d8b12055e87f7__out"
-        ],
-        "x": 1984,
-        "y": 59,
-        "w": 722,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__62bb822e033d1623__group",
-        "type": "group",
-        "z": "62bb822e033d1623",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__62bb822e033d1623__catch",
-            "global_observer_coverage__62bb822e033d1623__status",
-            "global_observer_coverage__62bb822e033d1623__annotate",
-            "global_observer_coverage__62bb822e033d1623__out"
-        ],
-        "x": 1204,
-        "y": 59,
-        "w": 722,
-        "h": 142
-    },
-    {
-        "id": "global_observer_coverage__6b7552efb85343f4__group",
-        "type": "group",
-        "z": "6b7552efb85343f4",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__6b7552efb85343f4__catch",
-            "global_observer_coverage__6b7552efb85343f4__status",
-            "global_observer_coverage__6b7552efb85343f4__annotate",
-            "global_observer_coverage__6b7552efb85343f4__out"
-        ],
-        "x": 3160,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__1f468eaeef0733dd__group",
-        "type": "group",
-        "z": "1f468eaeef0733dd",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__1f468eaeef0733dd__catch",
-            "global_observer_coverage__1f468eaeef0733dd__status",
-            "global_observer_coverage__1f468eaeef0733dd__annotate",
-            "global_observer_coverage__1f468eaeef0733dd__out"
-        ],
-        "x": 2160,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__group",
-        "type": "group",
-        "z": "codex_alertas_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__codex_alertas_tab__catch",
-            "global_observer_coverage__codex_alertas_tab__status",
-            "global_observer_coverage__codex_alertas_tab__annotate",
-            "global_observer_coverage__codex_alertas_tab__out"
-        ],
-        "x": 1640,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_tuya_tab__group",
-        "type": "group",
-        "z": "monitoramento_tuya_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__monitoramento_tuya_tab__catch",
-            "global_observer_coverage__monitoramento_tuya_tab__status",
-            "global_observer_coverage__monitoramento_tuya_tab__annotate",
-            "global_observer_coverage__monitoramento_tuya_tab__out"
-        ],
-        "x": 1440,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__resident_notifications_tab__group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__resident_notifications_tab__catch",
-            "global_observer_coverage__resident_notifications_tab__status",
-            "global_observer_coverage__resident_notifications_tab__annotate",
-            "global_observer_coverage__resident_notifications_tab__out"
-        ],
-        "x": 1960,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_vpn_tab__group",
-        "type": "group",
-        "z": "monitoramento_vpn_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__monitoramento_vpn_tab__catch",
-            "global_observer_coverage__monitoramento_vpn_tab__status",
-            "global_observer_coverage__monitoramento_vpn_tab__annotate",
-            "global_observer_coverage__monitoramento_vpn_tab__out"
-        ],
-        "x": 2000,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__daily_host_updates_tab__group",
-        "type": "group",
-        "z": "daily_host_updates_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__daily_host_updates_tab__catch",
-            "global_observer_coverage__daily_host_updates_tab__status",
-            "global_observer_coverage__daily_host_updates_tab__annotate",
-            "global_observer_coverage__daily_host_updates_tab__out"
-        ],
-        "x": 1520,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_production_group",
-        "type": "group",
-        "z": "global_flow_observer_tab",
-        "name": "Monitor global e entrega central pelo Home Assistant",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_architecture",
-            "global_observer_events_in",
-            "global_observer_test_evaluate_in",
-            "global_observer_test_delivery_in",
-            "global_observer_ingest",
-            "global_observer_tick",
-            "global_observer_evaluate",
-            "global_observer_dispatch_guard",
-            "global_observer_dry_run_out",
-            "global_observer_notify_primary",
-            "global_observer_notification_ack",
-            "global_observer_notification_catch",
-            "global_observer_notification_failure"
-        ],
-        "x": 64,
-        "y": 39,
-        "w": 1570,
-        "h": 302
-    },
-    {
-        "id": "global_observer_test_group",
-        "type": "group",
-        "z": "global_flow_observer_tab",
-        "name": "Testes: dry-run completo e smoke test explícito de entrega",
-        "style": {
-            "label": true,
-            "color": "#4b93d1"
-        },
-        "nodes": [
-            "global_observer_test_instructions",
-            "global_observer_test_reset",
-            "global_observer_test_reset_state",
-            "global_observer_test_error",
-            "global_observer_test_status_failure",
-            "global_observer_test_event_out",
-            "global_observer_test_evaluate",
-            "global_observer_test_evaluate_out",
-            "global_observer_test_delivery",
-            "global_observer_test_delivery_out",
-            "global_observer_dry_run_in",
-            "global_observer_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 379,
-        "w": 1570,
-        "h": 322
-    },
-    {
         "id": "4126427d5e161a03",
         "type": "server",
         "name": "Home Assistant",
@@ -3231,72 +2766,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__weekly_docs_review_tab__catch",
-        "type": "catch",
-        "z": "weekly_docs_review_tab",
-        "g": "global_observer_coverage__weekly_docs_review_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1860,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__weekly_docs_review_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__weekly_docs_review_tab__status",
-        "type": "status",
-        "z": "weekly_docs_review_tab",
-        "g": "global_observer_coverage__weekly_docs_review_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1840,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__weekly_docs_review_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__weekly_docs_review_tab__annotate",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "global_observer_coverage__weekly_docs_review_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"weekly_docs_review_tab\",\"flow_label\":\"revisao_documental_semanal\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2140,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__weekly_docs_review_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__weekly_docs_review_tab__out",
-        "type": "link out",
-        "z": "weekly_docs_review_tab",
-        "g": "global_observer_coverage__weekly_docs_review_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2385,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "git_backup_architecture",
         "type": "comment",
         "z": "git_backup_tab",
@@ -3674,72 +3143,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__git_backup_tab__catch",
-        "type": "catch",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1820,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__status",
-        "type": "status",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1830,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__annotate",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"git_backup_tab\",\"flow_label\":\"backup_git\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2100,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2345,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "45296e246a57590d",
         "type": "mqtt in",
         "z": "29d64664bf8cbde8",
@@ -4058,72 +3461,6 @@
         ]
     },
     {
-        "id": "global_observer_coverage__29d64664bf8cbde8__catch",
-        "type": "catch",
-        "z": "29d64664bf8cbde8",
-        "g": "global_observer_coverage__29d64664bf8cbde8__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2180,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__29d64664bf8cbde8__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__29d64664bf8cbde8__status",
-        "type": "status",
-        "z": "29d64664bf8cbde8",
-        "g": "global_observer_coverage__29d64664bf8cbde8__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2190,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__29d64664bf8cbde8__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__29d64664bf8cbde8__annotate",
-        "type": "function",
-        "z": "29d64664bf8cbde8",
-        "g": "global_observer_coverage__29d64664bf8cbde8__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"29d64664bf8cbde8\",\"flow_label\":\"garagem\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2460,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__29d64664bf8cbde8__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__29d64664bf8cbde8__out",
-        "type": "link out",
-        "z": "29d64664bf8cbde8",
-        "g": "global_observer_coverage__29d64664bf8cbde8__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2705,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "70e147e6b7df9826",
         "type": "DuloNodeHub",
         "z": "shared_integrations_tab",
@@ -4162,72 +3499,6 @@
         ],
         "x": 555,
         "y": 100,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__shared_integrations_tab__catch",
-        "type": "catch",
-        "z": "shared_integrations_tab",
-        "g": "global_observer_coverage__shared_integrations_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 880,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__shared_integrations_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__shared_integrations_tab__status",
-        "type": "status",
-        "z": "shared_integrations_tab",
-        "g": "global_observer_coverage__shared_integrations_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 890,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__shared_integrations_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__shared_integrations_tab__annotate",
-        "type": "function",
-        "z": "shared_integrations_tab",
-        "g": "global_observer_coverage__shared_integrations_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"shared_integrations_tab\",\"flow_label\":\"integracoes_compartilhadas\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1160,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__shared_integrations_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__shared_integrations_tab__out",
-        "type": "link out",
-        "z": "shared_integrations_tab",
-        "g": "global_observer_coverage__shared_integrations_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 1405,
-        "y": 130,
         "wires": []
     },
     {
@@ -5076,72 +4347,6 @@
         ]
     },
     {
-        "id": "global_observer_coverage__ce258dec9814b96b__catch",
-        "type": "catch",
-        "z": "ce258dec9814b96b",
-        "g": "global_observer_coverage__ce258dec9814b96b__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2440,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__ce258dec9814b96b__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__ce258dec9814b96b__status",
-        "type": "status",
-        "z": "ce258dec9814b96b",
-        "g": "global_observer_coverage__ce258dec9814b96b__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2450,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__ce258dec9814b96b__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__ce258dec9814b96b__annotate",
-        "type": "function",
-        "z": "ce258dec9814b96b",
-        "g": "global_observer_coverage__ce258dec9814b96b__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"ce258dec9814b96b\",\"flow_label\":\"iluminacao_externa\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2720,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__ce258dec9814b96b__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__ce258dec9814b96b__out",
-        "type": "link out",
-        "z": "ce258dec9814b96b",
-        "g": "global_observer_coverage__ce258dec9814b96b__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2965,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "moni_mobile_arm_event",
         "type": "server-events",
         "z": "alarm_house_tab",
@@ -5694,72 +4899,6 @@
                 "alarm_set_desired_disarm"
             ]
         ]
-    },
-    {
-        "id": "global_observer_coverage__alarm_house_tab__catch",
-        "type": "catch",
-        "z": "alarm_house_tab",
-        "g": "global_observer_coverage__alarm_house_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2100,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__alarm_house_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__alarm_house_tab__status",
-        "type": "status",
-        "z": "alarm_house_tab",
-        "g": "global_observer_coverage__alarm_house_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2110,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__alarm_house_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__alarm_house_tab__annotate",
-        "type": "function",
-        "z": "alarm_house_tab",
-        "g": "global_observer_coverage__alarm_house_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"alarm_house_tab\",\"flow_label\":\"alarme_casa\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2380,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__alarm_house_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__alarm_house_tab__out",
-        "type": "link out",
-        "z": "alarm_house_tab",
-        "g": "global_observer_coverage__alarm_house_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2625,
-        "y": 130,
-        "wires": []
     },
     {
         "id": "9b0dbe523189f263",
@@ -7842,7 +6981,7 @@
         "links": [
             "f9be08e865d2c10e"
         ],
-        "x": 845,
+        "x": 900,
         "y": 800,
         "wires": []
     },
@@ -8282,72 +7421,6 @@
         ],
         "x": 2645,
         "y": 1080,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__456b32bd5d59b0d6__catch",
-        "type": "catch",
-        "z": "456b32bd5d59b0d6",
-        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 4860,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__456b32bd5d59b0d6__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__456b32bd5d59b0d6__status",
-        "type": "status",
-        "z": "456b32bd5d59b0d6",
-        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 4870,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__456b32bd5d59b0d6__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__456b32bd5d59b0d6__annotate",
-        "type": "function",
-        "z": "456b32bd5d59b0d6",
-        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"456b32bd5d59b0d6\",\"flow_label\":\"resfriamento_raspberry_pi\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 5140,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__456b32bd5d59b0d6__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__456b32bd5d59b0d6__out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 5385,
-        "y": 130,
         "wires": []
     },
     {
@@ -9066,72 +8139,6 @@
         ]
     },
     {
-        "id": "global_observer_coverage__storage_health_tab__catch",
-        "type": "catch",
-        "z": "storage_health_tab",
-        "g": "global_observer_coverage__storage_health_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2460,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__storage_health_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__storage_health_tab__status",
-        "type": "status",
-        "z": "storage_health_tab",
-        "g": "global_observer_coverage__storage_health_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2470,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__storage_health_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__storage_health_tab__annotate",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "global_observer_coverage__storage_health_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"storage_health_tab\",\"flow_label\":\"storage_health\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2740,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__storage_health_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__storage_health_tab__out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "global_observer_coverage__storage_health_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2985,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "internet_cycle",
         "type": "inject",
         "z": "monitoramento_internet_tab",
@@ -9349,72 +8356,6 @@
         "libs": [],
         "x": 950,
         "y": 140,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_internet_tab__catch",
-        "type": "catch",
-        "z": "monitoramento_internet_tab",
-        "g": "global_observer_coverage__monitoramento_internet_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1680,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_internet_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_internet_tab__status",
-        "type": "status",
-        "z": "monitoramento_internet_tab",
-        "g": "global_observer_coverage__monitoramento_internet_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1690,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_internet_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_internet_tab__annotate",
-        "type": "function",
-        "z": "monitoramento_internet_tab",
-        "g": "global_observer_coverage__monitoramento_internet_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_internet_tab\",\"flow_label\":\"monitoramento_internet\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1960,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_internet_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_internet_tab__out",
-        "type": "link out",
-        "z": "monitoramento_internet_tab",
-        "g": "global_observer_coverage__monitoramento_internet_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2205,
-        "y": 130,
         "wires": []
     },
     {
@@ -9765,72 +8706,6 @@
                 "zigbee_component_notify_down"
             ]
         ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__catch",
-        "type": "catch",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1620,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__status",
-        "type": "status",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1630,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__annotate",
-        "type": "function",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_zigbee_tab\",\"flow_label\":\"monitoramento_zigbee\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1900,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_zigbee_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_zigbee_tab__out",
-        "type": "link out",
-        "z": "monitoramento_zigbee_tab",
-        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2145,
-        "y": 130,
-        "wires": []
     },
     {
         "id": "69adb96460375298",
@@ -10673,72 +9548,6 @@
                 "131d1f73e8230b27"
             ]
         ]
-    },
-    {
-        "id": "global_observer_coverage__ea0a6aa0d24ff863__catch",
-        "type": "catch",
-        "z": "ea0a6aa0d24ff863",
-        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1520,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__ea0a6aa0d24ff863__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__ea0a6aa0d24ff863__status",
-        "type": "status",
-        "z": "ea0a6aa0d24ff863",
-        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1530,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__ea0a6aa0d24ff863__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__ea0a6aa0d24ff863__annotate",
-        "type": "function",
-        "z": "ea0a6aa0d24ff863",
-        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"ea0a6aa0d24ff863\",\"flow_label\":\"localizacao_pessoas\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1800,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__ea0a6aa0d24ff863__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__ea0a6aa0d24ff863__out",
-        "type": "link out",
-        "z": "ea0a6aa0d24ff863",
-        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2045,
-        "y": 130,
-        "wires": []
     },
     {
         "id": "e1df5b6e59c2e349",
@@ -12054,72 +10863,6 @@
         ]
     },
     {
-        "id": "global_observer_coverage__c22d8b12055e87f7__catch",
-        "type": "catch",
-        "z": "c22d8b12055e87f7",
-        "g": "global_observer_coverage__c22d8b12055e87f7__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2140,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__c22d8b12055e87f7__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__c22d8b12055e87f7__status",
-        "type": "status",
-        "z": "c22d8b12055e87f7",
-        "g": "global_observer_coverage__c22d8b12055e87f7__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2150,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__c22d8b12055e87f7__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__c22d8b12055e87f7__annotate",
-        "type": "function",
-        "z": "c22d8b12055e87f7",
-        "g": "global_observer_coverage__c22d8b12055e87f7__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"c22d8b12055e87f7\",\"flow_label\":\"contexto_vehicle_primary\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2420,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__c22d8b12055e87f7__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__c22d8b12055e87f7__out",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "global_observer_coverage__c22d8b12055e87f7__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2665,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "93177ddacd3cb498",
         "type": "comment",
         "z": "62bb822e033d1623",
@@ -12352,72 +11095,6 @@
                 "5b3d363c0035297b"
             ]
         ]
-    },
-    {
-        "id": "global_observer_coverage__62bb822e033d1623__catch",
-        "type": "catch",
-        "z": "62bb822e033d1623",
-        "g": "global_observer_coverage__62bb822e033d1623__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1360,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__62bb822e033d1623__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__62bb822e033d1623__status",
-        "type": "status",
-        "z": "62bb822e033d1623",
-        "g": "global_observer_coverage__62bb822e033d1623__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1370,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__62bb822e033d1623__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__62bb822e033d1623__annotate",
-        "type": "function",
-        "z": "62bb822e033d1623",
-        "g": "global_observer_coverage__62bb822e033d1623__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"62bb822e033d1623\",\"flow_label\":\"contexto_chegadas\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1640,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__62bb822e033d1623__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__62bb822e033d1623__out",
-        "type": "link out",
-        "z": "62bb822e033d1623",
-        "g": "global_observer_coverage__62bb822e033d1623__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 1885,
-        "y": 130,
-        "wires": []
     },
     {
         "id": "0ebee3461b20bade",
@@ -13596,72 +12273,6 @@
         ]
     },
     {
-        "id": "global_observer_coverage__6b7552efb85343f4__catch",
-        "type": "catch",
-        "z": "6b7552efb85343f4",
-        "g": "global_observer_coverage__6b7552efb85343f4__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 3300,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__6b7552efb85343f4__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__6b7552efb85343f4__status",
-        "type": "status",
-        "z": "6b7552efb85343f4",
-        "g": "global_observer_coverage__6b7552efb85343f4__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 3310,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__6b7552efb85343f4__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__6b7552efb85343f4__annotate",
-        "type": "function",
-        "z": "6b7552efb85343f4",
-        "g": "global_observer_coverage__6b7552efb85343f4__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"6b7552efb85343f4\",\"flow_label\":\"iluminacao_seguranca\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 3580,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__6b7552efb85343f4__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__6b7552efb85343f4__out",
-        "type": "link out",
-        "z": "6b7552efb85343f4",
-        "g": "global_observer_coverage__6b7552efb85343f4__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 3825,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "882f727e98158ffe",
         "type": "link in",
         "z": "1f468eaeef0733dd",
@@ -14263,72 +12874,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__1f468eaeef0733dd__catch",
-        "type": "catch",
-        "z": "1f468eaeef0733dd",
-        "g": "global_observer_coverage__1f468eaeef0733dd__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2300,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__1f468eaeef0733dd__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__1f468eaeef0733dd__status",
-        "type": "status",
-        "z": "1f468eaeef0733dd",
-        "g": "global_observer_coverage__1f468eaeef0733dd__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2310,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__1f468eaeef0733dd__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__1f468eaeef0733dd__annotate",
-        "type": "function",
-        "z": "1f468eaeef0733dd",
-        "g": "global_observer_coverage__1f468eaeef0733dd__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"1f468eaeef0733dd\",\"flow_label\":\"alarme_desarme_chegada\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2580,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__1f468eaeef0733dd__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__1f468eaeef0733dd__out",
-        "type": "link out",
-        "z": "1f468eaeef0733dd",
-        "g": "global_observer_coverage__1f468eaeef0733dd__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2825,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "codex_alert_state",
         "type": "server-state-changed",
         "z": "codex_alertas_tab",
@@ -14660,72 +13205,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__codex_alertas_tab__catch",
-        "type": "catch",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1780,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__codex_alertas_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__status",
-        "type": "status",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1790,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__codex_alertas_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__annotate",
-        "type": "function",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"codex_alertas_tab\",\"flow_label\":\"alertas_codex\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2060,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__codex_alertas_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__out",
-        "type": "link out",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2305,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "tuya_cycle",
         "type": "inject",
         "z": "monitoramento_tuya_tab",
@@ -15017,72 +13496,6 @@
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre descoberta dinâmica de Tuya/LocalTuya, startup saudável, 30 s offline, dedupe, lembrete a cada 24 h, 60 s de recuperação, restart persistente, falha de consulta, MQTT Discovery e a rota compartilhada de celular/Echo.",
         "x": 410,
         "y": 520,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_tuya_tab__catch",
-        "type": "catch",
-        "z": "monitoramento_tuya_tab",
-        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1580,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_tuya_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_tuya_tab__status",
-        "type": "status",
-        "z": "monitoramento_tuya_tab",
-        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1590,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_tuya_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_tuya_tab__annotate",
-        "type": "function",
-        "z": "monitoramento_tuya_tab",
-        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_tuya_tab\",\"flow_label\":\"monitoramento_tuya\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1860,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_tuya_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_tuya_tab__out",
-        "type": "link out",
-        "z": "monitoramento_tuya_tab",
-        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2105,
-        "y": 130,
         "wires": []
     },
     {
@@ -15432,72 +13845,6 @@
         ],
         "x": 1000,
         "y": 500,
-        "wires": []
-    },
-    {
-        "id": "global_observer_coverage__resident_notifications_tab__catch",
-        "type": "catch",
-        "z": "resident_notifications_tab",
-        "g": "global_observer_coverage__resident_notifications_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2100,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__resident_notifications_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__resident_notifications_tab__status",
-        "type": "status",
-        "z": "resident_notifications_tab",
-        "g": "global_observer_coverage__resident_notifications_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2110,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__resident_notifications_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__resident_notifications_tab__annotate",
-        "type": "function",
-        "z": "resident_notifications_tab",
-        "g": "global_observer_coverage__resident_notifications_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"resident_notifications_tab\",\"flow_label\":\"notificacoes_chegadas_residentes\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2380,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__resident_notifications_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__resident_notifications_tab__out",
-        "type": "link out",
-        "z": "resident_notifications_tab",
-        "g": "global_observer_coverage__resident_notifications_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2625,
-        "y": 130,
         "wires": []
     },
     {
@@ -16298,72 +14645,6 @@
         "wires": [
             []
         ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_vpn_tab__catch",
-        "type": "catch",
-        "z": "monitoramento_vpn_tab",
-        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2140,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_vpn_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_vpn_tab__status",
-        "type": "status",
-        "z": "monitoramento_vpn_tab",
-        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2150,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_vpn_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_vpn_tab__annotate",
-        "type": "function",
-        "z": "monitoramento_vpn_tab",
-        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_vpn_tab\",\"flow_label\":\"monitoramento_vpn\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2420,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__monitoramento_vpn_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__monitoramento_vpn_tab__out",
-        "type": "link out",
-        "z": "monitoramento_vpn_tab",
-        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2665,
-        "y": 130,
-        "wires": []
     },
     {
         "id": "daily_update_architecture",
@@ -17515,6 +15796,1660 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__weekly_docs_review_tab__group",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__weekly_docs_review_tab__catch",
+            "global_observer_coverage__weekly_docs_review_tab__status",
+            "global_observer_coverage__weekly_docs_review_tab__annotate",
+            "global_observer_coverage__weekly_docs_review_tab__out"
+        ],
+        "x": 1674,
+        "y": 59,
+        "w": 752,
+        "h": 142
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__catch",
+        "type": "catch",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1860,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__weekly_docs_review_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__status",
+        "type": "status",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1840,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__weekly_docs_review_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__annotate",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"weekly_docs_review_tab\",\"flow_label\":\"revisao_documental_semanal\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2140,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__weekly_docs_review_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__weekly_docs_review_tab__out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "global_observer_coverage__weekly_docs_review_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2385,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__git_backup_tab__catch",
+            "global_observer_coverage__git_backup_tab__status",
+            "global_observer_coverage__git_backup_tab__annotate",
+            "global_observer_coverage__git_backup_tab__out"
+        ],
+        "x": 1680,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__catch",
+        "type": "catch",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1820,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__status",
+        "type": "status",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1830,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__annotate",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"git_backup_tab\",\"flow_label\":\"backup_git\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2100,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2345,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__group",
+        "type": "group",
+        "z": "29d64664bf8cbde8",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__29d64664bf8cbde8__catch",
+            "global_observer_coverage__29d64664bf8cbde8__status",
+            "global_observer_coverage__29d64664bf8cbde8__annotate",
+            "global_observer_coverage__29d64664bf8cbde8__out"
+        ],
+        "x": 2040,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__catch",
+        "type": "catch",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2180,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__29d64664bf8cbde8__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__status",
+        "type": "status",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2190,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__29d64664bf8cbde8__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__annotate",
+        "type": "function",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"29d64664bf8cbde8\",\"flow_label\":\"garagem\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2460,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__29d64664bf8cbde8__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__29d64664bf8cbde8__out",
+        "type": "link out",
+        "z": "29d64664bf8cbde8",
+        "g": "global_observer_coverage__29d64664bf8cbde8__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2705,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__group",
+        "type": "group",
+        "z": "shared_integrations_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__shared_integrations_tab__catch",
+            "global_observer_coverage__shared_integrations_tab__status",
+            "global_observer_coverage__shared_integrations_tab__annotate",
+            "global_observer_coverage__shared_integrations_tab__out"
+        ],
+        "x": 740,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__catch",
+        "type": "catch",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 880,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__shared_integrations_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__status",
+        "type": "status",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 890,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__shared_integrations_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__annotate",
+        "type": "function",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"shared_integrations_tab\",\"flow_label\":\"integracoes_compartilhadas\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__shared_integrations_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__shared_integrations_tab__out",
+        "type": "link out",
+        "z": "shared_integrations_tab",
+        "g": "global_observer_coverage__shared_integrations_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 1405,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__group",
+        "type": "group",
+        "z": "ce258dec9814b96b",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__ce258dec9814b96b__catch",
+            "global_observer_coverage__ce258dec9814b96b__status",
+            "global_observer_coverage__ce258dec9814b96b__annotate",
+            "global_observer_coverage__ce258dec9814b96b__out"
+        ],
+        "x": 2300,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__catch",
+        "type": "catch",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2440,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__ce258dec9814b96b__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__status",
+        "type": "status",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2450,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__ce258dec9814b96b__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__annotate",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"ce258dec9814b96b\",\"flow_label\":\"iluminacao_externa\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2720,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__ce258dec9814b96b__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ce258dec9814b96b__out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "global_observer_coverage__ce258dec9814b96b__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2965,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__group",
+        "type": "group",
+        "z": "alarm_house_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__alarm_house_tab__catch",
+            "global_observer_coverage__alarm_house_tab__status",
+            "global_observer_coverage__alarm_house_tab__annotate",
+            "global_observer_coverage__alarm_house_tab__out"
+        ],
+        "x": 1960,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__catch",
+        "type": "catch",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2100,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__alarm_house_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__status",
+        "type": "status",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2110,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__alarm_house_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__annotate",
+        "type": "function",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"alarm_house_tab\",\"flow_label\":\"alarme_casa\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2380,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__alarm_house_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__alarm_house_tab__out",
+        "type": "link out",
+        "z": "alarm_house_tab",
+        "g": "global_observer_coverage__alarm_house_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2625,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "type": "group",
+        "z": "456b32bd5d59b0d6",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__456b32bd5d59b0d6__catch",
+            "global_observer_coverage__456b32bd5d59b0d6__status",
+            "global_observer_coverage__456b32bd5d59b0d6__annotate",
+            "global_observer_coverage__456b32bd5d59b0d6__out"
+        ],
+        "x": 4704,
+        "y": 59,
+        "w": 722,
+        "h": 142
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__catch",
+        "type": "catch",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 4860,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__456b32bd5d59b0d6__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__status",
+        "type": "status",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 4870,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__456b32bd5d59b0d6__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__annotate",
+        "type": "function",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"456b32bd5d59b0d6\",\"flow_label\":\"resfriamento_raspberry_pi\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5140,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__456b32bd5d59b0d6__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__456b32bd5d59b0d6__out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "global_observer_coverage__456b32bd5d59b0d6__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 5385,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__group",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__storage_health_tab__catch",
+            "global_observer_coverage__storage_health_tab__status",
+            "global_observer_coverage__storage_health_tab__annotate",
+            "global_observer_coverage__storage_health_tab__out"
+        ],
+        "x": 2320,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__catch",
+        "type": "catch",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2460,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__storage_health_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__status",
+        "type": "status",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2470,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__storage_health_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__annotate",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"storage_health_tab\",\"flow_label\":\"storage_health\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2740,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__storage_health_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__storage_health_tab__out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "global_observer_coverage__storage_health_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2985,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__group",
+        "type": "group",
+        "z": "monitoramento_internet_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_internet_tab__catch",
+            "global_observer_coverage__monitoramento_internet_tab__status",
+            "global_observer_coverage__monitoramento_internet_tab__annotate",
+            "global_observer_coverage__monitoramento_internet_tab__out"
+        ],
+        "x": 1524,
+        "y": 59,
+        "w": 722,
+        "h": 142
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1680,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_internet_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__status",
+        "type": "status",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1690,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_internet_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_internet_tab\",\"flow_label\":\"monitoramento_internet\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1960,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_internet_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_internet_tab__out",
+        "type": "link out",
+        "z": "monitoramento_internet_tab",
+        "g": "global_observer_coverage__monitoramento_internet_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2205,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "type": "group",
+        "z": "monitoramento_zigbee_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_zigbee_tab__catch",
+            "global_observer_coverage__monitoramento_zigbee_tab__status",
+            "global_observer_coverage__monitoramento_zigbee_tab__annotate",
+            "global_observer_coverage__monitoramento_zigbee_tab__out"
+        ],
+        "x": 1464,
+        "y": 59,
+        "w": 722,
+        "h": 142
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1620,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__status",
+        "type": "status",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1630,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_zigbee_tab\",\"flow_label\":\"monitoramento_zigbee\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1900,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_zigbee_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_zigbee_tab__out",
+        "type": "link out",
+        "z": "monitoramento_zigbee_tab",
+        "g": "global_observer_coverage__monitoramento_zigbee_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2145,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "type": "group",
+        "z": "ea0a6aa0d24ff863",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__ea0a6aa0d24ff863__catch",
+            "global_observer_coverage__ea0a6aa0d24ff863__status",
+            "global_observer_coverage__ea0a6aa0d24ff863__annotate",
+            "global_observer_coverage__ea0a6aa0d24ff863__out"
+        ],
+        "x": 1364,
+        "y": 59,
+        "w": 722,
+        "h": 142
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__catch",
+        "type": "catch",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1520,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__ea0a6aa0d24ff863__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__status",
+        "type": "status",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1530,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__ea0a6aa0d24ff863__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__annotate",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"ea0a6aa0d24ff863\",\"flow_label\":\"localizacao_pessoas\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1800,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__ea0a6aa0d24ff863__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__ea0a6aa0d24ff863__out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "global_observer_coverage__ea0a6aa0d24ff863__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2045,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__group",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__c22d8b12055e87f7__catch",
+            "global_observer_coverage__c22d8b12055e87f7__status",
+            "global_observer_coverage__c22d8b12055e87f7__annotate",
+            "global_observer_coverage__c22d8b12055e87f7__out"
+        ],
+        "x": 2000,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__catch",
+        "type": "catch",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2140,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__c22d8b12055e87f7__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__status",
+        "type": "status",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2150,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__c22d8b12055e87f7__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__annotate",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"c22d8b12055e87f7\",\"flow_label\":\"contexto_vehicle_primary\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2420,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__c22d8b12055e87f7__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__c22d8b12055e87f7__out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "global_observer_coverage__c22d8b12055e87f7__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2665,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__group",
+        "type": "group",
+        "z": "62bb822e033d1623",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__62bb822e033d1623__catch",
+            "global_observer_coverage__62bb822e033d1623__status",
+            "global_observer_coverage__62bb822e033d1623__annotate",
+            "global_observer_coverage__62bb822e033d1623__out"
+        ],
+        "x": 1220,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__catch",
+        "type": "catch",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1360,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__62bb822e033d1623__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__status",
+        "type": "status",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1370,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__62bb822e033d1623__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__annotate",
+        "type": "function",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"62bb822e033d1623\",\"flow_label\":\"contexto_chegadas\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1640,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__62bb822e033d1623__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__62bb822e033d1623__out",
+        "type": "link out",
+        "z": "62bb822e033d1623",
+        "g": "global_observer_coverage__62bb822e033d1623__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 1885,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__group",
+        "type": "group",
+        "z": "6b7552efb85343f4",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__6b7552efb85343f4__catch",
+            "global_observer_coverage__6b7552efb85343f4__status",
+            "global_observer_coverage__6b7552efb85343f4__annotate",
+            "global_observer_coverage__6b7552efb85343f4__out"
+        ],
+        "x": 3160,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__catch",
+        "type": "catch",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 3300,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__6b7552efb85343f4__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__status",
+        "type": "status",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 3310,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__6b7552efb85343f4__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__annotate",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"6b7552efb85343f4\",\"flow_label\":\"iluminacao_seguranca\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3580,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__6b7552efb85343f4__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__6b7552efb85343f4__out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "global_observer_coverage__6b7552efb85343f4__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 3825,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__group",
+        "type": "group",
+        "z": "1f468eaeef0733dd",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__1f468eaeef0733dd__catch",
+            "global_observer_coverage__1f468eaeef0733dd__status",
+            "global_observer_coverage__1f468eaeef0733dd__annotate",
+            "global_observer_coverage__1f468eaeef0733dd__out"
+        ],
+        "x": 2160,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__catch",
+        "type": "catch",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2300,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__1f468eaeef0733dd__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__status",
+        "type": "status",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2310,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__1f468eaeef0733dd__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__annotate",
+        "type": "function",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"1f468eaeef0733dd\",\"flow_label\":\"alarme_desarme_chegada\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2580,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__1f468eaeef0733dd__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__1f468eaeef0733dd__out",
+        "type": "link out",
+        "z": "1f468eaeef0733dd",
+        "g": "global_observer_coverage__1f468eaeef0733dd__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2825,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__group",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__codex_alertas_tab__catch",
+            "global_observer_coverage__codex_alertas_tab__status",
+            "global_observer_coverage__codex_alertas_tab__annotate",
+            "global_observer_coverage__codex_alertas_tab__out"
+        ],
+        "x": 1640,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__catch",
+        "type": "catch",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1780,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__status",
+        "type": "status",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1790,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__annotate",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"codex_alertas_tab\",\"flow_label\":\"alertas_codex\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2060,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__out",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2305,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "type": "group",
+        "z": "monitoramento_tuya_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_tuya_tab__catch",
+            "global_observer_coverage__monitoramento_tuya_tab__status",
+            "global_observer_coverage__monitoramento_tuya_tab__annotate",
+            "global_observer_coverage__monitoramento_tuya_tab__out"
+        ],
+        "x": 1440,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1580,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_tuya_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__status",
+        "type": "status",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1590,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_tuya_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_tuya_tab\",\"flow_label\":\"monitoramento_tuya\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1860,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_tuya_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_tuya_tab__out",
+        "type": "link out",
+        "z": "monitoramento_tuya_tab",
+        "g": "global_observer_coverage__monitoramento_tuya_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2105,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__resident_notifications_tab__catch",
+            "global_observer_coverage__resident_notifications_tab__status",
+            "global_observer_coverage__resident_notifications_tab__annotate",
+            "global_observer_coverage__resident_notifications_tab__out"
+        ],
+        "x": 1960,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__catch",
+        "type": "catch",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2100,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__resident_notifications_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__status",
+        "type": "status",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2110,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__resident_notifications_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__annotate",
+        "type": "function",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"resident_notifications_tab\",\"flow_label\":\"notificacoes_chegadas_residentes\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2380,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__resident_notifications_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__resident_notifications_tab__out",
+        "type": "link out",
+        "z": "resident_notifications_tab",
+        "g": "global_observer_coverage__resident_notifications_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2625,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__monitoramento_vpn_tab__catch",
+            "global_observer_coverage__monitoramento_vpn_tab__status",
+            "global_observer_coverage__monitoramento_vpn_tab__annotate",
+            "global_observer_coverage__monitoramento_vpn_tab__out"
+        ],
+        "x": 2000,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__catch",
+        "type": "catch",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2140,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_vpn_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__status",
+        "type": "status",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2150,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_vpn_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__annotate",
+        "type": "function",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"monitoramento_vpn_tab\",\"flow_label\":\"monitoramento_vpn\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2420,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__monitoramento_vpn_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__monitoramento_vpn_tab__out",
+        "type": "link out",
+        "z": "monitoramento_vpn_tab",
+        "g": "global_observer_coverage__monitoramento_vpn_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2665,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__daily_host_updates_tab__catch",
+            "global_observer_coverage__daily_host_updates_tab__status",
+            "global_observer_coverage__daily_host_updates_tab__annotate",
+            "global_observer_coverage__daily_host_updates_tab__out"
+        ],
+        "x": 1520,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
         "id": "global_observer_coverage__daily_host_updates_tab__catch",
         "type": "catch",
         "z": "daily_host_updates_tab",
@@ -17581,11 +17516,48 @@
         "wires": []
     },
     {
+        "id": "global_flow_observer_tab",
+        "type": "tab",
+        "label": "observabilidade_global",
+        "disabled": false,
+        "info": "Recebe erros e estados de indisponibilidade de todas as abas, deduplica incidentes e notifica resident_primary via Home Assistant.",
+        "env": []
+    },
+    {
+        "id": "global_observer_production_group",
+        "type": "group",
+        "z": "global_flow_observer_tab",
+        "name": "Monitor global e entrega central pelo Home Assistant",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_architecture",
+            "global_observer_events_in",
+            "global_observer_test_evaluate_in",
+            "global_observer_test_delivery_in",
+            "global_observer_ingest",
+            "global_observer_tick",
+            "global_observer_evaluate",
+            "global_observer_dispatch_guard",
+            "global_observer_dry_run_out",
+            "global_observer_notify_primary",
+            "global_observer_notification_ack",
+            "global_observer_notification_catch",
+            "global_observer_notification_failure"
+        ],
+        "x": 64,
+        "y": 39,
+        "w": 1570,
+        "h": 302
+    },
+    {
         "id": "global_observer_architecture",
         "type": "comment",
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
-        "name": "Erros alertam imediatamente; status de falha exige 1 min; incidentes repetidos silenciam por 6 h. HA indisponível usa queue=all.",
+        "name": "Erros alertam imediatamente; cascatas de reconexão silenciam por 90 s; status de falha exige 1 min; repetidos silenciam por 6 h.",
         "info": "Cada aba possui catch/status universais e um link nomeado. O watchdog do próprio Node-RED permanece no Home Assistant, fora deste runtime.",
         "x": 690,
         "y": 80,
@@ -17634,7 +17606,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Classificar erro ou status",
-        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_v1__test\"\n    : \"global_flow_observer_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst now = Number(msg.observer_now ?? Date.now());\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\nconst previousState = getState();\nconst state = previousState?.version === 2\n    ? previousState\n    : {\n        version: 2,\n        errors: previousState?.errors ?? {},\n        status_sources: {},\n        status_incidents: {}\n    };\nstate.errors = state.errors ?? {};\nstate.status_sources = state.status_sources ?? {};\nstate.status_incidents = state.status_incidents ?? {};\n\nconst observer = msg._global_observer ?? {};\nconst flowId = String(observer.flow_id ?? \"unknown\").slice(0, 100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceType = String(source.type ?? \"unknown\").slice(0, 80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\n\nfunction hash(value) {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n}\n\nfunction failureClass(value) {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) {\n        return \"autenticação\";\n    }\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) {\n        return \"indisponibilidade\";\n    }\n    return \"erro de execução\";\n}\n\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = failureClass(errorText);\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    const notificationDue =\n        !Number.isFinite(previous.notified_at) ||\n        now - previous.notified_at >= 6 * 60 * 60 * 1000;\n    state.errors[key] = {\n        flow_id: flowId,\n        flow_label: flowLabel,\n        source_id: sourceId,\n        source_type: sourceType,\n        source_name: sourceName,\n        failure_class: classification,\n        first_seen_at: previous.first_seen_at ?? now,\n        last_seen_at: now,\n        notified_at: notificationDue ? now : previous.notified_at\n    };\n    for (const [entryKey, entry] of Object.entries(state.errors)) {\n        if (now - Number(entry.last_seen_at ?? now) > 7 * 24 * 60 * 60 * 1000) {\n            delete state.errors[entryKey];\n        }\n    }\n    setState(state);\n    if (!notificationDue) return null;\n    msg.payload = {\n        test_mode: TEST_MODE,\n        observer_kind: \"node_error\",\n        flow_id: flowId,\n        source_id: sourceId\n    };\n    msg.alert = {\n        title: TEST_MODE\n            ? \"TESTE — Falha em fluxo Node-RED\"\n            : \"Falha em fluxo Node-RED\",\n        message:\n            `O fluxo “${flowLabel}” registrou ${classification} no nó ` +\n            `“${sourceName}”. O mesmo erro será silenciado por 6 horas ` +\n            \"para evitar notificações repetidas.\"\n    };\n    return msg;\n}\n\nif (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const haTypes = new Set([\n        \"api-call-service\",\n        \"api-current-state\",\n        \"api-get-history\",\n        \"api-render-template\",\n        \"events-all\",\n        \"ha-api\",\n        \"poll-state\",\n        \"server-events\",\n        \"server-state-changed\",\n        \"trigger-state\"\n    ]);\n    const monitoredConnectionType =\n        haTypes.has(sourceType) ||\n        sourceType.startsWith(\"ha-\") ||\n        sourceType === \"mqtt in\" ||\n        sourceType === \"mqtt out\" ||\n        sourceType === \"DuloNodeDevice\" ||\n        sourceType === \"DuloNodeHub\";\n    if (!monitoredConnectionType) {\n        delete state.status_sources[`${flowId}:${sourceId}`];\n        setState(state);\n        return null;\n    }\n    const sharedConnectionType =\n        haTypes.has(sourceType) ||\n        sourceType.startsWith(\"ha-\") ||\n        sourceType === \"mqtt in\" ||\n        sourceType === \"mqtt out\";\n    const connectionFailure =\n        /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect|connecting|conectando)/.test(text);\n    const nodeFailure =\n        connectionFailure ||\n        msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    // HA nodes also use red status for domain conditions and rejected service\n    // calls. Those failures are handled by catch and must not masquerade as a\n    // shared Home Assistant outage.\n    const failing = sharedConnectionType ? connectionFailure : nodeFailure;\n    let incidentKey = `node:${flowId}:${sourceId}`;\n    let incidentKind = \"node_status\";\n    if (haTypes.has(sourceType) || sourceType.startsWith(\"ha-\")) {\n        incidentKey = \"connection:home_assistant\";\n        incidentKind = \"home_assistant\";\n    } else if (sourceType === \"mqtt in\" || sourceType === \"mqtt out\") {\n        incidentKey = \"connection:mqtt\";\n        incidentKind = \"mqtt\";\n    }\n    const key = `${flowId}:${sourceId}`;\n    if (failing) {\n        const previous = state.status_sources[key];\n        state.status_sources[key] = {\n            flow_id: flowId,\n            flow_label: flowLabel,\n            source_id: sourceId,\n            source_type: sourceType,\n            source_name: sourceName,\n            incident_key: incidentKey,\n            incident_kind: incidentKind,\n            first_seen_at:\n                previous?.incident_key === incidentKey\n                    ? previous.first_seen_at\n                    : now,\n            last_seen_at: now\n        };\n    } else {\n        delete state.status_sources[key];\n    }\n    setState(state);\n}\n\nreturn null;",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_v1__test\"\n    : \"global_flow_observer_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst now = Number(msg.observer_now ?? Date.now());\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\nconst previousState = getState();\nconst state = previousState?.version === 2\n    ? previousState\n    : {\n        version: 2,\n        errors: previousState?.errors ?? {},\n        status_sources: {},\n        status_incidents: {},\n        connection_events: {}\n    };\nstate.errors = state.errors ?? {};\nstate.status_sources = state.status_sources ?? {};\nstate.status_incidents = state.status_incidents ?? {};\nstate.connection_events = state.connection_events ?? {};\n\nconst observer = msg._global_observer ?? {};\nconst flowId = String(observer.flow_id ?? \"unknown\").slice(0, 100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceType = String(source.type ?? \"unknown\").slice(0, 80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\nconst haTypes = new Set([\n    \"api-call-service\",\n    \"api-current-state\",\n    \"api-get-history\",\n    \"api-render-template\",\n    \"events-all\",\n    \"ha-api\",\n    \"poll-state\",\n    \"server-events\",\n    \"server-state-changed\",\n    \"trigger-state\"\n]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst mqttSource = sourceType === \"mqtt in\" || sourceType === \"mqtt out\";\nconst sharedIncidentKey = haSource\n    ? \"connection:home_assistant\"\n    : mqttSource\n        ? \"connection:mqtt\"\n        : null;\nconst CONNECTION_RECOVERY_GRACE_MS = 90 * 1000;\n\nfunction hash(value) {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n}\n\nfunction failureClass(value) {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) {\n        return \"autenticação\";\n    }\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) {\n        return \"indisponibilidade\";\n    }\n    return \"erro de execução\";\n}\n\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = failureClass(errorText);\n    const connectionEvent = sharedIncidentKey\n        ? state.connection_events[sharedIncidentKey] ?? {}\n        : {};\n    const lastTransitionAt = Math.max(\n        Number(connectionEvent.last_failure_at ?? -Infinity),\n        Number(connectionEvent.last_recovered_at ?? -Infinity)\n    );\n    const sharedConnectionActive = sharedIncidentKey !== null &&\n        Object.values(state.status_sources).some(\n            (entry) => entry.incident_key === sharedIncidentKey\n        );\n    const inRecoveryGrace =\n        Number.isFinite(lastTransitionAt) &&\n        now >= lastTransitionAt &&\n        now - lastTransitionAt <= CONNECTION_RECOVERY_GRACE_MS;\n    // HA and MQTT nodes can all reject their startup reads together while a\n    // shared connection is reconnecting. The connection lifecycle owns that\n    // incident; suppress the per-node cascade during the outage and its short\n    // recovery window, while unrelated function errors still alert normally.\n    if (sharedIncidentKey && (sharedConnectionActive || inRecoveryGrace)) {\n        setState(state);\n        return null;\n    }\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    const notificationDue =\n        !Number.isFinite(previous.notified_at) ||\n        now - previous.notified_at >= 6 * 60 * 60 * 1000;\n    state.errors[key] = {\n        flow_id: flowId,\n        flow_label: flowLabel,\n        source_id: sourceId,\n        source_type: sourceType,\n        source_name: sourceName,\n        failure_class: classification,\n        first_seen_at: previous.first_seen_at ?? now,\n        last_seen_at: now,\n        notified_at: notificationDue ? now : previous.notified_at\n    };\n    for (const [entryKey, entry] of Object.entries(state.errors)) {\n        if (now - Number(entry.last_seen_at ?? now) > 7 * 24 * 60 * 60 * 1000) {\n            delete state.errors[entryKey];\n        }\n    }\n    setState(state);\n    if (!notificationDue) return null;\n    msg.payload = {\n        test_mode: TEST_MODE,\n        observer_kind: \"node_error\",\n        flow_id: flowId,\n        source_id: sourceId\n    };\n    msg.alert = {\n        title: TEST_MODE\n            ? \"TESTE — Falha em fluxo Node-RED\"\n            : \"Falha em fluxo Node-RED\",\n        message:\n            `O fluxo “${flowLabel}” registrou ${classification} no nó ` +\n            `“${sourceName}”. O mesmo erro será silenciado por 6 horas ` +\n            \"para evitar notificações repetidas.\"\n    };\n    return msg;\n}\n\nif (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const monitoredConnectionType =\n        haSource ||\n        mqttSource ||\n        sourceType === \"DuloNodeDevice\" ||\n        sourceType === \"DuloNodeHub\";\n    if (!monitoredConnectionType) {\n        delete state.status_sources[`${flowId}:${sourceId}`];\n        setState(state);\n        return null;\n    }\n    const sharedConnectionType = haSource || mqttSource;\n    const connectionFailure =\n        /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect|connecting|conectando)/.test(text);\n    const nodeFailure =\n        connectionFailure ||\n        msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    // HA nodes also use red status for domain conditions and rejected service\n    // calls. Those failures are handled by catch and must not masquerade as a\n    // shared Home Assistant outage.\n    const failing = sharedConnectionType ? connectionFailure : nodeFailure;\n    let incidentKey = `node:${flowId}:${sourceId}`;\n    let incidentKind = \"node_status\";\n    if (haSource) {\n        incidentKey = \"connection:home_assistant\";\n        incidentKind = \"home_assistant\";\n    } else if (mqttSource) {\n        incidentKey = \"connection:mqtt\";\n        incidentKind = \"mqtt\";\n    }\n    const key = `${flowId}:${sourceId}`;\n    if (failing) {\n        const previous = state.status_sources[key];\n        if (sharedConnectionType) {\n            const event = state.connection_events[incidentKey] ?? {};\n            state.connection_events[incidentKey] = {\n                ...event,\n                last_failure_at: now\n            };\n        }\n        state.status_sources[key] = {\n            flow_id: flowId,\n            flow_label: flowLabel,\n            source_id: sourceId,\n            source_type: sourceType,\n            source_name: sourceName,\n            incident_key: incidentKey,\n            incident_kind: incidentKind,\n            first_seen_at:\n                previous?.incident_key === incidentKey\n                    ? previous.first_seen_at\n                    : now,\n            last_seen_at: now\n        };\n    } else {\n        const previous = state.status_sources[key];\n        if (sharedConnectionType && previous?.incident_key === incidentKey) {\n            const event = state.connection_events[incidentKey] ?? {};\n            state.connection_events[incidentKey] = {\n                ...event,\n                last_recovered_at: now\n            };\n        }\n        delete state.status_sources[key];\n    }\n    setState(state);\n}\n\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -17698,7 +17670,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Confirmar falhas persistentes",
-        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_v1__test\"\n    : \"global_flow_observer_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst now = Number(msg.observer_now ?? Date.now());\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\nconst previousState = getState();\nconst state = previousState?.version === 2\n    ? previousState\n    : {\n        version: 2,\n        errors: previousState?.errors ?? {},\n        status_sources: {},\n        status_incidents: {}\n    };\nstate.status_sources = state.status_sources ?? {};\nstate.status_incidents = state.status_incidents ?? {};\n\nconst grouped = new Map();\nfor (const source of Object.values(state.status_sources)) {\n    const key = source.incident_key;\n    const current = grouped.get(key) ?? {\n        kind: source.incident_kind,\n        first_seen_at: Number(source.first_seen_at ?? now),\n        sources: []\n    };\n    current.first_seen_at = Math.min(\n        current.first_seen_at,\n        Number(source.first_seen_at ?? now)\n    );\n    current.sources.push(source);\n    grouped.set(key, current);\n}\n\nconst alerts = [];\nfor (const [key, incident] of grouped) {\n    if (now - incident.first_seen_at < 60 * 1000) continue;\n    const previous = state.status_incidents[key] ?? {};\n    const notificationDue =\n        !Number.isFinite(previous.notified_at) ||\n        now - previous.notified_at >= 6 * 60 * 60 * 1000;\n    state.status_incidents[key] = {\n        kind: incident.kind,\n        first_seen_at: previous.first_seen_at ?? incident.first_seen_at,\n        last_seen_at: now,\n        notified_at: notificationDue ? now : previous.notified_at\n    };\n    if (!notificationDue) continue;\n\n    const first = incident.sources[0];\n    let title = \"Nó Node-RED indisponível\";\n    let message =\n        `O nó “${first.source_name}” do fluxo “${first.flow_label}” ` +\n        \"permanece em estado de falha há pelo menos 1 minuto.\";\n    if (incident.kind === \"home_assistant\") {\n        title = \"Node-RED sem Home Assistant\";\n        message =\n            \"Os fluxos perderam a conexão com o Home Assistant por pelo \" +\n            \"menos 1 minuto. As chamadas configuradas com fila serão \" +\n            \"retomadas e este push será entregue quando a conexão voltar.\";\n    } else if (incident.kind === \"mqtt\") {\n        title = \"Node-RED sem MQTT\";\n        message =\n            \"Os fluxos perderam a conexão com o broker MQTT por pelo menos \" +\n            \"1 minuto. Verifique o Mosquitto e a rede local.\";\n    }\n    alerts.push({\n        _global_observer_test: TEST_MODE,\n        payload: {\n            test_mode: TEST_MODE,\n            observer_kind: \"node_unavailable\",\n            incident_key: key\n        },\n        alert: {\n            title: TEST_MODE ? `TESTE — ${title}` : title,\n            message\n        }\n    });\n}\n\nfor (const key of Object.keys(state.status_incidents)) {\n    if (!grouped.has(key)) delete state.status_incidents[key];\n}\nsetState(state);\nreturn [alerts.length ? alerts : null];",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_v1__test\"\n    : \"global_flow_observer_v1\";\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst now = Number(msg.observer_now ?? Date.now());\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\nconst previousState = getState();\nconst state = previousState?.version === 2\n    ? previousState\n    : {\n        version: 2,\n        errors: previousState?.errors ?? {},\n        status_sources: {},\n        status_incidents: {},\n        connection_events: {}\n    };\nstate.status_sources = state.status_sources ?? {};\nstate.status_incidents = state.status_incidents ?? {};\nstate.connection_events = state.connection_events ?? {};\n\nconst grouped = new Map();\nfor (const source of Object.values(state.status_sources)) {\n    const key = source.incident_key;\n    const current = grouped.get(key) ?? {\n        kind: source.incident_kind,\n        first_seen_at: Number(source.first_seen_at ?? now),\n        sources: []\n    };\n    current.first_seen_at = Math.min(\n        current.first_seen_at,\n        Number(source.first_seen_at ?? now)\n    );\n    current.sources.push(source);\n    grouped.set(key, current);\n}\n\nconst alerts = [];\nconst confirmedIncidentKeys = new Set();\nfor (const [key, incident] of grouped) {\n    // A single HA node can retain a connection-like status when only its\n    // entity/domain is unavailable. A real shared HA outage is observed by\n    // many nodes, so require independent corroboration before alerting.\n    if (incident.kind === \"home_assistant\" && incident.sources.length < 2) {\n        continue;\n    }\n    if (now - incident.first_seen_at < 60 * 1000) continue;\n    confirmedIncidentKeys.add(key);\n    const previous = state.status_incidents[key] ?? {};\n    const notificationDue =\n        !Number.isFinite(previous.notified_at) ||\n        now - previous.notified_at >= 6 * 60 * 60 * 1000;\n    state.status_incidents[key] = {\n        kind: incident.kind,\n        first_seen_at: previous.first_seen_at ?? incident.first_seen_at,\n        last_seen_at: now,\n        notified_at: notificationDue ? now : previous.notified_at\n    };\n    if (!notificationDue) continue;\n\n    const first = incident.sources[0];\n    let title = \"Nó Node-RED indisponível\";\n    let message =\n        `O nó “${first.source_name}” do fluxo “${first.flow_label}” ` +\n        \"permanece em estado de falha há pelo menos 1 minuto.\";\n    if (incident.kind === \"home_assistant\") {\n        title = \"Node-RED sem Home Assistant\";\n        message =\n            \"Os fluxos perderam a conexão com o Home Assistant por pelo \" +\n            \"menos 1 minuto. As chamadas configuradas com fila serão \" +\n            \"retomadas e este push será entregue quando a conexão voltar.\";\n    } else if (incident.kind === \"mqtt\") {\n        title = \"Node-RED sem MQTT\";\n        message =\n            \"Os fluxos perderam a conexão com o broker MQTT por pelo menos \" +\n            \"1 minuto. Verifique o Mosquitto e a rede local.\";\n    }\n    alerts.push({\n        _global_observer_test: TEST_MODE,\n        payload: {\n            test_mode: TEST_MODE,\n            observer_kind: \"node_unavailable\",\n            incident_key: key\n        },\n        alert: {\n            title: TEST_MODE ? `TESTE — ${title}` : title,\n            message\n        }\n    });\n}\n\nfor (const key of Object.keys(state.status_incidents)) {\n    if (!confirmedIncidentKeys.has(key)) delete state.status_incidents[key];\n}\nsetState(state);\nreturn [alerts.length ? alerts : null];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -17851,6 +17823,34 @@
         "x": 1410,
         "y": 280,
         "wires": []
+    },
+    {
+        "id": "global_observer_test_group",
+        "type": "group",
+        "z": "global_flow_observer_tab",
+        "name": "Testes: dry-run completo e smoke test explícito de entrega",
+        "style": {
+            "label": true,
+            "color": "#4b93d1"
+        },
+        "nodes": [
+            "global_observer_test_instructions",
+            "global_observer_test_reset",
+            "global_observer_test_reset_state",
+            "global_observer_test_error",
+            "global_observer_test_status_failure",
+            "global_observer_test_event_out",
+            "global_observer_test_evaluate",
+            "global_observer_test_evaluate_out",
+            "global_observer_test_delivery",
+            "global_observer_test_delivery_out",
+            "global_observer_dry_run_in",
+            "global_observer_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 379,
+        "w": 1570,
+        "h": 322
     },
     {
         "id": "global_observer_test_instructions",
@@ -18073,7 +18073,7 @@
         "repeat": "",
         "crontab": "",
         "once": false,
-        "onceDelay": "0.1",
+        "onceDelay": 0.1,
         "topic": "",
         "x": 740,
         "y": 540,

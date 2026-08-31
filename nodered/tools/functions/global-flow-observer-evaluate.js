@@ -19,10 +19,12 @@ const state = previousState?.version === 2
         version: 2,
         errors: previousState?.errors ?? {},
         status_sources: {},
-        status_incidents: {}
+        status_incidents: {},
+        connection_events: {}
     };
 state.status_sources = state.status_sources ?? {};
 state.status_incidents = state.status_incidents ?? {};
+state.connection_events = state.connection_events ?? {};
 
 const grouped = new Map();
 for (const source of Object.values(state.status_sources)) {
@@ -41,8 +43,16 @@ for (const source of Object.values(state.status_sources)) {
 }
 
 const alerts = [];
+const confirmedIncidentKeys = new Set();
 for (const [key, incident] of grouped) {
+    // A single HA node can retain a connection-like status when only its
+    // entity/domain is unavailable. A real shared HA outage is observed by
+    // many nodes, so require independent corroboration before alerting.
+    if (incident.kind === "home_assistant" && incident.sources.length < 2) {
+        continue;
+    }
     if (now - incident.first_seen_at < 60 * 1000) continue;
+    confirmedIncidentKeys.add(key);
     const previous = state.status_incidents[key] ?? {};
     const notificationDue =
         !Number.isFinite(previous.notified_at) ||
@@ -87,7 +97,7 @@ for (const [key, incident] of grouped) {
 }
 
 for (const key of Object.keys(state.status_incidents)) {
-    if (!grouped.has(key)) delete state.status_incidents[key];
+    if (!confirmedIncidentKeys.has(key)) delete state.status_incidents[key];
 }
 setState(state);
 return [alerts.length ? alerts : null];

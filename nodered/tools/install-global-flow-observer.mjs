@@ -226,7 +226,7 @@ const observerNodes = [
     z: OBSERVER_TAB,
     g: productionGroup,
     name:
-      "Erros alertam imediatamente; status de falha exige 1 min; incidentes repetidos silenciam por 6 h. HA indisponível usa queue=all.",
+      "Erros alertam imediatamente; cascatas de reconexão silenciam por 90 s; status de falha exige 1 min; repetidos silenciam por 6 h.",
     info:
       "Cada aba possui catch/status universais e um link nomeado. O watchdog " +
       "do próprio Node-RED permanece no Home Assistant, fora deste runtime.",

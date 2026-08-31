@@ -19,11 +19,13 @@ const state = previousState?.version === 2
         version: 2,
         errors: previousState?.errors ?? {},
         status_sources: {},
-        status_incidents: {}
+        status_incidents: {},
+        connection_events: {}
     };
 state.errors = state.errors ?? {};
 state.status_sources = state.status_sources ?? {};
 state.status_incidents = state.status_incidents ?? {};
+state.connection_events = state.connection_events ?? {};
 
 const observer = msg._global_observer ?? {};
 const flowId = String(observer.flow_id ?? "unknown").slice(0, 100);
@@ -36,6 +38,26 @@ const sourceType = String(source.type ?? "unknown").slice(0, 80);
 const sourceName = String(source.name || sourceType || "nó desconhecido")
     .replace(/[\r\n]+/g, " ")
     .slice(0, 100);
+const haTypes = new Set([
+    "api-call-service",
+    "api-current-state",
+    "api-get-history",
+    "api-render-template",
+    "events-all",
+    "ha-api",
+    "poll-state",
+    "server-events",
+    "server-state-changed",
+    "trigger-state"
+]);
+const haSource = haTypes.has(sourceType) || sourceType.startsWith("ha-");
+const mqttSource = sourceType === "mqtt in" || sourceType === "mqtt out";
+const sharedIncidentKey = haSource
+    ? "connection:home_assistant"
+    : mqttSource
+        ? "connection:mqtt"
+        : null;
+const CONNECTION_RECOVERY_GRACE_MS = 90 * 1000;
 
 function hash(value) {
     let result = 0x811c9dc5;
@@ -61,6 +83,29 @@ function failureClass(value) {
 if (msg.error) {
     const errorText = String(msg.error.message ?? "erro desconhecido");
     const classification = failureClass(errorText);
+    const connectionEvent = sharedIncidentKey
+        ? state.connection_events[sharedIncidentKey] ?? {}
+        : {};
+    const lastTransitionAt = Math.max(
+        Number(connectionEvent.last_failure_at ?? -Infinity),
+        Number(connectionEvent.last_recovered_at ?? -Infinity)
+    );
+    const sharedConnectionActive = sharedIncidentKey !== null &&
+        Object.values(state.status_sources).some(
+            (entry) => entry.incident_key === sharedIncidentKey
+        );
+    const inRecoveryGrace =
+        Number.isFinite(lastTransitionAt) &&
+        now >= lastTransitionAt &&
+        now - lastTransitionAt <= CONNECTION_RECOVERY_GRACE_MS;
+    // HA and MQTT nodes can all reject their startup reads together while a
+    // shared connection is reconnecting. The connection lifecycle owns that
+    // incident; suppress the per-node cascade during the outage and its short
+    // recovery window, while unrelated function errors still alert normally.
+    if (sharedIncidentKey && (sharedConnectionActive || inRecoveryGrace)) {
+        setState(state);
+        return null;
+    }
     const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);
     const key = `${flowId}:${sourceId}:${signature}`;
     const previous = state.errors[key] ?? {};
@@ -105,23 +150,9 @@ if (msg.error) {
 
 if (msg.status) {
     const text = String(msg.status.text ?? "").toLowerCase();
-    const haTypes = new Set([
-        "api-call-service",
-        "api-current-state",
-        "api-get-history",
-        "api-render-template",
-        "events-all",
-        "ha-api",
-        "poll-state",
-        "server-events",
-        "server-state-changed",
-        "trigger-state"
-    ]);
     const monitoredConnectionType =
-        haTypes.has(sourceType) ||
-        sourceType.startsWith("ha-") ||
-        sourceType === "mqtt in" ||
-        sourceType === "mqtt out" ||
+        haSource ||
+        mqttSource ||
         sourceType === "DuloNodeDevice" ||
         sourceType === "DuloNodeHub";
     if (!monitoredConnectionType) {
@@ -129,11 +160,7 @@ if (msg.status) {
         setState(state);
         return null;
     }
-    const sharedConnectionType =
-        haTypes.has(sourceType) ||
-        sourceType.startsWith("ha-") ||
-        sourceType === "mqtt in" ||
-        sourceType === "mqtt out";
+    const sharedConnectionType = haSource || mqttSource;
     const connectionFailure =
         /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect|connecting|conectando)/.test(text);
     const nodeFailure =
@@ -146,16 +173,23 @@ if (msg.status) {
     const failing = sharedConnectionType ? connectionFailure : nodeFailure;
     let incidentKey = `node:${flowId}:${sourceId}`;
     let incidentKind = "node_status";
-    if (haTypes.has(sourceType) || sourceType.startsWith("ha-")) {
+    if (haSource) {
         incidentKey = "connection:home_assistant";
         incidentKind = "home_assistant";
-    } else if (sourceType === "mqtt in" || sourceType === "mqtt out") {
+    } else if (mqttSource) {
         incidentKey = "connection:mqtt";
         incidentKind = "mqtt";
     }
     const key = `${flowId}:${sourceId}`;
     if (failing) {
         const previous = state.status_sources[key];
+        if (sharedConnectionType) {
+            const event = state.connection_events[incidentKey] ?? {};
+            state.connection_events[incidentKey] = {
+                ...event,
+                last_failure_at: now
+            };
+        }
         state.status_sources[key] = {
             flow_id: flowId,
             flow_label: flowLabel,
@@ -171,6 +205,14 @@ if (msg.status) {
             last_seen_at: now
         };
     } else {
+        const previous = state.status_sources[key];
+        if (sharedConnectionType && previous?.incident_key === incidentKey) {
+            const event = state.connection_events[incidentKey] ?? {};
+            state.connection_events[incidentKey] = {
+                ...event,
+                last_recovered_at: now
+            };
+        }
         delete state.status_sources[key];
     }
     setState(state);

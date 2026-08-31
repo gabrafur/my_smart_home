@@ -26,9 +26,12 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
   que produz pulsos é uma defesa em profundidade, não duplicação de lógica.
 - Todas as abas funcionais do Node-RED convergem erros e indisponibilidade no
   tab `observabilidade_global`, com dedupe e push para `resident_primary`. O
-  Home Assistant observa o tópico MQTT “nodered/status” diretamente para detectar
-  a queda do próprio runtime após 90 segundos; esse watchdog permanece nativo
-  porque não pode depender do componente que monitora.
+  observador agrega quedas de HA/MQTT e suprime por 90 segundos a cascata de
+  erros de seus nós após a reconexão, sem silenciar falhas de funções alheias;
+  queda compartilhada do HA exige pelo menos dois nós corroborando o estado.
+  O Home Assistant observa o tópico MQTT “nodered/status” diretamente para
+  detectar a queda do próprio runtime após 90 segundos; esse watchdog permanece
+  nativo porque não pode depender do componente que monitora.
 - Mudanças Node-RED exigem cobertura pelo gerador/validador global, replay
   dry-run e um único smoke test real marcado `TESTE` no canal central. O aceite
   do HA aparece como `NODERED_GLOBAL_NOTIFICATION_ACCEPTED`; apresentação no

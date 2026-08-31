@@ -16,16 +16,22 @@ aba um grupo isolado com:
 
 Erros emitidos com `node.error` alertam imediatamente. A mesma assinatura é
 silenciada por seis horas para evitar tempestade. Para nós do Home Assistant e
-MQTT, somente textos explícitos de conexão perdida, indisponibilidade ou
-reconexão pendente podem abrir um incidente compartilhado; cor vermelha,
-condição de domínio e erro de uma chamada de serviço não significam que a
-conexão inteira caiu. Status de indisponibilidade do DuloNode continuam
-considerando também erro e timeout. A condição precisa permanecer por um
-minuto antes do push. Status visuais de funções de domínio não abrem alerta
-global, pois seus incidentes já pertencem ao monitor específico. Conexões do
-Home Assistant e MQTT são agregadas, evitando um push para cada nó quando a
+MQTT, erros individuais também são suprimidos enquanto a conexão compartilhada
+está indisponível e por 90 segundos depois da reconexão. Assim, as leituras de
+startup de várias abas não produzem uma rajada para o mesmo restart; erros de
+funções não relacionados continuam alertando imediatamente. Somente textos
+explícitos de conexão perdida, indisponibilidade ou reconexão pendente podem
+abrir um incidente compartilhado; cor vermelha, condição de domínio e erro de
+uma chamada de serviço não significam que a conexão inteira caiu. Status de
+indisponibilidade do DuloNode continuam considerando também erro e timeout. A
+condição precisa permanecer por um minuto antes do push. Status visuais de
+funções de domínio não abrem alerta global, pois seus incidentes já pertencem
+ao monitor específico. A queda compartilhada do Home Assistant exige
+corroboração simultânea de pelo menos dois nós; um único nó com domínio ou
+entidade indisponível não representa o servidor inteiro. Conexões do Home
+Assistant e MQTT são agregadas, evitando um push para cada nó quando a
 dependência compartilhada cai. Uma recuperação libera o alerta do próximo
-incidente.
+incidente após a carência de reconexão.
 
 O monitor não inclui o próprio tab na captura universal. A falha do nó que
 envia o push possui um `catch` específico que apenas registra o problema, sem

@@ -51,7 +51,7 @@ const positions = {
   "7a46b455ab19f6f1": [830, 700],
   "426ce86b78602275": [1040, 620],
   "80a75ea8907407b3": [1380, 720],
-  "2721ff200d00c0f6": [845, 800],
+  "2721ff200d00c0f6": [900, 800],
   "93a520c87fdd951a": [735, 820],
 
   // 3. Restaurar o snapshot; decisões paralelas ficam em trilhas distintas.

@@ -132,6 +132,48 @@ assert.deepEqual(
   "status vermelho de domínio ou erro de serviço não é queda do Home Assistant",
 );
 
+const reconnectStore = memory();
+const reconnectFailure = structuredClone(statusFailure);
+reconnectFailure.observer_now = 400_000;
+execute(code.ingest, reconnectFailure, reconnectStore);
+const reconnectRecovered = structuredClone(reconnectFailure);
+reconnectRecovered.observer_now = 410_000;
+reconnectRecovered.status = {
+  ...reconnectRecovered.status,
+  fill: "green",
+  text: "connected",
+};
+execute(code.ingest, reconnectRecovered, reconnectStore);
+const startupReadError = {
+  ...baseError(),
+  observer_now: 420_000,
+  error: {
+    message: "entity unavailable during startup",
+    source: {
+      id: "startup_read",
+      type: "api-current-state",
+      name: "Leitura de startup",
+    },
+  },
+};
+assert.equal(
+  execute(code.ingest, startupReadError, reconnectStore),
+  null,
+  "erros de nós HA durante reconexão não devem gerar rajada",
+);
+const unrelatedError = baseError();
+unrelatedError.observer_now = 420_000;
+assert.ok(
+  execute(code.ingest, unrelatedError, reconnectStore),
+  "erro de função não relacionado deve continuar alertando",
+);
+const postGraceError = structuredClone(startupReadError);
+postGraceError.observer_now = 501_001;
+assert.ok(
+  execute(code.ingest, postGraceError, reconnectStore),
+  "erro HA após a carência de reconexão deve voltar a alertar",
+);
+
 const legacyStore = memory();
 legacyStore.set("global_flow_observer_v1__test", {
   version: 1,
@@ -159,8 +201,29 @@ const confirmed = execute(code.evaluate, {
   _global_observer_test: true,
   observer_now: 261_000,
 }, store);
-assert.equal(confirmed[0].length, 1);
-assert.match(confirmed[0][0].alert.title, /Home Assistant/);
+assert.equal(
+  confirmed[0],
+  null,
+  "um único nó HA não deve declarar queda da conexão compartilhada",
+);
+const corroboratedStatus = structuredClone(statusFailure);
+corroboratedStatus.observer_now = 200_000;
+corroboratedStatus._global_observer = {
+  flow_id: "flow_test_2",
+  flow_label: "Fluxo teste 2",
+};
+corroboratedStatus.status.source = {
+  id: "ha_test_2",
+  type: "server-state-changed",
+  name: "HA teste 2",
+};
+execute(code.ingest, corroboratedStatus, store);
+const corroborated = execute(code.evaluate, {
+  _global_observer_test: true,
+  observer_now: 261_000,
+}, store);
+assert.equal(corroborated[0].length, 1);
+assert.match(corroborated[0][0].alert.title, /Home Assistant/);
 const duplicate = execute(code.evaluate, {
   _global_observer_test: true,
   observer_now: 262_000,

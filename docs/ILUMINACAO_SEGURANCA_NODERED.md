@@ -305,9 +305,10 @@ depende exclusivamente de um `delay` residente em memória.
   está `not_home`/`chegando`; 30 min quando ambos estão `home`, com os wakes
   periódicos suspensos das 00:00 às 05:59 nessa última condição.
 - O Node-RED é o único agendador de wake real. No backend brasileiro, o
-  `kia_uvo` no Home Assistant lê somente o cache do Bluelink a cada 30 s para
-  manter as entidades publicadas quase em tempo real; esse polling não acorda
-  o carro nem chama o agendador nativo de force refresh.
+  `kia_uvo` no Home Assistant lê somente o cache do Bluelink a cada 15 min;
+  esse polling não acorda o carro nem chama o agendador nativo de force
+  refresh. Respostas de rate limit ativam backoff progressivo de 15 min a 6 h
+  e bloqueiam wakes e releituras adicionais até o prazo vencer.
 - Entrada no anel/chegada: a solicitação volta por um par `link out`/`link in`
   ao mesmo coordenador persistente, em vez de chamar o binding diretamente.
 - Mudança de zona ou deslocamento GPS significativo: solicita avaliação
