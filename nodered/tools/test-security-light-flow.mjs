@@ -137,7 +137,9 @@ function vehicle_primaryInput({
     reason: event === "turn_off" ? "vehicle_primary_engine_off" : undefined,
     vehicle_primary: entity(current, distance, changed, accuracy),
     vehicle_primary_engine: { state: engine, last_updated: changed },
-    vehicle_primary_lock: { state: lock, last_updated: changed }, refresh_cycle_id: cycle,
+    vehicle_primary_lock: { state: lock, last_updated: changed },
+    vehicle_primary_last_updated: { state: changed, last_updated: changed },
+    refresh_cycle_id: cycle,
   } };
 }
 

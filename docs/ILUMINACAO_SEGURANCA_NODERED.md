@@ -332,7 +332,10 @@ depende exclusivamente de um `delay` residente em memória.
   em 15 minutos.
 - O retorno de `public_bindings.call` muda o estado apenas para
   `awaiting_evidence`. Sucesso exige que localização, motor ou trava tenham
-  timestamp posterior ao baseline e que o alvo de readiness seja atingido.
+  dados associados a um `sensor.vehicle_primary_last_updated_at` posterior ao
+  baseline e ao wake avaliado, e que o alvo de readiness seja atingido. O `last_updated` interno
+  das entidades não serve como prova, pois também avança ao reler o cache ou
+  recarregar a integração.
   `401 Unauthorized`, timeout e aceite sem dado novo mantêm backoff; 401 no
   polling de cache do backend BR é reavaliado a cada 15 min sem descarregar o
   config entry.

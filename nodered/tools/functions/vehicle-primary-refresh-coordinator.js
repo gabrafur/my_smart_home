@@ -33,7 +33,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
     state = {};
 }
 
-state.version = 5;
+state.version = 6;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -197,9 +197,7 @@ if (!manualBypass && now < state.next_allowed_at) {
 }
 
 state.baseline_observed_at = {
-    location: Number(vehicleContext.location?.updated_at ?? 0),
-    engine: Number(vehicleContext.engine_updated_at ?? 0),
-    lock: Number(vehicleContext.lock_updated_at ?? 0)
+    telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)
 };
 state.attempts = Math.min(5, state.attempts + 1);
 state.last_attempt_at = now;

@@ -77,11 +77,15 @@ concorrentes. O retry reaplica o novo identificador tanto nos headers quanto no
 payload de comandos e o token atualizado é salvo pelo loop do Home Assistant.
 Esse recovery não acorda o carro e não amplia a frequência normal de polling.
 
-O refresh grava baseline dos timestamps de localizacao, motor e trava. O
+O refresh grava como baseline o estado de
+`sensor.vehicle_primary_last_updated_at`, que e o relogio semantico retornado
+pelo proprio Bluelink. O
 retorno de `public_bindings.call` significa apenas que o Home Assistant aceitou
 a chamada e limpa somente o marcador `request_in_flight`. Uma tentativa so
-vira sucesso quando pelo menos um deles avanca e o alvo de
-readiness e atingido. Sem evidencia, o mesmo recovery permanece em backoff e
+vira sucesso quando esse relogio avanca, e posterior ao wake avaliado e o alvo
+de readiness e atingido.
+Mudancas em `last_updated` das entidades do Home Assistant nao contam: elas
+tambem ocorrem em reload e republicacao do mesmo cache. Sem evidencia, o mesmo recovery permanece em backoff e
 as retentativas automaticas respeitam 15 minutos; o contador satura sem criar
 rajadas ou loops. Somente o clique manual explicito pode antecipar esse prazo.
 O aceite estende `next_allowed_at` para 15 minutos depois da conclusao da
@@ -92,7 +96,7 @@ inesperados sao classificados pelo catch do Node-RED, liberam o lock logico e
 mantem o deadline. O resultado BR esperado em que o wake foi aceito mas o
 veiculo nao publicou telemetria fresca, assim como uma indisponibilidade
 transitoria de autenticacao, preserva o cache e retorna sem criar erro
-WebSocket; a ausencia de timestamps novos mantem o mesmo backoff e gera um
+WebSocket; a ausencia de timestamp semantico novo mantem o mesmo backoff e gera um
 alerta deduplicado para `resident_primary`. O polling BR reavalia autenticacao
 a cada 15 minutos sem descarregar o config entry, permitindo recuperacao
 posterior sem tempestade.

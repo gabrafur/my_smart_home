@@ -94,12 +94,13 @@ function peopleInput({ source = "resident_primary", state = "chegando", previous
   } };
 }
 
-function vehicle_primaryInput({ state = "not_home", distance = 5_000, locationOffset = 0, engine = "off", engineOffset = -10 * 60_000, lock = "locked", lockOffset = 0, event = "context_snapshot" } = {}) {
+function vehicle_primaryInput({ state = "not_home", distance = 5_000, locationOffset = 0, telemetryOffset = locationOffset, engine = "off", engineOffset = -10 * 60_000, lock = "locked", lockOffset = 0, event = "context_snapshot" } = {}) {
   return { payload: {
     event, source: "vehicle_primary", trigger_state: state, trigger_prev_state: "not_home",
     vehicle_primary: entity(state, distance, locationOffset),
     vehicle_primary_engine: signal(engine, engineOffset),
     vehicle_primary_lock: signal(lock, lockOffset),
+    vehicle_primary_last_updated: signal(iso(telemetryOffset)),
   } };
 }
 

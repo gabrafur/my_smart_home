@@ -244,10 +244,176 @@ removeNode("77cf2dfe4ff36964");
 removeNode("684feca0f1585885");
 
 const normalizer = required("092625f2eb5cc156");
+const semanticEvidenceInputIds = [
+  "46c2142f93cfc3e1",
+  "94164ea9e4f5c8d1",
+  "vehicle_primary_engine_on_event_v1",
+  "9bbff0058231747f",
+  "2ff44a30d0a2cf18",
+  "f673b02282a47d31",
+];
+for (const id of semanticEvidenceInputIds) {
+  const node = required(id);
+  const payload = node.outputProperties?.find(
+    (property) => property.property === "payload",
+  );
+  if (!payload || typeof payload.value !== "string") {
+    throw new Error(`Payload JSONata ausente no nó ${id}`);
+  }
+  if (!payload.value.includes('"vehicle_primary_last_updated"')) {
+    payload.value = payload.value.replace(
+      /("vehicle_primary_lock"\s*:\s*\$entities\("lock\.vehicle_primary_door_lock"\))/,
+      '$1,"vehicle_primary_last_updated":$entities("sensor.vehicle_primary_last_updated_at")',
+    );
+  }
+  if (!payload.value.includes('"vehicle_primary_last_updated"')) {
+    throw new Error(`Timestamp semântico não inserido no nó ${id}`);
+  }
+}
 normalizer.func = normalizer.func.replaceAll(
   '\n        "security_vehicle_primary_refresh_v1__test",',
   "",
 );
+if (!normalizer.func.includes("vehicle_primary_last_updated: testEntity(")) {
+  normalizer.func = normalizer.func.replace(
+    `        vehicle_primary_lock: testEntity(
+            "lock.vehicle_primary_door_lock",
+            shared.vehicle_primary_lock
+        )`,
+    `        vehicle_primary_lock: testEntity(
+            "lock.vehicle_primary_door_lock",
+            shared.vehicle_primary_lock
+        ),
+        vehicle_primary_last_updated: testEntity(
+            "sensor.vehicle_primary_last_updated_at",
+            now
+        )`,
+  );
+}
+if (!normalizer.func.includes("function semanticTimestamp(entity)")) {
+  normalizer.func = normalizer.func.replace(
+    "const vehicle_primary = position(msg.payload?.vehicle_primary);",
+    `function semanticTimestamp(entity) {
+    const value = Date.parse(entity?.state ?? "");
+    return Number.isFinite(value) ? value : null;
+}
+
+const vehicle_primary = position(msg.payload?.vehicle_primary);
+const telemetryUpdatedAt = semanticTimestamp(
+    msg.payload?.vehicle_primary_last_updated
+);`,
+  );
+}
+if (!normalizer.func.includes("telemetry_updated_at: telemetryUpdatedAt")) {
+  normalizer.func = normalizer.func.replace(
+    "const vehicleContext = {\n    location: vehicle_primary,",
+    "const vehicleContext = {\n    location: vehicle_primary,\n    telemetry_updated_at: telemetryUpdatedAt,",
+  );
+}
+if (normalizer.func.includes("semantic_telemetry_evidence_v1")) {
+  normalizer.func = normalizer.func.replace(
+    "semantic_telemetry_evidence_v1",
+    "semantic_telemetry_evidence_v2",
+  );
+  normalizer.func = normalizer.func.replace(
+    `        const changedDomains = semanticAdvanced
+            ? ["telemetry"]
+            : [];`,
+    `        const requestAt = Number(
+            refreshState.last_request_at ??
+            refreshState.last_attempt_at ??
+            0
+        );
+        const semanticCurrentForAttempt =
+            semanticAdvanced &&
+            Number.isFinite(requestAt) &&
+            requestAt > 0 &&
+            currentTelemetryAt >=
+                requestAt - FUTURE_TOLERANCE_MS;
+        const changedDomains = semanticCurrentForAttempt
+            ? ["telemetry"]
+            : [];`,
+  );
+  normalizer.func = normalizer.func.replace(
+    `        const evidenceObserved =
+            attemptCurrent &&
+            semanticAdvanced;`,
+    `        const evidenceObserved =
+            attemptCurrent &&
+            semanticCurrentForAttempt;`,
+  );
+}
+if (!normalizer.func.includes("semantic_telemetry_evidence_v2")) {
+  const evidenceStart = normalizer.func.indexOf(
+    "        const baseline =\n            refreshState.baseline_observed_at ?? {};",
+  );
+  const evidenceEnd = normalizer.func.indexOf(
+    "        const targetReady =",
+    evidenceStart,
+  );
+  if (evidenceStart < 0 || evidenceEnd < 0) {
+    throw new Error("Bloco legado de evidência do refresh não encontrado");
+  }
+  const semanticEvidence = `        /* semantic_telemetry_evidence_v2:
+         * republicar entidades, reler cache ou receber telemetria anterior
+         * ao wake avaliado não prova dado novo. */
+        const baseline = Number(
+            refreshState.baseline_observed_at?.telemetry ?? 0
+        );
+        const currentTelemetryAt = Number(
+            vehicleContext.telemetry_updated_at ?? 0
+        );
+        const semanticAdvanced =
+            Number.isFinite(currentTelemetryAt) &&
+            currentTelemetryAt > 0 &&
+            (
+                !Number.isFinite(baseline) ||
+                baseline <= 0 ||
+                currentTelemetryAt > baseline
+            );
+        const requestAt = Number(
+            refreshState.last_request_at ??
+            refreshState.last_attempt_at ??
+            0
+        );
+        const semanticCurrentForAttempt =
+            semanticAdvanced &&
+            Number.isFinite(requestAt) &&
+            requestAt > 0 &&
+            currentTelemetryAt >=
+                requestAt - FUTURE_TOLERANCE_MS;
+        const changedDomains = semanticCurrentForAttempt
+            ? ["telemetry"]
+            : [];
+
+        const lastAttemptAt =
+            Number(refreshState.last_attempt_at ?? 0);
+
+        const attemptCurrent =
+            lastAttemptAt > 0 &&
+            lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&
+            Date.now() - lastAttemptAt <= 5 * 60 * 1000;
+
+        const evidenceObserved =
+            attemptCurrent &&
+            semanticCurrentForAttempt;
+
+`;
+  normalizer.func =
+    normalizer.func.slice(0, evidenceStart) +
+    semanticEvidence +
+    normalizer.func.slice(evidenceEnd);
+}
+for (const marker of [
+  "vehicle_primary_last_updated: testEntity(",
+  "function semanticTimestamp(entity)",
+  "telemetry_updated_at: telemetryUpdatedAt",
+  "semantic_telemetry_evidence_v2",
+]) {
+  if (!normalizer.func.includes(marker)) {
+    throw new Error(`Contrato de evidência semântica ausente: ${marker}`);
+  }
+}
 normalizer.func = normalizer.func.replace(
   '        "security_vehicle_primary_test_clock"',
   '        "security_vehicle_primary_test_clock",\n        "security_vehicle_primary_refresh_v1__test"',

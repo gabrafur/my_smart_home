@@ -119,7 +119,7 @@ function entity(state, updatedAt, attributes = {}) {
   };
 }
 
-function normalize(store, now, observedAt) {
+function normalize(store, now, observedAt, telemetryAt = observedAt) {
   return execute(code.normalizer, {
     now,
     store,
@@ -136,6 +136,10 @@ function normalize(store, now, observedAt) {
         }),
         vehicle_primary_engine: entity("off", observedAt),
         vehicle_primary_lock: entity("locked", observedAt),
+        vehicle_primary_last_updated: entity(
+          new Date(telemetryAt).toISOString(),
+          observedAt,
+        ),
       },
     },
   });
@@ -328,9 +332,7 @@ scenario("15 evidência nova confirma sucesso", () => {
       last_request_at: DAY - 15_000,
       next_allowed_at: DAY + 105_000,
       baseline_observed_at: {
-        location: baseline,
-        engine: baseline,
-        lock: baseline,
+        telemetry: baseline,
       },
     },
   });
@@ -338,7 +340,7 @@ scenario("15 evidência nova confirma sucesso", () => {
   const state = store.get(KEY);
   assert.equal(state.awaiting_evidence, false);
   assert.equal(state.attempts, 0);
-  assert.deepEqual([...state.last_evidence_domains], ["location", "engine", "lock"]);
+  assert.deepEqual([...state.last_evidence_domains], ["telemetry"]);
   assert.equal(state.next_allowed_at, DAY - 15_000 + 15 * 60_000);
 });
 
@@ -354,9 +356,7 @@ scenario("16 serviço aceito sem evidência nova não é sucesso", () => {
       last_request_at: DAY - 10_000,
       next_allowed_at: DAY + 50_000,
       baseline_observed_at: {
-        location: baseline,
-        engine: baseline,
-        lock: baseline,
+        telemetry: baseline,
       },
     },
   });
@@ -384,9 +384,7 @@ scenario("22 aceite tardio ancora e evidência não encurta o piso", () => {
       last_request_at: dispatchAt,
       next_allowed_at: dispatchAt + 15 * 60_000,
       baseline_observed_at: {
-        location: baseline,
-        engine: baseline,
-        lock: baseline,
+        telemetry: baseline,
       },
     },
   });
@@ -399,6 +397,54 @@ scenario("22 aceite tardio ancora e evidência não encurta o piso", () => {
   assert.equal(state.awaiting_evidence, false);
   assert.equal(state.next_allowed_at, acceptedDeadline);
   assert.equal(state.cooldown_until, acceptedDeadline);
+});
+
+scenario("23 republicação de cache não confirma dado novo", () => {
+  const semanticTimestamp = DAY - 30_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(semanticTimestamp),
+    [KEY]: {
+      attempts: 2,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: DAY - 15_000,
+      last_request_at: DAY - 15_000,
+      next_allowed_at: DAY + 15 * 60_000,
+      baseline_observed_at: {
+        telemetry: semanticTimestamp,
+      },
+    },
+  });
+
+  normalize(store, DAY, DAY, semanticTimestamp);
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, true);
+  assert.equal(state.attempts, 2);
+  assert.equal(state.last_success_at ?? 0, 0);
+});
+
+scenario("24 cache atrasado posterior ao baseline não confirma wake", () => {
+  const baseline = DAY - 30 * 60_000;
+  const delayedCache = DAY - 10 * 60_000;
+  const requestAt = DAY - 15_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: requestAt + 15 * 60_000,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  normalize(store, DAY, DAY, delayedCache);
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, true);
+  assert.equal(state.attempts, 1);
+  assert.equal(state.last_success_at ?? 0, 0);
 });
 
 scenario("17 recuperação posterior da integração", () => {
@@ -414,9 +460,7 @@ scenario("17 recuperação posterior da integração", () => {
       next_allowed_at: DAY,
       last_failure_class: "authentication",
       baseline_observed_at: {
-        location: baseline,
-        engine: baseline,
-        lock: baseline,
+        telemetry: baseline,
       },
     },
   });

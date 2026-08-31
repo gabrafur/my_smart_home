@@ -69,10 +69,11 @@ function peopleInput({ source = "resident_primary", state = "home", previous = "
   } };
 }
 
-function vehicle_primaryInput({ state = "home", previous = "not_home", distance = 20, locationAge = 0, engine = "off", engineAge = 0, lock = "locked", lockAge = 0, event = "context_snapshot", cycle } = {}) {
+function vehicle_primaryInput({ state = "home", previous = "not_home", distance = 20, locationAge = 0, telemetryAge = locationAge, engine = "off", engineAge = 0, lock = "locked", lockAge = 0, event = "context_snapshot", cycle } = {}) {
   return { payload: {
     event, source: "vehicle_primary", trigger_state: state, trigger_prev_state: previous, refresh_cycle_id: cycle,
     vehicle_primary: entity(state, distance, locationAge), vehicle_primary_engine: signal(engine, engineAge), vehicle_primary_lock: signal(lock, lockAge),
+    vehicle_primary_last_updated: signal(iso(-telemetryAge)),
   } };
 }
 
@@ -326,9 +327,7 @@ scenario("33 recuperação posterior do Bluelink", () => {
       last_attempt_at: NOW - 1_000,
       awaiting_evidence: true,
       baseline_observed_at: {
-        location: NOW - 2_000,
-        engine: NOW - 2_000,
-        lock: NOW - 2_000,
+        telemetry: NOW - 2_000,
       },
     },
   });
