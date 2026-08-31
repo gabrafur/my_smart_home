@@ -8,652 +8,6 @@
         "env": []
     },
     {
-        "id": "weekly_docs_review_production_group",
-        "type": "group",
-        "z": "weekly_docs_review_tab",
-        "name": "1. Agendamento, painel e ponte para o worker isolado",
-        "style": {
-            "label": true,
-            "color": "#4d9a6a"
-        },
-        "nodes": [
-            "weekly_docs_review_architecture",
-            "weekly_docs_review_schedule",
-            "weekly_docs_review_schedule_out",
-            "weekly_docs_review_schedule_in",
-            "weekly_docs_review_manual",
-            "weekly_docs_review_mark_manual",
-            "weekly_docs_review_status_watch",
-            "weekly_docs_review_track_status",
-            "weekly_docs_review_test_request_in",
-            "weekly_docs_review_prepare",
-            "weekly_docs_review_request",
-            "weekly_docs_review_result",
-            "weekly_docs_review_error",
-            "weekly_docs_review_complete",
-            "weekly_docs_review_dry_run_out",
-            "weekly_docs_review_error_dry_run_out",
-            "weekly_docs_review_test_failure_in"
-        ],
-        "x": 64,
-        "y": 39,
-        "w": 1532,
-        "h": 342
-    },
-    {
-        "id": "weekly_docs_review_test_group",
-        "type": "group",
-        "z": "weekly_docs_review_tab",
-        "name": "2. Testes manuais completos sem Codex, Git ou push",
-        "style": {
-            "label": true,
-            "color": "#7d6ba8"
-        },
-        "nodes": [
-            "weekly_docs_review_test_instructions",
-            "weekly_docs_review_test_reset",
-            "weekly_docs_review_test_reset_state",
-            "weekly_docs_review_test_scheduled",
-            "weekly_docs_review_test_manual",
-            "weekly_docs_review_test_request_out",
-            "weekly_docs_review_test_failure",
-            "weekly_docs_review_test_failure_out",
-            "weekly_docs_review_dry_run_in",
-            "weekly_docs_review_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 439,
-        "w": 1532,
-        "h": 252
-    },
-    {
-        "id": "weekly_docs_review_architecture",
-        "type": "comment",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Segunda 03:00 America/Sao_Paulo (06:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
-        "info": "O container Node-RED recebe apenas o diretório de gatilho e um helper allowlisted. Checkout, autenticação Codex, chave SSH e socket Docker não são expostos.",
-        "x": 760,
-        "y": 80,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_schedule",
-        "type": "inject",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Segunda 03:00 (06:00 UTC)",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "_weekly_docs_source",
-                "v": "scheduled",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "00 03 * * 1",
-        "once": false,
-        "onceDelay": "0.1",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 220,
-        "y": 160,
-        "wires": [
-            [
-                "weekly_docs_review_schedule_out"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_schedule_out",
-        "type": "link out",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Agendamento → normalização",
-        "mode": "link",
-        "links": [
-            "weekly_docs_review_schedule_in"
-        ],
-        "x": 415,
-        "y": 140,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_schedule_in",
-        "type": "link in",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Receber agendamento",
-        "links": [
-            "weekly_docs_review_schedule_out"
-        ],
-        "x": 515,
-        "y": 120,
-        "wires": [
-            [
-                "weekly_docs_review_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_manual",
-        "type": "server-state-changed",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Rodar pelo painel HA",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "input_button.weekly_documentation_review_run"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [],
-        "x": 210,
-        "y": 230,
-        "wires": [
-            [
-                "weekly_docs_review_mark_manual"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_mark_manual",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Marcar origem manual",
-        "func": "msg._weekly_docs_source = \"manual\";\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 470,
-        "y": 230,
-        "wires": [
-            [
-                "weekly_docs_review_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_status_watch",
-        "type": "server-state-changed",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Acompanhar status do worker",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "sensor.revisao_semanal_da_documentacao"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": true,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": false,
-        "ignoreCurrentStateUnavailable": false,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "",
-                "valueType": "entityState"
-            }
-        ],
-        "x": 230,
-        "y": 320,
-        "wires": [
-            [
-                "weekly_docs_review_track_status"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_track_status",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Exibir lifecycle do worker",
-        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 540,
-        "y": 320,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_test_request_in",
-        "type": "link in",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Receber solicitação TESTE",
-        "links": [
-            "weekly_docs_review_test_request_out"
-        ],
-        "x": 515,
-        "y": 160,
-        "wires": [
-            [
-                "weekly_docs_review_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_prepare",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Validar origem e separar TESTE",
-        "func": "const TEST_MODE = msg._weekly_docs_test === true;\nconst source = String(msg._weekly_docs_source ?? \"\");\nif (source !== \"manual\" && source !== \"scheduled\") {\n    node.error(\"weekly_docs_review_invalid_source\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"origem inválida\" });\n    return null;\n}\nmsg._weekly_docs_test = TEST_MODE;\nmsg.payload = source;\nnode.status({\n    fill: TEST_MODE ? \"blue\" : \"green\",\n    shape: \"dot\",\n    text: TEST_MODE ? \"TESTE preparado: \" + source : \"solicitando: \" + source\n});\nreturn TEST_MODE ? [null, msg] : [msg, null];",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 750,
-        "y": 190,
-        "wires": [
-            [
-                "weekly_docs_review_request"
-            ],
-            [
-                "weekly_docs_review_dry_run_out"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_request",
-        "type": "exec",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "command": "/opt/request-weekly-docs-review.sh",
-        "addpay": "payload",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "15",
-        "winHide": false,
-        "oldrc": false,
-        "name": "Solicitar worker isolado",
-        "x": 1020,
-        "y": 160,
-        "wires": [
-            [
-                "weekly_docs_review_result"
-            ],
-            [
-                "weekly_docs_review_error"
-            ],
-            [
-                "weekly_docs_review_complete"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_result",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Registrar solicitação aceita",
-        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 300);\nconst source = text.match(/source=(manual|scheduled)/)?.[1] ?? \"unknown\";\nconst pending = /already pending/.test(text);\nconst accepted = /Documentation review (?:requested|already pending)/.test(text);\nif (!accepted) {\n    node.error(\"weekly_docs_review_result_unrecognized\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta não reconhecida\" });\n    return null;\n}\nconst result = {\n    version: 1,\n    status: pending ? \"coalesced\" : \"requested\",\n    source,\n    requested_at: Date.now()\n};\nflow.set(\"weekly_docs_review_last_request_v1\", result, \"persistent\");\nnode.status({\n    fill: pending ? \"yellow\" : \"green\",\n    shape: pending ? \"ring\" : \"dot\",\n    text: pending ? \"solicitação agrupada\" : \"worker solicitado\"\n});\nnode.log(\"weekly_docs_review_request status=\" + result.status + \" source=\" + source);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1330,
-        "y": 120,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_error",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Registrar falha segura",
-        "func": "const TEST_MODE = msg._weekly_docs_test === true;\nconst detail = String(msg.payload ?? msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: TEST_MODE ? \"yellow\" : \"red\", shape: \"ring\", text: TEST_MODE ? \"TESTE: falha simulada\" : \"solicitação falhou\" });\nif (TEST_MODE) {\n    msg.payload = { status: \"failed\", detail, source: \"synthetic\" };\n    return msg;\n}\nnode.error(\"weekly_docs_review_request_failed detail=\" + detail, msg);\nreturn null;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1310,
-        "y": 180,
-        "wires": [
-            [
-                "weekly_docs_review_error_dry_run_out"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_complete",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Registrar código da ponte",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code === 0) node.status({ fill: \"green\", shape: \"dot\", text: \"ponte finalizada\" });\nelse node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1310,
-        "y": 240,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_dry_run_out",
-        "type": "link out",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "TESTE → terminal dry-run",
-        "mode": "link",
-        "links": [
-            "weekly_docs_review_dry_run_in"
-        ],
-        "x": 1025,
-        "y": 250,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_error_dry_run_out",
-        "type": "link out",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Falha TESTE → terminal dry-run",
-        "mode": "link",
-        "links": [
-            "weekly_docs_review_dry_run_in"
-        ],
-        "x": 1515,
-        "y": 180,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_test_failure_in",
-        "type": "link in",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_production_group",
-        "name": "Receber falha TESTE",
-        "links": [
-            "weekly_docs_review_test_failure_out"
-        ],
-        "x": 1075,
-        "y": 310,
-        "wires": [
-            [
-                "weekly_docs_review_error"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_test_instructions",
-        "type": "comment",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "TESTE: 1) reset 2) agendada/manual/falha 3) confira terminal; nenhum Codex, Git, commit, push ou trigger é executado",
-        "info": "Os cenários usam a mesma normalização e tratamento de erro da produção. O link final desvia antes do helper externo e registra simulated=true/dispatched=false.",
-        "x": 760,
-        "y": 480,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_test_reset",
-        "type": "inject",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "TESTE 1: reset",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 540,
-        "wires": [
-            [
-                "weekly_docs_review_test_reset_state"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_test_reset_state",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "Resetar teste",
-        "func": "flow.set(\"weekly_docs_review_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 460,
-        "y": 540,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_test_scheduled",
-        "type": "inject",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "TESTE 2A: agendada",
-        "props": [
-            {
-                "p": "_weekly_docs_source",
-                "v": "scheduled",
-                "vt": "str"
-            },
-            {
-                "p": "_weekly_docs_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 210,
-        "y": 600,
-        "wires": [
-            [
-                "weekly_docs_review_test_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_test_manual",
-        "type": "inject",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "TESTE 2B: manual",
-        "props": [
-            {
-                "p": "_weekly_docs_source",
-                "v": "manual",
-                "vt": "str"
-            },
-            {
-                "p": "_weekly_docs_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 650,
-        "wires": [
-            [
-                "weekly_docs_review_test_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_test_request_out",
-        "type": "link out",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "Solicitação TESTE → normalização",
-        "mode": "link",
-        "links": [
-            "weekly_docs_review_test_request_in"
-        ],
-        "x": 485,
-        "y": 625,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_test_failure",
-        "type": "inject",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "TESTE 2C: falha da ponte",
-        "props": [
-            {
-                "p": "payload",
-                "v": "synthetic bridge unavailable",
-                "vt": "str"
-            },
-            {
-                "p": "_weekly_docs_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "_weekly_docs_source",
-                "v": "manual",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 760,
-        "y": 620,
-        "wires": [
-            [
-                "weekly_docs_review_test_failure_out"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_test_failure_out",
-        "type": "link out",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "Falha TESTE → handler",
-        "mode": "link",
-        "links": [
-            "weekly_docs_review_test_failure_in"
-        ],
-        "x": 1005,
-        "y": 620,
-        "wires": []
-    },
-    {
-        "id": "weekly_docs_review_dry_run_in",
-        "type": "link in",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "Receber terminal TESTE",
-        "links": [
-            "weekly_docs_review_dry_run_out",
-            "weekly_docs_review_error_dry_run_out"
-        ],
-        "x": 1155,
-        "y": 560,
-        "wires": [
-            [
-                "weekly_docs_review_dry_run_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "weekly_docs_review_dry_run_terminal",
-        "type": "function",
-        "z": "weekly_docs_review_tab",
-        "g": "weekly_docs_review_test_group",
-        "name": "TESTE FINAL: worker bloqueado",
-        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    worker_started: false,\n    source: msg._weekly_docs_source ?? msg.payload?.source ?? \"unknown\",\n    status: msg.payload?.status ?? \"request_simulated\",\n    completed_at: Date.now()\n};\nflow.set(\"weekly_docs_review_last_dry_run_v1\", result);\nnode.status({ fill: result.status === \"failed\" ? \"yellow\" : \"green\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; worker bloqueado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1400,
-        "y": 560,
-        "wires": []
-    },
-    {
         "id": "git_backup_tab",
         "type": "tab",
         "label": "backup_git",
@@ -780,6 +134,30 @@
         "env": []
     },
     {
+        "id": "resident_notifications_tab",
+        "type": "tab",
+        "label": "notificacoes_chegadas_residentes",
+        "disabled": false,
+        "info": "Avisa cada residente quando o outro entra na zona chegando. Funciona 24 horas por dia e não depende de veículo, iluminação ou contexto_chegadas. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.",
+        "env": []
+    },
+    {
+        "id": "monitoramento_vpn_tab",
+        "type": "tab",
+        "label": "monitoramento_vpn",
+        "disabled": false,
+        "info": "Monitora as VPNs instaladas no host sem expor topologia privada. Correlaciona com o monitor de internet, confirma falha e recuperação e notifica por canais compartilhados.",
+        "env": []
+    },
+    {
+        "id": "daily_host_updates_tab",
+        "type": "tab",
+        "label": "atualizacoes_diarias",
+        "disabled": false,
+        "info": "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a análise segura do fork Kia UVO/Hyundai Bluelink a cada 30 minutos sem instalar o upstream. O Node-RED não recebe sudo, checkout nem socket Docker.",
+        "env": []
+    },
+    {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
         "name": "Notificar celulares, Echo e Home Assistant",
@@ -800,6 +178,65 @@
         "env": [],
         "meta": {},
         "color": "#DDAA99"
+    },
+    {
+        "id": "weekly_docs_review_production_group",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "1. Agendamento, painel e ponte para o worker isolado",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a"
+        },
+        "nodes": [
+            "weekly_docs_review_architecture",
+            "weekly_docs_review_schedule",
+            "weekly_docs_review_schedule_out",
+            "weekly_docs_review_schedule_in",
+            "weekly_docs_review_manual",
+            "weekly_docs_review_mark_manual",
+            "weekly_docs_review_status_watch",
+            "weekly_docs_review_track_status",
+            "weekly_docs_review_test_request_in",
+            "weekly_docs_review_prepare",
+            "weekly_docs_review_request",
+            "weekly_docs_review_result",
+            "weekly_docs_review_error",
+            "weekly_docs_review_complete",
+            "weekly_docs_review_dry_run_out",
+            "weekly_docs_review_error_dry_run_out",
+            "weekly_docs_review_test_failure_in"
+        ],
+        "x": 64,
+        "y": 39,
+        "w": 1512,
+        "h": 322
+    },
+    {
+        "id": "weekly_docs_review_test_group",
+        "type": "group",
+        "z": "weekly_docs_review_tab",
+        "name": "2. Testes manuais completos sem Codex, Git ou push",
+        "style": {
+            "label": true,
+            "color": "#7d6ba8"
+        },
+        "nodes": [
+            "weekly_docs_review_test_instructions",
+            "weekly_docs_review_test_reset",
+            "weekly_docs_review_test_reset_state",
+            "weekly_docs_review_test_scheduled",
+            "weekly_docs_review_test_manual",
+            "weekly_docs_review_test_request_out",
+            "weekly_docs_review_test_failure",
+            "weekly_docs_review_test_failure_out",
+            "weekly_docs_review_dry_run_in",
+            "weekly_docs_review_dry_run_terminal"
+        ],
+        "x": 84,
+        "y": 439,
+        "w": 1502,
+        "h": 252
     },
     {
         "id": "git_backup_group",
@@ -897,7 +334,7 @@
         ],
         "x": 1564,
         "y": 239,
-        "w": 612,
+        "w": 702,
         "h": 262
     },
     {
@@ -2172,12 +1609,204 @@
         "h": 202
     },
     {
-        "id": "daily_host_updates_tab",
-        "type": "tab",
-        "label": "atualizacoes_diarias",
-        "disabled": false,
-        "info": "Depois do backup Git diário concluído, solicita ao host a atualização serial do DietPi e dos provedores de imagens dos containers. No mesmo tab, agenda a análise segura do fork Kia UVO/Hyundai Bluelink a cada 30 minutos sem instalar o upstream. O Node-RED não recebe sudo, checkout nem socket Docker.",
-        "env": []
+        "id": "resident_notifications_triggers_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "1. Mudanças de zona",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#3f7cb5",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_note",
+            "resident_notifications_primary_event",
+            "resident_notifications_secondary_event"
+        ],
+        "x": 64,
+        "y": 79,
+        "w": 432,
+        "h": 202
+    },
+    {
+        "id": "resident_notifications_decision_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "2. Validar aproximação e deduplicar",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#7d6ba8",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_prepare",
+            "resident_notifications_test_event_in"
+        ],
+        "x": 519,
+        "y": 124,
+        "w": 317,
+        "h": 157
+    },
+    {
+        "id": "resident_notifications_output_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "3. Notificar o outro residente",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#4d9a6a",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_notify_primary",
+            "resident_notifications_notify_secondary",
+            "resident_notifications_delivery_ack"
+        ],
+        "x": 894,
+        "y": 119,
+        "w": 742,
+        "h": 142
+    },
+    {
+        "id": "resident_notifications_test_group",
+        "type": "group",
+        "z": "resident_notifications_tab",
+        "name": "4. Testes manuais — envia push marcado TESTE",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#a87932",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "resident_notifications_test_primary",
+            "resident_notifications_test_secondary",
+            "resident_notifications_test_cycle_in",
+            "resident_notifications_test_adapter",
+            "resident_notifications_test_event_out"
+        ],
+        "x": 434,
+        "y": 339,
+        "w": 607,
+        "h": 202
+    },
+    {
+        "id": "vpn_monitor_input_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "1. Estado do host, internet e decisão",
+        "style": {
+            "label": true,
+            "color": "#5b8db8",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_health_in",
+            "vpn_monitor_report_ingest",
+            "vpn_monitor_internet_in",
+            "vpn_monitor_internet_ingest",
+            "vpn_monitor_tick",
+            "vpn_monitor_evaluate",
+            "vpn_monitor_test_report_in",
+            "vpn_monitor_test_internet_in",
+            "vpn_monitor_test_evaluate_in"
+        ],
+        "x": 194,
+        "y": 39,
+        "w": 892,
+        "h": 282
+    },
+    {
+        "id": "vpn_monitor_notify_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "2. Notificações deduplicadas",
+        "style": {
+            "label": true,
+            "color": "#b5563f",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_down_guard",
+            "vpn_monitor_notify_down",
+            "vpn_monitor_recovery_guard",
+            "vpn_monitor_notify_recovery",
+            "vpn_monitor_dry_out"
+        ],
+        "x": 1214,
+        "y": 59,
+        "w": 607,
+        "h": 237
+    },
+    {
+        "id": "vpn_monitor_publish_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "3. MQTT Discovery e estado",
+        "style": {
+            "label": true,
+            "color": "#6aa84f",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_mqtt_guard",
+            "vpn_monitor_state_out",
+            "vpn_monitor_publish_dry_out",
+            "vpn_monitor_discovery_tick",
+            "vpn_monitor_discovery",
+            "vpn_monitor_discovery_out"
+        ],
+        "x": 1114,
+        "y": 379,
+        "w": 832,
+        "h": 222
+    },
+    {
+        "id": "vpn_monitor_test_group",
+        "type": "group",
+        "z": "monitoramento_vpn_tab",
+        "name": "TESTE — fluxo completo em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "vpn_monitor_test_instructions",
+            "vpn_monitor_test_reset",
+            "vpn_monitor_test_reset_state",
+            "vpn_monitor_test_internet_online",
+            "vpn_monitor_test_internet_offline",
+            "vpn_monitor_test_vpn_down",
+            "vpn_monitor_test_confirm_down",
+            "vpn_monitor_test_vpn_up",
+            "vpn_monitor_test_confirm_up",
+            "vpn_monitor_test_router",
+            "vpn_monitor_test_internet_out",
+            "vpn_monitor_test_report_out",
+            "vpn_monitor_test_evaluate_out",
+            "vpn_monitor_dry_in",
+            "vpn_monitor_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 359,
+        "w": 972,
+        "h": 402
     },
     {
         "id": "daily_update_production_group",
@@ -2206,194 +1835,6 @@
         "h": 302
     },
     {
-        "id": "daily_update_architecture",
-        "type": "comment",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Executa somente após sucesso do backup diário; DietPi primeiro, containers depois; sem reboot automático",
-        "info": "A ponte coalesce solicitações. O helper root-owned limita sudo ao apt-get update/upgrade e o worker atual preserva o isolamento do Docker.",
-        "x": 650,
-        "y": 80,
-        "wires": []
-    },
-    {
-        "id": "daily_update_after_backup_in",
-        "type": "link in",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Receber backup diário concluído",
-        "links": [
-            "git_backup_daily_update_out"
-        ],
-        "x": 145,
-        "y": 160,
-        "wires": [
-            [
-                "daily_update_prepare_request"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_test_request_in",
-        "type": "link in",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Receber solicitação TESTE",
-        "links": [
-            "daily_update_test_request_out"
-        ],
-        "x": 145,
-        "y": 220,
-        "wires": [
-            [
-                "daily_update_prepare_request"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_prepare_request",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Validar backup e preparar ciclo",
-        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst event = msg.payload?.event ?? \"git_backup_completed\";\nif (!TEST_MODE && (event !== \"git_backup_completed\" || msg.payload?.status !== \"success\")) {\n    node.warn(\"daily_update_ignored_without_successful_backup\");\n    return null;\n}\nmsg._daily_update_test = TEST_MODE;\nmsg.payload = {\n    version: 1,\n    event: \"daily_update_requested\",\n    source: TEST_MODE ? \"manual_test\" : \"git_backup\",\n    backup_finished_at: msg.payload?.finished_at ?? null,\n    test_mode: TEST_MODE\n};\nnode.status({ fill: TEST_MODE ? \"blue\" : \"green\", shape: \"dot\", text: TEST_MODE ? \"TESTE preparado\" : \"backup concluído; solicitando\" });\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 410,
-        "y": 190,
-        "wires": [
-            [
-                "daily_update_route_test"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_route_test",
-        "type": "switch",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Produção ou TESTE?",
-        "property": "_daily_update_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 660,
-        "y": 190,
-        "wires": [
-            [
-                "daily_update_request_test_out"
-            ],
-            [
-                "daily_update_request_host"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_request_host",
-        "type": "exec",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "command": "/opt/request-host-daily-update.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "30",
-        "winHide": false,
-        "oldrc": false,
-        "name": "Solicitar ciclo ao host",
-        "x": 920,
-        "y": 160,
-        "wires": [
-            [
-                "daily_update_request_ack"
-            ],
-            [
-                "daily_update_request_error"
-            ],
-            [
-                "daily_update_request_complete"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_request_ack",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Registrar solicitação",
-        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"daily_update_request_unrecognized\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({ fill: status === \"accepted\" ? \"green\" : \"yellow\", shape: \"dot\", text: status === \"accepted\" ? \"solicitação aceita\" : \"solicitação coalescida\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1180,
-        "y": 120,
-        "wires": []
-    },
-    {
-        "id": "daily_update_request_error",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Falha segura da ponte",
-        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1180,
-        "y": 180,
-        "wires": []
-    },
-    {
-        "id": "daily_update_request_complete",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Registrar código da ponte",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1180,
-        "y": 240,
-        "wires": []
-    },
-    {
-        "id": "daily_update_request_test_out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_production_group",
-        "name": "Solicitação TESTE → dry-run",
-        "mode": "link",
-        "links": [
-            "daily_update_dry_run_in"
-        ],
-        "x": 905,
-        "y": 240,
-        "wires": []
-    },
-    {
         "id": "daily_update_result_group",
         "type": "group",
         "z": "daily_host_updates_tab",
@@ -2416,171 +1857,6 @@
         "y": 379,
         "w": 1252,
         "h": 242
-    },
-    {
-        "id": "daily_update_result_startup",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "name": "Ler resultado ao subir",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "15",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 440,
-        "wires": [
-            [
-                "daily_update_read_result"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_result_poll",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "name": "A cada 5 min",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "300",
-        "crontab": "",
-        "once": false,
-        "onceDelay": "0.1",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 180,
-        "y": 500,
-        "wires": [
-            [
-                "daily_update_read_result"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_read_result",
-        "type": "exec",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "command": "/opt/read-host-daily-update-result.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "15",
-        "winHide": false,
-        "oldrc": false,
-        "name": "Ler resultado seguro",
-        "x": 470,
-        "y": 470,
-        "wires": [
-            [
-                "daily_update_parse_result"
-            ],
-            [
-                "daily_update_read_error"
-            ],
-            [
-                "daily_update_read_complete"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_read_error",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "name": "Falha ao ler resultado",
-        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 760,
-        "y": 550,
-        "wires": []
-    },
-    {
-        "id": "daily_update_read_complete",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "name": "Código da leitura",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 940,
-        "y": 550,
-        "wires": []
-    },
-    {
-        "id": "daily_update_test_result_in",
-        "type": "link in",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "name": "Receber resultado TESTE",
-        "links": [
-            "daily_update_test_result_out"
-        ],
-        "x": 455,
-        "y": 550,
-        "wires": [
-            [
-                "daily_update_parse_result"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_parse_result",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "name": "Normalizar, deduplicar e observar",
-        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 600);\nif (!text) return null;\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst dietpiExit = Number(text.match(/\\bdietpi_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst dietpiStage = text.match(/\\bdietpi_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nconst containersExit = Number(text.match(/\\bcontainers_exit=(\\d+)\\b/)?.[1] ?? NaN);\nif (!status) {\n    if (!TEST_MODE) node.error(\"daily_update_result_unrecognized\");\n    return null;\n}\nconst signature = requestId + \":\" + status;\nconst key = TEST_MODE ? \"daily_update_last_result_v1__test\" : \"daily_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return null;\nconst result = {\n    version: 1, signature, request_id: requestId, status,\n    dietpi_exit: Number.isFinite(dietpiExit) ? dietpiExit : null,\n    dietpi_stage: dietpiStage,\n    containers_exit: Number.isFinite(containersExit) ? containersExit : null,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"DietPi e containers atualizados\" : status\n});\nif (TEST_MODE) {\n    msg.payload = result;\n    return msg;\n}\nif (failed) {\n    node.error(\"daily_update_failed request_id=\" + requestId + \" dietpi_stage=\" + String(result.dietpi_stage) + \" dietpi_exit=\" + String(result.dietpi_exit) + \" containers_exit=\" + String(result.containers_exit));\n}\nreturn null;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 800,
-        "y": 470,
-        "wires": [
-            [
-                "daily_update_result_test_out"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_result_test_out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_result_group",
-        "name": "Resultado TESTE → dry-run",
-        "mode": "link",
-        "links": [
-            "daily_update_dry_run_in"
-        ],
-        "x": 1085,
-        "y": 470,
-        "wires": []
     },
     {
         "id": "daily_update_test_group",
@@ -2607,224 +1883,6 @@
         "y": 659,
         "w": 1252,
         "h": 362
-    },
-    {
-        "id": "daily_update_test_instructions",
-        "type": "comment",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "TESTE: 1) reset 2) solicitação, falha ou indisponibilidade 3) confira o terminal; todos os efeitos ficam bloqueados",
-        "info": "Os testes entram nos mesmos validadores, roteadores e parser da produção. O terminal grava simulated=true e dispatched=false.",
-        "x": 660,
-        "y": 700,
-        "wires": []
-    },
-    {
-        "id": "daily_update_test_reset",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "TESTE 1: reset",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 190,
-        "y": 780,
-        "wires": [
-            [
-                "daily_update_test_reset_state"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_test_reset_state",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "Resetar teste",
-        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 460,
-        "y": 780,
-        "wires": []
-    },
-    {
-        "id": "daily_update_test_request",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "TESTE 2A: ciclo após backup",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"event\":\"git_backup_completed\",\"status\":\"success\",\"test_mode\":true}",
-                "vt": "json"
-            },
-            {
-                "p": "_daily_update_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 220,
-        "y": 840,
-        "wires": [
-            [
-                "daily_update_test_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_test_failure",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "TESTE 2B: falha DietPi",
-        "props": [
-            {
-                "p": "payload",
-                "v": "daily-update status=failed request_id=test-failed dietpi_exit=100 dietpi_stage=dietpi-update containers_exit=0",
-                "vt": "str"
-            },
-            {
-                "p": "_daily_update_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 900,
-        "wires": [
-            [
-                "daily_update_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_test_unavailable",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "TESTE 2C: worker indisponível",
-        "props": [
-            {
-                "p": "payload",
-                "v": "daily-update status=unavailable request_id=test-unavailable",
-                "vt": "str"
-            },
-            {
-                "p": "_daily_update_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 220,
-        "y": 960,
-        "wires": [
-            [
-                "daily_update_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_test_request_out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "Solicitação TESTE → validador",
-        "mode": "link",
-        "links": [
-            "daily_update_test_request_in"
-        ],
-        "x": 505,
-        "y": 840,
-        "wires": []
-    },
-    {
-        "id": "daily_update_test_result_out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "Resultado TESTE → parser",
-        "mode": "link",
-        "links": [
-            "daily_update_test_result_in"
-        ],
-        "x": 505,
-        "y": 930,
-        "wires": []
-    },
-    {
-        "id": "daily_update_dry_run_in",
-        "type": "link in",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "Receber efeito TESTE",
-        "links": [
-            "daily_update_request_test_out",
-            "daily_update_result_test_out",
-            "daily_update_kia_test_out",
-            "daily_update_kia_result_test_out"
-        ],
-        "x": 715,
-        "y": 870,
-        "wires": [
-            [
-                "daily_update_dry_run_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_dry_run_terminal",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_test_group",
-        "name": "TESTE FINAL: host simulado",
-        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    apt_commands_sent: false,\n    docker_update_sent: false,\n    kia_uvo_update_check_sent: false,\n    status: msg.payload?.status ?? msg.payload?.event ?? \"request_prepared\",\n    completed_at: Date.now()\n};\nflow.set(\"daily_update_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; host bloqueado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1030,
-        "y": 870,
-        "wires": []
     },
     {
         "id": "daily_update_kia_group",
@@ -2862,461 +1920,6 @@
         "y": 1059,
         "w": 1252,
         "h": 582
-    },
-    {
-        "id": "daily_update_kia_architecture",
-        "type": "comment",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "A cada 30 min: staging + overlay local + testes; conflito preserva v3.10.1; apply continua exclusivamente manual",
-        "info": "O Node-RED apenas cria uma solicitação coalescente. O worker do host executa o watcher HA existente: Kia/Hyundai segue somente para staging e as demais entidades seguras preservam a política anterior. Nunca chama update.install para a entidade protegida.",
-        "x": 670,
-        "y": 1100,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_schedule",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "A cada 30 min + ao subir",
-        "props": [
-            {
-                "p": "payload.source",
-                "v": "node_red_schedule",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "*/30 * * * *",
-        "once": true,
-        "onceDelay": "20",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 1180,
-        "wires": [
-            [
-                "daily_update_kia_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_manual",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Verificar agora (seguro)",
-        "props": [
-            {
-                "p": "payload.source",
-                "v": "manual",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 1240,
-        "wires": [
-            [
-                "daily_update_kia_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_test_request",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "TESTE: solicitação bloqueada",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"source\":\"manual_test\",\"test_mode\":true}",
-                "vt": "json"
-            },
-            {
-                "p": "_kia_update_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 220,
-        "y": 1300,
-        "wires": [
-            [
-                "daily_update_kia_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_prepare",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Preparar análise segura",
-        "func": "const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;\nmsg._kia_update_test = TEST_MODE;\nmsg.payload = {\n    version: 1,\n    event: \"kia_uvo_update_check_requested\",\n    source: TEST_MODE ? \"manual_test\" : (msg.payload?.source ?? \"node_red_schedule\"),\n    test_mode: TEST_MODE,\n    requested_at: new Date().toISOString()\n};\nnode.status({ fill: TEST_MODE ? \"blue\" : \"green\", shape: \"dot\", text: TEST_MODE ? \"TESTE preparado\" : \"análise segura solicitada\" });\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 470,
-        "y": 1240,
-        "wires": [
-            [
-                "daily_update_kia_route_test"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_route_test",
-        "type": "switch",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Produção ou TESTE?",
-        "property": "_kia_update_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 710,
-        "y": 1240,
-        "wires": [
-            [
-                "daily_update_kia_test_out"
-            ],
-            [
-                "daily_update_kia_request_host"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_request_host",
-        "type": "exec",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "command": "/opt/request-host-kia-uvo-update-check.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "30",
-        "winHide": false,
-        "oldrc": false,
-        "name": "Solicitar check ao host",
-        "x": 970,
-        "y": 1180,
-        "wires": [
-            [
-                "daily_update_kia_request_ack"
-            ],
-            [
-                "daily_update_kia_request_error"
-            ],
-            [
-                "daily_update_kia_request_complete"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_request_ack",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Registrar solicitação Kia",
-        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"kia_uvo_update_request_unrecognized\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({ fill: status === \"accepted\" ? \"green\" : \"yellow\", shape: \"dot\", text: status === \"accepted\" ? \"análise aceita\" : \"análise já pendente\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1200,
-        "y": 1140,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_request_error",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Falha segura da ponte Kia",
-        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1200,
-        "y": 1200,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_request_complete",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Código da ponte Kia",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1200,
-        "y": 1260,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_test_out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Solicitação Kia TESTE → dry-run",
-        "mode": "link",
-        "links": [
-            "daily_update_dry_run_in"
-        ],
-        "x": 965,
-        "y": 1300,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_result_startup",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Ler resultado ao subir",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "50",
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 1400,
-        "wires": [
-            [
-                "daily_update_kia_read_result"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_result_poll",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Resultado a cada 1 min",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "60",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 1460,
-        "wires": [
-            [
-                "daily_update_kia_read_result"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_read_result",
-        "type": "exec",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "command": "/opt/read-host-kia-uvo-update-result.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "15",
-        "winHide": false,
-        "oldrc": false,
-        "name": "Ler resultado Kia seguro",
-        "x": 480,
-        "y": 1430,
-        "wires": [
-            [
-                "daily_update_kia_parse_result"
-            ],
-            [
-                "daily_update_kia_read_error"
-            ],
-            [
-                "daily_update_kia_read_complete"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_read_error",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Falha ao ler resultado Kia",
-        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 750,
-        "y": 1510,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_read_complete",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Código da leitura Kia",
-        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 970,
-        "y": 1510,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_parse_result",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Normalizar e observar check Kia",
-        "func": "const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return null;\nconst status = text.match(/\\bstatus=(running|compatible|conflict|applied|rollback|failed|deferred|unavailable|unknown)\\b/)?.[1];\nif (!status) {\n    if (!TEST_MODE) node.error(\"kia_uvo_update_result_unrecognized\");\n    return null;\n}\nconst result = {\n    version: 1,\n    status,\n    request_id: text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\",\n    installed_version: text.match(/\\binstalled_version=([^ ]+)\\b/)?.[1] ?? null,\n    latest_version: text.match(/\\blatest_version=([^ ]+)\\b/)?.[1] ?? null,\n    patch_state: text.match(/\\bpatch_state=([^ ]+)\\b/)?.[1] ?? null,\n    conflicts: Number(text.match(/\\bconflicts=(\\d+)\\b/)?.[1] ?? 0),\n    checked_at: text.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? null,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nconst signature = [result.request_id, result.status, result.latest_version, result.checked_at].join(\":\");\nconst key = TEST_MODE ? \"kia_uvo_update_last_result_v1__test\" : \"kia_uvo_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return null;\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\", \"rollback\"].includes(status);\nconst compatible = [\"compatible\", \"applied\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : compatible ? \"green\" : status === \"conflict\" ? \"yellow\" : \"blue\",\n    shape: failed || status === \"conflict\" ? \"ring\" : \"dot\",\n    text: status === \"conflict\"\n        ? \"v\" + String(result.latest_version ?? \"?\") + \": conflito; preservado\"\n        : status\n});\nif (TEST_MODE) {\n    msg.payload = result;\n    return msg;\n}\nif (failed) node.error(\"kia_uvo_update_check_failed status=\" + status + \" request_id=\" + result.request_id);\nelse if (status === \"conflict\") node.warn(\"kia_uvo_update_requires_manual_merge latest=\" + String(result.latest_version));\nreturn null;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 800,
-        "y": 1430,
-        "wires": [
-            [
-                "daily_update_kia_result_test_out"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_result_test_out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Resultado Kia TESTE → dry-run",
-        "mode": "link",
-        "links": [
-            "daily_update_dry_run_in"
-        ],
-        "x": 1095,
-        "y": 1430,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_test_result",
-        "type": "inject",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "TESTE: conflito preservado",
-        "props": [
-            {
-                "p": "payload",
-                "v": "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T00:00:00.000Z",
-                "vt": "str"
-            },
-            {
-                "p": "_kia_update_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 220,
-        "y": 1570,
-        "wires": [
-            [
-                "daily_update_kia_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "daily_update_kia_test_result_out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Resultado Kia TESTE → parser",
-        "mode": "link",
-        "links": [
-            "daily_update_kia_test_result_in"
-        ],
-        "x": 505,
-        "y": 1570,
-        "wires": []
-    },
-    {
-        "id": "daily_update_kia_test_result_in",
-        "type": "link in",
-        "z": "daily_host_updates_tab",
-        "g": "daily_update_kia_group",
-        "name": "Receber resultado Kia TESTE",
-        "links": [
-            "daily_update_kia_test_result_out"
-        ],
-        "x": 625,
-        "y": 1570,
-        "wires": [
-            [
-                "daily_update_kia_parse_result"
-            ]
-        ]
     },
     {
         "id": "4126427d5e161a03",
@@ -3551,6 +2154,593 @@
         "wires": [
             []
         ]
+    },
+    {
+        "id": "weekly_docs_review_architecture",
+        "type": "comment",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Segunda 03:00 America/Sao_Paulo (06:00 UTC); Node-RED agenda, worker valida/commita/pusha; dashboard preserva status sanitizado",
+        "info": "O container Node-RED recebe apenas o diretório de gatilho e um helper allowlisted. Checkout, autenticação Codex, chave SSH e socket Docker não são expostos.",
+        "x": 780,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_schedule",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Segunda 03:00 (06:00 UTC)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_weekly_docs_source",
+                "v": "scheduled",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 03 * * 1",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 160,
+        "wires": [
+            [
+                "weekly_docs_review_schedule_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_schedule_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Agendamento → normalização",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_schedule_in"
+        ],
+        "x": 435,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_schedule_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Receber agendamento",
+        "links": [
+            "weekly_docs_review_schedule_out"
+        ],
+        "x": 535,
+        "y": 120,
+        "wires": [
+            [
+                "weekly_docs_review_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_manual",
+        "type": "server-state-changed",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Rodar pelo painel HA",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_button.weekly_documentation_review_run"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [],
+        "x": 230,
+        "y": 230,
+        "wires": [
+            [
+                "weekly_docs_review_mark_manual"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_mark_manual",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Marcar origem manual",
+        "func": "msg._weekly_docs_source = \"manual\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 230,
+        "wires": [
+            [
+                "weekly_docs_review_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_status_watch",
+        "type": "server-state-changed",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Acompanhar status do worker",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.revisao_semanal_da_documentacao"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 250,
+        "y": 320,
+        "wires": [
+            [
+                "weekly_docs_review_track_status"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_track_status",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Exibir lifecycle do worker",
+        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_request_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Receber solicitação TESTE",
+        "links": [
+            "weekly_docs_review_test_request_out"
+        ],
+        "x": 535,
+        "y": 160,
+        "wires": [
+            [
+                "weekly_docs_review_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_prepare",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Validar origem e separar TESTE",
+        "func": "const TEST_MODE = msg._weekly_docs_test === true;\nconst source = String(msg._weekly_docs_source ?? \"\");\nif (source !== \"manual\" && source !== \"scheduled\") {\n    node.error(\"weekly_docs_review_invalid_source\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"origem inválida\" });\n    return null;\n}\nmsg._weekly_docs_test = TEST_MODE;\nmsg.payload = source;\nnode.status({\n    fill: TEST_MODE ? \"blue\" : \"green\",\n    shape: \"dot\",\n    text: TEST_MODE ? \"TESTE preparado: \" + source : \"solicitando: \" + source\n});\nreturn TEST_MODE ? [null, msg] : [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 770,
+        "y": 190,
+        "wires": [
+            [
+                "weekly_docs_review_request"
+            ],
+            [
+                "weekly_docs_review_dry_run_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_request",
+        "type": "exec",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "command": "/opt/request-weekly-docs-review.sh",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar worker isolado",
+        "x": 1040,
+        "y": 160,
+        "wires": [
+            [
+                "weekly_docs_review_result"
+            ],
+            [
+                "weekly_docs_review_error"
+            ],
+            [
+                "weekly_docs_review_complete"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_result",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Registrar solicitação aceita",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 300);\nconst source = text.match(/source=(manual|scheduled)/)?.[1] ?? \"unknown\";\nconst pending = /already pending/.test(text);\nconst accepted = /Documentation review (?:requested|already pending)/.test(text);\nif (!accepted) {\n    node.error(\"weekly_docs_review_result_unrecognized\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta não reconhecida\" });\n    return null;\n}\nconst result = {\n    version: 1,\n    status: pending ? \"coalesced\" : \"requested\",\n    source,\n    requested_at: Date.now()\n};\nflow.set(\"weekly_docs_review_last_request_v1\", result, \"persistent\");\nnode.status({\n    fill: pending ? \"yellow\" : \"green\",\n    shape: pending ? \"ring\" : \"dot\",\n    text: pending ? \"solicitação agrupada\" : \"worker solicitado\"\n});\nnode.log(\"weekly_docs_review_request status=\" + result.status + \" source=\" + source);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1350,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_error",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Registrar falha segura",
+        "func": "const TEST_MODE = msg._weekly_docs_test === true;\nconst detail = String(msg.payload ?? msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: TEST_MODE ? \"yellow\" : \"red\", shape: \"ring\", text: TEST_MODE ? \"TESTE: falha simulada\" : \"solicitação falhou\" });\nif (TEST_MODE) {\n    msg.payload = { status: \"failed\", detail, source: \"synthetic\" };\n    return msg;\n}\nnode.error(\"weekly_docs_review_request_failed detail=\" + detail, msg);\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1330,
+        "y": 180,
+        "wires": [
+            [
+                "weekly_docs_review_error_dry_run_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_complete",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Registrar código da ponte",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code === 0) node.status({ fill: \"green\", shape: \"dot\", text: \"ponte finalizada\" });\nelse node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1330,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_dry_run_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_dry_run_in"
+        ],
+        "x": 1045,
+        "y": 250,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_error_dry_run_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Falha TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_dry_run_in"
+        ],
+        "x": 1535,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_failure_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_production_group",
+        "name": "Receber falha TESTE",
+        "links": [
+            "weekly_docs_review_test_failure_out"
+        ],
+        "x": 1095,
+        "y": 310,
+        "wires": [
+            [
+                "weekly_docs_review_error"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_instructions",
+        "type": "comment",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE: 1) reset 2) agendada/manual/falha 3) confira terminal; nenhum Codex, Git, commit, push ou trigger é executado",
+        "info": "Os cenários usam a mesma normalização e tratamento de erro da produção. O link final desvia antes do helper externo e registra simulated=true/dispatched=false.",
+        "x": 780,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_reset",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 540,
+        "wires": [
+            [
+                "weekly_docs_review_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_reset_state",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Resetar teste",
+        "func": "flow.set(\"weekly_docs_review_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_scheduled",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 2A: agendada",
+        "props": [
+            {
+                "p": "_weekly_docs_source",
+                "v": "scheduled",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 230,
+        "y": 600,
+        "wires": [
+            [
+                "weekly_docs_review_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_manual",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 2B: manual",
+        "props": [
+            {
+                "p": "_weekly_docs_source",
+                "v": "manual",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 650,
+        "wires": [
+            [
+                "weekly_docs_review_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_request_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Solicitação TESTE → normalização",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_test_request_in"
+        ],
+        "x": 505,
+        "y": 625,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_test_failure",
+        "type": "inject",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE 2C: falha da ponte",
+        "props": [
+            {
+                "p": "payload",
+                "v": "synthetic bridge unavailable",
+                "vt": "str"
+            },
+            {
+                "p": "_weekly_docs_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_weekly_docs_source",
+                "v": "manual",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 780,
+        "y": 620,
+        "wires": [
+            [
+                "weekly_docs_review_test_failure_out"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_test_failure_out",
+        "type": "link out",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Falha TESTE → handler",
+        "mode": "link",
+        "links": [
+            "weekly_docs_review_test_failure_in"
+        ],
+        "x": 1025,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "weekly_docs_review_dry_run_in",
+        "type": "link in",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "Receber terminal TESTE",
+        "links": [
+            "weekly_docs_review_dry_run_out",
+            "weekly_docs_review_error_dry_run_out"
+        ],
+        "x": 1175,
+        "y": 560,
+        "wires": [
+            [
+                "weekly_docs_review_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "weekly_docs_review_dry_run_terminal",
+        "type": "function",
+        "z": "weekly_docs_review_tab",
+        "g": "weekly_docs_review_test_group",
+        "name": "TESTE FINAL: worker bloqueado",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    worker_started: false,\n    source: msg._weekly_docs_source ?? msg.payload?.source ?? \"unknown\",\n    status: msg.payload?.status ?? \"request_simulated\",\n    completed_at: Date.now()\n};\nflow.set(\"weekly_docs_review_last_dry_run_v1\", result);\nnode.status({ fill: result.status === \"failed\" ? \"yellow\" : \"green\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; worker bloqueado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1420,
+        "y": 560,
+        "wires": []
     },
     {
         "id": "git_backup_architecture",
@@ -7857,6 +7047,360 @@
         "wires": []
     },
     {
+        "id": "rpi_layout_start_failure_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Retorno: tratar falha de início",
+        "links": [
+            "rpi_layout_lock_failure_out",
+            "rpi_layout_snapshot_failure_out",
+            "rpi_layout_validation_failure_out"
+        ],
+        "x": 360,
+        "y": 760,
+        "wires": [
+            [
+                "065453aa19652afe"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_lock_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Ir para falha de início",
+        "mode": "link",
+        "links": [
+            "rpi_layout_start_failure_in"
+        ],
+        "x": 1280,
+        "y": 150,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_snapshot_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para falha de início",
+        "mode": "link",
+        "links": [
+            "rpi_layout_start_failure_in"
+        ],
+        "x": 1560,
+        "y": 630,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_validation_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para falha de início",
+        "mode": "link",
+        "links": [
+            "rpi_layout_start_failure_in"
+        ],
+        "x": 3465,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_startup_rollback_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: restaurar snapshot",
+        "links": [
+            "rpi_layout_classifier_rollback_out",
+            "rpi_layout_failure_rollback_out"
+        ],
+        "x": 1040,
+        "y": 940,
+        "wires": [
+            [
+                "0547960da622f030"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_classifier_rollback_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Ir para restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_rollback_in"
+        ],
+        "x": 1280,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_failure_rollback_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_rollback_in"
+        ],
+        "x": 755,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_startup_timer_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: confirmar CPU normal",
+        "links": [
+            "rpi_layout_startup_timer_out"
+        ],
+        "x": 925,
+        "y": 1240,
+        "wires": [
+            [
+                "c1b98e075390aee0"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_startup_timer_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Ir para confirmação de CPU",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_timer_in"
+        ],
+        "x": 1620,
+        "y": 250,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_startup_retry_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Retorno: reconciliar startup",
+        "links": [
+            "rpi_layout_startup_retry_out"
+        ],
+        "x": 585,
+        "y": 280,
+        "wires": [
+            [
+                "338e309762aa7a99"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_startup_retry_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para reconciliação",
+        "mode": "link",
+        "links": [
+            "rpi_layout_startup_retry_in"
+        ],
+        "x": 1005,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_hot_retry_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Retorno: reler ownership",
+        "links": [
+            "rpi_layout_hot_retry_out"
+        ],
+        "x": 660,
+        "y": 150,
+        "wires": [
+            [
+                "4a38415ec9862e2e"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_hot_retry_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "5ae977feca8f9b01",
+        "name": "Ir para ownership",
+        "mode": "link",
+        "links": [
+            "rpi_layout_hot_retry_in"
+        ],
+        "x": 1225,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_cancel_timer_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "c8f8e5b532232a4f",
+        "name": "Retorno: cancelar janela retomada",
+        "links": [
+            "rpi_layout_cancel_timer_out"
+        ],
+        "x": 1320,
+        "y": 350,
+        "wires": [
+            [
+                "29b85bea56c558c5"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_cancel_timer_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para cancelamento da janela",
+        "mode": "link",
+        "links": [
+            "rpi_layout_cancel_timer_in"
+        ],
+        "x": 360,
+        "y": 1040,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_stop_prepare_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: preparar encerramento",
+        "links": [
+            "rpi_layout_stop_prepare_out"
+        ],
+        "x": 340,
+        "y": 940,
+        "wires": [
+            [
+                "aaa9ce1abce5f4a2"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_stop_prepare_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para preparação da saída",
+        "mode": "link",
+        "links": [
+            "rpi_layout_stop_prepare_in"
+        ],
+        "x": 1285,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_failure_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: tratar falha de restauração",
+        "links": [
+            "rpi_layout_restore_decision_failure_out",
+            "rpi_layout_restore_validation_failure_out"
+        ],
+        "x": 345,
+        "y": 1220,
+        "wires": [
+            [
+                "3653df579248c807"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_restore_decision_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para falha de restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_failure_in"
+        ],
+        "x": 1540,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_validation_failure_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para falha de restauração",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_failure_in"
+        ],
+        "x": 3625,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_wait_in",
+        "type": "link in",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Retorno: aguardar confirmação",
+        "links": [
+            "rpi_layout_restore_off_wait_out",
+            "rpi_layout_restore_fan_wait_out"
+        ],
+        "x": 2680,
+        "y": 1080,
+        "wires": [
+            [
+                "d4a1580cc965ba33"
+            ]
+        ]
+    },
+    {
+        "id": "rpi_layout_restore_off_wait_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para confirmação",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_wait_in"
+        ],
+        "x": 1820,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "rpi_layout_restore_fan_wait_out",
+        "type": "link out",
+        "z": "456b32bd5d59b0d6",
+        "g": "4afb66a093b1940d",
+        "name": "Ir para confirmação",
+        "mode": "link",
+        "links": [
+            "rpi_layout_restore_wait_in"
+        ],
+        "x": 2485,
+        "y": 1080,
+        "wires": []
+    },
+    {
         "id": "storage_comment_architecture",
         "type": "comment",
         "z": "storage_health_tab",
@@ -8460,7 +8004,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2000,
+        "x": 2090,
         "y": 340,
         "wires": []
     },
@@ -9860,6 +9404,129 @@
         ]
     },
     {
+        "id": "people_lighting_tracker_recovery_arrival_out",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "8e1c3a19399ad44d",
+        "name": "Tracker recuperado chegando → iluminação",
+        "mode": "link",
+        "links": [
+            "cf9bc321e0ec89f9"
+        ],
+        "x": 1195,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "people_primary_unknown_approach_test_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "resident_primary unknown → chegando (motor ON)",
+        "props": [
+            {
+                "p": "test_case",
+                "v": "resident_primary_unknown_approach",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 450,
+        "y": 1180,
+        "wires": [
+            [
+                "people_tracker_recovery_tests_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_secondary_unknown_approach_test_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "resident_secondary unknown → chegando (motor ON)",
+        "props": [
+            {
+                "p": "test_case",
+                "v": "resident_secondary_unknown_approach",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 450,
+        "y": 1220,
+        "wires": [
+            [
+                "people_tracker_recovery_tests_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_primary_unavailable_approach_test_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "resident_primary unavailable → chegando (motor ON)",
+        "props": [
+            {
+                "p": "test_case",
+                "v": "resident_primary_unavailable_approach",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 450,
+        "y": 1260,
+        "wires": [
+            [
+                "people_tracker_recovery_tests_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_tracker_recovery_tests_out_v1",
+        "type": "link out",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "Recovery de tracker → coordenador",
+        "mode": "link",
+        "links": [
+            "people_tracker_recovery_tests_in_v1"
+        ],
+        "x": 745,
+        "y": 1220,
+        "wires": []
+    },
+    {
+        "id": "people_tracker_recovery_tests_in_v1",
+        "type": "link in",
+        "z": "ea0a6aa0d24ff863",
+        "g": "6e71dbc937fe5669",
+        "name": "Receber teste de recovery do tracker",
+        "links": [
+            "people_tracker_recovery_tests_out_v1"
+        ],
+        "x": 650,
+        "y": 900,
+        "wires": [
+            [
+                "131d1f73e8230b27"
+            ]
+        ]
+    },
+    {
         "id": "e1df5b6e59c2e349",
         "type": "comment",
         "z": "c22d8b12055e87f7",
@@ -11055,6 +10722,120 @@
         "wires": [
             [
                 "vehicle_primary_refresh_dry_run_terminal_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_guard_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Separar alerta real e dry-run",
+        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (!TEST_MODE) return [msg, null];\n\nmsg.payload = {\n    ...msg.payload,\n    test_mode: true,\n    side_effect: \"notify:resident_primary\",\n    simulated: true,\n    dispatched: false,\n    notification_sent: false\n};\nreturn [null, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1010,
+        "y": 1060,
+        "wires": [
+            [
+                "vehicle_primary_refresh_notify_primary_v1"
+            ],
+            [
+                "vehicle_primary_refresh_notification_dry_run_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_refresh_notify_primary_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Avisar resident_primary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1310,
+        "y": 1040,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_dry_run_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Alerta TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_dry_run_in_v1"
+        ],
+        "x": 1325,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_requested_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Falha de refresh → alerta",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_refresh_notification_in_v1"
+        ],
+        "x": 595,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_refresh_error_notification_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Erro do serviço → alerta",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_refresh_notification_in_v1"
+        ],
+        "x": 1815,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_refresh_notification_in_v1",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Receber falha para alerta",
+        "links": [
+            "vehicle_primary_refresh_notification_requested_out_v1",
+            "vehicle_primary_refresh_error_notification_out_v1"
+        ],
+        "x": 795,
+        "y": 1060,
+        "wires": [
+            [
+                "vehicle_primary_refresh_notification_guard_v1"
             ]
         ]
     },
@@ -13695,121 +13476,6 @@
         "wires": []
     },
     {
-        "id": "people_lighting_tracker_recovery_arrival_out",
-        "type": "link out",
-        "z": "ea0a6aa0d24ff863",
-        "g": "8e1c3a19399ad44d",
-        "name": "Tracker recuperado chegando → iluminação",
-        "mode": "link",
-        "links": [
-            "cf9bc321e0ec89f9"
-        ],
-        "x": 1195,
-        "y": 220,
-        "wires": []
-    },
-    {
-        "id": "resident_notifications_tab",
-        "type": "tab",
-        "label": "notificacoes_chegadas_residentes",
-        "disabled": false,
-        "info": "Avisa cada residente quando o outro entra na zona chegando. Funciona 24 horas por dia e não depende de veículo, iluminação ou contexto_chegadas. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.",
-        "env": []
-    },
-    {
-        "id": "resident_notifications_triggers_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "1. Mudanças de zona",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#3f7cb5",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_note",
-            "resident_notifications_primary_event",
-            "resident_notifications_secondary_event"
-        ],
-        "x": 64,
-        "y": 79,
-        "w": 432,
-        "h": 202
-    },
-    {
-        "id": "resident_notifications_decision_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "2. Validar aproximação e deduplicar",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#7d6ba8",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_prepare",
-            "resident_notifications_test_event_in"
-        ],
-        "x": 519,
-        "y": 124,
-        "w": 317,
-        "h": 157
-    },
-    {
-        "id": "resident_notifications_output_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "3. Notificar o outro residente",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#4d9a6a",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_notify_primary",
-            "resident_notifications_notify_secondary",
-            "resident_notifications_delivery_ack"
-        ],
-        "x": 894,
-        "y": 119,
-        "w": 742,
-        "h": 142
-    },
-    {
-        "id": "resident_notifications_test_group",
-        "type": "group",
-        "z": "resident_notifications_tab",
-        "name": "4. Testes manuais — envia push marcado TESTE",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#a87932",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "resident_notifications_test_primary",
-            "resident_notifications_test_secondary",
-            "resident_notifications_test_cycle_in",
-            "resident_notifications_test_adapter",
-            "resident_notifications_test_event_out"
-        ],
-        "x": 434,
-        "y": 339,
-        "w": 607,
-        "h": 202
-    },
-    {
         "id": "resident_notifications_note",
         "type": "comment",
         "z": "resident_notifications_tab",
@@ -14157,344 +13823,6 @@
         "x": 1000,
         "y": 500,
         "wires": []
-    },
-    {
-        "id": "people_primary_unknown_approach_test_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "resident_primary unknown → chegando (motor ON)",
-        "props": [
-            {
-                "p": "test_case",
-                "v": "resident_primary_unknown_approach",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 450,
-        "y": 1180,
-        "wires": [
-            [
-                "people_tracker_recovery_tests_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_secondary_unknown_approach_test_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "resident_secondary unknown → chegando (motor ON)",
-        "props": [
-            {
-                "p": "test_case",
-                "v": "resident_secondary_unknown_approach",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 450,
-        "y": 1220,
-        "wires": [
-            [
-                "people_tracker_recovery_tests_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_primary_unavailable_approach_test_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "resident_primary unavailable → chegando (motor ON)",
-        "props": [
-            {
-                "p": "test_case",
-                "v": "resident_primary_unavailable_approach",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 450,
-        "y": 1260,
-        "wires": [
-            [
-                "people_tracker_recovery_tests_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_tracker_recovery_tests_out_v1",
-        "type": "link out",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "Recovery de tracker → coordenador",
-        "mode": "link",
-        "links": [
-            "people_tracker_recovery_tests_in_v1"
-        ],
-        "x": 745,
-        "y": 1220,
-        "wires": []
-    },
-    {
-        "id": "people_tracker_recovery_tests_in_v1",
-        "type": "link in",
-        "z": "ea0a6aa0d24ff863",
-        "g": "6e71dbc937fe5669",
-        "name": "Receber teste de recovery do tracker",
-        "links": [
-            "people_tracker_recovery_tests_out_v1"
-        ],
-        "x": 650,
-        "y": 900,
-        "wires": [
-            [
-                "131d1f73e8230b27"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_refresh_notification_guard_v1",
-        "type": "function",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Separar alerta real e dry-run",
-        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (!TEST_MODE) return [msg, null];\n\nmsg.payload = {\n    ...msg.payload,\n    test_mode: true,\n    side_effect: \"notify:resident_primary\",\n    simulated: true,\n    dispatched: false,\n    notification_sent: false\n};\nreturn [null, msg];",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1010,
-        "y": 1060,
-        "wires": [
-            [
-                "vehicle_primary_refresh_notify_primary_v1"
-            ],
-            [
-                "vehicle_primary_refresh_notification_dry_run_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_refresh_notify_primary_v1",
-        "type": "api-call-service",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Avisar resident_primary",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "public_bindings.call",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "public_bindings",
-        "service": "call",
-        "x": 1310,
-        "y": 1040,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "vehicle_primary_refresh_notification_dry_run_out_v1",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Alerta TESTE → terminal dry-run",
-        "mode": "link",
-        "links": [
-            "vehicle_primary_dry_run_in_v1"
-        ],
-        "x": 1325,
-        "y": 1100,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_refresh_notification_requested_out_v1",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Falha de refresh → alerta",
-        "mode": "link",
-        "links": [
-            "vehicle_primary_refresh_notification_in_v1"
-        ],
-        "x": 595,
-        "y": 780,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_refresh_error_notification_out_v1",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Erro do serviço → alerta",
-        "mode": "link",
-        "links": [
-            "vehicle_primary_refresh_notification_in_v1"
-        ],
-        "x": 1815,
-        "y": 920,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_refresh_notification_in_v1",
-        "type": "link in",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Receber falha para alerta",
-        "links": [
-            "vehicle_primary_refresh_notification_requested_out_v1",
-            "vehicle_primary_refresh_error_notification_out_v1"
-        ],
-        "x": 795,
-        "y": 1060,
-        "wires": [
-            [
-                "vehicle_primary_refresh_notification_guard_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vpn_monitor_input_group",
-        "type": "group",
-        "z": "monitoramento_vpn_tab",
-        "name": "1. Estado do host, internet e decisão",
-        "style": {
-            "label": true,
-            "color": "#5b8db8",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "vpn_monitor_health_in",
-            "vpn_monitor_report_ingest",
-            "vpn_monitor_internet_in",
-            "vpn_monitor_internet_ingest",
-            "vpn_monitor_tick",
-            "vpn_monitor_evaluate",
-            "vpn_monitor_test_report_in",
-            "vpn_monitor_test_internet_in",
-            "vpn_monitor_test_evaluate_in"
-        ],
-        "x": 194,
-        "y": 39,
-        "w": 892,
-        "h": 282
-    },
-    {
-        "id": "vpn_monitor_notify_group",
-        "type": "group",
-        "z": "monitoramento_vpn_tab",
-        "name": "2. Notificações deduplicadas",
-        "style": {
-            "label": true,
-            "color": "#b5563f",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "vpn_monitor_down_guard",
-            "vpn_monitor_notify_down",
-            "vpn_monitor_recovery_guard",
-            "vpn_monitor_notify_recovery",
-            "vpn_monitor_dry_out"
-        ],
-        "x": 1214,
-        "y": 59,
-        "w": 607,
-        "h": 237
-    },
-    {
-        "id": "vpn_monitor_publish_group",
-        "type": "group",
-        "z": "monitoramento_vpn_tab",
-        "name": "3. MQTT Discovery e estado",
-        "style": {
-            "label": true,
-            "color": "#6aa84f",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "vpn_monitor_mqtt_guard",
-            "vpn_monitor_state_out",
-            "vpn_monitor_publish_dry_out",
-            "vpn_monitor_discovery_tick",
-            "vpn_monitor_discovery",
-            "vpn_monitor_discovery_out"
-        ],
-        "x": 1114,
-        "y": 379,
-        "w": 832,
-        "h": 222
-    },
-    {
-        "id": "vpn_monitor_test_group",
-        "type": "group",
-        "z": "monitoramento_vpn_tab",
-        "name": "TESTE — fluxo completo em dry-run",
-        "style": {
-            "label": true,
-            "color": "#c9b458",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "vpn_monitor_test_instructions",
-            "vpn_monitor_test_reset",
-            "vpn_monitor_test_reset_state",
-            "vpn_monitor_test_internet_online",
-            "vpn_monitor_test_internet_offline",
-            "vpn_monitor_test_vpn_down",
-            "vpn_monitor_test_confirm_down",
-            "vpn_monitor_test_vpn_up",
-            "vpn_monitor_test_confirm_up",
-            "vpn_monitor_test_router",
-            "vpn_monitor_test_internet_out",
-            "vpn_monitor_test_report_out",
-            "vpn_monitor_test_evaluate_out",
-            "vpn_monitor_dry_in",
-            "vpn_monitor_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 359,
-        "w": 972,
-        "h": 402
-    },
-    {
-        "id": "monitoramento_vpn_tab",
-        "type": "tab",
-        "label": "monitoramento_vpn",
-        "disabled": false,
-        "info": "Monitora as VPNs instaladas no host sem expor topologia privada. Correlaciona com o monitor de internet, confirma falha e recuperação e notifica por canais compartilhados.",
-        "env": []
     },
     {
         "id": "vpn_monitor_health_in",
@@ -15296,6 +14624,1032 @@
         ]
     },
     {
+        "id": "daily_update_architecture",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Executa somente após sucesso do backup diário; DietPi primeiro, containers depois; sem reboot automático",
+        "info": "A ponte coalesce solicitações. O helper root-owned limita sudo ao apt-get update/upgrade e o worker atual preserva o isolamento do Docker.",
+        "x": 650,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "daily_update_after_backup_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Receber backup diário concluído",
+        "links": [
+            "git_backup_daily_update_out"
+        ],
+        "x": 145,
+        "y": 160,
+        "wires": [
+            [
+                "daily_update_prepare_request"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_request_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Receber solicitação TESTE",
+        "links": [
+            "daily_update_test_request_out"
+        ],
+        "x": 145,
+        "y": 220,
+        "wires": [
+            [
+                "daily_update_prepare_request"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_prepare_request",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Validar backup e preparar ciclo",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst event = msg.payload?.event ?? \"git_backup_completed\";\nif (!TEST_MODE && (event !== \"git_backup_completed\" || msg.payload?.status !== \"success\")) {\n    node.warn(\"daily_update_ignored_without_successful_backup\");\n    return null;\n}\nmsg._daily_update_test = TEST_MODE;\nmsg.payload = {\n    version: 1,\n    event: \"daily_update_requested\",\n    source: TEST_MODE ? \"manual_test\" : \"git_backup\",\n    backup_finished_at: msg.payload?.finished_at ?? null,\n    test_mode: TEST_MODE\n};\nnode.status({ fill: TEST_MODE ? \"blue\" : \"green\", shape: \"dot\", text: TEST_MODE ? \"TESTE preparado\" : \"backup concluído; solicitando\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 190,
+        "wires": [
+            [
+                "daily_update_route_test"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_route_test",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Produção ou TESTE?",
+        "property": "_daily_update_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 660,
+        "y": 190,
+        "wires": [
+            [
+                "daily_update_request_test_out"
+            ],
+            [
+                "daily_update_request_host"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_request_host",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "command": "/opt/request-host-daily-update.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar ciclo ao host",
+        "x": 920,
+        "y": 160,
+        "wires": [
+            [
+                "daily_update_request_ack"
+            ],
+            [
+                "daily_update_request_error"
+            ],
+            [
+                "daily_update_request_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_request_ack",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Registrar solicitação",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"daily_update_request_unrecognized\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({ fill: status === \"accepted\" ? \"green\" : \"yellow\", shape: \"dot\", text: status === \"accepted\" ? \"solicitação aceita\" : \"solicitação coalescida\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1180,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "daily_update_request_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Falha segura da ponte",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1180,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "daily_update_request_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Registrar código da ponte",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1180,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "daily_update_request_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_production_group",
+        "name": "Solicitação TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 905,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "daily_update_result_startup",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Ler resultado ao subir",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "15",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 440,
+        "wires": [
+            [
+                "daily_update_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_result_poll",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "A cada 5 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 500,
+        "wires": [
+            [
+                "daily_update_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_read_result",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "command": "/opt/read-host-daily-update-result.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Ler resultado seguro",
+        "x": 470,
+        "y": 470,
+        "wires": [
+            [
+                "daily_update_parse_result"
+            ],
+            [
+                "daily_update_read_error"
+            ],
+            [
+                "daily_update_read_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_read_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Falha ao ler resultado",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 550,
+        "wires": []
+    },
+    {
+        "id": "daily_update_read_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Código da leitura",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 550,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_result_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Receber resultado TESTE",
+        "links": [
+            "daily_update_test_result_out"
+        ],
+        "x": 455,
+        "y": 550,
+        "wires": [
+            [
+                "daily_update_parse_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_parse_result",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Normalizar, deduplicar e observar",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 600);\nif (!text) return null;\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst dietpiExit = Number(text.match(/\\bdietpi_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst dietpiStage = text.match(/\\bdietpi_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nconst containersExit = Number(text.match(/\\bcontainers_exit=(\\d+)\\b/)?.[1] ?? NaN);\nif (!status) {\n    if (!TEST_MODE) node.error(\"daily_update_result_unrecognized\");\n    return null;\n}\nconst signature = requestId + \":\" + status;\nconst key = TEST_MODE ? \"daily_update_last_result_v1__test\" : \"daily_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return null;\nconst result = {\n    version: 1, signature, request_id: requestId, status,\n    dietpi_exit: Number.isFinite(dietpiExit) ? dietpiExit : null,\n    dietpi_stage: dietpiStage,\n    containers_exit: Number.isFinite(containersExit) ? containersExit : null,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"DietPi e containers atualizados\" : status\n});\nif (TEST_MODE) {\n    msg.payload = result;\n    return msg;\n}\nif (failed) {\n    node.error(\"daily_update_failed request_id=\" + requestId + \" dietpi_stage=\" + String(result.dietpi_stage) + \" dietpi_exit=\" + String(result.dietpi_exit) + \" containers_exit=\" + String(result.containers_exit));\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 800,
+        "y": 470,
+        "wires": [
+            [
+                "daily_update_result_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_result_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_result_group",
+        "name": "Resultado TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1085,
+        "y": 470,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_instructions",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE: 1) reset 2) solicitação, falha ou indisponibilidade 3) confira o terminal; todos os efeitos ficam bloqueados",
+        "info": "Os testes entram nos mesmos validadores, roteadores e parser da produção. O terminal grava simulated=true e dispatched=false.",
+        "x": 660,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_reset",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 190,
+        "y": 780,
+        "wires": [
+            [
+                "daily_update_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_reset_state",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Resetar teste",
+        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_request",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 2A: ciclo após backup",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"event\":\"git_backup_completed\",\"status\":\"success\",\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 840,
+        "wires": [
+            [
+                "daily_update_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_failure",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 2B: falha DietPi",
+        "props": [
+            {
+                "p": "payload",
+                "v": "daily-update status=failed request_id=test-failed dietpi_exit=100 dietpi_stage=dietpi-update containers_exit=0",
+                "vt": "str"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 900,
+        "wires": [
+            [
+                "daily_update_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_unavailable",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE 2C: worker indisponível",
+        "props": [
+            {
+                "p": "payload",
+                "v": "daily-update status=unavailable request_id=test-unavailable",
+                "vt": "str"
+            },
+            {
+                "p": "_daily_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 960,
+        "wires": [
+            [
+                "daily_update_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_test_request_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Solicitação TESTE → validador",
+        "mode": "link",
+        "links": [
+            "daily_update_test_request_in"
+        ],
+        "x": 505,
+        "y": 840,
+        "wires": []
+    },
+    {
+        "id": "daily_update_test_result_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Resultado TESTE → parser",
+        "mode": "link",
+        "links": [
+            "daily_update_test_result_in"
+        ],
+        "x": 505,
+        "y": 930,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dry_run_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "Receber efeito TESTE",
+        "links": [
+            "daily_update_request_test_out",
+            "daily_update_result_test_out",
+            "daily_update_kia_test_out",
+            "daily_update_kia_result_test_out"
+        ],
+        "x": 715,
+        "y": 870,
+        "wires": [
+            [
+                "daily_update_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dry_run_terminal",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_test_group",
+        "name": "TESTE FINAL: host simulado",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    apt_commands_sent: false,\n    docker_update_sent: false,\n    kia_uvo_update_check_sent: false,\n    status: msg.payload?.status ?? msg.payload?.event ?? \"request_prepared\",\n    completed_at: Date.now()\n};\nflow.set(\"daily_update_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; host bloqueado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1030,
+        "y": 870,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_architecture",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "A cada 30 min: staging + overlay local + testes; conflito preserva v3.10.1; apply continua exclusivamente manual",
+        "info": "O Node-RED apenas cria uma solicitação coalescente. O worker do host executa o watcher HA existente: Kia/Hyundai segue somente para staging e as demais entidades seguras preservam a política anterior. Nunca chama update.install para a entidade protegida.",
+        "x": 670,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_schedule",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "A cada 30 min + ao subir",
+        "props": [
+            {
+                "p": "payload.source",
+                "v": "node_red_schedule",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "*/30 * * * *",
+        "once": true,
+        "onceDelay": "20",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 1180,
+        "wires": [
+            [
+                "daily_update_kia_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_manual",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Verificar agora (seguro)",
+        "props": [
+            {
+                "p": "payload.source",
+                "v": "manual",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 1240,
+        "wires": [
+            [
+                "daily_update_kia_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_test_request",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "TESTE: solicitação bloqueada",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"source\":\"manual_test\",\"test_mode\":true}",
+                "vt": "json"
+            },
+            {
+                "p": "_kia_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 1300,
+        "wires": [
+            [
+                "daily_update_kia_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_prepare",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Preparar análise segura",
+        "func": "const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;\nmsg._kia_update_test = TEST_MODE;\nmsg.payload = {\n    version: 1,\n    event: \"kia_uvo_update_check_requested\",\n    source: TEST_MODE ? \"manual_test\" : (msg.payload?.source ?? \"node_red_schedule\"),\n    test_mode: TEST_MODE,\n    requested_at: new Date().toISOString()\n};\nnode.status({ fill: TEST_MODE ? \"blue\" : \"green\", shape: \"dot\", text: TEST_MODE ? \"TESTE preparado\" : \"análise segura solicitada\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 1240,
+        "wires": [
+            [
+                "daily_update_kia_route_test"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_route_test",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Produção ou TESTE?",
+        "property": "_kia_update_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 710,
+        "y": 1240,
+        "wires": [
+            [
+                "daily_update_kia_test_out"
+            ],
+            [
+                "daily_update_kia_request_host"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_request_host",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "command": "/opt/request-host-kia-uvo-update-check.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "30",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar check ao host",
+        "x": 970,
+        "y": 1180,
+        "wires": [
+            [
+                "daily_update_kia_request_ack"
+            ],
+            [
+                "daily_update_kia_request_error"
+            ],
+            [
+                "daily_update_kia_request_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_request_ack",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Registrar solicitação Kia",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"kia_uvo_update_request_unrecognized\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({ fill: status === \"accepted\" ? \"green\" : \"yellow\", shape: \"dot\", text: status === \"accepted\" ? \"análise aceita\" : \"análise já pendente\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_request_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Falha segura da ponte Kia",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_request_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Código da ponte Kia",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 1260,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Solicitação Kia TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 965,
+        "y": 1300,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_result_startup",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Ler resultado ao subir",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "50",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 1400,
+        "wires": [
+            [
+                "daily_update_kia_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_result_poll",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Resultado a cada 1 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 1460,
+        "wires": [
+            [
+                "daily_update_kia_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_read_result",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "command": "/opt/read-host-kia-uvo-update-result.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Ler resultado Kia seguro",
+        "x": 480,
+        "y": 1430,
+        "wires": [
+            [
+                "daily_update_kia_parse_result"
+            ],
+            [
+                "daily_update_kia_read_error"
+            ],
+            [
+                "daily_update_kia_read_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_read_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Falha ao ler resultado Kia",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 1510,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_read_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Código da leitura Kia",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 970,
+        "y": 1510,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_parse_result",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Normalizar e observar check Kia",
+        "func": "const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return null;\nconst status = text.match(/\\bstatus=(running|compatible|conflict|applied|rollback|failed|deferred|unavailable|unknown)\\b/)?.[1];\nif (!status) {\n    if (!TEST_MODE) node.error(\"kia_uvo_update_result_unrecognized\");\n    return null;\n}\nconst result = {\n    version: 1,\n    status,\n    request_id: text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\",\n    installed_version: text.match(/\\binstalled_version=([^ ]+)\\b/)?.[1] ?? null,\n    latest_version: text.match(/\\blatest_version=([^ ]+)\\b/)?.[1] ?? null,\n    patch_state: text.match(/\\bpatch_state=([^ ]+)\\b/)?.[1] ?? null,\n    conflicts: Number(text.match(/\\bconflicts=(\\d+)\\b/)?.[1] ?? 0),\n    checked_at: text.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? null,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nconst signature = [result.request_id, result.status, result.latest_version, result.checked_at].join(\":\");\nconst key = TEST_MODE ? \"kia_uvo_update_last_result_v1__test\" : \"kia_uvo_update_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return null;\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\", \"rollback\"].includes(status);\nconst compatible = [\"compatible\", \"applied\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : compatible ? \"green\" : status === \"conflict\" ? \"yellow\" : \"blue\",\n    shape: failed || status === \"conflict\" ? \"ring\" : \"dot\",\n    text: status === \"conflict\"\n        ? \"v\" + String(result.latest_version ?? \"?\") + \": conflito; preservado\"\n        : status\n});\nif (TEST_MODE) {\n    msg.payload = result;\n    return msg;\n}\nif (failed) node.error(\"kia_uvo_update_check_failed status=\" + status + \" request_id=\" + result.request_id);\nelse if (status === \"conflict\") node.warn(\"kia_uvo_update_requires_manual_merge latest=\" + String(result.latest_version));\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 800,
+        "y": 1430,
+        "wires": [
+            [
+                "daily_update_kia_result_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_result_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Resultado Kia TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1095,
+        "y": 1430,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_test_result",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "TESTE: conflito preservado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T00:00:00.000Z",
+                "vt": "str"
+            },
+            {
+                "p": "_kia_update_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 1570,
+        "wires": [
+            [
+                "daily_update_kia_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_test_result_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Resultado Kia TESTE → parser",
+        "mode": "link",
+        "links": [
+            "daily_update_kia_test_result_in"
+        ],
+        "x": 505,
+        "y": 1570,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_test_result_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_group",
+        "name": "Receber resultado Kia TESTE",
+        "links": [
+            "daily_update_kia_test_result_out"
+        ],
+        "x": 625,
+        "y": 1570,
+        "wires": [
+            [
+                "daily_update_kia_parse_result"
+            ]
+        ]
+    },
+    {
         "id": "global_observer_coverage__weekly_docs_review_tab__group",
         "type": "group",
         "z": "weekly_docs_review_tab",
@@ -15310,10 +15664,10 @@
             "global_observer_coverage__weekly_docs_review_tab__annotate",
             "global_observer_coverage__weekly_docs_review_tab__out"
         ],
-        "x": 1700,
-        "y": 40,
-        "w": 720,
-        "h": 162
+        "x": 1674,
+        "y": 59,
+        "w": 752,
+        "h": 142
     },
     {
         "id": "global_observer_coverage__weekly_docs_review_tab__catch",
@@ -15323,7 +15677,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1840,
+        "x": 1860,
         "y": 100,
         "wires": [
             [
@@ -15338,7 +15692,7 @@
         "g": "global_observer_coverage__weekly_docs_review_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1850,
+        "x": 1840,
         "y": 160,
         "wires": [
             [
@@ -15359,7 +15713,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2120,
+        "x": 2140,
         "y": 130,
         "wires": [
             [
@@ -15377,7 +15731,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2365,
+        "x": 2385,
         "y": 130,
         "wires": []
     },
@@ -15396,7 +15750,7 @@
             "global_observer_coverage__git_backup_tab__annotate",
             "global_observer_coverage__git_backup_tab__out"
         ],
-        "x": 1460,
+        "x": 1680,
         "y": 40,
         "w": 720,
         "h": 162
@@ -15409,7 +15763,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1600,
+        "x": 1820,
         "y": 100,
         "wires": [
             [
@@ -15424,7 +15778,7 @@
         "g": "global_observer_coverage__git_backup_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1610,
+        "x": 1830,
         "y": 160,
         "wires": [
             [
@@ -15445,7 +15799,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1880,
+        "x": 2100,
         "y": 130,
         "wires": [
             [
@@ -15463,7 +15817,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2125,
+        "x": 2345,
         "y": 130,
         "wires": []
     },
@@ -15898,360 +16252,6 @@
         "wires": []
     },
     {
-        "id": "rpi_layout_start_failure_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "5ae977feca8f9b01",
-        "name": "Retorno: tratar falha de início",
-        "links": [
-            "rpi_layout_lock_failure_out",
-            "rpi_layout_snapshot_failure_out",
-            "rpi_layout_validation_failure_out"
-        ],
-        "x": 360,
-        "y": 760,
-        "wires": [
-            [
-                "065453aa19652afe"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_lock_failure_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "c8f8e5b532232a4f",
-        "name": "Ir para falha de início",
-        "mode": "link",
-        "links": [
-            "rpi_layout_start_failure_in"
-        ],
-        "x": 1280,
-        "y": 150,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_snapshot_failure_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "5ae977feca8f9b01",
-        "name": "Ir para falha de início",
-        "mode": "link",
-        "links": [
-            "rpi_layout_start_failure_in"
-        ],
-        "x": 1560,
-        "y": 630,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_validation_failure_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "5ae977feca8f9b01",
-        "name": "Ir para falha de início",
-        "mode": "link",
-        "links": [
-            "rpi_layout_start_failure_in"
-        ],
-        "x": 3465,
-        "y": 620,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_startup_rollback_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Retorno: restaurar snapshot",
-        "links": [
-            "rpi_layout_classifier_rollback_out",
-            "rpi_layout_failure_rollback_out"
-        ],
-        "x": 1040,
-        "y": 940,
-        "wires": [
-            [
-                "0547960da622f030"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_classifier_rollback_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "c8f8e5b532232a4f",
-        "name": "Ir para restauração",
-        "mode": "link",
-        "links": [
-            "rpi_layout_startup_rollback_in"
-        ],
-        "x": 1280,
-        "y": 260,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_failure_rollback_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "5ae977feca8f9b01",
-        "name": "Ir para restauração",
-        "mode": "link",
-        "links": [
-            "rpi_layout_startup_rollback_in"
-        ],
-        "x": 755,
-        "y": 760,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_startup_timer_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Retorno: confirmar CPU normal",
-        "links": [
-            "rpi_layout_startup_timer_out"
-        ],
-        "x": 925,
-        "y": 1240,
-        "wires": [
-            [
-                "c1b98e075390aee0"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_startup_timer_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "c8f8e5b532232a4f",
-        "name": "Ir para confirmação de CPU",
-        "mode": "link",
-        "links": [
-            "rpi_layout_startup_timer_in"
-        ],
-        "x": 1620,
-        "y": 250,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_startup_retry_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "c8f8e5b532232a4f",
-        "name": "Retorno: reconciliar startup",
-        "links": [
-            "rpi_layout_startup_retry_out"
-        ],
-        "x": 585,
-        "y": 280,
-        "wires": [
-            [
-                "338e309762aa7a99"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_startup_retry_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "5ae977feca8f9b01",
-        "name": "Ir para reconciliação",
-        "mode": "link",
-        "links": [
-            "rpi_layout_startup_retry_in"
-        ],
-        "x": 1005,
-        "y": 700,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_hot_retry_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "c8f8e5b532232a4f",
-        "name": "Retorno: reler ownership",
-        "links": [
-            "rpi_layout_hot_retry_out"
-        ],
-        "x": 660,
-        "y": 150,
-        "wires": [
-            [
-                "4a38415ec9862e2e"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_hot_retry_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "5ae977feca8f9b01",
-        "name": "Ir para ownership",
-        "mode": "link",
-        "links": [
-            "rpi_layout_hot_retry_in"
-        ],
-        "x": 1225,
-        "y": 620,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_cancel_timer_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "c8f8e5b532232a4f",
-        "name": "Retorno: cancelar janela retomada",
-        "links": [
-            "rpi_layout_cancel_timer_out"
-        ],
-        "x": 1320,
-        "y": 350,
-        "wires": [
-            [
-                "29b85bea56c558c5"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_cancel_timer_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Ir para cancelamento da janela",
-        "mode": "link",
-        "links": [
-            "rpi_layout_cancel_timer_in"
-        ],
-        "x": 360,
-        "y": 1040,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_stop_prepare_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Retorno: preparar encerramento",
-        "links": [
-            "rpi_layout_stop_prepare_out"
-        ],
-        "x": 340,
-        "y": 940,
-        "wires": [
-            [
-                "aaa9ce1abce5f4a2"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_stop_prepare_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Ir para preparação da saída",
-        "mode": "link",
-        "links": [
-            "rpi_layout_stop_prepare_in"
-        ],
-        "x": 1285,
-        "y": 1120,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_restore_failure_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Retorno: tratar falha de restauração",
-        "links": [
-            "rpi_layout_restore_decision_failure_out",
-            "rpi_layout_restore_validation_failure_out"
-        ],
-        "x": 345,
-        "y": 1220,
-        "wires": [
-            [
-                "3653df579248c807"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_restore_decision_failure_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Ir para falha de restauração",
-        "mode": "link",
-        "links": [
-            "rpi_layout_restore_failure_in"
-        ],
-        "x": 1540,
-        "y": 1100,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_restore_validation_failure_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Ir para falha de restauração",
-        "mode": "link",
-        "links": [
-            "rpi_layout_restore_failure_in"
-        ],
-        "x": 3625,
-        "y": 1080,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_restore_wait_in",
-        "type": "link in",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Retorno: aguardar confirmação",
-        "links": [
-            "rpi_layout_restore_off_wait_out",
-            "rpi_layout_restore_fan_wait_out"
-        ],
-        "x": 2680,
-        "y": 1080,
-        "wires": [
-            [
-                "d4a1580cc965ba33"
-            ]
-        ]
-    },
-    {
-        "id": "rpi_layout_restore_off_wait_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Ir para confirmação",
-        "mode": "link",
-        "links": [
-            "rpi_layout_restore_wait_in"
-        ],
-        "x": 1820,
-        "y": 920,
-        "wires": []
-    },
-    {
-        "id": "rpi_layout_restore_fan_wait_out",
-        "type": "link out",
-        "z": "456b32bd5d59b0d6",
-        "g": "4afb66a093b1940d",
-        "name": "Ir para confirmação",
-        "mode": "link",
-        "links": [
-            "rpi_layout_restore_wait_in"
-        ],
-        "x": 2485,
-        "y": 1080,
-        "wires": []
-    },
-    {
         "id": "global_observer_coverage__storage_health_tab__group",
         "type": "group",
         "z": "storage_health_tab",
@@ -16266,7 +16266,7 @@
             "global_observer_coverage__storage_health_tab__annotate",
             "global_observer_coverage__storage_health_tab__out"
         ],
-        "x": 2220,
+        "x": 2320,
         "y": 40,
         "w": 720,
         "h": 162
@@ -16279,7 +16279,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 2360,
+        "x": 2460,
         "y": 100,
         "wires": [
             [
@@ -16294,7 +16294,7 @@
         "g": "global_observer_coverage__storage_health_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 2370,
+        "x": 2470,
         "y": 160,
         "wires": [
             [
@@ -16315,7 +16315,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2640,
+        "x": 2740,
         "y": 130,
         "wires": [
             [
@@ -16333,7 +16333,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2885,
+        "x": 2985,
         "y": 130,
         "wires": []
     },
@@ -16352,10 +16352,10 @@
             "global_observer_coverage__monitoramento_internet_tab__annotate",
             "global_observer_coverage__monitoramento_internet_tab__out"
         ],
-        "x": 1540,
-        "y": 40,
-        "w": 720,
-        "h": 162
+        "x": 1524,
+        "y": 59,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "global_observer_coverage__monitoramento_internet_tab__catch",
@@ -16438,10 +16438,10 @@
             "global_observer_coverage__monitoramento_zigbee_tab__annotate",
             "global_observer_coverage__monitoramento_zigbee_tab__out"
         ],
-        "x": 1480,
-        "y": 40,
-        "w": 720,
-        "h": 162
+        "x": 1464,
+        "y": 59,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "global_observer_coverage__monitoramento_zigbee_tab__catch",
@@ -16524,10 +16524,10 @@
             "global_observer_coverage__ea0a6aa0d24ff863__annotate",
             "global_observer_coverage__ea0a6aa0d24ff863__out"
         ],
-        "x": 1380,
-        "y": 40,
-        "w": 720,
-        "h": 162
+        "x": 1364,
+        "y": 59,
+        "w": 722,
+        "h": 142
     },
     {
         "id": "global_observer_coverage__ea0a6aa0d24ff863__catch",
@@ -17112,92 +17112,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__daily_host_updates_tab__group",
-        "type": "group",
-        "z": "daily_host_updates_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__daily_host_updates_tab__catch",
-            "global_observer_coverage__daily_host_updates_tab__status",
-            "global_observer_coverage__daily_host_updates_tab__annotate",
-            "global_observer_coverage__daily_host_updates_tab__out"
-        ],
-        "x": 1380,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__daily_host_updates_tab__catch",
-        "type": "catch",
-        "z": "daily_host_updates_tab",
-        "g": "global_observer_coverage__daily_host_updates_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1520,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__daily_host_updates_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__daily_host_updates_tab__status",
-        "type": "status",
-        "z": "daily_host_updates_tab",
-        "g": "global_observer_coverage__daily_host_updates_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1530,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__daily_host_updates_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__daily_host_updates_tab__annotate",
-        "type": "function",
-        "z": "daily_host_updates_tab",
-        "g": "global_observer_coverage__daily_host_updates_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"daily_host_updates_tab\",\"flow_label\":\"atualizacoes_diarias\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1800,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__daily_host_updates_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__daily_host_updates_tab__out",
-        "type": "link out",
-        "z": "daily_host_updates_tab",
-        "g": "global_observer_coverage__daily_host_updates_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2045,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "global_observer_coverage__resident_notifications_tab__group",
         "type": "group",
         "z": "resident_notifications_tab",
@@ -17370,6 +17284,92 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__daily_host_updates_tab__group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__daily_host_updates_tab__catch",
+            "global_observer_coverage__daily_host_updates_tab__status",
+            "global_observer_coverage__daily_host_updates_tab__annotate",
+            "global_observer_coverage__daily_host_updates_tab__out"
+        ],
+        "x": 1380,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__catch",
+        "type": "catch",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1520,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__daily_host_updates_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__status",
+        "type": "status",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1530,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__daily_host_updates_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__annotate",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"daily_host_updates_tab\",\"flow_label\":\"atualizacoes_diarias\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1800,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__daily_host_updates_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__daily_host_updates_tab__out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "global_observer_coverage__daily_host_updates_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2045,
+        "y": 130,
+        "wires": []
+    },
+    {
         "id": "global_flow_observer_tab",
         "type": "tab",
         "label": "observabilidade_global",
@@ -17441,9 +17441,9 @@
             "global_observer_coverage__1f468eaeef0733dd__out",
             "global_observer_coverage__codex_alertas_tab__out",
             "global_observer_coverage__monitoramento_tuya_tab__out",
-            "global_observer_coverage__daily_host_updates_tab__out",
             "global_observer_coverage__resident_notifications_tab__out",
             "global_observer_coverage__monitoramento_vpn_tab__out",
+            "global_observer_coverage__daily_host_updates_tab__out",
             "global_observer_test_event_out"
         ],
         "x": 120,

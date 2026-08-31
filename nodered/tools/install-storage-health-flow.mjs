@@ -381,7 +381,7 @@ const nodes = [
 const canonicalLayout = new Map([
   ["storage_group_config", { x: 74, y: 99, w: 1042, h: 152 }],
   ["storage_group_health", { x: 64, y: 299, w: 1302, h: 257 }],
-  ["storage_group_alerts", { x: 1564, y: 239, w: 612, h: 262 }],
+  ["storage_group_alerts", { x: 1564, y: 239, w: 702, h: 262 }],
   ["storage_group_maintenance", { x: 74, y: 629, w: 1372, h: 279.5 }],
   ["storage_comment_architecture", { x: 540, y: 140 }],
   ["storage_init", { x: 250, y: 210 }],
@@ -406,7 +406,7 @@ const canonicalLayout = new Map([
   ["storage_maintenance_mqtt", { x: 1140, y: 670 }],
   ["storage_request_host_maintenance", { x: 490, y: 780 }],
   ["storage_notify_persistent", { x: 1710, y: 400 }],
-  ["storage_notification_ack", { x: 2000, y: 340 }],
+  ["storage_notification_ack", { x: 2090, y: 340 }],
   ["storage_notification_catch", { x: 1710, y: 460 }],
   ["storage_notification_failure", { x: 1990, y: 460 }],
   ["storage_manual_start", { x: 520, y: 500 }],

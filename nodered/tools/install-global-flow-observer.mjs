@@ -39,6 +39,36 @@ for (const node of next) {
 const tabs = next.filter((node) => node.type === "tab" && node.id !== OBSERVER_TAB);
 const coverageOutIds = [];
 const coverageNodes = [];
+const coverageLayoutOverrides = new Map([
+  ["weekly_docs_review_tab", {
+    group: { x: 1674, y: 59, w: 752, h: 142 },
+    catch: { x: 1860, y: 100 },
+    status: { x: 1840, y: 160 },
+    annotate: { x: 2140, y: 130 },
+    out: { x: 2385, y: 130 },
+  }],
+  ["monitoramento_internet_tab", {
+    group: { x: 1524, y: 59, w: 722, h: 142 },
+    catch: { x: 1680, y: 100 },
+    status: { x: 1690, y: 160 },
+    annotate: { x: 1960, y: 130 },
+    out: { x: 2205, y: 130 },
+  }],
+  ["monitoramento_zigbee_tab", {
+    group: { x: 1464, y: 59, w: 722, h: 142 },
+    catch: { x: 1620, y: 100 },
+    status: { x: 1630, y: 160 },
+    annotate: { x: 1900, y: 130 },
+    out: { x: 2145, y: 130 },
+  }],
+  ["ea0a6aa0d24ff863", {
+    group: { x: 1364, y: 59, w: 722, h: 142 },
+    catch: { x: 1520, y: 100 },
+    status: { x: 1530, y: 160 },
+    annotate: { x: 1800, y: 130 },
+    out: { x: 2045, y: 130 },
+  }],
+]);
 
 for (const tab of tabs) {
   const prefix = `global_observer_coverage__${tab.id}`;
@@ -56,8 +86,9 @@ for (const tab of tabs) {
         : Number(node.x ?? 0) + 140,
     ),
   );
-  const groupX = Math.ceil((rightEdge + 40) / 20) * 20;
-  const groupY = 40;
+  const layoutOverride = coverageLayoutOverrides.get(tab.id);
+  const groupX = layoutOverride?.group?.x ?? Math.ceil((rightEdge + 40) / 20) * 20;
+  const groupY = layoutOverride?.group?.y ?? 40;
   coverageOutIds.push(outId);
   coverageNodes.push(
     {
@@ -69,8 +100,8 @@ for (const tab of tabs) {
       nodes: [catchId, statusId, annotateId, outId],
       x: groupX,
       y: groupY,
-      w: 720,
-      h: 162,
+      w: layoutOverride?.group?.w ?? 720,
+      h: layoutOverride?.group?.h ?? 162,
     },
     {
       id: catchId,
@@ -80,8 +111,8 @@ for (const tab of tabs) {
       name: "Capturar erros de toda a aba",
       scope: null,
       uncaught: false,
-      x: groupX + 140,
-      y: groupY + 60,
+      x: layoutOverride?.catch?.x ?? groupX + 140,
+      y: layoutOverride?.catch?.y ?? groupY + 60,
       wires: [[annotateId]],
     },
     {
@@ -91,8 +122,8 @@ for (const tab of tabs) {
       g: groupId,
       name: "Observar indisponibilidade da aba",
       scope: null,
-      x: groupX + 150,
-      y: groupY + 120,
+      x: layoutOverride?.status?.x ?? groupX + 150,
+      y: layoutOverride?.status?.y ?? groupY + 120,
       wires: [[annotateId]],
     },
     {
@@ -112,8 +143,8 @@ for (const tab of tabs) {
       initialize: "",
       finalize: "",
       libs: [],
-      x: groupX + 420,
-      y: groupY + 90,
+      x: layoutOverride?.annotate?.x ?? groupX + 420,
+      y: layoutOverride?.annotate?.y ?? groupY + 90,
       wires: [[outId]],
     },
     {
@@ -124,8 +155,8 @@ for (const tab of tabs) {
       name: "Falha da aba → monitor global",
       mode: "link",
       links: ["global_observer_events_in"],
-      x: groupX + 665,
-      y: groupY + 90,
+      x: layoutOverride?.out?.x ?? groupX + 665,
+      y: layoutOverride?.out?.y ?? groupY + 90,
       wires: [],
     },
   );
