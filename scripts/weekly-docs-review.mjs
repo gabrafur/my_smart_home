@@ -10,6 +10,13 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const promptPath = path.join(repoRoot, "scripts", "weekly-docs-review.prompt.md");
 const lockPath = path.join(repoRoot, ".git-backup.lock");
+const reviewReceiptName = ".weekly-docs-review-receipt.json";
+const reviewReceiptStatuses = new Set([
+  "completed",
+  "privacy_blocker",
+  "implementation_change_required",
+  "baseline_not_installed",
+]);
 const statusPath = process.env.WEEKLY_DOCS_REVIEW_STATUS_PATH || "";
 const triggerPath = process.env.WEEKLY_DOCS_REVIEW_TRIGGER_PATH || "";
 const maxRuntimeMs = integerEnv("WEEKLY_DOCS_REVIEW_TIMEOUT_MS", 3 * 60 * 60 * 1000, 60_000, 24 * 60 * 60 * 1000);
@@ -176,7 +183,7 @@ function killProcessGroup(child) {
   }
 }
 
-function runAgent(prompt, worktree, remote) {
+function runAgent(prompt, worktree, { baseline, expectedBranch, remote }) {
   const args = [
     "-n", lockPath,
     "codex", "exec", "--ephemeral",
@@ -197,6 +204,9 @@ function runAgent(prompt, worktree, remote) {
         GIT_CONFIG_COUNT: "1",
         GIT_CONFIG_KEY_0: `remote.${remote}.pushurl`,
         GIT_CONFIG_VALUE_0: "weekly-docs-review-push-disabled",
+        WEEKLY_DOCS_REVIEW_BASELINE: baseline,
+        WEEKLY_DOCS_REVIEW_BRANCH: expectedBranch,
+        WEEKLY_DOCS_REVIEW_RECEIPT: reviewReceiptName,
       },
       stdio: ["pipe", "inherit", "inherit"],
     });
@@ -223,6 +233,25 @@ function runAgent(prompt, worktree, remote) {
       resolve({ ok: code === 0, reason: timedOut ? "timeout" : "process_failed", code, signal });
     });
   });
+}
+
+function consumeReviewReceipt(worktree) {
+  const receiptPath = path.join(worktree, reviewReceiptName);
+  let receipt;
+  try {
+    const stat = fs.lstatSync(receiptPath);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("receipt must be a regular file");
+    receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
+  } catch (error) {
+    throw new Error(`agent did not produce a valid completion receipt: ${error.message}`);
+  } finally {
+    fs.rmSync(receiptPath, { force: true });
+  }
+  if (!receipt || typeof receipt !== "object" || Array.isArray(receipt) ||
+      !reviewReceiptStatuses.has(receipt.status)) {
+    throw new Error("agent completion receipt has an invalid schema");
+  }
+  return receipt.status;
 }
 
 function failReview(reason, error) {
@@ -278,8 +307,17 @@ export async function runReview() {
   try {
     gitOutput(["worktree", "add", "--detach", worktree, initial.baseline]);
     worktreeCreated = true;
-    const agent = await runAgent(prompt, worktree, initial.remote);
+    const agent = await runAgent(prompt, worktree, initial);
     if (!agent.ok) return failReview(agent.reason, agent.error);
+    let receiptStatus;
+    try {
+      receiptStatus = consumeReviewReceipt(worktree);
+    } catch (error) {
+      return failReview("agent_incomplete", error);
+    }
+    if (receiptStatus !== "completed") {
+      return failReview(receiptStatus, new Error(`agent reported ${receiptStatus}`));
+    }
     if (gitOutput(["rev-parse", "HEAD"], worktree) !== initial.baseline) {
       return failReview("agent_created_commit", new Error("agent changed isolated HEAD"));
     }

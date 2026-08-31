@@ -31,17 +31,25 @@ migrações, alterações de runtime ou correções executáveis diretamente em
 
 2. Use o lock já adquirido pelo scheduler.
 
-3. Confirme:
+3. O scheduler já confirmou que o checkout principal está em `main`, limpo e
+   sincronizado. Esta execução ocorre deliberadamente em um worktree destacado.
+   Confirme o contrato isolado:
 
    ```bash
-   git branch --show-current
+   test -n "$WEEKLY_DOCS_REVIEW_BASELINE"
+   test -n "$WEEKLY_DOCS_REVIEW_BRANCH"
+   test -n "$WEEKLY_DOCS_REVIEW_RECEIPT"
+   test -z "$(git branch --show-current)"
+   test "$(git rev-parse HEAD)" = "$WEEKLY_DOCS_REVIEW_BASELINE"
    git status --short
-   git fetch origin main
-   git rev-list --left-right --count main...origin/main
+   git fetch origin "$WEEKLY_DOCS_REVIEW_BRANCH"
+   test "$(git rev-parse FETCH_HEAD)" = "$WEEKLY_DOCS_REVIEW_BASELINE"
    ```
 
-4. A branch deve ser `main`, a árvore deve estar limpa e o remoto deve poder
-   ser integrado somente por fast-forward.
+4. O worktree do agente deve permanecer em `detached HEAD`, a árvore deve estar
+   limpa e `HEAD` deve coincidir com o baseline validado pelo scheduler. Não
+   trate o worktree destacado esperado como branch ausente ou baseline não
+   instalado.
 
 5. Se houver divergência, commits locais inesperados, alterações concorrentes,
    arquivos não relacionados ou falha de autenticação, pare sem editar,
@@ -297,6 +305,21 @@ implementation_change_required
 ```
 
 Se nada precisar ser alterado, registre `no_changes`.
+
+Depois de concluir de fato toda a revisão e o `make validate-public`, grave o
+recibo transitório exigido pelo scheduler no caminho relativo contido em
+`WEEKLY_DOCS_REVIEW_RECEIPT`, com o conteúdo JSON exato:
+
+```json
+{"status":"completed"}
+```
+
+O scheduler remove esse arquivo antes de calcular o diff. Não grave o recibo
+se a revisão não tiver sido executada até o fim. Para um bloqueio reconhecido,
+grave no campo `status` somente o motivo padronizado correspondente, como
+`privacy_blocker`, `implementation_change_required` ou
+`baseline_not_installed`; o scheduler registrará falha em vez de aceitar um
+falso resultado sem mudanças.
 
 # Resultado esperado no log
 

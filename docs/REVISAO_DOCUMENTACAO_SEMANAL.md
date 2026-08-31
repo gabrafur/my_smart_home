@@ -63,6 +63,11 @@ O prompt versionado em `scripts/weekly-docs-review.prompt.md` exige:
   notificações e não acionar dispositivos físicos.
 
 Não há commit vazio. Se uma validação falhar, o push não ocorre.
+O agente trabalha deliberadamente em `detached HEAD`, preso ao baseline que o
+scheduler já comparou com `origin/main`; ele não deve exigir que esse worktree
+temporário esteja na branch `main`. Ao terminar, o agente grava um recibo JSON
+transitório. Saída zero sem recibo ou recibo com bloqueio é falha, nunca
+`no_changes`.
 
 ## Barreiras de segurança
 
@@ -84,6 +89,8 @@ As barreiras adicionais são:
   de atualização/backup;
 - fast-forward obrigatório, sem rebase destrutivo, force push ou reescrita de
   histórico;
+- recibo de conclusão obrigatório e removido antes do cálculo do diff, para
+  impedir falso sucesso quando o agente encerra antes de revisar o baseline;
 - tempo máximo padrão de três horas; o grupo inteiro de processos é encerrado
   quando o limite é excedido.
 

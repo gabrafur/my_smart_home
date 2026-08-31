@@ -38,6 +38,10 @@
 - Na versão atual do CLI, `codex exec --approve-for-me` já usa revisão
   automática com sandbox `workspace-write`. Não combine essa opção com
   `--sandbox`; a regressão fica em `scripts/weekly-docs-review.test.mjs`.
+- O checkout do agente é intencionalmente um worktree em `detached HEAD`, preso
+  ao baseline validado pelo worker. A conclusão só é aceita com o recibo JSON
+  transitório; saída zero sem recibo ou com bloqueio não pode virar
+  `no_changes`.
 - `remote_authentication_failed` pode mascarar falha de DNS anterior ao SSH.
   Verifique separadamente resolução dentro do contêiner, validade da chave e
   leitura do remoto antes de trocar credenciais.

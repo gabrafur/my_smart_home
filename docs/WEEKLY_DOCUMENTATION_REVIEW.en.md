@@ -59,6 +59,11 @@ agent to:
   actions.
 
 It never creates an empty commit. A validation failure prevents the push.
+The agent deliberately runs at a detached `HEAD`, pinned to the baseline the
+scheduler already compared with `origin/main`; it must not require this
+temporary worktree to be checked out on `main`. On completion, the agent writes
+a transient JSON receipt. A zero exit without the receipt, or a receipt that
+reports a blocker, is a failure rather than `no_changes`.
 
 ## Security boundaries
 
@@ -79,6 +84,8 @@ Additional boundaries include:
 - the shared `.git-backup.lock`, preventing overlap with update/backup scripts;
 - fast-forward-only operation, with no destructive rebase, force push, or
   history rewrite;
+- a mandatory completion receipt removed before diff calculation, preventing
+  false success when the agent exits before reviewing the baseline;
 - a default three-hour limit that terminates the whole process group.
 
 The SSH key needs push permission, but should be repository-specific and have

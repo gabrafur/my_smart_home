@@ -67,6 +67,11 @@ function fixture(t, { branch = "main" } = {}) {
     "#!/bin/sh",
     "set -eu",
     "[ -z \"${SCHEDULER_ARGS_PATH:-}\" ] || printf '%s\\n' \"$@\" > \"$SCHEDULER_ARGS_PATH\"",
+    "[ -n \"${WEEKLY_DOCS_REVIEW_BASELINE:-}\" ]",
+    "[ \"$(git branch --show-current)\" = '' ]",
+    "[ \"$(git rev-parse HEAD)\" = \"$WEEKLY_DOCS_REVIEW_BASELINE\" ]",
+    "[ \"${WEEKLY_DOCS_REVIEW_BRANCH:-}\" = main ]",
+    "[ \"${WEEKLY_DOCS_REVIEW_RECEIPT:-}\" = .weekly-docs-review-receipt.json ]",
     "case \"${SCHEDULER_SCENARIO:-no_changes}\" in",
     "  allowed) printf '%s\\n' '# Reviewed' > docs/review.md ;;",
     "  validation_failure|privacy_failure|security_failure) printf '%s\\n' '# Reviewed' > docs/review.md ;;",
@@ -77,7 +82,11 @@ function fixture(t, { branch = "main" } = {}) {
     "    env -u GIT_CONFIG_COUNT -u GIT_CONFIG_KEY_0 -u GIT_CONFIG_VALUE_0 git -C \"$SCHEDULER_CONTROL\" push -q \"$SCHEDULER_REMOTE\" HEAD:main",
     "    printf '%s\\n' '# Reviewed' > docs/review.md",
     "    ;;",
+    "  no_receipt) exit 0 ;;",
+    "  blocker) printf '%s\\n' '{\"status\":\"implementation_change_required\"}' > \"$WEEKLY_DOCS_REVIEW_RECEIPT\"; exit 0 ;;",
+    "  unsafe_receipt) printf '%s\\n' '{\"status\":\"arbitrary runtime text\"}' > \"$WEEKLY_DOCS_REVIEW_RECEIPT\"; exit 0 ;;",
     "esac",
+    "printf '%s\\n' '{\"status\":\"completed\"}' > \"$WEEKLY_DOCS_REVIEW_RECEIPT\"",
     "exit 0",
     "",
   ].join("\n"), 0o755);
@@ -200,6 +209,30 @@ test("a no-change review creates no commit", (t) => {
   assert.match(result.stdout, /completed with no changes/);
   assert.equal(item.remoteCount(), before);
   assert.equal(git(item.repo, ["rev-parse", "HEAD"]), item.baseline);
+});
+
+test("does not accept an agent exit zero without a completion receipt", (t) => {
+  const item = fixture(t);
+  const result = item.run("no_receipt");
+  assert.equal(result.status, 1);
+  assert.match(`${result.stdout}\n${result.stderr}`, /agent_incomplete/);
+  assert.equal(item.remoteCount(), 1);
+});
+
+test("does not accept a reported implementation blocker as no changes", (t) => {
+  const item = fixture(t);
+  const result = item.run("blocker");
+  assert.equal(result.status, 1);
+  assert.match(`${result.stdout}\n${result.stderr}`, /implementation_change_required/);
+  assert.equal(item.remoteCount(), 1);
+});
+
+test("rejects a non-allowlisted receipt status", (t) => {
+  const item = fixture(t);
+  const result = item.run("unsafe_receipt");
+  assert.equal(result.status, 1);
+  assert.match(`${result.stdout}\n${result.stderr}`, /agent_incomplete/);
+  assert.equal(item.remoteCount(), 1);
 });
 
 test("Node-RED owns the continuous schedule without starting the internal timer", (t) => {
