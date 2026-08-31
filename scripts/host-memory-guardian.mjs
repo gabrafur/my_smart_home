@@ -230,27 +230,27 @@ export function evaluateSnapshot(snapshot, previousState = {}, overrides = {}) {
     observations: {},
     lastActionAt: Number(previousState.lastActionAt ?? 0),
   };
-  if (!memory.active) return { state: base, decision: { status: "healthy", action: "none" } };
-
   const hosts = snapshot.processes
     .filter((item) => item.uid === snapshot.selfUid && isVscodeExtensionHost(item))
     .sort((left, right) => left.startTicks - right.startTicks);
   const connectedHosts = hosts.filter((item) => item.connectionState === "connected");
-  if (hosts.length < 2 || connectedHosts.length === 0) {
-    return { state: base, decision: { status: "pressure_no_safe_duplicate", action: "none" } };
-  }
-
   const newestConnected = connectedHosts.at(-1);
   const candidates = hosts
     .filter((item) =>
-      item.startTicks < newestConnected.startTicks &&
       item.connectionState === "disconnected" &&
-      item.ageSeconds >= config.minimumAgeSeconds,
+      item.ageSeconds >= config.minimumAgeSeconds &&
+      (!newestConnected || item.startTicks < newestConnected.startTicks),
     )
     .map((item) => ({ item, details: safeTree(item, snapshot, config) }))
     .filter(({ details }) => details.safe)
     .sort((left, right) => left.item.startTicks - right.item.startTicks);
   if (candidates.length === 0) {
+    if (!memory.active) {
+      return { state: base, decision: { status: "healthy", action: "none" } };
+    }
+    if (hosts.length < 2 || connectedHosts.length === 0) {
+      return { state: base, decision: { status: "pressure_no_safe_duplicate", action: "none" } };
+    }
     return { state: base, decision: { status: "pressure_no_safe_candidate", action: "none" } };
   }
 

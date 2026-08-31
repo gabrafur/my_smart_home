@@ -86,6 +86,32 @@ test("healthy memory and a single active session never arm cleanup", () => {
   assert.equal(evaluateSnapshot(snapshot({ processes: [active] })).decision.status, "pressure_no_safe_duplicate");
 });
 
+test("a standalone disconnected session is cleaned even with healthy memory", () => {
+  const stale = extensionHost({ pid: 100, startTicks: 10_000, connectionState: "disconnected" });
+  const first = evaluateSnapshot(snapshot({ availableMiB: 4096, processes: [stale] }));
+  assert.equal(first.decision.status, "candidate_observed");
+  assert.equal(first.decision.action, "none");
+
+  const second = evaluateSnapshot(
+    snapshot({
+      nowMs: 1_060_000,
+      availableMiB: 4096,
+      processes: [{ ...stale, cpuTicks: 105 }],
+    }),
+    first.state,
+  );
+  assert.equal(second.decision.status, "terminate");
+  assert.equal(second.decision.candidate.pid, 100);
+});
+
+test("ambiguous standalone sessions fail closed without memory pressure", () => {
+  const unknown = extensionHost({ pid: 100, startTicks: 10_000, connectionState: "unknown" });
+  assert.equal(
+    evaluateSnapshot(snapshot({ availableMiB: 4096, processes: [unknown] })).decision.status,
+    "healthy",
+  );
+});
+
 test("two connected sessions and ambiguous connectivity fail closed", () => {
   const oldConnected = extensionHost({ pid: 100, startTicks: 10_000, connectionState: "connected" });
   const newest = extensionHost({ pid: 200, startTicks: 20_000, connectionState: "connected" });

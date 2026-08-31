@@ -20,10 +20,9 @@ ação inelegível.
 
 Uma árvore só pode ser encerrada quando todas estas condições forem verdadeiras:
 
-- `MemAvailable` está abaixo de 1.536 MiB **e** de 20% da RAM total;
-- existem pelo menos dois `extensionHost` do mesmo usuário;
-- há uma sessão mais nova cuja conexão SSH original continua estabelecida;
-- a sessão antiga está desconectada e existe há pelo menos 30 minutos;
+- o `extensionHost` está desconectado e existe há pelo menos 30 minutos;
+- se houver uma sessão conectada, o candidato desconectado é mais antigo que a
+  sessão conectada mais nova;
 - a árvore antiga consome pelo menos 256 MiB de RSS;
 - a mesma árvore permanece praticamente ociosa por dois ciclos separados por
   pelo menos 45 segundos;
@@ -31,7 +30,14 @@ Uma árvore só pode ser encerrada quando todas estas condições forem verdadei
 - PID, tempo de início, UID, conexão, pressão de memória e árvore continuam
   iguais numa revalidação imediatamente anterior aos sinais.
 
-Dados ausentes ou ambíguos impedem a ação. O worker envia `SIGTERM` primeiro,
+O encerramento de uma sessão desconectada não depende de pressão de memória:
+isso garante que fechar a única janela remota também devolva RAM ao host. Sob
+pressão (`MemAvailable` abaixo de 1.536 MiB **e** de 20% da RAM total), o
+guardião continua publicando os estados de diagnóstico mesmo quando não há
+candidato seguro.
+
+Dados ausentes ou ambíguos impedem a ação. Uma sessão conectada nunca é
+candidata. O worker envia `SIGTERM` primeiro,
 aguarda dois segundos e usa `SIGKILL` apenas nos mesmos PIDs que ainda existam
 com o mesmo tempo de início, evitando reutilização de PID.
 
