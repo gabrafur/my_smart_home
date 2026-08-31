@@ -26,7 +26,7 @@ function log(message) {
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? repoRoot,
-    encoding: options.encoding ?? "utf8",
+    encoding: Object.hasOwn(options, "encoding") ? options.encoding : "utf8",
     input: options.input,
     maxBuffer: 64 * 1024 * 1024,
     stdio: options.inherit ? "inherit" : [options.input ? "pipe" : "ignore", "pipe", "pipe"],
