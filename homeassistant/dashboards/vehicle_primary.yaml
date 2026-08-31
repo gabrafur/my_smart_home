@@ -21,7 +21,6 @@ views:
               {% set age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
               {% set refresh_state = states('sensor.vehicle_primary_refresh_coordinator') %}
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
-              {% set refresh_failure = state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_failure_class') %}
 
               # {{ 'Em uso' if engine else 'Estacionado' }}
 
@@ -269,6 +268,7 @@ views:
               {% set refresh = states.sensor.vehicle_primary_refresh_coordinator %}
               {% set refresh_state = refresh.state if refresh else 'unavailable' %}
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
+              {% set refresh_failure = state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_failure_class') %}
               {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
               {% set scanned = states('sensor.vehicle_primary_last_scanned_at') %}
               {% set scanned_ts = as_timestamp(scanned, none) %}

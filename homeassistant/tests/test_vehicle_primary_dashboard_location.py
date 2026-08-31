@@ -37,6 +37,14 @@ def main() -> None:
     assert "próximo retry automático em cerca de" in dashboard
     assert "nenhuma consulta ao servidor está em andamento" in dashboard
     assert "refresh_failure == 'api_error' and cache_age_s is none" in dashboard
+    refresh_failure_definition = (
+        "{% set refresh_failure = state_attr("
+        "'sensor.vehicle_primary_refresh_coordinator', 'last_failure_class') %}"
+    )
+    assert dashboard.count(refresh_failure_definition) == 1
+    assert dashboard.index(refresh_failure_definition) < dashboard.index(
+        "refresh_failure == 'integration_unavailable'"
+    )
     assert "<ha-alert" not in dashboard
     assert "🟢" in dashboard
     assert "🔵" in dashboard
