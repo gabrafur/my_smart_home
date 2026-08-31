@@ -896,6 +896,59 @@ scenario("34 erro ao reler cache adia a sondagem sem enviar wake", () => {
   );
 });
 
+scenario("36 integração indisponível não chama serviço inexistente", () => {
+  const previousRequestAt = DAY - 15 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: { ready: false, state: "unavailable" },
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      last_attempt_at: previousRequestAt,
+      last_request_at: previousRequestAt,
+      next_allowed_at: DAY,
+      interval_ms: 15 * 60_000,
+      last_failure_class: "integration_unavailable",
+    },
+  });
+
+  assert.equal(coordinator(store, DAY, {
+    vehicle_primary_ready: false,
+    recovery_needed: true,
+    anyone_away: true,
+  }), null);
+  const state = store.get(KEY);
+  assert.equal(state.state, "backoff");
+  assert.equal(state.reason, "integration_unavailable");
+  assert.equal(state.next_allowed_at, DAY + 15 * 60_000);
+  assert.equal(state.attempts, 1);
+});
+
+scenario("37 volta da integração libera releitura de cache imediata", () => {
+  const previousRequestAt = DAY - 15 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY - 20 * 60_000),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      last_attempt_at: previousRequestAt,
+      last_request_at: previousRequestAt,
+      next_allowed_at: DAY + 10 * 60_000,
+      interval_ms: 15 * 60_000,
+      last_failure_class: "integration_unavailable",
+    },
+  });
+
+  const result = coordinator(store, DAY, {
+    vehicle_primary_ready: true,
+    recovery_needed: true,
+    anyone_away: true,
+  });
+  assert.equal(result[0], null);
+  assert(result[4]);
+  assert.equal(store.get(KEY).state, "probing_cache");
+  assert.equal(store.get(KEY).last_failure_class, null);
+});
+
 console.log(
   `vehicle_primary refresh scheduler: ${passed.length} cenários aprovados.`,
 );

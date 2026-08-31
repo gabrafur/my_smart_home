@@ -165,7 +165,11 @@ conseguiu carregar, a falha é publicada como `integration_unavailable`. Nesse
 estado, o dashboard não apresenta o próximo tick local como se fosse uma
 consulta ao servidor: apresenta o tempo restante como `próximo retry
 automático`, informa explicitamente que nenhuma consulta está em andamento e
-que o Home Assistant tentará carregar a integração novamente.
+que o Home Assistant tentará carregar a integração novamente. O coordenador
+também deixa de chamar o serviço inexistente nos vencimentos seguintes: apenas
+reagenda o retry em 15 minutos. Assim que `vehicle_primary` volta a ficar
+pronto, o próximo tick de reconciliação libera imediatamente a releitura do
+cache, sem aguardar o restante desse prazo defensivo.
 `input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
 `reason=manual_force`: ignora `next_allowed_at`, inclusive durante cooldown ou
 backoff, e envia um novo wake. Ele nao quebra uma tentativa em voo; nesse unico

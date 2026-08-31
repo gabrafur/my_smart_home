@@ -326,7 +326,10 @@ depende exclusivamente de um `delay` residente em memória.
   Falhas usam 15 min fora da pausa noturna; com ambos em casa, a janela
   00:00–05:59 não produz wake automático. Antes de repetir um wake vencido, o fluxo
   relê o cache com `kia_uvo.update`, aguarda 15 s e reavalia a telemetria;
-  somente cache ainda antigo libera a nova tentativa. Sucesso
+  somente cache ainda antigo libera a nova tentativa. Se a integração ainda
+  não carregou e o serviço não existe, o fluxo não faz essa chamada: reagenda
+  o retry em 15 min e libera a releitura imediatamente quando as entidades
+  reaparecem. Sucesso
   limpa tentativas e aplica o mesmo intervalo normal. O contador satura no
   quinto estágio. Não há rajada no restart porque
   `last_request_at` e `next_allowed_at` são persistidos e o piso é reconstruído

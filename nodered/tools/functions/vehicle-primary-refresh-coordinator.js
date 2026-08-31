@@ -308,6 +308,52 @@ if (!enabled) {
     return null;
 }
 
+const pendingRequestAt = Number(state.last_request_at ?? 0);
+
+/*
+ * A ausência do serviço kia_uvo.update significa que o config entry ainda não
+ * carregou. Nesse estado, uma suposta "releitura de cache" não consulta nada:
+ * ela apenas gera Service not found. Preserve o backoff e deixe o ticker de
+ * reconciliação detectar a volta das entidades.
+ */
+if (
+    !manualBypass &&
+    state.awaiting_evidence === true &&
+    pendingRequestAt > 0 &&
+    contextReady !== true &&
+    now >= state.next_allowed_at
+) {
+    state.last_failure_class = "integration_unavailable";
+    state.failure_source = "kia_uvo.update";
+    state.next_allowed_at = now + selectedIntervalMs;
+    save("backoff", "integration_unavailable", { enabled: true });
+    node.log?.(
+        "VEHICLE_PRIMARY_CACHE_PROBE_SKIPPED" +
+        " reason=integration_unavailable" +
+        " next_retry_at=" + state.next_allowed_at
+    );
+    node.status({
+        fill: "yellow",
+        shape: "ring",
+        text: `integração indisponível; retry em ${selectedIntervalMs / 1000}s`
+    });
+    return null;
+}
+
+/* Quando as entidades reaparecem, não carregue o prazo que foi usado apenas
+ * para evitar chamadas a um serviço inexistente: sonde o cache já neste tick. */
+if (
+    !manualBypass &&
+    state.awaiting_evidence === true &&
+    pendingRequestAt > 0 &&
+    contextReady === true &&
+    state.last_failure_class === "integration_unavailable"
+) {
+    state.next_allowed_at = now;
+    state.last_failure_class = null;
+    state.failure_source = null;
+}
+
 if (!manualBypass && now < state.next_allowed_at) {
     const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));
     const waitingEvidence = state.awaiting_evidence === true;
@@ -334,7 +380,6 @@ if (!manualBypass && now < state.next_allowed_at) {
  * o novo wake será evitado. O clique manual continua explícito e não passa por
  * esta etapa.
  */
-const pendingRequestAt = Number(state.last_request_at ?? 0);
 const cacheProbeCompletedForPendingRequest =
     pendingRequestAt > 0 &&
     state.cache_probe_completed_for_request_at === pendingRequestAt;
