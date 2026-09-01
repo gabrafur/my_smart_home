@@ -88,12 +88,31 @@ state.service_accepted_at = Number.isFinite(state.service_accepted_at) &&
 const contextReady =
     msg.payload?.vehicle_primary_ready === true ||
     vehicleContext.ready === true;
-const recoveryNeeded =
+const derivedContextRecoveryNeeded =
     msg.payload?.recovery_needed === true ||
-    msg.payload?.force_recovery === true ||
     msg.payload?.vehicle_primary_ready === false ||
-    contextReady !== true ||
-    state.awaiting_evidence === true;
+    contextReady !== true;
+const lastSemanticSuccessAt = Number(state.last_success_at ?? 0);
+const semanticWakeHealthy =
+    state.awaiting_evidence !== true &&
+    state.last_failure_class == null &&
+    Array.isArray(state.last_evidence_domains) &&
+    state.last_evidence_domains.includes("telemetry") &&
+    lastSemanticSuccessAt > 0 &&
+    lastSemanticSuccessAt <= now + FUTURE_TOLERANCE_MS &&
+    now - lastSemanticSuccessAt <=
+        HOME_INTERVAL_MS + FUTURE_TOLERANCE_MS;
+/*
+ * Readiness derivado continua protegendo iluminação e demais automações,
+ * mas não deve reduzir sozinho o ciclo de wake depois que o próprio
+ * Bluelink confirmou telemetria nova. Uma recuperação explícita, uma falha
+ * ou a ausência de nova evidência continuam usando 15 minutos.
+ */
+const recoveryNeeded =
+    msg.payload?.force_recovery === true ||
+    msg.payload?.require_lighting_ready === true ||
+    state.awaiting_evidence === true ||
+    (derivedContextRecoveryNeeded && !semanticWakeHealthy);
 const requireLightingReady =
     msg.payload?.require_lighting_ready === true ||
     (
@@ -467,6 +486,7 @@ node.log?.(
     " attempt=" + state.attempts +
     " reason=" + requestedReason +
     " recovery=" + String(recoveryNeeded) +
+    " semantic_health=" + String(semanticWakeHealthy) +
     " interval_minutes=" + String(selectedIntervalMs / 60_000) +
     " both_home=" + String(bothResidentsHome) +
     " require_lighting_ready=" + String(requireLightingReady) +

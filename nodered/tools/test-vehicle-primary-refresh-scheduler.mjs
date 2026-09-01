@@ -949,6 +949,67 @@ scenario("37 volta da integração libera releitura de cache imediata", () => {
   assert.equal(store.get(KEY).last_failure_class, null);
 });
 
+scenario("38 sucesso semântico mantém 30 minutos com ambos em casa", () => {
+  const requestAt = DAY - 5 * 60_000;
+  const baseline = DAY - 20 * 60_000;
+  const staleSignalAt = DAY - 20 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: requestAt + 15 * 60_000,
+      interval_ms: 15 * 60_000,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  normalize(store, DAY, DAY, DAY - 60_000, {
+    engineAt: staleSignalAt,
+    lockAt: staleSignalAt,
+  });
+  assert.equal(store.get("vehicle_primary_context_v1").ready, false);
+
+  assert.equal(coordinator(store, DAY + 30_000, {
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+    vehicle_primary_ready: false,
+    recovery_needed: true,
+  }), null);
+  const state = store.get(KEY);
+  assert.equal(state.interval_ms, 30 * 60_000);
+  assert.equal(state.interval_policy, "both_home_30m");
+  assert.equal(state.next_allowed_at, DAY + 30 * 60_000);
+});
+
+scenario("39 sucesso semântico antigo não mascara recuperação", () => {
+  const lastSuccessAt = DAY - 32 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: { ready: false },
+    [KEY]: {
+      attempts: 0,
+      awaiting_evidence: false,
+      last_success_at: lastSuccessAt,
+      last_request_at: lastSuccessAt,
+      next_allowed_at: DAY - 60_000,
+      interval_ms: 30 * 60_000,
+      last_evidence_domains: ["telemetry"],
+    },
+  });
+
+  const result = coordinator(store, DAY, {
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+    vehicle_primary_ready: false,
+    recovery_needed: true,
+  });
+  assert(result[0]);
+  assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
+  assert.equal(store.get(KEY).interval_policy, "recovery_15m");
+});
+
 console.log(
   `vehicle_primary refresh scheduler: ${passed.length} cenários aprovados.`,
 );
