@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -13,9 +15,17 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
+from homeassistant.components.recorder.history import get_significant_states
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.recorder import get_instance as get_recorder_instance
 
-from .location import select_best_location
+from .location import (
+    LocationObservations,
+    location_observed_at,
+    recover_location_observation,
+    select_best_location,
+    update_location_observation,
+)
 from .service_policy import is_best_effort_notification
 
 DOMAIN = "public_bindings"
@@ -38,6 +48,9 @@ SERVICE_SCHEMA = vol.Schema(
     }
 )
 STARTUP_SERVICE_WAIT_SECONDS = 30
+LOCATION_ATTRIBUTES = {"gps_accuracy", "latitude", "longitude"}
+LOCATION_HISTORY_WINDOW = timedelta(days=7)
+_LOGGER = logging.getLogger(__name__)
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -75,6 +88,19 @@ def _binding_targets(binding: dict[str, Any]) -> tuple[str, ...]:
     return ()
 
 
+def _load_location_history(
+    hass: HomeAssistant,
+    target_ids: set[str],
+) -> dict[str, list[Any]]:
+    return get_significant_states(
+        hass,
+        datetime.now(timezone.utc) - LOCATION_HISTORY_WINDOW,
+        entity_ids=sorted(target_ids),
+        include_start_time_state=True,
+        significant_changes_only=False,
+    )
+
+
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     settings = config.get(DOMAIN, {})
     document = await hass.async_add_executor_job(
@@ -94,17 +120,44 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             if isinstance(binding, dict) and isinstance(binding.get("target_service"), str):
                 services[(role, action)] = binding
 
+    location_target_ids = {
+        target
+        for _role, binding in entities.values()
+        if (
+            binding.get("selection_mode") == "best_location"
+            or LOCATION_ATTRIBUTES.intersection(binding.get("attributes", []))
+        )
+        for target in _binding_targets(binding)
+    }
+    location_observations: LocationObservations = {}
+    try:
+        history = await get_recorder_instance(hass).async_add_executor_job(
+            _load_location_history,
+            hass,
+            location_target_ids,
+        )
+    except Exception:  # noqa: BLE001 - integration remains fail-closed without history
+        _LOGGER.exception("Unable to recover location observation history")
+    else:
+        for target, states in history.items():
+            if observation := recover_location_observation(states):
+                location_observations[target] = observation
+    for target in location_target_ids:
+        if source := hass.states.get(target):
+            update_location_observation(location_observations, source)
+
     @callback
     def sync_entity(
         public_id: str,
         role: str,
         binding: dict[str, Any],
         changed_target_id: str | None = None,
+        changed_location: bool = False,
     ) -> None:
         targets = _binding_targets(binding)
         sources = [source for target in targets if (source := hass.states.get(target))]
         source = (
-            select_best_location(sources)
+            select_best_location(sources, observations=location_observations)
             if binding.get("selection_mode") == "best_location"
             else (sources[0] if sources else None)
         )
@@ -116,6 +169,11 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         for key in binding.get("string_attributes", []):
             if key in attributes:
                 attributes[key] = str(attributes[key])
+        if source.entity_id in location_target_ids:
+            attributes["location_observed_at"] = location_observed_at(
+                location_observations,
+                source,
+            ).isoformat()
         if display_name := binding.get("display_name"):
             attributes["friendly_name"] = display_name
         source_names = binding.get("source_names")
@@ -125,7 +183,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             attributes["location_sources"] = [
                 {
                     "name": source_name,
-                    "last_updated": source_state.last_updated.isoformat(),
+                    "last_updated": location_observed_at(
+                        location_observations,
+                        source_state,
+                    ).isoformat(),
                 }
                 for target, source_name in zip(targets, source_names, strict=True)
                 if (source_state := hass.states.get(target)) is not None
@@ -138,6 +199,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             force_update=(
                 binding.get("force_update", False)
                 and source.entity_id == changed_target_id
+                and changed_location
             ),
         )
 
@@ -173,9 +235,22 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     @callback
     def state_changed(event: Any) -> None:
         changed_target_id = event.data.get("entity_id")
+        changed_location = False
+        if changed_target_id in location_target_ids:
+            if changed_source := hass.states.get(changed_target_id):
+                changed_location = update_location_observation(
+                    location_observations,
+                    changed_source,
+                )
         for public_id in target_to_public.get(changed_target_id, []):
             role, binding = entities[public_id]
-            sync_entity(public_id, role, binding, changed_target_id)
+            sync_entity(
+                public_id,
+                role,
+                binding,
+                changed_target_id,
+                changed_location,
+            )
 
     hass.bus.async_listen(EVENT_STATE_CHANGED, state_changed)
 

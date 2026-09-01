@@ -63,8 +63,12 @@ public source labels stay in private bindings; the vehicle is shown as `Creta`.
 
 Location bindings may declare `source_names` in target order. The adapter
 publishes only the winning label in `selected_location_source` and a sanitized
-`location_sources` list containing each public label and last-update time. Two
-dynamic Markdown cards show this information without exposing private IDs.
+`location_sources` list containing each public label and its last location
+observation. The adapter keeps `location_observed_at` separate from generic
+`last_updated`: battery or other metadata changes do not refresh a GPS
+position. At startup, the timestamp is recovered from Recorder history by
+comparing only state, coordinates, and accuracy. Two dynamic Markdown cards
+show this information without exposing private IDs.
 
 Consolidated bindings use `hide_targets: true` to hide only their private input
 trackers from visual discovery. Those trackers remain active and available to
@@ -87,7 +91,9 @@ Intermediate aliases consumed by `localizacao_pessoas` keep `latitude`,
 `longitude`, and `gps_accuracy` in `string_attributes`. Node-RED explicitly
 normalizes them with `Number(...)`, while the Map frontend accepts only numeric
 coordinates as a location. This keeps Mobile App and iCloud from appearing as
-additional markers without removing their data from the normalizer.
+additional markers without removing their data from the normalizer. The
+normalizer uses `location_observed_at`, never generic `last_updated`, to decide
+freshness and precedence between sources.
 
 Simple pushes use `notify.send_message` with a `notify.*` entity; that service
 accepts only a title and message. Buttons, tags, and `clear_notification` use

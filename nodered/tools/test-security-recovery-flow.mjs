@@ -473,7 +473,29 @@ scenario("45 tracker fora preserva evidência para ciclo de wake", () => {
   assert.equal(context.any_tracker_away, true);
 });
 
+scenario("46 bateria do iCloud não renova localização congelada", () => {
+  const mobile = entity("not_home", 2_000, 60 * 60_000, 40);
+  mobile.entity_id = "device_tracker.mobile_secondary_source_1";
+  mobile.attributes.location_observed_at = iso(-60 * 60_000);
+
+  const icloud = entity("home", 25, 0, 5);
+  icloud.entity_id = "device_tracker.mobile_secondary_source_2";
+  icloud.last_changed = iso(-4 * 60 * 60_000);
+  icloud.last_updated = iso(0);
+  icloud.attributes.location_observed_at = iso(-4 * 60 * 60_000);
+  icloud.attributes.battery = 62;
+
+  const input = peopleInput({ event: "context_snapshot" });
+  input.payload.resident_secondary = mobile;
+  input.payload.resident_secondary_icloud = icloud;
+
+  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  assert.equal(context.resident_secondary.entity_id, mobile.entity_id);
+  assert.equal(context.resident_secondary.state, "not_home");
+  assert.equal(context.resident_secondary.updated_at, NOW - 60 * 60_000);
+});
+
 Date.now = originalNow;
-assert.equal(passed.length, 45);
+assert.equal(passed.length, 46);
 console.log(`security recovery replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

@@ -71,8 +71,12 @@ públicos das fontes ficam no binding privado; o veículo é exibido como
 Bindings de localização podem declarar `source_names`, na mesma ordem dos
 alvos. O adapter publica apenas o rótulo vencedor em
 `selected_location_source` e uma lista sanitizada `location_sources` com o
-rótulo e a última atualização de cada fonte. Dois cards Markdown dinâmicos
-mostram essas informações sem expor IDs privados.
+rótulo e a última observação de localização de cada fonte. O adapter mantém
+`location_observed_at` separado do `last_updated` genérico: mudanças de bateria
+ou outros metadados não renovam uma posição GPS. Na inicialização, o horário é
+recuperado do histórico do Recorder comparando somente estado, coordenadas e
+precisão. Dois cards Markdown dinâmicos mostram essas informações sem expor IDs
+privados.
 
 Bindings consolidados usam `hide_targets: true` para ocultar da descoberta
 visual somente os trackers privados que alimentam o consolidado. Eles continuam
@@ -95,7 +99,9 @@ Os aliases intermediários consumidos por `localizacao_pessoas` mantêm
 `latitude`, `longitude` e `gps_accuracy` em `string_attributes`. O Node-RED os
 normaliza explicitamente com `Number(...)`, mas o frontend do Mapa aceita como
 localização apenas coordenadas numéricas. Isso impede que Mobile App e iCloud
-apareçam como marcadores adicionais sem retirar os dados do normalizador.
+apareçam como marcadores adicionais sem retirar os dados do normalizador. O
+normalizador usa `location_observed_at`, e nunca o `last_updated` genérico, para
+decidir freshness e precedência entre as fontes.
 
 Uma ação pode apontar diretamente para `target_entity_id` ou reutilizar uma
 entidade do mesmo papel por `target_public_entity_id`. A segunda forma mantém o

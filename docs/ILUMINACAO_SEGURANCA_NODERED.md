@@ -103,13 +103,13 @@ cooldown. Snapshots com `updated_at` anterior ao cache são ignorados.
 - ações móveis allowlisted via `public_bindings.call`, incluindo push e
   `request_location_update`
 
-Quando ambos os trackers estão frescos e têm coordenadas confiáveis,
-conserva-se o fallback anterior: vence o tracker que reporta a maior distância
-de casa, porque a falha
-observada foi o Companion App congelado numa posição antiga em casa. Se um
-tracker disser `home`, `any_tracker_home` bloqueia uma entrada falsa no anel.
-Uma saída completa observada ainda permite o aviso de retorno de qualquer um
-dos residentes mesmo com o outro tracker atrasado.
+A seleção usa `location_observed_at`, publicado pelo adapter a partir de
+mudanças observáveis de estado, coordenadas ou precisão. Atualizações de
+bateria e outros metadados não tornam uma localização fresca. Entre fontes com
+freshness equivalente, coordenadas confiáveis, recência material e precisão
+resolvem a precedência. Se um tracker disser `home`, `any_tracker_home` bloqueia
+uma entrada falsa no anel. Uma saída completa observada ainda permite o aviso
+de retorno de qualquer um dos residentes mesmo com o outro tracker atrasado.
 
 ### vehicle_primary
 

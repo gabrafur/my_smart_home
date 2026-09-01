@@ -103,6 +103,28 @@ function mergeTrackers(primary, fallback) {
   node.func = node.func.replace(mergePattern, replacement);
 }
 
+const observedAt = `const LOCATION_OBSERVED_AT_ATTRIBUTE =
+    "location_observed_at";
+
+function observedAt(entity) {
+    const value = Date.parse(
+        entity?.attributes?.[
+            LOCATION_OBSERVED_AT_ATTRIBUTE
+        ] ??
+        entity?.last_changed ??
+        ""
+    );
+
+    return Number.isFinite(value)
+        ? value
+        : null;
+}`;
+const observedAtPattern = /(?:const LOCATION_OBSERVED_AT_ATTRIBUTE =[\s\S]*?\n\n)?function observedAt\(entity\) \{[\s\S]*?\n\}(?=\n\nfunction freshTracker)/;
+if (!observedAtPattern.test(node.func)) {
+  throw new Error("Função observedAt esperada não encontrada");
+}
+node.func = node.func.replace(observedAtPattern, observedAt);
+
 const awayEvidenceMarker = "function awayEvidence(entity) {";
 const awayEvidence = `function awayEvidence(entity) {
     if (!validZoneState(entity?.state)) {
