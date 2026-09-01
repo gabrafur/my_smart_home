@@ -259,17 +259,21 @@
             "git_backup_test_instructions",
             "git_backup_test_success",
             "git_backup_test_failure",
+            "git_backup_test_deferred",
             "git_backup_test_result_out",
             "git_backup_test_result_in",
             "git_backup_test_reset",
             "git_backup_test_reset_state",
             "git_backup_dry_run_terminal",
+            "git_backup_retry_delay",
+            "git_backup_retry_out",
+            "git_backup_retry_in",
             "git_backup_daily_update_out"
         ],
         "x": 64,
         "y": 39,
         "w": 1572,
-        "h": 552
+        "h": 612
     },
     {
         "id": "storage_group_config",
@@ -2874,8 +2878,8 @@
         "z": "git_backup_tab",
         "g": "git_backup_group",
         "name": "Registrar resultado",
-        "func": "const TEST_MODE = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return [null, TEST_MODE ? msg : null, null];\n}\nconst result = { status, finished_at: finishedAt };\nif (TEST_MODE) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nif (TEST_MODE) {\n    msg.payload = { ...result, test_mode: true };\n    return [null, msg, null];\n}\nif (status === \"success\") {\n    const startDailyUpdate = msg.topic === \"scheduled\";\n    msg.payload = { event: \"git_backup_completed\", status, finished_at: finishedAt };\n    return [null, null, startDailyUpdate ? msg : null];\n}\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn [msg, null, null];",
-        "outputs": 3,
+        "func": "const TEST_MODE = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1];\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nif (!status) {\n    node.warn(\"git_backup_result_unrecognized\");\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\n    return [null, TEST_MODE ? msg : null, null, null];\n}\nconst result = { status, finished_at: finishedAt };\nif (TEST_MODE) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nnode.status({\n    fill: status === \"success\" ? \"green\" : status === \"deferred\" ? \"blue\" : \"red\",\n    shape: status === \"success\" ? \"dot\" : \"ring\",\n    text: status === \"success\" ? \"backup concluído\" : status === \"deferred\" ? \"backup adiado; retry agendado\" : \"backup falhou\"\n});\nnode.log(\"git_backup_completed status=\" + status + (finishedAt ? \" finished_at=\" + finishedAt : \"\"));\nif (TEST_MODE) {\n    msg.payload = { ...result, test_mode: true };\n    return [null, msg, null, null];\n}\nif (status === \"success\") {\n    const startDailyUpdate = msg.topic === \"scheduled\";\n    msg.payload = { event: \"git_backup_completed\", status, finished_at: finishedAt };\n    return [null, null, startDailyUpdate ? msg : null, null];\n}\nif (status === \"deferred\") {\n    msg.payload = { event: \"git_backup_deferred\", status, finished_at: finishedAt };\n    return [null, null, null, msg];\n}\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn [msg, null, null, null];",
+        "outputs": 4,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -2892,6 +2896,9 @@
             ],
             [
                 "git_backup_daily_update_out"
+            ],
+            [
+                "git_backup_retry_delay"
             ]
         ]
     },
@@ -2968,7 +2975,7 @@
         "type": "comment",
         "z": "git_backup_tab",
         "g": "git_backup_group",
-        "name": "TESTE: 1) reset 2) sucesso ou falha 3) confira terminal dry-run; nenhum push ou aviso é enviado",
+        "name": "TESTE: 1) reset 2) sucesso, falha ou adiado 3) confira terminal dry-run; nenhum push ou aviso é enviado",
         "info": "Os cenários sintéticos entram no mesmo parser de resultado. A fronteira final bloqueia Git, SSH e a notificação mobile.",
         "x": 630,
         "y": 350,
@@ -3144,6 +3151,96 @@
         "x": 1225,
         "y": 120,
         "wires": []
+    },
+    {
+        "id": "git_backup_test_deferred",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "TESTE 2C: adiado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "git-backup status=deferred request_id=test finished_at=synthetic",
+                "vt": "str"
+            },
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 590,
+        "wires": [
+            [
+                "git_backup_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_retry_delay",
+        "type": "delay",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Aguardar 5 min para observar retry",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1240,
+        "y": 270,
+        "wires": [
+            [
+                "git_backup_retry_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_retry_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Retry adiado → nova observação",
+        "mode": "link",
+        "links": [
+            "git_backup_retry_in"
+        ],
+        "x": 1505,
+        "y": 270,
+        "wires": []
+    },
+    {
+        "id": "git_backup_retry_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_group",
+        "name": "Receber observação do retry",
+        "links": [
+            "git_backup_retry_out"
+        ],
+        "x": 375,
+        "y": 300,
+        "wires": [
+            [
+                "git_backup_request"
+            ]
+        ]
     },
     {
         "id": "45296e246a57590d",
@@ -17388,7 +17485,7 @@
             "global_observer_coverage__git_backup_tab__annotate",
             "global_observer_coverage__git_backup_tab__out"
         ],
-        "x": 1680,
+        "x": 1700,
         "y": 40,
         "w": 720,
         "h": 162
@@ -17401,7 +17498,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1820,
+        "x": 1840,
         "y": 100,
         "wires": [
             [
@@ -17416,7 +17513,7 @@
         "g": "global_observer_coverage__git_backup_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1830,
+        "x": 1850,
         "y": 160,
         "wires": [
             [
@@ -17437,7 +17534,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2100,
+        "x": 2120,
         "y": 130,
         "wires": [
             [
@@ -17455,7 +17552,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2345,
+        "x": 2365,
         "y": 130,
         "wires": []
     },

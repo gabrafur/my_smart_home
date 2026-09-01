@@ -8,7 +8,8 @@
                 "git_backup_test_instructions",
                 "git_backup_test_reset",
                 "git_backup_test_success",
-                "git_backup_test_failure"
+                "git_backup_test_failure",
+                "git_backup_test_deferred"
             ],
             "automated_test": "test-git-backup-flow.mjs",
             "dry_run_terminal_ids": ["git_backup_dry_run_terminal"],

@@ -34,8 +34,18 @@ if "$backup_script"; then
 else
   exit_code=$?
   if [ "$exit_code" -eq 75 ]; then
-    # Keep the claimed request in place. The minute worker will resume it
-    # after the shared validation slot or resource preflight becomes free.
+    # Keep the claimed request in place, but publish the recoverable state so
+    # Node-RED can stop waiting and schedule a new observation without raising
+    # a definitive-failure alert. The minute worker will resume this same
+    # request after the shared validation slot or resource preflight clears.
+    result_tmp="$trigger_dir/result.tmp.$$"
+    {
+      printf 'request_id=%s\n' "$request_id"
+      printf 'status=deferred\n'
+      printf 'exit_code=%s\n' "$exit_code"
+      printf 'finished_at=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    } > "$result_tmp"
+    mv "$result_tmp" "$result_file"
     exit 75
   fi
   status=failed

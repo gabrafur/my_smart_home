@@ -27,11 +27,16 @@ assert.deepEqual(node("git_backup_result").wires, [
   ["git_backup_notify_primary"],
   ["git_backup_dry_run_terminal"],
   ["git_backup_daily_update_out"],
+  ["git_backup_retry_delay"],
 ]);
+assert.deepEqual(node("git_backup_retry_delay").wires, [["git_backup_retry_out"]]);
+assert.deepEqual(node("git_backup_retry_out").links, ["git_backup_retry_in"]);
+assert.deepEqual(node("git_backup_retry_in").wires, [["git_backup_request"]]);
 assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after_backup_in"]);
 assert.match(node("git_backup_notify_primary").data, /"role":"mobile_primary"/);
 assert.deepEqual(node("git_backup_test_success").wires, [["git_backup_test_result_out"]]);
 assert.deepEqual(node("git_backup_test_failure").wires, [["git_backup_test_result_out"]]);
+assert.deepEqual(node("git_backup_test_deferred").wires, [["git_backup_test_result_out"]]);
 assert.deepEqual(node("git_backup_test_result_out").links, ["git_backup_test_result_in"]);
 assert.deepEqual(node("git_backup_test_result_in").wires, [["git_backup_result"]]);
 assert.ok(!JSON.stringify(node("git_backup_test_success")).includes("git_backup_request"));
@@ -57,6 +62,20 @@ assert.equal(testFailure[0], null);
 assert.equal(testFailure[1].payload.test_mode, true);
 assert.equal(testFailure[1].payload.status, "failed");
 assert.equal(testFailure[2], null);
+assert.equal(testFailure[3], null);
+
+const testDeferred = runResult(
+  {
+    _git_backup_test: true,
+    payload: "git-backup status=deferred request_id=test finished_at=synthetic",
+  },
+  { warn() {}, log() {}, status() {} },
+  flow,
+);
+assert.equal(testDeferred[0], null);
+assert.equal(testDeferred[1].payload.status, "deferred");
+assert.equal(testDeferred[2], null);
+assert.equal(testDeferred[3], null);
 
 const scheduledSuccess = runResult(
   { topic: "scheduled", payload: "git-backup status=success request_id=prod finished_at=synthetic" },
@@ -80,6 +99,16 @@ const productionFailure = runResult(
   flow,
 );
 assert.match(productionFailure[0].alert.title, /Falha no backup Git/);
+
+const productionDeferred = runResult(
+  { topic: "scheduled", payload: "git-backup status=deferred request_id=prod finished_at=synthetic" },
+  { warn() {}, log() {}, status() {} },
+  flow,
+);
+assert.equal(productionDeferred[0], null);
+assert.equal(productionDeferred[1], null);
+assert.equal(productionDeferred[2], null);
+assert.equal(productionDeferred[3].payload.event, "git_backup_deferred");
 
 const packageYaml = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "packages", "weekly_documentation_review.yaml"), "utf8");
 const dashboard = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "dashboards", "raspberry_pi_health.yaml"), "utf8");

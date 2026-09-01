@@ -24,15 +24,16 @@ fi
 cleanup() { rmdir "$enqueue_lock" 2>/dev/null || true; }
 trap cleanup EXIT HUP INT TERM
 
-if [ -f "$request_file" ] || [ -f "$processing_file" ]; then
-  echo "git-backup request already pending" >&2
-  exit 75
+if [ -f "$processing_file" ]; then
+  request_id=$(sed -n '1p' "$processing_file")
+elif [ -f "$request_file" ]; then
+  request_id=$(sed -n '1p' "$request_file")
+else
+  request_id="$(date -u '+%Y%m%dT%H%M%SZ')-$$"
+  request_tmp="$trigger_dir/requested.tmp.$$"
+  printf '%s\n' "$request_id" > "$request_tmp"
+  mv "$request_tmp" "$request_file"
 fi
-
-request_id="$(date -u '+%Y%m%dT%H%M%SZ')-$$"
-request_tmp="$trigger_dir/requested.tmp.$$"
-printf '%s\n' "$request_id" > "$request_tmp"
-mv "$request_tmp" "$request_file"
 rmdir "$enqueue_lock"
 trap - EXIT HUP INT TERM
 
@@ -44,8 +45,11 @@ while [ "$elapsed" -lt "$timeout_seconds" ]; do
     finished_at=$(sed -n 's/^finished_at=//p' "$result_file" | head -n 1)
     printf 'git-backup status=%s request_id=%s finished_at=%s\n' \
       "$status" "$request_id" "$finished_at"
-    [ "$status" = "success" ] && exit 0
-    exit 1
+    case "$status" in
+      success|deferred) exit 0 ;;
+      failed) exit 1 ;;
+      *) echo "git-backup result has invalid status" >&2; exit 65 ;;
+    esac
   fi
   sleep 1
   elapsed=$((elapsed + 1))

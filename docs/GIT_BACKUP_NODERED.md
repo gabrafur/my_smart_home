@@ -25,9 +25,12 @@ updates chama um novo backup ao final para registrar o Compose reconciliado.
 ## Operação e diagnóstico
 
 - O botão **Executar backup agora** na aba permite uma solicitação manual.
-- Falha definitiva ou timeout da ponte envia push somente para
-  `resident_primary`, pelo binding lógico `mobile_primary`; os controles
-  `TESTE` exercitam sucesso e falha sem executar push Git nem notificação.
+- Falha definitiva ou timeout sem pedido recuperável envia push somente para
+  `resident_primary`, pelo binding lógico `mobile_primary`. Se a validação
+  segura estiver sem recursos, a ponte publica `deferred`, mantém o mesmo
+  pedido no host e o flow volta a observar o retry após cinco minutos, sem
+  alerta falso. Os controles `TESTE` exercitam sucesso, falha e adiamento sem
+  executar push Git nem notificação.
 - `.git-backup.log` registra o resultado do script no host.
 - `.git-backup-request.cron.log` registra falhas do worker da ponte.
 - A aba não publica nem altera entidades do Home Assistant.

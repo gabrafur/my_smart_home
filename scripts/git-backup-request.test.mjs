@@ -113,12 +113,38 @@ test("host bridge retains a temporarily deferred backup for retry", () => {
   const deferred = spawnSync(processScript, [], { encoding: "utf8", env });
   assert.equal(deferred.status, 75);
   assert.equal(fs.existsSync(path.join(triggerDir, "processing")), true);
-  assert.equal(fs.existsSync(path.join(triggerDir, "result")), false);
+  assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /status=deferred/);
 
   const completed = spawnSync(processScript, [], { encoding: "utf8", env });
   assert.equal(completed.status, 0, completed.stderr);
   assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /status=success/);
   assert.equal(fs.existsSync(path.join(triggerDir, "processing")), false);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("Node-RED observes a deferred request without reporting failure", async () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-deferred-request-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const backup = path.join(fixture, "backup.sh");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(backup, "#!/bin/sh\nexit 75\n");
+  fs.chmodSync(backup, 0o755);
+  const env = {
+    ...process.env,
+    GIT_BACKUP_TRIGGER_DIR: triggerDir,
+    GIT_BACKUP_SCRIPT: backup,
+    GIT_BACKUP_REQUEST_TIMEOUT_SECONDS: "5",
+  };
+
+  const requester = spawn(requestScript, [], { env, stdio: ["ignore", "pipe", "pipe"] });
+  const requestDone = completed(requester);
+  await waitForFile(path.join(triggerDir, "requested"));
+  const processed = spawnSync(processScript, [], { encoding: "utf8", env });
+  assert.equal(processed.status, 75);
+  const result = await requestDone;
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /git-backup status=deferred/);
+  assert.equal(fs.existsSync(path.join(triggerDir, "processing")), true);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

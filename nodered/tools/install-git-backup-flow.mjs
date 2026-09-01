@@ -25,11 +25,15 @@ const ownedIds = new Set([
   "git_backup_test_instructions",
   "git_backup_test_success",
   "git_backup_test_failure",
+  "git_backup_test_deferred",
   "git_backup_test_result_out",
   "git_backup_test_result_in",
   "git_backup_test_reset",
   "git_backup_test_reset_state",
   "git_backup_dry_run_terminal",
+  "git_backup_retry_delay",
+  "git_backup_retry_out",
+  "git_backup_retry_in",
   "git_backup_daily_update_out",
 ]);
 
@@ -53,36 +57,40 @@ const functionNode = (id, name, func, outputs, x, y, wires) => ({
 
 const recordResult = `const TEST_MODE = msg._git_backup_test === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 500);
-const status = text.match(/\\bstatus=(success|failed)\\b/)?.[1];
+const status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1];
 const finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;
 if (!status) {
     node.warn("git_backup_result_unrecognized");
     node.status({ fill: "yellow", shape: "ring", text: "resultado não reconhecido" });
-    return [null, TEST_MODE ? msg : null, null];
+    return [null, TEST_MODE ? msg : null, null, null];
 }
 const result = { status, finished_at: finishedAt };
 if (TEST_MODE) flow.set("git_backup_last_result_v1__test", result);
 else flow.set("git_backup_last_result_v1", result, "persistent");
 node.status({
-    fill: status === "success" ? "green" : "red",
+    fill: status === "success" ? "green" : status === "deferred" ? "blue" : "red",
     shape: status === "success" ? "dot" : "ring",
-    text: status === "success" ? "backup concluído" : "backup falhou"
+    text: status === "success" ? "backup concluído" : status === "deferred" ? "backup adiado; retry agendado" : "backup falhou"
 });
 node.log("git_backup_completed status=" + status + (finishedAt ? " finished_at=" + finishedAt : ""));
 if (TEST_MODE) {
     msg.payload = { ...result, test_mode: true };
-    return [null, msg, null];
+    return [null, msg, null, null];
 }
 if (status === "success") {
     const startDailyUpdate = msg.topic === "scheduled";
     msg.payload = { event: "git_backup_completed", status, finished_at: finishedAt };
-    return [null, null, startDailyUpdate ? msg : null];
+    return [null, null, startDailyUpdate ? msg : null, null];
+}
+if (status === "deferred") {
+    msg.payload = { event: "git_backup_deferred", status, finished_at: finishedAt };
+    return [null, null, null, msg];
 }
 msg.alert = {
     title: "Falha no backup Git",
     message: "O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host."
 };
-return [msg, null, null];`;
+return [msg, null, null, null];`;
 
 const recordError = `const detail = String(msg.payload ?? "erro desconhecido").replace(/[\\r\\n]+/g, " ").slice(0, 240);
 node.error("git_backup_request_failed detail=" + detail);
@@ -156,17 +164,21 @@ const nodes = [
       "git_backup_test_instructions",
       "git_backup_test_success",
       "git_backup_test_failure",
+      "git_backup_test_deferred",
       "git_backup_test_result_out",
       "git_backup_test_result_in",
       "git_backup_test_reset",
       "git_backup_test_reset_state",
       "git_backup_dry_run_terminal",
+      "git_backup_retry_delay",
+      "git_backup_retry_out",
+      "git_backup_retry_in",
       "git_backup_daily_update_out",
     ],
     x: 64,
     y: 39,
     w: 1572,
-    h: 552,
+    h: 612,
   },
   {
     id: "git_backup_architecture",
@@ -242,7 +254,7 @@ const nodes = [
       ["git_backup_complete"],
     ],
   },
-  functionNode("git_backup_result", "Registrar resultado", recordResult, 3, 880, 150, [["git_backup_notify_primary"], ["git_backup_dry_run_terminal"], ["git_backup_daily_update_out"]]),
+  functionNode("git_backup_result", "Registrar resultado", recordResult, 4, 880, 150, [["git_backup_notify_primary"], ["git_backup_dry_run_terminal"], ["git_backup_daily_update_out"], ["git_backup_retry_delay"]]),
   functionNode("git_backup_error", "Registrar erro seguro", recordError, 1, 880, 210, [["git_backup_notify_primary"]]),
   functionNode("git_backup_complete", "Registrar código de saída", recordCompletion, 0, 920, 270, []),
   {
@@ -278,7 +290,7 @@ const nodes = [
     type: "comment",
     z: TAB,
     g: GROUP,
-    name: "TESTE: 1) reset 2) sucesso ou falha 3) confira terminal dry-run; nenhum push ou aviso é enviado",
+    name: "TESTE: 1) reset 2) sucesso, falha ou adiado 3) confira terminal dry-run; nenhum push ou aviso é enviado",
     info: "Os cenários sintéticos entram no mesmo parser de resultado. A fronteira final bloqueia Git, SSH e a notificação mobile.",
     x: 630,
     y: 350,
@@ -346,6 +358,27 @@ const nodes = [
     wires: [["git_backup_test_result_out"]],
   },
   {
+    id: "git_backup_test_deferred",
+    type: "inject",
+    z: TAB,
+    g: GROUP,
+    name: "TESTE 2C: adiado",
+    props: [
+      { p: "payload", v: "git-backup status=deferred request_id=test finished_at=synthetic", vt: "str" },
+      { p: "_git_backup_test", v: "true", vt: "bool" },
+    ],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    payload: "",
+    payloadType: "date",
+    x: 220,
+    y: 590,
+    wires: [["git_backup_test_result_out"]],
+  },
+  {
     id: "git_backup_test_result_out",
     type: "link out",
     z: TAB,
@@ -369,6 +402,51 @@ const nodes = [
     wires: [["git_backup_result"]],
   },
   functionNode("git_backup_dry_run_terminal", "TESTE FINAL: push e aviso simulados", dryRunTerminal, 0, 1240, 470, []),
+  {
+    id: "git_backup_retry_delay",
+    type: "delay",
+    z: TAB,
+    g: GROUP,
+    name: "Aguardar 5 min para observar retry",
+    pauseType: "delay",
+    timeout: "5",
+    timeoutUnits: "minutes",
+    rate: "1",
+    nbRateUnits: "1",
+    rateUnits: "second",
+    randomFirst: "1",
+    randomLast: "5",
+    randomUnits: "seconds",
+    drop: false,
+    allowrate: false,
+    outputs: 1,
+    x: 1240,
+    y: 270,
+    wires: [["git_backup_retry_out"]],
+  },
+  {
+    id: "git_backup_retry_out",
+    type: "link out",
+    z: TAB,
+    g: GROUP,
+    name: "Retry adiado → nova observação",
+    mode: "link",
+    links: ["git_backup_retry_in"],
+    x: 1505,
+    y: 270,
+    wires: [],
+  },
+  {
+    id: "git_backup_retry_in",
+    type: "link in",
+    z: TAB,
+    g: GROUP,
+    name: "Receber observação do retry",
+    links: ["git_backup_retry_out"],
+    x: 375,
+    y: 300,
+    wires: [["git_backup_request"]],
+  },
   {
     id: "git_backup_daily_update_out",
     type: "link out",
