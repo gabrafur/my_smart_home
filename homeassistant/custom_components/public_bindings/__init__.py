@@ -16,6 +16,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity_registry as er
 
 from .location import select_best_location
+from .service_policy import is_best_effort_notification
 
 DOMAIN = "public_bindings"
 DEFAULT_PATH = "/run/private-bindings/private-bindings.json"
@@ -226,7 +227,12 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             data["entity_id"] = targets[0]
         elif binding.get("target_entity_id"):
             data["entity_id"] = binding["target_entity_id"]
-        await hass.services.async_call(domain, service, data, blocking=True)
+        await hass.services.async_call(
+            domain,
+            service,
+            data,
+            blocking=not is_best_effort_notification(domain, data),
+        )
 
     hass.services.async_register(DOMAIN, SERVICE_CALL, call_binding, schema=SERVICE_SCHEMA)
     hass.data[DOMAIN] = {"entities": tuple(entities), "service_count": len(services)}

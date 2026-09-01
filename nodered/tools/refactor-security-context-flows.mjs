@@ -555,24 +555,28 @@ nodes.push(clone("sec_request_resident_primary_location", { id: "people_refresh_
 nodes.push(clone("sec_request_resident_secondary_location", { id: "people_refresh_resident_secondary", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Solicitar localização do iPhone resident_secondary", queue: "first", x: 650, y: 520, wires: [[]] }));
 nodes.push({ id: "people_refresh_connection_catch", type: "catch", z: PEOPLE_TAB, g: "grp_people_refresh", name: "Capturar desconexão transitória dos iPhones", scope: ["people_refresh_resident_primary", "people_refresh_resident_secondary"], uncaught: false, x: 770, y: 600, wires: [["people_refresh_connection_handler"]] });
 nodes.push(functionNode("people_refresh_connection_handler", PEOPLE_TAB, "grp_people_refresh", "Tratar desconexão transitória do HA", `const message = String(msg.error?.message ?? "");
+const normalized = message.toLowerCase();
 const transient =
-    message.includes("Connection lost") ||
-    message.includes("NoConnectionError");
+    normalized.includes("connection lost") ||
+    normalized.includes("noconnectionerror") ||
+    /\\b(?:e?timedout|timeout|timed out)\\b/.test(normalized);
 
 if (transient) {
     node.status({
         fill: "grey",
         shape: "ring",
-        text: "HA reconectando; refresh preservado"
+        text: "HA temporariamente indisponível; refresh será reavaliado"
     });
     return null;
 }
 
-node.error(
+// O observador global já recebe o erro do nó de serviço original. Não crie
+// um segundo incidente no tratador para a mesma falha.
+node.warn(
     "Falha inesperada ao solicitar localização: " +
-    (message || "erro sem mensagem"),
-    msg
+    (message || "erro sem mensagem")
 );
+node.status({ fill: "red", shape: "ring", text: "falha inesperada no refresh" });
 return null;`, 0, 1080, 600, []));
 nodes.push(linkIn("people_vehicle_primary_sync_in", PEOPLE_TAB, "grp_people_refresh", "Sincronizar trackers após refresh do vehicle_primary", ["vehicle_primary_refresh_people_sync_out"], 180, 600, [[]]));
 

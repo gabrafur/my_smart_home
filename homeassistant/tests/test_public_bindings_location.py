@@ -25,6 +25,13 @@ SPEC = importlib.util.spec_from_file_location("public_bindings_location", MODULE
 assert SPEC and SPEC.loader
 LOCATION = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(LOCATION)
+POLICY_PATH = MODULE_PATH.with_name("service_policy.py")
+POLICY_SPEC = importlib.util.spec_from_file_location(
+    "public_bindings_service_policy", POLICY_PATH
+)
+assert POLICY_SPEC and POLICY_SPEC.loader
+POLICY = importlib.util.module_from_spec(POLICY_SPEC)
+POLICY_SPEC.loader.exec_module(POLICY)
 
 NOW = datetime(2026, 8, 30, 21, 0, tzinfo=timezone.utc)
 
@@ -121,6 +128,36 @@ class BestLocationSelectionTest(unittest.TestCase):
         self.assertTrue(vehicle_entities)
         for binding in vehicle_entities.values():
             self.assertIs(binding["hide_targets"], True)
+
+
+class ServicePolicyTest(unittest.TestCase):
+    def test_location_refresh_is_dispatched_without_waiting(self):
+        self.assertTrue(
+            POLICY.is_best_effort_notification(
+                "notify", {"message": "request_location_update"}
+            )
+        )
+
+    def test_regular_notification_remains_blocking(self):
+        self.assertFalse(
+            POLICY.is_best_effort_notification(
+                "notify", {"message": "Portão aberto"}
+            )
+        )
+
+    def test_non_notification_service_remains_blocking(self):
+        self.assertFalse(
+            POLICY.is_best_effort_notification(
+                "script", {"message": "request_location_update"}
+            )
+        )
+
+    def test_non_string_message_remains_blocking(self):
+        self.assertFalse(
+            POLICY.is_best_effort_notification(
+                "notify", {"message": {"command": "request_location_update"}}
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -9151,7 +9151,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "b35563e0f73e5b64",
         "name": "Tratar desconexão transitória do HA",
-        "func": "const message = String(msg.error?.message ?? \"\");\nconst transient =\n    message.includes(\"Connection lost\") ||\n    message.includes(\"NoConnectionError\");\n\nif (transient) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"HA reconectando; refresh preservado\"\n    });\n    return null;\n}\n\nnode.error(\n    \"Falha inesperada ao solicitar localização: \" +\n    (message || \"erro sem mensagem\"),\n    msg\n);\nreturn null;",
+        "func": "const message = String(msg.error?.message ?? \"\");\nconst normalized = message.toLowerCase();\nconst transient =\n    normalized.includes(\"connection lost\") ||\n    normalized.includes(\"noconnectionerror\") ||\n    /\\b(?:e?timedout|timeout|timed out)\\b/.test(normalized);\n\nif (transient) {\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"HA temporariamente indisponível; refresh será reavaliado\"\n    });\n    return null;\n}\n\n// O observador global já recebe o erro do nó de serviço original. Não crie\n// um segundo incidente no tratador para a mesma falha.\nnode.warn(\n    \"Falha inesperada ao solicitar localização: \" +\n    (message || \"erro sem mensagem\")\n);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"falha inesperada no refresh\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,

@@ -437,9 +437,28 @@ scenario("31 desconexão transitória do HA é enfileirada e tratada", () => {
   assert(catcher && handler, "tratamento de desconexão ausente");
   assert.deepEqual(new Set(catcher.scope), new Set(calls.map((item) => item.id)));
   assert.equal(catcher.wires[0][0], handler.id);
-  assert.match(handler.func, /Connection lost/);
-  assert.match(handler.func, /NoConnectionError/);
+  assert.match(handler.func, /connection lost/);
+  assert.match(handler.func, /noconnectionerror/);
+  assert.match(handler.func, /timedout\|timeout\|timed out/);
   assert.match(handler.func, /Falha inesperada/);
+  assert.doesNotMatch(handler.func, /node\.error/);
+
+  const execute = new Function("msg", "node", handler.func);
+  const events = { errors: [], warnings: [], statuses: [] };
+  const runtimeNode = {
+    error: (value) => events.errors.push(value),
+    warn: (value) => events.warnings.push(value),
+    status: (value) => events.statuses.push(value),
+  };
+  assert.equal(execute({ error: { message: "Call-service error. timeout" } }, runtimeNode), null);
+  assert.equal(events.errors.length, 0);
+  assert.equal(events.warnings.length, 0);
+  assert.match(events.statuses.at(-1).text, /refresh será reavaliado/);
+
+  assert.equal(execute({ error: { message: "falha de domínio" } }, runtimeNode), null);
+  assert.equal(events.errors.length, 0);
+  assert.equal(events.warnings.length, 1);
+  assert.match(events.warnings[0], /falha de domínio/);
 });
 
 scenario("32 movimento na mesma zona solicita refresh sem autorizar iluminação", () => {

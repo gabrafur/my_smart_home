@@ -301,6 +301,12 @@ depende exclusivamente de um `delay` residente em memória.
 - Tick base: 30 s, com snapshot de pessoas e vehicle_primary.
 - iPhones: quando qualquer pessoa ou o vehicle_primary está fora, 60 s; 30 s quando a
   menor distância dos trackers de pessoas é até 2000 m.
+- `request_location_update` é best-effort: `public_bindings` agenda a
+  notificação móvel sem aguardar a conclusão do serviço remoto. O aceite do
+  Home Assistant não comprova uma posição nova; o ciclo seguinte reavalia os
+  trackers. Desconexão ou timeout transitório atualiza somente o status local,
+  sem criar um segundo erro no nó tratador; falhas inesperadas continuam sendo
+  notificadas pelo observador a partir do nó de serviço original.
 - vehicle_primary: 15 min quando `resident_primary` ou `resident_secondary`
   está `not_home`/`chegando`; 30 min no ciclo saudável quando ambos estão
   `home`, com os wakes periódicos suspensos das 00:00 às 05:59 nessa última
@@ -496,7 +502,7 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa 35 cenários de regressão, incluindo
+`flows:test-security` executa 38 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
 de refresh, inclusive movimento dentro da mesma zona, simetria de motor
 `on`/`off`, replay real de chegada após atraso `off -> on` e preservação de
