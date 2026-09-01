@@ -62,6 +62,7 @@ def main() -> None:
     assert "o esperado é uma consulta a cada 15 min" in dashboard
     assert "Último wake confirmado por dados novos" in dashboard
     assert "O último wake ainda não produziu dados novos" in dashboard
+    assert "'interval_minutes') | int(0)" in dashboard
     assert "ignora o prazo periódico e a pausa noturna" not in dashboard
     assert "Cache consultado em" in dashboard
     assert "Consulta executada em" not in dashboard
@@ -74,6 +75,8 @@ def main() -> None:
     assert dashboard.count("action: lock") == 2
     assert "name: Destravar portas" in dashboard
     assert dashboard.count("action: unlock") == 2
+    assert dashboard.count("entity: sensor.vehicle_primary_car_battery_level") == 1
+    assert "name: Bateria 12 V" in dashboard
     assert "perform_action: lock.lock" not in dashboard
     assert "perform_action: lock.unlock" not in dashboard
     assert "text: Travar as portas do Creta remotamente?" in dashboard

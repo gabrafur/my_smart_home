@@ -457,7 +457,23 @@ scenario("44 coordenadas confiáveis vencem tracker impreciso", () => {
   assert.equal(context.resident_primary.location_reliable, true);
 });
 
+scenario("45 tracker fora preserva evidência para ciclo de wake", () => {
+  const mobile = entity("not_home", 2_000, 30 * 60_000, 40);
+  mobile.entity_id = "device_tracker.mobile_secondary_source_1";
+  const icloud = entity("home", 25, 0, 5);
+  icloud.entity_id = "device_tracker.mobile_secondary_source_2";
+  const input = peopleInput({ event: "context_snapshot" });
+  input.payload.resident_secondary = mobile;
+  input.payload.resident_secondary_icloud = icloud;
+
+  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  assert.equal(context.resident_secondary.entity_id, icloud.entity_id);
+  assert.equal(context.resident_secondary.state, "home");
+  assert.equal(context.resident_secondary.any_tracker_away, true);
+  assert.equal(context.any_tracker_away, true);
+});
+
 Date.now = originalNow;
-assert.equal(passed.length, 44);
+assert.equal(passed.length, 45);
 console.log(`security recovery replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

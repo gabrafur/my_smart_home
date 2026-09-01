@@ -67,6 +67,10 @@ const contextCoordinator = flows.find((node) =>
 if (!contextCoordinator) {
   throw new Error("Coordenador de snapshots ausente");
 }
+contextCoordinator.func = contextCoordinator.func.replaceAll(
+  "people?.any_fresh_tracker_away",
+  "people?.any_tracker_away",
+);
 if (!contextCoordinator.func.includes("resident_primary_state:")) {
   const presenceMarker = `                    anyone_away:
                         people?.anyone_away === true ||
@@ -81,6 +85,19 @@ if (!contextCoordinator.func.includes("resident_primary_state:")) {
                         people?.resident_primary?.state ?? null,
                     resident_secondary_state:
                         people?.resident_secondary?.state ?? null,`,
+  );
+}
+if (!contextCoordinator.func.includes("any_resident_away:")) {
+  const residentPresenceMarker = `                    resident_secondary_state:
+                        people?.resident_secondary?.state ?? null,`;
+  if (!contextCoordinator.func.includes(residentPresenceMarker)) {
+    throw new Error("Estados dos moradores não encontrados no coordenador");
+  }
+  contextCoordinator.func = contextCoordinator.func.replace(
+    residentPresenceMarker,
+    `${residentPresenceMarker}
+                    any_resident_away:
+                        people?.any_tracker_away === true,`,
   );
 }
 Object.assign(required("25ca02f8c1de32d0"), { x: 215, y: 680 });

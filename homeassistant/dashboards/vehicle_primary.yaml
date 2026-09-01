@@ -79,16 +79,9 @@ views:
                 name: Motor
                 icon: mdi:engine
               - type: tile
-                entity: lock.vehicle_primary_door_lock
-                name: Travas
-                tap_action:
-                  action: none
-                icon_tap_action:
-                  action: none
-                hold_action:
-                  action: none
-                icon_hold_action:
-                  action: none
+                entity: sensor.vehicle_primary_car_battery_level
+                name: Bateria 12 V
+                icon: mdi:car-battery
               - type: tile
                 entity: binary_sensor.vehicle_primary_fuel_low_level
                 name: Reserva
@@ -329,7 +322,8 @@ views:
               {% set data_after_wake = updated_ts is not none and request_ts is not none and updated_ts >= request_ts - 60 %}
               {% set remaining_min = ((remaining + 59) / 60) | int if remaining > 0 else 0 %}
               {% set both_home = is_state('device_tracker.resident_primary_location', 'home') and is_state('device_tracker.resident_secondary_location', 'home') %}
-              {% set interval_min = 30 if both_home else 15 %}
+              {% set coordinator_interval_min = state_attr('sensor.vehicle_primary_refresh_coordinator', 'interval_minutes') | int(0) %}
+              {% set interval_min = coordinator_interval_min if coordinator_interval_min in [15, 30] else (30 if both_home else 15) %}
 
               **Atualização dos dados**
 
@@ -355,11 +349,6 @@ views:
               {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Coordenador de wake indisponível**.
               {% else %}🟢 **Wake pronto** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
               {% endif %}
-
-          - type: tile
-            entity: sensor.vehicle_primary_car_battery_level
-            name: Bateria 12 V
-            icon: mdi:car-battery
           - type: entities
             show_header_toggle: false
             entities:

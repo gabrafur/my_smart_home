@@ -13,6 +13,17 @@ const functionDir = path.join(toolsDir, "functions");
 const flows = JSON.parse(
   fs.readFileSync(path.resolve(toolsDir, "../flows.json"), "utf8"),
 );
+const contextCoordinator = flows.find(
+  (node) => node.name === "Coordenar snapshot e refresh",
+);
+assert.match(
+  contextCoordinator?.func ?? "",
+  /any_resident_away:\s*people\?\.any_tracker_away === true/,
+);
+assert.doesNotMatch(
+  contextCoordinator?.func ?? "",
+  /any_fresh_tracker_away/,
+);
 
 function source(name) {
   return fs.readFileSync(path.join(functionDir, name), "utf8");
@@ -190,6 +201,32 @@ scenario("02 ambos em casa usam intervalo de 30 minutos", () => {
   assert.equal(state.interval_ms, 30 * 60_000);
   assert.equal(state.interval_policy, "both_home_30m");
   assert.equal(state.next_allowed_at, DAY + 30 * 60_000);
+});
+
+scenario("02a evidência recente fora reduz conflito de presença para 15 minutos", () => {
+  const acceptedAt = DAY;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(acceptedAt),
+    [KEY]: {
+      attempts: 0,
+      awaiting_evidence: false,
+      last_success_at: acceptedAt,
+      last_request_at: acceptedAt,
+      service_accepted_at: acceptedAt,
+      next_allowed_at: acceptedAt + 30 * 60_000,
+      interval_ms: 30 * 60_000,
+    },
+  });
+
+  const result = coordinator(store, acceptedAt + 15 * 60_000, {
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+    any_resident_away: true,
+  });
+
+  assert(result[0]);
+  assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
+  assert.equal(store.get(KEY).interval_policy, "away_or_approaching_15m");
 });
 
 scenario("03 ambos em casa ficam pausados entre 00h e 06h", () => {

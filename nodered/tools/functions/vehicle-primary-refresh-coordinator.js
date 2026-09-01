@@ -34,10 +34,16 @@ const residentSecondaryState = String(
 ).toLowerCase();
 const residentStatesKnown =
     residentPrimaryState.length > 0 && residentSecondaryState.length > 0;
+const anyResidentAway =
+    msg.payload?.any_resident_away === true ||
+    peopleContext.any_tracker_away === true;
 const bothResidentsHome =
-    residentPrimaryState === "home" && residentSecondaryState === "home";
+    residentPrimaryState === "home" &&
+    residentSecondaryState === "home" &&
+    !anyResidentAway;
 const awayOrApproachingStates = new Set(["not_home", "chegando"]);
 const anyoneAwayOrApproaching =
+    anyResidentAway ||
     msg.payload?.anyone_away === true ||
     peopleContext.anyone_away === true ||
     awayOrApproachingStates.has(residentPrimaryState) ||
