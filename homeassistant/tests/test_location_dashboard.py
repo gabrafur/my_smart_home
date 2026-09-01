@@ -44,6 +44,12 @@ class LocationDashboardTest(unittest.TestCase):
         self.assertIn("title: Last update by source", dashboard)
         self.assertIn("location_sources", dashboard)
         self.assertIn("source.last_updated", dashboard)
+        self.assertIn("source.location_observed_at", dashboard)
+        self.assertIn("Current GPS", dashboard)
+        self.assertIn("Aging GPS", dashboard)
+        self.assertIn("Stale GPS", dashboard)
+        self.assertIn("Last GPS change", dashboard)
+        self.assertIn("Last update", dashboard)
 
     def test_dashboard_labels_are_english_only(self):
         dashboard = DASHBOARD.read_text(encoding="utf-8")

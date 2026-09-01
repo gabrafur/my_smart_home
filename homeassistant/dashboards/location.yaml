@@ -41,24 +41,29 @@ views:
               {% if items %}
               {% for item in items %}
               {% if item.state == 'home' %}
-                {% set status = '🏠 Home' %}
+                {% set status_icon = '🏠' %}
+                {% set status = 'Home' %}
               {% elif item.state == 'not_home' %}
-                {% set status = '📍 Away' %}
+                {% set status_icon = '📍' %}
+                {% set status = 'Away' %}
               {% elif item.state == 'chegando' %}
-                {% set status = '🚗 Arriving' %}
+                {% set status_icon = '🚗' %}
+                {% set status = 'Arriving' %}
               {% elif item.state == 'unavailable' %}
-                {% set status = '⚠️ Unavailable' %}
+                {% set status_icon = '⚠️' %}
+                {% set status = 'Unavailable' %}
               {% elif item.state == 'unknown' %}
-                {% set status = '❔ Unknown' %}
+                {% set status_icon = '❔' %}
+                {% set status = 'Unknown' %}
               {% else %}
-                {% set status = '📍 ' ~ item.state
+                {% set status_icon = '📍' %}
+                {% set status = item.state
                   | replace('_', ' ') | title %}
               {% endif %}
-              ### {{ item.name }}
+              ### {{ status_icon }} {{ item.name }}
 
-              | Status | Source in use |
-              | :-- | :-- |
-              | **{{ status }}** | **{{ item.attributes.selected_location_source }}** |
+              **{{ status }}** · location from **{{
+                item.attributes.selected_location_source }}**
 
               {% if not loop.last %}---{% endif %}
               {% endfor %}
@@ -79,13 +84,30 @@ views:
                 | sort(attribute='name') | list %}
               {% if items %}
               {% for item in items %}
-              ### {{ item.name }}
+              {% if item.attributes.binding_role == 'vehicle_primary' %}
+                {% set item_icon = '🚙' %}
+              {% else %}
+                {% set item_icon = '📱' %}
+              {% endif %}
+              ### {{ item_icon }} {{ item.name }}
 
-              | Source | Last update |
-              | :-- | --: |
               {% for source in item.attributes.location_sources -%}
-              | **{{ source.name }}** | {{ as_timestamp(source.last_updated)
-                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }} |
+              {% set gps_age = as_timestamp(now())
+                - as_timestamp(source.location_observed_at) %}
+              {% if gps_age <= 900 %}
+                {% set gps_health = '🟢 Current GPS' %}
+              {% elif gps_age <= 3600 %}
+                {% set gps_health = '🟠 Aging GPS' %}
+              {% else %}
+                {% set gps_health = '🔴 Stale GPS' %}
+              {% endif %}
+              **{{ source.name }}** · {{ gps_health }}<br>
+              🛰️ Last GPS change `{{ as_timestamp(source.location_observed_at)
+                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`<br>
+              🔄 Last update `{{ as_timestamp(source.last_updated)
+                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`
+
+              {% if not loop.last %}<br>{% endif %}
               {% endfor %}
 
               {% if not loop.last %}---{% endif %}

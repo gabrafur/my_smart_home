@@ -71,12 +71,12 @@ públicos das fontes ficam no binding privado; o veículo é exibido como
 Bindings de localização podem declarar `source_names`, na mesma ordem dos
 alvos. O adapter publica apenas o rótulo vencedor em
 `selected_location_source` e uma lista sanitizada `location_sources` com o
-rótulo e a última observação de localização de cada fonte. O adapter mantém
-`location_observed_at` separado do `last_updated` genérico: mudanças de bateria
-ou outros metadados não renovam uma posição GPS. Na inicialização, o horário é
-recuperado do histórico do Recorder comparando somente estado, coordenadas e
-precisão. Dois cards Markdown dinâmicos mostram essas informações sem expor IDs
-privados.
+rótulo, a última atualização genérica e a última observação de localização de
+cada fonte. O adapter mantém `location_observed_at` separado do `last_updated`:
+mudanças de bateria ou outros metadados atualizam somente `last_updated` e não
+renovam uma posição GPS. Na inicialização, o horário GPS é recuperado do
+histórico do Recorder comparando somente estado, coordenadas e precisão. Dois
+cards Markdown dinâmicos mostram essas informações sem expor IDs privados.
 
 Bindings consolidados usam `hide_targets: true` para ocultar da descoberta
 visual somente os trackers privados que alimentam o consolidado. Eles continuam

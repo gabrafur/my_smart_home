@@ -63,12 +63,12 @@ public source labels stay in private bindings; the vehicle is shown as `Creta`.
 
 Location bindings may declare `source_names` in target order. The adapter
 publishes only the winning label in `selected_location_source` and a sanitized
-`location_sources` list containing each public label and its last location
-observation. The adapter keeps `location_observed_at` separate from generic
-`last_updated`: battery or other metadata changes do not refresh a GPS
-position. At startup, the timestamp is recovered from Recorder history by
-comparing only state, coordinates, and accuracy. Two dynamic Markdown cards
-show this information without exposing private IDs.
+`location_sources` list containing each public label, generic last update, and
+last location observation. The adapter keeps `location_observed_at` separate
+from `last_updated`: battery or other metadata changes update only the latter
+and do not refresh a GPS position. At startup, the GPS timestamp is recovered
+from Recorder history by comparing only state, coordinates, and accuracy. Two
+dynamic Markdown cards show this information without exposing private IDs.
 
 Consolidated bindings use `hide_targets: true` to hide only their private input
 trackers from visual discovery. Those trackers remain active and available to

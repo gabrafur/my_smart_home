@@ -183,7 +183,8 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             attributes["location_sources"] = [
                 {
                     "name": source_name,
-                    "last_updated": location_observed_at(
+                    "last_updated": source_state.last_updated.isoformat(),
+                    "location_observed_at": location_observed_at(
                         location_observations,
                         source_state,
                     ).isoformat(),
