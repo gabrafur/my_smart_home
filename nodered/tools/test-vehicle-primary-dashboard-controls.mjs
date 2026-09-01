@@ -52,7 +52,78 @@ function runtime(code, { msg, values = {}, now }) {
 const coordinator = source("vehicle-primary-refresh-coordinator.js");
 const manual = source("vehicle-primary-manual-refresh.js");
 const telemetry = source("vehicle-primary-refresh-telemetry.js");
+const remoteCommandMonitor = source("vehicle-primary-remote-command-monitor.js");
+const remoteCommandGuard = source("vehicle-primary-remote-command-dispatch-guard.js");
 const now = Date.parse("2026-08-17T03:00:00Z");
+
+{
+  const failureMessage = {
+    payload: {
+      test_mode: true,
+      state: "failed",
+      attributes: {
+        command: "lock",
+        failure_stage: "confirmation",
+        reason: "falha simulada após o aceite",
+        updated_at: "test-failure",
+      },
+      preconditions: {
+        front_left_door: { state: "off" },
+        front_right_door: { state: "off" },
+        back_left_door: { state: "on" },
+        back_right_door: { state: "off" },
+        trunk: { state: "off" },
+        engine: { state: "off" },
+        lock: { state: "unlocked" },
+        telemetry: { state: "2026-08-17T02:45:00Z" },
+      },
+    },
+    _vehicle_primary_remote_command_test: true,
+  };
+  const failure = runtime(remoteCommandMonitor, {
+    now,
+    msg: structuredClone(failureMessage),
+  });
+  assert.equal(failure.result.alert.title, "TESTE — falha no comando do Creta");
+  assert.match(failure.result.alert.message, /travar as portas/);
+  assert.match(failure.result.alert.message, /porta traseira esquerda aberta/);
+  assert.match(failure.result.alert.message, /15 min/);
+  assert.doesNotMatch(failure.result.alert.message, /Motivo informado/);
+  assert.equal(failure.result.notification.id, "vehicle_primary_remote_command_failed");
+
+  const duplicate = runtime(remoteCommandMonitor, {
+    now: now + 1_000,
+    values: Object.fromEntries(failure.store),
+    msg: structuredClone(failureMessage),
+  });
+  assert.equal(duplicate.result, null);
+
+  const guarded = runtime(remoteCommandGuard, {
+    now,
+    msg: failure.result,
+  });
+  assert.equal(guarded.result[0], null);
+  assert.equal(guarded.result[1], null);
+  assert.equal(guarded.result[2].payload.simulated, true);
+  assert.equal(guarded.result[2].payload.dispatched, false);
+  assert.equal(guarded.result[2].payload.notification_sent, false);
+  assert.equal(guarded.result[2].payload.persistent_notification_created, false);
+}
+
+{
+  const success = runtime(remoteCommandMonitor, {
+    now,
+    msg: {
+      payload: {
+        test_mode: true,
+        state: "accepted",
+        attributes: { command: "unlock", updated_at: "test-success" },
+      },
+      _vehicle_primary_remote_command_test: true,
+    },
+  });
+  assert.equal(success.result, null);
+}
 
 {
   const { result } = runtime(manual, {
@@ -224,6 +295,15 @@ for (const expected of [
   "vehicle_primary_cache_probe_dispatch_guard_v1",
   "vehicle_primary_cache_probe_call_v1",
   "vehicle_primary_cache_probe_accepted_v1",
+  "vehicle_primary_remote_command_event_v1",
+  "vehicle_primary_remote_command_monitor_v1",
+  "vehicle_primary_remote_command_guard_v1",
+  "vehicle_primary_remote_command_notify_primary_v1",
+  "vehicle_primary_remote_command_notify_persistent_v1",
+  "vehicle_primary_remote_command_dry_run_out_v1",
+  "vehicle_primary_remote_command_test_reset_v1",
+  "vehicle_primary_remote_command_test_success_v1",
+  "vehicle_primary_remote_command_test_failure_v1",
 ]) {
   assert.equal(ids.filter((id) => id === expected).length, 1, expected);
 }
@@ -309,6 +389,33 @@ assert.match(refreshNotification.data, /"title":alert\.title/);
 assert.match(refreshNotification.data, /"message":alert\.message/);
 assert.equal(refreshNotification.queue, "all");
 
+const remoteEvent = flows.find(
+  (node) => node.id === "vehicle_primary_remote_command_event_v1",
+);
+assert.deepEqual(remoteEvent.entities.entity, [
+  "sensor.garagem_vehicle_primary_remote_command_status",
+]);
+assert.equal(remoteEvent.ifState, "failed");
+const remoteGuard = flows.find(
+  (node) => node.id === "vehicle_primary_remote_command_guard_v1",
+);
+assert.deepEqual(remoteGuard.wires, [
+  ["vehicle_primary_remote_command_notify_primary_v1"],
+  ["vehicle_primary_remote_command_notify_persistent_v1"],
+  ["vehicle_primary_remote_command_dry_run_out_v1"],
+]);
+const remoteMobile = flows.find(
+  (node) => node.id === "vehicle_primary_remote_command_notify_primary_v1",
+);
+assert.equal(remoteMobile.action, "public_bindings.call");
+assert.equal(remoteMobile.queue, "all");
+const remotePersistent = flows.find(
+  (node) => node.id === "vehicle_primary_remote_command_notify_persistent_v1",
+);
+assert.equal(remotePersistent.action, "persistent_notification.create");
+assert.match(remotePersistent.data, /notification_id/);
+assert.equal(remotePersistent.queue, "all");
+
 for (const [id, action] of [
   ["8907830bb7f6c40c", "force_refresh"],
   ["16396e34ff530ac7", "refresh_trip_info"],
@@ -334,6 +441,15 @@ assert.deepEqual(vehicleServices.refresh_trip_info, {
   target_service: "button.press",
   target_public_entity_id: "button.garagem_vehicle_primary_refresh_trip_info",
 });
+assert.deepEqual(vehicleServices.unlock, {
+  target_service: "lock.unlock",
+  target_public_entity_id: "lock.vehicle_primary_door_lock",
+});
+assert.ok(
+  exampleBindings.roles.vehicle_primary.entities[
+    "sensor.garagem_vehicle_primary_remote_command_status"
+  ].attributes.includes("failure_stage"),
+);
 
 for (const node of flows.filter((item) => item.type === "api-call-service")) {
   const serialized = JSON.stringify(node);
@@ -346,4 +462,4 @@ for (const node of flows.filter((item) => item.type === "api-call-service")) {
   }
 }
 
-console.log("vehicle_primary dashboard controls: 8 cenários aprovados.");
+console.log("vehicle_primary dashboard controls: 10 cenários aprovados.");

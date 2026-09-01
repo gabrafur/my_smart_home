@@ -81,6 +81,14 @@ views:
               - type: tile
                 entity: lock.vehicle_primary_door_lock
                 name: Travas
+                tap_action:
+                  action: none
+                icon_tap_action:
+                  action: none
+                hold_action:
+                  action: none
+                icon_hold_action:
+                  action: none
               - type: tile
                 entity: binary_sensor.vehicle_primary_fuel_low_level
                 name: Reserva
@@ -197,16 +205,51 @@ views:
                   action: none
                 icon_hold_action:
                   action: none
+              - type: tile
+                entity: lock.vehicle_primary_door_lock
+                name: Destravar portas
+                icon: mdi:lock-open-variant
+                hide_state: true
+                tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: unlock
+                  confirmation:
+                    text: Destravar as portas do Creta remotamente?
+                icon_tap_action:
+                  action: perform-action
+                  perform_action: public_bindings.call
+                  data:
+                    role: vehicle_primary
+                    action: unlock
+                  confirmation:
+                    text: Destravar as portas do Creta remotamente?
+                hold_action:
+                  action: none
+                icon_hold_action:
+                  action: none
           - type: markdown
             content: >-
               {% set command = states('sensor.garagem_vehicle_primary_remote_command_status') %}
-              **Localizar por luz e buzina**
+              {% set action = state_attr('sensor.garagem_vehicle_primary_remote_command_status', 'command') %}
+              {% set reason = state_attr('sensor.garagem_vehicle_primary_remote_command_status', 'reason') %}
+              {% set labels = {
+                'unlock': 'destravar as portas',
+                'lock': 'travar as portas',
+                'climate_on': 'ligar o carro e o ar',
+                'climate_off': 'desligar o carro e o ar',
+                'hazard_lights_and_horn': 'acionar luzes e buzina'
+              } %}
+              {% set label = labels.get(action, 'executar o comando remoto') %}
+              **Último comando remoto**
 
-              {% if command == 'requesting' %}🔵 **Comando em andamento** · aguardando a resposta do veículo.
-              {% elif command == 'accepted' %}🟢 **Comando aceito** · o veículo confirmou a solicitação.
+              {% if command == 'requesting' %}🔵 **Comando em andamento** · aguardando a confirmação final para {{ label }}.
+              {% elif command == 'accepted' %}🟢 **Comando confirmado** · o veículo concluiu a solicitação para {{ label }}.
               {% elif command == 'cooldown' %}🟡 **Comando em espera** · aguarde o cooldown antes de tentar novamente.
-              {% elif command == 'failed' %}🔴 **Falha no último comando** · o veículo não confirmou a solicitação.
-              {% else %}🔵 Segure o botão **Localizar (segure)** e confirme para acionar luzes e buzina.
+              {% elif command == 'failed' %}🔴 **Falha no último comando** · o veículo não confirmou a solicitação para {{ label }}{% if reason %}: {{ reason }}{% else %}.{% endif %}
+              {% else %}🔵 Os comandos aguardam a confirmação final do Bluelink; falhas geram aviso no celular e no Home Assistant.
               {% endif %}
           - type: grid
             columns: 2

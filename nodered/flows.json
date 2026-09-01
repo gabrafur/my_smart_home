@@ -1040,7 +1040,7 @@
         "id": "5df25064f701ecd2",
         "type": "group",
         "z": "c22d8b12055e87f7",
-        "name": "4. Testes manuais — motor e localização sintéticos/cumulativos",
+        "name": "5. Testes manuais — motor e localização sintéticos/cumulativos",
         "style": {
             "label": true,
             "stroke": "#777777",
@@ -1062,7 +1062,7 @@
             "2ff281276fc1d020"
         ],
         "x": 174,
-        "y": 1199,
+        "y": 1619,
         "w": 992,
         "h": 402
     },
@@ -10231,7 +10231,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1240,
+        "y": 1660,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10257,7 +10257,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1380,
+        "y": 1800,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10283,7 +10283,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1420,
+        "y": 1840,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10309,7 +10309,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1460,
+        "y": 1880,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10335,7 +10335,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1520,
+        "y": 1940,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10361,7 +10361,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1560,
+        "y": 1980,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10382,7 +10382,7 @@
         "finalize": "",
         "libs": [],
         "x": 820,
-        "y": 1420,
+        "y": 1840,
         "wires": [
             [
                 "2ff281276fc1d020"
@@ -10401,7 +10401,7 @@
             "882f727e98158ffe"
         ],
         "x": 1110,
-        "y": 1420,
+        "y": 1840,
         "wires": []
     },
     {
@@ -10633,7 +10633,7 @@
         "name": "1) RESETAR  2) escolher motor ON/OFF  3) executar 1/3 → 2/3 → 3/3",
         "info": "O motor sintético é cumulativo: os passos de localização preservam o último estado ON/OFF escolhido. Todo o cenário usa test_mode e não altera as entidades reais do veículo.",
         "x": 890,
-        "y": 1320,
+        "y": 1740,
         "wires": []
     },
     {
@@ -10655,7 +10655,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1280,
+        "y": 1700,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10681,7 +10681,7 @@
         "onceDelay": 0.1,
         "topic": "",
         "x": 400,
-        "y": 1320,
+        "y": 1740,
         "wires": [
             [
                 "3ad83e8d6897b983"
@@ -10842,7 +10842,8 @@
         "links": [
             "vehicle_primary_refresh_dry_run_out_v1",
             "vehicle_primary_trip_dry_run_out_v1",
-            "vehicle_primary_refresh_notification_dry_run_out_v1"
+            "vehicle_primary_refresh_notification_dry_run_out_v1",
+            "vehicle_primary_remote_command_dry_run_out_v1"
         ],
         "x": 1320,
         "y": 860,
@@ -17382,6 +17383,368 @@
         "libs": [],
         "x": 1190,
         "y": 900,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_remote_command_group_v1",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "4. Resultado final dos comandos remotos",
+        "style": {
+            "label": true,
+            "stroke": "#5b8ff9",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "vehicle_primary_remote_command_event_v1",
+            "vehicle_primary_remote_command_test_in_v1",
+            "vehicle_primary_remote_command_monitor_v1",
+            "vehicle_primary_remote_command_guard_v1",
+            "vehicle_primary_remote_command_notify_primary_v1",
+            "vehicle_primary_remote_command_notify_persistent_v1",
+            "vehicle_primary_remote_command_dry_run_out_v1",
+            "vehicle_primary_remote_command_architecture_v1"
+        ],
+        "x": 174,
+        "y": 1199,
+        "w": 1662,
+        "h": 302
+    },
+    {
+        "id": "vehicle_primary_remote_command_event_v1",
+        "type": "server-state-changed",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Resultado remoto mudou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.garagem_vehicle_primary_remote_command_status"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "failed",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": true,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "({\n        \"entity\": $entities(\"sensor.garagem_vehicle_primary_remote_command_status\"),\n        \"preconditions\": {\n          \"front_left_door\": $entities(\"binary_sensor.vehicle_primary_front_left_door\"),\n          \"front_right_door\": $entities(\"binary_sensor.vehicle_primary_front_right_door\"),\n          \"back_left_door\": $entities(\"binary_sensor.vehicle_primary_back_left_door\"),\n          \"back_right_door\": $entities(\"binary_sensor.vehicle_primary_back_right_door\"),\n          \"trunk\": $entities(\"binary_sensor.vehicle_primary_trunk\"),\n          \"engine\": $entities(\"binary_sensor.vehicle_primary_engine\"),\n          \"lock\": $entities(\"lock.vehicle_primary_door_lock\"),\n          \"telemetry\": $entities(\"sensor.vehicle_primary_last_updated_at\")\n        }\n      })",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 390,
+        "y": 1260,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_monitor_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_in_v1",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Receber resultado remoto de TESTE",
+        "links": [
+            "vehicle_primary_remote_command_test_out_v1"
+        ],
+        "x": 385,
+        "y": 1340,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_monitor_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_monitor_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Classificar, deduplicar e compor alerta",
+        "func": "const TEST_MODE =\n    msg._vehicle_primary_remote_command_test === true ||\n    msg.payload?.test_mode === true;\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst KEY = TEST_MODE\n    ? \"vehicle_primary_remote_command_monitor_v1__test\"\n    : \"vehicle_primary_remote_command_monitor_v1\";\n\nif (msg.payload?.event === \"reset\") {\n    flow.set(KEY, null, STORE);\n    node.status({\n        fill: \"blue\",\n        shape: \"dot\",\n        text: \"TESTE do comando remoto resetado\"\n    });\n    return null;\n}\n\nconst entity = msg.payload?.entity ?? msg.payload ?? {};\nconst state = String(entity.state ?? \"unknown\").toLowerCase();\nconst attributes = entity.attributes ?? {};\nif (state !== \"failed\") return null;\n\nconst preconditions = msg.payload?.preconditions ?? {};\nconst stateOf = (value) => String(value?.state ?? \"unknown\").toLowerCase();\n\nconst command = String(attributes.command ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9_-]/g, \"\") || \"unknown\";\nconst failureStage = String(attributes.failure_stage ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9_-]/g, \"\") || \"unknown\";\nconst observedAt = String(\n    attributes.failed_at ??\n    attributes.updated_at ??\n    entity.last_updated ??\n    \"unknown\"\n).slice(0, 64);\nconst incidentKey = [command, failureStage, observedAt].join(\"|\");\nconst previous = flow.get(KEY, STORE) ?? {};\nif (previous.incident_key === incidentKey) return null;\n\nconst labels = {\n    unlock: \"destravar as portas\",\n    lock: \"travar as portas\",\n    climate_on: \"ligar o carro e o ar-condicionado\",\n    climate_off: \"desligar o carro e o ar-condicionado\",\n    hazard_lights_and_horn: \"acionar a buzina e as luzes\"\n};\nconst label = labels[command] ?? \"executar um comando remoto\";\nconst rawReason = String(attributes.reason ?? \"\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .trim();\nconst reason = rawReason.slice(0, 280);\nconst openSignals = [\n    [\"front_left_door\", \"porta dianteira esquerda\"],\n    [\"front_right_door\", \"porta dianteira direita\"],\n    [\"back_left_door\", \"porta traseira esquerda\"],\n    [\"back_right_door\", \"porta traseira direita\"],\n    [\"trunk\", \"porta-malas\"]\n];\nconst blockers = [];\nif ([\"lock\", \"climate_on\"].includes(command)) {\n    for (const [key, labelText] of openSignals) {\n        if (stateOf(preconditions[key]) === \"on\") {\n            blockers.push(`${labelText} aberta`);\n        }\n    }\n}\nif (\n    [\"lock\", \"climate_on\"].includes(command) &&\n    stateOf(preconditions.engine) === \"on\"\n) {\n    blockers.push(\"motor ligado\");\n}\nif (\n    command === \"climate_on\" &&\n    stateOf(preconditions.lock) === \"unlocked\"\n) {\n    blockers.push(\"portas destravadas\");\n}\n\nconst telemetryAt = Date.parse(preconditions.telemetry?.state ?? \"\");\nconst telemetryAgeMinutes = Number.isFinite(telemetryAt)\n    ? Math.max(0, Math.round((Date.now() - telemetryAt) / 60000))\n    : null;\nconst formatNumber = new Intl.NumberFormat(\"pt-BR\", {\n    maximumFractionDigits: 0\n});\nlet detail;\nif (blockers.length) {\n    detail =\n        \" Possível causa detectada na última telemetria: \" +\n        blockers.join(\", \") +\n        \".\";\n    if (telemetryAgeMinutes !== null && telemetryAgeMinutes > 5) {\n        detail +=\n            \" Essa leitura do veículo tinha \" +\n            formatNumber.format(telemetryAgeMinutes) +\n            \" min quando a falha foi recebida; confirme fisicamente ou \" +\n            \"atualize os dados antes de repetir.\";\n    }\n} else {\n    detail = reason\n        ? ` Motivo informado: ${reason}`\n        : \" O Bluelink não informou um motivo adicional.\";\n}\n\nflow.set(KEY, {\n    version: 1,\n    incident_key: incidentKey,\n    command,\n    failure_stage: failureStage,\n    observed_at: observedAt,\n    notified_at: Date.now()\n}, STORE);\n\nmsg._vehicle_primary_remote_command_test = TEST_MODE;\nmsg.payload = {\n    event: \"vehicle_remote_command_failed\",\n    test_mode: TEST_MODE,\n    command,\n    failure_stage: failureStage,\n    observed_at: observedAt,\n    side_effect: \"notify:resident_primary+persistent_notification\"\n};\nmsg.alert = {\n    title: TEST_MODE\n        ? \"TESTE — falha no comando do Creta\"\n        : \"Falha no comando remoto do Creta\",\n    message:\n        `Não foi possível ${label}; o veículo não confirmou a execução.` +\n        detail\n};\nmsg.notification = {\n    id: \"vehicle_primary_remote_command_failed\",\n    title: msg.alert.title,\n    message: msg.alert.message\n};\n\nnode.status({\n    fill: \"red\",\n    shape: \"ring\",\n    text: `falha confirmada: ${command}`\n});\nnode.warn(\n    \"VEHICLE_PRIMARY_REMOTE_COMMAND_FAILED \" +\n    `command=${command} stage=${failureStage}`\n);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 1300,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_guard_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_guard_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Separar notificações reais e dry-run",
+        "func": "const TEST_MODE =\n    msg._vehicle_primary_remote_command_test === true ||\n    msg.payload?.test_mode === true;\n\nif (!TEST_MODE) return [msg, msg, null];\n\nmsg.payload = {\n    ...msg.payload,\n    test_mode: true,\n    simulated: true,\n    dispatched: false,\n    notification_sent: false,\n    persistent_notification_created: false,\n    side_effect: \"notify:resident_primary+persistent_notification\"\n};\nreturn [null, null, msg];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 1300,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_notify_primary_v1"
+            ],
+            [
+                "vehicle_primary_remote_command_notify_persistent_v1"
+            ],
+            [
+                "vehicle_primary_remote_command_dry_run_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_notify_primary_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Avisar falha no celular",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1350,
+        "y": 1260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_notify_persistent_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Criar aviso persistente no Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":notification.title,\"message\":notification.message,\"notification_id\":notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1430,
+        "y": 1320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_dry_run_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Alertas remotos TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_dry_run_in_v1"
+        ],
+        "x": 1395,
+        "y": 1380,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_remote_command_architecture_v1",
+        "type": "comment",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Aceite do request não basta: somente failed final gera alerta; celular e Notifications recebem o mesmo incidente deduplicado",
+        "info": "",
+        "x": 840,
+        "y": 1440,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_group_v1",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "6. TESTE — resultado remoto sem efeitos",
+        "style": {
+            "label": true,
+            "stroke": "#ffb300",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "vehicle_primary_remote_command_test_help_v1",
+            "vehicle_primary_remote_command_test_reset_v1",
+            "vehicle_primary_remote_command_test_success_v1",
+            "vehicle_primary_remote_command_test_failure_v1",
+            "vehicle_primary_remote_command_test_out_v1"
+        ],
+        "x": 1234,
+        "y": 1619,
+        "w": 602,
+        "h": 302
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_help_v1",
+        "type": "comment",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "1) RESETAR  2) sucesso nominal não alerta  3) falha chega ao terminal dry-run",
+        "info": "",
+        "x": 1530,
+        "y": 1660,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_reset_v1",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "RESETAR teste de comando remoto",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_vehicle_primary_remote_command_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"event\":\"reset\",\"test_mode\":true}",
+        "payloadType": "json",
+        "x": 1420,
+        "y": 1720,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_test_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_success_v1",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "TESTE: comando confirmado",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_vehicle_primary_remote_command_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"test_mode\":true,\"state\":\"accepted\",\"attributes\":{\"command\":\"unlock\",\"result_stage\":\"confirmed\",\"updated_at\":\"test-success\"},\"preconditions\":{\"front_left_door\":{\"state\":\"off\"},\"front_right_door\":{\"state\":\"off\"},\"back_left_door\":{\"state\":\"off\"},\"back_right_door\":{\"state\":\"off\"},\"trunk\":{\"state\":\"off\"},\"engine\":{\"state\":\"off\"},\"lock\":{\"state\":\"unlocked\"},\"telemetry\":{\"state\":\"2026-08-17T02:59:00Z\"}}}",
+        "payloadType": "json",
+        "x": 1420,
+        "y": 1780,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_test_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_failure_v1",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "TESTE: falha assíncrona",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_vehicle_primary_remote_command_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"test_mode\":true,\"state\":\"failed\",\"attributes\":{\"command\":\"lock\",\"failure_stage\":\"confirmation\",\"reason\":\"falha simulada após o aceite\",\"updated_at\":\"test-failure\"},\"preconditions\":{\"front_left_door\":{\"state\":\"off\"},\"front_right_door\":{\"state\":\"off\"},\"back_left_door\":{\"state\":\"on\"},\"back_right_door\":{\"state\":\"off\"},\"trunk\":{\"state\":\"off\"},\"engine\":{\"state\":\"off\"},\"lock\":{\"state\":\"unlocked\"},\"telemetry\":{\"state\":\"2026-08-17T02:45:00Z\"}}}",
+        "payloadType": "json",
+        "x": 1420,
+        "y": 1840,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_test_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "Resultado TESTE → monitor remoto",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_remote_command_test_in_v1"
+        ],
+        "x": 1745,
+        "y": 1780,
         "wires": []
     },
     {

@@ -68,17 +68,20 @@ def main() -> None:
     assert "consultado a cada **15 minutos** sem acordar o carro" in dashboard
     assert "backoff progressivo de até **6 horas**" in dashboard
     assert "O botão **Atualizar agora** força um wake" in dashboard
-    assert "**Localizar por luz e buzina**" in dashboard
+    assert "**Último comando remoto**" in dashboard
     assert "name: Localizar (segure)" in dashboard
     assert "name: Travar portas" in dashboard
     assert dashboard.count("action: lock") == 2
+    assert "name: Destravar portas" in dashboard
+    assert dashboard.count("action: unlock") == 2
     assert "perform_action: lock.lock" not in dashboard
+    assert "perform_action: lock.unlock" not in dashboard
     assert "text: Travar as portas do Creta remotamente?" in dashboard
     assert "O Bluelink não fornece litros consumidos por viagem" in dashboard
     assert "trip.estimated_km_per_l" in dashboard
     assert "referência da janela" not in dashboard
     assert "Consumo sem amostras suficientes" not in dashboard
-    assert dashboard.index("**Localizar por luz e buzina**") < dashboard.index(
+    assert dashboard.index("**Último comando remoto**") < dashboard.index(
         "**Atualização dos dados**"
     )
     assert "unique_id: vehicle_primary_current_location_since" in controls
@@ -88,7 +91,7 @@ def main() -> None:
     assert "event_type: kia_uvo_api_retry" in controls
     assert "unique_id: vehicle_primary_api_retry_at" in controls
 
-    print("vehicle_primary dashboard: 55 verificações aprovadas.")
+    print("vehicle_primary dashboard: 59 verificações aprovadas.")
 
 
 class VehiclePrimaryDashboardLocationTest(unittest.TestCase):

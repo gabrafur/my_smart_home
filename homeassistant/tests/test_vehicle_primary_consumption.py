@@ -7,9 +7,10 @@ import datetime as dt
 import importlib.util
 import sys
 import unittest
+from enum import Enum
 from pathlib import Path
 from types import MethodType, ModuleType, SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 
 def _module(name: str, **attributes):
@@ -95,6 +96,16 @@ def _load_coordinator_without_home_assistant():
     _module("hyundai_kia_connect_api", **api_types)
     _module(
         "hyundai_kia_connect_api.const",
+        ORDER_STATUS=Enum(
+            "ORDER_STATUS",
+            {
+                "PENDING": "PENDING",
+                "SUCCESS": "SUCCESS",
+                "FAILED": "FAILED",
+                "TIMEOUT": "TIMEOUT",
+                "UNKNOWN": "UNKNOWN",
+            },
+        ),
         WINDOW_STATE=SimpleNamespace(OPEN="open", CLOSED="closed", VENTILATION="ventilation"),
     )
     _module(
@@ -118,6 +129,9 @@ def _load_coordinator_without_home_assistant():
 
 UTC = dt.timezone.utc
 HyundaiKiaConnectDataUpdateCoordinator = _load_coordinator_without_home_assistant()
+ORDER_STATUS = sys.modules[
+    "custom_components.kia_uvo.coordinator"
+].ORDER_STATUS
 
 
 VEHICLE_ID = "vehicle-1"
@@ -140,6 +154,13 @@ class FakeRecorder:
         return callback()
 
 
+class FakeActionHass:
+    """Execute a remote command request without a Home Assistant runtime."""
+
+    async def async_add_executor_job(self, callback):
+        return callback()
+
+
 class FakeRegistry:
     """Resolve the recorder entities required by the estimator."""
 
@@ -151,6 +172,83 @@ class FakeRegistry:
         if "recent-trip-info" in unique_id:
             return "sensor.vehicle_primary_recent_trip_info"
         return RANGE_ENTITY
+
+
+class RemoteCommandLifecycleTests(unittest.IsolatedAsyncioTestCase):
+    """A final provider result must be observable outside the service call."""
+
+    @staticmethod
+    def coordinator(*, confirmation_error=None, confirmation_result=None):
+        statuses = []
+        coordinator = SimpleNamespace(
+            _action_lock=asyncio.Lock(),
+            hass=FakeActionHass(),
+            async_check_and_refresh_token=AsyncMock(),
+            async_await_action_and_refresh=AsyncMock(
+                side_effect=confirmation_error,
+                return_value=(
+                    ORDER_STATUS.SUCCESS
+                    if confirmation_result is None
+                    else confirmation_result
+                ),
+            ),
+            async_await_action_and_force_refresh=AsyncMock(),
+            _set_remote_command_status=lambda _vehicle_id, state, **attributes: (
+                statuses.append({"state": state, **attributes})
+            ),
+        )
+        coordinator._set_remote_command_failure = MethodType(
+            HyundaiKiaConnectDataUpdateCoordinator._set_remote_command_failure,
+            coordinator,
+        )
+        coordinator._remote_command_error_summary = (
+            HyundaiKiaConnectDataUpdateCoordinator._remote_command_error_summary
+        )
+        return coordinator, statuses
+
+    async def test_confirmation_failure_is_published_and_raised(self):
+        coordinator, statuses = self.coordinator(
+            confirmation_result=ORDER_STATUS.FAILED
+        )
+        with (
+            patch.object(
+                HyundaiKiaConnectDataUpdateCoordinator,
+                "_raise_if_br_rate_limited",
+            ),
+            self.assertRaises(Exception),
+        ):
+            await HyundaiKiaConnectDataUpdateCoordinator._async_send_action(
+                coordinator,
+                VEHICLE_ID,
+                lambda: "provider-action-id",
+                "unlock vehicle",
+                status_command="unlock",
+            )
+
+        self.assertEqual(statuses[0]["state"], "requesting")
+        self.assertEqual(statuses[1]["result_stage"], "awaiting_confirmation")
+        self.assertEqual(statuses[-1]["state"], "failed")
+        self.assertEqual(statuses[-1]["failure_stage"], "confirmation_result")
+        self.assertEqual(statuses[-1]["command"], "unlock")
+        self.assertIn("FAILED", statuses[-1]["reason"])
+
+    async def test_confirmation_success_is_published(self):
+        coordinator, statuses = self.coordinator()
+        with patch.object(
+            HyundaiKiaConnectDataUpdateCoordinator,
+            "_raise_if_br_rate_limited",
+        ):
+            await HyundaiKiaConnectDataUpdateCoordinator._async_send_action(
+                coordinator,
+                VEHICLE_ID,
+                lambda: "provider-action-id",
+                "unlock vehicle",
+                status_command="unlock",
+            )
+
+        self.assertEqual(statuses[-1]["state"], "accepted")
+        self.assertEqual(statuses[-1]["result_stage"], "confirmed")
+        self.assertEqual(statuses[-1]["command"], "unlock")
 
 
 def reading(at: str, value: float):

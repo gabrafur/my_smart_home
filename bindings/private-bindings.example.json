@@ -188,6 +188,19 @@
           "state_mode": "passthrough",
           "hide_targets": true
         },
+        "sensor.garagem_vehicle_primary_remote_command_status": {
+          "target_entity_id": "sensor.example_vehicle_primary_remote_command_status",
+          "state_mode": "passthrough",
+          "attributes": [
+            "command",
+            "error_type",
+            "failure_stage",
+            "reason",
+            "result_stage",
+            "updated_at"
+          ],
+          "hide_targets": true
+        },
         "switch.vehicle_primary_climate": {
           "target_entity_id": "switch.example_vehicle_primary_climate",
           "state_mode": "boolean",
@@ -213,6 +226,10 @@
         },
         "lock": {
           "target_service": "lock.lock",
+          "target_public_entity_id": "lock.vehicle_primary_door_lock"
+        },
+        "unlock": {
+          "target_service": "lock.unlock",
           "target_public_entity_id": "lock.vehicle_primary_door_lock"
         }
       }

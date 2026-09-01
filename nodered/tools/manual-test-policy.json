@@ -120,14 +120,18 @@
                 "5df25064f701ecd2",
                 "9501b32f01ed802b",
                 "vehicle_primary_manual_engine_on_test_v1",
-                "vehicle_primary_manual_engine_off_test_v1"
+                "vehicle_primary_manual_engine_off_test_v1",
+                "vehicle_primary_remote_command_test_group_v1",
+                "vehicle_primary_remote_command_test_reset_v1",
+                "vehicle_primary_remote_command_test_success_v1",
+                "vehicle_primary_remote_command_test_failure_v1"
             ],
             "dry_run_terminal_ids": [
                 "vehicle_primary_refresh_dry_run_terminal_v1",
                 "light_full_dry_run_terminal_v1"
             ],
             "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
-            "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação até o terminal dry-run compartilhado, sem acionar dispositivos."
+            "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação; sucesso e falha final de comando remoto percorrem classificação, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar veículo nem notificações."
         },
         "62bb822e033d1623": {
             "strategy": "not_applicable",

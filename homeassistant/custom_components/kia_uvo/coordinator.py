@@ -7,6 +7,7 @@ import copy
 import datetime as dt
 import logging
 import math
+import re
 import threading
 import time
 import traceback
@@ -41,7 +42,7 @@ from hyundai_kia_connect_api import (
     VehicleManager,
     WindowRequestOptions,
 )
-from hyundai_kia_connect_api.const import WINDOW_STATE
+from hyundai_kia_connect_api.const import ORDER_STATUS, WINDOW_STATE
 from hyundai_kia_connect_api.exceptions import (
     APIError,
     AuthenticationError,
@@ -94,6 +95,7 @@ TRIP_INFO_BACKGROUND_TIMEOUT_S = 120
 TRIP_INFO_RETRY_DELAY_S = 60
 TRIP_INFO_MAX_AGE = timedelta(hours=6)
 REMOTE_LOCATE_MIN_INTERVAL_S = 60
+REMOTE_COMMAND_ERROR_MAX_LENGTH = 280
 FUEL_TANK_LITERS = 50.0
 MIN_EFFICIENCY_FUEL_PERCENT = 20.0
 MAX_EFFICIENCY_FUEL_PERCENT = 80.0
@@ -1441,9 +1443,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         await self._async_save_token()
 
     async def async_await_action_and_refresh(self, vehicle_id, action_id):
+        action_status = None
         try:
             await asyncio.sleep(5)
-            await self.hass.async_add_executor_job(
+            action_status = await self.hass.async_add_executor_job(
                 self.vehicle_manager.check_action_status,
                 vehicle_id,
                 action_id,
@@ -1460,6 +1463,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 self.async_set_updated_data(self.data)
             else:
                 await self.async_refresh()
+        return action_status
 
     async def async_await_action_and_force_refresh(self, vehicle_id, action_id):
         """Wait for action then force refresh to get fresh vehicle data.
@@ -1474,9 +1478,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         notify HA entities to re-read their state.
         """
         confirmation_rate_limited = False
+        action_status = None
         try:
             await asyncio.sleep(5)
-            await self.hass.async_add_executor_job(
+            action_status = await self.hass.async_add_executor_job(
                 self.vehicle_manager.check_action_status,
                 vehicle_id,
                 action_id,
@@ -1512,6 +1517,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     except Exception:
                         _LOGGER.exception("Force refresh after call failed")
             self.async_set_updated_data(self.data)
+        return action_status
 
     async def _async_send_action(
         self,
@@ -1521,6 +1527,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         *,
         force_refresh: bool = False,
         raise_confirmation_error: bool = False,
+        status_command: str | None = None,
     ):
         """Send a vehicle action, wait for completion, and refresh data.
 
@@ -1529,48 +1536,170 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         already in progress, raises HomeAssistantError immediately so
         the user gets a clear message instead of a mysterious long wait.
         """
-        HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
+        requested_at = dt_util.utcnow()
+        if status_command:
+            self._set_remote_command_status(
+                vehicle_id,
+                "requesting",
+                command=status_command,
+                requested_at=requested_at.isoformat(),
+                submitted_at=None,
+                accepted_at=None,
+                failed_at=None,
+                failure_stage=None,
+                error_type=None,
+                reason=None,
+                result_stage="preflight",
+            )
+            _LOGGER.info(
+                "CRETA_REMOTE_COMMAND_REQUESTED command=%s",
+                status_command,
+            )
+
+        try:
+            HyundaiKiaConnectDataUpdateCoordinator._raise_if_br_rate_limited(self)
+        except Exception as err:
+            if status_command:
+                self._set_remote_command_failure(
+                    vehicle_id,
+                    status_command,
+                    "preflight",
+                    err,
+                )
+            raise
         if self._action_lock.locked():
             _LOGGER.warning(
                 "Vehicle action '%s' rejected: another action is already in progress",
                 error_label,
             )
-            raise HomeAssistantError(
+            err = HomeAssistantError(
                 "Another vehicle action is in progress. "
                 "Please wait for it to complete and try again."
             )
+            if status_command:
+                self._set_remote_command_failure(
+                    vehicle_id,
+                    status_command,
+                    "local_concurrency",
+                    err,
+                )
+            raise err
         async with self._action_lock:
             try:
                 await self.async_check_and_refresh_token()
                 action_id = await self.hass.async_add_executor_job(action_fn)
             except UnsupportedControlError as err:
-                raise HomeAssistantError(
+                action_error = HomeAssistantError(
                     f"Vehicle does not support this action: {err}"
-                ) from err
+                )
+                if status_command:
+                    self._set_remote_command_failure(
+                        vehicle_id,
+                        status_command,
+                        "request",
+                        action_error,
+                    )
+                raise action_error from err
             except RateLimitingError as err:
                 HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
-                raise HomeAssistantError(
+                action_error = HomeAssistantError(
                     "Bluelink rate limit reached; vehicle action paused"
-                ) from err
+                )
+                if status_command:
+                    self._set_remote_command_failure(
+                        vehicle_id,
+                        status_command,
+                        "request",
+                        action_error,
+                    )
+                raise action_error from err
             except Exception as err:
-                raise HomeAssistantError(f"Failed to {error_label}: {err}") from err
+                action_error = HomeAssistantError(
+                    f"Failed to {error_label}: {err}"
+                )
+                if status_command:
+                    self._set_remote_command_failure(
+                        vehicle_id,
+                        status_command,
+                        "request",
+                        action_error,
+                    )
+                raise action_error from err
+
+            if status_command:
+                self._set_remote_command_status(
+                    vehicle_id,
+                    "requesting",
+                    command=status_command,
+                    submitted_at=dt_util.utcnow().isoformat(),
+                    failure_stage=None,
+                    error_type=None,
+                    reason=None,
+                    result_stage="awaiting_confirmation",
+                )
             try:
                 if force_refresh:
-                    await self.async_await_action_and_force_refresh(
-                        vehicle_id, action_id
+                    confirmation_status = (
+                        await self.async_await_action_and_force_refresh(
+                            vehicle_id, action_id
+                        )
                     )
                 else:
-                    await self.async_await_action_and_refresh(vehicle_id, action_id)
+                    confirmation_status = await self.async_await_action_and_refresh(
+                        vehicle_id, action_id
+                    )
             except Exception as err:
                 _LOGGER.exception(
                     "Action '%s' was sent but confirmation polling failed",
                     error_label,
                 )
-                if raise_confirmation_error:
+                if status_command:
+                    self._set_remote_command_failure(
+                        vehicle_id,
+                        status_command,
+                        "confirmation",
+                        err,
+                    )
+                if raise_confirmation_error or status_command:
                     raise HomeAssistantError(
                         f"Vehicle accepted the {error_label} request, but "
                         "confirmation polling failed."
                     ) from err
+            if (
+                status_command
+                and confirmation_status is not ORDER_STATUS.SUCCESS
+            ):
+                provider_status = (
+                    confirmation_status.value
+                    if isinstance(confirmation_status, ORDER_STATUS)
+                    else "UNKNOWN"
+                )
+                err = HomeAssistantError(
+                    "Bluelink returned final command status " + provider_status
+                )
+                self._set_remote_command_failure(
+                    vehicle_id,
+                    status_command,
+                    "confirmation_result",
+                    err,
+                )
+                raise err
+            if status_command:
+                self._set_remote_command_status(
+                    vehicle_id,
+                    "accepted",
+                    command=status_command,
+                    accepted_at=dt_util.utcnow().isoformat(),
+                    failed_at=None,
+                    failure_stage=None,
+                    error_type=None,
+                    reason=None,
+                    result_stage="confirmed",
+                )
+                _LOGGER.info(
+                    "CRETA_REMOTE_COMMAND_CONFIRMED command=%s",
+                    status_command,
+                )
             return action_id
 
     def _set_remote_command_status(
@@ -1586,11 +1715,49 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         }
         self.async_set_updated_data(self.data)
 
+    @staticmethod
+    def _remote_command_error_summary(err: Exception) -> str:
+        """Return a bounded, non-sensitive reason for UI notifications."""
+        value = " ".join(str(err).split()) or type(err).__name__
+        value = re.sub(
+            r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b",
+            "<id>",
+            value,
+        )
+        value = re.sub(r"\b[A-Za-z0-9_-]{48,}\b", "<redacted>", value)
+        return value[:REMOTE_COMMAND_ERROR_MAX_LENGTH]
+
+    def _set_remote_command_failure(
+        self,
+        vehicle_id: str,
+        command: str,
+        stage: str,
+        err: Exception,
+    ) -> None:
+        """Publish a final failure without exposing provider identifiers."""
+        self._set_remote_command_status(
+            vehicle_id,
+            "failed",
+            command=command,
+            failed_at=dt_util.utcnow().isoformat(),
+            failure_stage=stage,
+            error_type=type(err).__name__,
+            reason=self._remote_command_error_summary(err),
+            result_stage="failed",
+        )
+        _LOGGER.warning(
+            "CRETA_REMOTE_COMMAND_FAILED command=%s stage=%s error_type=%s",
+            command,
+            stage,
+            type(err).__name__,
+        )
+
     async def async_lock_vehicle(self, vehicle_id: str):
         await self._async_send_action(
             vehicle_id,
             lambda: self.vehicle_manager.lock(vehicle_id),
             "lock vehicle",
+            status_command="lock",
         )
 
     async def async_unlock_vehicle(self, vehicle_id: str):
@@ -1598,6 +1765,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             vehicle_id,
             lambda: self.vehicle_manager.unlock(vehicle_id),
             "unlock vehicle",
+            status_command="unlock",
         )
 
     async def async_open_charge_port(self, vehicle_id: str):
@@ -1625,6 +1793,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             vehicle_id,
             lambda: self.vehicle_manager.start_climate(vehicle_id, climate_options),
             "start climate",
+            status_command="climate_on",
         )
 
     async def async_stop_climate(self, vehicle_id: str):
@@ -1632,6 +1801,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             vehicle_id,
             lambda: self.vehicle_manager.stop_climate(vehicle_id),
             "stop climate",
+            status_command="climate_off",
         )
 
     async def async_start_charge(self, vehicle_id: str):
@@ -1827,31 +1997,14 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 lambda: self.vehicle_manager.start_hazard_lights_and_horn(vehicle_id),
                 "start hazard lights and horn",
                 raise_confirmation_error=True,
+                status_command="hazard_lights_and_horn",
             )
-        except Exception as err:
-            self._set_remote_command_status(
-                vehicle_id,
-                "failed",
-                command="hazard_lights_and_horn",
-                duration_seconds=30,
-                failed_at=dt_util.utcnow().isoformat(),
-                failure_stage="request_or_confirmation",
-                error_type=type(err).__name__,
-            )
+        except Exception:
             _LOGGER.exception(
                 "CRETA_REMOTE_LOCATE_FAILED stage=request_or_confirmation"
             )
             raise
 
-        self._set_remote_command_status(
-            vehicle_id,
-            "accepted",
-            command="hazard_lights_and_horn",
-            duration_seconds=30,
-            accepted_at=dt_util.utcnow().isoformat(),
-            failure_stage=None,
-            error_type=None,
-        )
         _LOGGER.info("CRETA_REMOTE_LOCATE_ACCEPTED command=hazard_lights_and_horn")
 
     async def async_start_valet_mode(self, vehicle_id: str):

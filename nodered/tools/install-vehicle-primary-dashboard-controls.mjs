@@ -307,6 +307,7 @@ upsert({
     "vehicle_primary_refresh_dry_run_out_v1",
     "vehicle_primary_trip_dry_run_out_v1",
     "vehicle_primary_refresh_notification_dry_run_out_v1",
+    "vehicle_primary_remote_command_dry_run_out_v1",
   ],
   x: 1320,
   y: 860,
@@ -916,6 +917,351 @@ upsert({
   wires: [],
 });
 
+upsert({
+  id: "vehicle_primary_remote_command_group_v1",
+  type: "group",
+  z: "c22d8b12055e87f7",
+  name: "4. Resultado final dos comandos remotos",
+  style: {
+    label: true,
+    stroke: "#5b8ff9",
+    color: "#a4a4a4",
+  },
+  nodes: [],
+  x: 174,
+  y: 1199,
+  w: 1662,
+  h: 302,
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_event_v1",
+  type: "server-state-changed",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Resultado remoto mudou",
+  server: "4126427d5e161a03",
+  version: 6,
+  outputs: 1,
+  exposeAsEntityConfig: "",
+  entities: {
+    entity: ["sensor.garagem_vehicle_primary_remote_command_status"],
+    substring: [],
+    regex: [],
+  },
+  outputInitially: false,
+  stateType: "str",
+  ifState: "failed",
+  ifStateType: "str",
+  ifStateOperator: "is",
+  outputOnlyOnStateChange: true,
+  for: "0",
+  forType: "num",
+  forUnits: "minutes",
+  ignorePrevStateNull: true,
+  ignorePrevStateUnknown: true,
+  ignorePrevStateUnavailable: true,
+  ignoreCurrentStateUnknown: true,
+  ignoreCurrentStateUnavailable: true,
+  outputProperties: [
+    {
+      property: "payload",
+      propertyType: "msg",
+      value: `({
+        "entity": $entities("sensor.garagem_vehicle_primary_remote_command_status"),
+        "preconditions": {
+          "front_left_door": $entities("binary_sensor.vehicle_primary_front_left_door"),
+          "front_right_door": $entities("binary_sensor.vehicle_primary_front_right_door"),
+          "back_left_door": $entities("binary_sensor.vehicle_primary_back_left_door"),
+          "back_right_door": $entities("binary_sensor.vehicle_primary_back_right_door"),
+          "trunk": $entities("binary_sensor.vehicle_primary_trunk"),
+          "engine": $entities("binary_sensor.vehicle_primary_engine"),
+          "lock": $entities("lock.vehicle_primary_door_lock"),
+          "telemetry": $entities("sensor.vehicle_primary_last_updated_at")
+        }
+      })`,
+      valueType: "jsonata",
+    },
+  ],
+  x: 390,
+  y: 1260,
+  wires: [["vehicle_primary_remote_command_monitor_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_test_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Receber resultado remoto de TESTE",
+  links: ["vehicle_primary_remote_command_test_out_v1"],
+  x: 385,
+  y: 1340,
+  wires: [["vehicle_primary_remote_command_monitor_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_monitor_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Classificar, deduplicar e compor alerta",
+  func: source("vehicle-primary-remote-command-monitor.js"),
+  outputs: 1,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 710,
+  y: 1300,
+  wires: [["vehicle_primary_remote_command_guard_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_guard_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Separar notificações reais e dry-run",
+  func: source("vehicle-primary-remote-command-dispatch-guard.js"),
+  outputs: 3,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 1040,
+  y: 1300,
+  wires: [
+    ["vehicle_primary_remote_command_notify_primary_v1"],
+    ["vehicle_primary_remote_command_notify_persistent_v1"],
+    ["vehicle_primary_remote_command_dry_run_out_v1"],
+  ],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_notify_primary_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Avisar falha no celular",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "public_bindings.call",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"role":"mobile_primary","action":"notify_3","data":{"title":alert.title,"message":alert.message}}',
+  dataType: "jsonata",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "all",
+  blockInputOverrides: true,
+  domain: "public_bindings",
+  service: "call",
+  x: 1350,
+  y: 1260,
+  wires: [[]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_notify_persistent_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Criar aviso persistente no Home Assistant",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "persistent_notification.create",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"title":notification.title,"message":notification.message,"notification_id":notification.id}',
+  dataType: "jsonata",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "all",
+  blockInputOverrides: true,
+  domain: "persistent_notification",
+  service: "create",
+  x: 1430,
+  y: 1320,
+  wires: [[]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_dry_run_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Alertas remotos TESTE → terminal dry-run",
+  mode: "link",
+  links: ["vehicle_primary_dry_run_in_v1"],
+  x: 1395,
+  y: 1380,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_architecture_v1",
+  type: "comment",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Aceite do request não basta: somente failed final gera alerta; celular e Notifications recebem o mesmo incidente deduplicado",
+  info: "",
+  x: 840,
+  y: 1440,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_test_group_v1",
+  type: "group",
+  z: "c22d8b12055e87f7",
+  name: "6. TESTE — resultado remoto sem efeitos",
+  style: {
+    label: true,
+    stroke: "#ffb300",
+    color: "#a4a4a4",
+  },
+  nodes: [],
+  x: 1234,
+  y: 1619,
+  w: 602,
+  h: 302,
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_test_help_v1",
+  type: "comment",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_test_group_v1",
+  name: "1) RESETAR  2) sucesso nominal não alerta  3) falha chega ao terminal dry-run",
+  info: "",
+  x: 1530,
+  y: 1660,
+  wires: [],
+});
+
+for (const [id, name, y, payload] of [
+  [
+    "vehicle_primary_remote_command_test_reset_v1",
+    "RESETAR teste de comando remoto",
+    1720,
+    { event: "reset", test_mode: true },
+  ],
+  [
+    "vehicle_primary_remote_command_test_success_v1",
+    "TESTE: comando confirmado",
+    1780,
+    {
+      test_mode: true,
+      state: "accepted",
+      attributes: {
+        command: "unlock",
+        result_stage: "confirmed",
+        updated_at: "test-success",
+      },
+      preconditions: {
+        front_left_door: { state: "off" },
+        front_right_door: { state: "off" },
+        back_left_door: { state: "off" },
+        back_right_door: { state: "off" },
+        trunk: { state: "off" },
+        engine: { state: "off" },
+        lock: { state: "unlocked" },
+        telemetry: { state: "2026-08-17T02:59:00Z" },
+      },
+    },
+  ],
+  [
+    "vehicle_primary_remote_command_test_failure_v1",
+    "TESTE: falha assíncrona",
+    1840,
+    {
+      test_mode: true,
+      state: "failed",
+      attributes: {
+        command: "lock",
+        failure_stage: "confirmation",
+        reason: "falha simulada após o aceite",
+        updated_at: "test-failure",
+      },
+      preconditions: {
+        front_left_door: { state: "off" },
+        front_right_door: { state: "off" },
+        back_left_door: { state: "on" },
+        back_right_door: { state: "off" },
+        trunk: { state: "off" },
+        engine: { state: "off" },
+        lock: { state: "unlocked" },
+        telemetry: { state: "2026-08-17T02:45:00Z" },
+      },
+    },
+  ],
+]) {
+  upsert({
+    id,
+    type: "inject",
+    z: "c22d8b12055e87f7",
+    g: "vehicle_primary_remote_command_test_group_v1",
+    name,
+    props: [{ p: "payload" }, { p: "_vehicle_primary_remote_command_test", v: "true", vt: "bool" }],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    payload: JSON.stringify(payload),
+    payloadType: "json",
+    x: 1420,
+    y,
+    wires: [["vehicle_primary_remote_command_test_out_v1"]],
+  });
+}
+
+upsert({
+  id: "vehicle_primary_remote_command_test_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_test_group_v1",
+  name: "Resultado TESTE → monitor remoto",
+  mode: "link",
+  links: ["vehicle_primary_remote_command_test_in_v1"],
+  x: 1745,
+  y: 1780,
+  wires: [],
+});
+
+addToGroup(
+  "vehicle_primary_remote_command_group_v1",
+  "vehicle_primary_remote_command_event_v1",
+  "vehicle_primary_remote_command_test_in_v1",
+  "vehicle_primary_remote_command_monitor_v1",
+  "vehicle_primary_remote_command_guard_v1",
+  "vehicle_primary_remote_command_notify_primary_v1",
+  "vehicle_primary_remote_command_notify_persistent_v1",
+  "vehicle_primary_remote_command_dry_run_out_v1",
+  "vehicle_primary_remote_command_architecture_v1",
+);
+addToGroup(
+  "vehicle_primary_remote_command_test_group_v1",
+  "vehicle_primary_remote_command_test_help_v1",
+  "vehicle_primary_remote_command_test_reset_v1",
+  "vehicle_primary_remote_command_test_success_v1",
+  "vehicle_primary_remote_command_test_failure_v1",
+  "vehicle_primary_remote_command_test_out_v1",
+);
+
 addToGroup(
   "790bea5f55d43bd0",
   "vehicle_primary_manual_refresh_button_v1",
@@ -951,7 +1297,8 @@ const refreshGroup = required("43a2bc9c218353ae");
 Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 582 });
 
 const manualTestGroup = required("5df25064f701ecd2");
-const manualTestShift = Math.max(0, 1199 - manualTestGroup.y);
+manualTestGroup.name = "5. Testes manuais — motor e localização sintéticos/cumulativos";
+const manualTestShift = Math.max(0, 1619 - manualTestGroup.y);
 if (manualTestShift > 0) {
   manualTestGroup.y += manualTestShift;
   for (const id of manualTestGroup.nodes ?? []) {
