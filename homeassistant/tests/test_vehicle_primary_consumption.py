@@ -46,6 +46,20 @@ def _load_coordinator_without_home_assistant():
     )
     _module("homeassistant.helpers", __path__=[])
     _module("homeassistant.helpers.entity_registry", async_get=lambda _hass: None)
+
+    class FakeStore:
+        def __init__(self, _hass, _version, key, **_kwargs):
+            self.key = key
+            self.data = None
+
+        async def async_load(self):
+            return self.data
+
+        def async_delay_save(self, data_func, _delay=0):
+            self.data = data_func()
+
+    _module("homeassistant.helpers.storage", Store=FakeStore)
+
     class FakeUpdateFailed(Exception):
         def __init__(self, message, *, retry_after=None):
             super().__init__(message)
@@ -687,6 +701,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
     async def test_br_rate_limit_backs_off_without_repolling(self):
         coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
         calls = []
+        events = []
 
         class Manager:
             api = HyundaiBlueLinkApiBR([])
@@ -696,7 +711,14 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
                 calls.append("cache")
                 raise coordinator_module.RateLimitingError("synthetic limit")
 
+        class Bus:
+            @staticmethod
+            def async_fire(event_type, event_data):
+                events.append((event_type, event_data))
+
         class Hass:
+            bus = Bus()
+
             @staticmethod
             async def async_add_executor_job(callback, *args):
                 return callback(*args)
@@ -729,13 +751,20 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
                 ),
             )
 
-        with patch.object(coordinator_module.time, "monotonic", return_value=1_000):
+        with (
+            patch.object(coordinator_module.time, "monotonic", return_value=1_000),
+            patch.object(coordinator_module.time, "time", return_value=10_000),
+        ):
             with self.assertRaises(coordinator_module.UpdateFailed) as first:
                 await HyundaiKiaConnectDataUpdateCoordinator._async_update_data_from_cache(
                     coordinator
                 )
         assert first.exception.retry_after == 15 * 60
         assert calls == ["cache"]
+        assert events[-1][0] == "kia_uvo_api_retry"
+        assert events[-1][1]["status"] == "rate_limited"
+        assert events[-1][1]["retry_after_seconds"] == 15 * 60
+        assert dt.datetime.fromisoformat(events[-1][1]["retry_at"]).tzinfo is not None
 
         retrying_coordinator = SimpleNamespace(
             vehicle_manager=Manager(),
@@ -743,7 +772,10 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             scan_interval=15 * 60,
             force_refresh_interval=24 * 60 * 60,
         )
-        with patch.object(coordinator_module.time, "monotonic", return_value=1_001):
+        with (
+            patch.object(coordinator_module.time, "monotonic", return_value=1_001),
+            patch.object(coordinator_module.time, "time", return_value=10_001),
+        ):
             with self.assertRaises(coordinator_module.UpdateFailed) as second:
                 await HyundaiKiaConnectDataUpdateCoordinator._async_update_data_from_cache(
                     retrying_coordinator
@@ -751,6 +783,14 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
         assert second.exception.retry_after == 15 * 60 - 1
         assert calls == ["cache"]
         HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(coordinator)
+        assert events[-1] == (
+            "kia_uvo_api_retry",
+            {
+                "status": "available",
+                "retry_at": None,
+                "retry_after_seconds": 0,
+            },
+        )
 
     async def test_force_refresh_rate_limit_skips_cached_fallback(self):
         coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
@@ -806,6 +846,56 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
                 coordinator, VEHICLE_ID
             )
         assert calls == ["wake"]
+
+    async def test_br_rate_limit_backoff_survives_coordinator_restart(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        store_type = sys.modules["homeassistant.helpers.storage"].Store
+        events = []
+
+        class Bus:
+            @staticmethod
+            def async_fire(event_type, event_data):
+                events.append((event_type, event_data))
+
+        store = store_type(None, 1, "synthetic-rate-limit", private=True)
+        store.data = {"failures": 4, "until_epoch": 8_200.0}
+        coordinator = SimpleNamespace(
+            hass=SimpleNamespace(bus=Bus()),
+            vehicle_manager=SimpleNamespace(api=HyundaiBlueLinkApiBR([])),
+            _br_rate_limit_key="persistent-retry-test",
+            _br_rate_limit_store=store,
+        )
+
+        with (
+            patch.object(coordinator_module.time, "time", return_value=1_000),
+            patch.object(coordinator_module.time, "monotonic", return_value=500),
+        ):
+            await HyundaiKiaConnectDataUpdateCoordinator._async_setup(coordinator)
+            remaining = HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                coordinator
+            )
+
+        assert remaining == 7_200
+        assert coordinator_module._BR_RATE_LIMIT_STATE["persistent-retry-test"] == {
+            "failures": 4,
+            "until_epoch": 8_200.0,
+            "until_monotonic": 7_700,
+        }
+        assert events[-1][0] == "kia_uvo_api_retry"
+        assert events[-1][1]["retry_after_seconds"] == 7_200
+
+        with (
+            patch.object(coordinator_module.time, "time", return_value=8_201),
+            patch.object(coordinator_module.time, "monotonic", return_value=7_701),
+        ):
+            next_delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
+                coordinator
+            )
+        assert next_delay == 4 * 60 * 60
+        assert store.data == {"failures": 5, "until_epoch": 22_601.0}
+
+        HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(coordinator)
+        assert store.data == {"failures": 0, "until_epoch": 0.0}
 
     async def test_force_refresh_rejects_a_concurrent_request(self):
         started = asyncio.Event()

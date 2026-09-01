@@ -270,6 +270,11 @@ views:
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
               {% set refresh_failure = state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_failure_class') %}
               {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
+              {% set api_retry = states('sensor.vehicle_primary_api_retry_at') %}
+              {% set api_status = state_attr('sensor.vehicle_primary_api_retry_at', 'status') %}
+              {% set api_retry_ts = as_timestamp(api_retry, none) %}
+              {% set api_remaining_s = ([0, api_retry_ts - as_timestamp(now())] | max) | round(0) if api_retry_ts is not none else none %}
+              {% set api_remaining_min = ((api_remaining_s + 59) / 60) | int if api_remaining_s is not none and api_remaining_s > 0 else 0 %}
               {% set scanned = states('sensor.vehicle_primary_last_scanned_at') %}
               {% set scanned_ts = as_timestamp(scanned, none) %}
               {% set cache_age_s = (as_timestamp(now()) - scanned_ts) | round(0) if scanned_ts else none %}
@@ -296,10 +301,11 @@ views:
               {% else %}🔴 **Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.
               {% endif %}
 
-              {% if refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa.
+              {% if api_status == 'rate_limited' %}🟡 **Integração Bluelink ainda indisponível**{% if api_remaining_min > 0 %} · API liberada para nova tentativa em cerca de {{ format_number_ptbr(api_remaining_min) }} min{% else %} · API liberada para nova tentativa agora{% endif %}.
+              {% elif refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa.
               {% elif refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] %}🔵 **Wake em andamento** · aguardando o Bluelink publicar dados do carro.
               {% elif data_after_wake %}🟢 **Último wake confirmado por dados novos**{% if remaining_min > 0 %} · próximo ciclo em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
-              {% elif refresh_state == 'backoff' and (refresh_failure == 'integration_unavailable' or (refresh_failure == 'api_error' and cache_age_s is none and data_age_min is none)) %}🟡 **Integração Bluelink ainda indisponível**{% if remaining_min > 0 %} · próximo retry automático em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}; nenhuma consulta ao servidor está em andamento.
+              {% elif refresh_state == 'backoff' and (refresh_failure == 'integration_unavailable' or (refresh_failure == 'api_error' and cache_age_s is none and data_age_min is none)) %}🟡 **Integração Bluelink ainda indisponível** · aguardando a API informar uma nova janela de tentativa.
               {% elif refresh_state in ['probing_cache', 'backoff'] %}🟡 **O último wake ainda não produziu dados novos**{% if refresh_state == 'probing_cache' %} · verificando agora o cache do servidor antes de outro wake{% elif remaining_min > 0 %} · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
               {% elif refresh_state == 'cooldown' %}🟢 **Próximo wake periódico em cerca de {{ format_number_ptbr(remaining_min) }} min** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
               {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.

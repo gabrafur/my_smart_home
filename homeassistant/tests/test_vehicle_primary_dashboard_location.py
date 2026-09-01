@@ -34,8 +34,11 @@ def main() -> None:
     assert "nova verificação em cerca de" in dashboard
     assert "verificando agora o cache do servidor antes de outro wake" in dashboard
     assert "Integração Bluelink ainda indisponível" in dashboard
-    assert "próximo retry automático em cerca de" in dashboard
-    assert "nenhuma consulta ao servidor está em andamento" in dashboard
+    assert "sensor.vehicle_primary_api_retry_at" in dashboard
+    assert "api_status == 'rate_limited'" in dashboard
+    assert "API liberada para nova tentativa em cerca de" in dashboard
+    assert "API liberada para nova tentativa agora" in dashboard
+    assert "nenhuma consulta ao servidor está em andamento" not in dashboard
     assert "refresh_failure == 'api_error' and cache_age_s is none" in dashboard
     refresh_failure_definition = (
         "{% set refresh_failure = state_attr("
@@ -82,8 +85,10 @@ def main() -> None:
     assert "current_state == 'not_home'" in controls
     assert "previous_state != current_state or moved_outside_zone" in controls
     assert "movement_threshold_m: 250" in controls
+    assert "event_type: kia_uvo_api_retry" in controls
+    assert "unique_id: vehicle_primary_api_retry_at" in controls
 
-    print("vehicle_primary dashboard: 50 verificações aprovadas.")
+    print("vehicle_primary dashboard: 55 verificações aprovadas.")
 
 
 class VehiclePrimaryDashboardLocationTest(unittest.TestCase):

@@ -3,6 +3,7 @@
 from enum import StrEnum
 
 DOMAIN: str = "kia_uvo"
+EVENT_BR_API_RETRY: str = f"{DOMAIN}_api_retry"
 
 CONF_BRAND: str = "brand"
 CONF_FORCE_REFRESH_INTERVAL: str = "force_refresh"

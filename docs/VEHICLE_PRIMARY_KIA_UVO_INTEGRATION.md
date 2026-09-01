@@ -170,6 +170,20 @@ também deixa de chamar o serviço inexistente nos vencimentos seguintes: apenas
 reagenda o retry em 15 minutos. Assim que `vehicle_primary` volta a ficar
 pronto, o próximo tick de reconciliação libera imediatamente a releitura do
 cache, sem aguardar o restante desse prazo defensivo.
+O backoff brasileiro também publica o evento `kia_uvo_api_retry` com o deadline
+UTC calculado pela própria integração. O sensor de timestamp
+`sensor.vehicle_primary_api_retry_at` restaura esse prazo mesmo quando o config
+entry não conclui o carregamento; por isso o card mostra o tempo do retry da API,
+e não o timer independente do Node-RED. Um acesso confirmado limpa o deadline e
+o card volta às mensagens normais do ciclo de atualização.
+O nível consecutivo e o deadline também ficam no `Store` privado do Home
+Assistant. Um restart recompõe o relógio monotônico a partir do deadline UTC,
+sem voltar artificialmente ao primeiro intervalo. O card usa diretamente o
+status `rate_limited` desse sensor e descreve o prazo como liberação para uma
+nova tentativa; o agendador do config entry ainda pode efetuar a chamada alguns
+minutos depois. A persistência começa no primeiro rate limit registrado por
+esta versão; ciclos anteriores, que existiam apenas na memória, não podem ser
+reconstruídos com segurança.
 `input_button.vehicle_primary_force_refresh_now` entra no ciclo normal de snapshot com
 `reason=manual_force`: ignora `next_allowed_at`, inclusive durante cooldown ou
 backoff, e envia um novo wake. Ele nao quebra uma tentativa em voo; nesse unico

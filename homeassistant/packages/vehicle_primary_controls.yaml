@@ -5,6 +5,21 @@ input_button:
 
 template:
   - triggers:
+      - trigger: event
+        event_type: kia_uvo_api_retry
+    sensor:
+      - name: Vehicle primary API retry at
+        unique_id: vehicle_primary_api_retry_at
+        device_class: timestamp
+        icon: mdi:api-clock
+        state: >-
+          {% set retry_at = trigger.event.data.get('retry_at') %}
+          {{ retry_at if retry_at not in [none, ''] else none }}
+        attributes:
+          status: "{{ trigger.event.data.get('status', 'unknown') }}"
+          retry_after_seconds: >-
+            {{ trigger.event.data.get('retry_after_seconds', 0) | int(0) }}
+  - triggers:
       - trigger: state
         entity_id: device_tracker.vehicle_primary
     sensor:

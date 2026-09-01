@@ -28,8 +28,9 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.storage import Store
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 from hyundai_kia_connect_api import (
     ClimateRequestOptions,
@@ -62,6 +63,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_USE_EMAIL_WITH_GEOCODE_API,
     DOMAIN,
+    EVENT_BR_API_RETRY,
     OffPeakChargingMode,
 )
 
@@ -84,6 +86,8 @@ BR_RATE_LIMIT_BACKOFF_S = (
     4 * 60 * 60,
     6 * 60 * 60,
 )
+BR_RATE_LIMIT_STORAGE_VERSION = 1
+BR_RATE_LIMIT_STORAGE_PREFIX = f"{DOMAIN}.br_rate_limit"
 BR_FRESH_DATA_RECHECK_DELAYS_S = (15, 15, 30, 30, 30, 30)
 BR_FRESH_DATA_CLOCK_TOLERANCE = timedelta(seconds=60)
 TRIP_INFO_BACKGROUND_TIMEOUT_S = 120
@@ -115,6 +119,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self._force_refresh_lock = asyncio.Lock()
         self._cache_refresh_lock = asyncio.Lock()
         self._br_rate_limit_key = config_entry.entry_id
+        self._br_rate_limit_store = Store(
+            hass,
+            BR_RATE_LIMIT_STORAGE_VERSION,
+            f"{BR_RATE_LIMIT_STORAGE_PREFIX}.{config_entry.entry_id}",
+            private=True,
+        )
         self._br_fresh_data_recheck_tasks: dict[str, asyncio.Task] = {}
         # The Brazilian API exposes one calendar day per request. Keep the
         # dashboard window separate from vehicle.day_trip_info so that the
@@ -202,13 +212,62 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         return configured_seconds
 
     def _br_rate_limit_remaining_seconds(self) -> int:
-        """Return the active in-process BR rate-limit delay."""
+        """Return the active BR rate-limit delay across process restarts."""
         state = _BR_RATE_LIMIT_STATE.get(
             str(getattr(self, "_br_rate_limit_key", "default")),
             {},
         )
-        remaining = float(state.get("until_monotonic", 0.0)) - time.monotonic()
+        remaining = max(
+            float(state.get("until_monotonic", 0.0)) - time.monotonic(),
+            float(state.get("until_epoch", 0.0)) - time.time(),
+        )
         return max(0, math.ceil(remaining))
+
+    async def _async_setup(self) -> None:
+        """Restore the BR provider backoff before the first API read."""
+        if type(self.vehicle_manager.api).__name__ != "HyundaiBlueLinkApiBR":
+            return
+        store = getattr(self, "_br_rate_limit_store", None)
+        if store is None:
+            return
+        try:
+            stored = await store.async_load()
+        except Exception:
+            _LOGGER.exception("CRETA_RATE_LIMIT_RESTORE_FAILED")
+            return
+        if not isinstance(stored, dict):
+            return
+        failures = max(0, int(stored.get("failures", 0)))
+        until_epoch = max(0.0, float(stored.get("until_epoch", 0.0)))
+        if failures == 0:
+            return
+        remaining = max(0, math.ceil(until_epoch - time.time()))
+        _BR_RATE_LIMIT_STATE[str(self._br_rate_limit_key)] = {
+            "failures": failures,
+            "until_epoch": until_epoch,
+            "until_monotonic": time.monotonic() + remaining,
+        }
+        HyundaiKiaConnectDataUpdateCoordinator._publish_br_api_retry(
+            self,
+            remaining,
+            status="rate_limited",
+        )
+        _LOGGER.info(
+            "CRETA_RATE_LIMIT_RESTORED consecutive=%d remaining_seconds=%d",
+            failures,
+            remaining,
+        )
+
+    def _persist_br_rate_limit(self, state: dict[str, float | int]) -> None:
+        """Queue a private, metadata-only snapshot of the BR backoff."""
+        store = getattr(self, "_br_rate_limit_store", None)
+        if store is None:
+            return
+        snapshot = {
+            "failures": max(0, int(state.get("failures", 0))),
+            "until_epoch": max(0.0, float(state.get("until_epoch", 0.0))),
+        }
+        store.async_delay_save(lambda: snapshot)
 
     def _record_br_rate_limit(self) -> int:
         """Advance the bounded BR rate-limit backoff and return its delay."""
@@ -220,18 +279,48 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         ]
         state.update(
             failures=failures,
+            until_epoch=max(
+                float(state.get("until_epoch", 0.0)),
+                time.time() + delay,
+            ),
             until_monotonic=max(
                 float(state.get("until_monotonic", 0.0)),
                 time.monotonic() + delay,
             ),
         )
+        HyundaiKiaConnectDataUpdateCoordinator._persist_br_rate_limit(self, state)
         _LOGGER.warning(
             "CRETA_RATE_LIMITED consecutive=%d backoff_seconds=%d",
             failures,
             delay,
         )
-        return HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+        remaining = HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
             self
+        )
+        HyundaiKiaConnectDataUpdateCoordinator._publish_br_api_retry(
+            self,
+            remaining,
+            status="rate_limited",
+        )
+        return remaining
+
+    def _publish_br_api_retry(self, remaining: int, *, status: str) -> None:
+        """Publish a public deadline that survives a failed config-entry setup."""
+        bus = getattr(getattr(self, "hass", None), "bus", None)
+        if bus is None:
+            return
+        retry_at = None
+        if remaining > 0:
+            retry_at = (
+                dt.datetime.now(dt.UTC) + timedelta(seconds=remaining)
+            ).isoformat()
+        bus.async_fire(
+            EVENT_BR_API_RETRY,
+            {
+                "status": status,
+                "retry_at": retry_at,
+                "retry_after_seconds": max(0, int(remaining)),
+            },
         )
 
     def _clear_br_rate_limit(self) -> None:
@@ -239,7 +328,16 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         key = str(getattr(self, "_br_rate_limit_key", "default"))
         state = _BR_RATE_LIMIT_STATE.pop(key, {})
         if int(state.get("failures", 0)):
+            HyundaiKiaConnectDataUpdateCoordinator._persist_br_rate_limit(
+                self,
+                {"failures": 0, "until_epoch": 0.0},
+            )
             _LOGGER.info("CRETA_RATE_LIMIT_RECOVERED")
+            HyundaiKiaConnectDataUpdateCoordinator._publish_br_api_retry(
+                self,
+                0,
+                status="available",
+            )
 
     def _raise_if_br_rate_limited(self) -> None:
         """Reject explicit BR calls while the provider backoff is active."""
