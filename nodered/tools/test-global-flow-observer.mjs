@@ -17,12 +17,14 @@ const code = {
   ingest: source("global-flow-observer-ingest.js"),
   evaluate: source("global-flow-observer-evaluate.js"),
   guard: source("global-flow-observer-dispatch-guard.js"),
+  internalFailure: source("global-flow-observer-internal-failure.js"),
   dryRun: source("global-flow-observer-dry-run.js"),
 };
 const flowNodeIds = {
   ingest: "global_observer_ingest",
   evaluate: "global_observer_evaluate",
   guard: "global_observer_dispatch_guard",
+  internalFailure: "global_observer_internal_failure",
   dryRun: "global_observer_dry_run_terminal",
 };
 for (const [name, body] of Object.entries(code)) {
@@ -250,7 +252,8 @@ const simulated = execute(code.guard, {
   alert: { title: "TESTE", message: "simulado" },
 }, store);
 assert.equal(simulated[0], null);
-assert.ok(simulated[1]);
+assert.equal(simulated[1], null);
+assert.ok(simulated[2]);
 const delivery = execute(code.guard, {
   _global_observer_test: true,
   _observer_delivery_test: true,
@@ -258,11 +261,57 @@ const delivery = execute(code.guard, {
 }, store);
 assert.ok(delivery[0]);
 assert.equal(delivery[1], null);
+assert.equal(delivery[2], null);
 assert.match(delivery[0].alert.title, /TESTE/);
 assert.equal(delivery[0].payload.notification_delivery_under_test, true);
 
+const production = execute(code.guard, {
+  payload: {
+    observer_kind: "node_error",
+    flow_id: "flow_test",
+    source_id: "node:test",
+  },
+  alert: { title: "Falha", message: "Falha de produção" },
+}, store);
+assert.ok(production[0], "produção deve seguir para o push");
+assert.ok(production[1], "produção deve seguir para a notificação persistente");
+assert.equal(production[2], null);
+assert.equal(
+  production[1]._observer_persistent_notification_id,
+  "nodered_observabilidade_global_node_error_flow_test_node_test",
+);
+
+const internalFailureStore = memory();
+const internalFailureMessage = {
+  error: {
+    message: "synthetic internal failure",
+    source: {
+      id: "global_observer_ingest",
+      type: "function",
+      name: "Classificar erro ou status",
+    },
+  },
+};
+const internalFailure = execute(
+  code.internalFailure,
+  structuredClone(internalFailureMessage),
+  internalFailureStore,
+);
+assert.ok(internalFailure[0], "falha interna deve seguir para o push");
+assert.ok(internalFailure[1], "falha interna deve seguir para o alerta persistente");
+assert.match(internalFailure[0].alert.title, /monitor global/);
+assert.equal(
+  execute(
+    code.internalFailure,
+    structuredClone(internalFailureMessage),
+    internalFailureStore,
+  )[0],
+  null,
+  "falha interna repetida deve ser deduplicada",
+);
+
 const dryRunStore = memory();
-execute(code.dryRun, simulated[1], dryRunStore);
+execute(code.dryRun, simulated[2], dryRunStore);
 assert.equal(dryRunStore.values.get("global_flow_observer_last_dry_run_v1").dispatched, false);
 
 console.log("Global flow observer: topology and incident lifecycle scenarios passed.");

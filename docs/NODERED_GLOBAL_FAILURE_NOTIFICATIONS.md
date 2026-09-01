@@ -1,8 +1,9 @@
 # Notificações globais de falha do Node-RED
 
 O tab `observabilidade_global` centraliza falhas de todas as abas funcionais do
-Node-RED e envia notificações ao papel `resident_primary` pelo binding lógico
-`mobile_primary/notify_3` do Home Assistant.
+Node-RED. Cada incidente de produção envia um push ao papel `resident_primary`
+pelo binding lógico `mobile_primary/notify_3` e cria uma notificação persistente
+na aba **Notificações** do Home Assistant.
 
 ## Cobertura
 
@@ -34,8 +35,33 @@ dependência compartilhada cai. Uma recuperação libera o alerta do próximo
 incidente após a carência de reconexão.
 
 O monitor não inclui o próprio tab na captura universal. A falha do nó que
-envia o push possui um `catch` específico que apenas registra o problema, sem
-realimentar o canal e criar recursão.
+envia o push ou cria a notificação persistente possui um `catch` específico que
+apenas registra o problema, sem realimentar o canal e criar recursão. Cada
+notificação persistente usa um identificador estável por incidente, de modo que
+uma repetição atualiza o alerta existente em vez de criar cópias.
+
+Os três nós centrais do próprio monitor — classificação, confirmação temporal e
+separação de efeitos — possuem um `catch` interno dedicado. Esse caminho ignora
+o processador que falhou, aplica deduplicação de seis horas e chama diretamente
+os dois canais de entrega. O manipulador interno e os terminais de log ficam
+fora do seu próprio escopo para impedir realimentação recursiva.
+
+## Auditoria de cobertura
+
+O validador exige, para cada tab funcional, um `catch` universal com erros já
+tratados incluídos e um `status` universal, ambos ligados ao monitor central.
+Isso cobre exceções e `node.error`, falhas reportadas pelos nós, timeout e os
+estados explícitos de indisponibilidade do Home Assistant, MQTT e DuloNode.
+Também são validados separadamente os dois canais de entrega e o caminho interno
+do próprio monitor. A queda completa do runtime continua coberta pelo watchdog
+nativo no Home Assistant, pois um Node-RED parado não consegue observar a si
+mesmo.
+
+Nós de configuração sem execução própria não emitem erro ou status diretamente;
+suas falhas aparecem nos nós consumidores observados. Condições de domínio que
+não geram erro nem status precisam continuar sendo modeladas pelos monitores
+funcionais específicos, para não transformar estados legítimos em falsos
+incidentes globais.
 
 ## Indisponibilidade dos runtimes
 
@@ -74,8 +100,9 @@ explícita `notification_delivery_under_test`: envia um único push com `TESTE`
 no título e na mensagem, sem executar qualquer outro efeito residencial. O log
 `NODERED_GLOBAL_NOTIFICATION_ACCEPTED ... delivery_test=true` confirma que o
 Home Assistant aceitou a chamada; a confirmação visual no celular valida a
-última milha. Esse smoke test não é requisito para deploy, commit ou push de
-alterações Node-RED que não modifiquem materialmente a rota de notificações.
+última milha. O smoke test não cria uma notificação persistente. Esse teste não
+é requisito para deploy, commit ou push de alterações Node-RED que não
+modifiquem materialmente a rota de notificações.
 
 Validação canônica:
 

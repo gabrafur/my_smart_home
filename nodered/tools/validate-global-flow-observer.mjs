@@ -54,11 +54,37 @@ for (const outputId of expectedOuts) {
 }
 assert.deepEqual(input.wires, [["global_observer_ingest"]]);
 const notify = required("global_observer_notify_primary");
+const persistent = required("global_observer_notify_persistent");
+const guard = required("global_observer_dispatch_guard");
 assert.equal(notify.action, "public_bindings.call");
 assert.match(notify.data, /"role":"mobile_primary"/);
 assert.match(notify.data, /"action":"notify_3"/);
 assert.equal(notify.queue, "all");
-assert.deepEqual(required("global_observer_notification_catch").scope, [notify.id]);
+assert.equal(persistent.action, "persistent_notification.create");
+assert.equal(persistent.domain, "persistent_notification");
+assert.match(persistent.data, /_observer_persistent_notification_id/);
+assert.equal(persistent.queue, "all");
+assert.equal(guard.outputs, 3);
+assert.deepEqual(guard.wires, [
+  [notify.id],
+  [persistent.id],
+  ["global_observer_dry_run_out"],
+]);
+assert.deepEqual(
+  required("global_observer_notification_catch").scope,
+  [notify.id, persistent.id],
+);
+const internalCatch = required("global_observer_internal_catch");
+assert.deepEqual(internalCatch.scope, [
+  "global_observer_ingest",
+  "global_observer_evaluate",
+  guard.id,
+]);
+assert.deepEqual(internalCatch.wires, [["global_observer_internal_failure"]]);
+assert.deepEqual(required("global_observer_internal_failure").wires, [
+  [notify.id],
+  [persistent.id],
+]);
 assert.ok(required("global_observer_test_delivery").props.some(
   (property) => property.p === "_observer_delivery_test" && property.v === "true",
 ));

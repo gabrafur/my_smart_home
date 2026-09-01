@@ -25,10 +25,13 @@ Não usar `on_time` ou `onWithTimedOff`. Consulte
 - O watchdog do relé do portão só pode emitir `OFF`. Mantê-lo fora do runtime
   que produz pulsos é uma defesa em profundidade, não duplicação de lógica.
 - Todas as abas funcionais do Node-RED convergem erros e indisponibilidade no
-  tab `observabilidade_global`, com dedupe e push para `resident_primary`. O
+  tab `observabilidade_global`, com dedupe, push para `resident_primary` e
+  notificação persistente na aba **Notificações** do Home Assistant. O
   observador agrega quedas de HA/MQTT e suprime por 90 segundos a cascata de
   erros de seus nós após a reconexão, sem silenciar falhas de funções alheias;
   queda compartilhada do HA exige pelo menos dois nós corroborando o estado.
+  Falhas nos classificadores centrais do próprio monitor usam um caminho
+  interno deduplicado e não recursivo até os mesmos dois canais.
   O Home Assistant observa o tópico MQTT “nodered/status” diretamente para
   detectar a queda do próprio runtime após 90 segundos; esse watchdog permanece
   nativo porque não pode depender do componente que monitora.

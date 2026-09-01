@@ -191,7 +191,8 @@ const observerNodes = [
     disabled: false,
     info:
       "Recebe erros e estados de indisponibilidade de todas as abas, " +
-      "deduplica incidentes e notifica resident_primary via Home Assistant.",
+      "deduplica incidentes, notifica resident_primary e cria uma notificação " +
+      "persistente no Home Assistant.",
     env: [],
   },
   {
@@ -211,13 +212,16 @@ const observerNodes = [
       "global_observer_dispatch_guard",
       "global_observer_dry_run_out",
       "global_observer_notify_primary",
+      "global_observer_notify_persistent",
       "global_observer_notification_ack",
       "global_observer_notification_catch",
       "global_observer_notification_failure",
+      "global_observer_internal_catch",
+      "global_observer_internal_failure",
     ],
     x: 64,
     y: 39,
-    w: 1570,
+    w: 1700,
     h: 302,
   },
   {
@@ -310,10 +314,14 @@ const observerNodes = [
     productionGroup,
     "Separar produção, TESTE real e dry-run",
     source("global-flow-observer-dispatch-guard.js"),
-    2,
+    3,
     830,
     180,
-    [["global_observer_notify_primary"], ["global_observer_dry_run_out"]],
+    [
+      ["global_observer_notify_primary"],
+      ["global_observer_notify_persistent"],
+      ["global_observer_dry_run_out"],
+    ],
   ),
   {
     id: "global_observer_dry_run_out",
@@ -324,7 +332,7 @@ const observerNodes = [
     mode: "link",
     links: ["global_observer_dry_run_in"],
     x: 1015,
-    y: 240,
+    y: 260,
     wires: [],
   },
   {
@@ -353,7 +361,51 @@ const observerNodes = [
     domain: "public_bindings",
     service: "call",
     x: 1110,
-    y: 160,
+    y: 140,
+    wires: [["global_observer_notification_ack"]],
+    outputProperties: [
+      {
+        property: "_observer_notification_channel",
+        propertyType: "msg",
+        value: "mobile_primary",
+        valueType: "str",
+      },
+    ],
+  },
+  {
+    id: "global_observer_notify_persistent",
+    type: "api-call-service",
+    z: OBSERVER_TAB,
+    g: productionGroup,
+    name: "Notificação persistente no Home Assistant",
+    server: SERVER,
+    version: 7,
+    debugenabled: false,
+    action: "persistent_notification.create",
+    floorId: [],
+    areaId: [],
+    deviceId: [],
+    entityId: [],
+    labelId: [],
+    data:
+      '{"title":alert.title,"message":alert.message,"notification_id":_observer_persistent_notification_id}',
+    dataType: "jsonata",
+    mergeContext: "",
+    mustacheAltTags: false,
+    outputProperties: [
+      {
+        property: "_observer_notification_channel",
+        propertyType: "msg",
+        value: "persistent_notification",
+        valueType: "str",
+      },
+    ],
+    queue: "all",
+    blockInputOverrides: true,
+    domain: "persistent_notification",
+    service: "create",
+    x: 1140,
+    y: 200,
     wires: [["global_observer_notification_ack"]],
   },
   functionNode(
@@ -363,6 +415,7 @@ const observerNodes = [
     `const deliveryTest = msg._observer_delivery_test === true;\n` +
       `node.log("NODERED_GLOBAL_NOTIFICATION_ACCEPTED kind=" + ` +
       `String(msg.payload?.observer_kind ?? "unknown") + ` +
+      `" channel=" + String(msg._observer_notification_channel ?? "unknown") + ` +
       `" delivery_test=" + String(deliveryTest));\nreturn null;`,
     0,
     1410,
@@ -375,9 +428,12 @@ const observerNodes = [
     z: OBSERVER_TAB,
     g: productionGroup,
     name: "Capturar falha do canal de notificação",
-    scope: ["global_observer_notify_primary"],
+    scope: [
+      "global_observer_notify_primary",
+      "global_observer_notify_persistent",
+    ],
     uncaught: false,
-    x: 1120,
+    x: 1240,
     y: 280,
     wires: [["global_observer_notification_failure"]],
   },
@@ -388,9 +444,38 @@ const observerNodes = [
     `node.warn("NODERED_GLOBAL_NOTIFICATION_FAILED source=" + ` +
       `String(msg.error?.source?.type ?? "unknown"));\nreturn null;`,
     0,
-    1410,
+    1510,
     280,
     [],
+  ),
+  {
+    id: "global_observer_internal_catch",
+    type: "catch",
+    z: OBSERVER_TAB,
+    g: productionGroup,
+    name: "Capturar falha interna do monitor",
+    scope: [
+      "global_observer_ingest",
+      "global_observer_evaluate",
+      "global_observer_dispatch_guard",
+    ],
+    uncaught: false,
+    x: 600,
+    y: 320,
+    wires: [["global_observer_internal_failure"]],
+  },
+  functionNode(
+    "global_observer_internal_failure",
+    productionGroup,
+    "Notificar falha interna sem recursão",
+    source("global-flow-observer-internal-failure.js"),
+    2,
+    880,
+    320,
+    [
+      ["global_observer_notify_primary"],
+      ["global_observer_notify_persistent"],
+    ],
   ),
   {
     id: testGroup,

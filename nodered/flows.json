@@ -19281,7 +19281,7 @@
         "type": "tab",
         "label": "observabilidade_global",
         "disabled": false,
-        "info": "Recebe erros e estados de indisponibilidade de todas as abas, deduplica incidentes e notifica resident_primary via Home Assistant.",
+        "info": "Recebe erros e estados de indisponibilidade de todas as abas, deduplica incidentes, notifica resident_primary e cria uma notificação persistente no Home Assistant.",
         "env": []
     },
     {
@@ -19304,13 +19304,16 @@
             "global_observer_dispatch_guard",
             "global_observer_dry_run_out",
             "global_observer_notify_primary",
+            "global_observer_notify_persistent",
             "global_observer_notification_ack",
             "global_observer_notification_catch",
-            "global_observer_notification_failure"
+            "global_observer_notification_failure",
+            "global_observer_internal_catch",
+            "global_observer_internal_failure"
         ],
         "x": 64,
         "y": 39,
-        "w": 1570,
+        "w": 1700,
         "h": 302
     },
     {
@@ -19471,8 +19474,8 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Separar produção, TESTE real e dry-run",
-        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst DELIVERY_TEST = msg._observer_delivery_test === true;\n\nif (TEST_MODE && !DELIVERY_TEST) return [null, msg];\n\nif (DELIVERY_TEST) {\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: true,\n        notification_delivery_under_test: true\n    };\n    msg.alert = {\n        title: \"TESTE — Monitor global do Node-RED\",\n        message:\n            \"TESTE de entrega: o canal central de falhas dos fluxos \" +\n            \"Node-RED conseguiu solicitar esta notificação ao Home Assistant.\"\n    };\n}\nreturn [msg, null];",
-        "outputs": 2,
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst DELIVERY_TEST = msg._observer_delivery_test === true;\n\nif (TEST_MODE && !DELIVERY_TEST) return [null, null, msg];\n\nif (DELIVERY_TEST) {\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: true,\n        notification_delivery_under_test: true\n    };\n    msg.alert = {\n        title: \"TESTE — Monitor global do Node-RED\",\n        message:\n            \"TESTE de entrega: o canal central de falhas dos fluxos \" +\n            \"Node-RED conseguiu solicitar esta notificação ao Home Assistant.\"\n    };\n    return [msg, null, null];\n}\n\nconst kind = String(msg.payload?.observer_kind ?? \"unknown\");\nconst incident = String(\n    msg.payload?.incident_key ??\n    (\n        [msg.payload?.flow_id, msg.payload?.source_id]\n            .filter(Boolean)\n            .join(\"_\") ||\n        \"unknown\"\n    )\n);\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_${kind}_${incident}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\nreturn [msg, msg, null];",
+        "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -19483,6 +19486,9 @@
         "wires": [
             [
                 "global_observer_notify_primary"
+            ],
+            [
+                "global_observer_notify_persistent"
             ],
             [
                 "global_observer_dry_run_out"
@@ -19500,7 +19506,7 @@
             "global_observer_dry_run_in"
         ],
         "x": 1015,
-        "y": 240,
+        "y": 260,
         "wires": []
     },
     {
@@ -19522,13 +19528,59 @@
         "dataType": "jsonata",
         "mergeContext": "",
         "mustacheAltTags": false,
-        "outputProperties": [],
+        "outputProperties": [
+            {
+                "property": "_observer_notification_channel",
+                "propertyType": "msg",
+                "value": "mobile_primary",
+                "valueType": "str"
+            }
+        ],
         "queue": "all",
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
         "x": 1110,
-        "y": 160,
+        "y": 140,
+        "wires": [
+            [
+                "global_observer_notification_ack"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_notify_persistent",
+        "type": "api-call-service",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Notificação persistente no Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":_observer_persistent_notification_id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [
+            {
+                "property": "_observer_notification_channel",
+                "propertyType": "msg",
+                "value": "persistent_notification",
+                "valueType": "str"
+            }
+        ],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1140,
+        "y": 200,
         "wires": [
             [
                 "global_observer_notification_ack"
@@ -19541,7 +19593,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Confirmar aceite pelo Home Assistant",
-        "func": "const deliveryTest = msg._observer_delivery_test === true;\nnode.log(\"NODERED_GLOBAL_NOTIFICATION_ACCEPTED kind=\" + String(msg.payload?.observer_kind ?? \"unknown\") + \" delivery_test=\" + String(deliveryTest));\nreturn null;",
+        "func": "const deliveryTest = msg._observer_delivery_test === true;\nnode.log(\"NODERED_GLOBAL_NOTIFICATION_ACCEPTED kind=\" + String(msg.payload?.observer_kind ?? \"unknown\") + \" channel=\" + String(msg._observer_notification_channel ?? \"unknown\") + \" delivery_test=\" + String(deliveryTest));\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -19559,10 +19611,11 @@
         "g": "global_observer_production_group",
         "name": "Capturar falha do canal de notificação",
         "scope": [
-            "global_observer_notify_primary"
+            "global_observer_notify_primary",
+            "global_observer_notify_persistent"
         ],
         "uncaught": false,
-        "x": 1120,
+        "x": 1240,
         "y": 280,
         "wires": [
             [
@@ -19583,9 +19636,53 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1410,
+        "x": 1510,
         "y": 280,
         "wires": []
+    },
+    {
+        "id": "global_observer_internal_catch",
+        "type": "catch",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Capturar falha interna do monitor",
+        "scope": [
+            "global_observer_ingest",
+            "global_observer_evaluate",
+            "global_observer_dispatch_guard"
+        ],
+        "uncaught": false,
+        "x": 600,
+        "y": 320,
+        "wires": [
+            [
+                "global_observer_internal_failure"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_internal_failure",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Notificar falha interna sem recursão",
+        "func": "const STATE_KEY = \"global_flow_observer_internal_failure_v1\";\nconst STORE = \"persistent\";\nconst now = Date.now();\nconst source = msg.error?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceName = String(source.name || source.type || \"nó desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 100);\nconst errorMessage = String(msg.error?.message ?? \"erro desconhecido\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst signature = `${sourceId}:${errorMessage}`;\nconst previous = flow.get(STATE_KEY, STORE) ?? {};\n\nif (\n    previous.signature === signature &&\n    now - Number(previous.notified_at ?? 0) < 6 * 60 * 60 * 1000\n) {\n    return [null, null];\n}\n\nflow.set(STATE_KEY, { signature, notified_at: now }, STORE);\nmsg.payload = {\n    observer_kind: \"monitor_internal_error\",\n    source_id: sourceId\n};\nmsg.alert = {\n    title: \"Falha no monitor global do Node-RED\",\n    message:\n        `O próprio monitor de observabilidade falhou no nó “${sourceName}”: ` +\n        `${errorMessage}. Incidentes idênticos serão silenciados por 6 horas.`\n};\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_monitor_internal_error_${sourceId}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\nreturn [msg, msg];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 320,
+        "wires": [
+            [
+                "global_observer_notify_primary"
+            ],
+            [
+                "global_observer_notify_persistent"
+            ]
+        ]
     },
     {
         "id": "global_observer_test_group",
