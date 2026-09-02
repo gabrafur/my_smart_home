@@ -768,6 +768,15 @@ if (!normalizer.func.includes("refresh_failure_recovery_cleanup_v1")) {
 if (!normalizer.func.includes("refresh_failure_recovery_cleanup_v1")) {
   throw new Error("Normalizer sem limpeza de alerta após recuperação");
 }
+if (!normalizer.func.includes("evidence_wait_started_at: null")) {
+  normalizer.func = normalizer.func.replace(
+    "                awaiting_evidence: false,\n                request_in_flight: false,",
+    "                awaiting_evidence: false,\n                evidence_wait_started_at: null,\n                request_in_flight: false,",
+  );
+}
+if (!normalizer.func.includes("evidence_wait_started_at: null")) {
+  throw new Error("Normalizer sem limpeza do início da espera semântica");
+}
 normalizer.func = normalizer.func.replace(
   '                cooldown_until: Date.now() + 15 * 60 * 1000,',
   '                cooldown_until: Math.max(\n                    Date.now(),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000\n                ),',

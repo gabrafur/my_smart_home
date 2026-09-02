@@ -39,7 +39,10 @@ da última consulta ao cache não é essa evidência. Dados passivos posteriores
 continuam válidos para estacionamento e telemetria, porém não podem transformar
 um wake antigo ou falho em sucesso nem deixar o card verde. O dashboard deve
 mostrar separadamente há quanto tempo o último wake foi solicitado e quanto
-falta para o próximo ciclo ou retry.
+falta para o próximo ciclo ou retry. O alerta de ausência de dados ancora-se no
+início contínuo dessa espera: uma segunda transição de morador ou uma nova
+tentativa não pode substituir tempo decorrido por contagem de tentativas nem
+antecipar a mensagem de 20 minutos.
 
 No backend brasileiro, o wake chama `/ccs2/carstatus` e a telemetria vem depois
 de `/latest`. HTTP 200 sozinho não prova aceite: o envelope precisa conter

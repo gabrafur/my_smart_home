@@ -69,7 +69,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
 }
 
 const previousStateVersion = Number(state.version ?? 0);
-state.version = 10;
+state.version = 11;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -191,6 +191,35 @@ state.failure_notified_at = Number.isFinite(state.failure_notified_at) &&
     state.failure_notified_at <= now + FUTURE_TOLERANCE_MS
         ? state.failure_notified_at
         : 0;
+state.evidence_wait_started_at =
+    Number.isFinite(state.evidence_wait_started_at) &&
+    state.evidence_wait_started_at > 0 &&
+    state.evidence_wait_started_at <= now + FUTURE_TOLERANCE_MS
+        ? state.evidence_wait_started_at
+        : (
+            state.awaiting_evidence === true
+                ? state.last_request_at || state.last_attempt_at || 0
+                : 0
+        );
+/* A versão 10 notificava "20 min" assim que uma segunda transição de
+ * morador disparava outro wake, mesmo poucos segundos depois da primeira.
+ * Remova somente esse alerta prematuro; o prazo real será reavaliado abaixo. */
+if (
+    previousStateVersion < 11 &&
+    state.last_failure_class === "no_fresh_data" &&
+    state.failure_notified_at > 0 &&
+    state.evidence_wait_started_at > 0 &&
+    state.failure_notified_at <
+        state.evidence_wait_started_at + MAX_WAKE_CONFIRMATION_MS
+) {
+    state.failure_notified_at = 0;
+    state.failure_notification_key = null;
+    state.last_failure_class = null;
+    state.failure_at = null;
+    state.failure_endpoint = null;
+    state.failure_stage = null;
+    state.recovery_notification_pending = true;
+}
 /* Versões anteriores inferiam integration_unavailable apenas por readiness
  * incompleto. Um incidente real, classificado pelo catch da chamada, sempre
  * registra failure_endpoint; reavalie imediatamente somente o estado legado
@@ -228,6 +257,7 @@ if (
     state.failure_endpoint = "public_bindings.call (wake do veículo)";
     state.failure_stage = "confirmação semântica em até 20 min";
     state.failure_notified_at = 0;
+    state.evidence_wait_started_at = state.last_request_at;
     state.baseline_observed_at = {
         telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)
     };
@@ -278,6 +308,73 @@ function blockedNotification(reason, waitS) {
     return [null, null, msg, null, null];
 }
 
+const noFreshEndpoint = "public_bindings.call (wake do veículo)";
+const noFreshStage = "confirmação semântica em até 20 min";
+const failureNotificationKey = `no_fresh_data|${noFreshEndpoint}`;
+
+function failureNotificationIfDue() {
+    const waitStartedAt = Number(state.evidence_wait_started_at ?? 0);
+    const confirmationExpired =
+        state.awaiting_evidence === true &&
+        waitStartedAt > 0 &&
+        now - waitStartedAt >= MAX_WAKE_CONFIRMATION_MS;
+    if (
+        !confirmationExpired ||
+        !(
+            state.last_failure_class == null ||
+            state.last_failure_class === "no_fresh_data"
+        ) ||
+        state.failure_notification_key === failureNotificationKey
+    ) {
+        return null;
+    }
+
+    state.failure_notified_at = now;
+    state.failure_notification_key = failureNotificationKey;
+    state.last_failure_class = "no_fresh_data";
+    state.failure_at = waitStartedAt + MAX_WAKE_CONFIRMATION_MS;
+    state.failure_endpoint = noFreshEndpoint;
+    state.failure_stage = noFreshStage;
+    const notification = {
+        ...msg,
+        payload: (msg.payload && typeof msg.payload === "object")
+            ? { ...msg.payload }
+            : msg.payload
+    };
+    notification.payload = {
+        ...notification.payload,
+        test_mode: TEST_MODE,
+        side_effect: "notify:resident_primary+persistent_notification"
+    };
+    notification.alert = {
+        title: TEST_MODE
+            ? "TESTE — Falha ao atualizar veículo"
+            : "Falha ao atualizar veículo",
+        message:
+            `O endpoint ${noFreshEndpoint} foi chamado, mas o Bluelink ` +
+            "não publicou telemetria nova dentro de 20 min. " +
+            "As retentativas automáticas continuam com backoff; " +
+            "verifique a conectividade do veículo e o serviço da Hyundai."
+    };
+    notification.notification = {
+        id: "vehicle_primary_refresh_failed",
+        title: notification.alert.title,
+        message: notification.alert.message
+    };
+    return notification;
+}
+
+const failureNotification = failureNotificationIfDue();
+
+function withFailure(result) {
+    if (!failureNotification) return result;
+    if (Array.isArray(result)) {
+        result[3] = failureNotification;
+        return result;
+    }
+    return [null, null, null, failureNotification, null];
+}
+
 if (
     state.cache_probe_in_flight === true &&
     now < state.cache_probe_in_flight_until
@@ -292,7 +389,7 @@ if (
         shape: "ring",
         text: `releitura do cache em andamento ${waitS}s`
     });
-    return blockedNotification("in_flight", waitS);
+    return withFailure(blockedNotification("in_flight", waitS));
 }
 
 if (state.cache_probe_in_flight === true) {
@@ -317,7 +414,7 @@ if (now < state.cache_probe_settle_until) {
         shape: "ring",
         text: `aguardando cache ${waitS}s`
     });
-    return blockedNotification("cache_probe_settling", waitS);
+    return withFailure(blockedNotification("cache_probe_settling", waitS));
 }
 
 if (state.request_in_flight === true && now < state.in_flight_until) {
@@ -330,7 +427,7 @@ if (state.request_in_flight === true && now < state.in_flight_until) {
         shape: "ring",
         text: `Bluelink em andamento ${waitS}s`
     });
-    return blockedNotification("in_flight", waitS);
+    return withFailure(blockedNotification("in_flight", waitS));
 }
 
 if (state.request_in_flight === true) {
@@ -365,7 +462,7 @@ if (
         shape: "ring",
         text: "saída do morador já coberta por refresh"
     });
-    return null;
+    return withFailure(null);
 }
 
 if (!deadlineBypass && bothResidentsHome && quietHours) {
@@ -379,7 +476,7 @@ if (!deadlineBypass && bothResidentsHome && quietHours) {
         shape: "ring",
         text: "refresh vehicle_primary: pausado até 06h"
     });
-    return null;
+    return withFailure(null);
 }
 
 const enabled =
@@ -399,7 +496,7 @@ if (!enabled) {
         shape: "ring",
         text: "refresh vehicle_primary: aguardando localização"
     });
-    return null;
+    return withFailure(null);
 }
 
 const pendingRequestAt = Number(state.last_request_at ?? 0);
@@ -418,9 +515,9 @@ if (!deadlineBypass && now < state.next_allowed_at) {
             : `refresh vehicle_primary cooldown ${waitS}s`
     });
     if (waitingEvidence) {
-        return blockedNotification("backoff", waitS);
+        return withFailure(blockedNotification("backoff", waitS));
     }
-    return blockedNotification("minimum_interval", waitS);
+    return withFailure(blockedNotification("minimum_interval", waitS));
 }
 
 /*
@@ -460,7 +557,7 @@ if (
             ? "TESTE: releitura de cache em dry-run"
             : "relendo cache antes de novo wake"
     });
-    return [null, null, null, null, msg];
+    return withFailure([null, null, null, null, msg]);
 }
 
 state.cache_probe_in_flight = false;
@@ -472,6 +569,12 @@ state.cache_probe_settle_until = null;
 state.baseline_observed_at = {
     telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)
 };
+if (
+    state.awaiting_evidence !== true ||
+    !(Number(state.evidence_wait_started_at) > 0)
+) {
+    state.evidence_wait_started_at = now;
+}
 state.attempts = Math.min(5, state.attempts + 1);
 state.last_attempt_at = now;
 state.last_request_at = now;
@@ -484,51 +587,6 @@ state.require_lighting_ready = requireLightingReady;
 state.recovery_reason = requestedReason;
 state.manual_force = requestedReason === "manual_force";
 state.resident_departure_force = residentDepartureBypass;
-let failureNotification = null;
-const noFreshEndpoint = "public_bindings.call (wake do veículo)";
-const noFreshStage = "confirmação semântica em até 20 min";
-const failureNotificationKey = `no_fresh_data|${noFreshEndpoint}`;
-if (
-    state.attempts >= 2 &&
-    (
-        state.last_failure_class == null ||
-        state.last_failure_class === "no_fresh_data"
-    ) &&
-    state.failure_notification_key !== failureNotificationKey
-) {
-    state.failure_notified_at = now;
-    state.failure_notification_key = failureNotificationKey;
-    state.last_failure_class = "no_fresh_data";
-    state.failure_at = now;
-    state.failure_endpoint = noFreshEndpoint;
-    state.failure_stage = noFreshStage;
-    failureNotification = {
-        ...msg,
-        payload: (msg.payload && typeof msg.payload === "object")
-            ? { ...msg.payload }
-            : msg.payload
-    };
-    failureNotification.payload = {
-        ...failureNotification.payload,
-        test_mode: TEST_MODE,
-        side_effect: "notify:resident_primary+persistent_notification"
-    };
-    failureNotification.alert = {
-        title: TEST_MODE
-            ? "TESTE — Falha ao atualizar veículo"
-            : "Falha ao atualizar veículo",
-        message:
-            `O endpoint ${noFreshEndpoint} foi chamado, mas o Bluelink ` +
-            "não publicou telemetria nova dentro de 20 min. " +
-            "As retentativas automáticas continuam com backoff; " +
-            "verifique a conectividade do veículo e o serviço da Hyundai."
-    };
-    failureNotification.notification = {
-        id: "vehicle_primary_refresh_failed",
-        title: failureNotification.alert.title,
-        message: failureNotification.alert.message
-    };
-}
 save("refreshing", requestedReason, { enabled: true });
 
 node.log?.(

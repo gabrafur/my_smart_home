@@ -809,7 +809,7 @@ scenario("19 dry-run percorre a fronteira final sem chamada externa", () => {
 });
 
 scenario("20 alerta sintético chega somente ao terminal dry-run", () => {
-  const previousRequestAt = DAY - 15 * 60_000;
+  const previousRequestAt = DAY - 20 * 60_000;
   const store = memory({
     vehicle_primary_context_v1__test: readyContext(DAY),
     [`${KEY}__test`]: {
@@ -1123,7 +1123,7 @@ scenario("40 versão 9 reabre sucesso correlacionado muitas horas depois", () =>
   assert.equal(result[0], null);
   assert(result[4]);
   const state = store.get(KEY);
-  assert.equal(state.version, 10);
+  assert.equal(state.version, 11);
   assert.equal(state.awaiting_evidence, true);
   assert.equal(state.last_success_at, 0);
   assert.equal(state.last_failure_class, "no_fresh_data");
@@ -1309,6 +1309,98 @@ scenario("44 saída ignora deadline, mas não duplica o mesmo wake", () => {
   });
   assert.equal(phoneResult, null);
   assert.equal(phoneStore.get("security_people_last_refresh_at"), undefined);
+});
+
+scenario("45 segunda saída não antecipa alerta semântico de 20 minutos", () => {
+  const firstDepartureAt = DAY;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY - 60_000),
+  });
+  const first = coordinator(store, firstDepartureAt, {
+    reason: "resident_departure",
+    recovery_reason: "resident_departure",
+    resident_departure_force: true,
+    departure_event_at: firstDepartureAt,
+    force_recovery: true,
+    resident_primary_state: "not_home",
+    resident_secondary_state: "home",
+  });
+  assert(first[0]);
+  assert.equal(first[3], null);
+
+  execute(code.accepted, {
+    now: DAY + 10_000,
+    store,
+    msg: { payload: {} },
+  });
+
+  const second = coordinator(store, DAY + 90_000, {
+    reason: "resident_departure",
+    recovery_reason: "resident_departure",
+    resident_departure_force: true,
+    departure_event_at: DAY + 89_000,
+    force_recovery: true,
+    resident_primary_state: "not_home",
+    resident_secondary_state: "not_home",
+  });
+  assert(second[0]);
+  assert.equal(second[3], null);
+  assert.equal(store.get(KEY).evidence_wait_started_at, firstDepartureAt);
+  assert.equal(store.get(KEY).last_failure_class ?? null, null);
+});
+
+scenario("46 alerta semântico nasce somente após 20 minutos reais", () => {
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY - 60_000),
+    [KEY]: {
+      version: 11,
+      attempts: 2,
+      awaiting_evidence: true,
+      evidence_wait_started_at: DAY,
+      last_attempt_at: DAY + 90_000,
+      last_request_at: DAY + 90_000,
+      next_allowed_at: DAY + 30 * 60_000,
+      interval_ms: 15 * 60_000,
+    },
+  });
+  const before = coordinator(store, DAY + 20 * 60_000 - 1, {
+    resident_primary_state: "not_home",
+    resident_secondary_state: "not_home",
+  });
+  assert.equal(before, null);
+  assert.equal(store.get(KEY).last_failure_class ?? null, null);
+
+  const due = coordinator(store, DAY + 20 * 60_000, {
+    resident_primary_state: "not_home",
+    resident_secondary_state: "not_home",
+  });
+  assert.equal(due[0], null);
+  assert(due[3]);
+  assert.match(due[3].alert.message, /dentro de 20 min/);
+  assert.equal(store.get(KEY).last_failure_class, "no_fresh_data");
+  assert.equal(store.get(KEY).failure_at, DAY + 20 * 60_000);
+});
+
+scenario("47 sucesso limpa o início da espera semântica", () => {
+  const baseline = DAY - 10 * 60_000;
+  const requestAt = DAY - 5 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      version: 11,
+      attempts: 1,
+      awaiting_evidence: true,
+      evidence_wait_started_at: requestAt,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: DAY + 10 * 60_000,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  normalize(store, DAY, DAY, DAY - 60_000);
+  assert.equal(store.get(KEY).awaiting_evidence, false);
+  assert.equal(store.get(KEY).evidence_wait_started_at, null);
 });
 
 console.log(

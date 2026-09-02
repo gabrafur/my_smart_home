@@ -370,6 +370,10 @@ comando de wake foi aceito pelo backend.
   `last_updated_at` nao avancou; a das 16:24:38 avancou. Vale lembrar que a
   API BR so aceita `/location/park` com o carro parado (400 em movimento), o
   que sugere que o backend continua limitado durante a viagem.
+- A confirmacao causal admite ate 20 minutos desde o inicio continuo da espera.
+  Esse prazo nao e reiniciado nem antecipado por uma nova tentativa, e duas
+  transicoes de moradores em sequencia nao podem transformar o contador de
+  tentativas em um falso alerta de 20 minutos.
 
 ## Partida remota exige o carro TRAVADO (2026-08-07)
 
