@@ -38,6 +38,12 @@ def main() -> None:
     assert "A última atualização do veículo falhou" in dashboard
     assert "refresh_failure_endpoint" in dashboard
     assert "failure_labels" in dashboard
+    assert "entity: switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada" in dashboard
+    assert "Um `motor = OFF` recente e confiável continua bloqueando" in dashboard
+    assert "refresh_awaiting" in dashboard
+    assert "last_success_reason" in dashboard
+    assert "lighting_ready_after_wake" in dashboard
+    assert "o carro publicou telemetria nova" in dashboard
     assert "nova tentativa automática em cerca de" in dashboard
     assert "nova tentativa automática agora" in dashboard
     assert "sensor.vehicle_primary_api_retry_at" in dashboard
@@ -62,6 +68,9 @@ def main() -> None:
     )
     assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
         "Wake periódico pausado até 06h"
+    )
+    assert dashboard.index("refresh_awaiting and refresh_state") < dashboard.index(
+        "refresh_failure == 'integration_unavailable'"
     )
     assert "<ha-alert" not in dashboard
     assert "🟢" in dashboard
@@ -114,7 +123,7 @@ def main() -> None:
     assert "event_type: kia_uvo_api_retry" in controls
     assert "unique_id: vehicle_primary_api_retry_at" in controls
 
-    print("vehicle_primary dashboard: 59 verificações aprovadas.")
+    print("vehicle_primary dashboard: wake e bypass seguros aprovados.")
 
 
 class VehiclePrimaryDashboardLocationTest(unittest.TestCase):

@@ -100,7 +100,12 @@ function activeLightFlow(extra = {}) {
 
 function readyLightFlow(extra = {}) {
   return memoryFlow({
-    people_context_v1: { ready: true, updated_at: Date.now() },
+    people_context_v1: {
+      ready: true,
+      updated_at: Date.now(),
+      resident_primary: { ready: true, stale: false, state: "chegando" },
+      resident_secondary: { ready: true, stale: false, state: "chegando" },
+    },
     vehicle_primary_context_v1: { ready: true, lighting_ready: true, in_use: true, engine_on: true, engine_state_valid: true, updated_at: Date.now() },
     sun_ready: true,
     sun_below_horizon: true,
@@ -564,7 +569,8 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
   const pendingKey = "security_light_pending_arrival_v1";
   const pending = flow.get(pendingKey);
   assert(pending, "chegada real deve ser preservada enquanto o motor está OFF");
-  assert.equal(pending.wait_reason, "vehicle_engine_on_after_arrival");
+  assert.equal(pending.retention, "while_approaching");
+  assert.equal(pending.expires_at, null);
 
   const stillOffAt = now + 1;
   const stillOff = run("light_merge_context", {
@@ -592,7 +598,7 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
   }, flow, geoEnv);
   assert(engineOn[2], "contexto real ON deve reprocessar a chegada preservada");
   assert.equal(engineOn[2].payload.arrival_replayed_after_context_recovery, true);
-  assert.equal(flow.get(pendingKey), null);
+  assert(flow.get(pendingKey), "replay não consome a intenção antes do despacho");
 
   const preparedOn = run("light_prepare_arrival", engineOn[2], flow, geoEnv)[0];
   assert(run("light_check_vehicle_primary_in_use", preparedOn, flow, geoEnv));

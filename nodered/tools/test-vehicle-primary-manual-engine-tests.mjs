@@ -12,6 +12,9 @@ const ids = {
   output: "2ff281276fc1d020",
   engineOn: "vehicle_primary_manual_engine_on_test_v1",
   engineOff: "vehicle_primary_manual_engine_off_test_v1",
+  bypassFunction: "security_light_engine_bypass_function_v1",
+  bypassTestOn: "security_light_engine_bypass_test_on_v1",
+  bypassTestOff: "security_light_engine_bypass_test_off_v1",
 };
 
 function memory(initial = {}) {
@@ -48,10 +51,11 @@ const mergeContext = flows.find((node) => node.name === "Atualizar contexto de a
 const prepareArrival = flows.find((node) => node.name === "Montar decisão de acendimento");
 const checkInactive = flows.find((node) => node.name === "Refletor disponível para acender?");
 const markActive = flows.find((node) => node.name === "Marcar refletor ativo por chegada");
+const bypassFunction = byId.get(ids.bypassFunction);
 const dryRunTerminal = byId.get("light_full_dry_run_terminal_v1");
 assert(
   group && coordinator && normalizer && gate && mergeContext &&
-    prepareArrival && checkInactive && markActive && dryRunTerminal,
+    prepareArrival && checkInactive && markActive && bypassFunction && dryRunTerminal,
   "estrutura de teste obrigatória ausente",
 );
 
@@ -65,6 +69,17 @@ for (const [id, testCase] of [
   assert.equal(node.props[0].v, testCase);
   assert.deepEqual(node.wires, [[ids.coordinator]]);
   assert(group.nodes.includes(id), `${id} fora do grupo manual`);
+}
+
+for (const [id, requestedState] of [
+  [ids.bypassTestOn, "ON"],
+  [ids.bypassTestOff, "OFF"],
+]) {
+  const node = byId.get(id);
+  assert(node, `controle de bypass ausente: ${id}`);
+  assert.equal(node.type, "inject");
+  assert.equal(JSON.parse(node.payload).requested_state, requestedState);
+  assert.deepEqual(node.wires, [[ids.bypassFunction]]);
 }
 
 const shared = memory();
@@ -109,7 +124,15 @@ const gateFlow = memory({
   light_reconciled: true,
   security_light_physical_state: "off",
   security_light_physical_observed_at: Date.now(),
-  people_context_v1__test: { ready: true, updated_at: Date.now() },
+  people_context_v1__test: {
+    ready: true,
+    updated_at: Date.now(),
+    resident_primary: {
+      ready: true,
+      stale: false,
+      state: "chegando",
+    },
+  },
 });
 assert(execute(gate, {
   payload: {
@@ -140,75 +163,93 @@ assert(testGateApproved, "gate aprovado deve continuar pelo dry-run");
 assert.equal(testGateApproved.payload.dispatched, false);
 assert.equal(testStatuses.at(-1), "TESTE: gate aprovado — continuando dry-run");
 
+const pendingKey = "security_light_pending_arrival_v1__test";
+const arrivalAt = Date.now() - 5 * 60_000;
+gateFlow.set("sun_below_horizon", false);
+gateFlow.set("vehicle_primary_context_v1__test", {
+  ready: true,
+  lighting_ready: false,
+  in_use: true,
+  engine_on: false,
+  engine_state_valid: false,
+  engine_stale: true,
+  updated_at: arrivalAt,
+});
+const queued = execute(prepareArrival, {
+  _location_test: true,
+  _location_test_case: "arrival_before_sunset",
+  payload: {
+    kind: "arrival",
+    test_mode: true,
+    source: "resident_primary",
+    arrival_stage: "approach",
+    event_at: arrivalAt,
+  },
+}, gateFlow, shared);
+assert.equal(queued[0], null, "sem motor confiável a chegada deve aguardar");
+assert.equal(gateFlow.get(pendingKey).version, 2);
+assert.equal(gateFlow.get(pendingKey).retention, "while_approaching");
+assert.equal(gateFlow.get(pendingKey).expires_at, null);
+
+gateFlow.set("sun_below_horizon", true);
+const sunset = execute(mergeContext, {
+  _location_test: true,
+  _location_test_case: "arrival_before_sunset",
+  payload: {
+    kind: "sun_context",
+    test_mode: true,
+    sun_below_horizon: true,
+    updated_at: Date.now(),
+  },
+}, gateFlow, shared);
+assert.equal(sunset[2], null, "bypass desligado ainda deve aguardar motor confiável");
+assert(gateFlow.get(pendingKey), "chegada com mais de 2 min deve permanecer em chegando");
+
+const bypassOn = execute(bypassFunction, {
+  _location_test: true,
+  payload: {
+    requested_state: "ON",
+    test_mode: true,
+    test_case: "engine_bypass_on",
+  },
+}, gateFlow, shared);
+assert.equal(bypassOn[0], null, "teste não deve publicar discovery MQTT");
+assert.equal(gateFlow.get("security_light_engine_bypass_enabled__test"), true);
+
 assert.equal(execute(gate, {
   _location_test: true,
   payload: {
     test_mode: true,
-    kind: "arrival",
-    source: "resident_primary",
-    arrival_stage: "approach",
-    event_at: Date.now(),
     vehicle_primary_in_use: false,
     vehicle_primary_engine_on: false,
     vehicle_primary_engine_state_valid: true,
+    vehicle_primary_engine_stale: false,
+    vehicle_primary_lighting_ready: true,
+    engine_data_unreliable: false,
   },
-}, gateFlow, shared, {}, { status: (status) => testStatuses.push(status.text) }), null);
-assert.equal(testStatuses.at(-1), "TESTE: aguardando motor ON — chegada preservada");
-const pendingKey = "security_light_pending_arrival_v1__test";
-assert.equal(gateFlow.get(pendingKey).wait_reason, "vehicle_engine_on_after_arrival");
+}, gateFlow, shared), null, "bypass nunca pode ignorar motor OFF confiável");
 
-const offUpdatedAt = Date.now() + 1;
-const offContext = execute(mergeContext, {
-  _location_test: true,
-  _location_test_case: "vehicle_primary_engine_off",
-  payload: {
-    kind: "vehicle_primary_context",
-    test_mode: true,
-    updated_at: offUpdatedAt,
-    context: {
-      ready: true,
-      lighting_ready: true,
-      in_use: false,
-      engine_on: false,
-      engine_state_valid: true,
-      engine_stale: false,
-      updated_at: offUpdatedAt,
-    },
-  },
-}, gateFlow, shared);
-assert.equal(offContext[2], null, "motor OFF não pode reprocessar a chegada");
-assert(gateFlow.get(pendingKey), "chegada deve continuar pendente enquanto o motor está OFF");
+const bypassReplay = execute(
+  mergeContext,
+  bypassOn[1],
+  gateFlow,
+  shared,
+);
+assert(bypassReplay[2], "bypass deve reprocessar chegada quando motor está stale");
+assert.equal(
+  bypassReplay[2].payload.arrival_replayed_after_context_recovery,
+  true,
+);
+assert.equal(bypassReplay[2].payload.test_mode, true);
 
-const onUpdatedAt = offUpdatedAt + 1;
-const onContext = execute(mergeContext, {
-  _location_test: true,
-  _location_test_case: "vehicle_primary_engine_on",
-  payload: {
-    kind: "vehicle_primary_context",
-    test_mode: true,
-    updated_at: onUpdatedAt,
-    context: {
-      ready: true,
-      lighting_ready: true,
-      in_use: true,
-      engine_on: true,
-      engine_state_valid: true,
-      engine_stale: false,
-      updated_at: onUpdatedAt,
-    },
-  },
-}, gateFlow, shared);
-assert(onContext[2], "motor ON deve reprocessar a chegada preservada");
-assert.equal(onContext[2].payload.arrival_replayed_after_context_recovery, true);
-assert.equal(onContext[2].payload.test_mode, true);
-assert.equal(gateFlow.get(pendingKey), null);
-
-const prepared = execute(prepareArrival, onContext[2], gateFlow, shared)[0];
-assert(prepared, "replay ON deve atravessar a preparação de acendimento");
+const prepared = execute(prepareArrival, bypassReplay[2], gateFlow, shared)[0];
+assert(prepared, "replay com bypass deve atravessar a preparação de acendimento");
 assert.equal(prepared.payload.sun_below_horizon, true);
+assert.equal(prepared.payload.engine_bypass_allowed, true);
 
 const gated = execute(gate, prepared, gateFlow, shared);
-assert(gated, "replay ON deve atravessar o gate em test_mode");
+assert(gated, "replay com bypass deve atravessar o gate em test_mode");
+assert.equal(gated.payload.vehicle_primary_gate, "manual_bypass_for_unreliable_engine");
 const available = execute(checkInactive, gated, gateFlow, shared)[0];
 assert(available, "refletor OFF reconciliado deve chegar ao lifecycle de teste");
 const dispatched = execute(markActive, available, gateFlow, shared);
@@ -216,6 +257,7 @@ assert.equal(dispatched[0], null, "test_mode nunca pode entrar na saída física
 assert(dispatched[1], "test_mode deve chegar ao terminal dry-run");
 assert.equal(gateFlow.get("security_light_lifecycle_v1"), undefined);
 assert.equal(gateFlow.get("security_light_lifecycle_v1__test").active_by_arrival, true);
+assert.equal(gateFlow.get(pendingKey), null, "intenção só é removida após despacho");
 assert.deepEqual(markActive.wires[0], [
   "f863fcd77744a4da",
   "9f047ccb2ce2c3aa",
@@ -231,4 +273,63 @@ assert.equal(finalResult.dispatched, false);
 assert.equal(finalResult.actions.length, 4);
 assert.equal((dryRunTerminal.wires ?? []).flat().length, 0);
 
-console.log("Testes manuais ON/OFF passaram pelo fluxo completo até o terminal dry-run, sem dispositivos." );
+const cancelFlow = memory({
+  sun_ready: true,
+  sun_below_horizon: true,
+  people_context_v1__test: {
+    ready: true,
+    updated_at: Date.now() - 1,
+    resident_primary: {
+      ready: true,
+      stale: false,
+      state: "chegando",
+    },
+  },
+  vehicle_primary_context_v1__test: {
+    ready: true,
+    lighting_ready: false,
+    engine_state_valid: false,
+    engine_stale: true,
+  },
+  security_light_pending_arrival_v1__test: {
+    version: 2,
+    retention: "while_approaching",
+    source: "resident_primary",
+    queued_at: Date.now() - 5 * 60_000,
+    event_at: Date.now() - 5 * 60_000,
+    expires_at: null,
+    message: {
+      _location_test: true,
+      payload: {
+        kind: "arrival",
+        source: "resident_primary",
+        arrival_stage: "approach",
+        test_mode: true,
+      },
+    },
+  },
+});
+execute(mergeContext, {
+  _location_test: true,
+  payload: {
+    kind: "people_context",
+    test_mode: true,
+    updated_at: Date.now(),
+    context: {
+      ready: true,
+      updated_at: Date.now(),
+      resident_primary: {
+        ready: true,
+        stale: false,
+        state: "home",
+      },
+    },
+  },
+}, cancelFlow, shared);
+assert.equal(
+  cancelFlow.get("security_light_pending_arrival_v1__test"),
+  null,
+  "entrada em home deve cancelar a intenção pendente",
+);
+
+console.log("Motor, bypass seguro e chegada persistente passaram pelo fluxo completo em dry-run." );

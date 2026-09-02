@@ -228,9 +228,10 @@ scenario("12 dedupe do refletor so e gravado depois dos gates", () => {
   const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", event_at: clock } };
   const prepared = run("light_prepare_arrival", structuredClone(arrival), flow)[0];
   assert.equal(flow.get("security_light_lifecycle_v1").last_arrival_key, undefined);
-  const action = run("light_mark_active", prepared, flow);
+  const gated = run("light_check_vehicle_primary_in_use", prepared, flow);
+  const action = run("light_mark_active", gated, flow);
   assert(action);
-  assert.equal(run("light_mark_active", structuredClone(prepared), flow), null);
+  assert.equal(run("light_mark_active", structuredClone(gated), flow), null);
 });
 
 scenario("13 snapshot mais novo ready false prevalece por seguranca", () => {
@@ -292,8 +293,6 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
   assert.deepEqual(unavailableDryOut.links, [unavailableDryIn.id]);
   assert.deepEqual(unavailableDryIn.links, [unavailableDryOut.id]);
   assert.deepEqual(wireNames(unavailableDryIn.id), [
-    "Avisar resident_primary: refletor indisponível",
-    "Avisar resident_secondary: refletor indisponível",
     "Teste → terminal dry-run",
   ]);
   const unavailableTerminalOut = byId.get("light_test_to_terminal_out_v1");

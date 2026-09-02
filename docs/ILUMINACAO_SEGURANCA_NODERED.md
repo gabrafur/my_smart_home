@@ -225,13 +225,23 @@ Mudanças confirmadas de motor são observadas simetricamente: `on` por 5 s e
 próximo snapshot periódico para iniciar ou encerrar o contexto de uso, mantendo
 o mesmo filtro contra oscilações nos dois sentidos.
 
-Quando uma chegada `not_home -> chegando` chega antes de a integração atualizar
-o motor de `off` para `on`, `iluminacao_seguranca` preserva o evento por até 2
-minutos. Um contexto posterior só faz replay se `in_use=true`, motor `on` atual,
-válido e não stale, além de luminosidade ready. Enquanto o motor continuar
-`off`, a chegada permanece pendente e não acende o refletor; ao expirar, é
-descartada. O timestamp original é preservado, portanto atualizações repetidas
-não estendem a janela.
+Quando uma chegada pessoal `not_home -> chegando` ocorre antes do anoitecer ou
+antes de a integração atualizar o motor, `iluminacao_seguranca` preserva a
+intenção sem uma expiração fixa. Ela continua válida enquanto a mesma pessoa
+permanecer em `chegando`, com localização `ready` e não stale. A intenção é
+cancelada ao entrar em `home`, sair de `chegando` ou perder a atualidade da
+localização. Assim, uma entrada às 17:31 ainda é reavaliada se o pôr do sol
+ocorrer às 17:35. Chegadas que não representam uma pessoa permanecendo na zona
+de aproximação conservam a janela curta de recovery de 2 minutos.
+
+O replay exige luminosidade ready e `below_horizon`. O gate normal continua
+exigindo `in_use=true` e motor `on` atual, válido e não stale. A chave manual
+`switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada`
+oferece uma alternativa somente quando
+a leitura específica do motor está stale, inválida ou sem readiness. Mesmo com
+a chave ligada, um motor `off` recente e confiável continua bloqueando o
+refletor. A intenção só é removida depois que o despacho de acendimento passa
+por todos os gates, ou quando uma das condições de cancelamento ocorre.
 
 O gate não usa apenas a leitura ao vivo do motor porque o backend brasileiro
 pode manter esse sensor antigo durante uma viagem. A iluminação recebe apenas
@@ -252,8 +262,12 @@ verdadeiras:
 
 1. há um evento `security.arrival.v1`;
 2. `sun.sun` está `below_horizon`;
-3. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`;
-4. pessoas, vehicle_primary, sol e estado físico do refletor estão ready/reconciliados;
+3. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`, **ou** o
+   bypass manual está ligado e a telemetria do motor está comprovadamente não
+   confiável;
+4. pessoas, sol e estado físico do refletor estão ready/reconciliados; o
+   readiness do motor é obrigatório no caminho normal e dispensado apenas pelo
+   bypass restrito descrito acima;
 5. o refletor físico está `off` e não foi marcado como ativo por chegada;
 6. não há supressão pós-desligamento ativa.
 
@@ -368,9 +382,9 @@ depende exclusivamente de um `delay` residente em memória.
   em 15 ou 30 minutos conforme a presença atual. O botão também funciona na
   pausa noturna.
 - O retorno de `public_bindings.call` muda o estado apenas para
-  `awaiting_evidence`. Sucesso exige que localização, motor ou trava tenham
-  dados associados a um `sensor.vehicle_primary_last_updated_at` posterior ao
-  baseline e ao wake avaliado, e que o alvo de readiness seja atingido. O `last_updated` interno
+  `awaiting_evidence`. Sucesso do **wake** exige que o relógio semântico
+  `sensor.vehicle_primary_last_updated_at` avance em relação ao baseline e seja
+  causalmente compatível com a tentativa. O `last_updated` interno
   das entidades não serve como prova, pois também avança ao reler o cache ou
   recarregar a integração. A mudança do próprio sensor semântico entra como
   evento no normalizador, mesmo quando localização, motor e trava mantêm o
@@ -381,10 +395,12 @@ depende exclusivamente de um `delay` residente em memória.
   `401 Unauthorized`, timeout e aceite sem dado novo mantêm backoff; 401 no
   polling de cache do backend BR é reavaliado em até 60 s sem descarregar o
   config entry.
-- Telemetria semântica nova confirma wakes comuns mesmo quando motor e trava
-  permanecem no mesmo estado e o Home Assistant não renova o `last_updated`
-  dessas entidades. A exigência de readiness completo continua aplicada aos
-  pedidos explícitos de recuperação da iluminação.
+- Telemetria semântica nova confirma qualquer wake, inclusive um pedido de
+  recuperação da iluminação, mesmo quando a leitura específica do motor
+  continua stale. A confiabilidade do motor é registrada separadamente em
+  `lighting_ready_after_wake` e continua protegendo o gate da iluminação. Isso
+  impede que “wake respondeu” seja exibido como erro apenas porque o backend BR
+  omitiu `engine=on`.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
   vehicle_primary continua sincronizando os dois trackers de iPhone, mas agora por um
   contrato explícito `contexto_vehicle_primary -> localizacao_pessoas`; nenhuma entidade
@@ -472,9 +488,13 @@ estado de motor escolhido. Assim,
 o mesmo cenário exercita o gate `vehicle_primary está em uso?` em
 `iluminacao_seguranca`: `ON` produz contexto `in_use=true` com motor atual
 válido e mostra `TESTE: vehicle_primary em uso — gate aprovado`; `OFF` produz
-`in_use=false` e mostra `TESTE: aguardando motor ON — chegada preservada`. Se
-o controle for alterado para `ON` dentro de 2 minutos, a mesma chegada é
-reprocessada e o status muda para `TESTE: gate aprovado — continuando dry-run`.
+`in_use=false` e mantém a chegada pendente enquanto a pessoa sintética
+permanecer em `chegando`. Na aba `iluminacao_seguranca`, os controles
+`TESTE: bypass ON (isolado)` e `TESTE: bypass OFF (isolado)` exercitam a chave
+sem alterar o switch real. O cenário comprova que dado stale com bypass ligado
+segue para dry-run, mas motor `OFF` fresco continua bloqueado. A mesma chegada
+também pode ser mantida além de 2 minutos e reprocessada quando o sol muda para
+`below_horizon`.
 O `test_mode` então atravessa disponibilidade do refletor, dedupe e lifecycle
 isolado, chegando a `TESTE FINAL: ações simuladas — nenhum dispositivo
 acionado`. Esse terminal registra que refletor, dois avisos e backstop seriam

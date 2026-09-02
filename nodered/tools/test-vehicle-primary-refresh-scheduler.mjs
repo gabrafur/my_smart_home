@@ -632,9 +632,11 @@ scenario("30 telemetria nova confirma wake comum com motor sem mudança", () => 
   assert.equal(state.attempts, 0);
   assert.equal(state.state, "cooldown");
   assert.deepEqual([...state.last_evidence_domains], ["telemetry"]);
+  assert.equal(state.lighting_ready_after_wake, false);
+  assert.equal(state.last_success_reason, "fresh_telemetry_engine_unreliable");
 });
 
-scenario("31 recovery de iluminação ainda exige sinais derivados atuais", () => {
+scenario("31 wake da iluminação confirma telemetria sem mascarar motor stale", () => {
   const baseline = DAY - 10 * 60_000;
   const requestAt = DAY - 5 * 60_000;
   const staleSignalAt = DAY - 20 * 60_000;
@@ -657,9 +659,12 @@ scenario("31 recovery de iluminação ainda exige sinais derivados atuais", () =
     lockAt: staleSignalAt,
   });
   const state = store.get(KEY);
-  assert.equal(state.awaiting_evidence, true);
-  assert.equal(state.attempts, 1);
-  assert.equal(state.state, "backoff");
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.attempts, 0);
+  assert.equal(state.state, "cooldown");
+  assert.equal(state.last_failure_class, null);
+  assert.equal(state.lighting_ready_after_wake, false);
+  assert.equal(state.last_success_reason, "fresh_telemetry_engine_unreliable");
 });
 
 scenario("17 recuperação posterior da integração", () => {

@@ -61,6 +61,12 @@ const status = {
         ? iso(raw.in_flight_until)
         : null,
     service_accepted_at: iso(raw.service_accepted_at),
+    last_success_reason: raw.last_success_reason ?? null,
+    lighting_ready_after_wake:
+        raw.lighting_ready_after_wake === true,
+    last_evidence_domains: Array.isArray(raw.last_evidence_domains)
+        ? raw.last_evidence_domains
+        : [],
     cache_probe_in_flight: raw.cache_probe_in_flight === true,
     cache_probe_accepted_at: iso(raw.cache_probe_accepted_at),
     last_failure_class: raw.last_failure_class ?? null,

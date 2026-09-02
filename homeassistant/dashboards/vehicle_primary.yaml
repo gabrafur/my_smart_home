@@ -159,6 +159,20 @@ views:
                 hold_action:
                   action: none
               - type: tile
+                entity: switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada
+                name: Bypass do motor na chegada
+                icon: mdi:car-light-alert
+                tap_action:
+                  action: toggle
+                  confirmation:
+                    text: Alterar o bypass do motor? Ele só será usado quando a leitura do motor estiver stale ou inválida.
+                icon_tap_action:
+                  action: toggle
+                  confirmation:
+                    text: Alterar o bypass do motor? Um motor OFF recente e confiável continuará bloqueando o refletor.
+                hold_action:
+                  action: more-info
+              - type: tile
                 entity: button.vehicle_primary_start_hazard_lights_and_horn
                 name: Localizar (segure)
                 icon: mdi:car-emergency
@@ -223,6 +237,17 @@ views:
                   action: none
                 icon_hold_action:
                   action: none
+          - type: markdown
+            content: >-
+              **Bypass do motor para a iluminação de chegada**
+
+              {% if is_state('switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada', 'on') %}
+              🟡 **Ligado manualmente** · o fluxo pode ignorar a exigência `motor = ON` somente quando essa telemetria estiver stale, inválida ou indisponível. Um `motor = OFF` recente e confiável continua bloqueando o refletor.
+              {% elif states('switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada') in ['unknown', 'unavailable'] %}
+              🔴 **Chave indisponível** · o Node-RED ainda não publicou o controle no Home Assistant.
+              {% else %}
+              🟢 **Desligado** · a iluminação exige uma leitura recente e válida de `motor = ON`.
+              {% endif %}
           - type: markdown
             content: >-
               {% set command = states('sensor.garagem_vehicle_primary_remote_command_status') %}
@@ -306,6 +331,9 @@ views:
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
               {% set refresh_failure = state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_failure_class') %}
               {% set refresh_failure_endpoint = state_attr('sensor.vehicle_primary_refresh_coordinator', 'failure_endpoint') %}
+              {% set refresh_awaiting = state_attr('sensor.vehicle_primary_refresh_coordinator', 'awaiting_evidence') == true %}
+              {% set refresh_success_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_success_reason') %}
+              {% set lighting_ready_after_wake = state_attr('sensor.vehicle_primary_refresh_coordinator', 'lighting_ready_after_wake') == true %}
               {% set failure_labels = dict(authentication='falha de autenticação', timeout='tempo limite excedido', concurrent_request_coalesced='requisição já em andamento', api_error='erro da API', no_fresh_data='o wake não produziu dados novos', cache_probe_lease_expired='a releitura do cache expirou', in_flight_lease_expired='a tentativa de wake expirou') %}
               {% set refresh_failure_label = failure_labels.get(refresh_failure, refresh_failure | replace('_', ' ')) if refresh_failure not in [none, '', 'unknown', 'unavailable'] else none %}
               {% set remaining = state_attr('sensor.vehicle_primary_refresh_coordinator', 'remaining_seconds') | int(0) %}
@@ -345,11 +373,12 @@ views:
               {% endif %}
 
               {% if api_status == 'rate_limited' %}🟡 **Integração Bluelink ainda indisponível**{% if api_remaining_min > 0 %} · API liberada para nova tentativa em cerca de {{ format_number_ptbr(api_remaining_min) }} min{% else %} · API liberada para nova tentativa agora{% endif %}.
-              {% elif refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] %}🔵 **Wake em andamento** · aguardando o Bluelink publicar dados do carro.
+              {% elif refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] or (refresh_awaiting and refresh_state in ['probing_cache', 'backoff']) %}🔵 **Wake em andamento** · aguardando o Bluelink publicar dados novos ou concluir a releitura do cache{% if remaining_min > 0 %} · próxima etapa em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
               {% elif refresh_failure == 'integration_unavailable' or (refresh_failure == 'api_error' and cache_age_s is none and data_age_min is none) %}🟡 **Integração Bluelink ainda indisponível**{% if refresh_failure_endpoint %} · endpoint `{{ refresh_failure_endpoint }}`{% endif %}{% if request_age_min is not none %} · último wake solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %}{% if remaining_min > 0 %} · nova tentativa automática em cerca de {{ format_number_ptbr(remaining_min) }} min{% else %} · nova tentativa automática agora{% endif %}.
               {% elif refresh_failure_label is not none %}🟡 **A última atualização do veículo falhou** · {{ refresh_failure_label }}{% if refresh_failure_endpoint %} no endpoint `{{ refresh_failure_endpoint }}`{% endif %}{% if request_age_min is not none %} · último wake solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %}{% if remaining_min > 0 %} · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min{% else %} · nova verificação automática agora{% endif %}.
               {% elif refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa{% if request_age_min is not none %} · último wake solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %}.
               {% elif refresh_state in ['probing_cache', 'backoff'] %}🟡 **Atualização do veículo ainda não concluída**{% if refresh_state == 'probing_cache' %} · verificando agora o cache do servidor antes de outro wake{% elif remaining_min > 0 %} · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
+              {% elif wake_confirmed and refresh_success_reason == 'fresh_telemetry_engine_unreliable' and not lighting_ready_after_wake %}🟡 **Último wake confirmado, solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min** · o carro publicou telemetria nova, mas a leitura específica do motor continua não confiável para a iluminação. Use o bypass acima somente se necessário.
               {% elif wake_confirmed %}🟢 **Último wake confirmado, solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min** · próximo ciclo em cerca de {{ format_number_ptbr(remaining_min) }} min · dados passivos do servidor podem confirmar um estacionamento mais recente sem novo wake.
               {% elif refresh_state == 'cooldown' %}🟡 **Ainda sem confirmação causal do último wake**{% if request_age_min is not none %} · solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %} · próxima avaliação em cerca de {{ format_number_ptbr(remaining_min) }} min.
               {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.

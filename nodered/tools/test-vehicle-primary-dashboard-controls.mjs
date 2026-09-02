@@ -251,6 +251,9 @@ const now = Date.parse("2026-08-17T03:00:00Z");
         awaiting_evidence: true,
         last_attempt_at: now - 40_000,
         next_allowed_at: now + 58_000,
+        last_success_reason: "fresh_telemetry_engine_unreliable",
+        lighting_ready_after_wake: false,
+        last_evidence_domains: ["telemetry"],
       },
     },
     msg: {},
@@ -278,6 +281,9 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   assert.equal(payload.remaining_seconds, 58);
   assert.equal(payload.failure_endpoint, null);
   assert.equal(payload.failure_stage, null);
+  assert.equal(payload.last_success_reason, "fresh_telemetry_engine_unreliable");
+  assert.equal(payload.lighting_ready_after_wake, false);
+  assert.deepEqual(payload.last_evidence_domains, ["telemetry"]);
 }
 
 const ids = flows.map((node) => node.id);
@@ -315,6 +321,13 @@ for (const expected of [
 const normalizer = flows.find((node) => node.id === "092625f2eb5cc156");
 assert.match(normalizer.func, /refresh_state_contract_v1/);
 assert.match(normalizer.func, /vehicleContext\.refresh/);
+assert.match(
+  normalizer.func,
+  /semantic_wake_confirmation_independent_of_derived_readiness_v2/,
+);
+assert.match(normalizer.func, /if \(evidenceObserved\)/);
+assert.doesNotMatch(normalizer.func, /else if \(evidenceObserved\)/);
+assert.match(normalizer.func, /lighting_ready_after_wake/);
 
 const refreshDecision = flows.find((node) => node.id === "b33e117e55bdb5ed");
 assert.equal(refreshDecision.outputs, 5);

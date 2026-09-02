@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const toolsDir = path.dirname(fileURLToPath(import.meta.url));
 const flowPath = path.resolve(toolsDir, "../flows.json");
+const flowOutputPath = process.env.NODE_RED_FLOW_OUTPUT ?? flowPath;
 const functionDir = path.join(toolsDir, "functions");
 const flows = JSON.parse(fs.readFileSync(flowPath, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
@@ -680,15 +681,12 @@ if (
   throw new Error("Normalizer sem janela vinculada à sondagem de cache");
 }
 const readinessMarker =
-  "semantic_wake_confirmation_independent_of_derived_readiness_v1";
+  "semantic_wake_confirmation_independent_of_derived_readiness_v2";
 if (!normalizer.func.includes(readinessMarker)) {
-  const previousReadinessGate = `        const targetReady =
-            vehicleContext.ready === true &&
-            (
-                refreshState.require_lighting_ready !== true ||
-                vehicleContext.lighting_ready === true
-            );`;
-  const semanticReadinessGate = `        /* ${readinessMarker}:
+  const previousReadinessGate = normalizer.func.includes(
+    "semantic_wake_confirmation_independent_of_derived_readiness_v1",
+  )
+    ? `        /* semantic_wake_confirmation_independent_of_derived_readiness_v1:
          * telemetria semântica nova confirma um wake comum mesmo quando
          * motor/trava mantêm o mesmo estado no Home Assistant. Readiness
          * derivado continua obrigatório somente quando a iluminação pediu
@@ -698,7 +696,20 @@ if (!normalizer.func.includes(readinessMarker)) {
             (
                 vehicleContext.ready === true &&
                 vehicleContext.lighting_ready === true
+            );`
+    : `        const targetReady =
+            vehicleContext.ready === true &&
+            (
+                refreshState.require_lighting_ready !== true ||
+                vehicleContext.lighting_ready === true
             );`;
+  const semanticReadinessGate = `        /* ${readinessMarker}:
+         * telemetria semântica nova confirma que o wake respondeu. A
+         * confiabilidade específica do motor continua separada e protege
+         * o gate da iluminação, sem transformar o wake em falso erro. */
+        const lightingReadyAfterWake =
+            vehicleContext.ready === true &&
+            vehicleContext.lighting_ready === true;`;
   if (!normalizer.func.includes(previousReadinessGate)) {
     throw new Error("Gate de readiness do wake não encontrado");
   }
@@ -706,6 +717,42 @@ if (!normalizer.func.includes(readinessMarker)) {
     previousReadinessGate,
     semanticReadinessGate,
   );
+  normalizer.func = normalizer.func.replace(
+    "        if (evidenceObserved && targetReady) {",
+    "        if (evidenceObserved) {",
+  );
+  normalizer.func = normalizer.func.replace(
+    `                last_evidence_domains: changedDomains,
+                last_success_reason:
+                    refreshState.require_lighting_ready === true
+                        ? "fresh_entities_lighting_ready"
+                        : "fresh_entities_context_ready",`,
+    `                last_evidence_domains: changedDomains,
+                lighting_ready_after_wake: lightingReadyAfterWake,
+                last_success_reason:
+                    lightingReadyAfterWake
+                        ? (
+                            refreshState.require_lighting_ready === true
+                                ? "fresh_entities_lighting_ready"
+                                : "fresh_entities_context_ready"
+                        )
+                        : "fresh_telemetry_engine_unreliable",`,
+  );
+
+  const partialStart = normalizer.func.indexOf(
+    "        } else if (evidenceObserved) {",
+  );
+  const refreshContractStart = normalizer.func.indexOf(
+    "    }\n}\n/* refresh_state_contract_v1",
+    partialStart,
+  );
+  if (partialStart < 0 || refreshContractStart < 0) {
+    throw new Error("Bloco legado de evidência parcial não encontrado");
+  }
+  normalizer.func =
+    normalizer.func.slice(0, partialStart) +
+    "        }\n" +
+    normalizer.func.slice(refreshContractStart);
 }
 if (!normalizer.func.includes(readinessMarker)) {
   throw new Error("Confirmação semântica independente de readiness ausente");
@@ -1539,5 +1586,5 @@ if (manualTestShift > 0) {
 const immediateRecovery = required("6473697c19342f07");
 Object.assign(immediateRecovery, { x: 570, y: 240 });
 
-fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowOutputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Controles e telemetria do vehicle_primary instalados sem duplicar o coordenador.");

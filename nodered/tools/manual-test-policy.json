@@ -140,19 +140,20 @@
             "reason": "O tab apenas coordena contratos; seus testes entram pelos domínios produtores."
         },
         "6b7552efb85343f4": {
-            "strategy": "manual_explicit_side_effect",
-            "explicit_exception": "notification_delivery_under_test",
+            "strategy": "manual_full_dry_run",
             "evidence_node_ids": [
                 "ed8fa1d49205cbdb",
                 "2f8ac8be8e84a548",
+                "security_light_engine_bypass_group_v1",
+                "security_light_engine_bypass_test_on_v1",
+                "security_light_engine_bypass_test_off_v1",
                 "light_full_dry_run_terminal_v1"
             ],
-            "delivery_node_ids": [
-                "04007cc1732f60c9",
-                "light_notify_unavailable_secondary"
+            "dry_run_terminal_ids": [
+                "light_full_dry_run_terminal_v1"
             ],
-            "automated_test": "test-security-light-flow.mjs",
-            "reason": "Testes percorrem gates e lifecycle; quando o atuador impedir o acendimento, apenas os dois pushes marcados TESTE são enviados, enquanto refletor, timers e demais dispositivos permanecem simulados."
+            "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
+            "reason": "Motor, bypass e chegada sintéticos percorrem normalização, persistência da intenção, gates e lifecycle; refletor, timers e notificações terminam no terminal dry-run sem qualquer efeito residencial."
         },
         "1f468eaeef0733dd": {
             "strategy": "manual_full_dry_run",

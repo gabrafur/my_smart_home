@@ -47,9 +47,9 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   a evidencia de dado novo produzido pelo carro.
 - A confirmacao de um wake periodico depende do avanco desse timestamp
   semantico, mesmo quando motor e trava continuam com o mesmo estado e por isso
-  nao ganham um novo `last_updated` no Home Assistant. Readiness completo de
-  motor/localizacao permanece obrigatorio somente quando uma recuperacao da
-  iluminacao o solicita explicitamente. A correlação causal termina 20 minutos
+  nao ganham um novo `last_updated` no Home Assistant. O mesmo critério vale
+  quando a iluminação solicita recovery: a resposta do wake e o readiness do
+  motor são resultados distintos, publicados em campos separados. A correlação causal termina 20 minutos
   depois da solicitação: dados que chegam mais tarde continuam válidos para
   estacionamento e telemetria, mas não transformam o wake antigo em sucesso.
 - `sensor.vehicle_primary_current_location_since` preserva o instante em que o
@@ -131,9 +131,10 @@ O refresh grava como baseline o estado de
 `sensor.vehicle_primary_last_updated_at`, que e o relogio semantico retornado
 pelo proprio Bluelink. O
 retorno de `public_bindings.call` significa apenas que o Home Assistant aceitou
-a chamada e limpa somente o marcador `request_in_flight`. Uma tentativa so
-vira sucesso quando esse relogio avanca, e posterior ao wake avaliado e o alvo
-de readiness e atingido.
+a chamada e limpa somente o marcador `request_in_flight`. Uma tentativa só
+vira sucesso quando esse relógio avança e é posterior ao wake avaliado. O
+readiness derivado do motor é registrado separadamente e não converte uma
+resposta semântica válida do wake em erro.
 Mudancas em `last_updated` das entidades do Home Assistant nao contam: elas
 tambem ocorrem em reload e republicacao do mesmo cache. Sem evidencia, o mesmo recovery permanece em backoff e
 as retentativas automaticas de recuperação respeitam 15 minutos fora da pausa
@@ -172,7 +173,8 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 `sensor.vehicle_primary_refresh_coordinator`. Os campos publicados sao `state`,
 `reason`, `attempt`, `last_request_at`, `last_success_at`, `next_retry_at` e
 `cooldown_until`, alem de `request_in_flight`, `in_flight_until`,
-`service_accepted_at`, `last_failure_class`, `failure_endpoint` e
+`service_accepted_at`, `last_success_reason`, `lighting_ready_after_wake`,
+`last_evidence_domains`, `last_failure_class`, `failure_endpoint` e
 `failure_stage`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
 Quando uma chamada real informa que o serviço `kia_uvo.update` não existe
@@ -180,7 +182,14 @@ porque o config entry não conseguiu carregar, a falha é publicada como
 `integration_unavailable`. Readiness incompleto ou entidades stale não são
 tratados como prova de indisponibilidade da integração. Nesse
 estado, o dashboard prioriza a indisponibilidade sobre uma confirmação antiga
-de wake e apresenta o tempo restante para a próxima tentativa automática. Na
+de wake e apresenta o tempo restante para a próxima tentativa automática. Um
+wake com telemetria semântica nova é mostrado como confirmado; se o motor
+continuar não confiável, o painel sinaliza essa limitação separadamente e
+oferece
+`switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada`.
+Essa chave só afeta a
+iluminação de chegada quando a leitura do motor está stale/inválida e nunca
+ignora um `OFF` recente e válido. Na
 primeira detecção de cada incidente, o coordenador envia um push deduplicado a
 `resident_primary` e cria uma notificação persistente no Home Assistant. A
 mensagem identifica o endpoint e a etapa do fluxo que falhou. Uma mudança real

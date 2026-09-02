@@ -2,9 +2,19 @@
 
 import fs from "node:fs";
 
-const flowUrl = new URL("../flows.json", import.meta.url);
-const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
+const flowInputUrl = new URL("../flows.json", import.meta.url);
+const flowOutputUrl = process.env.NODE_RED_FLOW_OUTPUT
+  ? new URL(`file://${process.env.NODE_RED_FLOW_OUTPUT}`)
+  : flowInputUrl;
+const flows = JSON.parse(fs.readFileSync(flowInputUrl, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
+
+function functionSource(name) {
+  return fs.readFileSync(
+    new URL(`./functions/${name}`, import.meta.url),
+    "utf8",
+  ).trim();
+}
 
 function required(id) {
   const node = byId.get(id);
@@ -24,6 +34,7 @@ const ids = {
   coordinator: "3ad83e8d6897b983",
   output: "2ff281276fc1d020",
   gate: "276ba50ad0e36bab",
+  prepareArrival: "62f77a1ad440639d",
   mergeContext: "48a5f40d806f6950",
   checkInactive: "87b2f8eb75cb6359",
   markActive: "354c9839bfca592f",
@@ -51,6 +62,15 @@ const ids = {
   help: "vehicle_primary_manual_engine_test_help_v1",
   engineOn: "vehicle_primary_manual_engine_on_test_v1",
   engineOff: "vehicle_primary_manual_engine_off_test_v1",
+  bypassGroup: "security_light_engine_bypass_group_v1",
+  bypassStartup: "security_light_engine_bypass_startup_v1",
+  bypassCommand: "security_light_engine_bypass_command_v1",
+  bypassFunction: "security_light_engine_bypass_function_v1",
+  bypassMqttOut: "security_light_engine_bypass_mqtt_out_v1",
+  bypassReevaluateOut: "security_light_engine_bypass_reevaluate_out_v1",
+  bypassReevaluateIn: "security_light_engine_bypass_reevaluate_in_v1",
+  bypassTestOn: "security_light_engine_bypass_test_on_v1",
+  bypassTestOff: "security_light_engine_bypass_test_off_v1",
 };
 
 const alarmIds = {
@@ -464,6 +484,9 @@ msg.payload.vehicle_primary_gate =
 return msg;`;
 
 const mergeContext = required(ids.mergeContext);
+const canonicalMergeAlreadyInstalled =
+  mergeContext.func.includes('pending.retention === "while_approaching"');
+if (!canonicalMergeAlreadyInstalled) {
 const previousReplayGate = `const replayReady =
     pending &&
     vehicle_primaryLightingReady &&
@@ -530,6 +553,17 @@ if (!mergeContext.func.includes(fullTestReset)) {
     throw new Error("Reset do cenário sintético de iluminação não encontrado");
   }
 }
+}
+
+/*
+ * As funções canônicas ficam em arquivos próprios para que os testes unitários
+ * executem exatamente o mesmo código que será gravado no flow versionado.
+ */
+required(ids.prepareArrival).func = functionSource(
+  "security-light-prepare-arrival.js",
+);
+gate.func = functionSource("security-light-vehicle-gate.js");
+mergeContext.func = functionSource("security-light-merge-context.js");
 
 const checkInactive = required(ids.checkInactive);
 if (!checkInactive.func.includes("security_light_turn_on_notification_latch_v1")) {
@@ -714,11 +748,7 @@ upsert({
   links: [ids.unavailableDryOut],
   x: 1845,
   y: 380,
-  wires: [[
-    ids.notifyUnavailablePrimary,
-    ids.notifyUnavailableSecondary,
-    ids.dryTerminalOut,
-  ]],
+  wires: [[ids.dryTerminalOut]],
 });
 
 upsert({
@@ -908,6 +938,7 @@ markActive.wires = [
   ],
   [ids.dryTerminalOut],
 ];
+markActive.func = functionSource("security-light-mark-active.js");
 
 for (const [nodeId, role] of [
   [ids.notifyOnPrimary, "mobile_primary"],
@@ -933,9 +964,7 @@ upsert({
   func: `const unavailable =
     msg.payload?.actuator_available === false;
 
-const notificationDeliveryRequested =
-    unavailable &&
-    msg.payload?.test_mode === true;
+const notificationDeliveryRequested = false;
 
 const actions = unavailable
     ? []
@@ -952,9 +981,7 @@ const result = {
     dispatched: false,
     actions,
     notification_delivery_requested: notificationDeliveryRequested,
-    notification_recipients: notificationDeliveryRequested
-        ? ["resident_primary", "resident_secondary"]
-        : [],
+    notification_recipients: [],
     source: msg.payload?.source ?? "manual",
     arrival_stage: msg.payload?.arrival_stage ?? "manual",
     completed_at: Date.now()
@@ -971,7 +998,7 @@ node.status({
     text:
         "TESTE FINAL: " + actions.length +
         " ações simuladas; " +
-        (notificationDeliveryRequested ? "2 pushes TESTE solicitados" : "0 dispositivos")
+        "0 dispositivos"
 });
 
 node.warn(
@@ -1030,7 +1057,187 @@ manualIn.name = "Receber teste manual seguro";
 manualIn.wires = [[ids.dryRunTerminal]];
 
 const lightTab = required(ids.lightTab);
-lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. Uma chegada de resident_primary ou resident_secondary é suficiente quando o motor atual do vehicle_primary está ON, mesmo que o tracker do veículo ainda não esteja em chegando. Testes sintéticos atravessam todos os gates e o lifecycle. Refletor, timers e demais dispositivos terminam em dry-run; quando o atuador está indisponível, somente os pushes identificados como TESTE são enviados para validar a entrega.";
+lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em chegando com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON atual ou, exclusivamente quando o dado do motor estiver stale/inválido, o bypass manual persistente exposto no painel vehicle_primary. Um motor OFF atual e confiável nunca é ignorado. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.";
+
+upsert({
+  id: ids.bypassGroup,
+  type: "group",
+  z: ids.lightTab,
+  name: "6. Bypass manual do motor (somente telemetria não confiável)",
+  style: {
+    label: true,
+    "label-position": "nw",
+    stroke: "#c8a951",
+    "stroke-opacity": "1",
+    fill: "none",
+    color: "#a4a4a4",
+  },
+  nodes: [
+    ids.bypassStartup,
+    ids.bypassCommand,
+    ids.bypassFunction,
+    ids.bypassMqttOut,
+    ids.bypassReevaluateOut,
+    ids.bypassTestOn,
+    ids.bypassTestOff,
+  ],
+  x: 64,
+  y: 1019,
+  w: 1362,
+  h: 282,
+});
+
+upsert({
+  id: ids.bypassStartup,
+  type: "inject",
+  z: ids.lightTab,
+  g: ids.bypassGroup,
+  name: "Publicar chave e restaurar estado no startup",
+  props: [{ p: "payload" }],
+  repeat: "",
+  crontab: "",
+  once: true,
+  onceDelay: 1,
+  topic: "",
+  payload: "STARTUP",
+  payloadType: "str",
+  x: 300,
+  y: 1080,
+  wires: [[ids.bypassFunction]],
+});
+
+upsert({
+  id: ids.bypassCommand,
+  type: "mqtt in",
+  z: ids.lightTab,
+  g: ids.bypassGroup,
+  name: "Comando da chave no painel vehicle_primary",
+  topic: "homeassistant/vehicle_primary/engine_bypass/set",
+  qos: "1",
+  datatype: "utf8",
+  broker: "721c47f31046b8bc",
+  nl: false,
+  rap: true,
+  rh: 0,
+  inputs: 0,
+  x: 300,
+  y: 1140,
+  wires: [[ids.bypassFunction]],
+});
+
+upsert({
+  id: ids.bypassTestOn,
+  type: "inject",
+  z: ids.lightTab,
+  g: ids.bypassGroup,
+  name: "TESTE: bypass ON (isolado)",
+  props: [{ p: "payload" }],
+  repeat: "",
+  crontab: "",
+  once: false,
+  onceDelay: 0.1,
+  topic: "",
+  payload: JSON.stringify({
+    requested_state: "ON",
+    test_mode: true,
+    test_case: "engine_bypass_on",
+  }),
+  payloadType: "json",
+  x: 260,
+  y: 1200,
+  wires: [[ids.bypassFunction]],
+});
+
+upsert({
+  id: ids.bypassTestOff,
+  type: "inject",
+  z: ids.lightTab,
+  g: ids.bypassGroup,
+  name: "TESTE: bypass OFF (isolado)",
+  props: [{ p: "payload" }],
+  repeat: "",
+  crontab: "",
+  once: false,
+  onceDelay: 0.1,
+  topic: "",
+  payload: JSON.stringify({
+    requested_state: "OFF",
+    test_mode: true,
+    test_case: "engine_bypass_off",
+  }),
+  payloadType: "json",
+  x: 260,
+  y: 1260,
+  wires: [[ids.bypassFunction]],
+});
+
+upsert({
+  id: ids.bypassFunction,
+  type: "function",
+  z: ids.lightTab,
+  g: ids.bypassGroup,
+  name: "Persistir bypass e limitar uso ao dado não confiável",
+  func: functionSource("security-light-engine-bypass.js"),
+  outputs: 2,
+  timeout: "",
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 710,
+  y: 1140,
+  wires: [[ids.bypassMqttOut], [ids.bypassReevaluateOut]],
+});
+
+upsert({
+  id: ids.bypassMqttOut,
+  type: "mqtt out",
+  z: ids.lightTab,
+  g: ids.bypassGroup,
+  name: "Publicar discovery e estado da chave",
+  topic: "",
+  qos: "",
+  retain: "",
+  respTopic: "",
+  contentType: "",
+  userProps: "",
+  correl: "",
+  expiry: "",
+  broker: "721c47f31046b8bc",
+  x: 1080,
+  y: 1100,
+  wires: [],
+});
+
+upsert({
+  id: ids.bypassReevaluateOut,
+  type: "link out",
+  z: ids.lightTab,
+  g: ids.bypassGroup,
+  name: "Bypass alterado → reavaliar chegada",
+  mode: "link",
+  links: [ids.bypassReevaluateIn],
+  x: 1135,
+  y: 1180,
+  wires: [],
+});
+
+upsert({
+  id: ids.bypassReevaluateIn,
+  type: "link in",
+  z: ids.lightTab,
+  g: required(ids.mergeContext).g,
+  name: "Receber alteração do bypass",
+  links: [ids.bypassReevaluateOut],
+  x: 520,
+  y: 360,
+  wires: [[ids.mergeContext]],
+});
+
+const decisionGroup = required(required(ids.mergeContext).g);
+if (!decisionGroup.nodes.includes(ids.bypassReevaluateIn)) {
+  decisionGroup.nodes.push(ids.bypassReevaluateIn);
+}
 
 /*
  * O mesmo evento sintético de chegada também alcança o fluxo de confirmação
@@ -1252,7 +1459,7 @@ group.w = 968;
 group.h = 402;
 
 const tab = required(ids.tab);
-tab.info = "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv12: chegada preservada por até 2 min quando o motor ainda aparece OFF; replay somente após ON atual e válido. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.";
+tab.info = "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv13: a chegada pessoal em chegando permanece pendente enquanto a localização estiver recente; após escurecer, o replay aceita motor ON atual ou bypass manual somente para telemetria do motor não confiável. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.";
 
-fs.writeFileSync(flowUrl, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowOutputUrl, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Controles manuais ON/OFF do vehicle_primary atualizados.");
