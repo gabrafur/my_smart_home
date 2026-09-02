@@ -29,25 +29,29 @@ else flow.set(key, record, "persistent");
 
 let wake = null;
 if (msg.payload.request_vehicle_primary_wake === true) {
-    wake = structuredClone(msg);
-    wake.payload = {
-        ...wake.payload,
-        contract: "security.refresh-command.v1",
-        kind: "refresh_command",
-        reason: "vehicle_primary_arrival",
-        recovery_needed: true,
-        force_recovery: true,
-        require_lighting_ready: true,
-        test_mode: TEST_MODE,
-        issued_at: now
+    wake = {
+        ...msg,
+        payload: {
+            ...msg.payload,
+            contract: "security.refresh-command.v1",
+            kind: "refresh_command",
+            reason: "vehicle_primary_arrival",
+            recovery_needed: true,
+            force_recovery: true,
+            require_lighting_ready: true,
+            test_mode: TEST_MODE,
+            issued_at: now
+        }
     };
 }
 
-const trip = structuredClone(msg);
-trip.payload = {
-    ...trip.payload,
-    side_effect: "vehicle_primary.refresh_trip_info",
-    test_mode: TEST_MODE
+const trip = {
+    ...msg,
+    payload: {
+        ...msg.payload,
+        side_effect: "vehicle_primary.refresh_trip_info",
+        test_mode: TEST_MODE
+    }
 };
 
 return [wake, trip];

@@ -70,7 +70,6 @@ function execute(body, { msg, store, now, logs = [] }) {
   const sandbox = {
     msg,
     Date: FixedDate,
-    structuredClone,
     flow: store,
     global: globals,
     context: memory(),
