@@ -22,6 +22,9 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
 - Uma transição confirmada de qualquer residente de `home` para `chegando` ou
   `not_home` exige `force_refresh` imediato do `vehicle_primary` (wake seguido
   da obtenção de estado novo), com deduplicação e serialização de chamadas.
+- O botão técnico que resolve `vehicle_primary.force_refresh` não deve publicar
+  estado visível; somente o `input_button` manual entra no coordenador. Isso
+  evita que um alvo interno pareça uma segunda rotina de atualização.
 
 ## Portão da garagem
 

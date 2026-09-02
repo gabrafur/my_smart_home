@@ -94,6 +94,9 @@
         "force_update": {
           "type": "boolean"
         },
+        "expose_state": {
+          "type": "boolean"
+        },
         "display_name": {
           "type": "string",
           "minLength": 1

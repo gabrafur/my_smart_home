@@ -95,6 +95,12 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       ) {
         issues.push(issue("hide-targets", location, "binding"));
       }
+      if (
+        entity.expose_state !== undefined &&
+        typeof entity.expose_state !== "boolean"
+      ) {
+        issues.push(issue("expose-state", location, "binding"));
+      }
       if (role === "vehicle_primary" && entity.hide_targets !== true) {
         issues.push(issue("vehicle-target-visible", location, "binding"));
       }

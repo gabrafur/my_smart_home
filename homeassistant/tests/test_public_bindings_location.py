@@ -263,9 +263,20 @@ class BestLocationSelectionTest(unittest.TestCase):
         vehicle = vehicle_entities["device_tracker.vehicle_primary"]
         self.assertEqual(vehicle["source_names"], ["Bluelink"])
         self.assertTrue(vehicle["display_name"])
+        self.assertIs(
+            vehicle_entities["button.vehicle_primary_force_refresh"][
+                "expose_state"
+            ],
+            False,
+        )
         self.assertTrue(vehicle_entities)
         for binding in vehicle_entities.values():
             self.assertIs(binding["hide_targets"], True)
+
+    def test_state_less_service_target_is_removed_from_visible_states(self):
+        component = COMPONENT_PATH.read_text(encoding="utf-8")
+        self.assertIn('binding.get("expose_state", True) is False', component)
+        self.assertIn("hass.states.async_remove(public_id)", component)
 
 
 class ServicePolicyTest(unittest.TestCase):

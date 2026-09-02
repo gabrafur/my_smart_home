@@ -83,6 +83,10 @@ All `vehicle_primary` bindings also use `hide_targets: true`. Native Bluelink
 entities remain active as internal targets, while only the vehicle's public
 aliases appear in visual discovery, avoiding duplicate `creta_*` and
 `vehicle_primary_*` pairs.
+Bindings used only to resolve an action may set `expose_state: false`. Their
+public IDs remain available internally to `target_public_entity_id` without
+creating a second visible button. Vehicle refresh uses this mode, so the UI
+shows only the `input_button` routed through the single coordinator.
 
 The `consolidated_map` component idempotently applies that same YAML file to
 the native `/map` dashboard during startup. The file is not registered as a

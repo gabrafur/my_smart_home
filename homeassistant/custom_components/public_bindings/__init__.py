@@ -178,6 +178,11 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         changed_target_id: str | None = None,
         changed_location: bool = False,
     ) -> None:
+        if binding.get("expose_state", True) is False:
+            # Some public IDs exist only as stable, allowlisted service targets.
+            # Do not publish a second button that looks independently actionable.
+            hass.states.async_remove(public_id)
+            return
         targets = _binding_targets(binding)
         sources = [source for target in targets if (source := hass.states.get(target))]
         source = (

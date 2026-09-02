@@ -91,6 +91,11 @@ Todos os bindings de `vehicle_primary` também usam `hide_targets: true`. Assim,
 as entidades nativas do Bluelink continuam ativas como alvos internos, enquanto
 somente os aliases públicos do veículo aparecem na descoberta visual, sem pares
 duplicados como `creta_*` e `vehicle_primary_*`.
+Um binding usado somente para resolver uma ação pode declarar
+`expose_state: false`: seu ID público continua disponível internamente para
+`target_public_entity_id`, mas não cria um segundo botão visível. O refresh do
+veículo usa esse modo; a interface exibe somente o `input_button` que entra no
+coordenador único.
 
 O componente `consolidated_map` aplica o mesmo arquivo YAML ao dashboard nativo
 `/map` durante a inicialização, de forma idempotente. O arquivo não é registrado

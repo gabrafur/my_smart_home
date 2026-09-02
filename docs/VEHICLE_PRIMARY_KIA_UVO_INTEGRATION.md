@@ -220,10 +220,12 @@ odômetro agenda outra carga, e existe uma reconciliação de segurança a cada 
 horas mesmo que nenhum movimento tenha sido observado pelo Home Assistant. O
 botão específico de viagens continua disponível para atualização explícita.
 
-Os aliases `button.vehicle_primary_force_refresh` e
-`button.garagem_vehicle_primary_refresh_trip_info` publicados por
-`public_bindings` são estados sintéticos para leitura e não podem receber
-`button.press` diretamente. O Node-RED chama as ações allowlisted
+O binding `button.vehicle_primary_force_refresh` existe somente como destino
+interno da ação e usa `expose_state: false`; por isso não aparece como um
+segundo controle ao lado de `input_button.vehicle_primary_force_refresh_now`.
+O alias `button.garagem_vehicle_primary_refresh_trip_info` continua sendo um
+estado sintético para leitura. Esses IDs não recebem `button.press` diretamente.
+O Node-RED chama as ações allowlisted
 `vehicle_primary.force_refresh` e `vehicle_primary.refresh_trip_info` pelo
 serviço `public_bindings.call`, que resolve internamente as entidades privadas.
 Chamadas redundantes de `homeassistant.update_entity` nos aliases sintéticos

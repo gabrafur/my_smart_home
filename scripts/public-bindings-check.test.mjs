@@ -115,6 +115,34 @@ test("requires hide_targets to be an explicit boolean", () => {
   assert.deepEqual(validateBindings(document), []);
 });
 
+test("accepts state-less aliases used only as service targets", () => {
+  const entity = {
+    target_entity_id: "button.example_vehicle_force_refresh",
+    state_mode: "passthrough",
+    hide_targets: true,
+    expose_state: false,
+  };
+  const document = {
+    schema_version: 1,
+    roles: {
+      ...roles,
+      vehicle_primary: {
+        entities: { "button.vehicle_primary_force_refresh": entity },
+        services: {
+          force_refresh: {
+            target_service: "button.press",
+            target_public_entity_id: "button.vehicle_primary_force_refresh",
+          },
+        },
+      },
+    },
+  };
+
+  assert.deepEqual(validateBindings(document), []);
+  entity.expose_state = "no";
+  assert.ok(validateBindings(document).some((item) => item.rule === "expose-state"));
+});
+
 test("requires every vehicle alias to hide its native target", () => {
   const entity = {
     target_entity_id: "sensor.example_vehicle_fuel_level",

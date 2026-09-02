@@ -176,7 +176,8 @@
         "button.vehicle_primary_force_refresh": {
           "target_entity_id": "button.example_vehicle_primary_force_refresh",
           "state_mode": "passthrough",
-          "hide_targets": true
+          "hide_targets": true,
+          "expose_state": false
         },
         "button.garagem_vehicle_primary_refresh_trip_info": {
           "target_entity_id": "button.example_vehicle_primary_refresh_trip_info",
