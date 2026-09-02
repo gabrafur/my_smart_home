@@ -78,6 +78,25 @@ test("host worker reports failure without retaining a processing marker", () => 
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("host worker rejects a non-absolute Node.js runtime", () => {
+  const { root, trigger } = fixture();
+  const guardian = path.join(root, "guardian.mjs");
+  fs.writeFileSync(guardian, "console.log('memory-guardian status=healthy');\n");
+  fs.writeFileSync(path.join(trigger, "requested"), "request-3\n");
+  const env = {
+    ...process.env,
+    HOST_MEMORY_GUARDIAN_TRIGGER_DIR: trigger,
+    HOST_MEMORY_GUARDIAN_SCRIPT: guardian,
+    HOST_MEMORY_GUARDIAN_NODE_BIN: "node",
+  };
+
+  const processed = spawnSync(processScript, [], { encoding: "utf8", env });
+  assert.equal(processed.status, 69);
+  assert.match(processed.stderr, /runtime is unavailable/);
+  assert.ok(fs.existsSync(path.join(trigger, "requested")));
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test("cron installer is idempotent and keeps the worker unprivileged", () => {
   const { root, trigger } = fixture();
   const bin = path.join(root, "bin");

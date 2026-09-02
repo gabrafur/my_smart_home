@@ -10,10 +10,24 @@ request_file="$trigger_dir/requested"
 processing_file="$trigger_dir/processing"
 result_file="$trigger_dir/result"
 
+node_bin="${HOST_MEMORY_GUARDIAN_NODE_BIN:-}"
+if [ -z "$node_bin" ]; then
+  if [ -x /usr/bin/node ]; then
+    node_bin=/usr/bin/node
+  else
+    node_bin=$(command -v node 2>/dev/null || true)
+  fi
+fi
+
 case "$trigger_dir" in
   /*) ;;
   *) echo "HOST_MEMORY_GUARDIAN_TRIGGER_DIR must be absolute" >&2; exit 64 ;;
 esac
+case "$node_bin" in
+  /*) ;;
+  *) echo "Host memory guardian Node.js runtime is unavailable" >&2; exit 69 ;;
+esac
+[ -x "$node_bin" ] || { echo "Host memory guardian Node.js runtime is unavailable" >&2; exit 69; }
 [ -f "$guardian_script" ] || { echo "Host memory guardian is unavailable" >&2; exit 66; }
 mkdir -p "$trigger_dir"
 
@@ -36,7 +50,7 @@ publish_result() {
 
 publish_result "host-memory-guardian status=running request_id=$request_id checked_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 set +e
-output=$(/usr/bin/node "$guardian_script" --state-file "$state_file" 2>&1)
+output=$("$node_bin" "$guardian_script" --state-file "$state_file" 2>&1)
 status=$?
 set -e
 rm -f -- "$processing_file"
