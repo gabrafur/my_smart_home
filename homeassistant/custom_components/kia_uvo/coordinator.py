@@ -806,13 +806,26 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
                 vehicle = self.vehicle_manager.vehicles.get(vehicle_id)
                 current_updated_at = getattr(vehicle, "last_updated_at", None)
-                if not self._br_timestamp_is_fresh(
+                is_fresh = self._br_timestamp_is_fresh(
                     current_updated_at,
                     baseline_updated_at,
                     requested_at,
-                ):
-                    continue
+                )
+                # A successful /latest read is observable even when the
+                # Bluelink snapshot is still stale. VehicleManager advances
+                # last_scanned_at before every cache request, so publish the
+                # coordinator data on every successful recheck instead of
+                # making the dashboard look as though no retrieve occurred.
+                # Freshness still depends exclusively on the semantic vehicle
+                # timestamp below; a cache scan never proves wake success.
                 self.async_set_updated_data(self.data)
+                _LOGGER.debug(
+                    "CRETA_REFRESH_RECHECK_CACHE_READ attempt=%d fresh=%s",
+                    attempt,
+                    is_fresh,
+                )
+                if not is_fresh:
+                    continue
                 _LOGGER.info(
                     "CRETA_REFRESH_DELAYED_DATA_RECEIVED attempt=%d",
                     attempt,

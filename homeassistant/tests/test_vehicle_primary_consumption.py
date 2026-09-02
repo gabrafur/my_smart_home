@@ -1182,8 +1182,57 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             await tasks[0]
 
         assert calls == ["wake", "cache", "cache", "cache"]
-        assert published == [{"cached": True}, {"cached": True}]
+        assert published == [
+            {"cached": True},
+            {"cached": True},
+            {"cached": True},
+        ]
         assert coordinator._br_fresh_data_recheck_tasks == {}
+
+    async def test_delayed_br_rechecks_publish_stale_cache_scans(self):
+        published = []
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        baseline = dt.datetime.now(UTC) - dt.timedelta(minutes=10)
+        vehicle = SimpleNamespace(last_updated_at=baseline)
+
+        class Manager:
+            vehicles = {VEHICLE_ID: vehicle}
+
+            @staticmethod
+            def update_vehicle_with_cached_state(_vehicle_id):
+                return None
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
+            _br_fresh_data_recheck_tasks={},
+            data={"cached": True},
+            async_set_updated_data=published.append,
+        )
+        coordinator._br_timestamp_is_fresh = (
+            HyundaiKiaConnectDataUpdateCoordinator._br_timestamp_is_fresh
+        )
+
+        with patch.object(
+            coordinator_module,
+            "BR_FRESH_DATA_RECHECK_DELAYS_S",
+            (0, 0),
+        ):
+            await HyundaiKiaConnectDataUpdateCoordinator._async_recheck_br_fresh_data(
+                coordinator,
+                VEHICLE_ID,
+                baseline,
+                dt.datetime.now(UTC),
+            )
+
+        assert published == [{"cached": True}, {"cached": True}]
 
     async def test_force_refresh_allows_sequential_manual_wakes(self):
         calls = []
