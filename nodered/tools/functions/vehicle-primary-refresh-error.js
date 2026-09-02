@@ -16,6 +16,16 @@ const key = "security_vehicle_primary_refresh_v1";
 const state = flow.get(key, "persistent") ?? {};
 const now = Date.now();
 const cacheProbeFailure = /cache|reler/i.test(source);
+const failedEndpoint = cacheProbeFailure
+    ? "kia_uvo.update (releitura do cache)"
+    : "public_bindings.call (wake do veículo)";
+const failureNotificationKey = `${failureClass}|${failedEndpoint}`;
+const failureLabels = {
+    authentication: "autenticação",
+    timeout: "tempo esgotado",
+    concurrent_request_coalesced: "requisição concorrente",
+    api_error: "erro da API"
+};
 const intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]
     .includes(Number(state.interval_ms))
         ? Number(state.interval_ms)
@@ -31,6 +41,8 @@ state.state = "backoff";
 state.reason = failureClass;
 state.failure_at = now;
 state.failure_source = source;
+state.failure_endpoint = failedEndpoint;
+state.failure_stage = source;
 state.last_failure_class = failureClass;
 if (cacheProbeFailure) {
     state.next_allowed_at = Math.max(
@@ -42,19 +54,36 @@ state.next_retry_at = Number(state.next_allowed_at ?? 0) || null;
 state.cooldown_until = null;
 state.updated_at = now;
 let notification = null;
-if (!Number.isFinite(state.failure_notified_at)) {
+if (
+    state.failure_notification_key !== failureNotificationKey
+) {
     state.failure_notified_at = now;
+    state.failure_notification_key = failureNotificationKey;
     msg.payload = {
         ...(msg.payload ?? {}),
         test_mode: false,
-        side_effect: "notify:resident_primary"
+        side_effect: "notify:resident_primary+persistent_notification"
     };
-    msg.alert = {
-        title: "Erro ao atualizar veículo",
-        message:
-            "A atualização do veículo falhou antes de receber novos dados. " +
-            "As retentativas automáticas permanecem em backoff; verifique " +
-            "a integração Bluelink."
+    msg.alert = failureClass === "integration_unavailable"
+        ? {
+            title: "Endpoint Bluelink indisponível",
+            message:
+                `O endpoint ${failedEndpoint} não está disponível no ` +
+                "Home Assistant. A etapa que falhou foi “" + source +
+                "”. As retentativas automáticas permanecem em backoff."
+        }
+        : {
+            title: "Erro ao atualizar veículo",
+            message:
+                `Falha de ${failureLabels[failureClass] ?? failureClass} ` +
+                `no endpoint ${failedEndpoint}, ` +
+                `durante “${source}”. As retentativas automáticas ` +
+                "permanecem em backoff."
+        };
+    msg.notification = {
+        id: "vehicle_primary_refresh_failed",
+        title: msg.alert.title,
+        message: msg.alert.message
     };
     notification = msg;
 }

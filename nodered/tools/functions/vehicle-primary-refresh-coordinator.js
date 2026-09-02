@@ -9,6 +9,7 @@ const HOME_INTERVAL_MS = 30 * 60 * 1000;
 const IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;
 const CACHE_PROBE_SETTLE_MS = 15 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
+const MAX_WAKE_CONFIRMATION_MS = 20 * 60 * 1000;
 const key = TEST_MODE
     ? "security_vehicle_primary_refresh_v1__test"
     : "security_vehicle_primary_refresh_v1";
@@ -67,7 +68,8 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
     state = {};
 }
 
-state.version = 8;
+const previousStateVersion = Number(state.version ?? 0);
+state.version = 10;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -185,6 +187,50 @@ state.failure_notified_at = Number.isFinite(state.failure_notified_at) &&
     state.failure_notified_at <= now + FUTURE_TOLERANCE_MS
         ? state.failure_notified_at
         : 0;
+/* Versões anteriores inferiam integration_unavailable apenas por readiness
+ * incompleto. Um incidente real, classificado pelo catch da chamada, sempre
+ * registra failure_endpoint; reavalie imediatamente somente o estado legado
+ * sem essa evidência. */
+if (
+    state.last_failure_class === "integration_unavailable" &&
+    !state.failure_endpoint
+) {
+    state.last_failure_class = null;
+    state.failure_source = null;
+    state.failure_stage = null;
+    state.next_allowed_at = Math.min(state.next_allowed_at, now);
+}
+/* A versão 9 podia correlacionar uma leitura passiva muitas horas posterior
+ * ao pedido e marcar o wake antigo como sucesso. Reabra somente essa situação
+ * incompatível com a janela causal e preserve a leitura como dado válido do
+ * veículo, sem atribuí-la ao wake. */
+const legacyWakeConfirmationDelay =
+    state.last_success_at - state.last_request_at;
+if (
+    previousStateVersion < 10 &&
+    state.last_request_at > 0 &&
+    state.last_success_at > 0 &&
+    legacyWakeConfirmationDelay > MAX_WAKE_CONFIRMATION_MS &&
+    Array.isArray(state.last_evidence_domains) &&
+    state.last_evidence_domains.includes("telemetry")
+) {
+    state.attempts = Math.max(1, state.attempts);
+    state.awaiting_evidence = true;
+    state.last_success_at = 0;
+    state.last_success_reason = null;
+    state.last_evidence_domains = [];
+    state.last_failure_class = "no_fresh_data";
+    state.failure_at = state.last_request_at + MAX_WAKE_CONFIRMATION_MS;
+    state.failure_endpoint = "public_bindings.call (wake do veículo)";
+    state.failure_stage = "confirmação semântica em até 20 min";
+    state.failure_notified_at = 0;
+    state.baseline_observed_at = {
+        telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)
+    };
+    state.next_allowed_at = Math.min(state.next_allowed_at, now);
+    state.state = "backoff";
+    state.reason = "late_uncorrelated_data";
+}
 
 function save(displayState, reason, extra = {}) {
     state.state = displayState;
@@ -335,50 +381,6 @@ if (!enabled) {
 
 const pendingRequestAt = Number(state.last_request_at ?? 0);
 
-/*
- * A ausência do serviço kia_uvo.update significa que o config entry ainda não
- * carregou. Nesse estado, uma suposta "releitura de cache" não consulta nada:
- * ela apenas gera Service not found. Preserve o backoff e deixe o ticker de
- * reconciliação detectar a volta das entidades.
- */
-if (
-    !manualBypass &&
-    state.awaiting_evidence === true &&
-    pendingRequestAt > 0 &&
-    contextReady !== true &&
-    now >= state.next_allowed_at
-) {
-    state.last_failure_class = "integration_unavailable";
-    state.failure_source = "kia_uvo.update";
-    state.next_allowed_at = now + selectedIntervalMs;
-    save("backoff", "integration_unavailable", { enabled: true });
-    node.log?.(
-        "VEHICLE_PRIMARY_CACHE_PROBE_SKIPPED" +
-        " reason=integration_unavailable" +
-        " next_retry_at=" + state.next_allowed_at
-    );
-    node.status({
-        fill: "yellow",
-        shape: "ring",
-        text: `integração indisponível; retry em ${selectedIntervalMs / 1000}s`
-    });
-    return null;
-}
-
-/* Quando as entidades reaparecem, não carregue o prazo que foi usado apenas
- * para evitar chamadas a um serviço inexistente: sonde o cache já neste tick. */
-if (
-    !manualBypass &&
-    state.awaiting_evidence === true &&
-    pendingRequestAt > 0 &&
-    contextReady === true &&
-    state.last_failure_class === "integration_unavailable"
-) {
-    state.next_allowed_at = now;
-    state.last_failure_class = null;
-    state.failure_source = null;
-}
-
 if (!manualBypass && now < state.next_allowed_at) {
     const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));
     const waitingEvidence = state.awaiting_evidence === true;
@@ -459,9 +461,23 @@ state.require_lighting_ready = requireLightingReady;
 state.recovery_reason = requestedReason;
 state.manual_force = requestedReason === "manual_force";
 let failureNotification = null;
-if (state.attempts >= 2 && !state.failure_notified_at) {
+const noFreshEndpoint = "public_bindings.call (wake do veículo)";
+const noFreshStage = "confirmação semântica em até 20 min";
+const failureNotificationKey = `no_fresh_data|${noFreshEndpoint}`;
+if (
+    state.attempts >= 2 &&
+    (
+        state.last_failure_class == null ||
+        state.last_failure_class === "no_fresh_data"
+    ) &&
+    state.failure_notification_key !== failureNotificationKey
+) {
     state.failure_notified_at = now;
-    state.last_failure_class = state.last_failure_class ?? "no_fresh_data";
+    state.failure_notification_key = failureNotificationKey;
+    state.last_failure_class = "no_fresh_data";
+    state.failure_at = now;
+    state.failure_endpoint = noFreshEndpoint;
+    state.failure_stage = noFreshStage;
     failureNotification = {
         ...msg,
         payload: (msg.payload && typeof msg.payload === "object")
@@ -471,16 +487,22 @@ if (state.attempts >= 2 && !state.failure_notified_at) {
     failureNotification.payload = {
         ...failureNotification.payload,
         test_mode: TEST_MODE,
-        side_effect: "notify:resident_primary"
+        side_effect: "notify:resident_primary+persistent_notification"
     };
     failureNotification.alert = {
         title: TEST_MODE
             ? "TESTE — Falha ao atualizar veículo"
             : "Falha ao atualizar veículo",
         message:
-            "O Bluelink não publicou dados novos após a atualização. " +
+            `O endpoint ${noFreshEndpoint} foi chamado, mas o Bluelink ` +
+            "não publicou telemetria nova dentro de 20 min. " +
             "As retentativas automáticas continuam com backoff; " +
             "verifique a conectividade do veículo e o serviço da Hyundai."
+    };
+    failureNotification.notification = {
+        id: "vehicle_primary_refresh_failed",
+        title: failureNotification.alert.title,
+        message: failureNotification.alert.message
     };
 }
 save("refreshing", requestedReason, { enabled: true });
@@ -516,4 +538,10 @@ node.status({
             : `Bluelink #${state.attempts}: refresh real`)
 });
 
-return [msg, TEST_MODE ? null : msg, null, failureNotification, null];
+return [
+    msg,
+    TEST_MODE ? null : msg,
+    null,
+    failureNotification,
+    null
+];

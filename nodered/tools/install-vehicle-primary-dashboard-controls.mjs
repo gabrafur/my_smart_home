@@ -538,19 +538,24 @@ normalizer.func = normalizer.func.replace(
   `Date.now() - lastAttemptAt <=
         15 * 60 * 1000 + FUTURE_TOLERANCE_MS;`,
 );
-if (!normalizer.func.includes("15 * 60 * 1000 + FUTURE_TOLERANCE_MS")) {
+if (
+  !normalizer.func.includes("15 * 60 * 1000 + FUTURE_TOLERANCE_MS") &&
+  !normalizer.func.includes("20 * 60 * 1000 + FUTURE_TOLERANCE_MS")
+) {
   throw new Error("Normalizer sem janela para telemetria BR atrasada");
 }
-if (!normalizer.func.includes("cache_probe_evidence_window_v1")) {
+if (
+  !normalizer.func.includes("cache_probe_evidence_window_v1") &&
+  !normalizer.func.includes("cache_probe_evidence_window_v2")
+) {
   normalizer.func = normalizer.func.replace(
     `        const attemptCurrent =
             lastAttemptAt > 0 &&
             lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&
             Date.now() - lastAttemptAt <=
         15 * 60 * 1000 + FUTURE_TOLERANCE_MS;`,
-    `        /* cache_probe_evidence_window_v1: uma sondagem concluída torna
-         * válida a evidência semântica do wake correspondente mesmo se o
-         * tick do agendador chegou ligeiramente depois da janela nominal. */
+    `        /* cache_probe_evidence_window_v2: a sondagem permite observar a
+         * resposta atrasada, mas nunca remove o limite causal do wake. */
         const cacheProbeCurrentForAttempt =
             Number(refreshState.cache_probe_completed_for_request_at ?? 0) ===
                 requestAt &&
@@ -558,14 +563,31 @@ if (!normalizer.func.includes("cache_probe_evidence_window_v1")) {
         const attemptCurrent =
             lastAttemptAt > 0 &&
             lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&
-            (
+            Date.now() - lastAttemptAt <=
+                20 * 60 * 1000 + FUTURE_TOLERANCE_MS;`,
+  );
+}
+normalizer.func = normalizer.func
+  .replace(
+    `cache_probe_evidence_window_v1: uma sondagem concluída torna
+         * válida a evidência semântica do wake correspondente mesmo se o
+         * tick do agendador chegou ligeiramente depois da janela nominal.`,
+    `cache_probe_evidence_window_v2: a sondagem permite observar a
+         * resposta atrasada, mas nunca remove o limite causal do wake.`,
+  )
+  .replace(
+    `            (
                 Date.now() - lastAttemptAt <=
                     15 * 60 * 1000 + FUTURE_TOLERANCE_MS ||
                 cacheProbeCurrentForAttempt
             );`,
+    `            Date.now() - lastAttemptAt <=
+                20 * 60 * 1000 + FUTURE_TOLERANCE_MS;`,
   );
-}
-if (!normalizer.func.includes("cache_probe_evidence_window_v1")) {
+if (
+  !normalizer.func.includes("cache_probe_evidence_window_v2") ||
+  !normalizer.func.includes("20 * 60 * 1000 + FUTURE_TOLERANCE_MS")
+) {
   throw new Error("Normalizer sem janela vinculada à sondagem de cache");
 }
 const readinessMarker =
@@ -629,6 +651,33 @@ normalizer.func = normalizer.func.replace(
 );
 if (!normalizer.func.includes("cache_probe_completed_for_request_at: null")) {
   throw new Error("Normalizer sem limpeza do estado da sondagem de cache");
+}
+if (!normalizer.func.includes("refresh_failure_recovery_cleanup_v1")) {
+  normalizer.func = normalizer.func.replace(
+    `        if (evidenceObserved && targetReady) {
+            refreshState = {`,
+    `        if (evidenceObserved && targetReady) {
+            /* refresh_failure_recovery_cleanup_v1: sucesso confirmado
+             * remove detalhes antigos e agenda o fechamento do aviso no HA. */
+            const failureWasNotified =
+                Number(refreshState.failure_notified_at ?? 0) > 0;
+            refreshState = {`,
+  );
+  normalizer.func = normalizer.func.replace(
+    `                failure_notified_at: null,
+                last_failure_class: null,`,
+    `                failure_notified_at: null,
+                failure_notification_key: null,
+                recovery_notification_pending: failureWasNotified,
+                last_failure_class: null,
+                failure_at: null,
+                failure_source: null,
+                failure_endpoint: null,
+                failure_stage: null,`,
+  );
+}
+if (!normalizer.func.includes("refresh_failure_recovery_cleanup_v1")) {
+  throw new Error("Normalizer sem limpeza de alerta após recuperação");
 }
 normalizer.func = normalizer.func.replace(
   '                cooldown_until: Date.now() + 15 * 60 * 1000,',
@@ -770,7 +819,7 @@ upsert({
   g: "43a2bc9c218353ae",
   name: "Espelhar estado real do refresh",
   func: source("vehicle-primary-refresh-telemetry.js"),
-  outputs: 1,
+  outputs: 2,
   timeout: 0,
   noerr: 0,
   initialize: "",
@@ -778,7 +827,10 @@ upsert({
   libs: [],
   x: 650,
   y: 1000,
-  wires: [["vehicle_primary_refresh_mqtt_v1"]],
+  wires: [
+    ["vehicle_primary_refresh_mqtt_v1"],
+    ["vehicle_primary_refresh_notification_guard_v1"],
+  ],
 });
 
 upsert({
@@ -878,7 +930,7 @@ upsert({
   g: "43a2bc9c218353ae",
   name: "Separar alerta real e dry-run",
   func: source("vehicle-primary-notification-dispatch-guard.js"),
-  outputs: 2,
+  outputs: 4,
   timeout: 0,
   noerr: 0,
   initialize: "",
@@ -888,7 +940,9 @@ upsert({
   y: 1060,
   wires: [
     ["vehicle_primary_refresh_notify_primary_v1"],
+    ["vehicle_primary_refresh_notify_persistent_v1"],
     ["vehicle_primary_refresh_notification_dry_run_out_v1"],
+    ["vehicle_primary_refresh_dismiss_persistent_v1"],
   ],
 });
 
@@ -916,8 +970,66 @@ upsert({
   blockInputOverrides: true,
   domain: "public_bindings",
   service: "call",
-  x: 1310,
-  y: 1040,
+  x: 1390,
+  y: 1000,
+  wires: [[]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_notify_persistent_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Registrar alerta no Home Assistant",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "persistent_notification.create",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"title":notification.title,"message":notification.message,"notification_id":notification.id}',
+  dataType: "jsonata",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "all",
+  blockInputOverrides: true,
+  domain: "persistent_notification",
+  service: "create",
+  x: 1390,
+  y: 1060,
+  wires: [[]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_dismiss_persistent_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Remover alerta recuperado do Home Assistant",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "persistent_notification.dismiss",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"notification_id":notification.id}',
+  dataType: "jsonata",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "all",
+  blockInputOverrides: true,
+  domain: "persistent_notification",
+  service: "dismiss",
+  x: 1210,
+  y: 1140,
   wires: [[]],
 });
 
@@ -929,8 +1041,8 @@ upsert({
   name: "Alerta TESTE → terminal dry-run",
   mode: "link",
   links: ["vehicle_primary_dry_run_in_v1"],
-  x: 1325,
-  y: 1100,
+  x: 1390,
+  y: 1120,
   wires: [],
 });
 
@@ -1307,11 +1419,13 @@ addToGroup(
   "vehicle_primary_refresh_notification_in_v1",
   "vehicle_primary_refresh_notification_guard_v1",
   "vehicle_primary_refresh_notify_primary_v1",
+  "vehicle_primary_refresh_notify_persistent_v1",
+  "vehicle_primary_refresh_dismiss_persistent_v1",
   "vehicle_primary_refresh_notification_dry_run_out_v1",
 );
 
 const refreshGroup = required("43a2bc9c218353ae");
-Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 582 });
+Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 602 });
 
 const manualTestGroup = required("5df25064f701ecd2");
 manualTestGroup.name = "5. Testes manuais — motor e localização sintéticos/cumulativos";

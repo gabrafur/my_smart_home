@@ -33,7 +33,13 @@ def main() -> None:
     assert "**Atualização dos dados**" in dashboard
     assert "nova verificação em cerca de" in dashboard
     assert "verificando agora o cache do servidor antes de outro wake" in dashboard
+    assert "Atualização do veículo ainda não concluída" in dashboard
     assert "Integração Bluelink ainda indisponível" in dashboard
+    assert "A última atualização do veículo falhou" in dashboard
+    assert "refresh_failure_endpoint" in dashboard
+    assert "failure_labels" in dashboard
+    assert "nova tentativa automática em cerca de" in dashboard
+    assert "nova tentativa automática agora" in dashboard
     assert "sensor.vehicle_primary_api_retry_at" in dashboard
     assert "api_status == 'rate_limited'" in dashboard
     assert "API liberada para nova tentativa em cerca de" in dashboard
@@ -48,6 +54,15 @@ def main() -> None:
     assert dashboard.index(refresh_failure_definition) < dashboard.index(
         "refresh_failure == 'integration_unavailable'"
     )
+    assert dashboard.index("refresh_failure == 'integration_unavailable'") < dashboard.index(
+        "Último wake confirmado, solicitado há cerca de"
+    )
+    assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
+        "Último wake confirmado, solicitado há cerca de"
+    )
+    assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
+        "Wake periódico pausado até 06h"
+    )
     assert "<ha-alert" not in dashboard
     assert "🟢" in dashboard
     assert "🔵" in dashboard
@@ -60,8 +75,13 @@ def main() -> None:
     assert "Servidor consultado há" in dashboard
     assert "esta consulta não acorda o carro" in dashboard
     assert "o esperado é uma consulta a cada 15 min" in dashboard
-    assert "Último wake confirmado por dados novos" in dashboard
-    assert "O último wake ainda não produziu dados novos" in dashboard
+    assert "request_age_s = ([0, as_timestamp(now()) - request_ts] | max)" in dashboard
+    assert "request_age_min = (request_age_s / 60) | round(0)" in dashboard
+    assert "Último wake confirmado, solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min" in dashboard
+    assert "dados passivos do servidor podem confirmar um estacionamento mais recente sem novo wake" in dashboard
+    assert "success_ts - request_ts <= 1260" in dashboard
+    assert "Ainda sem confirmação causal do último wake" in dashboard
+    assert "O último wake ainda não produziu dados novos" not in dashboard
     assert "'interval_minutes') | int(0)" in dashboard
     assert "ignora o prazo periódico e a pausa noturna" not in dashboard
     assert "Cache consultado em" in dashboard

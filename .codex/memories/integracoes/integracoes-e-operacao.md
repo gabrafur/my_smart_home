@@ -25,12 +25,39 @@ Na biblioteca 4.27.2, o refresh token genérico não conhece os atributos e o
 formato de bearer do cliente BR. A camada local adapta esse contrato e impede
 que um `5091` no refresh dispare login completo na mesma tentativa.
 Agendamento, manual, recovery, chegada e movimento convergem no estado
-persistente do Node-RED; retorno do serviço é apenas aceite e sucesso exige
-timestamp novo de localização, motor ou trava. A integração e o fluxo mantêm
-locks/lease para uma única chamada em andamento e backoff 1, 2, 4, 8, 15 min.
-Depois da primeira tentativa sem evidência, o ciclo envia um único alerta ao
-papel `resident_primary`; novas tentativas do mesmo incidente não repetem o
-push, e uma atualização confirmada libera o alerta do próximo incidente.
+persistente do Node-RED. O ciclo saudável usa 30 minutos quando ambos os
+residentes estão em casa e 15 minutos quando algum deles está fora ou chegando.
+Uma falha confirmada também usa recuperação a cada 15 minutos, mesmo com ambos
+em casa; isso é exceção de recovery, não política normal de presença. Com ambos
+em casa, wakes automáticos ficam suspensos entre 00:00 e 05:59. O comando manual
+pode antecipar cooldown e pausa noturna, mas nunca atravessa uma chamada em voo.
+
+O retorno de `public_bindings.call` prova somente que o Home Assistant aceitou
+a chamada. Um wake só é confirmado quando o timestamp semântico do veículo
+avança depois da solicitação e dentro da janela causal de 20 minutos. O instante
+da última consulta ao cache não é essa evidência. Dados passivos posteriores
+continuam válidos para estacionamento e telemetria, porém não podem transformar
+um wake antigo ou falho em sucesso nem deixar o card verde. O dashboard deve
+mostrar separadamente há quanto tempo o último wake foi solicitado e quanto
+falta para o próximo ciclo ou retry.
+
+No backend brasileiro, o wake chama `/ccs2/carstatus` e a telemetria vem depois
+de `/latest`. HTTP 200 sozinho não prova aceite: o envelope precisa conter
+`retCode=S` e `resCode=0000`. A publicação pode demorar mais que a espera inicial
+de 25 segundos; nesse caso, seis rechecks limitados ao cache cobrem os 150
+segundos seguintes, renovam autenticação antes de cada leitura e não emitem
+outro wake. Ao descarregar a entrada da integração, tarefas pendentes de recheck
+e histórico precisam ser canceladas para a instância antiga não continuar
+consultando em paralelo.
+
+Falhas do refresh notificam `mobile_primary` e o painel de notificações do Home
+Assistant com classe, endpoint e etapa. A deduplicação usa classe mais endpoint:
+repetições idênticas são silenciadas, mas uma mudança real gera novo aviso. O
+sucesso semântico limpa os detalhes antigos e remove a notificação persistente.
+`integration_unavailable` significa especificamente que o serviço
+`kia_uvo.update` não existe porque a entrada da integração não carregou; dados
+stale, readiness incompleto e wake aceito sem telemetria nova não provam essa
+classe de falha.
 
 Atualizações usam `scripts/kia-uvo-safe-update.mjs`: `check` prepara e verifica
 a nova versão em staging; `apply` é explícito, faz backup, usa o instalador

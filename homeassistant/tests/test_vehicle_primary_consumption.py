@@ -490,6 +490,33 @@ class VehiclePrimaryConsumptionTest(unittest.IsolatedAsyncioTestCase):
     async def test_recorder_estimate_and_refresh_scenarios(self):
         await main()
 
+    async def test_unload_cancels_coordinator_background_tasks(self):
+        cancelled = []
+
+        async def pending_task(name):
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.append(name)
+
+        shared = asyncio.create_task(pending_task("shared"))
+        trip = asyncio.create_task(pending_task("trip"))
+        await asyncio.sleep(0)
+        coordinator = SimpleNamespace(
+            _trip_refresh_tasks={"vehicle-1": trip},
+            _br_fresh_data_recheck_tasks={"vehicle-1": shared, "duplicate": shared},
+        )
+
+        await HyundaiKiaConnectDataUpdateCoordinator.async_cancel_background_tasks(
+            coordinator
+        )
+
+        assert set(cancelled) == {"shared", "trip"}
+        assert coordinator._trip_refresh_tasks == {}
+        assert coordinator._br_fresh_data_recheck_tasks == {}
+        assert shared.cancelled()
+        assert trip.cancelled()
+
 
 class FakeResponse:
     """Small requests-like response for BR device recovery tests."""
@@ -724,6 +751,60 @@ class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
         )
 
         assert response.status_code == 400
+        assert len(api.session.requests) == 1
+
+    def test_wake_http_200_failure_envelope_is_rejected(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        api = HyundaiBlueLinkApiBR(
+            [
+                FakeResponse(
+                    200,
+                    {
+                        "retCode": "F",
+                        "resCode": "5031",
+                        "resMsg": "synthetic provider failure",
+                    },
+                )
+            ]
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(
+                api=api, token=SimpleNamespace(device_id="registered-device")
+            )
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+
+        with self.assertRaisesRegex(
+            coordinator_module.APIError,
+            r"/ccs2/carstatus.*resCode=5031",
+        ):
+            api.session.get(
+                "https://example.invalid/api/v1/spa/vehicles/vehicle/ccs2/carstatus",
+                headers={"ccsp-device-id": "registered-device"},
+            )
+
+    def test_wake_success_envelope_remains_accepted(self):
+        api = HyundaiBlueLinkApiBR(
+            [FakeResponse(200, {"retCode": "S", "resCode": "0000"})]
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(
+                api=api, token=SimpleNamespace(device_id="registered-device")
+            )
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+        response = api.session.get(
+            "https://example.invalid/api/v1/spa/vehicles/vehicle/ccs2/carstatus",
+            headers={"ccsp-device-id": "registered-device"},
+        )
+
+        assert response.status_code == 200
         assert len(api.session.requests) == 1
 
 
@@ -1213,6 +1294,7 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             _force_refresh_lock=asyncio.Lock(),
             _cache_refresh_lock=asyncio.Lock(),
             _br_fresh_data_recheck_tasks={},
+            async_check_and_refresh_token=AsyncMock(),
             data={"cached": True},
             async_set_updated_data=published.append,
         )
@@ -1233,6 +1315,50 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             )
 
         assert published == [{"cached": True}, {"cached": True}]
+
+    async def test_delayed_br_recheck_stops_after_authentication_failure(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        vehicle = SimpleNamespace(last_updated_at=dt.datetime.now(UTC))
+
+        class Manager:
+            vehicles = {VEHICLE_ID: vehicle}
+
+            @staticmethod
+            def update_vehicle_with_cached_state(_vehicle_id):
+                raise AssertionError("cache must not run without authentication")
+
+        async def fail_authentication():
+            raise coordinator_module.AuthenticationError("synthetic auth failure")
+
+        coordinator = SimpleNamespace(
+            hass=SimpleNamespace(async_add_executor_job=AsyncMock()),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
+            _br_fresh_data_recheck_tasks={},
+            async_check_and_refresh_token=AsyncMock(side_effect=fail_authentication),
+            data={"cached": True},
+            async_set_updated_data=AsyncMock(),
+        )
+        coordinator._br_timestamp_is_fresh = (
+            HyundaiKiaConnectDataUpdateCoordinator._br_timestamp_is_fresh
+        )
+
+        with patch.object(
+            coordinator_module,
+            "BR_FRESH_DATA_RECHECK_DELAYS_S",
+            (0, 0),
+        ):
+            await HyundaiKiaConnectDataUpdateCoordinator._async_recheck_br_fresh_data(
+                coordinator,
+                VEHICLE_ID,
+                vehicle.last_updated_at,
+                dt.datetime.now(UTC),
+            )
+
+        coordinator.async_check_and_refresh_token.assert_awaited_once()
+        coordinator.hass.async_add_executor_job.assert_not_awaited()
+        coordinator.async_set_updated_data.assert_not_awaited()
 
     async def test_force_refresh_allows_sequential_manual_wakes(self):
         calls = []

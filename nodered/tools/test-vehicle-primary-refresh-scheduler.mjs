@@ -34,6 +34,7 @@ const code = {
   accepted: source("vehicle-primary-refresh-accepted.js"),
   cacheProbeAccepted: source("vehicle-primary-cache-probe-accepted.js"),
   error: source("vehicle-primary-refresh-error.js"),
+  telemetry: source("vehicle-primary-refresh-telemetry.js"),
   dispatchGuard: source("vehicle-primary-refresh-dispatch-guard.js"),
   cacheProbeGuard: source("vehicle-primary-cache-probe-dispatch-guard.js"),
   tripGuard: source("vehicle-primary-trip-dispatch-guard.js"),
@@ -719,25 +720,26 @@ scenario("18 toda retentativa respeita o piso Bluelink de 15 minutos", () => {
       coordinated = coordinator(store, now, { anyone_away: true });
     }
     assert(coordinated[0]);
-    if (attempt === 1) assert.equal(coordinated[3], null);
-    if (attempt === 2) {
-      assert.match(coordinated[3].alert.title, /Falha ao atualizar veículo/);
-      const guarded = execute(code.notificationGuard, {
-        now,
-        store,
-        msg: coordinated[3],
-      });
-      assert(guarded[0]);
-      assert.equal(guarded[1], null);
-    }
-    if (attempt > 2) assert.equal(coordinated[3], null);
+    assert.equal(coordinated[3], null);
     const state = store.get(KEY);
     observed.push((state.next_allowed_at - now) / 60_000);
-    execute(code.error, {
+    const serviceFailure = execute(code.error, {
       now,
       store,
       msg: { error: { source: { name: "force_refresh" }, message: "timeout" } },
     });
+    if (attempt === 1) {
+      assert.match(serviceFailure.alert.title, /Erro ao atualizar veículo/);
+      const guarded = execute(code.notificationGuard, {
+        now,
+        store,
+        msg: serviceFailure,
+      });
+      assert(guarded[0]);
+      assert(guarded[1]);
+      assert.equal(guarded[2], null);
+    }
+    if (attempt > 1) assert.equal(serviceFailure, null);
     now = state.next_allowed_at;
   }
   assert.deepEqual(observed, [15, 15, 15, 15, 15]);
@@ -827,8 +829,10 @@ scenario("20 alerta sintético chega somente ao terminal dry-run", () => {
     msg: coordinated[3],
   });
   assert.equal(guarded[0], null);
-  assert.equal(guarded[1].payload.notification_sent, false);
-  execute(code.dryRun, { now: DAY, store, msg: guarded[1] });
+  assert.equal(guarded[1], null);
+  assert.equal(guarded[2].payload.notification_sent, false);
+  assert.equal(guarded[2].payload.persistent_notification_created, false);
+  execute(code.dryRun, { now: DAY, store, msg: guarded[2] });
   assert.equal(store.get("vehicle_primary_last_dry_run_v1").dispatched, false);
 });
 
@@ -865,6 +869,41 @@ scenario("32 cache novo evita wake redundante no vencimento do retry", () => {
     coordinator(store, DAY + 15_001, { anyone_away: true }),
     null,
   );
+});
+
+scenario("32a dado passivo tardio não confirma wake antigo", () => {
+  const baseline = DAY - 13 * 60 * 60_000;
+  const previousRequestAt = DAY - 12 * 60 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      version: 10,
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: previousRequestAt,
+      last_request_at: previousRequestAt,
+      next_allowed_at: DAY,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  const probe = coordinator(store, DAY, { anyone_away: true });
+  assert(probe[4]);
+  execute(code.cacheProbeAccepted, {
+    now: DAY,
+    store,
+    msg: probe[4],
+  });
+  normalize(store, DAY + 15_000, DAY + 15_000, DAY - 60_000);
+  const afterPassiveData = store.get(KEY);
+  assert.equal(afterPassiveData.awaiting_evidence, true);
+  assert.equal(afterPassiveData.last_success_at ?? 0, 0);
+
+  const wake = coordinator(store, DAY + 15_000, { anyone_away: true });
+  assert(wake[0]);
+  assert.equal(wake[4], null);
+  assert.equal(store.get(KEY).last_request_at, DAY + 15_000);
 });
 
 scenario("33 cache antigo libera um único wake após a propagação", () => {
@@ -932,37 +971,10 @@ scenario("34 erro ao reler cache adia a sondagem sem enviar wake", () => {
   );
 });
 
-scenario("36 integração indisponível não chama serviço inexistente", () => {
+scenario("36 falso legado sem endpoint é reavaliado pelo cache", () => {
   const previousRequestAt = DAY - 15 * 60_000;
   const store = memory({
     vehicle_primary_context_v1: { ready: false, state: "unavailable" },
-    [KEY]: {
-      attempts: 1,
-      awaiting_evidence: true,
-      last_attempt_at: previousRequestAt,
-      last_request_at: previousRequestAt,
-      next_allowed_at: DAY,
-      interval_ms: 15 * 60_000,
-      last_failure_class: "integration_unavailable",
-    },
-  });
-
-  assert.equal(coordinator(store, DAY, {
-    vehicle_primary_ready: false,
-    recovery_needed: true,
-    anyone_away: true,
-  }), null);
-  const state = store.get(KEY);
-  assert.equal(state.state, "backoff");
-  assert.equal(state.reason, "integration_unavailable");
-  assert.equal(state.next_allowed_at, DAY + 15 * 60_000);
-  assert.equal(state.attempts, 1);
-});
-
-scenario("37 volta da integração libera releitura de cache imediata", () => {
-  const previousRequestAt = DAY - 15 * 60_000;
-  const store = memory({
-    vehicle_primary_context_v1: readyContext(DAY - 20 * 60_000),
     [KEY]: {
       attempts: 1,
       awaiting_evidence: true,
@@ -975,14 +987,47 @@ scenario("37 volta da integração libera releitura de cache imediata", () => {
   });
 
   const result = coordinator(store, DAY, {
-    vehicle_primary_ready: true,
+    vehicle_primary_ready: false,
     recovery_needed: true,
     anyone_away: true,
   });
   assert.equal(result[0], null);
+  assert.equal(result[3], null);
   assert(result[4]);
-  assert.equal(store.get(KEY).state, "probing_cache");
-  assert.equal(store.get(KEY).last_failure_class, null);
+  const state = store.get(KEY);
+  assert.equal(state.state, "probing_cache");
+  assert.equal(state.reason, "pre_wake_cache_probe");
+  assert.equal(state.last_failure_class ?? null, null);
+  assert.equal(state.attempts, 1);
+});
+
+scenario("37 endpoint ausente informa serviço e etapa no alerta", () => {
+  const store = memory({
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: true,
+      failure_notified_at: 0,
+      next_allowed_at: DAY + 15 * 60_000,
+      interval_ms: 15 * 60_000,
+    },
+  });
+
+  const result = execute(code.error, {
+    now: DAY,
+    store,
+    msg: {
+      error: {
+        source: { name: "Reler cache do vehicle_primary" },
+        message: "HomeAssistantError: Service kia_uvo.update not found.",
+      },
+    },
+  });
+  assert.equal(store.get(KEY).last_failure_class, "integration_unavailable");
+  assert.match(result.alert.title, /Endpoint Bluelink indisponível/);
+  assert.match(result.alert.message, /kia_uvo\.update/);
+  assert.match(result.alert.message, /Reler cache do vehicle_primary/);
+  assert.equal(result.notification.id, "vehicle_primary_refresh_failed");
 });
 
 scenario("38 sucesso semântico mantém 30 minutos com ambos em casa", () => {
@@ -1044,6 +1089,131 @@ scenario("39 sucesso semântico antigo não mascara recuperação", () => {
   assert(result[0]);
   assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
   assert.equal(store.get(KEY).interval_policy, "recovery_15m");
+});
+
+scenario("40 versão 9 reabre sucesso correlacionado muitas horas depois", () => {
+  const oldRequestAt = DAY - 12 * 60 * 60_000;
+  const passiveTelemetryAt = DAY - 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: {
+      ...readyContext(DAY),
+      telemetry_updated_at: passiveTelemetryAt,
+    },
+    [KEY]: {
+      version: 9,
+      attempts: 0,
+      awaiting_evidence: false,
+      last_request_at: oldRequestAt,
+      last_attempt_at: oldRequestAt,
+      last_success_at: DAY,
+      next_allowed_at: DAY + 30 * 60_000,
+      interval_ms: 30 * 60_000,
+      last_evidence_domains: ["telemetry"],
+    },
+  });
+
+  const result = coordinator(store, DAY, {
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  });
+  assert.equal(result[0], null);
+  assert(result[4]);
+  const state = store.get(KEY);
+  assert.equal(state.version, 10);
+  assert.equal(state.awaiting_evidence, true);
+  assert.equal(state.last_success_at, 0);
+  assert.equal(state.last_failure_class, "no_fresh_data");
+  assert.match(state.failure_endpoint, /public_bindings\.call/);
+  assert.equal(state.reason, "pre_wake_cache_probe");
+});
+
+scenario("41 mudança real de classe de falha gera novo alerta", () => {
+  const store = memory({
+    [KEY]: {
+      attempts: 2,
+      awaiting_evidence: true,
+      failure_notified_at: DAY - 60_000,
+      failure_notification_key:
+        "no_fresh_data|public_bindings.call (wake do veículo)",
+      last_failure_class: "no_fresh_data",
+      next_allowed_at: DAY + 15 * 60_000,
+      interval_ms: 15 * 60_000,
+    },
+  });
+
+  const notification = execute(code.error, {
+    now: DAY,
+    store,
+    msg: {
+      error: {
+        source: { name: "Acionar wake do vehicle_primary" },
+        message: "request timed out",
+      },
+    },
+  });
+  assert(notification);
+  assert.equal(store.get(KEY).last_failure_class, "timeout");
+  assert.match(notification.alert.message, /tempo esgotado/);
+
+  const duplicate = execute(code.error, {
+    now: DAY + 1_000,
+    store,
+    msg: {
+      error: {
+        source: { name: "Acionar wake do vehicle_primary" },
+        message: "request timed out",
+      },
+    },
+  });
+  assert.equal(duplicate, null);
+});
+
+scenario("42 recuperação limpa detalhes e fecha alerta persistente", () => {
+  const baseline = DAY - 10 * 60_000;
+  const requestAt = DAY - 5 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      version: 10,
+      attempts: 2,
+      awaiting_evidence: true,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: DAY + 10 * 60_000,
+      baseline_observed_at: { telemetry: baseline },
+      failure_notified_at: requestAt,
+      failure_notification_key:
+        "no_fresh_data|public_bindings.call (wake do veículo)",
+      last_failure_class: "no_fresh_data",
+      failure_endpoint: "public_bindings.call (wake do veículo)",
+      failure_stage: "confirmação semântica em até 20 min",
+    },
+  });
+
+  normalize(store, DAY, DAY, DAY - 60_000);
+  const recovered = store.get(KEY);
+  assert.equal(recovered.last_failure_class, null);
+  assert.equal(recovered.failure_endpoint, null);
+  assert.equal(recovered.failure_stage, null);
+  assert.equal(recovered.recovery_notification_pending, true);
+
+  const telemetry = execute(code.telemetry, {
+    now: DAY + 1_000,
+    store,
+    msg: { payload: {} },
+  });
+  assert.equal(telemetry[1].notification.id, "vehicle_primary_refresh_failed");
+  assert.equal(telemetry[1].notification.dismiss_only, true);
+  const dismiss = execute(code.notificationGuard, {
+    now: DAY + 1_000,
+    store,
+    msg: telemetry[1],
+  });
+  assert.equal(dismiss[0], null);
+  assert.equal(dismiss[1], null);
+  assert.equal(dismiss[2], null);
+  assert.equal(dismiss[3].notification.id, "vehicle_primary_refresh_failed");
+  assert.equal(store.get(KEY).recovery_notification_pending, false);
 });
 
 console.log(

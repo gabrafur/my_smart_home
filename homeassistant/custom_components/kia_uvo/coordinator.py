@@ -506,6 +506,19 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self._trip_refresh_tasks[vehicle_id] = task
 
+    async def async_cancel_background_tasks(self) -> None:
+        """Cancel coordinator-owned work before a config-entry unload."""
+        tasks = set(self._trip_refresh_tasks.values()) | set(
+            self._br_fresh_data_recheck_tasks.values()
+        )
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._trip_refresh_tasks.clear()
+        self._br_fresh_data_recheck_tasks.clear()
+
     async def _async_refresh_trip_info_with_retry(
         self, vehicle_id: str, reason: str
     ) -> None:
@@ -708,8 +721,14 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     vehicle_id,
                     err,
                 )
+                error_summary = (
+                    HyundaiKiaConnectDataUpdateCoordinator._remote_command_error_summary(
+                        err
+                    )
+                )
                 raise HomeAssistantError(
-                    f"Vehicle refresh failed: {type(err).__name__}"
+                    "Vehicle refresh failed at /ccs2/carstatus: "
+                    f"{error_summary}"
                 ) from err
             self.async_set_updated_data(self.data)
 
@@ -784,6 +803,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     async with self._cache_refresh_lock:
                         if self._force_refresh_lock.locked():
                             continue
+                        await self.async_check_and_refresh_token()
                         await self.hass.async_add_executor_job(
                             self.vehicle_manager.update_vehicle_with_cached_state,
                             vehicle_id,
@@ -794,6 +814,12 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
                     _LOGGER.warning(
                         "CRETA_REFRESH_RECHECK_CANCELLED reason=rate_limited"
+                    )
+                    return
+                except AuthenticationError:
+                    _LOGGER.warning(
+                        "CRETA_REFRESH_RECHECK_CANCELLED "
+                        "reason=authentication_unavailable"
                     )
                     return
                 except Exception as err:
@@ -1339,39 +1365,78 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 BR_DEVICE_REGISTRATION_PATH in url
                 or not _is_invalid_device(response)
             ):
-                return response
+                final_response = response
+            else:
+                headers = dict(kwargs.get("headers") or {})
+                rejected_device_id = headers.get("ccsp-device-id")
+                with registration_lock:
+                    token = coordinator.vehicle_manager.token
+                    if token is None:
+                        final_response = response
+                    else:
+                        if token.device_id and token.device_id != rejected_device_id:
+                            device_id = token.device_id
+                        else:
+                            device_id = _register_device()
+                            token.device_id = device_id
+                            _LOGGER.warning(
+                                "CRETA_DEVICE_ID_RECOVERED res_code=4002; "
+                                "registered current Bluelink client"
+                            )
+                            if hasattr(coordinator, "hass"):
+                                coordinator.hass.loop.call_soon_threadsafe(
+                                    coordinator._save_token_if_changed
+                                )
 
-            headers = dict(kwargs.get("headers") or {})
-            rejected_device_id = headers.get("ccsp-device-id")
-            with registration_lock:
-                token = coordinator.vehicle_manager.token
-                if token is None:
-                    return response
-                if token.device_id and token.device_id != rejected_device_id:
-                    device_id = token.device_id
-                else:
-                    device_id = _register_device()
-                    token.device_id = device_id
-                    _LOGGER.warning(
-                        "CRETA_DEVICE_ID_RECOVERED res_code=4002; "
-                        "registered current Bluelink client"
-                    )
-                    if hasattr(coordinator, "hass"):
-                        coordinator.hass.loop.call_soon_threadsafe(
-                            coordinator._save_token_if_changed
-                        )
+                        retry_kwargs = dict(kwargs)
+                        headers["ccsp-application-id"] = BR_CURRENT_APPLICATION_ID
+                        headers["ccsp-device-id"] = device_id
+                        retry_kwargs["headers"] = headers
+                        if isinstance(retry_kwargs.get("json"), dict):
+                            request_payload = dict(retry_kwargs["json"])
+                            for key in ("deviceId", "deviceID"):
+                                if key in request_payload:
+                                    request_payload[key] = device_id
+                            retry_kwargs["json"] = request_payload
+                        final_response = original_request(method, url, **retry_kwargs)
 
-            retry_kwargs = dict(kwargs)
-            headers["ccsp-application-id"] = BR_CURRENT_APPLICATION_ID
-            headers["ccsp-device-id"] = device_id
-            retry_kwargs["headers"] = headers
-            if isinstance(retry_kwargs.get("json"), dict):
-                request_payload = dict(retry_kwargs["json"])
-                for key in ("deviceId", "deviceID"):
-                    if key in request_payload:
-                        request_payload[key] = device_id
-                retry_kwargs["json"] = request_payload
-            return original_request(method, url, **retry_kwargs)
+            is_wake_request = (
+                str(method).upper() == "GET"
+                and url.rstrip("/").endswith("/ccs2/carstatus")
+            )
+            if not is_wake_request or final_response.status_code >= 400:
+                return final_response
+
+            # O endpoint de wake pode responder HTTP 200 com uma falha no
+            # envelope Bluelink. O upstream verificava apenas o HTTP e tratava
+            # essa rejeição funcional como aceite, levando a 25 segundos de
+            # espera e ao diagnóstico enganoso de veículo sem resposta.
+            try:
+                wake_payload = final_response.json()
+            except ValueError as err:
+                raise APIError(
+                    "Brazilian Hyundai wake endpoint returned invalid JSON"
+                ) from err
+            ret_code = (
+                str(wake_payload.get("retCode", "missing"))[:16]
+                if isinstance(wake_payload, dict)
+                else "invalid"
+            )
+            res_code = (
+                str(wake_payload.get("resCode", "missing"))[:16]
+                if isinstance(wake_payload, dict)
+                else "invalid"
+            )
+            if ret_code != "S" or res_code != "0000":
+                raise APIError(
+                    "Brazilian Hyundai wake rejected by /ccs2/carstatus "
+                    f"(retCode={ret_code}, resCode={res_code})"
+                )
+            _LOGGER.info(
+                "CRETA_WAKE_ACCEPTED endpoint=/ccs2/carstatus res_code=%s",
+                res_code,
+            )
+            return final_response
 
         api.session.request = types.MethodType(
             _request_with_device_recovery, api.session

@@ -49,7 +49,9 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   semantico, mesmo quando motor e trava continuam com o mesmo estado e por isso
   nao ganham um novo `last_updated` no Home Assistant. Readiness completo de
   motor/localizacao permanece obrigatorio somente quando uma recuperacao da
-  iluminacao o solicita explicitamente.
+  iluminacao o solicita explicitamente. A correlação causal termina 20 minutos
+  depois da solicitação: dados que chegam mais tarde continuam válidos para
+  estacionamento e telemetria, mas não transformam o wake antigo em sucesso.
 - `sensor.vehicle_primary_current_location_since` preserva o instante em que o
   carro entrou na localizacao atual. Republicacoes do mesmo ponto nao alteram
   esse horario; fora de zonas nomeadas, um deslocamento de aproximadamente
@@ -74,6 +76,11 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   somente o cache, nao emitem outro wake
   e param assim que o timestamp semantico do veiculo comprova dado posterior
   a solicitacao.
+- O cliente também valida o envelope funcional do endpoint de wake. HTTP 200
+  sozinho não é aceite: somente `retCode=S` e `resCode=0000` produzem
+  `CRETA_WAKE_ACCEPTED`. Rejeições funcionais agora falham imediatamente com o
+  endpoint `/ccs2/carstatus` identificado, em vez de parecerem um veículo que
+  simplesmente não respondeu depois de 25 segundos.
 - Ao vencer o prazo de uma tentativa que ainda aguarda evidência, o Node-RED
   chama primeiro `kia_uvo.update`, que relê somente o cache, aguarda 15 s pela
   republicação e executa outro snapshot. Telemetria semântica nova confirma o
@@ -134,7 +141,10 @@ noturna; o ciclo saudável continua em 30 minutos com ambos em casa. Com ambos
 em casa, qualquer wake automático fica suspenso das 00:00 as 05:59. Antes de
 repetir o wake, o vencimento relê o
 cache e aguarda sua propagação para aproveitar uma resposta tardia do wake
-anterior. O contador satura sem criar rajadas ou loops. Somente o clique
+anterior, desde que essa resposta ainda esteja dentro da janela causal máxima
+de 20 minutos. Uma atualização passiva muitas horas depois pode alterar o
+estacionamento confirmado, mas não confirma o wake anterior. O contador satura
+sem criar rajadas ou loops. Somente o clique
 manual explicito pode antecipar prazo ou janela. O aceite estende
 `next_allowed_at` pelo intervalo selecionado depois da conclusao da chamada.
 Uma evidencia nova posterior pode confirmar sucesso, mas nunca encurta esse
@@ -147,7 +157,11 @@ transitoria de autenticacao, preserva o cache e retorna sem criar erro
 WebSocket; a ausencia de timestamp semantico novo mantem o mesmo backoff e gera um
 alerta deduplicado para `resident_primary`. O polling BR reavalia autenticacao
 em ate 60 segundos sem descarregar o config entry, permitindo recuperacao
-posterior sem tempestade.
+posterior sem tempestade. Os rechecks posteriores ao wake renovam a
+autenticacao antes de cada leitura de cache e param diante de falha de
+autenticacao. Ao recarregar a entrada da integracao, os rechecks de wake e de
+historico ainda pendentes sao cancelados para que a instancia antiga nao
+continue fazendo consultas.
 Eventos operacionais usam `VEHICLE_PRIMARY_LOCATION_CHANGED`,
 `VEHICLE_PRIMARY_MOVEMENT_DETECTED`, `VEHICLE_PRIMARY_REFRESH_REQUESTED`,
 `VEHICLE_PRIMARY_REFRESH_RETRY`, `VEHICLE_PRIMARY_NEW_DATA_RECEIVED`, `VEHICLE_PRIMARY_TRIP_UPDATED` e
@@ -158,18 +172,23 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 `sensor.vehicle_primary_refresh_coordinator`. Os campos publicados sao `state`,
 `reason`, `attempt`, `last_request_at`, `last_success_at`, `next_retry_at` e
 `cooldown_until`, alem de `request_in_flight`, `in_flight_until`,
-`service_accepted_at` e `last_failure_class`. O ticker MQTT de 5 s somente calcula o tempo restante a
+`service_accepted_at`, `last_failure_class`, `failure_endpoint` e
+`failure_stage`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
-Quando o serviço `kia_uvo.update` ainda não existe porque o config entry não
-conseguiu carregar, a falha é publicada como `integration_unavailable`. Nesse
-estado, o dashboard não apresenta o próximo tick local como se fosse uma
-consulta ao servidor: apresenta o tempo restante como `próximo retry
-automático`, informa explicitamente que nenhuma consulta está em andamento e
-que o Home Assistant tentará carregar a integração novamente. O coordenador
-também deixa de chamar o serviço inexistente nos vencimentos seguintes: apenas
-reagenda o retry em 15 minutos. Assim que `vehicle_primary` volta a ficar
-pronto, o próximo tick de reconciliação libera imediatamente a releitura do
-cache, sem aguardar o restante desse prazo defensivo.
+Quando uma chamada real informa que o serviço `kia_uvo.update` não existe
+porque o config entry não conseguiu carregar, a falha é publicada como
+`integration_unavailable`. Readiness incompleto ou entidades stale não são
+tratados como prova de indisponibilidade da integração. Nesse
+estado, o dashboard prioriza a indisponibilidade sobre uma confirmação antiga
+de wake e apresenta o tempo restante para a próxima tentativa automática. Na
+primeira detecção de cada incidente, o coordenador envia um push deduplicado a
+`resident_primary` e cria uma notificação persistente no Home Assistant. A
+mensagem identifica o endpoint e a etapa do fluxo que falhou. Uma mudança real
+da classe ou do endpoint da falha produz um novo aviso; repetições idênticas são
+deduplicadas. Depois de sucesso semântico, os detalhes antigos são limpos e a
+notificação persistente correspondente é removida. As tentativas
+seguintes respeitam o backoff de 15 minutos; quando o serviço volta, a próxima
+releitura de cache segue o ciclo normal.
 O backoff brasileiro também publica o evento `kia_uvo_api_retry` com o deadline
 UTC calculado pela própria integração. O sensor de timestamp
 `sensor.vehicle_primary_api_retry_at` restaura esse prazo mesmo quando o config

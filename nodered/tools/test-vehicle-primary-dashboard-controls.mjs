@@ -276,6 +276,8 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   assert.equal(payload.state, "backoff");
   assert.equal(payload.attempt, 3);
   assert.equal(payload.remaining_seconds, 58);
+  assert.equal(payload.failure_endpoint, null);
+  assert.equal(payload.failure_stage, null);
 }
 
 const ids = flows.map((node) => node.id);
@@ -291,6 +293,8 @@ for (const expected of [
   "vehicle_primary_refresh_notification_in_v1",
   "vehicle_primary_refresh_notification_guard_v1",
   "vehicle_primary_refresh_notify_primary_v1",
+  "vehicle_primary_refresh_notify_persistent_v1",
+  "vehicle_primary_refresh_dismiss_persistent_v1",
   "vehicle_primary_refresh_notification_dry_run_out_v1",
   "vehicle_primary_cache_probe_dispatch_guard_v1",
   "vehicle_primary_cache_probe_call_v1",
@@ -388,6 +392,26 @@ assert.match(refreshNotification.data, /"action":"notify_3"/);
 assert.match(refreshNotification.data, /"title":alert\.title/);
 assert.match(refreshNotification.data, /"message":alert\.message/);
 assert.equal(refreshNotification.queue, "all");
+
+const refreshPersistent = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_notify_persistent_v1",
+);
+assert.equal(refreshPersistent.action, "persistent_notification.create");
+assert.match(refreshPersistent.data, /notification_id/);
+assert.equal(refreshPersistent.queue, "all");
+
+const refreshDismiss = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_dismiss_persistent_v1",
+);
+assert.equal(refreshDismiss.action, "persistent_notification.dismiss");
+assert.equal(refreshDismiss.queue, "all");
+const refreshNotificationGuard = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_notification_guard_v1",
+);
+assert.equal(refreshNotificationGuard.outputs, 4);
+assert.deepEqual(refreshNotificationGuard.wires[3], [
+  "vehicle_primary_refresh_dismiss_persistent_v1",
+]);
 
 const remoteEvent = flows.find(
   (node) => node.id === "vehicle_primary_remote_command_event_v1",

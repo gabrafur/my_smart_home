@@ -64,9 +64,23 @@ const status = {
     cache_probe_in_flight: raw.cache_probe_in_flight === true,
     cache_probe_accepted_at: iso(raw.cache_probe_accepted_at),
     last_failure_class: raw.last_failure_class ?? null,
+    failure_endpoint: raw.failure_endpoint ?? null,
+    failure_stage: raw.failure_stage ?? null,
     manual_force: raw.manual_force === true,
     updated_at: new Date(now).toISOString()
 };
+
+let dismissRecoveredFailure = null;
+if (raw.recovery_notification_pending === true) {
+    raw.recovery_notification_pending = false;
+    flow.set("security_vehicle_primary_refresh_v1", raw, "persistent");
+    dismissRecoveredFailure = {
+        notification: {
+            id: "vehicle_primary_refresh_failed",
+            dismiss_only: true
+        }
+    };
+}
 
 const discovery = {
     name: "Refresh Coordinator",
@@ -108,4 +122,4 @@ return [[
         retain: true,
         qos: 1
     }
-]];
+], dismissRecoveredFailure];
