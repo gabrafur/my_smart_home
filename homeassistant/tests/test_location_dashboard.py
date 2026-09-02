@@ -45,11 +45,13 @@ class LocationDashboardTest(unittest.TestCase):
         self.assertIn("location_sources", dashboard)
         self.assertIn("source.last_updated", dashboard)
         self.assertIn("source.location_observed_at", dashboard)
-        self.assertIn("Current GPS", dashboard)
-        self.assertIn("Aging GPS", dashboard)
-        self.assertIn("Stale GPS", dashboard)
-        self.assertIn("Last GPS change", dashboard)
-        self.assertIn("Last update", dashboard)
+        self.assertIn("Source reporting", dashboard)
+        self.assertIn("Source reporting late", dashboard)
+        self.assertIn("Source not reporting", dashboard)
+        self.assertIn("Position changed recently", dashboard)
+        self.assertIn("Position unchanged", dashboard)
+        self.assertIn("Source last reported", dashboard)
+        self.assertNotIn("Stale GPS", dashboard)
 
     def test_dashboard_labels_are_english_only(self):
         dashboard = DASHBOARD.read_text(encoding="utf-8")

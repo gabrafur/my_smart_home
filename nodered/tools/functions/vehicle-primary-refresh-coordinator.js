@@ -131,10 +131,14 @@ const requestedReason = msg.payload?.reason ??
     msg.payload?.recovery_reason ??
     (recoveryNeeded ? "readiness_recovery_needed" : "scheduled_refresh");
 const manualBypass = requestedReason === "manual_force";
+const residentDepartureBypass =
+    requestedReason === "resident_departure" &&
+    msg.payload?.resident_departure_force === true;
+const deadlineBypass = manualBypass || residentDepartureBypass;
 /* O intervalo de 30 min economiza wakes somente no ciclo saudável em casa.
  * Recuperação e backoff usam o piso suportado de 15 min para não prolongar
  * artificialmente uma indisponibilidade já confirmada. */
-const selectedIntervalMs = recoveryNeeded && !manualBypass
+const selectedIntervalMs = recoveryNeeded && !deadlineBypass
     ? AWAY_INTERVAL_MS
     : presenceIntervalMs;
 const previousIntervalMs = [AWAY_INTERVAL_MS, HOME_INTERVAL_MS]
@@ -145,7 +149,7 @@ const intervalChanged = previousIntervalMs !== selectedIntervalMs;
 state.interval_ms = selectedIntervalMs;
 state.interval_policy = selectedIntervalMs === HOME_INTERVAL_MS
     ? "both_home_30m"
-    : (recoveryNeeded && !manualBypass
+    : (recoveryNeeded && !deadlineBypass
         ? "recovery_15m"
         : "away_or_approaching_15m");
 const intervalAnchorAt = Math.max(
@@ -345,7 +349,26 @@ const hour = new Date(now).getHours();
 const quietHours = hour >= 0 && hour < 6;
 const legacyDaytime = hour >= 7 && hour < 22;
 
-if (!manualBypass && bothResidentsHome && quietHours) {
+const departureEventAt = Number(msg.payload?.departure_event_at ?? 0);
+if (
+    residentDepartureBypass &&
+    departureEventAt > 0 &&
+    state.last_request_at >= departureEventAt
+) {
+    save(
+        state.awaiting_evidence === true ? "awaiting_evidence" : "cooldown",
+        "resident_departure_already_covered",
+        { enabled: true }
+    );
+    node.status({
+        fill: "grey",
+        shape: "ring",
+        text: "saída do morador já coberta por refresh"
+    });
+    return null;
+}
+
+if (!deadlineBypass && bothResidentsHome && quietHours) {
     save("waiting", "quiet_hours_both_home", {
         enabled: false,
         next_retry_at: null,
@@ -381,7 +404,7 @@ if (!enabled) {
 
 const pendingRequestAt = Number(state.last_request_at ?? 0);
 
-if (!manualBypass && now < state.next_allowed_at) {
+if (!deadlineBypass && now < state.next_allowed_at) {
     const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));
     const waitingEvidence = state.awaiting_evidence === true;
     save(waitingEvidence ? "backoff" : "cooldown", requestedReason, {
@@ -411,7 +434,7 @@ const cacheProbeCompletedForPendingRequest =
     pendingRequestAt > 0 &&
     state.cache_probe_completed_for_request_at === pendingRequestAt;
 if (
-    !manualBypass &&
+    !deadlineBypass &&
     state.awaiting_evidence === true &&
     pendingRequestAt > 0 &&
     !cacheProbeCompletedForPendingRequest
@@ -460,6 +483,7 @@ state.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;
 state.require_lighting_ready = requireLightingReady;
 state.recovery_reason = requestedReason;
 state.manual_force = requestedReason === "manual_force";
+state.resident_departure_force = residentDepartureBypass;
 let failureNotification = null;
 const noFreshEndpoint = "public_bindings.call (wake do veículo)";
 const noFreshStage = "confirmação semântica em até 20 min";

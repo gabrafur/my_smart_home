@@ -92,19 +92,26 @@ views:
               ### {{ item_icon }} {{ item.name }}
 
               {% for source in item.attributes.location_sources -%}
+              {% set report_age = as_timestamp(now())
+                - as_timestamp(source.last_updated) %}
               {% set gps_age = as_timestamp(now())
                 - as_timestamp(source.location_observed_at) %}
-              {% if gps_age <= 900 %}
-                {% set gps_health = '🟢 Current GPS' %}
-              {% elif gps_age <= 3600 %}
-                {% set gps_health = '🟠 Aging GPS' %}
+              {% if report_age <= 4500 %}
+                {% set source_health = '🟢 Source reporting' %}
+              {% elif report_age <= 10800 %}
+                {% set source_health = '🟠 Source reporting late' %}
               {% else %}
-                {% set gps_health = '🔴 Stale GPS' %}
+                {% set source_health = '🔴 Source not reporting' %}
               {% endif %}
-              **{{ source.name }}** · {{ gps_health }}<br>
-              🛰️ Last GPS change `{{ as_timestamp(source.location_observed_at)
+              {% if gps_age <= 900 %}
+                {% set position_status = 'Position changed recently' %}
+              {% else %}
+                {% set position_status = 'Position unchanged' %}
+              {% endif %}
+              **{{ source.name }}** · {{ source_health }}<br>
+              🛰️ {{ position_status }} since `{{ as_timestamp(source.location_observed_at)
                 | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`<br>
-              🔄 Last update `{{ as_timestamp(source.last_updated)
+              🔄 Source last reported `{{ as_timestamp(source.last_updated)
                 | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`
 
               {% if not loop.last %}<br>{% endif %}

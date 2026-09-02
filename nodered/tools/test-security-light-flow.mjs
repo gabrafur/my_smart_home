@@ -72,7 +72,7 @@ function entity(state, distanceM = null, lastChanged = new Date().toISOString(),
     attributes.latitude = distanceM / 111_200;
     attributes.longitude = 0;
   }
-  return { state, last_changed: lastChanged, attributes };
+  return { state, last_changed: lastChanged, last_updated: lastChanged, attributes };
 }
 
 const geoEnv = environment({ HOME_LAT: "0", HOME_LON: "0", GATE_LAT: "0", GATE_LON: "0" });
@@ -419,6 +419,60 @@ scenario("30 tick de 30 segundos sem mudanca nao cria loop", () => {
   }
 });
 
+scenario("30a fontes ativas e paradas em casa nao solicitam GPS", () => {
+  const oldLocation = new Date(Date.now() - 4 * 60 * 60_000).toISOString();
+  const currentReport = new Date().toISOString();
+  const stationary = () => {
+    const value = entity("home", 20, oldLocation);
+    value.attributes.location_observed_at = oldLocation;
+    value.attributes.source_reported_at = currentReport;
+    return value;
+  };
+  const normalized = run("people_normalize", peopleInput({
+    event: "context_snapshot",
+    resident_primary: stationary(),
+    resident_primaryIcloud: stationary(),
+    resident_secondary: stationary(),
+    resident_secondaryIcloud: stationary(),
+  }), memoryFlow(), geoEnv)[0].payload.context;
+  assert.equal(normalized.ready, false);
+  assert.equal(normalized.resident_primary.stationary_home, true);
+  assert.equal(normalized.resident_secondary.stationary_home, true);
+
+  const flow = memoryFlow({ people_context_v1: normalized });
+  assert.equal(run("people_refresh_decide", {
+    payload: { kind: "refresh_command", anyone_away: false, people_ready: false },
+  }, flow, geoEnv), null);
+  assert.equal(flow.get("security_people_last_refresh_at"), undefined);
+});
+
+scenario("30b recovery de localizacao respeita cooldown de 15 minutos", () => {
+  const flow = memoryFlow({
+    people_context_v1: { ready: false },
+    security_people_last_refresh_at: Date.now() - 60_000,
+  });
+  const command = {
+    payload: { kind: "refresh_command", anyone_away: false, people_ready: false },
+  };
+  assert.equal(run("people_refresh_decide", structuredClone(command), flow, geoEnv), null);
+  flow.set("security_people_last_refresh_at", Date.now() - 16 * 60_000);
+  assert(run("people_refresh_decide", structuredClone(command), flow, geoEnv));
+});
+
+scenario("30c vehicle_primary fora sozinho nao atualiza iPhones", () => {
+  const flow = memoryFlow({
+    people_context_v1: {
+      ready: true,
+      anyone_away: false,
+      nearest_distance_m: 20,
+    },
+  });
+  assert.equal(run("people_refresh_decide", {
+    payload: { kind: "refresh_command", anyone_away: true, people_ready: true },
+  }, flow, geoEnv), null);
+  assert.equal(flow.get("security_people_last_refresh_at"), undefined);
+});
+
 scenario("31 desconexão transitória do HA é enfileirada e tratada", () => {
   const server = flows.find((item) => item.type === "server" && item.name === "Home Assistant");
   assert(server, "configuração do Home Assistant ausente");
@@ -730,6 +784,6 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
   );
 });
 
-assert.equal(passed.length, 38);
+assert.equal(passed.length, 41);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

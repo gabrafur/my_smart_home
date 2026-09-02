@@ -299,19 +299,36 @@ depende exclusivamente de um `delay` residente em memória.
 ## Refresh
 
 - Tick base: 30 s, com snapshot de pessoas e vehicle_primary.
-- iPhones: quando qualquer pessoa ou o vehicle_primary está fora, 60 s; 30 s quando a
-  menor distância dos trackers de pessoas é até 2000 m.
+- iPhones: quando uma pessoa está fora, 60 s; 30 s quando a menor distância
+  dos trackers de pessoas é até 2000 m. O veículo fora, sozinho, não solicita
+  localização dos telefones. Se o contexto precisar
+  de recuperação, o cooldown é de 15 min. GPS sem mudança não inicia recovery
+  quando os dois residentes continuam em `home`, nenhuma fonte indica saída e
+  ao menos uma fonte de cada residente reportou nos últimos 75 min.
 - `request_location_update` é best-effort: `public_bindings` agenda a
   notificação móvel sem aguardar a conclusão do serviço remoto. O aceite do
   Home Assistant não comprova uma posição nova; o ciclo seguinte reavalia os
   trackers. Desconexão ou timeout transitório atualiza somente o status local,
   sem criar um segundo erro no nó tratador; falhas inesperadas continuam sendo
   notificadas pelo observador a partir do nó de serviço original.
+- No iOS, a permissão de localização `Sempre` é necessária, mas não garante
+  execução em segundo plano. Quando uma fonte deixa de reportar, atualize e
+  abra o Companion App no servidor correto, confirme Localização Precisa,
+  Atualização em 2º Plano, Dados Celulares e Notificações, não force o
+  encerramento do aplicativo e redefina o Push ID se ele estiver ausente.
+  O painel só volta a declarar a fonte saudável após um callback real do
+  telefone.
 - vehicle_primary: 15 min quando `resident_primary` ou `resident_secondary`
   está `not_home`/`chegando`; 30 min no ciclo saudável quando ambos estão
   `home`, com os wakes periódicos suspensos das 00:00 às 05:59 nessa última
   condição. Recuperação e backoff usam 15 min, inclusive em casa, fora dessa
   pausa noturna.
+- A transição confirmada de qualquer residente de `home` para `chegando` ou
+  `not_home` dispara imediatamente um `force_refresh` do vehicle_primary,
+  independentemente do deadline periódico. Esse comando acorda o veículo e
+  busca o estado novo para determinar se o morador está usando o carro. Eventos
+  repetidos são deduplicados e uma chamada realmente em andamento continua
+  serializada.
 - O Node-RED é o único agendador de wake real. No backend brasileiro, o
   `kia_uvo` no Home Assistant lê somente o cache do Bluelink a cada 15 min;
   esse polling não acorda o carro nem chama o agendador nativo de force
@@ -324,7 +341,9 @@ depende exclusivamente de um `delay` residente em memória.
   ainda respeita o intervalo vigente de 15 ou 30 min. A posição de referência é persistida somente
   para dedupe; logs registram tipo de movimento e distância arredondada, nunca
   latitude/longitude.
-- O timestamp dos iPhones é otimista, preservando o comportamento anterior.
+- O heartbeat `source_reported_at` preserva o horário real da fonte através dos
+  aliases. Ele diagnostica atividade, mas não renova `location_observed_at` nem
+  autoriza chegada usando coordenadas antigas.
 - O refresh do vehicle_primary persiste tentativa, próxima tentativa e último sucesso.
   Também persiste `request_in_flight` com lease conservador; o Home Assistant
   mantém um lock adicional no botão privado. Assim, duas entradas simultâneas
@@ -371,11 +390,10 @@ depende exclusivamente de um `delay` residente em memória.
   contrato explícito `contexto_vehicle_primary -> localizacao_pessoas`; nenhuma entidade
   de pessoa permanece dentro do flow do veículo.
 
-Comportamento estranho deliberadamente preservado: a distância usada para
-escolher 30 s ou 60 s considera todos os trackers de pessoas, inclusive alguém
-que esteja em casa. Assim, se apenas o vehicle_primary estiver fora e um morador estiver
-em casa, o refresh dos iPhones pode continuar a cada 30 s. Corrigir isso seria
-mudança funcional e deve ser tratado separadamente.
+Quando o refresh é motivado por alguém fora, a distância usada para escolher
+30 s ou 60 s considera os trackers de pessoas. A presença estacionária dos
+dois residentes não é mais confundida com falha de GPS e não cria um loop de
+`request_location_update` a cada tick.
 
 ## Restart, persistência e readiness
 

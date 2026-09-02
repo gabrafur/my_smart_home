@@ -100,6 +100,95 @@ if (!contextCoordinator.func.includes("any_resident_away:")) {
                         people?.any_tracker_away === true,`,
   );
 }
+if (!contextCoordinator.func.includes("resident_departure_force:")) {
+  const refreshMarker = `    let refresh = null;
+    const pending = ctxGet("refresh_pending");`;
+  if (!contextCoordinator.func.includes(refreshMarker)) {
+    throw new Error("Ponto de emissão do refresh coordenado não encontrado");
+  }
+  contextCoordinator.func = contextCoordinator.func.replace(
+    refreshMarker,
+    `    const departureSource = msg.payload?.source;
+    const departureState = msg.payload?.trigger_state;
+    const departurePreviousState = msg.payload?.trigger_prev_state;
+    const departurePosition = msg.payload?.context?.[departureSource];
+    const departureEventAt = Number(
+        departurePosition?.updated_at ?? incomingAt ?? Date.now()
+    );
+    const departureKey = [
+        departureSource,
+        departurePreviousState,
+        departureState,
+        departureEventAt
+    ].join(":");
+    const previousDeparture = ctxGet(
+        "resident_departure_refresh_v1",
+        "persistent"
+    );
+    const isResidentDeparture =
+        domain === "people" &&
+        accepted &&
+        ["resident_primary", "resident_secondary"].includes(departureSource) &&
+        departurePreviousState === "home" &&
+        ["chegando", "not_home"].includes(departureState) &&
+        departurePosition?.ready === true &&
+        previousDeparture?.key !== departureKey;
+
+    let departureRefresh = null;
+    if (isResidentDeparture) {
+        ctxSet(
+            "resident_departure_refresh_v1",
+            { key: departureKey, at: Date.now() },
+            "persistent"
+        );
+        departureRefresh = {
+            payload: {
+                contract: "security.refresh-command.v1",
+                kind: "refresh_command",
+                reason: "resident_departure",
+                recovery_reason: "resident_departure",
+                resident_departure_force: true,
+                departure_source: departureSource,
+                departure_state: departureState,
+                departure_event_at: departureEventAt,
+                resident_primary_state:
+                    msg.payload.context?.resident_primary?.state ?? null,
+                resident_secondary_state:
+                    msg.payload.context?.resident_secondary?.state ?? null,
+                any_resident_away:
+                    msg.payload.context?.any_tracker_away === true,
+                people_ready: msg.payload.ready === true,
+                vehicle_primary_ready:
+                    ctxGet("vehicle_primary_context_v1")?.ready === true,
+                force_recovery: true,
+                origin: "resident_departure_transition",
+                issued_at: Date.now()
+            }
+        };
+        markTest(departureRefresh);
+        node.status({
+            fill: TEST_MODE ? "blue" : "yellow",
+            shape: "dot",
+            text: TEST_MODE
+                ? "TESTE: saída solicita wake do vehicle_primary"
+                : "saída de morador solicita wake do vehicle_primary"
+        });
+    }
+
+    let refresh = null;
+    const pending = ctxGet("refresh_pending");`,
+  );
+
+  const returnMarker = "    return refresh ? [null, refresh] : null;";
+  if (!contextCoordinator.func.includes(returnMarker)) {
+    throw new Error("Retorno do refresh coordenado não encontrado");
+  }
+  contextCoordinator.func = contextCoordinator.func.replace(
+    returnMarker,
+    `    const selectedRefresh = departureRefresh ?? refresh;
+    return selectedRefresh ? [null, selectedRefresh] : null;`,
+  );
+}
 Object.assign(required("25ca02f8c1de32d0"), { x: 215, y: 680 });
 Object.assign(required("eb4b8a519ab0bc28"), { x: 630, y: 780 });
 

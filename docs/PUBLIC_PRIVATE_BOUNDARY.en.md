@@ -63,10 +63,12 @@ public source labels stay in private bindings; the vehicle is shown as `Creta`.
 
 Location bindings may declare `source_names` in target order. The adapter
 publishes only the winning label in `selected_location_source` and a sanitized
-`location_sources` list containing each public label, generic last update, and
-last location observation. The adapter keeps `location_observed_at` separate
-from `last_updated`: battery or other metadata changes update only the latter
-and do not refresh a GPS position. At startup, the GPS timestamp is recovered
+`location_sources` list containing each public label, original source heartbeat,
+and last location observation. The adapter keeps `location_observed_at`
+separate from `source_reported_at`: battery or other metadata changes may prove
+that a source is reporting but do not refresh a GPS position. The original
+heartbeat is propagated through intermediate aliases instead of being replaced
+by their startup republication time. At startup, the GPS timestamp is recovered
 from Recorder history by comparing only state, coordinates, and accuracy. Two
 dynamic Markdown cards show this information without exposing private IDs.
 
@@ -93,7 +95,9 @@ normalizes them with `Number(...)`, while the Map frontend accepts only numeric
 coordinates as a location. This keeps Mobile App and iCloud from appearing as
 additional markers without removing their data from the normalizer. The
 normalizer uses `location_observed_at`, never generic `last_updated`, to decide
-freshness and precedence between sources.
+freshness and precedence between sources. Source heartbeat is evaluated
+separately to recognize an active stationary source without authorizing an
+arrival from old coordinates.
 
 Simple pushes use `notify.send_message` with a `notify.*` entity; that service
 accepts only a title and message. Buttons, tags, and `clear_notification` use

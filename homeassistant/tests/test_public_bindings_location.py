@@ -60,10 +60,49 @@ def state(
 
 
 class BestLocationSelectionTest(unittest.TestCase):
+    def test_source_heartbeat_survives_nested_alias_republication(self):
+        upstream = NOW - timedelta(hours=2)
+        nested_alias = state(
+            "home",
+            extra_attributes={"source_reported_at": upstream.isoformat()},
+        )
+
+        self.assertEqual(LOCATION.source_reported_at(nested_alias), upstream)
+
+    def test_invalid_source_heartbeat_falls_back_to_entity_update(self):
+        alias = state(
+            "home",
+            age=timedelta(minutes=8),
+            extra_attributes={"source_reported_at": "not-a-timestamp"},
+        )
+
+        self.assertEqual(LOCATION.source_reported_at(alias), alias.last_updated)
+
+    def test_startup_recovery_ignores_republished_current_state(self):
+        previous = state("home", age=timedelta(hours=3))
+        restored = state("home")
+
+        self.assertEqual(
+            LOCATION.recover_source_reported_at(
+                [previous, restored],
+                NOW - timedelta(minutes=1),
+            ),
+            previous.last_updated,
+        )
+
     def test_hidden_targets_follow_late_entity_registration(self):
         component = COMPONENT_PATH.read_text(encoding="utf-8")
         self.assertIn("er.EVENT_ENTITY_REGISTRY_UPDATED", component)
         self.assertIn("hide_private_targets", component)
+
+    def test_mobile_app_restore_is_not_treated_as_source_heartbeat(self):
+        component = COMPONENT_PATH.read_text(encoding="utf-8")
+        self.assertIn(
+            'source.attributes.get("tracking_type") == "position"',
+            component,
+        )
+        self.assertIn("source_reports[target] = location_observed_at", component)
+        self.assertIn("startup_mobile_restore", component)
 
     def test_current_source_wins_over_stale_source(self):
         mobile_app = state("chegando", age=timedelta(days=3), accuracy=4)

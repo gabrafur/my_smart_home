@@ -11,6 +11,7 @@ FUTURE_TOLERANCE = timedelta(minutes=1)
 RECENCY_TIE = timedelta(minutes=1)
 MAX_GPS_ACCURACY_METERS = 100
 INVALID_STATES = {"", "unknown", "unavailable"}
+SOURCE_REPORTED_AT_ATTRIBUTE = "source_reported_at"
 
 
 class LocationState(Protocol):
@@ -31,6 +32,7 @@ class LocationObservation(NamedTuple):
 
 
 LocationObservations = dict[str, LocationObservation]
+SourceReports = dict[str, datetime]
 
 
 def _number(value: Any) -> float | None:
@@ -102,6 +104,38 @@ def location_observed_at(
     """Return location-specific recency, conservatively seeding at startup."""
     observation = observations.get(state.entity_id)
     return observation.observed_at if observation is not None else state.last_changed
+
+
+def source_reported_at(
+    state: LocationState,
+    reports: SourceReports | None = None,
+) -> datetime:
+    """Return the original source heartbeat through nested public aliases."""
+    value = state.attributes.get(SOURCE_REPORTED_AT_ATTRIBUTE)
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+        else:
+            if parsed.tzinfo is not None:
+                return parsed.astimezone(timezone.utc)
+    if reports is not None and state.entity_id in reports:
+        return reports[state.entity_id]
+    return state.last_updated
+
+
+def recover_source_reported_at(
+    states: Sequence[LocationState],
+    before: datetime,
+) -> datetime | None:
+    """Recover a pre-startup heartbeat without trusting restored state time."""
+    candidates = [
+        source_reported_at(state)
+        for state in states
+        if state.last_updated < before
+    ]
+    return max(candidates, default=None)
 
 
 def recover_location_observation(

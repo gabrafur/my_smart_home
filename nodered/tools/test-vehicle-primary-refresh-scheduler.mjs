@@ -41,6 +41,10 @@ const code = {
   dryRun: source("vehicle-primary-dry-run-terminal.js"),
   notificationGuard: source("vehicle-primary-notification-dispatch-guard.js"),
   arrival: source("vehicle-primary-arrival-actions.js"),
+  contextCoordinator: contextCoordinator?.func,
+  peopleRefresh: flows.find(
+    (node) => node.name === "Atualizar iPhones agora?",
+  )?.func,
   normalizer: flows.find((node) => node.id === "092625f2eb5cc156")?.func,
 };
 
@@ -1214,6 +1218,97 @@ scenario("42 recuperação limpa detalhes e fecha alerta persistente", () => {
   assert.equal(dismiss[2], null);
   assert.equal(dismiss[3].notification.id, "vehicle_primary_refresh_failed");
   assert.equal(store.get(KEY).recovery_notification_pending, false);
+});
+
+scenario("43 saída de morador emite refresh prioritário do veículo", () => {
+  const previousAt = DAY - 60_000;
+  const previousPeople = {
+    resident_primary: { state: "home", ready: true, updated_at: previousAt },
+    resident_secondary: { state: "home", ready: true, updated_at: previousAt },
+    any_tracker_away: false,
+    updated_at: previousAt,
+    ready: true,
+  };
+  const currentPeople = {
+    ...previousPeople,
+    resident_primary: { state: "not_home", ready: true, updated_at: DAY },
+    any_tracker_away: true,
+    updated_at: DAY,
+  };
+  const store = memory({
+    people_context_v1: previousPeople,
+    vehicle_primary_context_v1: readyContext(previousAt),
+  });
+  const departureMessage = {
+    payload: {
+      kind: "people_context",
+      source: "resident_primary",
+      trigger_prev_state: "home",
+      trigger_state: "not_home",
+      context: currentPeople,
+      updated_at: DAY,
+      ready: true,
+    },
+  };
+
+  const result = execute(code.contextCoordinator, {
+    now: DAY,
+    store,
+    msg: departureMessage,
+  });
+  assert(result[1]);
+  assert.equal(result[1].payload.reason, "resident_departure");
+  assert.equal(result[1].payload.resident_departure_force, true);
+  assert.equal(result[1].payload.departure_event_at, DAY);
+
+  const duplicate = execute(code.contextCoordinator, {
+    now: DAY + 1_000,
+    store,
+    msg: departureMessage,
+  });
+  assert.equal(duplicate, null);
+});
+
+scenario("44 saída ignora deadline, mas não duplica o mesmo wake", () => {
+  const departureAt = DAY;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY),
+    [KEY]: {
+      attempts: 0,
+      awaiting_evidence: false,
+      last_request_at: DAY - 60_000,
+      last_success_at: DAY - 60_000,
+      next_allowed_at: DAY + 29 * 60_000,
+      interval_ms: 30 * 60_000,
+    },
+  });
+  const departure = {
+    reason: "resident_departure",
+    recovery_reason: "resident_departure",
+    resident_departure_force: true,
+    departure_event_at: departureAt,
+    force_recovery: true,
+    resident_primary_state: "not_home",
+    resident_secondary_state: "home",
+  };
+
+  const first = coordinator(store, DAY + 1_000, departure);
+  assert(first[0]);
+  assert.equal(store.get(KEY).resident_departure_force, true);
+  assert.equal(store.get(KEY).last_request_at, DAY + 1_000);
+
+  const duplicate = coordinator(store, DAY + 2_000, departure);
+  assert.equal(duplicate, null);
+  assert.equal(store.get(KEY).last_request_at, DAY + 1_000);
+
+  const phoneStore = memory({ people_context_v1: {} });
+  const phoneResult = execute(code.peopleRefresh, {
+    now: DAY + 1_000,
+    store: phoneStore,
+    msg: command(departure),
+  });
+  assert.equal(phoneResult, null);
+  assert.equal(phoneStore.get("security_people_last_refresh_at"), undefined);
 });
 
 console.log(

@@ -7,6 +7,22 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
 `docs/ILUMINACAO_SEGURANCA_NODERED.md` e
 `docs/SECURITY_CONTEXT_RECOVERY_STATE_INVENTORY.md`.
 
+- Saúde da fonte e frescor da posição são sinais diferentes. O binding propaga
+  `source_reported_at` através dos aliases e mantém `location_observed_at`
+  exclusivo para mudança de estado/coordenadas/precisão; startup não pode
+  fabricar heartbeat novo do Mobile App.
+- Os pedidos `request_location_update` preservam 30 s durante aproximação e
+  60 s com residente fora, pois alimentam o refletor e os avisos de chegada.
+  Ambos em casa com fontes ativas não geram pedidos; veículo fora sozinho
+  também não. Recovery real usa cooldown de 15 min.
+- Um push aceito não comprova atualização. Se o Mobile App não responder mas o
+  iCloud continuar reportando, o painel deve mostrar separadamente a fonte sem
+  heartbeat e a posição apenas inalterada; automações de chegada continuam
+  exigindo `location_observed_at` fresco.
+- Uma transição confirmada de qualquer residente de `home` para `chegando` ou
+  `not_home` exige `force_refresh` imediato do `vehicle_primary` (wake seguido
+  da obtenção de estado novo), com deduplicação e serialização de chamadas.
+
 ## Portão da garagem
 
 O relé Zigbee TS0001 deve receber pulso em software (`ON` seguido de `OFF`).

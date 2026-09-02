@@ -21,9 +21,12 @@ from homeassistant.helpers.recorder import get_instance as get_recorder_instance
 
 from .location import (
     LocationObservations,
+    SourceReports,
     location_observed_at,
     recover_location_observation,
+    recover_source_reported_at,
     select_best_location,
+    source_reported_at,
     update_location_observation,
 )
 from .service_policy import is_best_effort_notification
@@ -50,6 +53,7 @@ SERVICE_SCHEMA = vol.Schema(
 STARTUP_SERVICE_WAIT_SECONDS = 30
 LOCATION_ATTRIBUTES = {"gps_accuracy", "latitude", "longitude"}
 LOCATION_HISTORY_WINDOW = timedelta(days=7)
+STARTUP_REPORT_GUARD = timedelta(minutes=1)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -102,6 +106,7 @@ def _load_location_history(
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    setup_started_at = datetime.now(timezone.utc)
     settings = config.get(DOMAIN, {})
     document = await hass.async_add_executor_job(
         _load,
@@ -130,6 +135,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         for target in _binding_targets(binding)
     }
     location_observations: LocationObservations = {}
+    source_reports: SourceReports = {}
     try:
         history = await get_recorder_instance(hass).async_add_executor_job(
             _load_location_history,
@@ -142,9 +148,27 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         for target, states in history.items():
             if observation := recover_location_observation(states):
                 location_observations[target] = observation
+            if reported_at := recover_source_reported_at(
+                states,
+                setup_started_at - STARTUP_REPORT_GUARD,
+            ):
+                source_reports[target] = reported_at
     for target in location_target_ids:
         if source := hass.states.get(target):
             update_location_observation(location_observations, source)
+            source_reports.setdefault(target, source_reported_at(source))
+            if (
+                source.attributes.get("tracking_type") == "position"
+                and source.last_updated
+                >= setup_started_at - STARTUP_REPORT_GUARD
+            ):
+                # Mobile App restores its last tracker state on startup. That
+                # recreation is not a device heartbeat. A later webhook event
+                # will replace this conservative recovered timestamp.
+                source_reports[target] = location_observed_at(
+                    location_observations,
+                    source,
+                )
 
     @callback
     def sync_entity(
@@ -174,6 +198,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 location_observations,
                 source,
             ).isoformat()
+            attributes["source_reported_at"] = source_reported_at(
+                source,
+                source_reports,
+            ).isoformat()
         if display_name := binding.get("display_name"):
             attributes["friendly_name"] = display_name
         source_names = binding.get("source_names")
@@ -183,7 +211,10 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             attributes["location_sources"] = [
                 {
                     "name": source_name,
-                    "last_updated": source_state.last_updated.isoformat(),
+                    "last_updated": source_reported_at(
+                        source_state,
+                        source_reports,
+                    ).isoformat(),
                     "location_observed_at": location_observed_at(
                         location_observations,
                         source_state,
@@ -243,6 +274,21 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                     location_observations,
                     changed_source,
                 )
+                startup_mobile_restore = (
+                    changed_source.attributes.get("tracking_type") == "position"
+                    and datetime.now(timezone.utc)
+                    <= setup_started_at + STARTUP_REPORT_GUARD
+                    and changed_target_id in source_reports
+                )
+                if startup_mobile_restore:
+                    source_reports[changed_target_id] = location_observed_at(
+                        location_observations,
+                        changed_source,
+                    )
+                else:
+                    source_reports[changed_target_id] = source_reported_at(
+                        changed_source
+                    )
         for public_id in target_to_public.get(changed_target_id, []):
             role, binding = entities[public_id]
             sync_entity(
