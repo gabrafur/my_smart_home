@@ -74,10 +74,18 @@
             "reason": "Forçar estados térmicos ou GPIO no host residencial não é um teste manual seguro."
         },
         "storage_health_tab": {
-            "strategy": "automated_only",
-            "evidence_node_ids": [],
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "storage_group_tests",
+                "storage_test_reset",
+                "storage_test_normal",
+                "storage_test_growth",
+                "storage_test_prepare",
+                "storage_test_decision_terminal"
+            ],
+            "dry_run_terminal_ids": ["storage_dry_run_terminal"],
             "automated_test": "test-storage-health-flow.mjs",
-            "reason": "Housekeeping e inspeção de storage permanecem agendados/allowlisted e são validados offline."
+            "reason": "Normalidade e crescimento acelerado atravessam o mesmo diagnóstico e gate de autocuidado; test_mode bloqueia exec, MQTT e notificações e termina no dry-run compartilhado."
         },
         "monitoramento_internet_tab": {
             "strategy": "automated_only",

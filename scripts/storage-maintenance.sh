@@ -35,6 +35,10 @@ TEMP_RETENTION_DAYS="${STORAGE_MAINTENANCE_TEMP_RETENTION_DAYS-7}"
 PROJECT_RETENTION_DAYS="${STORAGE_MAINTENANCE_PROJECT_RETENTION_DAYS-30}"
 JOURNAL_RETENTION_DAYS="${STORAGE_MAINTENANCE_JOURNAL_RETENTION_DAYS-30}"
 HA_BACKUP_RETENTION_DAYS="${STORAGE_MAINTENANCE_HA_BACKUP_RETENTION_DAYS-14}"
+HA_BACKUP_KEEP_COUNT="${STORAGE_MAINTENANCE_HA_BACKUP_KEEP_COUNT-2}"
+HA_CONFIG_ROOT="${STORAGE_MAINTENANCE_HA_CONFIG_ROOT-$REPO_ROOT/homeassistant}"
+HA_BACKUP_ROOT="${STORAGE_MAINTENANCE_HA_BACKUP_ROOT-$HA_CONFIG_ROOT/backups}"
+HA_CONTAINER="${STORAGE_MAINTENANCE_HA_CONTAINER-homeassistant}"
 PM2_LOG_MAX_BYTES="${STORAGE_MAINTENANCE_PM2_LOG_MAX_BYTES-10485760}"
 PM2_LOG_RETENTION_FILES="${STORAGE_MAINTENANCE_PM2_LOG_RETENTION_FILES-7}"
 VSCODE_KEEP_VERSIONS="${STORAGE_MAINTENANCE_VSCODE_KEEP_VERSIONS-2}"
@@ -42,6 +46,7 @@ declare -a CATEGORIES=()
 declare -a DEFAULT_CATEGORIES=(
   report logs pm2-logs temporary-files docker-images docker-build-cache
   project-artifacts npm-cache python-cache vscode-versions vscode-cache
+  home-assistant-backups
 )
 declare -A CATEGORY_RECLAIMED=()
 declare -a TEMP_PREFIXES=(
@@ -68,7 +73,8 @@ Options:
   --temporary-retention-days DAYS  Known generated /tmp directory retention
   --project-retention-days DAYS    Allowlisted project-artifact retention
   --journal-retention-days DAYS    Explicit journald category retention
-  --ha-backup-retention-days DAYS  Report threshold; never deletes HA backups
+  --ha-backup-retention-days DAYS  Age threshold used in backup reporting
+  --ha-backup-keep-count COUNT     Keep this many newest HA backup archives
   --pm2-log-max-bytes BYTES        Rotate allowlisted PM2 logs at this size
   --pm2-log-retention-files COUNT  Keep this many compressed rotations per log
   --vscode-keep-versions COUNT     Keep at least this many newest server versions
@@ -85,11 +91,11 @@ Categories:
   user-caches, npm-cache, python-cache, vscode-versions, vscode-cache,
   deleted-open-files, home-assistant-recorder, home-assistant-backups, all
 
-docker-tagged-images, stopped-containers, git, developer-tools,
-user-caches, deleted-open-files, home-assistant-recorder and
-home-assistant-backups are report-only. The default apply profile safely cleans
-npm/pip caches, obsolete VS Code versions, cached VSIX files and PM2 logs
-without an interactive prompt. Cursor Server removal is intentionally never recurring.
+docker-tagged-images, stopped-containers, git, developer-tools, user-caches,
+deleted-open-files and home-assistant-recorder are report-only. The default
+apply profile safely cleans npm/pip caches, obsolete VS Code versions, cached
+VSIX files, PM2 logs and HA backup archives beyond the newest retained set.
+Cursor Server removal is intentionally never recurring.
 Volumes and persistent service data are never removed.
 EOF
 }
@@ -257,6 +263,8 @@ while (($#)); do
       shift; JOURNAL_RETENTION_DAYS=${1:-}; validate_uint "$JOURNAL_RETENTION_DAYS" journal-retention-days ;;
     --ha-backup-retention-days)
       shift; HA_BACKUP_RETENTION_DAYS=${1:-}; validate_uint "$HA_BACKUP_RETENTION_DAYS" ha-backup-retention-days ;;
+    --ha-backup-keep-count)
+      shift; HA_BACKUP_KEEP_COUNT=${1:-}; validate_uint "$HA_BACKUP_KEEP_COUNT" ha-backup-keep-count ;;
     --pm2-log-max-bytes)
       shift; PM2_LOG_MAX_BYTES=${1:-}; validate_uint "$PM2_LOG_MAX_BYTES" pm2-log-max-bytes ;;
     --pm2-log-retention-files)
@@ -281,13 +289,14 @@ if ((${#CATEGORIES[@]} == 0)); then
   CATEGORIES=("${DEFAULT_CATEGORIES[@]}")
 fi
 
-for value in "$MIN_AVAILABLE_KB" "$MIN_FREE_BYTES" "$MAX_DISK_PERCENT" "$MIN_AGE_HOURS" "$LOG_RETENTION_DAYS" "$TEMP_RETENTION_DAYS" "$PROJECT_RETENTION_DAYS" "$JOURNAL_RETENTION_DAYS" "$HA_BACKUP_RETENTION_DAYS" "$PM2_LOG_MAX_BYTES" "$PM2_LOG_RETENTION_FILES" "$VSCODE_KEEP_VERSIONS"; do
+for value in "$MIN_AVAILABLE_KB" "$MIN_FREE_BYTES" "$MAX_DISK_PERCENT" "$MIN_AGE_HOURS" "$LOG_RETENTION_DAYS" "$TEMP_RETENTION_DAYS" "$PROJECT_RETENTION_DAYS" "$JOURNAL_RETENTION_DAYS" "$HA_BACKUP_RETENTION_DAYS" "$HA_BACKUP_KEEP_COUNT" "$PM2_LOG_MAX_BYTES" "$PM2_LOG_RETENTION_FILES" "$VSCODE_KEEP_VERSIONS"; do
   validate_uint "$value" configuration-value
 done
 [[ "$MAX_BUILD_CACHE" =~ ^[1-9][0-9]*([KMGT]B)?$ ]] || die "invalid-max-build-cache"
 (( PM2_LOG_MAX_BYTES > 0 )) || die "pm2-log-max-bytes-must-be-positive"
 (( PM2_LOG_RETENTION_FILES > 0 )) || die "pm2-log-retention-files-must-be-positive"
 (( VSCODE_KEEP_VERSIONS > 0 )) || die "vscode-keep-versions-must-be-positive"
+(( HA_BACKUP_KEEP_COUNT > 0 )) || die "ha-backup-keep-count-must-be-positive"
 
 STEP="preflight"
 for dependency in awk date df du find flock git readlink realpath sed sort stat; do
@@ -303,6 +312,9 @@ validate_safe_absolute "$NPM_CACHE_ROOT" npm-cache-root
 validate_safe_absolute "$PM2_ROOT" pm2-root
 validate_safe_absolute "$VSCODE_ROOT" vscode-root
 validate_safe_absolute "$CURSOR_ROOT" cursor-root
+validate_existing_directory "$HA_CONFIG_ROOT" home-assistant-config-root
+validate_safe_absolute "$HA_BACKUP_ROOT" home-assistant-backup-root
+[[ "$HA_CONTAINER" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || die "home-assistant-container-name-invalid" 65
 validate_safe_absolute "$METRICS_FILE" metrics-file
 metrics_parent=$(dirname "$METRICS_FILE")
 validate_existing_directory "$metrics_parent" metrics-parent
@@ -334,6 +346,14 @@ fi
 
 docker_available() {
   command -v "$DOCKER_BIN" >/dev/null 2>&1 && "$DOCKER_BIN" info >/dev/null 2>&1
+}
+
+docker_image_referenced_by_repository() {
+  local image_id=$1 digest=${1#sha256:}
+  command -v git >/dev/null 2>&1 || return 0
+  git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  git -C "$REPO_ROOT" grep --quiet --fixed-strings -e "$image_id" -- . 2>/dev/null ||
+    git -C "$REPO_ROOT" grep --quiet --fixed-strings -e "$digest" -- . 2>/dev/null
 }
 
 warn_unavailable() {
@@ -393,6 +413,34 @@ remove_regular_file() {
     REMOVED_COUNT=$((REMOVED_COUNT + 1))
     REMOVED_BYTES=$((REMOVED_BYTES + size))
     log "removed action=$action bytes=$size path=$candidate"
+  fi
+}
+
+remove_home_assistant_backup() {
+  local candidate=$1 root=$2 action=$3 root_real candidate_real size config_real mounted_config container_path
+  [[ -n "$candidate" && "$candidate" != / ]] || die "unsafe-empty-or-root-candidate" 65
+  [[ -f "$candidate" && ! -L "$candidate" ]] || die "unsafe-non-regular-candidate" 65
+  root_real=$(realpath -e -- "$root")
+  candidate_real=$(realpath -e -- "$candidate")
+  path_is_within "$candidate_real" "$root_real" || die "candidate-outside-allowlist" 65
+  [[ $(dirname -- "$candidate_real") == "$root_real" ]] || die "backup-candidate-must-be-direct-child" 65
+  size=$(stat -c %s -- "$candidate_real")
+  log "candidate action=$action bytes=$size path=$candidate_real"
+  if [[ "$MODE" == apply ]]; then
+    if ! rm -f -- "$candidate_real" 2>/dev/null; then
+      docker_available || die "home-assistant-backup-removal-requires-container" 77
+      config_real=$(realpath -e -- "$HA_CONFIG_ROOT")
+      [[ "$root_real" == "$config_real/backups" ]] || die "home-assistant-backup-root-not-under-config" 65
+      mounted_config=$("$DOCKER_BIN" inspect --format '{{range .Mounts}}{{if eq .Destination "/config"}}{{println .Source}}{{end}}{{end}}' "$HA_CONTAINER" | awk 'NF {print; exit}')
+      [[ -n "$mounted_config" && -d "$mounted_config" ]] || die "home-assistant-config-mount-unavailable" 77
+      [[ $(realpath -e -- "$mounted_config") == "$config_real" ]] || die "home-assistant-config-mount-mismatch" 65
+      container_path="/config/backups/$(basename -- "$candidate_real")"
+      "$DOCKER_BIN" exec "$HA_CONTAINER" rm -- "$container_path"
+    fi
+    [[ ! -e "$candidate_real" ]] || die "home-assistant-backup-removal-incomplete" 74
+    REMOVED_COUNT=$((REMOVED_COUNT + 1))
+    REMOVED_BYTES=$((REMOVED_BYTES + size))
+    log "removed action=$action bytes=$size path=$candidate_real"
   fi
 }
 
@@ -775,11 +823,14 @@ clean_vscode_cache() {
 
 report_docker_tagged_images() {
   local before id repository tag containers size created
+  local -A seen=()
   STEP="category-docker-tagged-images"
   before=$(filesystem_used_bytes)
   if ! docker_available; then warn_unavailable docker-unavailable; measure_category docker-tagged-images "$before"; return; fi
-  "$DOCKER_BIN" image ls --no-trunc --format '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Containers}}' |
+  "$DOCKER_BIN" image ls --all --no-trunc --format '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Containers}}' |
     while IFS=$'\t' read -r id repository tag containers; do
+      [[ -z ${seen[$id]+x} ]] || continue
+      seen[$id]=1
       [[ "$tag" != '<none>' && "$containers" == 0 ]] || continue
       size=$($DOCKER_BIN image inspect -f '{{.Size}}' "$id")
       created=$($DOCKER_BIN image inspect -f '{{.Created}}' "$id")
@@ -833,18 +884,25 @@ report_home_assistant_recorder() {
 
 clean_docker_images() {
   local before id repository tag containers created created_epoch cutoff_epoch refs size
+  local -A seen=()
   STEP="category-docker-images"
   before=$(filesystem_used_bytes)
   if ! docker_available; then warn_unavailable docker-unavailable; measure_category docker-images "$before"; return; fi
   cutoff_epoch=$(date -u -d "$MIN_AGE_HOURS hours ago" +%s)
-  "$DOCKER_BIN" image ls --no-trunc --format '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Containers}}' |
+  "$DOCKER_BIN" image ls --all --no-trunc --format '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Containers}}' |
     while IFS=$'\t' read -r id repository tag containers; do
+    [[ -z ${seen[$id]+x} ]] || continue
+    seen[$id]=1
     [[ "$tag" == '<none>' && "$containers" == 0 ]] || continue
     created=$("$DOCKER_BIN" image inspect -f '{{.Created}}' "$id")
     created_epoch=$(date -u -d "$created" +%s)
     (( created_epoch <= cutoff_epoch )) || continue
     refs=$("$DOCKER_BIN" ps -aq --filter "ancestor=$id")
     [[ -z "$refs" ]] || continue
+    if docker_image_referenced_by_repository "$id"; then
+      log "status=preserved component=docker-image reason=repository-reference image_id=$id"
+      continue
+    fi
     size=$("$DOCKER_BIN" image inspect -f '{{.Size}}' "$id")
     log "candidate action=untagged-unreferenced-image content_bytes=$size repository=$repository image_id=$id created=$created"
     if [[ "$MODE" == apply ]]; then
@@ -853,9 +911,7 @@ clean_docker_images() {
       log "removed action=untagged-unreferenced-image approximate_bytes=$size image_id=$id"
     fi
     done
-  if [[ "$MODE" == apply ]]; then
-    "$DOCKER_BIN" image prune --force --filter "until=${MIN_AGE_HOURS}h"
-  else
+  if [[ "$MODE" != apply ]]; then
     "$DOCKER_BIN" image ls --filter dangling=true --format 'candidate action=dangling-image image_id={{.ID}} created={{.CreatedAt}} size={{.Size}}'
   fi
   measure_category docker-images "$before"
@@ -898,21 +954,37 @@ report_git() {
   measure_report_category git
 }
 
-report_home_assistant_backups() {
-  local before backup_root count bytes old_count old_bytes summary
+clean_home_assistant_backups() {
+  local before backup_root count bytes old_count old_bytes summary entry path index=0
+  local -a backup_archives=()
   STEP="category-home-assistant-backups"
   before=$(filesystem_used_bytes)
-  backup_root="$REPO_ROOT/homeassistant/backups"
+  backup_root="$HA_BACKUP_ROOT"
   if [[ -d "$backup_root" && ! -L "$backup_root" ]]; then
+    validate_existing_directory "$backup_root" home-assistant-backup-root
+    [[ $(realpath -e -- "$backup_root") == "$backup_root" ]] || die "home-assistant-backup-root-has-symlink-component" 65
     summary=$(find "$backup_root" -xdev -maxdepth 1 -type f -printf '%s %T@\n' |
       awk -v cutoff="$(date -u -d "$HA_BACKUP_RETENTION_DAYS days ago" +%s)" '{count++; bytes+=$1; if ($2<cutoff) {old_count++; old_bytes+=$1}} END {printf "%d %d %d %d\n",count,bytes,old_count,old_bytes}')
     read -r count bytes old_count old_bytes <<<"$summary"
     log "metric component=home-assistant-backups count=$count bytes=$bytes older_than_days=$HA_BACKUP_RETENTION_DAYS old_count=$old_count old_bytes=$old_bytes"
+    mapfile -d '' -t backup_archives < <(find "$backup_root" -xdev -maxdepth 1 -type f -name '*.tar' -printf '%T@|%p\0' | sort -z -nr)
+    for entry in "${backup_archives[@]}"; do
+      path=${entry#*|}
+      if (( index < HA_BACKUP_KEEP_COUNT )); then
+        log "status=preserved component=home-assistant-backup reason=newest-retained path=$path"
+      else
+        log "candidate action=surplus-home-assistant-backup logical_bytes=$(logical_bytes_for_path "$path") allocated_bytes=$(bytes_for_path "$path") path=$path"
+        if [[ "$MODE" == apply ]]; then
+          remove_home_assistant_backup "$path" "$backup_root" surplus-home-assistant-backup
+        fi
+      fi
+      index=$((index + 1))
+    done
   else
     log "metric component=home-assistant-backups count=0 bytes=0"
   fi
-  log "status=report-only category=home-assistant-backups reason=external-copy-not-proven"
-  measure_report_category home-assistant-backups
+  log "status=policy category=home-assistant-backups archives_only=true keep_count=$HA_BACKUP_KEEP_COUNT"
+  measure_category home-assistant-backups "$before"
 }
 
 clean_apt_cache() {
@@ -978,9 +1050,12 @@ docker_total_bytes() {
 
 docker_image_metrics() {
   local id repository tag containers size total=0 unused_tagged=0 unused_untagged=0
+  local -A seen=()
   if ! docker_available; then printf '0 0 0\n'; return; fi
-  "$DOCKER_BIN" image ls --no-trunc --format '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Containers}}' |
+  "$DOCKER_BIN" image ls --all --no-trunc --format '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Containers}}' |
     while IFS=$'\t' read -r id repository tag containers; do
+      [[ -z ${seen[$id]+x} ]] || continue
+      seen[$id]=1
       size=$($DOCKER_BIN image inspect -f '{{.Size}}' "$id" 2>/dev/null || printf '0')
       is_uint "$size" || size=0
       total=$((total + size))
@@ -995,7 +1070,7 @@ docker_image_metrics() {
 }
 
 home_assistant_backup_bytes() {
-  local root="$REPO_ROOT/homeassistant/backups"
+  local root="$HA_BACKUP_ROOT"
   [[ -d "$root" && ! -L "$root" ]] || { printf '0\n'; return; }
   find "$root" -xdev -maxdepth 1 -type f -printf '%s\n' 2>/dev/null |
     awk '{total += $1} END {print total + 0}'
@@ -1085,7 +1160,7 @@ for category in "${CATEGORIES[@]}"; do
     vscode-cache) clean_vscode_cache ;;
     deleted-open-files) report_deleted_open_files ;;
     home-assistant-recorder) report_home_assistant_recorder ;;
-    home-assistant-backups) report_home_assistant_backups ;;
+    home-assistant-backups) clean_home_assistant_backups ;;
   esac
 done
 

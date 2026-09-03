@@ -312,12 +312,16 @@
             "storage_read_ha",
             "storage_evaluate",
             "storage_mqtt_state",
-            "storage_manual_status_mqtt"
+            "storage_manual_status_mqtt",
+            "storage_recheck_in",
+            "storage_test_input_in",
+            "storage_test_decision_out",
+            "storage_auto_out"
         ],
         "x": 64,
         "y": 299,
         "w": 1302,
-        "h": 257
+        "h": 297
     },
     {
         "id": "storage_group_alerts",
@@ -352,8 +356,12 @@
         },
         "nodes": [
             "storage_daily_maintenance",
+            "storage_auto_in",
+            "storage_auto_gate",
             "storage_exec_maintenance",
             "storage_request_host_maintenance",
+            "storage_post_maintenance_delay",
+            "storage_recheck_out",
             "storage_parse_maintenance",
             "storage_store_maintenance_stderr",
             "storage_maintenance_complete",
@@ -361,12 +369,12 @@
             "storage_weekly_inspection",
             "storage_exec_inspection",
             "storage_parse_inspection",
-            "storage_maintenance_mqtt"
+            "storage_test_dry_out"
         ],
         "x": 74,
         "y": 629,
-        "w": 1372,
-        "h": 279.5
+        "w": 1642,
+        "h": 320
     },
     {
         "id": "grp_internet_triggers",
@@ -7576,7 +7584,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_config",
         "name": "Configurar thresholds",
-        "func": "const config = {\n    version: 1,\n    thresholds: { warning: 70, high: 80, critical: 90 },\n    hysteresisPercentagePoints: 3,\n    notificationCooldownMs: 12 * 60 * 60 * 1000,\n    commandErrorCooldownMs: 6 * 60 * 60 * 1000,\n    trendAlert24hPercentagePoints: 5,\n    trendAlert7dPercentagePoints: 10,\n    sampleIntervalMs: 15 * 60 * 1000,\n    historyRetentionMs: 8 * 24 * 60 * 60 * 1000\n};\nflow.set(\"storage_health_config_v1\", config, \"persistent\");\nmsg.storageConfig = config;\nnode.status({ fill: \"green\", shape: \"dot\", text: \"config v\" + config.version });\nreturn msg;",
+        "func": "const config = {\n    version: 1,\n    thresholds: { warning: 70, high: 80, critical: 90 },\n    hysteresisPercentagePoints: 3,\n    notificationCooldownMs: 12 * 60 * 60 * 1000,\n    commandErrorCooldownMs: 6 * 60 * 60 * 1000,\n    trendAlert24hPercentagePoints: 5,\n    trendAlert7dPercentagePoints: 10,\n    autoRemediationCooldownMs: 6 * 60 * 60 * 1000,\n    sampleIntervalMs: 15 * 60 * 1000,\n    historyRetentionMs: 8 * 24 * 60 * 60 * 1000\n};\nflow.set(\"storage_health_config_v1\", config, \"persistent\");\nmsg.storageConfig = config;\nnode.status({ fill: \"green\", shape: \"dot\", text: \"config v\" + config.version });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -7597,7 +7605,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_config",
         "name": "Publicar discovery",
-        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_health_last_run/config\",\n        payload: { name: \"Storage Health Last Run\", unique_id: \"raspberry_storage_health_last_run\", object_id: \"raspberry_storage_health_last_run\", default_entity_id: \"sensor.raspberry_pi_storage_health_last_run\", state_topic: \"smart_home/raspberry/storage/health_last_run\", device_class: \"timestamp\", icon: \"mdi:clock-check-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    },\n    {\n        topic: \"homeassistant/binary_sensor/raspberry_storage_manual_running/config\",\n        payload: { name: \"Storage Health Manual Running\", unique_id: \"raspberry_storage_manual_running\", object_id: \"raspberry_storage_manual_running\", default_entity_id: \"binary_sensor.raspberry_pi_storage_manual_running\", state_topic: \"smart_home/raspberry/storage/manual_running\", payload_on: \"ON\", payload_off: \"OFF\", device_class: \"running\", icon: \"mdi:harddisk\", device }\n    }\n];\nreturn [[\n    ...definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true })),\n    { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true }\n]];",
+        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_health_last_run/config\",\n        payload: { name: \"Storage Health Last Run\", unique_id: \"raspberry_storage_health_last_run\", object_id: \"raspberry_storage_health_last_run\", default_entity_id: \"sensor.raspberry_pi_storage_health_last_run\", state_topic: \"smart_home/raspberry/storage/health_last_run\", device_class: \"timestamp\", icon: \"mdi:clock-check-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_cause/config\",\n        payload: { name: \"Raspberry Storage Growth Cause\", unique_id: \"raspberry_storage_growth_cause\", object_id: \"raspberry_storage_growth_cause\", state_topic: \"smart_home/raspberry/storage/growth_cause\", icon: \"mdi:magnify-scan\", device }\n    },\n    {\n        topic: \"homeassistant/binary_sensor/raspberry_storage_manual_running/config\",\n        payload: { name: \"Storage Health Manual Running\", unique_id: \"raspberry_storage_manual_running\", object_id: \"raspberry_storage_manual_running\", default_entity_id: \"binary_sensor.raspberry_pi_storage_manual_running\", state_topic: \"smart_home/raspberry/storage/manual_running\", payload_on: \"ON\", payload_off: \"OFF\", device_class: \"running\", icon: \"mdi:harddisk\", device }\n    }\n];\nreturn [[\n    ...definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true })),\n    { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true }\n]];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -7706,7 +7714,7 @@
         "type": "api-current-state",
         "z": "storage_health_tab",
         "g": "storage_group_health",
-        "name": "Ler storage existente no HA",
+        "name": "Ler storage e categorias no HA",
         "server": "4126427d5e161a03",
         "version": 3,
         "outputs": 1,
@@ -7720,7 +7728,7 @@
             {
                 "property": "payload",
                 "propertyType": "msg",
-                "value": "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at\n}",
+                "value": "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at,\n  \"maintenance_last_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_at,\n  \"maintenance_reclaimed_bytes\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_reclaimed_bytes,\n  \"categories\": {\n    \"docker\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_docker_logical_bytes,\n    \"repository\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_repository_bytes,\n    \"vscode\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_vscode_server_logical_bytes,\n    \"recorder\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_recorder_logical_bytes,\n    \"backups\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_backups_logical_bytes,\n    \"npmCache\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_npm_cache_logical_bytes,\n    \"knownLogs\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_known_logs_bytes\n  }\n}",
                 "valueType": "jsonata"
             }
         ],
@@ -7745,9 +7753,9 @@
         "type": "function",
         "z": "storage_health_tab",
         "g": "storage_group_health",
-        "name": "Thresholds + histerese + tendencia",
-        "func": "const CONFIG_KEY = \"storage_health_config_v1\";\nconst STATE_KEY = \"storage_health_state_v1\";\nconst HISTORY_KEY = \"storage_health_history_v1\";\nconst config = flow.get(CONFIG_KEY, \"persistent\");\nconst now = Number(msg.testNow ?? Date.now());\nconst input = msg.payload ?? {};\nconst used = Number(input.used_percent);\nconst freeGiB = Number(input.free_gb);\nconst usedGiB = Number(input.used_gb);\nconst inodeUsed = input.inode_used_percent === undefined ? null : Number(input.inode_used_percent);\nconst valid = config && Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(freeGiB) && freeGiB >= 0;\nlet state = flow.get(STATE_KEY, \"persistent\") ?? { severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0 };\n\nfunction notification(title, message, fields) {\n    const id = String(now) + \":\" + fields.join(\",\");\n    return {\n        payload: { title, message },\n        notificationAck: {\n            id,\n            at: now,\n            targets: fields.map((field) => ({ key: STATE_KEY, field }))\n        }\n    };\n}\n\nif (!valid) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"metrica invalida\" });\n    const lastRun = { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(now).toISOString(), retain: true };\n    let alert = null;\n    const cooldown = config?.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000;\n    if (now - Number(state.lastErrorNotificationAt || 0) >= cooldown) {\n        alert = notification(\"Raspberry Pi - storage indisponivel\", \"Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada.\", [\"lastErrorNotificationAt\"]);\n        state.pendingAlert = alert;\n    }\n    flow.set(STATE_KEY, state, \"persistent\");\n    return [[lastRun], alert, { payload: { event: \"invalid_metrics\", at: new Date(now).toISOString(), input } }];\n}\n\nlet history = flow.get(HISTORY_KEY, \"persistent\");\nif (!Array.isArray(history)) history = [];\nhistory = history.filter((point) => Number.isFinite(point?.ts) && Number.isFinite(point?.used) && point.ts >= now - config.historyRetentionMs && point.ts <= now + config.sampleIntervalMs);\nconst last = history[history.length - 1];\nif (!last || now - last.ts >= config.sampleIntervalMs / 2) history.push({ ts: now, used });\nelse history[history.length - 1] = { ts: now, used };\nhistory.sort((a, b) => a.ts - b.ts);\nflow.set(HISTORY_KEY, history, \"persistent\");\n\nfunction growthFor(ageMs) {\n    const cutoff = now - ageMs;\n    const candidates = history.filter((point) => point.ts <= cutoff);\n    if (!candidates.length) return null;\n    const point = candidates[candidates.length - 1];\n    const sampleAge = now - point.ts;\n    if (sampleAge < ageMs - 2 * 60 * 60 * 1000 || sampleAge > ageMs + 2 * 60 * 60 * 1000) return null;\n    return Math.round((used - point.used) * 10) / 10;\n}\n\nconst growth24h = growthFor(24 * 60 * 60 * 1000);\nconst growth7d = growthFor(7 * 24 * 60 * 60 * 1000);\nconst thresholds = config.thresholds;\nfunction rawSeverity(value) {\n    if (value >= thresholds.critical) return \"critical\";\n    if (value >= thresholds.high) return \"high\";\n    if (value >= thresholds.warning) return \"warning\";\n    return \"normal\";\n}\nlet severity = rawSeverity(used);\nconst previous = state.severity ?? \"normal\";\nconst h = config.hysteresisPercentagePoints;\nif (previous === \"critical\" && used >= thresholds.critical - h) severity = \"critical\";\nelse if (previous === \"high\" && used >= thresholds.high - h && severity !== \"critical\") severity = \"high\";\nelse if (previous === \"warning\" && used >= thresholds.warning - h && severity === \"normal\") severity = \"warning\";\n\nconst rank = { normal: 0, warning: 1, high: 2, critical: 3 };\nconst freeText = freeGiB.toFixed(1) + \" GiB livres\";\nconst trendText = growth24h === null ? \"\" : \"; \" + (growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\";\nlet alert = null;\nif (severity === \"normal\" && previous !== \"normal\") {\n    alert = notification(\"Raspberry Pi - storage recuperado\", \"✅ Raspberry Pi storage back to normal: \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + \".\", [\"lastNotificationAt\"]);\n} else if (rank[severity] > rank[previous] || (severity !== \"normal\" && now - Number(state.lastNotificationAt || 0) >= config.notificationCooldownMs)) {\n    const icon = severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    const label = severity === \"critical\" ? \"critical\" : severity;\n    alert = notification(\"Raspberry Pi - storage \" + label, icon + \" Raspberry Pi storage \" + label + \": \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + \".\", [\"lastNotificationAt\"]);\n}\n\nconst accelerated = (growth24h !== null && growth24h >= config.trendAlert24hPercentagePoints) || (growth7d !== null && growth7d >= config.trendAlert7dPercentagePoints);\nif (alert && accelerated && !alert.notificationAck.targets.some((target) => target.field === \"lastTrendNotificationAt\")) {\n    alert.notificationAck.targets.push({ key: STATE_KEY, field: \"lastTrendNotificationAt\" });\n}\nif (!alert && accelerated && now - Number(state.lastTrendNotificationAt || 0) >= config.notificationCooldownMs) {\n    const parts = [];\n    if (growth24h !== null) parts.push((growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\");\n    if (growth7d !== null) parts.push((growth7d >= 0 ? \"+\" : \"\") + growth7d.toFixed(1) + \" pp/7d\");\n    alert = notification(\"Raspberry Pi - crescimento de storage\", \"⚠️ Storage crescendo rapidamente: \" + parts.join(\", \") + \". Uso atual: \" + used.toFixed(1) + \"% (\" + freeText + \").\", [\"lastTrendNotificationAt\"]);\n}\n\nif (alert) state.pendingAlert = alert;\nelse if (state.pendingAlert?.notificationAck?.id) alert = state.pendingAlert;\n\nstate.severity = severity;\nstate.updatedAt = now;\nstate.usedPercent = used;\nstate.freeGiB = freeGiB;\nstate.growth24h = growth24h;\nstate.growth7d = growth7d;\nflow.set(STATE_KEY, state, \"persistent\");\nconst color = { normal: \"green\", warning: \"yellow\", high: \"yellow\", critical: \"red\" }[severity];\nnode.status({ fill: color, shape: severity === \"normal\" ? \"dot\" : \"ring\", text: severity + \" \" + used.toFixed(1) + \"%\" });\nif (severity !== previous) node.log(\"storage_health: \" + previous + \" -> \" + severity + \" at \" + used.toFixed(1) + \"%\");\n\nconst attributes = {\n    used_percent: used,\n    used_gib: Number.isFinite(usedGiB) ? usedGiB : null,\n    free_gib: freeGiB,\n    filesystem: input.filesystem ?? \"/\",\n    inode_used_percent: Number.isFinite(inodeUsed) ? inodeUsed : null,\n    growth_24h_percentage_points: growth24h,\n    growth_7d_percentage_points: growth7d,\n    collected_at: input.collected_at ?? new Date(now).toISOString(),\n    thresholds,\n    hysteresis_percentage_points: h\n};\nfunction growthMessages(window, value) {\n    const availabilityTopic = \"smart_home/raspberry/storage/growth_\" + window + \"_available\";\n    if (value === null) return [{ topic: availabilityTopic, payload: \"offline\", retain: true }];\n    return [\n        { topic: \"smart_home/raspberry/storage/growth_\" + window, payload: String(value), retain: true },\n        { topic: availabilityTopic, payload: \"online\", retain: true }\n    ];\n}\n\nconst mqtt = [\n    { topic: \"smart_home/raspberry/storage/status\", payload: severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(attributes), retain: true },\n    { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(now).toISOString(), retain: true },\n    ...growthMessages(\"24h\", growth24h),\n    ...growthMessages(\"7d\", growth7d)\n];\nreturn [mqtt, alert, { payload: { event: \"health_check\", severity, previous, used, freeGiB, growth24h, growth7d, at: new Date(now).toISOString() } }];",
-        "outputs": 3,
+        "name": "Diagnosticar + tendencia + autocuidado",
+        "func": "const CONFIG_KEY = \"storage_health_config_v1\";\nconst STATE_KEY = \"storage_health_state_v1\";\nconst HISTORY_KEY = \"storage_health_history_v1\";\nconst CATEGORY_HISTORY_KEY = \"storage_health_category_history_v1\";\nconst config = flow.get(CONFIG_KEY, \"persistent\");\nconst now = Number(msg.testNow ?? Date.now());\nconst input = msg.payload ?? {};\nconst used = Number(input.used_percent);\nconst freeGiB = Number(input.free_gb);\nconst usedGiB = Number(input.used_gb);\nconst inodeUsed = input.inode_used_percent === undefined ? null : Number(input.inode_used_percent);\nconst maintenanceAt = typeof input.maintenance_last_at === \"string\" && !Number.isNaN(Date.parse(input.maintenance_last_at)) ? input.maintenance_last_at : null;\nconst maintenanceReclaimedBytes = Number(input.maintenance_reclaimed_bytes);\nconst categoryInput = input.categories ?? {};\nconst categoryLabels = { docker: \"Docker\", repository: \"repositorio\", vscode: \"VS Code Server\", recorder: \"Recorder\", backups: \"backups do Home Assistant\", npmCache: \"cache npm\", knownLogs: \"logs\" };\nconst categoryValues = {};\nfor (const [key, raw] of Object.entries(categoryInput)) {\n    const value = Number(raw);\n    if (Number.isFinite(value) && value >= 0 && Object.hasOwn(categoryLabels, key)) categoryValues[key] = value;\n}\nconst valid = config && Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(freeGiB) && freeGiB >= 0;\nlet state = flow.get(STATE_KEY, \"persistent\") ?? { severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0 };\n\nfunction notification(title, message, fields) {\n    const id = String(now) + \":\" + fields.join(\",\");\n    return {\n        payload: { title, message },\n        notificationAck: {\n            id,\n            at: now,\n            targets: fields.map((field) => ({ key: STATE_KEY, field }))\n        }\n    };\n}\n\nif (!valid) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"metrica invalida\" });\n    const lastRun = { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(now).toISOString(), retain: true };\n    let alert = null;\n    const cooldown = config?.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000;\n    if (now - Number(state.lastErrorNotificationAt || 0) >= cooldown) {\n        alert = notification(\"Raspberry Pi - storage indisponivel\", \"Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada.\", [\"lastErrorNotificationAt\"]);\n        state.pendingAlert = alert;\n    }\n    flow.set(STATE_KEY, state, \"persistent\");\n    return [[lastRun], alert, { ...msg, payload: { event: \"invalid_metrics\", at: new Date(now).toISOString(), input } }, null];\n}\n\nlet history = flow.get(HISTORY_KEY, \"persistent\");\nif (!Array.isArray(history)) history = [];\nhistory = history.filter((point) => Number.isFinite(point?.ts) && Number.isFinite(point?.used) && point.ts >= now - config.historyRetentionMs && point.ts <= now + config.sampleIntervalMs);\nconst last = history[history.length - 1];\nif (!last || now - last.ts >= config.sampleIntervalMs / 2) history.push({ ts: now, used });\nelse history[history.length - 1] = { ts: now, used };\nhistory.sort((a, b) => a.ts - b.ts);\nflow.set(HISTORY_KEY, history, \"persistent\");\n\nfunction growthFor(ageMs) {\n    const cutoff = now - ageMs;\n    const candidates = history.filter((point) => point.ts <= cutoff);\n    if (!candidates.length) return null;\n    const point = candidates[candidates.length - 1];\n    const sampleAge = now - point.ts;\n    if (sampleAge < ageMs - 2 * 60 * 60 * 1000 || sampleAge > ageMs + 2 * 60 * 60 * 1000) return null;\n    return Math.round((used - point.used) * 10) / 10;\n}\n\nconst growth24h = growthFor(24 * 60 * 60 * 1000);\nconst growth7d = growthFor(7 * 24 * 60 * 60 * 1000);\nlet categoryHistory = flow.get(CATEGORY_HISTORY_KEY, \"persistent\");\nif (!Array.isArray(categoryHistory)) categoryHistory = [];\ncategoryHistory = categoryHistory.filter((point) => point && Number.isFinite(point.ts) && point.ts >= now - config.historyRetentionMs && point.ts <= now + config.sampleIntervalMs);\nif (Object.keys(categoryValues).length) {\n    const categoryLast = categoryHistory[categoryHistory.length - 1];\n    if (!categoryLast || now - categoryLast.ts >= config.sampleIntervalMs / 2) categoryHistory.push({ ts: now, values: categoryValues });\n    else categoryHistory[categoryHistory.length - 1] = { ts: now, values: categoryValues };\n}\ncategoryHistory.sort((a, b) => a.ts - b.ts);\nflow.set(CATEGORY_HISTORY_KEY, categoryHistory, \"persistent\");\nconst categoryCutoff = now - 24 * 60 * 60 * 1000;\nconst categoryCandidates = categoryHistory.filter((point) => point.ts <= categoryCutoff && now - point.ts >= 22 * 60 * 60 * 1000 && now - point.ts <= 26 * 60 * 60 * 1000);\nconst categoryBaseline = categoryCandidates.length ? categoryCandidates[categoryCandidates.length - 1] : null;\nconst categoryGrowth = {};\nif (categoryBaseline?.values) {\n    for (const [key, value] of Object.entries(categoryValues)) {\n        const before = Number(categoryBaseline.values[key]);\n        if (Number.isFinite(before)) categoryGrowth[key] = value - before;\n    }\n}\nconst largestCategory = Object.entries(categoryGrowth).filter(([, bytes]) => bytes >= 64 * 1024 * 1024).sort((a, b) => b[1] - a[1])[0] ?? null;\nconst growthCause = largestCategory ? categoryLabels[largestCategory[0]] : \"nao identificado\";\nconst growthCauseBytes = largestCategory ? largestCategory[1] : null;\nconst causeSuffix = largestCategory ? \"; causa provavel: \" + growthCause + \" +\" + (growthCauseBytes / 1073741824).toFixed(1) + \" GiB/24h\" : \"\";\nconst thresholds = config.thresholds;\nfunction rawSeverity(value) {\n    if (value >= thresholds.critical) return \"critical\";\n    if (value >= thresholds.high) return \"high\";\n    if (value >= thresholds.warning) return \"warning\";\n    return \"normal\";\n}\nlet severity = rawSeverity(used);\nconst previous = state.severity ?? \"normal\";\nconst h = config.hysteresisPercentagePoints;\nif (previous === \"critical\" && used >= thresholds.critical - h) severity = \"critical\";\nelse if (previous === \"high\" && used >= thresholds.high - h && severity !== \"critical\") severity = \"high\";\nelse if (previous === \"warning\" && used >= thresholds.warning - h && severity === \"normal\") severity = \"warning\";\n\nconst rank = { normal: 0, warning: 1, high: 2, critical: 3 };\nconst freeText = freeGiB.toFixed(1) + \" GiB livres\";\nconst trendText = growth24h === null ? \"\" : \"; \" + (growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\";\nlet alert = null;\nif (severity === \"normal\" && previous !== \"normal\") {\n    alert = notification(\"Raspberry Pi - storage recuperado\", \"✅ Raspberry Pi storage back to normal: \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + \".\", [\"lastNotificationAt\"]);\n} else if (rank[severity] > rank[previous] || (severity !== \"normal\" && now - Number(state.lastNotificationAt || 0) >= config.notificationCooldownMs)) {\n    const icon = severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    const label = severity === \"critical\" ? \"critical\" : severity;\n    alert = notification(\"Raspberry Pi - storage \" + label, icon + \" Raspberry Pi storage \" + label + \": \" + used.toFixed(1) + \"% used (\" + freeText + \")\" + trendText + causeSuffix + \".\", [\"lastNotificationAt\"]);\n}\n\nconst accelerated = (growth24h !== null && growth24h >= config.trendAlert24hPercentagePoints) || (growth7d !== null && growth7d >= config.trendAlert7dPercentagePoints);\nif (alert && accelerated && !alert.notificationAck.targets.some((target) => target.field === \"lastTrendNotificationAt\")) {\n    alert.notificationAck.targets.push({ key: STATE_KEY, field: \"lastTrendNotificationAt\" });\n}\nif (!alert && accelerated && now - Number(state.lastTrendNotificationAt || 0) >= config.notificationCooldownMs) {\n    const parts = [];\n    if (growth24h !== null) parts.push((growth24h >= 0 ? \"+\" : \"\") + growth24h.toFixed(1) + \" pp/24h\");\n    if (growth7d !== null) parts.push((growth7d >= 0 ? \"+\" : \"\") + growth7d.toFixed(1) + \" pp/7d\");\n    alert = notification(\"Raspberry Pi - crescimento de storage\", \"⚠️ Storage crescendo rapidamente: \" + parts.join(\", \") + \". Uso atual: \" + used.toFixed(1) + \"% (\" + freeText + \")\" + causeSuffix + \". A limpeza segura foi solicitada automaticamente.\", [\"lastTrendNotificationAt\"]);\n}\n\nif (alert) state.pendingAlert = alert;\nelse if (state.pendingAlert?.notificationAck?.id) alert = state.pendingAlert;\n\nstate.severity = severity;\nstate.updatedAt = now;\nstate.usedPercent = used;\nstate.freeGiB = freeGiB;\nstate.growth24h = growth24h;\nstate.growth7d = growth7d;\nstate.growthCause = growthCause;\nstate.growthCauseBytes = growthCauseBytes;\nlet remediation = null;\nconst remediationNeeded = accelerated || severity !== \"normal\";\nif (remediationNeeded && now - Number(state.lastAutoRemediationAt || 0) >= config.autoRemediationCooldownMs) {\n    state.lastAutoRemediationAt = now;\n    remediation = { ...msg, storageAutoRemediation: true, test_mode: msg.test_mode === true, payload: { reason: accelerated ? \"accelerated-growth\" : \"capacity-threshold\", used, growth24h, growth7d, growthCause, growthCauseBytes } };\n}\nflow.set(STATE_KEY, state, \"persistent\");\nconst color = { normal: \"green\", warning: \"yellow\", high: \"yellow\", critical: \"red\" }[severity];\nnode.status({ fill: color, shape: severity === \"normal\" ? \"dot\" : \"ring\", text: severity + \" \" + used.toFixed(1) + \"%\" });\nif (severity !== previous) node.log(\"storage_health: \" + previous + \" -> \" + severity + \" at \" + used.toFixed(1) + \"%\");\n\nconst attributes = {\n    used_percent: used,\n    used_gib: Number.isFinite(usedGiB) ? usedGiB : null,\n    free_gib: freeGiB,\n    filesystem: input.filesystem ?? \"/\",\n    inode_used_percent: Number.isFinite(inodeUsed) ? inodeUsed : null,\n    growth_24h_percentage_points: growth24h,\n    growth_7d_percentage_points: growth7d,\n    growth_cause: growthCause,\n    growth_cause_bytes: growthCauseBytes,\n    category_growth_24h_bytes: categoryGrowth,\n    collected_at: input.collected_at ?? new Date(now).toISOString(),\n    thresholds,\n    hysteresis_percentage_points: h\n};\nfunction growthMessages(window, value) {\n    const availabilityTopic = \"smart_home/raspberry/storage/growth_\" + window + \"_available\";\n    if (value === null) return [{ topic: availabilityTopic, payload: \"offline\", retain: true }];\n    return [\n        { topic: \"smart_home/raspberry/storage/growth_\" + window, payload: String(value), retain: true },\n        { topic: availabilityTopic, payload: \"online\", retain: true }\n    ];\n}\n\nconst mqtt = [\n    { topic: \"smart_home/raspberry/storage/status\", payload: severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(attributes), retain: true },\n    { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(now).toISOString(), retain: true },\n    { topic: \"smart_home/raspberry/storage/growth_cause\", payload: growthCause, retain: true },\n    ...(maintenanceAt ? [{ topic: \"smart_home/raspberry/storage/last_maintenance\", payload: maintenanceAt, retain: true }] : []),\n    ...(Number.isFinite(maintenanceReclaimedBytes) && maintenanceReclaimedBytes >= 0 ? [{ topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", payload: String(Math.round(maintenanceReclaimedBytes / 104857.6) / 10), retain: true }] : []),\n    ...growthMessages(\"24h\", growth24h),\n    ...growthMessages(\"7d\", growth7d)\n];\nconst event = { event: \"health_check\", severity, previous, used, freeGiB, growth24h, growth7d, growthCause, growthCauseBytes, remediationRequested: remediation !== null, at: new Date(now).toISOString() };\nreturn [msg.test_mode === true ? [] : mqtt, msg.test_mode === true ? null : alert, { ...msg, payload: event }, remediation];",
+        "outputs": 4,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -7764,7 +7772,12 @@
                 "storage_notify_secondary",
                 "storage_notify_persistent"
             ],
-            []
+            [
+                "storage_test_decision_out"
+            ],
+            [
+                "storage_auto_out"
+            ]
         ]
     },
     {
@@ -7861,8 +7874,9 @@
                 "p": "payload"
             },
             {
-                "p": "topic",
-                "vt": "str"
+                "p": "storageAutoRemediation",
+                "v": "true",
+                "vt": "bool"
             }
         ],
         "repeat": "",
@@ -7876,8 +7890,7 @@
         "y": 700,
         "wires": [
             [
-                "storage_exec_maintenance",
-                "storage_request_host_maintenance"
+                "storage_auto_gate"
             ]
         ]
     },
@@ -7894,8 +7907,8 @@
         "winHide": false,
         "oldrc": false,
         "name": "Housekeeping Node-RED allowlisted",
-        "x": 510,
-        "y": 700,
+        "x": 820,
+        "y": 680,
         "wires": [
             [
                 "storage_parse_maintenance"
@@ -7915,20 +7928,16 @@
         "z": "storage_health_tab",
         "g": "storage_group_maintenance",
         "name": "Registrar resultado",
-        "func": "const line = String(msg.payload ?? \"\").split(/\\r?\\n/).find((entry) => entry.startsWith(\"RESULT|\"));\nif (!line) return null;\nconst fields = Object.fromEntries(line.split(\"|\").slice(1).map((part) => part.split(/=(.*)/s).slice(0, 2)));\nconst reclaimed = Number(fields.reclaimed_bytes);\nif (fields.status !== \"success\" || fields.mode !== \"apply\" || !Number.isFinite(reclaimed)) return null;\nnode.log(\"storage_maintenance: success reclaimed_bytes=\" + reclaimed);\nreturn [[\n    { topic: \"smart_home/raspberry/storage/last_maintenance\", payload: fields.at, retain: true },\n    { topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", payload: String(Math.round(reclaimed / 104857.6) / 10), retain: true }\n]];",
-        "outputs": 1,
+        "func": "const line = String(msg.payload ?? \"\").split(/\\r?\\n/).find((entry) => entry.startsWith(\"RESULT|\"));\nif (!line) return null;\nconst fields = Object.fromEntries(line.split(\"|\").slice(1).map((part) => part.split(/=(.*)/s).slice(0, 2)));\nconst reclaimed = Number(fields.reclaimed_bytes);\nif (fields.status !== \"success\" || fields.mode !== \"apply\" || !Number.isFinite(reclaimed)) return null;\nnode.log(\"storage_maintenance: success reclaimed_bytes=\" + reclaimed);\nreturn null;",
+        "outputs": 0,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 840,
+        "x": 1140,
         "y": 670,
-        "wires": [
-            [
-                "storage_maintenance_mqtt"
-            ]
-        ]
+        "wires": []
     },
     {
         "id": "storage_store_maintenance_stderr",
@@ -7943,7 +7952,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 840,
+        "x": 1140,
         "y": 730,
         "wires": []
     },
@@ -7960,7 +7969,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1140,
+        "x": 1450,
         "y": 730,
         "wires": [
             [
@@ -8041,26 +8050,7 @@
         "finalize": "",
         "libs": [],
         "x": 820,
-        "y": 820,
-        "wires": []
-    },
-    {
-        "id": "storage_maintenance_mqtt",
-        "type": "mqtt out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Publicar manutencao",
-        "topic": "",
-        "qos": "1",
-        "retain": "true",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "721c47f31046b8bc",
-        "x": 1140,
-        "y": 670,
+        "y": 860,
         "wires": []
     },
     {
@@ -8075,11 +8065,13 @@
         "timer": "15",
         "winHide": false,
         "oldrc": false,
-        "name": "Solicitar limpeza Docker no host",
-        "x": 490,
+        "name": "Solicitar limpeza segura no host",
+        "x": 820,
         "y": 780,
         "wires": [
-            [],
+            [
+                "storage_post_maintenance_delay"
+            ],
             [
                 "storage_store_maintenance_stderr"
             ],
@@ -8236,8 +8228,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1300,
-        "y": 790,
+        "x": 1100,
+        "y": 920,
         "wires": [
             [
                 "storage_manual_status_mqtt"
@@ -20715,5 +20707,405 @@
         "x": 1410,
         "y": 640,
         "wires": []
+    },
+    {
+        "id": "storage_group_tests",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "TESTE — aumento e normalidade em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458"
+        },
+        "nodes": [
+            "storage_test_instructions",
+            "storage_test_reset",
+            "storage_test_reset_state",
+            "storage_test_normal",
+            "storage_test_growth",
+            "storage_test_prepare",
+            "storage_test_input_out",
+            "storage_test_decision_in",
+            "storage_test_decision_terminal",
+            "storage_test_dry_in",
+            "storage_dry_run_terminal"
+        ],
+        "x": 74,
+        "y": 989,
+        "w": 1642,
+        "h": 300
+    },
+    {
+        "id": "storage_recheck_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Reavaliar apos limpeza",
+        "links": [
+            "storage_recheck_out"
+        ],
+        "x": 245,
+        "y": 350,
+        "wires": [
+            [
+                "storage_read_ha"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_input_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Metricas sinteticas",
+        "links": [
+            "storage_test_input_out"
+        ],
+        "x": 555,
+        "y": 550,
+        "wires": [
+            [
+                "storage_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_decision_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Resultado para teste",
+        "mode": "link",
+        "links": [
+            "storage_test_decision_in"
+        ],
+        "x": 1095,
+        "y": 550,
+        "wires": []
+    },
+    {
+        "id": "storage_auto_gate",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Gate de autocuidado / dry-run",
+        "func": "if (msg.storageAutoRemediation !== true) return null;\nif (msg.test_mode === true) {\n    return [null, null, { payload: { simulated: true, dispatched: false, action: \"storage-safe-maintenance\", reason: msg.payload?.reason, growthCause: msg.payload?.growthCause } }];\n}\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"limpeza automatica solicitada\" });\nreturn [{ ...msg }, { ...msg }, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 700,
+        "wires": [
+            [
+                "storage_exec_maintenance"
+            ],
+            [
+                "storage_request_host_maintenance"
+            ],
+            [
+                "storage_test_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_post_maintenance_delay",
+        "type": "delay",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Aguardar worker e medir novamente",
+        "pauseType": "delay",
+        "timeout": "3",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1140,
+        "y": 780,
+        "wires": [
+            [
+                "storage_recheck_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_recheck_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Voltar ao diagnostico",
+        "mode": "link",
+        "links": [
+            "storage_recheck_in"
+        ],
+        "x": 1510,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "storage_test_dry_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Autocuidado simulado",
+        "mode": "link",
+        "links": [
+            "storage_test_dry_in"
+        ],
+        "x": 1510,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "storage_test_instructions",
+        "type": "comment",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Ordem: 1 Reset; 2 Normal; 3 Crescimento. Tudo termina em dry-run, sem exec, MQTT ou notificacao.",
+        "info": "",
+        "x": 540,
+        "y": 1030,
+        "wires": []
+    },
+    {
+        "id": "storage_test_reset",
+        "type": "inject",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 1100,
+        "wires": [
+            [
+                "storage_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_reset_state",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Resetar estado sintetico",
+        "func": "for (const key of [\"storage_health_state_v1\", \"storage_health_history_v1\", \"storage_health_category_history_v1\"]) flow.set(key, null, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "storage_test_normal",
+        "type": "inject",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE 2: normal",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "normal",
+        "payloadType": "str",
+        "x": 200,
+        "y": 1170,
+        "wires": [
+            [
+                "storage_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_growth",
+        "type": "inject",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE 3: +9 pp Docker",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "growth",
+        "payloadType": "str",
+        "x": 210,
+        "y": 1230,
+        "wires": [
+            [
+                "storage_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_prepare",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Preparar metricas sinteticas",
+        "func": "const now = Date.now();\nconst growth = msg.payload === \"growth\";\nconst beforeUsed = growth ? 55 : 60;\nconst currentUsed = growth ? 64 : 60;\nflow.set(\"storage_health_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, used: beforeUsed }], \"persistent\");\nflow.set(\"storage_health_category_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, values: { docker: growth ? 12000000000 : 16000000000, recorder: 4000000000, backups: 1600000000 } }], \"persistent\");\nreturn {\n    test_mode: true,\n    testNow: now,\n    payload: {\n        used_percent: currentUsed,\n        used_gb: 37,\n        free_gb: 21,\n        inode_used_percent: 18,\n        filesystem: \"/\",\n        collected_at: new Date(now).toISOString(),\n        categories: { docker: 16000000000, recorder: 4000000000, backups: 1600000000 }\n    }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 1200,
+        "wires": [
+            [
+                "storage_test_input_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_input_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Enviar metricas ao diagnostico",
+        "mode": "link",
+        "links": [
+            "storage_test_input_in"
+        ],
+        "x": 790,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "storage_test_decision_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Receber decisao",
+        "links": [
+            "storage_test_decision_out"
+        ],
+        "x": 900,
+        "y": 1100,
+        "wires": [
+            [
+                "storage_test_decision_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_decision_terminal",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Decisao sintetica",
+        "func": "if (msg.test_mode !== true) return null;\nmsg.payload = { ...msg.payload, simulated: true, dispatched: false };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1130,
+        "y": 1100,
+        "wires": [
+            [
+                "storage_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_dry_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Receber autocuidado simulado",
+        "links": [
+            "storage_test_dry_out"
+        ],
+        "x": 900,
+        "y": 1190,
+        "wires": [
+            [
+                "storage_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "storage_dry_run_terminal",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE FINAL: nenhum efeito despachado",
+        "func": "msg.payload = { ...msg.payload, simulated: true, dispatched: false };\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"simulado; nenhum efeito\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1450,
+        "y": 1150,
+        "wires": []
+    },
+    {
+        "id": "storage_auto_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Solicitar autocuidado",
+        "mode": "link",
+        "links": [
+            "storage_auto_in"
+        ],
+        "x": 1095,
+        "y": 510,
+        "wires": []
+    },
+    {
+        "id": "storage_auto_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber autocuidado",
+        "links": [
+            "storage_auto_out"
+        ],
+        "x": 285,
+        "y": 780,
+        "wires": [
+            [
+                "storage_auto_gate"
+            ]
+        ]
     }
 ]

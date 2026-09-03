@@ -47,7 +47,24 @@ case "$1 $2" in
       *) printf '%s\n' 'TYPE TOTAL ACTIVE SIZE RECLAIMABLE' ;;
     esac
     ;;
-  "image ls") : ;;
+  "image ls")
+    case " $* " in
+      *" --all "*) [ -z "$FAKE_DOCKER_IMAGE_LIST" ] || printf '%b\n' "$FAKE_DOCKER_IMAGE_LIST" ;;
+    esac
+    ;;
+  "image inspect")
+    case "$*" in
+      *"{{.Created}}"*) printf '%s\n' '2020-01-01T00:00:00Z' ;;
+      *"{{.Size}}"*) printf '%s\n' '500000000' ;;
+    esac
+    ;;
+  "inspect --format") [ -z "$FAKE_HA_CONFIG_SOURCE" ] || printf '%s\n' "$FAKE_HA_CONFIG_SOURCE" ;;
+  "exec homeassistant")
+    if [ "$3" = rm ] && [ "$4" = -- ]; then
+      chmod u+w "$FAKE_HA_CONFIG_SOURCE/backups"
+      rm -- "$FAKE_HA_CONFIG_SOURCE/backups/$(basename -- "$5")"
+    fi
+    ;;
   "image prune") printf '%s\n' 'Total reclaimed space: 0B' ;;
   "image rm") : ;;
   "builder du") printf '%s\n' 'Reclaimable: 500MB' ;;
@@ -160,11 +177,99 @@ test("apply enforces bounded cache and image policy without broad prune", () => 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const calls = fs.readFileSync(item.calls, "utf8");
   assert.match(calls, /builder prune --all --force --max-used-space 2GB/);
-  assert.match(calls, /image prune --force --filter until=24h/);
+  assert.match(calls, /image ls --all --no-trunc/);
+  assert.doesNotMatch(calls, /image prune/);
   assert.doesNotMatch(calls, /volume|container prune|system prune|image prune -a/);
   const metrics = JSON.parse(fs.readFileSync(item.metricsFile, "utf8"));
   assert.equal(metrics.docker_logical_bytes, 2_500_000_000);
   assert.equal(metrics.last_result, "success");
+  removeFixture(item);
+});
+
+test("containerd-only untagged images are explicitly removed after safety checks", () => {
+  const item = fixture();
+  const removable = `sha256:${["unreferenced", "fixture", "image"].join("-")}`;
+  const result = spawnSync(script, ["--apply", "--category", "docker-images"], {
+    encoding: "utf8",
+    env: {
+      ...item.env,
+      FAKE_DOCKER_IMAGE_LIST: `${removable}\\t<none>\\t<none>\\t0`,
+    },
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /candidate action=untagged-unreferenced-image/);
+  const calls = fs.readFileSync(item.calls, "utf8");
+  assert.match(calls, /image ls --all --no-trunc/);
+  assert.match(calls, new RegExp(`ps -aq --filter ancestor=${removable}`));
+  assert.match(calls, new RegExp(`image rm ${removable}`));
+  removeFixture(item);
+});
+
+test("untagged images pinned by repository digest are preserved", () => {
+  const item = fixture();
+  const pinned = "sha256:storage-maintenance-referenced-fixture";
+  const result = spawnSync(script, ["--apply", "--category", "docker-images"], {
+    encoding: "utf8",
+    env: {
+      ...item.env,
+      FAKE_DOCKER_IMAGE_LIST: `${pinned}\\t<none>\\t<none>\\t0`,
+    },
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /reason=repository-reference/);
+  assert.doesNotMatch(fs.readFileSync(item.calls, "utf8"), /image rm sha256:storage-maintenance-referenced-fixture/);
+  removeFixture(item);
+});
+
+test("automatic HA backup retention keeps only the two newest archives", () => {
+  const item = fixture();
+  const backupRoot = path.join(item.root, "ha-backups");
+  fs.mkdirSync(backupRoot);
+  const archives = ["one.tar", "two.tar", "three.tar", "four.tar"];
+  archives.forEach((name, index) => {
+    const target = path.join(backupRoot, name);
+    fs.writeFileSync(target, name);
+    const when = new Date(Date.UTC(2026, 0, index + 1));
+    fs.utimesSync(target, when, when);
+  });
+  const manualSnapshot = path.join(backupRoot, "manual-snapshot.db");
+  fs.writeFileSync(manualSnapshot, "preserve");
+  const result = spawnSync(script, ["--apply", "--category", "home-assistant-backups"], {
+    encoding: "utf8",
+    env: {
+      ...item.env,
+      STORAGE_MAINTENANCE_HA_BACKUP_ROOT: backupRoot,
+    },
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(fs.readdirSync(backupRoot).sort(), ["four.tar", "manual-snapshot.db", "three.tar"]);
+  removeFixture(item);
+});
+
+test("HA backup retention uses the validated container mount for root-owned archives", () => {
+  const item = fixture();
+  const configRoot = path.join(item.root, "ha-config");
+  const backupRoot = path.join(configRoot, "backups");
+  fs.mkdirSync(backupRoot, { recursive: true });
+  for (const [index, name] of ["one.tar", "two.tar", "three.tar"].entries()) {
+    const target = path.join(backupRoot, name);
+    fs.writeFileSync(target, name);
+    const when = new Date(Date.UTC(2026, 0, index + 1));
+    fs.utimesSync(target, when, when);
+  }
+  fs.chmodSync(backupRoot, 0o555);
+  const result = spawnSync(script, ["--apply", "--category", "home-assistant-backups"], {
+    encoding: "utf8",
+    env: {
+      ...item.env,
+      FAKE_HA_CONFIG_SOURCE: configRoot,
+      STORAGE_MAINTENANCE_HA_CONFIG_ROOT: configRoot,
+      STORAGE_MAINTENANCE_HA_BACKUP_ROOT: backupRoot,
+    },
+  });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.deepEqual(fs.readdirSync(backupRoot).sort(), ["three.tar", "two.tar"]);
+  assert.match(fs.readFileSync(item.calls, "utf8"), /exec homeassistant rm -- \/config\/backups\/one\.tar/);
   removeFixture(item);
 });
 

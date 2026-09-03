@@ -118,6 +118,14 @@ discovery publica somente dados novos:
 - `sensor.raspberry_pi_raspberry_storage_last_maintenance`;
 - `sensor.raspberry_pi_raspberry_storage_last_reclaimed`.
 
+`Raspberry Storage Last Maintenance` e `Raspberry Storage Last Reclaimed`
+continuam sendo entidades MQTT para preservar o histórico e a apresentação do
+painel, mas seus estados vêm dos atributos autoritativos
+`storage_maintenance_last_at` e `storage_maintenance_last_reclaimed_bytes` do
+arquivo de métricas do host. O fluxo os republica em cada leitura e depois da
+reavaliação pós-manutenção; não usa o resultado parcial do housekeeping interno
+do Node-RED.
+
 O prefixo inicial `raspberry_pi_` e acrescentado pelo Home Assistant ao nome
 das entidades MQTT porque elas pertencem ao dispositivo `Raspberry Pi`. O
 dashboard usa os IDs efetivamente registrados, evitando cartões de entidade
@@ -134,6 +142,13 @@ Ela permite calcular 24 h e 7 dias sem gravacao por minuto. O alerta de tendenci
 dispara a partir de +5 pontos percentuais/24 h ou +10 pontos/7 dias, tambem com
 cooldown. Sao aceitas apenas amostras dentro de duas horas da janela desejada;
 uma amostra velha nao e usada como se fosse de 24 horas.
+
+O fluxo também persiste snapshots das categorias Docker, checkout, VS Code,
+Recorder, backups, cache npm e logs. Ao detectar crescimento acelerado ou uso
+acima do limite, identifica a maior variação de 24 h, solicita automaticamente
+o housekeeping allowlisted, aguarda o worker do host e mede novamente. O
+cooldown de seis horas impede limpezas repetidas. O caminho manual de teste usa
+`test_mode` até o terminal dry-run e nunca chama exec, MQTT ou notificações.
 
 Enquanto ainda nao houver amostras suficientes, cada sensor de tendencia fica
 **indisponivel** por seu topico MQTT de disponibilidade. O fluxo nao publica
@@ -177,6 +192,12 @@ O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
 e uma no celular. Os históricos ficam no fim da página, redistribuídos com os
 demais grupos de saúde do sistema.
 
+O painel também mostra o tamanho do Recorder e seu percentual sobre o
+filesystem total. O percentual é uma entidade numérica com `state_class:
+measurement`, gravada pelo Recorder e exibida no histórico de armazenamento de
+30 dias. Esse indicador é apenas diagnóstico: purge, repack e mudanças de
+retenção do banco permanecem decisões manuais.
+
 ### SAFE AUTO-MAINTENANCE
 
 O Node-RED executa `/opt/storage-health-maintenance.sh --apply`, montado em
@@ -193,9 +214,11 @@ entram no escopo. O container continua sem Docker socket, mount do host ou
 
 No host, `scripts/storage-maintenance.sh` limita o build cache sem uso a 2 GB
 (`builder prune --all --max-used-space 2GB`) e remove imagens sem tag com mais
-de 24 horas somente depois de provar que nenhum container as referencia. Essa
-checagem explícita cobre o store containerd atual, no qual uma imagem sem tag
-nem sempre aparece em `docker image ls --filter dangling=true`. O limite de
+de 24 horas somente depois de provar que nenhum container e nenhum arquivo
+versionado do repositório as referencia. Essa checagem explícita preserva, por
+exemplo, imagens fixadas por digest nos testes e cobre o store containerd atual,
+no qual uma imagem sem tag nem sempre aparece em `docker image ls --filter
+dangling=true`. O limite de
 tamanho é necessário porque um build recente pode manter toda uma cadeia antiga
 alcançável e tornar ineficaz uma política baseada somente em idade. O script
 valida argumentos, caminhos e symlinks, usa lock, é idempotente, registra
@@ -208,6 +231,11 @@ npm/pip, a remoção de downloads VSIX e a retenção do VS Code Server. O VS Co
 preserva todas as versões em uso e no mínimo as duas mais recentes. A manutenção
 agendada pelo Node-RED a cada seis horas usa esse mesmo perfil;
 `.cursor-server` não faz parte da rotina recorrente.
+
+No diretório de backups do Home Assistant, somente arquivos regulares `*.tar`
+são candidatos automáticos. Os dois arquivos mais recentes são sempre
+preservados; arquivos mais antigos são removidos independentemente da idade.
+Snapshots manuais de banco (`*.db`) e outros formatos não entram nessa rotina.
 
 ```bash
 scripts/storage-maintenance.sh --dry-run
@@ -226,7 +254,7 @@ Continuam deliberadamente manuais:
 - remocao de imagens tagged mantidas para rollback;
 - remoção integral de VS Code/Cursor e de extensões que não estejam marcadas
   como obsoletas pelo próprio VS Code;
-- purge/repack do Recorder e exclusao de backups do Home Assistant;
+- purge/repack do Recorder e alteração da retenção do banco;
 - vacuum ou mudanca de retencao do journald;
 - limpeza de logs PM2 e caches npm/IDE fora das allowlists do projeto;
 - qualquer `du` completo em `/`.
@@ -302,7 +330,10 @@ notificacao de recuperacao.
 
 O host tem o binario `/usr/bin/vcgencmd`, mas o container do Home Assistant e baseado em Alpine/musl, enquanto o binario do host depende do runtime glibc. Alem disso, o device node `/dev/vcio_gencmd` nao aparece como arquivo comum em `/dev` neste ambiente, embora o sysfs exponha `vcio_gencmd`.
 
-Por isso, o dashboard mostra `vcgencmd_available: false` por enquanto. O coletor ja esta preparado para interpretar os bits quando `vcgencmd get_throttled` estiver disponivel.
+Por isso, o dashboard mostra `vcgencmd_available: false` e o sensor de throttling
+usa o estado explícito `not_supported`, em vez de parecer uma entidade quebrada.
+O coletor ja esta preparado para interpretar os bits quando
+`vcgencmd get_throttled` estiver disponivel.
 
 Formas seguras de habilitar:
 

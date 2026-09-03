@@ -116,6 +116,8 @@ views:
                 name: Usado
               - entity: sensor.raspberry_pi_storage_free
                 name: Livre
+              - entity: sensor.raspberry_pi_recorder_storage_usage
+                name: Recorder no armazenamento
               - entity: sensor.raspberry_pi_storage_inodes_usage
                 name: Inodes usados
               - entity: sensor.raspberry_pi_raspberry_storage_status
@@ -127,13 +129,31 @@ views:
               - entity: sensor.raspberry_pi_raspberry_storage_growth_7d
                 name: Crescimento em 7 dias
               - entity: sensor.raspberry_pi_raspberry_storage_last_maintenance
-                name: Ultima manutencao segura
+                name: Última manutenção segura
               - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed
-                name: Recuperado na ultima manutencao
+                name: Recuperado na última manutenção
               - entity: binary_sensor.raspberry_pi_storage_warning
                 name: Armazenamento em atencao
               - entity: binary_sensor.raspberry_pi_storage_critical
                 name: Armazenamento critico
+          - type: entities
+            title: Diagnóstico e limpeza automática
+            show_header_toggle: false
+            entities:
+              - entity: sensor.raspberry_pi_storage_maintenance_docker
+                name: Docker total (tamanho lógico)
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_unused_untagged
+                name: Imagens Docker descartáveis
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_unused_tagged
+                name: Imagens Docker para revisão
+              - entity: sensor.raspberry_pi_storage_maintenance_vs_code_server
+                name: VS Code Server
+              - entity: sensor.raspberry_pi_storage_maintenance_recorder
+                name: Recorder
+              - entity: sensor.raspberry_pi_storage_maintenance_home_assistant_backups
+                name: Backups e snapshots do Home Assistant
+              - entity: sensor.raspberry_pi_storage_maintenance_result
+                name: Resultado da manutenção
           - type: entities
             title: Disponibilidade da infraestrutura
             show_header_toggle: false
@@ -331,11 +351,17 @@ views:
               - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
                 name: Crescimento 24 h
           - type: history-graph
-            title: Armazenamento · 30 dias
+            title: Armazenamento (%) · 30 dias
             hours_to_show: 720
             entities:
               - entity: sensor.raspberry_pi_storage_usage
                 name: Uso
+              - entity: sensor.raspberry_pi_recorder_storage_usage
+                name: Recorder (%)
+          - type: history-graph
+            title: Espaço livre · 30 dias
+            hours_to_show: 720
+            entities:
               - entity: sensor.raspberry_pi_storage_free
                 name: Livre
           - type: history-graph

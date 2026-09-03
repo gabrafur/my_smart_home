@@ -60,10 +60,26 @@ command_line:
         - storage_maintenance_inodes_total
         - storage_maintenance_inodes_used
         - storage_maintenance_docker_logical_bytes
+        - storage_maintenance_docker_images_logical_bytes
+        - storage_maintenance_docker_unused_tagged_logical_bytes
+        - storage_maintenance_docker_unused_untagged_logical_bytes
         - storage_maintenance_known_logs_bytes
         - storage_maintenance_repository_bytes
+        - storage_maintenance_vscode_server_logical_bytes
+        - storage_maintenance_cursor_server_logical_bytes
+        - storage_maintenance_npm_cache_logical_bytes
+        - storage_maintenance_allowlisted_user_caches_logical_bytes
+        - storage_maintenance_pm2_logs_logical_bytes
+        - storage_maintenance_home_assistant_recorder_logical_bytes
+        - storage_maintenance_home_assistant_backups_logical_bytes
+        - storage_maintenance_deleted_open_bytes
+        - storage_maintenance_deleted_open_count
+        - storage_maintenance_deleted_open_scan_complete
         - storage_maintenance_last_reclaimed_bytes
+        - storage_maintenance_last_filesystem_net_reclaimed_bytes
+        - storage_maintenance_last_reclaimed_by_category
         - storage_maintenance_last_at
+        - storage_maintenance_phase2_last_at
         - storage_maintenance_last_result
         - network_interface
         - network_operstate
@@ -239,6 +255,7 @@ template:
       - name: Raspberry Pi Storage Used
         unique_id: raspberry_pi_storage_used
         icon: mdi:harddisk
+        device_class: data_size
         unit_of_measurement: "GiB"
         state_class: measurement
         state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_used_gb') }}"
@@ -247,6 +264,7 @@ template:
       - name: Raspberry Pi Storage Free
         unique_id: raspberry_pi_storage_free
         icon: mdi:harddisk
+        device_class: data_size
         unit_of_measurement: "GiB"
         state_class: measurement
         state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'disk_free_gb') }}"
@@ -348,6 +366,17 @@ template:
           {{ (value / 1073741824) | round(3) if value is number else none }}
         availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_docker_unused_tagged_logical_bytes') is number }}"
 
+      - name: Raspberry Pi Storage Maintenance Docker Unused Untagged
+        unique_id: raspberry_pi_storage_maintenance_docker_unused_untagged
+        icon: mdi:docker
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_docker_unused_untagged_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_docker_unused_untagged_logical_bytes') is number }}"
+
       - name: Raspberry Pi Storage Maintenance Recorder
         unique_id: raspberry_pi_storage_maintenance_recorder
         icon: mdi:database-clock-outline
@@ -358,6 +387,20 @@ template:
           {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_recorder_logical_bytes') %}
           {{ (value / 1073741824) | round(3) if value is number else none }}
         availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_recorder_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Recorder Storage Usage
+        unique_id: raspberry_pi_recorder_storage_usage
+        icon: mdi:database-percent-outline
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: >-
+          {% set recorder = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_recorder_logical_bytes') %}
+          {% set total = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_filesystem_total_bytes') %}
+          {{ ((recorder / total) * 100) | round(2) if recorder is number and total is number and total > 0 else none }}
+        availability: >-
+          {% set recorder = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_recorder_logical_bytes') %}
+          {% set total = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_filesystem_total_bytes') %}
+          {{ recorder is number and total is number and total > 0 }}
 
       - name: Raspberry Pi Storage Maintenance Home Assistant Backups
         unique_id: raspberry_pi_storage_maintenance_home_assistant_backups
@@ -434,6 +477,7 @@ template:
       - name: Raspberry Pi Network RX
         unique_id: raspberry_pi_network_rx
         icon: mdi:download-network
+        device_class: data_rate
         unit_of_measurement: "kbit/s"
         state_class: measurement
         state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_rx_kbps') }}"
@@ -442,6 +486,7 @@ template:
       - name: Raspberry Pi Network TX
         unique_id: raspberry_pi_network_tx
         icon: mdi:upload-network
+        device_class: data_rate
         unit_of_measurement: "kbit/s"
         state_class: measurement
         state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'network_tx_kbps') }}"
@@ -450,8 +495,9 @@ template:
       - name: Raspberry Pi Throttled Hex
         unique_id: raspberry_pi_throttled_hex
         icon: mdi:chip
-        state: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'throttled_hex') }}"
-        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'throttled_hex') not in [none, '', 'unknown', 'unavailable'] }}"
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'throttled_hex') %}
+          {{ value if value not in [none, '', 'unknown', 'unavailable'] else 'not_supported' }}
 
   - binary_sensor:
       - name: Raspberry Pi Temperature Warning

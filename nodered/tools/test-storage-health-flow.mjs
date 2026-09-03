@@ -9,6 +9,8 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const flows = JSON.parse(fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"));
+const packageYaml = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "packages", "raspberry_pi_system_health.yaml"), "utf8");
+const dashboardYaml = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "dashboards", "raspberry_pi_health.yaml"), "utf8");
 const node = (id) => {
   const found = flows.find((entry) => entry.id === id);
   assert.ok(found, `missing node ${id}`);
@@ -44,17 +46,21 @@ function configuredFlow() {
 }
 
 const NOW = Date.parse("2026-08-13T12:00:00Z");
+const MAINTENANCE_AT = "1970-01-01T00:05:00Z";
 const health = compile("storage_evaluate");
 const acknowledge = compile("storage_notification_ack");
 const manualStart = compile("storage_manual_start");
 const manualComplete = compile("storage_manual_complete");
-const metric = (used, free = 20) => ({
+const metric = (used, free = 20, categories = undefined) => ({
   used_percent: used,
   used_gb: 30,
   free_gb: free,
   inode_used_percent: 13,
   filesystem: "/",
   collected_at: new Date(NOW).toISOString(),
+  maintenance_last_at: MAINTENANCE_AT,
+  maintenance_reclaimed_bytes: 157286400,
+  categories,
 });
 const evaluate = (flow, used, now = NOW, free = 20) => health(
   { payload: metric(used, free), testNow: now }, flow, runtimeNode(), {}, {},
@@ -63,7 +69,7 @@ const accept = (flow, alert) => acknowledge(alert, flow, runtimeNode(), {}, {});
 
 assert.equal(node("storage_health_tick").repeat, "900");
 assert.equal(node("storage_daily_maintenance").crontab, "23 */6 * * *");
-assert.deepEqual(node("storage_daily_maintenance").wires, [["storage_exec_maintenance", "storage_request_host_maintenance"]]);
+assert.deepEqual(node("storage_daily_maintenance").wires, [["storage_auto_gate"]]);
 assert.equal(node("storage_manual_health").type, "server-state-changed");
 assert.deepEqual(node("storage_manual_health").entities.entity, ["input_button.storage_health_manual_run"]);
 assert.equal(node("storage_manual_health").ignorePrevStateNull, false);
@@ -73,6 +79,10 @@ assert.equal(node("storage_manual_health").ignoreCurrentStateUnknown, true);
 assert.equal(node("storage_manual_health").ignoreCurrentStateUnavailable, true);
 assert.deepEqual(node("storage_manual_health").wires, [["storage_manual_start"]]);
 assert.deepEqual(node("storage_manual_start").wires, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_read_ha"], ["storage_manual_status_mqtt"]]);
+assert.deepEqual(node("storage_evaluate").wires[3], ["storage_auto_out"]);
+assert.deepEqual(node("storage_auto_gate").wires, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_test_dry_out"]]);
+assert.deepEqual(node("storage_request_host_maintenance").wires[0], ["storage_post_maintenance_delay"]);
+assert.deepEqual(node("storage_post_maintenance_delay").wires, [["storage_recheck_out"]]);
 assert.deepEqual(node("storage_exec_maintenance").wires[2], ["storage_maintenance_complete", "storage_manual_complete"]);
 assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(node("storage_request_host_maintenance").command, "/opt/request-host-storage-maintenance.sh");
@@ -86,7 +96,20 @@ assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maint
   assert.equal(payload.default_entity_id, "sensor.raspberry_pi_storage_health_last_run");
   assert.equal(payload.state_topic, "smart_home/raspberry/storage/health_last_run");
   assert.equal(payload.device_class, "timestamp");
+  const cause = messages.find((message) => message.topic.endsWith("/raspberry_storage_growth_cause/config"));
+  assert.ok(cause, "growth-cause discovery must be published");
+  for (const current of ["raspberry_storage_last_maintenance", "raspberry_storage_last_reclaimed"]) {
+    const definition = messages.find((message) => message.topic.endsWith(`/${current}/config`));
+    assert.ok(definition, `${current} discovery must be published`);
+    assert.notEqual(definition.payload, "");
+  }
 }
+assert.match(packageYaml, /storage_maintenance_docker_unused_untagged_logical_bytes/);
+assert.match(packageYaml, /name: Raspberry Pi Recorder Storage Usage[\s\S]{0,240}unit_of_measurement: "%"[\s\S]{0,80}state_class: measurement/);
+assert.match(dashboardYaml, /entity: sensor\.raspberry_pi_recorder_storage_usage/);
+assert.match(dashboardYaml, /title: Armazenamento \(%\) · 30 dias[\s\S]{0,420}entity: sensor\.raspberry_pi_recorder_storage_usage/);
+assert.match(dashboardYaml, /title: Diagnóstico e limpeza automática/);
+for (const id of ["storage_group_tests", "storage_test_reset", "storage_test_normal", "storage_test_growth", "storage_dry_run_terminal"]) node(id);
 for (const [id, role, action] of [
   ["storage_notify", "mobile_primary", "notify_3"],
   ["storage_notify_secondary", "mobile_secondary", "notify_2"],
@@ -129,6 +152,7 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   assert.deepEqual(config.thresholds, { warning: 70, high: 80, critical: 90 });
   assert.equal(config.hysteresisPercentagePoints, 3);
   assert.equal(config.notificationCooldownMs, 12 * 60 * 60 * 1000);
+  assert.equal(config.autoRemediationCooldownMs, 6 * 60 * 60 * 1000);
 }
 
 {
@@ -138,6 +162,8 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
   assert.equal(alert, null);
   assert.equal(mqtt.find((message) => message.topic.endsWith("/status")).payload, "normal");
   assert.equal(mqtt.find((message) => message.topic.endsWith("/health_last_run")).payload, new Date(NOW).toISOString());
+  assert.equal(mqtt.find((message) => message.topic.endsWith("/last_maintenance")).payload, MAINTENANCE_AT);
+  assert.equal(mqtt.find((message) => message.topic.endsWith("/last_reclaimed_mib")).payload, "150");
   assert.equal(mqtt.find((message) => message.topic.endsWith("growth_24h_available")).payload, "offline");
   assert.equal(mqtt.find((message) => message.topic.endsWith("growth_7d_available")).payload, "offline");
   assert.equal(mqtt.some((message) => message.topic.endsWith("/growth_24h")), false);
@@ -190,6 +216,45 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
 
 {
   const flow = configuredFlow();
+  flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 55 }]);
+  flow.set("storage_health_category_history_v1", [{
+    ts: NOW - 24 * 60 * 60 * 1000,
+    values: { docker: 12_000_000_000, recorder: 4_000_000_000 },
+  }]);
+  const result = health({
+    payload: metric(64, 20, { docker: 16_000_000_000, recorder: 4_100_000_000 }),
+    testNow: NOW,
+  }, flow, runtimeNode(), {}, {});
+  assert.equal(flow.get("storage_health_state_v1").growthCause, "Docker");
+  assert.match(result[1].payload.message, /causa provavel: Docker \+3\.7 GiB\/24h/);
+  assert.equal(result[3].storageAutoRemediation, true);
+  assert.equal(result[3].payload.reason, "accelerated-growth");
+}
+
+{
+  const gate = compile("storage_auto_gate");
+  const dry = gate({ storageAutoRemediation: true, test_mode: true, payload: { reason: "accelerated-growth", growthCause: "Docker" } }, memoryFlow(), runtimeNode(), {}, {});
+  assert.equal(dry[0], null);
+  assert.equal(dry[1], null);
+  assert.deepEqual(dry[2].payload, { simulated: true, dispatched: false, action: "storage-safe-maintenance", reason: "accelerated-growth", growthCause: "Docker" });
+  const production = gate({ storageAutoRemediation: true, payload: {} }, memoryFlow(), runtimeNode(), {}, {});
+  assert.equal(production[0].storageAutoRemediation, true);
+  assert.equal(production[1].storageAutoRemediation, true);
+  assert.equal(production[2], null);
+}
+
+{
+  const flow = configuredFlow();
+  flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 55 }]);
+  const result = health({ payload: metric(64), testNow: NOW, test_mode: true }, flow, runtimeNode(), {}, {});
+  assert.deepEqual(result[0], []);
+  assert.equal(result[1], null);
+  assert.equal(result[2].test_mode, true);
+  assert.equal(result[3].test_mode, true);
+}
+
+{
+  const flow = configuredFlow();
   flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 64 }]);
   const thresholdAlert = evaluate(flow, 71);
   assert.match(thresholdAlert[1].payload.message, /warning/);
@@ -225,8 +290,7 @@ assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.soc
 {
   const parse = compile("storage_parse_maintenance");
   const output = parse({ payload: "START|mode=apply\nRESULT|status=success|at=1999-01-01T04:17:00Z|mode=apply|before_bytes=1000|after_bytes=500|reclaimed_bytes=500" }, memoryFlow(), runtimeNode(), {}, {});
-  assert.equal(output[0][0].topic, "smart_home/raspberry/storage/last_maintenance");
-  assert.equal(output[0][1].payload, "0");
+  assert.equal(output, null);
   assert.equal(parse({ payload: "RESULT|status=success|at=x|mode=dry-run|reclaimed_bytes=0" }, memoryFlow(), runtimeNode(), {}, {}), null);
 }
 
