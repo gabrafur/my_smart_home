@@ -31,7 +31,7 @@ services:
 
   homeassistant:
     logging: *default-logging
-    image: ghcr.io/home-assistant/home-assistant@sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe
+    image: ghcr.io/home-assistant/home-assistant@sha256:372d991e58882a1d8c68c07e9aa3f3b509276e695355f73ccdb03baa70407293
     container_name: homeassistant
     restart: always
     network_mode: host
@@ -109,7 +109,7 @@ services:
 
   nodered:
     logging: *default-logging
-    image: nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6
+    image: nodered/node-red@sha256:02a2b92a41b73d2bc388238b86e4fcaab7fb5466373adb24e1df6aa5845265ff
     container_name: nodered
     restart: always
     command: ["/bin/sh", "/data/tools/start-node-red.sh"]
@@ -159,7 +159,7 @@ services:
 
   zigbee2mqtt:
     logging: *default-logging
-    image: koenkk/zigbee2mqtt@sha256:4fb4db4d49a217bed6d0204f454ce809febc565bbe051b85c556ee2bcef73d8c
+    image: koenkk/zigbee2mqtt@sha256:c13d177dd7f7f396574ab00926188ad542cfb68c6a5d5f84021bebd9adf6ede9
     container_name: zigbee2mqtt
     restart: always
     depends_on:
