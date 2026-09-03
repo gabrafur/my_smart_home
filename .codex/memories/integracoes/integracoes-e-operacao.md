@@ -21,6 +21,10 @@ fazem novas chamadas. O estado é compartilhado entre recriações do coordinato
 durante retry de setup, para que uma nova instância não burle o prazo. O
 dashboard e as automações continuam tratando a idade da telemetria como
 evidência obrigatória, sem promover cache antigo a estado atual.
+Uma recusa HTTP 403 também entra nesse mesmo backoff em todos os endpoints. O
+histórico opcional de viagens deve propagar a recusa mesmo que a biblioteca de
+upstream a registre e retorne normalmente; republicações internas nunca podem
+reabrir a mesma etapa de chegada nem formar um ciclo de chamadas.
 Na biblioteca 4.27.2, o refresh token genérico não conhece os atributos e o
 formato de bearer do cliente BR. A camada local adapta esse contrato e impede
 que um `5091` no refresh dispare login completo na mesma tentativa.

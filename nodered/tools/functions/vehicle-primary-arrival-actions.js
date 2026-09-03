@@ -13,17 +13,19 @@ const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
 const now = Number(msg.payload?.test_now) || Date.now();
 const eventKey = [
     msg.payload.source,
-    msg.payload.arrival_stage,
-    msg.payload.event_at ?? msg.payload.trigger_state ?? "?"
+    msg.payload.arrival_stage
 ].join(":");
 const previousAt = Number(previous?.at ?? 0);
 if (
-    previous?.event_key === eventKey &&
+    (
+        previous?.event_key === eventKey ||
+        String(previous?.event_key ?? "").startsWith(`${eventKey}:`)
+    ) &&
     previousAt <= now + 60 * 1000 &&
     now - previousAt < 10 * 60 * 1000
 ) return null;
 
-const record = { version: 2, event_key: eventKey, at: now };
+const record = { version: 3, event_key: eventKey, at: now };
 if (TEST_MODE) flow.set(key, record);
 else flow.set(key, record, "persistent");
 

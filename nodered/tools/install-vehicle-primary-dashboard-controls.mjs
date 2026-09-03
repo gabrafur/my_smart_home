@@ -443,6 +443,59 @@ removeNode("77cf2dfe4ff36964");
 removeNode("684feca0f1585885");
 
 const normalizer = required("092625f2eb5cc156");
+const legacyObservedAt = `function observedAt(entity) {
+    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? "");
+    return Number.isFinite(value) ? value : null;
+}`;
+const semanticObservedAt = `function observedAt(entity) {
+    const locationObservedAt = Date.parse(
+        entity?.attributes?.location_observed_at ?? ""
+    );
+    if (Number.isFinite(locationObservedAt)) return locationObservedAt;
+    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? "");
+    return Number.isFinite(value) ? value : null;
+}`;
+if (normalizer.func.includes(legacyObservedAt)) {
+  normalizer.func = normalizer.func.replace(
+    legacyObservedAt,
+    semanticObservedAt,
+  );
+}
+if (!normalizer.func.includes("entity?.attributes?.location_observed_at")) {
+  throw new Error("Timestamp semântico de localização não foi instalado");
+}
+
+const legacyArrivalDedupe = `    const eventAt = vehicle_primary.updated_at ?? Date.now();
+    const key = ["vehicle_primary", arrival.payload.arrival_stage, triggerState ?? "?", eventAt].join(":");
+    const previousAt = Number(recovery.last_arrival_at ?? 0);
+    const duplicate = recovery.last_arrival_key === key && previousAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - previousAt < 10 * 60 * 1000;
+    if (duplicate) arrival = null;
+    else {
+        recovery.last_arrival_key = key;
+        recovery.last_arrival_at = Date.now();
+    }`;
+const stableArrivalDedupe = `    const stage = arrival.payload.arrival_stage;
+    const key = ["vehicle_primary", stage].join(":");
+    const previousAt = Number(recovery.last_arrival_at ?? 0);
+    const previousKey = String(recovery.last_arrival_key ?? "");
+    const duplicate =
+        (previousKey === key || previousKey.startsWith(\`\${key}:\`)) &&
+        previousAt <= Date.now() + FUTURE_TOLERANCE_MS &&
+        Date.now() - previousAt < 10 * 60 * 1000;
+    if (duplicate) arrival = null;
+    else {
+        recovery.last_arrival_key = key;
+        recovery.last_arrival_at = Date.now();
+    }`;
+if (normalizer.func.includes(legacyArrivalDedupe)) {
+  normalizer.func = normalizer.func.replace(
+    legacyArrivalDedupe,
+    stableArrivalDedupe,
+  );
+}
+if (!normalizer.func.includes("previousKey.startsWith(`${key}:`)")) {
+  throw new Error("Deduplicação estável de chegada não foi instalada");
+}
 const locationOrTelemetryEvent = required("46c2142f93cfc3e1");
 locationOrTelemetryEvent.name = "Localização ou telemetria do vehicle_primary mudou";
 locationOrTelemetryEvent.entities = {

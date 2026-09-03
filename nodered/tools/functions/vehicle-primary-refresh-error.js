@@ -1,10 +1,12 @@
 const source = String(msg.error?.source?.name ?? "unknown")
-    .replace(/[^a-zA-Z0-9 _-]/g, "");
+    .replace(/[^\p{L}\p{N} _-]/gu, "");
 const message = String(msg.error?.message ?? "unknown")
     .replace(/[\r\n]+/g, " ")
     .slice(0, 240);
 const failureClass = /service\s+kia_uvo\.update\s+not\s+found/i.test(message)
     ? "integration_unavailable"
+    : /provider denied|backoff is active|\b403\b.*\bForbidden\b/i.test(message)
+    ? "provider_backoff"
     : /(?:401|unauthori[sz]ed|authentic)/i.test(message)
     ? "authentication"
     : /(?:timeout|timed out|readtimeout)/i.test(message)
@@ -24,6 +26,7 @@ const failureLabels = {
     authentication: "autenticação",
     timeout: "tempo esgotado",
     concurrent_request_coalesced: "requisição concorrente",
+    provider_backoff: "acesso temporariamente recusado pelo provedor",
     api_error: "erro da API"
 };
 const intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]

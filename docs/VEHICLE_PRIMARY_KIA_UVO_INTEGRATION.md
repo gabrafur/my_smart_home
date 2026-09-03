@@ -93,6 +93,14 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   retry de setup do Home Assistant, portanto um novo coordinator nao contorna
   o prazo. Uma leitura posterior bem-sucedida zera o contador. O erro nao
   dispara uma segunda leitura de fallback nem produz traceback por minuto.
+- HTTP 403 do backend brasileiro segue a mesma contenção, inclusive em wake,
+  releitura de cache e histórico de viagens. O cliente BR de upstream engole
+  falhas de `/tripinfo`; a camada local as torna observáveis antes de publicar
+  novamente o coordinator. Assim, uma recusa do provedor não pode ser tratada
+  como sucesso nem formar um ciclo de chamadas a partir das entidades
+  republicadas. Se o corpo 403 identificar especificamente `resCode=4002`, o
+  registro controlado de `deviceId` ocorre uma vez e a chamada original é
+  repetida antes de aplicar backoff.
 - A API 4.27.2 moveu a troca de refresh token para uma implementacao generica
   que espera atributos ausentes no cliente BR e prefixa `Bearer` onde o backend
   brasileiro espera o token cru. A compatibilidade local fornece os endpoints
@@ -150,6 +158,10 @@ manual explicito pode antecipar prazo ou janela. O aceite estende
 `next_allowed_at` pelo intervalo selecionado depois da conclusao da chamada.
 Uma evidencia nova posterior pode confirmar sucesso, mas nunca encurta esse
 deadline para o instante do despacho.
+Chegadas do veículo usam `location_observed_at`, e não o `last_updated` da
+entidade republicada, como identidade temporal. Durante dez minutos, a mesma
+etapa de chegada pode produzir no máximo um wake e uma atualização de viagens;
+uma transição real de `approach` para `home` continua sendo um novo estágio.
 `request_in_flight`, seu lease e `next_allowed_at` sobrevivem a restart. Erros
 inesperados sao classificados pelo catch do Node-RED, liberam o lock logico e
 mantem o deadline. O resultado BR esperado em que o wake foi aceito mas o

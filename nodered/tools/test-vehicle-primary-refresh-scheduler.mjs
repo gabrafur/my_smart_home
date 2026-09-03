@@ -368,6 +368,39 @@ scenario("06 chegada e movimento entram no coordenador", () => {
   }));
 });
 
+scenario("06a republicação da mesma chegada não repete side effects", () => {
+  const store = memory();
+  const first = execute(code.arrival, {
+    now: DAY,
+    store,
+    msg: {
+      payload: {
+        kind: "arrival",
+        source: "vehicle_primary",
+        arrival_source_type: "vehicle_primary",
+        arrival_stage: "home",
+        event_at: DAY,
+      },
+    },
+  });
+  assert(first?.[1]);
+
+  const duplicate = execute(code.arrival, {
+    now: DAY + 1_000,
+    store,
+    msg: {
+      payload: {
+        kind: "arrival",
+        source: "vehicle_primary",
+        arrival_source_type: "vehicle_primary",
+        arrival_stage: "home",
+        event_at: DAY + 1_000,
+      },
+    },
+  });
+  assert.equal(duplicate, null);
+});
+
 scenario("07 recovery com entidade stale", () => {
   const store = memory({ vehicle_primary_context_v1: { ready: false, stale: true } });
   assert(coordinator(store, NIGHT, {
@@ -1175,6 +1208,33 @@ scenario("41 mudança real de classe de falha gera novo alerta", () => {
     },
   });
   assert.equal(duplicate, null);
+});
+
+scenario("41a HTTP 403 é identificado como backoff do provedor", () => {
+  const store = memory({
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      next_allowed_at: DAY + 15 * 60_000,
+      interval_ms: 15 * 60_000,
+    },
+  });
+  const notification = execute(code.error, {
+    now: DAY,
+    store,
+    msg: {
+      error: {
+        source: { name: "Forçar refresh do vehicle_primary" },
+        message:
+          "HomeAssistantError: Bluelink provider denied vehicle refresh; " +
+          "403 Client Error: Forbidden",
+      },
+    },
+  });
+  assert(notification);
+  assert.equal(store.get(KEY).last_failure_class, "provider_backoff");
+  assert.match(notification.alert.message, /temporariamente recusado/);
+  assert.match(notification.alert.message, /Forçar refresh/);
 });
 
 scenario("42 recuperação limpa detalhes e fecha alerta persistente", () => {

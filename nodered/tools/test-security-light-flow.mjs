@@ -272,6 +272,42 @@ scenario("09 vehicle_primary chegando encerra viagem e publica chegada", () => {
   );
 });
 
+scenario("09a republicação interna não recria a mesma chegada", () => {
+  const flow = memoryFlow({
+    vehicle_primary_arrival_armed: true,
+    vehicle_primary_in_use: true,
+  });
+  const observedAt = new Date(Date.now() - 60_000).toISOString();
+  const firstInput = vehicle_primaryInput({
+    previous: "chegando",
+    current: "chegando",
+    distance: 200,
+  });
+  firstInput.payload.vehicle_primary.attributes.location_observed_at = observedAt;
+  const [, firstArrival] = run(
+    "vehicle_primary_normalize",
+    firstInput,
+    flow,
+    geoEnv,
+  );
+  assert(firstArrival);
+
+  const replayInput = vehicle_primaryInput({
+    previous: "chegando",
+    current: "chegando",
+    distance: 200,
+    changed: new Date(Date.now() + 1_000).toISOString(),
+  });
+  replayInput.payload.vehicle_primary.attributes.location_observed_at = observedAt;
+  const [, duplicateArrival] = run(
+    "vehicle_primary_normalize",
+    replayInput,
+    flow,
+    geoEnv,
+  );
+  assert.equal(duplicateArrival, null);
+});
+
 scenario("10 vehicle_primary desligado ao chegar", () => {
   const result = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "turn_off", current: "home", distance: 20, engine: "off", lock: "unlocked" }), memoryFlow({ vehicle_primary_in_use: true }), geoEnv)[0];
   assert.equal(result.payload.context.in_use, false);
@@ -790,6 +826,6 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
   );
 });
 
-assert.equal(passed.length, 41);
+assert.equal(passed.length, 42);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

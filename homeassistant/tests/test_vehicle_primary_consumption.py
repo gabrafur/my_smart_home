@@ -600,6 +600,18 @@ class HyundaiBlueLinkApiBR:
                 return self.login(token.username, token.password, token.pin)
         return SimpleNamespace(access_token="Bearer refreshed-token")
 
+    def update_day_trip_info(self, token, vehicle, yyyymmdd_string):
+        del token, vehicle, yyyymmdd_string
+        response = self.session.post(
+            self._build_api_url("/spa/vehicles/vehicle-1/tripinfo")
+        )
+        try:
+            response.raise_for_status()
+        except Exception:
+            # Mirrors the upstream BR client, which logs and swallows errors.
+            return None
+        return response.json()
+
 
 class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
     def test_refresh_rate_limit_does_not_fall_back_to_full_login(self):
@@ -731,6 +743,64 @@ class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
         assert retry[2]["json"]["deviceId"] == "registered-device"
         assert api.ccsp_application_id.endswith("a2df127d73b0")
         assert api.api_headers["User-Agent"].endswith("_CCS_APP_AOS")
+
+    def test_invalid_device_in_http_403_is_registered_and_retried_once(self):
+        api = HyundaiBlueLinkApiBR(
+            [
+                FakeResponse(403, {"retCode": "F", "resCode": "4002"}),
+                FakeResponse(
+                    200,
+                    {
+                        "retCode": "S",
+                        "resCode": "0000",
+                        "resMsg": {"deviceId": "registered-device"},
+                    },
+                ),
+                FakeResponse(200, {"retCode": "S", "resCode": "0000"}),
+            ]
+        )
+        token = SimpleNamespace(device_id="legacy-device")
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(api=api, token=token)
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+        response = api.session.get(
+            "https://example.invalid/api/v1/spa/vehicles",
+            headers={"ccsp-device-id": "legacy-device"},
+        )
+
+        assert response.status_code == 200
+        assert token.device_id == "registered-device"
+        assert len(api.session.requests) == 3
+
+    def test_trip_info_http_403_is_not_swallowed_by_upstream_client(self):
+        coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]
+        api = HyundaiBlueLinkApiBR(
+            [FakeResponse(403, {"retCode": "F", "resCode": "5000"})]
+        )
+        coordinator = SimpleNamespace(
+            vehicle_manager=SimpleNamespace(
+                api=api,
+                token=SimpleNamespace(device_id="registered-device"),
+            )
+        )
+
+        HyundaiKiaConnectDataUpdateCoordinator._install_br_client_compatibility(
+            coordinator
+        )
+
+        with self.assertRaisesRegex(
+            coordinator_module.RateLimitingError,
+            "HTTP 403",
+        ):
+            api.update_day_trip_info(
+                coordinator.vehicle_manager.token,
+                SimpleNamespace(),
+                "20260903",
+            )
 
     def test_other_bad_request_is_not_registered_or_retried(self):
         api = HyundaiBlueLinkApiBR(
@@ -1025,6 +1095,66 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
                 coordinator, VEHICLE_ID
             )
         assert calls == ["wake"]
+
+    async def test_force_refresh_http_403_enters_backoff_without_cached_fallback(self):
+        calls = []
+
+        class Manager:
+            api = HyundaiBlueLinkApiBR([])
+            vehicles = {VEHICLE_ID: SimpleNamespace(last_updated_at=None)}
+
+            @staticmethod
+            def force_refresh_vehicle_state(_vehicle_id):
+                calls.append("wake")
+                raise RuntimeError("403 Client Error: Forbidden")
+
+            @staticmethod
+            def update_vehicle_with_cached_state(_vehicle_id):
+                calls.append("cache")
+
+        class Hass:
+            @staticmethod
+            async def async_add_executor_job(callback, *args):
+                return callback(*args)
+
+        async def no_op():
+            return None
+
+        coordinator = SimpleNamespace(
+            hass=Hass(),
+            vehicle_manager=Manager(),
+            _force_refresh_lock=asyncio.Lock(),
+            _cache_refresh_lock=asyncio.Lock(),
+            _br_rate_limit_key="force-refresh-forbidden-test",
+            async_check_and_refresh_token=no_op,
+            data={"cached": True},
+            async_set_updated_data=lambda _data: None,
+        )
+        for method in (
+            "_br_rate_limit_remaining_seconds",
+            "_record_br_rate_limit",
+            "_raise_if_br_rate_limited",
+        ):
+            setattr(
+                coordinator,
+                method,
+                MethodType(
+                    getattr(HyundaiKiaConnectDataUpdateCoordinator, method),
+                    coordinator,
+                ),
+            )
+
+        with self.assertRaisesRegex(Exception, "provider denied"):
+            await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                coordinator, VEHICLE_ID
+            )
+        assert calls == ["wake"]
+        assert (
+            HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                coordinator
+            )
+            > 0
+        )
 
     async def test_br_rate_limit_backoff_survives_coordinator_restart(self):
         coordinator_module = sys.modules["custom_components.kia_uvo.coordinator"]

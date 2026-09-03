@@ -355,6 +355,14 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 f"Bluelink rate limit backoff is active for {remaining} seconds"
             )
 
+    @staticmethod
+    def _is_br_provider_denied(err: Exception) -> bool:
+        """Return whether the Brazilian provider rejected access with HTTP 403."""
+        response = getattr(err, "response", None)
+        if getattr(response, "status_code", None) == 403:
+            return True
+        return bool(re.search(r"\b403\b.*\bForbidden\b", str(err), re.IGNORECASE))
+
     async def _async_update_data(self):
         """Read service cache without competing with a real vehicle wake."""
         if self._force_refresh_lock.locked():
@@ -436,6 +444,17 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 retry_after=delay,
             ) from err
         except Exception as err:
+            if (
+                type(self.vehicle_manager.api).__name__ == "HyundaiBlueLinkApiBR"
+                and HyundaiKiaConnectDataUpdateCoordinator._is_br_provider_denied(err)
+            ):
+                delay = HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(
+                    self
+                )
+                raise UpdateFailed(
+                    "Bluelink provider denied cached polling; requests paused",
+                    retry_after=delay,
+                ) from err
             _LOGGER.exception("Cached vehicle update failed")
             raise UpdateFailed(
                 "Error reading Hyundai/Kia Connect cached state; will retry",
@@ -455,6 +474,14 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         endpoint. Odometer movement is the authoritative signal that a new
         trip can exist, including trips that do not end at home.
         """
+        if (
+            type(getattr(self.vehicle_manager, "api", None)).__name__
+            == "HyundaiBlueLinkApiBR"
+            and HyundaiKiaConnectDataUpdateCoordinator._br_rate_limit_remaining_seconds(
+                self
+            )
+        ):
+            return
         for vehicle_id, vehicle in self.vehicle_manager.vehicles.items():
             odometer = getattr(vehicle, "_odometer", None)
             value = odometer[0] if isinstance(odometer, tuple) else odometer
@@ -599,6 +626,19 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 raise HomeAssistantError(
                     "Bluelink rate limit reached; cached polling paused"
                 ) from err
+            except Exception as err:
+                if (
+                    type(self.vehicle_manager.api).__name__
+                    == "HyundaiBlueLinkApiBR"
+                    and HyundaiKiaConnectDataUpdateCoordinator._is_br_provider_denied(
+                        err
+                    )
+                ):
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                    raise HomeAssistantError(
+                        "Bluelink provider denied cached polling; requests paused"
+                    ) from err
+                raise
         HyundaiKiaConnectDataUpdateCoordinator._clear_br_rate_limit(self)
         self.async_set_updated_data(self.data)
 
@@ -673,6 +713,17 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     self.async_set_updated_data(self.data)
                     raise HomeAssistantError(
                         "Bluelink rate limit reached; vehicle refresh paused"
+                    ) from err
+                if (
+                    type(api).__name__ == "HyundaiBlueLinkApiBR"
+                    and HyundaiKiaConnectDataUpdateCoordinator._is_br_provider_denied(
+                        err
+                    )
+                ):
+                    HyundaiKiaConnectDataUpdateCoordinator._record_br_rate_limit(self)
+                    self.async_set_updated_data(self.data)
+                    raise HomeAssistantError(
+                        "Bluelink provider denied vehicle refresh; requests paused"
                     ) from err
                 no_fresh_data = (
                     type(api).__name__ == "HyundaiBlueLinkApiBR"
@@ -1209,7 +1260,9 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         api.api_headers["User-Agent"] = BR_CURRENT_USER_AGENT
         registration_lock = threading.Lock()
         refresh_context = threading.local()
+        request_context = threading.local()
         original_request = api.session.request
+        original_update_day_trip_info = getattr(api, "update_day_trip_info", None)
         coordinator = self
 
         # API 4.27.2 moved refresh-token exchange into ApiImplType1, whose
@@ -1281,7 +1334,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
             )
 
         def _is_invalid_device(response) -> bool:
-            if response.status_code != 400:
+            if response.status_code not in {400, 401, 403}:
                 return False
             try:
                 payload = response.json()
@@ -1400,6 +1453,8 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
                             retry_kwargs["json"] = request_payload
                         final_response = original_request(method, url, **retry_kwargs)
 
+            request_context.provider_denied = final_response.status_code == 403
+
             is_wake_request = (
                 str(method).upper() == "GET"
                 and url.rstrip("/").endswith("/ccs2/carstatus")
@@ -1441,6 +1496,28 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator):
         api.session.request = types.MethodType(
             _request_with_device_recovery, api.session
         )
+        if callable(original_update_day_trip_info):
+
+            def _update_day_trip_info_with_failure_propagation(
+                api_self, token, vehicle, yyyymmdd_string
+            ):
+                del api_self
+                request_context.provider_denied = False
+                result = original_update_day_trip_info(
+                    token,
+                    vehicle,
+                    yyyymmdd_string,
+                )
+                if getattr(request_context, "provider_denied", False):
+                    raise RateLimitingError(
+                        "Bluelink provider denied trip history request (HTTP 403)"
+                    )
+                return result
+
+            api.update_day_trip_info = types.MethodType(
+                _update_day_trip_info_with_failure_propagation,
+                api,
+            )
 
     def _install_br_parser_compatibility(self) -> None:
         """Preserve local BR parsing compatibility on top of API 4.26.5.
