@@ -216,6 +216,54 @@ const bypassOn = execute(bypassFunction, {
 assert.equal(bypassOn[0], null, "teste não deve publicar discovery MQTT");
 assert.equal(gateFlow.get("security_light_engine_bypass_enabled__test"), true);
 
+const manualOwnershipFlow = memory({
+  security_light_engine_bypass_enabled: true,
+});
+execute(bypassFunction, {
+  payload: JSON.stringify({
+    requested_state: "ON",
+    source: "provider_backoff",
+  }),
+}, manualOwnershipFlow, shared);
+assert.equal(
+  manualOwnershipFlow.get("security_light_engine_bypass_automatic"),
+  undefined,
+  "um ON manual existente não pode virar propriedade da automação",
+);
+assert.equal(execute(bypassFunction, {
+  payload: JSON.stringify({
+    requested_state: "OFF",
+    source: "provider_recovered",
+  }),
+}, manualOwnershipFlow, shared), null);
+assert.equal(
+  manualOwnershipFlow.get("security_light_engine_bypass_enabled"),
+  true,
+  "a recuperação da API deve preservar o ON escolhido pelo usuário",
+);
+
+const automaticOwnershipFlow = memory({
+  security_light_engine_bypass_enabled: false,
+});
+const automaticOn = execute(bypassFunction, {
+  payload: JSON.stringify({
+    requested_state: "ON",
+    source: "provider_backoff",
+  }),
+}, automaticOwnershipFlow, shared);
+assert(automaticOn[0], "falha da API deve publicar o bypass ON");
+assert.equal(automaticOwnershipFlow.get("security_light_engine_bypass_enabled"), true);
+assert.equal(automaticOwnershipFlow.get("security_light_engine_bypass_automatic"), true);
+const automaticOff = execute(bypassFunction, {
+  payload: JSON.stringify({
+    requested_state: "OFF",
+    source: "provider_recovered",
+  }),
+}, automaticOwnershipFlow, shared);
+assert(automaticOff[0], "recuperação deve publicar OFF quando o ON foi automático");
+assert.equal(automaticOwnershipFlow.get("security_light_engine_bypass_enabled"), false);
+assert.equal(automaticOwnershipFlow.get("security_light_engine_bypass_automatic"), false);
+
 assert.equal(execute(gate, {
   _location_test: true,
   payload: {

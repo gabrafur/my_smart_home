@@ -10,6 +10,7 @@ const IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;
 const CACHE_PROBE_SETTLE_MS = 15 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
 const MAX_WAKE_CONFIRMATION_MS = 20 * 60 * 1000;
+const MAX_PROVIDER_BACKOFF_MS = 6 * 60 * 60 * 1000;
 const key = TEST_MODE
     ? "security_vehicle_primary_refresh_v1__test"
     : "security_vehicle_primary_refresh_v1";
@@ -69,7 +70,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
 }
 
 const previousStateVersion = Number(state.version ?? 0);
-state.version = 11;
+state.version = 12;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -78,7 +79,7 @@ state.last_success_at = Number.isFinite(state.last_success_at) &&
         ? state.last_success_at
         : 0;
 state.next_allowed_at = Number.isFinite(state.next_allowed_at) &&
-    state.next_allowed_at <= now + HOME_INTERVAL_MS + FUTURE_TOLERANCE_MS
+    state.next_allowed_at <= now + MAX_PROVIDER_BACKOFF_MS + FUTURE_TOLERANCE_MS
         ? state.next_allowed_at
         : 0;
 state.last_attempt_at = Number.isFinite(state.last_attempt_at) &&

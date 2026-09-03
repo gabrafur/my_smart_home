@@ -235,12 +235,15 @@ ocorrer às 17:35. Chegadas que não representam uma pessoa permanecendo na zona
 de aproximação conservam a janela curta de recovery de 2 minutos.
 
 O replay exige luminosidade ready e `below_horizon`. O gate normal continua
-exigindo `in_use=true` e motor `on` atual, válido e não stale. A chave manual
+exigindo `in_use=true` e motor `on` atual, válido e não stale. A chave
 `switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada`
 oferece uma alternativa somente quando
 a leitura específica do motor está stale, inválida ou sem readiness. Mesmo com
 a chave ligada, um motor `off` recente e confiável continua bloqueando o
-refletor. A intenção só é removida depois que o despacho de acendimento passa
+refletor. O Node-RED liga a chave automaticamente enquanto a API do veículo
+está em backoff. Se ela já estava ligada manualmente, a automação não assume a
+posse nem a desliga na recuperação; um `ON` automático só volta para `OFF`
+depois que a API confirma recuperação. A intenção só é removida depois que o despacho de acendimento passa
 por todos os gates, ou quando uma das condições de cancelamento ocorre.
 
 O gate não usa apenas a leitura ao vivo do motor porque o backend brasileiro
@@ -263,7 +266,7 @@ verdadeiras:
 1. há um evento `security.arrival.v1`;
 2. `sun.sun` está `below_horizon`;
 3. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`, **ou** o
-   bypass manual está ligado e a telemetria do motor está comprovadamente não
+   bypass manual ou automático está ligado e a telemetria do motor está comprovadamente não
    confiável;
 4. pessoas, sol e estado físico do refletor estão ready/reconciliados; o
    readiness do motor é obrigatório no caminho normal e dispensado apenas pelo

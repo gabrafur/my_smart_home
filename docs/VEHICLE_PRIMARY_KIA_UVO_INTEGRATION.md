@@ -201,7 +201,12 @@ oferece
 `switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada`.
 Essa chave só afeta a
 iluminação de chegada quando a leitura do motor está stale/inválida e nunca
-ignora um `OFF` recente e válido. Na
+ignora um `OFF` recente e válido. O prazo publicado pelo provedor é também
+sincronizado com o coordenador persistente do Node-RED, inclusive no startup,
+para impedir novas chamadas automáticas antes do deadline. Durante esse estado,
+o bypass do motor é ligado automaticamente. A recuperação só o desliga quando
+o próprio fluxo havia feito a ativação; um `ON` manual preexistente ou posterior
+é preservado. Na
 primeira detecção de cada incidente, o coordenador envia um push deduplicado a
 `resident_primary` e cria uma notificação persistente no Home Assistant. A
 mensagem identifica o endpoint e a etapa do fluxo que falhou. Uma mudança real
@@ -213,7 +218,8 @@ releitura de cache segue o ciclo normal.
 O backoff brasileiro também publica o evento `kia_uvo_api_retry` com o deadline
 UTC calculado pela própria integração. O sensor de timestamp
 `sensor.vehicle_primary_api_retry_at` restaura esse prazo mesmo quando o config
-entry não conclui o carregamento; por isso o card mostra o tempo do retry da API,
+entry não conclui o carregamento; o Node-RED também consome esse estado inicial
+e não tenta reler o serviço ausente durante o backoff. Por isso o card mostra o tempo do retry da API,
 e não o timer independente do Node-RED. Um acesso confirmado limpa o deadline e
 o card volta às mensagens normais do ciclo de atualização.
 O nível consecutivo e o deadline também ficam no `Store` privado do Home

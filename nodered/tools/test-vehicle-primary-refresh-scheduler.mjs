@@ -34,6 +34,7 @@ const code = {
   accepted: source("vehicle-primary-refresh-accepted.js"),
   cacheProbeAccepted: source("vehicle-primary-cache-probe-accepted.js"),
   error: source("vehicle-primary-refresh-error.js"),
+  providerBackoffSync: source("vehicle-primary-provider-backoff-sync.js"),
   telemetry: source("vehicle-primary-refresh-telemetry.js"),
   dispatchGuard: source("vehicle-primary-refresh-dispatch-guard.js"),
   cacheProbeGuard: source("vehicle-primary-cache-probe-dispatch-guard.js"),
@@ -65,7 +66,7 @@ function memory(initial = {}) {
   };
 }
 
-function execute(body, { msg, store, now, logs = [] }) {
+function execute(body, { msg, store, now, logs = [], warnings = [], errors = [] }) {
   const RealDate = Date;
   class FixedDate extends RealDate {
     constructor(value) { super(value === undefined ? now : value); }
@@ -85,8 +86,8 @@ function execute(body, { msg, store, now, logs = [] }) {
     },
     node: {
       log(value) { logs.push(String(value)); },
-      warn(value) { logs.push(String(value)); },
-      error(value) { logs.push(String(value)); },
+      warn(value) { warnings.push(String(value)); logs.push(String(value)); },
+      error(value) { errors.push(String(value)); logs.push(String(value)); },
       status() {},
     },
     setTimeout,
@@ -1072,6 +1073,61 @@ scenario("37 endpoint ausente informa serviço e etapa no alerta", () => {
   assert.equal(result.notification.id, "vehicle_primary_refresh_failed");
 });
 
+scenario("37a deadline do provedor bloqueia chamadas automáticas após restart", () => {
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY),
+    [KEY]: { attempts: 2 },
+  });
+  const retryAt = DAY + 2 * 60 * 60_000;
+  const bypassCommand = execute(code.providerBackoffSync, {
+    now: DAY,
+    store,
+    msg: {
+      payload: {
+        state: new Date(retryAt).toISOString(),
+        attributes: { status: "rate_limited" },
+      },
+    },
+  });
+
+  const state = store.get(KEY);
+  assert.equal(state.provider_retry_at, retryAt);
+  assert.equal(state.next_allowed_at, retryAt);
+  assert.equal(state.last_failure_class, "provider_backoff");
+  assert.equal(coordinator(store, DAY + 1_000, { anyone_away: true }), null);
+  assert.equal(store.get(KEY).state, "backoff");
+  assert.equal(bypassCommand.topic, "homeassistant/vehicle_primary/engine_bypass/set");
+  assert.deepEqual(JSON.parse(bypassCommand.payload), {
+    requested_state: "ON",
+    source: "provider_backoff",
+  });
+});
+
+scenario("37b backoff esperado não reabre falha global do canvas", () => {
+  const store = memory({ [KEY]: { interval_ms: 15 * 60_000 } });
+  const warnings = [];
+  const errors = [];
+  execute(code.error, {
+    now: DAY,
+    store,
+    warnings,
+    errors,
+    msg: {
+      error: {
+        source: { name: "Atualizar viagens do dia após chegada" },
+        message: "HomeAssistantError: Bluelink rate limit backoff is active",
+      },
+    },
+  });
+  assert.equal(errors.length, 0);
+  assert.equal(warnings.length, 1);
+  assert.equal(store.get(KEY).last_failure_class, "provider_backoff");
+  assert.equal(
+    store.get(KEY).failure_endpoint,
+    "public_bindings.call (viagens do dia)",
+  );
+});
+
 scenario("38 sucesso semântico mantém 30 minutos com ambos em casa", () => {
   const requestAt = DAY - 5 * 60_000;
   const baseline = DAY - 20 * 60_000;
@@ -1161,7 +1217,7 @@ scenario("40 versão 9 reabre sucesso correlacionado muitas horas depois", () =>
   assert.equal(result[0], null);
   assert(result[4]);
   const state = store.get(KEY);
-  assert.equal(state.version, 11);
+  assert.equal(state.version, 12);
   assert.equal(state.awaiting_evidence, true);
   assert.equal(state.last_success_at, 0);
   assert.equal(state.last_failure_class, "no_fresh_data");

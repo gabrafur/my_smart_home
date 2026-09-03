@@ -25,6 +25,10 @@ Uma recusa HTTP 403 também entra nesse mesmo backoff em todos os endpoints. O
 histórico opcional de viagens deve propagar a recusa mesmo que a biblioteca de
 upstream a registre e retorne normalmente; republicações internas nunca podem
 reabrir a mesma etapa de chegada nem formar um ciclo de chamadas.
+O Node-RED sincroniza o deadline publicado pelo Home Assistant inclusive após
+restart e liga automaticamente o bypass restrito do motor durante a queda da
+API. A recuperação desliga somente uma ativação pertencente à automação; uma
+escolha manual já ligada permanece ligada.
 Na biblioteca 4.27.2, o refresh token genérico não conhece os atributos e o
 formato de bearer do cliente BR. A camada local adapta esse contrato e impede
 que um `5091` no refresh dispare login completo na mesma tentativa.

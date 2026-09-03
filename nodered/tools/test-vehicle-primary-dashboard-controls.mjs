@@ -52,6 +52,7 @@ function runtime(code, { msg, values = {}, now }) {
 const coordinator = source("vehicle-primary-refresh-coordinator.js");
 const manual = source("vehicle-primary-manual-refresh.js");
 const telemetry = source("vehicle-primary-refresh-telemetry.js");
+const providerBackoffSync = source("vehicle-primary-provider-backoff-sync.js");
 const remoteCommandMonitor = source("vehicle-primary-remote-command-monitor.js");
 const remoteCommandGuard = source("vehicle-primary-remote-command-dispatch-guard.js");
 const now = Date.parse("2026-08-17T03:00:00Z");
@@ -395,6 +396,34 @@ const accepted = flows.find(
 );
 assert.match(accepted.func, /aceitação da chamada/);
 assert.match(accepted.func, /awaiting_evidence/);
+
+const providerBackoffState = flows.find(
+  (node) => node.id === "vehicle_primary_provider_backoff_state_v1",
+);
+assert.deepEqual(providerBackoffState.entities.entity, [
+  "sensor.vehicle_primary_api_retry_at",
+]);
+assert.equal(providerBackoffState.outputInitially, true);
+assert.deepEqual(providerBackoffState.wires, [[
+  "vehicle_primary_provider_backoff_sync_v1",
+]]);
+const providerBackoffNode = flows.find(
+  (node) => node.id === "vehicle_primary_provider_backoff_sync_v1",
+);
+assert.equal(providerBackoffNode.func, providerBackoffSync.trimEnd());
+assert.deepEqual(providerBackoffNode.wires, [[
+  "vehicle_primary_provider_bypass_command_v1",
+]]);
+const providerBypassCommand = flows.find(
+  (node) => node.id === "vehicle_primary_provider_bypass_command_v1",
+);
+assert.equal(providerBypassCommand.type, "mqtt out");
+assert.equal(providerBypassCommand.broker, "721c47f31046b8bc");
+
+const refreshErrorCatch = flows.find(
+  (node) => node.id === "vehicle_primary_api_error_catch_v1",
+);
+assert(refreshErrorCatch.scope.includes("16396e34ff530ac7"));
 
 const refreshNotification = flows.find(
   (node) => node.id === "vehicle_primary_refresh_notify_primary_v1",

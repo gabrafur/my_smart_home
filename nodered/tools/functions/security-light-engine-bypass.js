@@ -5,6 +5,9 @@ const TEST_MODE =
 const STATE_KEY = TEST_MODE
     ? "security_light_engine_bypass_enabled__test"
     : "security_light_engine_bypass_enabled";
+const AUTOMATIC_KEY = TEST_MODE
+    ? "security_light_engine_bypass_automatic__test"
+    : "security_light_engine_bypass_automatic";
 const PERSISTENT = "persistent";
 
 function getState() {
@@ -19,18 +22,56 @@ function setState(value) {
         : flow.set(STATE_KEY, value, PERSISTENT);
 }
 
-const raw = msg.payload?.requested_state ?? msg.payload;
+function getAutomatic() {
+    return TEST_MODE
+        ? flow.get(AUTOMATIC_KEY) === true
+        : flow.get(AUTOMATIC_KEY, PERSISTENT) === true;
+}
+
+function setAutomatic(value) {
+    return TEST_MODE
+        ? flow.set(AUTOMATIC_KEY, value)
+        : flow.set(AUTOMATIC_KEY, value, PERSISTENT);
+}
+
+let commandPayload = msg.payload;
+if (
+    typeof commandPayload === "string" &&
+    commandPayload.trim().startsWith("{")
+) {
+    try {
+        commandPayload = JSON.parse(commandPayload);
+    } catch (_err) {
+        commandPayload = msg.payload;
+    }
+}
+const raw = commandPayload?.requested_state ?? commandPayload;
 const command = String(raw ?? "").trim().toUpperCase();
 const startup = command === "STARTUP";
+const source = String(commandPayload?.source ?? "dashboard");
+const providerActivation = source === "provider_backoff";
+const providerRecovery = source === "provider_recovered";
 
 let enabled;
 if (startup) {
     enabled = getState() === true;
     if (getState() === undefined) setState(false);
+} else if (providerActivation) {
+    const wasEnabled = getState() === true;
+    enabled = true;
+    // Se já estava ON, foi uma escolha manual e não deve ser desfeita pela
+    // recuperação posterior da API.
+    if (!wasEnabled) setAutomatic(true);
+} else if (providerRecovery) {
+    if (!getAutomatic()) return null;
+    enabled = false;
+    setAutomatic(false);
 } else if (["ON", "TRUE", "1"].includes(command)) {
     enabled = true;
+    setAutomatic(false);
 } else if (["OFF", "FALSE", "0"].includes(command)) {
     enabled = false;
+    setAutomatic(false);
 } else {
     node.warn(
         "iluminacao_seguranca: comando inválido para o bypass manual do motor"
@@ -40,13 +81,16 @@ if (startup) {
 
 const previous = getState() === true;
 setState(enabled);
+const automatic = getAutomatic();
 
 if (previous !== enabled || startup) {
     node.status({
         fill: enabled ? "yellow" : "grey",
         shape: enabled ? "dot" : "ring",
         text: enabled
-            ? "bypass manual do motor ATIVO"
+            ? (automatic
+                ? "bypass automático: API indisponível"
+                : "bypass manual do motor ATIVO")
             : "bypass manual do motor desligado"
     });
 }
@@ -54,7 +98,8 @@ if (previous !== enabled || startup) {
 if (!TEST_MODE && previous !== enabled) {
     if (enabled) {
         node.warn(
-            "iluminacao_seguranca: bypass manual do motor ativado; " +
+            "iluminacao_seguranca: bypass do motor ativado" +
+            (automatic ? " automaticamente pela indisponibilidade da API; " : "; ") +
             "só será aplicado enquanto a telemetria do motor estiver não confiável"
         );
     } else {
@@ -68,8 +113,9 @@ const reevaluate = {
     payload: {
         contract: "security.engine-bypass.v1",
         kind: "engine_bypass_context",
-        source: TEST_MODE ? "manual_test" : "dashboard",
+        source: TEST_MODE ? "manual_test" : source,
         enabled,
+        automatic,
         updated_at: Date.now(),
         test_mode: TEST_MODE
     }

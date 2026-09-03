@@ -1057,13 +1057,13 @@ manualIn.name = "Receber teste manual seguro";
 manualIn.wires = [[ids.dryRunTerminal]];
 
 const lightTab = required(ids.lightTab);
-lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em chegando com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON atual ou, exclusivamente quando o dado do motor estiver stale/inválido, o bypass manual persistente exposto no painel vehicle_primary. Um motor OFF atual e confiável nunca é ignorado. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.";
+lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em chegando com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON atual ou, exclusivamente quando o dado do motor estiver stale/inválido, o bypass persistente exposto no painel vehicle_primary. O bypass liga automaticamente durante indisponibilidade confirmada da API sem tomar posse de um ON manual, e um motor OFF atual e confiável nunca é ignorado. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.";
 
 upsert({
   id: ids.bypassGroup,
   type: "group",
   z: ids.lightTab,
-  name: "6. Bypass manual do motor (somente telemetria não confiável)",
+  name: "6. Bypass do motor (manual ou falha da API)",
   style: {
     label: true,
     "label-position": "nw",
@@ -1176,7 +1176,7 @@ upsert({
   type: "function",
   z: ids.lightTab,
   g: ids.bypassGroup,
-  name: "Persistir bypass e limitar uso ao dado não confiável",
+  name: "Persistir bypass manual/automático com posse segura",
   func: functionSource("security-light-engine-bypass.js"),
   outputs: 2,
   timeout: "",
@@ -1459,7 +1459,7 @@ group.w = 968;
 group.h = 402;
 
 const tab = required(ids.tab);
-tab.info = "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv13: a chegada pessoal em chegando permanece pendente enquanto a localização estiver recente; após escurecer, o replay aceita motor ON atual ou bypass manual somente para telemetria do motor não confiável. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.";
+tab.info = "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv14: a chegada pessoal em chegando permanece pendente enquanto a localização estiver recente; após escurecer, o replay aceita motor ON atual ou bypass manual/automático somente para telemetria do motor não confiável. O prazo de backoff da API bloqueia chamadas automáticas e liga o bypass sem tomar posse de um ON manual. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.";
 
 fs.writeFileSync(flowOutputUrl, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Controles manuais ON/OFF do vehicle_primary atualizados.");

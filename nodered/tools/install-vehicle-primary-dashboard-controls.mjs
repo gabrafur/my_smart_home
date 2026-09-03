@@ -935,9 +935,93 @@ Object.assign(errorLogger, {
 const errorCatch = required("vehicle_primary_api_error_catch_v1");
 Object.assign(errorCatch, {
   name: "Erros do refresh e cache do vehicle_primary",
-  scope: ["8907830bb7f6c40c", "vehicle_primary_cache_probe_call_v1"],
+  scope: [
+    "8907830bb7f6c40c",
+    "vehicle_primary_cache_probe_call_v1",
+    "16396e34ff530ac7",
+  ],
   x: 1240,
   y: 920,
+});
+
+upsert({
+  id: "vehicle_primary_provider_backoff_state_v1",
+  type: "server-state-changed",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Prazo de backoff do provedor",
+  server: "4126427d5e161a03",
+  version: 6,
+  outputs: 1,
+  exposeAsEntityConfig: "",
+  entities: {
+    entity: ["sensor.vehicle_primary_api_retry_at"],
+    substring: [],
+    regex: [],
+  },
+  outputInitially: true,
+  stateType: "str",
+  ifState: "",
+  ifStateType: "str",
+  ifStateOperator: "is",
+  outputOnlyOnStateChange: true,
+  for: "0",
+  forType: "num",
+  forUnits: "minutes",
+  ignorePrevStateNull: false,
+  ignorePrevStateUnknown: false,
+  ignorePrevStateUnavailable: false,
+  ignoreCurrentStateUnknown: false,
+  ignoreCurrentStateUnavailable: false,
+  outputProperties: [
+    {
+      property: "payload",
+      propertyType: "msg",
+      value: "",
+      valueType: "entityState",
+    },
+  ],
+  x: 365,
+  y: 1140,
+  wires: [["vehicle_primary_provider_backoff_sync_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_provider_backoff_sync_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Sincronizar backoff do provedor",
+  func: source("vehicle-primary-provider-backoff-sync.js"),
+  outputs: 1,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 730,
+  y: 1140,
+  wires: [["vehicle_primary_provider_bypass_command_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_provider_bypass_command_v1",
+  type: "mqtt out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Comandar bypass durante falha da API",
+  topic: "",
+  qos: "",
+  retain: "",
+  respTopic: "",
+  contentType: "",
+  userProps: "",
+  correl: "",
+  expiry: "",
+  broker: "721c47f31046b8bc",
+  x: 1040,
+  y: 1175,
+  wires: [],
 });
 
 upsert({
@@ -1620,10 +1704,13 @@ addToGroup(
   "vehicle_primary_refresh_notify_persistent_v1",
   "vehicle_primary_refresh_dismiss_persistent_v1",
   "vehicle_primary_refresh_notification_dry_run_out_v1",
+  "vehicle_primary_provider_backoff_state_v1",
+  "vehicle_primary_provider_backoff_sync_v1",
+  "vehicle_primary_provider_bypass_command_v1",
 );
 
 const refreshGroup = required("43a2bc9c218353ae");
-Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 602 });
+Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 618 });
 
 const manualTestGroup = required("5df25064f701ecd2");
 manualTestGroup.name = "5. Testes manuais — motor e localização sintéticos/cumulativos";

@@ -18,9 +18,12 @@ const key = "security_vehicle_primary_refresh_v1";
 const state = flow.get(key, "persistent") ?? {};
 const now = Date.now();
 const cacheProbeFailure = /cache|reler/i.test(source);
-const failedEndpoint = cacheProbeFailure
-    ? "kia_uvo.update (releitura do cache)"
-    : "public_bindings.call (wake do veículo)";
+const tripRefreshFailure = /viagens?|trip/i.test(source);
+const failedEndpoint = tripRefreshFailure
+    ? "public_bindings.call (viagens do dia)"
+    : cacheProbeFailure
+        ? "kia_uvo.update (releitura do cache)"
+        : "public_bindings.call (wake do veículo)";
 const failureNotificationKey = `${failureClass}|${failedEndpoint}`;
 const failureLabels = {
     authentication: "autenticação",
@@ -91,8 +94,15 @@ if (
     notification = msg;
 }
 flow.set(key, state, "persistent");
-node.error(
+const logMessage =
     "VEHICLE_PRIMARY_API_ERROR class=" + failureClass +
-    " source=" + source + " message=" + message
-);
+    " source=" + source + " message=" + message;
+if (failureClass === "provider_backoff") {
+    // A recusa 403 já foi convertida em backoff persistente e alerta
+    // deduplicado. Ela é um estado esperado do provedor, não uma nova falha
+    // de execução do canvas para o observador global voltar a notificar.
+    node.warn(logMessage);
+} else {
+    node.error(logMessage);
+}
 return notification;

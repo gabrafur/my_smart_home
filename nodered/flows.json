@@ -90,7 +90,7 @@
         "type": "tab",
         "label": "contexto_vehicle_primary",
         "disabled": false,
-        "info": "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv12: chegada preservada por até 2 min quando o motor ainda aparece OFF; replay somente após ON atual e válido. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.",
+        "info": "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv14: a chegada pessoal em chegando permanece pendente enquanto a localização estiver recente; após escurecer, o replay aceita motor ON atual ou bypass manual/automático somente para telemetria do motor não confiável. O prazo de backoff da API bloqueia chamadas automáticas e liga o bypass sem tomar posse de um ON manual. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.",
         "env": []
     },
     {
@@ -106,7 +106,7 @@
         "type": "tab",
         "label": "iluminacao_seguranca",
         "disabled": false,
-        "info": "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. Uma chegada de resident_primary ou resident_secondary é suficiente quando o motor atual do vehicle_primary está ON, mesmo que o tracker do veículo ainda não esteja em chegando. Testes sintéticos atravessam todos os gates e o lifecycle. Refletor, timers e demais dispositivos terminam em dry-run; quando o atuador está indisponível, somente os pushes identificados como TESTE são enviados para validar a entrega.",
+        "info": "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em chegando com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON atual ou, exclusivamente quando o dado do motor estiver stale/inválido, o bypass persistente exposto no painel vehicle_primary. O bypass liga automaticamente durante indisponibilidade confirmada da API sem tomar posse de um ON manual, e um motor OFF atual e confiável nunca é ignorado. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.",
         "env": []
     },
     {
@@ -1031,12 +1031,15 @@
             "vehicle_primary_cache_probe_call_v1",
             "vehicle_primary_cache_probe_accepted_v1",
             "vehicle_primary_refresh_notify_persistent_v1",
-            "vehicle_primary_refresh_dismiss_persistent_v1"
+            "vehicle_primary_refresh_dismiss_persistent_v1",
+            "vehicle_primary_provider_backoff_state_v1",
+            "vehicle_primary_provider_backoff_sync_v1",
+            "vehicle_primary_provider_bypass_command_v1"
         ],
         "x": 174,
         "y": 579,
         "w": 1662,
-        "h": 602
+        "h": 618
     },
     {
         "id": "5df25064f701ecd2",
@@ -1063,9 +1066,9 @@
             "3ad83e8d6897b983",
             "2ff281276fc1d020"
         ],
-        "x": 174,
+        "x": 184,
         "y": 1619,
-        "w": 992,
+        "w": 968,
         "h": 402
     },
     {
@@ -10050,7 +10053,7 @@
         "z": "c22d8b12055e87f7",
         "g": "43a2bc9c218353ae",
         "name": "Coordenar refresh do vehicle_primary",
-        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg.payload?.kind !== \"refresh_command\") return null;\n\nconst AWAY_INTERVAL_MS = 15 * 60 * 1000;\nconst HOME_INTERVAL_MS = 30 * 60 * 1000;\nconst IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;\nconst CACHE_PROBE_SETTLE_MS = 15 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst MAX_WAKE_CONFIRMATION_MS = 20 * 60 * 1000;\nconst key = TEST_MODE\n    ? \"security_vehicle_primary_refresh_v1__test\"\n    : \"security_vehicle_primary_refresh_v1\";\nconst nowCandidate = Number(msg.payload?.test_now);\nconst now = TEST_MODE && Number.isFinite(nowCandidate)\n    ? nowCandidate\n    : Date.now();\nconst vehicleContext = TEST_MODE\n    ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n    : flow.get(\"vehicle_primary_context_v1\") ?? {};\nconst peopleContext = TEST_MODE\n    ? flow.get(\"people_context_v1__test\") ?? {}\n    : flow.get(\"people_context_v1\") ?? {};\nconst residentPrimaryState = String(\n    msg.payload?.resident_primary_state ??\n    peopleContext.resident_primary?.state ??\n    \"\"\n).toLowerCase();\nconst residentSecondaryState = String(\n    msg.payload?.resident_secondary_state ??\n    peopleContext.resident_secondary?.state ??\n    \"\"\n).toLowerCase();\nconst residentStatesKnown =\n    residentPrimaryState.length > 0 && residentSecondaryState.length > 0;\nconst anyResidentAway =\n    msg.payload?.any_resident_away === true ||\n    peopleContext.any_tracker_away === true;\nconst bothResidentsHome =\n    residentPrimaryState === \"home\" &&\n    residentSecondaryState === \"home\" &&\n    !anyResidentAway;\nconst awayOrApproachingStates = new Set([\"not_home\", \"chegando\"]);\nconst anyoneAwayOrApproaching =\n    anyResidentAway ||\n    msg.payload?.anyone_away === true ||\n    peopleContext.anyone_away === true ||\n    awayOrApproachingStates.has(residentPrimaryState) ||\n    awayOrApproachingStates.has(residentSecondaryState);\nconst presenceIntervalMs = bothResidentsHome\n    ? HOME_INTERVAL_MS\n    : AWAY_INTERVAL_MS;\n\nfunction stateGet() {\n    return TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\n}\n\nfunction stateSet(value) {\n    return TEST_MODE\n        ? flow.set(key, value)\n        : flow.set(key, value, \"persistent\");\n}\n\nlet state = stateGet();\nif (!state || typeof state !== \"object\" || Array.isArray(state)) {\n    state = {};\n}\n\nconst previousStateVersion = Number(state.version ?? 0);\nstate.version = 11;\nstate.attempts = Number.isFinite(state.attempts)\n    ? Math.max(0, Math.min(5, state.attempts))\n    : 0;\nstate.last_success_at = Number.isFinite(state.last_success_at) &&\n    state.last_success_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_success_at\n        : 0;\nstate.next_allowed_at = Number.isFinite(state.next_allowed_at) &&\n    state.next_allowed_at <= now + HOME_INTERVAL_MS + FUTURE_TOLERANCE_MS\n        ? state.next_allowed_at\n        : 0;\nstate.last_attempt_at = Number.isFinite(state.last_attempt_at) &&\n    state.last_attempt_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_attempt_at\n        : 0;\nstate.last_request_at = Number.isFinite(state.last_request_at) &&\n    state.last_request_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_request_at\n        : state.last_attempt_at;\nstate.service_accepted_at = Number.isFinite(state.service_accepted_at) &&\n    state.service_accepted_at <= now + FUTURE_TOLERANCE_MS\n        ? state.service_accepted_at\n        : 0;\nconst contextReady =\n    msg.payload?.vehicle_primary_ready === true ||\n    vehicleContext.ready === true;\nconst derivedContextRecoveryNeeded =\n    msg.payload?.recovery_needed === true ||\n    msg.payload?.vehicle_primary_ready === false ||\n    contextReady !== true;\nconst lastSemanticSuccessAt = Number(state.last_success_at ?? 0);\nconst semanticWakeHealthy =\n    state.awaiting_evidence !== true &&\n    state.last_failure_class == null &&\n    Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\") &&\n    lastSemanticSuccessAt > 0 &&\n    lastSemanticSuccessAt <= now + FUTURE_TOLERANCE_MS &&\n    now - lastSemanticSuccessAt <=\n        HOME_INTERVAL_MS + FUTURE_TOLERANCE_MS;\n/*\n * Readiness derivado continua protegendo iluminação e demais automações,\n * mas não deve reduzir sozinho o ciclo de wake depois que o próprio\n * Bluelink confirmou telemetria nova. Uma recuperação explícita, uma falha\n * ou a ausência de nova evidência continuam usando 15 minutos.\n */\nconst recoveryNeeded =\n    msg.payload?.force_recovery === true ||\n    msg.payload?.require_lighting_ready === true ||\n    state.awaiting_evidence === true ||\n    (derivedContextRecoveryNeeded && !semanticWakeHealthy);\nconst requireLightingReady =\n    msg.payload?.require_lighting_ready === true ||\n    (\n        state.awaiting_evidence === true &&\n        state.require_lighting_ready === true\n    );\nconst requestedReason = msg.payload?.reason ??\n    msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\nconst manualBypass = requestedReason === \"manual_force\";\nconst residentDepartureBypass =\n    requestedReason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true;\nconst deadlineBypass = manualBypass || residentDepartureBypass;\n/* O intervalo de 30 min economiza wakes somente no ciclo saudável em casa.\n * Recuperação e backoff usam o piso suportado de 15 min para não prolongar\n * artificialmente uma indisponibilidade já confirmada. */\nconst selectedIntervalMs = recoveryNeeded && !deadlineBypass\n    ? AWAY_INTERVAL_MS\n    : presenceIntervalMs;\nconst previousIntervalMs = [AWAY_INTERVAL_MS, HOME_INTERVAL_MS]\n    .includes(Number(state.interval_ms))\n        ? Number(state.interval_ms)\n        : AWAY_INTERVAL_MS;\nconst intervalChanged = previousIntervalMs !== selectedIntervalMs;\nstate.interval_ms = selectedIntervalMs;\nstate.interval_policy = selectedIntervalMs === HOME_INTERVAL_MS\n    ? \"both_home_30m\"\n    : (recoveryNeeded && !deadlineBypass\n        ? \"recovery_15m\"\n        : \"away_or_approaching_15m\");\nconst intervalAnchorAt = Math.max(\n    state.last_request_at,\n    state.service_accepted_at,\n    state.last_success_at\n);\nconst requestFloorAt = intervalAnchorAt > 0\n    ? intervalAnchorAt + selectedIntervalMs\n    : 0;\nstate.next_allowed_at = intervalChanged\n    ? requestFloorAt\n    : Math.max(state.next_allowed_at, requestFloorAt);\nstate.in_flight_until = Number.isFinite(state.in_flight_until) &&\n    state.in_flight_until <= now + IN_FLIGHT_LEASE_MS\n        ? state.in_flight_until\n        : 0;\nstate.cache_probe_for_request_at = Number.isFinite(\n    state.cache_probe_for_request_at\n) && state.cache_probe_for_request_at <= now + FUTURE_TOLERANCE_MS\n    ? state.cache_probe_for_request_at\n    : 0;\nstate.cache_probe_completed_for_request_at = Number.isFinite(\n    state.cache_probe_completed_for_request_at\n) && state.cache_probe_completed_for_request_at <= now + FUTURE_TOLERANCE_MS\n    ? state.cache_probe_completed_for_request_at\n    : 0;\nstate.cache_probe_in_flight_until = Number.isFinite(\n    state.cache_probe_in_flight_until\n) && state.cache_probe_in_flight_until <= now + IN_FLIGHT_LEASE_MS\n    ? state.cache_probe_in_flight_until\n    : 0;\nstate.cache_probe_settle_until = Number.isFinite(\n    state.cache_probe_settle_until\n) && state.cache_probe_settle_until <= now + CACHE_PROBE_SETTLE_MS\n    ? state.cache_probe_settle_until\n    : 0;\nstate.failure_notified_at = Number.isFinite(state.failure_notified_at) &&\n    state.failure_notified_at <= now + FUTURE_TOLERANCE_MS\n        ? state.failure_notified_at\n        : 0;\nstate.evidence_wait_started_at =\n    Number.isFinite(state.evidence_wait_started_at) &&\n    state.evidence_wait_started_at > 0 &&\n    state.evidence_wait_started_at <= now + FUTURE_TOLERANCE_MS\n        ? state.evidence_wait_started_at\n        : (\n            state.awaiting_evidence === true\n                ? state.last_request_at || state.last_attempt_at || 0\n                : 0\n        );\n/* A versão 10 notificava \"20 min\" assim que uma segunda transição de\n * morador disparava outro wake, mesmo poucos segundos depois da primeira.\n * Remova somente esse alerta prematuro; o prazo real será reavaliado abaixo. */\nif (\n    previousStateVersion < 11 &&\n    state.last_failure_class === \"no_fresh_data\" &&\n    state.failure_notified_at > 0 &&\n    state.evidence_wait_started_at > 0 &&\n    state.failure_notified_at <\n        state.evidence_wait_started_at + MAX_WAKE_CONFIRMATION_MS\n) {\n    state.failure_notified_at = 0;\n    state.failure_notification_key = null;\n    state.last_failure_class = null;\n    state.failure_at = null;\n    state.failure_endpoint = null;\n    state.failure_stage = null;\n    state.recovery_notification_pending = true;\n}\n/* Versões anteriores inferiam integration_unavailable apenas por readiness\n * incompleto. Um incidente real, classificado pelo catch da chamada, sempre\n * registra failure_endpoint; reavalie imediatamente somente o estado legado\n * sem essa evidência. */\nif (\n    state.last_failure_class === \"integration_unavailable\" &&\n    !state.failure_endpoint\n) {\n    state.last_failure_class = null;\n    state.failure_source = null;\n    state.failure_stage = null;\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n}\n/* A versão 9 podia correlacionar uma leitura passiva muitas horas posterior\n * ao pedido e marcar o wake antigo como sucesso. Reabra somente essa situação\n * incompatível com a janela causal e preserve a leitura como dado válido do\n * veículo, sem atribuí-la ao wake. */\nconst legacyWakeConfirmationDelay =\n    state.last_success_at - state.last_request_at;\nif (\n    previousStateVersion < 10 &&\n    state.last_request_at > 0 &&\n    state.last_success_at > 0 &&\n    legacyWakeConfirmationDelay > MAX_WAKE_CONFIRMATION_MS &&\n    Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\")\n) {\n    state.attempts = Math.max(1, state.attempts);\n    state.awaiting_evidence = true;\n    state.last_success_at = 0;\n    state.last_success_reason = null;\n    state.last_evidence_domains = [];\n    state.last_failure_class = \"no_fresh_data\";\n    state.failure_at = state.last_request_at + MAX_WAKE_CONFIRMATION_MS;\n    state.failure_endpoint = \"public_bindings.call (wake do veículo)\";\n    state.failure_stage = \"confirmação semântica em até 20 min\";\n    state.failure_notified_at = 0;\n    state.evidence_wait_started_at = state.last_request_at;\n    state.baseline_observed_at = {\n        telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)\n    };\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n    state.state = \"backoff\";\n    state.reason = \"late_uncorrelated_data\";\n}\n\nfunction save(displayState, reason, extra = {}) {\n    state.state = displayState;\n    state.reason = reason ?? null;\n    state.updated_at = now;\n    state.next_retry_at = state.awaiting_evidence === true\n        ? state.next_allowed_at || null\n        : null;\n    state.cooldown_until = state.awaiting_evidence !== true &&\n        state.last_success_at > 0 &&\n        state.next_allowed_at > now\n            ? state.next_allowed_at\n            : null;\n    Object.assign(state, extra);\n    stateSet(state);\n}\n\nfunction blockedNotification(reason, waitS) {\n    if (msg.payload?.reason !== \"manual_force\") return null;\n    const retryAt = new Date(now + waitS * 1000).toLocaleTimeString(\n        \"pt-BR\",\n        { hour: \"2-digit\", minute: \"2-digit\", second: \"2-digit\" }\n    );\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message:\n            \"Já existe uma tentativa de atualização \" +\n            (reason === \"in_flight\"\n                ? \"em andamento\"\n                : reason === \"minimum_interval\"\n                    ? \"dentro do intervalo mínimo do Bluelink\"\n                    : \"aguardando resposta\") +\n            \". O clique foi recebido, mas nenhuma nova consulta foi enviada. \" +\n            `Próxima avaliação em ${waitS} s, às ${retryAt}.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    node.log?.(\n        \"VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard \" +\n        `reason=${reason} remaining_seconds=${waitS}`\n    );\n    return [null, null, msg, null, null];\n}\n\nconst noFreshEndpoint = \"public_bindings.call (wake do veículo)\";\nconst noFreshStage = \"confirmação semântica em até 20 min\";\nconst failureNotificationKey = `no_fresh_data|${noFreshEndpoint}`;\n\nfunction failureNotificationIfDue() {\n    const waitStartedAt = Number(state.evidence_wait_started_at ?? 0);\n    const confirmationExpired =\n        state.awaiting_evidence === true &&\n        waitStartedAt > 0 &&\n        now - waitStartedAt >= MAX_WAKE_CONFIRMATION_MS;\n    if (\n        !confirmationExpired ||\n        !(\n            state.last_failure_class == null ||\n            state.last_failure_class === \"no_fresh_data\"\n        ) ||\n        state.failure_notification_key === failureNotificationKey\n    ) {\n        return null;\n    }\n\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    state.last_failure_class = \"no_fresh_data\";\n    state.failure_at = waitStartedAt + MAX_WAKE_CONFIRMATION_MS;\n    state.failure_endpoint = noFreshEndpoint;\n    state.failure_stage = noFreshStage;\n    const notification = {\n        ...msg,\n        payload: (msg.payload && typeof msg.payload === \"object\")\n            ? { ...msg.payload }\n            : msg.payload\n    };\n    notification.payload = {\n        ...notification.payload,\n        test_mode: TEST_MODE,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    notification.alert = {\n        title: TEST_MODE\n            ? \"TESTE — Falha ao atualizar veículo\"\n            : \"Falha ao atualizar veículo\",\n        message:\n            `O endpoint ${noFreshEndpoint} foi chamado, mas o Bluelink ` +\n            \"não publicou telemetria nova dentro de 20 min. \" +\n            \"As retentativas automáticas continuam com backoff; \" +\n            \"verifique a conectividade do veículo e o serviço da Hyundai.\"\n    };\n    notification.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: notification.alert.title,\n        message: notification.alert.message\n    };\n    return notification;\n}\n\nconst failureNotification = failureNotificationIfDue();\n\nfunction withFailure(result) {\n    if (!failureNotification) return result;\n    if (Array.isArray(result)) {\n        result[3] = failureNotification;\n        return result;\n    }\n    return [null, null, null, failureNotification, null];\n}\n\nif (\n    state.cache_probe_in_flight === true &&\n    now < state.cache_probe_in_flight_until\n) {\n    const waitS = Math.max(\n        1,\n        Math.ceil((state.cache_probe_in_flight_until - now) / 1000)\n    );\n    save(\"probing_cache\", \"cache_probe_in_flight\", { enabled: true });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `releitura do cache em andamento ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"in_flight\", waitS));\n}\n\nif (state.cache_probe_in_flight === true) {\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.last_failure_class = \"cache_probe_lease_expired\";\n    state.next_allowed_at = Math.max(\n        state.next_allowed_at,\n        now + selectedIntervalMs\n    );\n}\n\nif (now < state.cache_probe_settle_until) {\n    const waitS = Math.max(\n        1,\n        Math.ceil((state.cache_probe_settle_until - now) / 1000)\n    );\n    save(\"probing_cache\", \"cache_probe_settling\", { enabled: true });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `aguardando cache ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"cache_probe_settling\", waitS));\n}\n\nif (state.request_in_flight === true && now < state.in_flight_until) {\n    const waitS = Math.max(1, Math.ceil((state.in_flight_until - now) / 1000));\n    save(\"in_flight\", state.recovery_reason ?? \"request_in_flight\", {\n        enabled: true\n    });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `Bluelink em andamento ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"in_flight\", waitS));\n}\n\nif (state.request_in_flight === true) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\n\n/*\n * Entradas automáticas usam 30 minutos quando os dois moradores estão em casa\n * e 15 minutos quando alguém está fora ou chegando. Entre 00:00 e 05:59, os\n * wakes periódicos ficam suspensos se ambos estão em casa. O clique explícito\n * do dashboard ignora prazo e janela, mas nunca atravessa o lease acima.\n */\nconst hour = new Date(now).getHours();\nconst quietHours = hour >= 0 && hour < 6;\nconst legacyDaytime = hour >= 7 && hour < 22;\n\nconst departureEventAt = Number(msg.payload?.departure_event_at ?? 0);\nif (\n    residentDepartureBypass &&\n    departureEventAt > 0 &&\n    state.last_request_at >= departureEventAt\n) {\n    save(\n        state.awaiting_evidence === true ? \"awaiting_evidence\" : \"cooldown\",\n        \"resident_departure_already_covered\",\n        { enabled: true }\n    );\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"saída do morador já coberta por refresh\"\n    });\n    return withFailure(null);\n}\n\nif (!deadlineBypass && bothResidentsHome && quietHours) {\n    save(\"waiting\", \"quiet_hours_both_home\", {\n        enabled: false,\n        next_retry_at: null,\n        cooldown_until: null\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh vehicle_primary: pausado até 06h\"\n    });\n    return withFailure(null);\n}\n\nconst enabled =\n    recoveryNeeded ||\n    anyoneAwayOrApproaching ||\n    bothResidentsHome ||\n    (!residentStatesKnown && legacyDaytime);\n\nif (!enabled) {\n    save(\"waiting\", \"waiting_for_resident_location\", {\n        enabled: false,\n        next_retry_at: null,\n        cooldown_until: null\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh vehicle_primary: aguardando localização\"\n    });\n    return withFailure(null);\n}\n\nconst pendingRequestAt = Number(state.last_request_at ?? 0);\n\nif (!deadlineBypass && now < state.next_allowed_at) {\n    const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));\n    const waitingEvidence = state.awaiting_evidence === true;\n    save(waitingEvidence ? \"backoff\" : \"cooldown\", requestedReason, {\n        enabled: true\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: waitingEvidence\n            ? `retry Bluelink em ${waitS}s`\n            : `refresh vehicle_primary cooldown ${waitS}s`\n    });\n    if (waitingEvidence) {\n        return withFailure(blockedNotification(\"backoff\", waitS));\n    }\n    return withFailure(blockedNotification(\"minimum_interval\", waitS));\n}\n\n/*\n * Antes de repetir um wake automático, peça ao Home Assistant uma leitura\n * somente do cache. Isso alinha os dois ciclos de 15 minutos: se a telemetria\n * do wake anterior já chegou ao provedor, o snapshot seguinte a confirmará e\n * o novo wake será evitado. O clique manual continua explícito e não passa por\n * esta etapa.\n */\nconst cacheProbeCompletedForPendingRequest =\n    pendingRequestAt > 0 &&\n    state.cache_probe_completed_for_request_at === pendingRequestAt;\nif (\n    !deadlineBypass &&\n    state.awaiting_evidence === true &&\n    pendingRequestAt > 0 &&\n    !cacheProbeCompletedForPendingRequest\n) {\n    state.cache_probe_in_flight = true;\n    state.cache_probe_in_flight_until = now + IN_FLIGHT_LEASE_MS;\n    state.cache_probe_for_request_at = pendingRequestAt;\n    state.cache_probe_settle_until = null;\n    save(\"probing_cache\", \"pre_wake_cache_probe\", { enabled: true });\n    msg.payload.cache_probe_for_request_at = pendingRequestAt;\n    msg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\n    msg.payload.test_mode = TEST_MODE;\n    msg.payload.side_effect = \"vehicle_primary.cache_probe\";\n    node.log?.(\n        \"VEHICLE_PRIMARY_CACHE_PROBE_REQUESTED\" +\n        \" previous_request_at=\" + pendingRequestAt +\n        \" test_mode=\" + String(TEST_MODE)\n    );\n    node.status({\n        fill: TEST_MODE ? \"blue\" : \"yellow\",\n        shape: \"dot\",\n        text: TEST_MODE\n            ? \"TESTE: releitura de cache em dry-run\"\n            : \"relendo cache antes de novo wake\"\n    });\n    return withFailure([null, null, null, null, msg]);\n}\n\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_completed_for_request_at = null;\nstate.cache_probe_settle_until = null;\n\nstate.baseline_observed_at = {\n    telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)\n};\nif (\n    state.awaiting_evidence !== true ||\n    !(Number(state.evidence_wait_started_at) > 0)\n) {\n    state.evidence_wait_started_at = now;\n}\nstate.attempts = Math.min(5, state.attempts + 1);\nstate.last_attempt_at = now;\nstate.last_request_at = now;\nstate.next_allowed_at = now + selectedIntervalMs;\nstate.awaiting_evidence = true;\nstate.request_in_flight = true;\nstate.in_flight_until = now + IN_FLIGHT_LEASE_MS;\nstate.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;\nstate.require_lighting_ready = requireLightingReady;\nstate.recovery_reason = requestedReason;\nstate.manual_force = requestedReason === \"manual_force\";\nstate.resident_departure_force = residentDepartureBypass;\nsave(\"refreshing\", requestedReason, { enabled: true });\n\nnode.log?.(\n    (state.attempts > 1\n        ? \"VEHICLE_PRIMARY_REFRESH_RETRY\"\n        : \"VEHICLE_PRIMARY_REFRESH_REQUESTED\") +\n    \" attempt=\" + state.attempts +\n    \" reason=\" + requestedReason +\n    \" recovery=\" + String(recoveryNeeded) +\n    \" semantic_health=\" + String(semanticWakeHealthy) +\n    \" interval_minutes=\" + String(selectedIntervalMs / 60_000) +\n    \" both_home=\" + String(bothResidentsHome) +\n    \" require_lighting_ready=\" + String(requireLightingReady) +\n    \" test_mode=\" + String(TEST_MODE)\n);\n\nmsg.payload.retry_attempt = state.attempts;\nmsg.payload.refresh_requested_at = now;\nmsg.payload.vehicle_primary_refresh_recovery = recoveryNeeded;\nmsg.payload.require_lighting_ready = requireLightingReady;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.test_mode = TEST_MODE;\n\nnode.status({\n    fill: TEST_MODE ? \"blue\" : (recoveryNeeded ? \"yellow\" : \"green\"),\n    shape: \"dot\",\n    text: TEST_MODE\n        ? `TESTE Bluelink #${state.attempts}: dry-run`\n        : (recoveryNeeded\n            ? `Bluelink #${state.attempts}: ${requestedReason}`\n            : `Bluelink #${state.attempts}: refresh real`)\n});\n\nreturn [\n    msg,\n    TEST_MODE ? null : msg,\n    null,\n    failureNotification,\n    null\n];",
+        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg.payload?.kind !== \"refresh_command\") return null;\n\nconst AWAY_INTERVAL_MS = 15 * 60 * 1000;\nconst HOME_INTERVAL_MS = 30 * 60 * 1000;\nconst IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;\nconst CACHE_PROBE_SETTLE_MS = 15 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst MAX_WAKE_CONFIRMATION_MS = 20 * 60 * 1000;\nconst MAX_PROVIDER_BACKOFF_MS = 6 * 60 * 60 * 1000;\nconst key = TEST_MODE\n    ? \"security_vehicle_primary_refresh_v1__test\"\n    : \"security_vehicle_primary_refresh_v1\";\nconst nowCandidate = Number(msg.payload?.test_now);\nconst now = TEST_MODE && Number.isFinite(nowCandidate)\n    ? nowCandidate\n    : Date.now();\nconst vehicleContext = TEST_MODE\n    ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n    : flow.get(\"vehicle_primary_context_v1\") ?? {};\nconst peopleContext = TEST_MODE\n    ? flow.get(\"people_context_v1__test\") ?? {}\n    : flow.get(\"people_context_v1\") ?? {};\nconst residentPrimaryState = String(\n    msg.payload?.resident_primary_state ??\n    peopleContext.resident_primary?.state ??\n    \"\"\n).toLowerCase();\nconst residentSecondaryState = String(\n    msg.payload?.resident_secondary_state ??\n    peopleContext.resident_secondary?.state ??\n    \"\"\n).toLowerCase();\nconst residentStatesKnown =\n    residentPrimaryState.length > 0 && residentSecondaryState.length > 0;\nconst anyResidentAway =\n    msg.payload?.any_resident_away === true ||\n    peopleContext.any_tracker_away === true;\nconst bothResidentsHome =\n    residentPrimaryState === \"home\" &&\n    residentSecondaryState === \"home\" &&\n    !anyResidentAway;\nconst awayOrApproachingStates = new Set([\"not_home\", \"chegando\"]);\nconst anyoneAwayOrApproaching =\n    anyResidentAway ||\n    msg.payload?.anyone_away === true ||\n    peopleContext.anyone_away === true ||\n    awayOrApproachingStates.has(residentPrimaryState) ||\n    awayOrApproachingStates.has(residentSecondaryState);\nconst presenceIntervalMs = bothResidentsHome\n    ? HOME_INTERVAL_MS\n    : AWAY_INTERVAL_MS;\n\nfunction stateGet() {\n    return TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\n}\n\nfunction stateSet(value) {\n    return TEST_MODE\n        ? flow.set(key, value)\n        : flow.set(key, value, \"persistent\");\n}\n\nlet state = stateGet();\nif (!state || typeof state !== \"object\" || Array.isArray(state)) {\n    state = {};\n}\n\nconst previousStateVersion = Number(state.version ?? 0);\nstate.version = 12;\nstate.attempts = Number.isFinite(state.attempts)\n    ? Math.max(0, Math.min(5, state.attempts))\n    : 0;\nstate.last_success_at = Number.isFinite(state.last_success_at) &&\n    state.last_success_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_success_at\n        : 0;\nstate.next_allowed_at = Number.isFinite(state.next_allowed_at) &&\n    state.next_allowed_at <= now + MAX_PROVIDER_BACKOFF_MS + FUTURE_TOLERANCE_MS\n        ? state.next_allowed_at\n        : 0;\nstate.last_attempt_at = Number.isFinite(state.last_attempt_at) &&\n    state.last_attempt_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_attempt_at\n        : 0;\nstate.last_request_at = Number.isFinite(state.last_request_at) &&\n    state.last_request_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_request_at\n        : state.last_attempt_at;\nstate.service_accepted_at = Number.isFinite(state.service_accepted_at) &&\n    state.service_accepted_at <= now + FUTURE_TOLERANCE_MS\n        ? state.service_accepted_at\n        : 0;\nconst contextReady =\n    msg.payload?.vehicle_primary_ready === true ||\n    vehicleContext.ready === true;\nconst derivedContextRecoveryNeeded =\n    msg.payload?.recovery_needed === true ||\n    msg.payload?.vehicle_primary_ready === false ||\n    contextReady !== true;\nconst lastSemanticSuccessAt = Number(state.last_success_at ?? 0);\nconst semanticWakeHealthy =\n    state.awaiting_evidence !== true &&\n    state.last_failure_class == null &&\n    Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\") &&\n    lastSemanticSuccessAt > 0 &&\n    lastSemanticSuccessAt <= now + FUTURE_TOLERANCE_MS &&\n    now - lastSemanticSuccessAt <=\n        HOME_INTERVAL_MS + FUTURE_TOLERANCE_MS;\n/*\n * Readiness derivado continua protegendo iluminação e demais automações,\n * mas não deve reduzir sozinho o ciclo de wake depois que o próprio\n * Bluelink confirmou telemetria nova. Uma recuperação explícita, uma falha\n * ou a ausência de nova evidência continuam usando 15 minutos.\n */\nconst recoveryNeeded =\n    msg.payload?.force_recovery === true ||\n    msg.payload?.require_lighting_ready === true ||\n    state.awaiting_evidence === true ||\n    (derivedContextRecoveryNeeded && !semanticWakeHealthy);\nconst requireLightingReady =\n    msg.payload?.require_lighting_ready === true ||\n    (\n        state.awaiting_evidence === true &&\n        state.require_lighting_ready === true\n    );\nconst requestedReason = msg.payload?.reason ??\n    msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\nconst manualBypass = requestedReason === \"manual_force\";\nconst residentDepartureBypass =\n    requestedReason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true;\nconst deadlineBypass = manualBypass || residentDepartureBypass;\n/* O intervalo de 30 min economiza wakes somente no ciclo saudável em casa.\n * Recuperação e backoff usam o piso suportado de 15 min para não prolongar\n * artificialmente uma indisponibilidade já confirmada. */\nconst selectedIntervalMs = recoveryNeeded && !deadlineBypass\n    ? AWAY_INTERVAL_MS\n    : presenceIntervalMs;\nconst previousIntervalMs = [AWAY_INTERVAL_MS, HOME_INTERVAL_MS]\n    .includes(Number(state.interval_ms))\n        ? Number(state.interval_ms)\n        : AWAY_INTERVAL_MS;\nconst intervalChanged = previousIntervalMs !== selectedIntervalMs;\nstate.interval_ms = selectedIntervalMs;\nstate.interval_policy = selectedIntervalMs === HOME_INTERVAL_MS\n    ? \"both_home_30m\"\n    : (recoveryNeeded && !deadlineBypass\n        ? \"recovery_15m\"\n        : \"away_or_approaching_15m\");\nconst intervalAnchorAt = Math.max(\n    state.last_request_at,\n    state.service_accepted_at,\n    state.last_success_at\n);\nconst requestFloorAt = intervalAnchorAt > 0\n    ? intervalAnchorAt + selectedIntervalMs\n    : 0;\nstate.next_allowed_at = intervalChanged\n    ? requestFloorAt\n    : Math.max(state.next_allowed_at, requestFloorAt);\nstate.in_flight_until = Number.isFinite(state.in_flight_until) &&\n    state.in_flight_until <= now + IN_FLIGHT_LEASE_MS\n        ? state.in_flight_until\n        : 0;\nstate.cache_probe_for_request_at = Number.isFinite(\n    state.cache_probe_for_request_at\n) && state.cache_probe_for_request_at <= now + FUTURE_TOLERANCE_MS\n    ? state.cache_probe_for_request_at\n    : 0;\nstate.cache_probe_completed_for_request_at = Number.isFinite(\n    state.cache_probe_completed_for_request_at\n) && state.cache_probe_completed_for_request_at <= now + FUTURE_TOLERANCE_MS\n    ? state.cache_probe_completed_for_request_at\n    : 0;\nstate.cache_probe_in_flight_until = Number.isFinite(\n    state.cache_probe_in_flight_until\n) && state.cache_probe_in_flight_until <= now + IN_FLIGHT_LEASE_MS\n    ? state.cache_probe_in_flight_until\n    : 0;\nstate.cache_probe_settle_until = Number.isFinite(\n    state.cache_probe_settle_until\n) && state.cache_probe_settle_until <= now + CACHE_PROBE_SETTLE_MS\n    ? state.cache_probe_settle_until\n    : 0;\nstate.failure_notified_at = Number.isFinite(state.failure_notified_at) &&\n    state.failure_notified_at <= now + FUTURE_TOLERANCE_MS\n        ? state.failure_notified_at\n        : 0;\nstate.evidence_wait_started_at =\n    Number.isFinite(state.evidence_wait_started_at) &&\n    state.evidence_wait_started_at > 0 &&\n    state.evidence_wait_started_at <= now + FUTURE_TOLERANCE_MS\n        ? state.evidence_wait_started_at\n        : (\n            state.awaiting_evidence === true\n                ? state.last_request_at || state.last_attempt_at || 0\n                : 0\n        );\n/* A versão 10 notificava \"20 min\" assim que uma segunda transição de\n * morador disparava outro wake, mesmo poucos segundos depois da primeira.\n * Remova somente esse alerta prematuro; o prazo real será reavaliado abaixo. */\nif (\n    previousStateVersion < 11 &&\n    state.last_failure_class === \"no_fresh_data\" &&\n    state.failure_notified_at > 0 &&\n    state.evidence_wait_started_at > 0 &&\n    state.failure_notified_at <\n        state.evidence_wait_started_at + MAX_WAKE_CONFIRMATION_MS\n) {\n    state.failure_notified_at = 0;\n    state.failure_notification_key = null;\n    state.last_failure_class = null;\n    state.failure_at = null;\n    state.failure_endpoint = null;\n    state.failure_stage = null;\n    state.recovery_notification_pending = true;\n}\n/* Versões anteriores inferiam integration_unavailable apenas por readiness\n * incompleto. Um incidente real, classificado pelo catch da chamada, sempre\n * registra failure_endpoint; reavalie imediatamente somente o estado legado\n * sem essa evidência. */\nif (\n    state.last_failure_class === \"integration_unavailable\" &&\n    !state.failure_endpoint\n) {\n    state.last_failure_class = null;\n    state.failure_source = null;\n    state.failure_stage = null;\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n}\n/* A versão 9 podia correlacionar uma leitura passiva muitas horas posterior\n * ao pedido e marcar o wake antigo como sucesso. Reabra somente essa situação\n * incompatível com a janela causal e preserve a leitura como dado válido do\n * veículo, sem atribuí-la ao wake. */\nconst legacyWakeConfirmationDelay =\n    state.last_success_at - state.last_request_at;\nif (\n    previousStateVersion < 10 &&\n    state.last_request_at > 0 &&\n    state.last_success_at > 0 &&\n    legacyWakeConfirmationDelay > MAX_WAKE_CONFIRMATION_MS &&\n    Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\")\n) {\n    state.attempts = Math.max(1, state.attempts);\n    state.awaiting_evidence = true;\n    state.last_success_at = 0;\n    state.last_success_reason = null;\n    state.last_evidence_domains = [];\n    state.last_failure_class = \"no_fresh_data\";\n    state.failure_at = state.last_request_at + MAX_WAKE_CONFIRMATION_MS;\n    state.failure_endpoint = \"public_bindings.call (wake do veículo)\";\n    state.failure_stage = \"confirmação semântica em até 20 min\";\n    state.failure_notified_at = 0;\n    state.evidence_wait_started_at = state.last_request_at;\n    state.baseline_observed_at = {\n        telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)\n    };\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n    state.state = \"backoff\";\n    state.reason = \"late_uncorrelated_data\";\n}\n\nfunction save(displayState, reason, extra = {}) {\n    state.state = displayState;\n    state.reason = reason ?? null;\n    state.updated_at = now;\n    state.next_retry_at = state.awaiting_evidence === true\n        ? state.next_allowed_at || null\n        : null;\n    state.cooldown_until = state.awaiting_evidence !== true &&\n        state.last_success_at > 0 &&\n        state.next_allowed_at > now\n            ? state.next_allowed_at\n            : null;\n    Object.assign(state, extra);\n    stateSet(state);\n}\n\nfunction blockedNotification(reason, waitS) {\n    if (msg.payload?.reason !== \"manual_force\") return null;\n    const retryAt = new Date(now + waitS * 1000).toLocaleTimeString(\n        \"pt-BR\",\n        { hour: \"2-digit\", minute: \"2-digit\", second: \"2-digit\" }\n    );\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message:\n            \"Já existe uma tentativa de atualização \" +\n            (reason === \"in_flight\"\n                ? \"em andamento\"\n                : reason === \"minimum_interval\"\n                    ? \"dentro do intervalo mínimo do Bluelink\"\n                    : \"aguardando resposta\") +\n            \". O clique foi recebido, mas nenhuma nova consulta foi enviada. \" +\n            `Próxima avaliação em ${waitS} s, às ${retryAt}.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    node.log?.(\n        \"VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard \" +\n        `reason=${reason} remaining_seconds=${waitS}`\n    );\n    return [null, null, msg, null, null];\n}\n\nconst noFreshEndpoint = \"public_bindings.call (wake do veículo)\";\nconst noFreshStage = \"confirmação semântica em até 20 min\";\nconst failureNotificationKey = `no_fresh_data|${noFreshEndpoint}`;\n\nfunction failureNotificationIfDue() {\n    const waitStartedAt = Number(state.evidence_wait_started_at ?? 0);\n    const confirmationExpired =\n        state.awaiting_evidence === true &&\n        waitStartedAt > 0 &&\n        now - waitStartedAt >= MAX_WAKE_CONFIRMATION_MS;\n    if (\n        !confirmationExpired ||\n        !(\n            state.last_failure_class == null ||\n            state.last_failure_class === \"no_fresh_data\"\n        ) ||\n        state.failure_notification_key === failureNotificationKey\n    ) {\n        return null;\n    }\n\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    state.last_failure_class = \"no_fresh_data\";\n    state.failure_at = waitStartedAt + MAX_WAKE_CONFIRMATION_MS;\n    state.failure_endpoint = noFreshEndpoint;\n    state.failure_stage = noFreshStage;\n    const notification = {\n        ...msg,\n        payload: (msg.payload && typeof msg.payload === \"object\")\n            ? { ...msg.payload }\n            : msg.payload\n    };\n    notification.payload = {\n        ...notification.payload,\n        test_mode: TEST_MODE,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    notification.alert = {\n        title: TEST_MODE\n            ? \"TESTE — Falha ao atualizar veículo\"\n            : \"Falha ao atualizar veículo\",\n        message:\n            `O endpoint ${noFreshEndpoint} foi chamado, mas o Bluelink ` +\n            \"não publicou telemetria nova dentro de 20 min. \" +\n            \"As retentativas automáticas continuam com backoff; \" +\n            \"verifique a conectividade do veículo e o serviço da Hyundai.\"\n    };\n    notification.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: notification.alert.title,\n        message: notification.alert.message\n    };\n    return notification;\n}\n\nconst failureNotification = failureNotificationIfDue();\n\nfunction withFailure(result) {\n    if (!failureNotification) return result;\n    if (Array.isArray(result)) {\n        result[3] = failureNotification;\n        return result;\n    }\n    return [null, null, null, failureNotification, null];\n}\n\nif (\n    state.cache_probe_in_flight === true &&\n    now < state.cache_probe_in_flight_until\n) {\n    const waitS = Math.max(\n        1,\n        Math.ceil((state.cache_probe_in_flight_until - now) / 1000)\n    );\n    save(\"probing_cache\", \"cache_probe_in_flight\", { enabled: true });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `releitura do cache em andamento ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"in_flight\", waitS));\n}\n\nif (state.cache_probe_in_flight === true) {\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.last_failure_class = \"cache_probe_lease_expired\";\n    state.next_allowed_at = Math.max(\n        state.next_allowed_at,\n        now + selectedIntervalMs\n    );\n}\n\nif (now < state.cache_probe_settle_until) {\n    const waitS = Math.max(\n        1,\n        Math.ceil((state.cache_probe_settle_until - now) / 1000)\n    );\n    save(\"probing_cache\", \"cache_probe_settling\", { enabled: true });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `aguardando cache ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"cache_probe_settling\", waitS));\n}\n\nif (state.request_in_flight === true && now < state.in_flight_until) {\n    const waitS = Math.max(1, Math.ceil((state.in_flight_until - now) / 1000));\n    save(\"in_flight\", state.recovery_reason ?? \"request_in_flight\", {\n        enabled: true\n    });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `Bluelink em andamento ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"in_flight\", waitS));\n}\n\nif (state.request_in_flight === true) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\n\n/*\n * Entradas automáticas usam 30 minutos quando os dois moradores estão em casa\n * e 15 minutos quando alguém está fora ou chegando. Entre 00:00 e 05:59, os\n * wakes periódicos ficam suspensos se ambos estão em casa. O clique explícito\n * do dashboard ignora prazo e janela, mas nunca atravessa o lease acima.\n */\nconst hour = new Date(now).getHours();\nconst quietHours = hour >= 0 && hour < 6;\nconst legacyDaytime = hour >= 7 && hour < 22;\n\nconst departureEventAt = Number(msg.payload?.departure_event_at ?? 0);\nif (\n    residentDepartureBypass &&\n    departureEventAt > 0 &&\n    state.last_request_at >= departureEventAt\n) {\n    save(\n        state.awaiting_evidence === true ? \"awaiting_evidence\" : \"cooldown\",\n        \"resident_departure_already_covered\",\n        { enabled: true }\n    );\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"saída do morador já coberta por refresh\"\n    });\n    return withFailure(null);\n}\n\nif (!deadlineBypass && bothResidentsHome && quietHours) {\n    save(\"waiting\", \"quiet_hours_both_home\", {\n        enabled: false,\n        next_retry_at: null,\n        cooldown_until: null\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh vehicle_primary: pausado até 06h\"\n    });\n    return withFailure(null);\n}\n\nconst enabled =\n    recoveryNeeded ||\n    anyoneAwayOrApproaching ||\n    bothResidentsHome ||\n    (!residentStatesKnown && legacyDaytime);\n\nif (!enabled) {\n    save(\"waiting\", \"waiting_for_resident_location\", {\n        enabled: false,\n        next_retry_at: null,\n        cooldown_until: null\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh vehicle_primary: aguardando localização\"\n    });\n    return withFailure(null);\n}\n\nconst pendingRequestAt = Number(state.last_request_at ?? 0);\n\nif (!deadlineBypass && now < state.next_allowed_at) {\n    const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));\n    const waitingEvidence = state.awaiting_evidence === true;\n    save(waitingEvidence ? \"backoff\" : \"cooldown\", requestedReason, {\n        enabled: true\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: waitingEvidence\n            ? `retry Bluelink em ${waitS}s`\n            : `refresh vehicle_primary cooldown ${waitS}s`\n    });\n    if (waitingEvidence) {\n        return withFailure(blockedNotification(\"backoff\", waitS));\n    }\n    return withFailure(blockedNotification(\"minimum_interval\", waitS));\n}\n\n/*\n * Antes de repetir um wake automático, peça ao Home Assistant uma leitura\n * somente do cache. Isso alinha os dois ciclos de 15 minutos: se a telemetria\n * do wake anterior já chegou ao provedor, o snapshot seguinte a confirmará e\n * o novo wake será evitado. O clique manual continua explícito e não passa por\n * esta etapa.\n */\nconst cacheProbeCompletedForPendingRequest =\n    pendingRequestAt > 0 &&\n    state.cache_probe_completed_for_request_at === pendingRequestAt;\nif (\n    !deadlineBypass &&\n    state.awaiting_evidence === true &&\n    pendingRequestAt > 0 &&\n    !cacheProbeCompletedForPendingRequest\n) {\n    state.cache_probe_in_flight = true;\n    state.cache_probe_in_flight_until = now + IN_FLIGHT_LEASE_MS;\n    state.cache_probe_for_request_at = pendingRequestAt;\n    state.cache_probe_settle_until = null;\n    save(\"probing_cache\", \"pre_wake_cache_probe\", { enabled: true });\n    msg.payload.cache_probe_for_request_at = pendingRequestAt;\n    msg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\n    msg.payload.test_mode = TEST_MODE;\n    msg.payload.side_effect = \"vehicle_primary.cache_probe\";\n    node.log?.(\n        \"VEHICLE_PRIMARY_CACHE_PROBE_REQUESTED\" +\n        \" previous_request_at=\" + pendingRequestAt +\n        \" test_mode=\" + String(TEST_MODE)\n    );\n    node.status({\n        fill: TEST_MODE ? \"blue\" : \"yellow\",\n        shape: \"dot\",\n        text: TEST_MODE\n            ? \"TESTE: releitura de cache em dry-run\"\n            : \"relendo cache antes de novo wake\"\n    });\n    return withFailure([null, null, null, null, msg]);\n}\n\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_completed_for_request_at = null;\nstate.cache_probe_settle_until = null;\n\nstate.baseline_observed_at = {\n    telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)\n};\nif (\n    state.awaiting_evidence !== true ||\n    !(Number(state.evidence_wait_started_at) > 0)\n) {\n    state.evidence_wait_started_at = now;\n}\nstate.attempts = Math.min(5, state.attempts + 1);\nstate.last_attempt_at = now;\nstate.last_request_at = now;\nstate.next_allowed_at = now + selectedIntervalMs;\nstate.awaiting_evidence = true;\nstate.request_in_flight = true;\nstate.in_flight_until = now + IN_FLIGHT_LEASE_MS;\nstate.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;\nstate.require_lighting_ready = requireLightingReady;\nstate.recovery_reason = requestedReason;\nstate.manual_force = requestedReason === \"manual_force\";\nstate.resident_departure_force = residentDepartureBypass;\nsave(\"refreshing\", requestedReason, { enabled: true });\n\nnode.log?.(\n    (state.attempts > 1\n        ? \"VEHICLE_PRIMARY_REFRESH_RETRY\"\n        : \"VEHICLE_PRIMARY_REFRESH_REQUESTED\") +\n    \" attempt=\" + state.attempts +\n    \" reason=\" + requestedReason +\n    \" recovery=\" + String(recoveryNeeded) +\n    \" semantic_health=\" + String(semanticWakeHealthy) +\n    \" interval_minutes=\" + String(selectedIntervalMs / 60_000) +\n    \" both_home=\" + String(bothResidentsHome) +\n    \" require_lighting_ready=\" + String(requireLightingReady) +\n    \" test_mode=\" + String(TEST_MODE)\n);\n\nmsg.payload.retry_attempt = state.attempts;\nmsg.payload.refresh_requested_at = now;\nmsg.payload.vehicle_primary_refresh_recovery = recoveryNeeded;\nmsg.payload.require_lighting_ready = requireLightingReady;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.test_mode = TEST_MODE;\n\nnode.status({\n    fill: TEST_MODE ? \"blue\" : (recoveryNeeded ? \"yellow\" : \"green\"),\n    shape: \"dot\",\n    text: TEST_MODE\n        ? `TESTE Bluelink #${state.attempts}: dry-run`\n        : (recoveryNeeded\n            ? `Bluelink #${state.attempts}: ${requestedReason}`\n            : `Bluelink #${state.attempts}: refresh real`)\n});\n\nreturn [\n    msg,\n    TEST_MODE ? null : msg,\n    null,\n    failureNotification,\n    null\n];",
         "outputs": 5,
         "timeout": "",
         "noerr": 0,
@@ -10500,7 +10503,8 @@
         "name": "Erros do refresh e cache do vehicle_primary",
         "scope": [
             "8907830bb7f6c40c",
-            "vehicle_primary_cache_probe_call_v1"
+            "vehicle_primary_cache_probe_call_v1",
+            "16396e34ff530ac7"
         ],
         "uncaught": false,
         "x": 1240,
@@ -10517,7 +10521,7 @@
         "z": "c22d8b12055e87f7",
         "g": "43a2bc9c218353ae",
         "name": "Registrar erro da API do vehicle_primary",
-        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^\\p{L}\\p{N} _-]/gu, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst failureClass = /service\\s+kia_uvo\\.update\\s+not\\s+found/i.test(message)\n    ? \"integration_unavailable\"\n    : /provider denied|backoff is active|\\b403\\b.*\\bForbidden\\b/i.test(message)\n    ? \"provider_backoff\"\n    : /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst cacheProbeFailure = /cache|reler/i.test(source);\nconst failedEndpoint = cacheProbeFailure\n    ? \"kia_uvo.update (releitura do cache)\"\n    : \"public_bindings.call (wake do veículo)\";\nconst failureNotificationKey = `${failureClass}|${failedEndpoint}`;\nconst failureLabels = {\n    authentication: \"autenticação\",\n    timeout: \"tempo esgotado\",\n    concurrent_request_coalesced: \"requisição concorrente\",\n    provider_backoff: \"acesso temporariamente recusado pelo provedor\",\n    api_error: \"erro da API\"\n};\nconst intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]\n    .includes(Number(state.interval_ms))\n        ? Number(state.interval_ms)\n        : 15 * 60 * 1000;\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_settle_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.failure_endpoint = failedEndpoint;\nstate.failure_stage = source;\nstate.last_failure_class = failureClass;\nif (cacheProbeFailure) {\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        now + intervalMs\n    );\n}\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nlet notification = null;\nif (\n    state.failure_notification_key !== failureNotificationKey\n) {\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: false,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    msg.alert = failureClass === \"integration_unavailable\"\n        ? {\n            title: \"Endpoint Bluelink indisponível\",\n            message:\n                `O endpoint ${failedEndpoint} não está disponível no ` +\n                \"Home Assistant. A etapa que falhou foi “\" + source +\n                \"”. As retentativas automáticas permanecem em backoff.\"\n        }\n        : {\n            title: \"Erro ao atualizar veículo\",\n            message:\n                `Falha de ${failureLabels[failureClass] ?? failureClass} ` +\n                `no endpoint ${failedEndpoint}, ` +\n                `durante “${source}”. As retentativas automáticas ` +\n                \"permanecem em backoff.\"\n        };\n    msg.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: msg.alert.title,\n        message: msg.alert.message\n    };\n    notification = msg;\n}\nflow.set(key, state, \"persistent\");\nnode.error(\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message\n);\nreturn notification;",
+        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^\\p{L}\\p{N} _-]/gu, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst failureClass = /service\\s+kia_uvo\\.update\\s+not\\s+found/i.test(message)\n    ? \"integration_unavailable\"\n    : /provider denied|backoff is active|\\b403\\b.*\\bForbidden\\b/i.test(message)\n    ? \"provider_backoff\"\n    : /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst cacheProbeFailure = /cache|reler/i.test(source);\nconst tripRefreshFailure = /viagens?|trip/i.test(source);\nconst failedEndpoint = tripRefreshFailure\n    ? \"public_bindings.call (viagens do dia)\"\n    : cacheProbeFailure\n        ? \"kia_uvo.update (releitura do cache)\"\n        : \"public_bindings.call (wake do veículo)\";\nconst failureNotificationKey = `${failureClass}|${failedEndpoint}`;\nconst failureLabels = {\n    authentication: \"autenticação\",\n    timeout: \"tempo esgotado\",\n    concurrent_request_coalesced: \"requisição concorrente\",\n    provider_backoff: \"acesso temporariamente recusado pelo provedor\",\n    api_error: \"erro da API\"\n};\nconst intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]\n    .includes(Number(state.interval_ms))\n        ? Number(state.interval_ms)\n        : 15 * 60 * 1000;\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_settle_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.failure_endpoint = failedEndpoint;\nstate.failure_stage = source;\nstate.last_failure_class = failureClass;\nif (cacheProbeFailure) {\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        now + intervalMs\n    );\n}\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nlet notification = null;\nif (\n    state.failure_notification_key !== failureNotificationKey\n) {\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: false,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    msg.alert = failureClass === \"integration_unavailable\"\n        ? {\n            title: \"Endpoint Bluelink indisponível\",\n            message:\n                `O endpoint ${failedEndpoint} não está disponível no ` +\n                \"Home Assistant. A etapa que falhou foi “\" + source +\n                \"”. As retentativas automáticas permanecem em backoff.\"\n        }\n        : {\n            title: \"Erro ao atualizar veículo\",\n            message:\n                `Falha de ${failureLabels[failureClass] ?? failureClass} ` +\n                `no endpoint ${failedEndpoint}, ` +\n                `durante “${source}”. As retentativas automáticas ` +\n                \"permanecem em backoff.\"\n        };\n    msg.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: msg.alert.title,\n        message: msg.alert.message\n    };\n    notification = msg;\n}\nflow.set(key, state, \"persistent\");\nconst logMessage =\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message;\nif (failureClass === \"provider_backoff\") {\n    // A recusa 403 já foi convertida em backoff persistente e alerta\n    // deduplicado. Ela é um estado esperado do provedor, não uma nova falha\n    // de execução do canvas para o observador global voltar a notificar.\n    node.warn(logMessage);\n} else {\n    node.error(logMessage);\n}\nreturn notification;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -10638,8 +10642,8 @@
         "g": "5df25064f701ecd2",
         "name": "1) RESETAR  2) escolher motor ON/OFF  3) executar 1/3 → 2/3 → 3/3",
         "info": "O motor sintético é cumulativo: os passos de localização preservam o último estado ON/OFF escolhido. Todo o cenário usa test_mode e não altera as entidades reais do veículo.",
-        "x": 890,
-        "y": 1740,
+        "x": 820,
+        "y": 1660,
         "wires": []
     },
     {
@@ -12348,8 +12352,8 @@
         "links": [
             "light_unavailable_test_dry_run_in_v1"
         ],
-        "x": 1725,
-        "y": 320,
+        "x": 1640,
+        "y": 380,
         "wires": []
     },
     {
@@ -12379,7 +12383,7 @@
         "links": [
             "light_available_to_output_in_v1"
         ],
-        "x": 1725,
+        "x": 1640,
         "y": 240,
         "wires": []
     },
@@ -12410,8 +12414,8 @@
         "links": [
             "light_unavailable_to_output_in_v1"
         ],
-        "x": 1725,
-        "y": 280,
+        "x": 1640,
+        "y": 320,
         "wires": []
     },
     {
@@ -12456,7 +12460,7 @@
         "links": [
             "light_test_to_terminal_out_v1"
         ],
-        "x": 2555,
+        "x": 2680,
         "y": 400,
         "wires": [
             [
@@ -13009,8 +13013,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1510,
-        "y": 240,
+        "x": 1480,
+        "y": 220,
         "wires": [
             [
                 "alarm_arrival_test_confirmation_out_v1"
@@ -17818,6 +17822,294 @@
         ]
     },
     {
+        "id": "security_light_engine_bypass_group_v1",
+        "type": "group",
+        "z": "6b7552efb85343f4",
+        "name": "6. Bypass do motor (manual ou falha da API)",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#c8a951",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "security_light_engine_bypass_startup_v1",
+            "security_light_engine_bypass_command_v1",
+            "security_light_engine_bypass_function_v1",
+            "security_light_engine_bypass_mqtt_out_v1",
+            "security_light_engine_bypass_reevaluate_out_v1",
+            "security_light_engine_bypass_test_on_v1",
+            "security_light_engine_bypass_test_off_v1"
+        ],
+        "x": 64,
+        "y": 1019,
+        "w": 1362,
+        "h": 282
+    },
+    {
+        "id": "security_light_engine_bypass_startup_v1",
+        "type": "inject",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Publicar chave e restaurar estado no startup",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 1,
+        "topic": "",
+        "payload": "STARTUP",
+        "payloadType": "str",
+        "x": 300,
+        "y": 1080,
+        "wires": [
+            [
+                "security_light_engine_bypass_function_v1"
+            ]
+        ]
+    },
+    {
+        "id": "security_light_engine_bypass_command_v1",
+        "type": "mqtt in",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Comando da chave no painel vehicle_primary",
+        "topic": "homeassistant/vehicle_primary/engine_bypass/set",
+        "qos": "1",
+        "datatype": "utf8",
+        "broker": "721c47f31046b8bc",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 300,
+        "y": 1140,
+        "wires": [
+            [
+                "security_light_engine_bypass_function_v1"
+            ]
+        ]
+    },
+    {
+        "id": "security_light_engine_bypass_test_on_v1",
+        "type": "inject",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "TESTE: bypass ON (isolado)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"requested_state\":\"ON\",\"test_mode\":true,\"test_case\":\"engine_bypass_on\"}",
+        "payloadType": "json",
+        "x": 260,
+        "y": 1200,
+        "wires": [
+            [
+                "security_light_engine_bypass_function_v1"
+            ]
+        ]
+    },
+    {
+        "id": "security_light_engine_bypass_test_off_v1",
+        "type": "inject",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "TESTE: bypass OFF (isolado)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"requested_state\":\"OFF\",\"test_mode\":true,\"test_case\":\"engine_bypass_off\"}",
+        "payloadType": "json",
+        "x": 260,
+        "y": 1260,
+        "wires": [
+            [
+                "security_light_engine_bypass_function_v1"
+            ]
+        ]
+    },
+    {
+        "id": "security_light_engine_bypass_function_v1",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Persistir bypass manual/automático com posse segura",
+        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nconst STATE_KEY = TEST_MODE\n    ? \"security_light_engine_bypass_enabled__test\"\n    : \"security_light_engine_bypass_enabled\";\nconst AUTOMATIC_KEY = TEST_MODE\n    ? \"security_light_engine_bypass_automatic__test\"\n    : \"security_light_engine_bypass_automatic\";\nconst PERSISTENT = \"persistent\";\n\nfunction getState() {\n    return TEST_MODE\n        ? flow.get(STATE_KEY)\n        : flow.get(STATE_KEY, PERSISTENT);\n}\n\nfunction setState(value) {\n    return TEST_MODE\n        ? flow.set(STATE_KEY, value)\n        : flow.set(STATE_KEY, value, PERSISTENT);\n}\n\nfunction getAutomatic() {\n    return TEST_MODE\n        ? flow.get(AUTOMATIC_KEY) === true\n        : flow.get(AUTOMATIC_KEY, PERSISTENT) === true;\n}\n\nfunction setAutomatic(value) {\n    return TEST_MODE\n        ? flow.set(AUTOMATIC_KEY, value)\n        : flow.set(AUTOMATIC_KEY, value, PERSISTENT);\n}\n\nlet commandPayload = msg.payload;\nif (\n    typeof commandPayload === \"string\" &&\n    commandPayload.trim().startsWith(\"{\")\n) {\n    try {\n        commandPayload = JSON.parse(commandPayload);\n    } catch (_err) {\n        commandPayload = msg.payload;\n    }\n}\nconst raw = commandPayload?.requested_state ?? commandPayload;\nconst command = String(raw ?? \"\").trim().toUpperCase();\nconst startup = command === \"STARTUP\";\nconst source = String(commandPayload?.source ?? \"dashboard\");\nconst providerActivation = source === \"provider_backoff\";\nconst providerRecovery = source === \"provider_recovered\";\n\nlet enabled;\nif (startup) {\n    enabled = getState() === true;\n    if (getState() === undefined) setState(false);\n} else if (providerActivation) {\n    const wasEnabled = getState() === true;\n    enabled = true;\n    // Se já estava ON, foi uma escolha manual e não deve ser desfeita pela\n    // recuperação posterior da API.\n    if (!wasEnabled) setAutomatic(true);\n} else if (providerRecovery) {\n    if (!getAutomatic()) return null;\n    enabled = false;\n    setAutomatic(false);\n} else if ([\"ON\", \"TRUE\", \"1\"].includes(command)) {\n    enabled = true;\n    setAutomatic(false);\n} else if ([\"OFF\", \"FALSE\", \"0\"].includes(command)) {\n    enabled = false;\n    setAutomatic(false);\n} else {\n    node.warn(\n        \"iluminacao_seguranca: comando inválido para o bypass manual do motor\"\n    );\n    return null;\n}\n\nconst previous = getState() === true;\nsetState(enabled);\nconst automatic = getAutomatic();\n\nif (previous !== enabled || startup) {\n    node.status({\n        fill: enabled ? \"yellow\" : \"grey\",\n        shape: enabled ? \"dot\" : \"ring\",\n        text: enabled\n            ? (automatic\n                ? \"bypass automático: API indisponível\"\n                : \"bypass manual do motor ATIVO\")\n            : \"bypass manual do motor desligado\"\n    });\n}\n\nif (!TEST_MODE && previous !== enabled) {\n    if (enabled) {\n        node.warn(\n            \"iluminacao_seguranca: bypass do motor ativado\" +\n            (automatic ? \" automaticamente pela indisponibilidade da API; \" : \"; \") +\n            \"só será aplicado enquanto a telemetria do motor estiver não confiável\"\n        );\n    } else {\n        node.log?.(\n            \"iluminacao_seguranca: bypass manual do motor desativado\"\n        );\n    }\n}\n\nconst reevaluate = {\n    payload: {\n        contract: \"security.engine-bypass.v1\",\n        kind: \"engine_bypass_context\",\n        source: TEST_MODE ? \"manual_test\" : source,\n        enabled,\n        automatic,\n        updated_at: Date.now(),\n        test_mode: TEST_MODE\n    }\n};\n\nif (TEST_MODE) {\n    reevaluate._location_test = true;\n    reevaluate._location_test_case =\n        msg._location_test_case ??\n        msg.payload?.test_case ??\n        \"engine_bypass\";\n    reevaluate.payload.test_case = reevaluate._location_test_case;\n    return [null, reevaluate];\n}\n\nconst discovery = {\n    topic: \"homeassistant/switch/vehicle_primary_engine_bypass/config\",\n    retain: true,\n    qos: 1,\n    payload: JSON.stringify({\n        name: \"Bypass do motor para iluminação de chegada\",\n        unique_id: \"vehicle_primary_engine_bypass\",\n        object_id: \"vehicle_primary_engine_bypass\",\n        state_topic: \"homeassistant/vehicle_primary/engine_bypass/state\",\n        command_topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        state_on: \"ON\",\n        state_off: \"OFF\",\n        icon: \"mdi:car-light-alert\",\n        device: {\n            identifiers: [\"vehicle_primary_bluelink\"],\n            name: \"vehicle_primary\",\n            manufacturer: \"Hyundai\"\n        }\n    })\n};\n\nconst stateMessage = {\n    topic: \"homeassistant/vehicle_primary/engine_bypass/state\",\n    retain: true,\n    qos: 1,\n    payload: enabled ? \"ON\" : \"OFF\"\n};\n\nreturn [[discovery, stateMessage], reevaluate];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 1140,
+        "wires": [
+            [
+                "security_light_engine_bypass_mqtt_out_v1"
+            ],
+            [
+                "security_light_engine_bypass_reevaluate_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "security_light_engine_bypass_mqtt_out_v1",
+        "type": "mqtt out",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Publicar discovery e estado da chave",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1080,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "security_light_engine_bypass_reevaluate_out_v1",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Bypass alterado → reavaliar chegada",
+        "mode": "link",
+        "links": [
+            "security_light_engine_bypass_reevaluate_in_v1"
+        ],
+        "x": 1135,
+        "y": 1180,
+        "wires": []
+    },
+    {
+        "id": "security_light_engine_bypass_reevaluate_in_v1",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "32a89192d93735b1",
+        "name": "Receber alteração do bypass",
+        "links": [
+            "security_light_engine_bypass_reevaluate_out_v1"
+        ],
+        "x": 520,
+        "y": 360,
+        "wires": [
+            [
+                "48a5f40d806f6950"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_provider_backoff_state_v1",
+        "type": "server-state-changed",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Prazo de backoff do provedor",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.vehicle_primary_api_retry_at"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 365,
+        "y": 1140,
+        "wires": [
+            [
+                "vehicle_primary_provider_backoff_sync_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_provider_backoff_sync_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Sincronizar backoff do provedor",
+        "func": "const key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst entity = msg.payload ?? {};\nconst status = String(entity.attributes?.status ?? \"unknown\");\nconst retryAt = Date.parse(String(entity.state ?? \"\"));\nconst now = Date.now();\nconst active =\n    status === \"rate_limited\" &&\n    Number.isFinite(retryAt) &&\n    retryAt > now;\n\nif (active) {\n    state.provider_retry_at = retryAt;\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        retryAt\n    );\n    state.next_retry_at = state.next_allowed_at;\n    state.awaiting_evidence = true;\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.cache_probe_settle_until = null;\n    state.state = \"backoff\";\n    state.reason = \"provider_backoff\";\n    state.last_failure_class = \"provider_backoff\";\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: `provedor em backoff até ${new Date(retryAt).toISOString()}`\n    });\n    return {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"ON\",\n            source: \"provider_backoff\"\n        })\n    };\n}\n\nconst previousProviderRetryAt = Number(state.provider_retry_at ?? 0);\nif (\n    previousProviderRetryAt > 0 &&\n    status === \"available\"\n) {\n    state.provider_retry_at = null;\n    if (\n        state.reason === \"provider_backoff\" &&\n        Number(state.next_allowed_at ?? 0) <= previousProviderRetryAt\n    ) {\n        state.next_allowed_at = now;\n        state.next_retry_at = now;\n    }\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.status({ fill: \"green\", shape: \"dot\", text: \"provedor liberado\" });\n    return {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"OFF\",\n            source: \"provider_recovered\"\n        })\n    };\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 1140,
+        "wires": [
+            [
+                "vehicle_primary_provider_bypass_command_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_provider_bypass_command_v1",
+        "type": "mqtt out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Comandar bypass durante falha da API",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "721c47f31046b8bc",
+        "x": 1040,
+        "y": 1175,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__weekly_docs_review_tab__group",
         "type": "group",
         "z": "weekly_docs_review_tab",
@@ -20423,206 +20715,5 @@
         "x": 1410,
         "y": 640,
         "wires": []
-    },
-    {
-        "id": "security_light_engine_bypass_group_v1",
-        "type": "group",
-        "z": "6b7552efb85343f4",
-        "name": "6. Bypass manual do motor (somente telemetria não confiável)",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#c8a951",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "security_light_engine_bypass_startup_v1",
-            "security_light_engine_bypass_command_v1",
-            "security_light_engine_bypass_function_v1",
-            "security_light_engine_bypass_mqtt_out_v1",
-            "security_light_engine_bypass_reevaluate_out_v1",
-            "security_light_engine_bypass_test_on_v1",
-            "security_light_engine_bypass_test_off_v1"
-        ],
-        "x": 64,
-        "y": 1019,
-        "w": 1362,
-        "h": 282
-    },
-    {
-        "id": "security_light_engine_bypass_startup_v1",
-        "type": "inject",
-        "z": "6b7552efb85343f4",
-        "g": "security_light_engine_bypass_group_v1",
-        "name": "Publicar chave e restaurar estado no startup",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 1,
-        "topic": "",
-        "payload": "STARTUP",
-        "payloadType": "str",
-        "x": 300,
-        "y": 1080,
-        "wires": [
-            [
-                "security_light_engine_bypass_function_v1"
-            ]
-        ]
-    },
-    {
-        "id": "security_light_engine_bypass_command_v1",
-        "type": "mqtt in",
-        "z": "6b7552efb85343f4",
-        "g": "security_light_engine_bypass_group_v1",
-        "name": "Comando da chave no painel vehicle_primary",
-        "topic": "homeassistant/vehicle_primary/engine_bypass/set",
-        "qos": "1",
-        "datatype": "utf8",
-        "broker": "721c47f31046b8bc",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 300,
-        "y": 1140,
-        "wires": [
-            [
-                "security_light_engine_bypass_function_v1"
-            ]
-        ]
-    },
-    {
-        "id": "security_light_engine_bypass_test_on_v1",
-        "type": "inject",
-        "z": "6b7552efb85343f4",
-        "g": "security_light_engine_bypass_group_v1",
-        "name": "TESTE: bypass ON (isolado)",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "{\"requested_state\":\"ON\",\"test_mode\":true,\"test_case\":\"engine_bypass_on\"}",
-        "payloadType": "json",
-        "x": 260,
-        "y": 1200,
-        "wires": [
-            [
-                "security_light_engine_bypass_function_v1"
-            ]
-        ]
-    },
-    {
-        "id": "security_light_engine_bypass_test_off_v1",
-        "type": "inject",
-        "z": "6b7552efb85343f4",
-        "g": "security_light_engine_bypass_group_v1",
-        "name": "TESTE: bypass OFF (isolado)",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "{\"requested_state\":\"OFF\",\"test_mode\":true,\"test_case\":\"engine_bypass_off\"}",
-        "payloadType": "json",
-        "x": 260,
-        "y": 1260,
-        "wires": [
-            [
-                "security_light_engine_bypass_function_v1"
-            ]
-        ]
-    },
-    {
-        "id": "security_light_engine_bypass_function_v1",
-        "type": "function",
-        "z": "6b7552efb85343f4",
-        "g": "security_light_engine_bypass_group_v1",
-        "name": "Persistir bypass e limitar uso ao dado não confiável",
-        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nconst STATE_KEY = TEST_MODE\n    ? \"security_light_engine_bypass_enabled__test\"\n    : \"security_light_engine_bypass_enabled\";\nconst PERSISTENT = \"persistent\";\n\nfunction getState() {\n    return TEST_MODE\n        ? flow.get(STATE_KEY)\n        : flow.get(STATE_KEY, PERSISTENT);\n}\n\nfunction setState(value) {\n    return TEST_MODE\n        ? flow.set(STATE_KEY, value)\n        : flow.set(STATE_KEY, value, PERSISTENT);\n}\n\nconst raw = msg.payload?.requested_state ?? msg.payload;\nconst command = String(raw ?? \"\").trim().toUpperCase();\nconst startup = command === \"STARTUP\";\n\nlet enabled;\nif (startup) {\n    enabled = getState() === true;\n    if (getState() === undefined) setState(false);\n} else if ([\"ON\", \"TRUE\", \"1\"].includes(command)) {\n    enabled = true;\n} else if ([\"OFF\", \"FALSE\", \"0\"].includes(command)) {\n    enabled = false;\n} else {\n    node.warn(\n        \"iluminacao_seguranca: comando inválido para o bypass manual do motor\"\n    );\n    return null;\n}\n\nconst previous = getState() === true;\nsetState(enabled);\n\nif (previous !== enabled || startup) {\n    node.status({\n        fill: enabled ? \"yellow\" : \"grey\",\n        shape: enabled ? \"dot\" : \"ring\",\n        text: enabled\n            ? \"bypass manual do motor ATIVO\"\n            : \"bypass manual do motor desligado\"\n    });\n}\n\nif (!TEST_MODE && previous !== enabled) {\n    if (enabled) {\n        node.warn(\n            \"iluminacao_seguranca: bypass manual do motor ativado; \" +\n            \"só será aplicado enquanto a telemetria do motor estiver não confiável\"\n        );\n    } else {\n        node.log?.(\n            \"iluminacao_seguranca: bypass manual do motor desativado\"\n        );\n    }\n}\n\nconst reevaluate = {\n    payload: {\n        contract: \"security.engine-bypass.v1\",\n        kind: \"engine_bypass_context\",\n        source: TEST_MODE ? \"manual_test\" : \"dashboard\",\n        enabled,\n        updated_at: Date.now(),\n        test_mode: TEST_MODE\n    }\n};\n\nif (TEST_MODE) {\n    reevaluate._location_test = true;\n    reevaluate._location_test_case =\n        msg._location_test_case ??\n        msg.payload?.test_case ??\n        \"engine_bypass\";\n    reevaluate.payload.test_case = reevaluate._location_test_case;\n    return [null, reevaluate];\n}\n\nconst discovery = {\n    topic: \"homeassistant/switch/vehicle_primary_engine_bypass/config\",\n    retain: true,\n    qos: 1,\n    payload: JSON.stringify({\n        name: \"Bypass do motor para iluminação de chegada\",\n        unique_id: \"vehicle_primary_engine_bypass\",\n        object_id: \"vehicle_primary_engine_bypass\",\n        state_topic: \"homeassistant/vehicle_primary/engine_bypass/state\",\n        command_topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        state_on: \"ON\",\n        state_off: \"OFF\",\n        icon: \"mdi:car-light-alert\",\n        device: {\n            identifiers: [\"vehicle_primary_bluelink\"],\n            name: \"vehicle_primary\",\n            manufacturer: \"Hyundai\"\n        }\n    })\n};\n\nconst stateMessage = {\n    topic: \"homeassistant/vehicle_primary/engine_bypass/state\",\n    retain: true,\n    qos: 1,\n    payload: enabled ? \"ON\" : \"OFF\"\n};\n\nreturn [[discovery, stateMessage], reevaluate];",
-        "outputs": 2,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 710,
-        "y": 1140,
-        "wires": [
-            [
-                "security_light_engine_bypass_mqtt_out_v1"
-            ],
-            [
-                "security_light_engine_bypass_reevaluate_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "security_light_engine_bypass_mqtt_out_v1",
-        "type": "mqtt out",
-        "z": "6b7552efb85343f4",
-        "g": "security_light_engine_bypass_group_v1",
-        "name": "Publicar discovery e estado da chave",
-        "topic": "",
-        "qos": "",
-        "retain": "",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "721c47f31046b8bc",
-        "x": 1080,
-        "y": 1100,
-        "wires": []
-    },
-    {
-        "id": "security_light_engine_bypass_reevaluate_out_v1",
-        "type": "link out",
-        "z": "6b7552efb85343f4",
-        "g": "security_light_engine_bypass_group_v1",
-        "name": "Bypass alterado → reavaliar chegada",
-        "mode": "link",
-        "links": [
-            "security_light_engine_bypass_reevaluate_in_v1"
-        ],
-        "x": 1135,
-        "y": 1180,
-        "wires": []
-    },
-    {
-        "id": "security_light_engine_bypass_reevaluate_in_v1",
-        "type": "link in",
-        "z": "6b7552efb85343f4",
-        "g": "32a89192d93735b1",
-        "name": "Receber alteração do bypass",
-        "links": [
-            "security_light_engine_bypass_reevaluate_out_v1"
-        ],
-        "x": 520,
-        "y": 360,
-        "wires": [
-            [
-                "48a5f40d806f6950"
-            ]
-        ]
     }
 ]
