@@ -404,6 +404,8 @@ assert.deepEqual(providerBackoffState.entities.entity, [
   "sensor.vehicle_primary_api_retry_at",
 ]);
 assert.equal(providerBackoffState.outputInitially, true);
+assert.equal(providerBackoffState.outputProperties[0].valueType, "jsonata");
+assert.match(providerBackoffState.outputProperties[0].value, /attributes\.status/);
 assert.deepEqual(providerBackoffState.wires, [[
   "vehicle_primary_provider_backoff_sync_v1",
 ]]);

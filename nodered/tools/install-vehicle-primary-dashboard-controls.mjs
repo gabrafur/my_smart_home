@@ -977,8 +977,8 @@ upsert({
     {
       property: "payload",
       propertyType: "msg",
-      value: "",
-      valueType: "entityState",
+      value: '({"state":$entity().state,"attributes":{"status":$entity().attributes.status,"retry_after_seconds":$entity().attributes.retry_after_seconds}})',
+      valueType: "jsonata",
     },
   ],
   x: 365,
