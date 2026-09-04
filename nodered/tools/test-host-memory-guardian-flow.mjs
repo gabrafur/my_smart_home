@@ -99,7 +99,7 @@ const duplicate = parseResult({
 assert.equal(duplicate, null, "resultado persistente repetido deve ser deduplicado");
 
 const terminal = byId.get("host_memory_guardian_dry_run_terminal");
-assert.deepEqual(terminal.wires, []);
+assert.deepEqual((terminal.wires ?? []).flat(), []);
 assert.match(terminal.func, /simulated:\s*true/);
 assert.match(terminal.func, /dispatched:\s*false/);
 
