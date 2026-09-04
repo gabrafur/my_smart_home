@@ -24,7 +24,7 @@ assert.ok(!JSON.stringify(node("git_backup_request")).includes("/mnt/data/docker
 assert.ok(!JSON.stringify(node("git_backup_request")).includes(".ssh"));
 assert.ok(!JSON.stringify(node("git_backup_request")).includes("/data/.git-backup-trigger"));
 assert.deepEqual(node("git_backup_result").wires, [
-  ["git_backup_notify_primary"],
+  ["git_backup_notify_primary", "git_backup_notify_persistent"],
   ["git_backup_dry_run_terminal"],
   ["git_backup_daily_update_out"],
   ["git_backup_retry_delay"],
@@ -34,6 +34,14 @@ assert.deepEqual(node("git_backup_retry_out").links, ["git_backup_retry_in"]);
 assert.deepEqual(node("git_backup_retry_in").wires, [["git_backup_request"]]);
 assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after_backup_in"]);
 assert.match(node("git_backup_notify_primary").data, /"role":"mobile_primary"/);
+assert.equal(node("git_backup_notify_persistent").action, "persistent_notification.create");
+assert.equal(node("git_backup_notify_persistent").domain, "persistent_notification");
+assert.equal(node("git_backup_notify_persistent").service, "create");
+assert.match(node("git_backup_notify_persistent").data, /"notification_id":"git_backup_failure"/);
+assert.deepEqual(node("git_backup_error").wires, [[
+  "git_backup_notify_primary",
+  "git_backup_notify_persistent",
+]]);
 assert.deepEqual(node("git_backup_test_success").wires, [["git_backup_test_result_out"]]);
 assert.deepEqual(node("git_backup_test_failure").wires, [["git_backup_test_result_out"]]);
 assert.deepEqual(node("git_backup_test_deferred").wires, [["git_backup_test_result_out"]]);
@@ -43,6 +51,7 @@ assert.ok(!JSON.stringify(node("git_backup_test_success")).includes("git_backup_
 assert.ok(!JSON.stringify(node("git_backup_test_failure")).includes("git_backup_request"));
 assert.match(node("git_backup_dry_run_terminal").func, /external_call_sent: false/);
 assert.match(node("git_backup_dry_run_terminal").func, /notification_sent: false/);
+assert.match(node("git_backup_dry_run_terminal").func, /persistent_notification_sent: false/);
 
 const values = new Map();
 const flow = {
