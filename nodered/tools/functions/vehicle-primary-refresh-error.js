@@ -20,10 +20,53 @@ const now = Date.now();
 const cacheProbeFailure = /cache|reler/i.test(source);
 const tripRefreshFailure = /viagens?|trip/i.test(source);
 const successfulHttpResponse = /\b(?:200|202)\b/.test(message);
+if (successfulHttpResponse && !tripRefreshFailure) {
+    const failureWasNotified = Number(state.failure_notified_at ?? 0) > 0;
+    const apiFailureWasActive = state.engine_communication_failed === true;
+    const intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]
+        .includes(Number(state.interval_ms))
+            ? Number(state.interval_ms)
+            : 15 * 60 * 1000;
+    state.request_in_flight = false;
+    state.in_flight_until = null;
+    state.awaiting_evidence = false;
+    state.evidence_wait_started_at = null;
+    state.service_accepted_at = now;
+    state.last_success_at = now;
+    state.last_success_reason = "api_accepted_200_or_202";
+    state.last_evidence_domains = ["api"];
+    state.attempts = 0;
+    state.engine_communication_failed = false;
+    state.engine_bypass_recovery_pending =
+        state.engine_bypass_recovery_pending === true || apiFailureWasActive;
+    state.recovery_notification_pending =
+        state.recovery_notification_pending === true || failureWasNotified;
+    state.failure_notified_at = null;
+    state.failure_notification_key = null;
+    state.last_failure_class = null;
+    state.failure_at = null;
+    state.failure_source = null;
+    state.failure_endpoint = null;
+    state.failure_stage = null;
+    state.next_allowed_at = Math.max(
+        Number(state.next_allowed_at ?? 0),
+        now + intervalMs
+    );
+    state.next_retry_at = null;
+    state.cooldown_until = state.next_allowed_at;
+    state.state = "cooldown";
+    state.reason = "api_accepted_200_or_202";
+    state.updated_at = now;
+    flow.set(key, state, "persistent");
+    node.warn(
+        "VEHICLE_PRIMARY_API_ACCEPTED_FROM_ERROR_PATH" +
+        " source=" + source + " message=" + message
+    );
+    return null;
+}
 const engineRelevantFailure =
     !tripRefreshFailure &&
-    failureClass !== "concurrent_request_coalesced" &&
-    !successfulHttpResponse;
+    failureClass !== "concurrent_request_coalesced";
 const shouldActivateAutomaticBypass =
     engineRelevantFailure &&
     state.engine_communication_failed !== true;

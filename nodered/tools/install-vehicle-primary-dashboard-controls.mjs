@@ -70,7 +70,15 @@ if (!contextCoordinator) {
 }
 contextCoordinator.func = contextCoordinator.func.replaceAll(
   "people?.any_fresh_tracker_away",
+  "people?.best_location_away",
+);
+contextCoordinator.func = contextCoordinator.func.replaceAll(
   "people?.any_tracker_away",
+  "people?.best_location_away",
+);
+contextCoordinator.func = contextCoordinator.func.replaceAll(
+  "msg.payload.context?.any_tracker_away",
+  "msg.payload.context?.best_location_away",
 );
 if (!contextCoordinator.func.includes("resident_primary_state:")) {
   const presenceMarker = `                    anyone_away:
@@ -98,7 +106,7 @@ if (!contextCoordinator.func.includes("any_resident_away:")) {
     residentPresenceMarker,
     `${residentPresenceMarker}
                     any_resident_away:
-                        people?.any_tracker_away === true,`,
+                        people?.best_location_away === true,`,
   );
 }
 if (!contextCoordinator.func.includes("resident_departure_force:")) {
@@ -133,6 +141,7 @@ if (!contextCoordinator.func.includes("resident_departure_force:")) {
         departurePreviousState === "home" &&
         ["chegando", "not_home"].includes(departureState) &&
         departurePosition?.ready === true &&
+        departurePosition?.best_location_away === true &&
         previousDeparture?.key !== departureKey;
 
     let departureRefresh = null;
@@ -157,7 +166,7 @@ if (!contextCoordinator.func.includes("resident_departure_force:")) {
                 resident_secondary_state:
                     msg.payload.context?.resident_secondary?.state ?? null,
                 any_resident_away:
-                    msg.payload.context?.any_tracker_away === true,
+                    msg.payload.context?.best_location_away === true,
                 people_ready: msg.payload.ready === true,
                 vehicle_primary_ready:
                     ctxGet("vehicle_primary_context_v1")?.ready === true,
@@ -188,6 +197,70 @@ if (!contextCoordinator.func.includes("resident_departure_force:")) {
     returnMarker,
     `    const selectedRefresh = departureRefresh ?? refresh;
     return selectedRefresh ? [null, selectedRefresh] : null;`,
+  );
+}
+if (!contextCoordinator.func.includes(
+  "departurePosition?.best_location_away === true",
+)) {
+  const departureReadinessMarker =
+    "        departurePosition?.ready === true &&\n        previousDeparture?.key !== departureKey;";
+  if (!contextCoordinator.func.includes(departureReadinessMarker)) {
+    throw new Error("Gate da melhor localização na saída não encontrado");
+  }
+  contextCoordinator.func = contextCoordinator.func.replace(
+    departureReadinessMarker,
+    "        departurePosition?.ready === true &&\n" +
+      "        departurePosition?.best_location_away === true &&\n" +
+      "        previousDeparture?.key !== departureKey;",
+  );
+}
+const independentPeopleRecoveryMarker =
+  "vehicle_recovery_independent_of_people_freshness_v1";
+if (!contextCoordinator.func.includes(independentPeopleRecoveryMarker)) {
+  const sharedRecoveryBlock = `            const recoveryNeeded =
+                !contextsReady ||
+                pending.force_recovery === true;
+
+            const recoveryReason =
+                pending.request_reason ??
+                (contextsReady
+                    ? "paired_ready_snapshots"
+                    : "readiness_recovery_needed");`;
+  if (!contextCoordinator.func.includes(sharedRecoveryBlock)) {
+    throw new Error("Recovery conjunto de pessoas e veículo não encontrado");
+  }
+  contextCoordinator.func = contextCoordinator.func.replace(
+    sharedRecoveryBlock,
+    `            /* ${independentPeopleRecoveryMarker}: localização stale
+             * recupera os telefones, mas não reduz sozinha o ciclo do carro. */
+            const peopleRecoveryNeeded =
+                pending.people_ready !== true;
+            const recoveryNeeded =
+                pending.vehicle_primary_ready !== true ||
+                pending.force_recovery === true;
+
+            const recoveryReason =
+                pending.request_reason ??
+                (recoveryNeeded
+                    ? "vehicle_readiness_recovery_needed"
+                    : peopleRecoveryNeeded
+                        ? "people_location_recovery_only"
+                        : "paired_ready_snapshots");`,
+  );
+  contextCoordinator.func = contextCoordinator.func.replace(
+    "                    people_ready: pending.people_ready === true,",
+    `                    people_ready: pending.people_ready === true,
+                    people_recovery_needed: peopleRecoveryNeeded,`,
+  );
+  contextCoordinator.func = contextCoordinator.func.replace(
+    `                text: recoveryNeeded
+                    ? "refresh de recuperação emitido"
+                    : "snapshots ready; política de refresh emitida"`,
+    `                text: recoveryNeeded
+                    ? "refresh do veículo em recuperação"
+                    : peopleRecoveryNeeded
+                        ? "localização pendente; política normal do veículo"
+                        : "snapshots ready; política de refresh emitida"`,
   );
 }
 Object.assign(required("25ca02f8c1de32d0"), { x: 215, y: 680 });

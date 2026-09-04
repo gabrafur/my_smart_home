@@ -48,6 +48,7 @@ def main() -> None:
     assert "engine_communication_failed" in dashboard
     assert "engine_revalidation_failed" in dashboard
     assert "fresh_telemetry_engine_unreliable" not in dashboard
+    assert "no_fresh_data='o wake não produziu dados novos'" not in dashboard
     assert dashboard.count(
         "a leitura específica do motor continua não confiável para a iluminação"
     ) == 3
@@ -69,10 +70,10 @@ def main() -> None:
         "refresh_failure == 'integration_unavailable'"
     )
     assert dashboard.index("refresh_failure == 'integration_unavailable'") < dashboard.index(
-        "Último wake confirmado, solicitado há cerca de"
+        "Último wake aceito pelo Bluelink, solicitado há cerca de"
     )
     assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
-        "Último wake confirmado, solicitado há cerca de"
+        "Último wake aceito pelo Bluelink, solicitado há cerca de"
     )
     assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
         "Wake periódico pausado até 06h"
@@ -94,10 +95,11 @@ def main() -> None:
     assert "o esperado é uma consulta a cada 15 min" in dashboard
     assert "request_age_s = ([0, as_timestamp(now()) - request_ts] | max)" in dashboard
     assert "request_age_min = (request_age_s / 60) | round(0)" in dashboard
-    assert "Último wake confirmado, solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min" in dashboard
-    assert "dados passivos do servidor podem confirmar um estacionamento mais recente sem novo wake" in dashboard
+    assert "Último wake aceito pelo Bluelink, solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min" in dashboard
+    assert "o estado conhecido e confiável permanece válido mesmo sem mudança" in dashboard
     assert "success_ts - request_ts <= 1260" in dashboard
-    assert "Ainda sem confirmação causal do último wake" in dashboard
+    assert "Ainda sem confirmação causal do último wake" not in dashboard
+    assert "aguardando a conclusão da chamada ao Bluelink" in dashboard
     assert "O último wake ainda não produziu dados novos" not in dashboard
     assert "'interval_minutes') | int(0)" in dashboard
     assert "ignora o prazo periódico e a pausa noturna" not in dashboard

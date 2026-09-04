@@ -18,7 +18,7 @@ const contextCoordinator = flows.find(
 );
 assert.match(
   contextCoordinator?.func ?? "",
-  /any_resident_away:\s*people\?\.any_tracker_away === true/,
+  /any_resident_away:\s*people\?\.best_location_away === true/,
 );
 assert.doesNotMatch(
   contextCoordinator?.func ?? "",
@@ -48,6 +48,9 @@ const code = {
   )?.func,
   normalizer: flows.find((node) => node.id === "092625f2eb5cc156")?.func,
 };
+
+assert.match(code.coordinator, /peopleContext\.best_location_away === true/);
+assert.doesNotMatch(code.coordinator, /peopleContext\.any_tracker_away/);
 
 for (const [name, body] of Object.entries(code)) {
   assert.equal(typeof body, "string", `fonte ausente: ${name}`);
@@ -208,7 +211,7 @@ scenario("02 ambos em casa usam intervalo de 30 minutos", () => {
   assert.equal(state.next_allowed_at, DAY + 30 * 60_000);
 });
 
-scenario("02a evidência recente fora reduz conflito de presença para 15 minutos", () => {
+scenario("02a melhor localização fora seleciona intervalo de 15 minutos", () => {
   const acceptedAt = DAY;
   const store = memory({
     vehicle_primary_context_v1: readyContext(acceptedAt),
@@ -232,6 +235,64 @@ scenario("02a evidência recente fora reduz conflito de presença para 15 minuto
   assert(result[0]);
   assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
   assert.equal(store.get(KEY).interval_policy, "away_or_approaching_15m");
+});
+
+scenario("02b localização stale não reduz sozinha o ciclo do veículo", () => {
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY),
+  });
+  const started = execute(code.contextCoordinator, {
+    now: DAY,
+    store,
+    msg: { payload: { kind: "refresh_tick" } },
+  });
+  const cycle = started[0].payload.refresh_cycle_id;
+
+  execute(code.contextCoordinator, {
+    now: DAY,
+    store,
+    msg: {
+      payload: {
+        kind: "people_context",
+        refresh_cycle_id: cycle,
+        ready: false,
+        updated_at: DAY,
+        context: {
+          resident_primary: { state: "home" },
+          resident_secondary: { state: "home" },
+          best_location_away: false,
+          ready: false,
+          updated_at: DAY,
+        },
+      },
+    },
+  });
+  const paired = execute(code.contextCoordinator, {
+    now: DAY,
+    store,
+    msg: {
+      payload: {
+        kind: "vehicle_primary_context",
+        refresh_cycle_id: cycle,
+        ready: true,
+        updated_at: DAY,
+        context: readyContext(DAY),
+      },
+    },
+  });
+
+  assert(paired[1]);
+  assert.equal(paired[1].payload.people_recovery_needed, true);
+  assert.equal(paired[1].payload.recovery_needed, false);
+  assert.equal(paired[1].payload.any_resident_away, false);
+  const request = execute(code.coordinator, {
+    now: DAY,
+    store,
+    msg: paired[1],
+  });
+  assert(request[0]);
+  assert.equal(store.get(KEY).interval_ms, 30 * 60_000);
+  assert.equal(store.get(KEY).interval_policy, "both_home_30m");
 });
 
 scenario("03 ambos em casa ficam pausados entre 00h e 06h", () => {
@@ -511,7 +572,7 @@ scenario("15 evidência nova confirma sucesso", () => {
   assert.equal(state.next_allowed_at, DAY - 15_000 + 15 * 60_000);
 });
 
-scenario("16 serviço aceito sem evidência nova não é sucesso", () => {
+scenario("16 HTTP 200/202 preserva estado mesmo sem mudança nos dados", () => {
   const baseline = DAY - 30_000;
   const store = memory({
     vehicle_primary_context_v1: readyContext(baseline),
@@ -535,14 +596,52 @@ scenario("16 serviço aceito sem evidência nova não é sucesso", () => {
   assert.equal(acceptedState.next_allowed_at, DAY + 15 * 60_000);
   assert.equal(acceptedState.engine_communication_failed, false);
   assert.equal(acceptedState.engine_bypass_recovery_pending, true);
-  assert.equal(acceptedState.last_failure_class, "api_error");
+  assert.equal(acceptedState.last_failure_class, null);
   assert.equal(acceptedState.recovery_notification_pending, true);
+  assert.equal(acceptedState.awaiting_evidence, false);
+  assert.equal(acceptedState.last_success_at, DAY);
+  assert.equal(acceptedState.last_success_reason, "api_accepted_200_or_202");
+  assert.deepEqual([...acceptedState.last_evidence_domains], ["api"]);
   normalize(store, DAY + 15_000, baseline);
   const state = store.get(KEY);
-  assert.equal(state.awaiting_evidence, true);
-  assert.equal(state.last_success_at ?? 0, 0);
-  assert.equal(state.state, "awaiting_evidence");
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.last_success_at, DAY);
+  assert.equal(state.state, "cooldown");
   assert.equal(state.next_allowed_at, DAY + 15 * 60_000);
+});
+
+scenario("16a resposta 200/202 no caminho de erro também é sucesso", () => {
+  const store = memory({
+    [KEY]: {
+      attempts: 2,
+      awaiting_evidence: true,
+      request_in_flight: true,
+      last_request_at: DAY - 5_000,
+      next_allowed_at: DAY + 60_000,
+      interval_ms: 30 * 60_000,
+      engine_communication_failed: true,
+      last_failure_class: "api_error",
+      failure_notified_at: DAY - 10_000,
+    },
+  });
+  const result = execute(code.error, {
+    now: DAY,
+    store,
+    msg: {
+      error: {
+        source: { name: "Acionar wake do vehicle_primary" },
+        message: "HTTP 202 Accepted",
+      },
+    },
+  });
+  assert.equal(result, null);
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.last_failure_class, null);
+  assert.equal(state.engine_communication_failed, false);
+  assert.equal(state.engine_bypass_recovery_pending, true);
+  assert.equal(state.recovery_notification_pending, true);
+  assert.equal(state.last_success_reason, "api_accepted_200_or_202");
 });
 
 scenario("22 aceite tardio ancora e evidência não encurta o piso", () => {
@@ -931,29 +1030,26 @@ scenario("19 dry-run percorre a fronteira final sem chamada externa", () => {
   assert.equal(trip[1].payload.dispatched, false);
 });
 
-scenario("20 alerta sintético chega somente ao terminal dry-run", () => {
-  const previousRequestAt = DAY - 20 * 60_000;
-  const store = memory({
-    vehicle_primary_context_v1__test: readyContext(DAY),
-    [`${KEY}__test`]: {
-      attempts: 1,
-      awaiting_evidence: true,
-      last_attempt_at: previousRequestAt,
-      last_request_at: previousRequestAt,
-      next_allowed_at: DAY,
-      cache_probe_completed_for_request_at: previousRequestAt,
-    },
-  });
-  const coordinated = execute(code.coordinator, {
-    now: DAY,
-    store,
-    msg: command({ test_mode: true, test_now: DAY, anyone_away: true }),
-  });
-  assert(coordinated[3]);
+scenario("20 alerta real sintético chega somente ao terminal dry-run", () => {
+  const store = memory();
   const guarded = execute(code.notificationGuard, {
     now: DAY,
     store,
-    msg: coordinated[3],
+    msg: {
+      payload: {
+        test_mode: true,
+        side_effect: "notify:resident_primary+persistent_notification",
+      },
+      alert: {
+        title: "TESTE — Erro ao atualizar veículo",
+        message: "TESTE — HTTP diferente de 200/202.",
+      },
+      notification: {
+        id: "vehicle_primary_refresh_failed",
+        title: "TESTE — Erro ao atualizar veículo",
+        message: "TESTE — HTTP diferente de 200/202.",
+      },
+    },
   });
   assert.equal(guarded[0], null);
   assert.equal(guarded[1], null);
@@ -1302,7 +1398,7 @@ scenario("39 sucesso semântico antigo não mascara recuperação", () => {
   assert.equal(store.get(KEY).interval_policy, "recovery_15m");
 });
 
-scenario("40 versão 9 reabre sucesso correlacionado muitas horas depois", () => {
+scenario("40 telemetria passiva antiga não invalida aceite saudável", () => {
   const oldRequestAt = DAY - 12 * 60 * 60_000;
   const passiveTelemetryAt = DAY - 60_000;
   const store = memory({
@@ -1327,15 +1423,13 @@ scenario("40 versão 9 reabre sucesso correlacionado muitas horas depois", () =>
     resident_primary_state: "home",
     resident_secondary_state: "home",
   });
-  assert.equal(result[0], null);
-  assert(result[4]);
+  assert.equal(result, null);
   const state = store.get(KEY);
-  assert.equal(state.version, 12);
-  assert.equal(state.awaiting_evidence, true);
-  assert.equal(state.last_success_at, 0);
-  assert.equal(state.last_failure_class, "no_fresh_data");
-  assert.match(state.failure_endpoint, /public_bindings\.call/);
-  assert.equal(state.reason, "pre_wake_cache_probe");
+  assert.equal(state.version, 13);
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.last_success_at, DAY);
+  assert.equal(state.last_failure_class ?? null, null);
+  assert.equal(state.reason, "scheduled_refresh");
 });
 
 scenario("41 mudança real de classe de falha gera novo alerta", () => {
@@ -1410,7 +1504,7 @@ scenario("41a HTTP 403 é identificado como backoff do provedor", () => {
   assert(failure[1], "HTTP 403 deve ativar o bypass automático");
 });
 
-scenario("42 recuperação limpa detalhes e fecha alerta persistente", () => {
+scenario("42 aceite da API limpa detalhes e fecha alerta persistente", () => {
   const baseline = DAY - 10 * 60_000;
   const requestAt = DAY - 5 * 60_000;
   const store = memory({
@@ -1423,6 +1517,7 @@ scenario("42 recuperação limpa detalhes e fecha alerta persistente", () => {
       last_request_at: requestAt,
       next_allowed_at: DAY + 10 * 60_000,
       baseline_observed_at: { telemetry: baseline },
+      engine_communication_failed: true,
       failure_notified_at: requestAt,
       failure_notification_key:
         "no_fresh_data|public_bindings.call (wake do veículo)",
@@ -1432,7 +1527,7 @@ scenario("42 recuperação limpa detalhes e fecha alerta persistente", () => {
     },
   });
 
-  normalize(store, DAY, DAY, DAY - 60_000);
+  execute(code.accepted, { now: DAY, store, msg: command() });
   const recovered = store.get(KEY);
   assert.equal(recovered.last_failure_class, null);
   assert.equal(recovered.failure_endpoint, null);
@@ -1463,13 +1558,20 @@ scenario("43 saída de morador emite refresh prioritário do veículo", () => {
   const previousPeople = {
     resident_primary: { state: "home", ready: true, updated_at: previousAt },
     resident_secondary: { state: "home", ready: true, updated_at: previousAt },
+    best_location_away: false,
     any_tracker_away: false,
     updated_at: previousAt,
     ready: true,
   };
   const currentPeople = {
     ...previousPeople,
-    resident_primary: { state: "not_home", ready: true, updated_at: DAY },
+    resident_primary: {
+      state: "not_home",
+      ready: true,
+      best_location_away: true,
+      updated_at: DAY,
+    },
+    best_location_away: true,
     any_tracker_away: true,
     updated_at: DAY,
   };
@@ -1497,6 +1599,7 @@ scenario("43 saída de morador emite refresh prioritário do veículo", () => {
   assert(result[1]);
   assert.equal(result[1].payload.reason, "resident_departure");
   assert.equal(result[1].payload.resident_departure_force, true);
+  assert.equal(result[1].payload.any_resident_away, true);
   assert.equal(result[1].payload.departure_event_at, DAY);
 
   const duplicate = execute(code.contextCoordinator, {
@@ -1549,7 +1652,7 @@ scenario("44 saída ignora deadline, mas não duplica o mesmo wake", () => {
   assert.equal(phoneStore.get("security_people_last_refresh_at"), undefined);
 });
 
-scenario("45 segunda saída não antecipa alerta semântico de 20 minutos", () => {
+scenario("45 aceite sem mudança encerra espera e segunda saída não alerta", () => {
   const firstDepartureAt = DAY;
   const store = memory({
     vehicle_primary_context_v1: readyContext(DAY - 60_000),
@@ -1583,40 +1686,41 @@ scenario("45 segunda saída não antecipa alerta semântico de 20 minutos", () =
   });
   assert(second[0]);
   assert.equal(second[3], null);
-  assert.equal(store.get(KEY).evidence_wait_started_at, firstDepartureAt);
+  assert.equal(store.get(KEY).evidence_wait_started_at, DAY + 90_000);
   assert.equal(store.get(KEY).last_failure_class ?? null, null);
 });
 
-scenario("46 alerta semântico nasce somente após 20 minutos reais", () => {
+scenario("46 ausência de mudança após aceite nunca cria no_fresh_data", () => {
   const store = memory({
     vehicle_primary_context_v1: readyContext(DAY - 60_000),
     [KEY]: {
-      version: 11,
+      version: 12,
       attempts: 2,
       awaiting_evidence: true,
       evidence_wait_started_at: DAY,
       last_attempt_at: DAY + 90_000,
       last_request_at: DAY + 90_000,
+      service_accepted_at: DAY + 100_000,
       next_allowed_at: DAY + 30 * 60_000,
       interval_ms: 15 * 60_000,
+      last_failure_class: "no_fresh_data",
+      failure_notified_at: DAY + 20 * 60_000,
+      failure_notification_key:
+        "no_fresh_data|public_bindings.call (wake do veículo)",
     },
   });
-  const before = coordinator(store, DAY + 20 * 60_000 - 1, {
+  const result = coordinator(store, DAY + 20 * 60_000, {
     resident_primary_state: "not_home",
     resident_secondary_state: "not_home",
   });
-  assert.equal(before, null);
-  assert.equal(store.get(KEY).last_failure_class ?? null, null);
-
-  const due = coordinator(store, DAY + 20 * 60_000, {
-    resident_primary_state: "not_home",
-    resident_secondary_state: "not_home",
-  });
-  assert.equal(due[0], null);
-  assert(due[3]);
-  assert.match(due[3].alert.message, /dentro de 20 min/);
-  assert.equal(store.get(KEY).last_failure_class, "no_fresh_data");
-  assert.equal(store.get(KEY).failure_at, DAY + 20 * 60_000);
+  assert.equal(result, null);
+  const state = store.get(KEY);
+  assert.equal(state.version, 13);
+  assert.equal(state.awaiting_evidence, false);
+  assert.equal(state.last_failure_class, null);
+  assert.equal(state.last_success_at, DAY + 100_000);
+  assert.equal(state.last_success_reason, "api_accepted_200_or_202");
+  assert.equal(state.recovery_notification_pending, true);
 });
 
 scenario("47 sucesso limpa o início da espera semântica", () => {

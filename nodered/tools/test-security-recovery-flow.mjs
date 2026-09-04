@@ -459,7 +459,7 @@ scenario("44 coordenadas confiáveis vencem tracker impreciso", () => {
   assert.equal(context.resident_primary.location_reliable, true);
 });
 
-scenario("45 tracker fora preserva evidência para ciclo de wake", () => {
+scenario("45 tracker não selecionado não altera a melhor localização", () => {
   const mobile = entity("not_home", 2_000, 30 * 60_000, 40);
   mobile.entity_id = "device_tracker.mobile_secondary_source_1";
   const icloud = entity("home", 25, 0, 5);
@@ -471,7 +471,9 @@ scenario("45 tracker fora preserva evidência para ciclo de wake", () => {
   const context = run("people_normalize", input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_secondary.entity_id, icloud.entity_id);
   assert.equal(context.resident_secondary.state, "home");
+  assert.equal(context.resident_secondary.best_location_away, false);
   assert.equal(context.resident_secondary.any_tracker_away, true);
+  assert.equal(context.best_location_away, false);
   assert.equal(context.any_tracker_away, true);
 });
 

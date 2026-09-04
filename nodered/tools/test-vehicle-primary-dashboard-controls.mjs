@@ -399,8 +399,9 @@ assert.ok(
 const accepted = flows.find(
   (node) => node.id === "vehicle_primary_refresh_accepted_v1",
 );
-assert.match(accepted.func, /aceitação da chamada/);
-assert.match(accepted.func, /awaiting_evidence/);
+assert.match(accepted.func, /aceite HTTP 200\/202/);
+assert.match(accepted.func, /awaiting_evidence = false/);
+assert.match(accepted.func, /last_success_reason = "api_accepted_200_or_202"/);
 
 const providerBackoffState = flows.find(
   (node) => node.id === "vehicle_primary_provider_backoff_state_v1",

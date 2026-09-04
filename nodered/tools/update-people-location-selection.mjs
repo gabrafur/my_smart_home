@@ -3,6 +3,9 @@
 import fs from "node:fs";
 
 const flowPath = new URL("../flows.json", import.meta.url);
+const flowOutputPath = process.env.NODE_RED_FLOW_OUTPUT
+  ? new URL(`file://${process.env.NODE_RED_FLOW_OUTPUT}`)
+  : flowPath;
 const flows = JSON.parse(fs.readFileSync(flowPath, "utf8"));
 const node = flows.find(
   (item) => item.name === "Normalizar pessoas e detectar transições",
@@ -208,6 +211,8 @@ const position = `function position(primary, fallback) {
     const anyTrackerAway =
         awayEvidence(primary) ||
         awayEvidence(fallback);
+    const bestLocationAway =
+        awayEvidence(selected);
     const anySourceReporting =
         freshSource(primary) ||
         freshSource(fallback);
@@ -271,6 +276,7 @@ const position = `function position(primary, fallback) {
                 : null,
 
         primary_home: primaryHome(primary),
+        best_location_away: bestLocationAway,
         any_tracker_home: anyTrackerHome,
         any_tracker_away: anyTrackerAway,
 
@@ -278,7 +284,7 @@ const position = `function position(primary, fallback) {
             validState &&
             state === "home" &&
             anyTrackerHome &&
-            !anyTrackerAway &&
+            !bestLocationAway &&
             anySourceReporting,
 
         primary_home_for_ms: homeForMs(primary)
@@ -363,6 +369,28 @@ if (!node.func.includes("    any_tracker_away:")) {
         resident_secondary.any_tracker_away === true,
 
     anyone_away:`,
+  );
+}
+
+const peopleBestLocationMarker = `    best_location_away:
+        resident_primary.best_location_away === true ||
+        resident_secondary.best_location_away === true,`;
+if (!node.func.includes(peopleBestLocationMarker)) {
+  const peopleContextMarker = `    resident_primary,
+    resident_secondary,
+
+    any_tracker_away:`;
+  if (!node.func.includes(peopleContextMarker)) {
+    throw new Error("Contexto da melhor localização não encontrado");
+  }
+  node.func = node.func.replace(
+    peopleContextMarker,
+    `    resident_primary,
+    resident_secondary,
+
+${peopleBestLocationMarker}
+
+    any_tracker_away:`,
   );
 }
 
@@ -463,5 +491,5 @@ node.status({
 
 return msg;`;
 
-fs.writeFileSync(flowPath, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowOutputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Seleção de localização de pessoas atualizada.");

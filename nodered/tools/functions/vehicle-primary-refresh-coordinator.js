@@ -9,7 +9,6 @@ const HOME_INTERVAL_MS = 30 * 60 * 1000;
 const IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;
 const CACHE_PROBE_SETTLE_MS = 15 * 1000;
 const FUTURE_TOLERANCE_MS = 60 * 1000;
-const MAX_WAKE_CONFIRMATION_MS = 20 * 60 * 1000;
 const MAX_PROVIDER_BACKOFF_MS = 6 * 60 * 60 * 1000;
 const key = TEST_MODE
     ? "security_vehicle_primary_refresh_v1__test"
@@ -38,7 +37,7 @@ const residentStatesKnown =
     residentPrimaryState.length > 0 && residentSecondaryState.length > 0;
 const anyResidentAway =
     msg.payload?.any_resident_away === true ||
-    peopleContext.any_tracker_away === true;
+    peopleContext.best_location_away === true;
 const bothResidentsHome =
     residentPrimaryState === "home" &&
     residentSecondaryState === "home" &&
@@ -70,7 +69,7 @@ if (!state || typeof state !== "object" || Array.isArray(state)) {
 }
 
 const previousStateVersion = Number(state.version ?? 0);
-state.version = 12;
+state.version = 13;
 state.attempts = Number.isFinite(state.attempts)
     ? Math.max(0, Math.min(5, state.attempts))
     : 0;
@@ -106,7 +105,10 @@ const semanticWakeHealthy =
     state.awaiting_evidence !== true &&
     state.last_failure_class == null &&
     Array.isArray(state.last_evidence_domains) &&
-    state.last_evidence_domains.includes("telemetry") &&
+    (
+        state.last_evidence_domains.includes("api") ||
+        state.last_evidence_domains.includes("telemetry")
+    ) &&
     lastSemanticSuccessAt > 0 &&
     lastSemanticSuccessAt <= now + FUTURE_TOLERANCE_MS &&
     now - lastSemanticSuccessAt <=
@@ -114,8 +116,8 @@ const semanticWakeHealthy =
 /*
  * Readiness derivado continua protegendo iluminação e demais automações,
  * mas não deve reduzir sozinho o ciclo de wake depois que o próprio
- * Bluelink confirmou telemetria nova. Uma recuperação explícita, uma falha
- * ou a ausência de nova evidência continuam usando 15 minutos.
+ * Bluelink aceitou a chamada. Uma recuperação explícita, uma falha real ou
+ * uma chamada ainda sem conclusão continuam usando 15 minutos.
  */
 const recoveryNeeded =
     msg.payload?.force_recovery === true ||
@@ -202,24 +204,35 @@ state.evidence_wait_started_at =
                 ? state.last_request_at || state.last_attempt_at || 0
                 : 0
         );
-/* A versão 10 notificava "20 min" assim que uma segunda transição de
- * morador disparava outro wake, mesmo poucos segundos depois da primeira.
- * Remova somente esse alerta prematuro; o prazo real será reavaliado abaixo. */
+/* A versão 12 ainda tratava ausência de mudança nos dados como falha, mesmo
+ * depois de um aceite HTTP 200/202. Migre esse estado sem novo wake e feche o
+ * alerta legado; a idade da telemetria permanece apenas diagnóstica. */
 if (
-    previousStateVersion < 11 &&
+    previousStateVersion < 13 &&
     state.last_failure_class === "no_fresh_data" &&
-    state.failure_notified_at > 0 &&
-    state.evidence_wait_started_at > 0 &&
-    state.failure_notified_at <
-        state.evidence_wait_started_at + MAX_WAKE_CONFIRMATION_MS
+    state.service_accepted_at > 0 &&
+    state.service_accepted_at >= state.last_request_at
 ) {
-    state.failure_notified_at = 0;
+    const failureWasNotified = state.failure_notified_at > 0;
+    state.attempts = 0;
+    state.awaiting_evidence = false;
+    state.evidence_wait_started_at = null;
+    state.last_success_at = Math.max(
+        state.last_success_at,
+        state.service_accepted_at
+    );
+    state.last_success_reason = "api_accepted_200_or_202";
+    state.last_evidence_domains = ["api"];
+    state.failure_notified_at = null;
     state.failure_notification_key = null;
     state.last_failure_class = null;
     state.failure_at = null;
+    state.failure_source = null;
     state.failure_endpoint = null;
     state.failure_stage = null;
-    state.recovery_notification_pending = true;
+    state.recovery_notification_pending = failureWasNotified;
+    state.state = "cooldown";
+    state.reason = "api_accepted_200_or_202";
 }
 /* Versões anteriores inferiam integration_unavailable apenas por readiness
  * incompleto. Um incidente real, classificado pelo catch da chamada, sempre
@@ -234,39 +247,6 @@ if (
     state.failure_stage = null;
     state.next_allowed_at = Math.min(state.next_allowed_at, now);
 }
-/* A versão 9 podia correlacionar uma leitura passiva muitas horas posterior
- * ao pedido e marcar o wake antigo como sucesso. Reabra somente essa situação
- * incompatível com a janela causal e preserve a leitura como dado válido do
- * veículo, sem atribuí-la ao wake. */
-const legacyWakeConfirmationDelay =
-    state.last_success_at - state.last_request_at;
-if (
-    previousStateVersion < 10 &&
-    state.last_request_at > 0 &&
-    state.last_success_at > 0 &&
-    legacyWakeConfirmationDelay > MAX_WAKE_CONFIRMATION_MS &&
-    Array.isArray(state.last_evidence_domains) &&
-    state.last_evidence_domains.includes("telemetry")
-) {
-    state.attempts = Math.max(1, state.attempts);
-    state.awaiting_evidence = true;
-    state.last_success_at = 0;
-    state.last_success_reason = null;
-    state.last_evidence_domains = [];
-    state.last_failure_class = "no_fresh_data";
-    state.failure_at = state.last_request_at + MAX_WAKE_CONFIRMATION_MS;
-    state.failure_endpoint = "public_bindings.call (wake do veículo)";
-    state.failure_stage = "confirmação semântica em até 20 min";
-    state.failure_notified_at = 0;
-    state.evidence_wait_started_at = state.last_request_at;
-    state.baseline_observed_at = {
-        telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)
-    };
-    state.next_allowed_at = Math.min(state.next_allowed_at, now);
-    state.state = "backoff";
-    state.reason = "late_uncorrelated_data";
-}
-
 function save(displayState, reason, extra = {}) {
     state.state = displayState;
     state.reason = reason ?? null;
@@ -309,71 +289,8 @@ function blockedNotification(reason, waitS) {
     return [null, null, msg, null, null];
 }
 
-const noFreshEndpoint = "public_bindings.call (wake do veículo)";
-const noFreshStage = "confirmação semântica em até 20 min";
-const failureNotificationKey = `no_fresh_data|${noFreshEndpoint}`;
-
-function failureNotificationIfDue() {
-    const waitStartedAt = Number(state.evidence_wait_started_at ?? 0);
-    const confirmationExpired =
-        state.awaiting_evidence === true &&
-        waitStartedAt > 0 &&
-        now - waitStartedAt >= MAX_WAKE_CONFIRMATION_MS;
-    if (
-        !confirmationExpired ||
-        !(
-            state.last_failure_class == null ||
-            state.last_failure_class === "no_fresh_data"
-        ) ||
-        state.failure_notification_key === failureNotificationKey
-    ) {
-        return null;
-    }
-
-    state.failure_notified_at = now;
-    state.failure_notification_key = failureNotificationKey;
-    state.last_failure_class = "no_fresh_data";
-    state.failure_at = waitStartedAt + MAX_WAKE_CONFIRMATION_MS;
-    state.failure_endpoint = noFreshEndpoint;
-    state.failure_stage = noFreshStage;
-    const notification = {
-        ...msg,
-        payload: (msg.payload && typeof msg.payload === "object")
-            ? { ...msg.payload }
-            : msg.payload
-    };
-    notification.payload = {
-        ...notification.payload,
-        test_mode: TEST_MODE,
-        side_effect: "notify:resident_primary+persistent_notification"
-    };
-    notification.alert = {
-        title: TEST_MODE
-            ? "TESTE — Falha ao atualizar veículo"
-            : "Falha ao atualizar veículo",
-        message:
-            `O endpoint ${noFreshEndpoint} foi chamado, mas o Bluelink ` +
-            "não publicou telemetria nova dentro de 20 min. " +
-            "As retentativas automáticas continuam com backoff; " +
-            "verifique a conectividade do veículo e o serviço da Hyundai."
-    };
-    notification.notification = {
-        id: "vehicle_primary_refresh_failed",
-        title: notification.alert.title,
-        message: notification.alert.message
-    };
-    return notification;
-}
-
-const failureNotification = failureNotificationIfDue();
-
 function withFailure(result) {
-    if (!failureNotification) return result;
-    if (Array.isArray(result)) {
-        result[3] = failureNotification;
-        return result;
-    }
-    return [null, null, null, failureNotification, null];
+    return result;
 }
 
 if (
@@ -625,6 +542,6 @@ return [
     msg,
     TEST_MODE ? null : msg,
     null,
-    failureNotification,
+    null,
     null
 ];

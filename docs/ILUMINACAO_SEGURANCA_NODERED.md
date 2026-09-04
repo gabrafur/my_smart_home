@@ -339,8 +339,11 @@ depende exclusivamente de um `delay` residente em memória.
 - vehicle_primary: 15 min quando `resident_primary` ou `resident_secondary`
   está `not_home`/`chegando`; 30 min no ciclo saudável quando ambos estão
   `home`, com os wakes periódicos suspensos das 00:00 às 05:59 nessa última
-  condição. Recuperação e backoff usam 15 min, inclusive em casa, fora dessa
-  pausa noturna.
+  condição. Essa presença usa a mesma fonte de melhor localização mostrada no
+  mapa; divergência de uma fonte não selecionada fica apenas no diagnóstico.
+  A idade dessa localização pode solicitar atualização dos telefones, mas não
+  reduz sozinha o ciclo do veículo. Recuperação do próprio veículo e backoff
+  usam 15 min, inclusive em casa, fora dessa pausa noturna.
 - A transição confirmada de qualquer residente de `home` para `chegando` ou
   `not_home` dispara imediatamente um `force_refresh` do vehicle_primary,
   independentemente do deadline periódico. Esse comando acorda o veículo e
@@ -366,10 +369,10 @@ depende exclusivamente de um `delay` residente em memória.
   Também persiste `request_in_flight` com lease conservador; o Home Assistant
   mantém um lock adicional no botão privado. Assim, duas entradas simultâneas
   são coalescidas e no máximo uma chamada alcança a API.
-  Falhas usam 15 min fora da pausa noturna; com ambos em casa, a janela
-  00:00–05:59 não produz wake automático. Antes de repetir um wake vencido, o fluxo
-  relê o cache com `kia_uvo.update`, aguarda 15 s e reavalia a telemetria;
-  somente cache ainda antigo libera a nova tentativa. Se a integração ainda
+  Falhas reais usam 15 min fora da pausa noturna; com ambos em casa, a janela
+  00:00–05:59 não produz wake automático. Se uma chamada ficar sem conclusão,
+  o fluxo pode reler o cache com `kia_uvo.update`, aguardar 15 s e reavaliar a
+  telemetria; cache idêntico não invalida o estado conhecido. Se a integração ainda
   não carregou e o serviço não existe, o fluxo não faz essa chamada: reagenda
   o retry em 15 min e libera a releitura imediatamente quando as entidades
   reaparecem. Sucesso
@@ -378,30 +381,22 @@ depende exclusivamente de um `delay` residente em memória.
   `last_request_at` e `next_allowed_at` são persistidos e o piso é reconstruído
   a partir do último despacho e estendido no aceite da chamada. Assim, o prazo
   selecionado começa quando o serviço retorna, sem uma próxima tentativa alguns
-  segundos antes do piso interno do backend. Evidência posterior confirma o
-  sucesso sem encurtar esse deadline.
+  segundos antes do piso interno do backend.
 - O clique `Atualizar agora` usa `reason=manual_force` e ignora o deadline
   automatico. O lease do Node-RED e o lock do Home Assistant continuam
   serializando chamadas; depois do aceite manual, a agenda automatica recomeça
   em 15 ou 30 minutos conforme a presença atual. O botão também funciona na
   pausa noturna.
-- O retorno de `public_bindings.call` muda o estado apenas para
-  `awaiting_evidence`. Sucesso do **wake** exige que o relógio semântico
-  `sensor.vehicle_primary_last_updated_at` avance em relação ao baseline e seja
-  causalmente compatível com a tentativa. O `last_updated` interno
-  das entidades não serve como prova, pois também avança ao reler o cache ou
-  recarregar a integração. A mudança do próprio sensor semântico entra como
-  evento no normalizador, mesmo quando localização, motor e trava mantêm o
-  mesmo valor, para que uma resposta atrasada confirme o wake imediatamente.
-  A confirmação aceita processamento atrasado por até 15 minutos, mas ainda
-  exige timestamp semântico posterior ao baseline e à solicitação; isso cobre
-  reconexão/restart sem permitir que cache histórico confirme a tentativa.
-  `401 Unauthorized`, timeout e aceite sem dado novo mantêm backoff; 401 no
-  polling de cache do backend BR é reavaliado em até 60 s sem descarregar o
-  config entry.
-- Telemetria semântica nova confirma qualquer wake, inclusive um pedido de
-  recuperação da iluminação, mesmo quando o estado do motor não muda e o
-  `last_updated` específico permanece antigo. `ON`/`OFF` conhecidos continuam
+- O caminho de sucesso de `public_bindings.call` confirma o **wake** aceito
+  pela API com HTTP 200/202. O relógio semântico
+  `sensor.vehicle_primary_last_updated_at` continua informando idade e dados
+  novos, mas não precisa avançar quando localização, motor e trava permanecem
+  iguais. `401 Unauthorized`, timeout e outras respostas diferentes de 200/202
+  mantêm backoff; 401 no polling de cache do backend BR é reavaliado em até
+  60 s sem descarregar o config entry.
+- Um aceite da API confirma também um pedido de recuperação da iluminação,
+  mesmo quando o estado do motor não muda e o `last_updated` específico
+  permanece antigo. `ON`/`OFF` conhecidos continuam
   confiáveis; `engine_communication_failed` só é ativado por falha real da
   chamada de wake/API (não por idade) e é limpo após recuperação confirmada.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
