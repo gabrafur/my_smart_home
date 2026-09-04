@@ -672,6 +672,75 @@ scenario("34 pessoa chegando aciona com motor ON sem o carro estar chegando", ()
   }
 });
 
+scenario("34a posição antiga do carro não bloqueia chegada de morador", () => {
+  for (const source of ["resident_primary", "resident_secondary"]) {
+    const staleVehicle = {
+      ready: false,
+      lighting_ready: false,
+      stale: true,
+      in_use: true,
+      engine_on: true,
+      engine_state_valid: true,
+      engine_stale: true,
+      engine_communication_failed: false,
+      location: { state: "not_home", stale: true, ready: false },
+      updated_at: Date.now(),
+    };
+    const flow = readyLightFlow({
+      vehicle_primary_context_v1: staleVehicle,
+    });
+    const decision = run(
+      "light_prepare_arrival",
+      arrival(source, "home"),
+      flow,
+      geoEnv,
+    );
+    assert(decision[0], `${source}: motor ON confiável deve liberar a decisão`);
+    assert.equal(decision[2], null, `${source}: posição antiga não deve pedir wake`);
+    assert.equal(decision[0].payload.vehicle_primary_lighting_ready, true);
+    assert.equal(decision[0].payload.vehicle_primary_engine_stale, true);
+    assert(run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv));
+
+    const vehicleDecision = run(
+      "light_prepare_arrival",
+      arrival("vehicle_primary", "home"),
+      readyLightFlow({ vehicle_primary_context_v1: staleVehicle }),
+      geoEnv,
+    );
+    assert.equal(vehicleDecision[0], null, "chegada do carro exige posição válida");
+    assert(vehicleDecision[2], "chegada do carro stale deve solicitar recovery");
+  }
+});
+
+scenario("34b OFF conhecido bloqueia morador mesmo com posição antiga", () => {
+  const flow = readyLightFlow({
+    vehicle_primary_context_v1: {
+      ready: false,
+      lighting_ready: false,
+      stale: true,
+      in_use: false,
+      engine_on: false,
+      engine_state_valid: true,
+      engine_stale: true,
+      engine_communication_failed: false,
+      location: { state: "not_home", stale: true, ready: false },
+      updated_at: Date.now(),
+    },
+  });
+  const decision = run(
+    "light_prepare_arrival",
+    arrival("resident_primary", "home"),
+    flow,
+    geoEnv,
+  );
+  assert(decision[0], "OFF conhecido deve chegar ao gate bloqueante");
+  assert.equal(decision[2], null, "OFF conhecido não precisa de recovery");
+  assert.equal(
+    run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv),
+    null,
+  );
+});
+
 scenario("35 chegando exige predecessor permitido e recovery fica só na iluminação", () => {
   assert.deepEqual(
     byId.get("people_lighting_tracker_recovery_arrival_out").links,
@@ -828,6 +897,6 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
   );
 });
 
-assert.equal(passed.length, 42);
+assert.equal(passed.length, 44);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

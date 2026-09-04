@@ -204,7 +204,7 @@ sempre em epoch Unix UTC, milissegundos:
 | Sinal | Janela | Ao expirar |
 | --- | ---: | --- |
 | trackers de resident_primary e resident_secondary | 15 min | pessoa `stale`, snapshot não ready; nunca vira `false` |
-| localização do vehicle_primary | 30 min | localização `stale`; não confirma `home`/`away` para recovery |
+| localização do vehicle_primary | 30 min | localização `stale`; não confirma `home`/`away` nem uma chegada originada pelo carro, mas não bloqueia chegada de morador com motor conhecido e API saudável |
 | motor | 5 min | idade fica diagnóstica e pode motivar wake; `on`/`off` conhecidos não expiram apenas pelo tempo |
 | trava | 5 min | sinal inválido/stale; não confirma destravamento atual |
 | snapshots derivados | monotônico por `updated_at` | antigo e futuro >60 s são descartados; conflito no mesmo timestamp preserva o primeiro |
@@ -241,7 +241,11 @@ O replay exige luminosidade ready e `below_horizon`. O gate normal exige
 oferece uma alternativa somente quando uma tentativa real de wake/API falha;
 a idade do evento do motor, isoladamente, não libera o bypass. Mesmo com a
 chave ligada, um motor `off` conhecido continua bloqueando o refletor. O
-Node-RED liga a chave automaticamente enquanto a API do veículo está em falha
+estado recente da posição do carro é obrigatório somente quando o próprio
+`vehicle_primary` origina a chegada. Em chegadas de moradores, posição antiga
+do carro é apenas diagnóstica: `ON` conhecido e API saudável liberam o gate,
+enquanto `OFF` conhecido continua bloqueando.
+O Node-RED liga a chave automaticamente enquanto a API do veículo está em falha
 ou backoff. Se ela já estava ligada manualmente, a automação não assume a
 posse nem a desliga na recuperação; um `ON` automático só volta para `OFF`
 depois que a API confirma recuperação. A intenção só é removida depois que o despacho de acendimento passa

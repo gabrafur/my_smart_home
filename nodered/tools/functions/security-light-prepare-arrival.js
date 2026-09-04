@@ -47,6 +47,10 @@ const physicalFresh =
     now - physicalObservedAt <= 2 * 60 * 1000;
 const lightReconciled = flow.get("light_reconciled") === true;
 const sunReady = flow.get("sun_ready") === true;
+const source = msg.payload?.source;
+const stage = msg.payload?.arrival_stage;
+const residentArrival =
+    ["resident_primary", "resident_secondary"].includes(source);
 const bypassEnabled =
     ctxGet("security_light_engine_bypass_enabled", PERSISTENT) === true;
 const bypassAutomatic =
@@ -64,10 +68,21 @@ const bypassAllowed =
     bypassEnabled &&
     engineUnreliable &&
     !engineKnownOff;
+/* A posição do carro só participa da validação quando o próprio carro é a
+ * origem da chegada. Para uma chegada de morador, ON/OFF conhecido e API
+ * saudável bastam para decidir; localização antiga do veículo é diagnóstica. */
+const trustedEngineDecision =
+    engineStateKnown &&
+    !engineCommunicationFailed;
 const vehicleLightingReady =
-    vehicle.ready === true &&
-    vehicle.lighting_ready === true &&
-    engineStateKnown;
+    trustedEngineDecision &&
+    (
+        residentArrival ||
+        (
+            vehicle.ready === true &&
+            vehicle.lighting_ready === true
+        )
+    );
 const vehicleDecisionReady =
     engineKnownOff ||
     vehicleLightingReady ||
@@ -82,10 +97,8 @@ const eventAt = Number(
     msg.payload?.updated_at ??
     now
 );
-const source = msg.payload?.source;
-const stage = msg.payload?.arrival_stage;
 const residentApproach =
-    ["resident_primary", "resident_secondary"].includes(source) &&
+    residentArrival &&
     stage === "approach";
 const originalQueuedAt = Number(
     msg.payload?.arrival_originally_queued_at ?? now
@@ -137,6 +150,7 @@ const diagnostic = {
         people_context_ready: people.ready === true,
         vehicle_primary_context_ready: vehicle.ready === true,
         vehicle_primary_lighting_ready: vehicleLightingReady,
+        vehicle_primary_location_required: !residentArrival,
         vehicle_primary_engine_state_valid:
             vehicle.engine_state_valid === true,
         vehicle_primary_engine_stale: vehicle.engine_stale === true,
@@ -177,7 +191,9 @@ node.status({
         (bypassAllowed
             ? "bypass do motor"
             : vehicleLightingReady
-                ? "motor/contextos OK"
+                ? residentArrival
+                    ? "motor conhecido/confiável"
+                    : "motor/contextos OK"
                 : "vehicle_primary/motor pendente") +
         ` | ${flow.get("sun_below_horizon") === true ? "escuro" : "claro"}`
 });
