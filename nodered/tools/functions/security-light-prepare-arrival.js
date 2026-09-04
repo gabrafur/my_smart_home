@@ -49,19 +49,32 @@ const lightReconciled = flow.get("light_reconciled") === true;
 const sunReady = flow.get("sun_ready") === true;
 const bypassEnabled =
     ctxGet("security_light_engine_bypass_enabled", PERSISTENT) === true;
+const bypassAutomatic =
+    ctxGet("security_light_engine_bypass_automatic", PERSISTENT) === true;
+const engineStateKnown = vehicle.engine_state_valid === true;
+const engineKnownOff =
+    engineStateKnown &&
+    vehicle.engine_on === false;
+const engineCommunicationFailed =
+    vehicle.engine_communication_failed === true ||
+    bypassAutomatic;
 const engineUnreliable =
-    vehicle.engine_state_valid !== true ||
-    vehicle.engine_stale === true ||
-    vehicle.lighting_ready !== true;
-const bypassAllowed = bypassEnabled && engineUnreliable;
+    engineCommunicationFailed;
+const bypassAllowed =
+    bypassEnabled &&
+    engineUnreliable &&
+    !engineKnownOff;
 const vehicleLightingReady =
     vehicle.ready === true &&
     vehicle.lighting_ready === true &&
-    vehicle.engine_state_valid === true &&
-    vehicle.engine_stale !== true;
+    engineStateKnown;
+const vehicleDecisionReady =
+    engineKnownOff ||
+    vehicleLightingReady ||
+    bypassAllowed;
 const logicReady =
     sunReady &&
-    (vehicleLightingReady || bypassAllowed);
+    vehicleDecisionReady;
 
 const pendingKey = "security_light_pending_arrival_v1";
 const eventAt = Number(
@@ -127,6 +140,7 @@ const diagnostic = {
         vehicle_primary_engine_state_valid:
             vehicle.engine_state_valid === true,
         vehicle_primary_engine_stale: vehicle.engine_stale === true,
+        engine_communication_failed: engineCommunicationFailed,
         engine_bypass_enabled: bypassEnabled,
         engine_bypass_allowed: bypassAllowed,
         engine_data_unreliable: engineUnreliable,
@@ -226,6 +240,7 @@ msg.payload.vehicle_primary_engine_state_valid =
     vehicle.engine_state_valid === true;
 msg.payload.vehicle_primary_engine_stale =
     vehicle.engine_stale === true;
+msg.payload.engine_communication_failed = engineCommunicationFailed;
 msg.payload.vehicle_primary_lighting_ready = vehicleLightingReady;
 msg.payload.engine_data_unreliable = engineUnreliable;
 msg.payload.engine_bypass_enabled = bypassEnabled;

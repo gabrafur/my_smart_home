@@ -252,8 +252,9 @@ const now = Date.parse("2026-08-17T03:00:00Z");
         awaiting_evidence: true,
         last_attempt_at: now - 40_000,
         next_allowed_at: now + 58_000,
-        last_success_reason: "fresh_telemetry_engine_unreliable",
-        lighting_ready_after_wake: false,
+        last_success_reason: "fresh_telemetry_engine_state_known",
+        lighting_ready_after_wake: true,
+        engine_communication_failed: false,
         last_evidence_domains: ["telemetry"],
       },
     },
@@ -282,8 +283,9 @@ const now = Date.parse("2026-08-17T03:00:00Z");
   assert.equal(payload.remaining_seconds, 58);
   assert.equal(payload.failure_endpoint, null);
   assert.equal(payload.failure_stage, null);
-  assert.equal(payload.last_success_reason, "fresh_telemetry_engine_unreliable");
-  assert.equal(payload.lighting_ready_after_wake, false);
+  assert.equal(payload.last_success_reason, "fresh_telemetry_engine_state_known");
+  assert.equal(payload.lighting_ready_after_wake, true);
+  assert.equal(payload.engine_communication_failed, false);
   assert.deepEqual(payload.last_evidence_domains, ["telemetry"]);
 }
 
@@ -329,6 +331,9 @@ assert.match(
 assert.match(normalizer.func, /if \(evidenceObserved\)/);
 assert.doesNotMatch(normalizer.func, /else if \(evidenceObserved\)/);
 assert.match(normalizer.func, /lighting_ready_after_wake/);
+assert.match(normalizer.func, /engine_state_trust_by_api_health_v1/);
+assert.match(normalizer.func, /engine_communication_failed/);
+assert.doesNotMatch(normalizer.func, /fresh_telemetry_engine_unreliable/);
 
 const refreshDecision = flows.find((node) => node.id === "b33e117e55bdb5ed");
 assert.equal(refreshDecision.outputs, 5);
@@ -426,6 +431,32 @@ const refreshErrorCatch = flows.find(
   (node) => node.id === "vehicle_primary_api_error_catch_v1",
 );
 assert(refreshErrorCatch.scope.includes("16396e34ff530ac7"));
+const refreshErrorLogger = flows.find(
+  (node) => node.id === "vehicle_primary_api_error_log_v1",
+);
+assert.equal(refreshErrorLogger.outputs, 2);
+assert.deepEqual(refreshErrorLogger.wires[1], [
+  "vehicle_primary_api_error_bypass_out_v1",
+]);
+const refreshErrorBypassOut = flows.find(
+  (node) => node.id === "vehicle_primary_api_error_bypass_out_v1",
+);
+const refreshErrorBypassIn = flows.find(
+  (node) => node.id === "vehicle_primary_api_error_bypass_in_v1",
+);
+assert.deepEqual(refreshErrorBypassOut.links, [
+  "vehicle_primary_api_error_bypass_in_v1",
+]);
+assert.deepEqual(refreshErrorBypassIn.wires, [[
+  "vehicle_primary_provider_bypass_command_v1",
+]]);
+const refreshTelemetry = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_telemetry_v1",
+);
+assert.equal(refreshTelemetry.outputs, 3);
+assert.deepEqual(refreshTelemetry.wires[2], [
+  "vehicle_primary_provider_bypass_command_v1",
+]);
 
 const refreshNotification = flows.find(
   (node) => node.id === "vehicle_primary_refresh_notify_primary_v1",

@@ -70,6 +70,8 @@ const status = {
     cache_probe_in_flight: raw.cache_probe_in_flight === true,
     cache_probe_accepted_at: iso(raw.cache_probe_accepted_at),
     last_failure_class: raw.last_failure_class ?? null,
+    engine_communication_failed:
+        raw.engine_communication_failed === true,
     failure_endpoint: raw.failure_endpoint ?? null,
     failure_stage: raw.failure_stage ?? null,
     manual_force: raw.manual_force === true,
@@ -85,6 +87,21 @@ if (raw.recovery_notification_pending === true) {
             id: "vehicle_primary_refresh_failed",
             dismiss_only: true
         }
+    };
+}
+
+let recoverAutomaticBypass = null;
+if (raw.engine_bypass_recovery_pending === true) {
+    raw.engine_bypass_recovery_pending = false;
+    flow.set("security_vehicle_primary_refresh_v1", raw, "persistent");
+    recoverAutomaticBypass = {
+        topic: "homeassistant/vehicle_primary/engine_bypass/set",
+        qos: 1,
+        retain: false,
+        payload: JSON.stringify({
+            requested_state: "OFF",
+            source: "api_recovered"
+        })
     };
 }
 
@@ -128,4 +145,4 @@ return [[
         retain: true,
         qos: 1
     }
-], dismissRecoveredFailure];
+], dismissRecoveredFailure, recoverAutomaticBypass];

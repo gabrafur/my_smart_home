@@ -205,15 +205,16 @@ sempre em epoch Unix UTC, milissegundos:
 | --- | ---: | --- |
 | trackers de resident_primary e resident_secondary | 15 min | pessoa `stale`, snapshot não ready; nunca vira `false` |
 | localização do vehicle_primary | 30 min | localização `stale`; não confirma `home`/`away` para recovery |
-| motor e trava | 5 min | sinal inválido/stale; `off` não é interpretado como evidência atual |
+| motor | 5 min | idade fica diagnóstica e pode motivar wake; `on`/`off` conhecidos não expiram apenas pelo tempo |
+| trava | 5 min | sinal inválido/stale; não confirma destravamento atual |
 | snapshots derivados | monotônico por `updated_at` | antigo e futuro >60 s são descartados; conflito no mesmo timestamp preserva o primeiro |
 
 O estado pertence exclusivamente a `contexto_vehicle_primary`:
 
-- liga quando o motor é observado `on`;
-- permanece ligado durante lacunas do backend da Kia;
-- desliga com motor `off` fresco e carro em casa, ou com motor `off` e trava
-  destravada frescos;
+- liga quando o motor conhecido é `on`, mesmo que o evento do sensor seja
+  antigo, enquanto a comunicação com o Bluelink estiver saudável;
+- desliga quando o motor conhecido é `off`, também sem expirar apenas pela
+  idade;
 - após restart, uma viagem persistida só é restaurada como `true` quando a
   localização atual e fresca ainda confirma que o carro está fora;
 - sem evidência suficiente publica `in_use: null`, `in_use_pending: true`, e a
@@ -234,14 +235,14 @@ localização. Assim, uma entrada às 17:31 ainda é reavaliada se o pôr do sol
 ocorrer às 17:35. Chegadas que não representam uma pessoa permanecendo na zona
 de aproximação conservam a janela curta de recovery de 2 minutos.
 
-O replay exige luminosidade ready e `below_horizon`. O gate normal continua
-exigindo `in_use=true` e motor `on` atual, válido e não stale. A chave
+O replay exige luminosidade ready e `below_horizon`. O gate normal exige
+`in_use=true`, motor `on` conhecido e comunicação saudável com o Bluelink. A chave
 `switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada`
-oferece uma alternativa somente quando
-a leitura específica do motor está stale, inválida ou sem readiness. Mesmo com
-a chave ligada, um motor `off` recente e confiável continua bloqueando o
-refletor. O Node-RED liga a chave automaticamente enquanto a API do veículo
-está em backoff. Se ela já estava ligada manualmente, a automação não assume a
+oferece uma alternativa somente quando uma tentativa real de wake/API falha;
+a idade do evento do motor, isoladamente, não libera o bypass. Mesmo com a
+chave ligada, um motor `off` conhecido continua bloqueando o refletor. O
+Node-RED liga a chave automaticamente enquanto a API do veículo está em falha
+ou backoff. Se ela já estava ligada manualmente, a automação não assume a
 posse nem a desliga na recuperação; um `ON` automático só volta para `OFF`
 depois que a API confirma recuperação. A intenção só é removida depois que o despacho de acendimento passa
 por todos os gates, ou quando uma das condições de cancelamento ocorre.
@@ -399,11 +400,10 @@ depende exclusivamente de um `delay` residente em memória.
   polling de cache do backend BR é reavaliado em até 60 s sem descarregar o
   config entry.
 - Telemetria semântica nova confirma qualquer wake, inclusive um pedido de
-  recuperação da iluminação, mesmo quando a leitura específica do motor
-  continua stale. A confiabilidade do motor é registrada separadamente em
-  `lighting_ready_after_wake` e continua protegendo o gate da iluminação. Isso
-  impede que “wake respondeu” seja exibido como erro apenas porque o backend BR
-  omitiu `engine=on`.
+  recuperação da iluminação, mesmo quando o estado do motor não muda e o
+  `last_updated` específico permanece antigo. `ON`/`OFF` conhecidos continuam
+  confiáveis; `engine_communication_failed` só é ativado por falha real da
+  chamada de wake/API (não por idade) e é limpo após recuperação confirmada.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
   vehicle_primary continua sincronizando os dois trackers de iPhone, mas agora por um
   contrato explícito `contexto_vehicle_primary -> localizacao_pessoas`; nenhuma entidade
@@ -489,13 +489,14 @@ sintético cumulativo e isolado das entidades reais. A sequência recomendada é
 Os passos de localização de qualquer residente e do veículo preservam o último
 estado de motor escolhido. Assim,
 o mesmo cenário exercita o gate `vehicle_primary está em uso?` em
-`iluminacao_seguranca`: `ON` produz contexto `in_use=true` com motor atual
-válido e mostra `TESTE: vehicle_primary em uso — gate aprovado`; `OFF` produz
+`iluminacao_seguranca`: `ON` produz contexto `in_use=true` com estado conhecido
+e mostra `TESTE: vehicle_primary em uso — gate aprovado`; `OFF` produz
 `in_use=false` e mantém a chegada pendente enquanto a pessoa sintética
 permanecer em `chegando`. Na aba `iluminacao_seguranca`, os controles
 `TESTE: bypass ON (isolado)` e `TESTE: bypass OFF (isolado)` exercitam a chave
-sem alterar o switch real. O cenário comprova que dado stale com bypass ligado
-segue para dry-run, mas motor `OFF` fresco continua bloqueado. A mesma chegada
+sem alterar o switch real. O cenário comprova que `ON` antigo continua válido
+com API saudável, que falha real ativa o bypass em dry-run e que motor `OFF`
+conhecido continua bloqueado. A mesma chegada
 também pode ser mantida além de 2 minutos e reprocessada quando o sol muda para
 `below_horizon`.
 O `test_mode` então atravessa disponibilidade do refletor, dedupe e lifecycle

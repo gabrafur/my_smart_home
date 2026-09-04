@@ -186,7 +186,7 @@ O mesmo estado persistente `security_vehicle_primary_refresh_v1` agora alimenta
 `reason`, `attempt`, `last_request_at`, `last_success_at`, `next_retry_at` e
 `cooldown_until`, alem de `request_in_flight`, `in_flight_until`,
 `service_accepted_at`, `last_success_reason`, `lighting_ready_after_wake`,
-`last_evidence_domains`, `last_failure_class`, `failure_endpoint` e
+`last_evidence_domains`, `last_failure_class`, `engine_communication_failed`, `failure_endpoint` e
 `failure_stage`. O ticker MQTT de 5 s somente calcula o tempo restante a
 partir desses deadlines; ele nao agenda refresh nem mantem um timer paralelo.
 Quando uma chamada real informa que o serviço `kia_uvo.update` não existe
@@ -195,13 +195,13 @@ porque o config entry não conseguiu carregar, a falha é publicada como
 tratados como prova de indisponibilidade da integração. Nesse
 estado, o dashboard prioriza a indisponibilidade sobre uma confirmação antiga
 de wake e apresenta o tempo restante para a próxima tentativa automática. Um
-wake com telemetria semântica nova é mostrado como confirmado; se o motor
-continuar não confiável, o painel sinaliza essa limitação separadamente e
-oferece
+wake com telemetria semântica nova é mostrado como confirmado mesmo quando o
+estado do motor não muda. A idade do evento específico do motor é informativa
+e não invalida `ON`/`OFF`; somente uma falha real de comunicação/revalidação
+marca o motor como não confiável e oferece
 `switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada`.
 Essa chave só afeta a
-iluminação de chegada quando a leitura do motor está stale/inválida e nunca
-ignora um `OFF` recente e válido. O prazo publicado pelo provedor é também
+iluminação de chegada durante essa falha e nunca ignora um `OFF` conhecido. O prazo publicado pelo provedor é também
 sincronizado com o coordenador persistente do Node-RED, inclusive no startup,
 para impedir novas chamadas automáticas antes do deadline. Durante esse estado,
 o bypass do motor é ligado automaticamente. A recuperação só o desliga quando
@@ -517,9 +517,11 @@ Sempre que mexer na chegada de `contexto_vehicle_primary`, lembrar que
 Desde a etapa de recovery, a chegada e a atualização de trip info têm dedupe
 persistente de 10 minutos. O lifecycle da viagem (`trip_active`,
 `trip_started_at`) e o último `vehicle_primary_in_use` confirmado sobrevivem ao restart,
-mas nunca substituem as entidades atuais: motor/trava expiram em 5 minutos e
-localização em 30 minutos. Motor stale `off` durante uma viagem não encerra o
-lifecycle; localização fresca fora de casa pode revalidar o estado persistido.
+mas nunca substituem as entidades atuais: a idade de motor/trava é registrada
+após 5 minutos e a localização expira em 30 minutos. O estado conhecido do
+motor não expira apenas pelo tempo: `off` encerra o lifecycle e `on` o mantém;
+a idade ainda pode solicitar wake. Localização fresca fora de casa só revalida
+o estado persistido quando o motor está desconhecido.
 Sem evidência suficiente o contrato publica `in_use: null`/pending.
 
 O parser do recovery rejeita tipos inesperados (por exemplo,

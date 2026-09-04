@@ -399,12 +399,14 @@ scenario("23 Node-RED reiniciado: gates falham de forma segura", () => {
   assert.equal(run("light_check_vehicle_primary_in_use", { payload: {} }, memoryFlow(), geoEnv), null);
 });
 
-scenario("24 restart durante viagem fica pendente sem evidência persistida", () => {
+scenario("24 OFF conhecido permanece bloqueante mesmo antigo", () => {
   const input = vehicle_primaryInput({ event: "context_snapshot", current: "not_home", distance: 5_000, engine: "off" });
   input.payload.vehicle_primary_engine.last_updated = new Date(Date.now() - 10 * 60_000).toISOString();
   const result = run("vehicle_primary_normalize", input, memoryFlow(), geoEnv)[0];
-  assert.equal(result.payload.context.in_use, null);
-  assert.equal(result.payload.context.in_use_pending, true);
+  assert.equal(result.payload.context.in_use, false);
+  assert.equal(result.payload.context.in_use_pending, false);
+  assert.equal(result.payload.context.engine_stale, true);
+  assert.equal(result.payload.context.lighting_ready, true);
   assert.equal(result.payload.context.away, true);
 });
 
@@ -574,7 +576,7 @@ scenario("32 movimento na mesma zona solicita refresh sem autorizar iluminação
   second.payload.vehicle_primary_engine.last_updated = staleAt;
   const [context, arrivalEvent, refresh] = run("vehicle_primary_normalize", second, flow, geoEnv);
   assert.equal(arrivalEvent, null);
-  assert.equal(context.payload.context.in_use, null);
+  assert.equal(context.payload.context.in_use, false);
   assert.equal(refresh.payload.reason, "vehicle_primary_location_changed_engine_stale");
   assert.equal(refresh.payload.force_recovery, true);
   assert.equal(refresh.payload.require_lighting_ready, true);

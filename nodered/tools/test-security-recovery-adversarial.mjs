@@ -145,7 +145,7 @@ scenario("01 timestamp uma hora no futuro fica stale e nao gera chegada", () => 
 
 scenario("02 timestamp muito antigo nao revalida viagem", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, in_use: true, trip_active: true, last_confirmed_at: clock - 60_000 } });
-  const output = run("vehicle_primary_normalize", vehicle_primaryInput({ locationOffset: -31 * 60_000 }), flow);
+  const output = run("vehicle_primary_normalize", vehicle_primaryInput({ locationOffset: -31 * 60_000, engine: "unknown" }), flow);
   assert.equal(output[0].payload.context.in_use, null);
   assert.equal(output[0].payload.context.trip_active, false);
 });
@@ -160,7 +160,7 @@ scenario("03 persistencia parcialmente corrompida falha sem side effect", () => 
 
 scenario("04 estado v1 com campo ausente permanece pendente", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, arrival_armed: true } });
-  const context = run("vehicle_primary_normalize", vehicle_primaryInput(), flow)[0].payload.context;
+  const context = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "unknown" }), flow)[0].payload.context;
   assert.equal(context.in_use, null);
   assert.equal(context.ready, false);
 });
@@ -173,7 +173,7 @@ scenario("05 tipo errado em ownership nao autoriza desligamento", () => {
 
 scenario("06 vehicle_primary_in_use string false nao vira boolean false", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, in_use: "false", trip_active: true, last_confirmed_at: clock - 60_000 } });
-  const context = run("vehicle_primary_normalize", vehicle_primaryInput(), flow)[0].payload.context;
+  const context = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "unknown" }), flow)[0].payload.context;
   assert.equal(context.in_use, null);
   assert.equal(flow.get("security_vehicle_primary_recovery_v1").in_use, undefined);
 });
@@ -201,7 +201,7 @@ scenario("09 mesmo timestamp aceita a interpretação derivada mais recente", ()
 
 scenario("10 state de versao anterior e descartado conservadoramente", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 0, in_use: true, trip_active: true, last_confirmed_at: clock } });
-  const context = run("vehicle_primary_normalize", vehicle_primaryInput(), flow)[0].payload.context;
+  const context = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "unknown" }), flow)[0].payload.context;
   assert.equal(context.in_use, null);
   assert.equal(context.trip_active, false);
 });
@@ -349,7 +349,7 @@ scenario("20 gerador legado nao remove recovery em execucao repetida", () => {
 
 scenario("21 confirmacao com timestamp zero expira e limpa viagem", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, in_use: true, trip_active: true, trip_started_at: 1, last_confirmed_at: 0 } });
-  const context = run("vehicle_primary_normalize", vehicle_primaryInput(), flow)[0].payload.context;
+  const context = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "unknown" }), flow)[0].payload.context;
   assert.equal(context.in_use, null);
   assert.equal(context.trip_active, false);
   assert.equal(flow.get("security_vehicle_primary_recovery_v1").in_use, undefined);

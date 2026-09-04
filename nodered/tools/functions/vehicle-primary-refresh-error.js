@@ -19,6 +19,14 @@ const state = flow.get(key, "persistent") ?? {};
 const now = Date.now();
 const cacheProbeFailure = /cache|reler/i.test(source);
 const tripRefreshFailure = /viagens?|trip/i.test(source);
+const successfulHttpResponse = /\b(?:200|202)\b/.test(message);
+const engineRelevantFailure =
+    !tripRefreshFailure &&
+    failureClass !== "concurrent_request_coalesced" &&
+    !successfulHttpResponse;
+const shouldActivateAutomaticBypass =
+    engineRelevantFailure &&
+    state.engine_communication_failed !== true;
 const failedEndpoint = tripRefreshFailure
     ? "public_bindings.call (viagens do dia)"
     : cacheProbeFailure
@@ -50,6 +58,12 @@ state.failure_source = source;
 state.failure_endpoint = failedEndpoint;
 state.failure_stage = source;
 state.last_failure_class = failureClass;
+if (engineRelevantFailure) {
+    state.engine_communication_failed = true;
+    state.engine_bypass_recovery_pending = false;
+} else if (typeof state.engine_communication_failed !== "boolean") {
+    state.engine_communication_failed = false;
+}
 if (cacheProbeFailure) {
     state.next_allowed_at = Math.max(
         Number(state.next_allowed_at ?? 0),
@@ -94,6 +108,17 @@ if (
     notification = msg;
 }
 flow.set(key, state, "persistent");
+const bypassCommand = shouldActivateAutomaticBypass
+    ? {
+        topic: "homeassistant/vehicle_primary/engine_bypass/set",
+        qos: 1,
+        retain: false,
+        payload: JSON.stringify({
+            requested_state: "ON",
+            source: "api_failure"
+        })
+    }
+    : null;
 const logMessage =
     "VEHICLE_PRIMARY_API_ERROR class=" + failureClass +
     " source=" + source + " message=" + message;
@@ -105,4 +130,6 @@ if (failureClass === "provider_backoff") {
 } else {
     node.error(logMessage);
 }
-return notification;
+return notification || bypassCommand
+    ? [notification, bypassCommand]
+    : null;

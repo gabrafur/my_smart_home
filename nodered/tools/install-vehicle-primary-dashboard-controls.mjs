@@ -758,11 +758,11 @@ if (!normalizer.func.includes(readinessMarker)) {
             );`;
   const semanticReadinessGate = `        /* ${readinessMarker}:
          * telemetria semântica nova confirma que o wake respondeu. A
-         * confiabilidade específica do motor continua separada e protege
-         * o gate da iluminação, sem transformar o wake em falso erro. */
+         * idade do evento do motor é apenas diagnóstica; a confiança é
+         * determinada pelo estado conhecido e pela saúde da API. */
         const lightingReadyAfterWake =
             vehicleContext.ready === true &&
-            vehicleContext.lighting_ready === true;`;
+            vehicleContext.engine_state_valid === true;`;
   if (!normalizer.func.includes(previousReadinessGate)) {
     throw new Error("Gate de readiness do wake não encontrado");
   }
@@ -784,12 +784,8 @@ if (!normalizer.func.includes(readinessMarker)) {
                 lighting_ready_after_wake: lightingReadyAfterWake,
                 last_success_reason:
                     lightingReadyAfterWake
-                        ? (
-                            refreshState.require_lighting_ready === true
-                                ? "fresh_entities_lighting_ready"
-                                : "fresh_entities_context_ready"
-                        )
-                        : "fresh_telemetry_engine_unreliable",`,
+                        ? "fresh_telemetry_engine_state_known"
+                        : "fresh_telemetry_context_ready",`,
   );
 
   const partialStart = normalizer.func.indexOf(
@@ -809,6 +805,134 @@ if (!normalizer.func.includes(readinessMarker)) {
 }
 if (!normalizer.func.includes(readinessMarker)) {
   throw new Error("Confirmação semântica independente de readiness ausente");
+}
+const engineTrustMarker = "engine_state_trust_by_api_health_v1";
+if (!normalizer.func.includes(engineTrustMarker)) {
+  const previousEngineSignals = `const engineFresh = fresh(msg.payload?.vehicle_primary_engine, SIGNAL_FRESH_MS);
+const lockFresh = fresh(msg.payload?.vehicle_primary_lock, SIGNAL_FRESH_MS);
+const engineOn = engineFresh && ["on", "running"].includes(engineState);
+const engineOff = engineFresh && ["off", "stopped", "idle"].includes(engineState);
+const unlocked = lockFresh && lockState === "unlocked";`;
+  const trustedEngineSignals = `/* ${engineTrustMarker}:
+ * ON/OFF conhecidos continuam válidos independentemente da idade. A idade
+ * permanece diagnóstica e pode motivar wake; somente uma falha real da API
+ * torna o motor não confiável para a iluminação. */
+const engineFresh = fresh(msg.payload?.vehicle_primary_engine, SIGNAL_FRESH_MS);
+const lockFresh = fresh(msg.payload?.vehicle_primary_lock, SIGNAL_FRESH_MS);
+const engineStateKnown = [
+    "on", "running", "off", "stopped", "idle"
+].includes(engineState);
+const engineOn = ["on", "running"].includes(engineState);
+const engineOff = ["off", "stopped", "idle"].includes(engineState);
+const unlocked = lockFresh && lockState === "unlocked";
+const refreshHealthState = TEST_MODE
+    ? flow.get("security_vehicle_primary_refresh_v1__test") ?? {}
+    : flow.get("security_vehicle_primary_refresh_v1", PERSISTENT) ?? {};
+const engineFailureClasses = new Set([
+    "integration_unavailable",
+    "provider_backoff",
+    "authentication",
+    "timeout",
+    "api_error"
+]);
+const engineCommunicationFailed =
+    typeof refreshHealthState.engine_communication_failed === "boolean"
+        ? refreshHealthState.engine_communication_failed
+        : engineFailureClasses.has(refreshHealthState.last_failure_class);`;
+  if (!normalizer.func.includes(previousEngineSignals)) {
+    throw new Error("Sinais atuais do motor não encontrados no normalizador");
+  }
+  normalizer.func = normalizer.func.replace(
+    previousEngineSignals,
+    trustedEngineSignals,
+  );
+  normalizer.func = normalizer.func
+    .replaceAll('inUseReason = "fresh_engine_on";', 'inUseReason = "known_engine_on";')
+    .replaceAll('inUseReason = "fresh_engine_off";', 'inUseReason = "known_engine_off";');
+
+  const previousLightingReady = `const lightingReady =
+    vehicle_primary.ready === true &&
+    engineFresh === true &&
+    (engineOn || engineOff);`;
+  const trustedLightingReady = `const lightingReady =
+    vehicle_primary.ready === true &&
+    engineStateKnown &&
+    !engineCommunicationFailed;`;
+  if (!normalizer.func.includes(previousLightingReady)) {
+    throw new Error("Readiness atual do motor não encontrado no normalizador");
+  }
+  normalizer.func = normalizer.func.replace(
+    previousLightingReady,
+    trustedLightingReady,
+  );
+  normalizer.func = normalizer.func.replace(
+    `    engine_state_valid: engineOn || engineOff,
+    engine_stale: !engineFresh,`,
+    `    engine_state_valid: engineStateKnown,
+    engine_stale: !engineFresh,
+    engine_communication_failed: engineCommunicationFailed,`,
+  );
+  normalizer.func = normalizer.func.replace(
+    `        const lightingReadyAfterWake =
+            vehicleContext.ready === true &&
+            vehicleContext.lighting_ready === true;`,
+    `        const lightingReadyAfterWake =
+            vehicleContext.ready === true &&
+            vehicleContext.engine_state_valid === true;`,
+  );
+  normalizer.func = normalizer.func.replace(
+    `                last_evidence_domains: changedDomains,
+                lighting_ready_after_wake: lightingReadyAfterWake,
+                last_success_reason:
+                    lightingReadyAfterWake
+                        ? (
+                            refreshState.require_lighting_ready === true
+                                ? "fresh_entities_lighting_ready"
+                                : "fresh_entities_context_ready"
+                        )
+                        : "fresh_telemetry_engine_unreliable",`,
+    `                last_evidence_domains: changedDomains,
+                engine_communication_failed: false,
+                engine_bypass_recovery_pending:
+                    refreshState.engine_bypass_recovery_pending === true ||
+                    engineCommunicationFailed,
+                lighting_ready_after_wake: lightingReadyAfterWake,
+                last_success_reason:
+                    lightingReadyAfterWake
+                        ? "fresh_telemetry_engine_state_known"
+                        : "fresh_telemetry_context_ready",`,
+  );
+  normalizer.func = normalizer.func.replace(
+    `            setRefreshState(refreshState);
+
+            node.log?.(`,
+    `            setRefreshState(refreshState);
+            vehicleContext.engine_communication_failed = false;
+            vehicleContext.lighting_ready = lightingReadyAfterWake;
+
+            node.log?.(`,
+  );
+}
+if (!normalizer.func.includes(engineTrustMarker)) {
+  throw new Error("Confiança do motor ainda depende apenas de freshness");
+}
+const preserveBypassRecoveryMarker =
+  "preserve_bypass_recovery_on_semantic_success_v1";
+if (!normalizer.func.includes(preserveBypassRecoveryMarker)) {
+  const legacyBypassRecovery =
+    "                engine_bypass_recovery_pending: engineCommunicationFailed,";
+  if (!normalizer.func.includes(legacyBypassRecovery)) {
+    throw new Error("Estado pendente de recuperação do bypass não encontrado");
+  }
+  normalizer.func = normalizer.func.replace(
+    legacyBypassRecovery,
+    `                /* ${preserveBypassRecoveryMarker}: uma resposta HTTP
+                 * aceita já pode ter agendado a remoção do bypass antes de
+                 * a evidência semântica chegar. */
+                engine_bypass_recovery_pending:
+                    refreshState.engine_bypass_recovery_pending === true ||
+                    engineCommunicationFailed,`,
+  );
 }
 normalizer.func = normalizer.func.replace(
   '        "security_vehicle_primary_test_clock"',
@@ -927,8 +1051,11 @@ if (!normalizer.func.includes("refresh_state_contract_v1")) {
 const errorLogger = required("vehicle_primary_api_error_log_v1");
 errorLogger.func = source("vehicle-primary-refresh-error.js");
 Object.assign(errorLogger, {
-  outputs: 1,
-  wires: [["vehicle_primary_refresh_error_notification_out_v1"]],
+  outputs: 2,
+  wires: [
+    ["vehicle_primary_refresh_error_notification_out_v1"],
+    ["vehicle_primary_api_error_bypass_out_v1"],
+  ],
   x: 1520,
   y: 960,
 });
@@ -942,6 +1069,31 @@ Object.assign(errorCatch, {
   ],
   x: 1240,
   y: 920,
+});
+
+upsert({
+  id: "vehicle_primary_api_error_bypass_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Falha da API → comando de bypass",
+  mode: "link",
+  links: ["vehicle_primary_api_error_bypass_in_v1"],
+  x: 1745,
+  y: 1000,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_api_error_bypass_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Receber falha da API para bypass",
+  links: ["vehicle_primary_api_error_bypass_out_v1"],
+  x: 850,
+  y: 1175,
+  wires: [["vehicle_primary_provider_bypass_command_v1"]],
 });
 
 upsert({
@@ -1101,7 +1253,7 @@ upsert({
   g: "43a2bc9c218353ae",
   name: "Espelhar estado real do refresh",
   func: source("vehicle-primary-refresh-telemetry.js"),
-  outputs: 2,
+  outputs: 3,
   timeout: 0,
   noerr: 0,
   initialize: "",
@@ -1112,6 +1264,7 @@ upsert({
   wires: [
     ["vehicle_primary_refresh_mqtt_v1"],
     ["vehicle_primary_refresh_notification_guard_v1"],
+    ["vehicle_primary_provider_bypass_command_v1"],
   ],
 });
 
@@ -1704,6 +1857,8 @@ addToGroup(
   "vehicle_primary_refresh_notify_persistent_v1",
   "vehicle_primary_refresh_dismiss_persistent_v1",
   "vehicle_primary_refresh_notification_dry_run_out_v1",
+  "vehicle_primary_api_error_bypass_out_v1",
+  "vehicle_primary_api_error_bypass_in_v1",
   "vehicle_primary_provider_backoff_state_v1",
   "vehicle_primary_provider_backoff_sync_v1",
   "vehicle_primary_provider_bypass_command_v1",
@@ -1711,6 +1866,14 @@ addToGroup(
 
 const refreshGroup = required("43a2bc9c218353ae");
 Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 618 });
+
+const remoteCommandGroup = required("vehicle_primary_remote_command_group_v1");
+remoteCommandGroup.name = "4. Resultado final dos comandos remotos";
+const remoteCommandShift = 1259 - remoteCommandGroup.y;
+remoteCommandGroup.y += remoteCommandShift;
+for (const id of remoteCommandGroup.nodes ?? []) {
+  required(id).y += remoteCommandShift;
+}
 
 const manualTestGroup = required("5df25064f701ecd2");
 manualTestGroup.name = "5. Testes manuais — motor e localização sintéticos/cumulativos";

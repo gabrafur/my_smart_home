@@ -49,20 +49,26 @@ const raw = commandPayload?.requested_state ?? commandPayload;
 const command = String(raw ?? "").trim().toUpperCase();
 const startup = command === "STARTUP";
 const source = String(commandPayload?.source ?? "dashboard");
-const providerActivation = source === "provider_backoff";
-const providerRecovery = source === "provider_recovered";
+const automaticActivation = [
+    "provider_backoff",
+    "api_failure"
+].includes(source);
+const automaticRecovery = [
+    "provider_recovered",
+    "api_recovered"
+].includes(source);
 
 let enabled;
 if (startup) {
     enabled = getState() === true;
     if (getState() === undefined) setState(false);
-} else if (providerActivation) {
+} else if (automaticActivation) {
     const wasEnabled = getState() === true;
     enabled = true;
     // Se já estava ON, foi uma escolha manual e não deve ser desfeita pela
     // recuperação posterior da API.
     if (!wasEnabled) setAutomatic(true);
-} else if (providerRecovery) {
+} else if (automaticRecovery) {
     if (!getAutomatic()) return null;
     enabled = false;
     setAutomatic(false);
@@ -116,6 +122,11 @@ const reevaluate = {
         source: TEST_MODE ? "manual_test" : source,
         enabled,
         automatic,
+        communication_failed: automaticActivation
+            ? true
+            : automaticRecovery
+                ? false
+                : undefined,
         updated_at: Date.now(),
         test_mode: TEST_MODE
     }

@@ -172,20 +172,20 @@ upsert({
   name: "1) RESETAR  2) escolher motor ON/OFF  3) executar 1/3 → 2/3 → 3/3",
   info: "O motor sintético é cumulativo: os passos de localização preservam o último estado ON/OFF escolhido. Todo o cenário usa test_mode e não altera as entidades reais do veículo.",
   x: 820,
-  y: 1120,
+  y: 1660,
   wires: [],
 });
 
-upsert(inject(ids.engineOn, "Motor sintético do vehicle_primary → ON", "vehicle_primary_engine_on", 1160));
-upsert(inject(ids.engineOff, "Motor sintético do vehicle_primary → OFF", "vehicle_primary_engine_off", 1200));
+upsert(inject(ids.engineOn, "Motor sintético do vehicle_primary → ON", "vehicle_primary_engine_on", 1700));
+upsert(inject(ids.engineOff, "Motor sintético do vehicle_primary → OFF", "vehicle_primary_engine_off", 1740));
 
 for (const [id, y] of [
-  [ids.reset, 1120],
-  [ids.away, 1260],
-  [ids.approach, 1300],
-  [ids.home, 1340],
-  [ids.invalidHome, 1400],
-  [ids.invalidApproach, 1440],
+  [ids.reset, 1660],
+  [ids.away, 1800],
+  [ids.approach, 1840],
+  [ids.home, 1880],
+  [ids.invalidHome, 1940],
+  [ids.invalidApproach, 1980],
 ]) {
   const node = required(id);
   node.x = 400;
@@ -193,9 +193,9 @@ for (const [id, y] of [
 }
 
 coordinator.x = 820;
-coordinator.y = 1300;
+coordinator.y = 1840;
 required(ids.output).x = 1110;
-required(ids.output).y = 1300;
+required(ids.output).y = 1840;
 
 coordinator.func = `const SHARED_TEST_KEY = "security_location_test_state_v1";
 
@@ -1057,7 +1057,7 @@ manualIn.name = "Receber teste manual seguro";
 manualIn.wires = [[ids.dryRunTerminal]];
 
 const lightTab = required(ids.lightTab);
-lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em chegando com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON atual ou, exclusivamente quando o dado do motor estiver stale/inválido, o bypass persistente exposto no painel vehicle_primary. O bypass liga automaticamente durante indisponibilidade confirmada da API sem tomar posse de um ON manual, e um motor OFF atual e confiável nunca é ignorado. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.";
+lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em chegando com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON conhecido enquanto o Bluelink estiver saudável; a idade do evento é informativa e não invalida ON/OFF. O bypass só é aplicável durante falha real de comunicação/revalidação da API, liga automaticamente sem tomar posse de um ON manual e nunca ignora motor OFF conhecido. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.";
 
 upsert({
   id: ids.bypassGroup,
@@ -1439,7 +1439,7 @@ for (const nodeId of [
 required(alarmIds.tab).info = "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary estão chegando. Testes percorrem validação, pendência e confirmação, mas simulam toda interação mobile e terminam em dry-run sem notificação nem desarme.\n\nv11: produção preserva pendência e cooldown somente após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.";
 
 
-group.name = "4. Testes manuais — motor e localização sintéticos/cumulativos";
+group.name = "5. Testes manuais — motor e localização sintéticos/cumulativos";
 group.nodes = [
   ids.reset,
   ids.engineOn,
@@ -1454,12 +1454,12 @@ group.nodes = [
   ids.output,
 ];
 group.x = 184;
-group.y = 1079;
+group.y = 1619;
 group.w = 968;
 group.h = 402;
 
 const tab = required(ids.tab);
-tab.info = "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv14: a chegada pessoal em chegando permanece pendente enquanto a localização estiver recente; após escurecer, o replay aceita motor ON atual ou bypass manual/automático somente para telemetria do motor não confiável. O prazo de backoff da API bloqueia chamadas automáticas e liga o bypass sem tomar posse de um ON manual. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.";
+tab.info = "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv15: ON/OFF conhecidos não expiram pela idade; a idade continua diagnóstica e pode solicitar wake. Somente falha real da API marca o motor como não confiável e permite bypass automático, sempre preservando OFF conhecido como bloqueio. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.";
 
 fs.writeFileSync(flowOutputUrl, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Controles manuais ON/OFF do vehicle_primary atualizados.");

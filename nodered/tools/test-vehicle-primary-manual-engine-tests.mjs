@@ -141,6 +141,17 @@ assert(execute(gate, {
     vehicle_primary_engine_state_valid: true,
   },
 }, gateFlow, shared));
+const staleKnownOn = execute(gate, {
+  payload: {
+    vehicle_primary_in_use: true,
+    vehicle_primary_engine_on: true,
+    vehicle_primary_engine_state_valid: true,
+    vehicle_primary_engine_stale: true,
+    engine_communication_failed: false,
+  },
+}, gateFlow, shared);
+assert(staleKnownOn, "ON conhecido não pode expirar somente pela idade");
+assert.equal(staleKnownOn.payload.vehicle_primary_gate, "known_engine_on");
 assert.equal(execute(gate, {
   payload: {
     vehicle_primary_in_use: false,
@@ -173,6 +184,7 @@ gateFlow.set("vehicle_primary_context_v1__test", {
   engine_on: false,
   engine_state_valid: false,
   engine_stale: true,
+  engine_communication_failed: true,
   updated_at: arrivalAt,
 });
 const queued = execute(prepareArrival, {
@@ -273,6 +285,7 @@ assert.equal(execute(gate, {
     vehicle_primary_engine_state_valid: true,
     vehicle_primary_engine_stale: false,
     vehicle_primary_lighting_ready: true,
+    engine_communication_failed: true,
     engine_data_unreliable: false,
   },
 }, gateFlow, shared), null, "bypass nunca pode ignorar motor OFF confiável");

@@ -16,17 +16,32 @@ function ctxGet(base, store) {
 
 const bypassEnabled =
     ctxGet("security_light_engine_bypass_enabled", PERSISTENT) === true;
+const engineStateKnown =
+    msg.payload?.vehicle_primary_engine_state_valid === true;
+const engineKnownOff =
+    engineStateKnown &&
+    msg.payload?.vehicle_primary_engine_on === false;
 const engineUnreliable =
-    msg.payload?.engine_data_unreliable === true ||
-    msg.payload?.vehicle_primary_engine_state_valid !== true ||
-    msg.payload?.vehicle_primary_engine_stale === true ||
-    msg.payload?.vehicle_primary_lighting_ready !== true;
-const bypassAllowed = bypassEnabled && engineUnreliable;
+    msg.payload?.engine_communication_failed === true ||
+    msg.payload?.engine_data_unreliable === true;
+const bypassAllowed =
+    bypassEnabled &&
+    engineUnreliable &&
+    !engineKnownOff;
 const engineGateAllowed =
     msg.payload?.vehicle_primary_in_use === true &&
     msg.payload?.vehicle_primary_engine_on === true &&
-    msg.payload?.vehicle_primary_engine_state_valid === true &&
-    msg.payload?.vehicle_primary_engine_stale !== true;
+    engineStateKnown &&
+    !engineUnreliable;
+
+if (engineKnownOff) {
+    node.status({
+        fill: "grey",
+        shape: "ring",
+        text: `${TEST_MODE ? "TESTE: " : ""}bloqueado — motor OFF conhecido`
+    });
+    return null;
+}
 
 if (!engineGateAllowed && !bypassAllowed) {
     node.status({
@@ -57,7 +72,7 @@ msg.payload.engine_bypass_enabled = bypassEnabled;
 msg.payload.engine_bypass_allowed = bypassAllowed;
 msg.payload.vehicle_primary_gate = bypassAllowed
     ? "manual_bypass_for_unreliable_engine"
-    : "fresh_engine_on";
+    : "known_engine_on";
 
 if (TEST_MODE) {
     node.status({

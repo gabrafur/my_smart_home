@@ -34,7 +34,7 @@ const physicalFresh =
     now - physicalObservedAt <= 2 * 60 * 1000;
 const people = ctxGet("people_context_v1") ?? {};
 const engineGateAllowed =
-    msg.payload?.vehicle_primary_gate === "fresh_engine_on";
+    msg.payload?.vehicle_primary_gate === "known_engine_on";
 const bypassAllowed =
     msg.payload?.vehicle_primary_gate ===
         "manual_bypass_for_unreliable_engine" &&

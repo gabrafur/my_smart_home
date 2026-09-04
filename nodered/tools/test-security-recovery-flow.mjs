@@ -112,7 +112,7 @@ scenario("01 restart com todos em casa e refletor desligado", () => {
 
 scenario("02 restart durante viagem", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, in_use: true, trip_active: true, last_confirmed_at: NOW - 60_000 } });
-  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ state: "not_home", distance: 5_000, engineAge: 10 * 60_000 }), flow)[0].payload.context;
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ state: "not_home", distance: 5_000, engine: "on", engineAge: 10 * 60_000 }), flow)[0].payload.context;
   assert.equal(result.in_use, true);
   assert.equal(result.trip_active, true);
 });
@@ -171,7 +171,7 @@ scenario("11 refletor OFF e contexto persistido ON", () => {
 });
 
 scenario("12 restart com vehicle_primary stale", () => {
-  const output = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "location_update", state: "chegando", distance: 1_400, locationAge: 31 * 60_000, engineAge: 10 * 60_000 }), memoryFlow());
+  const output = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "location_update", state: "chegando", distance: 1_400, locationAge: 31 * 60_000, engine: "unknown", engineAge: 10 * 60_000 }), memoryFlow());
   assert.equal(output[0].payload.context.ready, false);
   assert.equal(output[0].payload.context.in_use, null);
   assert.equal(output[1], null);
@@ -222,7 +222,7 @@ scenario("18 snapshots chegando fora de ordem", () => {
 
 scenario("19 snapshot persistido mais novo que entidade stale", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, in_use: true, trip_active: true, last_confirmed_at: NOW - 60_000 } });
-  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ state: "not_home", distance: 5_000, locationAge: 31 * 60_000, engineAge: 10 * 60_000 }), flow)[0].payload.context;
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ state: "not_home", distance: 5_000, locationAge: 31 * 60_000, engine: "unknown", engineAge: 10 * 60_000 }), flow)[0].payload.context;
   assert.equal(result.in_use, null);
   assert.equal(flow.get("security_vehicle_primary_recovery_v1").in_use, true);
 });
@@ -347,10 +347,12 @@ scenario("33 recuperação posterior do Bluelink", () => {
   assert.equal(flow.get("security_vehicle_primary_refresh_v1").awaiting_evidence, false);
 });
 
-scenario("34 viagem ativa com motor stale off", () => {
+scenario("34 OFF conhecido encerra viagem mesmo antigo", () => {
   const flow = memoryFlow({ security_vehicle_primary_recovery_v1: { version: 1, in_use: true, trip_active: true, last_confirmed_at: NOW - 60_000 } });
   const result = run("vehicle_primary_normalize", vehicle_primaryInput({ state: "not_home", distance: 10_000, engine: "off", engineAge: 10 * 60_000 }), flow)[0].payload.context;
-  assert.equal(result.in_use_reason, "persisted_trip_revalidated_by_fresh_away_location");
+  assert.equal(result.in_use, false);
+  assert.equal(result.in_use_reason, "known_engine_off");
+  assert.equal(result.engine_stale, true);
 });
 
 scenario("35 viagem terminando durante restart", () => {

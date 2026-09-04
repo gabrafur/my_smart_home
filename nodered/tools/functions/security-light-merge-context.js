@@ -90,6 +90,16 @@ if (kind === "sun_context") {
         msg.payload.sun_below_horizon === true
     );
 }
+if (
+    kind === "engine_bypass_context" &&
+    typeof msg.payload?.communication_failed === "boolean"
+) {
+    ctxSet(
+        "security_light_engine_communication_failed",
+        msg.payload.communication_failed,
+        PERSISTENT
+    );
+}
 
 if (TEST_MODE && msg._location_test_reset === true) {
     for (const base of [
@@ -97,7 +107,9 @@ if (TEST_MODE && msg._location_test_reset === true) {
         "security_light_lifecycle_v1",
         "security_light_last_dry_run_v1",
         "security_light_turn_on_notification_latch_v1",
-        "security_light_engine_bypass_enabled"
+        "security_light_engine_bypass_enabled",
+        "security_light_engine_bypass_automatic",
+        "security_light_engine_communication_failed"
     ]) {
         ctxSet(base, null);
     }
@@ -122,16 +134,32 @@ const bypassEnabled = ctxGet(
     "security_light_engine_bypass_enabled",
     PERSISTENT
 ) === true;
+const bypassAutomatic = ctxGet(
+    "security_light_engine_bypass_automatic",
+    PERSISTENT
+) === true;
+const engineStateKnown = vehicle.engine_state_valid === true;
+const engineKnownOff =
+    engineStateKnown &&
+    vehicle.engine_on === false;
+const engineCommunicationFailed =
+    vehicle.engine_communication_failed === true ||
+    ctxGet(
+        "security_light_engine_communication_failed",
+        PERSISTENT
+    ) === true ||
+    bypassAutomatic;
 const engineUnreliable =
-    vehicle.engine_state_valid !== true ||
-    vehicle.engine_stale === true ||
-    vehicle.lighting_ready !== true;
-const bypassAllowed = bypassEnabled && engineUnreliable;
+    engineCommunicationFailed;
+const bypassAllowed =
+    bypassEnabled &&
+    engineUnreliable &&
+    !engineKnownOff;
 const engineGateAllowed =
     vehicle.in_use === true &&
     vehicle.engine_on === true &&
-    vehicle.engine_state_valid === true &&
-    vehicle.engine_stale !== true;
+    engineStateKnown &&
+    !engineUnreliable;
 const sunReady = flow.get("sun_ready") === true;
 const dark = flow.get("sun_below_horizon") === true;
 
@@ -254,6 +282,7 @@ if (lifecycleMsg) {
         vehicle_primary_engine_on: vehicle.engine_on,
         vehicle_primary_engine_state_valid:
             vehicle.engine_state_valid === true,
+        engine_communication_failed: engineCommunicationFailed,
         vehicle_primary_unlocked: vehicle.unlocked,
         vehicle_primary_in_use: vehicle.in_use,
         engine_bypass_enabled: bypassEnabled,

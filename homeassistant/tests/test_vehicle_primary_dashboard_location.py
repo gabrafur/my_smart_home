@@ -39,11 +39,19 @@ def main() -> None:
     assert "refresh_failure_endpoint" in dashboard
     assert "failure_labels" in dashboard
     assert "entity: switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada" in dashboard
-    assert "Um `motor = OFF` recente e confiável continua bloqueando" in dashboard
+    assert "estado conhecido e confiável de `motor = OFF` continua bloqueando" in dashboard
+    assert "estado conhecido e confiável de `motor = ON`" in dashboard
+    assert "idade da leitura é apenas informativa" in dashboard
+    assert "motor OFF recente e confiável" not in dashboard
+    assert "leitura recente e válida de `motor = ON`" not in dashboard
     assert "refresh_awaiting" in dashboard
-    assert "last_success_reason" in dashboard
-    assert "lighting_ready_after_wake" in dashboard
-    assert "o carro publicou telemetria nova" in dashboard
+    assert "engine_communication_failed" in dashboard
+    assert "engine_revalidation_failed" in dashboard
+    assert "fresh_telemetry_engine_unreliable" not in dashboard
+    assert dashboard.count(
+        "a leitura específica do motor continua não confiável para a iluminação"
+    ) == 3
+    assert dashboard.count("{% if engine_revalidation_failed %}") == 2
     assert "nova tentativa automática em cerca de" in dashboard
     assert "nova tentativa automática agora" in dashboard
     assert "sensor.vehicle_primary_api_retry_at" in dashboard

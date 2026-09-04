@@ -26,6 +26,8 @@ if (active) {
     state.state = "backoff";
     state.reason = "provider_backoff";
     state.last_failure_class = "provider_backoff";
+    state.engine_communication_failed = true;
+    state.engine_bypass_recovery_pending = false;
     state.updated_at = now;
     flow.set(key, state, "persistent");
     node.status({
@@ -50,6 +52,14 @@ if (
     status === "available"
 ) {
     state.provider_retry_at = null;
+    state.engine_communication_failed = false;
+    if (state.last_failure_class === "provider_backoff") {
+        state.last_failure_class = null;
+        state.failure_at = null;
+        state.failure_source = null;
+        state.failure_endpoint = null;
+        state.failure_stage = null;
+    }
     if (
         state.reason === "provider_backoff" &&
         Number(state.next_allowed_at ?? 0) <= previousProviderRetryAt

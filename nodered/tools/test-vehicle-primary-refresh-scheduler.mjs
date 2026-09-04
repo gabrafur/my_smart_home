@@ -144,7 +144,7 @@ function normalize(
   now,
   observedAt,
   telemetryAt = observedAt,
-  { engineAt = observedAt, lockAt = observedAt } = {},
+  { engineAt = observedAt, lockAt = observedAt, engineState = "off" } = {},
 ) {
   return execute(code.normalizer, {
     now,
@@ -160,7 +160,7 @@ function normalize(
           longitude: 0,
           gps_accuracy: 10,
         }),
-        vehicle_primary_engine: entity("off", engineAt),
+        vehicle_primary_engine: entity(engineState, engineAt),
         vehicle_primary_lock: entity("locked", lockAt),
         vehicle_primary_last_updated: entity(
           new Date(telemetryAt).toISOString(),
@@ -522,13 +522,21 @@ scenario("16 serviço aceito sem evidência nova não é sucesso", () => {
       last_attempt_at: DAY - 10_000,
       last_request_at: DAY - 10_000,
       next_allowed_at: DAY + 50_000,
+      engine_communication_failed: true,
+      last_failure_class: "api_error",
+      failure_notified_at: DAY - 20_000,
       baseline_observed_at: {
         telemetry: baseline,
       },
     },
   });
   execute(code.accepted, { now: DAY, store, msg: command() });
-  assert.equal(store.get(KEY).next_allowed_at, DAY + 15 * 60_000);
+  const acceptedState = store.get(KEY);
+  assert.equal(acceptedState.next_allowed_at, DAY + 15 * 60_000);
+  assert.equal(acceptedState.engine_communication_failed, false);
+  assert.equal(acceptedState.engine_bypass_recovery_pending, true);
+  assert.equal(acceptedState.last_failure_class, "api_error");
+  assert.equal(acceptedState.recovery_notification_pending, true);
   normalize(store, DAY + 15_000, baseline);
   const state = store.get(KEY);
   assert.equal(state.awaiting_evidence, true);
@@ -657,7 +665,7 @@ scenario("30 telemetria nova confirma wake comum com motor sem mudança", () => 
     },
   });
 
-  normalize(store, DAY, DAY, requestAt + 4 * 60_000, {
+  const normalized = normalize(store, DAY, DAY, requestAt + 4 * 60_000, {
     engineAt: staleSignalAt,
     lockAt: staleSignalAt,
   });
@@ -666,11 +674,14 @@ scenario("30 telemetria nova confirma wake comum com motor sem mudança", () => 
   assert.equal(state.attempts, 0);
   assert.equal(state.state, "cooldown");
   assert.deepEqual([...state.last_evidence_domains], ["telemetry"]);
-  assert.equal(state.lighting_ready_after_wake, false);
-  assert.equal(state.last_success_reason, "fresh_telemetry_engine_unreliable");
+  assert.equal(normalized[0].payload.context.engine_stale, true);
+  assert.equal(normalized[0].payload.context.engine_state_valid, true);
+  assert.equal(normalized[0].payload.context.lighting_ready, true);
+  assert.equal(state.lighting_ready_after_wake, true);
+  assert.equal(state.last_success_reason, "fresh_telemetry_engine_state_known");
 });
 
-scenario("31 wake da iluminação confirma telemetria sem mascarar motor stale", () => {
+scenario("31 wake da iluminação aceita estado conhecido sem exigir mudança", () => {
   const baseline = DAY - 10 * 60_000;
   const requestAt = DAY - 5 * 60_000;
   const staleSignalAt = DAY - 20 * 60_000;
@@ -688,7 +699,7 @@ scenario("31 wake da iluminação confirma telemetria sem mascarar motor stale",
     },
   });
 
-  normalize(store, DAY, DAY, requestAt + 4 * 60_000, {
+  const normalized = normalize(store, DAY, DAY, requestAt + 4 * 60_000, {
     engineAt: staleSignalAt,
     lockAt: staleSignalAt,
   });
@@ -697,8 +708,59 @@ scenario("31 wake da iluminação confirma telemetria sem mascarar motor stale",
   assert.equal(state.attempts, 0);
   assert.equal(state.state, "cooldown");
   assert.equal(state.last_failure_class, null);
-  assert.equal(state.lighting_ready_after_wake, false);
-  assert.equal(state.last_success_reason, "fresh_telemetry_engine_unreliable");
+  assert.equal(normalized[0].payload.context.engine_stale, true);
+  assert.equal(normalized[0].payload.context.engine_state_valid, true);
+  assert.equal(normalized[0].payload.context.lighting_ready, true);
+  assert.equal(state.lighting_ready_after_wake, true);
+  assert.equal(state.last_success_reason, "fresh_telemetry_engine_state_known");
+});
+
+scenario("31a ON antigo continua válido enquanto a API está saudável", () => {
+  const staleSignalAt = DAY - 3 * 60 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY - 60_000),
+    [KEY]: {
+      awaiting_evidence: false,
+      last_failure_class: null,
+      engine_communication_failed: false,
+    },
+  });
+
+  const normalized = normalize(store, DAY, DAY, DAY - 60_000, {
+    engineAt: staleSignalAt,
+    engineState: "on",
+  });
+  const context = normalized[0].payload.context;
+  assert.equal(context.engine_on, true);
+  assert.equal(context.engine_stale, true);
+  assert.equal(context.engine_state_valid, true);
+  assert.equal(context.engine_communication_failed, false);
+  assert.equal(context.in_use, true);
+  assert.equal(context.lighting_ready, true);
+});
+
+scenario("31b OFF antigo continua conhecido e bloqueante", () => {
+  const staleSignalAt = DAY - 3 * 60 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY - 60_000),
+    [KEY]: {
+      awaiting_evidence: false,
+      last_failure_class: null,
+      engine_communication_failed: false,
+    },
+  });
+
+  const normalized = normalize(store, DAY, DAY, DAY - 60_000, {
+    engineAt: staleSignalAt,
+    engineState: "off",
+  });
+  const context = normalized[0].payload.context;
+  assert.equal(context.engine_on, false);
+  assert.equal(context.engine_stale, true);
+  assert.equal(context.engine_state_valid, true);
+  assert.equal(context.engine_communication_failed, false);
+  assert.equal(context.in_use, false);
+  assert.equal(context.lighting_ready, true);
 });
 
 scenario("17 recuperação posterior da integração", () => {
@@ -736,9 +798,25 @@ scenario("17 recuperação posterior da integração", () => {
     store,
     msg: guarded[0],
   });
+  assert.equal(store.get(KEY).engine_communication_failed, false);
+  assert.equal(store.get(KEY).engine_bypass_recovery_pending, true);
+  assert.equal(store.get(KEY).last_failure_class, "authentication");
   normalize(store, DAY + 15_000, DAY + 15_000);
-  assert.equal(store.get(KEY).awaiting_evidence, false);
-  assert.equal(store.get(KEY).attempts, 0);
+  const recovered = store.get(KEY);
+  assert.equal(recovered.awaiting_evidence, false);
+  assert.equal(recovered.attempts, 0);
+  assert.equal(recovered.engine_communication_failed, false);
+  assert.equal(recovered.engine_bypass_recovery_pending, true);
+  const telemetry = execute(code.telemetry, {
+    now: DAY + 16_000,
+    store,
+    msg: { payload: {} },
+  });
+  assert.deepEqual(JSON.parse(telemetry[2].payload), {
+    requested_state: "OFF",
+    source: "api_recovered",
+  });
+  assert.equal(store.get(KEY).engine_bypass_recovery_pending, false);
 });
 
 scenario("18 toda retentativa respeita o piso Bluelink de 15 minutos", () => {
@@ -771,18 +849,24 @@ scenario("18 toda retentativa respeita o piso Bluelink de 15 minutos", () => {
       store,
       msg: { error: { source: { name: "force_refresh" }, message: "timeout" } },
     });
+    assert.deepEqual(JSON.parse(serviceFailure[1].payload), {
+      requested_state: "ON",
+      source: "api_failure",
+    });
+    assert.equal(store.get(KEY).engine_bypass_recovery_pending, false);
     if (attempt === 1) {
-      assert.match(serviceFailure.alert.title, /Erro ao atualizar veículo/);
+      assert.match(serviceFailure[0].alert.title, /Erro ao atualizar veículo/);
       const guarded = execute(code.notificationGuard, {
         now,
         store,
-        msg: serviceFailure,
+        msg: serviceFailure[0],
       });
       assert(guarded[0]);
       assert(guarded[1]);
       assert.equal(guarded[2], null);
+    } else {
+      assert.equal(serviceFailure[0], null);
     }
-    if (attempt > 1) assert.equal(serviceFailure, null);
     now = state.next_allowed_at;
   }
   assert.deepEqual(observed, [15, 15, 15, 15, 15]);
@@ -1067,10 +1151,15 @@ scenario("37 endpoint ausente informa serviço e etapa no alerta", () => {
     },
   });
   assert.equal(store.get(KEY).last_failure_class, "integration_unavailable");
-  assert.match(result.alert.title, /Endpoint Bluelink indisponível/);
-  assert.match(result.alert.message, /kia_uvo\.update/);
-  assert.match(result.alert.message, /Reler cache do vehicle_primary/);
-  assert.equal(result.notification.id, "vehicle_primary_refresh_failed");
+  assert.equal(store.get(KEY).engine_communication_failed, true);
+  assert.match(result[0].alert.title, /Endpoint Bluelink indisponível/);
+  assert.match(result[0].alert.message, /kia_uvo\.update/);
+  assert.match(result[0].alert.message, /Reler cache do vehicle_primary/);
+  assert.equal(result[0].notification.id, "vehicle_primary_refresh_failed");
+  assert.deepEqual(JSON.parse(result[1].payload), {
+    requested_state: "ON",
+    source: "api_failure",
+  });
 });
 
 scenario("37a deadline do provedor bloqueia chamadas automáticas após restart", () => {
@@ -1094,6 +1183,7 @@ scenario("37a deadline do provedor bloqueia chamadas automáticas após restart"
   assert.equal(state.provider_retry_at, retryAt);
   assert.equal(state.next_allowed_at, retryAt);
   assert.equal(state.last_failure_class, "provider_backoff");
+  assert.equal(state.engine_communication_failed, true);
   assert.equal(coordinator(store, DAY + 1_000, { anyone_away: true }), null);
   assert.equal(store.get(KEY).state, "backoff");
   assert.equal(bypassCommand.topic, "homeassistant/vehicle_primary/engine_bypass/set");
@@ -1101,13 +1191,30 @@ scenario("37a deadline do provedor bloqueia chamadas automáticas após restart"
     requested_state: "ON",
     source: "provider_backoff",
   });
+
+  const recoveredCommand = execute(code.providerBackoffSync, {
+    now: retryAt + 1,
+    store,
+    msg: {
+      payload: {
+        state: new Date(retryAt).toISOString(),
+        attributes: { status: "available" },
+      },
+    },
+  });
+  assert.equal(store.get(KEY).engine_communication_failed, false);
+  assert.equal(store.get(KEY).last_failure_class, null);
+  assert.deepEqual(JSON.parse(recoveredCommand.payload), {
+    requested_state: "OFF",
+    source: "provider_recovered",
+  });
 });
 
 scenario("37b backoff esperado não reabre falha global do canvas", () => {
   const store = memory({ [KEY]: { interval_ms: 15 * 60_000 } });
   const warnings = [];
   const errors = [];
-  execute(code.error, {
+  const result = execute(code.error, {
     now: DAY,
     store,
     warnings,
@@ -1126,6 +1233,8 @@ scenario("37b backoff esperado não reabre falha global do canvas", () => {
     store.get(KEY).failure_endpoint,
     "public_bindings.call (viagens do dia)",
   );
+  assert.equal(store.get(KEY).engine_communication_failed, false);
+  assert.equal(result[1], null, "falha de histórico não altera o bypass do motor");
 });
 
 scenario("38 sucesso semântico mantém 30 minutos com ambos em casa", () => {
@@ -1149,7 +1258,11 @@ scenario("38 sucesso semântico mantém 30 minutos com ambos em casa", () => {
     engineAt: staleSignalAt,
     lockAt: staleSignalAt,
   });
-  assert.equal(store.get("vehicle_primary_context_v1").ready, false);
+  assert.equal(
+    store.get("vehicle_primary_context_v1").ready,
+    true,
+    "OFF conhecido continua pronto mesmo com timestamp antigo",
+  );
 
   assert.equal(coordinator(store, DAY + 30_000, {
     resident_primary_state: "home",
@@ -1239,7 +1352,7 @@ scenario("41 mudança real de classe de falha gera novo alerta", () => {
     },
   });
 
-  const notification = execute(code.error, {
+  const failure = execute(code.error, {
     now: DAY,
     store,
     msg: {
@@ -1249,9 +1362,11 @@ scenario("41 mudança real de classe de falha gera novo alerta", () => {
       },
     },
   });
-  assert(notification);
+  assert(failure);
   assert.equal(store.get(KEY).last_failure_class, "timeout");
-  assert.match(notification.alert.message, /tempo esgotado/);
+  assert.equal(store.get(KEY).engine_communication_failed, true);
+  assert.match(failure[0].alert.message, /tempo esgotado/);
+  assert(failure[1], "falha real deve ativar o bypass automático");
 
   const duplicate = execute(code.error, {
     now: DAY + 1_000,
@@ -1275,7 +1390,7 @@ scenario("41a HTTP 403 é identificado como backoff do provedor", () => {
       interval_ms: 15 * 60_000,
     },
   });
-  const notification = execute(code.error, {
+  const failure = execute(code.error, {
     now: DAY,
     store,
     msg: {
@@ -1287,10 +1402,12 @@ scenario("41a HTTP 403 é identificado como backoff do provedor", () => {
       },
     },
   });
-  assert(notification);
+  assert(failure);
   assert.equal(store.get(KEY).last_failure_class, "provider_backoff");
-  assert.match(notification.alert.message, /temporariamente recusado/);
-  assert.match(notification.alert.message, /Forçar refresh/);
+  assert.equal(store.get(KEY).engine_communication_failed, true);
+  assert.match(failure[0].alert.message, /temporariamente recusado/);
+  assert.match(failure[0].alert.message, /Forçar refresh/);
+  assert(failure[1], "HTTP 403 deve ativar o bypass automático");
 });
 
 scenario("42 recuperação limpa detalhes e fecha alerta persistente", () => {
