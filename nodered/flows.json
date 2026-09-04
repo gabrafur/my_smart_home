@@ -158,6 +158,22 @@
         "env": []
     },
     {
+        "id": "local_ai_rtx_recovery_tab",
+        "type": "tab",
+        "label": "recuperacao_rtx",
+        "disabled": false,
+        "info": "Observa passivamente a RTX. Somente o inject manual explícito chama o bridge, inicia uma invocação MCP legítima e permite o helper limitado a duas tentativas.",
+        "env": []
+    },
+    {
+        "id": "host_memory_guardian_tab",
+        "type": "tab",
+        "label": "guardiao_memoria_host",
+        "disabled": false,
+        "info": "Prioriza a saúde do servidor sem dar privilégios ao Node-RED. A cada minuto solicita ao worker do host uma avaliação fail-closed. Somente uma árvore antiga, desconectada e ociosa do VS Code pode ser encerrada; uma sessão conectada nunca é candidata. A limpeza também funciona depois de fechar a única janela remota.",
+        "env": []
+    },
+    {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
         "name": "Notificar celulares, Echo e Home Assistant",
@@ -677,9 +693,9 @@
             "rpi_layout_cancel_timer_in"
         ],
         "x": 74,
-        "y": 79,
-        "w": 1587,
-        "h": 312
+        "y": 39,
+        "w": 1612,
+        "h": 352
     },
     {
         "id": "5ae977feca8f9b01",
@@ -787,9 +803,9 @@
             "rpi_layout_restore_off_wait_out",
             "rpi_layout_restore_fan_wait_out"
         ],
-        "x": 64,
+        "x": 74,
         "y": 879,
-        "w": 4677,
+        "w": 4707,
         "h": 422
     },
     {
@@ -1853,7 +1869,7 @@
         "x": 124,
         "y": 39,
         "w": 1212,
-        "h": 262
+        "h": 242
     },
     {
         "id": "daily_update_result_group",
@@ -1960,10 +1976,223 @@
             "daily_update_kia_codex_error",
             "daily_update_kia_codex_complete"
         ],
-        "x": 84,
+        "x": 124,
         "y": 1679,
-        "w": 1252,
+        "w": 902,
         "h": 262
+    },
+    {
+        "id": "local_ai_rtx_health_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "1. Saúde passiva e recovery explícito",
+        "style": {
+            "label": true,
+            "color": "#5b8db8",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "local_ai_rtx_architecture",
+            "local_ai_rtx_tick",
+            "local_ai_rtx_manual_recovery",
+            "local_ai_rtx_prepare_health",
+            "local_ai_rtx_health_http",
+            "local_ai_rtx_health_evaluate",
+            "local_ai_rtx_status_terminal",
+            "local_ai_rtx_recovery_out",
+            "local_ai_rtx_test_health_in"
+        ],
+        "x": 64,
+        "y": 19,
+        "w": 967,
+        "h": 282
+    },
+    {
+        "id": "local_ai_rtx_recovery_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "2. Recovery seguro via MCP",
+        "style": {
+            "label": true,
+            "color": "#b5563f",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "local_ai_rtx_recovery_in",
+            "local_ai_rtx_side_effect_guard",
+            "local_ai_rtx_prepare_recovery",
+            "local_ai_rtx_recovery_http",
+            "local_ai_rtx_recovery_response",
+            "local_ai_rtx_recovery_terminal",
+            "local_ai_rtx_dry_out",
+            "local_ai_rtx_test_response_in"
+        ],
+        "x": 1069,
+        "y": 59,
+        "w": 1127,
+        "h": 252
+    },
+    {
+        "id": "local_ai_rtx_test_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "TESTE — ciclo completo em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "local_ai_rtx_test_instructions",
+            "local_ai_rtx_test_reset",
+            "local_ai_rtx_test_reset_state",
+            "local_ai_rtx_test_available",
+            "local_ai_rtx_test_unavailable",
+            "local_ai_rtx_test_health_out",
+            "local_ai_rtx_test_recovered",
+            "local_ai_rtx_test_failed",
+            "local_ai_rtx_test_response_out",
+            "local_ai_rtx_dry_in",
+            "local_ai_rtx_dry_run_terminal"
+        ],
+        "x": 104,
+        "y": 389,
+        "w": 1822,
+        "h": 272
+    },
+    {
+        "id": "host_memory_guardian_request_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "1. Solicitar verificação recorrente — sem acesso direto aos PIDs",
+        "style": {
+            "label": true,
+            "color": "#5b8db8",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "host_memory_guardian_architecture",
+            "host_memory_guardian_tick",
+            "host_memory_guardian_test_request_in",
+            "host_memory_guardian_prepare_request",
+            "host_memory_guardian_side_effect_guard",
+            "host_memory_guardian_request_host",
+            "host_memory_guardian_request_ack",
+            "host_memory_guardian_request_error",
+            "host_memory_guardian_request_complete",
+            "host_memory_guardian_request_test_out"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 1360,
+        "h": 300
+    },
+    {
+        "id": "host_memory_guardian_result_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "2. Ler resultado sanitizado e observar a proteção",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "host_memory_guardian_result_info",
+            "host_memory_guardian_result_tick",
+            "host_memory_guardian_read_result",
+            "host_memory_guardian_test_result_in",
+            "host_memory_guardian_parse_result",
+            "host_memory_guardian_result_error",
+            "host_memory_guardian_result_complete",
+            "host_memory_guardian_result_test_out"
+        ],
+        "x": 64,
+        "y": 360,
+        "w": 1360,
+        "h": 300
+    },
+    {
+        "id": "host_memory_guardian_test_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "TESTE — pedidos e resultados completos em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "host_memory_guardian_test_instructions",
+            "host_memory_guardian_test_reset",
+            "host_memory_guardian_reset_test",
+            "host_memory_guardian_test_request",
+            "host_memory_guardian_test_request_out",
+            "host_memory_guardian_test_healthy",
+            "host_memory_guardian_test_candidate",
+            "host_memory_guardian_test_terminated",
+            "host_memory_guardian_test_failed",
+            "host_memory_guardian_test_result_out",
+            "host_memory_guardian_dry_in",
+            "host_memory_guardian_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 700,
+        "w": 1360,
+        "h": 400
+    },
+    {
+        "id": "vehicle_primary_remote_command_group_v1",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "4. Resultado final dos comandos remotos",
+        "style": {
+            "label": true,
+            "stroke": "#5b8ff9",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "vehicle_primary_remote_command_event_v1",
+            "vehicle_primary_remote_command_test_in_v1",
+            "vehicle_primary_remote_command_monitor_v1",
+            "vehicle_primary_remote_command_guard_v1",
+            "vehicle_primary_remote_command_notify_primary_v1",
+            "vehicle_primary_remote_command_notify_persistent_v1",
+            "vehicle_primary_remote_command_dry_run_out_v1",
+            "vehicle_primary_remote_command_architecture_v1"
+        ],
+        "x": 174,
+        "y": 1199,
+        "w": 1662,
+        "h": 302
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_group_v1",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "6. TESTE — resultado remoto sem efeitos",
+        "style": {
+            "label": true,
+            "stroke": "#ffb300",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "vehicle_primary_remote_command_test_help_v1",
+            "vehicle_primary_remote_command_test_reset_v1",
+            "vehicle_primary_remote_command_test_success_v1",
+            "vehicle_primary_remote_command_test_failure_v1",
+            "vehicle_primary_remote_command_test_out_v1"
+        ],
+        "x": 1234,
+        "y": 1619,
+        "w": 602,
+        "h": 302
     },
     {
         "id": "4126427d5e161a03",
@@ -5301,7 +5530,7 @@
         "bytopic": "all",
         "topic": "topic",
         "outputs": 1,
-        "x": 1420,
+        "x": 1470,
         "y": 220,
         "wires": [
             [
@@ -5978,7 +6207,7 @@
                 "valueType": "triggerId"
             }
         ],
-        "x": 200,
+        "x": 210,
         "y": 980,
         "wires": [
             [
@@ -6020,7 +6249,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1100,
+        "x": 1140,
         "y": 1160,
         "wires": [
             [
@@ -6044,7 +6273,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 440,
+        "x": 480,
         "y": 980,
         "wires": [
             [
@@ -6083,7 +6312,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 680,
+        "x": 720,
         "y": 980,
         "wires": [
             [
@@ -6105,7 +6334,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 920,
+        "x": 960,
         "y": 980,
         "wires": [
             [
@@ -6156,7 +6385,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1240,
+        "x": 1280,
         "y": 980,
         "wires": [
             [
@@ -6177,7 +6406,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1540,
+        "x": 1580,
         "y": 980,
         "wires": [
             [
@@ -6217,7 +6446,7 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "turn_off",
-        "x": 1820,
+        "x": 1860,
         "y": 940,
         "wires": [
             [
@@ -6251,7 +6480,7 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_hvac_mode",
-        "x": 1860,
+        "x": 1900,
         "y": 1040,
         "wires": [
             [
@@ -6272,7 +6501,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2110,
+        "x": 2150,
         "y": 1040,
         "wires": [
             [
@@ -6309,7 +6538,7 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_temperature",
-        "x": 2320,
+        "x": 2360,
         "y": 960,
         "wires": [
             [
@@ -6330,7 +6559,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2480,
+        "x": 2520,
         "y": 1040,
         "wires": [
             [
@@ -6367,7 +6596,7 @@
         "blockInputOverrides": true,
         "domain": "climate",
         "service": "set_fan_mode",
-        "x": 2740,
+        "x": 2780,
         "y": 960,
         "wires": [
             [
@@ -6393,7 +6622,7 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 3030,
+        "x": 3070,
         "y": 1040,
         "wires": [
             [
@@ -6438,7 +6667,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 3320,
+        "x": 3360,
         "y": 1040,
         "wires": [
             [
@@ -6459,7 +6688,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3590,
+        "x": 3630,
         "y": 1040,
         "wires": [
             [
@@ -6483,7 +6712,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3860,
+        "x": 3900,
         "y": 1040,
         "wires": [
             [
@@ -6520,7 +6749,7 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_off",
-        "x": 4180,
+        "x": 4220,
         "y": 1100,
         "wires": [
             [
@@ -6541,7 +6770,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4460,
+        "x": 4500,
         "y": 1100,
         "wires": [
             [
@@ -6575,7 +6804,7 @@
         "blockInputOverrides": true,
         "domain": "input_boolean",
         "service": "turn_off",
-        "x": 4180,
+        "x": 4220,
         "y": 980,
         "wires": [
             [
@@ -6596,7 +6825,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4460,
+        "x": 4500,
         "y": 980,
         "wires": [
             [
@@ -6632,7 +6861,7 @@
             "c1b98e075390aee0"
         ],
         "uncaught": false,
-        "x": 220,
+        "x": 260,
         "y": 1260,
         "wires": [
             [
@@ -6653,7 +6882,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 550,
+        "x": 590,
         "y": 1260,
         "wires": [
             [
@@ -6682,7 +6911,7 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 810,
+        "x": 850,
         "y": 1160,
         "wires": [
             [
@@ -6703,7 +6932,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1400,
+        "x": 1440,
         "y": 1180,
         "wires": [
             []
@@ -7123,7 +7352,7 @@
         "links": [
             "f9be08e865d2c10e"
         ],
-        "x": 4700,
+        "x": 4740,
         "y": 950,
         "wires": []
     },
@@ -7137,7 +7366,7 @@
         "links": [
             "7e7a1b1cebdb498a"
         ],
-        "x": 4700,
+        "x": 4740,
         "y": 990,
         "wires": []
     },
@@ -7151,7 +7380,7 @@
         "links": [
             "ed15af8740df7acc"
         ],
-        "x": 4700,
+        "x": 4740,
         "y": 1030,
         "wires": []
     },
@@ -7165,7 +7394,7 @@
         "links": [
             "fb7ee906fa3b1033"
         ],
-        "x": 4700,
+        "x": 4740,
         "y": 1070,
         "wires": []
     },
@@ -7179,7 +7408,7 @@
         "links": [
             "12141375e10fc751"
         ],
-        "x": 795,
+        "x": 835,
         "y": 1260,
         "wires": []
     },
@@ -7254,7 +7483,7 @@
             "rpi_layout_classifier_rollback_out",
             "rpi_layout_failure_rollback_out"
         ],
-        "x": 1040,
+        "x": 1080,
         "y": 940,
         "wires": [
             [
@@ -7299,7 +7528,7 @@
         "links": [
             "rpi_layout_startup_timer_out"
         ],
-        "x": 925,
+        "x": 965,
         "y": 1240,
         "wires": [
             [
@@ -7317,8 +7546,8 @@
         "links": [
             "rpi_layout_startup_timer_in"
         ],
-        "x": 1620,
-        "y": 250,
+        "x": 1645,
+        "y": 220,
         "wires": []
     },
     {
@@ -7361,8 +7590,8 @@
         "links": [
             "rpi_layout_hot_retry_out"
         ],
-        "x": 660,
-        "y": 150,
+        "x": 655,
+        "y": 80,
         "wires": [
             [
                 "4a38415ec9862e2e"
@@ -7410,7 +7639,7 @@
         "links": [
             "rpi_layout_cancel_timer_in"
         ],
-        "x": 360,
+        "x": 400,
         "y": 1040,
         "wires": []
     },
@@ -7423,7 +7652,7 @@
         "links": [
             "rpi_layout_stop_prepare_out"
         ],
-        "x": 340,
+        "x": 380,
         "y": 940,
         "wires": [
             [
@@ -7441,7 +7670,7 @@
         "links": [
             "rpi_layout_stop_prepare_in"
         ],
-        "x": 1285,
+        "x": 1325,
         "y": 1120,
         "wires": []
     },
@@ -7455,7 +7684,7 @@
             "rpi_layout_restore_decision_failure_out",
             "rpi_layout_restore_validation_failure_out"
         ],
-        "x": 345,
+        "x": 385,
         "y": 1220,
         "wires": [
             [
@@ -7473,7 +7702,7 @@
         "links": [
             "rpi_layout_restore_failure_in"
         ],
-        "x": 1540,
+        "x": 1580,
         "y": 1100,
         "wires": []
     },
@@ -7487,7 +7716,7 @@
         "links": [
             "rpi_layout_restore_failure_in"
         ],
-        "x": 3785,
+        "x": 3825,
         "y": 1080,
         "wires": []
     },
@@ -7501,7 +7730,7 @@
             "rpi_layout_restore_off_wait_out",
             "rpi_layout_restore_fan_wait_out"
         ],
-        "x": 2840,
+        "x": 2880,
         "y": 1080,
         "wires": [
             [
@@ -7519,7 +7748,7 @@
         "links": [
             "rpi_layout_restore_wait_in"
         ],
-        "x": 1980,
+        "x": 2020,
         "y": 920,
         "wires": []
     },
@@ -7533,7 +7762,7 @@
         "links": [
             "rpi_layout_restore_wait_in"
         ],
-        "x": 2645,
+        "x": 2685,
         "y": 1080,
         "wires": []
     },
@@ -8233,6 +8462,406 @@
         "wires": [
             [
                 "storage_manual_status_mqtt"
+            ]
+        ]
+    },
+    {
+        "id": "storage_group_tests",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "TESTE — aumento e normalidade em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458"
+        },
+        "nodes": [
+            "storage_test_instructions",
+            "storage_test_reset",
+            "storage_test_reset_state",
+            "storage_test_normal",
+            "storage_test_growth",
+            "storage_test_prepare",
+            "storage_test_input_out",
+            "storage_test_decision_in",
+            "storage_test_decision_terminal",
+            "storage_test_dry_in",
+            "storage_dry_run_terminal"
+        ],
+        "x": 74,
+        "y": 989,
+        "w": 1642,
+        "h": 300
+    },
+    {
+        "id": "storage_recheck_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Reavaliar apos limpeza",
+        "links": [
+            "storage_recheck_out"
+        ],
+        "x": 245,
+        "y": 350,
+        "wires": [
+            [
+                "storage_read_ha"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_input_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Metricas sinteticas",
+        "links": [
+            "storage_test_input_out"
+        ],
+        "x": 555,
+        "y": 550,
+        "wires": [
+            [
+                "storage_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_decision_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Resultado para teste",
+        "mode": "link",
+        "links": [
+            "storage_test_decision_in"
+        ],
+        "x": 1095,
+        "y": 550,
+        "wires": []
+    },
+    {
+        "id": "storage_auto_gate",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Gate de autocuidado / dry-run",
+        "func": "if (msg.storageAutoRemediation !== true) return null;\nif (msg.test_mode === true) {\n    return [null, null, { payload: { simulated: true, dispatched: false, action: \"storage-safe-maintenance\", reason: msg.payload?.reason, growthCause: msg.payload?.growthCause } }];\n}\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"limpeza automatica solicitada\" });\nreturn [{ ...msg }, { ...msg }, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 700,
+        "wires": [
+            [
+                "storage_exec_maintenance"
+            ],
+            [
+                "storage_request_host_maintenance"
+            ],
+            [
+                "storage_test_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_post_maintenance_delay",
+        "type": "delay",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Aguardar worker e medir novamente",
+        "pauseType": "delay",
+        "timeout": "3",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1140,
+        "y": 780,
+        "wires": [
+            [
+                "storage_recheck_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_recheck_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Voltar ao diagnostico",
+        "mode": "link",
+        "links": [
+            "storage_recheck_in"
+        ],
+        "x": 1510,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "storage_test_dry_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Autocuidado simulado",
+        "mode": "link",
+        "links": [
+            "storage_test_dry_in"
+        ],
+        "x": 1510,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "storage_test_instructions",
+        "type": "comment",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Ordem: 1 Reset; 2 Normal; 3 Crescimento. Tudo termina em dry-run, sem exec, MQTT ou notificacao.",
+        "info": "",
+        "x": 540,
+        "y": 1030,
+        "wires": []
+    },
+    {
+        "id": "storage_test_reset",
+        "type": "inject",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 1100,
+        "wires": [
+            [
+                "storage_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_reset_state",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Resetar estado sintetico",
+        "func": "for (const key of [\"storage_health_state_v1\", \"storage_health_history_v1\", \"storage_health_category_history_v1\"]) flow.set(key, null, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "storage_test_normal",
+        "type": "inject",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE 2: normal",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "normal",
+        "payloadType": "str",
+        "x": 200,
+        "y": 1170,
+        "wires": [
+            [
+                "storage_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_growth",
+        "type": "inject",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE 3: +9 pp Docker",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "growth",
+        "payloadType": "str",
+        "x": 210,
+        "y": 1230,
+        "wires": [
+            [
+                "storage_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_prepare",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Preparar metricas sinteticas",
+        "func": "const now = Date.now();\nconst growth = msg.payload === \"growth\";\nconst beforeUsed = growth ? 55 : 60;\nconst currentUsed = growth ? 64 : 60;\nflow.set(\"storage_health_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, used: beforeUsed }], \"persistent\");\nflow.set(\"storage_health_category_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, values: { docker: growth ? 12000000000 : 16000000000, recorder: 4000000000, backups: 1600000000 } }], \"persistent\");\nreturn {\n    test_mode: true,\n    testNow: now,\n    payload: {\n        used_percent: currentUsed,\n        used_gb: 37,\n        free_gb: 21,\n        inode_used_percent: 18,\n        filesystem: \"/\",\n        collected_at: new Date(now).toISOString(),\n        categories: { docker: 16000000000, recorder: 4000000000, backups: 1600000000 }\n    }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 1200,
+        "wires": [
+            [
+                "storage_test_input_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_input_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Enviar metricas ao diagnostico",
+        "mode": "link",
+        "links": [
+            "storage_test_input_in"
+        ],
+        "x": 790,
+        "y": 1200,
+        "wires": []
+    },
+    {
+        "id": "storage_test_decision_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Receber decisao",
+        "links": [
+            "storage_test_decision_out"
+        ],
+        "x": 900,
+        "y": 1100,
+        "wires": [
+            [
+                "storage_test_decision_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_decision_terminal",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Decisao sintetica",
+        "func": "if (msg.test_mode !== true) return null;\nmsg.payload = { ...msg.payload, simulated: true, dispatched: false };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1130,
+        "y": 1100,
+        "wires": [
+            [
+                "storage_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "storage_test_dry_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "Receber autocuidado simulado",
+        "links": [
+            "storage_test_dry_out"
+        ],
+        "x": 900,
+        "y": 1190,
+        "wires": [
+            [
+                "storage_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "storage_dry_run_terminal",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_tests",
+        "name": "TESTE FINAL: nenhum efeito despachado",
+        "func": "msg.payload = { ...msg.payload, simulated: true, dispatched: false };\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"simulado; nenhum efeito\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1450,
+        "y": 1150,
+        "wires": []
+    },
+    {
+        "id": "storage_auto_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Solicitar autocuidado",
+        "mode": "link",
+        "links": [
+            "storage_auto_in"
+        ],
+        "x": 1095,
+        "y": 510,
+        "wires": []
+    },
+    {
+        "id": "storage_auto_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber autocuidado",
+        "links": [
+            "storage_auto_out"
+        ],
+        "x": 285,
+        "y": 780,
+        "wires": [
+            [
+                "storage_auto_gate"
             ]
         ]
     },
@@ -11053,6 +11682,381 @@
         ]
     },
     {
+        "id": "vehicle_primary_remote_command_event_v1",
+        "type": "server-state-changed",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Resultado remoto mudou",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.garagem_vehicle_primary_remote_command_status"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "failed",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": true,
+        "ignorePrevStateUnknown": true,
+        "ignorePrevStateUnavailable": true,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "({\n        \"entity\": $entities(\"sensor.garagem_vehicle_primary_remote_command_status\"),\n        \"preconditions\": {\n          \"front_left_door\": $entities(\"binary_sensor.vehicle_primary_front_left_door\"),\n          \"front_right_door\": $entities(\"binary_sensor.vehicle_primary_front_right_door\"),\n          \"back_left_door\": $entities(\"binary_sensor.vehicle_primary_back_left_door\"),\n          \"back_right_door\": $entities(\"binary_sensor.vehicle_primary_back_right_door\"),\n          \"trunk\": $entities(\"binary_sensor.vehicle_primary_trunk\"),\n          \"engine\": $entities(\"binary_sensor.vehicle_primary_engine\"),\n          \"lock\": $entities(\"lock.vehicle_primary_door_lock\"),\n          \"telemetry\": $entities(\"sensor.vehicle_primary_last_updated_at\")\n        }\n      })",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 390,
+        "y": 1260,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_monitor_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_in_v1",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Receber resultado remoto de TESTE",
+        "links": [
+            "vehicle_primary_remote_command_test_out_v1"
+        ],
+        "x": 385,
+        "y": 1340,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_monitor_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_monitor_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Classificar, deduplicar e compor alerta",
+        "func": "const TEST_MODE =\n    msg._vehicle_primary_remote_command_test === true ||\n    msg.payload?.test_mode === true;\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst KEY = TEST_MODE\n    ? \"vehicle_primary_remote_command_monitor_v1__test\"\n    : \"vehicle_primary_remote_command_monitor_v1\";\n\nif (msg.payload?.event === \"reset\") {\n    flow.set(KEY, null, STORE);\n    node.status({\n        fill: \"blue\",\n        shape: \"dot\",\n        text: \"TESTE do comando remoto resetado\"\n    });\n    return null;\n}\n\nconst entity = msg.payload?.entity ?? msg.payload ?? {};\nconst state = String(entity.state ?? \"unknown\").toLowerCase();\nconst attributes = entity.attributes ?? {};\nif (state !== \"failed\") return null;\n\nconst preconditions = msg.payload?.preconditions ?? {};\nconst stateOf = (value) => String(value?.state ?? \"unknown\").toLowerCase();\n\nconst command = String(attributes.command ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9_-]/g, \"\") || \"unknown\";\nconst failureStage = String(attributes.failure_stage ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9_-]/g, \"\") || \"unknown\";\nconst observedAt = String(\n    attributes.failed_at ??\n    attributes.updated_at ??\n    entity.last_updated ??\n    \"unknown\"\n).slice(0, 64);\nconst incidentKey = [command, failureStage, observedAt].join(\"|\");\nconst previous = flow.get(KEY, STORE) ?? {};\nif (previous.incident_key === incidentKey) return null;\n\nconst labels = {\n    unlock: \"destravar as portas\",\n    lock: \"travar as portas\",\n    climate_on: \"ligar o carro e o ar-condicionado\",\n    climate_off: \"desligar o carro e o ar-condicionado\",\n    hazard_lights_and_horn: \"acionar a buzina e as luzes\"\n};\nconst label = labels[command] ?? \"executar um comando remoto\";\nconst rawReason = String(attributes.reason ?? \"\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .trim();\nconst reason = rawReason.slice(0, 280);\nconst openSignals = [\n    [\"front_left_door\", \"porta dianteira esquerda\"],\n    [\"front_right_door\", \"porta dianteira direita\"],\n    [\"back_left_door\", \"porta traseira esquerda\"],\n    [\"back_right_door\", \"porta traseira direita\"],\n    [\"trunk\", \"porta-malas\"]\n];\nconst blockers = [];\nif ([\"lock\", \"climate_on\"].includes(command)) {\n    for (const [key, labelText] of openSignals) {\n        if (stateOf(preconditions[key]) === \"on\") {\n            blockers.push(`${labelText} aberta`);\n        }\n    }\n}\nif (\n    [\"lock\", \"climate_on\"].includes(command) &&\n    stateOf(preconditions.engine) === \"on\"\n) {\n    blockers.push(\"motor ligado\");\n}\nif (\n    command === \"climate_on\" &&\n    stateOf(preconditions.lock) === \"unlocked\"\n) {\n    blockers.push(\"portas destravadas\");\n}\n\nconst telemetryAt = Date.parse(preconditions.telemetry?.state ?? \"\");\nconst telemetryAgeMinutes = Number.isFinite(telemetryAt)\n    ? Math.max(0, Math.round((Date.now() - telemetryAt) / 60000))\n    : null;\nconst formatNumber = new Intl.NumberFormat(\"pt-BR\", {\n    maximumFractionDigits: 0\n});\nlet detail;\nif (blockers.length) {\n    detail =\n        \" Possível causa detectada na última telemetria: \" +\n        blockers.join(\", \") +\n        \".\";\n    if (telemetryAgeMinutes !== null && telemetryAgeMinutes > 5) {\n        detail +=\n            \" Essa leitura do veículo tinha \" +\n            formatNumber.format(telemetryAgeMinutes) +\n            \" min quando a falha foi recebida; confirme fisicamente ou \" +\n            \"atualize os dados antes de repetir.\";\n    }\n} else {\n    detail = reason\n        ? ` Motivo informado: ${reason}`\n        : \" O Bluelink não informou um motivo adicional.\";\n}\n\nflow.set(KEY, {\n    version: 1,\n    incident_key: incidentKey,\n    command,\n    failure_stage: failureStage,\n    observed_at: observedAt,\n    notified_at: Date.now()\n}, STORE);\n\nmsg._vehicle_primary_remote_command_test = TEST_MODE;\nmsg.payload = {\n    event: \"vehicle_remote_command_failed\",\n    test_mode: TEST_MODE,\n    command,\n    failure_stage: failureStage,\n    observed_at: observedAt,\n    side_effect: \"notify:resident_primary+persistent_notification\"\n};\nmsg.alert = {\n    title: TEST_MODE\n        ? \"TESTE — falha no comando do Creta\"\n        : \"Falha no comando remoto do Creta\",\n    message:\n        `Não foi possível ${label}; o veículo não confirmou a execução.` +\n        detail\n};\nmsg.notification = {\n    id: \"vehicle_primary_remote_command_failed\",\n    title: msg.alert.title,\n    message: msg.alert.message\n};\n\nnode.status({\n    fill: \"red\",\n    shape: \"ring\",\n    text: `falha confirmada: ${command}`\n});\nnode.warn(\n    \"VEHICLE_PRIMARY_REMOTE_COMMAND_FAILED \" +\n    `command=${command} stage=${failureStage}`\n);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 710,
+        "y": 1300,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_guard_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_guard_v1",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Separar notificações reais e dry-run",
+        "func": "const TEST_MODE =\n    msg._vehicle_primary_remote_command_test === true ||\n    msg.payload?.test_mode === true;\n\nif (!TEST_MODE) return [msg, msg, null];\n\nmsg.payload = {\n    ...msg.payload,\n    test_mode: true,\n    simulated: true,\n    dispatched: false,\n    notification_sent: false,\n    persistent_notification_created: false,\n    side_effect: \"notify:resident_primary+persistent_notification\"\n};\nreturn [null, null, msg];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 1300,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_notify_primary_v1"
+            ],
+            [
+                "vehicle_primary_remote_command_notify_persistent_v1"
+            ],
+            [
+                "vehicle_primary_remote_command_dry_run_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_notify_primary_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Avisar falha no celular",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1350,
+        "y": 1260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_notify_persistent_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Criar aviso persistente no Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":notification.title,\"message\":notification.message,\"notification_id\":notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1430,
+        "y": 1320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_dry_run_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Alertas remotos TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_dry_run_in_v1"
+        ],
+        "x": 1395,
+        "y": 1380,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_remote_command_architecture_v1",
+        "type": "comment",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_group_v1",
+        "name": "Aceite do request não basta: somente failed final gera alerta; celular e Notifications recebem o mesmo incidente deduplicado",
+        "info": "",
+        "x": 840,
+        "y": 1440,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_help_v1",
+        "type": "comment",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "1) RESETAR  2) sucesso nominal não alerta  3) falha chega ao terminal dry-run",
+        "info": "",
+        "x": 1530,
+        "y": 1660,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_reset_v1",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "RESETAR teste de comando remoto",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_vehicle_primary_remote_command_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"event\":\"reset\",\"test_mode\":true}",
+        "payloadType": "json",
+        "x": 1420,
+        "y": 1720,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_test_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_success_v1",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "TESTE: comando confirmado",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_vehicle_primary_remote_command_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"test_mode\":true,\"state\":\"accepted\",\"attributes\":{\"command\":\"unlock\",\"result_stage\":\"confirmed\",\"updated_at\":\"test-success\"},\"preconditions\":{\"front_left_door\":{\"state\":\"off\"},\"front_right_door\":{\"state\":\"off\"},\"back_left_door\":{\"state\":\"off\"},\"back_right_door\":{\"state\":\"off\"},\"trunk\":{\"state\":\"off\"},\"engine\":{\"state\":\"off\"},\"lock\":{\"state\":\"unlocked\"},\"telemetry\":{\"state\":\"2026-08-17T02:59:00Z\"}}}",
+        "payloadType": "json",
+        "x": 1420,
+        "y": 1780,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_test_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_failure_v1",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "TESTE: falha assíncrona",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "_vehicle_primary_remote_command_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"test_mode\":true,\"state\":\"failed\",\"attributes\":{\"command\":\"lock\",\"failure_stage\":\"confirmation\",\"reason\":\"falha simulada após o aceite\",\"updated_at\":\"test-failure\"},\"preconditions\":{\"front_left_door\":{\"state\":\"off\"},\"front_right_door\":{\"state\":\"off\"},\"back_left_door\":{\"state\":\"on\"},\"back_right_door\":{\"state\":\"off\"},\"trunk\":{\"state\":\"off\"},\"engine\":{\"state\":\"off\"},\"lock\":{\"state\":\"unlocked\"},\"telemetry\":{\"state\":\"2026-08-17T02:45:00Z\"}}}",
+        "payloadType": "json",
+        "x": 1420,
+        "y": 1840,
+        "wires": [
+            [
+                "vehicle_primary_remote_command_test_out_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_primary_remote_command_test_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_remote_command_test_group_v1",
+        "name": "Resultado TESTE → monitor remoto",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_remote_command_test_in_v1"
+        ],
+        "x": 1745,
+        "y": 1780,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_refresh_notify_persistent_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Registrar alerta no Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":notification.title,\"message\":notification.message,\"notification_id\":notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1390,
+        "y": 1060,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "vehicle_primary_refresh_dismiss_persistent_v1",
+        "type": "api-call-service",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Remover alerta recuperado do Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.dismiss",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"notification_id\":notification.id}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "dismiss",
+        "x": 1210,
+        "y": 1140,
+        "wires": [
+            []
+        ]
+    },
+    {
         "id": "93177ddacd3cb498",
         "type": "comment",
         "z": "62bb822e033d1623",
@@ -12837,8 +13841,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 770,
-        "y": 220,
+        "x": 820,
+        "y": 200,
         "wires": [
             [
                 "99644e301cd49e45"
@@ -15018,8 +16022,8 @@
         "links": [
             "daily_update_dry_run_in"
         ],
-        "x": 925,
-        "y": 240,
+        "x": 855,
+        "y": 140,
         "wires": []
     },
     {
@@ -15984,103 +16988,13 @@
         "wires": []
     },
     {
-        "id": "local_ai_rtx_health_group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "1. Saúde passiva e recovery explícito",
-        "style": {
-            "label": true,
-            "color": "#5b8db8",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "local_ai_rtx_architecture",
-            "local_ai_rtx_tick",
-            "local_ai_rtx_manual_recovery",
-            "local_ai_rtx_prepare_health",
-            "local_ai_rtx_health_http",
-            "local_ai_rtx_health_evaluate",
-            "local_ai_rtx_status_terminal",
-            "local_ai_rtx_recovery_out",
-            "local_ai_rtx_test_health_in"
-        ],
-        "x": 64,
-        "y": 20,
-        "w": 900,
-        "h": 330
-    },
-    {
-        "id": "local_ai_rtx_recovery_group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "2. Recovery seguro via MCP",
-        "style": {
-            "label": true,
-            "color": "#b5563f",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "local_ai_rtx_recovery_in",
-            "local_ai_rtx_side_effect_guard",
-            "local_ai_rtx_prepare_recovery",
-            "local_ai_rtx_recovery_http",
-            "local_ai_rtx_recovery_response",
-            "local_ai_rtx_recovery_terminal",
-            "local_ai_rtx_dry_out",
-            "local_ai_rtx_test_response_in"
-        ],
-        "x": 1000,
-        "y": 20,
-        "w": 1200,
-        "h": 330
-    },
-    {
-        "id": "local_ai_rtx_test_group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "TESTE — ciclo completo em dry-run",
-        "style": {
-            "label": true,
-            "color": "#c9b458",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "local_ai_rtx_test_instructions",
-            "local_ai_rtx_test_reset",
-            "local_ai_rtx_test_reset_state",
-            "local_ai_rtx_test_available",
-            "local_ai_rtx_test_unavailable",
-            "local_ai_rtx_test_health_out",
-            "local_ai_rtx_test_recovered",
-            "local_ai_rtx_test_failed",
-            "local_ai_rtx_test_response_out",
-            "local_ai_rtx_dry_in",
-            "local_ai_rtx_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 390,
-        "w": 2136,
-        "h": 320
-    },
-    {
-        "id": "local_ai_rtx_recovery_tab",
-        "type": "tab",
-        "label": "recuperacao_rtx",
-        "disabled": false,
-        "info": "Observa passivamente a RTX. Somente o inject manual explícito chama o bridge, inicia uma invocação MCP legítima e permite o helper limitado a duas tentativas.",
-        "env": []
-    },
-    {
         "id": "local_ai_rtx_architecture",
         "type": "comment",
         "z": "local_ai_rtx_recovery_tab",
         "g": "local_ai_rtx_health_group",
         "name": "A cada 60 s: somente saúde passiva. Recovery MCP exige clique manual explícito. O status dos nós permite acompanhar o ciclo.",
         "info": "O Node-RED não executa WSL, Ollama, netsh, iphlpsvc nem SSH. Essas mutações permanecem exclusivamente no helper versionado chamado pelo MCP.",
-        "x": 500,
+        "x": 570,
         "y": 60,
         "wires": []
     },
@@ -16100,8 +17014,8 @@
         "once": true,
         "onceDelay": "15",
         "topic": "",
-        "x": 165,
-        "y": 130,
+        "x": 210,
+        "y": 140,
         "wires": [
             [
                 "local_ai_rtx_prepare_health"
@@ -16129,7 +17043,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 175,
+        "x": 245,
         "y": 210,
         "wires": [
             [
@@ -16150,7 +17064,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 395,
+        "x": 465,
         "y": 130,
         "wires": [
             [
@@ -16175,7 +17089,7 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 620,
+        "x": 690,
         "y": 130,
         "wires": [
             [
@@ -16196,7 +17110,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 830,
+        "x": 900,
         "y": 170,
         "wires": [
             [
@@ -16220,9 +17134,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 810,
+        "x": 880,
         "y": 260,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "local_ai_rtx_recovery_out",
@@ -16234,7 +17150,7 @@
         "links": [
             "local_ai_rtx_recovery_in"
         ],
-        "x": 920,
+        "x": 990,
         "y": 120,
         "wires": []
     },
@@ -16247,8 +17163,8 @@
         "links": [
             "local_ai_rtx_test_health_out"
         ],
-        "x": 650,
-        "y": 260,
+        "x": 685,
+        "y": 180,
         "wires": [
             [
                 "local_ai_rtx_health_evaluate"
@@ -16264,7 +17180,7 @@
         "links": [
             "local_ai_rtx_recovery_out"
         ],
-        "x": 1040,
+        "x": 1110,
         "y": 120,
         "wires": [
             [
@@ -16285,7 +17201,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1240,
+        "x": 1310,
         "y": 120,
         "wires": [
             [
@@ -16309,7 +17225,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1490,
+        "x": 1560,
         "y": 100,
         "wires": [
             [
@@ -16334,7 +17250,7 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 1740,
+        "x": 1810,
         "y": 100,
         "wires": [
             [
@@ -16355,7 +17271,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1970,
+        "x": 2040,
         "y": 160,
         "wires": [
             [
@@ -16376,9 +17292,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1980,
+        "x": 2050,
         "y": 250,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "local_ai_rtx_dry_out",
@@ -16390,7 +17308,7 @@
         "links": [
             "local_ai_rtx_dry_in"
         ],
-        "x": 1420,
+        "x": 1490,
         "y": 210,
         "wires": []
     },
@@ -16403,7 +17321,7 @@
         "links": [
             "local_ai_rtx_test_response_out"
         ],
-        "x": 1740,
+        "x": 1810,
         "y": 270,
         "wires": [
             [
@@ -16418,7 +17336,7 @@
         "g": "local_ai_rtx_test_group",
         "name": "Ordem: reset → disponível → indisponível (deve terminar em dry-run) → sucesso MCP → falha MCP. Nenhuma chamada HTTP é enviada.",
         "info": "Os estados sintéticos usam test_mode, percorrem normalização, decisão, cooldown, guard e lifecycle reais e nunca alcançam o endpoint autenticado.",
-        "x": 760,
+        "x": 830,
         "y": 430,
         "wires": []
     },
@@ -16440,7 +17358,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 170,
+        "x": 240,
         "y": 500,
         "wires": [
             [
@@ -16461,9 +17379,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 410,
+        "x": 480,
         "y": 500,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "local_ai_rtx_test_available",
@@ -16503,7 +17423,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 190,
+        "x": 260,
         "y": 560,
         "wires": [
             [
@@ -16549,7 +17469,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 190,
+        "x": 260,
         "y": 620,
         "wires": [
             [
@@ -16567,7 +17487,7 @@
         "links": [
             "local_ai_rtx_test_health_in"
         ],
-        "x": 510,
+        "x": 580,
         "y": 590,
         "wires": []
     },
@@ -16599,7 +17519,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 800,
+        "x": 870,
         "y": 540,
         "wires": [
             [
@@ -16635,7 +17555,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 800,
+        "x": 870,
         "y": 610,
         "wires": [
             [
@@ -16653,7 +17573,7 @@
         "links": [
             "local_ai_rtx_test_response_in"
         ],
-        "x": 1110,
+        "x": 1180,
         "y": 575,
         "wires": []
     },
@@ -16666,7 +17586,7 @@
         "links": [
             "local_ai_rtx_dry_out"
         ],
-        "x": 1450,
+        "x": 1520,
         "y": 620,
         "wires": [
             [
@@ -16687,101 +17607,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1690,
+        "x": 1760,
         "y": 620,
-        "wires": []
-    },
-    {
-        "id": "host_memory_guardian_request_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "1. Solicitar verificação recorrente — sem acesso direto aos PIDs",
-        "style": {
-            "label": true,
-            "color": "#5b8db8",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "host_memory_guardian_architecture",
-            "host_memory_guardian_tick",
-            "host_memory_guardian_test_request_in",
-            "host_memory_guardian_prepare_request",
-            "host_memory_guardian_side_effect_guard",
-            "host_memory_guardian_request_host",
-            "host_memory_guardian_request_ack",
-            "host_memory_guardian_request_error",
-            "host_memory_guardian_request_complete",
-            "host_memory_guardian_request_test_out"
-        ],
-        "x": 64,
-        "y": 20,
-        "w": 1360,
-        "h": 300
-    },
-    {
-        "id": "host_memory_guardian_result_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "2. Ler resultado sanitizado e observar a proteção",
-        "style": {
-            "label": true,
-            "color": "#4d9a6a",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "host_memory_guardian_result_info",
-            "host_memory_guardian_result_tick",
-            "host_memory_guardian_read_result",
-            "host_memory_guardian_test_result_in",
-            "host_memory_guardian_parse_result",
-            "host_memory_guardian_result_error",
-            "host_memory_guardian_result_complete",
-            "host_memory_guardian_result_test_out"
-        ],
-        "x": 64,
-        "y": 360,
-        "w": 1360,
-        "h": 300
-    },
-    {
-        "id": "host_memory_guardian_test_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "TESTE — pedidos e resultados completos em dry-run",
-        "style": {
-            "label": true,
-            "color": "#c9b458",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "host_memory_guardian_test_instructions",
-            "host_memory_guardian_test_reset",
-            "host_memory_guardian_reset_test",
-            "host_memory_guardian_test_request",
-            "host_memory_guardian_test_request_out",
-            "host_memory_guardian_test_healthy",
-            "host_memory_guardian_test_candidate",
-            "host_memory_guardian_test_terminated",
-            "host_memory_guardian_test_failed",
-            "host_memory_guardian_test_result_out",
-            "host_memory_guardian_dry_in",
-            "host_memory_guardian_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 700,
-        "w": 1360,
-        "h": 400
-    },
-    {
-        "id": "host_memory_guardian_tab",
-        "type": "tab",
-        "label": "guardiao_memoria_host",
-        "disabled": false,
-        "info": "Prioriza a saúde do servidor sem dar privilégios ao Node-RED. A cada minuto solicita ao worker do host uma avaliação fail-closed. Somente uma árvore antiga, desconectada e ociosa do VS Code pode ser encerrada; uma sessão conectada nunca é candidata. A limpeza também funciona depois de fechar a única janela remota.",
-        "env": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "host_memory_guardian_architecture",
@@ -16885,7 +17715,6 @@
         "type": "exec",
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_request_group",
-        "name": "Solicitar worker do host",
         "command": "/opt/request-host-memory-guardian.sh",
         "addpay": "",
         "append": "",
@@ -16893,6 +17722,7 @@
         "timer": "15",
         "winHide": false,
         "oldrc": false,
+        "name": "Solicitar worker do host",
         "x": 950,
         "y": 120,
         "wires": [
@@ -16922,7 +17752,9 @@
         "libs": [],
         "x": 1210,
         "y": 100,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "host_memory_guardian_request_error",
@@ -16939,7 +17771,9 @@
         "libs": [],
         "x": 1210,
         "y": 170,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "host_memory_guardian_request_complete",
@@ -16956,7 +17790,9 @@
         "libs": [],
         "x": 1210,
         "y": 240,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "host_memory_guardian_request_test_out",
@@ -17012,7 +17848,6 @@
         "type": "exec",
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_result_group",
-        "name": "Ler resultado sanitizado",
         "command": "/opt/read-host-memory-guardian-result.sh",
         "addpay": "",
         "append": "",
@@ -17020,6 +17855,7 @@
         "timer": "15",
         "winHide": false,
         "oldrc": false,
+        "name": "Ler resultado sanitizado",
         "x": 445,
         "y": 480,
         "wires": [
@@ -17088,7 +17924,9 @@
         "libs": [],
         "x": 930,
         "y": 460,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "host_memory_guardian_result_complete",
@@ -17105,7 +17943,9 @@
         "libs": [],
         "x": 930,
         "y": 520,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "host_memory_guardian_result_test_out",
@@ -17173,7 +18013,9 @@
         "libs": [],
         "x": 420,
         "y": 810,
-        "wires": []
+        "wires": [
+            []
+        ]
     },
     {
         "id": "host_memory_guardian_test_request",
@@ -17389,426 +18231,6 @@
         "libs": [],
         "x": 1190,
         "y": 900,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_remote_command_group_v1",
-        "type": "group",
-        "z": "c22d8b12055e87f7",
-        "name": "4. Resultado final dos comandos remotos",
-        "style": {
-            "label": true,
-            "stroke": "#5b8ff9",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "vehicle_primary_remote_command_event_v1",
-            "vehicle_primary_remote_command_test_in_v1",
-            "vehicle_primary_remote_command_monitor_v1",
-            "vehicle_primary_remote_command_guard_v1",
-            "vehicle_primary_remote_command_notify_primary_v1",
-            "vehicle_primary_remote_command_notify_persistent_v1",
-            "vehicle_primary_remote_command_dry_run_out_v1",
-            "vehicle_primary_remote_command_architecture_v1"
-        ],
-        "x": 174,
-        "y": 1199,
-        "w": 1662,
-        "h": 302
-    },
-    {
-        "id": "vehicle_primary_remote_command_event_v1",
-        "type": "server-state-changed",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Resultado remoto mudou",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "sensor.garagem_vehicle_primary_remote_command_status"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": false,
-        "stateType": "str",
-        "ifState": "failed",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": true,
-        "ignorePrevStateUnknown": true,
-        "ignorePrevStateUnavailable": true,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "({\n        \"entity\": $entities(\"sensor.garagem_vehicle_primary_remote_command_status\"),\n        \"preconditions\": {\n          \"front_left_door\": $entities(\"binary_sensor.vehicle_primary_front_left_door\"),\n          \"front_right_door\": $entities(\"binary_sensor.vehicle_primary_front_right_door\"),\n          \"back_left_door\": $entities(\"binary_sensor.vehicle_primary_back_left_door\"),\n          \"back_right_door\": $entities(\"binary_sensor.vehicle_primary_back_right_door\"),\n          \"trunk\": $entities(\"binary_sensor.vehicle_primary_trunk\"),\n          \"engine\": $entities(\"binary_sensor.vehicle_primary_engine\"),\n          \"lock\": $entities(\"lock.vehicle_primary_door_lock\"),\n          \"telemetry\": $entities(\"sensor.vehicle_primary_last_updated_at\")\n        }\n      })",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 390,
-        "y": 1260,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_monitor_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_test_in_v1",
-        "type": "link in",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Receber resultado remoto de TESTE",
-        "links": [
-            "vehicle_primary_remote_command_test_out_v1"
-        ],
-        "x": 385,
-        "y": 1340,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_monitor_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_monitor_v1",
-        "type": "function",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Classificar, deduplicar e compor alerta",
-        "func": "const TEST_MODE =\n    msg._vehicle_primary_remote_command_test === true ||\n    msg.payload?.test_mode === true;\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst KEY = TEST_MODE\n    ? \"vehicle_primary_remote_command_monitor_v1__test\"\n    : \"vehicle_primary_remote_command_monitor_v1\";\n\nif (msg.payload?.event === \"reset\") {\n    flow.set(KEY, null, STORE);\n    node.status({\n        fill: \"blue\",\n        shape: \"dot\",\n        text: \"TESTE do comando remoto resetado\"\n    });\n    return null;\n}\n\nconst entity = msg.payload?.entity ?? msg.payload ?? {};\nconst state = String(entity.state ?? \"unknown\").toLowerCase();\nconst attributes = entity.attributes ?? {};\nif (state !== \"failed\") return null;\n\nconst preconditions = msg.payload?.preconditions ?? {};\nconst stateOf = (value) => String(value?.state ?? \"unknown\").toLowerCase();\n\nconst command = String(attributes.command ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9_-]/g, \"\") || \"unknown\";\nconst failureStage = String(attributes.failure_stage ?? \"unknown\")\n    .replace(/[^a-zA-Z0-9_-]/g, \"\") || \"unknown\";\nconst observedAt = String(\n    attributes.failed_at ??\n    attributes.updated_at ??\n    entity.last_updated ??\n    \"unknown\"\n).slice(0, 64);\nconst incidentKey = [command, failureStage, observedAt].join(\"|\");\nconst previous = flow.get(KEY, STORE) ?? {};\nif (previous.incident_key === incidentKey) return null;\n\nconst labels = {\n    unlock: \"destravar as portas\",\n    lock: \"travar as portas\",\n    climate_on: \"ligar o carro e o ar-condicionado\",\n    climate_off: \"desligar o carro e o ar-condicionado\",\n    hazard_lights_and_horn: \"acionar a buzina e as luzes\"\n};\nconst label = labels[command] ?? \"executar um comando remoto\";\nconst rawReason = String(attributes.reason ?? \"\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .trim();\nconst reason = rawReason.slice(0, 280);\nconst openSignals = [\n    [\"front_left_door\", \"porta dianteira esquerda\"],\n    [\"front_right_door\", \"porta dianteira direita\"],\n    [\"back_left_door\", \"porta traseira esquerda\"],\n    [\"back_right_door\", \"porta traseira direita\"],\n    [\"trunk\", \"porta-malas\"]\n];\nconst blockers = [];\nif ([\"lock\", \"climate_on\"].includes(command)) {\n    for (const [key, labelText] of openSignals) {\n        if (stateOf(preconditions[key]) === \"on\") {\n            blockers.push(`${labelText} aberta`);\n        }\n    }\n}\nif (\n    [\"lock\", \"climate_on\"].includes(command) &&\n    stateOf(preconditions.engine) === \"on\"\n) {\n    blockers.push(\"motor ligado\");\n}\nif (\n    command === \"climate_on\" &&\n    stateOf(preconditions.lock) === \"unlocked\"\n) {\n    blockers.push(\"portas destravadas\");\n}\n\nconst telemetryAt = Date.parse(preconditions.telemetry?.state ?? \"\");\nconst telemetryAgeMinutes = Number.isFinite(telemetryAt)\n    ? Math.max(0, Math.round((Date.now() - telemetryAt) / 60000))\n    : null;\nconst formatNumber = new Intl.NumberFormat(\"pt-BR\", {\n    maximumFractionDigits: 0\n});\nlet detail;\nif (blockers.length) {\n    detail =\n        \" Possível causa detectada na última telemetria: \" +\n        blockers.join(\", \") +\n        \".\";\n    if (telemetryAgeMinutes !== null && telemetryAgeMinutes > 5) {\n        detail +=\n            \" Essa leitura do veículo tinha \" +\n            formatNumber.format(telemetryAgeMinutes) +\n            \" min quando a falha foi recebida; confirme fisicamente ou \" +\n            \"atualize os dados antes de repetir.\";\n    }\n} else {\n    detail = reason\n        ? ` Motivo informado: ${reason}`\n        : \" O Bluelink não informou um motivo adicional.\";\n}\n\nflow.set(KEY, {\n    version: 1,\n    incident_key: incidentKey,\n    command,\n    failure_stage: failureStage,\n    observed_at: observedAt,\n    notified_at: Date.now()\n}, STORE);\n\nmsg._vehicle_primary_remote_command_test = TEST_MODE;\nmsg.payload = {\n    event: \"vehicle_remote_command_failed\",\n    test_mode: TEST_MODE,\n    command,\n    failure_stage: failureStage,\n    observed_at: observedAt,\n    side_effect: \"notify:resident_primary+persistent_notification\"\n};\nmsg.alert = {\n    title: TEST_MODE\n        ? \"TESTE — falha no comando do Creta\"\n        : \"Falha no comando remoto do Creta\",\n    message:\n        `Não foi possível ${label}; o veículo não confirmou a execução.` +\n        detail\n};\nmsg.notification = {\n    id: \"vehicle_primary_remote_command_failed\",\n    title: msg.alert.title,\n    message: msg.alert.message\n};\n\nnode.status({\n    fill: \"red\",\n    shape: \"ring\",\n    text: `falha confirmada: ${command}`\n});\nnode.warn(\n    \"VEHICLE_PRIMARY_REMOTE_COMMAND_FAILED \" +\n    `command=${command} stage=${failureStage}`\n);\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 710,
-        "y": 1300,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_guard_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_guard_v1",
-        "type": "function",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Separar notificações reais e dry-run",
-        "func": "const TEST_MODE =\n    msg._vehicle_primary_remote_command_test === true ||\n    msg.payload?.test_mode === true;\n\nif (!TEST_MODE) return [msg, msg, null];\n\nmsg.payload = {\n    ...msg.payload,\n    test_mode: true,\n    simulated: true,\n    dispatched: false,\n    notification_sent: false,\n    persistent_notification_created: false,\n    side_effect: \"notify:resident_primary+persistent_notification\"\n};\nreturn [null, null, msg];",
-        "outputs": 3,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1040,
-        "y": 1300,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_notify_primary_v1"
-            ],
-            [
-                "vehicle_primary_remote_command_notify_persistent_v1"
-            ],
-            [
-                "vehicle_primary_remote_command_dry_run_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_notify_primary_v1",
-        "type": "api-call-service",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Avisar falha no celular",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "public_bindings.call",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "public_bindings",
-        "service": "call",
-        "x": 1350,
-        "y": 1260,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_notify_persistent_v1",
-        "type": "api-call-service",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Criar aviso persistente no Home Assistant",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\":notification.title,\"message\":notification.message,\"notification_id\":notification.id}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 1430,
-        "y": 1320,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_dry_run_out_v1",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Alertas remotos TESTE → terminal dry-run",
-        "mode": "link",
-        "links": [
-            "vehicle_primary_dry_run_in_v1"
-        ],
-        "x": 1395,
-        "y": 1380,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_remote_command_architecture_v1",
-        "type": "comment",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_group_v1",
-        "name": "Aceite do request não basta: somente failed final gera alerta; celular e Notifications recebem o mesmo incidente deduplicado",
-        "info": "",
-        "x": 840,
-        "y": 1440,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_remote_command_test_group_v1",
-        "type": "group",
-        "z": "c22d8b12055e87f7",
-        "name": "6. TESTE — resultado remoto sem efeitos",
-        "style": {
-            "label": true,
-            "stroke": "#ffb300",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "vehicle_primary_remote_command_test_help_v1",
-            "vehicle_primary_remote_command_test_reset_v1",
-            "vehicle_primary_remote_command_test_success_v1",
-            "vehicle_primary_remote_command_test_failure_v1",
-            "vehicle_primary_remote_command_test_out_v1"
-        ],
-        "x": 1234,
-        "y": 1619,
-        "w": 602,
-        "h": 302
-    },
-    {
-        "id": "vehicle_primary_remote_command_test_help_v1",
-        "type": "comment",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_test_group_v1",
-        "name": "1) RESETAR  2) sucesso nominal não alerta  3) falha chega ao terminal dry-run",
-        "info": "",
-        "x": 1530,
-        "y": 1660,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_remote_command_test_reset_v1",
-        "type": "inject",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_test_group_v1",
-        "name": "RESETAR teste de comando remoto",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "_vehicle_primary_remote_command_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "{\"event\":\"reset\",\"test_mode\":true}",
-        "payloadType": "json",
-        "x": 1420,
-        "y": 1720,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_test_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_test_success_v1",
-        "type": "inject",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_test_group_v1",
-        "name": "TESTE: comando confirmado",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "_vehicle_primary_remote_command_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "{\"test_mode\":true,\"state\":\"accepted\",\"attributes\":{\"command\":\"unlock\",\"result_stage\":\"confirmed\",\"updated_at\":\"test-success\"},\"preconditions\":{\"front_left_door\":{\"state\":\"off\"},\"front_right_door\":{\"state\":\"off\"},\"back_left_door\":{\"state\":\"off\"},\"back_right_door\":{\"state\":\"off\"},\"trunk\":{\"state\":\"off\"},\"engine\":{\"state\":\"off\"},\"lock\":{\"state\":\"unlocked\"},\"telemetry\":{\"state\":\"2026-08-17T02:59:00Z\"}}}",
-        "payloadType": "json",
-        "x": 1420,
-        "y": 1780,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_test_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_test_failure_v1",
-        "type": "inject",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_test_group_v1",
-        "name": "TESTE: falha assíncrona",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "_vehicle_primary_remote_command_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "{\"test_mode\":true,\"state\":\"failed\",\"attributes\":{\"command\":\"lock\",\"failure_stage\":\"confirmation\",\"reason\":\"falha simulada após o aceite\",\"updated_at\":\"test-failure\"},\"preconditions\":{\"front_left_door\":{\"state\":\"off\"},\"front_right_door\":{\"state\":\"off\"},\"back_left_door\":{\"state\":\"on\"},\"back_right_door\":{\"state\":\"off\"},\"trunk\":{\"state\":\"off\"},\"engine\":{\"state\":\"off\"},\"lock\":{\"state\":\"unlocked\"},\"telemetry\":{\"state\":\"2026-08-17T02:45:00Z\"}}}",
-        "payloadType": "json",
-        "x": 1420,
-        "y": 1840,
-        "wires": [
-            [
-                "vehicle_primary_remote_command_test_out_v1"
-            ]
-        ]
-    },
-    {
-        "id": "vehicle_primary_remote_command_test_out_v1",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "vehicle_primary_remote_command_test_group_v1",
-        "name": "Resultado TESTE → monitor remoto",
-        "mode": "link",
-        "links": [
-            "vehicle_primary_remote_command_test_in_v1"
-        ],
-        "x": 1745,
-        "y": 1780,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_refresh_notify_persistent_v1",
-        "type": "api-call-service",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Registrar alerta no Home Assistant",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\":notification.title,\"message\":notification.message,\"notification_id\":notification.id}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 1390,
-        "y": 1060,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "vehicle_primary_refresh_dismiss_persistent_v1",
-        "type": "api-call-service",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Remover alerta recuperado do Home Assistant",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.dismiss",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"notification_id\":notification.id}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "dismiss",
-        "x": 1210,
-        "y": 1140,
         "wires": [
             []
         ]
@@ -18632,7 +19054,7 @@
             "global_observer_coverage__456b32bd5d59b0d6__annotate",
             "global_observer_coverage__456b32bd5d59b0d6__out"
         ],
-        "x": 4880,
+        "x": 4920,
         "y": 40,
         "w": 720,
         "h": 162
@@ -18645,7 +19067,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 5020,
+        "x": 5060,
         "y": 100,
         "wires": [
             [
@@ -18660,7 +19082,7 @@
         "g": "global_observer_coverage__456b32bd5d59b0d6__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 5030,
+        "x": 5070,
         "y": 160,
         "wires": [
             [
@@ -18681,7 +19103,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 5300,
+        "x": 5340,
         "y": 130,
         "wires": [
             [
@@ -18699,7 +19121,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 5545,
+        "x": 5585,
         "y": 130,
         "wires": []
     },
@@ -20707,405 +21129,5 @@
         "x": 1410,
         "y": 640,
         "wires": []
-    },
-    {
-        "id": "storage_group_tests",
-        "type": "group",
-        "z": "storage_health_tab",
-        "name": "TESTE — aumento e normalidade em dry-run",
-        "style": {
-            "label": true,
-            "color": "#c9b458"
-        },
-        "nodes": [
-            "storage_test_instructions",
-            "storage_test_reset",
-            "storage_test_reset_state",
-            "storage_test_normal",
-            "storage_test_growth",
-            "storage_test_prepare",
-            "storage_test_input_out",
-            "storage_test_decision_in",
-            "storage_test_decision_terminal",
-            "storage_test_dry_in",
-            "storage_dry_run_terminal"
-        ],
-        "x": 74,
-        "y": 989,
-        "w": 1642,
-        "h": 300
-    },
-    {
-        "id": "storage_recheck_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Reavaliar apos limpeza",
-        "links": [
-            "storage_recheck_out"
-        ],
-        "x": 245,
-        "y": 350,
-        "wires": [
-            [
-                "storage_read_ha"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_input_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Metricas sinteticas",
-        "links": [
-            "storage_test_input_out"
-        ],
-        "x": 555,
-        "y": 550,
-        "wires": [
-            [
-                "storage_evaluate"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_decision_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Resultado para teste",
-        "mode": "link",
-        "links": [
-            "storage_test_decision_in"
-        ],
-        "x": 1095,
-        "y": 550,
-        "wires": []
-    },
-    {
-        "id": "storage_auto_gate",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Gate de autocuidado / dry-run",
-        "func": "if (msg.storageAutoRemediation !== true) return null;\nif (msg.test_mode === true) {\n    return [null, null, { payload: { simulated: true, dispatched: false, action: \"storage-safe-maintenance\", reason: msg.payload?.reason, growthCause: msg.payload?.growthCause } }];\n}\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"limpeza automatica solicitada\" });\nreturn [{ ...msg }, { ...msg }, null];",
-        "outputs": 3,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 700,
-        "wires": [
-            [
-                "storage_exec_maintenance"
-            ],
-            [
-                "storage_request_host_maintenance"
-            ],
-            [
-                "storage_test_dry_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_post_maintenance_delay",
-        "type": "delay",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Aguardar worker e medir novamente",
-        "pauseType": "delay",
-        "timeout": "3",
-        "timeoutUnits": "minutes",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 1140,
-        "y": 780,
-        "wires": [
-            [
-                "storage_recheck_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_recheck_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Voltar ao diagnostico",
-        "mode": "link",
-        "links": [
-            "storage_recheck_in"
-        ],
-        "x": 1510,
-        "y": 800,
-        "wires": []
-    },
-    {
-        "id": "storage_test_dry_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Autocuidado simulado",
-        "mode": "link",
-        "links": [
-            "storage_test_dry_in"
-        ],
-        "x": 1510,
-        "y": 860,
-        "wires": []
-    },
-    {
-        "id": "storage_test_instructions",
-        "type": "comment",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "Ordem: 1 Reset; 2 Normal; 3 Crescimento. Tudo termina em dry-run, sem exec, MQTT ou notificacao.",
-        "info": "",
-        "x": 540,
-        "y": 1030,
-        "wires": []
-    },
-    {
-        "id": "storage_test_reset",
-        "type": "inject",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "TESTE 1: reset",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 1100,
-        "wires": [
-            [
-                "storage_test_reset_state"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_reset_state",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "Resetar estado sintetico",
-        "func": "for (const key of [\"storage_health_state_v1\", \"storage_health_history_v1\", \"storage_health_category_history_v1\"]) flow.set(key, null, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"teste resetado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 450,
-        "y": 1100,
-        "wires": []
-    },
-    {
-        "id": "storage_test_normal",
-        "type": "inject",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "TESTE 2: normal",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "normal",
-        "payloadType": "str",
-        "x": 200,
-        "y": 1170,
-        "wires": [
-            [
-                "storage_test_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_growth",
-        "type": "inject",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "TESTE 3: +9 pp Docker",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "growth",
-        "payloadType": "str",
-        "x": 210,
-        "y": 1230,
-        "wires": [
-            [
-                "storage_test_prepare"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_prepare",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "Preparar metricas sinteticas",
-        "func": "const now = Date.now();\nconst growth = msg.payload === \"growth\";\nconst beforeUsed = growth ? 55 : 60;\nconst currentUsed = growth ? 64 : 60;\nflow.set(\"storage_health_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, used: beforeUsed }], \"persistent\");\nflow.set(\"storage_health_category_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, values: { docker: growth ? 12000000000 : 16000000000, recorder: 4000000000, backups: 1600000000 } }], \"persistent\");\nreturn {\n    test_mode: true,\n    testNow: now,\n    payload: {\n        used_percent: currentUsed,\n        used_gb: 37,\n        free_gb: 21,\n        inode_used_percent: 18,\n        filesystem: \"/\",\n        collected_at: new Date(now).toISOString(),\n        categories: { docker: 16000000000, recorder: 4000000000, backups: 1600000000 }\n    }\n};",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 1200,
-        "wires": [
-            [
-                "storage_test_input_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_input_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "Enviar metricas ao diagnostico",
-        "mode": "link",
-        "links": [
-            "storage_test_input_in"
-        ],
-        "x": 790,
-        "y": 1200,
-        "wires": []
-    },
-    {
-        "id": "storage_test_decision_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "Receber decisao",
-        "links": [
-            "storage_test_decision_out"
-        ],
-        "x": 900,
-        "y": 1100,
-        "wires": [
-            [
-                "storage_test_decision_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_decision_terminal",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "Decisao sintetica",
-        "func": "if (msg.test_mode !== true) return null;\nmsg.payload = { ...msg.payload, simulated: true, dispatched: false };\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1130,
-        "y": 1100,
-        "wires": [
-            [
-                "storage_dry_run_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "storage_test_dry_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "Receber autocuidado simulado",
-        "links": [
-            "storage_test_dry_out"
-        ],
-        "x": 900,
-        "y": 1190,
-        "wires": [
-            [
-                "storage_dry_run_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "storage_dry_run_terminal",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_tests",
-        "name": "TESTE FINAL: nenhum efeito despachado",
-        "func": "msg.payload = { ...msg.payload, simulated: true, dispatched: false };\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"simulado; nenhum efeito\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1450,
-        "y": 1150,
-        "wires": []
-    },
-    {
-        "id": "storage_auto_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Solicitar autocuidado",
-        "mode": "link",
-        "links": [
-            "storage_auto_in"
-        ],
-        "x": 1095,
-        "y": 510,
-        "wires": []
-    },
-    {
-        "id": "storage_auto_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Receber autocuidado",
-        "links": [
-            "storage_auto_out"
-        ],
-        "x": 285,
-        "y": 780,
-        "wires": [
-            [
-                "storage_auto_gate"
-            ]
-        ]
     }
 ]

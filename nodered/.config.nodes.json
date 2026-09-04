@@ -1,7 +1,7 @@
 {
     "node-red": {
         "name": "node-red",
-        "version": "5.0.4",
+        "version": "5.0.6",
         "local": false,
         "user": false,
         "nodes": {
