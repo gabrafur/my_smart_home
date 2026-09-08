@@ -106,10 +106,11 @@ cooldown. Snapshots com `updated_at` anterior ao cache são ignorados.
 A seleção usa `location_observed_at`, publicado pelo adapter a partir de
 mudanças observáveis de estado, coordenadas ou precisão. Atualizações de
 bateria e outros metadados não tornam uma localização fresca. Entre fontes com
-freshness equivalente, coordenadas confiáveis, recência material e precisão
-resolvem a precedência. Se um tracker disser `home`, `any_tracker_home` bloqueia
-uma entrada falsa no anel. Uma saída completa observada ainda permite o aviso
-de retorno de qualquer um dos residentes mesmo com o outro tracker atrasado.
+coordenadas confiáveis e frescas, vence sempre a mudança de posição mais
+recente; a melhor precisão só desempata observações simultâneas. Uma fonte sem
+precisão aceitável não vence uma posição alternativa confiável. A decisão de
+entrada no anel usa somente a fonte selecionada: um fallback antigo em `home`
+não bloqueia uma posição recente em `chegando`.
 
 ### vehicle_primary
 

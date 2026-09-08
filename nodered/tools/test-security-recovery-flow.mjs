@@ -499,7 +499,47 @@ scenario("46 bateria do iCloud não renova localização congelada", () => {
   assert.equal(context.resident_secondary.updated_at, NOW - 60 * 60_000);
 });
 
+scenario("47 chegando recente e preciso vence fallback antigo em home", () => {
+  const mobile = entity("chegando", 1_400, 0, 25);
+  mobile.entity_id = "device_tracker.mobile_secondary_source_1";
+  const icloud = entity("home", 25, 25 * 60_000, 5);
+  icloud.entity_id = "device_tracker.mobile_secondary_source_2";
+  const input = peopleInput({
+    source: "resident_secondary",
+    state: "chegando",
+    previous: "not_home",
+    event: "location_update",
+  });
+  input.payload.resident_secondary = mobile;
+  input.payload.resident_secondary_icloud = icloud;
+
+  const result = run(
+    "people_normalize",
+    input,
+    memoryFlow({ people_arrival_armed: { resident_secondary: true } }),
+  );
+  assert.equal(
+    result[0].payload.context.resident_secondary.entity_id,
+    mobile.entity_id,
+  );
+  assert.equal(result[1].payload.arrival_stage, "approach");
+});
+
+scenario("48 posição recente sem precisão aceitável não vence posição precisa", () => {
+  const mobile = entity("chegando", 1_400, 0, 999);
+  mobile.entity_id = "device_tracker.mobile_primary_source_1";
+  const icloud = entity("home", 25, 5 * 60_000, 10);
+  icloud.entity_id = "device_tracker.mobile_primary_source_2";
+  const input = peopleInput({ event: "context_snapshot" });
+  input.payload.resident_primary = mobile;
+  input.payload.resident_primary_icloud = icloud;
+
+  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  assert.equal(context.resident_primary.entity_id, icloud.entity_id);
+  assert.equal(context.resident_primary.state, "home");
+});
+
 Date.now = originalNow;
-assert.equal(passed.length, 46);
+assert.equal(passed.length, 48);
 console.log(`security recovery replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

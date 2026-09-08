@@ -30,15 +30,15 @@ const SOURCE_REPORT_FRESH_MS = 75 * 60 * 1000;`,
   "const SOURCE_REPORT_FRESH_MS = 75 * 60 * 1000;",
 );
 
-const marker = "const TRACKER_RECENCY_TIE_MS = 60 * 1000;";
+const marker = "const TRACKER_SELECTION_VERSION = 2;";
 if (!node.func.includes(marker)) {
-  const mergePattern = /function mergeTrackers\(primary, fallback\) \{[\s\S]*?\n\}(?=\n\nfunction position)/;
+  const mergePattern = /(?:const TRACKER_RECENCY_TIE_MS = 60 \* 1000;\n\n)?function trackerAccuracy\(entity\) \{[\s\S]*?\n\}(?=\n\nfunction position)/;
   const matches = node.func.match(mergePattern);
   if (!matches) {
     throw new Error("Bloco mergeTrackers esperado não encontrado");
   }
 
-  const replacement = `const TRACKER_RECENCY_TIE_MS = 60 * 1000;
+  const replacement = `const TRACKER_SELECTION_VERSION = 2;
 
 function trackerAccuracy(entity) {
     const accuracy = Number(
@@ -51,33 +51,30 @@ function trackerAccuracy(entity) {
         : Infinity;
 }
 
+/* A fonte escolhida deve corresponder a uma posição utilizável pelo mapa:
+ * coordenadas presentes, precisão aceita e mudança de localização recente.
+ * A precisão só desempata observações com o mesmo instante. */
+function usableLocation(entity) {
+    return (
+        freshTracker(entity) &&
+        reliableCoords(entity) !== null
+    );
+}
+
 function mergeTrackers(primary, fallback) {
-    const primaryFresh = freshTracker(primary);
-    const fallbackFresh = freshTracker(fallback);
-
-    if (primaryFresh !== fallbackFresh) {
-        return primaryFresh
-            ? primary
-            : fallback;
-    }
-
-    const primaryCoords = reliableCoords(primary);
-    const fallbackCoords = reliableCoords(fallback);
-
-    if (Boolean(primaryCoords) !== Boolean(fallbackCoords)) {
-        return primaryCoords
-            ? primary
-            : fallback;
-    }
-
+    const primaryUsable = usableLocation(primary);
+    const fallbackUsable = usableLocation(fallback);
     const primaryObservedAt = observedAt(primary);
     const fallbackObservedAt = observedAt(fallback);
 
+    if (primaryUsable !== fallbackUsable) {
+        return primaryUsable ? primary : fallback;
+    }
+
     if (
-        primaryObservedAt !== null &&
-        fallbackObservedAt !== null &&
-        Math.abs(primaryObservedAt - fallbackObservedAt) >
-            TRACKER_RECENCY_TIE_MS
+        primaryUsable &&
+        fallbackUsable &&
+        primaryObservedAt !== fallbackObservedAt
     ) {
         return primaryObservedAt > fallbackObservedAt
             ? primary
@@ -89,6 +86,15 @@ function mergeTrackers(primary, fallback) {
 
     if (primaryAccuracy !== fallbackAccuracy) {
         return primaryAccuracy < fallbackAccuracy
+            ? primary
+            : fallback;
+    }
+
+    const primaryFresh = freshTracker(primary);
+    const fallbackFresh = freshTracker(fallback);
+
+    if (primaryFresh !== fallbackFresh) {
+        return primaryFresh
             ? primary
             : fallback;
     }
@@ -295,6 +301,13 @@ if (!positionPattern.test(node.func)) {
   throw new Error("Função position esperada não encontrada");
 }
 node.func = node.func.replace(positionPattern, position);
+
+/* A chegada no anel usa somente a fonte selecionada. Um fallback antigo em
+ * home não pode cancelar uma posição recente e precisa em chegando. */
+node.func = node.func.replace(
+  /sourcePosition\s*\.\s*any_tracker_home\s*!==\s*true/g,
+  "sourcePosition.current_home !== true",
+);
 
 const awayEvidenceMarker = "function awayEvidence(entity) {";
 const awayEvidence = `function awayEvidence(entity) {

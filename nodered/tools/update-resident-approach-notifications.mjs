@@ -104,7 +104,7 @@ if (
     sourcePosition?.ready === true &&
     triggerState === APPROACH_ZONE &&
     ["unknown", "unavailable"].includes(triggerPrevState) &&
-    sourcePosition.any_tracker_home !== true
+    sourcePosition.current_home !== true
 ) {
     lightingOnlyArrival = {
         _location_test: TEST_MODE,
