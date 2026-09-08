@@ -231,6 +231,20 @@ scenario("04 entrada no anel de aproximadamente 1500 m", () => {
   assert.equal(detected.payload.arrival_stage, "approach");
 });
 
+scenario("04a raio de chegada configurável aceita 700 m", () => {
+  const flow = memoryFlow({
+    security_arrival_distance_m: 700,
+    people_arrival_armed: { resident_primary: true },
+  });
+  const [, detected] = run(
+    "people_normalize",
+    peopleInput({ previous: "chegando", current: "chegando", resident_primary: entity("chegando", 650), resident_primaryIcloud: entity("chegando", 650) }),
+    flow,
+    geoEnv,
+  );
+  assert.equal(detected.payload.arrival_stage, "home");
+});
+
 scenario("05 resident_primary aproximando-se", () => {
   const [, detected] = run("people_normalize", peopleInput({ source: "resident_primary" }), memoryFlow(), geoEnv);
   assert.deepEqual(detected.payload.arriving, ["resident_primary"]);
@@ -897,6 +911,6 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
   );
 });
 
-assert.equal(passed.length, 44);
+assert.equal(passed.length, 45);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

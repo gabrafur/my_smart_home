@@ -157,8 +157,11 @@ depois `not_home` como fallback. O checker de bindings rejeita
   `homeassistant/packages/zonas_presenca.yaml`, não duplicado no JavaScript.
 - `home -> chegando` é saída, nunca chegada.
 - A entrada no anel gera `arrival_stage: approach` e não consome o armado.
-- A entrada em casa ou até 300 m de casa/portão é a rede de segurança
+- A entrada em casa ou até 700 m de casa/portão é a rede de segurança
   (`arrival_stage: home`) e consome o armado.
+- O grupo `0. Ajuste do raio de chegada` no canvas `localizacao_pessoas`
+  guarda o raio em metros. Edite o valor do inject, entre 50 e 2.000 m, e
+  faça Deploy para aplicar o novo padrão.
 - Um tracker primário que já está em casa há mais de 10 min bloqueia o catch-up
   tardio do tracker secundário. Sem `last_changed`, o comportamento permanece
   fail-open para não perder uma chegada real.
