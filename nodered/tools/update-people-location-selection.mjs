@@ -30,7 +30,12 @@ const SOURCE_REPORT_FRESH_MS = 75 * 60 * 1000;`,
   "const SOURCE_REPORT_FRESH_MS = 75 * 60 * 1000;",
 );
 
-const marker = "const TRACKER_SELECTION_VERSION = 3;";
+node.func = node.func.replace(
+  /const TRACKER_SELECTION_VERSION = \d+;\n\n/g,
+  "",
+);
+
+const marker = "const TRACKER_SELECTION_VERSION = 5;";
 if (!node.func.includes(marker)) {
   const mergePattern = /(?:const TRACKER_RECENCY_TIE_MS = 60 \* 1000;\n\n)?function trackerAccuracy\(entity\) \{[\s\S]*?\n\}(?=\n\nfunction position)/;
   const matches = node.func.match(mergePattern);
@@ -38,7 +43,7 @@ if (!node.func.includes(marker)) {
     throw new Error("Bloco mergeTrackers esperado não encontrado");
   }
 
-  const replacement = `const TRACKER_SELECTION_VERSION = 3;
+  const replacement = `const TRACKER_SELECTION_VERSION = 5;
 
 function trackerAccuracy(entity) {
     const accuracy = Number(
@@ -55,9 +60,12 @@ function trackerAccuracy(entity) {
  * coordenadas presentes, precisão aceita e mudança de localização recente.
  * A precisão só desempata observações com o mesmo instante. */
 function usableLocation(entity) {
+    const accuracy = trackerAccuracy(entity);
+
     return (
         freshTracker(entity) &&
-        reliableCoords(entity) !== null
+        reliableCoords(entity) !== null &&
+        Number.isFinite(accuracy)
     );
 }
 
