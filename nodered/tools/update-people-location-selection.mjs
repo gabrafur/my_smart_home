@@ -30,7 +30,7 @@ const SOURCE_REPORT_FRESH_MS = 75 * 60 * 1000;`,
   "const SOURCE_REPORT_FRESH_MS = 75 * 60 * 1000;",
 );
 
-const marker = "const TRACKER_SELECTION_VERSION = 2;";
+const marker = "const TRACKER_SELECTION_VERSION = 3;";
 if (!node.func.includes(marker)) {
   const mergePattern = /(?:const TRACKER_RECENCY_TIE_MS = 60 \* 1000;\n\n)?function trackerAccuracy\(entity\) \{[\s\S]*?\n\}(?=\n\nfunction position)/;
   const matches = node.func.match(mergePattern);
@@ -38,7 +38,7 @@ if (!node.func.includes(marker)) {
     throw new Error("Bloco mergeTrackers esperado não encontrado");
   }
 
-  const replacement = `const TRACKER_SELECTION_VERSION = 2;
+  const replacement = `const TRACKER_SELECTION_VERSION = 3;
 
 function trackerAccuracy(entity) {
     const accuracy = Number(
@@ -81,15 +81,6 @@ function mergeTrackers(primary, fallback) {
             : fallback;
     }
 
-    const primaryAccuracy = trackerAccuracy(primary);
-    const fallbackAccuracy = trackerAccuracy(fallback);
-
-    if (primaryAccuracy !== fallbackAccuracy) {
-        return primaryAccuracy < fallbackAccuracy
-            ? primary
-            : fallback;
-    }
-
     const primaryFresh = freshTracker(primary);
     const fallbackFresh = freshTracker(fallback);
 
@@ -104,6 +95,15 @@ function mergeTrackers(primary, fallback) {
         if (fallbackObservedAt === null) return primary;
 
         return primaryObservedAt > fallbackObservedAt
+            ? primary
+            : fallback;
+    }
+
+    const primaryAccuracy = trackerAccuracy(primary);
+    const fallbackAccuracy = trackerAccuracy(fallback);
+
+    if (primaryAccuracy !== fallbackAccuracy) {
+        return primaryAccuracy < fallbackAccuracy
             ? primary
             : fallback;
     }
