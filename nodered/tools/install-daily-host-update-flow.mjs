@@ -519,7 +519,7 @@ const nodes = [
   {
     id: "daily_update_kia_test_result", type: "inject", z: TAB, g: kiaUpdateGroup,
     name: "TESTE: conflito preservado", props: [
-      { p: "payload", v: "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T00:00:00.000Z", vt: "str" },
+      { p: "payload", v: "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=synthetic", vt: "str" },
       { p: "_kia_update_test", v: "true", vt: "bool" },
     ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
     payload: "", payloadType: "date", x: 220, y: 1570, wires: [["daily_update_kia_test_result_out"]],
@@ -601,7 +601,7 @@ const nodes = [
   {
     id: "daily_update_kia_codex_test_result", type: "inject", z: TAB, g: kiaCodexGroup,
     name: "TESTE: falha do worker Codex", props: [
-      { p: "payload", v: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z", vt: "str" },
+      { p: "payload", v: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=synthetic", vt: "str" },
       { p: "_kia_codex_merge_test", v: "true", vt: "bool" },
     ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
     payload: "", payloadType: "date", x: 220, y: 2070, wires: [["daily_update_kia_codex_test_result_out"]],

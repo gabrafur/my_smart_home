@@ -150,7 +150,7 @@ assert.equal(errors.length, 1, "duplicate results must be deduplicated");
 
 const parseKia = new Function("msg", "node", "flow", node("daily_update_kia_parse_result").func);
 const kiaTestConflict = parseKia(
-  { _kia_update_test: true, payload: "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T00:00:00.000Z" },
+  { _kia_update_test: true, payload: "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=synthetic" },
   runtimeNode,
   flow,
 );
@@ -159,7 +159,7 @@ assert.equal(kiaTestConflict[0].payload.conflicts, 1);
 assert.equal(kiaTestConflict[1], null, "synthetic conflicts must not reach Codex");
 assert.equal(errors.length, 1, "synthetic Kia conflicts must not alert production observers");
 const kiaProductionConflict = parseKia(
-  { payload: "kia-uvo-update status=conflict request_id=prod-conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T01:00:00.000Z" },
+  { payload: "kia-uvo-update status=conflict request_id=prod-conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=synthetic" },
   runtimeNode,
   flow,
 );
@@ -175,24 +175,24 @@ assert.match(errors.at(-1), /kia_uvo_update_check_failed/);
 
 const parseKiaCodexMerge = new Function("msg", "node", "flow", node("daily_update_kia_codex_parse_result").func);
 const kiaCodexTestFailure = parseKiaCodexMerge(
-  { _kia_codex_merge_test: true, payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z" },
+  { _kia_codex_merge_test: true, payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=synthetic" },
   runtimeNode,
   flow,
 );
 assert.equal(kiaCodexTestFailure.payload.state, "failed");
 assert.equal(kiaCodexTestFailure.payload.target, "v3.12.0");
-assert.match(kiaCodexTestFailure.payload.updated_at, /^2026-09-09T12:00:19/);
+assert.equal(kiaCodexTestFailure.payload.updated_at, "synthetic");
 assert.match(errors.at(-1), /kia_uvo_update_check_failed/, "synthetic Codex failures must not alert production observers");
 assert.equal(parseKiaCodexMerge(
-  { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z" },
+  { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=synthetic" },
   runtimeNode,
   flow,
 ), null);
 assert.match(errors.at(-1), /kia_uvo_codex_merge_failed target=v3.12.0/);
-assert.equal(errorMessages.at(-1).payload, "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z");
+assert.equal(errorMessages.at(-1).payload, "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=synthetic");
 const errorsAfterCodexFailure = errors.length;
 assert.equal(parseKiaCodexMerge(
-  { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z" },
+  { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=synthetic" },
   runtimeNode,
   flow,
 ), null);
