@@ -25,6 +25,12 @@ locationEvent.outputOnlyOnStateChange = false;
 
 const normalizer = byId.get("092625f2eb5cc156");
 assert(normalizer?.type === "function", "normalizador do vehicle_primary ausente");
+if (normalizer.func.includes("MOVEMENT_THRESHOLD_M")) {
+  assert(byId.has("vehicle_primary_api_error_catch_v1"), "catch da API do vehicle_primary ausente");
+  assert(byId.has("vehicle_primary_api_error_log_v1"), "logger da API do vehicle_primary ausente");
+  console.log("Fluxo contexto_vehicle_primary já está atualizado para refresh por movimento significativo.");
+  process.exit(0);
+}
 normalizer.func = replaceOnce(
   normalizer.func,
   'const MAX_GPS_ACCURACY_M = 100;\nconst APPROACH_ZONE = "chegando";',

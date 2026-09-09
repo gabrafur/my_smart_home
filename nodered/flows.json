@@ -118,14 +118,6 @@
         "env": []
     },
     {
-        "id": "codex_alertas_tab",
-        "type": "tab",
-        "label": "alertas_codex",
-        "disabled": false,
-        "info": "Alertas de uso do Codex: lógica, teste manual e deduplicação no Node-RED; painel e configurações no Home Assistant.",
-        "env": []
-    },
-    {
         "id": "monitoramento_tuya_tab",
         "type": "tab",
         "label": "monitoramento_tuya",
@@ -163,14 +155,6 @@
         "label": "recuperacao_rtx",
         "disabled": false,
         "info": "Observa passivamente a RTX. Somente o inject manual explícito chama o bridge, inicia uma invocação MCP legítima e permite o helper limitado a duas tentativas.",
-        "env": []
-    },
-    {
-        "id": "host_memory_guardian_tab",
-        "type": "tab",
-        "label": "guardiao_memoria_host",
-        "disabled": false,
-        "info": "Prioriza a saúde do servidor sem dar privilégios ao Node-RED. A cada minuto solicita ao worker do host uma avaliação fail-closed. Somente uma árvore antiga, desconectada e ociosa do VS Code pode ser encerrada; uma sessão conectada nunca é candidata. A limpeza também funciona depois de fechar a única janela remota.",
         "env": []
     },
     {
@@ -338,7 +322,7 @@
         "x": 64,
         "y": 299,
         "w": 1302,
-        "h": 292
+        "h": 297
     },
     {
         "id": "storage_group_alerts",
@@ -390,8 +374,8 @@
         ],
         "x": 74,
         "y": 629,
-        "w": 1522,
-        "h": 332
+        "w": 1642,
+        "h": 320
     },
     {
         "id": "grp_internet_triggers",
@@ -546,9 +530,9 @@
             "zigbee_history_retained"
         ],
         "x": 64,
-        "y": 99,
-        "w": 312,
-        "h": 422
+        "y": 80,
+        "w": 280,
+        "h": 460
     },
     {
         "id": "grp_zigbee_detect",
@@ -567,10 +551,10 @@
             "zigbee_store_observation",
             "zigbee_component_evaluate"
         ],
-        "x": 394,
-        "y": 99,
-        "w": 332,
-        "h": 302
+        "x": 374,
+        "y": 80,
+        "w": 320,
+        "h": 460
     },
     {
         "id": "grp_zigbee_state",
@@ -590,10 +574,10 @@
             "zigbee_restore_history",
             "zigbee_component_reminders"
         ],
-        "x": 734,
-        "y": 91.5,
-        "w": 372,
-        "h": 369.5
+        "x": 724,
+        "y": 80,
+        "w": 340,
+        "h": 460
     },
     {
         "id": "grp_zigbee_notify",
@@ -614,10 +598,10 @@
             "zigbee_component_notify_down",
             "zigbee_component_notify_recovery"
         ],
-        "x": 1144,
-        "y": 79,
-        "w": 292,
-        "h": 382
+        "x": 1094,
+        "y": 80,
+        "w": 340,
+        "h": 460
     },
     {
         "id": "grp_zigbee_publish",
@@ -636,10 +620,10 @@
             "zigbee_discovery",
             "zigbee_mqtt_publish"
         ],
-        "x": 784,
-        "y": 599,
-        "w": 622,
-        "h": 82
+        "x": 724,
+        "y": 580,
+        "w": 710,
+        "h": 120
     },
     {
         "id": "grp_zigbee_tests",
@@ -657,10 +641,10 @@
         "nodes": [
             "zigbee_test_note"
         ],
-        "x": 189,
-        "y": 599,
-        "w": 432,
-        "h": 82
+        "x": 64,
+        "y": 580,
+        "w": 630,
+        "h": 120
     },
     {
         "id": "c8f8e5b532232a4f",
@@ -1339,37 +1323,6 @@
         "h": 222
     },
     {
-        "id": "codex_alertas_group",
-        "type": "group",
-        "z": "codex_alertas_tab",
-        "name": "Alertas Codex → iPhone de resident_primary",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "stroke": "#5d6f96",
-            "stroke-opacity": "1",
-            "fill": "none",
-            "color": "#a4a4a4"
-        },
-        "nodes": [
-            "codex_alert_state",
-            "codex_alert_manual_test",
-            "codex_alert_daily",
-            "codex_alert_logic",
-            "codex_alert_push",
-            "codex_alert_text",
-            "codex_alert_time",
-            "codex_alert_persistent",
-            "codex_alert_ack",
-            "codex_alert_catch",
-            "codex_alert_failure"
-        ],
-        "x": 64,
-        "y": 59,
-        "w": 1522,
-        "h": 322
-    },
-    {
         "id": "grp_tuya_triggers",
         "type": "group",
         "z": "monitoramento_tuya_tab",
@@ -1388,9 +1341,9 @@
             "tuya_query_catch"
         ],
         "x": 64,
-        "y": 119,
-        "w": 312,
-        "h": 242
+        "y": 79,
+        "w": 252,
+        "h": 302
     },
     {
         "id": "grp_tuya_query",
@@ -1410,10 +1363,10 @@
             "tuya_device_registry",
             "tuya_states"
         ],
-        "x": 394,
-        "y": 99,
-        "w": 272,
-        "h": 242
+        "x": 344,
+        "y": 79,
+        "w": 302,
+        "h": 302
     },
     {
         "id": "grp_tuya_state",
@@ -1432,10 +1385,10 @@
             "tuya_device_evaluate",
             "tuya_query_failure"
         ],
-        "x": 684,
-        "y": 121.5,
-        "w": 372,
-        "h": 219.5
+        "x": 674,
+        "y": 79,
+        "w": 322,
+        "h": 302
     },
     {
         "id": "grp_tuya_notify",
@@ -1454,10 +1407,10 @@
             "tuya_device_notify_down",
             "tuya_device_notify_recovery"
         ],
-        "x": 1074,
-        "y": 119,
-        "w": 312,
-        "h": 182
+        "x": 1024,
+        "y": 79,
+        "w": 332,
+        "h": 302
     },
     {
         "id": "grp_tuya_publish",
@@ -1476,10 +1429,10 @@
             "tuya_discovery",
             "tuya_mqtt_publish"
         ],
-        "x": 764,
-        "y": 459,
-        "w": 572,
-        "h": 82
+        "x": 674,
+        "y": 419,
+        "w": 682,
+        "h": 162
     },
     {
         "id": "grp_tuya_tests",
@@ -1497,10 +1450,10 @@
         "nodes": [
             "tuya_test_note"
         ],
-        "x": 194,
-        "y": 479,
-        "w": 432,
-        "h": 82
+        "x": 64,
+        "y": 619,
+        "w": 1292,
+        "h": 102
     },
     {
         "id": "alarm_arrival_full_flow_group",
@@ -2077,90 +2030,6 @@
         "h": 272
     },
     {
-        "id": "host_memory_guardian_request_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "1. Solicitar verificação recorrente — sem acesso direto aos PIDs",
-        "style": {
-            "label": true,
-            "color": "#5b8db8",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "host_memory_guardian_architecture",
-            "host_memory_guardian_tick",
-            "host_memory_guardian_test_request_in",
-            "host_memory_guardian_prepare_request",
-            "host_memory_guardian_side_effect_guard",
-            "host_memory_guardian_request_host",
-            "host_memory_guardian_request_ack",
-            "host_memory_guardian_request_error",
-            "host_memory_guardian_request_complete",
-            "host_memory_guardian_request_test_out"
-        ],
-        "x": 64,
-        "y": 20,
-        "w": 1360,
-        "h": 300
-    },
-    {
-        "id": "host_memory_guardian_result_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "2. Ler resultado sanitizado e observar a proteção",
-        "style": {
-            "label": true,
-            "color": "#4d9a6a",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "host_memory_guardian_result_info",
-            "host_memory_guardian_result_tick",
-            "host_memory_guardian_read_result",
-            "host_memory_guardian_test_result_in",
-            "host_memory_guardian_parse_result",
-            "host_memory_guardian_result_error",
-            "host_memory_guardian_result_complete",
-            "host_memory_guardian_result_test_out"
-        ],
-        "x": 64,
-        "y": 360,
-        "w": 1360,
-        "h": 300
-    },
-    {
-        "id": "host_memory_guardian_test_group",
-        "type": "group",
-        "z": "host_memory_guardian_tab",
-        "name": "TESTE — pedidos e resultados completos em dry-run",
-        "style": {
-            "label": true,
-            "color": "#c9b458",
-            "fill": "#1f1f1f",
-            "fillOpacity": "0.18"
-        },
-        "nodes": [
-            "host_memory_guardian_test_instructions",
-            "host_memory_guardian_test_reset",
-            "host_memory_guardian_reset_test",
-            "host_memory_guardian_test_request",
-            "host_memory_guardian_test_request_out",
-            "host_memory_guardian_test_healthy",
-            "host_memory_guardian_test_candidate",
-            "host_memory_guardian_test_terminated",
-            "host_memory_guardian_test_failed",
-            "host_memory_guardian_test_result_out",
-            "host_memory_guardian_dry_in",
-            "host_memory_guardian_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 700,
-        "w": 1360,
-        "h": 400
-    },
-    {
         "id": "vehicle_primary_remote_command_group_v1",
         "type": "group",
         "z": "c22d8b12055e87f7",
@@ -2229,10 +2098,10 @@
             "storage_test_dry_in",
             "storage_dry_run_terminal"
         ],
-        "x": 64,
+        "x": 74,
         "y": 989,
-        "w": 1582,
-        "h": 282
+        "w": 1642,
+        "h": 300
     },
     {
         "id": "security_light_engine_bypass_group_v1",
@@ -2682,7 +2551,7 @@
         "z": "weekly_docs_review_tab",
         "g": "weekly_docs_review_production_group",
         "name": "Exibir lifecycle do worker",
-        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nreturn null;",
+        "func": "const state = String(msg.payload ?? \"indisponível\");\nconst colors = { aguardando: \"green\", executando: \"blue\", sucesso: \"green\", falha: \"red\", ignorado: \"yellow\", parado: \"grey\", indisponível: \"red\" };\nnode.status({ fill: colors[state] ?? \"grey\", shape: state === \"falha\" || state === \"indisponível\" ? \"ring\" : \"dot\", text: \"worker: \" + state });\nconst key = \"weekly_docs_review_worker_failure_v1\";\nif ([\"falha\", \"indisponível\"].includes(state)) {\n    const previous = flow.get(key, \"persistent\");\n    if (previous?.state !== state) {\n        flow.set(key, { state, observed_at: Date.now() }, \"persistent\");\n        node.error(\"weekly_docs_review_worker_failed state=\" + state, msg);\n    }\n} else {\n    flow.set(key, undefined, \"persistent\");\n}\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -3219,7 +3088,7 @@
         "z": "git_backup_tab",
         "g": "git_backup_group",
         "name": "Registrar erro seguro",
-        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"solicitação falhou\" });\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"A solicitação de backup não terminou no prazo ou o worker do host ficou indisponível. Verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn msg;",
+        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail, msg);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"solicitação falhou\" });\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"A solicitação de backup não terminou no prazo ou o worker do host ficou indisponível. Verifique o fluxo backup_git e o log seguro do host.\"\n};\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -8290,7 +8159,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_maintenance",
         "name": "Validar termino / cooldown",
-        "func": "const raw = msg.payload;\nconst code = Number(raw?.code ?? raw);\nif (code === 0) {\n    flow.set(\"storage_maintenance_last_stderr\", null);\n    node.status({ fill: \"green\", shape: \"dot\", text: \"sucesso\" });\n    return null;\n}\nconst config = flow.get(\"storage_health_config_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nconst last = Number(flow.get(\"storage_maintenance_last_error_notification\", \"persistent\") || 0);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"falhou rc=\" + code });\nnode.error(\"storage_maintenance: failed rc=\" + code + \" stderr=\" + String(flow.get(\"storage_maintenance_last_stderr\") ?? \"\"));\nif (now - last < (config.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000)) return null;\nreturn {\n    payload: { title: \"Raspberry Pi - falha na manutencao\", message: \"A manutencao segura de storage falhou (codigo \" + code + \"). Nenhuma etapa adicional foi executada; revise o log do flow Storage Health.\" },\n    notificationAck: {\n        id: \"maintenance:\" + String(now),\n        at: now,\n        targets: [{ key: \"storage_maintenance_last_error_notification\" }]\n    }\n};",
+        "func": "const raw = msg.payload;\nconst code = Number(raw?.code ?? raw);\nif (code === 0) {\n    flow.set(\"storage_maintenance_last_stderr\", null);\n    node.status({ fill: \"green\", shape: \"dot\", text: \"sucesso\" });\n    return null;\n}\nconst config = flow.get(\"storage_health_config_v1\", \"persistent\") ?? {};\nconst now = Date.now();\nconst last = Number(flow.get(\"storage_maintenance_last_error_notification\", \"persistent\") || 0);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"falhou rc=\" + code });\nnode.error(\"storage_maintenance: failed rc=\" + code + \" stderr=\" + String(flow.get(\"storage_maintenance_last_stderr\") ?? \"\"), msg);\nif (now - last < (config.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000)) return null;\nreturn {\n    payload: { title: \"Raspberry Pi - falha na manutencao\", message: \"A manutencao segura de storage falhou (codigo \" + code + \"). Nenhuma etapa adicional foi executada; revise o log do flow Storage Health.\" },\n    notificationAck: {\n        id: \"maintenance:\" + String(now),\n        at: now,\n        targets: [{ key: \"storage_maintenance_last_error_notification\" }]\n    }\n};",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -8483,7 +8352,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_alerts",
         "name": "Registrar falha sem cooldown",
-        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"storage_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn null;",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"storage_notification_failed source=\" + source + \" message=\" + detail, msg);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -9003,7 +8872,7 @@
         "z": "monitoramento_internet_tab",
         "g": "grp_internet_ping",
         "name": "Ping 1.1.1.1 + 8.8.8.8 + 9.9.9.9",
-        "func": "const STORE = \"memoryOnly\";\n  const LOCK = \"internet_ping_cycle_running\";\n  const childProcess = global.get(\"childProcess\");\n  const targets = [\n    { name: \"cloudflare\", address: \"1.1.1.1\" },\n    { name: \"google\", address: \"8.8.8.8\" },\n    { name: \"quad9\", address: \"9.9.9.9\" },\n  ];\n\n  if (!childProcess || typeof childProcess.execFile !== \"function\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"child_process indisponível\" });\n    node.error(\"settings.js não expôs childProcess no contexto global.\");\n    return null;\n  }\n  if (flow.get(LOCK, STORE) === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"ciclo anterior ainda ativo\" });\n    return null;\n  }\n\n  flow.set(LOCK, true, STORE);\n  const startedAt = Date.now();\n  node.status({ fill: \"blue\", shape: \"dot\", text: \"testando 3 destinos\" });\n\n  const ping = (target) => new Promise((resolve) => {\n    const finish = (error, stdout = \"\", stderr = \"\") => resolve({\n        ...target,\n        ok: !error,\n        duration_ms: Date.now() - startedAt,\n        error: error ? String(error.code || error.message || stderr || \"ping failed\") : null,\n        output: String(stdout || \"\").trim().slice(-160),\n    });\n    try {\n      childProcess.execFile(\n        \"/bin/ping\",\n        [\"-n\", \"-c\", \"1\", \"-W\", \"2\", target.address],\n        { timeout: 3000, windowsHide: true },\n        finish,\n      );\n    } catch (error) {\n      // Treat a synchronous spawn failure as a failed target. Resolving (not\n      // rejecting) keeps Promise.all waiting for every already-started ping,\n      // so the no-overlap lock cannot be released while processes remain.\n      finish(error);\n    }\n  });\n\n  Promise.all(targets.map(ping))\n    .then((results) => {\n      const ok = results.filter((result) => result.ok).length;\n      node.status({\n        fill: ok >= 2 ? \"green\" : \"red\",\n        shape: ok >= 2 ? \"dot\" : \"ring\",\n        text: `${ok}/3 responderam`,\n      });\n      node.send({\n        topic: \"infrastructure/internet/ping-cycle\",\n        payload: {\n          checked_at: new Date().toISOString(),\n          duration_ms: Date.now() - startedAt,\n          results,\n        },\n      });\n    })\n    .catch((error) => {\n      node.error(`Falha inesperada no ciclo de ping: ${error.message}`);\n    })\n    .finally(() => {\n      flow.set(LOCK, false, STORE);\n      node.done();\n    });\n  return undefined;",
+        "func": "const STORE = \"memoryOnly\";\n  const LOCK = \"internet_ping_cycle_running\";\n  const childProcess = global.get(\"childProcess\");\n  const targets = [\n    { name: \"cloudflare\", address: \"1.1.1.1\" },\n    { name: \"google\", address: \"8.8.8.8\" },\n    { name: \"quad9\", address: \"9.9.9.9\" },\n  ];\n\n  if (!childProcess || typeof childProcess.execFile !== \"function\") {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"child_process indisponível\" });\n    node.error(\"settings.js não expôs childProcess no contexto global.\", msg);\n    return null;\n  }\n  if (flow.get(LOCK, STORE) === true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"ciclo anterior ainda ativo\" });\n    return null;\n  }\n\n  flow.set(LOCK, true, STORE);\n  const startedAt = Date.now();\n  node.status({ fill: \"blue\", shape: \"dot\", text: \"testando 3 destinos\" });\n\n  const ping = (target) => new Promise((resolve) => {\n    const finish = (error, stdout = \"\", stderr = \"\") => resolve({\n        ...target,\n        ok: !error,\n        duration_ms: Date.now() - startedAt,\n        error: error ? String(error.code || error.message || stderr || \"ping failed\") : null,\n        output: String(stdout || \"\").trim().slice(-160),\n    });\n    try {\n      childProcess.execFile(\n        \"/bin/ping\",\n        [\"-n\", \"-c\", \"1\", \"-W\", \"2\", target.address],\n        { timeout: 3000, windowsHide: true },\n        finish,\n      );\n    } catch (error) {\n      // Treat a synchronous spawn failure as a failed target. Resolving (not\n      // rejecting) keeps Promise.all waiting for every already-started ping,\n      // so the no-overlap lock cannot be released while processes remain.\n      finish(error);\n    }\n  });\n\n  Promise.all(targets.map(ping))\n    .then((results) => {\n      const ok = results.filter((result) => result.ok).length;\n      node.status({\n        fill: ok >= 2 ? \"green\" : \"red\",\n        shape: ok >= 2 ? \"dot\" : \"ring\",\n        text: `${ok}/3 responderam`,\n      });\n      node.send({\n        topic: \"infrastructure/internet/ping-cycle\",\n        payload: {\n          checked_at: new Date().toISOString(),\n          duration_ms: Date.now() - startedAt,\n          results,\n        },\n      });\n    })\n    .catch((error) => {\n      node.error(`Falha inesperada no ciclo de ping: ${error.message}`, msg);\n    })\n    .finally(() => {\n      flow.set(LOCK, false, STORE);\n      node.done();\n    });\n  return undefined;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -9171,7 +9040,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 230,
+        "x": 204,
         "y": 140,
         "wires": [
             [
@@ -9188,7 +9057,7 @@
         "scope": [
             "zigbee_bridge_state"
         ],
-        "x": 230,
+        "x": 204,
         "y": 200,
         "wires": [
             [
@@ -9218,7 +9087,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 230,
+        "x": 204,
         "y": 260,
         "wires": [
             [
@@ -9241,7 +9110,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 230,
+        "x": 204,
         "y": 360,
         "wires": [
             [
@@ -9271,7 +9140,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 230,
+        "x": 204,
         "y": 480,
         "wires": [
             [
@@ -9292,7 +9161,7 @@
         "initialize": "flow.set('zigbee_bridge_observation', { state: 'unknown', changed_at: Date.now() }, 'memoryOnly');",
         "finalize": "",
         "libs": [],
-        "x": 560,
+        "x": 534,
         "y": 140,
         "wires": [
             [
@@ -9313,7 +9182,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 560,
+        "x": 534,
         "y": 360,
         "wires": [
             [
@@ -9337,7 +9206,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 920,
+        "x": 894,
         "y": 140,
         "wires": [
             [
@@ -9358,7 +9227,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar queda da rede",
         "env": [],
-        "x": 1290,
+        "x": 1264,
         "y": 120,
         "wires": []
     },
@@ -9369,7 +9238,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar retorno da rede",
         "env": [],
-        "x": 1290,
+        "x": 1264,
         "y": 200,
         "wires": []
     },
@@ -9380,7 +9249,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente offline",
         "env": [],
-        "x": 1290,
+        "x": 1264,
         "y": 340,
         "wires": []
     },
@@ -9391,7 +9260,7 @@
         "g": "grp_zigbee_notify",
         "name": "Notificar componente online",
         "env": [],
-        "x": 1290,
+        "x": 1264,
         "y": 420,
         "wires": []
     },
@@ -9408,7 +9277,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 900,
+        "x": 874,
         "y": 640,
         "wires": [
             [
@@ -9431,7 +9300,7 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1270,
+        "x": 1244,
         "y": 640,
         "wires": []
     },
@@ -9442,7 +9311,7 @@
         "g": "grp_zigbee_tests",
         "name": "Testes automatizados fora do caminho de produção",
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre startup, falha momentânea, 30 s offline, dedupe, lembretes a cada 24 h, 60 s de recuperação, restart persistente, componente offline/online e nova queda. Teste MQTT ponta a ponta deve usar um componente fictício retained, conforme a documentação.",
-        "x": 405,
+        "x": 379,
         "y": 640,
         "wires": []
     },
@@ -9460,7 +9329,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 230,
+        "x": 204,
         "y": 420,
         "wires": [
             [
@@ -9481,7 +9350,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 920,
+        "x": 894,
         "y": 420,
         "wires": []
     },
@@ -9498,7 +9367,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 920,
+        "x": 894,
         "y": 300,
         "wires": [
             [
@@ -11214,7 +11083,7 @@
         "z": "c22d8b12055e87f7",
         "g": "43a2bc9c218353ae",
         "name": "Registrar erro da API do vehicle_primary",
-        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^\\p{L}\\p{N} _-]/gu, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst failureClass = /service\\s+kia_uvo\\.update\\s+not\\s+found/i.test(message)\n    ? \"integration_unavailable\"\n    : /provider denied|backoff is active|\\b403\\b.*\\bForbidden\\b/i.test(message)\n    ? \"provider_backoff\"\n    : /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst cacheProbeFailure = /cache|reler/i.test(source);\nconst tripRefreshFailure = /viagens?|trip/i.test(source);\nconst successfulHttpResponse = /\\b(?:200|202)\\b/.test(message);\nif (successfulHttpResponse && !tripRefreshFailure) {\n    const failureWasNotified = Number(state.failure_notified_at ?? 0) > 0;\n    const apiFailureWasActive = state.engine_communication_failed === true;\n    const intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]\n        .includes(Number(state.interval_ms))\n            ? Number(state.interval_ms)\n            : 15 * 60 * 1000;\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.awaiting_evidence = false;\n    state.evidence_wait_started_at = null;\n    state.service_accepted_at = now;\n    state.last_success_at = now;\n    state.last_success_reason = \"api_accepted_200_or_202\";\n    state.last_evidence_domains = [\"api\"];\n    state.attempts = 0;\n    state.engine_communication_failed = false;\n    state.engine_bypass_recovery_pending =\n        state.engine_bypass_recovery_pending === true || apiFailureWasActive;\n    state.recovery_notification_pending =\n        state.recovery_notification_pending === true || failureWasNotified;\n    state.failure_notified_at = null;\n    state.failure_notification_key = null;\n    state.last_failure_class = null;\n    state.failure_at = null;\n    state.failure_source = null;\n    state.failure_endpoint = null;\n    state.failure_stage = null;\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        now + intervalMs\n    );\n    state.next_retry_at = null;\n    state.cooldown_until = state.next_allowed_at;\n    state.state = \"cooldown\";\n    state.reason = \"api_accepted_200_or_202\";\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.warn(\n        \"VEHICLE_PRIMARY_API_ACCEPTED_FROM_ERROR_PATH\" +\n        \" source=\" + source + \" message=\" + message\n    );\n    return null;\n}\nconst engineRelevantFailure =\n    !tripRefreshFailure &&\n    failureClass !== \"concurrent_request_coalesced\";\nconst shouldActivateAutomaticBypass =\n    engineRelevantFailure &&\n    state.engine_communication_failed !== true;\nconst failedEndpoint = tripRefreshFailure\n    ? \"public_bindings.call (viagens do dia)\"\n    : cacheProbeFailure\n        ? \"kia_uvo.update (releitura do cache)\"\n        : \"public_bindings.call (wake do veículo)\";\nconst failureNotificationKey = `${failureClass}|${failedEndpoint}`;\nconst failureLabels = {\n    authentication: \"autenticação\",\n    timeout: \"tempo esgotado\",\n    concurrent_request_coalesced: \"requisição concorrente\",\n    provider_backoff: \"acesso temporariamente recusado pelo provedor\",\n    api_error: \"erro da API\"\n};\nconst intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]\n    .includes(Number(state.interval_ms))\n        ? Number(state.interval_ms)\n        : 15 * 60 * 1000;\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_settle_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.failure_endpoint = failedEndpoint;\nstate.failure_stage = source;\nstate.last_failure_class = failureClass;\nif (engineRelevantFailure) {\n    state.engine_communication_failed = true;\n    state.engine_bypass_recovery_pending = false;\n} else if (typeof state.engine_communication_failed !== \"boolean\") {\n    state.engine_communication_failed = false;\n}\nif (cacheProbeFailure) {\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        now + intervalMs\n    );\n}\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nlet notification = null;\nif (\n    state.failure_notification_key !== failureNotificationKey\n) {\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: false,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    msg.alert = failureClass === \"integration_unavailable\"\n        ? {\n            title: \"Endpoint Bluelink indisponível\",\n            message:\n                `O endpoint ${failedEndpoint} não está disponível no ` +\n                \"Home Assistant. A etapa que falhou foi “\" + source +\n                \"”. As retentativas automáticas permanecem em backoff.\"\n        }\n        : {\n            title: \"Erro ao atualizar veículo\",\n            message:\n                `Falha de ${failureLabels[failureClass] ?? failureClass} ` +\n                `no endpoint ${failedEndpoint}, ` +\n                `durante “${source}”. As retentativas automáticas ` +\n                \"permanecem em backoff.\"\n        };\n    msg.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: msg.alert.title,\n        message: msg.alert.message\n    };\n    notification = msg;\n}\nflow.set(key, state, \"persistent\");\nconst bypassCommand = shouldActivateAutomaticBypass\n    ? {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"ON\",\n            source: \"api_failure\"\n        })\n    }\n    : null;\nconst logMessage =\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message;\nif (failureClass === \"provider_backoff\") {\n    // A recusa 403 já foi convertida em backoff persistente e alerta\n    // deduplicado. Ela é um estado esperado do provedor, não uma nova falha\n    // de execução do canvas para o observador global voltar a notificar.\n    node.warn(logMessage);\n} else {\n    node.error(logMessage);\n}\nreturn notification || bypassCommand\n    ? [notification, bypassCommand]\n    : null;",
+        "func": "const source = String(msg.error?.source?.name ?? \"unknown\")\n    .replace(/[^\\p{L}\\p{N} _-]/gu, \"\");\nconst message = String(msg.error?.message ?? \"unknown\")\n    .replace(/[\\r\\n]+/g, \" \")\n    .slice(0, 240);\nconst failureClass = /service\\s+kia_uvo\\.update\\s+not\\s+found/i.test(message)\n    ? \"integration_unavailable\"\n    : /provider denied|backoff is active|\\b403\\b.*\\bForbidden\\b/i.test(message)\n    ? \"provider_backoff\"\n    : /(?:401|unauthori[sz]ed|authentic)/i.test(message)\n    ? \"authentication\"\n    : /(?:timeout|timed out|readtimeout)/i.test(message)\n        ? \"timeout\"\n        : /already in progress|coalesced/i.test(message)\n            ? \"concurrent_request_coalesced\"\n            : \"api_error\";\nconst key = \"security_vehicle_primary_refresh_v1\";\nconst state = flow.get(key, \"persistent\") ?? {};\nconst now = Date.now();\nconst cacheProbeFailure = /cache|reler/i.test(source);\nconst tripRefreshFailure = /viagens?|trip/i.test(source);\nconst successfulHttpResponse = /\\b(?:200|202)\\b/.test(message);\nif (successfulHttpResponse && !tripRefreshFailure) {\n    const failureWasNotified = Number(state.failure_notified_at ?? 0) > 0;\n    const apiFailureWasActive = state.engine_communication_failed === true;\n    const intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]\n        .includes(Number(state.interval_ms))\n            ? Number(state.interval_ms)\n            : 15 * 60 * 1000;\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.awaiting_evidence = false;\n    state.evidence_wait_started_at = null;\n    state.service_accepted_at = now;\n    state.last_success_at = now;\n    state.last_success_reason = \"api_accepted_200_or_202\";\n    state.last_evidence_domains = [\"api\"];\n    state.attempts = 0;\n    state.engine_communication_failed = false;\n    state.engine_bypass_recovery_pending =\n        state.engine_bypass_recovery_pending === true || apiFailureWasActive;\n    state.recovery_notification_pending =\n        state.recovery_notification_pending === true || failureWasNotified;\n    state.failure_notified_at = null;\n    state.failure_notification_key = null;\n    state.last_failure_class = null;\n    state.failure_at = null;\n    state.failure_source = null;\n    state.failure_endpoint = null;\n    state.failure_stage = null;\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        now + intervalMs\n    );\n    state.next_retry_at = null;\n    state.cooldown_until = state.next_allowed_at;\n    state.state = \"cooldown\";\n    state.reason = \"api_accepted_200_or_202\";\n    state.updated_at = now;\n    flow.set(key, state, \"persistent\");\n    node.warn(\n        \"VEHICLE_PRIMARY_API_ACCEPTED_FROM_ERROR_PATH\" +\n        \" source=\" + source + \" message=\" + message\n    );\n    return null;\n}\nconst engineRelevantFailure =\n    !tripRefreshFailure &&\n    failureClass !== \"concurrent_request_coalesced\";\nconst shouldActivateAutomaticBypass =\n    engineRelevantFailure &&\n    state.engine_communication_failed !== true;\nconst failedEndpoint = tripRefreshFailure\n    ? \"public_bindings.call (viagens do dia)\"\n    : cacheProbeFailure\n        ? \"kia_uvo.update (releitura do cache)\"\n        : \"public_bindings.call (wake do veículo)\";\nconst failureNotificationKey = `${failureClass}|${failedEndpoint}`;\nconst failureLabels = {\n    authentication: \"autenticação\",\n    timeout: \"tempo esgotado\",\n    concurrent_request_coalesced: \"requisição concorrente\",\n    provider_backoff: \"acesso temporariamente recusado pelo provedor\",\n    api_error: \"erro da API\"\n};\nconst intervalMs = [15 * 60 * 1000, 30 * 60 * 1000]\n    .includes(Number(state.interval_ms))\n        ? Number(state.interval_ms)\n        : 15 * 60 * 1000;\nstate.request_in_flight = false;\nstate.in_flight_until = null;\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_settle_until = null;\nstate.awaiting_evidence = true;\nstate.state = \"backoff\";\nstate.reason = failureClass;\nstate.failure_at = now;\nstate.failure_source = source;\nstate.failure_endpoint = failedEndpoint;\nstate.failure_stage = source;\nstate.last_failure_class = failureClass;\nif (engineRelevantFailure) {\n    state.engine_communication_failed = true;\n    state.engine_bypass_recovery_pending = false;\n} else if (typeof state.engine_communication_failed !== \"boolean\") {\n    state.engine_communication_failed = false;\n}\nif (cacheProbeFailure) {\n    state.next_allowed_at = Math.max(\n        Number(state.next_allowed_at ?? 0),\n        now + intervalMs\n    );\n}\nstate.next_retry_at = Number(state.next_allowed_at ?? 0) || null;\nstate.cooldown_until = null;\nstate.updated_at = now;\nlet notification = null;\nif (\n    state.failure_notification_key !== failureNotificationKey\n) {\n    state.failure_notified_at = now;\n    state.failure_notification_key = failureNotificationKey;\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: false,\n        side_effect: \"notify:resident_primary+persistent_notification\"\n    };\n    msg.alert = failureClass === \"integration_unavailable\"\n        ? {\n            title: \"Endpoint Bluelink indisponível\",\n            message:\n                `O endpoint ${failedEndpoint} não está disponível no ` +\n                \"Home Assistant. A etapa que falhou foi “\" + source +\n                \"”. As retentativas automáticas permanecem em backoff.\"\n        }\n        : {\n            title: \"Erro ao atualizar veículo\",\n            message:\n                `Falha de ${failureLabels[failureClass] ?? failureClass} ` +\n                `no endpoint ${failedEndpoint}, ` +\n                `durante “${source}”. As retentativas automáticas ` +\n                \"permanecem em backoff.\"\n        };\n    msg.notification = {\n        id: \"vehicle_primary_refresh_failed\",\n        title: msg.alert.title,\n        message: msg.alert.message\n    };\n    notification = msg;\n}\nflow.set(key, state, \"persistent\");\nconst bypassCommand = shouldActivateAutomaticBypass\n    ? {\n        topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        qos: 1,\n        retain: false,\n        payload: JSON.stringify({\n            requested_state: \"ON\",\n            source: \"api_failure\"\n        })\n    }\n    : null;\nconst logMessage =\n    \"VEHICLE_PRIMARY_API_ERROR class=\" + failureClass +\n    \" source=\" + source + \" message=\" + message;\nif (failureClass === \"provider_backoff\") {\n    // A recusa 403 já foi convertida em backoff persistente e alerta\n    // deduplicado. Ela é um estado esperado do provedor, não uma nova falha\n    // de execução do canvas para o observador global voltar a notificar.\n    node.warn(logMessage);\n} else {\n    node.error(logMessage, msg);\n}\nreturn notification || bypassCommand\n    ? [notification, bypassCommand]\n    : null;",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
@@ -14279,7 +14148,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1950,
+        "x": 1900,
         "y": 150,
         "wires": []
     },
@@ -14289,15 +14158,15 @@
         "z": "1f468eaeef0733dd",
         "g": "alarm_arrival_full_flow_group",
         "name": "Registrar falha sem armar cooldown",
-        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"alarm_arrival_notification_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn msg;",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"alarm_arrival_notification_failed source=\" + source + \" message=\" + detail, msg);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"entrega falhou; sem cooldown\" });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1440,
-        "y": 300,
+        "x": 1510,
+        "y": 320,
         "wires": [
             [
                 "694a63ad7980fa81"
@@ -14405,337 +14274,6 @@
         "wires": []
     },
     {
-        "id": "codex_alert_state",
-        "type": "server-state-changed",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Estados e limites do Codex",
-        "server": "4126427d5e161a03",
-        "version": 6,
-        "outputs": 1,
-        "exposeAsEntityConfig": "",
-        "entities": {
-            "entity": [
-                "input_boolean.codex_alertas_iphone",
-                "input_boolean.codex_resumo_diario_iphone",
-                "input_number.codex_alerta_aviso_percentual",
-                "input_number.codex_alerta_critico_percentual",
-                "input_number.codex_alerta_cache_minimo",
-                "input_number.codex_alerta_saldo_creditos",
-                "sensor.codex_previsao_ate_o_reset",
-                "sensor.codex_limite_usado",
-                "sensor.codex_eficiencia_de_cache",
-                "sensor.codex_creditos_extras",
-                "sensor.codex_uso_projetado_no_reset",
-                "sensor.codex_folga_projetada_no_reset",
-                "sensor.codex_ritmo_do_limite",
-                "sensor.codex_limite_disponivel",
-                "sensor.codex_proximo_reset"
-            ],
-            "substring": [],
-            "regex": []
-        },
-        "outputInitially": true,
-        "stateType": "str",
-        "ifState": "",
-        "ifStateType": "str",
-        "ifStateOperator": "is",
-        "outputOnlyOnStateChange": true,
-        "for": "0",
-        "forType": "num",
-        "forUnits": "minutes",
-        "ignorePrevStateNull": false,
-        "ignorePrevStateUnknown": false,
-        "ignorePrevStateUnavailable": false,
-        "ignoreCurrentStateUnknown": true,
-        "ignoreCurrentStateUnavailable": true,
-        "outputProperties": [
-            {
-                "property": "payload",
-                "propertyType": "msg",
-                "value": "{\"entity_id\":$entity().entity_id,\"state\":$entity().state,\"previous\":$prevEntity().state}",
-                "valueType": "jsonata"
-            }
-        ],
-        "x": 230,
-        "y": 120,
-        "wires": [
-            [
-                "codex_alert_logic"
-            ]
-        ]
-    },
-    {
-        "id": "codex_alert_manual_test",
-        "type": "inject",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Testar push no iPhone",
-        "props": [
-            {
-                "p": "payload",
-                "v": "{\"type\":\"manual_test\"}",
-                "vt": "json"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "{\"type\":\"manual_test\"}",
-        "payloadType": "json",
-        "x": 220,
-        "y": 180,
-        "wires": [
-            [
-                "codex_alert_logic"
-            ]
-        ]
-    },
-    {
-        "id": "codex_alert_daily",
-        "type": "inject",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Resumo diário — 20:00",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "v": "codex.daily_summary",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "00 20 * * *",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "codex.daily_summary",
-        "payload": "",
-        "payloadType": "date",
-        "x": 220,
-        "y": 240,
-        "wires": [
-            [
-                "codex_alert_logic"
-            ]
-        ]
-    },
-    {
-        "id": "codex_alert_logic",
-        "type": "function",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Avaliar alertas, cooldown e resumo",
-        "func": "\nconst REQUIRED = [\"input_boolean.codex_alertas_iphone\",\"input_boolean.codex_resumo_diario_iphone\",\"input_number.codex_alerta_aviso_percentual\",\"input_number.codex_alerta_critico_percentual\",\"input_number.codex_alerta_cache_minimo\",\"input_number.codex_alerta_saldo_creditos\",\"sensor.codex_previsao_ate_o_reset\",\"sensor.codex_limite_usado\",\"sensor.codex_eficiencia_de_cache\",\"sensor.codex_creditos_extras\",\"sensor.codex_uso_projetado_no_reset\",\"sensor.codex_folga_projetada_no_reset\",\"sensor.codex_ritmo_do_limite\",\"sensor.codex_limite_disponivel\",\"sensor.codex_proximo_reset\"];\nconst KEY = \"codex_alertas_state_v1\";\nlet state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nconst event = msg.payload || {};\n\nfunction num(value, fallback = 0) {\n  const parsed = Number(value);\n  return Number.isFinite(parsed) ? parsed : fallback;\n}\n\nfunction build(title, message, kind) {\n  const now = Date.now();\n  const cooldownMs = kind === \"critical\" ? 60 * 60 * 1000 : 6 * 60 * 60 * 1000;\n  if (now - Number(state.sent[kind] || 0) < cooldownMs) return null;\n  if (state.pending?.kind === kind && now - Number(state.pending.lastAttemptAt || 0) < 60 * 1000) return null;\n  const alert = {\n    title,\n    message,\n    kind,\n    at: new Date(now).toISOString(),\n    lastAttemptAt: now,\n    deliveryAck: { id: kind + \":\" + String(now), kind, at: now },\n  };\n  state.pending = alert;\n  return alert;\n}\n\nfunction summary() {\n  if (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\"\n      || state.values[\"input_boolean.codex_resumo_diario_iphone\"] !== \"on\") return null;\n  return build(\n    \"Codex — resumo diário\",\n    \"Uso: \" + (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; \" +\n      \"projeção no reset: \" + (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%; \" +\n      \"folga: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%; \" +\n      \"cache: \" + (state.values[\"sensor.codex_eficiencia_de_cache\"] || \"?\") + \"%; \" +\n      \"previsão: \" + (state.values[\"sensor.codex_previsao_ate_o_reset\"] || \"?\") + \".\",\n    \"daily\",\n  );\n}\n\nif (msg.topic === \"codex.daily_summary\") {\n  const alert = state.ready ? summary() : null;\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nif (event.type === \"manual_test\") {\n  const alert = build(\n    \"Codex — teste de alertas\",\n    \"✅ O Node-RED está conectado ao iPhone de resident_primary. Uso atual: \" +\n      (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; projeção no reset: \" +\n      (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%.\",\n    \"test\",\n  );\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nconst entity = event.entity_id;\nif (!entity || !REQUIRED.includes(entity)) return null;\nconst previous = state.values[entity];\nstate.values[entity] = String(event.state ?? \"\");\nif (!state.ready) {\n  state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: state.ready ? \"green\" : \"yellow\", shape: \"dot\", text: state.ready ? \"monitorando\" : \"sincronizando\" });\n  return null;\n}\n\nif (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\") {\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: \"grey\", shape: \"ring\", text: \"alertas desativados\" });\n  return null;\n}\n\nlet alert = null;\nif (entity === \"sensor.codex_previsao_ate_o_reset\") {\n  if ([\"atenção\", \"não aguenta\"].includes(event.state) && previous !== event.state) {\n    const critical = event.state === \"não aguenta\";\n    alert = build(\n      critical ? \"Codex — risco de esgotamento\" : \"Codex — pouca folga até o reset\",\n      (critical ? \"🔴\" : \"⚠️\") + \" Ritmo atual: \" +\n        (state.values[\"sensor.codex_ritmo_do_limite\"] || \"?\") + \"%/dia. Uso projetado no reset: \" +\n        (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%. Reset: \" +\n        (state.values[\"sensor.codex_proximo_reset\"] || \"?\") + \".\",\n      critical ? \"critical\" : \"forecast_warning\",\n    );\n  } else if (event.state === \"aguenta\" && [\"atenção\", \"não aguenta\"].includes(previous)) {\n    alert = build(\"Codex — autonomia recuperada\", \"✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"recovery\");\n  }\n} else if (entity === \"sensor.codex_limite_usado\") {\n  const used = num(event.state); const old = num(previous, -1);\n  const warning = num(state.values[\"input_number.codex_alerta_aviso_percentual\"], 70);\n  const critical = num(state.values[\"input_number.codex_alerta_critico_percentual\"], 90);\n  if (used >= critical && old < critical) alert = build(\"Codex — limite crítico\", \"🚨 Uso chegou a \" + used + \"%. Restam \" + (state.values[\"sensor.codex_limite_disponivel\"] || \"?\") + \"% até o reset.\", \"critical\");\n  else if (used >= warning && old < warning) alert = build(\"Codex — limite em atenção\", \"⚠️ Uso chegou a \" + used + \"%. Folga projetada no reset: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"usage_warning\");\n} else if (entity === \"sensor.codex_eficiencia_de_cache\") {\n  const value = num(event.state); const old = num(previous, 101); const minimum = num(state.values[\"input_number.codex_alerta_cache_minimo\"], 60);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — eficiência de cache baixa\", \"⚠️ A eficiência caiu para \" + value + \"%. Limite configurado: \" + minimum + \"%.\", \"cache_low\");\n} else if (entity === \"sensor.codex_creditos_extras\") {\n  const value = num(event.state); const old = num(previous, -1); const minimum = num(state.values[\"input_number.codex_alerta_saldo_creditos\"], 10);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — créditos extras baixos\", \"⚠️ O saldo caiu para \" + value + \" créditos.\", \"credits_low\");\n}\n\nif (!alert && state.pending?.deliveryAck?.id) {\n  const now = Date.now();\n  if (now - Number(state.pending.lastAttemptAt || 0) >= 60 * 1000) {\n    state.pending.lastAttemptAt = now;\n    alert = state.pending;\n  }\n}\n\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: alert ? \"red\" : \"green\", shape: alert ? \"ring\" : \"dot\", text: alert ? \"alerta: \" + alert.kind : \"monitorando\" });\nreturn alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n",
-        "outputs": 4,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 630,
-        "y": 160,
-        "wires": [
-            [
-                "codex_alert_push"
-            ],
-            [
-                "codex_alert_text"
-            ],
-            [
-                "codex_alert_time"
-            ],
-            [
-                "codex_alert_persistent"
-            ]
-        ]
-    },
-    {
-        "id": "codex_alert_push",
-        "type": "api-call-service",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Push iPhone resident_primary",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "public_bindings.call",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "public_bindings",
-        "service": "call",
-        "x": 960,
-        "y": 100,
-        "wires": [
-            [
-                "codex_alert_ack"
-            ]
-        ]
-    },
-    {
-        "id": "codex_alert_text",
-        "type": "api-call-service",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Registrar último alerta",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "input_text.set_value",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "input_text.codex_ultimo_alerta_iphone"
-        ],
-        "labelId": [],
-        "data": "{\"value\": alert.title & \": \" & alert.message}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "input_text",
-        "service": "set_value",
-        "x": 980,
-        "y": 160,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "codex_alert_time",
-        "type": "api-call-service",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Registrar horário",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "input_datetime.set_datetime",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [
-            "input_datetime.codex_ultimo_alerta_iphone_em"
-        ],
-        "labelId": [],
-        "data": "{\"datetime\": alert.at}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "input_datetime",
-        "service": "set_datetime",
-        "x": 960,
-        "y": 220,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "codex_alert_persistent",
-        "type": "api-call-service",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Notificação persistente",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"codex_alert_\" & alert.kind}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 970,
-        "y": 280,
-        "wires": [
-            [
-                "codex_alert_ack"
-            ]
-        ]
-    },
-    {
-        "id": "codex_alert_ack",
-        "type": "function",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Confirmar entrega e iniciar cooldown",
-        "func": "const ack = msg.alert?.deliveryAck;\nif (!ack || typeof ack.kind !== \"string\" || !Number.isFinite(Number(ack.at))) return null;\nconst KEY = \"codex_alertas_state_v1\";\nconst state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nstate.sent = state.sent || {};\nstate.sent[ack.kind] = Number(ack.at);\nif (state.pending?.deliveryAck?.id === ack.id) state.pending = null;\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1410,
-        "y": 120,
-        "wires": []
-    },
-    {
-        "id": "codex_alert_catch",
-        "type": "catch",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Capturar falha de entrega",
-        "scope": [
-            "codex_alert_push",
-            "codex_alert_persistent"
-        ],
-        "uncaught": false,
-        "x": 970,
-        "y": 340,
-        "wires": [
-            [
-                "codex_alert_failure"
-            ]
-        ]
-    },
-    {
-        "id": "codex_alert_failure",
-        "type": "function",
-        "z": "codex_alertas_tab",
-        "g": "codex_alertas_group",
-        "name": "Manter alerta pendente",
-        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"codex_alert_delivery_failed source=\" + source + \" message=\" + detail);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"pendente para nova tentativa\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1300,
-        "y": 340,
-        "wires": []
-    },
-    {
         "id": "tuya_cycle",
         "type": "inject",
         "z": "monitoramento_tuya_tab",
@@ -14757,7 +14295,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 230,
+        "x": 190,
         "y": 160,
         "wires": [
             [
@@ -14787,7 +14325,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 230,
+        "x": 190,
         "y": 260,
         "wires": [
             [
@@ -14807,7 +14345,7 @@
             "tuya_states"
         ],
         "uncaught": false,
-        "x": 230,
+        "x": 190,
         "y": 320,
         "wires": [
             [
@@ -14838,7 +14376,7 @@
                 "valueType": "results"
             }
         ],
-        "x": 530,
+        "x": 490,
         "y": 140,
         "wires": [
             [
@@ -14869,7 +14407,7 @@
                 "valueType": "results"
             }
         ],
-        "x": 530,
+        "x": 490,
         "y": 220,
         "wires": [
             [
@@ -14900,7 +14438,7 @@
                 "valueType": "results"
             }
         ],
-        "x": 530,
+        "x": 490,
         "y": 300,
         "wires": [
             [
@@ -14921,7 +14459,7 @@
         "initialize": "flow.set('tuya_device_observations_v1', {}, 'memoryOnly');",
         "finalize": "",
         "libs": [],
-        "x": 870,
+        "x": 830,
         "y": 170,
         "wires": [
             [
@@ -14948,7 +14486,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 870,
+        "x": 830,
         "y": 300,
         "wires": [
             [
@@ -14963,7 +14501,7 @@
         "g": "grp_tuya_notify",
         "name": "Notificar dispositivo offline",
         "env": [],
-        "x": 1230,
+        "x": 1190,
         "y": 160,
         "wires": []
     },
@@ -14974,7 +14512,7 @@
         "g": "grp_tuya_notify",
         "name": "Notificar dispositivo recuperado",
         "env": [],
-        "x": 1230,
+        "x": 1190,
         "y": 260,
         "wires": []
     },
@@ -14991,7 +14529,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 870,
+        "x": 830,
         "y": 500,
         "wires": [
             [
@@ -15014,7 +14552,7 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1200,
+        "x": 1160,
         "y": 500,
         "wires": []
     },
@@ -15025,8 +14563,8 @@
         "g": "grp_tuya_tests",
         "name": "Testes automatizados fora do caminho de produção",
         "info": "Execute `npm run flows:test-infrastructure`. O teste cobre descoberta dinâmica de Tuya/LocalTuya, startup saudável, 30 s offline, dedupe, lembrete a cada 24 h, 60 s de recuperação, restart persistente, falha de consulta, MQTT Discovery e a rota compartilhada de celular/Echo.",
-        "x": 410,
-        "y": 520,
+        "x": 470,
+        "y": 670,
         "wires": []
     },
     {
@@ -18166,6 +17704,574 @@
         ]
     },
     {
+        "id": "vehicle_primary_api_error_bypass_out_v1",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Falha da API → comando de bypass",
+        "mode": "link",
+        "links": [
+            "vehicle_primary_api_error_bypass_in_v1"
+        ],
+        "x": 1745,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "vehicle_primary_api_error_bypass_in_v1",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Receber falha da API para bypass",
+        "links": [
+            "vehicle_primary_api_error_bypass_out_v1"
+        ],
+        "x": 850,
+        "y": 1175,
+        "wires": [
+            [
+                "vehicle_primary_provider_bypass_command_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_arrival_distance_group_v1",
+        "type": "group",
+        "z": "ea0a6aa0d24ff863",
+        "name": "0. Ajuste do raio de chegada",
+        "style": {
+            "label": true,
+            "stroke": "#5ca5d8",
+            "fill": "#d9edf7",
+            "color": "#1d4f72"
+        },
+        "nodes": [
+            "people_arrival_distance_comment_v1",
+            "people_arrival_distance_set_v1",
+            "people_arrival_distance_apply_v1"
+        ],
+        "x": 1364,
+        "y": 239,
+        "w": 560,
+        "h": 162
+    },
+    {
+        "id": "people_arrival_distance_comment_v1",
+        "type": "comment",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_arrival_distance_group_v1",
+        "name": "Edite o valor (metros) no nó abaixo e faça Deploy. Intervalo aceito: 50–2.000 m.",
+        "x": 1605,
+        "y": 280,
+        "w": 420,
+        "wires": []
+    },
+    {
+        "id": "people_arrival_distance_set_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_arrival_distance_group_v1",
+        "name": "Definir raio de chegada — 700 m",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "",
+        "payload": "700",
+        "payloadType": "num",
+        "x": 1540,
+        "y": 340,
+        "wires": [
+            [
+                "people_arrival_distance_apply_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_arrival_distance_apply_v1",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_arrival_distance_group_v1",
+        "name": "Aplicar raio de chegada",
+        "func": "const MIN_DISTANCE_M = 50;\nconst MAX_DISTANCE_M = 2000;\nconst requested = Number(msg.payload);\n\nif (!Number.isFinite(requested) || requested < MIN_DISTANCE_M || requested > MAX_DISTANCE_M) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"use 50–2.000 m\" });\n    node.warn(\"localizacao_pessoas: raio de chegada inválido\");\n    return null;\n}\n\nconst distanceM = Math.round(requested);\nflow.set(\"security_arrival_distance_m\", distanceM, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"raio de chegada: \" + distanceM + \" m\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1770,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "codex_alertas_tab",
+        "type": "tab",
+        "label": "alertas_codex",
+        "disabled": false,
+        "info": "Alertas de uso do Codex: lógica, teste manual e deduplicação no Node-RED; painel e configurações no Home Assistant.",
+        "env": []
+    },
+    {
+        "id": "codex_alertas_group",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Alertas Codex → iPhone de resident_primary",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "stroke": "#5d6f96",
+            "stroke-opacity": "1",
+            "fill": "none",
+            "color": "#a4a4a4"
+        },
+        "nodes": [
+            "codex_alert_state",
+            "codex_alert_manual_test",
+            "codex_alert_daily",
+            "codex_alert_logic",
+            "codex_alert_push",
+            "codex_alert_text",
+            "codex_alert_time",
+            "codex_alert_persistent",
+            "codex_alert_ack",
+            "codex_alert_catch",
+            "codex_alert_failure"
+        ],
+        "x": 64,
+        "y": 40,
+        "w": 1760,
+        "h": 360
+    },
+    {
+        "id": "codex_alert_state",
+        "type": "server-state-changed",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Estados e limites do Codex",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "input_boolean.codex_alertas_iphone",
+                "input_boolean.codex_resumo_diario_iphone",
+                "input_number.codex_alerta_aviso_percentual",
+                "input_number.codex_alerta_critico_percentual",
+                "input_number.codex_alerta_cache_minimo",
+                "input_number.codex_alerta_saldo_creditos",
+                "sensor.codex_previsao_ate_o_reset",
+                "sensor.codex_limite_usado",
+                "sensor.codex_eficiencia_de_cache",
+                "sensor.codex_creditos_extras",
+                "sensor.codex_uso_projetado_no_reset",
+                "sensor.codex_folga_projetada_no_reset",
+                "sensor.codex_ritmo_do_limite",
+                "sensor.codex_limite_disponivel",
+                "sensor.codex_proximo_reset"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": true,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "{\"entity_id\":$entity().entity_id,\"state\":$entity().state,\"previous\":$prevEntity().state}",
+                "valueType": "jsonata"
+            }
+        ],
+        "x": 214,
+        "y": 120,
+        "wires": [
+            [
+                "codex_alert_logic"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_manual_test",
+        "type": "inject",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Testar push no iPhone",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"type\":\"manual_test\"}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"type\":\"manual_test\"}",
+        "payloadType": "json",
+        "x": 204,
+        "y": 180,
+        "wires": [
+            [
+                "codex_alert_logic"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_daily",
+        "type": "inject",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Resumo diário — 20:00",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "codex.daily_summary",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 20 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "codex.daily_summary",
+        "payload": "",
+        "payloadType": "date",
+        "x": 204,
+        "y": 240,
+        "wires": [
+            [
+                "codex_alert_logic"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_logic",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Avaliar alertas, cooldown e resumo",
+        "func": "\nconst REQUIRED = [\"input_boolean.codex_alertas_iphone\",\"input_boolean.codex_resumo_diario_iphone\",\"input_number.codex_alerta_aviso_percentual\",\"input_number.codex_alerta_critico_percentual\",\"input_number.codex_alerta_cache_minimo\",\"input_number.codex_alerta_saldo_creditos\",\"sensor.codex_previsao_ate_o_reset\",\"sensor.codex_limite_usado\",\"sensor.codex_eficiencia_de_cache\",\"sensor.codex_creditos_extras\",\"sensor.codex_uso_projetado_no_reset\",\"sensor.codex_folga_projetada_no_reset\",\"sensor.codex_ritmo_do_limite\",\"sensor.codex_limite_disponivel\",\"sensor.codex_proximo_reset\"];\nconst KEY = \"codex_alertas_state_v1\";\nlet state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nconst event = msg.payload || {};\n\nfunction num(value, fallback = 0) {\n  const parsed = Number(value);\n  return Number.isFinite(parsed) ? parsed : fallback;\n}\n\nfunction build(title, message, kind) {\n  const now = Date.now();\n  const cooldownMs = kind === \"critical\" ? 60 * 60 * 1000 : 6 * 60 * 60 * 1000;\n  if (now - Number(state.sent[kind] || 0) < cooldownMs) return null;\n  if (state.pending?.kind === kind && now - Number(state.pending.lastAttemptAt || 0) < 60 * 1000) return null;\n  const alert = {\n    title,\n    message,\n    kind,\n    at: new Date(now).toISOString(),\n    lastAttemptAt: now,\n    deliveryAck: { id: kind + \":\" + String(now), kind, at: now },\n  };\n  state.pending = alert;\n  return alert;\n}\n\nfunction summary() {\n  if (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\"\n      || state.values[\"input_boolean.codex_resumo_diario_iphone\"] !== \"on\") return null;\n  return build(\n    \"Codex — resumo diário\",\n    \"Uso: \" + (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; \" +\n      \"projeção no reset: \" + (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%; \" +\n      \"folga: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%; \" +\n      \"cache: \" + (state.values[\"sensor.codex_eficiencia_de_cache\"] || \"?\") + \"%; \" +\n      \"previsão: \" + (state.values[\"sensor.codex_previsao_ate_o_reset\"] || \"?\") + \".\",\n    \"daily\",\n  );\n}\n\nif (msg.topic === \"codex.daily_summary\") {\n  const alert = state.ready ? summary() : null;\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nif (event.type === \"manual_test\") {\n  const alert = build(\n    \"Codex — teste de alertas\",\n    \"✅ O Node-RED está conectado ao iPhone de resident_primary. Uso atual: \" +\n      (state.values[\"sensor.codex_limite_usado\"] || \"?\") + \"%; projeção no reset: \" +\n      (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%.\",\n    \"test\",\n  );\n  flow.set(KEY, state, \"persistent\");\n  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n}\n\nconst entity = event.entity_id;\nif (!entity || !REQUIRED.includes(entity)) return null;\nconst previous = state.values[entity];\nstate.values[entity] = String(event.state ?? \"\");\nif (!state.ready) {\n  state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: state.ready ? \"green\" : \"yellow\", shape: \"dot\", text: state.ready ? \"monitorando\" : \"sincronizando\" });\n  return null;\n}\n\nif (state.values[\"input_boolean.codex_alertas_iphone\"] !== \"on\") {\n  flow.set(KEY, state, \"persistent\");\n  node.status({ fill: \"grey\", shape: \"ring\", text: \"alertas desativados\" });\n  return null;\n}\n\nlet alert = null;\nif (entity === \"sensor.codex_previsao_ate_o_reset\") {\n  if ([\"atenção\", \"não aguenta\"].includes(event.state) && previous !== event.state) {\n    const critical = event.state === \"não aguenta\";\n    alert = build(\n      critical ? \"Codex — risco de esgotamento\" : \"Codex — pouca folga até o reset\",\n      (critical ? \"🔴\" : \"⚠️\") + \" Ritmo atual: \" +\n        (state.values[\"sensor.codex_ritmo_do_limite\"] || \"?\") + \"%/dia. Uso projetado no reset: \" +\n        (state.values[\"sensor.codex_uso_projetado_no_reset\"] || \"?\") + \"%. Reset: \" +\n        (state.values[\"sensor.codex_proximo_reset\"] || \"?\") + \".\",\n      critical ? \"critical\" : \"forecast_warning\",\n    );\n  } else if (event.state === \"aguenta\" && [\"atenção\", \"não aguenta\"].includes(previous)) {\n    alert = build(\"Codex — autonomia recuperada\", \"✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"recovery\");\n  }\n} else if (entity === \"sensor.codex_limite_usado\") {\n  const used = num(event.state); const old = num(previous, -1);\n  const warning = num(state.values[\"input_number.codex_alerta_aviso_percentual\"], 70);\n  const critical = num(state.values[\"input_number.codex_alerta_critico_percentual\"], 90);\n  if (used >= critical && old < critical) alert = build(\"Codex — limite crítico\", \"🚨 Uso chegou a \" + used + \"%. Restam \" + (state.values[\"sensor.codex_limite_disponivel\"] || \"?\") + \"% até o reset.\", \"critical\");\n  else if (used >= warning && old < warning) alert = build(\"Codex — limite em atenção\", \"⚠️ Uso chegou a \" + used + \"%. Folga projetada no reset: \" + (state.values[\"sensor.codex_folga_projetada_no_reset\"] || \"?\") + \"%.\", \"usage_warning\");\n} else if (entity === \"sensor.codex_eficiencia_de_cache\") {\n  const value = num(event.state); const old = num(previous, 101); const minimum = num(state.values[\"input_number.codex_alerta_cache_minimo\"], 60);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — eficiência de cache baixa\", \"⚠️ A eficiência caiu para \" + value + \"%. Limite configurado: \" + minimum + \"%.\", \"cache_low\");\n} else if (entity === \"sensor.codex_creditos_extras\") {\n  const value = num(event.state); const old = num(previous, -1); const minimum = num(state.values[\"input_number.codex_alerta_saldo_creditos\"], 10);\n  if (value < minimum && old >= minimum) alert = build(\"Codex — créditos extras baixos\", \"⚠️ O saldo caiu para \" + value + \" créditos.\", \"credits_low\");\n}\n\nif (!alert && state.pending?.deliveryAck?.id) {\n  const now = Date.now();\n  if (now - Number(state.pending.lastAttemptAt || 0) >= 60 * 1000) {\n    state.pending.lastAttemptAt = now;\n    alert = state.pending;\n  }\n}\n\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: alert ? \"red\" : \"green\", shape: alert ? \"ring\" : \"dot\", text: alert ? \"alerta: \" + alert.kind : \"monitorando\" });\nreturn alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;\n",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 614,
+        "y": 160,
+        "wires": [
+            [
+                "codex_alert_push"
+            ],
+            [
+                "codex_alert_text"
+            ],
+            [
+                "codex_alert_time"
+            ],
+            [
+                "codex_alert_persistent"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_push",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Push iPhone resident_primary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 944,
+        "y": 100,
+        "wires": [
+            [
+                "codex_alert_ack"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_text",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Registrar último alerta",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_text.set_value",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_text.codex_ultimo_alerta_iphone"
+        ],
+        "labelId": [],
+        "data": "{\"value\": alert.title & \": \" & alert.message}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "input_text",
+        "service": "set_value",
+        "x": 964,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "codex_alert_time",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Registrar horário",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_datetime.set_datetime",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_datetime.codex_ultimo_alerta_iphone_em"
+        ],
+        "labelId": [],
+        "data": "{\"datetime\": alert.at}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "input_datetime",
+        "service": "set_datetime",
+        "x": 944,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "codex_alert_persistent",
+        "type": "api-call-service",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Notificação persistente",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"codex_alert_\" & alert.kind}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 954,
+        "y": 280,
+        "wires": [
+            [
+                "codex_alert_ack"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_ack",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Confirmar entrega e iniciar cooldown",
+        "func": "const ack = msg.alert?.deliveryAck;\nif (!ack || typeof ack.kind !== \"string\" || !Number.isFinite(Number(ack.at))) return null;\nconst KEY = \"codex_alertas_state_v1\";\nconst state = flow.get(KEY, \"persistent\") || { values: {}, ready: false, sent: {} };\nstate.sent = state.sent || {};\nstate.sent[ack.kind] = Number(ack.at);\nif (state.pending?.deliveryAck?.id === ack.id) state.pending = null;\nflow.set(KEY, state, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"entrega aceita pelo HA\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1394,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "codex_alert_catch",
+        "type": "catch",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Capturar falha de entrega",
+        "scope": [
+            "codex_alert_push",
+            "codex_alert_persistent"
+        ],
+        "uncaught": false,
+        "x": 954,
+        "y": 340,
+        "wires": [
+            [
+                "codex_alert_failure"
+            ]
+        ]
+    },
+    {
+        "id": "codex_alert_failure",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "codex_alertas_group",
+        "name": "Manter alerta pendente",
+        "func": "const source = String(msg.error?.source?.name ?? \"notificacao\").replace(/[^a-zA-Z0-9 _-]/g, \"\");\nconst detail = String(msg.error?.message ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"codex_alert_delivery_failed source=\" + source + \" message=\" + detail, msg);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"pendente para nova tentativa\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1284,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "host_memory_guardian_request_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "1. Solicitar verificação recorrente — sem acesso direto aos PIDs",
+        "style": {
+            "label": true,
+            "color": "#5b8db8",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "host_memory_guardian_architecture",
+            "host_memory_guardian_tick",
+            "host_memory_guardian_test_request_in",
+            "host_memory_guardian_prepare_request",
+            "host_memory_guardian_side_effect_guard",
+            "host_memory_guardian_request_host",
+            "host_memory_guardian_request_ack",
+            "host_memory_guardian_request_error",
+            "host_memory_guardian_request_complete",
+            "host_memory_guardian_request_test_out"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 1360,
+        "h": 300
+    },
+    {
+        "id": "host_memory_guardian_result_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "2. Ler resultado sanitizado e observar a proteção",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "host_memory_guardian_result_info",
+            "host_memory_guardian_result_tick",
+            "host_memory_guardian_read_result",
+            "host_memory_guardian_test_result_in",
+            "host_memory_guardian_parse_result",
+            "host_memory_guardian_result_error",
+            "host_memory_guardian_result_complete",
+            "host_memory_guardian_result_test_out"
+        ],
+        "x": 64,
+        "y": 360,
+        "w": 1360,
+        "h": 300
+    },
+    {
+        "id": "host_memory_guardian_test_group",
+        "type": "group",
+        "z": "host_memory_guardian_tab",
+        "name": "TESTE — pedidos e resultados completos em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458",
+            "fill": "#1f1f1f",
+            "fillOpacity": "0.18"
+        },
+        "nodes": [
+            "host_memory_guardian_test_instructions",
+            "host_memory_guardian_test_reset",
+            "host_memory_guardian_reset_test",
+            "host_memory_guardian_test_request",
+            "host_memory_guardian_test_request_out",
+            "host_memory_guardian_test_healthy",
+            "host_memory_guardian_test_candidate",
+            "host_memory_guardian_test_terminated",
+            "host_memory_guardian_test_failed",
+            "host_memory_guardian_test_result_out",
+            "host_memory_guardian_dry_in",
+            "host_memory_guardian_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 700,
+        "w": 1360,
+        "h": 400
+    },
+    {
+        "id": "host_memory_guardian_tab",
+        "type": "tab",
+        "label": "guardiao_memoria_host",
+        "disabled": false,
+        "info": "Prioriza a saúde do servidor sem dar privilégios ao Node-RED. A cada minuto solicita ao worker do host uma avaliação fail-closed. Somente uma árvore antiga, desconectada e ociosa do VS Code pode ser encerrada; uma sessão conectada nunca é candidata. A limpeza também funciona depois de fechar a única janela remota.",
+        "env": []
+    },
+    {
         "id": "host_memory_guardian_architecture",
         "type": "comment",
         "z": "host_memory_guardian_tab",
@@ -18244,7 +18350,7 @@
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_request_group",
         "name": "Separar produção e TESTE",
-        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nif (testMode) {\n    msg._host_memory_guardian_test = true;\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"TESTE: host bloqueado\" });\n    return [null, msg];\n}\nif (msg.payload?.event !== \"host_memory_guardian_requested\") {\n    node.error(\"host_memory_guardian_invalid_request\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"solicitação inválida\" });\n    return [null, null];\n}\nreturn [msg, null];",
+        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nif (testMode) {\n    msg._host_memory_guardian_test = true;\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"TESTE: host bloqueado\" });\n    return [null, msg];\n}\nif (msg.payload?.event !== \"host_memory_guardian_requested\") {\n    node.error(\"host_memory_guardian_invalid_request\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"solicitação inválida\" });\n    return [null, null];\n}\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -18267,6 +18373,7 @@
         "type": "exec",
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_request_group",
+        "name": "Solicitar worker do host",
         "command": "/opt/request-host-memory-guardian.sh",
         "addpay": "",
         "append": "",
@@ -18274,7 +18381,6 @@
         "timer": "15",
         "winHide": false,
         "oldrc": false,
-        "name": "Solicitar worker do host",
         "x": 950,
         "y": 120,
         "wires": [
@@ -18295,7 +18401,7 @@
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_request_group",
         "name": "Registrar aceite",
-        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"host_memory_guardian_request_unrecognized\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({\n    fill: status === \"accepted\" ? \"green\" : \"yellow\",\n    shape: \"dot\",\n    text: status === \"accepted\" ? \"verificação aceita\" : \"verificação já pendente\"\n});\nreturn null;",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];\nif (!status) {\n    node.error(\"host_memory_guardian_request_unrecognized\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resposta inválida\" });\n    return null;\n}\nnode.status({\n    fill: status === \"accepted\" ? \"green\" : \"yellow\",\n    shape: \"dot\",\n    text: status === \"accepted\" ? \"verificação aceita\" : \"verificação já pendente\"\n});\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -18304,9 +18410,7 @@
         "libs": [],
         "x": 1210,
         "y": 100,
-        "wires": [
-            []
-        ]
+        "wires": []
     },
     {
         "id": "host_memory_guardian_request_error",
@@ -18314,7 +18418,7 @@
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_request_group",
         "name": "Falha da ponte",
-        "func": "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'ponte indisponível' });\nnode.error('host_memory_guardian_bridge_unavailable detail=' + detail);\nreturn null;",
+        "func": "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'ponte indisponível' });\nnode.error('host_memory_guardian_bridge_unavailable detail=' + detail, msg);\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -18323,9 +18427,7 @@
         "libs": [],
         "x": 1210,
         "y": 170,
-        "wires": [
-            []
-        ]
+        "wires": []
     },
     {
         "id": "host_memory_guardian_request_complete",
@@ -18342,9 +18444,7 @@
         "libs": [],
         "x": 1210,
         "y": 240,
-        "wires": [
-            []
-        ]
+        "wires": []
     },
     {
         "id": "host_memory_guardian_request_test_out",
@@ -18400,6 +18500,7 @@
         "type": "exec",
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_result_group",
+        "name": "Ler resultado sanitizado",
         "command": "/opt/read-host-memory-guardian-result.sh",
         "addpay": "",
         "append": "",
@@ -18407,7 +18508,6 @@
         "timer": "15",
         "winHide": false,
         "oldrc": false,
-        "name": "Ler resultado sanitizado",
         "x": 445,
         "y": 480,
         "wires": [
@@ -18445,7 +18545,7 @@
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_result_group",
         "name": "Normalizar e deduplicar",
-        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nconst raw = typeof msg.payload === \"string\"\n    ? msg.payload.replace(/[\\r\\n]+/g, \" \").trim().slice(0, 800)\n    : \"\";\nconst synthetic = !raw && testMode && msg.payload && typeof msg.payload === \"object\"\n    ? msg.payload\n    : null;\nif (!raw && !synthetic) return null;\n\nconst allowed = new Set([\n    \"running\", \"healthy\", \"pressure_no_safe_duplicate\", \"pressure_no_safe_candidate\",\n    \"candidate_observed\", \"candidate_active\", \"pressure_cooldown\", \"terminated\", \"failed\"\n]);\nconst status = synthetic?.status ?? raw.match(/\\bstatus=([a-z_]+)\\b/)?.[1];\nif (!allowed.has(status)) {\n    if (!testMode) node.error(\"host_memory_guardian_result_unrecognized\");\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resultado inválido\" });\n    return null;\n}\nconst numberFrom = (name) => {\n    const value = synthetic?.[name] ?? raw.match(new RegExp(\"\\\\b\" + name + \"=([0-9.]+)\\\\b\"))?.[1];\n    const parsed = Number(value);\n    return Number.isFinite(parsed) ? parsed : null;\n};\nconst result = {\n    version: 1,\n    status,\n    request_id: synthetic?.request_id ?? raw.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"test\",\n    available_mib: numberFrom(\"available_mib\"),\n    available_percent: numberFrom(\"available_percent\"),\n    candidate_pid: synthetic?.candidate_pid ?? raw.match(/\\bcandidate_pid=([^ ]+)\\b/)?.[1] ?? \"none\",\n    candidate_mib: numberFrom(\"candidate_mib\"),\n    terminated: numberFrom(\"terminated\") ?? 0,\n    checked_at: synthetic?.checked_at ?? raw.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? new Date().toISOString(),\n    test_mode: testMode,\n    simulated: testMode,\n    dispatched: !testMode && status === \"terminated\"\n};\nconst signature = [result.request_id, result.status, result.checked_at].join(\":\");\nconst key = testMode ? \"host_memory_guardian_last_result_v1__test\" : \"host_memory_guardian_last_result_v1\";\nconst previous = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (!testMode && previous?.signature === signature) return null;\nresult.signature = signature;\nif (testMode) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\n\nconst failed = status === \"failed\";\nconst pressure = status !== \"healthy\" && status !== \"running\";\nnode.status({\n    fill: failed ? \"red\" : status === \"terminated\" ? \"yellow\" : pressure ? \"yellow\" : \"green\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"terminated\"\n        ? \"árvore ociosa encerrada\"\n        : status === \"healthy\"\n            ? \"memória saudável\"\n            : status.replaceAll(\"_\", \" \")\n});\nmsg.payload = result;\nif (testMode) return [null, msg];\nif (failed) {\n    node.error(\"host_memory_guardian_failed request_id=\" + result.request_id);\n    return [null, null];\n}\nif (status === \"terminated\") {\n    node.warn(\n        \"HOST_MEMORY_GUARDIAN_TERMINATED count=\" + String(result.terminated) +\n        \" reclaimed_candidate_mib=\" + String(result.candidate_mib ?? 0) +\n        \" available_mib=\" + String(result.available_mib ?? 0)\n    );\n}\nreturn [null, null];",
+        "func": "const testMode = msg._host_memory_guardian_test === true || msg.payload?.test_mode === true;\nconst raw = typeof msg.payload === \"string\"\n    ? msg.payload.replace(/[\\r\\n]+/g, \" \").trim().slice(0, 800)\n    : \"\";\nconst synthetic = !raw && testMode && msg.payload && typeof msg.payload === \"object\"\n    ? msg.payload\n    : null;\nif (!raw && !synthetic) return null;\n\nconst allowed = new Set([\n    \"running\", \"healthy\", \"pressure_no_safe_duplicate\", \"pressure_no_safe_candidate\",\n    \"candidate_observed\", \"candidate_active\", \"pressure_cooldown\", \"terminated\", \"failed\"\n]);\nconst status = synthetic?.status ?? raw.match(/\\bstatus=([a-z_]+)\\b/)?.[1];\nif (!allowed.has(status)) {\n    if (!testMode) node.error(\"host_memory_guardian_result_unrecognized\", msg);\n    node.status({ fill: \"red\", shape: \"ring\", text: \"resultado inválido\" });\n    return null;\n}\nconst numberFrom = (name) => {\n    const value = synthetic?.[name] ?? raw.match(new RegExp(\"\\\\b\" + name + \"=([0-9.]+)\\\\b\"))?.[1];\n    const parsed = Number(value);\n    return Number.isFinite(parsed) ? parsed : null;\n};\nconst result = {\n    version: 1,\n    status,\n    request_id: synthetic?.request_id ?? raw.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"test\",\n    available_mib: numberFrom(\"available_mib\"),\n    available_percent: numberFrom(\"available_percent\"),\n    candidate_pid: synthetic?.candidate_pid ?? raw.match(/\\bcandidate_pid=([^ ]+)\\b/)?.[1] ?? \"none\",\n    candidate_mib: numberFrom(\"candidate_mib\"),\n    terminated: numberFrom(\"terminated\") ?? 0,\n    checked_at: synthetic?.checked_at ?? raw.match(/\\bchecked_at=([^ ]+)\\b/)?.[1] ?? new Date().toISOString(),\n    test_mode: testMode,\n    simulated: testMode,\n    dispatched: !testMode && status === \"terminated\"\n};\nconst signature = [result.request_id, result.status, result.checked_at].join(\":\");\nconst key = testMode ? \"host_memory_guardian_last_result_v1__test\" : \"host_memory_guardian_last_result_v1\";\nconst previous = testMode ? flow.get(key) : flow.get(key, \"persistent\");\nif (!testMode && previous?.signature === signature) return null;\nresult.signature = signature;\nif (testMode) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\n\nconst failed = status === \"failed\";\nconst pressure = status !== \"healthy\" && status !== \"running\";\nnode.status({\n    fill: failed ? \"red\" : status === \"terminated\" ? \"yellow\" : pressure ? \"yellow\" : \"green\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"terminated\"\n        ? \"árvore ociosa encerrada\"\n        : status === \"healthy\"\n            ? \"memória saudável\"\n            : status.replaceAll(\"_\", \" \")\n});\nmsg.payload = result;\nif (testMode) return [null, msg];\nif (failed) {\n    node.error(\"host_memory_guardian_failed request_id=\" + result.request_id, msg);\n    return [null, null];\n}\nif (status === \"terminated\") {\n    node.warn(\n        \"HOST_MEMORY_GUARDIAN_TERMINATED count=\" + String(result.terminated) +\n        \" reclaimed_candidate_mib=\" + String(result.candidate_mib ?? 0) +\n        \" available_mib=\" + String(result.available_mib ?? 0)\n    );\n}\nreturn [null, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -18467,7 +18567,7 @@
         "z": "host_memory_guardian_tab",
         "g": "host_memory_guardian_result_group",
         "name": "Falha de leitura",
-        "func": "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'resultado indisponível' });\nnode.error('host_memory_guardian_result_unavailable detail=' + detail);\nreturn null;",
+        "func": "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'resultado indisponível' });\nnode.error('host_memory_guardian_result_unavailable detail=' + detail, msg);\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -18476,9 +18576,7 @@
         "libs": [],
         "x": 930,
         "y": 460,
-        "wires": [
-            []
-        ]
+        "wires": []
     },
     {
         "id": "host_memory_guardian_result_complete",
@@ -18495,9 +18593,7 @@
         "libs": [],
         "x": 930,
         "y": 520,
-        "wires": [
-            []
-        ]
+        "wires": []
     },
     {
         "id": "host_memory_guardian_result_test_out",
@@ -18565,9 +18661,7 @@
         "libs": [],
         "x": 420,
         "y": 810,
-        "wires": [
-            []
-        ]
+        "wires": []
     },
     {
         "id": "host_memory_guardian_test_request",
@@ -18783,114 +18877,6 @@
         "libs": [],
         "x": 1190,
         "y": 900,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "vehicle_primary_api_error_bypass_out_v1",
-        "type": "link out",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Falha da API → comando de bypass",
-        "mode": "link",
-        "links": [
-            "vehicle_primary_api_error_bypass_in_v1"
-        ],
-        "x": 1745,
-        "y": 1000,
-        "wires": []
-    },
-    {
-        "id": "vehicle_primary_api_error_bypass_in_v1",
-        "type": "link in",
-        "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Receber falha da API para bypass",
-        "links": [
-            "vehicle_primary_api_error_bypass_out_v1"
-        ],
-        "x": 850,
-        "y": 1175,
-        "wires": [
-            [
-                "vehicle_primary_provider_bypass_command_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_arrival_distance_group_v1",
-        "type": "group",
-        "z": "ea0a6aa0d24ff863",
-        "name": "0. Ajuste do raio de chegada",
-        "style": {
-            "label": true,
-            "stroke": "#5ca5d8",
-            "fill": "#d9edf7",
-            "color": "#1d4f72"
-        },
-        "nodes": [
-            "people_arrival_distance_comment_v1",
-            "people_arrival_distance_set_v1",
-            "people_arrival_distance_apply_v1"
-        ],
-        "x": 1364,
-        "y": 239,
-        "w": 560,
-        "h": 162
-    },
-    {
-        "id": "people_arrival_distance_comment_v1",
-        "type": "comment",
-        "z": "ea0a6aa0d24ff863",
-        "g": "people_arrival_distance_group_v1",
-        "name": "Edite o valor (metros) no nó abaixo e faça Deploy. Intervalo aceito: 50–2.000 m.",
-        "x": 1605,
-        "y": 280,
-        "w": 420,
-        "wires": []
-    },
-    {
-        "id": "people_arrival_distance_set_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "people_arrival_distance_group_v1",
-        "name": "Definir raio de chegada — 700 m",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "0.5",
-        "topic": "",
-        "payload": "700",
-        "payloadType": "num",
-        "x": 1540,
-        "y": 340,
-        "wires": [
-            [
-                "people_arrival_distance_apply_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_arrival_distance_apply_v1",
-        "type": "function",
-        "z": "ea0a6aa0d24ff863",
-        "g": "people_arrival_distance_group_v1",
-        "name": "Aplicar raio de chegada",
-        "func": "const MIN_DISTANCE_M = 50;\nconst MAX_DISTANCE_M = 2000;\nconst requested = Number(msg.payload);\n\nif (!Number.isFinite(requested) || requested < MIN_DISTANCE_M || requested > MAX_DISTANCE_M) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"use 50–2.000 m\" });\n    node.warn(\"localizacao_pessoas: raio de chegada inválido\");\n    return null;\n}\n\nconst distanceM = Math.round(requested);\nflow.set(\"security_arrival_distance_m\", distanceM, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"raio de chegada: \" + distanceM + \" m\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1770,
-        "y": 340,
         "wires": []
     },
     {
@@ -20184,92 +20170,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__codex_alertas_tab__group",
-        "type": "group",
-        "z": "codex_alertas_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__codex_alertas_tab__catch",
-            "global_observer_coverage__codex_alertas_tab__status",
-            "global_observer_coverage__codex_alertas_tab__annotate",
-            "global_observer_coverage__codex_alertas_tab__out"
-        ],
-        "x": 1640,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__catch",
-        "type": "catch",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 1780,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__codex_alertas_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__status",
-        "type": "status",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 1790,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__codex_alertas_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__annotate",
-        "type": "function",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"codex_alertas_tab\",\"flow_label\":\"alertas_codex\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2060,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__codex_alertas_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__codex_alertas_tab__out",
-        "type": "link out",
-        "z": "codex_alertas_tab",
-        "g": "global_observer_coverage__codex_alertas_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2305,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "global_observer_coverage__monitoramento_tuya_tab__group",
         "type": "group",
         "z": "monitoramento_tuya_tab",
@@ -20284,7 +20184,7 @@
             "global_observer_coverage__monitoramento_tuya_tab__annotate",
             "global_observer_coverage__monitoramento_tuya_tab__out"
         ],
-        "x": 1440,
+        "x": 1400,
         "y": 40,
         "w": 720,
         "h": 162
@@ -20297,7 +20197,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 1580,
+        "x": 1540,
         "y": 100,
         "wires": [
             [
@@ -20312,7 +20212,7 @@
         "g": "global_observer_coverage__monitoramento_tuya_tab__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 1590,
+        "x": 1550,
         "y": 160,
         "wires": [
             [
@@ -20333,7 +20233,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1860,
+        "x": 1820,
         "y": 130,
         "wires": [
             [
@@ -20351,7 +20251,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2105,
+        "x": 2065,
         "y": 130,
         "wires": []
     },
@@ -20700,6 +20600,92 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__codex_alertas_tab__group",
+        "type": "group",
+        "z": "codex_alertas_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__codex_alertas_tab__catch",
+            "global_observer_coverage__codex_alertas_tab__status",
+            "global_observer_coverage__codex_alertas_tab__annotate",
+            "global_observer_coverage__codex_alertas_tab__out"
+        ],
+        "x": 1880,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__catch",
+        "type": "catch",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2020,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__status",
+        "type": "status",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2030,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__annotate",
+        "type": "function",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"codex_alertas_tab\",\"flow_label\":\"alertas_codex\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2300,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__codex_alertas_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__codex_alertas_tab__out",
+        "type": "link out",
+        "z": "codex_alertas_tab",
+        "g": "global_observer_coverage__codex_alertas_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2545,
+        "y": 130,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__host_memory_guardian_tab__group",
         "type": "group",
         "z": "host_memory_guardian_tab",
@@ -20858,12 +20844,12 @@
             "global_observer_coverage__62bb822e033d1623__out",
             "global_observer_coverage__6b7552efb85343f4__out",
             "global_observer_coverage__1f468eaeef0733dd__out",
-            "global_observer_coverage__codex_alertas_tab__out",
             "global_observer_coverage__monitoramento_tuya_tab__out",
             "global_observer_coverage__resident_notifications_tab__out",
             "global_observer_coverage__monitoramento_vpn_tab__out",
             "global_observer_coverage__daily_host_updates_tab__out",
             "global_observer_coverage__local_ai_rtx_recovery_tab__out",
+            "global_observer_coverage__codex_alertas_tab__out",
             "global_observer_coverage__host_memory_guardian_tab__out",
             "global_observer_test_event_out"
         ],
