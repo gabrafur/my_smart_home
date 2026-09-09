@@ -1872,7 +1872,7 @@
         "x": 124,
         "y": 39,
         "w": 1212,
-        "h": 242
+        "h": 262
     },
     {
         "id": "daily_update_result_group",
@@ -1977,12 +1977,22 @@
             "daily_update_kia_codex_request",
             "daily_update_kia_codex_ack",
             "daily_update_kia_codex_error",
-            "daily_update_kia_codex_complete"
+            "daily_update_kia_codex_complete",
+            "daily_update_kia_codex_result_startup",
+            "daily_update_kia_codex_result_poll",
+            "daily_update_kia_codex_read_result",
+            "daily_update_kia_codex_read_error",
+            "daily_update_kia_codex_read_complete",
+            "daily_update_kia_codex_parse_result",
+            "daily_update_kia_codex_test_result",
+            "daily_update_kia_codex_test_result_out",
+            "daily_update_kia_codex_test_result_in",
+            "daily_update_kia_codex_result_test_out"
         ],
-        "x": 124,
+        "x": 84,
         "y": 1679,
-        "w": 902,
-        "h": 262
+        "w": 1252,
+        "h": 422
     },
     {
         "id": "local_ai_rtx_health_group",
@@ -16351,8 +16361,8 @@
         "links": [
             "daily_update_dry_run_in"
         ],
-        "x": 855,
-        "y": 140,
+        "x": 925,
+        "y": 240,
         "wires": []
     },
     {
@@ -16563,7 +16573,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_test_group",
         "name": "Resetar teste",
-        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_codex_merge_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -17315,6 +17325,218 @@
         "x": 860,
         "y": 1900,
         "wires": []
+    },
+    {
+        "id": "daily_update_kia_codex_result_startup",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Ler status Codex ao subir",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "65",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 225,
+        "y": 1960,
+        "wires": [
+            [
+                "daily_update_kia_codex_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_codex_result_poll",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Status Codex a cada 1 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 2020,
+        "wires": [
+            [
+                "daily_update_kia_codex_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_codex_read_result",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "command": "/opt/read-kia-uvo-codex-merge-result.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Ler status final do Codex",
+        "x": 520,
+        "y": 1990,
+        "wires": [
+            [
+                "daily_update_kia_codex_parse_result"
+            ],
+            [
+                "daily_update_kia_codex_read_error"
+            ],
+            [
+                "daily_update_kia_codex_read_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_codex_read_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Falha ao ler status Codex",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 2050,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_codex_read_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Código da leitura Codex",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 2050,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_codex_parse_result",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Normalizar falha final do Codex",
+        "func": "const TEST_MODE = msg._kia_codex_merge_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nif (!text) return null;\nconst state = text.match(/\\bstate=(waiting|running|success|failed|unknown)\\b/)?.[1];\nconst target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? \"unknown\";\nconst updatedAt = text.match(/\\bupdated_at=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nif (!state || state === \"unknown\") {\n    if (!TEST_MODE) node.error(\"kia_uvo_codex_merge_result_unrecognized\");\n    return null;\n}\nconst result = {\n    version: 1,\n    state,\n    target,\n    updated_at: updatedAt,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nconst signature = [result.state, result.target, result.updated_at].join(\":\");\nconst key = TEST_MODE ? \"kia_uvo_codex_merge_last_result_v1__test\" : \"kia_uvo_codex_merge_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return null;\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nnode.status({\n    fill: state === \"failed\" ? \"red\" : state === \"success\" ? \"green\" : \"blue\",\n    shape: state === \"failed\" ? \"ring\" : \"dot\",\n    text: state === \"success\" ? \"candidata pronta: \" + target : state + \": \" + target\n});\nif (TEST_MODE) {\n    msg.payload = result;\n    return msg;\n}\nif (state === \"failed\") {\n    node.error(\"kia_uvo_codex_merge_failed target=\" + target + \" updated_at=\" + updatedAt);\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 1990,
+        "wires": [
+            [
+                "daily_update_kia_codex_result_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_codex_result_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Resultado Codex TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1125,
+        "y": 1990,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_codex_test_result",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "TESTE: falha do worker Codex",
+        "props": [
+            {
+                "p": "payload",
+                "v": "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z",
+                "vt": "str"
+            },
+            {
+                "p": "_kia_codex_merge_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 2070,
+        "wires": [
+            [
+                "daily_update_kia_codex_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_kia_codex_test_result_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Falha Codex TESTE → parser",
+        "mode": "link",
+        "links": [
+            "daily_update_kia_codex_test_result_in"
+        ],
+        "x": 520,
+        "y": 2070,
+        "wires": []
+    },
+    {
+        "id": "daily_update_kia_codex_test_result_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_kia_codex_group",
+        "name": "Receber falha Codex TESTE",
+        "links": [
+            "daily_update_kia_codex_test_result_out"
+        ],
+        "x": 630,
+        "y": 2070,
+        "wires": [
+            [
+                "daily_update_kia_codex_parse_result"
+            ]
+        ]
     },
     {
         "id": "local_ai_rtx_architecture",
@@ -18594,6 +18816,81 @@
                 "vehicle_primary_provider_bypass_command_v1"
             ]
         ]
+    },
+    {
+        "id": "people_arrival_distance_group_v1",
+        "type": "group",
+        "z": "ea0a6aa0d24ff863",
+        "name": "0. Ajuste do raio de chegada",
+        "style": {
+            "label": true,
+            "stroke": "#5ca5d8",
+            "fill": "#d9edf7",
+            "color": "#1d4f72"
+        },
+        "nodes": [
+            "people_arrival_distance_comment_v1",
+            "people_arrival_distance_set_v1",
+            "people_arrival_distance_apply_v1"
+        ],
+        "x": 1364,
+        "y": 239,
+        "w": 560,
+        "h": 162
+    },
+    {
+        "id": "people_arrival_distance_comment_v1",
+        "type": "comment",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_arrival_distance_group_v1",
+        "name": "Edite o valor (metros) no nó abaixo e faça Deploy. Intervalo aceito: 50–2.000 m.",
+        "x": 1605,
+        "y": 280,
+        "w": 420,
+        "wires": []
+    },
+    {
+        "id": "people_arrival_distance_set_v1",
+        "type": "inject",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_arrival_distance_group_v1",
+        "name": "Definir raio de chegada — 700 m",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "",
+        "payload": "700",
+        "payloadType": "num",
+        "x": 1540,
+        "y": 340,
+        "wires": [
+            [
+                "people_arrival_distance_apply_v1"
+            ]
+        ]
+    },
+    {
+        "id": "people_arrival_distance_apply_v1",
+        "type": "function",
+        "z": "ea0a6aa0d24ff863",
+        "g": "people_arrival_distance_group_v1",
+        "name": "Aplicar raio de chegada",
+        "func": "const MIN_DISTANCE_M = 50;\nconst MAX_DISTANCE_M = 2000;\nconst requested = Number(msg.payload);\n\nif (!Number.isFinite(requested) || requested < MIN_DISTANCE_M || requested > MAX_DISTANCE_M) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"use 50–2.000 m\" });\n    node.warn(\"localizacao_pessoas: raio de chegada inválido\");\n    return null;\n}\n\nconst distanceM = Math.round(requested);\nflow.set(\"security_arrival_distance_m\", distanceM, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"raio de chegada: \" + distanceM + \" m\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1770,
+        "y": 340,
+        "wires": []
     },
     {
         "id": "global_observer_coverage__weekly_docs_review_tab__group",
@@ -21200,81 +21497,6 @@
         "libs": [],
         "x": 1410,
         "y": 640,
-        "wires": []
-    },
-    {
-        "id": "people_arrival_distance_group_v1",
-        "type": "group",
-        "z": "ea0a6aa0d24ff863",
-        "name": "0. Ajuste do raio de chegada",
-        "style": {
-            "label": true,
-            "stroke": "#5ca5d8",
-            "fill": "#d9edf7",
-            "color": "#1d4f72"
-        },
-        "nodes": [
-            "people_arrival_distance_comment_v1",
-            "people_arrival_distance_set_v1",
-            "people_arrival_distance_apply_v1"
-        ],
-        "x": 1364,
-        "y": 239,
-        "w": 560,
-        "h": 162
-    },
-    {
-        "id": "people_arrival_distance_comment_v1",
-        "type": "comment",
-        "z": "ea0a6aa0d24ff863",
-        "g": "people_arrival_distance_group_v1",
-        "name": "Edite o valor (metros) no nó abaixo e faça Deploy. Intervalo aceito: 50–2.000 m.",
-        "x": 1605,
-        "y": 280,
-        "w": 420,
-        "wires": []
-    },
-    {
-        "id": "people_arrival_distance_set_v1",
-        "type": "inject",
-        "z": "ea0a6aa0d24ff863",
-        "g": "people_arrival_distance_group_v1",
-        "name": "Definir raio de chegada — 700 m",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "0.5",
-        "topic": "",
-        "payload": "700",
-        "payloadType": "num",
-        "x": 1540,
-        "y": 340,
-        "wires": [
-            [
-                "people_arrival_distance_apply_v1"
-            ]
-        ]
-    },
-    {
-        "id": "people_arrival_distance_apply_v1",
-        "type": "function",
-        "z": "ea0a6aa0d24ff863",
-        "g": "people_arrival_distance_group_v1",
-        "name": "Aplicar raio de chegada",
-        "func": "const MIN_DISTANCE_M = 50;\nconst MAX_DISTANCE_M = 2000;\nconst requested = Number(msg.payload);\n\nif (!Number.isFinite(requested) || requested < MIN_DISTANCE_M || requested > MAX_DISTANCE_M) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"use 50–2.000 m\" });\n    node.warn(\"localizacao_pessoas: raio de chegada inválido\");\n    return null;\n}\n\nconst distanceM = Math.round(requested);\nflow.set(\"security_arrival_distance_m\", distanceM, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"raio de chegada: \" + distanceM + \" m\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1770,
-        "y": 340,
         "wires": []
     }
 ]
