@@ -13,6 +13,7 @@ import {
   candidateMetadataMatchesTarget,
   hacsInstallationMatches,
   preferFullCommit,
+  runtimeUpdateMatchesTarget,
   selectKiaRuntimeEntities,
   statusLine,
   updateMatchesTarget,
@@ -98,7 +99,7 @@ test("recognizes an already installed Kia UVO target", () => {
   );
 });
 
-test("waits for both the HACS record and update entity before replacing runtime", () => {
+test("requires the live HACS update entity before replacing runtime", () => {
   const states = [{
     entity_id: "update.kia_uvo_hyundai_bluelink_update",
     attributes: { installed_version: "v3.12.0" },
@@ -115,6 +116,15 @@ test("waits for both the HACS record and update entity before replacing runtime"
     { version_installed: "v3.11.0" },
     "v3.12.0",
   ), false);
+  assert.equal(hacsInstallationMatches(
+    states,
+    "update.kia_uvo_hyundai_bluelink_update",
+    { version_installed: "v3.11.0" },
+    "v3.12.0",
+    "v3.12.0",
+  ), true);
+  assert.equal(runtimeUpdateMatchesTarget(states[0], "v3.12.0"), true);
+  assert.equal(runtimeUpdateMatchesTarget(states[0], "v3.11.0"), false);
 });
 
 test("persists refreshed Kia credentials through the coordinator config entry", () => {

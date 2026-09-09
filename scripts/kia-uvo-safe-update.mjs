@@ -42,9 +42,22 @@ export function updateMatchesTarget(entity, hacs, targetVersion) {
     normalizeVersion(hacs?.version_installed) === target;
 }
 
-export function hacsInstallationMatches(states, entityId, hacs, targetVersion) {
+export function runtimeUpdateMatchesTarget(entity, targetVersion) {
+  return normalizeVersion(entity?.attributes?.installed_version) ===
+    normalizeVersion(targetVersion);
+}
+
+export function hacsInstallationMatches(
+  states,
+  entityId,
+  hacs,
+  targetVersion,
+  localVersion = null,
+) {
   const entity = states.find((state) => state.entity_id === entityId);
-  return updateMatchesTarget(entity, hacs, targetVersion);
+  return runtimeUpdateMatchesTarget(entity, targetVersion) &&
+    (updateMatchesTarget(entity, hacs, targetVersion) ||
+      normalizeVersion(localVersion) === normalizeVersion(targetVersion));
 }
 
 export function preferFullCommit(currentCommit, reportedCommit) {
@@ -578,7 +591,13 @@ async function waitForHacsInstallation(token, entityId, targetVersion, options =
   while (Date.now() - started < timeoutMs) {
     try {
       const states = await haRequest("GET", "/api/states", token);
-      if (hacsInstallationMatches(states, entityId, readHacsRecord(), targetVersion)) {
+      if (hacsInstallationMatches(
+        states,
+        entityId,
+        readHacsRecord(),
+        targetVersion,
+        readLocalManifest().version,
+      )) {
         return;
       }
     } catch {
@@ -606,11 +625,7 @@ async function applyPrepared(prepared, token, options = {}) {
     ));
   if (!updateEntity) throw new Error("HACS Kia UVO update entity was not found");
   const hacsBefore = readHacsRecord();
-  const alreadyInstalled = updateMatchesTarget(
-    updateEntity,
-    hacsBefore,
-    prepared.target,
-  );
+  const alreadyInstalled = runtimeUpdateMatchesTarget(updateEntity, prepared.target);
 
   const stamp = new Date().toISOString().replaceAll(":", "-");
   const backupDir = path.join(backupRoot, stamp);
@@ -652,12 +667,14 @@ async function applyPrepared(prepared, token, options = {}) {
       ],
       { capture: true },
     ).trim();
-    const hacsAfter = readHacsRecord();
-    if (normalizeVersion(hacsAfter?.version_installed) !== prepared.target) {
-      throw new Error(
-        `HACS still reports ${hacsAfter?.version_installed ?? "unknown"}`,
-      );
+    const statesAfter = await haRequest("GET", "/api/states", token);
+    if (!runtimeUpdateMatchesTarget(
+      statesAfter.find((entity) => entity.entity_id === updateEntity.entity_id),
+      prepared.target,
+    )) {
+      throw new Error(`HACS update entity did not confirm ${prepared.target}`);
     }
+    const hacsAfter = readHacsRecord();
     const config = options.metadata ? structuredClone(options.metadata) : readJson(statePath);
     config.base_version = prepared.target;
     if (!options.metadata) {
