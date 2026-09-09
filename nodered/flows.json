@@ -16721,7 +16721,8 @@
             "daily_update_request_test_out",
             "daily_update_result_test_out",
             "daily_update_kia_test_out",
-            "daily_update_kia_result_test_out"
+            "daily_update_kia_result_test_out",
+            "daily_update_kia_codex_result_test_out"
         ],
         "x": 735,
         "y": 870,
@@ -17435,7 +17436,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1050,
+        "x": 1010,
         "y": 2050,
         "wires": []
     },

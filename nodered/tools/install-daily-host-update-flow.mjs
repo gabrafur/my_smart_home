@@ -415,6 +415,7 @@ const nodes = [
     name: "Receber efeito TESTE", links: [
       "daily_update_request_test_out", "daily_update_result_test_out",
       "daily_update_kia_test_out", "daily_update_kia_result_test_out",
+      "daily_update_kia_codex_result_test_out",
     ],
     x: 715, y: 870, wires: [["daily_update_dry_run_terminal"]],
   },
@@ -590,7 +591,7 @@ const nodes = [
     wires: [["daily_update_kia_codex_parse_result"], ["daily_update_kia_codex_read_error"], ["daily_update_kia_codex_read_complete"]],
   },
   functionNode("daily_update_kia_codex_read_error", kiaCodexGroup, "Falha ao ler status Codex", recordExecError, 0, 800, 2050, []),
-  functionNode("daily_update_kia_codex_read_complete", kiaCodexGroup, "Código da leitura Codex", recordCompletion, 0, 1030, 2050, []),
+  functionNode("daily_update_kia_codex_read_complete", kiaCodexGroup, "Código da leitura Codex", recordCompletion, 0, 990, 2050, []),
   functionNode("daily_update_kia_codex_parse_result", kiaCodexGroup, "Normalizar falha final do Codex", parseKiaCodexMergeResult, 1, 810, 1990, [["daily_update_kia_codex_result_test_out"]]),
   {
     id: "daily_update_kia_codex_result_test_out", type: "link out", z: TAB, g: kiaCodexGroup,
