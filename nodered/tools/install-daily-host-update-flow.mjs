@@ -36,7 +36,7 @@ return msg;`;
 const recordRequest = `const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 400);
 const status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];
 if (!status) {
-    node.error("daily_update_request_unrecognized");
+    node.error("daily_update_request_unrecognized", msg);
     node.status({ fill: "red", shape: "ring", text: "resposta inválida" });
     return null;
 }
@@ -45,7 +45,7 @@ return null;`;
 
 const recordExecError = `const detail = String(msg.payload ?? "indisponível").replace(/[\\r\\n]+/g, " ").slice(0, 240);
 node.status({ fill: "red", shape: "ring", text: "ponte indisponível" });
-node.error("daily_update_bridge_unavailable detail=" + detail);
+node.error("daily_update_bridge_unavailable detail=" + detail, msg);
 return null;`;
 
 const recordCompletion = `const code = Number(msg.payload?.code ?? msg.payload ?? -1);
@@ -67,7 +67,7 @@ return msg;`;
 const recordKiaUpdateRequest = `const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 400);
 const status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];
 if (!status) {
-    node.error("kia_uvo_update_request_unrecognized");
+    node.error("kia_uvo_update_request_unrecognized", msg);
     node.status({ fill: "red", shape: "ring", text: "resposta inválida" });
     return null;
 }
@@ -78,7 +78,7 @@ const recordKiaCodexMergeRequest = `const text = String(msg.payload ?? "").repla
 const status = text.match(/\\bstatus=(accepted|coalesced)\\b/)?.[1];
 const target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? "unknown";
 if (!status) {
-    node.error("kia_uvo_codex_merge_request_unrecognized");
+    node.error("kia_uvo_codex_merge_request_unrecognized", msg);
     node.status({ fill: "red", shape: "ring", text: "resposta inválida" });
     return null;
 }
@@ -93,7 +93,7 @@ const state = text.match(/\\bstate=(waiting|running|success|failed|unknown)\\b/)
 const target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? "unknown";
 const updatedAt = text.match(/\\bupdated_at=([^ ]+)\\b/)?.[1] ?? "unknown";
 if (!state || state === "unknown") {
-    if (!TEST_MODE) node.error("kia_uvo_codex_merge_result_unrecognized");
+    if (!TEST_MODE) node.error("kia_uvo_codex_merge_result_unrecognized", msg);
     return null;
 }
 const result = {
@@ -121,7 +121,7 @@ if (TEST_MODE) {
     return msg;
 }
 if (state === "failed") {
-    node.error("kia_uvo_codex_merge_failed target=" + target + " updated_at=" + updatedAt);
+    node.error("kia_uvo_codex_merge_failed target=" + target + " updated_at=" + updatedAt, msg);
 }
 return null;`;
 
@@ -130,7 +130,7 @@ const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0
 if (!text) return null;
 const status = text.match(/\\bstatus=(running|compatible|conflict|applied|rollback|failed|deferred|unavailable|unknown)\\b/)?.[1];
 if (!status) {
-    if (!TEST_MODE) node.error("kia_uvo_update_result_unrecognized");
+    if (!TEST_MODE) node.error("kia_uvo_update_result_unrecognized", msg);
     return null;
 }
 const result = {
@@ -165,11 +165,11 @@ if (TEST_MODE) {
     msg.payload = result;
     return [msg, null];
 }
-if (failed) node.error("kia_uvo_update_check_failed status=" + status + " request_id=" + result.request_id);
+if (failed) node.error("kia_uvo_update_check_failed status=" + status + " request_id=" + result.request_id, msg);
 else if (status === "conflict") {
     node.warn("kia_uvo_update_requires_codex_merge latest=" + String(result.latest_version));
     if (!result.latest_version) {
-        node.error("kia_uvo_codex_merge_missing_target");
+        node.error("kia_uvo_codex_merge_missing_target", msg);
         return [null, null];
     }
     msg.payload = result.latest_version;
@@ -187,7 +187,7 @@ const dietpiExit = Number(text.match(/\\bdietpi_exit=(\\d+)\\b/)?.[1] ?? NaN);
 const dietpiStage = text.match(/\\bdietpi_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;
 const containersExit = Number(text.match(/\\bcontainers_exit=(\\d+)\\b/)?.[1] ?? NaN);
 if (!status) {
-    if (!TEST_MODE) node.error("daily_update_result_unrecognized");
+    if (!TEST_MODE) node.error("daily_update_result_unrecognized", msg);
     return null;
 }
 const signature = requestId + ":" + status;
@@ -215,7 +215,7 @@ if (TEST_MODE) {
     return msg;
 }
 if (failed) {
-    node.error("daily_update_failed request_id=" + requestId + " dietpi_stage=" + String(result.dietpi_stage) + " dietpi_exit=" + String(result.dietpi_exit) + " containers_exit=" + String(result.containers_exit));
+    node.error("daily_update_failed request_id=" + requestId + " dietpi_stage=" + String(result.dietpi_stage) + " dietpi_exit=" + String(result.dietpi_exit) + " containers_exit=" + String(result.containers_exit), msg);
 }
 return null;`;
 

@@ -92,10 +92,11 @@ const flow = {
 };
 const statuses = [];
 const errors = [];
+const errorMessages = [];
 const runtimeNode = {
   status(value) { statuses.push(value); },
   warn() {},
-  error(value) { errors.push(value); },
+  error(value, message) { errors.push(value); errorMessages.push(message); },
 };
 const prepare = new Function("msg", "node", "flow", node("daily_update_prepare_request").func);
 assert.equal(prepare(
@@ -188,6 +189,7 @@ assert.equal(parseKiaCodexMerge(
   flow,
 ), null);
 assert.match(errors.at(-1), /kia_uvo_codex_merge_failed target=v3.12.0/);
+assert.equal(errorMessages.at(-1).payload, "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z");
 const errorsAfterCodexFailure = errors.length;
 assert.equal(parseKiaCodexMerge(
   { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z" },
