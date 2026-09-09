@@ -247,6 +247,10 @@ the host with rollback before it is promoted to `main`. Other safe entities
 retain the prior policy. The bridge installer removes the legacy direct
 `daily` and `ha-updates` cron entries and installs the one-minute Kia promotion
 worker.
+Node-RED tracks the Codex candidate and the safe promotion separately:
+`candidate ready` never means completed; only `completed` confirms both the
+Home Assistant runtime and `main`. The host exposes only this sanitized
+lifecycle to Node-RED, without internal failure detail.
 
 Node-RED receives neither `sudo`, the checkout, nor the Docker socket. The
 installed `/usr/local/sbin` helper belongs to `root`, and its sudoers rule

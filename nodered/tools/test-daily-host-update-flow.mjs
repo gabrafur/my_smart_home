@@ -44,6 +44,8 @@ assert.equal(node("daily_update_kia_codex_request").command, "/opt/request-kia-u
 assert.equal(node("daily_update_kia_codex_request").addpay, "payload");
 assert.equal(node("daily_update_kia_codex_read_result").command, "/opt/read-kia-uvo-codex-merge-result.sh");
 assert.equal(node("daily_update_kia_codex_result_poll").repeat, "60");
+assert.equal(node("daily_update_kia_promotion_read_result").command, "/opt/read-kia-uvo-promotion-result.sh");
+assert.equal(node("daily_update_kia_promotion_result_poll").repeat, "60");
 assert.deepEqual(node("daily_update_kia_route_test").wires, [
   ["daily_update_kia_test_out"],
   ["daily_update_kia_request_host"],
@@ -198,6 +200,28 @@ assert.equal(parseKiaCodexMerge(
 ), null);
 assert.equal(errors.length, errorsAfterCodexFailure, "duplicate Codex worker failures must be deduplicated");
 
+const parseKiaPromotion = new Function("msg", "node", "flow", node("daily_update_kia_promotion_parse_result").func);
+const kiaPromotionTestFailure = parseKiaPromotion(
+  { _kia_promotion_test: true, payload: "kia-uvo-promotion state=failed target=v3.12.0 updated_at=synthetic" },
+  runtimeNode,
+  flow,
+);
+assert.equal(kiaPromotionTestFailure.payload.state, "failed");
+assert.equal(kiaPromotionTestFailure.payload.target, "v3.12.0");
+const errorsBeforePromotionFailure = errors.length;
+assert.equal(parseKiaPromotion(
+  { payload: "kia-uvo-promotion state=failed target=v3.12.0 updated_at=synthetic" },
+  runtimeNode,
+  flow,
+), null);
+assert.match(errors.at(-1), /kia_uvo_promotion_failed state=failed target=v3.12.0/);
+assert.equal(parseKiaPromotion(
+  { payload: "kia-uvo-promotion state=failed target=v3.12.0 updated_at=synthetic" },
+  runtimeNode,
+  flow,
+), null);
+assert.equal(errors.length, errorsBeforePromotionFailure + 1, "duplicate promotion failures must be deduplicated");
+
 const compose = fs.readFileSync(path.resolve(here, "..", "..", "docker-compose.yml"), "utf8");
 assert.match(compose, /\.\/homeassistant\/\.daily-update-trigger:\/run\/daily-update-trigger/);
 assert.match(compose, /request-host-daily-update\.sh:\/opt\/request-host-daily-update\.sh:ro/);
@@ -206,6 +230,7 @@ assert.match(compose, /request-host-kia-uvo-update-check\.sh:\/opt\/request-host
 assert.match(compose, /read-host-kia-uvo-update-result\.sh:\/opt\/read-host-kia-uvo-update-result\.sh:ro/);
 assert.match(compose, /request-kia-uvo-codex-merge\.sh:\/opt\/request-kia-uvo-codex-merge\.sh:ro/);
 assert.match(compose, /read-kia-uvo-codex-merge-result\.sh:\/opt\/read-kia-uvo-codex-merge-result\.sh:ro/);
+assert.match(compose, /read-kia-uvo-promotion-result\.sh:\/opt\/read-kia-uvo-promotion-result\.sh:ro/);
 assert.match(compose, /\.\/\.local-state\/kia-uvo-merge-trigger:\/run\/kia-uvo-merge-trigger/);
 assert.match(compose, /kia-uvo-codex-merge:/);
 assert.match(compose, /KIA_UVO_MERGE_PUSH=\$\{KIA_UVO_MERGE_PUSH:-true\}/);

@@ -125,6 +125,49 @@ if (state === "failed") {
 }
 return null;`;
 
+const parseKiaPromotionResult = `const TEST_MODE = msg._kia_promotion_test === true || msg.payload?.test_mode === true;
+const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 400);
+if (!text) return null;
+const state = text.match(/\\bstate=(deferred|applying|runtime_applied|applied_pending_git|main_published|completed|failed|unknown)\\b/)?.[1];
+const target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? "unknown";
+const updatedAt = text.match(/\\bupdated_at=([^ ]+)\\b/)?.[1] ?? "unknown";
+if (!state || state === "unknown") {
+    if (!TEST_MODE) node.error("kia_uvo_promotion_result_unrecognized", msg);
+    return null;
+}
+const result = {
+    version: 1,
+    state,
+    target,
+    updated_at: updatedAt,
+    test_mode: TEST_MODE,
+    observed_at: Date.now()
+};
+const signature = [result.state, result.target, result.updated_at].join(":");
+const key = TEST_MODE ? "kia_uvo_promotion_last_result_v1__test" : "kia_uvo_promotion_last_result_v1";
+const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
+if (!TEST_MODE && previous?.signature === signature) return null;
+result.signature = signature;
+if (TEST_MODE) flow.set(key, result);
+else flow.set(key, result, "persistent");
+const failed = ["failed", "deferred"].includes(state);
+const completed = state === "completed";
+node.status({
+    fill: failed ? "red" : completed ? "green" : "blue",
+    shape: failed ? "ring" : "dot",
+    text: completed ? "runtime e main confirmados: " + target
+        : state === "applying" ? "validando runtime: " + target
+        : state + ": " + target
+});
+if (TEST_MODE) {
+    msg.payload = result;
+    return msg;
+}
+if (failed) {
+    node.error("kia_uvo_promotion_failed state=" + state + " target=" + target + " updated_at=" + updatedAt, msg);
+}
+return null;`;
+
 const parseKiaUpdateResult = `const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
 if (!text) return null;
@@ -222,6 +265,7 @@ return null;`;
 const resetTest = `flow.set("daily_update_last_result_v1__test", undefined);
 flow.set("kia_uvo_update_last_result_v1__test", undefined);
 flow.set("kia_uvo_codex_merge_last_result_v1__test", undefined);
+flow.set("kia_uvo_promotion_last_result_v1__test", undefined);
 flow.set("daily_update_last_dry_run_v1", {
     version: 1, reset: true, simulated: true, dispatched: false,
     completed_at: Date.now()
@@ -415,7 +459,7 @@ const nodes = [
     name: "Receber efeito TESTE", links: [
       "daily_update_request_test_out", "daily_update_result_test_out",
       "daily_update_kia_test_out", "daily_update_kia_result_test_out",
-      "daily_update_kia_codex_result_test_out",
+      "daily_update_kia_codex_result_test_out", "daily_update_kia_promotion_result_test_out",
     ],
     x: 715, y: 870, wires: [["daily_update_dry_run_terminal"]],
   },
@@ -545,15 +589,20 @@ const nodes = [
       "daily_update_kia_codex_result_startup", "daily_update_kia_codex_result_poll",
       "daily_update_kia_codex_read_result", "daily_update_kia_codex_read_error",
       "daily_update_kia_codex_read_complete", "daily_update_kia_codex_parse_result",
+      "daily_update_kia_promotion_result_startup", "daily_update_kia_promotion_result_poll",
+      "daily_update_kia_promotion_read_result", "daily_update_kia_promotion_read_error",
+      "daily_update_kia_promotion_read_complete", "daily_update_kia_promotion_parse_result",
       "daily_update_kia_codex_test_result", "daily_update_kia_codex_test_result_out",
       "daily_update_kia_codex_test_result_in", "daily_update_kia_codex_result_test_out",
+      "daily_update_kia_promotion_test_result", "daily_update_kia_promotion_test_result_out",
+      "daily_update_kia_promotion_test_result_in", "daily_update_kia_promotion_result_test_out",
     ],
-    x: 64, y: 1679, w: 1252, h: 482,
+    x: 64, y: 1679, w: 1252, h: 832,
   },
   {
     id: "daily_update_kia_codex_architecture", type: "comment", z: TAB, g: kiaCodexGroup,
-    name: "Codex isolado publica candidata; host aplica com rollback antes de promover main",
-    info: "O helper recebe apenas a versão alvo. O Codex não recebe Docker nem token HA. Um worker separado no host revalida a candidata e só envia main após validar a instalação ativa. O teste sintético nunca alcança este grupo.",
+    name: "Codex isolado publica candidata; host valida runtime antes de promover main",
+    info: "A candidata do Codex não equivale a uma atualização concluída. O host revalida a candidata, instala pelo HACS, confirma a integração ativa e só então envia main e remove a branch. O Codex não recebe Docker nem token HA. O teste sintético nunca alcança este grupo.",
     x: 660, y: 1720, wires: [],
   },
   {
@@ -615,6 +664,51 @@ const nodes = [
     id: "daily_update_kia_codex_test_result_in", type: "link in", z: TAB, g: kiaCodexGroup,
     name: "Receber falha Codex TESTE", links: ["daily_update_kia_codex_test_result_out"],
     x: 610, y: 2070, wires: [["daily_update_kia_codex_parse_result"]],
+  },
+  {
+    id: "daily_update_kia_promotion_result_startup", type: "inject", z: TAB, g: kiaCodexGroup,
+    name: "Ler promoção segura ao subir", props: [{ p: "payload" }], repeat: "", crontab: "",
+    once: true, onceDelay: "70", topic: "", payload: "", payloadType: "date",
+    x: 215, y: 2170, wires: [["daily_update_kia_promotion_read_result"]],
+  },
+  {
+    id: "daily_update_kia_promotion_result_poll", type: "inject", z: TAB, g: kiaCodexGroup,
+    name: "Promoção segura a cada 1 min", props: [{ p: "payload" }], repeat: "60", crontab: "",
+    once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 205, y: 2230, wires: [["daily_update_kia_promotion_read_result"]],
+  },
+  {
+    id: "daily_update_kia_promotion_read_result", type: "exec", z: TAB, g: kiaCodexGroup,
+    command: "/opt/read-kia-uvo-promotion-result.sh", addpay: "", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Ler promoção segura",
+    x: 500, y: 2200,
+    wires: [["daily_update_kia_promotion_parse_result"], ["daily_update_kia_promotion_read_error"], ["daily_update_kia_promotion_read_complete"]],
+  },
+  functionNode("daily_update_kia_promotion_read_error", kiaCodexGroup, "Falha ao ler promoção segura", recordExecError, 0, 800, 2260, []),
+  functionNode("daily_update_kia_promotion_read_complete", kiaCodexGroup, "Código da promoção segura", recordCompletion, 0, 500, 2320, []),
+  functionNode("daily_update_kia_promotion_parse_result", kiaCodexGroup, "Confirmar promoção segura", parseKiaPromotionResult, 1, 810, 2200, [["daily_update_kia_promotion_result_test_out"]]),
+  {
+    id: "daily_update_kia_promotion_result_test_out", type: "link out", z: TAB, g: kiaCodexGroup,
+    name: "Promoção TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 1110, y: 2200, wires: [],
+  },
+  {
+    id: "daily_update_kia_promotion_test_result", type: "inject", z: TAB, g: kiaCodexGroup,
+    name: "TESTE: falha da promoção segura", props: [
+      { p: "payload", v: "kia-uvo-promotion state=failed target=v3.12.0 updated_at=synthetic", vt: "str" },
+      { p: "_kia_promotion_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
+    payload: "", payloadType: "date", x: 215, y: 2410, wires: [["daily_update_kia_promotion_test_result_out"]],
+  },
+  {
+    id: "daily_update_kia_promotion_test_result_out", type: "link out", z: TAB, g: kiaCodexGroup,
+    name: "Falha promoção TESTE → parser", mode: "link", links: ["daily_update_kia_promotion_test_result_in"],
+    x: 505, y: 2410, wires: [],
+  },
+  {
+    id: "daily_update_kia_promotion_test_result_in", type: "link in", z: TAB, g: kiaCodexGroup,
+    name: "Receber falha promoção TESTE", links: ["daily_update_kia_promotion_test_result_out"],
+    x: 610, y: 2410, wires: [["daily_update_kia_promotion_parse_result"]],
   },
 ];
 

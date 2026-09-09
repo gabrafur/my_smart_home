@@ -248,6 +248,10 @@ pelo host com rollback antes de ser promovida a `main`. As demais entidades
 seguras preservam a política anterior. O instalador da ponte remove do
 `crontab` as chamadas diretas de `docker-auto-update.mjs daily` e `ha-updates`;
 permanecem os workers coalescentes e o promotor Kia de um minuto.
+O Node-RED acompanha separadamente a candidata do Codex e a promoção segura:
+`candidata pronta` nunca significa concluída; somente `completed` confirma que
+o runtime do Home Assistant e a `main` foram validados. O host publica para o
+Node-RED apenas esse ciclo sanitizado, sem detalhes internos de falha.
 
 O Node-RED não recebe `sudo`, checkout nem socket Docker. O helper instalado em
 `/usr/local/sbin` pertence a `root`, e o arquivo de `sudoers` autoriza somente

@@ -20,6 +20,7 @@ const requestKiaUpdate = path.join(scriptsDir, "request-host-kia-uvo-update-chec
 const readKiaUpdate = path.join(scriptsDir, "read-host-kia-uvo-update-result.sh");
 const processKiaUpdate = path.join(scriptsDir, "process-kia-uvo-update-request.sh");
 const readKiaCodexMerge = path.join(scriptsDir, "read-kia-uvo-codex-merge-result.sh");
+const readKiaPromotion = path.join(scriptsDir, "read-kia-uvo-promotion-result.sh");
 
 test("Node-RED requests are coalesced and expose the final host result", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "daily-update-request-test-"));
@@ -160,6 +161,26 @@ test("the Kia Codex merge reader exposes a safe terminal lifecycle", () => {
   assert.match(result.stdout, /state=failed target=v3\.12\.0/);
   assert.match(result.stdout, /updated_at=2026-09-09T12:00:19.820Z/);
   assert.doesNotMatch(result.stdout, /authentication|reason=/);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("the Kia promotion reader exposes only the safe host lifecycle", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-promotion-result-test-"));
+  const statusPath = path.join(fixture, "promotion-status.json");
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: "completed",
+    target: "v3.12.0",
+    reason: "host runtime detail must not reach Node-RED",
+    updated_at: "2026-09-09T12:01:19.820Z",
+  }));
+  const result = spawnSync(readKiaPromotion, [], {
+    encoding: "utf8",
+    env: { ...process.env, KIA_UVO_PROMOTION_PUBLIC_STATUS_PATH: statusPath },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /state=completed target=v3\.12\.0/);
+  assert.match(result.stdout, /updated_at=2026-09-09T12:01:19.820Z/);
+  assert.doesNotMatch(result.stdout, /host runtime|reason=/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

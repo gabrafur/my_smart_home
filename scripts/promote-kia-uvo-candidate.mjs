@@ -14,6 +14,8 @@ const workerStatusPath = process.env.KIA_UVO_MERGE_STATUS_PATH ||
   path.join(mergeStateDir, "status.json");
 const promotionStatusPath = process.env.KIA_UVO_PROMOTION_STATUS_PATH ||
   path.join(mergeStateDir, "promotion-status.json");
+const promotionPublicStatusPath = process.env.KIA_UVO_PROMOTION_PUBLIC_STATUS_PATH ||
+  path.join(mergeStateDir, "promotion-public-status.json");
 const safeUpdater = process.env.KIA_UVO_SAFE_UPDATER ||
   path.join(scriptDir, "kia-uvo-safe-update.mjs");
 const allowedPrefixes = ["homeassistant/custom_components/kia_uvo/"];
@@ -47,6 +49,18 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
 
+function writePublicStatus(status) {
+  const publicStatus = {
+    schema_version: 1,
+    state: status?.state,
+    target: status?.target,
+    updated_at: status?.updated_at ?? status?.finished_at,
+  };
+  const temporary = `${promotionPublicStatusPath}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(publicStatus)}\n`, { mode: 0o640 });
+  fs.renameSync(temporary, promotionPublicStatusPath);
+}
+
 function writeStatus(patch) {
   let previous = {};
   try { previous = readJson(promotionStatusPath); } catch { /* first run */ }
@@ -60,6 +74,7 @@ function writeStatus(patch) {
   const temporary = `${promotionStatusPath}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
   fs.renameSync(temporary, promotionStatusPath);
+  writePublicStatus(next);
   return next;
 }
 
@@ -266,7 +281,10 @@ export async function promote({ checkOnly = false } = {}) {
     }
   }
   if (promotion.source_commit === candidate.commit &&
-      ["completed", "failed"].includes(promotion.state)) return false;
+      ["completed", "failed"].includes(promotion.state)) {
+    writePublicStatus(promotion);
+    return false;
+  }
   const resumeGit = promotion.source_commit === candidate.commit &&
     ["runtime_applied", "applied_pending_git"].includes(promotion.state);
   let expectedPaths;
