@@ -66,9 +66,14 @@ def _load_coordinator_without_home_assistant():
             super().__init__(message)
             self.retry_after = retry_after
 
+    class FakeDataUpdateCoordinator:
+        @classmethod
+        def __class_getitem__(cls, _item):
+            return cls
+
     _module(
         "homeassistant.helpers.update_coordinator",
-        DataUpdateCoordinator=type("DataUpdateCoordinator", (), {}),
+        DataUpdateCoordinator=FakeDataUpdateCoordinator,
         UpdateFailed=FakeUpdateFailed,
     )
     _module("homeassistant.util", __path__=[])
