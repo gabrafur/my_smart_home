@@ -94,7 +94,7 @@ msg.alert = {
 return [msg, null, null, null];`;
 
 const recordError = `const detail = String(msg.payload ?? "erro desconhecido").replace(/[\\r\\n]+/g, " ").slice(0, 240);
-node.error("git_backup_request_failed detail=" + detail);
+node.error("git_backup_request_failed detail=" + detail, msg);
 node.status({ fill: "red", shape: "ring", text: "solicitação falhou" });
 msg.alert = {
     title: "Falha no backup Git",
