@@ -17,6 +17,11 @@ const portugueseActionWords = new Set([
 const conventionalSubject = new RegExp(
   `^(?:${allowedTypes.join("|")})(?:\\([a-z0-9][a-z0-9._/-]*\\))?!?: ([a-z0-9].*)$`,
 );
+const githubMergeResult = /^Merge [0-9a-f]{40} into [0-9a-f]{40}$/;
+
+export function isGitHubMergeResult(subject) {
+  return githubMergeResult.test(subject);
+}
 
 export function validateCommitSubject(subject) {
   const errors = [];
@@ -61,6 +66,9 @@ function checkRevisions(revision) {
     const parents = git(["show", "-s", "--format=%P", commit]).split(/\s+/).filter(Boolean);
     if (parents.length > 1) continue;
     const subject = git(["show", "-s", "--format=%s", commit]);
+    // GitHub's pull_request checkout can synthesize this single-parent merge
+    // result, so it has no author-controlled conventional subject to validate.
+    if (isGitHubMergeResult(subject)) continue;
     valid = checkSubject(subject) && valid;
   }
   return valid;

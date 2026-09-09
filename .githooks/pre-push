@@ -25,4 +25,7 @@ if [ -n "$worktree_status" ]; then
 fi
 
 printf 'pre-push: running canonical public validation for %s\n' "$head_oid"
-exec make -C "$repository_root" --no-print-directory validate-public
+# Git hooks export repository-scoped variables. Tests create independent Git
+# fixtures, so they must not inherit the hooked worktree's GIT_DIR or index.
+exec env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_COMMON_DIR -u GIT_PREFIX \
+  make -C "$repository_root" --no-print-directory validate-public
