@@ -19,6 +19,7 @@ const installHelper = path.join(scriptsDir, "install-dietpi-daily-upgrade-helper
 const requestKiaUpdate = path.join(scriptsDir, "request-host-kia-uvo-update-check.sh");
 const readKiaUpdate = path.join(scriptsDir, "read-host-kia-uvo-update-result.sh");
 const processKiaUpdate = path.join(scriptsDir, "process-kia-uvo-update-request.sh");
+const readKiaCodexMerge = path.join(scriptsDir, "read-kia-uvo-codex-merge-result.sh");
 
 test("Node-RED requests are coalesced and expose the final host result", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "daily-update-request-test-"));
@@ -139,6 +140,26 @@ test("Node-RED Kia requests run only the safe checker and expose a sanitized res
   assert.match(read.stdout, /request_id=/);
   assert.equal(fs.statSync(path.join(triggerDir, "kia-uvo-result")).mode & 0o060, 0o060);
   assert.doesNotMatch(read.stdout, /private|message=/);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("the Kia Codex merge reader exposes a safe terminal lifecycle", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-codex-merge-result-test-"));
+  const statusPath = path.join(fixture, "status.json");
+  fs.writeFileSync(statusPath, JSON.stringify({
+    state: "failed",
+    target: "v3.12.0",
+    reason: "authentication detail must not reach Node-RED",
+    updated_at: "2026-09-09T12:00:19.820Z",
+  }));
+  const result = spawnSync(readKiaCodexMerge, [], {
+    encoding: "utf8",
+    env: { ...process.env, KIA_UVO_MERGE_STATUS_PATH: statusPath },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /state=failed target=v3\.12\.0/);
+  assert.match(result.stdout, /updated_at=2026-09-09T12:00:19.820Z/);
+  assert.doesNotMatch(result.stdout, /authentication|reason=/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

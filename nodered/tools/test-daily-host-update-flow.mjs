@@ -42,6 +42,8 @@ assert.deepEqual(node("daily_update_kia_parse_result").wires, [
 assert.deepEqual(node("daily_update_kia_codex_request_out").links, ["daily_update_kia_codex_request_in"]);
 assert.equal(node("daily_update_kia_codex_request").command, "/opt/request-kia-uvo-codex-merge.sh");
 assert.equal(node("daily_update_kia_codex_request").addpay, "payload");
+assert.equal(node("daily_update_kia_codex_read_result").command, "/opt/read-kia-uvo-codex-merge-result.sh");
+assert.equal(node("daily_update_kia_codex_result_poll").repeat, "60");
 assert.deepEqual(node("daily_update_kia_route_test").wires, [
   ["daily_update_kia_test_out"],
   ["daily_update_kia_request_host"],
@@ -170,6 +172,30 @@ assert.deepEqual(parseKia(
 ), [null, null]);
 assert.match(errors.at(-1), /kia_uvo_update_check_failed/);
 
+const parseKiaCodexMerge = new Function("msg", "node", "flow", node("daily_update_kia_codex_parse_result").func);
+const kiaCodexTestFailure = parseKiaCodexMerge(
+  { _kia_codex_merge_test: true, payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z" },
+  runtimeNode,
+  flow,
+);
+assert.equal(kiaCodexTestFailure.payload.state, "failed");
+assert.equal(kiaCodexTestFailure.payload.target, "v3.12.0");
+assert.match(kiaCodexTestFailure.payload.updated_at, /^2026-09-09T12:00:19/);
+assert.match(errors.at(-1), /kia_uvo_update_check_failed/, "synthetic Codex failures must not alert production observers");
+assert.equal(parseKiaCodexMerge(
+  { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z" },
+  runtimeNode,
+  flow,
+), null);
+assert.match(errors.at(-1), /kia_uvo_codex_merge_failed target=v3.12.0/);
+const errorsAfterCodexFailure = errors.length;
+assert.equal(parseKiaCodexMerge(
+  { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z" },
+  runtimeNode,
+  flow,
+), null);
+assert.equal(errors.length, errorsAfterCodexFailure, "duplicate Codex worker failures must be deduplicated");
+
 const compose = fs.readFileSync(path.resolve(here, "..", "..", "docker-compose.yml"), "utf8");
 assert.match(compose, /\.\/homeassistant\/\.daily-update-trigger:\/run\/daily-update-trigger/);
 assert.match(compose, /request-host-daily-update\.sh:\/opt\/request-host-daily-update\.sh:ro/);
@@ -177,6 +203,7 @@ assert.match(compose, /read-host-daily-update-result\.sh:\/opt\/read-host-daily-
 assert.match(compose, /request-host-kia-uvo-update-check\.sh:\/opt\/request-host-kia-uvo-update-check\.sh:ro/);
 assert.match(compose, /read-host-kia-uvo-update-result\.sh:\/opt\/read-host-kia-uvo-update-result\.sh:ro/);
 assert.match(compose, /request-kia-uvo-codex-merge\.sh:\/opt\/request-kia-uvo-codex-merge\.sh:ro/);
+assert.match(compose, /read-kia-uvo-codex-merge-result\.sh:\/opt\/read-kia-uvo-codex-merge-result\.sh:ro/);
 assert.match(compose, /\.\/\.local-state\/kia-uvo-merge-trigger:\/run\/kia-uvo-merge-trigger/);
 assert.match(compose, /kia-uvo-codex-merge:/);
 assert.match(compose, /KIA_UVO_MERGE_PUSH=\$\{KIA_UVO_MERGE_PUSH:-true\}/);

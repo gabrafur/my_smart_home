@@ -86,6 +86,45 @@ node.status({ fill: status === "accepted" ? "green" : "yellow", shape: "dot", te
 node.log("kia_uvo_codex_merge_request status=" + status + " target=" + target);
 return null;`;
 
+const parseKiaCodexMergeResult = `const TEST_MODE = msg._kia_codex_merge_test === true || msg.payload?.test_mode === true;
+const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 400);
+if (!text) return null;
+const state = text.match(/\\bstate=(waiting|running|success|failed|unknown)\\b/)?.[1];
+const target = text.match(/\\btarget=(v?[A-Za-z0-9.+-]+)\\b/)?.[1] ?? "unknown";
+const updatedAt = text.match(/\\bupdated_at=([^ ]+)\\b/)?.[1] ?? "unknown";
+if (!state || state === "unknown") {
+    if (!TEST_MODE) node.error("kia_uvo_codex_merge_result_unrecognized");
+    return null;
+}
+const result = {
+    version: 1,
+    state,
+    target,
+    updated_at: updatedAt,
+    test_mode: TEST_MODE,
+    observed_at: Date.now()
+};
+const signature = [result.state, result.target, result.updated_at].join(":");
+const key = TEST_MODE ? "kia_uvo_codex_merge_last_result_v1__test" : "kia_uvo_codex_merge_last_result_v1";
+const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
+if (!TEST_MODE && previous?.signature === signature) return null;
+result.signature = signature;
+if (TEST_MODE) flow.set(key, result);
+else flow.set(key, result, "persistent");
+node.status({
+    fill: state === "failed" ? "red" : state === "success" ? "green" : "blue",
+    shape: state === "failed" ? "ring" : "dot",
+    text: state === "success" ? "candidata pronta: " + target : state + ": " + target
+});
+if (TEST_MODE) {
+    msg.payload = result;
+    return msg;
+}
+if (state === "failed") {
+    node.error("kia_uvo_codex_merge_failed target=" + target + " updated_at=" + updatedAt);
+}
+return null;`;
+
 const parseKiaUpdateResult = `const TEST_MODE = msg._kia_update_test === true || msg.payload?.test_mode === true;
 const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
 if (!text) return null;
@@ -182,6 +221,7 @@ return null;`;
 
 const resetTest = `flow.set("daily_update_last_result_v1__test", undefined);
 flow.set("kia_uvo_update_last_result_v1__test", undefined);
+flow.set("kia_uvo_codex_merge_last_result_v1__test", undefined);
 flow.set("daily_update_last_dry_run_v1", {
     version: 1, reset: true, simulated: true, dispatched: false,
     completed_at: Date.now()
@@ -501,8 +541,13 @@ const nodes = [
       "daily_update_kia_codex_architecture", "daily_update_kia_codex_request_in",
       "daily_update_kia_codex_request", "daily_update_kia_codex_ack",
       "daily_update_kia_codex_error", "daily_update_kia_codex_complete",
+      "daily_update_kia_codex_result_startup", "daily_update_kia_codex_result_poll",
+      "daily_update_kia_codex_read_result", "daily_update_kia_codex_read_error",
+      "daily_update_kia_codex_read_complete", "daily_update_kia_codex_parse_result",
+      "daily_update_kia_codex_test_result", "daily_update_kia_codex_test_result_out",
+      "daily_update_kia_codex_test_result_in", "daily_update_kia_codex_result_test_out",
     ],
-    x: 64, y: 1679, w: 1252, h: 262,
+    x: 64, y: 1679, w: 1252, h: 422,
   },
   {
     id: "daily_update_kia_codex_architecture", type: "comment", z: TAB, g: kiaCodexGroup,
@@ -525,6 +570,51 @@ const nodes = [
   functionNode("daily_update_kia_codex_ack", kiaCodexGroup, "Registrar acionamento Codex", recordKiaCodexMergeRequest, 0, 840, 1780, []),
   functionNode("daily_update_kia_codex_error", kiaCodexGroup, "Falha segura da ponte Codex", recordExecError, 0, 850, 1840, []),
   functionNode("daily_update_kia_codex_complete", kiaCodexGroup, "Código da ponte Codex", recordCompletion, 0, 840, 1900, []),
+  {
+    id: "daily_update_kia_codex_result_startup", type: "inject", z: TAB, g: kiaCodexGroup,
+    name: "Ler status Codex ao subir", props: [{ p: "payload" }], repeat: "", crontab: "",
+    once: true, onceDelay: "65", topic: "", payload: "", payloadType: "date",
+    x: 205, y: 1960, wires: [["daily_update_kia_codex_read_result"]],
+  },
+  {
+    id: "daily_update_kia_codex_result_poll", type: "inject", z: TAB, g: kiaCodexGroup,
+    name: "Status Codex a cada 1 min", props: [{ p: "payload" }], repeat: "60", crontab: "",
+    once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 220, y: 2020, wires: [["daily_update_kia_codex_read_result"]],
+  },
+  {
+    id: "daily_update_kia_codex_read_result", type: "exec", z: TAB, g: kiaCodexGroup,
+    command: "/opt/read-kia-uvo-codex-merge-result.sh", addpay: "", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Ler status final do Codex",
+    x: 500, y: 1990,
+    wires: [["daily_update_kia_codex_parse_result"], ["daily_update_kia_codex_read_error"], ["daily_update_kia_codex_read_complete"]],
+  },
+  functionNode("daily_update_kia_codex_read_error", kiaCodexGroup, "Falha ao ler status Codex", recordExecError, 0, 800, 2050, []),
+  functionNode("daily_update_kia_codex_read_complete", kiaCodexGroup, "Código da leitura Codex", recordCompletion, 0, 1030, 2050, []),
+  functionNode("daily_update_kia_codex_parse_result", kiaCodexGroup, "Normalizar falha final do Codex", parseKiaCodexMergeResult, 1, 810, 1990, [["daily_update_kia_codex_result_test_out"]]),
+  {
+    id: "daily_update_kia_codex_result_test_out", type: "link out", z: TAB, g: kiaCodexGroup,
+    name: "Resultado Codex TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
+    x: 1105, y: 1990, wires: [],
+  },
+  {
+    id: "daily_update_kia_codex_test_result", type: "inject", z: TAB, g: kiaCodexGroup,
+    name: "TESTE: falha do worker Codex", props: [
+      { p: "payload", v: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=2026-09-09T12:00:19.820Z", vt: "str" },
+      { p: "_kia_codex_merge_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "",
+    payload: "", payloadType: "date", x: 220, y: 2070, wires: [["daily_update_kia_codex_test_result_out"]],
+  },
+  {
+    id: "daily_update_kia_codex_test_result_out", type: "link out", z: TAB, g: kiaCodexGroup,
+    name: "Falha Codex TESTE → parser", mode: "link", links: ["daily_update_kia_codex_test_result_in"],
+    x: 500, y: 2070, wires: [],
+  },
+  {
+    id: "daily_update_kia_codex_test_result_in", type: "link in", z: TAB, g: kiaCodexGroup,
+    name: "Receber falha Codex TESTE", links: ["daily_update_kia_codex_test_result_out"],
+    x: 610, y: 2070, wires: [["daily_update_kia_codex_parse_result"]],
+  },
 ];
 
 // Preserve the manually approved canvas placement after the repository-wide
