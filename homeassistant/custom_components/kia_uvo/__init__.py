@@ -12,7 +12,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from .const import (
@@ -46,7 +45,7 @@ PLATFORMS: list[str] = [
 ]
 
 
-async def async_setup(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_setup(hass: HomeAssistant, config_entry: ConfigEntry):
     return True
 
 
@@ -81,7 +80,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     return unload_ok
 
 
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_migrate_entry(hass, config_entry: ConfigEntry):
     if config_entry.version == 1:
         _LOGGER.debug(f"{DOMAIN} - config data- {config_entry}")
         username = config_entry.data.get(CONF_USERNAME)
@@ -116,8 +115,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             CONF_FORCE_REFRESH_INTERVAL: force_refresh_interval,
             CONF_SCAN_INTERVAL: scan_interval,
         }
-        registry = er.async_get(hass)
-        entities = er.async_entries_for_config_entry(registry, config_entry.entry_id)
+        registry = hass.helpers.entity_registry.async_get(hass)
+        entities = hass.helpers.entity_registry.async_entries_for_config_entry(
+            registry, config_entry.entry_id
+        )
         for entity in entities:
             registry.async_remove(entity.entity_id)
 

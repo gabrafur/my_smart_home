@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, ClassVar, cast
+from time import sleep
+from typing import ClassVar
 
 from homeassistant.components.climate import ClimateEntity, ClimateEntityDescription
 from homeassistant.components.climate.const import (
@@ -15,8 +15,10 @@ from homeassistant.components.climate.const import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from hyundai_kia_connect_api import ClimateRequestOptions, Vehicle
+from hyundai_kia_connect_api import ClimateRequestOptions, Vehicle, VehicleManager
+from hyundai_kia_connect_api.exceptions import UnsupportedControlError
 
 from .const import DOMAIN
 from .coordinator import HyundaiKiaConnectDataUpdateCoordinator
@@ -45,6 +47,7 @@ PARALLEL_UPDATES = 1
 class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
     """Hyundai / Kia Connect Car Climate Control."""
 
+    vehicle_manager: VehicleManager
     vehicle: Vehicle
 
     # The python lib climate request is also treated as
@@ -64,7 +67,7 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
         v: k for [k, v] in heat_status_int_to_str.items()
     }
 
-    def get_internal_heat_int_for_climate_request(self) -> int:
+    def get_internal_heat_int_for_climate_request(self):
         if (
             self.vehicle.steering_wheel_heater_is_on
             and self.vehicle.back_window_heater_is_on
@@ -90,6 +93,7 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
             icon="mdi:air-conditioner",
             unit_of_measurement=vehicle._air_temperature_unit,
         )
+        self.vehicle_manager = coordinator.vehicle_manager
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_climate_control"
 
         # set the Climate Request to the current actual state of the car
@@ -110,13 +114,13 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
     @property
     def current_temperature(self) -> float | None:
         """Get the current in-car temperature."""
-        return cast(float | None, self.vehicle.air_temperature)
+        return self.vehicle.air_temperature
 
     @property
     def target_temperature(self) -> float | None:
         """Get the desired in-car target temperature."""
         # TODO: use Coordinator data, not internal state
-        return cast(float | None, self.climate_config.set_temp)
+        return self.climate_config.set_temp
 
     @property
     def target_temperature_step(self) -> float | None:
@@ -143,7 +147,7 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
         return 30
 
     @property
-    def hvac_mode(self) -> HVACMode | None:
+    def hvac_mode(self) -> str:
         """Get the configured climate control operation mode."""
 
         if not self.vehicle.air_control_is_on:
@@ -165,7 +169,7 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
         return HVACMode.AUTO
 
     @property
-    def hvac_action(self) -> HVACAction | None:
+    def hvac_action(self) -> str | None:
         # TODO: use Coordinator data, not internal state
         """
         Get what the in-car climate control is currently doing.
@@ -195,7 +199,7 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
         return HVACAction.OFF
 
     @property
-    def hvac_modes(self) -> list[HVACMode]:
+    def hvac_modes(self) -> list[str]:
         """Supported in-car climate control modes."""
         return [
             HVACMode.OFF,
@@ -206,22 +210,33 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
         ]
 
     @property
-    def supported_features(self) -> ClimateEntityFeature:
+    def supported_features(self) -> int:
         """Supported in-car climate control features."""
         return ClimateEntityFeature.TARGET_TEMPERATURE
 
-    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+    async def async_set_hvac_mode(self, hvac_mode):
         """Set the operation mode of the in-car climate control."""
 
-        if hvac_mode == HVACMode.OFF:
-            await self.coordinator.async_stop_climate(self.vehicle.id)
-        else:
-            await self.coordinator.async_start_climate(
-                self.vehicle.id, self.climate_config
-            )
+        try:
+            if hvac_mode == HVACMode.OFF:
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.stop_climate,
+                    self.vehicle.id,
+                )
+            else:
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.start_climate,
+                    self.vehicle.id,
+                    self.climate_config,
+                )
+        except UnsupportedControlError as ex:
+            raise HomeAssistantError(
+                f"Climate control not supported by this vehicle: {ex}"
+            ) from ex
+        self.coordinator.async_request_refresh()
         self.async_write_ha_state()
 
-    async def async_set_temperature(self, **kwargs: Any) -> None:
+    async def async_set_temperature(self, **kwargs):
         """Set the desired in-car temperature. Does not turn on the AC."""
         old_temp = self.climate_config.set_temp
         self.climate_config.set_temp = kwargs.get(ATTR_TEMPERATURE)
@@ -229,12 +244,23 @@ class HyundaiKiaCarClimateControlSwitch(HyundaiKiaConnectEntity, ClimateEntity):
         # activation is controlled separately, but if system is turned on
         # and temp has changed, send update to car
         if self.hvac_mode != HVACMode.OFF and old_temp != self.climate_config.set_temp:
-            # Car does not accept changing the temp after starting the heating. So we have to turn off first
-            await self.coordinator.async_stop_climate(self.vehicle.id)
-            # Wait, because the car ignores the start_climate command if it comes too fast after stopping
-            # TODO: replace with some more event driven method
-            await asyncio.sleep(5)
-            await self.coordinator.async_start_climate(
-                self.vehicle.id, self.climate_config
-            )
+            try:
+                # Car does not accept changing the temp after starting the heating. So we have to turn off first
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.stop_climate,
+                    self.vehicle.id,
+                )
+                # Wait, because the car ignores the start_climate command if it comes too fast after stopping
+                # TODO: replace with some more event driven method
+                await self.hass.async_add_executor_job(sleep, 5.0)
+                await self.hass.async_add_executor_job(
+                    self.vehicle_manager.start_climate,
+                    self.vehicle.id,
+                    self.climate_config,
+                )
+            except UnsupportedControlError as ex:
+                raise HomeAssistantError(
+                    f"Climate control not supported by this vehicle: {ex}"
+                ) from ex
+        self.coordinator.async_request_refresh()
         self.async_write_ha_state()

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Final
 
 from homeassistant.components.cover import (
-    ATTR_POSITION,
     CoverEntity,
     CoverEntityDescription,
     CoverEntityFeature,
@@ -98,7 +97,7 @@ class HyundaiKiaConnectCover(CoverEntity, HyundaiKiaConnectEntity):
         vehicle: Vehicle,
     ) -> None:
         HyundaiKiaConnectEntity.__init__(self, coordinator, vehicle)
-        self.entity_description: HyundaiKiaCoverDescription = description
+        self.entity_description = description
         self._attr_unique_id = f"{DOMAIN}_{vehicle.id}_{description.key}"
 
     @property
@@ -117,26 +116,25 @@ class HyundaiKiaConnectCover(CoverEntity, HyundaiKiaConnectEntity):
             return 100
         return 0
 
-    async def async_open_cover(self, **kwargs: Any) -> None:
+    async def async_open_cover(self, **kwargs) -> None:
         options = WindowRequestOptions(
             **{self.entity_description.window_position: WINDOW_STATE.OPEN}
         )
         await self.coordinator.async_set_windows(self.vehicle.id, options)
 
-    async def async_close_cover(self, **kwargs: Any) -> None:
+    async def async_close_cover(self, **kwargs) -> None:
         options = WindowRequestOptions(
             **{self.entity_description.window_position: WINDOW_STATE.CLOSED}
         )
         await self.coordinator.async_set_windows(self.vehicle.id, options)
 
-    async def async_stop_cover(self, **kwargs: Any) -> None:
+    async def async_stop_cover(self, **kwargs) -> None:
         options = WindowRequestOptions(
             **{self.entity_description.window_position: WINDOW_STATE.CLOSED}
         )
         await self.coordinator.async_set_windows(self.vehicle.id, options)
 
-    async def async_set_cover_position(self, **kwargs: Any) -> None:
-        position = kwargs[ATTR_POSITION]
+    async def async_set_cover_position(self, position: int, **kwargs) -> None:
         if position == 0:
             state = WINDOW_STATE.CLOSED
         elif position <= 49:

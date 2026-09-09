@@ -8,7 +8,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_PIN,
@@ -17,6 +17,7 @@ from homeassistant.const import (
     CONF_USERNAME,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.selector import selector
 from hyundai_kia_connect_api import Token, VehicleManager
@@ -133,7 +134,7 @@ OPTIONS_SCHEMA = vol.Schema(
 async def validate_input(
     hass: HomeAssistant,
     user_input: dict[str, Any],
-    vehicle_manager: VehicleManager,
+    vehicle_manager: VehicleManager | None = None,
 ) -> Token | OTPRequest:
     """Validate the user input allows us to connect."""
     try:
@@ -152,7 +153,7 @@ class HyundaiKiaConnectOptionFlowHandler(config_entries.OptionsFlowWithReload):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Handle options init setup."""
 
         if user_input is not None:
@@ -174,25 +175,23 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2
     reauth_entry: ConfigEntry | None = None
 
-    def __init__(self) -> None:
+    def __init__(self):
         """Initialize the config flow."""
-        self._region_data: dict[str, Any] | None = None
+        self._region_data = None
         self._vehicle_manager: VehicleManager | None = None
-        self._pending_login_data: dict[str, Any] | None = None
+        self._pending_login_data = None
         self._otp_request: OTPRequest | None = None
         self._is_reconfigure = False
 
     @staticmethod
     @callback
-    def async_get_options_flow(
-        config_entry: ConfigEntry,
-    ) -> HyundaiKiaConnectOptionFlowHandler:
+    def async_get_options_flow(config_entry: ConfigEntry):
         """Initiate options flow instance."""
         return HyundaiKiaConnectOptionFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Handle the initial step for region/brand selection."""
         if user_input is None:
             return self.async_show_form(
@@ -212,12 +211,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_credentials_password(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Handle the credentials step."""
         errors = {}
 
         if user_input is not None:
-            assert self._region_data is not None
             # Combine region data with credentials
             full_config = {**self._region_data, **user_input}
             self._vehicle_manager = VehicleManager(
@@ -270,18 +268,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_select_otp_method(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_select_otp_method(self, user_input=None):
         """Let user choose email or SMS."""
         if user_input is None:
             # Add code to build a list of available OTP methods
-            otp_request = self._otp_request
-            assert otp_request is not None
             otp_methods = []
-            if otp_request.has_email:
+            if self._otp_request.has_email:
                 otp_methods.append("EMAIL")
-            if otp_request.has_sms:
+            if self._otp_request.has_sms:
                 otp_methods.append("SMS")
             return self.async_show_form(
                 step_id="select_otp_method",
@@ -291,15 +285,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             method = OTP_NOTIFY_TYPE.EMAIL
         if user_input["method"] == "SMS":
             method = OTP_NOTIFY_TYPE.SMS
-        vehicle_manager = self._vehicle_manager
-        assert vehicle_manager is not None
-        await self.hass.async_add_executor_job(vehicle_manager.send_otp, method)
+        await self.hass.async_add_executor_job(self._vehicle_manager.send_otp, method)
 
         return await self.async_step_enter_otp()
 
-    async def async_step_enter_otp(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_enter_otp(self, user_input=None):
         """Prompt user to enter the OTP."""
         errors = {}
 
@@ -308,11 +298,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="enter_otp", data_schema=vol.Schema({vol.Required("otp"): str})
             )
 
-        vehicle_manager = self._vehicle_manager
-        assert vehicle_manager is not None
         try:
             await self.hass.async_add_executor_job(
-                vehicle_manager.verify_otp_and_complete_login,
+                self._vehicle_manager.verify_otp_and_complete_login,
                 user_input["otp"],
             )
         except AuthenticationError:
@@ -322,37 +310,34 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=vol.Schema({vol.Required("otp"): str}),
                 errors=errors,
             )
-        pending_login_data = self._pending_login_data
-        assert pending_login_data is not None
-        pending_login_data[CONF_TOKEN] = vehicle_manager.token.to_dict()
+        self._pending_login_data[CONF_TOKEN] = self._vehicle_manager.token.to_dict()
         if self._is_reconfigure:
             return self.async_update_reload_and_abort(
                 self._get_reconfigure_entry(),
-                data_updates=pending_login_data,
+                data_updates=self._pending_login_data,
             )
         elif self.reauth_entry is None:
-            title = f"{BRANDS[pending_login_data[CONF_BRAND]]} {REGIONS[pending_login_data[CONF_REGION]]} {pending_login_data[CONF_USERNAME]}"
+            title = f"{BRANDS[self._pending_login_data[CONF_BRAND]]} {REGIONS[self._pending_login_data[CONF_REGION]]} {self._pending_login_data[CONF_USERNAME]}"
             await self.async_set_unique_id(
                 hashlib.sha256(title.encode("utf-8")).hexdigest()
             )
             self._abort_if_unique_id_configured()
 
-            return self.async_create_entry(title=title, data=pending_login_data)
+            return self.async_create_entry(title=title, data=self._pending_login_data)
         else:
             self.hass.config_entries.async_update_entry(
-                self.reauth_entry, data=pending_login_data
+                self.reauth_entry, data=self._pending_login_data
             )
             await self.hass.config_entries.async_reload(self.reauth_entry.entry_id)
             return self.async_abort(reason="reauth_successful")
 
     async def async_step_credentials_token(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Handle the credentials step."""
         errors = {}
 
         if user_input is not None:
-            assert self._region_data is not None
             # Combine region data with credentials
             full_config = {**self._region_data, **user_input}
             self._vehicle_manager = VehicleManager(
@@ -400,7 +385,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Present choice: re-authenticate or set/change PIN."""
         if user_input is not None:
             if user_input["reconfigure_choice"] == "reauth":
@@ -416,7 +401,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_reconfigure_pin(
         self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    ) -> FlowResult:
         """Allow the user to set or change the PIN without full re-authentication."""
         if user_input is not None:
             new_pin = user_input[CONF_PIN]
@@ -436,18 +421,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=STEP_PIN_ONLY_SCHEMA,
         )
 
-    async def async_step_reauth(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, user_input=None):
         """Perform reauth upon an API authentication error."""
         self.reauth_entry = self.hass.config_entries.async_get_entry(
             self.context["entry_id"]
         )
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_reauth_confirm(self, user_input=None):
         """Dialog that informs the user that reauth is required."""
         if user_input is None:
             return self.async_show_form(
