@@ -42,6 +42,11 @@ export function updateMatchesTarget(entity, hacs, targetVersion) {
     normalizeVersion(hacs?.version_installed) === target;
 }
 
+export function hacsInstallationMatches(states, entityId, hacs, targetVersion) {
+  const entity = states.find((state) => state.entity_id === entityId);
+  return updateMatchesTarget(entity, hacs, targetVersion);
+}
+
 export function preferFullCommit(currentCommit, reportedCommit) {
   if (!currentCommit) return reportedCommit ?? null;
   if (!reportedCommit) return currentCommit;
@@ -418,31 +423,87 @@ async function check(targetVersion, options = {}) {
   return status;
 }
 
-const runtimeRequiredEntities = [
-  "sensor.vehicle_primary_fuel_level",
-  "sensor.vehicle_primary_last_scanned_at",
-  "button.vehicle_primary_force_refresh",
-  "button.vehicle_primary_start_hazard_lights_and_horn",
-  "sensor.garagem_vehicle_primary_recent_trip_info",
-  "sensor.garagem_vehicle_primary_remote_command_status",
+const runtimeEntityRoles = [
+  ["fuel", "sensor", "_fuel_level"],
+  ["scanned", "sensor", "_last_scanned_at"],
+  ["force_refresh", "button", "_force_refresh"],
+  ["hazard", "button", "_start_hazard_lights_and_horn"],
+  ["recent_trip", "sensor", "_recent_trip_info"],
+  ["remote_command", "sensor", "_remote_command_status"],
 ];
 
-export function assessKiaRuntimeStates(states, scannedAfter = null) {
+export function selectKiaRuntimeEntities(entityIds) {
+  const available = [...new Set(entityIds.map((entityId) => String(entityId)))];
+  const selected = {};
+  const missing = [];
+  for (const [role, domain, suffix] of runtimeEntityRoles) {
+    const matches = available.filter((entityId) =>
+      entityId.startsWith(`${domain}.`) && entityId.endsWith(suffix));
+    if (matches.length !== 1) {
+      missing.push(role);
+      continue;
+    }
+    selected[role] = matches[0];
+  }
+  if (missing.length) {
+    throw new Error(`Kia UVO runtime entities are missing or ambiguous: ${missing.join(", ")}`);
+  }
+  return {
+    requiredEntities: Object.values(selected),
+    fuelEntity: selected.fuel,
+    scannedEntity: selected.scanned,
+  };
+}
+
+function readKiaRuntimeEntities() {
+  const code = [
+    "import json",
+    "entries=json.load(open('/config/.storage/core.config_entries')).get('data',{}).get('entries',[])",
+    "entry_ids={item.get('entry_id') for item in entries if item.get('domain')=='kia_uvo'}",
+    "registry=json.load(open('/config/.storage/core.entity_registry')).get('data',{}).get('entities',[])",
+    "print(json.dumps([item.get('entity_id') for item in registry if item.get('config_entry_id') in entry_ids]))",
+  ].join(";");
+  const output = command(
+    "docker",
+    ["exec", "homeassistant", "python", "-c", code],
+    { capture: true },
+  ).trim();
+  return selectKiaRuntimeEntities(JSON.parse(output));
+}
+
+const legacyRuntimeContract = {
+  requiredEntities: [
+    "sensor.vehicle_primary_fuel_level",
+    "sensor.vehicle_primary_last_scanned_at",
+    "button.vehicle_primary_force_refresh",
+    "button.vehicle_primary_start_hazard_lights_and_horn",
+    "sensor.garagem_vehicle_primary_recent_trip_info",
+    "sensor.garagem_vehicle_primary_remote_command_status",
+  ],
+  fuelEntity: "sensor.vehicle_primary_fuel_level",
+  scannedEntity: "sensor.vehicle_primary_last_scanned_at",
+};
+
+export function assessKiaRuntimeStates(
+  states,
+  scannedAfter = null,
+  runtime = legacyRuntimeContract,
+) {
   const byId = new Map(states.map((state) => [state.entity_id, state]));
-  const missing = runtimeRequiredEntities.filter(
+  const missing = runtime.requiredEntities.filter(
     (entityId) => !byId.has(entityId),
   );
   if (missing.length) {
     return { healthy: false, reason: "missing_entities", missing };
   }
-  const unavailable = runtimeRequiredEntities.filter(
+  const unavailable = runtime.requiredEntities.filter(
     (entityId) => byId.get(entityId)?.state === "unavailable",
   );
   if (unavailable.length) {
     return { healthy: false, reason: "entities_unavailable", unavailable };
   }
 
-  const fuel = byId.get("sensor.vehicle_primary_fuel_level")?.state;
+  const fuel = byId.get(runtime.fuelEntity)?.state;
   if (["unknown", "unavailable", undefined].includes(fuel)) {
     return {
       healthy: false,
@@ -451,7 +512,7 @@ export function assessKiaRuntimeStates(states, scannedAfter = null) {
     };
   }
 
-  const scanned = byId.get("sensor.vehicle_primary_last_scanned_at")?.state;
+  const scanned = byId.get(runtime.scannedEntity)?.state;
   const scannedAt = Date.parse(scanned ?? "");
   if (!Number.isFinite(scannedAt)) {
     return {
@@ -479,6 +540,7 @@ async function waitForHomeAssistant(token, options = {}) {
       const assessment = assessKiaRuntimeStates(
         states,
         options.scannedAfter ?? null,
+        options.runtime ?? legacyRuntimeContract,
       );
       if (assessment.healthy) {
         return assessment;
@@ -492,13 +554,15 @@ async function waitForHomeAssistant(token, options = {}) {
 }
 
 async function validateKiaRuntime(token) {
-  const initial = await waitForHomeAssistant(token);
+  const runtime = readKiaRuntimeEntities();
+  const initial = await waitForHomeAssistant(token, { runtime });
   // Observe the coordinator's own 15-minute cache cadence instead of forcing
   // an extra provider request shortly after startup. This proves the runtime
   // remains healthy across a second real poll without creating a burst.
   const probed = await waitForHomeAssistant(token, {
     timeoutMs: 18 * 60_000,
     scannedAfter: initial.scanned_state,
+    runtime,
   });
   return {
     entities: "passed",
@@ -506,6 +570,23 @@ async function validateKiaRuntime(token) {
     cache_probe: "passed",
     cache_probe_scanned_at: probed.scanned_state,
   };
+}
+
+async function waitForHacsInstallation(token, entityId, targetVersion, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 240_000;
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const states = await haRequest("GET", "/api/states", token);
+      if (hacsInstallationMatches(states, entityId, readHacsRecord(), targetVersion)) {
+        return;
+      }
+    } catch {
+      // HACS may still be downloading and registering the requested release.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+  throw new Error(`HACS did not confirm ${normalizeVersion(targetVersion)} before runtime replacement`);
 }
 
 async function applyPrepared(prepared, token, options = {}) {
@@ -551,6 +632,7 @@ async function applyPrepared(prepared, token, options = {}) {
         entity_id: updateEntity.entity_id,
         version: prepared.target,
       });
+      await waitForHacsInstallation(token, updateEntity.entity_id, prepared.target);
     }
     command("docker", ["compose", "stop", "homeassistant"]);
     makeComponentWritable();

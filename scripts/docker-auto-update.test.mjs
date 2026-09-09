@@ -10,7 +10,9 @@ import {
 import {
   assessKiaRuntimeStates,
   candidateMetadataMatchesTarget,
+  hacsInstallationMatches,
   preferFullCommit,
+  selectKiaRuntimeEntities,
   statusLine,
   updateMatchesTarget,
 } from "./kia-uvo-safe-update.mjs";
@@ -95,6 +97,25 @@ test("recognizes an already installed Kia UVO target", () => {
   );
 });
 
+test("waits for both the HACS record and update entity before replacing runtime", () => {
+  const states = [{
+    entity_id: "update.kia_uvo_hyundai_bluelink_update",
+    attributes: { installed_version: "v3.12.0" },
+  }];
+  assert.equal(hacsInstallationMatches(
+    states,
+    "update.kia_uvo_hyundai_bluelink_update",
+    { version_installed: "v3.12.0" },
+    "v3.12.0",
+  ), true);
+  assert.equal(hacsInstallationMatches(
+    states,
+    "update.kia_uvo_hyundai_bluelink_update",
+    { version_installed: "v3.11.0" },
+    "v3.12.0",
+  ), false);
+});
+
 test("requires a fresh healthy cache probe before accepting Kia runtime", () => {
   assert.equal(assessKiaRuntimeStates(healthyKiaRuntimeStates).healthy, true);
   assert.equal(
@@ -131,6 +152,30 @@ test("requires a fresh healthy cache probe before accepting Kia runtime", () => 
     ).reason,
     "entities_unavailable",
   );
+});
+
+test("selects the actual Kia UVO entities from the configured integration", () => {
+  const runtime = selectKiaRuntimeEntities([
+    "sensor.creta_fuel_level",
+    "sensor.creta_last_scanned_at",
+    "button.creta_force_refresh",
+    "button.creta_start_hazard_lights_and_horn",
+    "sensor.garagem_creta_recent_trip_info",
+    "sensor.garagem_creta_remote_command_status",
+  ]);
+  assert.deepEqual(runtime.requiredEntities, [
+    "sensor.creta_fuel_level",
+    "sensor.creta_last_scanned_at",
+    "button.creta_force_refresh",
+    "button.creta_start_hazard_lights_and_horn",
+    "sensor.garagem_creta_recent_trip_info",
+    "sensor.garagem_creta_remote_command_status",
+  ]);
+  assert.equal(runtime.fuelEntity, "sensor.creta_fuel_level");
+  assert.equal(runtime.scannedEntity, "sensor.creta_last_scanned_at");
+  assert.throws(() => selectKiaRuntimeEntities([
+    "sensor.creta_fuel_level",
+  ]), /missing or ambiguous/);
 });
 
 test("preserves the full upstream commit when HACS reports a prefix", () => {
