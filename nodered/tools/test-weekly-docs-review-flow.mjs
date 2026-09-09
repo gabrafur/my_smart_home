@@ -48,7 +48,8 @@ const flow = {
   get(key) { return memory.get(key); },
   set(key, value) { memory.set(key, value); },
 };
-const runtimeNode = { error() {}, log() {}, status() {}, warn() {} };
+const errors = [];
+const runtimeNode = { error(value, message) { errors.push({ value, message }); }, log() {}, status() {}, warn() {} };
 const prepare = new Function("msg", "node", "flow", node("weekly_docs_review_prepare").func);
 const scheduled = prepare({ _weekly_docs_source: "scheduled" }, runtimeNode, flow);
 assert.equal(scheduled[0].payload, "scheduled");
@@ -58,6 +59,17 @@ assert.equal(manualTest[0], null);
 assert.equal(manualTest[1].payload, "manual");
 assert.equal(manualTest[1]._weekly_docs_test, true);
 assert.equal(prepare({ _weekly_docs_source: "invalid" }, runtimeNode, flow), null);
+
+const trackStatus = new Function("msg", "node", "flow", node("weekly_docs_review_track_status").func);
+assert.equal(trackStatus({ payload: "falha" }, runtimeNode, flow), null);
+assert.match(errors.at(-1).value, /weekly_docs_review_worker_failed state=falha/);
+assert.equal(errors.at(-1).message.payload, "falha");
+const errorCount = errors.length;
+assert.equal(trackStatus({ payload: "falha" }, runtimeNode, flow), null);
+assert.equal(errors.length, errorCount, "estado de falha repetido deve ser deduplicado antes do observador");
+assert.equal(trackStatus({ payload: "sucesso" }, runtimeNode, flow), null);
+assert.equal(trackStatus({ payload: "indisponível" }, runtimeNode, flow), null);
+assert.match(errors.at(-1).value, /weekly_docs_review_worker_failed state=indisponível/);
 
 const handleError = new Function("msg", "node", "flow", node("weekly_docs_review_error").func);
 const simulatedFailure = handleError(

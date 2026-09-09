@@ -232,7 +232,7 @@ flows.push(
     name: "Registrar erro da API do vehicle_primary",
     func: `const source = String(msg.error?.source?.name ?? "unknown").replace(/[^a-zA-Z0-9 _-]/g, "");
 const message = String(msg.error?.message ?? "unknown").replace(/[\\r\\n]+/g, " ").slice(0, 240);
-node.error("VEHICLE_PRIMARY_API_ERROR source=" + source + " message=" + message);
+node.error("VEHICLE_PRIMARY_API_ERROR source=" + source + " message=" + message, msg);
 return null;`,
     outputs: 0,
     timeout: "",

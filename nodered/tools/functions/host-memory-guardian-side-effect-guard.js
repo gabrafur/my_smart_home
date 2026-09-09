@@ -5,7 +5,7 @@ if (testMode) {
     return [null, msg];
 }
 if (msg.payload?.event !== "host_memory_guardian_requested") {
-    node.error("host_memory_guardian_invalid_request");
+    node.error("host_memory_guardian_invalid_request", msg);
     node.status({ fill: "red", shape: "ring", text: "solicitação inválida" });
     return [null, null];
 }

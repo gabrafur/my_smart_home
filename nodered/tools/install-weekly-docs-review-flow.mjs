@@ -123,6 +123,16 @@ return null;`;
 const trackStatus = `const state = String(msg.payload ?? "indisponível");
 const colors = { aguardando: "green", executando: "blue", sucesso: "green", falha: "red", ignorado: "yellow", parado: "grey", indisponível: "red" };
 node.status({ fill: colors[state] ?? "grey", shape: state === "falha" || state === "indisponível" ? "ring" : "dot", text: "worker: " + state });
+const key = "weekly_docs_review_worker_failure_v1";
+if (["falha", "indisponível"].includes(state)) {
+    const previous = flow.get(key, "persistent");
+    if (previous?.state !== state) {
+        flow.set(key, { state, observed_at: Date.now() }, "persistent");
+        node.error("weekly_docs_review_worker_failed state=" + state, msg);
+    }
+} else {
+    flow.set(key, undefined, "persistent");
+}
 return null;`;
 
 const resetTest = `flow.set("weekly_docs_review_last_dry_run_v1", {

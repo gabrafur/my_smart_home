@@ -419,7 +419,7 @@ const config = flow.get("storage_health_config_v1", "persistent") ?? {};
 const now = Date.now();
 const last = Number(flow.get("storage_maintenance_last_error_notification", "persistent") || 0);
 node.status({ fill: "red", shape: "ring", text: "falhou rc=" + code });
-node.error("storage_maintenance: failed rc=" + code + " stderr=" + String(flow.get("storage_maintenance_last_stderr") ?? ""));
+node.error("storage_maintenance: failed rc=" + code + " stderr=" + String(flow.get("storage_maintenance_last_stderr") ?? ""), msg);
 if (now - last < (config.commandErrorCooldownMs ?? 6 * 60 * 60 * 1000)) return null;
 return {
     payload: { title: "Raspberry Pi - falha na manutencao", message: "A manutencao segura de storage falhou (codigo " + code + "). Nenhuma etapa adicional foi executada; revise o log do flow Storage Health." },
@@ -448,7 +448,7 @@ return null;`;
 
 const notificationFailure = `const source = String(msg.error?.source?.name ?? "notificacao").replace(/[^a-zA-Z0-9 _-]/g, "");
 const detail = String(msg.error?.message ?? "erro desconhecido").replace(/[\\r\\n]+/g, " ").slice(0, 240);
-node.error("storage_notification_failed source=" + source + " message=" + detail);
+node.error("storage_notification_failed source=" + source + " message=" + detail, msg);
 node.status({ fill: "red", shape: "ring", text: "entrega falhou; sem cooldown" });
 return null;`;
 

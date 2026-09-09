@@ -171,7 +171,7 @@ if (failureClass === "provider_backoff") {
     // de execução do canvas para o observador global voltar a notificar.
     node.warn(logMessage);
 } else {
-    node.error(logMessage);
+    node.error(logMessage, msg);
 }
 return notification || bypassCommand
     ? [notification, bypassCommand]

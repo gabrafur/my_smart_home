@@ -233,7 +233,7 @@ inlineFn(
   "host_memory_guardian_request_error",
   groups.request,
   "Falha da ponte",
-  "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'ponte indisponível' });\nnode.error('host_memory_guardian_bridge_unavailable detail=' + detail);\nreturn null;",
+  "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'ponte indisponível' });\nnode.error('host_memory_guardian_bridge_unavailable detail=' + detail, msg);\nreturn null;",
   1210,
   170,
 );
@@ -307,7 +307,7 @@ inlineFn(
   "host_memory_guardian_result_error",
   groups.result,
   "Falha de leitura",
-  "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'resultado indisponível' });\nnode.error('host_memory_guardian_result_unavailable detail=' + detail);\nreturn null;",
+  "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'resultado indisponível' });\nnode.error('host_memory_guardian_result_unavailable detail=' + detail, msg);\nreturn null;",
   930,
   460,
 );

@@ -190,7 +190,7 @@ function internetPingCycle() {
 
   if (!childProcess || typeof childProcess.execFile !== "function") {
     node.status({ fill: "red", shape: "ring", text: "child_process indisponível" });
-    node.error("settings.js não expôs childProcess no contexto global.");
+    node.error("settings.js não expôs childProcess no contexto global.", msg);
     return null;
   }
   if (flow.get(LOCK, STORE) === true) {
@@ -243,7 +243,7 @@ function internetPingCycle() {
       });
     })
     .catch((error) => {
-      node.error(`Falha inesperada no ciclo de ping: ${error.message}`);
+      node.error(`Falha inesperada no ciclo de ping: ${error.message}`, msg);
     })
     .finally(() => {
       flow.set(LOCK, false, STORE);

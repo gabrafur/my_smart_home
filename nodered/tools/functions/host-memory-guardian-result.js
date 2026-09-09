@@ -13,7 +13,7 @@ const allowed = new Set([
 ]);
 const status = synthetic?.status ?? raw.match(/\bstatus=([a-z_]+)\b/)?.[1];
 if (!allowed.has(status)) {
-    if (!testMode) node.error("host_memory_guardian_result_unrecognized");
+    if (!testMode) node.error("host_memory_guardian_result_unrecognized", msg);
     node.status({ fill: "red", shape: "ring", text: "resultado inválido" });
     return null;
 }
@@ -58,7 +58,7 @@ node.status({
 msg.payload = result;
 if (testMode) return [null, msg];
 if (failed) {
-    node.error("host_memory_guardian_failed request_id=" + result.request_id);
+    node.error("host_memory_guardian_failed request_id=" + result.request_id, msg);
     return [null, null];
 }
 if (status === "terminated") {
