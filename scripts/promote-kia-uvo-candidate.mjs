@@ -82,6 +82,11 @@ export function isAllowedCandidatePath(file) {
   return allowedExact.has(file) || allowedPrefixes.some((prefix) => file.startsWith(prefix));
 }
 
+export function shouldResumeCandidateCleanup(promotion, candidate) {
+  return promotion?.state === "main_published" &&
+    promotion.source_commit === candidate.commit;
+}
+
 function readHaToken() {
   const tokenFile = process.env.KIA_UVO_HA_TOKEN_FILE ||
     path.join(repoRoot, ".local-secrets/ha-long-lived-token.txt");
@@ -208,12 +213,58 @@ function commitAndPush(candidate, expectedPaths) {
   return git(["rev-parse", "HEAD"]);
 }
 
+function deleteCandidateBranch(candidate) {
+  const remote = git([
+    "ls-remote",
+    "--heads",
+    "origin",
+    `refs/heads/${candidate.branch}`,
+  ]).split("\n").filter(Boolean);
+  if (!remote.length) return true;
+  const remoteCommit = remote[0].split(/\s+/)[0];
+  if (remoteCommit !== candidate.commit) {
+    throw new Error("candidate branch changed after main was published");
+  }
+  git(["push", "origin", "--delete", candidate.branch], { inherit: true });
+  return true;
+}
+
 export async function promote({ checkOnly = false } = {}) {
   if (!fs.existsSync(workerStatusPath)) return false;
   const candidate = normalizeCandidateStatus(readJson(workerStatusPath));
   if (!candidate) return false;
   let promotion = {};
   try { promotion = readJson(promotionStatusPath); } catch { /* first run */ }
+  if (shouldResumeCandidateCleanup(promotion, candidate)) {
+    try {
+      const candidateBranchDeleted = deleteCandidateBranch(candidate);
+      writeStatus({
+        state: "completed",
+        source_commit: candidate.commit,
+        target: candidate.target,
+        branch: candidate.branch,
+        commit: promotion.commit,
+        pushed: true,
+        candidate_branch_deleted: candidateBranchDeleted,
+        finished_at: new Date().toISOString(),
+        reason: null,
+      });
+      log(`Kia UVO candidate cleanup completed target=${candidate.target}`);
+      return true;
+    } catch (error) {
+      writeStatus({
+        state: "main_published",
+        source_commit: candidate.commit,
+        target: candidate.target,
+        branch: candidate.branch,
+        commit: promotion.commit,
+        pushed: true,
+        reason: String(error.message).slice(0, 800),
+      });
+      log(`Kia UVO candidate cleanup deferred target=${candidate.target}: ${error.message}`);
+      throw error;
+    }
+  }
   if (promotion.source_commit === candidate.commit &&
       ["completed", "failed"].includes(promotion.state)) return false;
   const resumeGit = promotion.source_commit === candidate.commit &&
@@ -251,14 +302,18 @@ export async function promote({ checkOnly = false } = {}) {
       candidateRoot = undefined;
     }
     const commit = commitAndPush(candidate, expectedPaths);
-    writeStatus({ state: "completed", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, commit, pushed: true, finished_at: new Date().toISOString(), reason: null });
+    writeStatus({ state: "main_published", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, commit, pushed: true, reason: null });
+    const candidateBranchDeleted = deleteCandidateBranch(candidate);
+    writeStatus({ state: "completed", source_commit: candidate.commit, target: candidate.target, branch: candidate.branch, commit, pushed: true, candidate_branch_deleted: candidateBranchDeleted, finished_at: new Date().toISOString(), reason: null });
     log(`Kia UVO candidate promoted target=${candidate.target} commit=${commit.slice(0, 12)}`);
     return true;
   } catch (error) {
     const current = (() => { try { return readJson(promotionStatusPath); } catch { return {}; } })();
-    const state = ["runtime_applied", "applied_pending_git"].includes(current.state)
-      ? "applied_pending_git"
-      : "failed";
+    const state = current.state === "main_published"
+      ? "main_published"
+      : ["runtime_applied", "applied_pending_git"].includes(current.state)
+        ? "applied_pending_git"
+        : "failed";
     writeStatus({ state, source_commit: candidate.commit, target: candidate.target, reason: String(error.message).slice(0, 800), finished_at: new Date().toISOString() });
     log(`Kia UVO candidate promotion failed target=${candidate.target}: ${error.message}`);
     throw error;

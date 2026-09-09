@@ -169,7 +169,9 @@ requires a clean up-to-date `main`, applies the integration with backup and
 rollback, validates the entities and library, and only then creates the local
 commit and pushes `main`. Failures before confirmation preserve the previous
 version; Git failures after confirmation leave resumable state without
-reinstalling the runtime.
+reinstalling the runtime. Once the `main` push is confirmed, the promoter
+deletes the temporary candidate branch; a cleanup failure is retried without
+reapplying the integration.
 
 Home Assistant receives `.local-state/docs-review` read-only to expose the
 routine's sensor. This operational status is regenerable, Git-ignored, and does

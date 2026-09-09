@@ -169,7 +169,9 @@ Um worker de promoção no host revalida essa candidata e a tag oficial, exige
 `main` limpo e atualizado, aplica a integração com backup e rollback, valida
 as entidades e a biblioteca e somente depois cria o commit local e envia
 `main`. Falhas antes da confirmação preservam a versão anterior; falhas de Git
-depois da confirmação deixam um estado retomável sem reinstalar o runtime.
+depois da confirmação deixam um estado retomável sem reinstalar o runtime. Com
+o envio de `main` confirmado, o promotor exclui a branch candidata temporária;
+se essa limpeza falhar, ela é retomada sem reaplicar a integração.
 
 O Home Assistant recebe `.local-state/docs-review` como somente leitura para
 expor o sensor da rotina. Esse status operacional é regenerável, ignorado pelo
