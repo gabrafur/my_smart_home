@@ -2253,6 +2253,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
     def _save_token_if_changed(self) -> None:
         """Persist a changed token; must run on the Home Assistant loop."""
         new_token = self.vehicle_manager.token.to_dict()
+        config_entry = self.config_entry
         # Only update if token actually changed
         if new_token and new_token != config_entry.data.get(CONF_TOKEN):
             updated_data = {**config_entry.data, CONF_TOKEN: new_token}

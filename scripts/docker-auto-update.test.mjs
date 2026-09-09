@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 
 import {
@@ -114,6 +115,21 @@ test("waits for both the HACS record and update entity before replacing runtime"
     { version_installed: "v3.11.0" },
     "v3.12.0",
   ), false);
+});
+
+test("persists refreshed Kia credentials through the coordinator config entry", () => {
+  const coordinator = fs.readFileSync(
+    "homeassistant/custom_components/kia_uvo/coordinator.py",
+    "utf8",
+  );
+  assert.match(
+    coordinator,
+    /new_token = self\.vehicle_manager\.token\.to_dict\(\)\n        config_entry = self\.config_entry/,
+  );
+  assert.match(
+    coordinator,
+    /self\.hass\.config_entries\.async_update_entry\(config_entry, data=updated_data\)/,
+  );
 });
 
 test("requires a fresh healthy cache probe before accepting Kia runtime", () => {
