@@ -47,7 +47,7 @@
         "id": "recorder_retention_group_execution",
         "type": "group",
         "z": "recorder_retention_tab",
-        "name": "3. Purge serial, suportado e somente após aquecimento",
+        "name": "3. Purge serial e repack somente após a fila",
         "style": {
             "label": true,
             "color": "#4d9a6a"
@@ -58,18 +58,27 @@
             "recorder_retention_split",
             "recorder_retention_dispatch_guard",
             "recorder_retention_rate_limit",
-            "recorder_retention_purge"
+            "recorder_retention_purge",
+            "recorder_retention_repack_delay",
+            "recorder_retention_repack_status",
+            "recorder_retention_repack_evaluate",
+            "recorder_retention_repack",
+            "recorder_retention_repack_retry_out",
+            "recorder_retention_repack_delay_in",
+            "recorder_retention_repack_test_in",
+            "recorder_retention_guard_dry_out",
+            "recorder_retention_repack_dry_out"
         ],
         "x": 64,
         "y": 459,
         "w": 1662,
-        "h": 182
+        "h": 282
     },
     {
         "id": "recorder_retention_group_tests",
         "type": "group",
         "z": "recorder_retention_tab",
-        "name": "TESTE — baseline, valor próximo e outlier em dry-run",
+        "name": "TESTE — baseline, valor próximo, outlier e repack em dry-run",
         "style": {
             "label": true,
             "color": "#c9b458"
@@ -81,13 +90,16 @@
             "recorder_retention_test_baseline",
             "recorder_retention_test_near",
             "recorder_retention_test_outlier",
+            "recorder_retention_test_repack_ready",
+            "recorder_retention_test_repack_out",
             "recorder_retention_test_prepare",
             "recorder_retention_test_compact",
             "recorder_retention_test_finalize",
+            "recorder_retention_dry_run_in",
             "recorder_retention_dry_run_terminal"
         ],
         "x": 64,
-        "y": 679,
+        "y": 779,
         "w": 1662,
         "h": 322
     },
@@ -260,8 +272,8 @@
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_execution",
         "name": "Planejar purges elegíveis",
-        "func": "const TEST = msg.test_mode === true;\nconst STORE = TEST ? undefined : \"persistent\";\nconst get = (key) => STORE ? flow.get(key, STORE) : flow.get(key);\nconst config = get(\"recorder_retention_config_v1\");\nif (!config) return null;\nconst now = Number(msg.testNow ?? Date.now());\nconst startedAt = Number(get(\"recorder_retention_started_at_v1\") ?? now);\nconst warmedUp = now >= startedAt + config.warmupMs;\nconst actions = config.purgeTargets\n    .filter((target) => target.key === \"codex_diagnostics\" || warmedUp)\n    .map((target) => ({\n        key: target.key,\n        keep_days: target.keepDays,\n        ...(Array.isArray(target.entityId) ? { entity_id: target.entityId } : {}),\n        ...(Array.isArray(target.entityGlobs) ? { entity_globs: target.entityGlobs } : {})\n    }));\nif (!warmedUp && !TEST) node.status({ fill: \"blue\", shape: \"ring\", text: \"compactando antes do primeiro purge\" });\nreturn { ...msg, payload: actions, recorderRetention: { warmedUp, test_mode: TEST } };",
-        "outputs": 1,
+        "func": "const TEST = msg.test_mode === true;\nconst STORE = TEST ? undefined : \"persistent\";\nconst get = (key) => STORE ? flow.get(key, STORE) : flow.get(key);\nconst set = (key, value) => STORE ? flow.set(key, value, STORE) : flow.set(key, value);\nconst config = get(\"recorder_retention_config_v1\");\nif (!config) return null;\nconst now = Number(msg.testNow ?? Date.now());\nconst startedAt = Number(get(\"recorder_retention_started_at_v1\") ?? now);\nconst warmedUp = now >= startedAt + config.warmupMs;\nconst actions = config.purgeTargets\n    .filter((target) => target.key === \"codex_diagnostics\" || warmedUp)\n    .map((target) => ({\n        key: target.key,\n        keep_days: target.keepDays,\n        ...(Array.isArray(target.entityId) ? { entity_id: target.entityId } : {}),\n        ...(Array.isArray(target.entityGlobs) ? { entity_globs: target.entityGlobs } : {})\n    }));\nif (!warmedUp && !TEST) node.status({ fill: \"blue\", shape: \"ring\", text: \"compactando antes do primeiro purge\" });\nconst cycleId = String(now);\nif (!TEST) set(\"recorder_retention_active_cycle_v1\", { id: cycleId, phase: \"purging\", targetKeys: actions.map((action) => action.key) });\nconst retention = { warmedUp, test_mode: TEST, cycleId, targetKeys: actions.map((action) => action.key) };\nreturn [{ ...msg, payload: actions, recorderRetention: retention }, { ...msg, recorderRetention: retention }];",
+        "outputs": 2,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -272,6 +284,9 @@
         "wires": [
             [
                 "recorder_retention_split"
+            ],
+            [
+                "recorder_retention_repack_delay"
             ]
         ]
     },
@@ -316,7 +331,7 @@
                 "recorder_retention_rate_limit"
             ],
             [
-                "recorder_retention_dry_run_terminal"
+                "recorder_retention_guard_dry_out"
             ]
         ]
     },
@@ -381,10 +396,10 @@
         "type": "comment",
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_tests",
-        "name": "Ordem: 1 Reset; 2 Baseline; 3 Próximo; 4 Outlier. O último teste verifica que nenhum purge é enviado ao Home Assistant.",
+        "name": "Ordem: 1 Reset; 2 Baseline; 3 Próximo; 4 Outlier; 5 Repack. Todos os testes terminam em dry-run, sem serviço no Home Assistant.",
         "info": "",
         "x": 650,
-        "y": 720,
+        "y": 820,
         "wires": []
     },
     {
@@ -406,7 +421,7 @@
         "payload": "",
         "payloadType": "date",
         "x": 200,
-        "y": 790,
+        "y": 890,
         "wires": [
             [
                 "recorder_retention_test_reset_state"
@@ -427,7 +442,7 @@
         "finalize": "",
         "libs": [],
         "x": 450,
-        "y": 790,
+        "y": 890,
         "wires": []
     },
     {
@@ -449,7 +464,7 @@
         "payload": "baseline",
         "payloadType": "str",
         "x": 210,
-        "y": 850,
+        "y": 950,
         "wires": [
             [
                 "recorder_retention_test_prepare"
@@ -475,7 +490,7 @@
         "payload": "near",
         "payloadType": "str",
         "x": 220,
-        "y": 900,
+        "y": 1000,
         "wires": [
             [
                 "recorder_retention_test_prepare"
@@ -501,7 +516,7 @@
         "payload": "outlier",
         "payloadType": "str",
         "x": 210,
-        "y": 950,
+        "y": 1050,
         "wires": [
             [
                 "recorder_retention_test_prepare"
@@ -522,7 +537,7 @@
         "finalize": "",
         "libs": [],
         "x": 500,
-        "y": 890,
+        "y": 990,
         "wires": [
             [
                 "recorder_retention_test_compact"
@@ -543,7 +558,7 @@
         "finalize": "",
         "libs": [],
         "x": 730,
-        "y": 890,
+        "y": 990,
         "wires": [
             [
                 "recorder_retention_test_finalize"
@@ -563,8 +578,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1270,
-        "y": 890,
+        "x": 1500,
+        "y": 990,
         "wires": []
     },
     {
@@ -581,7 +596,280 @@
         "finalize": "",
         "libs": [],
         "x": 1000,
-        "y": 890,
+        "y": 990,
+        "wires": [
+            [
+                "recorder_retention_dry_run_in"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_repack_delay",
+        "type": "delay",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Aguardar e confirmar fim da fila",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 710,
+        "y": 660,
+        "wires": [
+            [
+                "recorder_retention_repack_status"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_repack_status",
+        "type": "api-current-state",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Confirmar fila de purge no Recorder",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.recorder_retention_purge_ready",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 1010,
+        "y": 660,
+        "wires": [
+            [
+                "recorder_retention_repack_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_repack_evaluate",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Liberar repack só com fila concluída",
+        "func": "const TEST = msg.test_mode === true;\nconst retention = msg.recorderRetention ?? {};\nconst targets = Array.isArray(retention.targetKeys) ? retention.targetKeys : [];\nif (!targets.length) return [null, null, null];\nconst pending = Array.isArray(msg.data?.attributes?.pending_targets) ? msg.data.attributes.pending_targets : [];\nconst state = String(msg.payload ?? \"unavailable\");\nconst complete = state !== \"unavailable\" && !targets.some((target) => pending.includes(target));\nif (TEST) {\n    return [null, null, { ...msg, payload: { simulated: true, dispatched: false, action: \"recorder.purge\", repack: true, ready: complete } }];\n}\nif (!complete) {\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"aguardando fila de purge\" });\n    return [null, msg, null];\n}\nconst active = flow.get(\"recorder_retention_active_cycle_v1\", \"persistent\");\nif (!active || active.id !== retention.cycleId || active.phase === \"repack_queued\") return [null, null, null];\nflow.set(\"recorder_retention_active_cycle_v1\", { ...active, phase: \"repack_queued\" }, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"fila concluída; repack solicitado\" });\nreturn [{ ...msg, payload: { keep_days: 30, repack: true, apply_filter: false } }, null, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1280,
+        "y": 660,
+        "wires": [
+            [
+                "recorder_retention_repack"
+            ],
+            [
+                "recorder_retention_repack_retry_out"
+            ],
+            [
+                "recorder_retention_repack_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_repack",
+        "type": "api-call-service",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Repack do Recorder após a fila",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "recorder.purge",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "payload",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "recorder",
+        "service": "purge",
+        "x": 1550,
+        "y": 660,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "recorder_retention_test_repack_ready",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "TESTE 5: repack com fila pronta",
+        "props": [
+            {
+                "p": "payload",
+                "v": "ready",
+                "vt": "str"
+            },
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "recorderRetention",
+                "v": "{\"targetKeys\":[\"codex_diagnostics\"]}",
+                "vt": "json"
+            },
+            {
+                "p": "data",
+                "v": "{\"attributes\":{\"pending_targets\":[]}}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "ready",
+        "payloadType": "str",
+        "x": 700,
+        "y": 1070,
+        "wires": [
+            [
+                "recorder_retention_test_repack_out"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_repack_retry_out",
+        "type": "link out",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Reverificar em 5 min",
+        "mode": "link",
+        "links": [
+            "recorder_retention_repack_delay_in"
+        ],
+        "x": 1490,
+        "y": 610,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_repack_delay_in",
+        "type": "link in",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Retorno para espera",
+        "links": [
+            "recorder_retention_repack_retry_out"
+        ],
+        "x": 555,
+        "y": 660,
+        "wires": [
+            [
+                "recorder_retention_repack_delay"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_repack_test_in",
+        "type": "link in",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Teste de fila pronta",
+        "links": [
+            "recorder_retention_test_repack_out"
+        ],
+        "x": 1070,
+        "y": 700,
+        "wires": [
+            [
+                "recorder_retention_repack_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_guard_dry_out",
+        "type": "link out",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Dry-run de purge",
+        "mode": "link",
+        "links": [
+            "recorder_retention_dry_run_in"
+        ],
+        "x": 1125,
+        "y": 610,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_repack_dry_out",
+        "type": "link out",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Dry-run de repack",
+        "mode": "link",
+        "links": [
+            "recorder_retention_dry_run_in"
+        ],
+        "x": 1450,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_test_repack_out",
+        "type": "link out",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "Enviar teste ao gate",
+        "mode": "link",
+        "links": [
+            "recorder_retention_repack_test_in"
+        ],
+        "x": 950,
+        "y": 1070,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_dry_run_in",
+        "type": "link in",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "Receber resultado simulado",
+        "links": [
+            "recorder_retention_guard_dry_out",
+            "recorder_retention_repack_dry_out"
+        ],
+        "x": 1285,
+        "y": 990,
         "wires": [
             [
                 "recorder_retention_dry_run_terminal"

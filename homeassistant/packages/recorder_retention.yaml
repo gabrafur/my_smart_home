@@ -1,0 +1,11 @@
+command_line:
+  - sensor:
+      name: Recorder Retention Purge Ready
+      unique_id: recorder_retention_purge_ready
+      command: "python3 /config/tools/recorder_retention_status.py"
+      command_timeout: 5
+      scan_interval: 300
+      value_template: "{{ value_json.status }}"
+      json_attributes:
+        - checked_at
+        - pending_targets

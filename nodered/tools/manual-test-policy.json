@@ -94,11 +94,12 @@
                 "recorder_retention_test_reset",
                 "recorder_retention_test_baseline",
                 "recorder_retention_test_near",
-                "recorder_retention_test_outlier"
+                "recorder_retention_test_outlier",
+                "recorder_retention_test_repack_ready"
             ],
             "dry_run_terminal_ids": ["recorder_retention_dry_run_terminal"],
             "automated_test": "test-recorder-retention-flow.mjs",
-            "reason": "Baseline, valor consecutivo próximo e outlier percorrem a compactação real; test_mode bloqueia recorder.purge_entities e termina no terminal dry-run."
+            "reason": "Baseline, valor consecutivo próximo, outlier e liberação do repack percorrem as decisões reais; test_mode bloqueia recorder.purge_entities e recorder.purge e termina no terminal dry-run."
         },
         "monitoramento_internet_tab": {
             "strategy": "automated_only",
