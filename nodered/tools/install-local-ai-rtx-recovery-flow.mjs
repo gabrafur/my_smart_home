@@ -10,12 +10,15 @@ const functionDir = path.join(here, "functions");
 const TAB = "local_ai_rtx_recovery_tab";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8").trimEnd();
-const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("local_ai_rtx_");
+const owned = (node) => node.id === TAB || node.id.startsWith("local_ai_rtx_");
 const removed = new Set(flows.filter(owned).map((node) => node.id));
 const next = flows.filter((node) => !owned(node));
 for (const node of next) {
   for (const field of ["nodes", "scope", "links"]) {
-    if (Array.isArray(node[field])) node[field] = node[field].filter((id) => !removed.has(id));
+    if (Array.isArray(node[field])) node[field] = node[field].filter((id) =>
+      !removed.has(id) ||
+      (field === "links" && node.id === "global_observer_events_in" && id === "local_ai_rtx_alert_out")
+    );
   }
   if (Array.isArray(node.wires)) node.wires = node.wires.map((wire) => Array.isArray(wire) ? wire.filter((id) => !removed.has(id)) : wire);
 }
@@ -27,7 +30,7 @@ const group = (id, name, x, y, w, h, color) => add({
   nodes: [], x, y, w, h,
 });
 const groups = {
-  health: group("local_ai_rtx_health_group", "1. Saúde passiva e recovery explícito", 64, 20, 900, 330, "#5b8db8"),
+  health: group("local_ai_rtx_health_group", "1. Saúde passiva, alerta e recovery explícito", 64, 20, 900, 330, "#5b8db8"),
   recovery: group("local_ai_rtx_recovery_group", "2. Recovery seguro via MCP", 1000, 20, 1200, 330, "#b5563f"),
   test: group("local_ai_rtx_test_group", "TESTE — ciclo completo em dry-run", 64, 390, 2136, 320, "#c9b458"),
 };
@@ -74,11 +77,12 @@ grouped(groups.health, {
   persist: false, proxy: "", insecureHTTPParser: false, authType: "", senderr: false, headers: [],
   x: 620, y: 130, wires: [["local_ai_rtx_health_evaluate"]],
 });
-fn("local_ai_rtx_health_evaluate", groups.health, "Decidir disponibilidade", "local-ai-rtx-health-evaluate.js", 2, 830, 170, [
-  ["local_ai_rtx_status_terminal"], ["local_ai_rtx_recovery_out"],
+fn("local_ai_rtx_health_evaluate", groups.health, "Decidir disponibilidade", "local-ai-rtx-health-evaluate.js", 3, 830, 170, [
+  ["local_ai_rtx_status_terminal"], ["local_ai_rtx_recovery_out"], ["local_ai_rtx_alert_out"],
 ]);
 fn("local_ai_rtx_status_terminal", groups.health, "Estado visível da RTX", "local-ai-rtx-status-terminal.js", 1, 810, 260, []);
 linkOut("local_ai_rtx_recovery_out", groups.health, "Pedido explícito → recovery MCP", "local_ai_rtx_recovery_in", 920, 120);
+linkOut("local_ai_rtx_alert_out", groups.health, "RTX indisponível → alerta central", "global_observer_events_in", 920, 300);
 linkIn("local_ai_rtx_test_health_in", groups.health, "Receber saúde TESTE", "local_ai_rtx_test_health_out", "local_ai_rtx_health_evaluate", 650, 260);
 
 linkIn("local_ai_rtx_recovery_in", groups.recovery, "Receber recovery necessário", "local_ai_rtx_recovery_out", "local_ai_rtx_side_effect_guard", 1040, 120);

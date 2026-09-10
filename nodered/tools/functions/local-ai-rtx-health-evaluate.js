@@ -33,7 +33,28 @@ if (!explicitRecovery) {
     snapshot.last_result = "unavailable";
     flow.set(key, snapshot);
     node.status({ fill: "red", shape: "ring", text: `indisponível: ${reason}` });
-    return [status, null];
+    const alert = {
+        ...msg,
+        test_mode: testMode,
+        _global_observer_test: testMode,
+        _global_observer: {
+            flow_id: "local_ai_rtx_recovery_tab",
+            flow_label: "recuperacao_rtx"
+        },
+        error: {
+            message: `RTX indisponível: ${reason}`,
+            source: {
+                id: "local_ai_rtx_health_evaluate",
+                type: "function",
+                name: "Monitor de disponibilidade da RTX"
+            }
+        },
+        observer_alert: {
+            title: "RTX indisponível",
+            message: "A conexão da RTX está indisponível. A recuperação é manual para não interromper sua VPN: abra a aba “recuperacao_rtx” no Node-RED e clique em “Recuperar endpoint via MCP”."
+        }
+    };
+    return [status, null, alert];
 }
 const coolingDown = snapshot.last_attempt_at && now - snapshot.last_attempt_at < 60000;
 if (coolingDown && !testMode) {
@@ -47,4 +68,4 @@ snapshot.last_result = "recovery_requested";
 flow.set(key, snapshot);
 node.status({ fill: "yellow", shape: "dot", text: `recovery: ${reason}` });
 const recovery = { ...msg, test_mode: testMode, rtx_status: snapshot, payload: { requested: true, reason } };
-return [status, recovery];
+return [status, recovery, null];

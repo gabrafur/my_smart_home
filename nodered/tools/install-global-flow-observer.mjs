@@ -32,12 +32,16 @@ for (const node of next) {
     );
   }
   if (Array.isArray(node.links)) {
-    node.links = node.links.filter((id) => !owned(id));
+    node.links = node.links.filter((id) =>
+      !owned(id) ||
+      (node.id === "local_ai_rtx_alert_out" && id === "global_observer_events_in"),
+    );
   }
 }
 
 const tabs = next.filter((node) => node.type === "tab" && node.id !== OBSERVER_TAB);
 const coverageOutIds = [];
+const externalEventOutIds = ["local_ai_rtx_alert_out"];
 const coverageNodes = [];
 const coverageLayoutOverrides = new Map([
   ["weekly_docs_review_tab", {
@@ -244,7 +248,7 @@ const observerNodes = [
     z: OBSERVER_TAB,
     g: productionGroup,
     name: "Receber falhas de todas as abas",
-    links: [...coverageOutIds, "global_observer_test_event_out"],
+    links: [...coverageOutIds, ...externalEventOutIds, "global_observer_test_event_out"],
     x: 120,
     y: 160,
     wires: [["global_observer_ingest"]],

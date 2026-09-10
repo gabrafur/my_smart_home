@@ -72,6 +72,17 @@ const firstError = execute(code.ingest, baseError(), store);
 assert.match(firstError.alert.title, /TESTE/);
 assert.match(firstError.alert.message, /Fluxo teste/);
 assert.equal(execute(code.ingest, baseError(), store), null, "erro repetido deve ser deduplicado");
+const tailored = execute(code.ingest, {
+  ...baseError(),
+  observer_now: 150_000,
+  error: {
+    message: "RTX indisponível: listener_absent",
+    source: { id: "rtx_health", type: "function", name: "Monitor RTX" },
+  },
+  observer_alert: { title: "RTX indisponível", message: "Recuperação manual obrigatória." },
+}, store);
+assert.equal(tailored.alert.title, "TESTE — RTX indisponível");
+assert.equal(tailored.alert.message, "Recuperação manual obrigatória.");
 const reminder = baseError();
 reminder.observer_now += 6 * 60 * 60 * 1000;
 assert.ok(execute(code.ingest, reminder, store), "erro persistente deve lembrar após 6 h");

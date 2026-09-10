@@ -41,12 +41,15 @@ assert.equal(available[1], null);
 
 const unavailable = execute(code.evaluate, health(false, 200000), store);
 assert.equal(unavailable[1], null);
+assert.equal(unavailable[2].error.message, "RTX indisponível: listener_absent");
+assert.match(unavailable[2].observer_alert.message, /recuperacao_rtx/);
 const explicitUnavailable = execute(code.evaluate, {
   ...health(false, 200000),
   explicit_recovery: true,
 }, store);
 assert.equal(explicitUnavailable[1].payload.requested, true);
 assert.equal(explicitUnavailable[1].payload.reason, "listener_absent");
+assert.equal(explicitUnavailable[2], null);
 const guarded = execute(code.guard, explicitUnavailable[1], store);
 assert.equal(guarded[0], null);
 assert.equal(guarded[1].payload.dispatched, false);
@@ -86,6 +89,8 @@ for (const [id, file] of [
 ]) assert.equal(byId.get(id)?.func, source(file).trimEnd(), `${id} deve vir da fonte geradora`);
 
 assert.equal(byId.get("local_ai_rtx_recovery_http")?.type, "http request");
+assert.equal(byId.get("local_ai_rtx_health_evaluate")?.outputs, 3);
+assert.deepEqual(byId.get("local_ai_rtx_alert_out")?.links, ["global_observer_events_in"]);
 assert.equal(byId.get("local_ai_rtx_tick")?.repeat, "60");
 assert.equal(
   byId.get("local_ai_rtx_manual_recovery")?.props.some(

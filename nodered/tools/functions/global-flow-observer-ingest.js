@@ -136,7 +136,10 @@ if (msg.error) {
         flow_id: flowId,
         source_id: sourceId
     };
-    msg.alert = {
+    const tailoredAlert = msg.observer_alert && typeof msg.observer_alert === "object"
+        ? msg.observer_alert
+        : {};
+    const defaultAlert = {
         title: TEST_MODE
             ? "TESTE — Falha em fluxo Node-RED"
             : "Falha em fluxo Node-RED",
@@ -145,6 +148,14 @@ if (msg.error) {
             `“${sourceName}”. O mesmo erro será silenciado por 6 horas ` +
             "para evitar notificações repetidas."
     };
+    const tailoredTitle = String(tailoredAlert.title ?? "").replace(/[\r\n]+/g, " ").slice(0, 140);
+    const tailoredMessage = String(tailoredAlert.message ?? "").replace(/[\r\n]+/g, " ").slice(0, 600);
+    msg.alert = tailoredTitle && tailoredMessage
+        ? {
+            title: TEST_MODE ? `TESTE — ${tailoredTitle}` : tailoredTitle,
+            message: tailoredMessage
+        }
+        : defaultAlert;
     return msg;
 }
 
