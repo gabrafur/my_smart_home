@@ -1,5 +1,594 @@
 [
     {
+        "id": "recorder_retention_tab",
+        "type": "tab",
+        "label": "recorder_retention",
+        "disabled": false,
+        "info": "Política central: compacta baseline, mudanças e outliers em contexto persistente antes do purge suportado do Recorder."
+    },
+    {
+        "id": "recorder_retention_group_config",
+        "type": "group",
+        "z": "recorder_retention_tab",
+        "name": "1. Política central e limites",
+        "style": {
+            "label": true,
+            "color": "#7d6ba8"
+        },
+        "nodes": [
+            "recorder_retention_comment",
+            "recorder_retention_init",
+            "recorder_retention_config"
+        ],
+        "x": 64,
+        "y": 59,
+        "w": 972,
+        "h": 142
+    },
+    {
+        "id": "recorder_retention_group_capture",
+        "type": "group",
+        "z": "recorder_retention_tab",
+        "name": "2. Captura: baseline, mudanças e outliers",
+        "style": {
+            "label": true,
+            "color": "#3fadb5"
+        },
+        "nodes": [
+            "recorder_retention_changes",
+            "recorder_retention_compact"
+        ],
+        "x": 64,
+        "y": 239,
+        "w": 972,
+        "h": 182
+    },
+    {
+        "id": "recorder_retention_group_execution",
+        "type": "group",
+        "z": "recorder_retention_tab",
+        "name": "3. Purge serial, suportado e somente após aquecimento",
+        "style": {
+            "label": true,
+            "color": "#4d9a6a"
+        },
+        "nodes": [
+            "recorder_retention_schedule",
+            "recorder_retention_plan",
+            "recorder_retention_split",
+            "recorder_retention_dispatch_guard",
+            "recorder_retention_rate_limit",
+            "recorder_retention_purge"
+        ],
+        "x": 64,
+        "y": 459,
+        "w": 1662,
+        "h": 182
+    },
+    {
+        "id": "recorder_retention_group_tests",
+        "type": "group",
+        "z": "recorder_retention_tab",
+        "name": "TESTE — baseline, valor próximo e outlier em dry-run",
+        "style": {
+            "label": true,
+            "color": "#c9b458"
+        },
+        "nodes": [
+            "recorder_retention_test_instructions",
+            "recorder_retention_test_reset",
+            "recorder_retention_test_reset_state",
+            "recorder_retention_test_baseline",
+            "recorder_retention_test_near",
+            "recorder_retention_test_outlier",
+            "recorder_retention_test_prepare",
+            "recorder_retention_test_compact",
+            "recorder_retention_test_finalize",
+            "recorder_retention_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 679,
+        "w": 1662,
+        "h": 322
+    },
+    {
+        "id": "recorder_retention_comment",
+        "type": "comment",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_config",
+        "name": "Não altera SQLite diretamente: o contexto guarda referências normais, mudanças e outliers; recorder.purge_entities remove somente a série bruta com mais de 2 dias.",
+        "info": "",
+        "x": 570,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_init",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_config",
+        "name": "Inicializar ao subir",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 220,
+        "y": 160,
+        "wires": [
+            [
+                "recorder_retention_config"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_config",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_config",
+        "name": "Configurar política",
+        "func": "const config = {\n    version: 1,\n    rawRetentionDays: 2,\n    compactRetentionDays: 30,\n    baselineIntervalMs: 6 * 60 * 60 * 1000,\n    numericAbsoluteTolerance: 0.5,\n    numericRelativeTolerance: 0.01,\n    madMultiplier: 3,\n    warmupMs: 2 * 24 * 60 * 60 * 1000,\n    // Estas entidades são os emissores de alta frequência identificados na auditoria.\n    monitoredEntities: [\n        \"sensor.vehicle_primary_refresh_coordinator\",\n        \"sensor.zigbee_network_state\",\n        \"binary_sensor.zigbee_network\",\n        \"sensor.tuya_devices_state\",\n        \"binary_sensor.tuya_devices\",\n        \"sensor.internet_connection_state\",\n        \"binary_sensor.internet_connection\",\n        \"sensor.raspberry_pi_metrics_raw\",\n        \"sensor.raspberry_pi_health\",\n        \"sensor.raspberry_pi_cpu_temperature\",\n        \"sensor.raspberry_pi_cpu_usage\",\n        \"sensor.raspberry_pi_cpu_frequency\",\n        \"sensor.raspberry_pi_load_1m\",\n        \"sensor.raspberry_pi_load_5m\",\n        \"sensor.raspberry_pi_load_15m\",\n        \"sensor.raspberry_pi_memory_usage\",\n        \"sensor.raspberry_pi_memory_used\",\n        \"sensor.raspberry_pi_memory_available\",\n        \"sensor.raspberry_pi_swap_usage\",\n        \"sensor.raspberry_pi_swap_used\",\n        \"sensor.raspberry_pi_storage_usage\",\n        \"sensor.raspberry_pi_storage_used\",\n        \"sensor.raspberry_pi_storage_free\",\n        \"sensor.raspberry_pi_storage_inodes_usage\",\n        \"sensor.raspberry_pi_uptime\",\n        \"sensor.raspberry_pi_network_rx\",\n        \"sensor.raspberry_pi_network_tx\"\n    ],\n    purgeTargets: [\n        {\n            key: \"codex_diagnostics\",\n            keepDays: 0,\n            entityId: [\n                \"sensor.codex_dados_de_limite\",\n                \"sensor.codex_benchmark_rtx_alto_potencial\",\n                \"sensor.codex_canario_extracao_estruturada\",\n                \"sensor.codex_pivot_rtx_restrito\",\n                \"sensor.codex_atualizacao_do_limite_em\",\n                \"sensor.codex_esgotamento_estimado\",\n                \"sensor.codex_proxima_atualizacao_do_limite\",\n                \"sensor.codex_ultima_atualizacao_do_limite\",\n                \"sensor.codex_ritmo_do_limite\",\n                \"sensor.codex_local_ai_status\"\n            ]\n        },\n        { key: \"vehicle_refresh\", keepDays: 2, entityId: [\"sensor.vehicle_primary_refresh_coordinator\"] },\n        { key: \"zigbee_diagnostics\", keepDays: 2, entityId: [\"sensor.zigbee_network_state\", \"binary_sensor.zigbee_network\"] },\n        { key: \"raspberry_pi_health\", keepDays: 2, entityGlobs: [\"sensor.raspberry_pi_*\", \"binary_sensor.raspberry_pi_*\"] },\n        { key: \"tuya_diagnostics\", keepDays: 2, entityId: [\"sensor.tuya_devices_state\", \"binary_sensor.tuya_devices\"] },\n        { key: \"internet_diagnostics\", keepDays: 2, entityId: [\"sensor.internet_connection_state\", \"binary_sensor.internet_connection\"] }\n    ]\n};\nconst now = Date.now();\nconst previous = flow.get(\"recorder_retention_config_v1\", \"persistent\");\nflow.set(\"recorder_retention_config_v1\", config, \"persistent\");\nflow.set(\"recorder_retention_started_at_v1\", Number(previous?.startedAt ?? flow.get(\"recorder_retention_started_at_v1\", \"persistent\") ?? now), \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política v\" + config.version });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_changes",
+        "type": "server-state-changed",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_capture",
+        "name": "Observar entidades de alta frequência",
+        "server": "4126427d5e161a03",
+        "version": 6,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entities": {
+            "entity": [
+                "sensor.vehicle_primary_refresh_coordinator",
+                "sensor.zigbee_network_state",
+                "binary_sensor.zigbee_network",
+                "sensor.tuya_devices_state",
+                "binary_sensor.tuya_devices",
+                "sensor.internet_connection_state",
+                "binary_sensor.internet_connection",
+                "sensor.raspberry_pi_metrics_raw",
+                "sensor.raspberry_pi_health",
+                "sensor.raspberry_pi_cpu_temperature",
+                "sensor.raspberry_pi_cpu_usage",
+                "sensor.raspberry_pi_cpu_frequency",
+                "sensor.raspberry_pi_load_1m",
+                "sensor.raspberry_pi_load_5m",
+                "sensor.raspberry_pi_load_15m",
+                "sensor.raspberry_pi_memory_usage",
+                "sensor.raspberry_pi_memory_used",
+                "sensor.raspberry_pi_memory_available",
+                "sensor.raspberry_pi_swap_usage",
+                "sensor.raspberry_pi_swap_used",
+                "sensor.raspberry_pi_storage_usage",
+                "sensor.raspberry_pi_storage_used",
+                "sensor.raspberry_pi_storage_free",
+                "sensor.raspberry_pi_storage_inodes_usage",
+                "sensor.raspberry_pi_uptime",
+                "sensor.raspberry_pi_network_rx",
+                "sensor.raspberry_pi_network_tx"
+            ],
+            "substring": [],
+            "regex": []
+        },
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": false,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": true,
+        "ignoreCurrentStateUnavailable": true,
+        "outputProperties": [],
+        "x": 280,
+        "y": 340,
+        "wires": [
+            [
+                "recorder_retention_compact"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_compact",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_capture",
+        "name": "Compactar: baseline / mudança / outlier",
+        "func": "const TEST = msg.test_mode === true;\nconst STORE = TEST ? undefined : \"persistent\";\nconst get = (key) => STORE ? flow.get(key, STORE) : flow.get(key);\nconst set = (key, value) => STORE ? flow.set(key, value, STORE) : flow.set(key, value);\nconst config = get(\"recorder_retention_config_v1\");\nif (!config) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"configuração ausente\" });\n    return null;\n}\nconst source = msg.data?.new_state ?? msg.payload?.new_state ?? msg.payload ?? {};\nconst entityId = String(source.entity_id ?? msg.data?.entity_id ?? msg.entity_id ?? \"\");\nif (!config.monitoredEntities.includes(entityId)) return null;\nconst rawValue = source.state;\nif (rawValue === undefined || rawValue === null || [\"unknown\", \"unavailable\"].includes(String(rawValue))) return null;\nconst parsedAt = Date.parse(source.last_updated ?? \"\");\nconst now = Number(msg.testNow ?? (Number.isFinite(parsedAt) ? parsedAt : Date.now()));\nif (!Number.isFinite(now)) return null;\nlet history = get(\"recorder_retention_compact_history_v1\");\nif (!history || typeof history !== \"object\" || Array.isArray(history)) history = {};\nconst entries = Array.isArray(history[entityId]) ? history[entityId] : [];\nconst cutoff = now - config.compactRetentionDays * 24 * 60 * 60 * 1000;\nconst retained = entries.filter((entry) => entry && Number.isFinite(entry.ts) && entry.ts >= cutoff);\nconst numeric = Number(rawValue);\nconst isNumeric = String(rawValue).trim() !== \"\" && Number.isFinite(numeric);\nconst baselines = retained.filter((entry) => entry.kind === \"baseline\" && entry.numeric === true).map((entry) => entry.value).sort((a, b) => a - b);\nconst median = (values) => {\n    if (!values.length) return null;\n    const middle = Math.floor(values.length / 2);\n    return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;\n};\nconst baselineMedian = median(baselines);\nconst deviations = baselineMedian === null ? [] : baselines.map((value) => Math.abs(value - baselineMedian)).sort((a, b) => a - b);\nconst mad = median(deviations) ?? 0;\nconst tolerance = isNumeric\n    ? Math.max(config.numericAbsoluteTolerance, Math.abs(numeric) * config.numericRelativeTolerance, mad * config.madMultiplier)\n    : 0;\nconst last = retained[retained.length - 1];\nconst nearPrevious = last && last.numeric === isNumeric\n    ? isNumeric ? Math.abs(numeric - last.value) <= tolerance : String(rawValue) === String(last.value)\n    : false;\nconst outlier = isNumeric && baselineMedian !== null && Math.abs(numeric - baselineMedian) > tolerance;\nconst baselineDue = !last || now - last.ts >= config.baselineIntervalMs;\nconst changed = !nearPrevious;\nlet kind = null;\nif (!last || baselineDue) kind = \"baseline\";\nelse if (outlier) kind = \"outlier\";\nelse if (changed) kind = \"change\";\nif (!kind) {\n    set(\"recorder_retention_compact_history_v1\", { ...history, [entityId]: retained });\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"próximo; descartado\" });\n    return { ...msg, payload: { entity_id: entityId, retained: false, reason: \"near_subsequent\", test_mode: TEST } };\n}\nconst record = { ts: now, value: isNumeric ? numeric : String(rawValue), numeric: isNumeric, kind };\nretained.push(record);\nset(\"recorder_retention_compact_history_v1\", { ...history, [entityId]: retained });\nnode.status({ fill: kind === \"outlier\" ? \"yellow\" : \"green\", shape: \"dot\", text: kind });\nreturn {\n    ...msg,\n    payload: {\n        entity_id: entityId,\n        retained: true,\n        kind,\n        value: record.value,\n        baseline: baselineMedian,\n        tolerance: isNumeric ? tolerance : null,\n        test_mode: TEST\n    }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_schedule",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Diariamente 04:30",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "30 04 * * *",
+        "once": false,
+        "onceDelay": "0.1",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 560,
+        "wires": [
+            [
+                "recorder_retention_plan"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_plan",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Planejar purges elegíveis",
+        "func": "const TEST = msg.test_mode === true;\nconst STORE = TEST ? undefined : \"persistent\";\nconst get = (key) => STORE ? flow.get(key, STORE) : flow.get(key);\nconst config = get(\"recorder_retention_config_v1\");\nif (!config) return null;\nconst now = Number(msg.testNow ?? Date.now());\nconst startedAt = Number(get(\"recorder_retention_started_at_v1\") ?? now);\nconst warmedUp = now >= startedAt + config.warmupMs;\nconst actions = config.purgeTargets\n    .filter((target) => target.key === \"codex_diagnostics\" || warmedUp)\n    .map((target) => ({\n        key: target.key,\n        keep_days: target.keepDays,\n        ...(Array.isArray(target.entityId) ? { entity_id: target.entityId } : {}),\n        ...(Array.isArray(target.entityGlobs) ? { entity_globs: target.entityGlobs } : {})\n    }));\nif (!warmedUp && !TEST) node.status({ fill: \"blue\", shape: \"ring\", text: \"compactando antes do primeiro purge\" });\nreturn { ...msg, payload: actions, recorderRetention: { warmedUp, test_mode: TEST } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 560,
+        "wires": [
+            [
+                "recorder_retention_split"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_split",
+        "type": "split",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Uma política por vez",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "property": "payload",
+        "x": 710,
+        "y": 560,
+        "wires": [
+            [
+                "recorder_retention_dispatch_guard"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_dispatch_guard",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Gate de dispatch / dry-run",
+        "func": "const action = msg.payload ?? {};\nif (!action.key || !Number.isInteger(action.keep_days) || (!Array.isArray(action.entity_id) && !Array.isArray(action.entity_globs))) {\n    node.error(\"recorder_retention: ação de purge inválida\", msg);\n    return [null, null];\n}\nif (msg.test_mode === true) {\n    return [null, { ...msg, payload: { simulated: true, dispatched: false, action: \"recorder.purge_entities\", target: action.key, keep_days: action.keep_days } }];\n}\nmsg.payload = { keep_days: action.keep_days, ...(action.entity_id ? { entity_id: action.entity_id } : {}), ...(action.entity_globs ? { entity_globs: action.entity_globs } : {}) };\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 960,
+        "y": 560,
+        "wires": [
+            [
+                "recorder_retention_rate_limit"
+            ],
+            [
+                "recorder_retention_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_rate_limit",
+        "type": "delay",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Serializar: 1 purge a cada 2 min",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "2",
+        "rateUnits": "minute",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1230,
+        "y": 560,
+        "wires": [
+            [
+                "recorder_retention_purge"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_purge",
+        "type": "api-call-service",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Purge seletivo do Recorder",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "recorder.purge_entities",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "payload",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "recorder",
+        "service": "purge_entities",
+        "x": 1510,
+        "y": 560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "recorder_retention_test_instructions",
+        "type": "comment",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "Ordem: 1 Reset; 2 Baseline; 3 Próximo; 4 Outlier. O último teste verifica que nenhum purge é enviado ao Home Assistant.",
+        "info": "",
+        "x": 650,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_test_reset",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 790,
+        "wires": [
+            [
+                "recorder_retention_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_test_reset_state",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "Resetar estado sintético",
+        "func": "flow.set(\"recorder_retention_compact_history_v1__test\", {}, undefined);\nflow.set(\"recorder_retention_config_v1\", { version: 1, compactRetentionDays: 30, baselineIntervalMs: 6 * 60 * 60 * 1000, numericAbsoluteTolerance: 0.5, numericRelativeTolerance: 0.01, madMultiplier: 3, warmupMs: 0, monitoredEntities: [\"sensor.raspberry_pi_cpu_usage\"], purgeTargets: [{ key: \"codex_diagnostics\", keepDays: 0, entityId: [\"sensor.codex_dados_de_limite\"] }, { key: \"raspberry_pi_health\", keepDays: 2, entityGlobs: [\"sensor.raspberry_pi_*\"] }] }, undefined);\nflow.set(\"recorder_retention_started_at_v1__test\", 0, undefined);\nnode.status({ fill: \"green\", shape: \"dot\", text: \"teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 790,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_test_baseline",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "TESTE 2: baseline 40",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "baseline",
+        "payloadType": "str",
+        "x": 210,
+        "y": 850,
+        "wires": [
+            [
+                "recorder_retention_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_test_near",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "TESTE 3: próximo 40,2",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "near",
+        "payloadType": "str",
+        "x": 220,
+        "y": 900,
+        "wires": [
+            [
+                "recorder_retention_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_test_outlier",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "TESTE 4: outlier 87",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "outlier",
+        "payloadType": "str",
+        "x": 210,
+        "y": 950,
+        "wires": [
+            [
+                "recorder_retention_test_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_test_prepare",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "Preparar estado sintético",
+        "func": "const state = String(msg.payload ?? \"baseline\");\nconst values = { baseline: 40, near: 40.2, outlier: 87 };\nreturn { test_mode: true, testNow: 1_800_000_000_000 + ({ baseline: 0, near: 60_000, outlier: 120_000 }[state] ?? 0), payload: { entity_id: \"sensor.raspberry_pi_cpu_usage\", state: String(values[state] ?? values.baseline) } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 890,
+        "wires": [
+            [
+                "recorder_retention_test_compact"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_test_compact",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "Aplicar compactação real",
+        "func": "const TEST = msg.test_mode === true;\nconst STORE = TEST ? undefined : \"persistent\";\nconst get = (key) => STORE ? flow.get(key, STORE) : flow.get(key);\nconst set = (key, value) => STORE ? flow.set(key, value, STORE) : flow.set(key, value);\nconst config = get(\"recorder_retention_config_v1\");\nif (!config) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"configuração ausente\" });\n    return null;\n}\nconst source = msg.data?.new_state ?? msg.payload?.new_state ?? msg.payload ?? {};\nconst entityId = String(source.entity_id ?? msg.data?.entity_id ?? msg.entity_id ?? \"\");\nif (!config.monitoredEntities.includes(entityId)) return null;\nconst rawValue = source.state;\nif (rawValue === undefined || rawValue === null || [\"unknown\", \"unavailable\"].includes(String(rawValue))) return null;\nconst parsedAt = Date.parse(source.last_updated ?? \"\");\nconst now = Number(msg.testNow ?? (Number.isFinite(parsedAt) ? parsedAt : Date.now()));\nif (!Number.isFinite(now)) return null;\nlet history = get(\"recorder_retention_compact_history_v1\");\nif (!history || typeof history !== \"object\" || Array.isArray(history)) history = {};\nconst entries = Array.isArray(history[entityId]) ? history[entityId] : [];\nconst cutoff = now - config.compactRetentionDays * 24 * 60 * 60 * 1000;\nconst retained = entries.filter((entry) => entry && Number.isFinite(entry.ts) && entry.ts >= cutoff);\nconst numeric = Number(rawValue);\nconst isNumeric = String(rawValue).trim() !== \"\" && Number.isFinite(numeric);\nconst baselines = retained.filter((entry) => entry.kind === \"baseline\" && entry.numeric === true).map((entry) => entry.value).sort((a, b) => a - b);\nconst median = (values) => {\n    if (!values.length) return null;\n    const middle = Math.floor(values.length / 2);\n    return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;\n};\nconst baselineMedian = median(baselines);\nconst deviations = baselineMedian === null ? [] : baselines.map((value) => Math.abs(value - baselineMedian)).sort((a, b) => a - b);\nconst mad = median(deviations) ?? 0;\nconst tolerance = isNumeric\n    ? Math.max(config.numericAbsoluteTolerance, Math.abs(numeric) * config.numericRelativeTolerance, mad * config.madMultiplier)\n    : 0;\nconst last = retained[retained.length - 1];\nconst nearPrevious = last && last.numeric === isNumeric\n    ? isNumeric ? Math.abs(numeric - last.value) <= tolerance : String(rawValue) === String(last.value)\n    : false;\nconst outlier = isNumeric && baselineMedian !== null && Math.abs(numeric - baselineMedian) > tolerance;\nconst baselineDue = !last || now - last.ts >= config.baselineIntervalMs;\nconst changed = !nearPrevious;\nlet kind = null;\nif (!last || baselineDue) kind = \"baseline\";\nelse if (outlier) kind = \"outlier\";\nelse if (changed) kind = \"change\";\nif (!kind) {\n    set(\"recorder_retention_compact_history_v1\", { ...history, [entityId]: retained });\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"próximo; descartado\" });\n    return { ...msg, payload: { entity_id: entityId, retained: false, reason: \"near_subsequent\", test_mode: TEST } };\n}\nconst record = { ts: now, value: isNumeric ? numeric : String(rawValue), numeric: isNumeric, kind };\nretained.push(record);\nset(\"recorder_retention_compact_history_v1\", { ...history, [entityId]: retained });\nnode.status({ fill: kind === \"outlier\" ? \"yellow\" : \"green\", shape: \"dot\", text: kind });\nreturn {\n    ...msg,\n    payload: {\n        entity_id: entityId,\n        retained: true,\n        kind,\n        value: record.value,\n        baseline: baselineMedian,\n        tolerance: isNumeric ? tolerance : null,\n        test_mode: TEST\n    }\n};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 890,
+        "wires": [
+            [
+                "recorder_retention_test_finalize"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_dry_run_terminal",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "TESTE FINAL: nenhum efeito despachado",
+        "func": "const DRY_RUN_CONTRACT = { simulated: true, dispatched: false };\nconst value = msg.payload ?? {};\nif (value.simulated !== true || value.dispatched !== false) {\n    node.error(\"recorder_retention: terminal recebeu efeito não simulado\", msg);\n    return null;\n}\nnode.status({ fill: \"green\", shape: \"dot\", text: \"dry-run \" + String(value.target ?? value.kind ?? \"compactação\") });\nnode.log(\"recorder_retention_dry_run=\" + JSON.stringify(value));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1270,
+        "y": 890,
+        "wires": []
+    },
+    {
+        "id": "recorder_retention_test_finalize",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_tests",
+        "name": "Normalizar resultado simulado",
+        "func": "const result = msg.payload ?? {};\nreturn { ...msg, payload: { simulated: true, dispatched: false, action: \"recorder-compaction\", entity_id: result.entity_id, retained: result.retained, kind: result.kind ?? result.reason } };",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1000,
+        "y": 890,
+        "wires": [
+            [
+                "recorder_retention_dry_run_terminal"
+            ]
+        ]
+    },
+    {
         "id": "weekly_docs_review_tab",
         "type": "tab",
         "label": "revisao_documental_semanal",
@@ -19103,6 +19692,92 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__recorder_retention_tab__group",
+        "type": "group",
+        "z": "recorder_retention_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__recorder_retention_tab__catch",
+            "global_observer_coverage__recorder_retention_tab__status",
+            "global_observer_coverage__recorder_retention_tab__annotate",
+            "global_observer_coverage__recorder_retention_tab__out"
+        ],
+        "x": 1780,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__recorder_retention_tab__catch",
+        "type": "catch",
+        "z": "recorder_retention_tab",
+        "g": "global_observer_coverage__recorder_retention_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 1920,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__recorder_retention_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__recorder_retention_tab__status",
+        "type": "status",
+        "z": "recorder_retention_tab",
+        "g": "global_observer_coverage__recorder_retention_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 1930,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__recorder_retention_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__recorder_retention_tab__annotate",
+        "type": "function",
+        "z": "recorder_retention_tab",
+        "g": "global_observer_coverage__recorder_retention_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"recorder_retention_tab\",\"flow_label\":\"recorder_retention\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2200,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__recorder_retention_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__recorder_retention_tab__out",
+        "type": "link out",
+        "z": "recorder_retention_tab",
+        "g": "global_observer_coverage__recorder_retention_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2445,
+        "y": 130,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__weekly_docs_review_tab__group",
         "type": "group",
         "z": "weekly_docs_review_tab",
@@ -21052,6 +21727,7 @@
         "g": "global_observer_production_group",
         "name": "Receber falhas de todas as abas",
         "links": [
+            "global_observer_coverage__recorder_retention_tab__out",
             "global_observer_coverage__weekly_docs_review_tab__out",
             "global_observer_coverage__git_backup_tab__out",
             "global_observer_coverage__29d64664bf8cbde8__out",

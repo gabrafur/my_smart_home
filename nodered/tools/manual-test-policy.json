@@ -87,6 +87,19 @@
             "automated_test": "test-storage-health-flow.mjs",
             "reason": "Normalidade e crescimento acelerado atravessam o mesmo diagnóstico e gate de autocuidado; test_mode bloqueia exec, MQTT e notificações e termina no dry-run compartilhado."
         },
+        "recorder_retention_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "recorder_retention_group_tests",
+                "recorder_retention_test_reset",
+                "recorder_retention_test_baseline",
+                "recorder_retention_test_near",
+                "recorder_retention_test_outlier"
+            ],
+            "dry_run_terminal_ids": ["recorder_retention_dry_run_terminal"],
+            "automated_test": "test-recorder-retention-flow.mjs",
+            "reason": "Baseline, valor consecutivo próximo e outlier percorrem a compactação real; test_mode bloqueia recorder.purge_entities e termina no terminal dry-run."
+        },
         "monitoramento_internet_tab": {
             "strategy": "automated_only",
             "evidence_node_ids": ["grp_internet_tests"],

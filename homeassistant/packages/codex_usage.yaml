@@ -78,6 +78,19 @@ recorder:
       - sensor.codex_rtx_gpu_agora
       - sensor.codex_rtx_vram_agora
       - sensor.codex_rtx_potencia_agora
+      # Diagnósticos derivados de alta frequência: o estado atual permanece
+      # disponível no painel, mas o histórico não agrega valor proporcional ao
+      # volume gravado. O fluxo recorder_retention remove o legado existente.
+      - sensor.codex_dados_de_limite
+      - sensor.codex_benchmark_rtx_alto_potencial
+      - sensor.codex_canario_extracao_estruturada
+      - sensor.codex_pivot_rtx_restrito
+      - sensor.codex_atualizacao_do_limite_em
+      - sensor.codex_esgotamento_estimado
+      - sensor.codex_proxima_atualizacao_do_limite
+      - sensor.codex_ultima_atualizacao_do_limite
+      - sensor.codex_ritmo_do_limite
+      - sensor.codex_local_ai_status
 
 template:
   - binary_sensor:
