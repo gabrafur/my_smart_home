@@ -8,6 +8,7 @@ import unittest
 HOMEASSISTANT = Path(__file__).resolve().parents[1]
 DASHBOARD = HOMEASSISTANT / "dashboards" / "location.yaml"
 CONFIGURATION = HOMEASSISTANT / "configuration.yaml"
+PRESENCE_ZONES = HOMEASSISTANT / "packages" / "zonas_presenca.yaml"
 SYNC_COMPONENT = (
     HOMEASSISTANT / "custom_components" / "consolidated_map" / "__init__.py"
 )
@@ -92,6 +93,18 @@ class LocationDashboardTest(unittest.TestCase):
         self.assertIn('NATIVE_MAP_PATH = "map"', component)
         self.assertIn("await native_map.async_save(rendered)", component)
         self.assertIn('map_card.get("show_all") is not True', component)
+
+    def test_node_red_owns_machine_state_and_decision_radii(self):
+        dashboard = DASHBOARD.read_text(encoding="utf-8")
+        zones = PRESENCE_ZONES.read_text(encoding="utf-8")
+
+        self.assertIn("item.state == 'near_home'", dashboard)
+        self.assertIn("item.attributes.home_radius_m", dashboard)
+        self.assertIn("item.attributes.near_home_radius_m", dashboard)
+        self.assertNotIn("distance(", dashboard)
+        self.assertIn("name: location_update_ring", zones)
+        self.assertIn("radius: 1500", zones)
+        self.assertNotIn("name: near_home", zones)
 
 
 if __name__ == "__main__":

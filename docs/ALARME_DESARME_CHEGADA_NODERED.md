@@ -12,7 +12,8 @@ O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas contratos
 `contexto_vehicle_primary`. Esses flows de dominio ja validam:
 
 - origem `resident_primary`, `resident_secondary` ou `vehicle_primary`;
-- entrada no anel `zone.chegando` vinda de fora (`arrival_stage: approach`),
+- entrada no estado canônico `near_home`, calculado pelo Node-RED a partir dos
+  raios visuais e vinda de fora (`arrival_stage: approach`),
   ou chegada confirmada perto de casa (`arrival_stage: home`);
 - precisao do GPS, sentido da travessia e trackers iCloud/mobile_app
   congelados;

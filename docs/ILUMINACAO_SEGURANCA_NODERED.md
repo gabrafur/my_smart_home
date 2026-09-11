@@ -8,7 +8,7 @@ abas:
 | `localizacao_pessoas` | Ler e normalizar os trackers de resident_primary e resident_secondary, comprovar um ciclo externo individual, separar visualmente saída de retorno, detectar aproximação/chegada e controlar o refresh dos iPhones. |
 | `contexto_vehicle_primary` | Normalizar localização, motor e trava do vehicle_primary, manter `vehicle_primary_in_use`, comprovar o ciclo externo, separar visualmente saída de retorno, detectar chegada, atualizar viagens e controlar o refresh do veículo. |
 | `contexto_chegadas` | Sincronizar os snapshots periódicos e calcular somente a política conjunta `anyone_away`. Não interpreta GPS bruto nem envia notificações entre residentes. |
-| `notificacoes_chegadas_residentes` | Avisar `resident_primary` quando `resident_secondary` entra em `chegando` e vice-versa, durante as 24 horas do dia e sem depender do veículo, iluminação ou reconciliação de contexto. |
+| `notificacoes_chegadas_residentes` | Avisar `resident_primary` quando `resident_secondary` entra em `near_home` e vice-versa, durante as 24 horas do dia e sem depender do veículo, iluminação ou reconciliação de contexto. |
 | `iluminacao_seguranca` | Consumir os contratos de alto nível e decidir ligar/desligar `switch.refletor_portao_carros`, incluindo carência, timeout e anti-religamento. |
 
 Essa separação impede que a iluminação conheça trackers, coordenadas, refresh
@@ -114,11 +114,12 @@ coordenadas confiáveis e frescas, vence sempre a mudança de posição mais
 recente; a melhor precisão só desempata observações simultâneas. Uma fonte sem
 precisão aceitável não vence uma posição alternativa confiável. A decisão de
 entrada no anel usa somente a fonte selecionada: um fallback antigo em `home`
-não bloqueia uma posição recente em `chegando`.
+não bloqueia uma posição recente em `near_home`.
 
 O grupo `0. Política canônica de localização — edite os números` é a fonte
-única de raio, freshness, desempate, precisão, movimento, limite casa/fora e retenção de
-chegada. Os links nomeados levam a mesma política às abas de veículo e
+única dos três raios de decisão (`home`, `near_home` e refresh rápido), além de
+freshness, desempate, precisão, movimento e retenção de chegada. Os links
+nomeados levam a mesma política às abas de veículo e
 iluminação. O Node-RED também publica no Home Assistant a fonte vencedora e os
 indicadores já calculados de posição atual, fonte reportando e GPS confiável;
 o painel não repete esses cálculos.
@@ -148,47 +149,53 @@ o painel não repete esses cálculos.
 
 `HOME_LAT`, `HOME_LON`, `GATE_LAT` e `GATE_LON` vêm do ambiente do container;
 coordenadas privadas nunca são versionadas. O cálculo só aceita GPS com
-precisão de até 100 m. Sem coordenada confiável, usa-se `home`/`not_home` como
-fallback. `unknown` e `unavailable` produzem `state_valid: false`. Precisão ruim
-impede que coordenadas ou `home` confirmem chegada; `not_home` ainda pode armar
-o retorno de forma conservadora. Nenhum desses casos gera chegada nem limpa o
-armado anterior.
+precisão de até 100 m. Sem coordenada confiável, `home` e `near_home` não
+confirmam chegada; `not_home` ainda pode armar o retorno de forma conservadora.
+`unknown` e `unavailable` produzem `state_valid: false`. Nenhum desses casos
+gera chegada nem limpa o armado anterior.
 
-O alias público `device_tracker.vehicle_primary` preserva os estados nativos do
-Home Assistant com `state_mode: passthrough`: `home` dentro da zona da casa,
-`chegando` dentro da zona de aproximação e `not_home` fora das zonas. `away` não
-é estado do tracker; é o booleano derivado no contrato
+O alias público `device_tracker.vehicle_primary` preserva os dados nativos do
+Home Assistant com `state_mode: passthrough`. O bloco visual `Classificar home
+/ near_home` converte coordenadas confiáveis em `home`,
+`near_home` ou `not_home` antes do normalizador e do tracker MQTT canônico.
+`away` não é estado do tracker; é o booleano derivado no contrato
 `security.vehicle_primary-context.v1`, usando primeiro coordenadas confiáveis e
 depois `not_home` como fallback. O checker de bindings rejeita
 `home_away` em `device_tracker`, pois esse modo apagaria a distinção entre
-`chegando` e `not_home`.
+`near_home` e `not_home`.
 
 ## Regras de chegada preservadas
 
-- O limite de 100 m classifica casa/fora para contexto e refresh, mas distância
+- O bloco `Raio home (m)` classifica casa/fora, mas distância
   sozinha nunca arma nem comprova uma chegada.
 - O ciclo de retorno só é armado por uma observação externa separada da própria
   borda de saída, em `not_home` ou outra zona externa ao par
-  `home`/`chegando`, ou pela borda direcional externa `-> chegando`. Um único
+  `home`/`near_home`, ou pela borda direcional externa `-> near_home`. Um único
   salto `home -> not_home -> home` não basta.
-- Anel de aproximação: entrada em `zone.chegando` a partir de fora. O raio de
-  aproximadamente 1500 m é definido em
-  `homeassistant/packages/zonas_presenca.yaml`, não duplicado no JavaScript.
-- `home -> chegando` é saída, limpa o armado anterior e nunca é chegada.
-- Um rebote posterior `chegando -> home` continua bloqueado enquanto não houver
+- O estado `near_home` é calculado somente pelo Node-RED quando a fonte
+  selecionada cruza o raio configurado ao redor da casa ou do portão. A zona
+  `zone.location_update_ring`, de 1.500 m, apenas acorda o Companion App do iOS;
+  seu nome e seu raio não participam das decisões, painéis ou automações.
+- `home -> near_home` é saída, limpa o armado anterior e nunca é chegada.
+- Um rebote posterior `near_home -> home` continua bloqueado enquanto não houver
   ciclo externo confirmado. Pessoas e veículo terminam em blocos visuais
   `BLOQUEADO`, sem iluminação, alarme, notificação ou chamada externa.
 - A entrada no anel gera `arrival_stage: approach` e não consome o armado.
-- Somente depois do ciclo externo, a entrada em casa ou até 700 m de
-  casa/portão é a rede de segurança (`arrival_stage: home`) e consome o armado.
-- O bloco `Raio de chegada — 700 m`, dentro do grupo
+- Somente depois do ciclo externo, a entrada em `near_home` ou a reavaliação
+  dentro do raio configurado da casa/portão pode publicar a chegada e consumir
+  o armado (700 m por padrão).
+- O bloco `Raio near_home (m)`, dentro do grupo
   `0. Política canônica de localização — edite os números`, guarda o raio em
-  metros. Edite o valor do inject, entre 50 e 2.000 m, e faça Deploy para
+  metros. Edite o valor do inject, entre 50 e 1.500 m, e faça Deploy para
   aplicá-lo a pessoas, veículo, iluminação e atributos dos painéis.
+- `Raio refresh rápido (m)` controla quando os iPhones fora de casa usam
+  o ciclo acelerado; `Raio home (m)` controla somente a classificação de
+  casa. A validação exige `home < near_home <= refresh rápido` e rejeita uma
+  combinação incoerente sem substituir a última política válida.
 - Um tracker primário que já está em casa há mais de 10 min bloqueia o catch-up
   tardio do tracker secundário. Sem `last_changed`, o comportamento permanece
   fail-open para não perder uma chegada real.
-- Recovery `unknown`/`unavailable -> chegando` só alcança a iluminação quando
+- Recovery `unknown`/`unavailable -> near_home` só alcança a iluminação quando
   recupera um ciclo externo que já estava armado antes da indisponibilidade.
 - A chegada do vehicle_primary atualiza o histórico de viagens do dia; no estágio
   `approach`, também tenta um wake pontual do veículo.
@@ -201,9 +208,9 @@ depois `not_home` como fallback. O checker de bindings rejeita
 
 O tab `notificacoes_chegadas_residentes` recebe apenas a transição canônica
 decidida em `localizacao_pessoas`; ele não observa trackers brutos. A transição
-de fora para `chegando` notifica o outro
+de fora para `near_home` notifica o outro
 residente imediatamente, sem consultar horário, sol, veículo ou os snapshots de
-`contexto_chegadas`. A transição `home -> chegando` continua sendo tratada como
+`contexto_chegadas`. A transição `home -> near_home` continua sendo tratada como
 saída e não gera aviso. Um latch persistente evita duplicidade entre os dois
 trackers e após restart; uma nova passagem por `not_home` rearma o aviso.
 
@@ -254,13 +261,13 @@ Mudanças confirmadas de motor são observadas simetricamente: `on` por 5 s e
 próximo snapshot periódico para iniciar ou encerrar o contexto de uso, mantendo
 o mesmo filtro contra oscilações nos dois sentidos.
 
-Quando uma chegada `not_home -> chegando` ocorre antes do anoitecer ou antes de
+Quando uma chegada `not_home -> near_home` ocorre antes do anoitecer ou antes de
 a integração atualizar o motor, `iluminacao_seguranca` preserva a intenção por
 até 10 minutos, valor editável no mesmo grupo de política canônica. Durante
 esse prazo, uma aproximação de morador exige que a mesma pessoa permaneça em
-`chegando`, com localização `ready` e não stale; uma aproximação do veículo
+`near_home`, com localização `ready` e não stale; uma aproximação do veículo
 exige a localização equivalente do carro. A intenção é cancelada ao entrar em
-`home`, sair de `chegando`, perder a atualidade da localização ou vencer a
+`home`, sair de `near_home`, perder a atualidade da localização ou vencer a
 janela. Assim, uma entrada às 17:31 ainda pode ser reavaliada se o pôr do sol ou
 a telemetria do motor convergirem alguns minutos depois.
 
@@ -320,9 +327,9 @@ readiness ou estado do vehicle_primary não consomem o dedupe do refletor.
 
 A origem da chegada pode ser `resident_primary`, `resident_secondary` ou
 `vehicle_primary`. Quando o motor atual está `on`, a entrada de qualquer
-residente em `chegando` aciona a avaliação mesmo que o tracker do veículo ainda
+residente em `near_home` aciona a avaliação mesmo que o tracker do veículo ainda
 esteja em `not_home`, `home` ou outra zona válida; o veículo não precisa entrar
-em `chegando` primeiro. Para residentes, o retorno precisa estar armado por
+em `near_home` primeiro. Para residentes, o retorno precisa estar armado por
 `not_home` ou outra zona externa. `unknown`/`unavailable` só recuperam um armado
 externo já existente; não criam uma chegada. Essas transições de recovery ficam
 restritas à iluminação e não são publicadas como chegada geral para o desarme.
@@ -378,19 +385,19 @@ depende exclusivamente de um `delay` residente em memória.
 - vehicle_primary: a política fica visível no tab `contexto_vehicle_primary`,
   nos grupos `3. Configuração dos intervalos do veículo` e `4. Política
   visual`. Os cinco injects numéricos são a única configuração: 5 min quando
-  alguém está `chegando`, 15 min quando está `not_home`, 30 min no ciclo saudável quando ambos
+  alguém está `near_home`, 15 min quando está `not_home`, 30 min no ciclo saudável quando ambos
   estão `home`, início 0h e fim 6h para a pausa noturna nessa última condição.
   Para mudar um valor, abra o inject correspondente, altere o número e faça
   Deploy. Essa presença usa a mesma fonte de melhor localização mostrada no
   mapa; divergência de uma fonte não selecionada fica apenas no diagnóstico.
   A idade dessa localização pode solicitar atualização dos telefones, mas não
-  reduz sozinha o ciclo do veículo. Durante `chegando`, os 5 min mantêm
+  reduz sozinha o ciclo do veículo. Durante `near_home`, os 5 min mantêm
   precedência mesmo com dados pendentes. Fora desse estado, a recuperação do
   próprio veículo usa o intervalo configurado para fora, inclusive em casa,
   fora dessa pausa noturna; um bloqueio explícito do provedor ainda pode impor
   backoff maior. O coordenador, o aceite/erro da API e o dashboard não
   recalculam esses números; consomem o resultado e a telemetria desses blocos.
-- A transição confirmada de qualquer residente de `home` para `chegando` ou
+- A transição confirmada de qualquer residente de `home` para `near_home` ou
   `not_home` dispara imediatamente um `force_refresh` do vehicle_primary,
   independentemente do deadline periódico. Esse comando acorda o veículo e
   busca o estado novo para determinar se o morador está usando o carro. Eventos
@@ -522,11 +529,11 @@ sintético cumulativo e isolado das entidades reais. A sequência recomendada é
 
 1. `RESETAR testes do vehicle_primary` (o motor sintético volta para `OFF`);
 2. selecionar `Motor sintético do vehicle_primary → ON` ou `→ OFF`;
-3. executar `vehicle_primary 1/3 → not_home`, `2/3 → chegando` e
+3. executar `vehicle_primary 1/3 → not_home`, `2/3 → near_home` e
    `3/3 → home`.
 
 Na aba `localizacao_pessoas`, a sequência negativa `NEG SAÍDA 1/2:
-home → chegando` seguida de `NEG SAÍDA 2/2: chegando → home (rebote)` comprova
+home → near_home` seguida de `NEG SAÍDA 2/2: near_home → home (rebote)` comprova
 que os dois eventos terminam em `BLOQUEADO: saída/rebote (sem efeitos)`. O gate
 final de `iluminacao_seguranca` fornece uma segunda defesa visível contra
 eventos sem direção de retorno.
@@ -537,7 +544,7 @@ o mesmo cenário exercita o gate `vehicle_primary está em uso?` em
 `iluminacao_seguranca`: `ON` produz contexto `in_use=true` com estado conhecido
 e mostra `TESTE: vehicle_primary em uso — gate aprovado`; `OFF` produz
 `in_use=false` e mantém a chegada pendente enquanto a pessoa sintética
-permanecer em `chegando`. Na aba `iluminacao_seguranca`, os controles
+permanecer em `near_home`. Na aba `iluminacao_seguranca`, os controles
 `TESTE: bypass ON (isolado)` e `TESTE: bypass OFF (isolado)` exercitam a chave
 sem alterar o switch real. O cenário comprova que `ON` antigo continua válido
 com API saudável, que falha real ativa o bypass em dry-run, que motor `OFF`
@@ -546,7 +553,7 @@ comunicação. A mesma chegada pode ser mantida por até 10
 minutos e reprocessada quando o sol muda para `below_horizon` ou quando o
 Bluelink conclui sua atualização tardia.
 O `test_mode` então atravessa disponibilidade do refletor, dedupe e lifecycle
-isolado, chegando a `TESTE FINAL: ações simuladas — nenhum dispositivo
+isolado, near_home a `TESTE FINAL: ações simuladas — nenhum dispositivo
 acionado`. Esse terminal registra que refletor, dois avisos e backstop seriam
 executados, todos com `simulated=true` e `dispatched=false`; nenhum serviço de
 dispositivo é chamado.
@@ -596,7 +603,7 @@ npm run flows:test-alarm-arrival
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
 de refresh, inclusive movimento dentro da mesma zona, simetria de motor
 `on`/`off`, replay real de chegada após atraso `off -> on` e preservação de
-`home`/`chegando`/`not_home` com `away` derivado, saída com rebote e o gate final
+`home`/`near_home`/`not_home` com `away` derivado, saída com rebote e o gate final
 de direção.
 `flows:test-security-recovery` acrescenta 48 cenários de restart e recuperação;
 `flows:test-security-adversarial`, mais 23 casos adversariais com relógio

@@ -45,7 +45,7 @@ const NOW = Date.parse("2026-08-29T03:00:00.000Z");
 const originalNow = Date.now;
 Date.now = () => NOW;
 
-function event(source, previous = "not_home", current = "chegando", offset = 0) {
+function event(source, previous = "not_home", current = "near_home", offset = 0) {
   return {
     payload: {
       event: "location_update",
@@ -95,7 +95,7 @@ scenario("02 resident_secondary avisa resident_primary também de madrugada", ()
   assert(output[0]);
   assert.equal(output[1], null);
   assert.equal(output[0].payload.recipient, "resident_primary");
-  assert.equal(output[0].payload.message, "Example Secondary está chegando.");
+  assert.equal(output[0].payload.message, "Example Secondary está perto de casa.");
 });
 
 scenario("03 resident_primary avisa resident_secondary", () => {
@@ -107,18 +107,18 @@ scenario("03 resident_primary avisa resident_secondary", () => {
   assert.equal(output[0], null);
   assert(output[1]);
   assert.equal(output[1].payload.recipient, "resident_secondary");
-  assert.equal(output[1].payload.message, "Example Primary está chegando.");
+  assert.equal(output[1].payload.message, "Example Primary está perto de casa.");
 });
 
 scenario("04 saída de casa não é confundida com chegada", () => {
-  assert.equal(run(event("resident_primary", "home", "chegando")), null);
+  assert.equal(run(event("resident_primary", "home", "near_home")), null);
 });
 
 scenario("05 um novo ciclo fora de casa rearma o aviso", () => {
   const flow = memoryFlow();
   assert(run(event("resident_secondary"), flow)?.[0]);
-  assert.equal(run(event("resident_secondary", "chegando", "not_home", 1_000), flow), null);
-  assert(run(event("resident_secondary", "not_home", "chegando", 2_000), flow)?.[0]);
+  assert.equal(run(event("resident_secondary", "near_home", "not_home", 1_000), flow), null);
+  assert(run(event("resident_secondary", "not_home", "near_home", 2_000), flow)?.[0]);
 });
 
 scenario("06 dedupe sobrevive a restart do Node-RED", () => {
@@ -131,7 +131,7 @@ scenario("06 dedupe sobrevive a restart do Node-RED", () => {
 });
 
 scenario("07 evento antigo não produz notificação tardia", () => {
-  assert.equal(run(event("resident_secondary", "not_home", "chegando", -16 * 60_000)), null);
+  assert.equal(run(event("resident_secondary", "not_home", "near_home", -16 * 60_000)), null);
 });
 
 scenario("08 bindings públicos apontam para o destinatário correto", () => {
@@ -162,13 +162,13 @@ scenario("09 teste de localização percorre validação e termina em dry-run", 
     security_location_test_state_v1: {
       version: 1,
       resident_primary: "not_home",
-      resident_secondary: "chegando",
+      resident_secondary: "near_home",
       observed_at: NOW,
       transitions: {
         people: {
           domain: "people",
           source: "resident_secondary",
-          state: "chegando",
+          state: "near_home",
           prev: "not_home",
           test_case: "resident_secondary_approach",
           at: NOW,
@@ -183,7 +183,7 @@ scenario("09 teste de localização percorre validação e termina em dry-run", 
     payload: { kind: "refresh_tick", test_mode: true },
   }, flow, global);
   assert.equal(adapted.payload.trigger_prev_state, "not_home");
-  assert.equal(adapted.payload.trigger_state, "chegando");
+  assert.equal(adapted.payload.trigger_state, "near_home");
   assert.equal(adapted.payload.notification_delivery_under_test, false);
 
   const output = runNode(prepare.id, adapted, flow, global);
@@ -194,7 +194,7 @@ scenario("09 teste de localização percorre validação e termina em dry-run", 
   assert.equal(output[4].payload.recipient, "resident_primary");
   assert.equal(
     output[4].payload.message,
-    "[TESTE] Example Secondary está chegando.",
+    "[TESTE] Example Secondary está perto de casa.",
   );
   assert.equal(output[4].payload.simulated, true);
   assert.equal(output[4].payload.dispatched, false);
@@ -236,7 +236,7 @@ scenario("11 alias privado inválido falha fechado para o papel lógico", () => 
     },
   });
   const output = run(event("resident_secondary"), memoryFlow(), global);
-  assert.equal(output[0].payload.message, "resident_secondary está chegando.");
+  assert.equal(output[0].payload.message, "resident_secondary está perto de casa.");
 });
 
 Date.now = originalNow;

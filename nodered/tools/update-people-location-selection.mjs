@@ -92,6 +92,20 @@ function functionNode(id, z, g, name, func, outputs, x, y, wires) {
   };
 }
 
+function moveGroupTo(groupNode, x, y = groupNode.y) {
+  const dx = x - groupNode.x;
+  const dy = y - groupNode.y;
+  for (const id of groupNode.nodes ?? []) {
+    const node = flows.find((candidate) => candidate.id === id);
+    if (node && Number.isFinite(node.x) && Number.isFinite(node.y)) {
+      node.x += dx;
+      node.y += dy;
+    }
+  }
+  groupNode.x = x;
+  groupNode.y = y;
+}
+
 function inject(id, g, name, topic, payload, x, y) {
   return {
     id,
@@ -121,6 +135,9 @@ const generatedIds = [
   "people_location_policy_group_v1",
   "people_location_policy_help_v1",
   "people_location_arrival_distance_v1",
+  "people_location_near_home_radius_v1",
+  "people_location_home_radius_v1",
+  "people_location_fast_refresh_radius_v1",
   "people_location_fresh_minutes_v1",
   "people_location_source_report_minutes_v1",
   "people_location_recency_tie_seconds_v1",
@@ -139,6 +156,7 @@ const generatedIds = [
   "people_location_selection_help_v1",
   "people_location_observation_v1",
   "people_location_select_v1",
+  "people_location_classify_near_home_v1",
   "people_location_to_normalizer_out_v1",
   "people_location_to_normalizer_in_v1",
   "people_location_notification_out_v1",
@@ -154,6 +172,11 @@ const generatedIds = [
   "people_departure_bounce_home_test_v1",
   "vehicle_primary_arrival_direction_note_v1",
   "vehicle_primary_arrival_departure_blocked_v1",
+  "vehicle_primary_classify_near_home_v1",
+  "vehicle_primary_manual_blocked_route_out_v1",
+  "vehicle_primary_manual_blocked_route_in_v1",
+  "vehicle_primary_post_refresh_route_out_v1",
+  "vehicle_primary_post_refresh_route_in_v1",
   "vehicle_location_panel_group_v1",
   "vehicle_location_policy_in_v1",
   "vehicle_location_policy_status_v1",
@@ -163,20 +186,26 @@ const generatedIds = [
   "light_location_policy_group_v1",
   "light_location_policy_in_v1",
   "light_location_policy_status_v1",
+  "light_arrival_replay_route_out_v1",
+  "light_arrival_replay_gate_in_v1",
+  "light_arrival_replay_debug_in_v1",
+  "light_off_decision_route_out_v1",
+  "light_off_decision_route_in_v1",
 ];
 removeIds(generatedIds);
 
 const policyApply = String.raw`const KEY = "location_policy_v1";
 const PERSISTENT = "persistent";
 const limits = {
-    arrival_distance_m: { min: 50, max: 2000, integer: true },
+    near_home_radius_m: { min: 50, max: 1500, integer: true },
+    home_radius_m: { min: 20, max: 500, integer: true },
+    people_fast_refresh_radius_m: { min: 100, max: 10000, integer: true },
     location_fresh_minutes: { min: 1, max: 120, integer: false },
     source_report_fresh_minutes: { min: 5, max: 1440, integer: false },
     recency_tie_seconds: { min: 0, max: 300, integer: false },
     max_gps_accuracy_m: { min: 5, max: 1000, integer: false },
     vehicle_location_fresh_minutes: { min: 5, max: 180, integer: false },
     movement_threshold_m: { min: 10, max: 2000, integer: true },
-    arm_distance_m: { min: 20, max: 500, integer: true },
     arrival_recovery_minutes: { min: 3, max: 30, integer: false }
 };
 
@@ -203,19 +232,35 @@ const policy = previous?.version === 1
     ? { ...previous }
     : { version: 1, owner: "node_red" };
 policy[key] = value;
+delete policy.arrival_distance_m;
+delete policy.arm_distance_m;
 policy.updated_at = Date.now();
-policy.complete = Object.keys(limits).every(
+const allValuesPresent = Object.keys(limits).every(
     (field) => Number.isFinite(Number(policy[field]))
 );
+if (
+    allValuesPresent &&
+    (
+        policy.near_home_radius_m <= policy.home_radius_m ||
+        policy.people_fast_refresh_radius_m < policy.near_home_radius_m
+    )
+) {
+    node.error(
+        "Raios inválidos: home < near_home <= atualização acelerada",
+        msg
+    );
+    return null;
+}
+policy.complete = allValuesPresent;
 global.set(KEY, policy, PERSISTENT);
 
 node.status({
     fill: policy.complete ? "green" : "yellow",
     shape: policy.complete ? "dot" : "ring",
     text: policy.complete
-        ? policy.arrival_distance_m + " m | desempate " +
-          policy.recency_tie_seconds + " s | recovery " +
-          policy.arrival_recovery_minutes + " min"
+        ? "home " + policy.home_radius_m + " m | near_home " +
+          policy.near_home_radius_m + " m | refresh ≤ " +
+          policy.people_fast_refresh_radius_m + " m"
         : "aguardando todos os valores"
 });
 
@@ -450,6 +495,299 @@ node.status({
 });
 return msg;`;
 
+const classifyPeopleNearHome = String.raw`if (
+    msg._location_test === true ||
+    msg.payload?.test_mode === true
+) {
+    return msg;
+}
+
+const policy = msg._location_policy ??
+    global.get("location_policy_v1", "persistent");
+const homeRadiusM = Number(policy?.home_radius_m);
+const nearHomeRadiusM = Number(policy?.near_home_radius_m);
+if (
+    policy?.version !== 1 ||
+    policy?.complete !== true ||
+    !Number.isFinite(homeRadiusM) ||
+    !Number.isFinite(nearHomeRadiusM)
+) {
+    node.error("Raios canônicos de localização ausentes", msg);
+    return null;
+}
+
+const HOME_LAT = Number(env.get("HOME_LAT"));
+const HOME_LON = Number(env.get("HOME_LON"));
+const GATE_LAT = Number(env.get("GATE_LAT"));
+const GATE_LON = Number(env.get("GATE_LON"));
+const HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);
+const GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);
+const WAKE_RING_STATE = "location_update_ring";
+const KEY = "canonical_near_home_people_v1";
+const PERSISTENT = "persistent";
+const previous = flow.get(KEY, PERSISTENT) ?? {};
+const next = { ...previous };
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+    const toRad = (value) => value * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function rawFallback(state) {
+    const value = String(state ?? "");
+    if (["unknown", "unavailable"].includes(value)) return value;
+    if (["home", "near_home", WAKE_RING_STATE].includes(value)) return value;
+    return "not_home";
+}
+
+function classify(candidate) {
+    if (!candidate) return null;
+    const rawState = String(candidate.state ?? "unknown");
+    let distanceHomeM = null;
+    let distanceGateM = null;
+    if (
+        candidate.reliable_coordinates === true &&
+        Number.isFinite(candidate.latitude) &&
+        Number.isFinite(candidate.longitude)
+    ) {
+        if (HOME_KNOWN) {
+            distanceHomeM = Math.round(distanceMeters(
+                HOME_LAT,
+                HOME_LON,
+                candidate.latitude,
+                candidate.longitude
+            ));
+        }
+        if (GATE_KNOWN) {
+            distanceGateM = Math.round(distanceMeters(
+                GATE_LAT,
+                GATE_LON,
+                candidate.latitude,
+                candidate.longitude
+            ));
+        }
+    }
+    const nearReference = [distanceHomeM, distanceGateM]
+        .filter(Number.isFinite);
+    const nearestM = nearReference.length > 0
+        ? Math.min(...nearReference)
+        : null;
+    let state = rawFallback(rawState);
+    if (distanceHomeM !== null && distanceHomeM <= homeRadiusM) {
+        state = "home";
+    } else if (nearestM !== null && nearestM <= nearHomeRadiusM) {
+        state = "near_home";
+    } else if (["home", "near_home", WAKE_RING_STATE].includes(rawState)) {
+        state = "not_home";
+    }
+    const entity = {
+        ...candidate.entity,
+        state,
+        attributes: {
+            ...(candidate.entity?.attributes ?? {}),
+            raw_location_state: rawState,
+            canonical_distance_home_m: distanceHomeM,
+            canonical_distance_gate_m: distanceGateM,
+            home_radius_m: homeRadiusM,
+            near_home_radius_m: nearHomeRadiusM,
+            decision_owner: "node_red"
+        }
+    };
+    return {
+        ...candidate,
+        entity,
+        raw_state: rawState,
+        state,
+        distance_home_m: distanceHomeM,
+        distance_gate_m: distanceGateM
+    };
+}
+
+const changedRoles = [];
+for (const role of ["resident_primary", "resident_secondary"]) {
+    const decision = msg._canonical_locations?.[role];
+    if (!decision) continue;
+    const selected = classify(decision.selected);
+    const previousState = previous[role]?.state ??
+        rawFallback(decision.previous_state);
+    const stateChanged = Boolean(
+        selected &&
+        previous[role]?.state &&
+        selected.state !== previous[role].state
+    );
+    if (stateChanged) changedRoles.push(role);
+    decision.selected = selected;
+    decision.previous_state = previousState;
+    decision.canonical_state_changed = stateChanged;
+    msg.payload[role + "_selected"] = selected?.entity ?? null;
+    next[role] = {
+        state: selected?.state ?? null,
+        raw_state: selected?.raw_state ?? null,
+        observed_at: selected?.observed_at ?? null,
+        updated_at: Date.now()
+    };
+    if (msg.payload?.source === role && selected) {
+        msg.payload.trigger_prev_state = previousState;
+        msg.payload.trigger_state = selected.state;
+        msg.payload.trigger_entity = "device_tracker." + role + "_location";
+        if (selected.state === previousState) {
+            msg.payload.event = "context_update";
+        }
+    }
+}
+
+if (
+    msg.payload?.event === "context_snapshot" &&
+    changedRoles.length === 1
+) {
+    const role = changedRoles[0];
+    const selected = msg._canonical_locations?.[role]?.selected;
+    msg.payload.event = "location_update";
+    msg.payload.source = role;
+    msg.payload.trigger_prev_state = previous[role].state;
+    msg.payload.trigger_state = selected.state;
+    msg.payload.trigger_entity = "device_tracker." + role + "_location";
+}
+
+flow.set(KEY, next, PERSISTENT);
+const source = msg.payload?.source;
+const selected = msg._canonical_locations?.[source]?.selected;
+node.status({
+    fill: selected?.state === "near_home" ? "blue" : "green",
+    shape: selected ? "dot" : "ring",
+    text: selected
+        ? source + ": " + selected.state +
+          " (home " + homeRadiusM + " / near_home " + nearHomeRadiusM + " m)"
+        : "snapshot canônico atualizado"
+});
+return msg;`;
+
+const classifyVehicleNearHome = String.raw`if (
+    msg._location_test === true ||
+    msg.payload?.test_mode === true
+) {
+    return msg;
+}
+
+const policy = global.get("location_policy_v1", "persistent");
+const homeRadiusM = Number(policy?.home_radius_m);
+const nearHomeRadiusM = Number(policy?.near_home_radius_m);
+const maxAccuracyM = Number(policy?.max_gps_accuracy_m);
+if (
+    policy?.version !== 1 ||
+    policy?.complete !== true ||
+    !Number.isFinite(homeRadiusM) ||
+    !Number.isFinite(nearHomeRadiusM) ||
+    !Number.isFinite(maxAccuracyM)
+) {
+    node.error("Raios canônicos do veículo ausentes", msg);
+    return null;
+}
+
+const HOME_LAT = Number(env.get("HOME_LAT"));
+const HOME_LON = Number(env.get("HOME_LON"));
+const GATE_LAT = Number(env.get("GATE_LAT"));
+const GATE_LON = Number(env.get("GATE_LON"));
+const HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);
+const GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);
+const WAKE_RING_STATE = "location_update_ring";
+const KEY = "canonical_near_home_vehicle_v1";
+const PERSISTENT = "persistent";
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+    const toRad = (value) => value * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function rawFallback(state) {
+    const value = String(state ?? "");
+    if (["unknown", "unavailable"].includes(value)) return value;
+    if (["home", "near_home", WAKE_RING_STATE].includes(value)) return value;
+    return "not_home";
+}
+
+const entity = msg.payload?.vehicle_primary;
+if (!entity || typeof entity !== "object") return msg;
+const attrs = entity.attributes ?? {};
+const latitude = Number(attrs.latitude);
+const longitude = Number(attrs.longitude);
+const accuracy = Number(attrs.gps_accuracy);
+const reliable =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    (!Number.isFinite(accuracy) || accuracy <= maxAccuracyM);
+const rawState = String(entity.state ?? "unknown");
+let distanceHomeM = null;
+let distanceGateM = null;
+if (reliable && HOME_KNOWN) {
+    distanceHomeM = Math.round(distanceMeters(
+        HOME_LAT, HOME_LON, latitude, longitude
+    ));
+}
+if (reliable && GATE_KNOWN) {
+    distanceGateM = Math.round(distanceMeters(
+        GATE_LAT, GATE_LON, latitude, longitude
+    ));
+}
+const distances = [distanceHomeM, distanceGateM].filter(Number.isFinite);
+const nearestM = distances.length > 0 ? Math.min(...distances) : null;
+let state = rawFallback(rawState);
+if (distanceHomeM !== null && distanceHomeM <= homeRadiusM) {
+    state = "home";
+} else if (nearestM !== null && nearestM <= nearHomeRadiusM) {
+    state = "near_home";
+} else if (["home", "near_home", WAKE_RING_STATE].includes(rawState)) {
+    state = "not_home";
+}
+
+const previous = flow.get(KEY, PERSISTENT);
+const previousState = previous?.state ?? rawFallback(msg.payload?.trigger_prev_state);
+msg.payload.vehicle_primary = {
+    ...entity,
+    state,
+    attributes: {
+        ...attrs,
+        raw_location_state: rawState,
+        canonical_distance_home_m: distanceHomeM,
+        canonical_distance_gate_m: distanceGateM,
+        home_radius_m: homeRadiusM,
+        near_home_radius_m: nearHomeRadiusM,
+        decision_owner: "node_red"
+    }
+};
+if (msg.payload?.event === "location_update") {
+    msg.payload.trigger_prev_state = previousState;
+    msg.payload.trigger_state = state;
+    if (state === previousState) msg.payload.event = "context_update";
+}
+flow.set(KEY, {
+    state,
+    raw_state: rawState,
+    observed_at: attrs.location_observed_at ?? entity.last_changed ?? null,
+    updated_at: Date.now()
+}, PERSISTENT);
+node.status({
+    fill: state === "near_home" ? "blue" : "green",
+    shape: "dot",
+    text: state + " (home " + homeRadiusM +
+        " / near_home " + nearHomeRadiusM + " m)"
+});
+return msg;`;
+
 const publishLocations = String.raw`if (msg._location_test === true || msg.payload?.test_mode === true) {
     return null;
 }
@@ -474,6 +812,7 @@ for (const role of ["resident_primary", "resident_secondary"]) {
     }));
     const payload = {
         state: selected.state,
+        raw_location_state: selected.raw_state ?? selected.state,
         selected_location_source: selected.label,
         location_sources: locationSources,
         binding_role: role,
@@ -486,7 +825,10 @@ for (const role of ["resident_primary", "resident_secondary"]) {
         source_reported_at: selected.reported_at === null
             ? null
             : new Date(selected.reported_at).toISOString(),
-        arrival_distance_m: Number(policy.arrival_distance_m),
+        home_radius_m: Number(policy.home_radius_m),
+        near_home_radius_m: Number(policy.near_home_radius_m),
+        people_fast_refresh_radius_m:
+            Number(policy.people_fast_refresh_radius_m),
         location_fresh_minutes: Number(policy.location_fresh_minutes),
         source_report_fresh_minutes:
             Number(policy.source_report_fresh_minutes)
@@ -602,8 +944,8 @@ if (
 node.status({
     fill: "green",
     shape: "dot",
-    text: policy.arrival_distance_m + " m | recovery " +
-        policy.arrival_recovery_minutes + " min"
+    text: "home " + policy.home_radius_m + " m | near_home " +
+        policy.near_home_radius_m + " m"
 });
 return null;`;
 
@@ -633,7 +975,11 @@ const trackerPayload = {
         ? new Date(Number(panelLocation.updated_at)).toISOString()
         : null,
     location_fresh: location.ready === true && location.stale !== true,
-    movement_threshold_m: Number(vehicleContext.movement_threshold_m)
+    movement_threshold_m: Number(vehicleContext.movement_threshold_m),
+    home_radius_m: Number(vehicleContext.home_radius_m),
+    near_home_radius_m: Number(vehicleContext.near_home_radius_m),
+    people_fast_refresh_radius_m:
+        Number(vehicleContext.people_fast_refresh_radius_m)
 };
 if (
     (location.ready === true || fallbackReady) &&
@@ -666,6 +1012,8 @@ if (Number.isFinite(locationSince) && locationSince > 0) {
             location_since: new Date(locationSince).toISOString(),
             location_state: state,
             movement_threshold_m: Number(vehicleContext.movement_threshold_m),
+            home_radius_m: Number(vehicleContext.home_radius_m),
+            near_home_radius_m: Number(vehicleContext.near_home_radius_m),
             decision_owner: "node_red"
         }),
         qos: "1",
@@ -677,14 +1025,15 @@ return [outputs];`;
 const policyGroup = "people_location_policy_group_v1";
 const policyNodes = [
   "people_location_policy_help_v1",
-  "people_location_arrival_distance_v1",
+  "people_location_near_home_radius_v1",
+  "people_location_home_radius_v1",
+  "people_location_fast_refresh_radius_v1",
   "people_location_fresh_minutes_v1",
   "people_location_source_report_minutes_v1",
   "people_location_recency_tie_seconds_v1",
   "people_location_accuracy_v1",
   "people_location_vehicle_fresh_minutes_v1",
   "people_location_movement_threshold_v1",
-  "people_location_arm_distance_v1",
   "people_location_recovery_minutes_v1",
   "people_location_values_route_out_v1",
   "people_location_values_route_middle_out_v1",
@@ -694,27 +1043,28 @@ const policyNodes = [
   "people_location_policy_out_v1",
 ];
 flows.push(
-  group(policyGroup, PEOPLE_TAB, "0. Política canônica de localização — edite os números", policyNodes, 64, 59, 1182, 282),
+  group(policyGroup, PEOPLE_TAB, "0. Política canônica de localização — edite os números", policyNodes, 64, 59, 1290, 322),
   {
     id: "people_location_policy_help_v1",
     type: "comment",
     z: PEOPLE_TAB,
     g: policyGroup,
     name: "Duplo clique no número → altere → Deploy. Uma única política alimenta pessoas, veículo, iluminação e painéis.",
-    x: 535,
+    x: 660,
     y: 100,
     w: 820,
     wires: [],
   },
-  inject("people_location_arrival_distance_v1", policyGroup, "Raio de chegada — 700 m", "arrival_distance_m", 700, 230, 160),
-  inject("people_location_fresh_minutes_v1", policyGroup, "Posição atual — 15 min", "location_fresh_minutes", 15, 230, 200),
-  inject("people_location_source_report_minutes_v1", policyGroup, "Fonte ativa — 75 min", "source_report_fresh_minutes", 75, 230, 240),
-  inject("people_location_recency_tie_seconds_v1", policyGroup, "Empate de recência — 60 s", "recency_tie_seconds", 60, 510, 160),
-  inject("people_location_accuracy_v1", policyGroup, "Precisão máxima — 100 m", "max_gps_accuracy_m", 100, 510, 200),
-  inject("people_location_vehicle_fresh_minutes_v1", policyGroup, "Posição do carro — 30 min", "vehicle_location_fresh_minutes", 30, 510, 240),
-  inject("people_location_movement_threshold_v1", policyGroup, "Movimento do carro — 250 m", "movement_threshold_m", 250, 790, 160),
-  inject("people_location_arm_distance_v1", policyGroup, "Limite casa/fora — 100 m", "arm_distance_m", 100, 790, 200),
-  inject("people_location_recovery_minutes_v1", policyGroup, "Reter chegada — 10 min", "arrival_recovery_minutes", 10, 790, 240),
+  inject("people_location_near_home_radius_v1", policyGroup, "Raio near_home (m)", "near_home_radius_m", 700, 250, 160),
+  inject("people_location_home_radius_v1", policyGroup, "Raio home (m)", "home_radius_m", 100, 250, 200),
+  inject("people_location_fast_refresh_radius_v1", policyGroup, "Raio refresh rápido (m)", "people_fast_refresh_radius_m", 2000, 250, 240),
+  inject("people_location_fresh_minutes_v1", policyGroup, "Posição atual — 15 min", "location_fresh_minutes", 15, 550, 160),
+  inject("people_location_source_report_minutes_v1", policyGroup, "Fonte ativa — 75 min", "source_report_fresh_minutes", 75, 550, 200),
+  inject("people_location_vehicle_fresh_minutes_v1", policyGroup, "Posição do carro — 30 min", "vehicle_location_fresh_minutes", 30, 550, 240),
+  inject("people_location_recovery_minutes_v1", policyGroup, "Reter chegada — 10 min", "arrival_recovery_minutes", 10, 550, 280),
+  inject("people_location_recency_tie_seconds_v1", policyGroup, "Empate de recência — 60 s", "recency_tie_seconds", 60, 850, 160),
+  inject("people_location_accuracy_v1", policyGroup, "Precisão máxima — 100 m", "max_gps_accuracy_m", 100, 850, 200),
+  inject("people_location_movement_threshold_v1", policyGroup, "Movimento do carro — 250 m", "movement_threshold_m", 250, 850, 240),
   {
     id: "people_location_values_route_out_v1",
     type: "link out",
@@ -723,8 +1073,8 @@ flows.push(
     name: "Valores da coluna esquerda → validador",
     mode: "link",
     links: ["people_location_values_route_in_v1"],
-    x: 400,
-    y: 300,
+    x: 430,
+    y: 340,
     wires: [],
   },
   {
@@ -735,8 +1085,8 @@ flows.push(
     name: "Valores da coluna central → validador",
     mode: "link",
     links: ["people_location_values_route_in_v1"],
-    x: 650,
-    y: 300,
+    x: 710,
+    y: 340,
     wires: [],
   },
   {
@@ -747,8 +1097,8 @@ flows.push(
     name: "Valores da coluna direita → validador",
     mode: "link",
     links: ["people_location_values_route_in_v1"],
-    x: 930,
-    y: 300,
+    x: 990,
+    y: 340,
     wires: [],
   },
   {
@@ -762,11 +1112,11 @@ flows.push(
       "people_location_values_route_middle_out_v1",
       "people_location_values_route_right_out_v1",
     ],
-    x: 1050,
-    y: 300,
+    x: 1110,
+    y: 340,
     wires: [["people_location_policy_apply_v1"]],
   },
-  functionNode("people_location_policy_apply_v1", PEOPLE_TAB, policyGroup, "Validar e salvar política única", policyApply, 1, 1050, 200, [["people_location_policy_out_v1"]]),
+  functionNode("people_location_policy_apply_v1", PEOPLE_TAB, policyGroup, "Validar e salvar política única", policyApply, 1, 1220, 220, [["people_location_policy_out_v1"]]),
   {
     id: "people_location_policy_out_v1",
     type: "link out",
@@ -779,33 +1129,34 @@ flows.push(
       "vehicle_location_policy_in_v1",
       "light_location_policy_in_v1",
     ],
-    x: 1195,
-    y: 260,
+    x: 1300,
+    y: 300,
     wires: [],
   },
 );
 for (const id of [
-  "people_location_arrival_distance_v1",
-  "people_location_fresh_minutes_v1",
-  "people_location_source_report_minutes_v1",
+  "people_location_near_home_radius_v1",
+  "people_location_home_radius_v1",
+  "people_location_fast_refresh_radius_v1",
 ]) {
   flows.find((node) => node.id === id).wires = [[
     "people_location_values_route_out_v1",
   ]];
 }
 for (const id of [
-  "people_location_recency_tie_seconds_v1",
-  "people_location_accuracy_v1",
+  "people_location_fresh_minutes_v1",
+  "people_location_source_report_minutes_v1",
   "people_location_vehicle_fresh_minutes_v1",
+  "people_location_recovery_minutes_v1",
 ]) {
   flows.find((node) => node.id === id).wires = [[
     "people_location_values_route_middle_out_v1",
   ]];
 }
 for (const id of [
+  "people_location_recency_tie_seconds_v1",
+  "people_location_accuracy_v1",
   "people_location_movement_threshold_v1",
-  "people_location_arm_distance_v1",
-  "people_location_recovery_minutes_v1",
 ]) {
   flows.find((node) => node.id === id).wires = [[
     "people_location_values_route_right_out_v1",
@@ -818,6 +1169,7 @@ flows.push(
     "people_location_selection_help_v1",
     "people_location_observation_v1",
     "people_location_select_v1",
+    "people_location_classify_near_home_v1",
     "people_location_to_normalizer_out_v1",
     "people_location_notification_out_v1",
     "people_location_publish_state_v1",
@@ -826,7 +1178,7 @@ flows.push(
     "people_location_policy_publish_in_v1",
     "people_location_build_discovery_v1",
     "people_location_mqtt_discovery_v1",
-  ], 620, 379, 982, 302, { stroke: "#7d6ba8", fill: "#eee7f7", color: "#4b3d69" }),
+  ], 620, 419, 1390, 302, { stroke: "#7d6ba8", fill: "#eee7f7", color: "#4b3d69" }),
   {
     id: "people_location_selection_help_v1",
     type: "comment",
@@ -834,12 +1186,13 @@ flows.push(
     g: selectionGroup,
     name: "Prioridade: atualidade → coordenadas confiáveis → diferença > 60 s → precisão → recência → estado válido",
     x: 1050,
-    y: 420,
+    y: 460,
     w: 780,
     wires: [],
   },
-  functionNode("people_location_observation_v1", PEOPLE_TAB, selectionGroup, "Normalizar as duas observações", normalizeObservations, 1, 780, 500, [["people_location_select_v1"]]),
-  functionNode("people_location_select_v1", PEOPLE_TAB, selectionGroup, "Escolher fonte como o antigo mapa", selectLocation, 1, 1040, 500, [["people_location_to_normalizer_out_v1", "people_location_notification_out_v1", "people_location_publish_state_v1"]]),
+  functionNode("people_location_observation_v1", PEOPLE_TAB, selectionGroup, "Normalizar as duas observações", normalizeObservations, 1, 780, 540, [["people_location_select_v1"]]),
+  functionNode("people_location_select_v1", PEOPLE_TAB, selectionGroup, "Escolher fonte como o antigo mapa", selectLocation, 1, 1090, 540, [["people_location_classify_near_home_v1"]]),
+  functionNode("people_location_classify_near_home_v1", PEOPLE_TAB, selectionGroup, "Aplicar raios home e near_home", classifyPeopleNearHome, 1, 1420, 540, [["people_location_to_normalizer_out_v1", "people_location_notification_out_v1", "people_location_publish_state_v1"]]),
   {
     id: "people_location_to_normalizer_out_v1",
     type: "link out",
@@ -848,8 +1201,8 @@ flows.push(
     name: "Decisão canônica → presença e chegada",
     mode: "link",
     links: ["people_location_to_normalizer_in_v1"],
-    x: 1255,
-    y: 480,
+    x: 1690,
+    y: 520,
     wires: [],
   },
   {
@@ -860,11 +1213,11 @@ flows.push(
     name: "Decisão canônica → avisos",
     mode: "link",
     links: ["resident_notifications_canonical_in_v1"],
-    x: 1255,
-    y: 520,
+    x: 1690,
+    y: 560,
     wires: [],
   },
-  functionNode("people_location_publish_state_v1", PEOPLE_TAB, selectionGroup, "Montar trackers canônicos", publishLocations, 1, 1170, 560, [["people_location_mqtt_state_v1"]]),
+  functionNode("people_location_publish_state_v1", PEOPLE_TAB, selectionGroup, "Montar trackers canônicos", publishLocations, 1, 1590, 600, [["people_location_mqtt_state_v1"]]),
   {
     id: "people_location_mqtt_state_v1",
     type: "mqtt out",
@@ -880,8 +1233,8 @@ flows.push(
     correl: "",
     expiry: "",
     broker: MQTT_BROKER,
-    x: 1450,
-    y: 560,
+    x: 1880,
+    y: 600,
     wires: [],
   },
   {
@@ -899,7 +1252,7 @@ flows.push(
     payload: "",
     payloadType: "date",
     x: 830,
-    y: 620,
+    y: 660,
     wires: [["people_location_build_discovery_v1"]],
   },
   {
@@ -910,10 +1263,10 @@ flows.push(
     name: "Política alterada → republicar cadastro",
     links: ["people_location_policy_out_v1"],
     x: 705,
-    y: 660,
+    y: 700,
     wires: [["people_location_build_discovery_v1"]],
   },
-  functionNode("people_location_build_discovery_v1", PEOPLE_TAB, selectionGroup, "Cadastrar trackers e sensor do veículo", discovery, 1, 1120, 640, [["people_location_mqtt_discovery_v1"]]),
+  functionNode("people_location_build_discovery_v1", PEOPLE_TAB, selectionGroup, "Cadastrar trackers e sensor do veículo", discovery, 1, 1120, 680, [["people_location_mqtt_discovery_v1"]]),
   {
     id: "people_location_mqtt_discovery_v1",
     type: "mqtt out",
@@ -929,45 +1282,55 @@ flows.push(
     correl: "",
     expiry: "",
     broker: MQTT_BROKER,
-    x: 1440,
-    y: 640,
+    x: 1450,
+    y: 680,
     wires: [],
   },
 );
 
-const primaryEvent = requiredByName("iPhone resident_primary mudou de zona");
-const secondaryEvent = requiredByName("iPhone resident_secondary mudou de zona");
+const primaryEvent = requiredById("4189bb901d6a15c4");
+const secondaryEvent = requiredById("bc70805a5fe2f35d");
 const snapshot = requiredByName("Ler trackers de resident_primary e resident_secondary");
+for (const node of [primaryEvent, secondaryEvent]) {
+  node.name = node.name.replace("mudou de zona", "atualizou localização");
+  node.outputOnlyOnStateChange = false;
+}
 for (const node of [primaryEvent, secondaryEvent, snapshot]) {
   node.wires = [["people_location_observation_v1"]];
 }
 
 const peopleNormalizer = requiredByName("Normalizar pessoas e detectar transições");
+peopleNormalizer.func = peopleNormalizer.func
+  .replaceAll("ARRIVAL_DISTANCE_M", "NEAR_HOME_RADIUS_M")
+  .replaceAll("arrival_distance_m", "near_home_radius_m")
+  .replaceAll("ARM_DISTANCE_M", "HOME_RADIUS_M")
+  .replaceAll("arm_distance_m", "home_radius_m")
+  .replaceAll("isArrivalHome(", "isNearHome(");
 if (!peopleNormalizer.func.includes("const LOCATION_POLICY = global.get")) {
   peopleNormalizer.func = replaceRequired(
     peopleNormalizer.func,
-    /const ARM_DISTANCE_M = 100;[\s\S]*?const SOURCE_REPORT_FRESH_MS = 75 \* 60 \* 1000;/,
+    /const HOME_RADIUS_M = 100;[\s\S]*?const SOURCE_REPORT_FRESH_MS = 75 \* 60 \* 1000;/,
     `const LOCATION_POLICY = global.get("location_policy_v1", "persistent");
 if (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true) {
     node.error("Política canônica de localização ausente", msg);
     return [null, null, null];
 }
-const ARM_DISTANCE_M = Number(LOCATION_POLICY.arm_distance_m);
-const ARRIVAL_DISTANCE_M = Number(LOCATION_POLICY.arrival_distance_m);
+const HOME_RADIUS_M = Number(LOCATION_POLICY.home_radius_m);
+const NEAR_HOME_RADIUS_M = Number(LOCATION_POLICY.near_home_radius_m);
 const MAX_GPS_ACCURACY_M = Number(LOCATION_POLICY.max_gps_accuracy_m);
 const LOCATION_FRESH_MS = Number(LOCATION_POLICY.location_fresh_minutes) * 60 * 1000;
 const SOURCE_REPORT_FRESH_MS = Number(LOCATION_POLICY.source_report_fresh_minutes) * 60 * 1000;
-const APPROACH_ZONE = "chegando";
+const APPROACH_ZONE = "near_home";
 const PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;`,
     "política do normalizador de pessoas",
   );
 }
-if (!peopleNormalizer.func.includes('const APPROACH_ZONE = "chegando";')) {
+if (!peopleNormalizer.func.includes('const APPROACH_ZONE = "near_home";')) {
   peopleNormalizer.func = replaceRequired(
     peopleNormalizer.func,
     "const SOURCE_REPORT_FRESH_MS = Number(LOCATION_POLICY.source_report_fresh_minutes) * 60 * 1000;",
     `const SOURCE_REPORT_FRESH_MS = Number(LOCATION_POLICY.source_report_fresh_minutes) * 60 * 1000;
-const APPROACH_ZONE = "chegando";
+const APPROACH_ZONE = "near_home";
 const PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;`,
     "constantes de chegada de pessoas",
   );
@@ -1039,6 +1402,22 @@ if (
 ) {
   throw new Error("Normalizador ainda contém decisão duplicada de tracker");
 }
+if (!peopleNormalizer.func.includes("people_fast_refresh_radius_m:")) {
+  peopleNormalizer.func = replaceRequired(
+    peopleNormalizer.func,
+    `const peopleContext = {
+    resident_primary,
+    resident_secondary,`,
+    `const peopleContext = {
+    resident_primary,
+    resident_secondary,
+    home_radius_m: HOME_RADIUS_M,
+    near_home_radius_m: NEAR_HOME_RADIUS_M,
+    people_fast_refresh_radius_m:
+        Number(LOCATION_POLICY.people_fast_refresh_radius_m),`,
+    "raios canônicos no contexto das pessoas",
+  );
+}
 
 const peopleArrivalCycleV2 = String.raw`/* ================================
  * ARMAMENTO DO CICLO EXTERNO
@@ -1070,10 +1449,10 @@ armed = {
 
 /*
  * Distância sozinha não arma chegada: durante a saída a pessoa cruza 100 m
- * ainda dentro de "chegando" e o GPS pode oscilar de volta para "home".
- * Somente um estado canônico externo ao par home/chegando comprova que houve
+ * ainda dentro de "near_home" e o GPS pode oscilar de volta para "home".
+ * Somente um estado canônico externo ao par home/near_home comprova que houve
  * um ciclo fora de casa. O predecessor externo preserva chegadas que saltam
- * diretamente para home ou chegando.
+ * diretamente para home ou near_home.
  */
 function externalArrivalCycleEvidence(state) {
     return (
@@ -1099,7 +1478,7 @@ for (
     }
 }
 
-/* A borda externa → chegando já traz sentido de retorno pela própria zona.
+/* A borda externa → near_home já traz sentido de retorno pela própria zona.
  * Ela pode armar e publicar no mesmo evento. Uma borda externa → home não
  * recebe esse atalho: precisa de observação externa anterior e, assim, um
  * salto isolado de GPS durante a saída permanece bloqueado. */
@@ -1165,7 +1544,7 @@ if (
         externalCycleConfirmed &&
         (
             approachEntry ||
-            isArrivalHome(
+            isNearHome(
                 sourcePosition
             )
         )
@@ -1222,7 +1601,7 @@ if (
 
     if (
         !approachEntry &&
-        isArrivalHome(
+        isNearHome(
             sourcePosition
         )
     ) {
@@ -1330,8 +1709,7 @@ if (!peopleNormalizer.func.includes("external_cycle_confirmed")) {
 const normalizationGroup = flows.find((node) => node.id === peopleNormalizer.g);
 if (!normalizationGroup) throw new Error("Grupo do normalizador ausente");
 normalizationGroup.name = "3. Presença e chegada usando somente a decisão canônica";
-normalizationGroup.x = 1640;
-normalizationGroup.y = 419;
+moveGroupTo(normalizationGroup, 2050, 419);
 normalizationGroup.w = 762;
 normalizationGroup.h = 242;
 if (!normalizationGroup.nodes.includes("people_location_to_normalizer_in_v1")) {
@@ -1350,11 +1728,11 @@ flows.push({
   g: normalizationGroup.id,
   name: "Receber decisão canônica",
   links: ["people_location_to_normalizer_out_v1"],
-  x: 1705,
+  x: 2125,
   y: 520,
   wires: [[peopleNormalizer.id]],
 });
-peopleNormalizer.x = 1910;
+peopleNormalizer.x = 2380;
 peopleNormalizer.y = 520;
 const peopleContextOut = requiredById("487984b3aaa29663");
 const peopleArrivalOut = requiredById("397c6032b3dad342");
@@ -1366,13 +1744,13 @@ peopleNormalizer.wires = [
   [recoveryOut.id],
   ["people_arrival_departure_blocked_v1"],
 ];
-peopleContextOut.x = 2335;
+peopleContextOut.x = 2760;
 peopleContextOut.y = 480;
 peopleArrivalOut.name = "RETORNO confirmado → publicar chegada v1";
-peopleArrivalOut.x = 2335;
+peopleArrivalOut.x = 2760;
 peopleArrivalOut.y = 520;
 recoveryOut.name = "RECOVERY armado → iluminação";
-recoveryOut.x = 2335;
+recoveryOut.x = 2760;
 recoveryOut.y = 560;
 flows.push(
   {
@@ -1380,9 +1758,9 @@ flows.push(
     type: "comment",
     z: PEOPLE_TAB,
     g: normalizationGroup.id,
-    name: "SAÍDA home→chegando bloqueia; RETORNO exige passagem por not_home/zona externa",
-    info: "O raio de 700 m decide a chegada somente depois de um ciclo externo confirmado. Um rebote chegando→home durante a saída termina no bloco BLOQUEADO e nunca alcança iluminação, alarme ou notificações.",
-    x: 1990,
+    name: "SAÍDA home→near_home bloqueia; RETORNO exige passagem por not_home/zona externa",
+    info: "O raio near_home configurado decide a chegada somente depois de um ciclo externo confirmado. Um rebote near_home→home durante a saída termina no bloco BLOQUEADO e nunca alcança iluminação, alarme ou notificações.",
+    x: 2420,
     y: 460,
     wires: [],
   },
@@ -1417,24 +1795,30 @@ node.log?.(
 );
 return null;`,
     0,
-    2250,
+    2660,
     620,
     [],
   ),
 );
 
 const vehicleNormalizer = requiredByName("Normalizar vehicle_primary e detectar transições");
+vehicleNormalizer.func = vehicleNormalizer.func
+  .replaceAll("ARRIVAL_DISTANCE_M", "NEAR_HOME_RADIUS_M")
+  .replaceAll("arrival_distance_m", "near_home_radius_m")
+  .replaceAll("ARM_DISTANCE_M", "HOME_RADIUS_M")
+  .replaceAll("arm_distance_m", "home_radius_m")
+  .replaceAll("isArrivalHome(", "isNearHome(");
 if (!vehicleNormalizer.func.includes("const LOCATION_POLICY = global.get")) {
   vehicleNormalizer.func = replaceRequired(
     vehicleNormalizer.func,
-    /const ARM_DISTANCE_M = 100;[\s\S]*?const MOVEMENT_THRESHOLD_M = 250;/,
+    /const HOME_RADIUS_M = 100;[\s\S]*?const MOVEMENT_THRESHOLD_M = 250;/,
     `const LOCATION_POLICY = global.get("location_policy_v1", "persistent");
 if (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true) {
     node.error("Política canônica de localização ausente", msg);
     return [null, null, null];
 }
-const ARM_DISTANCE_M = Number(LOCATION_POLICY.arm_distance_m);
-const ARRIVAL_DISTANCE_M = Number(LOCATION_POLICY.arrival_distance_m);
+const HOME_RADIUS_M = Number(LOCATION_POLICY.home_radius_m);
+const NEAR_HOME_RADIUS_M = Number(LOCATION_POLICY.near_home_radius_m);
 const MAX_GPS_ACCURACY_M = Number(LOCATION_POLICY.max_gps_accuracy_m);
 const MOVEMENT_THRESHOLD_M = Number(LOCATION_POLICY.movement_threshold_m);`,
     "política do normalizador do veículo",
@@ -1471,8 +1855,28 @@ if (!vehicleNormalizer.func.includes("last_confirmed_location:")) {
     "última localização confirmada para o painel",
   );
 }
+if (!vehicleNormalizer.func.includes("near_home_radius_m: NEAR_HOME_RADIUS_M")) {
+  vehicleNormalizer.func = replaceRequired(
+    vehicleNormalizer.func,
+    "    movement_threshold_m: MOVEMENT_THRESHOLD_M,",
+    `    movement_threshold_m: MOVEMENT_THRESHOLD_M,
+    home_radius_m: HOME_RADIUS_M,
+    near_home_radius_m: NEAR_HOME_RADIUS_M,
+    people_fast_refresh_radius_m:
+        Number(LOCATION_POLICY.people_fast_refresh_radius_m),`,
+    "raios canônicos no contexto do veículo",
+  );
+}
+vehicleNormalizer.func = vehicleNormalizer.func.replace(
+  "home: vehicle_primary.ready ? isNearHome(vehicle_primary) : null,",
+  `home: vehicle_primary.ready ? isArmingHome(vehicle_primary) : null,
+    near_home:
+        vehicle_primary.ready
+            ? isNearHome(vehicle_primary) && !isArmingHome(vehicle_primary)
+            : null,`,
+);
 if (
-  !vehicleNormalizer.func.includes("ARRIVAL_DISTANCE_M = Number(LOCATION_POLICY.arrival_distance_m)") ||
+  !vehicleNormalizer.func.includes("NEAR_HOME_RADIUS_M = Number(LOCATION_POLICY.near_home_radius_m)") ||
   !vehicleNormalizer.func.includes("movement_threshold_m: MOVEMENT_THRESHOLD_M")
 ) {
   throw new Error("Política única não chegou ao normalizador do veículo");
@@ -1504,7 +1908,7 @@ if (isLocationEvent && vehicle_primary.ready === true && triggerPrevValid) {
     const departureTransition = triggerPrevState === "home" && triggerState !== "home";
     if (departureTransition) armed = false;
     const staleCatchUp = !approachEntry && vehicle_primary.primary_home === true && typeof vehicle_primary.primary_home_for_ms === "number" && vehicle_primary.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;
-    if (!departureTransition && !staleCatchUp && (approachEntry || isArrivalHome(vehicle_primary)) && armed) {
+    if (!departureTransition && !staleCatchUp && (approachEntry || isNearHome(vehicle_primary)) && armed) {
         arrival = { payload: {
             contract: "security.arrival.v1", kind: "arrival", source: "vehicle_primary", arriving: ["vehicle_primary"],
             arrival_source_type: "vehicle_primary", arrival_stage: approachEntry ? "approach" : "home",
@@ -1536,7 +1940,7 @@ if (isLocationEvent && vehicle_primary.ready === true && triggerPrevValid) {
             }
         };
     }
-    if (!approachEntry && isArrivalHome(vehicle_primary)) armed = false;
+    if (!approachEntry && isNearHome(vehicle_primary)) armed = false;
 } else if (isArmingHome(vehicle_primary)) {
     armed = false;
 }`;
@@ -1561,16 +1965,33 @@ const vehicleNormalizationGroup = flows.find(
   (node) => node.id === vehicleNormalizer.g,
 );
 if (!vehicleNormalizationGroup) throw new Error("Grupo do normalizador do veículo ausente");
+const vehicleClassifierId = "vehicle_primary_classify_near_home_v1";
+for (const node of flows) {
+  if (!Array.isArray(node.wires)) continue;
+  node.wires = node.wires.map((output) =>
+    Array.isArray(output)
+      ? output.map((target) =>
+          target === vehicleNormalizer.id || target === vehicleClassifierId
+            ? vehicleClassifierId
+            : target)
+      : output,
+  );
+}
 for (const id of [
+  vehicleClassifierId,
   "vehicle_primary_arrival_direction_note_v1",
   "vehicle_primary_arrival_departure_blocked_v1",
 ]) {
   if (!vehicleNormalizationGroup.nodes.includes(id)) vehicleNormalizationGroup.nodes.push(id);
 }
-vehicleNormalizationGroup.h = 322;
+Object.assign(vehicleNormalizationGroup, { x: 734, y: 139, w: 850, h: 322 });
 const vehicleContextRoute = requiredById("c298447a6a2e3cef");
 const vehicleArrivalRoute = requiredById("2aa1b0c2907d4017");
 const vehicleActionRoute = requiredById("67d24b1f56447c94");
+vehicleNormalizer.x = 1250;
+for (const route of [vehicleContextRoute, vehicleArrivalRoute, vehicleActionRoute]) {
+  route.x = 1515;
+}
 vehicleArrivalRoute.name = "RETORNO confirmado → publicar chegada v1";
 vehicleActionRoute.name = "RETORNO confirmado → ações do veículo";
 vehicleNormalizer.outputs = 4;
@@ -1581,14 +2002,25 @@ vehicleNormalizer.wires = [
   ["vehicle_primary_arrival_departure_blocked_v1"],
 ];
 flows.push(
+  functionNode(
+    vehicleClassifierId,
+    VEHICLE_TAB,
+    vehicleNormalizationGroup.id,
+    "Classificar home / near_home",
+    classifyVehicleNearHome,
+    1,
+    850,
+    240,
+    [[vehicleNormalizer.id]],
+  ),
   {
     id: "vehicle_primary_arrival_direction_note_v1",
     type: "comment",
     z: VEHICLE_TAB,
     g: vehicleNormalizationGroup.id,
     name: "SAÍDA bloqueada; RETORNO só após estado externo",
-    info: "O veículo não arma chegada apenas por cruzar 100 m. home→chegando e o rebote chegando→home ficam visíveis no terminal bloqueado.",
-    x: 1040,
+    info: "O veículo não arma chegada apenas por cruzar 100 m. home→near_home e o rebote near_home→home ficam visíveis no terminal bloqueado.",
+    x: 1190,
     y: 340,
     wires: [],
   },
@@ -1614,7 +2046,7 @@ node.status({ fill: "grey", shape: "ring", text: "bloqueado: " + String(result.r
 node.log?.("VEHICLE_PRIMARY_ARRIVAL_BLOCKED reason=" + String(result.reason) + " dispatched=false");
 return null;`,
     0,
-    1100,
+    1390,
     400,
     [],
   ),
@@ -1696,6 +2128,119 @@ flows.push(
   functionNode("light_location_policy_status_v1", LIGHT_TAB, "light_location_policy_group_v1", "Confirmar política da iluminação", policyStatus, 0, 1900, 1100, []),
 );
 
+const peopleRefreshDecider = requiredByName("Atualizar iPhones agora?");
+if (!peopleRefreshDecider.func.includes("people_fast_refresh_radius_m")) {
+  peopleRefreshDecider.func = replaceRequired(
+    peopleRefreshDecider.func,
+    "if (msg.payload?.kind !== \"refresh_command\") return null;",
+    `if (msg.payload?.kind !== "refresh_command") return null;
+
+const LOCATION_POLICY = global.get("location_policy_v1", "persistent");
+const FAST_REFRESH_RADIUS_M = Number(
+    LOCATION_POLICY?.people_fast_refresh_radius_m
+);
+if (
+    LOCATION_POLICY?.version !== 1 ||
+    LOCATION_POLICY?.complete !== true ||
+    !Number.isFinite(FAST_REFRESH_RADIUS_M)
+) {
+    node.error("Raio de refresh rápido ausente", msg);
+    return null;
+}`,
+    "raio do refresh adaptativo das pessoas",
+  );
+  peopleRefreshDecider.func = replaceRequired(
+    peopleRefreshDecider.func,
+    /peopleContext\.nearest_distance_m\s*<=\s*\d+/,
+    "peopleContext.nearest_distance_m <= FAST_REFRESH_RADIUS_M",
+    "limite do refresh adaptativo das pessoas",
+  );
+}
+
+const lightDecisionGroup = requiredById("32a89192d93735b1");
+const lightMergeContext = requiredById("48a5f40d806f6950");
+const lightArrivalReplayOut = "light_arrival_replay_route_out_v1";
+const lightArrivalGateIn = "light_arrival_replay_gate_in_v1";
+const lightArrivalDebugIn = "light_arrival_replay_debug_in_v1";
+for (const id of [
+  lightArrivalReplayOut,
+  lightArrivalGateIn,
+  lightArrivalDebugIn,
+]) {
+  if (!lightDecisionGroup.nodes.includes(id)) lightDecisionGroup.nodes.push(id);
+}
+lightMergeContext.wires[2] = [lightArrivalReplayOut];
+flows.push(
+  {
+    id: lightArrivalReplayOut,
+    type: "link out",
+    z: LIGHT_TAB,
+    g: lightDecisionGroup.id,
+    name: "Replay de chegada → rotas",
+    mode: "link",
+    links: [lightArrivalGateIn, lightArrivalDebugIn],
+    x: 720,
+    y: 220,
+    wires: [],
+  },
+  {
+    id: lightArrivalGateIn,
+    type: "link in",
+    z: LIGHT_TAB,
+    g: lightDecisionGroup.id,
+    name: "Replay → validar direção",
+    links: [lightArrivalReplayOut],
+    x: 500,
+    y: 240,
+    wires: [["security_light_arrival_direction_gate_v1"]],
+  },
+  {
+    id: lightArrivalDebugIn,
+    type: "link in",
+    z: LIGHT_TAB,
+    g: lightDecisionGroup.id,
+    name: "Replay → debug",
+    links: [lightArrivalReplayOut],
+    x: 1130,
+    y: 180,
+    wires: [["1bdb8c52397de8a9"]],
+  },
+);
+
+const lightOffGroup = requiredById("a610d085d27ea80d");
+const lightOffDecision = requiredById("374d4e39be0a30ac");
+const lightOffRouteOut = "light_off_decision_route_out_v1";
+const lightOffRouteIn = "light_off_decision_route_in_v1";
+for (const id of [lightOffRouteOut, lightOffRouteIn]) {
+  if (!lightOffGroup.nodes.includes(id)) lightOffGroup.nodes.push(id);
+}
+lightOffDecision.wires[0] = [lightOffRouteOut];
+flows.push(
+  {
+    id: lightOffRouteOut,
+    type: "link out",
+    z: LIGHT_TAB,
+    g: lightOffGroup.id,
+    name: "Pode desligar → rota final",
+    mode: "link",
+    links: [lightOffRouteIn],
+    x: 960,
+    y: 580,
+    wires: [],
+  },
+  {
+    id: lightOffRouteIn,
+    type: "link in",
+    z: LIGHT_TAB,
+    g: lightOffGroup.id,
+    name: "Receber decisão de desligar",
+    links: [lightOffRouteOut],
+    x: 1030,
+    y: 540,
+    wires: [["84d450933e67b8c1"]],
+  },
+);
+
 const syncIn = requiredByName("Sincronizar trackers após refresh do vehicle_primary");
 const refreshPrimary = requiredByName("Solicitar localização do iPhone resident_primary");
 const refreshSecondary = requiredByName("Solicitar localização do iPhone resident_secondary");
@@ -1705,7 +2250,7 @@ syncIn.wires = [[refreshPrimary.id, refreshSecondary.id]];
 const eventGroup = flows.find((node) => node.id === primaryEvent.g);
 if (eventGroup) {
   const dx = 64 - eventGroup.x;
-  const dy = 379 - eventGroup.y;
+  const dy = 419 - eventGroup.y;
   for (const id of eventGroup.nodes) {
     const node = flows.find((candidate) => candidate.id === id);
     if (node && Number.isFinite(node.x) && Number.isFinite(node.y)) {
@@ -1713,7 +2258,7 @@ if (eventGroup) {
       node.y += dy;
     }
   }
-  Object.assign(eventGroup, { x: 64, y: 379 });
+  Object.assign(eventGroup, { x: 64, y: 419 });
   eventGroup.name = "1. Eventos das duas fontes por residente";
 }
 const observerGroup = flows.find((node) => node.type === "group" && node.z === PEOPLE_TAB && node.name?.startsWith("Observabilidade global"));
@@ -1728,7 +2273,7 @@ if (observerGroup) {
 for (const groupName of ["3. Refresh adaptativo dos iPhones", "4. Testes manuais — estado compartilhado/cumulativo"]) {
   const existing = flows.find((node) => node.type === "group" && node.z === PEOPLE_TAB && node.name === groupName);
   if (!existing) continue;
-  const targetY = groupName.startsWith("3.") ? 719 : 979;
+  const targetY = groupName.startsWith("3.") ? 759 : 1019;
   const dx = 64 - existing.x;
   const dy = targetY - existing.y;
   for (const id of existing.nodes) {
@@ -1754,8 +2299,8 @@ if (!peopleTestCoordinator.func.includes('"people_last_blocked_arrival_v1__test"
 if (!peopleTestCoordinator.func.includes("resident_primary_departure_approach")) {
   peopleTestCoordinator.func = replaceRequired(
     peopleTestCoordinator.func,
-    '    resident_primary_unavailable_approach: { source: "resident_primary", state: "chegando", prev: "unavailable" }',
-    '    resident_primary_unavailable_approach: { source: "resident_primary", state: "chegando", prev: "unavailable" },\n    resident_primary_departure_approach: { source: "resident_primary", state: "chegando", prev: "home" },\n    resident_primary_departure_bounce_home: { source: "resident_primary", state: "home", prev: "chegando" }',
+    '    resident_primary_unavailable_approach: { source: "resident_primary", state: "near_home", prev: "unavailable" }',
+    '    resident_primary_unavailable_approach: { source: "resident_primary", state: "near_home", prev: "unavailable" },\n    resident_primary_departure_approach: { source: "resident_primary", state: "near_home", prev: "home" },\n    resident_primary_departure_bounce_home: { source: "resident_primary", state: "home", prev: "near_home" }',
     "casos manuais de saída e rebote",
   );
 }
@@ -1770,13 +2315,13 @@ if (!peopleTestGroup || !peopleTestRoute) {
 const departureTestNodes = [
   {
     id: "people_departure_approach_test_v1",
-    name: "NEG SAÍDA 1/2: home → chegando",
+    name: "NEG SAÍDA 1/2: home → near_home",
     testCase: "resident_primary_departure_approach",
     y: 1640,
   },
   {
     id: "people_departure_bounce_home_test_v1",
-    name: "NEG SAÍDA 2/2: chegando → home (rebote)",
+    name: "NEG SAÍDA 2/2: near_home → home (rebote)",
     testCase: "resident_primary_departure_bounce_home",
     y: 1680,
   },
@@ -1803,6 +2348,86 @@ for (const testNode of departureTestNodes) {
   }
 }
 peopleTestGroup.h = Math.max(peopleTestGroup.h, 782);
+
+const vehicleRefreshConfigGroup = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_config_group_v1",
+);
+const vehicleRefreshPolicyGroup = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_policy_group_v1",
+);
+if (!vehicleRefreshConfigGroup || !vehicleRefreshPolicyGroup) {
+  throw new Error("Grupos visuais da política de refresh do veículo ausentes");
+}
+moveGroupTo(vehicleRefreshConfigGroup, 1640, 259);
+moveGroupTo(vehicleRefreshPolicyGroup, 2230, 259);
+
+const vehicleRefreshExecutionGroup = requiredById("43a2bc9c218353ae");
+const vehicleRefreshCoordinator = requiredById("b33e117e55bdb5ed");
+const manualBlockedRouteOut = "vehicle_primary_manual_blocked_route_out_v1";
+const manualBlockedRouteIn = "vehicle_primary_manual_blocked_route_in_v1";
+const postRefreshRouteOut = "vehicle_primary_post_refresh_route_out_v1";
+const postRefreshRouteIn = "vehicle_primary_post_refresh_route_in_v1";
+for (const id of [
+  manualBlockedRouteOut,
+  manualBlockedRouteIn,
+  postRefreshRouteOut,
+  postRefreshRouteIn,
+]) {
+  if (!vehicleRefreshExecutionGroup.nodes.includes(id)) {
+    vehicleRefreshExecutionGroup.nodes.push(id);
+  }
+}
+vehicleRefreshCoordinator.wires[2] = [manualBlockedRouteOut];
+const waitForVehicleEvidence = requiredById("7a99920b093547ea");
+waitForVehicleEvidence.wires = [[postRefreshRouteOut]];
+flows.push(
+  {
+    id: manualBlockedRouteOut,
+    type: "link out",
+    z: VEHICLE_TAB,
+    g: vehicleRefreshExecutionGroup.id,
+    name: "Bloqueio manual → aviso",
+    mode: "link",
+    links: [manualBlockedRouteIn],
+    x: 520,
+    y: 740,
+    wires: [],
+  },
+  {
+    id: manualBlockedRouteIn,
+    type: "link in",
+    z: VEHICLE_TAB,
+    g: vehicleRefreshExecutionGroup.id,
+    name: "Receber bloqueio manual",
+    links: [manualBlockedRouteOut],
+    x: 650,
+    y: 940,
+    wires: [["vehicle_primary_manual_refresh_blocked_notification_v1"]],
+  },
+  {
+    id: postRefreshRouteOut,
+    type: "link out",
+    z: VEHICLE_TAB,
+    g: vehicleRefreshExecutionGroup.id,
+    name: "Bluelink concluído → rechecagem",
+    mode: "link",
+    links: [postRefreshRouteIn],
+    x: 1740,
+    y: 700,
+    wires: [],
+  },
+  {
+    id: postRefreshRouteIn,
+    type: "link in",
+    z: VEHICLE_TAB,
+    g: vehicleRefreshExecutionGroup.id,
+    name: "Receber rechecagem pós-refresh",
+    links: [postRefreshRouteOut],
+    x: 1160,
+    y: 780,
+    wires: [["ba55143f392aa361"]],
+  },
+);
 
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Seleção canônica de localização instalada em blocos no Node-RED.");

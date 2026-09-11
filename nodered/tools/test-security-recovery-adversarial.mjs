@@ -44,10 +44,10 @@ const originalNow = Date.now;
 Date.now = () => clock;
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  arrival_distance_m: 700, location_fresh_minutes: 15,
+  near_home_radius_m: 700, people_fast_refresh_radius_m: 2000, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
-  movement_threshold_m: 250, arm_distance_m: 100,
+  movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
 };
 
@@ -133,7 +133,7 @@ function signal(state, offset = 0) {
   return { state, last_changed: iso(offset), last_updated: iso(offset), attributes: {} };
 }
 
-function peopleInput({ source = "resident_primary", state = "chegando", previous = "not_home", distance = 1_400, offset = 0, event = "location_update" } = {}) {
+function peopleInput({ source = "resident_primary", state = "near_home", previous = "not_home", distance = 1_400, offset = 0, event = "location_update" } = {}) {
   const home = entity("home", 20);
   const selected = entity(state, distance, offset);
   return { payload: {
@@ -296,7 +296,7 @@ scenario("13 snapshot mais novo ready false prevalece por seguranca", () => {
 
 scenario("14 contexto_chegadas ignora o antigo candidato de aviso", () => {
   const flow = memoryFlow();
-  const candidate = { payload: { kind: "resident_secondary_approach_notification", notification_key: "resident_secondary:chegando:200", event_at: 200 } };
+  const candidate = { payload: { kind: "resident_secondary_approach_notification", notification_key: "resident_secondary:near_home:200", event_at: 200 } };
   assert.equal(run("context_coordinator", structuredClone(candidate), flow), null);
   assert.equal(flow.get("security_pending_resident_secondary_notification_v1"), undefined);
 });

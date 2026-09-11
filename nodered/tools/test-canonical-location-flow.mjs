@@ -11,14 +11,15 @@ const LOCATION_POLICY = {
   version: 1,
   owner: "node_red",
   complete: true,
-  arrival_distance_m: 700,
+  near_home_radius_m: 700,
+  people_fast_refresh_radius_m: 2000,
   location_fresh_minutes: 15,
   source_report_fresh_minutes: 75,
   recency_tie_seconds: 60,
   max_gps_accuracy_m: 100,
   vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250,
-  arm_distance_m: 100,
+  home_radius_m: 100,
   arrival_recovery_minutes: 10,
 };
 let clock = Date.parse("2026-09-10T21:00:00.000Z");
@@ -34,9 +35,9 @@ function memory(initial = {}) {
   };
 }
 
-function runtimeGlobal() {
+function runtimeGlobal(policyOverrides = {}) {
   return memory({
-    location_policy_v1: LOCATION_POLICY,
+    location_policy_v1: { ...LOCATION_POLICY, ...policyOverrides },
     publicBindings: {
       roles: {
         resident_primary: { source_alias: "Example Primary" },
@@ -117,17 +118,92 @@ function input(primary, fallback, source = "refresh") {
   };
 }
 
-function select(message, flow = memory()) {
-  const normalized = run("people_location_observation_v1", message, flow);
-  return run("people_location_select_v1", normalized, flow);
+function select(message, flow = memory(), globalContext = runtimeGlobal()) {
+  const normalized = run("people_location_observation_v1", message, flow, globalContext);
+  const selected = run("people_location_select_v1", normalized, flow, globalContext);
+  return run("people_location_classify_near_home_v1", selected, flow, globalContext);
 }
 
 const primaryId = "device_tracker.mobile_primary_source_1";
 const fallbackId = "device_tracker.mobile_primary_source_2";
 
 {
+  const controls = {
+    near: byId.get("people_location_near_home_radius_v1"),
+    home: byId.get("people_location_home_radius_v1"),
+    refresh: byId.get("people_location_fast_refresh_radius_v1"),
+  };
+  assert.deepEqual(
+    [controls.near.topic, controls.home.topic, controls.refresh.topic],
+    ["near_home_radius_m", "home_radius_m", "people_fast_refresh_radius_m"],
+  );
+  assert.deepEqual(
+    [controls.near.payload, controls.home.payload, controls.refresh.payload],
+    ["700", "100", "2000"],
+  );
+
+  const policyContext = runtimeGlobal();
+  const rejected = run(
+    "people_location_policy_apply_v1",
+    { topic: "near_home_radius_m", payload: 1600 },
+    memory(),
+    policyContext,
+  );
+  assert.equal(rejected, null);
+  assert.equal(
+    policyContext.get("location_policy_v1").near_home_radius_m,
+    700,
+    "um raio além do geofence técnico não pode substituir a política válida",
+  );
+}
+
+{
+  const legacyWakeRing = select(input(
+    tracker(primaryId, "location_update_ring", { distanceM: 1450 }),
+    tracker(fallbackId, "unavailable", { ageMs: 5 * 60_000, coordinates: false }),
+    "resident_primary",
+  ));
+  assert.equal(
+    legacyWakeRing.payload.trigger_state,
+    "not_home",
+    "o anel técnico de 1.500 m não pode antecipar near_home de 700 m",
+  );
+  const staleNamedZone = select(input(
+    tracker(primaryId, "legacy_custom_zone", { distanceM: 1450 }),
+    tracker(fallbackId, "unavailable", { ageMs: 5 * 60_000, coordinates: false }),
+    "resident_primary",
+  ));
+  assert.equal(
+    staleNamedZone.payload.trigger_state,
+    "not_home",
+    "um nome de zona bruto não pode escapar como estado canônico",
+  );
+
+  const defaultBoundary = select(input(
+    tracker(primaryId, "location_update_ring", { distanceM: 800 }),
+    tracker(fallbackId, "unavailable", { ageMs: 5 * 60_000, coordinates: false }),
+    "resident_primary",
+  ));
+  assert.equal(defaultBoundary.payload.trigger_state, "not_home");
+
+  const widerBoundary = select(input(
+    tracker(primaryId, "location_update_ring", { distanceM: 800 }),
+    tracker(fallbackId, "unavailable", { ageMs: 5 * 60_000, coordinates: false }),
+    "resident_primary",
+  ), memory(), runtimeGlobal({ near_home_radius_m: 900 }));
+  assert.equal(widerBoundary.payload.trigger_state, "near_home");
+
+  const widerHome = select(input(
+    tracker(primaryId, "location_update_ring", { distanceM: 120 }),
+    tracker(fallbackId, "unavailable", { ageMs: 5 * 60_000, coordinates: false }),
+    "resident_primary",
+  ), memory(), runtimeGlobal({ home_radius_m: 150 }));
+  assert.equal(widerHome.payload.trigger_state, "home");
+}
+
+{
   const selected = select(input(
-    tracker(primaryId, "chegando", { ageMs: 3 * 24 * 60 * 60_000, accuracy: 4 }),
+    tracker(primaryId, "location_update_ring", { ageMs: 3 * 24 * 60 * 60_000, accuracy: 4 }),
     tracker(fallbackId, "home", { accuracy: 25, distanceM: 20 }),
   ));
   assert.equal(selected._canonical_locations.resident_primary.selected.entity.entity_id, fallbackId);
@@ -135,8 +211,46 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 }
 
 {
+  const flow = memory();
+  const changed = iso();
+  const vehicleMessage = (distanceM) => ({
+    payload: {
+      event: "location_update",
+      source: "vehicle_primary",
+      trigger_state: "location_update_ring",
+      trigger_prev_state: "not_home",
+      vehicle_primary: tracker(
+        "device_tracker.vehicle_primary",
+        "location_update_ring",
+        { distanceM },
+      ),
+      vehicle_primary_engine: { state: "on", last_updated: changed },
+      vehicle_primary_lock: { state: "locked", last_updated: changed },
+      vehicle_primary_last_updated: { state: changed, last_updated: changed },
+    },
+  });
+  const far = run(
+    "vehicle_primary_classify_near_home_v1",
+    vehicleMessage(800),
+    flow,
+  );
+  assert.equal(far.payload.vehicle_primary.state, "not_home");
+  run("092625f2eb5cc156", far, flow);
+  clock += 1_000;
+  const near = run(
+    "vehicle_primary_classify_near_home_v1",
+    vehicleMessage(650),
+    flow,
+  );
+  assert.equal(near.payload.trigger_prev_state, "not_home");
+  assert.equal(near.payload.trigger_state, "near_home");
+  const result = run("092625f2eb5cc156", near, flow);
+  assert.equal(result[1].payload.arrival_stage, "approach");
+}
+
+{
   const selected = select(input(
-    tracker(primaryId, "chegando", { accuracy: 999 }),
+    tracker(primaryId, "location_update_ring", { accuracy: 999 }),
     tracker(fallbackId, "home", { accuracy: 10, distanceM: 20 }),
   ));
   assert.equal(selected._canonical_locations.resident_primary.selected.entity.entity_id, fallbackId);
@@ -153,7 +267,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 
 {
   const selected = select(input(
-    tracker(primaryId, "chegando", { ageMs: 5_000, accuracy: 10 }),
+    tracker(primaryId, "location_update_ring", { ageMs: 5_000, accuracy: 10 }),
     tracker(fallbackId, "home", { accuracy: 4, distanceM: 20 }),
   ));
   assert.equal(selected._canonical_locations.resident_primary.selected.entity.entity_id, fallbackId);
@@ -176,27 +290,29 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   ), flow);
   assert.equal(before.payload.event, "context_snapshot");
   clock += 30_000;
-  const approaching = tracker(primaryId, "chegando", { distanceM: 650 });
+  const approaching = tracker(primaryId, "location_update_ring", { distanceM: 650 });
   const current = select(input(
     approaching,
     tracker(fallbackId, "home", { ageMs: 5 * 60_000, distanceM: 20 }),
     "resident_primary",
   ), flow);
   assert.equal(current.payload.trigger_prev_state, "not_home");
-  assert.equal(current.payload.trigger_state, "chegando");
+  assert.equal(current.payload.trigger_state, "near_home");
   assert.equal(current.payload.trigger_entity, "device_tracker.resident_primary_location");
 
   const published = run("people_location_publish_state_v1", structuredClone(current), flow);
   const primaryStateMessage = published[0].find(
     (message) => message.topic === "smart_home/location/resident_primary/state",
   );
-  assert.equal(primaryStateMessage.payload, "chegando");
+  assert.equal(primaryStateMessage.payload, "near_home");
   const primaryState = JSON.parse(published[0].find(
     (message) => message.topic === "smart_home/location/resident_primary/attributes",
   ).payload);
   assert.equal(primaryState.decision_owner, "node_red");
-  assert.equal(primaryState.state, "chegando");
-  assert.equal(primaryState.arrival_distance_m, 700);
+  assert.equal(primaryState.state, "near_home");
+  assert.equal(primaryState.raw_location_state, "location_update_ring");
+  assert.equal(primaryState.home_radius_m, 100);
+  assert.equal(primaryState.near_home_radius_m, 700);
   assert.equal(primaryState.selected_location_source, "Home Assistant App");
   assert.equal(primaryState.location_fresh_minutes, 15);
   assert.equal(primaryState.source_report_fresh_minutes, 75);
@@ -208,10 +324,21 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 {
   const people = byId.get("554cb653b2fa4504");
   const vehicle = byId.get("092625f2eb5cc156");
+  const peopleClassifier = byId.get("people_location_classify_near_home_v1");
+  const vehicleClassifier = byId.get("vehicle_primary_classify_near_home_v1");
   assert.doesNotMatch(people.func, /mergeTrackers|TRACKER_SELECTION_VERSION/);
-  assert.match(people.func, /LOCATION_POLICY\.arrival_distance_m/);
-  assert.match(vehicle.func, /LOCATION_POLICY\.arrival_distance_m/);
+  assert.match(people.func, /LOCATION_POLICY\.near_home_radius_m/);
+  assert.match(vehicle.func, /LOCATION_POLICY\.near_home_radius_m/);
   assert.match(vehicle.func, /LOCATION_POLICY\.movement_threshold_m/);
+  assert.match(peopleClassifier.func, /location_update_ring/);
+  assert.match(vehicleClassifier.func, /location_update_ring/);
+  assert.match(
+    byId.get("402fd0cc609443b7").func,
+    /LOCATION_POLICY\?\.people_fast_refresh_radius_m/,
+  );
+  assert.doesNotMatch(byId.get("402fd0cc609443b7").func, /nearest_distance_m <= 2000/);
+  assert.equal(byId.get("4189bb901d6a15c4").outputOnlyOnStateChange, false);
+  assert.equal(byId.get("bc70805a5fe2f35d").outputOnlyOnStateChange, false);
 
   const flow = memory({ vehicle_primary_arrival_armed: true });
   const changed = iso();
@@ -264,7 +391,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
       engine_state_valid: false,
       engine_on: null,
       in_use: null,
-      location: { ready: true, stale: false, state: "chegando" },
+      location: { ready: true, stale: false, state: "near_home" },
       updated_at: start,
     },
     sun_ready: true,
@@ -301,7 +428,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
         engine_state_valid: true,
         engine_on: true,
         in_use: true,
-        location: { ready: true, stale: false, state: "chegando" },
+        location: { ready: true, stale: false, state: "near_home" },
         updated_at: clock,
       },
     },

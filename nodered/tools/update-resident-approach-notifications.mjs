@@ -95,7 +95,7 @@ if (!people.func.includes("illumination_only: true")) {
   const snapshotAt = people.func.indexOf(snapshotSection);
   if (snapshotAt < 0) throw new Error("Seção de snapshot de pessoas ausente");
   const lightingOnlyBlock = `/*
- * Exceção estrita da iluminação: unknown/unavailable → chegando pode indicar que o
+ * Exceção estrita da iluminação: unknown/unavailable → near_home pode indicar que o
  * tracker recuperou diretamente já dentro da zona. Não publica na saída de
  * chegada geral (alarme); o gate físico posterior ainda exige motor ON atual.
  */
@@ -157,7 +157,7 @@ if (outputComment >= 0) {
   people.func = people.func.slice(0, outputComment) +
     (hasDirectionGuard
       ? "/*\n * OUTPUT 1 = contexto normal\n * OUTPUT 2 = retorno confirmado\n * OUTPUT 3 = recovery de tracker com ciclo externo confirmado\n * OUTPUT 4 = saída/rebote bloqueado, sem efeitos\n */\nreturn [msg, arrival, lightingOnlyArrival, blockedArrival];\n"
-      : "/*\n * OUTPUT 1 = contexto normal\n * OUTPUT 2 = chegada geral\n * OUTPUT 3 = unknown/unavailable → chegando somente para iluminação\n */\nreturn [msg, arrival, lightingOnlyArrival];\n");
+      : "/*\n * OUTPUT 1 = contexto normal\n * OUTPUT 2 = chegada geral\n * OUTPUT 3 = unknown/unavailable → near_home somente para iluminação\n */\nreturn [msg, arrival, lightingOnlyArrival];\n");
 }
 const hasDirectionGuard = people.func.includes("let blockedArrival = null;");
 people.outputs = hasDirectionGuard ? 4 : 3;
@@ -195,7 +195,7 @@ flows.push({
   type: "link out",
   z: people.z,
   g: peopleContextGroup.id,
-  name: "Tracker recuperado chegando → iluminação",
+  name: "Tracker recuperado near_home → iluminação",
   mode: "link",
   links: [LIGHT_ARRIVAL_IN],
   x: 1195,
@@ -281,7 +281,7 @@ const ids = {
 };
 removeIds(Object.values(ids));
 
-const prepareFunction = String.raw`const APPROACH_ZONE = "chegando";
+const prepareFunction = String.raw`const APPROACH_ZONE = "near_home";
 const RECOVERY_KEY = "resident_approach_notification_recovery_v1";
 const PERSISTENT = "persistent";
 const DEDUPE_TTL_MS = 10 * 60 * 1000;
@@ -449,7 +449,7 @@ msg.payload = {
     recipient: resident.recipient,
     notification_key: notificationKey,
     event_at: eventAt,
-    message: privateDisplayName(source) + " está chegando."
+    message: privateDisplayName(source) + " está perto de casa."
 };
 
 if (TEST_MODE) {
@@ -504,7 +504,7 @@ if (![
 }
 
 const current = directSource
-    ? "chegando"
+    ? "near_home"
     : transition?.state;
 const previous = directSource
     ? "not_home"
@@ -662,12 +662,12 @@ if (!testCycleOut.links.includes(ids.testCycleIn)) {
 }
 
 flows.push(
-  { id: ids.tab, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false, info: "Avisa cada residente quando o outro entra na zona chegando segundo a decisão canônica publicada por localizacao_pessoas. Funciona 24 horas por dia. Testes vindos de localizacao_pessoas terminam em dry-run; somente os botões dedicados desta aba testam a entrega de push marcada como TESTE.", env: [] },
+  { id: ids.tab, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false, info: "Avisa cada residente quando o outro entra na zona near_home segundo a decisão canônica publicada por localizacao_pessoas. Funciona 24 horas por dia. Testes vindos de localizacao_pessoas terminam em dry-run; somente os botões dedicados desta aba testam a entrega de push marcada como TESTE.", env: [] },
   group(ids.triggerGroup, "1. Decisão canônica de localização", [ids.note, ids.canonicalIn], 64, 79, 432, 202, "#3f7cb5"),
   group(ids.decisionGroup, "2. Validar aproximação e deduplicar", [ids.prepare, ids.testEventIn, ids.dryRunOut], 499, 124, 337, 197, "#7d6ba8"),
   group(ids.outputGroup, "3. Entrega real explícita ou dry-run", [ids.primaryNotify, ids.secondaryNotify, ids.deliveryAck, ids.dryRunIn, ids.dryRunTerminal], 894, 119, 742, 222, "#4d9a6a"),
   group(ids.testGroup, "4. Testes manuais — envia push marcado TESTE", [ids.testPrimary, ids.testSecondary, ids.testCycleIn, ids.testAdapter, ids.testEventOut], 434, 359, 607, 202, "#a87932"),
-  { id: ids.note, type: "comment", z: ids.tab, g: ids.triggerGroup, name: "Sem restrição de horário", info: "Somente a transição canônica not_home → chegando é avaliada. Nenhum tracker bruto entra nesta aba.", x: 250, y: 120, wires: [] },
+  { id: ids.note, type: "comment", z: ids.tab, g: ids.triggerGroup, name: "Sem restrição de horário", info: "Somente a transição canônica not_home → near_home é avaliada. Nenhum tracker bruto entra nesta aba.", x: 250, y: 120, wires: [] },
   { id: ids.canonicalIn, type: "link in", z: ids.tab, g: ids.triggerGroup, name: "Receber decisão canônica de localização", links: ["people_location_notification_out_v1"], x: 160, y: 200, wires: [[ids.prepare]] },
   { id: ids.prepare, type: "function", z: ids.tab, g: ids.decisionGroup, name: "Preparar avisos de aproximação", func: prepareFunction, outputs: 5, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 640, y: 180, wires: [[ids.primaryNotify], [ids.secondaryNotify], [ids.primaryNotify], [ids.secondaryNotify], [ids.dryRunOut]] },
   { id: ids.testEventIn, type: "link in", z: ids.tab, g: ids.decisionGroup, name: "Receber transição sintética", links: [ids.testEventOut], x: 560, y: 240, wires: [[ids.prepare]] },
@@ -687,27 +687,27 @@ flows.push(
 const peopleTestCoordinator = required("Iniciar teste pelo coordenador");
 if (!peopleTestCoordinator.func.includes("resident_primary_unknown_approach")) {
   peopleTestCoordinator.func = peopleTestCoordinator.func.replace(
-    'resident_secondary_invalid_approach: { source: "resident_secondary", state: "chegando", prev: "unavailable" }',
-    'resident_secondary_invalid_approach: { source: "resident_secondary", state: "chegando", prev: "unavailable" },\n    resident_primary_unknown_approach: { source: "resident_primary", state: "chegando", prev: "unknown" },\n    resident_secondary_unknown_approach: { source: "resident_secondary", state: "chegando", prev: "unknown" },\n    resident_primary_unavailable_approach: { source: "resident_primary", state: "chegando", prev: "unavailable" }',
+    'resident_secondary_invalid_approach: { source: "resident_secondary", state: "near_home", prev: "unavailable" }',
+    'resident_secondary_invalid_approach: { source: "resident_secondary", state: "near_home", prev: "unavailable" },\n    resident_primary_unknown_approach: { source: "resident_primary", state: "near_home", prev: "unknown" },\n    resident_secondary_unknown_approach: { source: "resident_secondary", state: "near_home", prev: "unknown" },\n    resident_primary_unavailable_approach: { source: "resident_primary", state: "near_home", prev: "unavailable" }',
   );
 }
 
 const recoveryTestNodes = [
   {
     id: "people_primary_unknown_approach_test_v1",
-    name: "resident_primary unknown → chegando (motor ON)",
+    name: "resident_primary unknown → near_home (motor ON)",
     testCase: "resident_primary_unknown_approach",
     y: 1340,
   },
   {
     id: "people_secondary_unknown_approach_test_v1",
-    name: "resident_secondary unknown → chegando (motor ON)",
+    name: "resident_secondary unknown → near_home (motor ON)",
     testCase: "resident_secondary_unknown_approach",
     y: 1440,
   },
   {
     id: "people_primary_unavailable_approach_test_v1",
-    name: "resident_primary unavailable → chegando (motor ON)",
+    name: "resident_primary unavailable → near_home (motor ON)",
     testCase: "resident_primary_unavailable_approach",
     y: 1520,
   },
@@ -732,7 +732,7 @@ removeFromGroup(peopleTestGroup, [
 
 const secondaryUnavailableTest = requiredId("d1611f90020ade33");
 secondaryUnavailableTest.name =
-  "resident_secondary unavailable → chegando (motor ON)";
+  "resident_secondary unavailable → near_home (motor ON)";
 
 for (const testNode of recoveryTestNodes) {
   flows.push({

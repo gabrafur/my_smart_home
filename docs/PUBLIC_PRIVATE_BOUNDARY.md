@@ -47,9 +47,10 @@ contém todos os oito papéis obrigatórios.
 - normaliza presença e estados booleanos quando configurado;
 - encaminha ações allowlisted pelo serviço `public_bindings.call`.
 
-Aliases públicos de `device_tracker` devem usar `state_mode: passthrough`. Isso
-preserva estados de zonas nomeadas, como `chegando`; `home_away` reduziria essas
-zonas a `not_home`. Os atributos de localização necessários por automações
+Aliases públicos das fontes brutas de `device_tracker` devem usar
+`state_mode: passthrough`. Isso preserva estados nativos, inclusive o geofence
+de transporte `location_update_ring`; `home_away` reduziria essas zonas a
+`not_home`. Os atributos de localização necessários por automações
 (`latitude`, `longitude`, `gps_accuracy` e `source_type`) também precisam estar
 na allowlist do binding privado. Os valores continuam apenas no runtime e não
 são versionados.
@@ -60,10 +61,12 @@ aliases individuais de uma única origem, como
 `public_bindings` não seleciona nem consolida fontes. A decisão única fica nos
 blocos visuais da aba Node-RED `localizacao_pessoas`: atualidade da posição,
 coordenadas confiáveis, diferença material de recência, precisão e estado
-válido. O resultado é publicado por MQTT nos trackers
+válido, seguido pela classificação por coordenadas nos raios visuais `home` e
+`near_home`. O resultado é publicado por MQTT nos trackers
 `device_tracker.resident_primary_location` e
 `device_tracker.resident_secondary_location`, com
-`decision_owner: node_red`.
+`decision_owner: node_red`; o painel não interpreta a zona bruta nem recalcula
+distâncias.
 
 O painel nativo Mapa omite entidades cujo estado atual é `home`. Por isso, o
 arquivo YAML `dashboards/location.yaml` usa um card `map` com `show_all: true`:

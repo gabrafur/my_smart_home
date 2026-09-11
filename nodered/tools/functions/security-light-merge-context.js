@@ -220,7 +220,7 @@ if (pending) {
         validPending =
             resident?.ready === true &&
             resident?.stale !== true &&
-            resident?.state === "chegando";
+            resident?.state === "near_home";
         if (!validPending) {
             invalidReason = resident?.state === "home"
                 ? "resident_home"
@@ -233,7 +233,7 @@ if (pending) {
         validPending =
             location.ready === true &&
             location.stale !== true &&
-            location.state === "chegando";
+            location.state === "near_home";
         if (!validPending) {
             invalidReason = location.state === "home"
                 ? "vehicle_home"

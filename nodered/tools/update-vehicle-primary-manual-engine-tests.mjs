@@ -215,10 +215,10 @@ const CASES = {
     vehicle_primary_engine_on: { engine: "on" },
     vehicle_primary_engine_off: { engine: "off" },
     vehicle_primary_away: { state: "not_home", prev: "home" },
-    vehicle_primary_approach: { state: "chegando", prev: "not_home" },
-    vehicle_primary_home: { state: "home", prev: "chegando" },
+    vehicle_primary_approach: { state: "near_home", prev: "not_home" },
+    vehicle_primary_home: { state: "home", prev: "near_home" },
     vehicle_primary_invalid_home: { state: "home", prev: "unknown" },
-    vehicle_primary_invalid_approach: { state: "chegando", prev: "unavailable" }
+    vehicle_primary_invalid_approach: { state: "near_home", prev: "unavailable" }
 };
 
 function baseline(now = Date.now()) {
@@ -1186,7 +1186,7 @@ manualIn.name = "Receber teste manual seguro";
 manualIn.wires = [[ids.dryRunTerminal]];
 
 const lightTab = required(ids.lightTab);
-lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em chegando com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON conhecido enquanto o Bluelink estiver saudável; a idade do evento é informativa e não invalida ON/OFF. O bypass só é aplicável durante falha real de comunicação/revalidação da API, liga automaticamente sem tomar posse de um ON manual e nunca ignora motor OFF conhecido. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.";
+lightTab.info = "Orquestra a decisão e o lifecycle do refletor a partir de contratos de alto nível. A intenção de chegada de uma pessoa permanece válida enquanto ela continuar em near_home com localização recente, inclusive se o anoitecer ocorrer depois do primeiro evento. O gate aceita motor ON conhecido enquanto o Bluelink estiver saudável; a idade do evento é informativa e não invalida ON/OFF. O bypass só é aplicável durante falha real de comunicação/revalidação da API, liga automaticamente sem tomar posse de um ON manual e nunca ignora motor OFF conhecido. Testes sintéticos atravessam todos os gates e o lifecycle; refletor, timers e notificações terminam em dry-run sem qualquer efeito residencial.";
 
 upsert({
   id: ids.bypassGroup,
@@ -1581,7 +1581,7 @@ for (const nodeId of [
   if (!alarmGroup.nodes.includes(nodeId)) alarmGroup.nodes.push(nodeId);
 }
 
-required(alarmIds.tab).info = "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary estão chegando. Testes percorrem validação, pendência e confirmação, mas simulam toda interação mobile e terminam em dry-run sem notificação nem desarme.\n\nv11: produção preserva pendência e cooldown somente após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.";
+required(alarmIds.tab).info = "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary entram no estado canônico near_home. Testes percorrem validação, pendência e confirmação, mas simulam toda interação mobile e terminam em dry-run sem notificação nem desarme.\n\nv11: produção preserva pendência e cooldown somente após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.";
 
 
 group.name = "5. Testes manuais — motor e localização sintéticos/cumulativos";

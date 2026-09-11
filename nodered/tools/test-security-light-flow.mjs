@@ -44,10 +44,10 @@ function wireNames(alias, output = 0) {
 const passed = [];
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  arrival_distance_m: 700, location_fresh_minutes: 15,
+  near_home_radius_m: 700, people_fast_refresh_radius_m: 2000, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
-  movement_threshold_m: 250, arm_distance_m: 100,
+  movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
 };
 
@@ -165,8 +165,8 @@ function readyLightFlow(extra = {}) {
     people_context_v1: {
       ready: true,
       updated_at: Date.now(),
-      resident_primary: { ready: true, stale: false, state: "chegando" },
-      resident_secondary: { ready: true, stale: false, state: "chegando" },
+      resident_primary: { ready: true, stale: false, state: "near_home" },
+      resident_secondary: { ready: true, stale: false, state: "near_home" },
     },
     vehicle_primary_context_v1: { ready: true, lighting_ready: true, in_use: true, engine_on: true, engine_state_valid: true, updated_at: Date.now() },
     sun_ready: true,
@@ -181,7 +181,7 @@ function readyLightFlow(extra = {}) {
 }
 
 function peopleInput({
-  event = "location_update", source = "resident_primary", previous = "not_home", current = "chegando",
+  event = "location_update", source = "resident_primary", previous = "not_home", current = "near_home",
   resident_primary = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 1_400 : 20),
   resident_primaryIcloud = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 1_400 : 20),
   resident_secondary = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 1_400 : 20),
@@ -199,7 +199,7 @@ function peopleInput({
 }
 
 function vehicle_primaryInput({
-  event = "location_update", previous = "not_home", current = "chegando", distance = 1_400,
+  event = "location_update", previous = "not_home", current = "near_home", distance = 1_400,
   engine = "off", lock = "locked", cycle, changed = new Date().toISOString(), accuracy = 10,
 } = {}) {
   return { payload: {
@@ -260,7 +260,7 @@ scenario("02a eventos de motor ON e OFF são simétricos com filtro de 5 s", () 
     assert.equal(node.for, "5");
     assert.equal(node.forUnits, "seconds");
     assert.match(node.outputProperties[0].value, new RegExp(`\\"event\\":\\"${event}\\"`));
-    assert.deepEqual(wireNames(node.name === "Motor ligado por 5 s" ? "vehicle_primary_engine_on_event" : "vehicle_primary_engine_off_event"), ["Normalizar vehicle_primary e detectar transições"]);
+    assert.deepEqual(wireNames(node.name === "Motor ligado por 5 s" ? "vehicle_primary_engine_on_event" : "vehicle_primary_engine_off_event"), ["Classificar home / near_home"]);
   }
 });
 
@@ -273,11 +273,11 @@ scenario("02b localização e telemetria alimentam o contexto do veículo", () =
   assert.equal(locationEvent.outputOnlyOnStateChange, false);
 
   const home = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "context_snapshot", current: "home", distance: null }), memoryFlow(), geoEnv)[0];
-  const approaching = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "chegando", distance: null, engine: "on" }), memoryFlow(), geoEnv);
+  const approaching = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "near_home", distance: null, engine: "on" }), memoryFlow(), geoEnv);
   const away = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "not_home", distance: null, engine: "on" }), memoryFlow(), geoEnv)[0];
   assert.equal(home.payload.context.home, true);
   assert.equal(home.payload.context.away, false);
-  assert.equal(approaching[0].payload.context.location.state, "chegando");
+  assert.equal(approaching[0].payload.context.location.state, "near_home");
   assert.equal(approaching[0].payload.context.location.state_valid, true);
   assert.equal(approaching[0].payload.context.home, false);
   assert.equal(approaching[0].payload.context.away, false);
@@ -292,22 +292,22 @@ scenario("03 vehicle_primary ligado e aproximando-se", () => {
   assert.equal(detected.payload.request_vehicle_primary_wake, true);
 });
 
-scenario("04 entrada no anel de aproximadamente 1500 m", () => {
+scenario("04 entrada no raio near_home de 700 m", () => {
   const [, detected] = run("people_normalize", peopleInput(), memoryFlow(), geoEnv);
   assert.equal(detected.payload.arrival_stage, "approach");
   assert.equal(detected.payload.arrival_direction, "returning");
   assert.equal(detected.payload.external_cycle_confirmed, true);
 });
 
-scenario("04a saída e rebote chegando → home não viram chegada", () => {
+scenario("04a saída e rebote near_home → home não viram chegada", () => {
   const flow = memoryFlow();
   const departure = run(
     "people_normalize",
     peopleInput({
       previous: "home",
-      current: "chegando",
-      resident_primary: entity("chegando", 215, undefined, 37),
-      resident_primaryIcloud: entity("chegando", 215, undefined, 37),
+      current: "near_home",
+      resident_primary: entity("near_home", 215, undefined, 37),
+      resident_primaryIcloud: entity("near_home", 215, undefined, 37),
     }),
     flow,
     geoEnv,
@@ -352,7 +352,7 @@ scenario("04a saída e rebote chegando → home não viram chegada", () => {
   const bounce = run(
     "people_normalize",
     peopleInput({
-      previous: "chegando",
+      previous: "near_home",
       current: "home",
       resident_primary: entity("home", 101, undefined, 14),
       resident_primaryIcloud: entity("home", 101, undefined, 14),
@@ -372,7 +372,7 @@ scenario("04a saída e rebote chegando → home não viram chegada", () => {
   run(
     "people_normalize",
     peopleInput({
-      previous: "chegando",
+      previous: "near_home",
       current: "not_home",
       resident_primary: entity("not_home", 2_000),
       resident_primaryIcloud: entity("not_home", 2_000),
@@ -389,14 +389,13 @@ scenario("04a saída e rebote chegando → home não viram chegada", () => {
   assert.equal(returning[1].payload.external_cycle_confirmed, true);
 });
 
-scenario("04b raio de chegada configurável aceita 700 m", () => {
+scenario("04b raio near_home configurável aceita 700 m", () => {
   const flow = memoryFlow({
-    security_arrival_distance_m: 700,
     people_arrival_armed: { resident_primary: true },
   });
   const [, detected] = run(
     "people_normalize",
-    peopleInput({ previous: "chegando", current: "chegando", resident_primary: entity("chegando", 650), resident_primaryIcloud: entity("chegando", 650) }),
+    peopleInput({ previous: "near_home", current: "near_home", resident_primary: entity("near_home", 650), resident_primaryIcloud: entity("near_home", 650) }),
     flow,
     geoEnv,
   );
@@ -407,7 +406,7 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
   const flow = memoryFlow();
   const departure = run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "home", current: "chegando", distance: 215, engine: "on" }),
+    vehicle_primaryInput({ previous: "home", current: "near_home", distance: 215, engine: "on" }),
     flow,
     geoEnv,
   );
@@ -433,7 +432,7 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
 
   const bounce = run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "chegando", current: "home", distance: 101, engine: "on" }),
+    vehicle_primaryInput({ previous: "near_home", current: "home", distance: 101, engine: "on" }),
     flow,
     geoEnv,
   );
@@ -471,9 +470,9 @@ scenario("08 resident_secondary ja em casa", () => {
   assert.equal(flow.get("people_arrival_armed").resident_secondary, false);
 });
 
-scenario("09 vehicle_primary chegando encerra viagem e publica chegada", () => {
+scenario("09 vehicle_primary near_home encerra viagem e publica chegada", () => {
   const flow = memoryFlow({ vehicle_primary_arrival_armed: true, vehicle_primary_in_use: true });
-  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ previous: "chegando", current: "home", distance: 20 }), flow, geoEnv);
+  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ previous: "near_home", current: "home", distance: 20 }), flow, geoEnv);
   assert.equal(detected.payload.arrival_source_type, "vehicle_primary");
   const actions = run("vehicle_primary_arrival_actions", detected, flow, geoEnv);
   assert.equal(actions[0], null);
@@ -497,8 +496,8 @@ scenario("09a republicação interna não recria a mesma chegada", () => {
   });
   const observedAt = new Date(Date.now() - 60_000).toISOString();
   const firstInput = vehicle_primaryInput({
-    previous: "chegando",
-    current: "chegando",
+    previous: "near_home",
+    current: "near_home",
     distance: 200,
   });
   firstInput.payload.vehicle_primary.attributes.location_observed_at = observedAt;
@@ -511,8 +510,8 @@ scenario("09a republicação interna não recria a mesma chegada", () => {
   assert(firstArrival);
 
   const replayInput = vehicle_primaryInput({
-    previous: "chegando",
-    current: "chegando",
+    previous: "near_home",
+    current: "near_home",
     distance: 200,
     changed: new Date(Date.now() + 1_000).toISOString(),
   });
@@ -860,7 +859,7 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
   assert(run("light_check_vehicle_primary_in_use", preparedOn, flow, geoEnv));
 });
 
-scenario("34 pessoa chegando aciona com motor ON sem o carro estar chegando", () => {
+scenario("34 pessoa near_home aciona com motor ON sem o carro estar near_home", () => {
   for (const source of ["resident_primary", "resident_secondary"]) {
     const flow = readyLightFlow({
       vehicle_primary_context_v1: {
@@ -990,7 +989,7 @@ scenario("34c falha de comunicação invalida OFF antigo e libera fallback", () 
   );
 });
 
-scenario("35 chegando exige ciclo externo e recovery fica só na iluminação", () => {
+scenario("35 near_home exige ciclo externo e recovery fica só na iluminação", () => {
   assert.deepEqual(
     byId.get("people_lighting_tracker_recovery_arrival_out").links,
     ["cf9bc321e0ec89f9"],
@@ -1016,7 +1015,7 @@ scenario("35 chegando exige ciclo externo e recovery fica só na iluminação", 
     for (const previous of ["unknown", "unavailable"]) {
       const blockedWithoutAwayCycle = run(
         "people_normalize",
-        peopleInput({ source, previous, current: "chegando" }),
+        peopleInput({ source, previous, current: "near_home" }),
         memoryFlow(),
         geoEnv,
       );
@@ -1029,11 +1028,11 @@ scenario("35 chegando exige ciclo externo e recovery fica só na iluminação", 
 
       const recoveredAwayCycle = run(
         "people_normalize",
-        peopleInput({ source, previous, current: "chegando" }),
+        peopleInput({ source, previous, current: "near_home" }),
         memoryFlow({ people_arrival_armed: { [source]: true } }),
         geoEnv,
       );
-      assert(recoveredAwayCycle[2], `${previous} → chegando deve recuperar ciclo externo persistido`);
+      assert(recoveredAwayCycle[2], `${previous} → near_home deve recuperar ciclo externo persistido`);
       assert.equal(recoveredAwayCycle[2].payload.illumination_only, true);
       assert.equal(recoveredAwayCycle[2].payload.arrival_previous_state, previous);
       assert.equal(recoveredAwayCycle[2].payload.external_cycle_confirmed, true);
@@ -1044,22 +1043,22 @@ scenario("35 chegando exige ciclo externo e recovery fica só na iluminação", 
     });
     const fromAway = run(
       "people_normalize",
-      peopleInput({ source, previous: "not_home", current: "chegando" }),
+      peopleInput({ source, previous: "not_home", current: "near_home" }),
       armedFlow,
       geoEnv,
     );
-    assert(fromAway[1], "not_home → chegando deve continuar como chegada geral");
+    assert(fromAway[1], "not_home → near_home deve continuar como chegada geral");
     assert.equal(fromAway[2], null);
 
-    for (const previous of ["home", "chegando", "work"]) {
+    for (const previous of ["home", "near_home", "work"]) {
       const blocked = run(
         "people_normalize",
-        peopleInput({ source, previous, current: "chegando" }),
+        peopleInput({ source, previous, current: "near_home" }),
         memoryFlow({ people_arrival_armed: { [source]: true } }),
         geoEnv,
       );
-      assert.equal(blocked[1], null, `${previous} → chegando não pode ser chegada geral`);
-      assert.equal(blocked[2], null, `${previous} → chegando não pode acionar iluminação`);
+      assert.equal(blocked[1], null, `${previous} → near_home não pode ser chegada geral`);
+      assert.equal(blocked[2], null, `${previous} → near_home não pode acionar iluminação`);
     }
   }
 
@@ -1098,7 +1097,7 @@ scenario("35a gate final rejeita chegada sem direção confirmada", () => {
   );
   assert(
     byId.get("light_merge_context").wires[2].includes(
-      "security_light_arrival_direction_gate_v1",
+      "light_arrival_replay_route_out_v1",
     ),
     "replay persistido também deve atravessar o gate visual de direção",
   );
@@ -1199,6 +1198,25 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
   );
 });
 
-assert.equal(passed.length, 49);
+scenario("37 tracker stale da outra pessoa não bloqueia chegada válida", () => {
+  const flow = readyLightFlow({
+    people_context_v1: {
+      ready: false,
+      resident_primary: { ready: true, stale: false, state: "near_home" },
+      resident_secondary: { ready: false, stale: true, state: "not_home" },
+    },
+  });
+  const result = run("light_mark_active", {
+    payload: {
+      source: "resident_primary",
+      arrival_key: "resident_primary:approach:isolated-stale-peer",
+      vehicle_primary_gate: "known_engine_on",
+    },
+  }, flow, geoEnv);
+  assert(result[0], "a chegada da fonte pronta deve criar o lifecycle");
+  assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, true);
+});
+
+assert.equal(passed.length, 50);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

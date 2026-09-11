@@ -53,10 +53,10 @@ const code = {
 };
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  arrival_distance_m: 700, location_fresh_minutes: 15,
+  near_home_radius_m: 700, people_fast_refresh_radius_m: 2000, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
-  movement_threshold_m: 250, arm_distance_m: 100,
+  movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
 };
 
@@ -172,7 +172,7 @@ function command(overrides = {}) {
   const secondary = String(overrides.resident_secondary_state ?? "").toLowerCase();
   const anyResidentAway = overrides.any_resident_away === true;
   const bothHome = primary === "home" && secondary === "home" && !anyResidentAway;
-  const awayStates = new Set(["not_home", "chegando"]);
+  const awayStates = new Set(["not_home", "near_home"]);
   const anyoneAwayOrApproaching =
     anyResidentAway ||
     overrides.anyone_away === true ||
@@ -195,15 +195,15 @@ function command(overrides = {}) {
       refresh_resident_states_known: primary.length > 0 && secondary.length > 0,
       refresh_both_residents_home: bothHome,
       refresh_anyone_approaching:
-        primary === "chegando" || secondary === "chegando",
+        primary === "near_home" || secondary === "near_home",
       refresh_anyone_away: anyoneAwayOrApproaching,
       refresh_interval_ms:
-        primary === "chegando" || secondary === "chegando"
+        primary === "near_home" || secondary === "near_home"
           ? 5 * 60_000
           : bothHome ? 30 * 60_000 : 15 * 60_000,
       refresh_interval_policy: bothHome
         ? "both_home"
-        : primary === "chegando" || secondary === "chegando"
+        : primary === "near_home" || secondary === "near_home"
           ? "approaching"
           : anyoneAwayOrApproaching
             ? "away"
@@ -366,7 +366,7 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
     msg: { payload: {
       kind: "refresh_command",
       resident_primary_state: "home",
-      resident_secondary_state: "chegando",
+      resident_secondary_state: "near_home",
     } },
   });
   assert(approaching[0]);
@@ -568,11 +568,11 @@ scenario("27 política diurna começa exatamente às 06h", () => {
   assert.equal(sixStore.get(KEY).next_allowed_at, SIX + 30 * 60_000);
 });
 
-scenario("28 estado chegando usa intervalo de 5 minutos", () => {
+scenario("28 estado near_home usa intervalo de 5 minutos", () => {
   const store = memory({ vehicle_primary_context_v1: { ready: false } });
   assert(coordinator(store, NIGHT, {
     resident_primary_state: "home",
-    resident_secondary_state: "chegando",
+    resident_secondary_state: "near_home",
     vehicle_primary_ready: false,
   }));
   assert.equal(store.get(KEY).interval_ms, 5 * 60_000);

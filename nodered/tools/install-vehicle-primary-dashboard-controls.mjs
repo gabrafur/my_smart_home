@@ -55,7 +55,7 @@ refreshDecision.outputs = 5;
 refreshDecision.wires = [
   ["vehicle_primary_refresh_dispatch_guard_v1"],
   ["eb4b8a519ab0bc28"],
-  ["vehicle_primary_manual_refresh_blocked_notification_v1"],
+  ["vehicle_primary_manual_blocked_route_out_v1"],
   ["vehicle_primary_refresh_notification_requested_out_v1"],
   ["vehicle_primary_cache_probe_dispatch_guard_v1"],
 ];
@@ -139,7 +139,7 @@ if (!contextCoordinator.func.includes("resident_departure_force:")) {
         accepted &&
         ["resident_primary", "resident_secondary"].includes(departureSource) &&
         departurePreviousState === "home" &&
-        ["chegando", "not_home"].includes(departureState) &&
+        ["near_home", "not_home"].includes(departureState) &&
         departurePosition?.ready === true &&
         departurePosition?.best_location_away === true &&
         previousDeparture?.key !== departureKey;
@@ -317,7 +317,7 @@ upsert({
 });
 
 const refreshPolicyInjects = [
-  ["vehicle_primary_refresh_approaching_minutes_v1", "Chegando — 5 min", "approaching_interval_minutes", "5", 340],
+  ["vehicle_primary_refresh_approaching_minutes_v1", "near_home — 5 min", "approaching_interval_minutes", "5", 340],
   ["vehicle_primary_refresh_away_minutes_v1", "Fora — 15 min", "away_interval_minutes", "15", 380],
   ["vehicle_primary_refresh_home_minutes_v1", "Ambos em casa — 30 min", "home_interval_minutes", "30", 420],
   ["vehicle_primary_refresh_quiet_start_v1", "Pausa começa — 0h", "quiet_start_hour", "0", 460],
@@ -424,7 +424,7 @@ function refreshIntervalNode(id, name, configProperty, policy, y) {
 
 refreshIntervalNode(
   "vehicle_primary_refresh_use_approaching_interval_v1",
-  "Usar intervalo chegando",
+  "Usar intervalo near_home",
   "approaching_interval_ms",
   "approaching",
   290,
@@ -611,7 +611,11 @@ upsert({
 });
 
 const waitForEvidence = required("7a99920b093547ea");
-Object.assign(waitForEvidence, { x: 1510, y: 700 });
+Object.assign(waitForEvidence, {
+  x: 1510,
+  y: 700,
+  wires: [["vehicle_primary_post_refresh_route_out_v1"]],
+});
 const recheck = required("ba55143f392aa361");
 Object.assign(recheck, { x: 1370, y: 780 });
 const recheckOut = required("f3bc2e5083769579");
@@ -1680,6 +1684,57 @@ upsert({
 });
 
 upsert({
+  id: "vehicle_primary_manual_blocked_route_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Bloqueio manual → aviso",
+  mode: "link",
+  links: ["vehicle_primary_manual_blocked_route_in_v1"],
+  x: 520,
+  y: 740,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_manual_blocked_route_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Receber bloqueio manual",
+  links: ["vehicle_primary_manual_blocked_route_out_v1"],
+  x: 650,
+  y: 940,
+  wires: [["vehicle_primary_manual_refresh_blocked_notification_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_post_refresh_route_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Bluelink concluído → rechecagem",
+  mode: "link",
+  links: ["vehicle_primary_post_refresh_route_in_v1"],
+  x: 1740,
+  y: 700,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_post_refresh_route_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Receber rechecagem pós-refresh",
+  mode: "link",
+  links: ["vehicle_primary_post_refresh_route_out_v1"],
+  x: 1160,
+  y: 780,
+  wires: [["ba55143f392aa361"]],
+});
+
+upsert({
   id: "vehicle_primary_refresh_notification_requested_out_v1",
   type: "link out",
   z: "c22d8b12055e87f7",
@@ -2234,6 +2289,10 @@ addToGroup(
   "vehicle_primary_refresh_telemetry_v1",
   "vehicle_primary_refresh_mqtt_v1",
   "vehicle_primary_manual_refresh_blocked_notification_v1",
+  "vehicle_primary_manual_blocked_route_out_v1",
+  "vehicle_primary_manual_blocked_route_in_v1",
+  "vehicle_primary_post_refresh_route_out_v1",
+  "vehicle_primary_post_refresh_route_in_v1",
   "vehicle_primary_refresh_notification_requested_out_v1",
   "vehicle_primary_refresh_error_notification_out_v1",
   "vehicle_primary_refresh_notification_in_v1",

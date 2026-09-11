@@ -19,14 +19,18 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   iCloud continuar reportando, o painel deve mostrar separadamente a fonte sem
   heartbeat e a posição apenas inalterada; automações de chegada continuam
   exigindo `location_observed_at` fresco.
-- Uma transição confirmada de qualquer residente de `home` para `chegando` ou
+- Os raios de decisão ficam somente no grupo visual de política do tab
+  `localizacao_pessoas`: `home` 100 m, `near_home` 700 m e refresh rápido
+  2.000 m por padrão. A zona HA `location_update_ring` (1.500 m) é apenas um
+  geofence de transporte do iOS e não é consumida por painéis ou automações.
+- Uma transição confirmada de qualquer residente de `home` para `near_home` ou
   `not_home` exige `force_refresh` imediato do `vehicle_primary` (wake seguido
   da obtenção de estado novo), com deduplicação e serialização de chamadas.
 - Efeitos físicos de chegada exigem um ciclo externo semântico comprovado por
   `not_home` ou outra zona externa. Distância acima do limite casa/fora nunca
   arma a chegada sozinha, nem a própria borda inicial de saída; é necessária
-  uma observação externa posterior ou a borda direcional externa `-> chegando`.
-  `home -> chegando` é saída e um rebote
+  uma observação externa posterior ou a borda direcional externa `-> near_home`.
+  `home -> near_home` é saída e um rebote
   posterior para `home` termina em um bloco visível sem efeitos, tanto para
   residentes quanto para `vehicle_primary`.
 - O botão técnico que resolve `vehicle_primary.force_refresh` não deve publicar

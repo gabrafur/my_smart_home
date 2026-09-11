@@ -47,8 +47,8 @@ const bothResidentsHome =
     residentSecondaryState === "home" &&
     !anyResidentAway;
 const anyoneApproaching =
-    residentPrimaryState === "chegando" ||
-    residentSecondaryState === "chegando";
+    residentPrimaryState === "near_home" ||
+    residentSecondaryState === "near_home";
 const anyoneAway =
     anyResidentAway ||
     msg.payload?.anyone_away === true ||
@@ -86,7 +86,7 @@ if (anyoneApproaching) {
     node.status({
         fill: "yellow",
         shape: "dot",
-        text: `${config.approaching_interval_minutes} min — chegando`
+        text: `${config.approaching_interval_minutes} min — near_home`
     });
     return [msg, null, null, null];
 }

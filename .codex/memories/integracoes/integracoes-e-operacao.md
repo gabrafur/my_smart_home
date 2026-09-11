@@ -34,7 +34,7 @@ formato de bearer do cliente BR. A camada local adapta esse contrato e impede
 que um `5091` no refresh dispare login completo na mesma tentativa.
 Agendamento, manual, recovery, chegada e movimento convergem no estado
 persistente do Node-RED. O ciclo saudável usa 30 minutos quando ambos os
-residentes estão em casa e 15 minutos quando algum deles está fora ou chegando.
+residentes estão em casa e 15 minutos quando algum deles está fora ou near_home.
 Uma falha confirmada também usa recuperação a cada 15 minutos, mesmo com ambos
 em casa; isso é exceção de recovery, não política normal de presença. Com ambos
 em casa, wakes automáticos ficam suspensos entre 00:00 e 05:59. O comando manual

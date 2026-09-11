@@ -58,7 +58,7 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   normalizador, com coordenadas string para não criar outro marcador.
 - O Node-RED concentra a decisão nos grupos configuráveis do tab
   `contexto_vehicle_primary`: por padrão usa **5 minutos** quando algum
-  morador esta `chegando`, **15 minutos** quando esta `not_home` e **30
+  morador esta `near_home`, **15 minutos** quando esta `not_home` e **30
   minutos** no ciclo saudável quando ambos estao `home`. Os horários padrão da pausa também ficam nesses
   blocos numéricos (0h–6h), editáveis com duplo clique e Deploy.
   A presença usada nessa escolha vem da mesma seleção de melhor localização
@@ -66,7 +66,7 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   diagnóstico, mas não reduz sozinha o ciclo para 15 minutos. Se a melhor
   localização estiver antiga, o Node-RED recupera os telefones separadamente;
   isso também não transforma o wake saudável do veículo em recovery.
-  Durante `chegando`, o intervalo de aproximação mantém precedência mesmo com
+  Durante `near_home`, o intervalo de aproximação mantém precedência mesmo com
   dados pendentes. Fora desse estado, recuperação usa o intervalo configurado
   para fora, inclusive em casa, enquanto
   a janela de wake está ativa, para não prolongar uma indisponibilidade
@@ -295,7 +295,7 @@ real do carro, enquanto o app Bluelink mostrava certo. Investigacao:
   As leituras ao vivo "extras" vêm do `button.vehicle_primary_force_refresh`
   (`nodered/flows.json`, flow `contexto_vehicle_primary`, node
   `vehicle_primary_force_refresh`). A política conjunta em `contexto_chegadas` pede o
-  refresh periódico a cada 15 min quando alguém está fora ou chegando e a cada
+  refresh periódico a cada 15 min quando alguém está fora ou near_home e a cada
   30 min quando ambos estão em casa, com pausa entre 00h e 06h nesse último
   caso — ver "Refresh" em
   ILUMINACAO_SEGURANCA_NODERED.md.
@@ -388,7 +388,7 @@ comando de wake foi aceito pelo backend.
   `sleep(25)` por ciclo.
 - **Agenda automatica orientada a presença no Node-RED.** Acordar o carro puxa
   a bateria de 12 V e conta contra o rate limit: o intervalo e de 5 min com
-  alguem chegando, 15 min com alguem fora, 30 min com ambos em casa e fica suspenso de 00:00 a
+  alguem near_home, 15 min com alguem fora, 30 min com ambos em casa e fica suspenso de 00:00 a
   05:59 se os dois continuarem em casa. O botao `Atualizar agora` e
   deliberadamente uma excecao: ele faz wake mesmo dentro do cooldown ou da
   pausa noturna, mas o lock do coordinator ainda rejeita concorrencia. Cada

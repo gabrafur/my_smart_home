@@ -1,8 +1,8 @@
 # Zonas de presenca
 #
-# zone.chegando: anel de aproximacao ao redor de casa, usado pelo fluxo
-# iluminacao_seguranca (Node-RED) para acender o refletor do portao ANTES da
-# chegada, e nao no momento em que a pessoa ja esta em casa.
+# zone.location_update_ring: geofence de transporte usado apenas para acordar
+# o Companion App no iOS. Ele nao define o estado canônico near_home e nenhum
+# painel ou automacao deve consumir diretamente este nome de zona.
 #
 # Por que isto existe (ver docs/ILUMINACAO_SEGURANCA_NODERED.md):
 # o app Companion registra cada zona nao-passiva do HA como um geofence de
@@ -13,31 +13,22 @@
 # Nao era GPS ruim; era ausencia de zona. Com este anel, o proprio iOS avisa
 # na hora da travessia, mesmo com o app suspenso ou encerrado.
 #
-# RAIO = 1500 m, dimensionado para o requisito "refletor aceso pelo menos
-# 2 minutos antes da chegada":
-#   - 1500 m em linha reta equivale a ~1800-2100 m de rua (fator tipico
-#     1.2-1.4x), entao mesmo a 50 km/h da ~2.2 min de antecedencia.
-#   - A chegada real medida em 02/08 (ver doc) percorreu 3090 m -> 36 m em
-#     6 min, ~30 km/h de media; nesse ritmo 1500 m dao ~3 min.
-#   - Geofence grande e MAIS confiavel no iOS que geofence pequeno, entao o
-#     raio maior nao custa precisao.
-# Ajustar aqui e o unico lugar: o fluxo nao tem o raio hardcoded, ele so
-# reage ao estado "chegando".
-#
-# Limitacao conhecida: se alguem passar tempo parado dentro do anel (um
-# ponto a ~600 m de casa, por exemplo), o gatilho de aproximacao nao dispara
-# na volta pra casa, porque nao houve travessia da borda. Nesse caso o
-# refletor ainda acende na entrada da zone.home (rede de seguranca do fluxo),
-# so que sem os 2 min de antecedencia.
+# O raio fixo de 1500 m nao participa de uma decisao residencial. Os raios
+# home, near_home e refresh rapido sao calculados exclusivamente no tab
+# localizacao_pessoas do Node-RED e podem ser ajustados em blocos numericos.
+# Manter este anel maior que near_home melhora a chance de receber coordenadas
+# antes da borda canônica. Por isso o bloco near_home limita ajustes a 1500 m;
+# o refresh adaptativo do Node-RED continua sendo a fonte complementar.
 #
 # passive: false e obrigatorio - zona passiva NAO e usada para geofence nem
 # entra no estado dos device_tracker/person.
 #
-# Efeito colateral esperado: enquanto dentro do anel, device_tracker.* e
-# person.* reportam o estado "chegando" no lugar de "not_home".
+# Efeito colateral esperado: fontes brutas podem reportar
+# "location_update_ring". O Node-RED converte isso para home, near_home ou
+# not_home antes de publicar os trackers canônicos.
 
 zone:
-  - name: chegando
+  - name: location_update_ring
     latitude: !secret home_latitude
     longitude: !secret home_longitude
     radius: 1500

@@ -9,14 +9,14 @@ const LOCATION_POLICY = {
   version: 1,
   owner: "node_red",
   complete: true,
-  arrival_distance_m: 700,
+  near_home_radius_m: 700, people_fast_refresh_radius_m: 2000,
   location_fresh_minutes: 15,
   source_report_fresh_minutes: 75,
   recency_tie_seconds: 60,
   max_gps_accuracy_m: 100,
   vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250,
-  arm_distance_m: 100,
+  home_radius_m: 100,
   arrival_recovery_minutes: 10,
 };
 
@@ -144,7 +144,7 @@ const gateFlow = memory({
     resident_primary: {
       ready: true,
       stale: false,
-      state: "chegando",
+      state: "near_home",
     },
   },
 });
@@ -234,7 +234,7 @@ const sunset = execute(mergeContext, {
   },
 }, gateFlow, shared);
 assert.equal(sunset[2], null, "bypass desligado ainda deve aguardar motor confiável");
-assert(gateFlow.get(pendingKey), "chegada com mais de 2 min deve permanecer em chegando");
+assert(gateFlow.get(pendingKey), "chegada com mais de 2 min deve permanecer em near_home");
 
 const bypassOn = execute(bypassFunction, {
   _location_test: true,
@@ -376,7 +376,7 @@ const cancelFlow = memory({
     resident_primary: {
       ready: true,
       stale: false,
-      state: "chegando",
+      state: "near_home",
     },
   },
   vehicle_primary_context_v1__test: {

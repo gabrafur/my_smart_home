@@ -45,7 +45,7 @@ node.status({
     shape: config.complete ? "dot" : "ring",
     text: config.complete
         ? `${config.away_interval_minutes} min fora | ` +
-          `${config.approaching_interval_minutes} min chegando | ` +
+          `${config.approaching_interval_minutes} min near_home | ` +
           `${config.home_interval_minutes} min casa | ` +
           `${config.quiet_start_hour}h–${config.quiet_end_hour}h`
         : "aguardando todos os valores"

@@ -63,14 +63,14 @@ function resolvedPolicy(overrides = {}) {
   const secondary = String(overrides.resident_secondary_state ?? "").toLowerCase();
   const anyResidentAway = overrides.any_resident_away === true;
   const bothHome = primary === "home" && secondary === "home" && !anyResidentAway;
-  const away = new Set(["not_home", "chegando"]);
+  const away = new Set(["not_home", "near_home"]);
   const anyoneAwayOrApproaching =
     anyResidentAway ||
     overrides.anyone_away === true ||
     away.has(primary) ||
     away.has(secondary);
   const anyoneApproaching =
-    primary === "chegando" || secondary === "chegando";
+    primary === "near_home" || secondary === "near_home";
   return {
     ...overrides,
     refresh_policy_version: 1,
@@ -380,6 +380,10 @@ assert.equal(refreshDecision.outputs, 5);
 assert.deepEqual(refreshDecision.wires[0], ["vehicle_primary_refresh_dispatch_guard_v1"]);
 assert.deepEqual(
   refreshDecision.wires[2],
+  ["vehicle_primary_manual_blocked_route_out_v1"],
+);
+assert.deepEqual(
+  flows.find((node) => node.id === "vehicle_primary_manual_blocked_route_in_v1")?.wires[0],
   ["vehicle_primary_manual_refresh_blocked_notification_v1"],
 );
 assert.deepEqual(

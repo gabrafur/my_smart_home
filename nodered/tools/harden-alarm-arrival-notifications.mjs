@@ -21,7 +21,7 @@ const ACK = "alarm_arrival_notification_ack_v1";
 const FAILURE = "alarm_arrival_notification_failure_v1";
 const GROUP = "alarm_arrival_full_flow_group";
 
-required(TAB).info = "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary estão chegando. Testes percorrem validação, pendência e confirmação, mas simulam toda interação mobile e terminam em dry-run sem notificação nem desarme.\n\nv11: produção preserva pendência e cooldown somente após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.";
+required(TAB).info = "Solicita confirmação por notificação acionável antes de desarmar o alarme quando resident_primary, resident_secondary ou o vehicle_primary entram no estado canônico near_home. Testes percorrem validação, pendência e confirmação, mas simulam toda interação mobile e terminam em dry-run sem notificação nem desarme.\n\nv11: produção preserva pendência e cooldown somente após o Home Assistant aceitar ao menos uma notificação; chamadas ficam enfileiradas durante reconexão.";
 
 required(PREPARE).func = String.raw`const COOLDOWN_MS = 60 * 1000;
 const CONFIRMATION_TTL_MS = 5 * 60 * 1000;
@@ -76,7 +76,7 @@ msg.confirm_action_title = "Desarmar";
 msg.cancel_action_title = "Manter armado";
 msg.notification_title = "Confirmar desarme do alarme";
 msg.notification_tag = "alarm_arrival_confirmation_real";
-msg.notification_message = (msg.arrival_source || "residente") + " está chegando. Deseja desarmar o alarme da casa?";
+msg.notification_message = (msg.arrival_source || "residente") + " está perto de casa. Deseja desarmar o alarme da casa?";
 
 node.status({ fill: "yellow", shape: "dot", text: "enviando confirmacao real" });
 return msg;`;

@@ -33,6 +33,24 @@ const physicalFresh =
     physicalObservedAt <= now + 60 * 1000 &&
     now - physicalObservedAt <= 2 * 60 * 1000;
 const people = ctxGet("people_context_v1") ?? {};
+const arrivalSource = String(msg.payload?.source ?? "");
+const residentArrival = ["resident_primary", "resident_secondary"].includes(
+    arrivalSource
+);
+const sourcePeopleContext = people[arrivalSource];
+const sourcePeopleReadinessKnown =
+    sourcePeopleContext &&
+    typeof sourcePeopleContext === "object" &&
+    typeof sourcePeopleContext.ready === "boolean";
+/* Uma fonte da outra pessoa pode ficar stale sem invalidar a chegada atual.
+ * O evento já atravessou seleção, direção e ciclo externo no tab de origem;
+ * para uma pessoa, revalide somente a fonte que produziu a chegada. */
+const peopleReadyForArrival = residentArrival
+    ? sourcePeopleReadinessKnown
+        ? sourcePeopleContext.ready === true &&
+          sourcePeopleContext.stale !== true
+        : people.ready === true
+    : true;
 const engineGateAllowed =
     msg.payload?.vehicle_primary_gate === "known_engine_on";
 const bypassAllowed =
@@ -41,7 +59,7 @@ const bypassAllowed =
     msg.payload?.engine_bypass_allowed === true &&
     msg.payload?.engine_data_unreliable === true;
 const ready =
-    people.ready === true &&
+    peopleReadyForArrival &&
     flow.get("sun_ready") === true &&
     flow.get("sun_below_horizon") === true &&
     flow.get("light_reconciled") === true &&
