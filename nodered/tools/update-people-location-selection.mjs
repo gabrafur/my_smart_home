@@ -599,31 +599,39 @@ const vehiclePanelPublish = String.raw`if (msg.payload?.kind !== "vehicle_primar
 if (msg.payload?.test_mode === true || msg._location_test === true) return null;
 const vehicleContext = msg.payload?.context ?? {};
 const location = vehicleContext.location ?? {};
+const lastConfirmed = vehicleContext.last_confirmed_location ?? {};
+const fallbackReady =
+    typeof lastConfirmed.state === "string" &&
+    !["", "unknown", "unavailable"].includes(lastConfirmed.state) &&
+    Number.isFinite(Number(lastConfirmed.latitude)) &&
+    Number.isFinite(Number(lastConfirmed.longitude));
+const panelLocation = location.ready === true || !fallbackReady
+    ? location
+    : lastConfirmed;
 const locationSince = Number(vehicleContext.current_location_since);
 const outputs = [];
-const state = location.ready === true && location.stale !== true
-    ? location.state
+const state = location.ready === true || fallbackReady
+    ? panelLocation.state
     : "unavailable";
 const trackerPayload = {
     state,
     binding_role: "vehicle_primary",
     decision_owner: "node_red",
-    location_observed_at: Number.isFinite(Number(location.updated_at))
-        ? new Date(Number(location.updated_at)).toISOString()
+    location_observed_at: Number.isFinite(Number(panelLocation.updated_at))
+        ? new Date(Number(panelLocation.updated_at)).toISOString()
         : null,
     location_fresh: location.ready === true && location.stale !== true,
     movement_threshold_m: Number(vehicleContext.movement_threshold_m)
 };
 if (
-    location.ready === true &&
-    location.stale !== true &&
-    Number.isFinite(location.latitude) &&
-    Number.isFinite(location.longitude)
+    (location.ready === true || fallbackReady) &&
+    Number.isFinite(Number(panelLocation.latitude)) &&
+    Number.isFinite(Number(panelLocation.longitude))
 ) {
-    trackerPayload.latitude = location.latitude;
-    trackerPayload.longitude = location.longitude;
-    if (Number.isFinite(location.gps_accuracy)) {
-        trackerPayload.gps_accuracy = location.gps_accuracy;
+    trackerPayload.latitude = Number(panelLocation.latitude);
+    trackerPayload.longitude = Number(panelLocation.longitude);
+    if (Number.isFinite(Number(panelLocation.gps_accuracy))) {
+        trackerPayload.gps_accuracy = Number(panelLocation.gps_accuracy);
     }
     trackerPayload.source_type = "gps";
 }
@@ -1088,6 +1096,17 @@ const vehicleContext = {
         Number(currentLocationObservation?.updated_at ?? 0) || null,
     movement_threshold_m: MOVEMENT_THRESHOLD_M,`,
     "timestamp canônico do veículo",
+  );
+}
+if (!vehicleNormalizer.func.includes("last_confirmed_location:")) {
+  vehicleNormalizer.func = replaceRequired(
+    vehicleNormalizer.func,
+    "    movement_threshold_m: MOVEMENT_THRESHOLD_M,",
+    `    movement_threshold_m: MOVEMENT_THRESHOLD_M,
+    last_confirmed_location: currentLocationObservation
+        ? { ...currentLocationObservation }
+        : null,`,
+    "última localização confirmada para o painel",
   );
 }
 if (

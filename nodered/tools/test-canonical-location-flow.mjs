@@ -369,6 +369,42 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.equal("latitude" in staleTracker, false);
   assert.equal("longitude" in staleTracker, false);
 
+  const oldParkedPublished = run("vehicle_location_panel_publish_v1", {
+    payload: {
+      kind: "vehicle_primary_context",
+      context: {
+        current_location_since: clock - 3_600_000,
+        movement_threshold_m: 250,
+        location: {
+          state: "unavailable",
+          latitude: null,
+          longitude: null,
+          gps_accuracy: null,
+          updated_at: clock,
+          ready: false,
+          stale: true,
+        },
+        last_confirmed_location: {
+          state: "home",
+          latitude: 0,
+          longitude: 0,
+          gps_accuracy: 12,
+          updated_at: clock - 3_600_000,
+        },
+      },
+    },
+  });
+  assert.equal(oldParkedPublished[0].find(
+    (message) => message.topic === "smart_home/location/vehicle_primary/state",
+  ).payload, "home");
+  const oldParkedTracker = JSON.parse(oldParkedPublished[0].find(
+    (message) => message.topic === "smart_home/location/vehicle_primary/attributes",
+  ).payload);
+  assert.equal(oldParkedTracker.state, "home");
+  assert.equal(oldParkedTracker.location_fresh, false);
+  assert.equal(oldParkedTracker.latitude, 0);
+  assert.equal(oldParkedTracker.longitude, 0);
+
   const discovery = run("people_location_build_discovery_v1", {});
   const discoveryByTopic = new Map(
     discovery[0].map((message) => [message.topic, JSON.parse(message.payload)]),
