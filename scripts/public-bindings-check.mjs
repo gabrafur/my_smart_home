@@ -44,6 +44,12 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       issues.push(issue("role-type", `$.roles.${role}`, "schema"));
       continue;
     }
+    if (
+      binding.display_name !== undefined &&
+      (typeof binding.display_name !== "string" || binding.display_name.length === 0)
+    ) {
+      issues.push(issue("role-display-name", `$.roles.${role}.display_name`, "binding"));
+    }
     for (const [publicId, entity] of Object.entries(binding.entities ?? {})) {
       const location = `$.roles.${role}.entities.${publicId}`;
       if (!entityIdPattern.test(publicId) || !publicRolePattern.test(publicId)) {

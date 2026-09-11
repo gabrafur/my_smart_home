@@ -29,6 +29,7 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "source_alias": { "type": "string", "minLength": 1 },
+        "display_name": { "type": "string", "minLength": 1 },
         "entities": {
           "type": "object",
           "propertyNames": {

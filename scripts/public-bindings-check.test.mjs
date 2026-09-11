@@ -18,6 +18,21 @@ test("accepts all public logical roles", () => {
   assert.deepEqual(validateBindings({ schema_version: 1, roles }), []);
 });
 
+test("validates an optional private display name for a role", () => {
+  const valid = {
+    ...roles,
+    resident_primary: { display_name: "Example Primary Resident" },
+  };
+  assert.deepEqual(validateBindings({ schema_version: 1, roles: valid }), []);
+
+  const invalid = {
+    ...roles,
+    resident_primary: { display_name: "" },
+  };
+  assert.ok(validateBindings({ schema_version: 1, roles: invalid })
+    .some((item) => item.rule === "role-display-name"));
+});
+
 test("rejects missing public roles", () => {
   const result = validateBindings({ schema_version: 1, roles: { resident_primary: {} } });
   assert.ok(result.some((item) => item.rule === "required-role"));

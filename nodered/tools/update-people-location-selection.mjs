@@ -863,11 +863,6 @@ return [outputs];`;
 
 const discovery = String.raw`const bindings = global.get("publicBindings") ?? {};
 const roles = bindings.roles ?? {};
-const device = {
-    identifiers: ["nodered_canonical_location"],
-    name: "Localização canônica Node-RED",
-    manufacturer: "Node-RED"
-};
 const vehicleDevice = {
     identifiers: ["nodered_vehicle_primary_location"],
     name: "Creta",
@@ -875,12 +870,19 @@ const vehicleDevice = {
 };
 const messages = [];
 for (const role of ["resident_primary", "resident_secondary"]) {
-    const name = roles[role]?.source_alias ?? role;
+    const displayName = roles[role]?.display_name ??
+        roles[role]?.source_alias ?? role;
+    const residentDevice = {
+        identifiers: ["nodered_" + role + "_location"],
+        name: displayName,
+        manufacturer: "Node-RED"
+    };
     const baseTopic = "smart_home/location/" + role;
     messages.push({
         topic: "homeassistant/device_tracker/" + role + "_location/config",
         payload: JSON.stringify({
-            name,
+            name: null,
+            has_entity_name: true,
             object_id: role + "_location",
             default_entity_id: "device_tracker." + role + "_location",
             unique_id: "nodered_" + role + "_location",
@@ -888,7 +890,7 @@ for (const role of ["resident_primary", "resident_secondary"]) {
             json_attributes_topic: baseTopic + "/attributes",
             source_type: "gps",
             icon: "mdi:map-marker-account",
-            device
+            device: residentDevice
         }),
         qos: "1",
         retain: true

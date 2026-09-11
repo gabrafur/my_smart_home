@@ -3,6 +3,7 @@
   "roles": {
     "resident_primary": {
       "enabled": true,
+      "display_name": "Example Primary Resident",
       "entities": {
         "person.resident_primary": {
           "target_entity_id": "person.example_resident_primary",
@@ -46,6 +47,7 @@
     },
     "resident_secondary": {
       "enabled": true,
+      "display_name": "Example Secondary Resident",
       "entities": {
         "person.resident_secondary": {
           "target_entity_id": "person.example_resident_secondary",

@@ -10,6 +10,7 @@ const binding = {
   roles: {
     resident_primary: {
       source_alias: "example_primary",
+      display_name: "Example Primary Resident",
     },
     resident_secondary: {
       source_alias: "example_secondary",
@@ -44,6 +45,10 @@ try {
   assert.equal(
     settings.functionGlobalContext.publicBindings.roles.resident_primary.source_alias,
     binding.roles.resident_primary.source_alias,
+  );
+  assert.equal(
+    settings.functionGlobalContext.publicBindings.roles.resident_primary.display_name,
+    binding.roles.resident_primary.display_name,
   );
   assert.equal(
     settings.functionGlobalContext.publicBindings.roles.resident_secondary.source_alias,

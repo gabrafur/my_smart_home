@@ -40,8 +40,14 @@ function runtimeGlobal(policyOverrides = {}) {
     location_policy_v1: { ...LOCATION_POLICY, ...policyOverrides },
     publicBindings: {
       roles: {
-        resident_primary: { source_alias: "Example Primary" },
-        resident_secondary: { source_alias: "Example Secondary" },
+        resident_primary: {
+          source_alias: "example_primary",
+          display_name: "Example Primary",
+        },
+        resident_secondary: {
+          source_alias: "example_secondary",
+          display_name: "Example Secondary",
+        },
       },
     },
   });
@@ -545,6 +551,21 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   );
   assert.equal(
     discoveryByTopic.get("homeassistant/device_tracker/resident_primary_location/config")
+      ?.name,
+    null,
+  );
+  assert.equal(
+    discoveryByTopic.get("homeassistant/device_tracker/resident_primary_location/config")
+      ?.has_entity_name,
+    true,
+  );
+  assert.equal(
+    discoveryByTopic.get("homeassistant/device_tracker/resident_primary_location/config")
+      ?.device?.name,
+    "Example Primary",
+  );
+  assert.equal(
+    discoveryByTopic.get("homeassistant/device_tracker/resident_primary_location/config")
       ?.json_attributes_topic,
     "smart_home/location/resident_primary/attributes",
   );
@@ -558,6 +579,11 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
     discoveryByTopic.get("homeassistant/device_tracker/resident_secondary_location/config")
       ?.default_entity_id,
     "device_tracker.resident_secondary_location",
+  );
+  assert.equal(
+    discoveryByTopic.get("homeassistant/device_tracker/resident_secondary_location/config")
+      ?.device?.name,
+    "Example Secondary",
   );
   assert.equal(
     discoveryByTopic.get(
