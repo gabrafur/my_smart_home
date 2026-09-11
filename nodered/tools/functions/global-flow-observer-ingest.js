@@ -82,6 +82,18 @@ function failureClass(value) {
 
 if (msg.error) {
     const errorText = String(msg.error.message ?? "erro desconhecido");
+    const acceptedVehicleWakePending =
+        flowId === "c22d8b12055e87f7" &&
+        sourceId === "8907830bb7f6c40c" &&
+        /Bluelink wake accepted but fresh data is pending/i.test(errorText);
+    // The BR endpoint acknowledges the wake before publishing telemetry.
+    // Its bounded rechecks and evidence timeout own this lifecycle; treating
+    // the accepted asynchronous response as a broken flow creates a false
+    // duplicate alert before the coordinator can evaluate the outcome.
+    if (acceptedVehicleWakePending) {
+        setState(state);
+        return null;
+    }
     const classification = failureClass(errorText);
     const connectionEvent = sharedIncidentKey
         ? state.connection_events[sharedIncidentKey] ?? {}

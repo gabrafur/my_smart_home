@@ -871,6 +871,7 @@ scenario("16b wake sem telemetria ativa fallback e continua pendente", () => {
   assert.equal(state.awaiting_evidence, true);
   assert.equal(state.last_failure_class, "no_fresh_data");
   assert.equal(state.engine_communication_failed, true);
+  assert.equal(result[0], null);
   assert.deepEqual(JSON.parse(result[1].payload), {
     requested_state: "ON",
     source: "api_failure",

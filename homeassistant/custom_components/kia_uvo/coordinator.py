@@ -758,16 +758,17 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                         baseline_updated_at,
                         requested_at,
                     )
-                    _LOGGER.warning(
-                        "CRETA_REFRESH_NO_FRESH_DATA vehicle_id=%s; "
+                    _LOGGER.info(
+                        "CRETA_REFRESH_ACCEPTED_PENDING vehicle_id=%s; "
                         "scheduled bounded cached rechecks: %s",
                         vehicle_id,
                         err,
                     )
-                    raise HomeAssistantError(
-                        "Bluelink wake accepted but fresh data is pending; "
-                        "bounded cached rechecks remain scheduled"
-                    ) from err
+                    # The command was accepted and its bounded follow-up is
+                    # already running. Returning success keeps callers in the
+                    # awaiting-evidence state instead of surfacing an expected
+                    # asynchronous response as a Home Assistant error.
+                    return
                 _LOGGER.warning(
                     "CRETA_REFRESH_FAILED vehicle_id=%s; keeping cached state: %s",
                     vehicle_id,

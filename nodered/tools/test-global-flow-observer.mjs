@@ -87,6 +87,33 @@ const reminder = baseError();
 reminder.observer_now += 6 * 60 * 60 * 1000;
 assert.ok(execute(code.ingest, reminder, store), "erro persistente deve lembrar após 6 h");
 
+const acceptedWakeStore = memory();
+assert.equal(execute(code.ingest, {
+  _global_observer_test: true,
+  observer_now: 175_000,
+  _global_observer: {
+    flow_id: "c22d8b12055e87f7",
+    flow_label: "contexto_vehicle_primary",
+  },
+  error: {
+    message:
+      "HomeAssistantError: Bluelink wake accepted but fresh data is pending; " +
+      "bounded cached rechecks remain scheduled",
+    source: {
+      id: "8907830bb7f6c40c",
+      type: "api-call-service",
+      name: "Forçar refresh do vehicle_primary",
+    },
+  },
+}, acceptedWakeStore), null);
+assert.equal(
+  Object.keys(
+    acceptedWakeStore.values.get("global_flow_observer_v1__test").errors,
+  ).length,
+  0,
+  "wake aceito e ainda pendente não deve abrir incidente global",
+);
+
 const statusFailure = {
   _global_observer_test: true,
   observer_now: 200_000,

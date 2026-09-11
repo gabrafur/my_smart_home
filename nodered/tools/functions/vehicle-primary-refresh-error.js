@@ -99,7 +99,12 @@ state.next_retry_at = Number(state.next_allowed_at ?? 0) || null;
 state.cooldown_until = null;
 state.updated_at = now;
 let notification = null;
+const notificationWorthy = ![
+    "no_fresh_data",
+    "concurrent_request_coalesced"
+].includes(failureClass);
 if (
+    notificationWorthy &&
     state.failure_notification_key !== failureNotificationKey
 ) {
     state.failure_notified_at = now;
