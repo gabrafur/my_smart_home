@@ -514,6 +514,11 @@ const device = {
     name: "Localização canônica Node-RED",
     manufacturer: "Node-RED"
 };
+const vehicleDevice = {
+    identifiers: ["nodered_vehicle_primary_location"],
+    name: "Creta",
+    manufacturer: "Node-RED"
+};
 const messages = [];
 for (const role of ["resident_primary", "resident_secondary"]) {
     const name = roles[role]?.source_alias ?? role;
@@ -539,7 +544,8 @@ const vehicleBaseTopic = "smart_home/location/vehicle_primary";
 messages.push({
     topic: "homeassistant/device_tracker/vehicle_primary_location_nodered/config",
     payload: JSON.stringify({
-        name: roles.vehicle_primary?.source_alias ?? "Vehicle primary",
+        name: null,
+        has_entity_name: true,
         object_id: "vehicle_primary_location_nodered",
         default_entity_id: "device_tracker.vehicle_primary_location_nodered",
         unique_id: "nodered_vehicle_primary_location",
@@ -547,7 +553,7 @@ messages.push({
         json_attributes_topic: vehicleBaseTopic + "/attributes",
         source_type: "gps",
         icon: "mdi:car-connected",
-        device
+        device: vehicleDevice
     }),
     qos: "1",
     retain: true
@@ -565,7 +571,7 @@ messages.push({
         json_attributes_topic: vehicleTopic,
         device_class: "timestamp",
         icon: "mdi:map-marker-check-outline",
-        device
+        device: vehicleDevice
     }),
     qos: "1",
     retain: true

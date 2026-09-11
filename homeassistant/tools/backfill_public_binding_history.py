@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backfill public-binding Recorder history without exposing private targets."""
+"""Backfill or merge Recorder history without exposing private targets."""
 
 from __future__ import annotations
 
@@ -14,6 +14,9 @@ from typing import Any
 HISTORY_DOMAINS = {"binary_sensor", "device_tracker", "lock", "sensor"}
 ENTITY_PATTERN = re.compile(
     r"(?<![A-Za-z0-9_])(?:binary_sensor|device_tracker|lock|sensor)\.[a-z0-9_]+"
+)
+ENTITY_ID_PATTERN = re.compile(
+    r"^(?:binary_sensor|device_tracker|lock|sensor)\.[a-z0-9_]+$"
 )
 STATISTIC_COLUMNS = (
     "created",
@@ -39,6 +42,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--dashboard", default="/config/dashboards/vehicle_primary.yaml")
     parser.add_argument("--role", default="vehicle_primary")
+    parser.add_argument(
+        "--mapping",
+        action="append",
+        default=[],
+        metavar="DESTINATION=SOURCE",
+        help=(
+            "merge source states older than the destination's first state; "
+            "may be repeated and preserves source attributes"
+        ),
+    )
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args()
 
@@ -102,7 +115,7 @@ def backfill_states(
     rows = db.execute(
         f"""
         SELECT s.state, s.last_changed_ts, s.last_reported_ts,
-               s.last_updated_ts, s.origin_idx, a.shared_attrs
+               s.last_updated_ts, s.origin_idx, s.attributes_id, a.shared_attrs
           FROM states s
           LEFT JOIN state_attributes a ON a.attributes_id = s.attributes_id
          WHERE s.metadata_id = ? {condition}
@@ -118,15 +131,21 @@ def backfill_states(
     previous_state_id: int | None = None
     allowed = binding.get("attributes", [])
     mode = binding.get("state_mode", "passthrough")
-    for state, changed, reported, updated, origin, raw_attributes in rows:
-        attributes = projected_attributes(raw_attributes, role, allowed)
-        attributes_id = attribute_cache.get(attributes)
-        if attributes_id is None:
-            attributes_id = db.execute(
-                "INSERT INTO state_attributes (shared_attrs) VALUES (?) RETURNING attributes_id",
-                (attributes,),
-            ).fetchone()[0]
-            attribute_cache[attributes] = attributes_id
+    for state, changed, reported, updated, origin, source_attributes_id, raw_attributes in rows:
+        if binding.get("preserve_attributes"):
+            attributes_id = source_attributes_id
+        else:
+            attributes = projected_attributes(raw_attributes, role, allowed)
+            attributes_id = attribute_cache.get(attributes)
+            if attributes_id is None:
+                attributes_id = db.execute(
+                    """
+                    INSERT INTO state_attributes (shared_attrs)
+                    VALUES (?) RETURNING attributes_id
+                    """,
+                    (attributes,),
+                ).fetchone()[0]
+                attribute_cache[attributes] = attributes_id
         previous_state_id = db.execute(
             """
             INSERT INTO states (
@@ -218,19 +237,35 @@ def backfill_statistics(
 
 def main() -> None:
     args = parse_args()
-    document = json.loads(Path(args.bindings).read_text(encoding="utf-8"))
-    dashboard_refs = set(
-        ENTITY_PATTERN.findall(Path(args.dashboard).read_text(encoding="utf-8"))
-    )
-    role_entities = document.get("roles", {}).get(args.role, {}).get("entities", {})
-    bindings = {
-        public_id: binding
-        for public_id, binding in role_entities.items()
-        if public_id in dashboard_refs
-        and public_id.split(".", 1)[0] in HISTORY_DOMAINS
-        and isinstance(binding, dict)
-        and isinstance(binding.get("target_entity_id"), str)
-    }
+    if args.mapping:
+        bindings = {}
+        for value in args.mapping:
+            destination, separator, source = value.partition("=")
+            if (
+                separator != "="
+                or not ENTITY_ID_PATTERN.fullmatch(destination)
+                or not ENTITY_ID_PATTERN.fullmatch(source)
+            ):
+                raise SystemExit(f"invalid --mapping: {value!r}")
+            bindings[destination] = {
+                "target_entity_id": source,
+                "state_mode": "passthrough",
+                "preserve_attributes": True,
+            }
+    else:
+        document = json.loads(Path(args.bindings).read_text(encoding="utf-8"))
+        dashboard_refs = set(
+            ENTITY_PATTERN.findall(Path(args.dashboard).read_text(encoding="utf-8"))
+        )
+        role_entities = document.get("roles", {}).get(args.role, {}).get("entities", {})
+        bindings = {
+            public_id: binding
+            for public_id, binding in role_entities.items()
+            if public_id in dashboard_refs
+            and public_id.split(".", 1)[0] in HISTORY_DOMAINS
+            and isinstance(binding, dict)
+            and isinstance(binding.get("target_entity_id"), str)
+        }
 
     db = sqlite3.connect(args.database)
     db.execute("PRAGMA foreign_keys = ON")

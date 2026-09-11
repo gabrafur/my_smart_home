@@ -408,6 +408,24 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   );
   assert.equal(
     discoveryByTopic.get(
+      "homeassistant/device_tracker/vehicle_primary_location_nodered/config",
+    )?.name,
+    null,
+  );
+  assert.equal(
+    discoveryByTopic.get(
+      "homeassistant/device_tracker/vehicle_primary_location_nodered/config",
+    )?.has_entity_name,
+    true,
+  );
+  assert.equal(
+    discoveryByTopic.get(
+      "homeassistant/device_tracker/vehicle_primary_location_nodered/config",
+    )?.device?.name,
+    "Creta",
+  );
+  assert.equal(
+    discoveryByTopic.get(
       "homeassistant/sensor/vehicle_primary_location_since_nodered/config",
     )?.default_entity_id,
     "sensor.vehicle_primary_location_since_nodered",
