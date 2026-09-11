@@ -21,11 +21,12 @@ views:
               {% set age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
               {% set refresh_state = states('sensor.vehicle_primary_refresh_coordinator') %}
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
+              {% set quiet_end_hour = state_attr('sensor.vehicle_primary_refresh_coordinator', 'quiet_end_hour') | int(0) %}
 
               # {{ 'Em uso' if engine else 'Estacionado' }}
 
               {% if refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}
-              🟢 **Pausa noturna programada** · ambos em casa; o próximo wake pode ocorrer a partir das 06h{% if age_min is not none %}. Último dado do carro há {{ format_number_ptbr(age_min) }} min{% endif %}.
+              🟢 **Pausa noturna programada** · ambos em casa; o próximo wake pode ocorrer a partir das {{ format_number_ptbr(quiet_end_hour) }}h{% if age_min is not none %}. Último dado do carro há {{ format_number_ptbr(age_min) }} min{% endif %}.
               {% elif age_min is none %}
               🔴 **Sem telemetria válida** · o Bluelink ainda não forneceu uma leitura utilizável.
               {% elif age_min <= 30 %}
@@ -96,11 +97,9 @@ views:
             content: >-
               {% from 'formatting.jinja' import format_number_ptbr %}
               {% set engine = is_state('binary_sensor.vehicle_primary_engine', 'on') %}
-              {% set tracker = states.device_tracker.vehicle_primary %}
-              {% set persistent_since = states('sensor.vehicle_primary_current_location_since') %}
-              {% set persistent_since_ts = as_timestamp(persistent_since, none) %}
-              {% set tracker_since_ts = as_timestamp(tracker.last_changed, none) if tracker and tracker.state not in ['unknown', 'unavailable'] else none %}
-              {% set location_since_ts = persistent_since_ts if persistent_since_ts else tracker_since_ts %}
+              {% set tracker = states.device_tracker.vehicle_primary_location_nodered %}
+              {% set persistent_since = states('sensor.vehicle_primary_location_since_nodered') %}
+              {% set location_since_ts = as_timestamp(persistent_since, none) %}
               {% set location_since_text = location_since_ts | timestamp_custom('%d/%m às %H:%M', true) if location_since_ts else none %}
               {% if engine %}
               🔵 **Veículo em uso** · o mapa mostra o último estacionamento confirmado{% if location_since_text %}, nesta localização desde {{ location_since_text }}{% endif %}. O Bluelink Brasil não fornece a posição enquanto o veículo está em movimento.
@@ -111,7 +110,7 @@ views:
               {% endif %}
           - type: map
             entities:
-              - entity: device_tracker.vehicle_primary
+              - entity: device_tracker.vehicle_primary_location_nodered
             hours_to_show: 12
             default_zoom: 15
           - type: markdown
@@ -354,9 +353,9 @@ views:
               {% set success_ts = as_timestamp(state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_success_at'), none) %}
               {% set wake_confirmed = success_ts is not none and request_ts is not none and success_ts >= request_ts and success_ts - request_ts <= 1260 %}
               {% set remaining_min = ((remaining + 59) / 60) | int if remaining > 0 else 0 %}
-              {% set both_home = is_state('device_tracker.resident_primary_location', 'home') and is_state('device_tracker.resident_secondary_location', 'home') %}
               {% set coordinator_interval_min = state_attr('sensor.vehicle_primary_refresh_coordinator', 'interval_minutes') | int(0) %}
-              {% set interval_min = coordinator_interval_min if coordinator_interval_min in [15, 30] else (30 if both_home else 15) %}
+              {% set interval_min = coordinator_interval_min if coordinator_interval_min > 0 else none %}
+              {% set quiet_end_hour = state_attr('sensor.vehicle_primary_refresh_coordinator', 'quiet_end_hour') | int(0) %}
 
               **Atualização dos dados**
 
@@ -375,13 +374,14 @@ views:
               {% elif refresh_state in ['refreshing', 'in_flight', 'awaiting_evidence'] or (refresh_awaiting and refresh_state in ['probing_cache', 'backoff']) %}🔵 **Wake em andamento** · aguardando a conclusão da chamada ao Bluelink ou da releitura do cache{% if remaining_min > 0 %} · próxima etapa em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
               {% elif refresh_failure == 'integration_unavailable' or (refresh_failure == 'api_error' and cache_age_s is none and data_age_min is none) %}🟡 **Integração Bluelink ainda indisponível**{% if refresh_failure_endpoint %} · endpoint `{{ refresh_failure_endpoint }}`{% endif %}{% if request_age_min is not none %} · último wake solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %}{% if remaining_min > 0 %} · nova tentativa automática em cerca de {{ format_number_ptbr(remaining_min) }} min{% else %} · nova tentativa automática agora{% endif %}{% if engine_revalidation_failed %} · a leitura específica do motor continua não confiável para a iluminação; o bypass automático permanece ativo{% endif %}.
               {% elif refresh_failure_label is not none %}🟡 **A última atualização do veículo falhou** · {{ refresh_failure_label }}{% if refresh_failure_endpoint %} no endpoint `{{ refresh_failure_endpoint }}`{% endif %}{% if request_age_min is not none %} · último wake solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %}{% if remaining_min > 0 %} · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min{% else %} · nova verificação automática agora{% endif %}{% if engine_revalidation_failed %} · a leitura específica do motor continua não confiável para a iluminação; o bypass automático permanece ativo{% endif %}.
-              {% elif refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até 06h** · ambos estão em casa{% if request_age_min is not none %} · último wake solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %}.
+              {% elif refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}🟢 **Wake periódico pausado até {{ format_number_ptbr(quiet_end_hour) }}h** · ambos estão em casa{% if request_age_min is not none %} · último wake solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %}.
               {% elif refresh_state in ['probing_cache', 'backoff'] %}🟡 **Atualização do veículo ainda não concluída**{% if refresh_state == 'probing_cache' %} · verificando agora o cache do servidor antes de outro wake{% elif remaining_min > 0 %} · nova verificação em cerca de {{ format_number_ptbr(remaining_min) }} min{% endif %}.
               {% elif wake_confirmed %}🟢 **Último wake aceito pelo Bluelink, solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min** · o estado conhecido e confiável permanece válido mesmo sem mudança · próximo ciclo em cerca de {{ format_number_ptbr(remaining_min) }} min.
               {% elif refresh_state == 'cooldown' %}🟢 **Último wake aceito pelo Bluelink**{% if request_age_min is not none %} · solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min{% endif %} · o estado conhecido e confiável permanece válido · próxima avaliação em cerca de {{ format_number_ptbr(remaining_min) }} min.
               {% elif refresh_state == 'waiting' %}🟡 **Wake aguardando localização válida** · a política será reavaliada quando o contexto dos moradores estiver disponível.
               {% elif refresh_state in ['unknown', 'unavailable'] %}🔴 **Coordenador de wake indisponível**.
-              {% else %}🔵 **Wake pronto** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
+              {% elif interval_min is not none %}🔵 **Wake pronto** · ciclo atual de {{ format_number_ptbr(interval_min) }} min.
+              {% else %}🟡 **Política de wake ainda não publicada pelo Node-RED**.
               {% endif %}
           - type: entities
             show_header_toggle: false
@@ -475,9 +475,15 @@ views:
             icon: mdi:stethoscope
           - type: markdown
             content: >-
+              {% from 'formatting.jinja' import format_number_ptbr %}
+              {% set approaching_interval = state_attr('sensor.vehicle_primary_refresh_coordinator', 'approaching_interval_minutes') %}
+              {% set away_interval = state_attr('sensor.vehicle_primary_refresh_coordinator', 'away_interval_minutes') %}
+              {% set home_interval = state_attr('sensor.vehicle_primary_refresh_coordinator', 'home_interval_minutes') %}
+              {% set quiet_start = state_attr('sensor.vehicle_primary_refresh_coordinator', 'quiet_start_hour') %}
+              {% set quiet_end = state_attr('sensor.vehicle_primary_refresh_coordinator', 'quiet_end_hour') %}
               **Atualização automática orientada a eventos**
 
-              O cache do servidor Bluelink é consultado a cada **15 minutos** sem acordar o carro. Se o provedor limitar as chamadas, o polling entra em backoff progressivo de até **6 horas** sem criar novas rajadas. Separadamente, o wake real usa **15 minutos** quando alguém está fora ou chegando e **30 minutos** no ciclo saudável quando ambos estão em casa; recuperação e backoff usam **15 minutos** fora da pausa noturna. Antes de repetir um wake sem evidência, o fluxo relê o cache e só acorda o carro se os dados continuarem antigos. Com os dois em casa, wakes automáticos ficam pausados entre **00h e 06h**. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo quando não há backoff do provedor.
+              O cache do servidor Bluelink é consultado a cada **15 minutos** sem acordar o carro. Se o provedor limitar as chamadas, o polling entra em backoff progressivo de até **6 horas** sem criar novas rajadas. Separadamente, o wake real usa **{{ format_number_ptbr(approaching_interval) }} minutos** quando alguém está chegando, **{{ format_number_ptbr(away_interval) }} minutos** quando alguém está fora e **{{ format_number_ptbr(home_interval) }} minutos** no ciclo saudável quando ambos estão em casa. A chegada mantém sua prioridade mesmo com dados pendentes; fora dela, a recuperação usa o intervalo configurado para fora. Um bloqueio explícito do provedor ainda pode impor backoff maior. Antes de repetir um wake sem evidência, o fluxo relê o cache e só acorda o carro se os dados continuarem antigos. Com os dois em casa, wakes automáticos ficam pausados entre **{{ format_number_ptbr(quiet_start) }}h e {{ format_number_ptbr(quiet_end) }}h**. Esses cinco valores vêm diretamente dos blocos configuráveis no canvas `contexto_vehicle_primary`. O botão **Atualizar agora** força um wake e pode antecipar qualquer prazo quando não há backoff do provedor.
 
               A consulta ao cache pode republicar entidades sem acordar o carro; o refresh só é concluído quando o timestamp do próprio Bluelink (`Última atualização`) realmente avança.
           - type: entities
@@ -487,7 +493,7 @@ views:
                 name: Estado confirmado em
               - entity: sensor.vehicle_primary_last_scanned_at
                 name: Cache consultado em
-              - entity: sensor.vehicle_primary_current_location_since
+              - entity: sensor.vehicle_primary_location_since_nodered
                 name: Nesta localização desde
               - entity: sensor.garagem_vehicle_primary_recent_trip_info
                 name: Viagens carregadas

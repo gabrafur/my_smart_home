@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from math import inf, isfinite
+from datetime import datetime, timezone
+from math import isfinite
 from typing import Any, NamedTuple, Protocol, Sequence
 
-LOCATION_FRESHNESS = timedelta(minutes=15)
-FUTURE_TOLERANCE = timedelta(minutes=1)
-RECENCY_TIE = timedelta(minutes=1)
-MAX_GPS_ACCURACY_METERS = 100
-INVALID_STATES = {"", "unknown", "unavailable"}
 SOURCE_REPORTED_AT_ATTRIBUTE = "source_reported_at"
 
 
@@ -43,29 +38,6 @@ def _number(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return number if isfinite(number) else None
-
-
-def _has_reliable_coordinates(state: LocationState) -> bool:
-    latitude = _number(state.attributes.get("latitude"))
-    longitude = _number(state.attributes.get("longitude"))
-    accuracy = _number(state.attributes.get("gps_accuracy"))
-    return (
-        latitude is not None
-        and longitude is not None
-        and (accuracy is None or accuracy <= MAX_GPS_ACCURACY_METERS)
-    )
-
-
-def _is_fresh_at(observed_at: datetime, now: datetime) -> bool:
-    return (
-        observed_at <= now + FUTURE_TOLERANCE
-        and now - observed_at <= LOCATION_FRESHNESS
-    )
-
-
-def _accuracy(state: LocationState) -> float:
-    accuracy = _number(state.attributes.get("gps_accuracy"))
-    return accuracy if accuracy is not None and accuracy >= 0 else inf
 
 
 def _location_signature(
@@ -148,69 +120,3 @@ def recover_location_observation(
         if recovered is None or recovered.signature != signature:
             recovered = LocationObservation(signature, state.last_updated)
     return recovered
-
-
-def _observed_at(
-    state: LocationState,
-    observations: LocationObservations | None,
-) -> datetime:
-    return (
-        location_observed_at(observations, state)
-        if observations is not None
-        else state.last_updated
-    )
-
-
-def select_best_location(
-    states: Sequence[LocationState],
-    now: datetime | None = None,
-    observations: LocationObservations | None = None,
-) -> LocationState | None:
-    """Select the best source using the same priorities as Node-RED."""
-    if not states:
-        return None
-
-    current = now or datetime.now(timezone.utc)
-    selected = states[0]
-
-    for candidate in states[1:]:
-        selected_observed_at = _observed_at(selected, observations)
-        candidate_observed_at = _observed_at(candidate, observations)
-        selected_fresh = _is_fresh_at(selected_observed_at, current)
-        candidate_fresh = _is_fresh_at(candidate_observed_at, current)
-        if selected_fresh != candidate_fresh:
-            if candidate_fresh:
-                selected = candidate
-            continue
-
-        selected_coordinates = _has_reliable_coordinates(selected)
-        candidate_coordinates = _has_reliable_coordinates(candidate)
-        if selected_coordinates != candidate_coordinates:
-            if candidate_coordinates:
-                selected = candidate
-            continue
-
-        recency_delta = candidate_observed_at - selected_observed_at
-        if abs(recency_delta) > RECENCY_TIE:
-            if recency_delta > timedelta(0):
-                selected = candidate
-            continue
-
-        selected_accuracy = _accuracy(selected)
-        candidate_accuracy = _accuracy(candidate)
-        if selected_accuracy != candidate_accuracy:
-            if candidate_accuracy < selected_accuracy:
-                selected = candidate
-            continue
-
-        if candidate_observed_at != selected_observed_at:
-            if candidate_observed_at > selected_observed_at:
-                selected = candidate
-            continue
-
-        selected_valid = selected.state not in INVALID_STATES
-        candidate_valid = candidate.state not in INVALID_STATES
-        if selected_valid != candidate_valid and candidate_valid:
-            selected = candidate
-
-    return selected

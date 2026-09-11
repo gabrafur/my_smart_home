@@ -5,6 +5,20 @@ import fs from "node:fs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
+const LOCATION_POLICY = {
+  version: 1,
+  owner: "node_red",
+  complete: true,
+  arrival_distance_m: 700,
+  location_fresh_minutes: 15,
+  source_report_fresh_minutes: 75,
+  recency_tie_seconds: 60,
+  max_gps_accuracy_m: 100,
+  vehicle_location_fresh_minutes: 30,
+  movement_threshold_m: 250,
+  arm_distance_m: 100,
+  arrival_recovery_minutes: 10,
+};
 
 const ids = {
   group: "5df25064f701ecd2",
@@ -82,7 +96,7 @@ for (const [id, requestedState] of [
   assert.deepEqual(node.wires, [[ids.bypassFunction]]);
 }
 
-const shared = memory();
+const shared = memory({ location_policy_v1: LOCATION_POLICY });
 const flow = memory();
 execute(coordinator, { test_case: "reset" }, flow, shared);
 assert.equal(shared.get("security_location_test_state_v1").vehicle_primary_engine, "off");
@@ -201,7 +215,10 @@ const queued = execute(prepareArrival, {
 assert.equal(queued[0], null, "sem motor confiável a chegada deve aguardar");
 assert.equal(gateFlow.get(pendingKey).version, 2);
 assert.equal(gateFlow.get(pendingKey).retention, "while_approaching");
-assert.equal(gateFlow.get(pendingKey).expires_at, null);
+assert(
+  gateFlow.get(pendingKey).expires_at >= Date.now() + 9 * 60_000,
+  "chegada deve usar a retenção visual de 10 minutos",
+);
 
 gateFlow.set("sun_below_horizon", true);
 const sunset = execute(mergeContext, {
@@ -283,12 +300,26 @@ assert.equal(execute(gate, {
     vehicle_primary_in_use: false,
     vehicle_primary_engine_on: false,
     vehicle_primary_engine_state_valid: true,
+    vehicle_primary_engine_stale: true,
+    vehicle_primary_lighting_ready: true,
+    engine_communication_failed: false,
+    engine_data_unreliable: false,
+  },
+}, gateFlow, shared), null, "bypass não pode ignorar motor OFF com API saudável");
+
+assert(execute(gate, {
+  _location_test: true,
+  payload: {
+    test_mode: true,
+    vehicle_primary_in_use: false,
+    vehicle_primary_engine_on: false,
+    vehicle_primary_engine_state_valid: true,
     vehicle_primary_engine_stale: false,
     vehicle_primary_lighting_ready: true,
     engine_communication_failed: true,
     engine_data_unreliable: false,
   },
-}, gateFlow, shared), null, "bypass nunca pode ignorar motor OFF confiável");
+}, gateFlow, shared), "falha real da API deve invalidar o OFF antigo");
 
 const bypassReplay = execute(
   mergeContext,

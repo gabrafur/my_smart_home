@@ -7,6 +7,8 @@ const aliasesByName = {
   people_normalize: "Normalizar pessoas e detectar transições",
   people_refresh_decide: "Atualizar iPhones agora?",
   vehicle_primary_normalize: "Normalizar vehicle_primary e detectar transições",
+  vehicle_primary_refresh_policy: "Escolher pela presença",
+  vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
   vehicle_primary_refresh_decide: "Coordenar refresh do vehicle_primary",
   vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
   vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
@@ -39,6 +41,22 @@ function wireNames(alias, output = 0) {
   return (byId.get(alias).wires[output] ?? []).map((id) => byId.get(id)?.name ?? id);
 }
 const passed = [];
+const LOCATION_POLICY = {
+  version: 1, owner: "node_red", complete: true,
+  arrival_distance_m: 700, location_fresh_minutes: 15,
+  source_report_fresh_minutes: 75, recency_tie_seconds: 60,
+  max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
+  movement_threshold_m: 250, arm_distance_m: 100,
+  arrival_recovery_minutes: 10,
+};
+
+function memoryGlobal() {
+  const values = new Map([["location_policy_v1", LOCATION_POLICY]]);
+  return {
+    get: (key) => values.get(key),
+    set: (key, value) => values.set(key, value),
+  };
+}
 
 function memoryFlow(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -58,7 +76,50 @@ function run(id, msg, flow = memoryFlow(), env = environment()) {
   assert(node, `node ausente: ${id}`);
   assert.equal(node.type, "function", `${id} nao e function node`);
   const execute = new Function("msg", "node", "context", "flow", "global", "env", "setTimeout", "clearTimeout", node.func);
-  return execute(msg, { warn() {}, error() {}, status() {} }, {}, flow, {}, env, setTimeout, clearTimeout);
+  return execute(msg, { warn() {}, error() {}, status() {} }, {}, flow, memoryGlobal(), env, setTimeout, clearTimeout);
+}
+
+function runVehicleRefresh(msg, flow, env = environment()) {
+  if (!flow.get("vehicle_primary_refresh_policy_config_v1")) {
+    flow.set("vehicle_primary_refresh_policy_config_v1", {
+      version: 1,
+      complete: true,
+      approaching_interval_minutes: 5,
+      away_interval_minutes: 15,
+      home_interval_minutes: 30,
+      quiet_start_hour: 0,
+      quiet_end_hour: 6,
+    });
+  }
+  const branches = run(
+    "vehicle_primary_refresh_policy",
+    msg,
+    flow,
+    env,
+  );
+  const selected = branches.find(Boolean);
+  if (!selected) return null;
+  const bothHome = selected.payload.refresh_both_residents_home === true;
+  const approaching = selected.payload.refresh_anyone_approaching === true;
+  selected.payload.refresh_interval_ms = approaching
+    ? selected.payload.refresh_policy_config.approaching_interval_ms
+    : bothHome
+      ? selected.payload.refresh_policy_config.home_interval_ms
+      : selected.payload.refresh_policy_config.away_interval_ms;
+  selected.payload.refresh_interval_policy = approaching
+    ? "approaching"
+    : bothHome
+      ? "both_home"
+      : "away";
+  const allowed = run(
+    "vehicle_primary_refresh_quiet_hours",
+    selected,
+    flow,
+    env,
+  );
+  return allowed
+    ? run("vehicle_primary_refresh_decide", allowed, flow, env)
+    : null;
 }
 
 function scenario(name, callback) {
@@ -128,7 +189,10 @@ function peopleInput({
 } = {}) {
   return { payload: {
     event, source, trigger_state: current, trigger_prev_state: previous,
-    resident_primary, resident_primary_icloud: resident_primaryIcloud, resident_secondary, resident_secondary_icloud: resident_secondaryIcloud,
+    resident_primary, resident_primary_icloud: resident_primaryIcloud,
+    resident_primary_selected: resident_primary,
+    resident_secondary, resident_secondary_icloud: resident_secondaryIcloud,
+    resident_secondary_selected: resident_secondary,
     refresh_cycle_id: cycle,
   } };
 }
@@ -449,18 +513,18 @@ scenario("27 dois eventos quase simultaneos geram um comando por ciclo", () => {
 scenario("28 refresh do vehicle_primary falhando permite retry", () => {
   const flow = memoryFlow({ vehicle_primary_context_v1: { away: true } });
   const command = { payload: { kind: "refresh_command", anyone_away: true } };
-  assert(run("vehicle_primary_refresh_decide", structuredClone(command), flow, geoEnv));
-  assert.equal(run("vehicle_primary_refresh_decide", structuredClone(command), flow, geoEnv), null);
+  assert(runVehicleRefresh(structuredClone(command), flow, geoEnv));
+  assert.equal(runVehicleRefresh(structuredClone(command), flow, geoEnv), null);
   assert.equal(flow.get("security_vehicle_primary_refresh_v1").attempts, 1);
 });
 
 scenario("29 refresh posterior do vehicle_primary só confirma com evidência nova", () => {
   const flow = memoryFlow({ vehicle_primary_context_v1: { away: true } });
-  run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv);
+  runVehicleRefresh({ payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv);
   run("vehicle_primary_normalize", vehicle_primaryInput({ locationOffset: 0, engineOffset: 0 }), flow, geoEnv);
   assert.equal(typeof flow.get("security_vehicle_primary_refresh_v1").last_success_at, "number");
   assert.equal(flow.get("security_vehicle_primary_refresh_v1").awaiting_evidence, false);
-  assert.equal(run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
+  assert.equal(runVehicleRefresh({ payload: { kind: "refresh_command", anyone_away: true } }, flow, geoEnv), null);
 });
 
 scenario("30 tick de 30 segundos sem mudanca nao cria loop", () => {
@@ -622,7 +686,7 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
   const pending = flow.get(pendingKey);
   assert(pending, "chegada real deve ser preservada enquanto o motor está OFF");
   assert.equal(pending.retention, "while_approaching");
-  assert.equal(pending.expires_at, null);
+  assert.equal(pending.expires_at, pending.queued_at + 10 * 60_000);
 
   const stillOffAt = now + 1;
   const stillOff = run("light_merge_context", {
@@ -752,6 +816,37 @@ scenario("34b OFF conhecido bloqueia morador mesmo com posição antiga", () => 
   assert.equal(
     run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv),
     null,
+  );
+});
+
+scenario("34c falha de comunicação invalida OFF antigo e libera fallback", () => {
+  const flow = readyLightFlow({
+    security_light_engine_bypass_enabled: true,
+    security_light_engine_bypass_automatic: true,
+    vehicle_primary_context_v1: {
+      ready: false,
+      lighting_ready: false,
+      stale: true,
+      in_use: false,
+      engine_on: false,
+      engine_state_valid: true,
+      engine_stale: true,
+      engine_communication_failed: true,
+      location: { state: "home", stale: true, ready: false },
+      updated_at: Date.now(),
+    },
+  });
+  const decision = run(
+    "light_prepare_arrival",
+    arrival("resident_primary", "home"),
+    flow,
+    geoEnv,
+  );
+  assert(decision[0], "falha da API deve manter a chegada avaliável");
+  assert.equal(decision[0].payload.engine_bypass_allowed, true);
+  assert(
+    run("light_check_vehicle_primary_in_use", decision[0], flow, geoEnv),
+    "bypass automático deve superar um OFF antigo não confiável",
   );
 });
 
@@ -911,6 +1006,6 @@ scenario("36 aviso de turn on fica travado até confirmação física de OFF", (
   );
 });
 
-assert.equal(passed.length, 45);
+assert.equal(passed.length, 46);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

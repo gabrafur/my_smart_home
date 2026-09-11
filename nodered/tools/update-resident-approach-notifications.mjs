@@ -163,7 +163,14 @@ people.wires = [
   [PEOPLE_LIGHTING_RECOVERY_OUT],
 ];
 
-const peopleContextGroup = required("2. Normalização, presença e chegada");
+const peopleContextGroup = flows.find(
+  (node) =>
+    node.type === "group" &&
+    node.z === people.z &&
+    Array.isArray(node.nodes) &&
+    node.nodes.includes(people.id),
+);
+if (!peopleContextGroup) throw new Error("Grupo do normalizador de pessoas ausente");
 removeFromGroup(peopleContextGroup, [PEOPLE_LIGHTING_RECOVERY_OUT]);
 peopleContextGroup.nodes.push(PEOPLE_LIGHTING_RECOVERY_OUT);
 peopleContextGroup.h = 202;
@@ -227,7 +234,7 @@ const oldContextLink = "9acb4f732a4847b7";
 const oldNotify = "32f1180d9ab2d2de";
 const oldTest = "93c16cfc3f3b3856";
 removeIds([oldPeopleLink, oldContextLink, oldNotify, oldTest]);
-removeFromGroup(required("2. Normalização, presença e chegada"), [oldPeopleLink]);
+removeFromGroup(peopleContextGroup, [oldPeopleLink]);
 const contextContractGroup = required("2. Contratos de domínio");
 removeFromGroup(contextContractGroup, [oldContextLink]);
 Object.assign(contextContractGroup, { x: 404, y: 359, w: 157, h: 142 });
@@ -265,23 +272,9 @@ const ids = {
   dryRunIn: "resident_notifications_dry_run_in",
   dryRunTerminal: "resident_notifications_dry_run_terminal",
   deliveryAck: "resident_notifications_delivery_ack",
+  canonicalIn: "resident_notifications_canonical_in_v1",
 };
 removeIds(Object.values(ids));
-
-const eventPayload = (source) => `(
-  {
-    "event": "location_update",
-    "source": "${source}",
-    "trigger_entity": $entity().entity_id,
-    "trigger_state": $entity().state,
-    "trigger_prev_state": $prevEntity().state,
-    "observed_at": $entity().last_updated,
-    "resident_primary_source_1": $entities("device_tracker.mobile_primary_source_1").state,
-    "resident_primary_source_2": $entities("device_tracker.mobile_primary_source_2").state,
-    "resident_secondary_source_1": $entities("device_tracker.mobile_secondary_source_1").state,
-    "resident_secondary_source_2": $entities("device_tracker.mobile_secondary_source_2").state
-  }
-)`;
 
 const prepareFunction = String.raw`const APPROACH_ZONE = "chegando";
 const RECOVERY_KEY = "resident_approach_notification_recovery_v1";
@@ -298,18 +291,10 @@ const ACTIVE_RECOVERY_KEY = TEST_MODE
 
 const residents = {
     resident_primary: {
-        recipient: "resident_secondary",
-        states: [
-            msg.payload?.resident_primary_source_1,
-            msg.payload?.resident_primary_source_2
-        ]
+        recipient: "resident_secondary"
     },
     resident_secondary: {
-        recipient: "resident_primary",
-        states: [
-            msg.payload?.resident_secondary_source_1,
-            msg.payload?.resident_secondary_source_2
-        ]
+        recipient: "resident_primary"
     }
 };
 
@@ -371,8 +356,15 @@ if (!resident || !validZoneState(current) || !validZoneState(previous)) {
     return null;
 }
 
+const canonicalObservedAt = Number(
+    msg._canonical_locations?.[source]?.selected?.observed_at
+);
 const parsedEventAt = Date.parse(msg.payload?.observed_at ?? "");
-const eventAt = Number.isFinite(parsedEventAt) ? parsedEventAt : Date.now();
+const eventAt = Number.isFinite(canonicalObservedAt)
+    ? canonicalObservedAt
+    : Number.isFinite(parsedEventAt)
+        ? parsedEventAt
+        : Date.now();
 if (
     eventAt > Date.now() + FUTURE_TOLERANCE_MS ||
     Date.now() - eventAt > MAX_EVENT_AGE_MS
@@ -397,7 +389,7 @@ const state = recovery.residents[source] ?? {
 
 if (current === "not_home") {
     state.notified = false;
-    if (previous === APPROACH_ZONE || previous === "home") {
+    if (previous !== "not_home") {
         state.away_cycle = true;
     }
     recovery.residents[source] = state;
@@ -414,10 +406,8 @@ if (current === "home") {
 
 const enteringApproach =
     current === APPROACH_ZONE &&
-    previous !== APPROACH_ZONE &&
-    previous !== "home";
+    previous === "not_home";
 
-const anyTrackerHome = resident.states.some((value) => value === "home");
 const notificationKey = [source, current, eventAt].join(":");
 const duplicate =
     state.last_notification_key === notificationKey &&
@@ -426,7 +416,6 @@ const duplicate =
 
 if (
     !enteringApproach ||
-    (anyTrackerHome && state.away_cycle !== true) ||
     state.notified === true ||
     duplicate
 ) {
@@ -633,25 +622,8 @@ function group(id, name, nodes, x, y, w, h, stroke) {
   };
 }
 
-const primaryTemplate = required("iPhone resident_primary mudou de zona");
-const secondaryTemplate = required("iPhone resident_secondary mudou de zona");
 const notifyTemplate = flows.find((node) => node.type === "api-call-service" && node.action === "public_bindings.call");
 if (!notifyTemplate) throw new Error("Template público de notificação ausente");
-
-const primaryEvent = {
-  ...structuredClone(primaryTemplate),
-  id: ids.primaryEvent, z: ids.tab, g: ids.triggerGroup,
-  name: "Localização de resident_primary mudou de zona",
-  outputProperties: [{ property: "payload", propertyType: "msg", value: eventPayload("resident_primary"), valueType: "jsonata" }],
-  x: 270, y: 180, wires: [[ids.prepare]],
-};
-const secondaryEvent = {
-  ...structuredClone(secondaryTemplate),
-  id: ids.secondaryEvent, z: ids.tab, g: ids.triggerGroup,
-  name: "Localização de resident_secondary mudou de zona",
-  outputProperties: [{ property: "payload", propertyType: "msg", value: eventPayload("resident_secondary"), valueType: "jsonata" }],
-  x: 280, y: 240, wires: [[ids.prepare]],
-};
 
 const notifyBase = {
   ...structuredClone(notifyTemplate),
@@ -669,15 +641,14 @@ if (!testCycleOut.links.includes(ids.testCycleIn)) {
 }
 
 flows.push(
-  { id: ids.tab, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false, info: "Avisa cada residente quando o outro entra na zona chegando. Funciona 24 horas por dia e não depende de veículo, iluminação ou contexto_chegadas. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.", env: [] },
-  group(ids.triggerGroup, "1. Mudanças de zona", [ids.note, ids.primaryEvent, ids.secondaryEvent], 64, 79, 432, 202, "#3f7cb5"),
-  group(ids.decisionGroup, "2. Validar aproximação e deduplicar", [ids.prepare, ids.testEventIn], 519, 124, 317, 157, "#7d6ba8"),
+  { id: ids.tab, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false, info: "Avisa cada residente quando o outro entra na zona chegando segundo a decisão canônica publicada por localizacao_pessoas. Funciona 24 horas por dia. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.", env: [] },
+  group(ids.triggerGroup, "1. Decisão canônica de localização", [ids.note, ids.canonicalIn], 64, 79, 432, 202, "#3f7cb5"),
+  group(ids.decisionGroup, "2. Validar aproximação e deduplicar", [ids.prepare, ids.testEventIn], 499, 124, 337, 157, "#7d6ba8"),
   group(ids.outputGroup, "3. Notificar o outro residente", [ids.primaryNotify, ids.secondaryNotify, ids.deliveryAck], 894, 119, 742, 142, "#4d9a6a"),
   group(ids.testGroup, "4. Testes manuais — envia push marcado TESTE", [ids.testPrimary, ids.testSecondary, ids.testCycleIn, ids.testAdapter, ids.testEventOut], 434, 339, 607, 202, "#a87932"),
-  { id: ids.note, type: "comment", z: ids.tab, g: ids.triggerGroup, name: "Sem restrição de horário", info: "A entrada not_home → chegando é avaliada a qualquer hora. home → chegando é saída e não gera aviso.", x: 250, y: 120, wires: [] },
-  primaryEvent,
-  secondaryEvent,
-  { id: ids.prepare, type: "function", z: ids.tab, g: ids.decisionGroup, name: "Preparar avisos de aproximação", func: prepareFunction, outputs: 4, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 680, y: 180, wires: [[ids.primaryNotify], [ids.secondaryNotify], [ids.primaryNotify], [ids.secondaryNotify]] },
+  { id: ids.note, type: "comment", z: ids.tab, g: ids.triggerGroup, name: "Sem restrição de horário", info: "Somente a transição canônica not_home → chegando é avaliada. Nenhum tracker bruto entra nesta aba.", x: 250, y: 120, wires: [] },
+  { id: ids.canonicalIn, type: "link in", z: ids.tab, g: ids.triggerGroup, name: "Receber decisão canônica de localização", links: ["people_location_notification_out_v1"], x: 160, y: 200, wires: [[ids.prepare]] },
+  { id: ids.prepare, type: "function", z: ids.tab, g: ids.decisionGroup, name: "Preparar avisos de aproximação", func: prepareFunction, outputs: 4, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 640, y: 180, wires: [[ids.primaryNotify], [ids.secondaryNotify], [ids.primaryNotify], [ids.secondaryNotify]] },
   { id: ids.testEventIn, type: "link in", z: ids.tab, g: ids.decisionGroup, name: "Receber transição sintética", links: [ids.testEventOut], x: 560, y: 240, wires: [[ids.prepare]] },
   { ...notifyBase, id: ids.primaryNotify, name: "Avisar resident_primary: resident_secondary se aproxima", data: '{"role":"mobile_primary","action":"notify_actionable","data":{"title":payload.test_mode=true ? "Casa inteligente — TESTE" : "Casa inteligente","message":payload.message}}', x: 1130, y: 160, wires: [[ids.deliveryAck]] },
   { ...notifyBase, id: ids.secondaryNotify, name: "Avisar resident_secondary: resident_primary se aproxima", data: '{"role":"mobile_secondary","action":"notify_actionable","data":{"title":payload.test_mode=true ? "Casa inteligente — TESTE" : "Casa inteligente","message":payload.message}}', x: 1130, y: 220, wires: [[ids.deliveryAck]] },
@@ -702,19 +673,19 @@ const recoveryTestNodes = [
     id: "people_primary_unknown_approach_test_v1",
     name: "resident_primary unknown → chegando (motor ON)",
     testCase: "resident_primary_unknown_approach",
-    y: 1180,
+    y: 1340,
   },
   {
     id: "people_secondary_unknown_approach_test_v1",
     name: "resident_secondary unknown → chegando (motor ON)",
     testCase: "resident_secondary_unknown_approach",
-    y: 1220,
+    y: 1440,
   },
   {
     id: "people_primary_unavailable_approach_test_v1",
     name: "resident_primary unavailable → chegando (motor ON)",
     testCase: "resident_primary_unavailable_approach",
-    y: 1260,
+    y: 1520,
   },
 ];
 
@@ -752,7 +723,7 @@ for (const testNode of recoveryTestNodes) {
     once: false,
     onceDelay: 0.1,
     topic: "",
-    x: 450,
+    x: 700,
     y: testNode.y,
     wires: [[recoveryTestRoute.out]],
   });
@@ -768,8 +739,8 @@ flows.push(
     name: "Recovery de tracker → coordenador",
     mode: "link",
     links: [recoveryTestRoute.in],
-    x: 700,
-    y: 1300,
+    x: 860,
+    y: 1600,
     wires: [],
   },
   {
@@ -779,8 +750,8 @@ flows.push(
     g: peopleTestGroup.id,
     name: "Receber teste de recovery do tracker",
     links: [recoveryTestRoute.out],
-    x: 650,
-    y: 900,
+    x: 570,
+    y: 1180,
     wires: [[peopleTestCoordinator.id]],
   },
 );

@@ -18,16 +18,16 @@ const bypassEnabled =
     ctxGet("security_light_engine_bypass_enabled", PERSISTENT) === true;
 const engineStateKnown =
     msg.payload?.vehicle_primary_engine_state_valid === true;
-const engineKnownOff =
-    engineStateKnown &&
-    msg.payload?.vehicle_primary_engine_on === false;
 const engineUnreliable =
     msg.payload?.engine_communication_failed === true ||
     msg.payload?.engine_data_unreliable === true;
+const engineKnownOff =
+    engineStateKnown &&
+    msg.payload?.vehicle_primary_engine_on === false &&
+    !engineUnreliable;
 const bypassAllowed =
     bypassEnabled &&
-    engineUnreliable &&
-    !engineKnownOff;
+    engineUnreliable;
 const engineGateAllowed =
     msg.payload?.vehicle_primary_in_use === true &&
     msg.payload?.vehicle_primary_engine_on === true &&

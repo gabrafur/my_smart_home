@@ -50,18 +50,10 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
         issues.push(issue("public-entity-id", location, "binding"));
       }
       const scalarTarget = entityIdPattern.test(entity?.target_entity_id ?? "");
-      const locationTargets =
-        Array.isArray(entity?.target_entity_ids) &&
-        entity.target_entity_ids.length >= 2 &&
-        new Set(entity.target_entity_ids).size === entity.target_entity_ids.length &&
-        entity.target_entity_ids.every((target) => entityIdPattern.test(target));
-      if (!entity || typeof entity !== "object" || scalarTarget === locationTargets) {
+      if (!entity || typeof entity !== "object" || !scalarTarget) {
         issues.push(issue("target-entity-id", location, "binding"));
       }
-      if (locationTargets && entity.selection_mode !== "best_location") {
-        issues.push(issue("selection-mode", location, "binding"));
-      }
-      if (!locationTargets && entity?.selection_mode !== undefined) {
+      if (entity?.target_entity_ids !== undefined || entity?.selection_mode !== undefined) {
         issues.push(issue("selection-mode", location, "binding"));
       }
       if (entity.state_mode && !["passthrough", "home_away", "boolean"].includes(entity.state_mode)) {
@@ -77,17 +69,7 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
         issues.push(issue("display-name", location, "binding"));
       }
       if (entity.source_names !== undefined) {
-        const expectedSources = locationTargets ? entity.target_entity_ids.length : 1;
-        if (
-          !Array.isArray(entity.source_names) ||
-          entity.source_names.length !== expectedSources ||
-          new Set(entity.source_names).size !== entity.source_names.length ||
-          entity.source_names.some(
-            (sourceName) => typeof sourceName !== "string" || sourceName.length === 0,
-          )
-        ) {
-          issues.push(issue("source-names", location, "binding"));
-        }
+        issues.push(issue("location-metadata-owner", location, "binding"));
       }
       if (
         entity.hide_targets !== undefined &&
@@ -103,6 +85,25 @@ export function validateBindings(document, { requireAllRoles = true } = {}) {
       }
       if (role === "vehicle_primary" && entity.hide_targets !== true) {
         issues.push(issue("vehicle-target-visible", location, "binding"));
+      }
+      const locationInput =
+        /^device_tracker\.mobile_(?:primary|secondary)_source_[12]$/.test(publicId) ||
+        publicId === "device_tracker.vehicle_primary";
+      if (
+        locationInput &&
+        !["gps_accuracy", "latitude", "longitude", "source_type"].every(
+          (attribute) => entity.attributes?.includes(attribute),
+        )
+      ) {
+        issues.push(issue("location-input-attributes", location, "binding"));
+      }
+      if (
+        locationInput &&
+        !["gps_accuracy", "latitude", "longitude"].every((attribute) =>
+          entity.string_attributes?.includes(attribute)
+        )
+      ) {
+        issues.push(issue("location-input-visible", location, "binding"));
       }
       const allowedAttributes = new Set(entity.attributes ?? []);
       const stringAttributes = entity.string_attributes ?? [];

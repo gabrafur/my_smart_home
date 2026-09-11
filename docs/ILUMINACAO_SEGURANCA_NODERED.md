@@ -19,7 +19,8 @@ da Kia ou detalhes de viagem.
 ```mermaid
 flowchart LR
     IP[iPhones / iCloud] --> P[localizacao_pessoas]
-    IP --> N[notificacoes_chegadas_residentes]
+    P -->|decisão canônica| N[notificacoes_chegadas_residentes]
+    P -->|trackers MQTT canônicos| H[Mapa e painéis do Home Assistant]
     N --> M[push para o outro residente]
     K[Hyundai Bluelink] --> C[contexto_vehicle_primary]
     T[Tick de 30 s] --> O[contexto_chegadas]
@@ -96,14 +97,15 @@ cooldown. Snapshots com `updated_at` anterior ao cache são ignorados.
 
 ### Pessoas
 
-- `device_tracker.mobile_primary`
-- `device_tracker.mobile_primary` (fallback iCloud)
-- `device_tracker.mobile_primary`
-- `device_tracker.mobile_primary` (fallback iCloud)
+- `device_tracker.mobile_primary_source_1` e `_source_2`
+- `device_tracker.mobile_secondary_source_1` e `_source_2`
+- `device_tracker.resident_primary_location` e
+  `device_tracker.resident_secondary_location` (resultados MQTT canônicos)
 - ações móveis allowlisted via `public_bindings.call`, incluindo push e
   `request_location_update`
 
-A seleção usa `location_observed_at`, publicado pelo adapter a partir de
+A seleção existe somente nos blocos visuais de `localizacao_pessoas` e usa
+`location_observed_at`, publicado pelo adapter a partir de
 mudanças observáveis de estado, coordenadas ou precisão. Atualizações de
 bateria e outros metadados não tornam uma localização fresca. Entre fontes com
 coordenadas confiáveis e frescas, vence sempre a mudança de posição mais
@@ -112,9 +114,18 @@ precisão aceitável não vence uma posição alternativa confiável. A decisão
 entrada no anel usa somente a fonte selecionada: um fallback antigo em `home`
 não bloqueia uma posição recente em `chegando`.
 
+O grupo `0. Política canônica de localização — edite os números` é a fonte
+única de raio, freshness, desempate, precisão, movimento, armado e retenção de
+chegada. Os links nomeados levam a mesma política às abas de veículo e
+iluminação. O Node-RED também publica no Home Assistant a fonte vencedora e os
+indicadores já calculados de posição atual, fonte reportando e GPS confiável;
+o painel não repete esses cálculos.
+
 ### vehicle_primary
 
 - `device_tracker.vehicle_primary`
+- `device_tracker.vehicle_primary_location_nodered` (saída canônica para mapa
+  e painel)
 - `binary_sensor.vehicle_primary_engine`
 - `lock.vehicle_primary_door_lock`
 - `button.vehicle_primary_force_refresh`
@@ -122,6 +133,7 @@ não bloqueia uma posição recente em `chegando`.
 - `input_button.vehicle_primary_force_refresh_now` (solicitacao manual pelo mesmo
   coordenador; ignora cooldown/backoff, mas nao uma chamada em andamento)
 - `sensor.vehicle_primary_refresh_coordinator` (espelho MQTT do estado/deadlines reais)
+- `sensor.vehicle_primary_location_since_nodered` (instante canônico da posição atual)
 - entidades do dispositivo atualizadas pelo serviço `homeassistant.update_entity`
 
 ### Iluminação
@@ -159,9 +171,10 @@ depois `not_home` como fallback. O checker de bindings rejeita
 - A entrada no anel gera `arrival_stage: approach` e não consome o armado.
 - A entrada em casa ou até 700 m de casa/portão é a rede de segurança
   (`arrival_stage: home`) e consome o armado.
-- O grupo `0. Ajuste do raio de chegada` no canvas `localizacao_pessoas`
-  guarda o raio em metros. Edite o valor do inject, entre 50 e 2.000 m, e
-  faça Deploy para aplicar o novo padrão.
+- O bloco `Raio de chegada — 700 m`, dentro do grupo
+  `0. Política canônica de localização — edite os números`, guarda o raio em
+  metros. Edite o valor do inject, entre 50 e 2.000 m, e faça Deploy para
+  aplicá-lo a pessoas, veículo, iluminação e atributos dos painéis.
 - Um tracker primário que já está em casa há mais de 10 min bloqueia o catch-up
   tardio do tracker secundário. Sem `last_changed`, o comportamento permanece
   fail-open para não perder uma chegada real.
@@ -174,8 +187,9 @@ depois `not_home` como fallback. O checker de bindings rejeita
 
 ## Notificações entre residentes
 
-O tab `notificacoes_chegadas_residentes` observa diretamente os dois trackers
-de cada residente. A transição de fora para `chegando` notifica o outro
+O tab `notificacoes_chegadas_residentes` recebe apenas a transição canônica
+decidida em `localizacao_pessoas`; ele não observa trackers brutos. A transição
+de fora para `chegando` notifica o outro
 residente imediatamente, sem consultar horário, sol, veículo ou os snapshots de
 `contexto_chegadas`. A transição `home -> chegando` continua sendo tratada como
 saída e não gera aviso. Um latch persistente evita duplicidade entre os dois
@@ -218,7 +232,7 @@ O estado pertence exclusivamente a `contexto_vehicle_primary`:
 - liga quando o motor conhecido é `on`, mesmo que o evento do sensor seja
   antigo, enquanto a comunicação com o Bluelink estiver saudável;
 - desliga quando o motor conhecido é `off`, também sem expirar apenas pela
-  idade;
+  idade, enquanto a comunicação com o Bluelink estiver saudável;
 - após restart, uma viagem persistida só é restaurada como `true` quando a
   localização atual e fresca ainda confirma que o carro está fora;
 - sem evidência suficiente publica `in_use: null`, `in_use_pending: true`, e a
@@ -230,25 +244,28 @@ Mudanças confirmadas de motor são observadas simetricamente: `on` por 5 s e
 próximo snapshot periódico para iniciar ou encerrar o contexto de uso, mantendo
 o mesmo filtro contra oscilações nos dois sentidos.
 
-Quando uma chegada pessoal `not_home -> chegando` ocorre antes do anoitecer ou
-antes de a integração atualizar o motor, `iluminacao_seguranca` preserva a
-intenção sem uma expiração fixa. Ela continua válida enquanto a mesma pessoa
-permanecer em `chegando`, com localização `ready` e não stale. A intenção é
-cancelada ao entrar em `home`, sair de `chegando` ou perder a atualidade da
-localização. Assim, uma entrada às 17:31 ainda é reavaliada se o pôr do sol
-ocorrer às 17:35. Chegadas que não representam uma pessoa permanecendo na zona
-de aproximação conservam a janela curta de recovery de 2 minutos.
+Quando uma chegada `not_home -> chegando` ocorre antes do anoitecer ou antes de
+a integração atualizar o motor, `iluminacao_seguranca` preserva a intenção por
+até 10 minutos, valor editável no mesmo grupo de política canônica. Durante
+esse prazo, uma aproximação de morador exige que a mesma pessoa permaneça em
+`chegando`, com localização `ready` e não stale; uma aproximação do veículo
+exige a localização equivalente do carro. A intenção é cancelada ao entrar em
+`home`, sair de `chegando`, perder a atualidade da localização ou vencer a
+janela. Assim, uma entrada às 17:31 ainda pode ser reavaliada se o pôr do sol ou
+a telemetria do motor convergirem alguns minutos depois.
 
 O replay exige luminosidade ready e `below_horizon`. O gate normal exige
 `in_use=true`, motor `on` conhecido e comunicação saudável com o Bluelink. A chave
 `switch.garagem_vehicle_primary_bypass_do_motor_para_iluminacao_de_chegada`
 oferece uma alternativa somente quando uma tentativa real de wake/API falha;
-a idade do evento do motor, isoladamente, não libera o bypass. Mesmo com a
-chave ligada, um motor `off` conhecido continua bloqueando o refletor. O
+a idade do evento do motor, isoladamente, não libera o bypass. Quando há falha
+real de comunicação, porém, o último `off` deixa de ser prova atual e o bypass
+automático pode liberar o refletor; essa prioridade deliberadamente favorece
+um possível acendimento antecipado em vez de perder a chegada. O
 estado recente da posição do carro é obrigatório somente quando o próprio
 `vehicle_primary` origina a chegada. Em chegadas de moradores, posição antiga
 do carro é apenas diagnóstica: `ON` conhecido e API saudável liberam o gate,
-enquanto `OFF` conhecido continua bloqueando.
+enquanto `OFF` conhecido e API saudável continuam bloqueando.
 O Node-RED liga a chave automaticamente enquanto a API do veículo está em falha
 ou backoff. Se ela já estava ligada manualmente, a automação não assume a
 posse nem a desliga na recuperação; um `ON` automático só volta para `OFF`
@@ -344,14 +361,21 @@ depende exclusivamente de um `delay` residente em memória.
   encerramento do aplicativo e redefina o Push ID se ele estiver ausente.
   O painel só volta a declarar a fonte saudável após um callback real do
   telefone.
-- vehicle_primary: 15 min quando `resident_primary` ou `resident_secondary`
-  está `not_home`/`chegando`; 30 min no ciclo saudável quando ambos estão
-  `home`, com os wakes periódicos suspensos das 00:00 às 05:59 nessa última
-  condição. Essa presença usa a mesma fonte de melhor localização mostrada no
+- vehicle_primary: a política fica visível no tab `contexto_vehicle_primary`,
+  nos grupos `3. Configuração dos intervalos do veículo` e `4. Política
+  visual`. Os cinco injects numéricos são a única configuração: 5 min quando
+  alguém está `chegando`, 15 min quando está `not_home`, 30 min no ciclo saudável quando ambos
+  estão `home`, início 0h e fim 6h para a pausa noturna nessa última condição.
+  Para mudar um valor, abra o inject correspondente, altere o número e faça
+  Deploy. Essa presença usa a mesma fonte de melhor localização mostrada no
   mapa; divergência de uma fonte não selecionada fica apenas no diagnóstico.
   A idade dessa localização pode solicitar atualização dos telefones, mas não
-  reduz sozinha o ciclo do veículo. Recuperação do próprio veículo e backoff
-  usam 15 min, inclusive em casa, fora dessa pausa noturna.
+  reduz sozinha o ciclo do veículo. Durante `chegando`, os 5 min mantêm
+  precedência mesmo com dados pendentes. Fora desse estado, a recuperação do
+  próprio veículo usa o intervalo configurado para fora, inclusive em casa,
+  fora dessa pausa noturna; um bloqueio explícito do provedor ainda pode impor
+  backoff maior. O coordenador, o aceite/erro da API e o dashboard não
+  recalculam esses números; consomem o resultado e a telemetria desses blocos.
 - A transição confirmada de qualquer residente de `home` para `chegando` ou
   `not_home` dispara imediatamente um `force_refresh` do vehicle_primary,
   independentemente do deadline periódico. Esse comando acorda o veículo e
@@ -395,18 +419,16 @@ depende exclusivamente de um `delay` residente em memória.
   serializando chamadas; depois do aceite manual, a agenda automatica recomeça
   em 15 ou 30 minutos conforme a presença atual. O botão também funciona na
   pausa noturna.
-- O caminho de sucesso de `public_bindings.call` confirma o **wake** aceito
-  pela API com HTTP 200/202. O relógio semântico
-  `sensor.vehicle_primary_last_updated_at` continua informando idade e dados
-  novos, mas não precisa avançar quando localização, motor e trava permanecem
-  iguais. `401 Unauthorized`, timeout e outras respostas diferentes de 200/202
-  mantêm backoff; 401 no polling de cache do backend BR é reavaliado em até
-  60 s sem descarregar o config entry.
-- Um aceite da API confirma também um pedido de recuperação da iluminação,
-  mesmo quando o estado do motor não muda e o `last_updated` específico
-  permanece antigo. `ON`/`OFF` conhecidos continuam
-  confiáveis; `engine_communication_failed` só é ativado por falha real da
-  chamada de wake/API (não por idade) e é limpo após recuperação confirmada.
+- O retorno de `public_bindings.call` confirma apenas o transporte. O wake só
+  tem sucesso quando `sensor.vehicle_primary_last_updated_at` avança além do
+  baseline da tentativa. `401 Unauthorized`, timeout e ausência de dados novos
+  mantêm backoff; o polling de cache BR continua recuperando autenticação e
+  telemetria sem descarregar o config entry.
+- `ON`/`OFF` antigos continuam confiáveis apenas enquanto a comunicação com a
+  API estiver saudável. `engine_communication_failed` é ativado por falha real
+  da chamada, inclusive wake aceito sem telemetria nova, e só é limpo depois de
+  avanço semântico confirmado. Durante a falha, o bypass automático pode
+  superar um `OFF` antigo para não perder o acendimento de chegada.
 - A chamada legada `homeassistant.update_entity` que acompanhava o refresh do
   vehicle_primary continua sincronizando os dois trackers de iPhone, mas agora por um
   contrato explícito `contexto_vehicle_primary -> localizacao_pessoas`; nenhuma entidade
@@ -498,10 +520,11 @@ e mostra `TESTE: vehicle_primary em uso — gate aprovado`; `OFF` produz
 permanecer em `chegando`. Na aba `iluminacao_seguranca`, os controles
 `TESTE: bypass ON (isolado)` e `TESTE: bypass OFF (isolado)` exercitam a chave
 sem alterar o switch real. O cenário comprova que `ON` antigo continua válido
-com API saudável, que falha real ativa o bypass em dry-run e que motor `OFF`
-conhecido continua bloqueado. A mesma chegada
-também pode ser mantida além de 2 minutos e reprocessada quando o sol muda para
-`below_horizon`.
+com API saudável, que falha real ativa o bypass em dry-run, que motor `OFF`
+conhecido bloqueia com API saudável e deixa de prevalecer durante falha real de
+comunicação. A mesma chegada pode ser mantida por até 10
+minutos e reprocessada quando o sol muda para `below_horizon` ou quando o
+Bluelink conclui sua atualização tardia.
 O `test_mode` então atravessa disponibilidade do refletor, dedupe e lifecycle
 isolado, chegando a `TESTE FINAL: ações simuladas — nenhum dispositivo
 acionado`. Esse terminal registra que refletor, dois avisos e backstop seriam

@@ -1,4 +1,8 @@
 const raw = flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};
+const policy = flow.get(
+    "vehicle_primary_refresh_policy_config_v1",
+    "persistent"
+) ?? {};
 const now = Date.now();
 let state = raw.state ?? "idle";
 let deadline = null;
@@ -56,6 +60,20 @@ const status = {
     awaiting_evidence: raw.awaiting_evidence === true,
     interval_minutes: Number(raw.interval_ms ?? 0) / 60_000 || null,
     interval_policy: raw.interval_policy ?? null,
+    away_interval_minutes:
+        Number(policy.away_interval_minutes ?? 0) || null,
+    approaching_interval_minutes:
+        Number(policy.approaching_interval_minutes ?? 0) || null,
+    home_interval_minutes:
+        Number(policy.home_interval_minutes ?? 0) || null,
+    quiet_start_hour:
+        Number.isInteger(Number(policy.quiet_start_hour))
+            ? Number(policy.quiet_start_hour)
+            : null,
+    quiet_end_hour:
+        Number.isInteger(Number(policy.quiet_end_hour))
+            ? Number(policy.quiet_end_hour)
+            : null,
     request_in_flight: raw.request_in_flight === true,
     in_flight_until: raw.request_in_flight === true
         ? iso(raw.in_flight_until)

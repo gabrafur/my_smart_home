@@ -50,12 +50,49 @@ function runtime(code, { msg, values = {}, now }) {
 }
 
 const coordinator = source("vehicle-primary-refresh-coordinator.js");
+const quietHours = source("vehicle-primary-refresh-quiet-hours.js");
 const manual = source("vehicle-primary-manual-refresh.js");
 const telemetry = source("vehicle-primary-refresh-telemetry.js");
 const providerBackoffSync = source("vehicle-primary-provider-backoff-sync.js");
 const remoteCommandMonitor = source("vehicle-primary-remote-command-monitor.js");
 const remoteCommandGuard = source("vehicle-primary-remote-command-dispatch-guard.js");
 const now = Date.parse("2026-08-17T03:00:00Z");
+
+function resolvedPolicy(overrides = {}) {
+  const primary = String(overrides.resident_primary_state ?? "").toLowerCase();
+  const secondary = String(overrides.resident_secondary_state ?? "").toLowerCase();
+  const anyResidentAway = overrides.any_resident_away === true;
+  const bothHome = primary === "home" && secondary === "home" && !anyResidentAway;
+  const away = new Set(["not_home", "chegando"]);
+  const anyoneAwayOrApproaching =
+    anyResidentAway ||
+    overrides.anyone_away === true ||
+    away.has(primary) ||
+    away.has(secondary);
+  const anyoneApproaching =
+    primary === "chegando" || secondary === "chegando";
+  return {
+    ...overrides,
+    refresh_policy_version: 1,
+    refresh_policy_config: {
+      approaching_interval_ms: 5 * 60_000,
+      away_interval_ms: 15 * 60_000,
+      home_interval_ms: 30 * 60_000,
+      quiet_start_hour: 0,
+      quiet_end_hour: 6,
+    },
+    refresh_resident_states_known: primary.length > 0 && secondary.length > 0,
+    refresh_both_residents_home: bothHome,
+    refresh_anyone_approaching: anyoneApproaching,
+    refresh_anyone_away: anyoneAwayOrApproaching,
+    refresh_interval_ms: anyoneApproaching
+      ? 5 * 60_000
+      : bothHome ? 30 * 60_000 : 15 * 60_000,
+    refresh_interval_policy: anyoneApproaching
+      ? "approaching"
+      : bothHome ? "both_home" : "away",
+  };
+}
 
 {
   const failureMessage = {
@@ -153,8 +190,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     msg: {
       payload: {
         kind: "refresh_command",
-        reason: "manual_force",
-        force_recovery: true,
+        ...resolvedPolicy({ reason: "manual_force", force_recovery: true }),
       },
     },
   });
@@ -176,8 +212,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     msg: {
       payload: {
         kind: "refresh_command",
-        reason: "manual_force",
-        force_recovery: true,
+        ...resolvedPolicy({ reason: "manual_force", force_recovery: true }),
       },
     },
   });
@@ -193,7 +228,7 @@ const now = Date.parse("2026-08-17T03:00:00Z");
 }
 
 {
-  const { result, store } = runtime(coordinator, {
+  const { result, store } = runtime(quietHours, {
     now,
     values: {
       vehicle_primary_context_v1: { ready: true },
@@ -206,9 +241,11 @@ const now = Date.parse("2026-08-17T03:00:00Z");
     },
     msg: { payload: {
       kind: "refresh_command",
-      anyone_away: false,
-      resident_primary_state: "home",
-      resident_secondary_state: "home",
+      ...resolvedPolicy({
+        anyone_away: false,
+        resident_primary_state: "home",
+        resident_secondary_state: "home",
+      }),
     } },
   });
   assert.equal(result, null);
@@ -232,12 +269,15 @@ const now = Date.parse("2026-08-17T03:00:00Z");
         next_allowed_at: now - 1,
       },
     },
-    msg: { payload: { kind: "refresh_command", anyone_away: true } },
+    msg: { payload: {
+      kind: "refresh_command",
+      ...resolvedPolicy({ anyone_away: true }),
+    } },
   });
   const state = store.get("security_vehicle_primary_refresh_v1");
   assert.equal(state.attempts, 2);
   assert.equal(state.state, "probing_cache");
-  assert.equal(state.interval_policy, "recovery_15m");
+  assert.equal(state.interval_policy, "recovery");
   assert.equal(state.next_retry_at, now - 1);
 }
 
@@ -399,9 +439,11 @@ assert.ok(
 const accepted = flows.find(
   (node) => node.id === "vehicle_primary_refresh_accepted_v1",
 );
-assert.match(accepted.func, /aceite HTTP 200\/202/);
-assert.match(accepted.func, /awaiting_evidence = false/);
-assert.match(accepted.func, /last_success_reason = "api_accepted_200_or_202"/);
+assert.match(accepted.func, /confirma somente que o Home Assistant aceitou/);
+assert.match(accepted.func, /awaiting_evidence = true/);
+assert.match(accepted.func, /api_accepted_awaiting_fresh_data/);
+assert.doesNotMatch(accepted.func, /last_success_at = now/);
+assert.doesNotMatch(accepted.func, /last_evidence_domains = \["api"\]/);
 
 const providerBackoffState = flows.find(
   (node) => node.id === "vehicle_primary_provider_backoff_state_v1",

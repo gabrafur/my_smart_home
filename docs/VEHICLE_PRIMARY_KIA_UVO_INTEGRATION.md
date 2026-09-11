@@ -45,33 +45,40 @@ vehicle_primary como entidades Home Assistant. Documentado tambem em
   registra a consulta mais recente ao cache e pode avancar mesmo sem mudar o
   snapshot semantico; `sensor.vehicle_primary_last_updated_at` continua sendo
   a evidencia de dado novo produzido pelo carro.
-- O caminho de sucesso de `public_bindings.call` confirma o wake quando a API
-  aceita a chamada com HTTP 200/202. O timestamp semantico pode continuar
-  identico quando o carro nao mudou de estado; isso e informativo e nao
-  transforma o aceite em falha. A resposta da API e o readiness do motor sao
-  resultados distintos, publicados em campos separados.
-- `sensor.vehicle_primary_current_location_since` preserva o instante em que o
-  carro entrou na localizacao atual. Republicacoes do mesmo ponto nao alteram
-  esse horario; fora de zonas nomeadas, um deslocamento de aproximadamente
-  250 m abre uma nova permanencia.
-- O Node-RED usa **15 minutos** quando algum morador esta `not_home` ou
-  `chegando` e **30 minutos** no ciclo saudável quando ambos estao `home`.
+- O retorno de `public_bindings.call` confirma apenas que o serviço aceitou a
+  solicitação. O wake só é considerado bem-sucedido quando
+  `sensor.vehicle_primary_last_updated_at` avança. Sem esse avanço, a tentativa
+  continua pendente e a falha de comunicação permanece protegida pelo bypass.
+- `sensor.vehicle_primary_location_since_nodered` recebe do Node-RED o instante
+  em que o carro entrou na localização atual. O painel não recalcula movimento:
+  a distância geográfica e o limiar configurável ficam somente no fluxo
+  `contexto_vehicle_primary`. O mesmo fluxo publica
+  `device_tracker.vehicle_primary_location_nodered`, usado pelo mapa e pelo
+  painel; `device_tracker.vehicle_primary` permanece apenas como entrada do
+  normalizador, com coordenadas string para não criar outro marcador.
+- O Node-RED concentra a decisão nos grupos configuráveis do tab
+  `contexto_vehicle_primary`: por padrão usa **5 minutos** quando algum
+  morador esta `chegando`, **15 minutos** quando esta `not_home` e **30
+  minutos** no ciclo saudável quando ambos estao `home`. Os horários padrão da pausa também ficam nesses
+  blocos numéricos (0h–6h), editáveis com duplo clique e Deploy.
   A presença usada nessa escolha vem da mesma seleção de melhor localização
   exibida no mapa; uma fonte secundária antiga ou divergente permanece como
   diagnóstico, mas não reduz sozinha o ciclo para 15 minutos. Se a melhor
   localização estiver antiga, o Node-RED recupera os telefones separadamente;
   isso também não transforma o wake saudável do veículo em recovery.
-  Recuperação e backoff usam o piso de 15 minutos, inclusive em casa, enquanto
+  Durante `chegando`, o intervalo de aproximação mantém precedência mesmo com
+  dados pendentes. Fora desse estado, recuperação usa o intervalo configurado
+  para fora, inclusive em casa, enquanto
   a janela de wake está ativa, para não prolongar uma indisponibilidade
   confirmada. Com os dois em casa, wakes automaticos ficam suspensos entre
-  00:00 e 05:59. O
+  a janela noturna configurada. O
   coordinator Python mantém um lock de processo; requests concorrentes sao
   coalescidos. Agendamento, manual, recovery, chegada e movimento convergem no
   mesmo estado persistente e passam por um guard final antes do binding
   publico. O clique manual `Atualizar agora` ignora o cooldown e a janela
   noturna; ele nunca atravessa uma chamada em andamento. Depois de qualquer
-  wake, o prazo automatico seguinte e ancorado no aceite da chamada pelo Home
-  Assistant e usa a politica de presença corrente.
+  wake, o prazo automatico seguinte e ancorado no despacho da chamada e usa a
+  politica de presença corrente.
 - O backend BR pode publicar o snapshot mais de dois minutos depois de aceitar
   o wake. Se o aguardo fixo de 25 segundos da biblioteca expirar, o coordinator
   agenda seis releituras limitadas de `/latest` ao longo dos 150 segundos
@@ -140,21 +147,19 @@ Esse recovery não acorda o carro e não amplia a frequência normal de polling.
 
 O refresh grava como baseline o estado de
 `sensor.vehicle_primary_last_updated_at`, que e o relogio semantico retornado
-pelo proprio Bluelink. Ele continua servindo para indicar a idade e detectar
-dados novos, mas o caminho de sucesso de `public_bindings.call` ja confirma o
-wake aceito pela API (HTTP 200/202). O readiness derivado do motor e registrado
-separadamente; a ausencia de mudanca no relogio nao converte o aceite em erro.
+pelo proprio Bluelink. Somente o avanço desse relógio confirma o wake; HTTP
+200/202, releitura bem-sucedida do cache e fim do backoff são estados
+intermediários e não limpam falhas nem bypass.
 Mudancas em `last_updated` das entidades do Home Assistant nao contam: elas
 tambem ocorrem em reload e republicacao do mesmo cache. Falhas reais da chamada
 continuam em backoff de 15 minutos fora da pausa noturna; o ciclo saudavel
 continua em 30 minutos com ambos em casa. Com ambos em casa, qualquer wake
 automatico fica suspenso das 00:00 as 05:59. Uma atualizacao passiva posterior
-pode alterar o estacionamento confirmado sem mudar o resultado do wake ja
-aceito. O contador satura sem criar rajadas ou loops. Somente o clique
-manual explicito pode antecipar prazo ou janela. O aceite estende
-`next_allowed_at` pelo intervalo selecionado depois da conclusao da chamada.
-Uma evidencia nova posterior pode confirmar sucesso, mas nunca encurta esse
-deadline para o instante do despacho.
+pode confirmar a tentativa pendente e atualizar o estacionamento. O contador
+satura sem criar rajadas ou loops. Somente o clique manual explicito pode
+antecipar prazo ou janela. A solicitação ancora `next_allowed_at` no instante
+do despacho pelo intervalo selecionado. Uma evidencia nova posterior pode
+confirmar sucesso, mas nunca encurta esse deadline.
 Chegadas do veículo usam `location_observed_at`, e não o `last_updated` da
 entidade republicada, como identidade temporal. Durante dez minutos, a mesma
 etapa de chegada pode produzir no máximo um wake e uma atualização de viagens;
@@ -162,9 +167,10 @@ uma transição real de `approach` para `home` continua sendo um novo estágio.
 `request_in_flight`, seu lease e `next_allowed_at` sobrevivem a restart. Erros
 inesperados sao classificados pelo catch do Node-RED, liberam o lock logico e
 mantem o deadline. O resultado BR esperado em que o wake foi aceito mas o
-veiculo nao publicou telemetria diferente preserva o cache e permanece
-sucesso. Somente erro real da API, inclusive indisponibilidade transitoria de
-autenticacao, mantem backoff e gera alerta deduplicado para
+veiculo nao publicou telemetria diferente preserva o cache, mantém a tentativa
+pendente e ativa o fallback seguro. Erros reais da API, inclusive
+indisponibilidade transitoria de autenticacao, também mantêm backoff e geram
+alerta deduplicado para
 `resident_primary`. O polling BR reavalia autenticacao
 em ate 60 segundos sem descarregar o config entry, permitindo recuperacao
 posterior sem tempestade. Os rechecks posteriores ao wake renovam a
@@ -231,8 +237,9 @@ reconstruídos com segurança.
 `reason=manual_force`: ignora `next_allowed_at`, inclusive durante cooldown ou
 backoff, e envia um novo wake. Ele nao quebra uma tentativa em voo; nesse unico
 caso bloqueado, o Home Assistant cria imediatamente uma notificacao persistente
-informando que nenhuma nova consulta foi enviada. O aceite do wake manual
-reinicia a agenda automatica em 15 ou 30 minutos conforme a presença corrente.
+informando que nenhuma nova consulta foi enviada. O despacho do wake manual
+reinicia a agenda automatica em 5, 15 ou 30 minutos conforme a presença
+corrente.
 
 O carregamento inicial da integração não espera por `/tripinfo`. Esse endpoint
 é opcional e pode responder muito lentamente no backend brasileiro; bloquear
@@ -380,8 +387,8 @@ comando de wake foi aceito pelo backend.
   reinstala isto a cada ciclo, e envolver o wrapper anterior empilharia mais um
   `sleep(25)` por ciclo.
 - **Agenda automatica orientada a presença no Node-RED.** Acordar o carro puxa
-  a bateria de 12 V e conta contra o rate limit: o intervalo e de 15 min com
-  alguem fora/chegando, 30 min com ambos em casa e fica suspenso de 00:00 a
+  a bateria de 12 V e conta contra o rate limit: o intervalo e de 5 min com
+  alguem chegando, 15 min com alguem fora, 30 min com ambos em casa e fica suspenso de 00:00 a
   05:59 se os dois continuarem em casa. O botao `Atualizar agora` e
   deliberadamente uma excecao: ele faz wake mesmo dentro do cooldown ou da
   pausa noturna, mas o lock do coordinator ainda rejeita concorrencia. Cada
@@ -394,9 +401,12 @@ comando de wake foi aceito pelo backend.
   `last_updated_at` nao avancou; a das 16:24:38 avancou. Vale lembrar que a
   API BR so aceita `/location/park` com o carro parado (400 em movimento), o
   que sugere que o backend continua limitado durante a viagem.
-- Um HTTP 200/202 sem mudanca nos dados encerra a tentativa com sucesso. A
-  ausencia de avanco de `last_updated_at` nunca produz `no_fresh_data` nem um
-  alerta; somente respostas diferentes de 200/202 seguem para retry/backoff.
+- Um HTTP 200/202 confirma somente o transporte da solicitação. A tentativa
+  permanece aguardando evidência até o `last_updated_at` semântico avançar.
+  Se o wake não trouxer dados novos no prazo do cliente, o Home Assistant
+  preserva o cache e agenda reconsultas limitadas, mas devolve uma falha
+  controlada ao Node-RED. Isso ativa o bypass seguro imediatamente; somente
+  telemetria nova limpa a falha e remove o bypass.
 
 ## Partida remota exige o carro TRAVADO (2026-08-07)
 
@@ -535,8 +545,8 @@ antecipar ambos, sem atravessar uma chamada em andamento. O TTL de 5 minutos de 
 bloqueando efeitos físicos, mas não quebra esse piso nem cria chamadas de cache
 que seriam contabilizadas como novas falhas. Isso evita storm após restart e
 não registra viagem falsa durante indisponibilidade. O cooldown começa no
-aceite da chamada, incluindo no intervalo o tempo que o serviço levou para
-retornar; a confirmação posterior de telemetria preserva esse prazo.
+despacho; o tempo de resposta do serviço já faz parte do intervalo, e a
+confirmação posterior de telemetria preserva esse prazo.
 
 ## Update do fork removeu e depois reportou o sensor de trip-log (2026-07-19)
 

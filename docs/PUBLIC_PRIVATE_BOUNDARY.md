@@ -54,12 +54,16 @@ zonas a `not_home`. Os atributos de localização necessários por automações
 na allowlist do binding privado. Os valores continuam apenas no runtime e não
 são versionados.
 
-Quando uma pessoa possui mais de uma fonte GPS, o binding consolidado usa
-`target_entity_ids` com `selection_mode: best_location`. A escolha segue o
-mesmo contrato de `localizacao_pessoas`: prefere fonte atual, coordenadas
-confiáveis, atualização materialmente mais recente e melhor precisão. Cada
-entidade `person` privada deve apontar somente para o tracker público
-consolidado do respectivo papel.
+Quando uma pessoa possui mais de uma fonte GPS, o Home Assistant publica apenas
+aliases individuais de uma única origem, como
+`device_tracker.mobile_primary_source_1` e `_source_2`. O componente
+`public_bindings` não seleciona nem consolida fontes. A decisão única fica nos
+blocos visuais da aba Node-RED `localizacao_pessoas`: atualidade da posição,
+coordenadas confiáveis, diferença material de recência, precisão e estado
+válido. O resultado é publicado por MQTT nos trackers
+`device_tracker.resident_primary_location` e
+`device_tracker.resident_secondary_location`, com
+`decision_owner: node_red`.
 
 O painel nativo Mapa omite entidades cujo estado atual é `home`. Por isso, o
 arquivo YAML `dashboards/location.yaml` usa um card `map` com `show_all: true`:
@@ -68,29 +72,26 @@ localização numérica, inclusive em casa. Os nomes de exibição e os rótulos
 públicos das fontes ficam no binding privado; o veículo é exibido como
 `Creta`.
 
-Bindings de localização podem declarar `source_names`, na mesma ordem dos
-alvos. O adapter publica apenas o rótulo vencedor em
-`selected_location_source` e uma lista sanitizada `location_sources` com o
-rótulo, o último heartbeat real e a última observação de localização de cada
-fonte. O adapter mantém `location_observed_at` separado de
-`source_reported_at`: mudanças de bateria ou outros metadados podem provar que
-a fonte ainda reporta, mas não renovam uma posição GPS. O heartbeat original é
-propagado através de aliases intermediários, em vez de ser substituído pelo
-horário de republicação no startup. Na inicialização, o horário GPS é recuperado do
-histórico do Recorder comparando somente estado, coordenadas e precisão. Dois
-cards Markdown dinâmicos mostram essas informações sem expor IDs privados.
+O adapter mantém `location_observed_at` separado de `source_reported_at` nos
+aliases: mudanças de bateria ou outros metadados provam que a fonte ainda
+reporta, mas não renovam uma posição GPS. O heartbeat original atravessa os
+aliases e, no startup, o horário da posição é recuperado do Recorder comparando
+somente estado, coordenadas e precisão.
 
-Bindings consolidados usam `hide_targets: true` para ocultar da descoberta
-visual somente os trackers privados que alimentam o consolidado. Eles continuam
-ativos e disponíveis para o adapter e para o Node-RED, mas não viram marcadores
-duplicados. Um terceiro card dinâmico preserva o estado `home`, `not_home`,
-`chegando` ou qualquer zona atual. Entidades novas com coordenadas continuam
-entrando automaticamente no mapa por `show_all`.
+O Node-RED publica no tracker consolidado o rótulo vencedor em
+`selected_location_source`, a lista sanitizada `location_sources` e os
+resultados já calculados `position_fresh`, `reporting_fresh` e
+`reliable_coordinates`. Os cards do Mapa apenas apresentam esses dados; não
+possuem janelas ou algoritmos próprios. Os aliases de origem usam
+`hide_targets: true` e coordenadas string para continuar disponíveis ao fluxo
+sem criar marcadores visuais duplicados.
 
 Todos os bindings de `vehicle_primary` também usam `hide_targets: true`. Assim,
 as entidades nativas do Bluelink continuam ativas como alvos internos, enquanto
-somente os aliases públicos do veículo aparecem na descoberta visual, sem pares
-duplicados como `creta_*` e `vehicle_primary_*`.
+o alias de entrada `device_tracker.vehicle_primary` entrega coordenadas como
+strings somente ao Node-RED. O mapa e o painel usam a saída numérica
+`device_tracker.vehicle_primary_location_nodered`, publicada pelo mesmo fluxo
+que decide movimento e `location_since`, sem pares visuais duplicados.
 Um binding usado somente para resolver uma ação pode declarar
 `expose_state: false`: seu ID público continua disponível internamente para
 `target_public_entity_id`, mas não cria um segundo botão visível. O refresh do
@@ -99,10 +100,12 @@ coordenador único.
 
 O componente `consolidated_map` aplica o mesmo arquivo YAML ao dashboard nativo
 `/map` durante a inicialização, de forma idempotente. O arquivo não é registrado
-como outro painel lateral: a aba nativa Mapa é a única interface exposta e não
-implementa outra seleção de fontes.
+como outro painel lateral: a aba nativa Mapa é a única interface exposta. Seus
+cards de estado e saúde aceitam apenas entidades com
+`decision_owner: node_red`, portanto não implementam seleção nem freshness.
 
-Os aliases intermediários consumidos por `localizacao_pessoas` mantêm
+Os aliases intermediários consumidos por `localizacao_pessoas` e
+`contexto_vehicle_primary` mantêm
 `latitude`, `longitude` e `gps_accuracy` em `string_attributes`. O Node-RED os
 normaliza explicitamente com `Number(...)`, mas o frontend do Mapa aceita como
 localização apenas coordenadas numéricas. Isso impede que Mobile App e iCloud
@@ -111,6 +114,10 @@ normalizador usa `location_observed_at`, e nunca o `last_updated` genérico, par
 decidir freshness e precedência entre as fontes. O heartbeat é usado
 separadamente para reconhecer fontes ativas e estacionárias, sem liberar
 automação de chegada com localização antiga.
+
+Entidades `person.*` não são materializadas no card do Mapa: a posição de cada
+morador é representada somente pelo tracker canônico do Node-RED. Zonas e os
+trackers que alimentam essas pessoas também permanecem excluídos.
 
 Uma ação pode apontar diretamente para `target_entity_id` ou reutilizar uma
 entidade do mesmo papel por `target_public_entity_id`. A segunda forma mantém o

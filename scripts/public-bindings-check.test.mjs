@@ -50,6 +50,8 @@ test("preserves named Home Assistant zones on public device trackers", () => {
             target_entity_id: "device_tracker.example_vehicle_primary",
             state_mode: "home_away",
             hide_targets: true,
+            attributes: ["gps_accuracy", "latitude", "longitude", "source_type"],
+            string_attributes: ["gps_accuracy", "latitude", "longitude"],
           },
         },
       },
@@ -62,7 +64,7 @@ test("preserves named Home Assistant zones on public device trackers", () => {
   assert.deepEqual(validateBindings(document), []);
 });
 
-test("accepts a best-location binding with multiple private sources", () => {
+test("rejects location selection inside public bindings", () => {
   const document = {
     schema_version: 1,
     roles: {
@@ -84,14 +86,10 @@ test("accepts a best-location binding with multiple private sources", () => {
       },
     },
   };
-  assert.deepEqual(validateBindings(document), []);
-
-  delete document.roles.resident_primary.entities[
-    "device_tracker.resident_primary_location"
-  ].selection_mode;
-  assert.ok(
-    validateBindings(document).some((item) => item.rule === "selection-mode"),
-  );
+  const rules = validateBindings(document).map((item) => item.rule);
+  assert.ok(rules.includes("target-entity-id"));
+  assert.ok(rules.includes("selection-mode"));
+  assert.ok(rules.includes("location-metadata-owner"));
 });
 
 test("requires hide_targets to be an explicit boolean", () => {
@@ -99,6 +97,8 @@ test("requires hide_targets to be an explicit boolean", () => {
     target_entity_id: "device_tracker.example_vehicle",
     state_mode: "passthrough",
     hide_targets: "yes",
+    attributes: ["gps_accuracy", "latitude", "longitude", "source_type"],
+    string_attributes: ["gps_accuracy", "latitude", "longitude"],
   };
   const document = {
     schema_version: 1,
@@ -167,13 +167,9 @@ test("requires every vehicle alias to hide its native target", () => {
   assert.deepEqual(validateBindings(document), []);
 });
 
-test("requires one public source name for every private location target", () => {
+test("rejects source-selection metadata outside Node-RED", () => {
   const entity = {
-    target_entity_ids: [
-      "device_tracker.example_mobile_app",
-      "device_tracker.example_icloud",
-    ],
-    selection_mode: "best_location",
+    target_entity_id: "device_tracker.example_mobile_app",
     state_mode: "passthrough",
     source_names: ["Home Assistant App"],
   };
@@ -187,8 +183,12 @@ test("requires one public source name for every private location target", () => 
     },
   };
 
-  assert.ok(validateBindings(document).some((item) => item.rule === "source-names"));
-  entity.source_names.push("iCloud");
+  assert.ok(
+    validateBindings(document).some(
+      (item) => item.rule === "location-metadata-owner",
+    ),
+  );
+  delete entity.source_names;
   assert.deepEqual(validateBindings(document), []);
 });
 
@@ -196,7 +196,7 @@ test("accepts string-projected source coordinates only when allowlisted", () => 
   const entity = {
     target_entity_id: "device_tracker.example_mobile_app",
     state_mode: "passthrough",
-    attributes: ["latitude", "longitude", "gps_accuracy"],
+    attributes: ["latitude", "longitude", "gps_accuracy", "source_type"],
     string_attributes: ["latitude", "longitude", "gps_accuracy"],
   };
   const document = {
@@ -210,7 +210,7 @@ test("accepts string-projected source coordinates only when allowlisted", () => 
   };
   assert.deepEqual(validateBindings(document), []);
 
-  entity.string_attributes.push("source_type");
+  entity.string_attributes.push("battery_level");
   assert.ok(
     validateBindings(document).some((item) => item.rule === "string-attributes"),
   );

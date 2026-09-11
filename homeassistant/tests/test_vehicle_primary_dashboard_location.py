@@ -20,12 +20,15 @@ def main() -> None:
     assert "heading: Último estacionamento e viagens" in dashboard
     assert "o mapa mostra o último estacionamento confirmado" in dashboard
     assert "não fornece a posição enquanto o veículo está em movimento" in dashboard
-    assert "entity: device_tracker.vehicle_primary" in dashboard
+    assert "entity: device_tracker.vehicle_primary_location_nodered" in dashboard
+    assert "states.device_tracker.vehicle_primary_location_nodered" in dashboard
+    assert "states.device_tracker.vehicle_primary %}" not in dashboard
     assert "name: Posição confirmada em" not in dashboard
-    assert "sensor.vehicle_primary_current_location_since" in dashboard
+    assert "sensor.vehicle_primary_location_since_nodered" in dashboard
     assert "sensor.vehicle_primary_location_last_updated" not in dashboard
-    assert "tracker.last_changed" in dashboard
-    assert "persistent_since_ts if persistent_since_ts else tracker_since_ts" in dashboard
+    assert "tracker.last_changed" not in dashboard
+    assert "tracker_since_ts" not in dashboard
+    assert "as_timestamp(persistent_since, none)" in dashboard
     assert "nesta localização desde" in dashboard
     assert "O horário permanece fixo enquanto a localização não mudar" not in dashboard
     assert "última posição estacionada recebida há" not in dashboard
@@ -76,7 +79,7 @@ def main() -> None:
         "Último wake aceito pelo Bluelink, solicitado há cerca de"
     )
     assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
-        "Wake periódico pausado até 06h"
+        "Wake periódico pausado até {{ format_number_ptbr(quiet_end_hour) }}h"
     )
     assert dashboard.index("refresh_awaiting and refresh_state") < dashboard.index(
         "refresh_failure == 'integration_unavailable'"
@@ -102,6 +105,14 @@ def main() -> None:
     assert "aguardando a conclusão da chamada ao Bluelink" in dashboard
     assert "O último wake ainda não produziu dados novos" not in dashboard
     assert "'interval_minutes') | int(0)" in dashboard
+    assert "coordinator_interval_min in [15, 30]" not in dashboard
+    assert "30 if both_home else 15" not in dashboard
+    assert "'approaching_interval_minutes'" in dashboard
+    assert "'away_interval_minutes'" in dashboard
+    assert "'home_interval_minutes'" in dashboard
+    assert "'quiet_start_hour'" in dashboard
+    assert "'quiet_end_hour'" in dashboard
+    assert "Esses cinco valores vêm diretamente dos blocos configuráveis" in dashboard
     assert "ignora o prazo periódico e a pausa noturna" not in dashboard
     assert "Cache consultado em" in dashboard
     assert "Consulta executada em" not in dashboard
@@ -126,10 +137,9 @@ def main() -> None:
     assert dashboard.index("**Último comando remoto**") < dashboard.index(
         "**Atualização dos dados**"
     )
-    assert "unique_id: vehicle_primary_current_location_since" in controls
-    assert "current_state == 'not_home'" in controls
-    assert "previous_state != current_state or moved_outside_zone" in controls
-    assert "movement_threshold_m: 250" in controls
+    assert "unique_id: vehicle_primary_current_location_since" not in controls
+    assert "moved_outside_zone" not in controls
+    assert "0.0023" not in controls
     assert "event_type: kia_uvo_api_retry" in controls
     assert "unique_id: vehicle_primary_api_retry_at" in controls
 

@@ -263,7 +263,237 @@ if (!contextCoordinator.func.includes(independentPeopleRecoveryMarker)) {
                         : "snapshots ready; política de refresh emitida"`,
   );
 }
-Object.assign(required("25ca02f8c1de32d0"), { x: 215, y: 680 });
+upsert({
+  id: "vehicle_primary_refresh_config_group_v1",
+  type: "group",
+  z: "c22d8b12055e87f7",
+  name: "3. Configuração dos intervalos do veículo",
+  style: {
+    label: true,
+    "label-position": "nw",
+    stroke: "#b38f00",
+    "stroke-opacity": "1",
+    fill: "none",
+    color: "#a4a4a4",
+  },
+  nodes: [],
+  x: 1344,
+  y: 259,
+  w: 552,
+  h: 302,
+});
+
+upsert({
+  id: "vehicle_primary_refresh_policy_group_v1",
+  type: "group",
+  z: "c22d8b12055e87f7",
+  name: "4. Política visual: 5 min, 15 min, 30 min e pausa noturna",
+  style: {
+    label: true,
+    "label-position": "nw",
+    stroke: "#4d7ea8",
+    "stroke-opacity": "1",
+    fill: "none",
+    color: "#a4a4a4",
+  },
+  nodes: [],
+  x: 1940,
+  y: 259,
+  w: 942,
+  h: 302,
+});
+
+upsert({
+  id: "vehicle_primary_refresh_config_help_v1",
+  type: "comment",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_refresh_config_group_v1",
+  name: "Duplo clique no número → altere o valor → Deploy",
+  info: "Os cinco blocos são a única configuração dos intervalos e da pausa noturna. Os valores são validados e persistidos no contexto do flow.",
+  x: 1585,
+  y: 300,
+  wires: [],
+  width: 430,
+});
+
+const refreshPolicyInjects = [
+  ["vehicle_primary_refresh_approaching_minutes_v1", "Chegando — 5 min", "approaching_interval_minutes", "5", 340],
+  ["vehicle_primary_refresh_away_minutes_v1", "Fora — 15 min", "away_interval_minutes", "15", 380],
+  ["vehicle_primary_refresh_home_minutes_v1", "Ambos em casa — 30 min", "home_interval_minutes", "30", 420],
+  ["vehicle_primary_refresh_quiet_start_v1", "Pausa começa — 0h", "quiet_start_hour", "0", 460],
+  ["vehicle_primary_refresh_quiet_end_v1", "Pausa termina — 6h", "quiet_end_hour", "6", 500],
+];
+
+for (const [id, name, topic, payload, y] of refreshPolicyInjects) {
+  upsert({
+    id,
+    type: "inject",
+    z: "c22d8b12055e87f7",
+    g: "vehicle_primary_refresh_config_group_v1",
+    name,
+    props: [{ p: "payload" }, { p: "topic", vt: "str" }],
+    repeat: "",
+    crontab: "",
+    once: true,
+    onceDelay: "0.5",
+    topic,
+    payload,
+    payloadType: "num",
+    x: 1485,
+    y,
+    wires: [["vehicle_primary_refresh_policy_config_apply_v1"]],
+  });
+}
+
+upsert({
+  id: "vehicle_primary_refresh_policy_config_apply_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_refresh_config_group_v1",
+  name: "Validar e salvar configuração",
+  func: source("vehicle-primary-refresh-policy-config.js"),
+  outputs: 1,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 1720,
+  y: 420,
+  wires: [[]],
+});
+
+Object.assign(required("25ca02f8c1de32d0"), {
+  g: "vehicle_primary_refresh_policy_group_v1",
+  x: 1980,
+  y: 320,
+  wires: [["vehicle_primary_refresh_policy_select_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_policy_select_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_refresh_policy_group_v1",
+  name: "Escolher pela presença",
+  func: source("vehicle-primary-refresh-policy.js"),
+  outputs: 4,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 2200,
+  y: 350,
+  wires: [
+    ["vehicle_primary_refresh_use_approaching_interval_v1"],
+    ["vehicle_primary_refresh_use_away_interval_v1"],
+    ["vehicle_primary_refresh_use_home_interval_v1"],
+    ["vehicle_primary_refresh_use_unknown_interval_v1"],
+  ],
+});
+
+function refreshIntervalNode(id, name, configProperty, policy, y) {
+  upsert({
+    id,
+    type: "change",
+    z: "c22d8b12055e87f7",
+    g: "vehicle_primary_refresh_policy_group_v1",
+    name,
+    rules: [
+      {
+        t: "set",
+        p: "payload.refresh_interval_ms",
+        pt: "msg",
+        to: `payload.refresh_policy_config.${configProperty}`,
+        tot: "msg",
+      },
+      {
+        t: "set",
+        p: "payload.refresh_interval_policy",
+        pt: "msg",
+        to: policy,
+        tot: "str",
+      },
+    ],
+    x: 2425,
+    y,
+    wires: [["vehicle_primary_refresh_quiet_hours_v1"]],
+  });
+}
+
+refreshIntervalNode(
+  "vehicle_primary_refresh_use_approaching_interval_v1",
+  "Usar intervalo chegando",
+  "approaching_interval_ms",
+  "approaching",
+  290,
+);
+refreshIntervalNode(
+  "vehicle_primary_refresh_use_away_interval_v1",
+  "Usar intervalo fora",
+  "away_interval_ms",
+  "away",
+  330,
+);
+refreshIntervalNode(
+  "vehicle_primary_refresh_use_home_interval_v1",
+  "Usar intervalo em casa",
+  "home_interval_ms",
+  "both_home",
+  370,
+);
+refreshIntervalNode(
+  "vehicle_primary_refresh_use_unknown_interval_v1",
+  "Usar intervalo seguro sem localização",
+  "away_interval_ms",
+  "presence_unknown",
+  410,
+);
+
+upsert({
+  id: "vehicle_primary_refresh_quiet_hours_v1",
+  type: "function",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_refresh_policy_group_v1",
+  name: "Pausar madrugada se ambos em casa",
+  func: source("vehicle-primary-refresh-quiet-hours.js"),
+  outputs: 1,
+  timeout: 0,
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 2660,
+  y: 370,
+  wires: [["vehicle_primary_refresh_policy_out_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_policy_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_refresh_policy_group_v1",
+  name: "Política pronta → coordenador",
+  mode: "link",
+  links: ["vehicle_primary_refresh_policy_in_v1"],
+  x: 2830,
+  y: 370,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_refresh_policy_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "43a2bc9c218353ae",
+  name: "Receber política pronta",
+  links: ["vehicle_primary_refresh_policy_out_v1"],
+  x: 215,
+  y: 680,
+  wires: [["b33e117e55bdb5ed"]],
+});
+
 Object.assign(required("eb4b8a519ab0bc28"), { x: 630, y: 780 });
 
 upsert({
@@ -425,12 +655,12 @@ upsert({
   id: "vehicle_primary_arrival_refresh_in_v1",
   type: "link in",
   z: "c22d8b12055e87f7",
-  g: "43a2bc9c218353ae",
-  name: "Receber refresh de chegada",
+  g: "vehicle_primary_refresh_policy_group_v1",
+  name: "Chegada solicita atualização",
   links: ["vehicle_primary_arrival_refresh_out_v1"],
-  x: 215,
-  y: 760,
-  wires: [["b33e117e55bdb5ed"]],
+  x: 1980,
+  y: 380,
+  wires: [["vehicle_primary_refresh_policy_select_v1"]],
 });
 
 upsert({
@@ -906,6 +1136,7 @@ const engineFailureClasses = new Set([
     "provider_backoff",
     "authentication",
     "timeout",
+    "no_fresh_data",
     "api_error"
 ]);
 const engineCommunicationFailed =
@@ -988,6 +1219,21 @@ const engineCommunicationFailed =
 }
 if (!normalizer.func.includes(engineTrustMarker)) {
   throw new Error("Confiança do motor ainda depende apenas de freshness");
+}
+if (!normalizer.func.includes('    "no_fresh_data",\n    "api_error"')) {
+  const legacyFailureClasses = `    "timeout",
+    "api_error"
+]);`;
+  if (!normalizer.func.includes(legacyFailureClasses)) {
+    throw new Error("Classes de falha do motor não encontradas");
+  }
+  normalizer.func = normalizer.func.replace(
+    legacyFailureClasses,
+    `    "timeout",
+    "no_fresh_data",
+    "api_error"
+]);`,
+  );
 }
 const preserveBypassRecoveryMarker =
   "preserve_bypass_recovery_on_semantic_success_v1";
@@ -1093,7 +1339,7 @@ normalizer.func = normalizer.func.replaceAll(
   cacheProbeAnchoredDeadline,
 );
 if (!normalizer.func.includes("Number(refreshState.next_allowed_at ?? 0)")) {
-  throw new Error("Não foi possível preservar o deadline após aceite do refresh");
+  throw new Error("Não foi possível preservar o deadline após o despacho");
 }
 normalizer.func = normalizer.func.replace(
   'const sharedRefreshState =\n    flow.get("security_vehicle_primary_refresh_v1", "persistent") ?? {};',
@@ -1119,6 +1365,49 @@ if (!normalizer.func.includes("refresh_state_contract_v1")) {
   if (!normalizer.func.includes("refresh_state_contract_v1")) {
     throw new Error("Não foi possível inserir refresh no contexto_vehicle_primary");
   }
+}
+
+/* O normalizador pode confirmar evidência semântica depois do aceite da API,
+ * mas não escolhe mais um intervalo próprio. O prazo usa exclusivamente o
+ * intervalo que os blocos visuais gravaram no estado do coordenador. */
+if (!normalizer.func.includes("refresh_policy_interval_passthrough_v1")) {
+  const stateWriter = `    const setRefreshState = (value) => TEST_MODE
+        ? flow.set(refreshKey, value)
+        : flow.set(refreshKey, value, "persistent");`;
+  if (!normalizer.func.includes(stateWriter)) {
+    throw new Error("Normalizer sem acesso ao estado único de refresh");
+  }
+  normalizer.func = normalizer.func.replace(
+    stateWriter,
+    `${stateWriter}
+    /* refresh_policy_interval_passthrough_v1 */
+    const configuredRefreshIntervalMs = Number(
+        refreshState?.interval_ms
+    );
+    const selectedRefreshIntervalMs =
+        Number.isFinite(configuredRefreshIntervalMs) &&
+        configuredRefreshIntervalMs > 0
+            ? configuredRefreshIntervalMs
+            : 0;`,
+  );
+}
+normalizer.func = normalizer.func.replaceAll(
+  `Number(refreshState.last_request_at ?? Date.now()) +
+                        15 * 60 * 1000`,
+  `Number(refreshState.last_request_at ?? Date.now()) +
+                        selectedRefreshIntervalMs`,
+);
+normalizer.func = normalizer.func.replaceAll(
+  "Date.now() + 15 * 60 * 1000",
+  "Date.now() + selectedRefreshIntervalMs",
+);
+if (
+  !normalizer.func.includes("refresh_policy_interval_passthrough_v1") ||
+  normalizer.func.includes(
+    "Number(refreshState.last_request_at ?? Date.now()) +\n                        15 * 60 * 1000",
+  )
+) {
+  throw new Error("Normalizer ainda recalcula o intervalo de refresh");
 }
 
 const errorLogger = required("vehicle_primary_api_error_log_v1");
@@ -1764,7 +2053,7 @@ upsert({
   id: "vehicle_primary_remote_command_test_group_v1",
   type: "group",
   z: "c22d8b12055e87f7",
-  name: "6. TESTE — resultado remoto sem efeitos",
+  name: "8. TESTE — resultado remoto sem efeitos",
   style: {
     label: true,
     stroke: "#ffb300",
@@ -1900,6 +2189,29 @@ addToGroup(
 );
 
 addToGroup(
+  "vehicle_primary_refresh_config_group_v1",
+  "vehicle_primary_refresh_config_help_v1",
+  "vehicle_primary_refresh_approaching_minutes_v1",
+  "vehicle_primary_refresh_away_minutes_v1",
+  "vehicle_primary_refresh_home_minutes_v1",
+  "vehicle_primary_refresh_quiet_start_v1",
+  "vehicle_primary_refresh_quiet_end_v1",
+  "vehicle_primary_refresh_policy_config_apply_v1",
+);
+addToGroup(
+  "vehicle_primary_refresh_policy_group_v1",
+  "25ca02f8c1de32d0",
+  "vehicle_primary_arrival_refresh_in_v1",
+  "vehicle_primary_refresh_policy_select_v1",
+  "vehicle_primary_refresh_use_approaching_interval_v1",
+  "vehicle_primary_refresh_use_away_interval_v1",
+  "vehicle_primary_refresh_use_home_interval_v1",
+  "vehicle_primary_refresh_use_unknown_interval_v1",
+  "vehicle_primary_refresh_quiet_hours_v1",
+  "vehicle_primary_refresh_policy_out_v1",
+);
+
+addToGroup(
   "790bea5f55d43bd0",
   "vehicle_primary_manual_refresh_button_v1",
   "vehicle_primary_manual_refresh_request_v1",
@@ -1935,13 +2247,21 @@ addToGroup(
   "vehicle_primary_provider_backoff_state_v1",
   "vehicle_primary_provider_backoff_sync_v1",
   "vehicle_primary_provider_bypass_command_v1",
+  "vehicle_primary_refresh_policy_in_v1",
 );
 
 const refreshGroup = required("43a2bc9c218353ae");
+refreshGroup.nodes = (refreshGroup.nodes ?? []).filter(
+  (id) => ![
+    "25ca02f8c1de32d0",
+    "vehicle_primary_arrival_refresh_in_v1",
+  ].includes(id),
+);
+refreshGroup.name = "5. Execução do refresh e viagens";
 Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 618 });
 
 const remoteCommandGroup = required("vehicle_primary_remote_command_group_v1");
-remoteCommandGroup.name = "4. Resultado final dos comandos remotos";
+remoteCommandGroup.name = "6. Resultado final dos comandos remotos";
 const remoteCommandShift = 1259 - remoteCommandGroup.y;
 remoteCommandGroup.y += remoteCommandShift;
 for (const id of remoteCommandGroup.nodes ?? []) {
@@ -1949,7 +2269,7 @@ for (const id of remoteCommandGroup.nodes ?? []) {
 }
 
 const manualTestGroup = required("5df25064f701ecd2");
-manualTestGroup.name = "5. Testes manuais — motor e localização sintéticos/cumulativos";
+manualTestGroup.name = "7. Testes manuais — motor e localização sintéticos/cumulativos";
 const manualTestShift = Math.max(0, 1619 - manualTestGroup.y);
 if (manualTestShift > 0) {
   manualTestGroup.y += manualTestShift;

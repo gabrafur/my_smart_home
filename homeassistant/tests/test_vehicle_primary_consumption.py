@@ -1314,9 +1314,10 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             HyundaiKiaConnectDataUpdateCoordinator._schedule_br_fresh_data_recheck,
             coordinator,
         )
-        await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
-            coordinator, VEHICLE_ID
-        )
+        with self.assertRaisesRegex(Exception, "fresh data is pending"):
+            await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                coordinator, VEHICLE_ID
+            )
         assert calls == ["wake", "cache"]
         tasks[0].cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -1391,10 +1392,11 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             "BR_FRESH_DATA_RECHECK_DELAYS_S",
             (0, 0),
         ):
-            await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
-                coordinator,
-                VEHICLE_ID,
-            )
+            with self.assertRaisesRegex(Exception, "fresh data is pending"):
+                await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                    coordinator,
+                    VEHICLE_ID,
+                )
             await tasks[0]
 
         assert calls == ["wake", "cache", "cache", "cache"]
@@ -1585,9 +1587,10 @@ class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
             data={"cached": True},
             async_set_updated_data=published.append,
         )
-        await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
-            coordinator, VEHICLE_ID
-        )
+        with self.assertRaisesRegex(Exception, "authentication unavailable"):
+            await HyundaiKiaConnectDataUpdateCoordinator.async_force_refresh_vehicle(
+                coordinator, VEHICLE_ID
+            )
         assert published == [{"cached": True}]
 
     async def test_br_authentication_failure_retries_without_unloading_entry(self):

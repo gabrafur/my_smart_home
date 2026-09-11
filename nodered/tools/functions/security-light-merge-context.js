@@ -12,8 +12,27 @@ const incomingAt = Number(
     0
 );
 const FUTURE_TOLERANCE_MS = 60 * 1000;
-const SHORT_RECOVERY_TTL_MS = 2 * 60 * 1000;
 const PERSISTENT = "persistent";
+const LOCATION_POLICY = global.get(
+    "location_policy_v1",
+    PERSISTENT
+);
+const ARRIVAL_RECOVERY_TTL_MS =
+    Number(LOCATION_POLICY?.arrival_recovery_minutes) *
+    60 * 1000;
+
+if (
+    LOCATION_POLICY?.version !== 1 ||
+    LOCATION_POLICY?.complete !== true ||
+    !Number.isFinite(ARRIVAL_RECOVERY_TTL_MS) ||
+    ARRIVAL_RECOVERY_TTL_MS < 3 * 60 * 1000
+) {
+    node.error(
+        "iluminacao_seguranca: política canônica de retenção ausente",
+        msg
+    );
+    return [null, null, null];
+}
 
 function contextKey(base) {
     return TEST_MODE ? `${base}__test` : base;
@@ -139,9 +158,6 @@ const bypassAutomatic = ctxGet(
     PERSISTENT
 ) === true;
 const engineStateKnown = vehicle.engine_state_valid === true;
-const engineKnownOff =
-    engineStateKnown &&
-    vehicle.engine_on === false;
 const engineCommunicationFailed =
     vehicle.engine_communication_failed === true ||
     ctxGet(
@@ -151,10 +167,13 @@ const engineCommunicationFailed =
     bypassAutomatic;
 const engineUnreliable =
     engineCommunicationFailed;
+const engineKnownOff =
+    engineStateKnown &&
+    vehicle.engine_on === false &&
+    !engineUnreliable;
 const bypassAllowed =
     bypassEnabled &&
-    engineUnreliable &&
-    !engineKnownOff;
+    engineUnreliable;
 const engineGateAllowed =
     vehicle.in_use === true &&
     vehicle.engine_on === true &&
@@ -180,11 +199,20 @@ if (pending) {
         ["resident_primary", "resident_secondary"].includes(
             pending.source
         );
+    const isVehicleApproach =
+        pending.version === 2 &&
+        pending.retention === "while_vehicle_approaching" &&
+        pending.source === "vehicle_primary";
+    const expiresAt = Number(pending.expires_at ?? 0);
     let validPending =
         Boolean(pending.message) &&
         Number.isFinite(queuedAt) &&
         queuedAt > 0 &&
-        queuedAt <= Date.now() + FUTURE_TOLERANCE_MS;
+        queuedAt <= Date.now() + FUTURE_TOLERANCE_MS &&
+        Number.isFinite(expiresAt) &&
+        Date.now() <= expiresAt &&
+        expiresAt - queuedAt <=
+            ARRIVAL_RECOVERY_TTL_MS + 1000;
     let invalidReason = null;
 
     if (validPending && isApproach) {
@@ -200,13 +228,24 @@ if (pending) {
                     ? "resident_location_stale"
                     : "resident_left_approach_zone";
         }
-    } else if (validPending) {
-        const expiresAt = Number(pending.expires_at ?? 0);
+    } else if (validPending && isVehicleApproach) {
+        const location = vehicle.location ?? {};
         validPending =
-            Number.isFinite(expiresAt) &&
-            Date.now() <= expiresAt &&
-            expiresAt - queuedAt <= SHORT_RECOVERY_TTL_MS + 1000;
-        if (!validPending) invalidReason = "short_recovery_expired";
+            location.ready === true &&
+            location.stale !== true &&
+            location.state === "chegando";
+        if (!validPending) {
+            invalidReason = location.state === "home"
+                ? "vehicle_home"
+                : location.stale === true || location.ready !== true
+                    ? "vehicle_location_stale"
+                    : "vehicle_left_approach_zone";
+        }
+    } else if (validPending) {
+        validPending = pending.retention === "recovery_window";
+        if (!validPending) invalidReason = "invalid_retention";
+    } else if (Date.now() > expiresAt) {
+        invalidReason = "arrival_recovery_expired";
     }
 
     if (!validPending) {

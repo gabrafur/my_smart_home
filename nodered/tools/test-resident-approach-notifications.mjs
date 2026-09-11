@@ -46,21 +46,14 @@ const originalNow = Date.now;
 Date.now = () => NOW;
 
 function event(source, previous = "not_home", current = "chegando", offset = 0) {
-  const prefix = source === "resident_primary" ? "resident_primary" : "resident_secondary";
   return {
     payload: {
       event: "location_update",
       source,
-      trigger_entity: source === "resident_primary"
-        ? "device_tracker.mobile_primary_source_1"
-        : "device_tracker.mobile_secondary_source_1",
+      trigger_entity: `device_tracker.${source}_location`,
       trigger_state: current,
       trigger_prev_state: previous,
       observed_at: new Date(NOW + offset).toISOString(),
-      resident_primary_source_1: prefix === "resident_primary" ? current : "not_home",
-      resident_primary_source_2: "not_home",
-      resident_secondary_source_1: prefix === "resident_secondary" ? current : "not_home",
-      resident_secondary_source_2: "not_home",
     },
   };
 }
@@ -71,10 +64,19 @@ function scenario(name, callback) {
   passed.push(name);
 }
 
-scenario("01 fluxo é independente de contexto, veículo e iluminação", () => {
+scenario("01 fluxo recebe somente a decisão canônica de localização", () => {
   const tab = byId.get("resident_notifications_tab");
+  const canonicalIn = byId.get("resident_notifications_canonical_in_v1");
+  const canonicalOut = byId.get("people_location_notification_out_v1");
   assert.equal(tab.label, "notificacoes_chegadas_residentes");
   assert.doesNotMatch(prepare.func, /vehicle_primary|sun\.|below_horizon|hour|contexto_chegadas/);
+  assert.doesNotMatch(prepare.func, /mobile_primary_source|mobile_secondary_source/);
+  assert(canonicalIn.links.includes(canonicalOut.id));
+  assert(canonicalOut.links.includes(canonicalIn.id));
+  assert.equal(
+    flows.filter((node) => node.z === tab.id && node.type === "server-state-changed").length,
+    0,
+  );
   assert.deepEqual(prepare.wires, [
     ["resident_notifications_notify_primary"],
     ["resident_notifications_notify_secondary"],

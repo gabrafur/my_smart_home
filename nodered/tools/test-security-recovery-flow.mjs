@@ -6,6 +6,8 @@ const byId = new Map(flows.map((item) => [item.id, item]));
 const aliasesByName = {
   people_normalize: "Normalizar pessoas e detectar transições",
   vehicle_primary_normalize: "Normalizar vehicle_primary e detectar transições",
+  vehicle_primary_refresh_policy: "Escolher pela presença",
+  vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
   vehicle_primary_refresh_decide: "Coordenar refresh do vehicle_primary",
   context_coordinator: "Coordenar snapshot e refresh",
   light_merge_context: "Atualizar contexto de alto nível",
@@ -22,6 +24,22 @@ for (const [alias, name] of Object.entries(aliasesByName)) {
 const NOW = Date.parse("2026-08-13T12:00:00.000Z");
 const originalNow = Date.now;
 Date.now = () => NOW;
+const LOCATION_POLICY = {
+  version: 1, owner: "node_red", complete: true,
+  arrival_distance_m: 700, location_fresh_minutes: 15,
+  source_report_fresh_minutes: 75, recency_tie_seconds: 60,
+  max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
+  movement_threshold_m: 250, arm_distance_m: 100,
+  arrival_recovery_minutes: 10,
+};
+
+function memoryGlobal() {
+  const values = new Map([["location_policy_v1", LOCATION_POLICY]]);
+  return {
+    get: (key) => values.get(key),
+    set: (key, value) => values.set(key, value),
+  };
+}
 
 function memoryFlow(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -37,7 +55,46 @@ function run(id, msg, flow = memoryFlow(), warnings = []) {
   assert(target, `node ausente: ${id}`);
   const execute = new Function("msg", "node", "context", "flow", "global", "env", "setTimeout", "clearTimeout", target.func);
   const env = { get: (key) => ({ HOME_LAT: "0", HOME_LON: "0", GATE_LAT: "0", GATE_LON: "0" })[key] };
-  return execute(msg, { warn: (text) => warnings.push(text), error() {}, status() {} }, {}, flow, {}, env, setTimeout, clearTimeout);
+  return execute(msg, { warn: (text) => warnings.push(text), error() {}, status() {} }, {}, flow, memoryGlobal(), env, setTimeout, clearTimeout);
+}
+
+function runPeoplePipeline(msg, flow = memoryFlow()) {
+  const observed = run("people_location_observation_v1", msg, flow);
+  const selected = run("people_location_select_v1", observed, flow);
+  return run("people_normalize", selected, flow);
+}
+
+function runVehicleRefresh(msg, flow) {
+  if (!flow.get("vehicle_primary_refresh_policy_config_v1")) {
+    flow.set("vehicle_primary_refresh_policy_config_v1", {
+      version: 1,
+      complete: true,
+      approaching_interval_minutes: 5,
+      away_interval_minutes: 15,
+      home_interval_minutes: 30,
+      quiet_start_hour: 0,
+      quiet_end_hour: 6,
+    });
+  }
+  const branches = run("vehicle_primary_refresh_policy", msg, flow);
+  const selected = branches.find(Boolean);
+  if (!selected) return null;
+  const bothHome = selected.payload.refresh_both_residents_home === true;
+  const approaching = selected.payload.refresh_anyone_approaching === true;
+  selected.payload.refresh_interval_ms = approaching
+    ? selected.payload.refresh_policy_config.approaching_interval_ms
+    : bothHome
+      ? selected.payload.refresh_policy_config.home_interval_ms
+      : selected.payload.refresh_policy_config.away_interval_ms;
+  selected.payload.refresh_interval_policy = approaching
+    ? "approaching"
+    : bothHome
+      ? "both_home"
+      : "away";
+  const allowed = run("vehicle_primary_refresh_quiet_hours", selected, flow);
+  return allowed
+    ? run("vehicle_primary_refresh_decide", allowed, flow)
+    : null;
 }
 
 function iso(offset = 0) {
@@ -64,8 +121,10 @@ function peopleInput({ source = "resident_primary", state = "home", previous = "
     event, source, trigger_state: state, trigger_prev_state: previous, refresh_cycle_id: cycle,
     resident_primary: source === "resident_primary" ? selected : home,
     resident_primary_icloud: source === "resident_primary" ? selected : home,
+    resident_primary_selected: source === "resident_primary" ? selected : home,
     resident_secondary: source === "resident_secondary" ? selected : home,
     resident_secondary_icloud: source === "resident_secondary" ? selected : home,
+    resident_secondary_selected: source === "resident_secondary" ? selected : home,
   } };
 }
 
@@ -242,7 +301,7 @@ scenario("21 duas reinicializações em sequência", () => {
 
 scenario("22 restart durante retry do vehicle_primary", () => {
   const flow = memoryFlow({ vehicle_primary_context_v1: { away: true }, security_vehicle_primary_refresh_v1: { attempts: 2, next_allowed_at: NOW + 60_000, last_success_at: 0 } });
-  assert.equal(run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow), null);
+  assert.equal(runVehicleRefresh({ payload: { kind: "refresh_command", anyone_away: true } }, flow), null);
 });
 
 scenario("23 restart após início da condição antes dos 90 s", () => {
@@ -324,7 +383,7 @@ scenario("31 snapshot antigo chegando após snapshot novo", () => {
 
 scenario("32 retry repetido de Bluelink", () => {
   const flow = memoryFlow({ vehicle_primary_context_v1: { away: true } });
-  run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow);
+  runVehicleRefresh({ payload: { kind: "refresh_command", anyone_away: true } }, flow);
   const state = flow.get("security_vehicle_primary_refresh_v1");
   assert.equal(state.attempts, 1);
   assert.equal(state.next_allowed_at, NOW + 15 * 60_000);
@@ -411,7 +470,7 @@ scenario("41 tracker stale perde para localização alternativa atual", () => {
   input.payload.resident_primary = mobile;
   input.payload.resident_primary_icloud = icloud;
 
-  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  const context = runPeoplePipeline(input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_primary.entity_id, icloud.entity_id);
   assert.equal(context.resident_primary.state, "home");
   assert.equal(context.resident_primary.distance_m, 25);
@@ -426,7 +485,7 @@ scenario("42 trackers quase simultâneos usam a melhor precisão", () => {
   input.payload.resident_secondary = mobile;
   input.payload.resident_secondary_icloud = icloud;
 
-  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  const context = runPeoplePipeline(input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_secondary.entity_id, icloud.entity_id);
   assert.equal(context.resident_secondary.state, "home");
 });
@@ -440,7 +499,7 @@ scenario("43 atualização materialmente mais nova vence precisão menor", () =>
   input.payload.resident_primary = mobile;
   input.payload.resident_primary_icloud = icloud;
 
-  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  const context = runPeoplePipeline(input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_primary.entity_id, mobile.entity_id);
   assert.equal(context.resident_primary.state, "not_home");
 });
@@ -454,12 +513,12 @@ scenario("44 coordenadas confiáveis vencem tracker impreciso", () => {
   input.payload.resident_primary = mobile;
   input.payload.resident_primary_icloud = icloud;
 
-  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  const context = runPeoplePipeline(input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_primary.entity_id, icloud.entity_id);
   assert.equal(context.resident_primary.location_reliable, true);
 });
 
-scenario("45 tracker não selecionado não altera a melhor localização", () => {
+scenario("45 tracker não selecionado não influencia decisões canônicas", () => {
   const mobile = entity("not_home", 2_000, 30 * 60_000, 40);
   mobile.entity_id = "device_tracker.mobile_secondary_source_1";
   const icloud = entity("home", 25, 0, 5);
@@ -468,13 +527,13 @@ scenario("45 tracker não selecionado não altera a melhor localização", () =>
   input.payload.resident_secondary = mobile;
   input.payload.resident_secondary_icloud = icloud;
 
-  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  const context = runPeoplePipeline(input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_secondary.entity_id, icloud.entity_id);
   assert.equal(context.resident_secondary.state, "home");
   assert.equal(context.resident_secondary.best_location_away, false);
-  assert.equal(context.resident_secondary.any_tracker_away, true);
+  assert.equal(context.resident_secondary.any_tracker_away, false);
   assert.equal(context.best_location_away, false);
-  assert.equal(context.any_tracker_away, true);
+  assert.equal(context.any_tracker_away, false);
 });
 
 scenario("46 bateria do iCloud não renova localização congelada", () => {
@@ -493,7 +552,7 @@ scenario("46 bateria do iCloud não renova localização congelada", () => {
   input.payload.resident_secondary = mobile;
   input.payload.resident_secondary_icloud = icloud;
 
-  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  const context = runPeoplePipeline(input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_secondary.entity_id, mobile.entity_id);
   assert.equal(context.resident_secondary.state, "not_home");
   assert.equal(context.resident_secondary.updated_at, NOW - 60 * 60_000);
@@ -512,9 +571,9 @@ scenario("47 chegando recente e preciso vence fallback antigo em home", () => {
   });
   input.payload.resident_secondary = mobile;
   input.payload.resident_secondary_icloud = icloud;
+  input.payload.trigger_entity = mobile.entity_id;
 
-  const result = run(
-    "people_normalize",
+  const result = runPeoplePipeline(
     input,
     memoryFlow({ people_arrival_armed: { resident_secondary: true } }),
   );
@@ -534,7 +593,7 @@ scenario("48 posição recente sem precisão aceitável não vence posição pre
   input.payload.resident_primary = mobile;
   input.payload.resident_primary_icloud = icloud;
 
-  const context = run("people_normalize", input, memoryFlow())[0].payload.context;
+  const context = runPeoplePipeline(input, memoryFlow())[0].payload.context;
   assert.equal(context.resident_primary.entity_id, icloud.entity_id);
   assert.equal(context.resident_primary.state, "home");
 });

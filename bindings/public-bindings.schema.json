@@ -61,32 +61,11 @@
     "entity_binding": {
       "type": "object",
       "additionalProperties": false,
-      "oneOf": [
-        {
-          "required": ["target_entity_id"],
-          "not": { "required": ["target_entity_ids"] }
-        },
-        {
-          "required": ["target_entity_ids", "selection_mode"],
-          "not": { "required": ["target_entity_id"] }
-        }
-      ],
+      "required": ["target_entity_id"],
       "properties": {
         "target_entity_id": {
           "type": "string",
           "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
-        },
-        "target_entity_ids": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^[a-z0-9_]+\\.[a-z0-9_]+$"
-          },
-          "minItems": 2,
-          "uniqueItems": true
-        },
-        "selection_mode": {
-          "const": "best_location"
         },
         "state_mode": {
           "enum": ["passthrough", "home_away", "boolean"]
@@ -100,12 +79,6 @@
         "display_name": {
           "type": "string",
           "minLength": 1
-        },
-        "source_names": {
-          "type": "array",
-          "items": { "type": "string", "minLength": 1 },
-          "minItems": 1,
-          "uniqueItems": true
         },
         "hide_targets": {
           "type": "boolean"

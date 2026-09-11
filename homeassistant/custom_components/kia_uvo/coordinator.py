@@ -688,16 +688,14 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
             except AuthenticationError as err:
                 if type(api).__name__ != "HyundaiBlueLinkApiBR":
                     raise
-                # A transient BR sign-in failure is not a programming error.
-                # Node-RED still requires newer entity timestamps before it
-                # declares success, so preserving the cache safely drives the
-                # same retry/backoff without an unhandled WebSocket error.
                 _LOGGER.warning(
                     "CRETA_REFRESH_AUTH_UNAVAILABLE keeping cached state: %s",
                     err,
                 )
                 self.async_set_updated_data(self.data)
-                return
+                raise HomeAssistantError(
+                    "Bluelink authentication unavailable; cached state preserved"
+                ) from err
             vehicle = self.vehicle_manager.vehicles.get(vehicle_id)
             baseline_updated_at = getattr(vehicle, "last_updated_at", None)
             requested_at = dt.datetime.now(dt.UTC)
@@ -766,7 +764,10 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                         vehicle_id,
                         err,
                     )
-                    return
+                    raise HomeAssistantError(
+                        "Bluelink wake accepted but fresh data is pending; "
+                        "bounded cached rechecks remain scheduled"
+                    ) from err
                 _LOGGER.warning(
                     "CRETA_REFRESH_FAILED vehicle_id=%s; keeping cached state: %s",
                     vehicle_id,

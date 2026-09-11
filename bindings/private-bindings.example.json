@@ -12,6 +12,7 @@
           "target_entity_id": "device_tracker.example_mobile_primary",
           "state_mode": "passthrough",
           "force_update": true,
+          "hide_targets": true,
           "attributes": [
             "gps_accuracy",
             "latitude",
@@ -28,6 +29,7 @@
           "target_entity_id": "device_tracker.example_mobile_primary_fallback",
           "state_mode": "passthrough",
           "force_update": true,
+          "hide_targets": true,
           "attributes": [
             "gps_accuracy",
             "latitude",
@@ -38,27 +40,6 @@
             "gps_accuracy",
             "latitude",
             "longitude"
-          ]
-        },
-        "device_tracker.resident_primary_location": {
-          "target_entity_ids": [
-            "device_tracker.example_mobile_primary",
-            "device_tracker.example_mobile_primary_fallback"
-          ],
-          "selection_mode": "best_location",
-          "state_mode": "passthrough",
-          "force_update": true,
-          "display_name": "Example Primary Resident",
-          "hide_targets": true,
-          "source_names": [
-            "Home Assistant App",
-            "iCloud"
-          ],
-          "attributes": [
-            "gps_accuracy",
-            "latitude",
-            "longitude",
-            "source_type"
           ]
         }
       }
@@ -74,6 +55,7 @@
           "target_entity_id": "device_tracker.example_mobile_secondary",
           "state_mode": "passthrough",
           "force_update": true,
+          "hide_targets": true,
           "attributes": [
             "gps_accuracy",
             "latitude",
@@ -90,6 +72,7 @@
           "target_entity_id": "device_tracker.example_mobile_secondary_fallback",
           "state_mode": "passthrough",
           "force_update": true,
+          "hide_targets": true,
           "attributes": [
             "gps_accuracy",
             "latitude",
@@ -100,27 +83,6 @@
             "gps_accuracy",
             "latitude",
             "longitude"
-          ]
-        },
-        "device_tracker.resident_secondary_location": {
-          "target_entity_ids": [
-            "device_tracker.example_mobile_secondary",
-            "device_tracker.example_mobile_secondary_fallback"
-          ],
-          "selection_mode": "best_location",
-          "state_mode": "passthrough",
-          "force_update": true,
-          "display_name": "Example Secondary Resident",
-          "hide_targets": true,
-          "source_names": [
-            "Home Assistant App",
-            "iCloud"
-          ],
-          "attributes": [
-            "gps_accuracy",
-            "latitude",
-            "longitude",
-            "source_type"
           ]
         }
       }
@@ -165,12 +127,16 @@
           "state_mode": "passthrough",
           "display_name": "Example Vehicle",
           "hide_targets": true,
-          "source_names": ["Bluelink"],
           "attributes": [
             "gps_accuracy",
             "latitude",
             "longitude",
             "source_type"
+          ],
+          "string_attributes": [
+            "gps_accuracy",
+            "latitude",
+            "longitude"
           ]
         },
         "button.vehicle_primary_force_refresh": {

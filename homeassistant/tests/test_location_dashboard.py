@@ -22,7 +22,9 @@ class LocationDashboardTest(unittest.TestCase):
         self.assertNotIn("          - entity:", dashboard)
         self.assertIn("cluster: false", dashboard)
         self.assertIn("hours_to_show: 0", dashboard)
-        self.assertIn('entity_id.startswith("zone.")', component)
+        self.assertIn('("zone.", "person.")', component)
+        self.assertIn('state.attributes.get("decision_owner") == "node_red"', component)
+        self.assertIn("entity_id in person_sources and not node_red_location", component)
         self.assertIn('hass.bus.async_listen(EVENT_STATE_CHANGED', component)
         self.assertIn("EVENT_ENTITY_REGISTRY_UPDATED", component)
         self.assertIn('map_card["entities"] = list(entity_ids)', component)
@@ -41,16 +43,28 @@ class LocationDashboardTest(unittest.TestCase):
             1,
         )
         self.assertIn("selected_location_source", dashboard)
+        self.assertEqual(
+            dashboard.count(
+                "selectattr('attributes.decision_owner', 'eq', 'node_red')"
+            ),
+            2,
+        )
         self.assertIn("title: Last update by source", dashboard)
         self.assertIn("location_sources", dashboard)
         self.assertIn("source.last_updated", dashboard)
         self.assertIn("source.location_observed_at", dashboard)
+        self.assertIn("source.reporting_fresh", dashboard)
+        self.assertIn("source.position_fresh", dashboard)
         self.assertIn("Source reporting", dashboard)
-        self.assertIn("Source reporting late", dashboard)
         self.assertIn("Source not reporting", dashboard)
         self.assertIn("Position changed recently", dashboard)
         self.assertIn("Position unchanged", dashboard)
         self.assertIn("Source last reported", dashboard)
+        self.assertNotIn("report_age", dashboard)
+        self.assertNotIn("gps_age", dashboard)
+        self.assertNotIn("4500", dashboard)
+        self.assertNotIn("10800", dashboard)
+        self.assertNotIn("900", dashboard)
         self.assertNotIn("Stale GPS", dashboard)
 
     def test_dashboard_labels_are_english_only(self):

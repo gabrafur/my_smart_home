@@ -48,12 +48,15 @@ example contains all eight required roles.
 - forwards allowlisted actions through `public_bindings.call`.
 
 Public `device_tracker` aliases use `state_mode: passthrough` so named zones
-remain intact. When a resident has multiple GPS sources, the consolidated
-binding uses `target_entity_ids` with `selection_mode: best_location`. It
-follows the same contract as `localizacao_pessoas`: prefer a current source,
-reliable coordinates, a materially newer observation, and then better GPS
-accuracy. Each private `person` entity points only to its role's consolidated
-tracker.
+remain intact. When a resident has multiple GPS sources, Home Assistant exposes
+only single-source aliases such as `device_tracker.mobile_primary_source_1` and
+`_source_2`; `public_bindings` does not select or consolidate them. The visual
+blocks in Node-RED's `localizacao_pessoas` tab own the single decision: location
+freshness, reliable coordinates, material recency, accuracy, and valid state.
+Node-RED publishes the result over MQTT as
+`device_tracker.resident_primary_location` and
+`device_tracker.resident_secondary_location`, with
+`decision_owner: node_red`.
 
 The native Map panel omits entities whose current state is `home`. The
 `dashboards/location.yaml` file therefore uses a `map` card with
@@ -61,28 +64,25 @@ The native Map panel omits entities whose current state is `home`. The
 exposes a numeric location, including entities at home. Display names and
 public source labels stay in private bindings; the vehicle is shown as `Creta`.
 
-Location bindings may declare `source_names` in target order. The adapter
-publishes only the winning label in `selected_location_source` and a sanitized
-`location_sources` list containing each public label, original source heartbeat,
-and last location observation. The adapter keeps `location_observed_at`
-separate from `source_reported_at`: battery or other metadata changes may prove
-that a source is reporting but do not refresh a GPS position. The original
-heartbeat is propagated through intermediate aliases instead of being replaced
-by their startup republication time. At startup, the GPS timestamp is recovered
-from Recorder history by comparing only state, coordinates, and accuracy. Two
-dynamic Markdown cards show this information without exposing private IDs.
+The adapter keeps `location_observed_at` separate from `source_reported_at` on
+each alias: battery or metadata changes can prove that a source is reporting,
+but they do not refresh a GPS position. The original heartbeat is propagated
+through aliases and the position timestamp is recovered from Recorder history
+at startup by comparing only state, coordinates, and accuracy.
 
-Consolidated bindings use `hide_targets: true` to hide only their private input
-trackers from visual discovery. Those trackers remain active and available to
-the adapter and Node-RED but no longer become duplicate markers. A third
-dynamic card preserves `home`, `not_home`, `chegando`, or any current named
-zone. New entities with coordinates still enter the map automatically through
-`show_all`.
+Node-RED publishes the winning `selected_location_source`, a sanitized
+`location_sources` list, and the already-computed `position_fresh`,
+`reporting_fresh`, and `reliable_coordinates` results. Map cards only display
+those values and contain no timing windows or selection algorithm. Source
+aliases use `hide_targets: true` and string coordinates, remaining available to
+the flow without producing duplicate visual markers.
 
 All `vehicle_primary` bindings also use `hide_targets: true`. Native Bluelink
-entities remain active as internal targets, while only the vehicle's public
-aliases appear in visual discovery, avoiding duplicate `creta_*` and
-`vehicle_primary_*` pairs.
+entities remain active as internal targets, while the input alias
+`device_tracker.vehicle_primary` exposes string coordinates only to Node-RED.
+The map and dashboard use the numeric
+`device_tracker.vehicle_primary_location_nodered` output published by the same
+flow that decides movement and `location_since`, avoiding duplicate markers.
 Bindings used only to resolve an action may set `expose_state: false`. Their
 public IDs remain available internally to `target_public_entity_id` without
 creating a second visible button. Vehicle refresh uses this mode, so the UI
@@ -90,10 +90,13 @@ shows only the `input_button` routed through the single coordinator.
 
 The `consolidated_map` component idempotently applies that same YAML file to
 the native `/map` dashboard during startup. The file is not registered as a
-second sidebar panel: the native Map tab is the only exposed interface and does
-not implement another source selector.
+second sidebar panel: the native Map tab is the only exposed interface. Its
+status and health cards accept only entities carrying
+`decision_owner: node_red`, so they implement neither source selection nor
+freshness decisions.
 
-Intermediate aliases consumed by `localizacao_pessoas` keep `latitude`,
+Intermediate aliases consumed by `localizacao_pessoas` and
+`contexto_vehicle_primary` keep `latitude`,
 `longitude`, and `gps_accuracy` in `string_attributes`. Node-RED explicitly
 normalizes them with `Number(...)`, while the Map frontend accepts only numeric
 coordinates as a location. This keeps Mobile App and iCloud from appearing as
@@ -102,6 +105,10 @@ normalizer uses `location_observed_at`, never generic `last_updated`, to decide
 freshness and precedence between sources. Source heartbeat is evaluated
 separately to recognize an active stationary source without authorizing an
 arrival from old coordinates.
+
+`person.*` entities are not materialized in the Map card: each resident's
+position is represented only by the canonical Node-RED tracker. Zones and the
+trackers feeding those person entities remain excluded as well.
 
 Simple pushes use `notify.send_message` with a `notify.*` entity; that service
 accepts only a title and message. Buttons, tags, and `clear_notification` use

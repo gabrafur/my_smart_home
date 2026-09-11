@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression checks for consolidated resident location selection."""
+"""Regression checks for raw location observations exposed to Node-RED."""
 
 from datetime import datetime, timedelta, timezone
 import importlib.util
@@ -59,7 +59,7 @@ def state(
     )
 
 
-class BestLocationSelectionTest(unittest.TestCase):
+class PublicLocationObservationTest(unittest.TestCase):
     def test_source_heartbeat_survives_nested_alias_republication(self):
         upstream = NOW - timedelta(hours=2)
         nested_alias = state(
@@ -104,38 +104,6 @@ class BestLocationSelectionTest(unittest.TestCase):
         self.assertIn("source_reports[target] = location_observed_at", component)
         self.assertIn("startup_mobile_restore", component)
 
-    def test_current_source_wins_over_stale_source(self):
-        mobile_app = state("chegando", age=timedelta(days=3), accuracy=4)
-        icloud = state("home", accuracy=25)
-
-        self.assertIs(
-            LOCATION.select_best_location([mobile_app, icloud], NOW), icloud
-        )
-
-    def test_reliable_coordinates_win(self):
-        mobile_app = state("chegando", accuracy=999)
-        icloud = state("home", accuracy=10)
-
-        self.assertIs(
-            LOCATION.select_best_location([mobile_app, icloud], NOW), icloud
-        )
-
-    def test_materially_newer_source_wins_before_accuracy(self):
-        mobile_app = state("not_home", accuracy=50)
-        icloud = state("home", age=timedelta(minutes=2), accuracy=4)
-
-        self.assertIs(
-            LOCATION.select_best_location([mobile_app, icloud], NOW), mobile_app
-        )
-
-    def test_accuracy_breaks_near_simultaneous_tie(self):
-        mobile_app = state("chegando", age=timedelta(seconds=5), accuracy=10)
-        icloud = state("home", accuracy=4)
-
-        self.assertIs(
-            LOCATION.select_best_location([mobile_app, icloud], NOW), icloud
-        )
-
     def test_battery_update_does_not_make_stale_location_current(self):
         observations = {}
         icloud = state(
@@ -146,15 +114,7 @@ class BestLocationSelectionTest(unittest.TestCase):
             entity_id="device_tracker.mobile_secondary_source_2",
             extra_attributes={"battery": 68},
         )
-        mobile_app = state(
-            "not_home",
-            age=timedelta(hours=1),
-            changed_age=timedelta(hours=1),
-            accuracy=40,
-            entity_id="device_tracker.mobile_secondary_source_1",
-        )
         LOCATION.update_location_observation(observations, icloud)
-        LOCATION.update_location_observation(observations, mobile_app)
 
         icloud_battery_update = state(
             "home",
@@ -172,14 +132,6 @@ class BestLocationSelectionTest(unittest.TestCase):
         self.assertEqual(
             LOCATION.location_observed_at(observations, icloud_battery_update),
             NOW - timedelta(hours=4),
-        )
-        self.assertIs(
-            LOCATION.select_best_location(
-                [mobile_app, icloud_battery_update],
-                NOW,
-                observations,
-            ),
-            mobile_app,
         )
 
     def test_coordinate_change_refreshes_location_observation(self):
@@ -243,25 +195,25 @@ class BestLocationSelectionTest(unittest.TestCase):
                     set(entities[f"{prefix}{index}"]["string_attributes"]),
                     expected_strings,
                 )
-            self.assertNotIn(
-                "string_attributes",
-                entities[f"device_tracker.{role}_location"],
-            )
-            self.assertEqual(
-                entities[f"device_tracker.{role}_location"]["source_names"],
-                ["Home Assistant App", "iCloud"],
-            )
-            self.assertTrue(
-                entities[f"device_tracker.{role}_location"]["display_name"]
-            )
-            self.assertIs(
-                entities[f"device_tracker.{role}_location"]["hide_targets"],
-                True,
-            )
+                self.assertIs(
+                    entities[f"{prefix}{index}"]["hide_targets"],
+                    True,
+                )
+            self.assertNotIn(f"device_tracker.{role}_location", entities)
+
+        component = COMPONENT_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("select_best_location", component)
+        self.assertNotIn("selection_mode", component)
+        self.assertNotIn("source_names", component)
+        self.assertNotIn('attributes["location_sources"]', component)
 
         vehicle_entities = document["roles"]["vehicle_primary"]["entities"]
         vehicle = vehicle_entities["device_tracker.vehicle_primary"]
-        self.assertEqual(vehicle["source_names"], ["Bluelink"])
+        self.assertNotIn("source_names", vehicle)
+        self.assertEqual(
+            set(vehicle["string_attributes"]),
+            {"gps_accuracy", "latitude", "longitude"},
+        )
         self.assertTrue(vehicle["display_name"])
         self.assertIs(
             vehicle_entities["button.vehicle_primary_force_refresh"][

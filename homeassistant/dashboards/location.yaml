@@ -37,6 +37,7 @@ views:
             content: |-
               {% set items = states.device_tracker
                 | selectattr('attributes.selected_location_source', 'defined')
+                | selectattr('attributes.decision_owner', 'eq', 'node_red')
                 | sort(attribute='name') | list %}
               {% if items %}
               {% for item in items %}
@@ -81,6 +82,7 @@ views:
             content: |-
               {% set items = states.device_tracker
                 | selectattr('attributes.location_sources', 'defined')
+                | selectattr('attributes.decision_owner', 'eq', 'node_red')
                 | sort(attribute='name') | list %}
               {% if items %}
               {% for item in items %}
@@ -92,27 +94,24 @@ views:
               ### {{ item_icon }} {{ item.name }}
 
               {% for source in item.attributes.location_sources -%}
-              {% set report_age = as_timestamp(now())
-                - as_timestamp(source.last_updated) %}
-              {% set gps_age = as_timestamp(now())
-                - as_timestamp(source.location_observed_at) %}
-              {% if report_age <= 4500 %}
+              {% if source.reporting_fresh %}
                 {% set source_health = '🟢 Source reporting' %}
-              {% elif report_age <= 10800 %}
-                {% set source_health = '🟠 Source reporting late' %}
               {% else %}
                 {% set source_health = '🔴 Source not reporting' %}
               {% endif %}
-              {% if gps_age <= 900 %}
+              {% if source.position_fresh %}
                 {% set position_status = 'Position changed recently' %}
               {% else %}
                 {% set position_status = 'Position unchanged' %}
               {% endif %}
               **{{ source.name }}** · {{ source_health }}<br>
-              🛰️ {{ position_status }} since `{{ as_timestamp(source.location_observed_at)
-                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`<br>
-              🔄 Source last reported `{{ as_timestamp(source.last_updated)
-                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`
+              🛰️ {{ position_status }}{% if source.location_observed_at %}
+              since `{{ as_timestamp(source.location_observed_at)
+                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`{% endif %}<br>
+              🔄 Source last reported{% if source.last_updated %}
+              `{{ as_timestamp(source.last_updated)
+                | timestamp_custom('%d/%m/%Y %H:%M:%S', true) }}`{% else %}
+              unknown{% endif %}
 
               {% if not loop.last %}<br>{% endif %}
               {% endfor %}

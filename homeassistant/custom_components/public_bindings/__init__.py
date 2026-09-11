@@ -25,7 +25,6 @@ from .location import (
     location_observed_at,
     recover_location_observation,
     recover_source_reported_at,
-    select_best_location,
     source_reported_at,
     update_location_observation,
 )
@@ -79,17 +78,7 @@ def _state_value(mode: str, state: str) -> str:
 
 def _binding_targets(binding: dict[str, Any]) -> tuple[str, ...]:
     target = binding.get("target_entity_id")
-    if isinstance(target, str):
-        return (target,)
-    targets = binding.get("target_entity_ids")
-    if (
-        binding.get("selection_mode") == "best_location"
-        and isinstance(targets, list)
-        and len(targets) >= 2
-        and all(isinstance(item, str) for item in targets)
-    ):
-        return tuple(targets)
-    return ()
+    return (target,) if isinstance(target, str) else ()
 
 
 def _load_location_history(
@@ -128,10 +117,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     location_target_ids = {
         target
         for _role, binding in entities.values()
-        if (
-            binding.get("selection_mode") == "best_location"
-            or LOCATION_ATTRIBUTES.intersection(binding.get("attributes", []))
-        )
+        if LOCATION_ATTRIBUTES.intersection(binding.get("attributes", []))
         for target in _binding_targets(binding)
     }
     location_observations: LocationObservations = {}
@@ -185,11 +171,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             return
         targets = _binding_targets(binding)
         sources = [source for target in targets if (source := hass.states.get(target))]
-        source = (
-            select_best_location(sources, observations=location_observations)
-            if binding.get("selection_mode") == "best_location"
-            else (sources[0] if sources else None)
-        )
+        source = sources[0] if sources else None
         if source is None:
             hass.states.async_remove(public_id)
             return
@@ -209,25 +191,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
             ).isoformat()
         if display_name := binding.get("display_name"):
             attributes["friendly_name"] = display_name
-        source_names = binding.get("source_names")
-        if isinstance(source_names, list) and len(source_names) == len(targets):
-            selected_index = targets.index(source.entity_id)
-            attributes["selected_location_source"] = source_names[selected_index]
-            attributes["location_sources"] = [
-                {
-                    "name": source_name,
-                    "last_updated": source_reported_at(
-                        source_state,
-                        source_reports,
-                    ).isoformat(),
-                    "location_observed_at": location_observed_at(
-                        location_observations,
-                        source_state,
-                    ).isoformat(),
-                }
-                for target, source_name in zip(targets, source_names, strict=True)
-                if (source_state := hass.states.get(target)) is not None
-            ]
         attributes["binding_role"] = role
         hass.states.async_set(
             public_id,

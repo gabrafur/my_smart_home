@@ -7,6 +7,8 @@ const aliasesByName = {
   people_normalize: "Normalizar pessoas e detectar transições",
   people_refresh_decide: "Atualizar iPhones agora?",
   vehicle_primary_normalize: "Normalizar vehicle_primary e detectar transições",
+  vehicle_primary_refresh_policy: "Escolher pela presença",
+  vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
   vehicle_primary_refresh_decide: "Coordenar refresh do vehicle_primary",
   vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
   vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
@@ -40,6 +42,22 @@ const BASE_NOW = Date.parse("2026-08-13T12:00:00.000Z");
 let clock = BASE_NOW;
 const originalNow = Date.now;
 Date.now = () => clock;
+const LOCATION_POLICY = {
+  version: 1, owner: "node_red", complete: true,
+  arrival_distance_m: 700, location_fresh_minutes: 15,
+  source_report_fresh_minutes: 75, recency_tie_seconds: 60,
+  max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
+  movement_threshold_m: 250, arm_distance_m: 100,
+  arrival_recovery_minutes: 10,
+};
+
+function memoryGlobal() {
+  const values = new Map([["location_policy_v1", LOCATION_POLICY]]);
+  return {
+    get: (key) => values.get(key),
+    set: (key, value) => values.set(key, value),
+  };
+}
 
 function memoryFlow(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -62,7 +80,40 @@ function run(id, msg, flow = memoryFlow(), diagnostics = []) {
     error: (text) => diagnostics.push({ level: "error", text }),
     status() {},
   };
-  return execute(msg, node, {}, flow, {}, env, setTimeout, clearTimeout);
+  return execute(msg, node, {}, flow, memoryGlobal(), env, setTimeout, clearTimeout);
+}
+
+function runVehicleRefresh(msg, flow) {
+  if (!flow.get("vehicle_primary_refresh_policy_config_v1")) {
+    flow.set("vehicle_primary_refresh_policy_config_v1", {
+      version: 1,
+      complete: true,
+      approaching_interval_minutes: 5,
+      away_interval_minutes: 15,
+      home_interval_minutes: 30,
+      quiet_start_hour: 0,
+      quiet_end_hour: 6,
+    });
+  }
+  const branches = run("vehicle_primary_refresh_policy", msg, flow);
+  const selected = branches.find(Boolean);
+  if (!selected) return null;
+  const bothHome = selected.payload.refresh_both_residents_home === true;
+  const approaching = selected.payload.refresh_anyone_approaching === true;
+  selected.payload.refresh_interval_ms = approaching
+    ? selected.payload.refresh_policy_config.approaching_interval_ms
+    : bothHome
+      ? selected.payload.refresh_policy_config.home_interval_ms
+      : selected.payload.refresh_policy_config.away_interval_ms;
+  selected.payload.refresh_interval_policy = approaching
+    ? "approaching"
+    : bothHome
+      ? "both_home"
+      : "away";
+  const allowed = run("vehicle_primary_refresh_quiet_hours", selected, flow);
+  return allowed
+    ? run("vehicle_primary_refresh_decide", allowed, flow)
+    : null;
 }
 
 function iso(offset = 0) {
@@ -89,8 +140,10 @@ function peopleInput({ source = "resident_primary", state = "chegando", previous
     event, source, trigger_state: state, trigger_prev_state: previous,
     resident_primary: source === "resident_primary" ? selected : home,
     resident_primary_icloud: source === "resident_primary" ? selected : home,
+    resident_primary_selected: source === "resident_primary" ? selected : home,
     resident_secondary: source === "resident_secondary" ? selected : home,
     resident_secondary_icloud: source === "resident_secondary" ? selected : home,
+    resident_secondary_selected: source === "resident_secondary" ? selected : home,
   } };
 }
 
@@ -252,7 +305,7 @@ scenario("15 backoff Bluelink respeita piso de 15 minutos", () => {
   const flow = memoryFlow({ vehicle_primary_context_v1: { ready: true, away: true } });
   const expectedMinutes = [15, 15, 15, 15, 15];
   for (const minutes of expectedMinutes) {
-    const output = run("vehicle_primary_refresh_decide", { payload: { kind: "refresh_command", anyone_away: true } }, flow);
+    const output = runVehicleRefresh({ payload: { kind: "refresh_command", anyone_away: true } }, flow);
     assert(output);
     const state = flow.get("security_vehicle_primary_refresh_v1");
     assert.equal(state.next_allowed_at - clock, minutes * 60_000);

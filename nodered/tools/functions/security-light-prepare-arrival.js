@@ -9,9 +9,28 @@ const TEST_CASE =
     msg._location_test_case ??
     msg.payload?.test_case ??
     null;
-const SHORT_RECOVERY_TTL_MS = 2 * 60 * 1000;
+const LOCATION_POLICY = global.get(
+    "location_policy_v1",
+    "persistent"
+);
+const ARRIVAL_RECOVERY_TTL_MS =
+    Number(LOCATION_POLICY?.arrival_recovery_minutes) *
+    60 * 1000;
 const RECOVERY_REQUEST_THROTTLE_MS = 30 * 1000;
 const PERSISTENT = "persistent";
+
+if (
+    LOCATION_POLICY?.version !== 1 ||
+    LOCATION_POLICY?.complete !== true ||
+    !Number.isFinite(ARRIVAL_RECOVERY_TTL_MS) ||
+    ARRIVAL_RECOVERY_TTL_MS < 3 * 60 * 1000
+) {
+    node.error(
+        "iluminacao_seguranca: política canônica de retenção ausente",
+        msg
+    );
+    return [null, msg, null];
+}
 
 function contextKey(base) {
     return TEST_MODE ? `${base}__test` : base;
@@ -56,18 +75,18 @@ const bypassEnabled =
 const bypassAutomatic =
     ctxGet("security_light_engine_bypass_automatic", PERSISTENT) === true;
 const engineStateKnown = vehicle.engine_state_valid === true;
-const engineKnownOff =
-    engineStateKnown &&
-    vehicle.engine_on === false;
 const engineCommunicationFailed =
     vehicle.engine_communication_failed === true ||
     bypassAutomatic;
 const engineUnreliable =
     engineCommunicationFailed;
+const engineKnownOff =
+    engineStateKnown &&
+    vehicle.engine_on === false &&
+    !engineUnreliable;
 const bypassAllowed =
     bypassEnabled &&
-    engineUnreliable &&
-    !engineKnownOff;
+    engineUnreliable;
 /* A posição do carro só participa da validação quando o próprio carro é a
  * origem da chegada. Para uma chegada de morador, ON/OFF conhecido e API
  * saudável bastam para decidir; localização antiga do veículo é diagnóstica. */
@@ -100,6 +119,9 @@ const eventAt = Number(
 const residentApproach =
     residentArrival &&
     stage === "approach";
+const vehicleApproach =
+    source === "vehicle_primary" &&
+    stage === "approach";
 const originalQueuedAt = Number(
     msg.payload?.arrival_originally_queued_at ?? now
 );
@@ -122,13 +144,14 @@ if (
         {
             version: 2,
             queued_at: queuedAt,
-            expires_at: residentApproach
-                ? null
-                : queuedAt + SHORT_RECOVERY_TTL_MS,
+            expires_at:
+                queuedAt + ARRIVAL_RECOVERY_TTL_MS,
             event_at: eventAt,
             retention: residentApproach
                 ? "while_approaching"
-                : "short_recovery",
+                : vehicleApproach
+                    ? "while_vehicle_approaching"
+                    : "recovery_window",
             source,
             arrival_stage: stage,
             message: {
@@ -171,7 +194,11 @@ const diagnostic = {
         pending_arrival_queued: true,
         pending_arrival_retention: residentApproach
             ? "while_approaching"
-            : "short_recovery"
+            : vehicleApproach
+                ? "while_vehicle_approaching"
+                : "recovery_window",
+        pending_arrival_ttl_ms:
+            ARRIVAL_RECOVERY_TTL_MS
     }
 };
 

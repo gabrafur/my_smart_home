@@ -71,8 +71,15 @@ def _load_dashboard(config_dir: Path, relative_path: str) -> dict[str, Any]:
         for card in _walk_cards(dashboard)
         if card.get("type") == "markdown"
     )
-    if "selected_location_source" not in markdown or "location_sources" not in markdown:
-        raise ValueError("consolidated map must expose source selection and freshness")
+    if (
+        "selected_location_source" not in markdown
+        or "location_sources" not in markdown
+        or "decision_owner" not in markdown
+        or "node_red" not in markdown
+    ):
+        raise ValueError(
+            "consolidated map must consume Node-RED source selection and freshness"
+        )
 
     return dashboard
 
@@ -100,7 +107,11 @@ def _location_entity_ids(hass: HomeAssistant) -> tuple[str, ...]:
     entities = []
     for state in hass.states.async_all():
         entity_id = state.entity_id
-        if entity_id.startswith("zone.") or entity_id in person_sources:
+        node_red_location = state.attributes.get("decision_owner") == "node_red"
+        if (
+            entity_id.startswith(("zone.", "person."))
+            or (entity_id in person_sources and not node_red_location)
+        ):
             continue
         if not _has_coordinates(state):
             continue
