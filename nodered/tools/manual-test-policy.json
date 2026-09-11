@@ -130,11 +130,22 @@
             "reason": "Falha e recuperação são simuladas sem desligar a rede Zigbee residencial."
         },
         "ea0a6aa0d24ff863": {
-            "strategy": "manual_safe",
-            "legacy": true,
-            "evidence_node_ids": ["6e71dbc937fe5669", "19a91d7fce3b9db2"],
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "6e71dbc937fe5669",
+                "19a91d7fce3b9db2",
+                "people_departure_approach_test_v1",
+                "people_departure_bounce_home_test_v1",
+                "people_arrival_departure_blocked_v1"
+            ],
+            "dry_run_terminal_ids": [
+                "people_arrival_departure_blocked_v1",
+                "resident_notifications_dry_run_terminal",
+                "light_full_dry_run_terminal_v1",
+                "vehicle_primary_refresh_dry_run_terminal_v1"
+            ],
             "automated_test": "test-security-light-flow.mjs",
-            "reason": "Estados sintéticos cumulativos são isolados por test_mode e não alteram trackers reais."
+            "reason": "Estados sintéticos cumulativos atravessam seleção, direção, chegada, notificações, veículo e iluminação; saída e rebote terminam no bloqueio explícito e todos os demais efeitos residenciais terminam em dry-run."
         },
         "c22d8b12055e87f7": {
             "strategy": "manual_full_dry_run",
@@ -169,9 +180,12 @@
                 "security_light_engine_bypass_group_v1",
                 "security_light_engine_bypass_test_on_v1",
                 "security_light_engine_bypass_test_off_v1",
+                "security_light_arrival_direction_gate_v1",
+                "security_light_arrival_direction_blocked_v1",
                 "light_full_dry_run_terminal_v1"
             ],
             "dry_run_terminal_ids": [
+                "security_light_arrival_direction_blocked_v1",
                 "light_full_dry_run_terminal_v1"
             ],
             "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
@@ -204,7 +218,8 @@
                 "resident_notifications_test_group",
                 "resident_notifications_test_primary",
                 "resident_notifications_test_secondary",
-                "resident_notifications_delivery_ack"
+                "resident_notifications_delivery_ack",
+                "resident_notifications_dry_run_terminal"
             ],
             "delivery_node_ids": [
                 "resident_notifications_notify_primary",

@@ -2,6 +2,27 @@ if (msg.payload?.kind !== "arrival") {
     return null;
 }
 
+/* Defesa em profundidade: todos os caminhos visuais convergem antes neste
+ * mesmo contrato, mas um replay persistido ou uma edição futura não pode
+ * transformar uma saída/rebote em acendimento. */
+if (
+    msg.payload?.arrival_direction !== "returning" ||
+    msg.payload?.external_cycle_confirmed !== true
+) {
+    msg.payload = {
+        ...(msg.payload ?? {}),
+        kind: "arrival_blocked",
+        direction_reason: "external_cycle_not_confirmed",
+        simulated: true,
+        dispatched: false,
+        blocked_at: Date.now()
+    };
+    node.warn(
+        "iluminacao_seguranca: evento bloqueado sem ciclo externo de retorno"
+    );
+    return [null, msg, null];
+}
+
 const TEST_MODE =
     msg._location_test === true ||
     msg.payload?.test_mode === true;

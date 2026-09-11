@@ -153,14 +153,19 @@ if (!people.func.includes("lighting_tracker_recovery_approach")) {
 }
 const outputComment = people.func.indexOf("/*\n * OUTPUT 1 = contexto normal");
 if (outputComment >= 0) {
+  const hasDirectionGuard = people.func.includes("let blockedArrival = null;");
   people.func = people.func.slice(0, outputComment) +
-    "/*\n * OUTPUT 1 = contexto normal\n * OUTPUT 2 = chegada geral\n * OUTPUT 3 = unknown/unavailable → chegando somente para iluminação\n */\nreturn [msg, arrival, lightingOnlyArrival];\n";
+    (hasDirectionGuard
+      ? "/*\n * OUTPUT 1 = contexto normal\n * OUTPUT 2 = retorno confirmado\n * OUTPUT 3 = recovery de tracker com ciclo externo confirmado\n * OUTPUT 4 = saída/rebote bloqueado, sem efeitos\n */\nreturn [msg, arrival, lightingOnlyArrival, blockedArrival];\n"
+      : "/*\n * OUTPUT 1 = contexto normal\n * OUTPUT 2 = chegada geral\n * OUTPUT 3 = unknown/unavailable → chegando somente para iluminação\n */\nreturn [msg, arrival, lightingOnlyArrival];\n");
 }
-people.outputs = 3;
+const hasDirectionGuard = people.func.includes("let blockedArrival = null;");
+people.outputs = hasDirectionGuard ? 4 : 3;
 people.wires = [
   people.wires[0] ?? [],
   people.wires[1] ?? [],
   [PEOPLE_LIGHTING_RECOVERY_OUT],
+  ...(hasDirectionGuard ? [people.wires[3] ?? []] : []),
 ];
 
 const peopleContextGroup = flows.find(
@@ -285,6 +290,9 @@ const FUTURE_TOLERANCE_MS = 60 * 1000;
 const TEST_MODE =
     msg._location_test === true ||
     msg.payload?.test_mode === true;
+const NOTIFICATION_DELIVERY_UNDER_TEST =
+    TEST_MODE &&
+    msg.payload?.notification_delivery_under_test === true;
 const ACTIVE_RECOVERY_KEY = TEST_MODE
     ? RECOVERY_KEY + "__test"
     : RECOVERY_KEY;
@@ -342,6 +350,10 @@ if (TEST_MODE && msg.payload?.event === "test_reset") {
     flow.set(ACTIVE_RECOVERY_KEY, null);
     flow.set(
         "resident_notifications_last_test_delivery_v1__test",
+        null
+    );
+    flow.set(
+        "resident_notifications_last_dry_run_v1__test",
         null
     );
     return null;
@@ -443,8 +455,15 @@ msg.payload = {
 if (TEST_MODE) {
     msg.payload.test_mode = true;
     msg.payload.message = "[TESTE] " + msg.payload.message;
-    msg.payload.simulated = false;
+    msg.payload.notification_delivery_under_test =
+        NOTIFICATION_DELIVERY_UNDER_TEST;
+    msg.payload.simulated =
+        !NOTIFICATION_DELIVERY_UNDER_TEST;
     msg.payload.dispatched = false;
+}
+
+if (TEST_MODE && !NOTIFICATION_DELIVERY_UNDER_TEST) {
+    return [null, null, null, null, msg];
 }
 
 if (resident.recipient === "resident_primary") {
@@ -454,7 +473,7 @@ if (resident.recipient === "resident_primary") {
 }
 
 return TEST_MODE
-    ? [null, null, null, msg]
+    ? [null, null, null, msg, null]
     : [null, msg, null, null];`;
 
 const testAdapterFunction = String.raw`const SHARED_TEST_KEY =
@@ -512,6 +531,8 @@ msg._location_test = true;
 msg.payload = {
     event: "location_update",
     test_mode: true,
+    notification_delivery_under_test:
+        Boolean(directSource),
     source,
     trigger_state: current,
     trigger_prev_state: previous,
@@ -641,23 +662,26 @@ if (!testCycleOut.links.includes(ids.testCycleIn)) {
 }
 
 flows.push(
-  { id: ids.tab, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false, info: "Avisa cada residente quando o outro entra na zona chegando segundo a decisão canônica publicada por localizacao_pessoas. Funciona 24 horas por dia. Por solicitação explícita, testes de localização percorrem validação e dedupe e enviam um push real identificado como TESTE; nenhum outro dispositivo é acionado.", env: [] },
+  { id: ids.tab, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false, info: "Avisa cada residente quando o outro entra na zona chegando segundo a decisão canônica publicada por localizacao_pessoas. Funciona 24 horas por dia. Testes vindos de localizacao_pessoas terminam em dry-run; somente os botões dedicados desta aba testam a entrega de push marcada como TESTE.", env: [] },
   group(ids.triggerGroup, "1. Decisão canônica de localização", [ids.note, ids.canonicalIn], 64, 79, 432, 202, "#3f7cb5"),
-  group(ids.decisionGroup, "2. Validar aproximação e deduplicar", [ids.prepare, ids.testEventIn], 499, 124, 337, 157, "#7d6ba8"),
-  group(ids.outputGroup, "3. Notificar o outro residente", [ids.primaryNotify, ids.secondaryNotify, ids.deliveryAck], 894, 119, 742, 142, "#4d9a6a"),
-  group(ids.testGroup, "4. Testes manuais — envia push marcado TESTE", [ids.testPrimary, ids.testSecondary, ids.testCycleIn, ids.testAdapter, ids.testEventOut], 434, 339, 607, 202, "#a87932"),
+  group(ids.decisionGroup, "2. Validar aproximação e deduplicar", [ids.prepare, ids.testEventIn, ids.dryRunOut], 499, 124, 337, 197, "#7d6ba8"),
+  group(ids.outputGroup, "3. Entrega real explícita ou dry-run", [ids.primaryNotify, ids.secondaryNotify, ids.deliveryAck, ids.dryRunIn, ids.dryRunTerminal], 894, 119, 742, 222, "#4d9a6a"),
+  group(ids.testGroup, "4. Testes manuais — envia push marcado TESTE", [ids.testPrimary, ids.testSecondary, ids.testCycleIn, ids.testAdapter, ids.testEventOut], 434, 359, 607, 202, "#a87932"),
   { id: ids.note, type: "comment", z: ids.tab, g: ids.triggerGroup, name: "Sem restrição de horário", info: "Somente a transição canônica not_home → chegando é avaliada. Nenhum tracker bruto entra nesta aba.", x: 250, y: 120, wires: [] },
   { id: ids.canonicalIn, type: "link in", z: ids.tab, g: ids.triggerGroup, name: "Receber decisão canônica de localização", links: ["people_location_notification_out_v1"], x: 160, y: 200, wires: [[ids.prepare]] },
-  { id: ids.prepare, type: "function", z: ids.tab, g: ids.decisionGroup, name: "Preparar avisos de aproximação", func: prepareFunction, outputs: 4, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 640, y: 180, wires: [[ids.primaryNotify], [ids.secondaryNotify], [ids.primaryNotify], [ids.secondaryNotify]] },
+  { id: ids.prepare, type: "function", z: ids.tab, g: ids.decisionGroup, name: "Preparar avisos de aproximação", func: prepareFunction, outputs: 5, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 640, y: 180, wires: [[ids.primaryNotify], [ids.secondaryNotify], [ids.primaryNotify], [ids.secondaryNotify], [ids.dryRunOut]] },
   { id: ids.testEventIn, type: "link in", z: ids.tab, g: ids.decisionGroup, name: "Receber transição sintética", links: [ids.testEventOut], x: 560, y: 240, wires: [[ids.prepare]] },
+  { id: ids.dryRunOut, type: "link out", z: ids.tab, g: ids.decisionGroup, name: "Teste de localização → dry-run", mode: "link", links: [ids.dryRunIn], x: 780, y: 280, wires: [] },
   { ...notifyBase, id: ids.primaryNotify, name: "Avisar resident_primary: resident_secondary se aproxima", data: '{"role":"mobile_primary","action":"notify_actionable","data":{"title":payload.test_mode=true ? "Casa inteligente — TESTE" : "Casa inteligente","message":payload.message}}', x: 1130, y: 160, wires: [[ids.deliveryAck]] },
   { ...notifyBase, id: ids.secondaryNotify, name: "Avisar resident_secondary: resident_primary se aproxima", data: '{"role":"mobile_secondary","action":"notify_actionable","data":{"title":payload.test_mode=true ? "Casa inteligente — TESTE" : "Casa inteligente","message":payload.message}}', x: 1130, y: 220, wires: [[ids.deliveryAck]] },
   { id: ids.deliveryAck, type: "function", z: ids.tab, g: ids.outputGroup, name: "Confirmar entrega da notificação", func: deliveryAckFunction, outputs: 0, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 1480, y: 190, wires: [] },
-  { id: ids.testPrimary, type: "inject", z: ids.tab, g: ids.testGroup, name: "Teste: simular aviso para resident_primary", props: [{ p: "test_source", v: "resident_secondary", vt: "str" }, { p: "_location_test", v: "true", vt: "bool" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", x: 650, y: 380, wires: [[ids.testAdapter]] },
-  { id: ids.testSecondary, type: "inject", z: ids.tab, g: ids.testGroup, name: "Teste: simular aviso para resident_secondary", props: [{ p: "test_source", v: "resident_primary", vt: "str" }, { p: "_location_test", v: "true", vt: "bool" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", x: 650, y: 440, wires: [[ids.testAdapter]] },
-  { id: ids.testCycleIn, type: "link in", z: ids.tab, g: ids.testGroup, name: "Receber teste de localização", links: [testCycleOut.id], x: 505, y: 500, wires: [[ids.testAdapter]] },
-  { id: ids.testAdapter, type: "function", z: ids.tab, g: ids.testGroup, name: "Montar transição sintética de residente", func: testAdapterFunction, outputs: 1, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 780, y: 500, wires: [[ids.testEventOut]] },
-  { id: ids.testEventOut, type: "link out", z: ids.tab, g: ids.testGroup, name: "Transição sintética → validação", mode: "link", links: [ids.testEventIn], x: 1000, y: 500, wires: [] },
+  { id: ids.dryRunIn, type: "link in", z: ids.tab, g: ids.outputGroup, name: "Receber teste sem entrega", links: [ids.dryRunOut], x: 970, y: 280, wires: [[ids.dryRunTerminal]] },
+  { id: ids.dryRunTerminal, type: "function", z: ids.tab, g: ids.outputGroup, name: "TESTE FINAL: aviso simulado — nenhum push", func: dryRunFunction, outputs: 0, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 1300, y: 280, wires: [] },
+  { id: ids.testPrimary, type: "inject", z: ids.tab, g: ids.testGroup, name: "Teste: simular aviso para resident_primary", props: [{ p: "test_source", v: "resident_secondary", vt: "str" }, { p: "_location_test", v: "true", vt: "bool" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", x: 650, y: 400, wires: [[ids.testAdapter]] },
+  { id: ids.testSecondary, type: "inject", z: ids.tab, g: ids.testGroup, name: "Teste: simular aviso para resident_secondary", props: [{ p: "test_source", v: "resident_primary", vt: "str" }, { p: "_location_test", v: "true", vt: "bool" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", x: 650, y: 460, wires: [[ids.testAdapter]] },
+  { id: ids.testCycleIn, type: "link in", z: ids.tab, g: ids.testGroup, name: "Receber teste de localização", links: [testCycleOut.id], x: 505, y: 520, wires: [[ids.testAdapter]] },
+  { id: ids.testAdapter, type: "function", z: ids.tab, g: ids.testGroup, name: "Montar transição sintética de residente", func: testAdapterFunction, outputs: 1, timeout: "", noerr: 0, initialize: "", finalize: "", libs: [], x: 780, y: 520, wires: [[ids.testEventOut]] },
+  { id: ids.testEventOut, type: "link out", z: ids.tab, g: ids.testGroup, name: "Transição sintética → validação", mode: "link", links: [ids.testEventIn], x: 1000, y: 520, wires: [] },
 );
 
 const peopleTestCoordinator = required("Iniciar teste pelo coordenador");

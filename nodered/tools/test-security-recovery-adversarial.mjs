@@ -278,7 +278,7 @@ scenario("12 dedupe do refletor so e gravado depois dos gates", () => {
     security_light_physical_state: "off",
     security_light_lifecycle_v1: { version: 1, active_by_arrival: false, updated_at: clock },
   });
-  const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", event_at: clock } };
+  const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", arrival_direction: "returning", external_cycle_confirmed: true, event_at: clock } };
   const prepared = run("light_prepare_arrival", structuredClone(arrival), flow)[0];
   assert.equal(flow.get("security_light_lifecycle_v1").last_arrival_key, undefined);
   const gated = run("light_check_vehicle_primary_in_use", prepared, flow);
@@ -374,7 +374,7 @@ scenario("17 store nomeado nao muda o default global", () => {
 
 scenario("18 readiness parcial bloqueia ligar e desligar", () => {
   const pending = readyLight({ people_context_v1: { ready: false, updated_at: clock }, security_light_physical_state: "off" });
-  const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", event_at: clock, arrival_key: `resident_primary:approach:${clock}` } };
+  const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", arrival_direction: "returning", external_cycle_confirmed: true, event_at: clock, arrival_key: `resident_primary:approach:${clock}` } };
   assert.equal(run("light_mark_active", arrival, pending), null);
   const active = readyLight({
     people_context_v1: { ready: false, updated_at: clock },

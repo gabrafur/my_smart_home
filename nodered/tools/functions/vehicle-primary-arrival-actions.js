@@ -1,6 +1,8 @@
 if (
     msg.payload?.kind !== "arrival" ||
-    msg.payload?.arrival_source_type !== "vehicle_primary"
+    msg.payload?.arrival_source_type !== "vehicle_primary" ||
+    msg.payload?.arrival_direction !== "returning" ||
+    msg.payload?.external_cycle_confirmed !== true
 ) return null;
 
 const TEST_MODE =

@@ -136,6 +136,8 @@ const valid = runFunction(validateArrival, {
     source: "resident_secondary",
     arriving: ["resident_secondary"],
     arrival_stage: "approach",
+    arrival_direction: "returning",
+    external_cycle_confirmed: true,
   },
 });
 assert.equal(valid.result[0].arrival_source, "resident_secondary");
@@ -145,6 +147,7 @@ for (const payload of [
   { contract: "security.arrival.v1", kind: "arrival", source: "desconhecido", arriving: ["desconhecido"], arrival_stage: "home" },
   { contract: "security.arrival.v1", kind: "arrival", source: "resident_primary", arriving: [], arrival_stage: "home" },
   { contract: "security.arrival.v1", kind: "arrival", source: "vehicle_primary", arriving: ["vehicle_primary"], arrival_stage: "away" },
+  { contract: "security.arrival.v1", kind: "arrival", source: "resident_primary", arriving: ["resident_primary"], arrival_stage: "home", arrival_direction: "departure", external_cycle_confirmed: false },
 ]) {
   assert.deepEqual(Array.from(runFunction(validateArrival, { payload }).result), [null, null]);
 }

@@ -19,7 +19,8 @@ O flow nao duplica logica de GPS. Ele recebe, por `link`, apenas contratos
 - o ciclo de afastamento individual, para nao tratar quem ja estava em casa
   como uma nova chegada.
 
-O contrato v1 agora também traz `event_at` (epoch UTC em milissegundos). Os
+O contrato v1 também exige `arrival_direction: returning`,
+`external_cycle_confirmed: true` e traz `event_at` (epoch UTC em milissegundos). Os
 produtores persistem dedupe por 10 minutos, portanto um restart não republica
 a mesma chegada e não recria uma confirmação. Snapshots stale ou ainda não
 ready não geram `security.arrival.v1`; `unknown` nunca é interpretado como

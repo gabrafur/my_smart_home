@@ -82,6 +82,7 @@ scenario("01 fluxo recebe somente a decisão canônica de localização", () => 
     ["resident_notifications_notify_secondary"],
     ["resident_notifications_notify_primary"],
     ["resident_notifications_notify_secondary"],
+    ["resident_notifications_dry_run_out"],
   ]);
 });
 
@@ -146,11 +147,12 @@ scenario("08 bindings públicos apontam para o destinatário correto", () => {
   assert.deepEqual(secondary.wires, [["resident_notifications_delivery_ack"]]);
 });
 
-scenario("09 teste de localização percorre validação e confirma o push", () => {
+scenario("09 teste de localização percorre validação e termina em dry-run", () => {
   const cycleOut = byId.get("bc2afbce89f5a9d5");
   const cycleIn = byId.get("resident_notifications_test_cycle_in");
   const adapter = byId.get("resident_notifications_test_adapter");
   const deliveryAck = byId.get("resident_notifications_delivery_ack");
+  const dryRunTerminal = byId.get("resident_notifications_dry_run_terminal");
   assert(cycleOut.links.includes(cycleIn.id));
   assert(cycleIn.links.includes(cycleOut.id));
   assert.equal(deliveryAck.outputs, 0);
@@ -182,32 +184,47 @@ scenario("09 teste de localização percorre validação e confirma o push", () 
   }, flow, global);
   assert.equal(adapted.payload.trigger_prev_state, "not_home");
   assert.equal(adapted.payload.trigger_state, "chegando");
+  assert.equal(adapted.payload.notification_delivery_under_test, false);
 
   const output = runNode(prepare.id, adapted, flow, global);
   assert.equal(output[0], null);
   assert.equal(output[1], null);
-  assert.equal(output[2].payload.recipient, "resident_primary");
+  assert.equal(output[2], null);
+  assert.equal(output[3], null);
+  assert.equal(output[4].payload.recipient, "resident_primary");
   assert.equal(
-    output[2].payload.message,
+    output[4].payload.message,
     "[TESTE] Example Secondary está chegando.",
   );
-  assert.equal(output[2].payload.simulated, false);
-  assert.equal(output[2].payload.dispatched, false);
+  assert.equal(output[4].payload.simulated, true);
+  assert.equal(output[4].payload.dispatched, false);
 
-  assert.equal(runNode(deliveryAck.id, output[2], flow, global), null);
-  const result = flow.get("resident_notifications_last_test_delivery_v1__test");
+  assert.equal(runNode(dryRunTerminal.id, output[4], flow, global), null);
+  const result = flow.get("resident_notifications_last_dry_run_v1__test");
   assert.equal(result.recipient, "resident_primary");
-  assert.equal(result.simulated, false);
-  assert.equal(result.dispatched, true);
+  assert.equal(result.simulated, true);
+  assert.equal(result.dispatched, false);
 });
 
-scenario("10 botões manuais também passam pelo adaptador seguro", () => {
+scenario("10 somente botões dedicados marcam entrega de push sob teste", () => {
   for (const id of [
     "resident_notifications_test_primary",
     "resident_notifications_test_secondary",
   ]) {
     assert.deepEqual(byId.get(id).wires, [["resident_notifications_test_adapter"]]);
   }
+  const flow = memoryFlow();
+  const global = privateBindingsGlobal();
+  const adapted = runNode("resident_notifications_test_adapter", {
+    test_source: "resident_secondary",
+    _location_test: true,
+    payload: { test_mode: true },
+  }, flow, global);
+  assert.equal(adapted.payload.notification_delivery_under_test, true);
+  const output = runNode(prepare.id, adapted, flow, global);
+  assert(output[2]);
+  assert.equal(output[2].payload.simulated, false);
+  assert.equal(output[2].payload.notification_delivery_under_test, true);
 });
 
 scenario("11 alias privado inválido falha fechado para o papel lógico", () => {

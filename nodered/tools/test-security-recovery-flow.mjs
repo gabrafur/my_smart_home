@@ -137,7 +137,7 @@ function vehicle_primaryInput({ state = "home", previous = "not_home", distance 
 }
 
 function arrival(source = "resident_primary", stage = "approach", eventAt = NOW) {
-  return { payload: { contract: "security.arrival.v1", kind: "arrival", source, arriving: [source], arrival_source_type: source === "vehicle_primary" ? "vehicle_primary" : "person", arrival_stage: stage, event_at: eventAt } };
+  return { payload: { contract: "security.arrival.v1", kind: "arrival", source, arriving: [source], arrival_source_type: source === "vehicle_primary" ? "vehicle_primary" : "person", arrival_stage: stage, arrival_direction: "returning", external_cycle_confirmed: true, event_at: eventAt } };
 }
 
 function lifecycle(overrides = {}) {
@@ -432,9 +432,10 @@ scenario("37 normalizador de pessoas não envia notificações laterais", () => 
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_secondary: true } } });
   const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "chegando", distance: 1_400 });
   const result = run("people_normalize", structuredClone(input), flow);
-  assert.equal(result.length, 3);
+  assert.equal(result.length, 4);
   assert(result[1]);
   assert.equal(result[2], null);
+  assert.equal(result[3], null);
 });
 
 scenario("38 condição de desligamento desaparece durante 90 s", () => {

@@ -22,6 +22,13 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
 - Uma transição confirmada de qualquer residente de `home` para `chegando` ou
   `not_home` exige `force_refresh` imediato do `vehicle_primary` (wake seguido
   da obtenção de estado novo), com deduplicação e serialização de chamadas.
+- Efeitos físicos de chegada exigem um ciclo externo semântico comprovado por
+  `not_home` ou outra zona externa. Distância acima do limite casa/fora nunca
+  arma a chegada sozinha, nem a própria borda inicial de saída; é necessária
+  uma observação externa posterior ou a borda direcional externa `-> chegando`.
+  `home -> chegando` é saída e um rebote
+  posterior para `home` termina em um bloco visível sem efeitos, tanto para
+  residentes quanto para `vehicle_primary`.
 - O botão técnico que resolve `vehicle_primary.force_refresh` não deve publicar
   estado visível; somente o `input_button` manual entra no coordenador. Isso
   evita que um alvo interno pareça uma segunda rotina de atualização.

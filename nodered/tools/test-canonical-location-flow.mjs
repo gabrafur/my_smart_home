@@ -279,6 +279,8 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
       source: "vehicle_primary",
       arrival_source_type: "vehicle_primary",
       arrival_stage: "approach",
+      arrival_direction: "returning",
+      external_cycle_confirmed: true,
       event_at: start,
     },
   }, flow);

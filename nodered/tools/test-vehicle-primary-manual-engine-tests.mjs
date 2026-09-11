@@ -209,6 +209,8 @@ const queued = execute(prepareArrival, {
     test_mode: true,
     source: "resident_primary",
     arrival_stage: "approach",
+    arrival_direction: "returning",
+    external_cycle_confirmed: true,
     event_at: arrivalAt,
   },
 }, gateFlow, shared);

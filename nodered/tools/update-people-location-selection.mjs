@@ -21,6 +21,12 @@ function requiredByName(name) {
   return node;
 }
 
+function requiredById(id) {
+  const node = flows.find((candidate) => candidate.id === id);
+  if (!node) throw new Error(`Nó obrigatório ausente: ${id}`);
+  return node;
+}
+
 function removeIds(ids) {
   const wanted = new Set(ids);
   for (let index = flows.length - 1; index >= 0; index -= 1) {
@@ -142,6 +148,12 @@ const generatedIds = [
   "people_location_policy_publish_in_v1",
   "people_location_build_discovery_v1",
   "people_location_mqtt_discovery_v1",
+  "people_arrival_direction_note_v1",
+  "people_arrival_departure_blocked_v1",
+  "people_departure_approach_test_v1",
+  "people_departure_bounce_home_test_v1",
+  "vehicle_primary_arrival_direction_note_v1",
+  "vehicle_primary_arrival_departure_blocked_v1",
   "vehicle_location_panel_group_v1",
   "vehicle_location_policy_in_v1",
   "vehicle_location_policy_status_v1",
@@ -701,7 +713,7 @@ flows.push(
   inject("people_location_accuracy_v1", policyGroup, "Precisão máxima — 100 m", "max_gps_accuracy_m", 100, 510, 200),
   inject("people_location_vehicle_fresh_minutes_v1", policyGroup, "Posição do carro — 30 min", "vehicle_location_fresh_minutes", 30, 510, 240),
   inject("people_location_movement_threshold_v1", policyGroup, "Movimento do carro — 250 m", "movement_threshold_m", 250, 790, 160),
-  inject("people_location_arm_distance_v1", policyGroup, "Armar fora de casa — 100 m", "arm_distance_m", 100, 790, 200),
+  inject("people_location_arm_distance_v1", policyGroup, "Limite casa/fora — 100 m", "arm_distance_m", 100, 790, 200),
   inject("people_location_recovery_minutes_v1", policyGroup, "Reter chegada — 10 min", "arrival_recovery_minutes", 10, 790, 240),
   {
     id: "people_location_values_route_out_v1",
@@ -1028,15 +1040,308 @@ if (
   throw new Error("Normalizador ainda contém decisão duplicada de tracker");
 }
 
+const peopleArrivalCycleV2 = String.raw`/* ================================
+ * ARMAMENTO DO CICLO EXTERNO
+ * ================================ */
+
+let armed =
+    ctxGet(
+        ARMED_KEY
+    );
+
+if (!validObject(armed)) {
+    armed =
+        validObject(
+            recovery
+                .arrival_armed
+        )
+            ? recovery
+                .arrival_armed
+            : {};
+}
+
+armed = {
+    resident_primary:
+        armed.resident_primary === true,
+
+    resident_secondary:
+        armed.resident_secondary === true
+};
+
+/*
+ * Distância sozinha não arma chegada: durante a saída a pessoa cruza 100 m
+ * ainda dentro de "chegando" e o GPS pode oscilar de volta para "home".
+ * Somente um estado canônico externo ao par home/chegando comprova que houve
+ * um ciclo fora de casa. O predecessor externo preserva chegadas que saltam
+ * diretamente para home ou chegando.
+ */
+function externalArrivalCycleEvidence(state) {
+    return (
+        validZoneState(state) &&
+        !["home", APPROACH_ZONE].includes(state)
+    );
+}
+
+for (
+    const [
+        name,
+        item
+    ]
+    of Object.entries(
+        people
+    )
+) {
+    if (
+        item?.ready === true &&
+        externalArrivalCycleEvidence(item.state)
+    ) {
+        armed[name] = true;
+    }
+}
+
+/* A borda externa → chegando já traz sentido de retorno pela própria zona.
+ * Ela pode armar e publicar no mesmo evento. Uma borda externa → home não
+ * recebe esse atalho: precisa de observação externa anterior e, assim, um
+ * salto isolado de GPS durante a saída permanece bloqueado. */
+if (
+    isLocationEvent &&
+    sourcePosition?.ready === true &&
+    triggerState === APPROACH_ZONE &&
+    sourcePosition.current_home !== true &&
+    externalArrivalCycleEvidence(triggerPrevState)
+) {
+    armed[source] = true;
+}
+
+/* ================================
+ * DETECÇÃO DE CHEGADA
+ * ================================ */
+
+let arrival = null;
+let lightingOnlyArrival = null;
+let blockedArrival = null;
+let departureTransition = false;
+let staleCatchUp = false;
+
+if (
+    isLocationEvent &&
+    sourcePosition?.ready ===
+    true &&
+    triggerPrevValid
+) {
+    const approachEntry =
+        triggerState ===
+        APPROACH_ZONE &&
+        triggerPrevState ===
+        "not_home" &&
+        sourcePosition.current_home !== true;
+
+    departureTransition =
+        triggerPrevState === "home" &&
+        triggerState !== "home";
+
+    if (departureTransition) {
+        armed[source] = false;
+    }
+
+    staleCatchUp =
+        !approachEntry &&
+        sourcePosition
+            .primary_home ===
+        true &&
+        typeof sourcePosition
+            .primary_home_for_ms ===
+        "number" &&
+        sourcePosition
+            .primary_home_for_ms >
+        PRIMARY_HOME_GRACE_MS;
+
+    const externalCycleConfirmed =
+        armed[source] === true;
+
+    if (
+        !departureTransition &&
+        !staleCatchUp &&
+        externalCycleConfirmed &&
+        (
+            approachEntry ||
+            isArrivalHome(
+                sourcePosition
+            )
+        )
+    ) {
+        arrival = {
+            _location_test:
+                TEST_MODE,
+
+            _location_test_case:
+                TEST_MODE
+                    ? (msg._location_test_case ?? null)
+                    : undefined,
+
+            payload: {
+                contract:
+                    "security.arrival.v1",
+
+                kind:
+                    "arrival",
+
+                source,
+
+                arriving: [
+                    source
+                ],
+
+                arrival_source_type:
+                    "person",
+
+                arrival_stage:
+                    approachEntry
+                        ? "approach"
+                        : "home",
+
+                arrival_previous_state:
+                    triggerPrevState,
+
+                arrival_direction:
+                    "returning",
+
+                external_cycle_confirmed:
+                    true,
+
+                event_at:
+                    sourcePosition
+                        .updated_at ??
+                    Date.now(),
+
+                refresh_cycle_id:
+                    msg.payload?.refresh_cycle_id
+            }
+        };
+    }
+
+    if (
+        !approachEntry &&
+        isArrivalHome(
+            sourcePosition
+        )
+    ) {
+        armed[source] =
+            false;
+    }
+}
+
+
+/*
+ * Recovery de tracker só continua elegível quando o ciclo externo já havia
+ * sido comprovado antes de unknown/unavailable. Sem isso, o mesmo salto pode
+ * ser apenas uma oscilação durante a saída.
+ */
+if (
+    isLocationEvent &&
+    sourcePosition?.ready === true &&
+    triggerState === APPROACH_ZONE &&
+    ["unknown", "unavailable"].includes(triggerPrevState) &&
+    sourcePosition.current_home !== true &&
+    armed[source] === true
+) {
+    lightingOnlyArrival = {
+        _location_test: TEST_MODE,
+        _location_test_case: TEST_MODE
+            ? (msg._location_test_case ?? null)
+            : undefined,
+        payload: {
+            contract: "security.arrival.v1",
+            kind: "arrival",
+            source,
+            arriving: [source],
+            arrival_source_type: "person",
+            arrival_stage: "approach",
+            arrival_previous_state: triggerPrevState,
+            arrival_direction: "returning",
+            external_cycle_confirmed: true,
+            illumination_only: true,
+            event_at: sourcePosition.updated_at ?? Date.now(),
+            refresh_cycle_id: msg.payload?.refresh_cycle_id
+        }
+    };
+}
+
+const directionalTransitionCandidate =
+    isLocationEvent &&
+    sourcePosition?.ready === true &&
+    triggerState !== triggerPrevState &&
+    ["home", APPROACH_ZONE].includes(triggerState);
+
+if (
+    !arrival &&
+    !lightingOnlyArrival &&
+    directionalTransitionCandidate
+) {
+    blockedArrival = {
+        _location_test: TEST_MODE,
+        _location_test_case: TEST_MODE
+            ? (msg._location_test_case ?? null)
+            : undefined,
+        payload: {
+            contract: "security.arrival-direction.v1",
+            kind: "arrival_blocked",
+            source,
+            trigger_state: triggerState,
+            trigger_prev_state: triggerPrevState,
+            direction_reason: departureTransition
+                ? "departure_from_home"
+                : armed[source] !== true
+                    ? "external_cycle_not_confirmed"
+                    : staleCatchUp
+                        ? "stale_home_catchup"
+                        : "transition_not_arrival_eligible",
+            simulated: TEST_MODE,
+            dispatched: false,
+            event_at: sourcePosition.updated_at ?? Date.now()
+        }
+    };
+}
+
+`;
+
+peopleNormalizer.func = replaceRequired(
+  peopleNormalizer.func,
+  /\/\* ================================\n \* ARMAMENTO(?: DO CICLO EXTERNO)?\n \* ================================ \*\/[\s\S]*?(?=\/\* ================================\n \* SNAPSHOT \/ REFRESH)/,
+  peopleArrivalCycleV2,
+  "ciclo externo e direção da chegada de pessoas",
+);
+peopleNormalizer.func = replaceRequired(
+  peopleNormalizer.func,
+  /\/\*\n \* OUTPUT 1 = contexto normal[\s\S]*?return \[msg, arrival, lightingOnlyArrival\];/,
+  `/*
+ * OUTPUT 1 = contexto normal
+ * OUTPUT 2 = retorno confirmado
+ * OUTPUT 3 = recovery de tracker com ciclo externo confirmado
+ * OUTPUT 4 = saída/rebote bloqueado, sem efeitos
+ */
+return [msg, arrival, lightingOnlyArrival, blockedArrival];`,
+  "saídas visíveis de direção das pessoas",
+);
+if (!peopleNormalizer.func.includes("external_cycle_confirmed")) {
+  throw new Error("Guard de ciclo externo das pessoas não foi instalado");
+}
+
 const normalizationGroup = flows.find((node) => node.id === peopleNormalizer.g);
 if (!normalizationGroup) throw new Error("Grupo do normalizador ausente");
 normalizationGroup.name = "3. Presença e chegada usando somente a decisão canônica";
 normalizationGroup.x = 1640;
 normalizationGroup.y = 419;
-normalizationGroup.w = 542;
-normalizationGroup.h = 222;
+normalizationGroup.w = 762;
+normalizationGroup.h = 242;
 if (!normalizationGroup.nodes.includes("people_location_to_normalizer_in_v1")) {
   normalizationGroup.nodes.unshift("people_location_to_normalizer_in_v1");
+}
+for (const id of [
+  "people_arrival_direction_note_v1",
+  "people_arrival_departure_blocked_v1",
+]) {
+  if (!normalizationGroup.nodes.includes(id)) normalizationGroup.nodes.push(id);
 }
 flows.push({
   id: "people_location_to_normalizer_in_v1",
@@ -1051,15 +1356,72 @@ flows.push({
 });
 peopleNormalizer.x = 1910;
 peopleNormalizer.y = 520;
-const peopleContextOut = requiredByName("Publicar contexto de pessoas v1");
-const peopleArrivalOut = requiredByName("Publicar chegada de pessoa v1");
-const recoveryOut = requiredByName("Tracker recuperado chegando → iluminação");
-peopleContextOut.x = 2135;
+const peopleContextOut = requiredById("487984b3aaa29663");
+const peopleArrivalOut = requiredById("397c6032b3dad342");
+const recoveryOut = requiredById("people_lighting_tracker_recovery_arrival_out");
+peopleNormalizer.outputs = 4;
+peopleNormalizer.wires = [
+  [peopleContextOut.id],
+  [peopleArrivalOut.id],
+  [recoveryOut.id],
+  ["people_arrival_departure_blocked_v1"],
+];
+peopleContextOut.x = 2335;
 peopleContextOut.y = 480;
-peopleArrivalOut.x = 2135;
+peopleArrivalOut.name = "RETORNO confirmado → publicar chegada v1";
+peopleArrivalOut.x = 2335;
 peopleArrivalOut.y = 520;
-recoveryOut.x = 2135;
+recoveryOut.name = "RECOVERY armado → iluminação";
+recoveryOut.x = 2335;
 recoveryOut.y = 560;
+flows.push(
+  {
+    id: "people_arrival_direction_note_v1",
+    type: "comment",
+    z: PEOPLE_TAB,
+    g: normalizationGroup.id,
+    name: "SAÍDA home→chegando bloqueia; RETORNO exige passagem por not_home/zona externa",
+    info: "O raio de 700 m decide a chegada somente depois de um ciclo externo confirmado. Um rebote chegando→home durante a saída termina no bloco BLOQUEADO e nunca alcança iluminação, alarme ou notificações.",
+    x: 1990,
+    y: 460,
+    wires: [],
+  },
+  functionNode(
+    "people_arrival_departure_blocked_v1",
+    PEOPLE_TAB,
+    normalizationGroup.id,
+    "BLOQUEADO: saída/rebote (sem efeitos)",
+    String.raw`const result = {
+    version: 1,
+    simulated: true,
+    dispatched: false,
+    source: msg.payload?.source,
+    reason: msg.payload?.direction_reason,
+    blocked_at: Date.now()
+};
+flow.set(
+    msg._location_test === true
+        ? "people_last_blocked_arrival_v1__test"
+        : "people_last_blocked_arrival_v1",
+    result
+);
+node.status({
+    fill: "grey",
+    shape: "ring",
+    text: "bloqueado: " + String(result.reason ?? "direção inválida")
+});
+node.log?.(
+    "PEOPLE_ARRIVAL_BLOCKED source=" + String(result.source) +
+    " reason=" + String(result.reason) +
+    " dispatched=false"
+);
+return null;`,
+    0,
+    2250,
+    620,
+    [],
+  ),
+);
 
 const vehicleNormalizer = requiredByName("Normalizar vehicle_primary e detectar transições");
 if (!vehicleNormalizer.func.includes("const LOCATION_POLICY = global.get")) {
@@ -1115,6 +1477,148 @@ if (
 ) {
   throw new Error("Política única não chegou ao normalizador do veículo");
 }
+
+const vehicleArrivalCycleV2 = String.raw`let armed = ctxGet(ARMED_KEY);
+if (typeof armed !== "boolean") armed = recovery.arrival_armed === true;
+
+function externalArrivalCycleEvidence(state) {
+    return validZoneState(state) && !["home", APPROACH_ZONE].includes(state);
+}
+
+if (vehicle_primary.ready === true && externalArrivalCycleEvidence(vehicle_primary.state)) {
+    armed = true;
+}
+if (
+    isLocationEvent &&
+    vehicle_primary.ready === true &&
+    triggerState === APPROACH_ZONE &&
+    vehicle_primary.current_home !== true &&
+    externalArrivalCycleEvidence(triggerPrevState)
+) {
+    armed = true;
+}
+let arrival = null;
+let blockedArrival = null;
+if (isLocationEvent && vehicle_primary.ready === true && triggerPrevValid) {
+    const approachEntry = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== "home";
+    const departureTransition = triggerPrevState === "home" && triggerState !== "home";
+    if (departureTransition) armed = false;
+    const staleCatchUp = !approachEntry && vehicle_primary.primary_home === true && typeof vehicle_primary.primary_home_for_ms === "number" && vehicle_primary.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;
+    if (!departureTransition && !staleCatchUp && (approachEntry || isArrivalHome(vehicle_primary)) && armed) {
+        arrival = { payload: {
+            contract: "security.arrival.v1", kind: "arrival", source: "vehicle_primary", arriving: ["vehicle_primary"],
+            arrival_source_type: "vehicle_primary", arrival_stage: approachEntry ? "approach" : "home",
+            arrival_direction: "returning", external_cycle_confirmed: true,
+            request_vehicle_primary_wake: approachEntry, event_at: vehicle_primary.updated_at ?? Date.now(),
+            refresh_cycle_id: msg.payload?.refresh_cycle_id,
+        } };
+    }
+    if (!arrival && triggerState !== triggerPrevState && ["home", APPROACH_ZONE].includes(triggerState)) {
+        blockedArrival = {
+            _location_test: TEST_MODE,
+            _location_test_case: TEST_MODE ? (msg._location_test_case ?? null) : undefined,
+            payload: {
+                contract: "security.arrival-direction.v1",
+                kind: "arrival_blocked",
+                source: "vehicle_primary",
+                trigger_state: triggerState,
+                trigger_prev_state: triggerPrevState,
+                direction_reason: departureTransition
+                    ? "departure_from_home"
+                    : armed !== true
+                        ? "external_cycle_not_confirmed"
+                        : staleCatchUp
+                            ? "stale_home_catchup"
+                            : "transition_not_arrival_eligible",
+                simulated: TEST_MODE,
+                dispatched: false,
+                event_at: vehicle_primary.updated_at ?? Date.now()
+            }
+        };
+    }
+    if (!approachEntry && isArrivalHome(vehicle_primary)) armed = false;
+} else if (isArmingHome(vehicle_primary)) {
+    armed = false;
+}`;
+
+vehicleNormalizer.func = replaceRequired(
+  vehicleNormalizer.func,
+  /let armed = ctxGet\(ARMED_KEY\);[\s\S]*?(?=\nif \(arrival\) \{)/,
+  vehicleArrivalCycleV2,
+  "ciclo externo e direção da chegada do veículo",
+);
+vehicleNormalizer.func = replaceRequired(
+  vehicleNormalizer.func,
+  "return [msg, arrival, recoveryRequest];",
+  "return [msg, arrival, recoveryRequest, blockedArrival];",
+  "saída bloqueada do veículo",
+);
+if (!vehicleNormalizer.func.includes("external_cycle_confirmed")) {
+  throw new Error("Guard de ciclo externo do veículo não foi instalado");
+}
+
+const vehicleNormalizationGroup = flows.find(
+  (node) => node.id === vehicleNormalizer.g,
+);
+if (!vehicleNormalizationGroup) throw new Error("Grupo do normalizador do veículo ausente");
+for (const id of [
+  "vehicle_primary_arrival_direction_note_v1",
+  "vehicle_primary_arrival_departure_blocked_v1",
+]) {
+  if (!vehicleNormalizationGroup.nodes.includes(id)) vehicleNormalizationGroup.nodes.push(id);
+}
+vehicleNormalizationGroup.h = 322;
+const vehicleContextRoute = requiredById("c298447a6a2e3cef");
+const vehicleArrivalRoute = requiredById("2aa1b0c2907d4017");
+const vehicleActionRoute = requiredById("67d24b1f56447c94");
+vehicleArrivalRoute.name = "RETORNO confirmado → publicar chegada v1";
+vehicleActionRoute.name = "RETORNO confirmado → ações do veículo";
+vehicleNormalizer.outputs = 4;
+vehicleNormalizer.wires = [
+  [vehicleContextRoute.id],
+  [vehicleArrivalRoute.id, vehicleActionRoute.id],
+  [vehicleNormalizer.wires?.[2]?.[0]].filter(Boolean),
+  ["vehicle_primary_arrival_departure_blocked_v1"],
+];
+flows.push(
+  {
+    id: "vehicle_primary_arrival_direction_note_v1",
+    type: "comment",
+    z: VEHICLE_TAB,
+    g: vehicleNormalizationGroup.id,
+    name: "SAÍDA bloqueada; RETORNO só após estado externo",
+    info: "O veículo não arma chegada apenas por cruzar 100 m. home→chegando e o rebote chegando→home ficam visíveis no terminal bloqueado.",
+    x: 1040,
+    y: 340,
+    wires: [],
+  },
+  functionNode(
+    "vehicle_primary_arrival_departure_blocked_v1",
+    VEHICLE_TAB,
+    vehicleNormalizationGroup.id,
+    "BLOQUEADO: saída/rebote do veículo",
+    String.raw`const result = {
+    version: 1,
+    simulated: true,
+    dispatched: false,
+    reason: msg.payload?.direction_reason,
+    blocked_at: Date.now()
+};
+flow.set(
+    msg._location_test === true
+        ? "vehicle_primary_last_blocked_arrival_v1__test"
+        : "vehicle_primary_last_blocked_arrival_v1",
+    result
+);
+node.status({ fill: "grey", shape: "ring", text: "bloqueado: " + String(result.reason ?? "direção inválida") });
+node.log?.("VEHICLE_PRIMARY_ARRIVAL_BLOCKED reason=" + String(result.reason) + " dispatched=false");
+return null;`,
+    0,
+    1100,
+    400,
+    [],
+  ),
+);
 
 const vehicleContextOut = requiredByName("Publicar contexto do vehicle_primary v1");
 if (!vehicleContextOut.links.includes("vehicle_location_panel_in_v1")) {
@@ -1237,6 +1741,68 @@ for (const groupName of ["3. Refresh adaptativo dos iPhones", "4. Testes manuais
   existing.x = 64;
   existing.y = targetY;
 }
+
+const peopleTestCoordinator = requiredByName("Iniciar teste pelo coordenador");
+if (!peopleTestCoordinator.func.includes('"people_last_blocked_arrival_v1__test"')) {
+  peopleTestCoordinator.func = replaceRequired(
+    peopleTestCoordinator.func,
+    '    "security_people_test_clock"',
+    '    "security_people_test_clock",\n    "people_last_blocked_arrival_v1__test"',
+    "reset do teste de direção de pessoas",
+  );
+}
+if (!peopleTestCoordinator.func.includes("resident_primary_departure_approach")) {
+  peopleTestCoordinator.func = replaceRequired(
+    peopleTestCoordinator.func,
+    '    resident_primary_unavailable_approach: { source: "resident_primary", state: "chegando", prev: "unavailable" }',
+    '    resident_primary_unavailable_approach: { source: "resident_primary", state: "chegando", prev: "unavailable" },\n    resident_primary_departure_approach: { source: "resident_primary", state: "chegando", prev: "home" },\n    resident_primary_departure_bounce_home: { source: "resident_primary", state: "home", prev: "chegando" }',
+    "casos manuais de saída e rebote",
+  );
+}
+
+const peopleTestGroup = flows.find((node) => node.id === "6e71dbc937fe5669");
+const peopleTestRoute = flows.find(
+  (node) => node.id === "people_tracker_recovery_tests_out_v1",
+);
+if (!peopleTestGroup || !peopleTestRoute) {
+  throw new Error("Grupo/rota dos testes manuais de pessoas ausente");
+}
+const departureTestNodes = [
+  {
+    id: "people_departure_approach_test_v1",
+    name: "NEG SAÍDA 1/2: home → chegando",
+    testCase: "resident_primary_departure_approach",
+    y: 1640,
+  },
+  {
+    id: "people_departure_bounce_home_test_v1",
+    name: "NEG SAÍDA 2/2: chegando → home (rebote)",
+    testCase: "resident_primary_departure_bounce_home",
+    y: 1680,
+  },
+];
+for (const testNode of departureTestNodes) {
+  flows.push({
+    id: testNode.id,
+    type: "inject",
+    z: PEOPLE_TAB,
+    g: peopleTestGroup.id,
+    name: testNode.name,
+    props: [{ p: "test_case", v: testNode.testCase, vt: "str" }],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    x: 590,
+    y: testNode.y,
+    wires: [[peopleTestRoute.id]],
+  });
+  if (!peopleTestGroup.nodes.includes(testNode.id)) {
+    peopleTestGroup.nodes.push(testNode.id);
+  }
+}
+peopleTestGroup.h = Math.max(peopleTestGroup.h, 782);
 
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log("Seleção canônica de localização instalada em blocos no Node-RED.");

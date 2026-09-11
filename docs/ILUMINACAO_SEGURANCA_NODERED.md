@@ -5,8 +5,8 @@ abas:
 
 | Flow | Responsabilidade |
 | --- | --- |
-| `localizacao_pessoas` | Ler e normalizar os trackers de resident_primary e resident_secondary, manter o armado individual, detectar aproximação/chegada e controlar o refresh dos iPhones. |
-| `contexto_vehicle_primary` | Normalizar localização, motor e trava do vehicle_primary, manter `vehicle_primary_in_use`, detectar chegada, atualizar viagens e controlar o refresh do veículo. |
+| `localizacao_pessoas` | Ler e normalizar os trackers de resident_primary e resident_secondary, comprovar um ciclo externo individual, separar visualmente saída de retorno, detectar aproximação/chegada e controlar o refresh dos iPhones. |
+| `contexto_vehicle_primary` | Normalizar localização, motor e trava do vehicle_primary, manter `vehicle_primary_in_use`, comprovar o ciclo externo, separar visualmente saída de retorno, detectar chegada, atualizar viagens e controlar o refresh do veículo. |
 | `contexto_chegadas` | Sincronizar os snapshots periódicos e calcular somente a política conjunta `anyone_away`. Não interpreta GPS bruto nem envia notificações entre residentes. |
 | `notificacoes_chegadas_residentes` | Avisar `resident_primary` quando `resident_secondary` entra em `chegando` e vice-versa, durante as 24 horas do dia e sem depender do veículo, iluminação ou reconciliação de contexto. |
 | `iluminacao_seguranca` | Consumir os contratos de alto nível e decidir ligar/desligar `switch.refletor_portao_carros`, incluindo carência, timeout e anti-religamento. |
@@ -81,7 +81,9 @@ chegada. Preserva o contrato consumido pelo alarme:
 - `source`: `resident_primary`, `resident_secondary` ou `vehicle_primary`;
 - `arriving`: lista contendo a origem;
 - `arrival_source_type`: `person` ou `vehicle_primary`;
-- `arrival_stage`: `approach` ou `home`.
+- `arrival_stage`: `approach` ou `home`;
+- `arrival_direction: returning` e `external_cycle_confirmed: true`, exigidos
+  também pelo gate final da iluminação;
 - `event_at`: epoch Unix em milissegundos da observação usada para dedupe.
 
 ### Snapshot e refresh
@@ -115,7 +117,7 @@ entrada no anel usa somente a fonte selecionada: um fallback antigo em `home`
 não bloqueia uma posição recente em `chegando`.
 
 O grupo `0. Política canônica de localização — edite os números` é a fonte
-única de raio, freshness, desempate, precisão, movimento, armado e retenção de
+única de raio, freshness, desempate, precisão, movimento, limite casa/fora e retenção de
 chegada. Os links nomeados levam a mesma política às abas de veículo e
 iluminação. O Node-RED também publica no Home Assistant a fonte vencedora e os
 indicadores já calculados de posição atual, fonte reportando e GPS confiável;
@@ -163,14 +165,22 @@ depois `not_home` como fallback. O checker de bindings rejeita
 
 ## Regras de chegada preservadas
 
-- Distância de armado: mais de 100 m de casa.
+- O limite de 100 m classifica casa/fora para contexto e refresh, mas distância
+  sozinha nunca arma nem comprova uma chegada.
+- O ciclo de retorno só é armado por uma observação externa separada da própria
+  borda de saída, em `not_home` ou outra zona externa ao par
+  `home`/`chegando`, ou pela borda direcional externa `-> chegando`. Um único
+  salto `home -> not_home -> home` não basta.
 - Anel de aproximação: entrada em `zone.chegando` a partir de fora. O raio de
   aproximadamente 1500 m é definido em
   `homeassistant/packages/zonas_presenca.yaml`, não duplicado no JavaScript.
-- `home -> chegando` é saída, nunca chegada.
+- `home -> chegando` é saída, limpa o armado anterior e nunca é chegada.
+- Um rebote posterior `chegando -> home` continua bloqueado enquanto não houver
+  ciclo externo confirmado. Pessoas e veículo terminam em blocos visuais
+  `BLOQUEADO`, sem iluminação, alarme, notificação ou chamada externa.
 - A entrada no anel gera `arrival_stage: approach` e não consome o armado.
-- A entrada em casa ou até 700 m de casa/portão é a rede de segurança
-  (`arrival_stage: home`) e consome o armado.
+- Somente depois do ciclo externo, a entrada em casa ou até 700 m de
+  casa/portão é a rede de segurança (`arrival_stage: home`) e consome o armado.
 - O bloco `Raio de chegada — 700 m`, dentro do grupo
   `0. Política canônica de localização — edite os números`, guarda o raio em
   metros. Edite o valor do inject, entre 50 e 2.000 m, e faça Deploy para
@@ -178,6 +188,8 @@ depois `not_home` como fallback. O checker de bindings rejeita
 - Um tracker primário que já está em casa há mais de 10 min bloqueia o catch-up
   tardio do tracker secundário. Sem `last_changed`, o comportamento permanece
   fail-open para não perder uma chegada real.
+- Recovery `unknown`/`unavailable -> chegando` só alcança a iluminação quando
+  recupera um ciclo externo que já estava armado antes da indisponibilidade.
 - A chegada do vehicle_primary atualiza o histórico de viagens do dia; no estágio
   `approach`, também tenta um wake pontual do veículo.
 - Atualizações de atributos do tracker também são observadas sem exigir troca
@@ -195,24 +207,22 @@ residente imediatamente, sem consultar horário, sol, veículo ou os snapshots d
 saída e não gera aviso. Um latch persistente evita duplicidade entre os dois
 trackers e após restart; uma nova passagem por `not_home` rearma o aviso.
 
-Os testes sintéticos de `localizacao_pessoas` também entram nesse tab. Eles
-percorrem a mesma validação e o mesmo dedupe usando memória isolada de teste,
-e enviam o push real porque a entrega da notificação é o efeito sob teste. O
-título e a mensagem são identificados com `TESTE`; após o Home Assistant
-aceitar a chamada, o status termina em `TESTE FINAL: push para <resident>
-enviado`. O binding usa diretamente o serviço Mobile App para que a aceitação
-corresponda ao caminho de push do celular, sem passar pela entidade intermediária
-`notify.send_message`.
+Os testes sintéticos iniciados em `localizacao_pessoas` também entram nesse tab.
+Eles percorrem a mesma validação e o mesmo dedupe usando memória isolada, mas
+terminam em `TESTE FINAL: aviso simulado — nenhum push`, com `simulated=true` e
+`dispatched=false`. Somente os botões dedicados do próprio tab de notificações
+podem testar a entrega real; essa exceção exige solicitação explícita, marca
+título e mensagem com `TESTE` e usa diretamente o serviço Mobile App.
 
 O nome exibido na mensagem é resolvido em runtime a partir do `source_alias`
 privado do residente. O flow versionado preserva apenas os papéis lógicos; se o
 alias estiver ausente ou for inválido, a mensagem falha fechado para o papel sem
 persistir dados privados no repositório.
 
-Quando o teste também satisfaz as condições de acendimento, mas o atuador está
-`unknown`, `unavailable`, stale ou não reconciliado, os avisos de “seria ligado”
-também são enviados com `TESTE` no título e na mensagem. O refletor, o alarme,
-timers e todos os demais dispositivos continuam em dry-run.
+Quando um teste de localização também satisfaz as condições de acendimento,
+inclusive com atuador `unknown`, `unavailable`, stale ou não reconciliado, o
+diagnóstico segue apenas ao terminal dry-run. Refletor, notificações, alarme,
+timers e todos os demais dispositivos permanecem sem efeitos.
 
 ## Freshness e `vehicle_primary_in_use`
 
@@ -289,16 +299,19 @@ nova versão em vez de assumir essa compatibilidade interna.
 `iluminacao_seguranca` liga o refletor somente quando todas as condições são
 verdadeiras:
 
-1. há um evento `security.arrival.v1`;
-2. `sun.sun` está `below_horizon`;
-3. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`, **ou** o
+1. há um evento `security.arrival.v1` com `arrival_direction: returning` e
+   `external_cycle_confirmed: true`;
+2. o gate visual de direção aceita esse retorno; evento antigo, malformado ou
+   sem ciclo externo termina em `BLOQUEADO: sem direção de retorno`;
+3. `sun.sun` está `below_horizon`;
+4. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`, **ou** o
    bypass manual ou automático está ligado e a telemetria do motor está comprovadamente não
    confiável;
-4. pessoas, sol e estado físico do refletor estão ready/reconciliados; o
+5. pessoas, sol e estado físico do refletor estão ready/reconciliados; o
    readiness do motor é obrigatório no caminho normal e dispensado apenas pelo
    bypass restrito descrito acima;
-5. o refletor físico está `off` e não foi marcado como ativo por chegada;
-6. não há supressão pós-desligamento ativa.
+6. o refletor físico está `off` e não foi marcado como ativo por chegada;
+7. não há supressão pós-desligamento ativa.
 
 Depois de todos os gates, a ação grava no store `persistent` o lifecycle
 `security_light_lifecycle_v1`: `active_by_arrival`, `on_since`,
@@ -309,8 +322,9 @@ A origem da chegada pode ser `resident_primary`, `resident_secondary` ou
 `vehicle_primary`. Quando o motor atual está `on`, a entrada de qualquer
 residente em `chegando` aciona a avaliação mesmo que o tracker do veículo ainda
 esteja em `not_home`, `home` ou outra zona válida; o veículo não precisa entrar
-em `chegando` primeiro. Para residentes, `chegando` precisa ser precedido por
-`not_home`, `unknown` ou `unavailable`. As duas transições de recuperação ficam
+em `chegando` primeiro. Para residentes, o retorno precisa estar armado por
+`not_home` ou outra zona externa. `unknown`/`unavailable` só recuperam um armado
+externo já existente; não criam uma chegada. Essas transições de recovery ficam
 restritas à iluminação e não são publicadas como chegada geral para o desarme.
 
 Também chama `switch.turn_on`, avisa os moradores e inicia o backstop de 15
@@ -511,6 +525,12 @@ sintético cumulativo e isolado das entidades reais. A sequência recomendada é
 3. executar `vehicle_primary 1/3 → not_home`, `2/3 → chegando` e
    `3/3 → home`.
 
+Na aba `localizacao_pessoas`, a sequência negativa `NEG SAÍDA 1/2:
+home → chegando` seguida de `NEG SAÍDA 2/2: chegando → home (rebote)` comprova
+que os dois eventos terminam em `BLOQUEADO: saída/rebote (sem efeitos)`. O gate
+final de `iluminacao_seguranca` fornece uma segunda defesa visível contra
+eventos sem direção de retorno.
+
 Os passos de localização de qualquer residente e do veículo preservam o último
 estado de motor escolhido. Assim,
 o mesmo cenário exercita o gate `vehicle_primary está em uso?` em
@@ -547,7 +567,9 @@ terminal sem fios de saída que declara `simulated=true` e
 automatizados e documentam a justificativa, em vez de ganhar um botão físico.
 
 As abas seguem `Eventos -> Normalização -> Contexto -> Decisão -> Ação`.
-Grupos delimitam cada responsabilidade. `link nodes` são usados somente nas
+Saída, retorno aceito, recovery e bloqueio permanecem como caminhos nomeados e
+visíveis em blocos; mudanças de regra não devem esconder decisões em ligações
+ou consumidores externos. Grupos delimitam cada responsabilidade. `link nodes` são usados somente nas
 fronteiras de domínio, no salto entre detecção e ações do vehicle_primary, no timeout e
 nos testes manuais. O renderizador estático verifica a geometria:
 
@@ -570,12 +592,13 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa 38 cenários de regressão, incluindo
+`flows:test-security` executa 49 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
 de refresh, inclusive movimento dentro da mesma zona, simetria de motor
 `on`/`off`, replay real de chegada após atraso `off -> on` e preservação de
-`home`/`chegando`/`not_home` com `away` derivado.
-`flows:test-security-recovery` acrescenta 40 cenários de restart e recuperação;
+`home`/`chegando`/`not_home` com `away` derivado, saída com rebote e o gate final
+de direção.
+`flows:test-security-recovery` acrescenta 48 cenários de restart e recuperação;
 `flows:test-security-adversarial`, mais 23 casos adversariais com relógio
 controlado para reconciliação e deadlines. São replays offline dos
 `function nodes` e uma validação estrutural;

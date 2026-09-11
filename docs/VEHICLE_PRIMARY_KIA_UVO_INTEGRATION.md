@@ -518,7 +518,8 @@ dado que `binary_sensor.vehicle_primary_engine` nunca capturou.
 
 Sempre que mexer na chegada de `contexto_vehicle_primary`, lembrar que
 `vehicle_primary_arrival_actions` depende de `security.arrival.v1` continuar publicando
-`arrival_source_type: vehicle_primary`, `arrival_stage` e `event_at`.
+`arrival_source_type: vehicle_primary`, `arrival_stage`,
+`arrival_direction: returning`, `external_cycle_confirmed: true` e `event_at`.
 
 Desde a etapa de recovery, a chegada e a atualização de trip info têm dedupe
 persistente de 10 minutos. O lifecycle da viagem (`trip_active`,

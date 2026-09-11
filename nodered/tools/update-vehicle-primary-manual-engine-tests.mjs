@@ -35,6 +35,8 @@ const ids = {
   output: "2ff281276fc1d020",
   gate: "276ba50ad0e36bab",
   prepareArrival: "62f77a1ad440639d",
+  arrivalDirectionGate: "security_light_arrival_direction_gate_v1",
+  arrivalDirectionBlocked: "security_light_arrival_direction_blocked_v1",
   mergeContext: "48a5f40d806f6950",
   checkInactive: "87b2f8eb75cb6359",
   markActive: "354c9839bfca592f",
@@ -559,7 +561,134 @@ if (!mergeContext.func.includes(fullTestReset)) {
  * As funções canônicas ficam em arquivos próprios para que os testes unitários
  * executem exatamente o mesmo código que será gravado no flow versionado.
  */
-required(ids.prepareArrival).func = functionSource(
+const prepareArrival = required(ids.prepareArrival);
+const arrivalDecisionGroup = required(prepareArrival.g);
+const arrivalInput = required("cf9bc321e0ec89f9");
+
+upsert({
+  id: ids.arrivalDirectionGate,
+  type: "function",
+  z: ids.lightTab,
+  g: arrivalDecisionGroup.id,
+  name: "Direção: retorno confirmado?",
+  func: String.raw`if (msg.payload?.kind !== "arrival") {
+    return null;
+}
+
+const confirmedReturn =
+    msg.payload?.arrival_direction === "returning" &&
+    msg.payload?.external_cycle_confirmed === true;
+
+if (confirmedReturn) {
+    node.status({
+        fill: "green",
+        shape: "dot",
+        text: "retorno confirmado; avaliar refletor"
+    });
+    return [msg, null];
+}
+
+const blocked = {
+    ...msg,
+    payload: {
+        ...(msg.payload ?? {}),
+        kind: "arrival_blocked",
+        direction_reason: "external_cycle_not_confirmed",
+        simulated: true,
+        dispatched: false,
+        blocked_at: Date.now()
+    }
+};
+
+node.status({
+    fill: "grey",
+    shape: "ring",
+    text: "bloqueado: sem ciclo externo de retorno"
+});
+return [null, blocked];`,
+  outputs: 2,
+  timeout: "",
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 590,
+  y: 280,
+  wires: [
+    [ids.prepareArrival],
+    [ids.arrivalDirectionBlocked],
+  ],
+});
+
+upsert({
+  id: ids.arrivalDirectionBlocked,
+  type: "function",
+  z: ids.lightTab,
+  g: arrivalDecisionGroup.id,
+  name: "BLOQUEADO: sem direção de retorno",
+  func: String.raw`const result = {
+    version: 1,
+    simulated: true,
+    dispatched: false,
+    source: msg.payload?.source,
+    reason: msg.payload?.direction_reason,
+    blocked_at: msg.payload?.blocked_at ?? Date.now()
+};
+
+flow.set(
+    msg._location_test === true
+        ? "security_light_last_direction_block_v1__test"
+        : "security_light_last_direction_block_v1",
+    result
+);
+node.status({
+    fill: "grey",
+    shape: "ring",
+    text: "sem efeitos: " + String(result.reason)
+});
+node.log?.(
+    "SECURITY_LIGHT_ARRIVAL_BLOCKED source=" +
+    String(result.source) +
+    " reason=" + String(result.reason) +
+    " dispatched=false"
+);
+return null;`,
+  outputs: 0,
+  timeout: "",
+  noerr: 0,
+  initialize: "",
+  finalize: "",
+  libs: [],
+  x: 820,
+  y: 360,
+  wires: [],
+});
+
+for (const id of [
+  ids.arrivalDirectionGate,
+  ids.arrivalDirectionBlocked,
+]) {
+  if (!arrivalDecisionGroup.nodes.includes(id)) arrivalDecisionGroup.nodes.push(id);
+}
+
+arrivalInput.wires = [[ids.arrivalDirectionGate]];
+prepareArrival.x = 860;
+required("e7542f3caa4a99e2").x = 1090;
+gate.x = 1330;
+required(ids.checkInactive).x = 1600;
+required("81994a8c6c38a4c1").name = "Debug: chegada recebida";
+required("81994a8c6c38a4c1").x = 1340;
+required("54b3d667ae845416").x = 1100;
+
+const replayOutput = mergeContext.wires?.[2] ?? [];
+mergeContext.wires[2] = [
+  ids.arrivalDirectionGate,
+  ...replayOutput.filter(
+    (id) => id !== ids.prepareArrival && id !== ids.arrivalDirectionGate,
+  ),
+];
+
+prepareArrival.func = functionSource(
   "security-light-prepare-arrival.js",
 );
 gate.func = functionSource("security-light-vehicle-gate.js");
@@ -1251,6 +1380,22 @@ removeNodes([
 ]);
 
 const alarmValidateArrival = required(alarmIds.validateArrival);
+if (!alarmValidateArrival.func.includes("external_cycle_confirmed")) {
+  alarmValidateArrival.func = alarmValidateArrival.func
+    .replace(
+      "const stage = msg.payload?.arrival_stage;",
+      `const stage = msg.payload?.arrival_stage;
+const direction = msg.payload?.arrival_direction;
+const externalCycleConfirmed =
+    msg.payload?.external_cycle_confirmed === true;`,
+    )
+    .replace(
+      "    !allowedStages.has(stage) ||",
+      `    !allowedStages.has(stage) ||
+    direction !== "returning" ||
+    !externalCycleConfirmed ||`,
+    );
+}
 alarmValidateArrival.wires[1] = [alarmIds.routeTestOut];
 
 upsert({
