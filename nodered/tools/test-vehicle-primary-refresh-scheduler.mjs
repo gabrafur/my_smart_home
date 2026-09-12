@@ -27,7 +27,6 @@ const code = {
   policyConfig: source("vehicle-primary-refresh-policy-config.js"),
   policy: source("vehicle-primary-refresh-policy.js"),
   quietHours: source("vehicle-primary-refresh-quiet-hours.js"),
-  coordinator: source("vehicle-primary-refresh-coordinator.js"),
   accepted: source("vehicle-primary-refresh-accepted.js"),
   cacheProbeAccepted: source("vehicle-primary-cache-probe-accepted.js"),
   error: source("vehicle-primary-refresh-error.js"),
@@ -77,8 +76,6 @@ const LOCATION_POLICY = {
 
 assert.match(code.policy, /peopleContext\.best_location_away === true/);
 assert.doesNotMatch(code.policy, /peopleContext\.any_tracker_away/);
-assert.doesNotMatch(code.coordinator, /awayOrApproachingStates/);
-assert.doesNotMatch(code.coordinator, /quietHours =/);
 assert.doesNotMatch(code.accepted, /AWAY_INTERVAL_MS|HOME_INTERVAL_MS/);
 assert.doesNotMatch(code.error, /\[15 \* 60 \* 1000, 30 \* 60 \* 1000\]/);
 assert.match(code.vehicleEvidenceRead, /baseline_observed_at/);

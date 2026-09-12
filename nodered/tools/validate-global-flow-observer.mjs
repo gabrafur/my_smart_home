@@ -75,11 +75,24 @@ assert.deepEqual(
   [notify.id, persistent.id],
 );
 const internalCatch = required("global_observer_internal_catch");
-assert.deepEqual(internalCatch.scope, [
+const expectedInternalScope = [
   "global_observer_ingest",
+  "global_observer_error_accepted_save",
+  "global_observer_error_connection_save",
+  "global_observer_error_mutate",
+  "global_observer_error_alert",
+  "global_observer_status_unmonitored",
+  "global_observer_status_failure",
+  "global_observer_status_recovery",
+  "global_observer_unknown_ignore",
   "global_observer_evaluate",
+  "global_observer_evaluate_clear_uncorroborated",
+  "global_observer_evaluate_clear_transient",
+  "global_observer_evaluate_confirm",
+  "global_observer_evaluate_alert",
   guard.id,
-]);
+];
+assert.deepEqual(internalCatch.scope, expectedInternalScope);
 assert.deepEqual(internalCatch.wires, [["global_observer_internal_failure"]]);
 assert.deepEqual(required("global_observer_internal_failure").wires, [
   [notify.id],
@@ -89,5 +102,31 @@ assert.ok(required("global_observer_test_delivery").props.some(
   (property) => property.p === "_observer_delivery_test" && property.v === "true",
 ));
 assert.match(required("global_observer_dry_run_terminal").func, /dispatched: false/);
+for (const id of [
+  "global_observer_event_kind",
+  "global_observer_error_accepted_gate",
+  "global_observer_error_connection_gate",
+  "global_observer_error_notification_gate",
+  "global_observer_status_monitored_gate",
+  "global_observer_status_failure_gate",
+  "global_observer_evaluate_corroboration_gate",
+  "global_observer_evaluate_duration_gate",
+  "global_observer_evaluate_notification_gate",
+]) {
+  assert.equal(required(id).type, "switch", `decisão não visual: ${id}`);
+}
+for (const [id, topic, value] of [
+  ["global_observer_policy_default_grace", "connection_recovery_grace_seconds", "90"],
+  ["global_observer_policy_default_confirm", "status_confirm_seconds", "60"],
+  ["global_observer_policy_default_reminder", "reminder_hours", "6"],
+  ["global_observer_policy_default_retention", "error_retention_days", "7"],
+  ["global_observer_policy_default_corroboration", "ha_corroboration_sources", "2"],
+]) {
+  const parameter = required(id);
+  assert.equal(parameter.type, "inject");
+  assert.equal(parameter.topic, topic);
+  assert.equal(parameter.payload, value);
+  assert.deepEqual(parameter.wires, [["global_observer_policy_validate"]]);
+}
 
 console.log(`Global flow observer policy valid: ${tabs.length} tabs covered.`);

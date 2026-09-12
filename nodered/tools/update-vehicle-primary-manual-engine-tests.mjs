@@ -689,10 +689,10 @@ mergeContext.wires[2] = [
 ];
 
 prepareArrival.func = functionSource(
-  "security-light-prepare-arrival.js",
+  "security-light-arrival-output.js",
 );
 gate.func = functionSource("security-light-vehicle-gate.js");
-mergeContext.func = functionSource("security-light-merge-context.js");
+mergeContext.func = functionSource("security-light-context-output.js");
 
 const checkInactive = required(ids.checkInactive);
 if (!checkInactive.func.includes("security_light_turn_on_notification_latch_v1")) {

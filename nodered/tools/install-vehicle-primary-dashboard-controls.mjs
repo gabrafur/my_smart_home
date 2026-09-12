@@ -50,7 +50,10 @@ function removeNode(id) {
 
 const refreshDecision = required("b33e117e55bdb5ed");
 refreshDecision.name = "Coordenar refresh do vehicle_primary";
-refreshDecision.func = source("vehicle-primary-refresh-coordinator.js");
+// O pós-processador visual substitui a entrada deste nó pelo pipeline de
+// fatos/gates. Este terminal pequeno mantém o contrato do gerador-base sem
+// reintroduzir uma segunda implementação das políticas de refresh.
+refreshDecision.func = source("vehicle-refresh-output.js");
 refreshDecision.outputs = 5;
 refreshDecision.wires = [
   ["vehicle_primary_refresh_dispatch_guard_v1"],

@@ -20,7 +20,7 @@
         "flows:update-zigbee-monitor": "node tools/install-zigbee-monitor-flow.mjs flows.json flows.json && node tools/install-global-flow-observer.mjs",
         "flows:update-tuya-monitor": "node tools/install-tuya-monitor-flow.mjs flows.json flows.json && node tools/install-global-flow-observer.mjs",
         "flows:organize-raspberry-cooling": "node tools/organize-raspberry-pi-cooling-flow.mjs",
-    "flows:update-vehicle-primary-manual-engine-tests": "node tools/update-vehicle-primary-manual-engine-tests.mjs",
+    "flows:update-vehicle-primary-manual-engine-tests": "node tools/update-vehicle-primary-manual-engine-tests.mjs && node tools/install-location-lifecycle-flow.mjs && node tools/install-security-light-visual-policy.mjs && node tools/apply-left-margin.mjs",
     "flows:update-vehicle-primary-refresh": "node tools/install-vehicle-primary-dashboard-controls.mjs && node tools/install-global-flow-observer.mjs && node tools/install-location-lifecycle-flow.mjs && node tools/install-security-light-visual-policy.mjs && node tools/apply-left-margin.mjs",
     "flows:update-global-observer": "node tools/install-global-flow-observer.mjs",
     "flows:update-host-memory-guardian": "node tools/install-host-memory-guardian-flow.mjs && node tools/install-global-flow-observer.mjs",

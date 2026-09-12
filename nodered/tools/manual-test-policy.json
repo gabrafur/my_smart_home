@@ -233,7 +233,6 @@
                 "light_full_dry_run_terminal_v1"
             ],
             "dry_run_terminal_ids": [
-                "security_light_arrival_direction_blocked_v1",
                 "light_full_dry_run_terminal_v1"
             ],
             "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",

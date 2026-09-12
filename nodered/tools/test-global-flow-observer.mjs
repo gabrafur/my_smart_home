@@ -14,15 +14,39 @@ const flows = JSON.parse(
 const byId = new Map(flows.map((node) => [node.id, node]));
 const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8");
 const code = {
-  ingest: source("global-flow-observer-ingest.js"),
-  evaluate: source("global-flow-observer-evaluate.js"),
+  policyValidate: source("global-flow-observer-policy-validate.js"),
+  policyStore: source("global-flow-observer-policy-store.js"),
+  policyReject: source("global-flow-observer-policy-reject.js"),
+  normalize: source("global-flow-observer-normalize.js"),
+  stateSave: source("global-flow-observer-state-save.js"),
+  errorMutate: source("global-flow-observer-error-mutate.js"),
+  errorAlert: source("global-flow-observer-error-alert.js"),
+  statusUnmonitored: source("global-flow-observer-status-unmonitored.js"),
+  statusFailure: source("global-flow-observer-status-failure.js"),
+  statusRecovery: source("global-flow-observer-status-recovery.js"),
+  evaluateExpand: source("global-flow-observer-evaluate-expand.js"),
+  evaluateClear: source("global-flow-observer-evaluate-clear.js"),
+  evaluateConfirm: source("global-flow-observer-evaluate-confirm.js"),
+  evaluateAlert: source("global-flow-observer-evaluate-alert.js"),
   guard: source("global-flow-observer-dispatch-guard.js"),
   internalFailure: source("global-flow-observer-internal-failure.js"),
   dryRun: source("global-flow-observer-dry-run.js"),
 };
 const flowNodeIds = {
-  ingest: "global_observer_ingest",
-  evaluate: "global_observer_evaluate",
+  policyValidate: "global_observer_policy_validate",
+  policyStore: "global_observer_policy_store",
+  policyReject: "global_observer_policy_reject",
+  normalize: "global_observer_ingest",
+  stateSave: "global_observer_error_accepted_save",
+  errorMutate: "global_observer_error_mutate",
+  errorAlert: "global_observer_error_alert",
+  statusUnmonitored: "global_observer_status_unmonitored",
+  statusFailure: "global_observer_status_failure",
+  statusRecovery: "global_observer_status_recovery",
+  evaluateExpand: "global_observer_evaluate",
+  evaluateClear: "global_observer_evaluate_clear_uncorroborated",
+  evaluateConfirm: "global_observer_evaluate_confirm",
+  evaluateAlert: "global_observer_evaluate_alert",
   guard: "global_observer_dispatch_guard",
   internalFailure: "global_observer_internal_failure",
   dryRun: "global_observer_dry_run_terminal",
@@ -58,6 +82,92 @@ function execute(body, msg, flow) {
   });
 }
 
+const DEFAULT_POLICY = {
+  version: 1,
+  owner: "node_red",
+  complete: true,
+  connection_recovery_grace_seconds: 90,
+  status_confirm_seconds: 60,
+  reminder_hours: 6,
+  error_retention_days: 7,
+  ha_corroboration_sources: 2,
+};
+function ensurePolicy(flow) {
+  if (!flow.get("global_observer_policy_v1")) {
+    flow.set("global_observer_policy_v1", structuredClone(DEFAULT_POLICY));
+  }
+}
+function runIngest(msg, flow) {
+  ensurePolicy(flow);
+  const normalized = execute(code.normalize, msg, flow);
+  if (!normalized) return null;
+  const data = normalized._observer_event;
+  if (data.kind === "error") {
+    if (data.accepted_wake_pending || data.connection_suppressed) {
+      execute(code.stateSave, normalized, flow);
+      return null;
+    }
+    const mutated = execute(code.errorMutate, normalized, flow);
+    return mutated?._observer_event?.notification_due
+      ? execute(code.errorAlert, mutated, flow)
+      : null;
+  }
+  if (data.kind === "status") {
+    if (!data.monitored) execute(code.statusUnmonitored, normalized, flow);
+    else if (data.failing) execute(code.statusFailure, normalized, flow);
+    else execute(code.statusRecovery, normalized, flow);
+    return null;
+  }
+  execute(code.stateSave, normalized, flow);
+  return null;
+}
+function runEvaluate(msg, flow) {
+  ensurePolicy(flow);
+  const expanded = execute(code.evaluateExpand, msg, flow);
+  const alerts = [];
+  for (const candidate of expanded?.[0] ?? []) {
+    const data = candidate._observer_evaluation;
+    if (!data.corroborated || !data.duration_met) {
+      execute(code.evaluateClear, candidate, flow);
+      continue;
+    }
+    const confirmed = execute(code.evaluateConfirm, candidate, flow);
+    if (confirmed?._observer_evaluation?.notification_due) {
+      alerts.push(execute(code.evaluateAlert, confirmed, flow));
+    }
+  }
+  return [alerts.length ? alerts : null];
+}
+
+{
+  const policyStore = memory();
+  const atMinimum = execute(code.policyValidate, {
+    topic: "status_confirm_seconds", payload: 10,
+  }, policyStore);
+  assert.ok(atMinimum[0], "limite inferior exato deve ser aceito");
+  execute(code.policyStore, atMinimum[0], policyStore);
+  const atMaximum = execute(code.policyValidate, {
+    topic: "status_confirm_seconds", payload: 600,
+  }, policyStore);
+  assert.ok(atMaximum[0], "limite superior exato deve ser aceito");
+  execute(code.policyStore, atMaximum[0], policyStore);
+  const invalid = execute(code.policyValidate, {
+    topic: "status_confirm_seconds", payload: 9,
+  }, policyStore);
+  assert.equal(invalid[0], null);
+  assert.equal(invalid[1].observer_policy_rejection.preserved, true);
+  execute(code.policyReject, invalid[1], policyStore);
+  assert.equal(
+    policyStore.get("global_observer_policy_v1").status_confirm_seconds,
+    600,
+    "valor inválido não pode substituir a última política válida",
+  );
+  const nonInteger = execute(code.policyValidate, {
+    topic: "reminder_hours", payload: 1.5,
+  }, policyStore);
+  assert.equal(nonInteger[0], null, "valor não inteiro deve ser rejeitado");
+}
+
 const store = memory();
 const baseError = () => ({
   _global_observer_test: true,
@@ -68,11 +178,11 @@ const baseError = () => ({
     source: { id: "node_test", type: "function", name: "Nó teste" },
   },
 });
-const firstError = execute(code.ingest, baseError(), store);
+const firstError = runIngest(baseError(), store);
 assert.match(firstError.alert.title, /TESTE/);
 assert.match(firstError.alert.message, /Fluxo teste/);
-assert.equal(execute(code.ingest, baseError(), store), null, "erro repetido deve ser deduplicado");
-const tailored = execute(code.ingest, {
+assert.equal(runIngest(baseError(), store), null, "erro repetido deve ser deduplicado");
+const tailored = runIngest({
   ...baseError(),
   observer_now: 150_000,
   error: {
@@ -85,10 +195,10 @@ assert.equal(tailored.alert.title, "TESTE — RTX indisponível");
 assert.equal(tailored.alert.message, "Recuperação manual obrigatória.");
 const reminder = baseError();
 reminder.observer_now += 6 * 60 * 60 * 1000;
-assert.ok(execute(code.ingest, reminder, store), "erro persistente deve lembrar após 6 h");
+assert.ok(runIngest(reminder, store), "erro persistente deve lembrar após 6 h");
 
 const acceptedWakeStore = memory();
-assert.equal(execute(code.ingest, {
+assert.equal(runIngest({
   _global_observer_test: true,
   observer_now: 175_000,
   _global_observer: {
@@ -129,7 +239,7 @@ domainStatus.status = {
   ...domainStatus.status,
   source: { id: "domain_test", type: "function", name: "Monitor de domínio" },
 };
-assert.equal(execute(code.ingest, domainStatus, store), null);
+assert.equal(runIngest(domainStatus, store), null);
 assert.equal(
   store.values.get("global_flow_observer_v1__test").status_sources["flow_test:domain_test"],
   undefined,
@@ -157,7 +267,7 @@ for (const status of [
     },
   },
 ]) {
-  assert.equal(execute(code.ingest, {
+  assert.equal(runIngest({
     _global_observer_test: true,
     observer_now: 200_000,
     _global_observer: { flow_id: "flow_test", flow_label: "Fluxo teste" },
@@ -175,7 +285,7 @@ assert.deepEqual(
 const reconnectStore = memory();
 const reconnectFailure = structuredClone(statusFailure);
 reconnectFailure.observer_now = 400_000;
-execute(code.ingest, reconnectFailure, reconnectStore);
+runIngest(reconnectFailure, reconnectStore);
 const reconnectRecovered = structuredClone(reconnectFailure);
 reconnectRecovered.observer_now = 410_000;
 reconnectRecovered.status = {
@@ -183,7 +293,7 @@ reconnectRecovered.status = {
   fill: "green",
   text: "connected",
 };
-execute(code.ingest, reconnectRecovered, reconnectStore);
+runIngest(reconnectRecovered, reconnectStore);
 const startupReadError = {
   ...baseError(),
   observer_now: 420_000,
@@ -197,20 +307,20 @@ const startupReadError = {
   },
 };
 assert.equal(
-  execute(code.ingest, startupReadError, reconnectStore),
+  runIngest(startupReadError, reconnectStore),
   null,
   "erros de nós HA durante reconexão não devem gerar rajada",
 );
 const unrelatedError = baseError();
 unrelatedError.observer_now = 420_000;
 assert.ok(
-  execute(code.ingest, unrelatedError, reconnectStore),
+  runIngest(unrelatedError, reconnectStore),
   "erro de função não relacionado deve continuar alertando",
 );
 const postGraceError = structuredClone(startupReadError);
 postGraceError.observer_now = 501_001;
 assert.ok(
-  execute(code.ingest, postGraceError, reconnectStore),
+  runIngest(postGraceError, reconnectStore),
   "erro HA após a carência de reconexão deve voltar a alertar",
 );
 
@@ -221,7 +331,7 @@ legacyStore.set("global_flow_observer_v1__test", {
   status_sources: { stale: { incident_key: "connection:home_assistant" } },
   status_incidents: { stale: { kind: "home_assistant" } },
 });
-execute(code.evaluate, {
+runEvaluate({
   _global_observer_test: true,
   observer_now: 200_000,
 }, legacyStore);
@@ -231,13 +341,13 @@ assert.deepEqual(Object.keys(migrated.status_sources), []);
 assert.deepEqual(Object.keys(migrated.status_incidents), []);
 assert.ok(migrated.errors.preserved, "migração deve preservar dedupe de erros");
 
-assert.equal(execute(code.ingest, statusFailure, store), null);
-const tooSoon = execute(code.evaluate, {
+assert.equal(runIngest(statusFailure, store), null);
+const tooSoon = runEvaluate({
   _global_observer_test: true,
   observer_now: 259_000,
 }, store);
 assert.equal(tooSoon[0], null);
-const confirmed = execute(code.evaluate, {
+const confirmed = runEvaluate({
   _global_observer_test: true,
   observer_now: 261_000,
 }, store);
@@ -257,14 +367,14 @@ corroboratedStatus.status.source = {
   type: "server-state-changed",
   name: "HA teste 2",
 };
-execute(code.ingest, corroboratedStatus, store);
-const corroborated = execute(code.evaluate, {
+runIngest(corroboratedStatus, store);
+const corroborated = runEvaluate({
   _global_observer_test: true,
   observer_now: 261_000,
 }, store);
 assert.equal(corroborated[0].length, 1);
 assert.match(corroborated[0][0].alert.title, /Home Assistant/);
-const duplicate = execute(code.evaluate, {
+const duplicate = runEvaluate({
   _global_observer_test: true,
   observer_now: 262_000,
 }, store);
@@ -273,12 +383,12 @@ assert.equal(duplicate[0], null);
 const recovered = structuredClone(statusFailure);
 recovered.observer_now = 263_000;
 recovered.status = { ...recovered.status, fill: "green", text: "connected" };
-execute(code.ingest, recovered, store);
-execute(code.evaluate, { _global_observer_test: true, observer_now: 264_000 }, store);
+runIngest(recovered, store);
+runEvaluate({ _global_observer_test: true, observer_now: 264_000 }, store);
 const newFailure = structuredClone(statusFailure);
 newFailure.observer_now = 300_000;
-execute(code.ingest, newFailure, store);
-const newIncident = execute(code.evaluate, {
+runIngest(newFailure, store);
+const newIncident = runEvaluate({
   _global_observer_test: true,
   observer_now: 361_000,
 }, store);
@@ -320,6 +430,7 @@ assert.equal(
 );
 
 const internalFailureStore = memory();
+ensurePolicy(internalFailureStore);
 const internalFailureMessage = {
   error: {
     message: "synthetic internal failure",

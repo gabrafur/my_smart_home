@@ -386,7 +386,7 @@ const observerNodes = [
   functionNode(
     "global_observer_status_unmonitored", productionGroup,
     "Remover status fora do contrato", source("global-flow-observer-status-unmonitored.js"),
-    0, 1100, 360, [],
+    0, 1060, 380, [],
   ),
   switchNode(
     "global_observer_status_failure_gate", productionGroup, "Status indica falha real?",
@@ -402,12 +402,12 @@ const observerNodes = [
   functionNode(
     "global_observer_status_recovery", productionGroup,
     "Registrar recuperação da fonte", source("global-flow-observer-status-recovery.js"),
-    0, 1340, 340, [],
+    0, 1390, 340, [],
   ),
   functionNode(
     "global_observer_unknown_ignore", productionGroup,
     "Ignorar evento sem erro ou status", source("global-flow-observer-state-save.js"),
-    0, 850, 400, [],
+    0, 760, 400, [],
   ),
   {
     id: "global_observer_tick",
@@ -468,7 +468,7 @@ const observerNodes = [
   functionNode(
     "global_observer_evaluate_clear_transient", productionGroup,
     "Limpar incidente ainda transitório", source("global-flow-observer-evaluate-clear.js"),
-    0, 1340, 500, [],
+    0, 1400, 520, [],
   ),
   functionNode(
     "global_observer_evaluate_confirm", productionGroup,

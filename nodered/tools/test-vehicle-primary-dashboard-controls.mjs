@@ -49,7 +49,6 @@ function runtime(code, { msg, values = {}, now }) {
   return { result, store, logs };
 }
 
-const coordinator = source("vehicle-primary-refresh-coordinator.js");
 const quietHours = source("vehicle-primary-refresh-quiet-hours.js");
 const manual = source("vehicle-primary-manual-refresh.js");
 const telemetry = source("vehicle-primary-refresh-telemetry.js");
@@ -174,60 +173,6 @@ function resolvedPolicy(overrides = {}) {
 }
 
 {
-  const state = {
-    attempts: 0,
-    last_success_at: now - 60_000,
-    last_request_at: now - 60_000,
-    next_allowed_at: now + 600_000,
-    awaiting_evidence: false,
-  };
-  const first = runtime(coordinator, {
-    now,
-    values: {
-      vehicle_primary_context_v1: { ready: true, location: {}, engine_updated_at: 1, lock_updated_at: 1 },
-      security_vehicle_primary_refresh_v1: state,
-    },
-    msg: {
-      payload: {
-        kind: "refresh_command",
-        ...resolvedPolicy({ reason: "manual_force", force_recovery: true }),
-      },
-    },
-  });
-  assert.ok(Array.isArray(first.result));
-  assert.ok(first.result[0]);
-  assert.ok(first.result[1]);
-  assert.equal(first.result[2], null);
-  const stored = first.store.get("security_vehicle_primary_refresh_v1");
-  assert.equal(stored.state, "refreshing");
-  assert.equal(stored.attempts, 1);
-  assert.equal(stored.manual_force, true);
-
-  const second = runtime(coordinator, {
-    now: now + 1_000,
-    values: {
-      vehicle_primary_context_v1: { ready: true },
-      security_vehicle_primary_refresh_v1: stored,
-    },
-    msg: {
-      payload: {
-        kind: "refresh_command",
-        ...resolvedPolicy({ reason: "manual_force", force_recovery: true }),
-      },
-    },
-  });
-  assert.ok(Array.isArray(second.result));
-  assert.equal(second.result[0], null);
-  assert.equal(second.result[1], null);
-  assert.equal(second.result[2].notification.id, "vehicle_primary_refresh_blocked");
-  assert.match(second.result[2].notification.message, /nenhuma nova consulta foi enviada/i);
-  assert.match(second.result[2].notification.message, /119 s/);
-  assert.ok(second.logs.some((line) => line.includes("VEHICLE_PRIMARY_REFRESH_SUPPRESSED")));
-  assert.equal(second.store.get("security_vehicle_primary_refresh_v1").attempts, 1);
-  assert.equal(second.store.get("security_vehicle_primary_refresh_v1").state, "in_flight");
-}
-
-{
   const { result, store } = runtime(quietHours, {
     now,
     values: {
@@ -254,31 +199,6 @@ function resolvedPolicy(overrides = {}) {
     store.get("security_vehicle_primary_refresh_v1").reason,
     "quiet_hours_both_home",
   );
-}
-
-{
-  const { store } = runtime(coordinator, {
-    now,
-    values: {
-      vehicle_primary_context_v1: { ready: true },
-      security_vehicle_primary_refresh_v1: {
-        attempts: 2,
-        awaiting_evidence: true,
-        recovery_reason: "movement_recovery",
-        last_attempt_at: now - 16 * 60_000,
-        next_allowed_at: now - 1,
-      },
-    },
-    msg: { payload: {
-      kind: "refresh_command",
-      ...resolvedPolicy({ anyone_away: true }),
-    } },
-  });
-  const state = store.get("security_vehicle_primary_refresh_v1");
-  assert.equal(state.attempts, 2);
-  assert.equal(state.state, "probing_cache");
-  assert.equal(state.interval_policy, "recovery");
-  assert.equal(state.next_retry_at, now - 1);
 }
 
 {

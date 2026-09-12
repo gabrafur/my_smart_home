@@ -8,10 +8,8 @@ if (policy?.version !== 1 || policy?.complete !== true) {
     return null;
 }
 const previousState = getState();
-const state = previousState?.version === 2 ? previousState : {
-    version: 2, errors: previousState?.errors ?? {}, status_sources: {},
-    status_incidents: {}, connection_events: {}
-};
+const state = previousState?.version === 2 ? previousState : { version: 2,
+    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };
 state.errors ??= {};
 state.status_sources ??= {};
 state.status_incidents ??= {};
@@ -24,9 +22,8 @@ const source = msg.error?.source ?? msg.status?.source ?? {};
 const sourceId = String(source.id ?? "unknown").slice(0, 100);
 const sourceType = String(source.type ?? "unknown").slice(0, 80);
 const sourceName = String(source.name || sourceType || "nó desconhecido").replace(/[\r\n]+/g, " ").slice(0, 100);
-const haTypes = new Set(["api-call-service", "api-current-state", "api-get-history",
-    "api-render-template", "events-all", "ha-api", "poll-state", "server-events",
-    "server-state-changed", "trigger-state"]);
+const haTypes = new Set(["api-call-service", "api-current-state", "api-get-history", "api-render-template",
+    "events-all", "ha-api", "poll-state", "server-events", "server-state-changed", "trigger-state"]);
 const haSource = haTypes.has(sourceType) || sourceType.startsWith("ha-");
 const mqttSource = ["mqtt in", "mqtt out"].includes(sourceType);
 const sharedIncidentKey = haSource ? "connection:home_assistant" : mqttSource ? "connection:mqtt" : null;
