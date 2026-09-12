@@ -1,8 +1,8 @@
-const testMode = msg._global_observer_test === true || msg.payload?.test_mode === true;
+const testMode = msg._global_observer_test === true||msg.payload?.test_mode === true;
 const stateKey = testMode ? "global_flow_observer_v1__test" : "global_flow_observer_v1";
-const store = testMode ? undefined : "persistent";
-const getState = () => store ? flow.get(stateKey, store) : flow.get(stateKey);
-const policy = flow.get("global_observer_policy_v1", "persistent");
+const store = testMode?undefined:"persistent";
+const getState = () => store?flow.get(stateKey,store):flow.get(stateKey);
+const policy = flow.get("global_observer_policy_v1","persistent");
 if (policy?.version !== 1 || policy?.complete !== true) {
     node.error("observabilidade_global: política visual ausente", msg);
     return null;
@@ -14,14 +14,14 @@ state.errors ??= {};
 state.status_sources ??= {};
 state.status_incidents ??= {};
 state.connection_events ??= {};
-const now = Number(msg.observer_now ?? Date.now());
-const observer = msg._global_observer ?? {};
-const flowId = String(observer.flow_id ?? "unknown").slice(0, 100);
+const now=Number(msg.observer_now??Date.now());
+const observer=msg._global_observer??{};
+const flowId=String(observer.flow_id??"unknown").slice(0,100);
 const flowLabel = String(observer.flow_label ?? "fluxo desconhecido").replace(/[\r\n]+/g, " ").slice(0, 100);
 const source = msg.error?.source ?? msg.status?.source ?? {};
-const sourceId = String(source.id ?? "unknown").slice(0, 100);
-const sourceType = String(source.type ?? "unknown").slice(0, 80);
-const sourceName = String(source.name || sourceType || "nó desconhecido").replace(/[\r\n]+/g, " ").slice(0, 100);
+const sourceId = String(source.id??"unknown").slice(0,100);
+const sourceType = String(source.type??"unknown").slice(0,80);
+const sourceName = String(source.name || sourceType || "nó desconhecido").replace(/[\r\n]+/g, " ").slice(0,100);
 const haTypes = new Set(["api-call-service", "api-current-state", "api-get-history", "api-render-template",
     "events-all", "ha-api", "poll-state", "server-events", "server-state-changed", "trigger-state"]);
 const haSource = haTypes.has(sourceType) || sourceType.startsWith("ha-");
