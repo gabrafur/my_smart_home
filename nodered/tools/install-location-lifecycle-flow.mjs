@@ -13,7 +13,8 @@ const VEHICLE_TAB = "c22d8b12055e87f7";
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const generated = new Set(flows.filter((node) =>
-  node.id.startsWith("people_visual_") || node.id === "people_location_lifecycle_config_group_v2"
+  node.id.startsWith("people_visual_") || node.id.startsWith("vehicle_visual_") ||
+  node.id === "people_location_lifecycle_config_group_v2"
 ).map((node) => node.id));
 flows = flows.filter((node) => !generated.has(node.id));
 for (const node of flows) {
@@ -214,14 +215,14 @@ for (const node of flows.filter((candidate) => candidate.z === VEHICLE_TAB)) {
     id === "vehicle_primary_classify_near_home_v1" ? "vehicle_visual_event_out" : id));
 }
 vlinkIn("vehicle_visual_event_in", "Receber eventos e snapshots", ["vehicle_visual_event_out"],
-  "vehicle_primary_classify_near_home_v1", 1990, 860);
+  "vehicle_primary_classify_near_home_v1", 1960, 860);
 const classifier = required("vehicle_primary_classify_near_home_v1");
-classifier.x = 2180; classifier.y = 860; classifier.wires = [["vehicle_visual_test_adapter"]];
-vfn("vehicle_visual_test_adapter", "Adaptar somente o estado sintético", "vehicle-lifecycle-test-adapter.js", 1, 2300, 860, [["vehicle_visual_normalize"]]);
-vfn("vehicle_visual_normalize", "Normalizar localização, motor e trava", "vehicle-lifecycle-normalize.js", 1, 2620, 860, [["vehicle_visual_movement"]]);
-vfn("vehicle_visual_movement", "Calcular deslocamento e guardar observação", "vehicle-lifecycle-movement.js", 1, 2940, 860, [["vehicle_visual_state_load"]]);
-vfn("vehicle_visual_state_load", "Recuperar viagem, armamento e uso", "vehicle-lifecycle-state-load.js", 1, 3260, 860, [["vehicle_visual_engine_on"]]);
-vsw("vehicle_visual_engine_on", "Motor conhecido está ligado?", "_vehicle.engine_on", "msg", 3520, 760,
+classifier.x = 2110; classifier.y = 860; classifier.wires = [["vehicle_visual_test_adapter"]];
+vfn("vehicle_visual_test_adapter", "Adaptar somente o estado sintético", "vehicle-lifecycle-test-adapter.js", 1, 2390, 860, [["vehicle_visual_normalize"]]);
+vfn("vehicle_visual_normalize", "Normalizar localização, motor e trava", "vehicle-lifecycle-normalize.js", 1, 2700, 860, [["vehicle_visual_movement"]]);
+vfn("vehicle_visual_movement", "Calcular deslocamento e guardar observação", "vehicle-lifecycle-movement.js", 1, 3020, 860, [["vehicle_visual_state_load"]]);
+vfn("vehicle_visual_state_load", "Recuperar viagem, armamento e uso", "vehicle-lifecycle-state-load.js", 1, 3340, 860, [["vehicle_visual_engine_on"]]);
+vsw("vehicle_visual_engine_on", "Motor conhecido está ligado?", "_vehicle.engine_on", "msg", 3600, 760,
   [["vehicle_visual_use_engine_on"], ["vehicle_visual_engine_off"]]);
 vsw("vehicle_visual_engine_off", "Motor conhecido está desligado?", "_vehicle.engine_off", "msg", 3780, 840,
   [["vehicle_visual_use_engine_off"], ["vehicle_visual_persisted_trip"]]);

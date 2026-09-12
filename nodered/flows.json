@@ -1935,7 +1935,8 @@
             "9bbff0058231747f",
             "2ff44a30d0a2cf18",
             "26d6516f49329f7b",
-            "f673b02282a47d31"
+            "f673b02282a47d31",
+            "vehicle_visual_event_out"
         ],
         "x": 174,
         "y": 59,
@@ -1964,6 +1965,7 @@
             "vehicle_primary_arrival_direction_note_v1",
             "vehicle_primary_arrival_departure_blocked_v1",
             "vehicle_primary_classify_near_home_v1",
+            "vehicle_visual_event_in",
             "vehicle_visual_test_adapter",
             "vehicle_visual_normalize",
             "vehicle_visual_movement",
@@ -9220,9 +9222,7 @@
         "x": 440,
         "y": 180,
         "wires": [
-            [
-                "vehicle_primary_classify_near_home_v1"
-            ]
+            []
         ]
     },
     {
@@ -9267,9 +9267,7 @@
         "x": 440,
         "y": 240,
         "wires": [
-            [
-                "vehicle_primary_classify_near_home_v1"
-            ]
+            []
         ]
     },
     {
@@ -9314,9 +9312,7 @@
         "x": 380,
         "y": 300,
         "wires": [
-            [
-                "vehicle_primary_classify_near_home_v1"
-            ]
+            []
         ]
     },
     {
@@ -9361,9 +9357,7 @@
         "x": 390,
         "y": 360,
         "wires": [
-            [
-                "vehicle_primary_classify_near_home_v1"
-            ]
+            []
         ]
     },
     {
@@ -9408,9 +9402,7 @@
         "x": 400,
         "y": 420,
         "wires": [
-            [
-                "vehicle_primary_classify_near_home_v1"
-            ]
+            []
         ]
     },
     {
@@ -9464,9 +9456,7 @@
         "x": 420,
         "y": 480,
         "wires": [
-            [
-                "vehicle_primary_classify_near_home_v1"
-            ]
+            []
         ]
     },
     {
@@ -15369,7 +15359,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2040,
+        "x": 2110,
         "y": 860,
         "wires": [
             [
@@ -46895,6 +46885,37 @@
         ]
     },
     {
+        "id": "vehicle_visual_event_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "c1e3fc50d8ed0093",
+        "name": "Eventos e snapshots → lifecycle",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_event_in"
+        ],
+        "x": 690,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_event_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Receber eventos e snapshots",
+        "links": [
+            "vehicle_visual_event_out"
+        ],
+        "x": 1960,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_primary_classify_near_home_v1"
+            ]
+        ]
+    },
+    {
         "id": "vehicle_visual_test_adapter",
         "type": "function",
         "z": "c22d8b12055e87f7",
@@ -46907,7 +46928,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2300,
+        "x": 2390,
         "y": 860,
         "wires": [
             [
@@ -46928,7 +46949,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2620,
+        "x": 2700,
         "y": 860,
         "wires": [
             [
@@ -46949,7 +46970,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2940,
+        "x": 3020,
         "y": 860,
         "wires": [
             [
@@ -46970,7 +46991,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3260,
+        "x": 3340,
         "y": 860,
         "wires": [
             [
@@ -46997,7 +47018,7 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 3520,
+        "x": 3600,
         "y": 760,
         "wires": [
             [

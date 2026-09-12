@@ -13,11 +13,17 @@ const configReady =
     Number.isFinite(Number(config.approaching_interval_minutes)) &&
     Number.isFinite(Number(config.home_interval_minutes)) &&
     Number.isInteger(Number(config.quiet_start_hour)) &&
-    Number.isInteger(Number(config.quiet_end_hour));
+    Number.isInteger(Number(config.quiet_end_hour)) &&
+    Number.isInteger(Number(config.in_flight_lease_seconds)) &&
+    Number.isInteger(Number(config.cache_probe_settle_seconds)) &&
+    Number.isFinite(Number(config.provider_backoff_max_hours)) &&
+    Number.isFinite(Number(config.semantic_evidence_window_minutes)) &&
+    Number.isInteger(Number(config.unknown_location_start_hour)) &&
+    Number.isInteger(Number(config.unknown_location_end_hour));
 
 if (!configReady) {
     node.error(
-        "Política de refresh não configurada; confira os cinco blocos numéricos",
+        "Política de refresh não configurada; confira todos os blocos numéricos",
         msg
     );
     return [null, null, null, null];
@@ -65,7 +71,13 @@ msg.payload.refresh_policy_config = {
     home_interval_ms:
         Number(config.home_interval_minutes) * 60 * 1000,
     quiet_start_hour: Number(config.quiet_start_hour),
-    quiet_end_hour: Number(config.quiet_end_hour)
+    quiet_end_hour: Number(config.quiet_end_hour),
+    in_flight_lease_ms: Number(config.in_flight_lease_seconds) * 1000,
+    cache_probe_settle_ms: Number(config.cache_probe_settle_seconds) * 1000,
+    provider_backoff_max_ms: Number(config.provider_backoff_max_hours) * 3600000,
+    semantic_evidence_window_ms: Number(config.semantic_evidence_window_minutes) * 60000,
+    unknown_location_start_hour: Number(config.unknown_location_start_hour),
+    unknown_location_end_hour: Number(config.unknown_location_end_hour)
 };
 msg.payload.refresh_resident_states_known = residentStatesKnown;
 msg.payload.refresh_any_resident_away = anyResidentAway;

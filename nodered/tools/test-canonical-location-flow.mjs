@@ -21,6 +21,11 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250,
   home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  arrival_dedupe_minutes: 10,
+  primary_home_grace_minutes: 10,
+  future_tolerance_seconds: 60,
+  vehicle_signal_fresh_minutes: 5,
+  vehicle_recovery_hours: 24,
 };
 let clock = Date.parse("2026-09-10T21:00:00.000Z");
 const originalNow = Date.now;
@@ -77,6 +82,51 @@ function run(id, msg, flow = memory(), globalContext = runtimeGlobal()) {
     setTimeout,
     clearTimeout,
   );
+}
+
+function runVehicleLifecycle(message, flow = memory(), globalContext = runtimeGlobal()) {
+  let msg = run("vehicle_visual_test_adapter", message, flow, globalContext);
+  msg = run("vehicle_visual_normalize", msg, flow, globalContext);
+  msg = run("vehicle_visual_movement", msg, flow, globalContext);
+  msg = run("vehicle_visual_state_load", msg, flow, globalContext);
+  const data = msg._vehicle;
+  const near = data.location.ready && (
+    (data.location.gate_distance_m !== null &&
+      data.location.gate_distance_m <= data.policy.near_home_radius_m) ||
+    (data.location.distance_m !== null &&
+      data.location.distance_m <= data.policy.near_home_radius_m) ||
+    (data.location.distance_m === null && data.location.gate_distance_m === null &&
+      data.location.state === "home")
+  );
+  const away = data.location.ready && (data.location.distance_m !== null
+    ? data.location.distance_m > data.policy.home_radius_m
+    : data.location.state === "not_home");
+  if (data.engine_on) {
+    data.in_use = true;
+    data.in_use_reason = "known_engine_on";
+  } else if (data.engine_off) {
+    data.in_use = false;
+    data.in_use_reason = "known_engine_off";
+  } else if (data.recovery.in_use === true && away) {
+    data.in_use = true;
+    data.in_use_reason = "persisted_trip_revalidated_by_fresh_away_location";
+  } else if (data.lock_fresh && data.unlocked && near) {
+    data.in_use = false;
+    data.in_use_reason = "fresh_home_unlocked_engine_pending";
+  }
+  msg = run("vehicle_visual_arrival_facts", msg, flow, globalContext);
+  if (msg._vehicle.facts.arrival_eligible) {
+    msg = run("vehicle_visual_arrival_build", msg, flow, globalContext);
+    msg = run("vehicle_visual_arrival_dedupe", msg, flow, globalContext);
+  } else if (msg._vehicle.facts.blocked_candidate) {
+    msg = run("vehicle_visual_blocked_build", msg, flow, globalContext);
+  }
+  msg = run("vehicle_visual_state_finalize", msg, flow, globalContext);
+  msg = run("vehicle_visual_evidence_read", msg, flow, globalContext);
+  if (msg._vehicle.evidence.awaiting && msg._vehicle.evidence.confirmed) {
+    msg = run("vehicle_visual_evidence_confirm", msg, flow, globalContext);
+  }
+  return run("092625f2eb5cc156", msg, flow, globalContext);
 }
 
 function iso(ageMs = 0) {
@@ -241,7 +291,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
     flow,
   );
   assert.equal(far.payload.vehicle_primary.state, "not_home");
-  run("092625f2eb5cc156", far, flow);
+  runVehicleLifecycle(far, flow);
   clock += 1_000;
   const near = run(
     "vehicle_primary_classify_near_home_v1",
@@ -250,7 +300,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   );
   assert.equal(near.payload.trigger_prev_state, "not_home");
   assert.equal(near.payload.trigger_state, "near_home");
-  const result = run("092625f2eb5cc156", near, flow);
+  const result = runVehicleLifecycle(near, flow);
   assert.equal(result[1].payload.arrival_stage, "approach");
 }
 
@@ -333,9 +383,14 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   const peopleClassifier = byId.get("people_location_classify_near_home_v1");
   const vehicleClassifier = byId.get("vehicle_primary_classify_near_home_v1");
   assert.doesNotMatch(people.func, /mergeTrackers|TRACKER_SELECTION_VERSION/);
-  assert.match(people.func, /LOCATION_POLICY\.near_home_radius_m/);
-  assert.match(vehicle.func, /LOCATION_POLICY\.near_home_radius_m/);
-  assert.match(vehicle.func, /LOCATION_POLICY\.movement_threshold_m/);
+  assert.ok(people.func.length < 4000, "finalizador de pessoas deve ser pequeno");
+  assert.ok(vehicle.func.length < 4000, "finalizador do veículo deve ser pequeno");
+  assert.match(byId.get("people_visual_normalize").func, /policy\.home_radius_m/);
+  assert.match(byId.get("vehicle_visual_normalize").func, /location_policy_v1/);
+  assert.match(byId.get("vehicle_visual_movement").func, /movement_threshold_m/);
+  assert.equal(byId.get("people_visual_decision").type, "switch");
+  assert.equal(byId.get("vehicle_visual_engine_on").type, "switch");
+  assert.equal(byId.get("vehicle_visual_evidence_confirmed").type, "switch");
   assert.match(peopleClassifier.func, /location_update_ring/);
   assert.match(vehicleClassifier.func, /location_update_ring/);
   assert.match(
@@ -348,7 +403,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 
   const flow = memory({ vehicle_primary_arrival_armed: true });
   const changed = iso();
-  const vehicleResult = run("092625f2eb5cc156", {
+  const rawVehicleResult = {
     payload: {
       event: "location_update",
       source: "vehicle_primary",
@@ -359,8 +414,14 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
       vehicle_primary_lock: { state: "locked", last_updated: changed },
       vehicle_primary_last_updated: { state: changed, last_updated: changed },
     },
-  }, flow);
-  assert.equal(vehicleResult[1].payload.arrival_stage, "home");
+  };
+  const classifiedVehicleResult = run(
+    "vehicle_primary_classify_near_home_v1",
+    rawVehicleResult,
+    flow,
+  );
+  const vehicleResult = runVehicleLifecycle(classifiedVehicleResult, flow);
+  assert.equal(vehicleResult[1].payload.arrival_stage, "approach");
   assert.equal(vehicleResult[0].payload.context.movement_threshold_m, 250);
 }
 
