@@ -6,6 +6,27 @@ const flowUrl = new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 const tabId = "456b32bd5d59b0d6";
+const startNotificationInputId = "adb240fe59ad2ae7";
+const startPersistentNotificationId = "349bc099633fee5d";
+const startMobileNotificationId = "rpi_emergency_cooling_push_primary";
+const startAlexaNotificationId = "rpi_emergency_cooling_alexa_primary";
+
+const hotTrigger = byId.get("9b0dbe523189f263");
+const hotRetryCheck = byId.get("426ce86b78602275");
+if (!hotTrigger || hotTrigger.type !== "server-state-changed" ||
+    !hotRetryCheck || hotRetryCheck.type !== "api-current-state") {
+  throw new Error("Cooling temperature triggers not found");
+}
+Object.assign(hotTrigger, {
+  name: "CPU > 81,9 °C por 2 min",
+  ifState: "81.9",
+  for: "2",
+});
+for (const node of [hotTrigger, hotRetryCheck]) {
+  for (const output of node.outputProperties ?? []) {
+    if (output.valueType === "entityState") output.value = "";
+  }
+}
 
 const groups = {
   c8f8e5b532232a4f: { x: 74, y: 79, w: 1587, h: 312 },
@@ -90,7 +111,9 @@ const positions = {
   f9be08e865d2c10e: [105, 1440],
   ca55bd1e9433732e: [260, 1440],
   adb240fe59ad2ae7: [525, 1440],
-  "349bc099633fee5d": [680, 1440],
+  "349bc099633fee5d": [680, 1400],
+  rpi_emergency_cooling_push_primary: [680, 1440],
+  rpi_emergency_cooling_alexa_primary: [680, 1480],
   fb7ee906fa3b1033: [945, 1440],
   a240a1bb42481943: [1100, 1440],
   "12141375e10fc751": [1365, 1440],
@@ -108,6 +131,75 @@ const positions = {
   global_observer_coverage__456b32bd5d59b0d6__annotate: [5140, 130],
   global_observer_coverage__456b32bd5d59b0d6__out: [5385, 130],
 };
+
+const startNotificationInput = byId.get(startNotificationInputId);
+const startPersistentNotification = byId.get(startPersistentNotificationId);
+const startNotificationGroup = byId.get("f79ed8df25162bcf");
+if (!startNotificationInput || startNotificationInput.type !== "link in" ||
+    !startPersistentNotification || startPersistentNotification.type !== "api-call-service" ||
+    !startNotificationGroup || startNotificationGroup.type !== "group") {
+  throw new Error("Cooling start notification route not found");
+}
+
+const startMobileNotification = {
+  id: startMobileNotificationId,
+  type: "api-call-service",
+  z: tabId,
+  g: "f79ed8df25162bcf",
+  name: "Push mobile_primary",
+  server: startPersistentNotification.server,
+  version: 7,
+  debugenabled: false,
+  action: "public_bindings.call",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"role":"mobile_primary","action":"notify_3","data":{"title":"Raspberry Pi - resfriamento de emergencia","message":"A CPU chegou a " & $string(trigger_temperature) & " °C. O ar-condicionado do escritorio foi controlado em 16 °C, modo frio e ventilacao maxima. Origem: " & start_source & ". Ele sera restaurado depois que a CPU permanecer abaixo de 70 °C por 10 minutos."}}',
+  dataType: "jsonata",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "all",
+  blockInputOverrides: true,
+  domain: "public_bindings",
+  service: "call",
+  x: positions[startMobileNotificationId][0],
+  y: positions[startMobileNotificationId][1],
+  wires: [[]],
+};
+const existingMobileNotification = byId.get(startMobileNotificationId);
+if (existingMobileNotification) Object.assign(existingMobileNotification, startMobileNotification);
+else {
+  flows.push(startMobileNotification);
+  byId.set(startMobileNotificationId, startMobileNotification);
+}
+
+const startAlexaNotification = {
+  ...startMobileNotification,
+  id: startAlexaNotificationId,
+  name: "Avisar Alexa",
+  data: '{"role":"mobile_primary","action":"notify","data":{"message":"Raspberry Pi - resfriamento de emergencia. A CPU chegou a " & $string(trigger_temperature) & " °C. O ar-condicionado do escritorio foi controlado em 16 °C, modo frio e ventilacao maxima. Origem: " & start_source & ". Ele sera restaurado depois que a CPU permanecer abaixo de 70 °C por 10 minutos."}}',
+  x: positions[startAlexaNotificationId][0],
+  y: positions[startAlexaNotificationId][1],
+};
+const existingAlexaNotification = byId.get(startAlexaNotificationId);
+if (existingAlexaNotification) Object.assign(existingAlexaNotification, startAlexaNotification);
+else {
+  flows.push(startAlexaNotification);
+  byId.set(startAlexaNotificationId, startAlexaNotification);
+}
+startNotificationGroup.nodes = [...new Set([
+  ...startNotificationGroup.nodes,
+  startMobileNotificationId,
+  startAlexaNotificationId,
+])];
+startNotificationInput.wires = [[
+  startPersistentNotificationId,
+  startMobileNotificationId,
+  startAlexaNotificationId,
+]];
 
 const virtualRoutes = [
   {

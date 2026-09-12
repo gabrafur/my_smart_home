@@ -63,7 +63,10 @@ The agent deliberately runs at a detached `HEAD`, pinned to the baseline the
 scheduler already compared with `origin/main`; it must not require this
 temporary worktree to be checked out on `main`. On completion, the agent writes
 a transient JSON receipt. A zero exit without the receipt, or a receipt that
-reports a blocker, is a failure rather than `no_changes`.
+reports a blocker, is a failure rather than `no_changes`. Even with a completed
+receipt, the scheduler runs `make validate-public` again before accepting either
+`no_changes` or a documentation diff; this independent validation overrides the
+agent's report.
 
 ## Security boundaries
 
@@ -84,8 +87,12 @@ Additional boundaries include:
 - the shared `.git-backup.lock`, preventing overlap with update/backup scripts;
 - fast-forward-only operation, with no destructive rebase, force push, or
   history rewrite;
+- an agent push block scoped to the real remote URL, without contaminating the
+  synthetic repositories created by validation;
 - a mandatory completion receipt removed before diff calculation, preventing
   false success when the agent exits before reviewing the baseline;
+- an independent scheduler rerun of `make validate-public` before accepting
+  even a no-change review;
 - a default three-hour limit that terminates the whole process group.
 
 The SSH key needs push permission, but should be repository-specific and have

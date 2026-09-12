@@ -549,6 +549,25 @@ assert.deepEqual(get("b69a6887788d1c54").wires[0], ["c1b98e075390aee0"]);
 
 // Observabilidade usa IDs estaveis, evitando acumulo; catches cobrem chamadas criticas.
 assert.match(get("349bc099633fee5d").data, /raspberry_pi_emergency_cooling/);
+const startMobileNotification = get("rpi_emergency_cooling_push_primary", "api-call-service");
+assert.equal(startMobileNotification.action, "public_bindings.call");
+assert.equal(startMobileNotification.domain, "public_bindings");
+assert.equal(startMobileNotification.service, "call");
+assert.equal(startMobileNotification.queue, "all");
+assert.match(startMobileNotification.data, /"role":"mobile_primary"/);
+assert.match(startMobileNotification.data, /"action":"notify_3"/);
+assert.match(startMobileNotification.data, /Raspberry Pi - resfriamento de emergencia/);
+const startAlexaNotification = get("rpi_emergency_cooling_alexa_primary", "api-call-service");
+assert.equal(startAlexaNotification.action, "public_bindings.call");
+assert.equal(startAlexaNotification.queue, "all");
+assert.match(startAlexaNotification.data, /"role":"mobile_primary"/);
+assert.match(startAlexaNotification.data, /"action":"notify"/);
+assert.match(startAlexaNotification.data, /Raspberry Pi - resfriamento de emergencia/);
+assert.deepEqual(get("adb240fe59ad2ae7", "link in").wires[0], [
+  "349bc099633fee5d",
+  "rpi_emergency_cooling_push_primary",
+  "rpi_emergency_cooling_alexa_primary",
+]);
 assert.match(get("ab4f85af1ed94f86").data, /raspberry_pi_emergency_cooling_failure/);
 assert.match(get("a240a1bb42481943").data, /raspberry_pi_emergency_cooling_recovered/);
 assert.match(get("4b48bc3c0c58d87c").data, /raspberry_pi_emergency_cooling_recovered/);

@@ -261,8 +261,9 @@ Execute:
 make validate-public
 ```
 
-O scheduler fará o stage e executará também, fora do agente, o alvo canônico
-para o índice:
+O scheduler repetirá `make validate-public` fora do agente, inclusive quando
+não houver alterações. Se houver diff documental, ele fará o stage e executará
+também o alvo canônico para o índice:
 
 ```bash
 make validate-staged

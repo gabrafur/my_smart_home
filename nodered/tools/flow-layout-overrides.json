@@ -20,13 +20,13 @@
         },
         "recorder_retention_group_execution": {
           "x": 24,
-          "y": 579,
+          "y": 599,
           "w": 1902,
           "h": 222
         },
         "recorder_retention_group_tests": {
           "x": 64,
-          "y": 779,
+          "y": 839,
           "w": 1632,
           "h": 332
         },
@@ -1425,7 +1425,7 @@
         "5ae977feca8f9b01": {
           "x": 74,
           "y": 419,
-          "w": 4400,
+          "w": 4267,
           "h": 442
         },
         "4afb66a093b1940d": {
@@ -1436,9 +1436,9 @@
         },
         "f79ed8df25162bcf": {
           "x": 64,
-          "y": 1399,
+          "y": 1359,
           "w": 1592,
-          "h": 182
+          "h": 222
         },
         "global_observer_coverage__456b32bd5d59b0d6__group": {
           "x": 4904,
@@ -1668,7 +1668,15 @@
         },
         "349bc099633fee5d": {
           "x": 680,
+          "y": 1400
+        },
+        "rpi_emergency_cooling_push_primary": {
+          "x": 680,
           "y": 1440
+        },
+        "rpi_emergency_cooling_alexa_primary": {
+          "x": 680,
+          "y": 1480
         },
         "a240a1bb42481943": {
           "x": 1100,
@@ -1687,7 +1695,7 @@
           "y": 1540
         },
         "4b48bc3c0c58d87c": {
-          "x": 1140,
+          "x": 1180,
           "y": 1540
         },
         "f9be08e865d2c10e": {
@@ -2943,16 +2951,16 @@
           "h": 402
         },
         "vehicle_primary_remote_command_group_v1": {
-          "x": 2658,
+          "x": 2738,
           "y": 1279,
-          "w": 1306,
+          "w": 1362,
           "h": 262
         },
         "vehicle_primary_remote_command_test_group_v1": {
-          "x": 1234,
+          "x": 1224,
           "y": 1619,
-          "w": 592,
-          "h": 262
+          "w": 602,
+          "h": 382
         },
         "vehicle_primary_refresh_config_group_v1": {
           "x": 804,
@@ -3793,6 +3801,12 @@
         "global_observer_coverage__c22d8b12055e87f7__out": {
           "x": 5015,
           "y": 130
+        },
+        "vehicle_primary_remote_request_group_v1": {
+          "x": 174,
+          "y": 1259,
+          "w": 2292,
+          "h": 322
         }
       }
     },
@@ -3801,632 +3815,632 @@
       "compact_groups": true,
       "nodes": {
         "e53f5ed6c320c591": {
-          "x": 104,
-          "y": 59,
-          "w": 312,
-          "h": 402
+          "x": 134,
+          "y": 79,
+          "w": 552,
+          "h": 342
         },
         "32a89192d93735b1": {
-          "x": 64,
-          "y": 1540,
-          "w": 6500,
+          "x": 102,
+          "y": 1299,
+          "w": 6142,
           "h": 502
         },
         "95e7527bc7a0a9a1": {
-          "x": 1804,
-          "y": 59,
+          "x": 744,
+          "y": 39,
           "w": 1302,
           "h": 422
         },
         "a610d085d27ea80d": {
-          "x": 439,
-          "y": 459,
+          "x": 119,
+          "y": 499,
           "w": 1262,
           "h": 242
         },
         "ed8fa1d49205cbdb": {
-          "x": 1834,
-          "y": 519,
+          "x": 1414,
+          "y": 579,
           "w": 547,
           "h": 82
         },
         "6013a28eaa95addd": {
-          "x": 64,
-          "y": 2100,
-          "w": 2690,
-          "h": 322
+          "x": 94,
+          "y": 1859,
+          "w": 2677,
+          "h": 262
         },
         "security_light_engine_bypass_group_v1": {
-          "x": 64,
-          "y": 1019,
-          "w": 2000,
+          "x": 107,
+          "y": 779,
+          "w": 2042,
           "h": 442
         },
         "light_location_policy_group_v1": {
-          "x": 3740,
-          "y": 1019,
-          "w": 602,
-          "h": 142
+          "x": 1414,
+          "y": 679,
+          "w": 492,
+          "h": 82
         },
         "security_visual_policy_group_v1": {
-          "x": 2180,
-          "y": 1019,
-          "w": 1510,
+          "x": 2262,
+          "y": 779,
+          "w": 1242,
           "h": 482
         },
         "global_observer_coverage__6b7552efb85343f4__group": {
-          "x": 3740,
-          "y": 40,
-          "w": 720,
-          "h": 162
+          "x": 2044,
+          "y": 599,
+          "w": 722,
+          "h": 142
         },
         "0ebee3461b20bade": {
-          "x": 240,
-          "y": 100
+          "x": 420,
+          "y": 120
         },
         "519b09225c268695": {
-          "x": 325,
-          "y": 180
-        },
-        "fad81d855058dad1": {
-          "x": 325,
+          "x": 385,
           "y": 220
         },
-        "cf9bc321e0ec89f9": {
-          "x": 325,
+        "fad81d855058dad1": {
+          "x": 385,
           "y": 260
+        },
+        "cf9bc321e0ec89f9": {
+          "x": 385,
+          "y": 300
         },
         "bd3b7637d53dce33": {
           "x": 260,
-          "y": 340
-        },
-        "48a5f40d806f6950": {
-          "x": 1480,
-          "y": 1660
-        },
-        "62f77a1ad440639d": {
-          "x": 2760,
-          "y": 1880
-        },
-        "e7542f3caa4a99e2": {
-          "x": 3100,
-          "y": 1800
-        },
-        "276ba50ad0e36bab": {
-          "x": 3380,
-          "y": 1800
-        },
-        "87b2f8eb75cb6359": {
-          "x": 5900,
-          "y": 1800
-        },
-        "354c9839bfca592f": {
-          "x": 2160,
-          "y": 180
-        },
-        "f863fcd77744a4da": {
-          "x": 2620,
-          "y": 100
-        },
-        "2818bf202b397612": {
-          "x": 2640,
-          "y": 160
-        },
-        "light_notify_on_secondary": {
-          "x": 2650,
-          "y": 200
-        },
-        "9f047ccb2ce2c3aa": {
-          "x": 2620,
-          "y": 260
-        },
-        "8fbbd9e9e8fdaacc": {
-          "x": 2730,
-          "y": 320
-        },
-        "225a9b23f78894c9": {
-          "x": 2925,
-          "y": 320
-        },
-        "d2cc7a5873776be0": {
-          "x": 2555,
-          "y": 440
-        },
-        "a5cbd5aa62c5a99b": {
-          "x": 765,
-          "y": 500
-        },
-        "374d4e39be0a30ac": {
-          "x": 735,
-          "y": 580
-        },
-        "71976ffe382e6d7d": {
-          "x": 1135,
-          "y": 640
-        },
-        "84d450933e67b8c1": {
-          "x": 1245,
-          "y": 540
-        },
-        "82539910c43d6cf5": {
-          "x": 1565,
-          "y": 540
-        },
-        "2f8ac8be8e84a548": {
-          "x": 2070,
-          "y": 560
-        },
-        "556814a7d5379621": {
-          "x": 2340,
-          "y": 560
-        },
-        "336b58c50f842082": {
-          "x": 260,
-          "y": 420
-        },
-        "78753a34fe418682": {
-          "x": 210,
-          "y": 2160
-        },
-        "bfcddf998d4e3a53": {
-          "x": 470,
-          "y": 2160
-        },
-        "eb9ffff62431e1c3": {
-          "x": 210,
-          "y": 2300
-        },
-        "a0a4977052d1ce06": {
-          "x": 2170,
-          "y": 2200
-        },
-        "704af53cd84ba2a2": {
-          "x": 2410,
-          "y": 2200
-        },
-        "2405a253853fa82e": {
-          "x": 2670,
-          "y": 2200
-        },
-        "f59d2ceb5ba88ddf": {
-          "x": 795,
-          "y": 660
-        },
-        "68a67feb7cc57957": {
-          "x": 1840,
-          "y": 1660
-        },
-        "cd40f5f8e40b07af": {
-          "x": 470,
-          "y": 2340
-        },
-        "e10a4b1a9880e827": {
-          "x": 3100,
-          "y": 1720
-        },
-        "81994a8c6c38a4c1": {
-          "x": 3100,
-          "y": 1880
-        },
-        "04007cc1732f60c9": {
-          "x": 2170,
-          "y": 240
-        },
-        "light_notify_unavailable_secondary": {
-          "x": 2180,
-          "y": 300
-        },
-        "d710ac9de2f98569": {
-          "x": 2270,
-          "y": 360
-        },
-        "54b3d667ae845416": {
-          "x": 3100,
-          "y": 1960
-        },
-        "1bdb8c52397de8a9": {
-          "x": 2310,
-          "y": 1600
-        },
-        "aaeec8223d98ab0b": {
-          "x": 480,
-          "y": 580
-        },
-        "77f539388438547c": {
-          "x": 1840,
-          "y": 1600
-        },
-        "light_full_dry_run_terminal_v1": {
-          "x": 2850,
-          "y": 400
-        },
-        "light_unavailable_test_dry_run_out_v1": {
-          "x": 6220,
-          "y": 1880
-        },
-        "light_unavailable_test_dry_run_in_v1": {
-          "x": 1845,
           "y": 380
         },
-        "light_available_to_output_out_v1": {
-          "x": 6220,
-          "y": 1720
+        "48a5f40d806f6950": {
+          "x": 1650,
+          "y": 1400
         },
-        "light_available_to_output_in_v1": {
-          "x": 1845,
+        "62f77a1ad440639d": {
+          "x": 2743,
+          "y": 1620
+        },
+        "e7542f3caa4a99e2": {
+          "x": 3083,
+          "y": 1540
+        },
+        "276ba50ad0e36bab": {
+          "x": 3363,
+          "y": 1540
+        },
+        "87b2f8eb75cb6359": {
+          "x": 5883,
+          "y": 1540
+        },
+        "354c9839bfca592f": {
+          "x": 1100,
           "y": 160
         },
-        "light_unavailable_to_output_out_v1": {
-          "x": 6220,
-          "y": 1800
+        "f863fcd77744a4da": {
+          "x": 1560,
+          "y": 80
         },
-        "light_unavailable_to_output_in_v1": {
-          "x": 1845,
-          "y": 260
+        "2818bf202b397612": {
+          "x": 1580,
+          "y": 140
         },
-        "light_test_to_terminal_out_v1": {
-          "x": 2320,
-          "y": 400
+        "light_notify_on_secondary": {
+          "x": 1590,
+          "y": 180
         },
-        "light_test_to_terminal_in_v1": {
-          "x": 2680,
-          "y": 400
+        "9f047ccb2ce2c3aa": {
+          "x": 1560,
+          "y": 240
         },
-        "security_light_engine_bypass_startup_v1": {
-          "x": 280,
-          "y": 1080
+        "8fbbd9e9e8fdaacc": {
+          "x": 1670,
+          "y": 300
         },
-        "security_light_engine_bypass_command_v1": {
-          "x": 280,
-          "y": 1140
+        "225a9b23f78894c9": {
+          "x": 1865,
+          "y": 300
         },
-        "security_light_engine_bypass_test_on_v1": {
-          "x": 260,
-          "y": 1200
+        "d2cc7a5873776be0": {
+          "x": 1495,
+          "y": 420
         },
-        "security_light_engine_bypass_test_off_v1": {
-          "x": 260,
-          "y": 1260
-        },
-        "security_light_engine_bypass_function_v1": {
-          "x": 610,
-          "y": 1160
-        },
-        "security_light_engine_bypass_mqtt_out_v1": {
-          "x": 1930,
-          "y": 1120
-        },
-        "security_light_engine_bypass_reevaluate_out_v1": {
-          "x": 1980,
-          "y": 1200
-        },
-        "security_light_engine_bypass_reevaluate_in_v1": {
-          "x": 160,
-          "y": 1600
-        },
-        "light_location_policy_in_v1": {
-          "x": 3835,
-          "y": 1100
-        },
-        "light_location_policy_status_v1": {
-          "x": 4130,
-          "y": 1100
-        },
-        "light_arrival_replay_route_out_v1": {
-          "x": 1840,
-          "y": 1720
-        },
-        "light_arrival_replay_gate_in_v1": {
-          "x": 160,
-          "y": 1820
-        },
-        "light_arrival_replay_debug_in_v1": {
-          "x": 2060,
-          "y": 1600
-        },
-        "light_off_decision_route_out_v1": {
-          "x": 960,
-          "y": 580
-        },
-        "light_off_decision_route_in_v1": {
-          "x": 1030,
+        "a5cbd5aa62c5a99b": {
+          "x": 445,
           "y": 540
         },
-        "security_visual_bypass_branch": {
-          "x": 880,
-          "y": 1160
+        "374d4e39be0a30ac": {
+          "x": 415,
+          "y": 620
         },
-        "security_visual_bypass_startup": {
-          "x": 1140,
-          "y": 1060
+        "71976ffe382e6d7d": {
+          "x": 815,
+          "y": 680
         },
-        "security_visual_bypass_auto_enable": {
-          "x": 1160,
-          "y": 1120
+        "84d450933e67b8c1": {
+          "x": 925,
+          "y": 580
         },
-        "security_visual_bypass_auto_owned": {
-          "x": 1140,
-          "y": 1200
+        "82539910c43d6cf5": {
+          "x": 1245,
+          "y": 580
         },
-        "security_visual_bypass_auto_recover": {
-          "x": 1410,
-          "y": 1180
+        "2f8ac8be8e84a548": {
+          "x": 1650,
+          "y": 620
         },
-        "security_visual_bypass_preserve_manual": {
-          "x": 1410,
-          "y": 1240
+        "556814a7d5379621": {
+          "x": 1920,
+          "y": 620
         },
-        "security_visual_bypass_manual_enable": {
-          "x": 1160,
-          "y": 1300
+        "336b58c50f842082": {
+          "x": 530,
+          "y": 380
         },
-        "security_visual_bypass_manual_disable": {
-          "x": 1160,
-          "y": 1360
+        "78753a34fe418682": {
+          "x": 270,
+          "y": 1900
         },
-        "security_visual_bypass_invalid": {
-          "x": 1150,
-          "y": 1420
+        "bfcddf998d4e3a53": {
+          "x": 530,
+          "y": 1900
         },
-        "security_visual_bypass_result_out": {
-          "x": 1510,
-          "y": 1060
+        "eb9ffff62431e1c3": {
+          "x": 270,
+          "y": 2040
         },
-        "security_visual_bypass_result_in": {
-          "x": 1620,
-          "y": 1160
+        "a0a4977052d1ce06": {
+          "x": 2230,
+          "y": 1940
         },
-        "security_visual_bypass_output": {
-          "x": 1800,
-          "y": 1160
+        "704af53cd84ba2a2": {
+          "x": 2470,
+          "y": 1940
         },
-        "security_visual_policy_help": {
-          "x": 2920,
-          "y": 1060
+        "2405a253853fa82e": {
+          "x": 2730,
+          "y": 1940
         },
-        "security_visual_policy_physical_fresh_seconds": {
-          "x": 2420,
-          "y": 1130
+        "f59d2ceb5ba88ddf": {
+          "x": 475,
+          "y": 700
         },
-        "security_visual_policy_recovery_request_throttle_seconds": {
-          "x": 2840,
-          "y": 1130
+        "68a67feb7cc57957": {
+          "x": 2010,
+          "y": 1400
         },
-        "security_visual_policy_off_grace_seconds": {
-          "x": 3260,
-          "y": 1130
+        "cd40f5f8e40b07af": {
+          "x": 530,
+          "y": 2080
         },
-        "security_visual_policy_backstop_minutes": {
-          "x": 2420,
-          "y": 1190
-        },
-        "security_visual_policy_post_off_cooldown_minutes": {
-          "x": 2840,
-          "y": 1190
-        },
-        "security_visual_policy_lifecycle_retention_hours": {
-          "x": 3260,
-          "y": 1190
-        },
-        "security_visual_policy_deadline_slack_minutes": {
-          "x": 2420,
-          "y": 1250
-        },
-        "security_visual_policy_unavailable_dedupe_seconds": {
-          "x": 2840,
-          "y": 1250
-        },
-        "security_visual_policy_cooldown_max_minutes": {
-          "x": 3260,
-          "y": 1250
-        },
-        "security_visual_policy_out_0": {
-          "x": 2580,
-          "y": 1340
-        },
-        "security_visual_policy_out_1": {
-          "x": 3000,
-          "y": 1340
-        },
-        "security_visual_policy_out_2": {
-          "x": 3420,
-          "y": 1340
-        },
-        "security_visual_policy_in": {
-          "x": 2260,
-          "y": 1420
-        },
-        "security_visual_policy_validate": {
-          "x": 2500,
-          "y": 1420
-        },
-        "security_visual_policy_store": {
-          "x": 2820,
-          "y": 1390
-        },
-        "security_visual_policy_reject": {
-          "x": 2820,
+        "e10a4b1a9880e827": {
+          "x": 3083,
           "y": 1460
         },
-        "security_visual_context_route_out": {
-          "x": 390,
-          "y": 200
+        "81994a8c6c38a4c1": {
+          "x": 3083,
+          "y": 1620
         },
-        "security_visual_arrival_route_out": {
-          "x": 390,
+        "04007cc1732f60c9": {
+          "x": 1110,
+          "y": 220
+        },
+        "light_notify_unavailable_secondary": {
+          "x": 1120,
           "y": 280
         },
-        "security_visual_context_route_in": {
+        "d710ac9de2f98569": {
+          "x": 1210,
+          "y": 340
+        },
+        "54b3d667ae845416": {
+          "x": 3083,
+          "y": 1700
+        },
+        "1bdb8c52397de8a9": {
+          "x": 2325,
+          "y": 1340
+        },
+        "aaeec8223d98ab0b": {
           "x": 160,
-          "y": 1660
+          "y": 620
+        },
+        "77f539388438547c": {
+          "x": 2010,
+          "y": 1340
+        },
+        "light_full_dry_run_terminal_v1": {
+          "x": 1790,
+          "y": 380
+        },
+        "light_unavailable_test_dry_run_out_v1": {
+          "x": 6203,
+          "y": 1620
+        },
+        "light_unavailable_test_dry_run_in_v1": {
+          "x": 785,
+          "y": 360
+        },
+        "light_available_to_output_out_v1": {
+          "x": 6203,
+          "y": 1460
+        },
+        "light_available_to_output_in_v1": {
+          "x": 785,
+          "y": 140
+        },
+        "light_unavailable_to_output_out_v1": {
+          "x": 6203,
+          "y": 1540
+        },
+        "light_unavailable_to_output_in_v1": {
+          "x": 785,
+          "y": 240
+        },
+        "light_test_to_terminal_out_v1": {
+          "x": 1260,
+          "y": 380
+        },
+        "light_test_to_terminal_in_v1": {
+          "x": 1620,
+          "y": 380
+        },
+        "security_light_engine_bypass_startup_v1": {
+          "x": 323,
+          "y": 840
+        },
+        "security_light_engine_bypass_command_v1": {
+          "x": 323,
+          "y": 900
+        },
+        "security_light_engine_bypass_test_on_v1": {
+          "x": 303,
+          "y": 960
+        },
+        "security_light_engine_bypass_test_off_v1": {
+          "x": 303,
+          "y": 1020
+        },
+        "security_light_engine_bypass_function_v1": {
+          "x": 653,
+          "y": 920
+        },
+        "security_light_engine_bypass_mqtt_out_v1": {
+          "x": 1973,
+          "y": 880
+        },
+        "security_light_engine_bypass_reevaluate_out_v1": {
+          "x": 2023,
+          "y": 960
+        },
+        "security_light_engine_bypass_reevaluate_in_v1": {
+          "x": 143,
+          "y": 1340
+        },
+        "light_location_policy_in_v1": {
+          "x": 1455,
+          "y": 720
+        },
+        "light_location_policy_status_v1": {
+          "x": 1750,
+          "y": 720
+        },
+        "light_arrival_replay_route_out_v1": {
+          "x": 2010,
+          "y": 1460
+        },
+        "light_arrival_replay_gate_in_v1": {
+          "x": 143,
+          "y": 1560
+        },
+        "light_arrival_replay_debug_in_v1": {
+          "x": 2075,
+          "y": 1340
+        },
+        "light_off_decision_route_out_v1": {
+          "x": 640,
+          "y": 620
+        },
+        "light_off_decision_route_in_v1": {
+          "x": 710,
+          "y": 580
+        },
+        "security_visual_bypass_branch": {
+          "x": 923,
+          "y": 920
+        },
+        "security_visual_bypass_startup": {
+          "x": 1183,
+          "y": 820
+        },
+        "security_visual_bypass_auto_enable": {
+          "x": 1203,
+          "y": 880
+        },
+        "security_visual_bypass_auto_owned": {
+          "x": 1183,
+          "y": 960
+        },
+        "security_visual_bypass_auto_recover": {
+          "x": 1453,
+          "y": 940
+        },
+        "security_visual_bypass_preserve_manual": {
+          "x": 1453,
+          "y": 1000
+        },
+        "security_visual_bypass_manual_enable": {
+          "x": 1203,
+          "y": 1060
+        },
+        "security_visual_bypass_manual_disable": {
+          "x": 1203,
+          "y": 1120
+        },
+        "security_visual_bypass_invalid": {
+          "x": 1193,
+          "y": 1180
+        },
+        "security_visual_bypass_result_out": {
+          "x": 1553,
+          "y": 820
+        },
+        "security_visual_bypass_result_in": {
+          "x": 1663,
+          "y": 920
+        },
+        "security_visual_bypass_output": {
+          "x": 1843,
+          "y": 920
+        },
+        "security_visual_policy_help": {
+          "x": 2963,
+          "y": 820
+        },
+        "security_visual_policy_physical_fresh_seconds": {
+          "x": 2463,
+          "y": 890
+        },
+        "security_visual_policy_recovery_request_throttle_seconds": {
+          "x": 2883,
+          "y": 890
+        },
+        "security_visual_policy_off_grace_seconds": {
+          "x": 3303,
+          "y": 890
+        },
+        "security_visual_policy_backstop_minutes": {
+          "x": 2463,
+          "y": 950
+        },
+        "security_visual_policy_post_off_cooldown_minutes": {
+          "x": 2883,
+          "y": 950
+        },
+        "security_visual_policy_lifecycle_retention_hours": {
+          "x": 3303,
+          "y": 950
+        },
+        "security_visual_policy_deadline_slack_minutes": {
+          "x": 2463,
+          "y": 1010
+        },
+        "security_visual_policy_unavailable_dedupe_seconds": {
+          "x": 2883,
+          "y": 1010
+        },
+        "security_visual_policy_cooldown_max_minutes": {
+          "x": 3303,
+          "y": 1010
+        },
+        "security_visual_policy_out_0": {
+          "x": 2623,
+          "y": 1100
+        },
+        "security_visual_policy_out_1": {
+          "x": 3043,
+          "y": 1100
+        },
+        "security_visual_policy_out_2": {
+          "x": 3463,
+          "y": 1100
+        },
+        "security_visual_policy_in": {
+          "x": 2303,
+          "y": 1180
+        },
+        "security_visual_policy_validate": {
+          "x": 2543,
+          "y": 1180
+        },
+        "security_visual_policy_store": {
+          "x": 2863,
+          "y": 1150
+        },
+        "security_visual_policy_reject": {
+          "x": 2863,
+          "y": 1220
+        },
+        "security_visual_context_route_out": {
+          "x": 565,
+          "y": 240
+        },
+        "security_visual_arrival_route_out": {
+          "x": 465,
+          "y": 300
+        },
+        "security_visual_context_route_in": {
+          "x": 143,
+          "y": 1400
         },
         "security_visual_arrival_route_in": {
-          "x": 160,
-          "y": 1900
+          "x": 143,
+          "y": 1640
         },
         "security_visual_context_cache": {
-          "x": 390,
-          "y": 1660
+          "x": 373,
+          "y": 1400
         },
         "security_visual_pending_validate": {
-          "x": 720,
-          "y": 1660
+          "x": 703,
+          "y": 1400
         },
         "security_visual_replay_ready": {
-          "x": 1010,
-          "y": 1660
+          "x": 993,
+          "y": 1400
         },
         "security_visual_replay_build": {
-          "x": 1300,
-          "y": 1600
+          "x": 1310,
+          "y": 1340
         },
         "security_visual_arrival_facts": {
-          "x": 390,
-          "y": 1860
+          "x": 373,
+          "y": 1600
         },
         "security_light_arrival_direction_gate_v1": {
-          "x": 700,
-          "y": 1860
+          "x": 683,
+          "y": 1600
         },
         "security_light_arrival_direction_blocked_v1": {
-          "x": 990,
-          "y": 1980
+          "x": 973,
+          "y": 1720
         },
         "security_visual_arrival_pending": {
-          "x": 990,
-          "y": 1840
+          "x": 973,
+          "y": 1580
         },
         "security_visual_arrival_logic_ready": {
-          "x": 1280,
-          "y": 1840
+          "x": 1263,
+          "y": 1580
         },
         "security_visual_arrival_ready": {
-          "x": 1560,
-          "y": 1780
+          "x": 1543,
+          "y": 1520
         },
         "security_visual_arrival_recovery_needed": {
-          "x": 1560,
-          "y": 1900
+          "x": 1543,
+          "y": 1640
         },
         "security_visual_arrival_pending_only": {
-          "x": 1840,
-          "y": 1980
+          "x": 1823,
+          "y": 1720
         },
         "security_visual_arrival_recovery_allowed": {
-          "x": 1840,
-          "y": 1880
+          "x": 1823,
+          "y": 1620
         },
         "security_visual_arrival_recovery": {
-          "x": 2140,
-          "y": 1840
+          "x": 2123,
+          "y": 1580
         },
         "security_visual_arrival_throttled": {
-          "x": 2140,
-          "y": 1940
+          "x": 2123,
+          "y": 1680
         },
         "security_visual_arrival_ready_out": {
-          "x": 1840,
-          "y": 1780
+          "x": 1823,
+          "y": 1520
         },
         "security_visual_arrival_recovery_out": {
-          "x": 2380,
-          "y": 1840
+          "x": 2363,
+          "y": 1580
         },
         "security_visual_arrival_throttled_out": {
-          "x": 2380,
-          "y": 1940
+          "x": 2363,
+          "y": 1680
         },
         "security_visual_arrival_pending_out": {
-          "x": 2080,
-          "y": 2020
+          "x": 2063,
+          "y": 1760
         },
         "security_visual_arrival_blocked_out": {
-          "x": 1280,
-          "y": 2000
-        },
-        "security_visual_arrival_result_in": {
-          "x": 2510,
-          "y": 1880
-        },
-        "security_visual_availability_facts": {
-          "x": 3670,
-          "y": 1800
-        },
-        "security_visual_availability_latched": {
-          "x": 3960,
-          "y": 1660
-        },
-        "security_visual_availability_on": {
-          "x": 4230,
+          "x": 1263,
           "y": 1740
         },
+        "security_visual_arrival_result_in": {
+          "x": 2493,
+          "y": 1620
+        },
+        "security_visual_availability_facts": {
+          "x": 3653,
+          "y": 1540
+        },
+        "security_visual_availability_latched": {
+          "x": 3943,
+          "y": 1400
+        },
+        "security_visual_availability_on": {
+          "x": 4213,
+          "y": 1480
+        },
         "security_visual_availability_cycle": {
-          "x": 4500,
-          "y": 1820
+          "x": 4483,
+          "y": 1560
         },
         "security_visual_availability_ready": {
-          "x": 4770,
-          "y": 1820
+          "x": 4753,
+          "y": 1560
         },
         "security_visual_availability_ready_build": {
-          "x": 5050,
-          "y": 1720
+          "x": 5033,
+          "y": 1460
         },
         "security_visual_availability_duplicate": {
-          "x": 5050,
-          "y": 1920
+          "x": 5033,
+          "y": 1660
         },
         "security_visual_availability_unavailable_build": {
-          "x": 5350,
-          "y": 1900
+          "x": 5390,
+          "y": 1660
         },
         "security_visual_availability_ready_out": {
-          "x": 5300,
-          "y": 1720
+          "x": 5283,
+          "y": 1460
         },
         "security_visual_availability_unavailable_out": {
-          "x": 5620,
-          "y": 1900
+          "x": 5625,
+          "y": 1660
         },
         "security_visual_availability_result_in": {
-          "x": 5680,
-          "y": 1800
+          "x": 5663,
+          "y": 1540
         },
         "security_visual_lifecycle_load": {
-          "x": 690,
-          "y": 2280
+          "x": 750,
+          "y": 2020
         },
         "security_visual_physical_apply": {
-          "x": 1040,
-          "y": 2240
+          "x": 1100,
+          "y": 1980
         },
         "security_visual_recovery_facts": {
-          "x": 1340,
-          "y": 2240
+          "x": 1400,
+          "y": 1980
         },
         "security_visual_recovery_needed": {
-          "x": 1620,
-          "y": 2240
+          "x": 1680,
+          "y": 1980
         },
         "security_visual_recovery_build": {
-          "x": 1900,
-          "y": 2200
+          "x": 1960,
+          "y": 1940
         },
         "global_observer_coverage__6b7552efb85343f4__catch": {
-          "x": 3880,
-          "y": 100
+          "x": 2200,
+          "y": 640
         },
         "global_observer_coverage__6b7552efb85343f4__status": {
-          "x": 3890,
-          "y": 160
+          "x": 2210,
+          "y": 700
         },
         "global_observer_coverage__6b7552efb85343f4__annotate": {
-          "x": 4160,
-          "y": 130
+          "x": 2480,
+          "y": 670
         },
         "global_observer_coverage__6b7552efb85343f4__out": {
-          "x": 4405,
-          "y": 130
+          "x": 2725,
+          "y": 670
         }
       }
     },

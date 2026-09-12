@@ -162,6 +162,7 @@ function preflight() {
     throw new Error(`prompt not found: ${promptPath}`);
   }
   const remote = process.env.WEEKLY_DOCS_REVIEW_REMOTE || "origin";
+  const remoteUrl = gitOutput(["remote", "get-url", "--push", remote]);
   try {
     gitOutput(["fetch", "--quiet", remote, expectedBranch]);
   } catch (error) {
@@ -172,7 +173,7 @@ function preflight() {
   if (baseline !== remoteHead) {
     throw new Error("local branch is not synchronized with the configured remote");
   }
-  return { baseline, expectedBranch, remote };
+  return { baseline, expectedBranch, remote, remoteUrl };
 }
 
 function killProcessGroup(child) {
@@ -183,7 +184,7 @@ function killProcessGroup(child) {
   }
 }
 
-function runAgent(prompt, worktree, { baseline, expectedBranch, remote }) {
+function runAgent(prompt, worktree, { baseline, expectedBranch, remoteUrl }) {
   const args = [
     "-n", lockPath,
     "codex", "exec", "--ephemeral",
@@ -202,8 +203,8 @@ function runAgent(prompt, worktree, { baseline, expectedBranch, remote }) {
         ...process.env,
         CI: "1",
         GIT_CONFIG_COUNT: "1",
-        GIT_CONFIG_KEY_0: `remote.${remote}.pushurl`,
-        GIT_CONFIG_VALUE_0: "weekly-docs-review-push-disabled",
+        GIT_CONFIG_KEY_0: "url.weekly-docs-review-push-disabled.pushInsteadOf",
+        GIT_CONFIG_VALUE_0: remoteUrl,
         WEEKLY_DOCS_REVIEW_BASELINE: baseline,
         WEEKLY_DOCS_REVIEW_BRANCH: expectedBranch,
         WEEKLY_DOCS_REVIEW_RECEIPT: reviewReceiptName,
@@ -323,14 +324,6 @@ export async function runReview() {
     }
 
     const changed = changedReviewPaths(worktree);
-    if (changed.length === 0) {
-      log("weekly documentation review completed with no changes");
-      updateStatus({
-        state: "success", last_finished: new Date().toISOString(), last_result: "no_changes",
-        last_reason: null, success_count: Number(status.success_count || 0) + 1,
-      });
-      return true;
-    }
     const rejected = changed.filter((file) => !isAllowedReviewPath(file));
     if (rejected.length) {
       return failReview("unapproved_paths", new Error(`${rejected.length} path(s) outside documentation allowlist`));
@@ -342,8 +335,16 @@ export async function runReview() {
       }
     }
 
-    gitOutput(["add", "--", ...changed], worktree);
+    if (changed.length > 0) gitOutput(["add", "--", ...changed], worktree);
     runChecked("make", ["validate-public"], worktree);
+    if (changed.length === 0) {
+      log("weekly documentation review completed with no changes");
+      updateStatus({
+        state: "success", last_finished: new Date().toISOString(), last_result: "no_changes",
+        last_reason: null, success_count: Number(status.success_count || 0) + 1,
+      });
+      return true;
+    }
     runChecked("make", ["validate-staged"], worktree);
     gitOutput(["commit", "-m", "docs: weekly public-repository review"], worktree);
     const reviewCommit = gitOutput(["rev-parse", "HEAD"], worktree);

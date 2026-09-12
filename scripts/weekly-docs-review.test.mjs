@@ -72,6 +72,9 @@ function fixture(t, { branch = "main" } = {}) {
     "[ \"$(git rev-parse HEAD)\" = \"$WEEKLY_DOCS_REVIEW_BASELINE\" ]",
     "[ \"${WEEKLY_DOCS_REVIEW_BRANCH:-}\" = main ]",
     "[ \"${WEEKLY_DOCS_REVIEW_RECEIPT:-}\" = .weekly-docs-review-receipt.json ]",
+    "[ \"${GIT_CONFIG_KEY_0:-}\" = url.weekly-docs-review-push-disabled.pushInsteadOf ]",
+    "[ \"${GIT_CONFIG_VALUE_0:-}\" = \"$SCHEDULER_REMOTE\" ]",
+    "[ \"$(git remote get-url --push origin)\" = weekly-docs-review-push-disabled ]",
     "case \"${SCHEDULER_SCENARIO:-no_changes}\" in",
     "  allowed) printf '%s\\n' '# Reviewed' > docs/review.md ;;",
     "  validation_failure|privacy_failure|security_failure) printf '%s\\n' '# Reviewed' > docs/review.md ;;",
@@ -94,7 +97,7 @@ function fixture(t, { branch = "main" } = {}) {
     "#!/bin/sh",
     "target=${1:-}",
     "case \"${SCHEDULER_SCENARIO:-}\" in",
-    "  validation_failure) [ \"$target\" = validate-public ] && echo synthetic-validation-failure >&2 && exit 1 ;;",
+    "  validation_failure|no_change_validation_failure) [ \"$target\" = validate-public ] && echo synthetic-validation-failure >&2 && exit 1 ;;",
     "  privacy_failure) [ \"$target\" = validate-staged ] && echo synthetic-privacy-failure >&2 && exit 1 ;;",
     "  security_failure) [ \"$target\" = validate-staged ] && echo synthetic-security-failure >&2 && exit 1 ;;",
     "esac",
@@ -207,6 +210,17 @@ test("a no-change review creates no commit", (t) => {
   const result = item.run("no_changes");
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /completed with no changes/);
+  assert.equal(item.remoteCount(), before);
+  assert.equal(git(item.repo, ["rev-parse", "HEAD"]), item.baseline);
+});
+
+test("a completed receipt cannot hide a failed no-change validation", (t) => {
+  const item = fixture(t);
+  const before = item.remoteCount();
+  const result = item.run("no_change_validation_failure");
+  assert.equal(result.status, 1);
+  assert.match(`${result.stdout}\n${result.stderr}`, /synthetic-validation-failure/);
+  assert.match(result.stdout, /validation_or_delivery_failed/);
   assert.equal(item.remoteCount(), before);
   assert.equal(git(item.repo, ["rev-parse", "HEAD"]), item.baseline);
 });

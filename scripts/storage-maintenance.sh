@@ -160,7 +160,7 @@ bytes_for_path() {
   fi
   output=$(du -sx -B1 -- "$1" 2>/dev/null || true)
   if [[ -n "$output" ]]; then
-    awk 'NR == 1 {print $1 + 0}' <<<"$output"
+    awk 'NR == 1 {print $1}' <<<"$output"
   else
     printf '0\n'
   fi
@@ -174,7 +174,7 @@ logical_bytes_for_path() {
   fi
   output=$(du -s -b -x -- "$1" 2>/dev/null || true)
   if [[ -n "$output" ]]; then
-    awk 'NR == 1 {print $1 + 0}' <<<"$output"
+    awk 'NR == 1 {print $1}' <<<"$output"
   else
     printf '0\n'
   fi
@@ -204,15 +204,15 @@ path_in_use() {
 }
 
 filesystem_used_bytes() {
-  df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $3 + 0}'
+  df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $3}'
 }
 
 filesystem_available_bytes() {
-  df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $4 + 0}'
+  df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $4}'
 }
 
 filesystem_used_percent() {
-  df -P "$FILESYSTEM" | awk 'NR == 2 {gsub(/%/, "", $5); print $5 + 0}'
+  df -P "$FILESYSTEM" | awk 'NR == 2 {gsub(/%/, "", $5); print $5}'
 }
 
 validate_category() {
@@ -1102,11 +1102,11 @@ write_metrics() {
   local vscode_bytes cursor_bytes npm_bytes user_cache_bytes pm2_bytes recorder_bytes backup_bytes deleted_count deleted_bytes deleted_inaccessible
   local docker_images_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes category category_json separator
   [[ "$MODE" == apply ]] || return 0
-  total=$(df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $2 + 0}')
+  total=$(df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $2}')
   used=$(filesystem_used_bytes)
   free=$(filesystem_available_bytes)
   used_percent=$(filesystem_used_percent)
-  inode_summary=$(df -Pi "$FILESYSTEM" | awk 'NR == 2 {print $2 + 0, $4 + 0}')
+  inode_summary=$(df -Pi "$FILESYSTEM" | awk 'NR == 2 {print $2, $4}')
   read -r inode_total inode_free <<<"$inode_summary"
   inode_used=$((inode_total - inode_free))
   docker_bytes=$(docker_total_bytes)

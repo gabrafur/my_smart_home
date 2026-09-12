@@ -73,7 +73,9 @@ O agente trabalha deliberadamente em `detached HEAD`, preso ao baseline que o
 scheduler já comparou com `origin/main`; ele não deve exigir que esse worktree
 temporário esteja na branch `main`. Ao terminar, o agente grava um recibo JSON
 transitório. Saída zero sem recibo ou recibo com bloqueio é falha, nunca
-`no_changes`.
+`no_changes`. Mesmo com recibo concluído, o scheduler executa novamente
+`make validate-public` antes de aceitar tanto `no_changes` quanto um diff
+documental; a validação independente prevalece sobre o relato do agente.
 
 ## Barreiras de segurança
 
@@ -95,8 +97,12 @@ As barreiras adicionais são:
   de atualização/backup;
 - fast-forward obrigatório, sem rebase destrutivo, force push ou reescrita de
   histórico;
+- bloqueio de push do agente restrito à URL do remoto real, sem contaminar os
+  repositórios sintéticos criados pela validação;
 - recibo de conclusão obrigatório e removido antes do cálculo do diff, para
   impedir falso sucesso quando o agente encerra antes de revisar o baseline;
+- repetição independente de `make validate-public` pelo scheduler antes de
+  aceitar inclusive uma revisão sem alterações;
 - tempo máximo padrão de três horas; o grupo inteiro de processos é encerrado
   quando o limite é excedido.
 
