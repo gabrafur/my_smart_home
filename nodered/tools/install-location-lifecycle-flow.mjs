@@ -85,7 +85,7 @@ grouped(config.id, {
   info: "Dedupe: 1–60 min; graça: 1–60 min; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
   x: 2740, y: 100, wires: []
 });
-inject("people_visual_arrival_dedupe", config.id, "Dedupe chegada — 10 min [1..60]", "arrival_dedupe_minutes", 10, 2370, 160, "people_visual_lifecycle_config_left_out");
+inject("people_visual_arrival_dedupe_config", config.id, "Dedupe chegada — 10 min [1..60]", "arrival_dedupe_minutes", 10, 2370, 160, "people_visual_lifecycle_config_left_out");
 inject("people_visual_primary_home_grace", config.id, "Graça home — 10 min [1..60]", "primary_home_grace_minutes", 10, 2370, 210, "people_visual_lifecycle_config_left_out");
 inject("people_visual_future_tolerance", config.id, "Tolerância futura — 60 s [0..300]", "future_tolerance_seconds", 60, 2740, 160, "people_visual_lifecycle_config_middle_out");
 inject("people_visual_vehicle_signal_fresh", config.id, "Sinal do veículo — 5 min [1..30]", "vehicle_signal_fresh_minutes", 5, 2740, 210, "people_visual_lifecycle_config_middle_out");
