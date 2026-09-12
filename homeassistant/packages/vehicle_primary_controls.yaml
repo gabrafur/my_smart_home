@@ -2,6 +2,12 @@ input_button:
   vehicle_primary_force_refresh_now:
     name: Forçar atualização do vehicle_primary agora
     icon: mdi:car-connected
+  vehicle_primary_lock_now:
+    name: Solicitar travamento do vehicle_primary
+    icon: mdi:lock
+  vehicle_primary_unlock_now:
+    name: Solicitar destravamento do vehicle_primary
+    icon: mdi:lock-open-variant
 
 template:
   - triggers:

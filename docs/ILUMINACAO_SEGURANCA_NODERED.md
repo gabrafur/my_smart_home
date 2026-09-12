@@ -8,7 +8,7 @@ abas:
 | `localizacao_pessoas` | Ler e normalizar os trackers de resident_primary e resident_secondary, comprovar um ciclo externo individual, separar visualmente saída de retorno, detectar aproximação/chegada e controlar o refresh dos iPhones. |
 | `contexto_vehicle_primary` | Normalizar localização, motor e trava do vehicle_primary, manter `vehicle_primary_in_use`, comprovar o ciclo externo, separar visualmente saída de retorno, detectar chegada, atualizar viagens e controlar o refresh do veículo. |
 | `contexto_chegadas` | Sincronizar visualmente os snapshots periódicos e calcular somente a política conjunta `anyone_away`. Não interpreta GPS bruto nem envia notificações entre residentes. |
-| `notificacoes_chegadas_residentes` | Avisar `resident_primary` quando `resident_secondary` entra em `near_home` e vice-versa, durante as 24 horas do dia e sem depender do veículo, iluminação ou reconciliação de contexto. |
+| `notificacoes_chegadas_residentes` | Consumir a chegada canônica de `localizacao_pessoas` e avisar o outro residente nos estágios `approach` ou `home`, durante as 24 horas do dia e sem recalcular zonas ou lifecycle. |
 | `iluminacao_seguranca` | Consumir os contratos de alto nível e decidir ligar/desligar `switch.refletor_portao_carros`, incluindo carência, timeout e anti-religamento. |
 
 Essa separação impede que a iluminação conheça trackers, coordenadas, refresh
@@ -223,12 +223,13 @@ depois `not_home` como fallback. O checker de bindings rejeita
 ## Notificações entre residentes
 
 O tab `notificacoes_chegadas_residentes` recebe apenas a transição canônica
-decidida em `localizacao_pessoas`; ele não observa trackers brutos. A transição
-de fora para `near_home` notifica o outro
-residente imediatamente, sem consultar horário, sol, veículo ou os snapshots de
-`contexto_chegadas`. A transição `home -> near_home` continua sendo tratada como
-saída e não gera aviso. Um latch persistente evita duplicidade entre os dois
-trackers e após restart; uma nova passagem por `not_home` rearma o aviso.
+`security.arrival.v1` decidida em `localizacao_pessoas`; ele não observa trackers
+brutos nem recalcula zonas. Uma chegada confirmada com ciclo externo notifica o
+outro residente imediatamente, tanto no estágio `approach` quanto na chegada
+direta ao estágio `home`, sem consultar horário, sol, veículo ou os snapshots de
+`contexto_chegadas`. A transição `home -> near_home` continua sendo saída e não
+gera aviso. O dedupe persistente da entrega evita repetição entre fontes e após
+restart.
 
 No tab `alarme_desarme_chegada`, a confirmação deixou de ser uma função
 monolítica. O canvas valida contrato, origem, estágio, direção e ciclo externo;
@@ -240,13 +241,15 @@ quando o Home Assistant aceita ao menos uma notificação; falha de entrega não
 arma cooldown. O teste usa pendência isolada e termina no terminal dry-run sem
 enviar notificação nem intenção de desarme.
 
-A política fica no primeiro grupo do canvas: zona `near_home`, dedupe de
-10 minutos, idade máxima de 15 minutos e tolerância futura de 60 segundos.
-Dedupe e idade aceitam de 1 a 60 minutos; a tolerância futura aceita de 0 a
-5 minutos e precisa ser menor que a idade máxima. O bloco de validação rejeita
+A política fica no primeiro grupo do canvas: dedupe da entrega de 10 minutos,
+idade máxima de 15 minutos, tolerância futura de 60 segundos e retry do serviço
+de 60 segundos. Dedupe e idade aceitam de 1 a 60 minutos, a tolerância futura
+de 0 a 5 minutos e o retry de 10 a 600 segundos. O bloco de validação rejeita
 configurações inválidas sem substituir a última política persistente válida.
-Origem, disponibilidade, futuro, stale, estado atual, direção, latch,
-duplicidade, destinatário e produção/teste são decisões visuais nomeadas.
+Contrato, tipo, direção, ciclo externo, estágio, origem, timestamp, futuro,
+stale, reserva, duplicidade, destinatário, retry e produção/teste são decisões
+visuais nomeadas. O recibo só é confirmado depois que o Home Assistant aceita a
+notificação; uma falha libera a reserva e permite no máximo três tentativas.
 
 Os testes sintéticos iniciados em `localizacao_pessoas` também entram nesse tab.
 Eles percorrem a mesma validação e o mesmo dedupe usando memória isolada, mas

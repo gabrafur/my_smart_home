@@ -67,13 +67,17 @@ fn("external_visual_command_allowed", main.id, "Preparar confirmação pelo temp
   [["external_visual_command_mode"]]);
 fn("external_visual_command_blocked", main.id, "Bloquear e cancelar confirmação pendente",
   "external-lighting-command-blocked.js", 1, 1700, 220,
-  [["ext_wait_confirm", "external_visual_notification_mode"]]);
+  [["external_visual_cancel_confirmation_out", "external_visual_notification_mode"]]);
 sw("external_visual_command_mode", main.id, "Comando de produção ou TESTE?",
   "_external_command.test_mode", 1930, 120,
   [["ext_wait_confirm"], ["88e6fc3e56fa347c", "ext_wait_confirm"]]);
 sw("external_visual_notification_mode", main.id, "Aviso de produção ou TESTE?",
   "_external_command.test_mode", 2000, 260,
   [["external_visual_notification_dry_out"], ["external_visual_alexa_out"]]);
+linkOut("external_visual_cancel_confirmation_out", main.id, "Bloqueio → cancelar confirmação",
+  "external_visual_cancel_confirmation_in", 1980, 200);
+linkIn("external_visual_cancel_confirmation_in", main.id, "Receber cancelamento pendente",
+  ["external_visual_cancel_confirmation_out"], "ext_wait_confirm", 2260, 220);
 
 const distributor = required("88e6fc3e56fa347c");
 Object.assign(distributor, { x: 2240, y: 80 });

@@ -7,7 +7,9 @@ valor publicado em `input_text.codex_nivel_alerta_canonico`.
 
 ## Política visual
 
-O grupo `0. Política visual — edite os valores` contém os valores canônicos:
+O grupo `0. PARÂMETROS AJUSTÁVEIS DO CODEX — edite aqui`, no canto superior
+esquerdo do tab, contém os valores canônicos. Dê duplo clique no bloco que
+deseja mudar e faça o deploy:
 
 - aviso de uso: 70%, entre 10% e 95%;
 - uso crítico: 90%, entre 20% e 100%, sempre maior que o aviso;

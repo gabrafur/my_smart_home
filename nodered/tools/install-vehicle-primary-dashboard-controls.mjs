@@ -68,9 +68,7 @@ const contextCoordinator = flows.find((node) =>
   node.name === "Coordenar snapshot e refresh" &&
   node.func?.includes('contract: "security.refresh-command.v1"'),
 );
-if (!contextCoordinator) {
-  throw new Error("Coordenador de snapshots ausente");
-}
+if (contextCoordinator) {
 contextCoordinator.func = contextCoordinator.func.replaceAll(
   "people?.any_fresh_tracker_away",
   "people?.best_location_away",
@@ -265,6 +263,7 @@ if (!contextCoordinator.func.includes(independentPeopleRecoveryMarker)) {
                         ? "localização pendente; política normal do veículo"
                         : "snapshots ready; política de refresh emitida"`,
   );
+}
 }
 upsert({
   id: "vehicle_primary_refresh_config_group_v1",
@@ -725,6 +724,7 @@ upsert({
     "vehicle_primary_trip_dry_run_out_v1",
     "vehicle_primary_refresh_notification_dry_run_out_v1",
     "vehicle_primary_remote_command_dry_run_out_v1",
+    "vehicle_primary_remote_request_dry_run_out_v1",
   ],
   x: 1320,
   y: 860,
@@ -753,6 +753,7 @@ removeNode("77cf2dfe4ff36964");
 removeNode("684feca0f1585885");
 
 const normalizer = required("092625f2eb5cc156");
+if (normalizer.func.includes("function observedAt")) {
 const legacyObservedAt = `function observedAt(entity) {
     const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? "");
     return Number.isFinite(value) ? value : null;
@@ -1416,6 +1417,7 @@ if (
 ) {
   throw new Error("Normalizer ainda recalcula o intervalo de refresh");
 }
+}
 
 const errorLogger = required("vehicle_primary_api_error_log_v1");
 errorLogger.func = source("vehicle-primary-refresh-error.js");
@@ -1545,6 +1547,7 @@ upsert({
   wires: [],
 });
 
+if (!byId.has("arrival_context_manual_event_gate")) {
 upsert({
   id: "vehicle_primary_manual_refresh_button_v1",
   type: "server-state-changed",
@@ -1565,9 +1568,9 @@ upsert({
   for: "0",
   forType: "num",
   forUnits: "minutes",
-  ignorePrevStateNull: true,
-  ignorePrevStateUnknown: true,
-  ignorePrevStateUnavailable: true,
+  ignorePrevStateNull: false,
+  ignorePrevStateUnknown: false,
+  ignorePrevStateUnavailable: false,
   ignoreCurrentStateUnknown: true,
   ignoreCurrentStateUnavailable: true,
   outputProperties: [
@@ -1595,6 +1598,7 @@ upsert({
   y: 120,
   wires: [["5b3d363c0035297b"]],
 });
+}
 
 upsert({
   id: "vehicle_primary_refresh_telemetry_tick_v1",
@@ -1902,10 +1906,10 @@ upsert({
 });
 
 upsert({
-  id: "vehicle_primary_remote_command_group_v1",
+  id: "vehicle_primary_remote_request_group_v1",
   type: "group",
   z: "c22d8b12055e87f7",
-  name: "4. Resultado final dos comandos remotos",
+  name: "6. Intenção, disponibilidade e efeito dos comandos remotos",
   style: {
     label: true,
     stroke: "#5b8ff9",
@@ -1914,7 +1918,514 @@ upsert({
   nodes: [],
   x: 174,
   y: 1199,
-  w: 1662,
+  w: 2262,
+  h: 302,
+});
+
+const remoteRequestSnapshot = (command) => `({
+  "command":"${command}",
+  "test_mode":false,
+  "requested_at":$now(),
+  "target":$entities("lock.vehicle_primary_door_lock"),
+  "remote_status":$entities("sensor.garagem_vehicle_primary_remote_command_status"),
+  "preconditions":{
+    "front_left_door":$entities("binary_sensor.vehicle_primary_front_left_door"),
+    "front_right_door":$entities("binary_sensor.vehicle_primary_front_right_door"),
+    "back_left_door":$entities("binary_sensor.vehicle_primary_back_left_door"),
+    "back_right_door":$entities("binary_sensor.vehicle_primary_back_right_door"),
+    "trunk":$entities("binary_sensor.vehicle_primary_trunk"),
+    "engine":$entities("binary_sensor.vehicle_primary_engine"),
+    "lock":$entities("lock.vehicle_primary_door_lock"),
+    "telemetry":$entities("sensor.vehicle_primary_last_updated_at")
+  }
+})`;
+
+for (const [id, name, entityId, command, y] of [
+  [
+    "vehicle_primary_lock_intent_v1",
+    "Dashboard solicitou TRAVAR",
+    "input_button.vehicle_primary_lock_now",
+    "lock",
+    1260,
+  ],
+  [
+    "vehicle_primary_unlock_intent_v1",
+    "Dashboard solicitou DESTRAVAR",
+    "input_button.vehicle_primary_unlock_now",
+    "unlock",
+    1320,
+  ],
+]) {
+  upsert({
+    id,
+    type: "server-state-changed",
+    z: "c22d8b12055e87f7",
+    g: "vehicle_primary_remote_request_group_v1",
+    name,
+    server: "4126427d5e161a03",
+    version: 6,
+    outputs: 1,
+    exposeAsEntityConfig: "",
+    entities: { entity: [entityId], substring: [], regex: [] },
+    outputInitially: false,
+    stateType: "str",
+    ifState: "",
+    ifStateType: "str",
+    ifStateOperator: "is",
+    outputOnlyOnStateChange: true,
+    for: "0",
+    forType: "num",
+    forUnits: "minutes",
+    ignorePrevStateNull: false,
+    ignorePrevStateUnknown: false,
+    ignorePrevStateUnavailable: false,
+    ignoreCurrentStateUnknown: true,
+    ignoreCurrentStateUnavailable: true,
+    outputProperties: [
+      {
+        property: "payload",
+        propertyType: "msg",
+        value: remoteRequestSnapshot(command),
+        valueType: "jsonata",
+      },
+    ],
+    x: 330,
+    y,
+    wires: [["vehicle_primary_remote_request_command_v1"]],
+  });
+}
+
+upsert({
+  id: "vehicle_primary_remote_request_test_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Receber intenção remota de TESTE",
+  links: ["vehicle_primary_remote_request_test_out_v1"],
+  x: 325,
+  y: 1380,
+  wires: [["vehicle_primary_remote_request_command_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_command_v1",
+  type: "switch",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Comando é TRAVAR ou DESTRAVAR?",
+  property: "payload.command",
+  propertyType: "msg",
+  rules: [
+    { t: "eq", v: "lock", vt: "str" },
+    { t: "eq", v: "unlock", vt: "str" },
+    { t: "else" },
+  ],
+  checkall: "true",
+  repair: false,
+  outputs: 3,
+  x: 660,
+  y: 1320,
+  wires: [
+    ["vehicle_primary_remote_target_available_v1"],
+    ["vehicle_primary_remote_target_available_v1"],
+    ["vehicle_primary_remote_request_invalid_v1"],
+  ],
+});
+
+upsert({
+  id: "vehicle_primary_remote_target_available_v1",
+  type: "switch",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Fechadura está disponível?",
+  property: "payload.target.state",
+  propertyType: "msg",
+  rules: [
+    { t: "eq", v: "locked", vt: "str" },
+    { t: "eq", v: "unlocked", vt: "str" },
+    { t: "else" },
+  ],
+  checkall: "true",
+  repair: false,
+  outputs: 3,
+  x: 940,
+  y: 1300,
+  wires: [
+    ["vehicle_primary_remote_not_busy_v1"],
+    ["vehicle_primary_remote_not_busy_v1"],
+    ["vehicle_primary_remote_request_unavailable_v1"],
+  ],
+});
+
+upsert({
+  id: "vehicle_primary_remote_not_busy_v1",
+  type: "switch",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Outro comando está em andamento?",
+  property: "payload.remote_status.state",
+  propertyType: "msg",
+  rules: [
+    { t: "eq", v: "requesting", vt: "str" },
+    { t: "else" },
+  ],
+  checkall: "true",
+  repair: false,
+  outputs: 2,
+  x: 1210,
+  y: 1280,
+  wires: [
+    ["vehicle_primary_remote_request_busy_v1"],
+    ["vehicle_primary_remote_test_mode_v1"],
+  ],
+});
+
+upsert({
+  id: "vehicle_primary_remote_test_mode_v1",
+  type: "switch",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "test_mode termina em dry-run?",
+  property: "payload.test_mode",
+  propertyType: "msg",
+  rules: [{ t: "true" }, { t: "else" }],
+  checkall: "true",
+  repair: false,
+  outputs: 2,
+  x: 1490,
+  y: 1260,
+  wires: [
+    ["vehicle_primary_remote_request_dry_run_v1"],
+    ["vehicle_primary_remote_effect_select_v1"],
+  ],
+});
+
+upsert({
+  id: "vehicle_primary_remote_effect_select_v1",
+  type: "switch",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Qual efeito remoto executar?",
+  property: "payload.command",
+  propertyType: "msg",
+  rules: [
+    { t: "eq", v: "lock", vt: "str" },
+    { t: "eq", v: "unlock", vt: "str" },
+    { t: "else" },
+  ],
+  checkall: "true",
+  repair: false,
+  outputs: 3,
+  x: 1730,
+  y: 1260,
+  wires: [
+    ["vehicle_primary_remote_request_call_v1"],
+    ["vehicle_primary_remote_request_unlock_call_v1"],
+    ["vehicle_primary_remote_effect_invalid_out_v1"],
+  ],
+});
+
+upsert({
+  id: "vehicle_primary_remote_effect_invalid_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Efeito desconhecido → falhar fechado",
+  mode: "link",
+  links: ["vehicle_primary_remote_effect_invalid_in_v1"],
+  x: 1975,
+  y: 1200,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_remote_effect_invalid_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Receber efeito desconhecido",
+  links: ["vehicle_primary_remote_effect_invalid_out_v1"],
+  x: 705,
+  y: 1440,
+  wires: [["vehicle_primary_remote_request_invalid_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_call_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "EFEITO: enviar TRAVAR ao Bluelink",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "public_bindings.call",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"role":"vehicle_primary","action":"lock"}',
+  dataType: "json",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "none",
+  blockInputOverrides: true,
+  domain: "public_bindings",
+  service: "call",
+  x: 2000,
+  y: 1240,
+  wires: [["vehicle_primary_remote_request_accepted_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_unlock_call_v1",
+  type: "api-call-service",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "EFEITO: enviar DESTRAVAR ao Bluelink",
+  server: "4126427d5e161a03",
+  version: 7,
+  debugenabled: false,
+  action: "public_bindings.call",
+  floorId: [],
+  areaId: [],
+  deviceId: [],
+  entityId: [],
+  labelId: [],
+  data: '{"role":"vehicle_primary","action":"unlock"}',
+  dataType: "json",
+  mergeContext: "",
+  mustacheAltTags: false,
+  outputProperties: [],
+  queue: "none",
+  blockInputOverrides: true,
+  domain: "public_bindings",
+  service: "call",
+  x: 2000,
+  y: 1300,
+  wires: [["vehicle_primary_remote_request_accepted_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_accepted_v1",
+  type: "change",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Pedido entregue; aguardar resultado final",
+  rules: [
+    { t: "set", p: "payload.request_dispatched", pt: "msg", to: "true", tot: "bool" },
+  ],
+  action: "",
+  property: "",
+  from: "",
+  to: "",
+  reg: false,
+  x: 2280,
+  y: 1270,
+  wires: [[]],
+});
+
+const remoteFailurePayload = (stage, reason) => `({
+  "entity":{
+    "state":"failed",
+    "attributes":{
+      "command":payload.command,
+      "failure_stage":"${stage}",
+      "reason":${reason},
+      "failed_at":$now()
+    }
+  },
+  "preconditions":payload.preconditions,
+  "test_mode":payload.test_mode
+})`;
+
+for (const [id, name, stage, reason, x, y, outputId] of [
+  [
+    "vehicle_primary_remote_request_invalid_v1",
+    "Falhar fechado: comando desconhecido",
+    "validation",
+    '"Comando remoto não reconhecido pela política canônica"',
+    940,
+    1440,
+    "vehicle_primary_remote_request_invalid_out_v1",
+  ],
+  [
+    "vehicle_primary_remote_request_unavailable_v1",
+    "Falhar fechado: Bluelink indisponível",
+    "preflight_availability",
+    '"A fechadura do Bluelink está unavailable, unknown ou ausente"',
+    1210,
+    1380,
+    "vehicle_primary_remote_request_unavailable_out_v1",
+  ],
+  [
+    "vehicle_primary_remote_request_busy_v1",
+    "Falhar fechado: comando já em andamento",
+    "preflight_concurrency",
+    '"Outro comando remoto ainda está em andamento"',
+    1490,
+    1380,
+    "vehicle_primary_remote_request_busy_out_v1",
+  ],
+  [
+    "vehicle_primary_remote_request_service_failure_v1",
+    "Falhar fechado: chamada de serviço",
+    "service_call",
+    '$substring(error.message ? error.message : "Falha na chamada do serviço",0,220)',
+    2000,
+    1440,
+    "vehicle_primary_remote_request_failure_out_v1",
+  ],
+]) {
+  upsert({
+    id,
+    type: "change",
+    z: "c22d8b12055e87f7",
+    g: "vehicle_primary_remote_request_group_v1",
+    name,
+    rules: [
+      {
+        t: "set",
+        p: "_vehicle_primary_remote_command_test",
+        pt: "msg",
+        to: "payload.test_mode",
+        tot: "msg",
+      },
+      {
+        t: "set",
+        p: "payload",
+        pt: "msg",
+        to: remoteFailurePayload(stage, reason),
+        tot: "jsonata",
+      },
+    ],
+    action: "",
+    property: "",
+    from: "",
+    to: "",
+    reg: false,
+    x,
+    y,
+    wires: [[outputId]],
+  });
+}
+
+for (const [id, name, sourceId, x, y] of [
+  [
+    "vehicle_primary_remote_request_invalid_out_v1",
+    "Comando inválido → resultado canônico",
+    "vehicle_primary_remote_request_invalid_v1",
+    1165,
+    1440,
+  ],
+  [
+    "vehicle_primary_remote_request_unavailable_out_v1",
+    "Indisponível → resultado canônico",
+    "vehicle_primary_remote_request_unavailable_v1",
+    1465,
+    1320,
+  ],
+  [
+    "vehicle_primary_remote_request_busy_out_v1",
+    "Concorrência → resultado canônico",
+    "vehicle_primary_remote_request_busy_v1",
+    1745,
+    1380,
+  ],
+]) {
+  upsert({
+    id,
+    type: "link out",
+    z: "c22d8b12055e87f7",
+    g: "vehicle_primary_remote_request_group_v1",
+    name,
+    mode: "link",
+    links: ["vehicle_primary_remote_request_failure_in_v1"],
+    x,
+    y,
+    wires: [],
+  });
+}
+
+upsert({
+  id: "vehicle_primary_remote_request_call_catch_v1",
+  type: "catch",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Capturar falha antes do aceite",
+  scope: [
+    "vehicle_primary_remote_request_call_v1",
+    "vehicle_primary_remote_request_unlock_call_v1",
+  ],
+  uncaught: false,
+  x: 1730,
+  y: 1440,
+  wires: [["vehicle_primary_remote_request_service_failure_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_failure_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Falha prévia → resultado canônico",
+  mode: "link",
+  links: ["vehicle_primary_remote_request_failure_in_v1"],
+  x: 2305,
+  y: 1440,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_dry_run_v1",
+  type: "change",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Terminal: simular sem enviar ao veículo",
+  rules: [
+    { t: "set", p: "payload.simulated", pt: "msg", to: "true", tot: "bool" },
+    { t: "set", p: "payload.dispatched", pt: "msg", to: "false", tot: "bool" },
+    { t: "set", p: "payload.side_effect", pt: "msg", to: "vehicle_remote_command", tot: "str" },
+  ],
+  action: "",
+  property: "",
+  from: "",
+  to: "",
+  reg: false,
+  x: 1970,
+  y: 1360,
+  wires: [["vehicle_primary_remote_request_dry_run_out_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_dry_run_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_request_group_v1",
+  name: "Comando TESTE → terminal dry-run",
+  mode: "link",
+  links: ["vehicle_primary_dry_run_in_v1"],
+  x: 2305,
+  y: 1360,
+  wires: [],
+});
+
+upsert({
+  id: "vehicle_primary_remote_command_group_v1",
+  type: "group",
+  z: "c22d8b12055e87f7",
+  name: "7. Resultado final dos comandos remotos",
+  style: {
+    label: true,
+    stroke: "#5b8ff9",
+    color: "#a4a4a4",
+  },
+  nodes: [],
+  x: 2658,
+  y: 1199,
+  w: 1306,
   h: 302,
 });
 
@@ -1981,6 +2492,23 @@ upsert({
   links: ["vehicle_primary_remote_command_test_out_v1"],
   x: 385,
   y: 1340,
+  wires: [["vehicle_primary_remote_command_monitor_v1"]],
+});
+
+upsert({
+  id: "vehicle_primary_remote_request_failure_in_v1",
+  type: "link in",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_group_v1",
+  name: "Receber falha anterior ao provedor",
+  links: [
+    "vehicle_primary_remote_request_failure_out_v1",
+    "vehicle_primary_remote_request_invalid_out_v1",
+    "vehicle_primary_remote_request_unavailable_out_v1",
+    "vehicle_primary_remote_request_busy_out_v1",
+  ],
+  x: 385,
+  y: 1400,
   wires: [["vehicle_primary_remote_command_monitor_v1"]],
 });
 
@@ -2121,7 +2649,7 @@ upsert({
   x: 1234,
   y: 1619,
   w: 602,
-  h: 302,
+  h: 422,
 });
 
 upsert({
@@ -2226,10 +2754,106 @@ upsert({
   wires: [],
 });
 
+const remoteRequestTestPreconditions = {
+  front_left_door: { state: "off" },
+  front_right_door: { state: "off" },
+  back_left_door: { state: "off" },
+  back_right_door: { state: "off" },
+  trunk: { state: "off" },
+  engine: { state: "off" },
+  lock: { state: "unlocked" },
+  telemetry: { state: "2026-08-17T02:59:00Z" },
+};
+for (const [id, name, y, targetState] of [
+  [
+    "vehicle_primary_remote_request_test_available_v1",
+    "TESTE: intenção com alvo disponível",
+    1900,
+    "unlocked",
+  ],
+  [
+    "vehicle_primary_remote_request_test_unavailable_v1",
+    "TESTE: intenção com alvo unavailable",
+    1960,
+    "unavailable",
+  ],
+]) {
+  upsert({
+    id,
+    type: "inject",
+    z: "c22d8b12055e87f7",
+    g: "vehicle_primary_remote_command_test_group_v1",
+    name,
+    props: [
+      { p: "payload" },
+      { p: "_vehicle_primary_remote_command_test", v: "true", vt: "bool" },
+    ],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    payload: JSON.stringify({
+      command: "lock",
+      test_mode: true,
+      requested_at: "test-request",
+      target: { state: targetState },
+      remote_status: { state: "idle" },
+      preconditions: remoteRequestTestPreconditions,
+    }),
+    payloadType: "json",
+    x: 1420,
+    y,
+    wires: [["vehicle_primary_remote_request_test_out_v1"]],
+  });
+}
+
+upsert({
+  id: "vehicle_primary_remote_request_test_out_v1",
+  type: "link out",
+  z: "c22d8b12055e87f7",
+  g: "vehicle_primary_remote_command_test_group_v1",
+  name: "Intenção TESTE → política remota",
+  mode: "link",
+  links: ["vehicle_primary_remote_request_test_in_v1"],
+  x: 1745,
+  y: 1930,
+  wires: [],
+});
+
+addToGroup(
+  "vehicle_primary_remote_request_group_v1",
+  "vehicle_primary_lock_intent_v1",
+  "vehicle_primary_unlock_intent_v1",
+  "vehicle_primary_remote_request_test_in_v1",
+  "vehicle_primary_remote_request_command_v1",
+  "vehicle_primary_remote_target_available_v1",
+  "vehicle_primary_remote_not_busy_v1",
+  "vehicle_primary_remote_test_mode_v1",
+  "vehicle_primary_remote_effect_select_v1",
+  "vehicle_primary_remote_effect_invalid_out_v1",
+  "vehicle_primary_remote_effect_invalid_in_v1",
+  "vehicle_primary_remote_request_call_v1",
+  "vehicle_primary_remote_request_unlock_call_v1",
+  "vehicle_primary_remote_request_accepted_v1",
+  "vehicle_primary_remote_request_invalid_v1",
+  "vehicle_primary_remote_request_unavailable_v1",
+  "vehicle_primary_remote_request_busy_v1",
+  "vehicle_primary_remote_request_service_failure_v1",
+  "vehicle_primary_remote_request_invalid_out_v1",
+  "vehicle_primary_remote_request_unavailable_out_v1",
+  "vehicle_primary_remote_request_busy_out_v1",
+  "vehicle_primary_remote_request_call_catch_v1",
+  "vehicle_primary_remote_request_failure_out_v1",
+  "vehicle_primary_remote_request_dry_run_v1",
+  "vehicle_primary_remote_request_dry_run_out_v1",
+);
+
 addToGroup(
   "vehicle_primary_remote_command_group_v1",
   "vehicle_primary_remote_command_event_v1",
   "vehicle_primary_remote_command_test_in_v1",
+  "vehicle_primary_remote_request_failure_in_v1",
   "vehicle_primary_remote_command_monitor_v1",
   "vehicle_primary_remote_command_guard_v1",
   "vehicle_primary_remote_command_notify_primary_v1",
@@ -2244,6 +2868,9 @@ addToGroup(
   "vehicle_primary_remote_command_test_success_v1",
   "vehicle_primary_remote_command_test_failure_v1",
   "vehicle_primary_remote_command_test_out_v1",
+  "vehicle_primary_remote_request_test_available_v1",
+  "vehicle_primary_remote_request_test_unavailable_v1",
+  "vehicle_primary_remote_request_test_out_v1",
 );
 
 addToGroup(
@@ -2269,11 +2896,13 @@ addToGroup(
   "vehicle_primary_refresh_policy_out_v1",
 );
 
-addToGroup(
-  "790bea5f55d43bd0",
-  "vehicle_primary_manual_refresh_button_v1",
-  "vehicle_primary_manual_refresh_request_v1",
-);
+if (byId.has("790bea5f55d43bd0")) {
+  addToGroup(
+    "790bea5f55d43bd0",
+    "vehicle_primary_manual_refresh_button_v1",
+    "vehicle_primary_manual_refresh_request_v1",
+  );
+}
 addToGroup(
   "43a2bc9c218353ae",
   "vehicle_primary_refresh_dispatch_guard_v1",
@@ -2323,15 +2952,24 @@ refreshGroup.name = "5. Execução do refresh e viagens";
 Object.assign(refreshGroup, { x: 174, y: 579, w: 1662, h: 618 });
 
 const remoteCommandGroup = required("vehicle_primary_remote_command_group_v1");
-remoteCommandGroup.name = "6. Resultado final dos comandos remotos";
+remoteCommandGroup.name = "7. Resultado final dos comandos remotos";
+const remoteCommandShiftX = remoteCommandGroup.x - 174;
 const remoteCommandShift = 1259 - remoteCommandGroup.y;
 remoteCommandGroup.y += remoteCommandShift;
 for (const id of remoteCommandGroup.nodes ?? []) {
-  required(id).y += remoteCommandShift;
+  const node = required(id);
+  node.x += remoteCommandShiftX;
+  node.y += remoteCommandShift;
+}
+
+const remoteRequestGroup = required("vehicle_primary_remote_request_group_v1");
+remoteRequestGroup.y += 100;
+for (const id of remoteRequestGroup.nodes ?? []) {
+  required(id).y += 100;
 }
 
 const manualTestGroup = required("5df25064f701ecd2");
-manualTestGroup.name = "7. Testes manuais — motor e localização sintéticos/cumulativos";
+manualTestGroup.name = "8. Testes manuais — motor e localização sintéticos/cumulativos";
 const manualTestShift = Math.max(0, 1619 - manualTestGroup.y);
 if (manualTestShift > 0) {
   manualTestGroup.y += manualTestShift;
@@ -2340,6 +2978,12 @@ if (manualTestShift > 0) {
     node.y += manualTestShift;
   }
 }
+
+required("vehicle_primary_remote_command_test_group_v1").name =
+  "9. TESTE — intenções e resultado remoto sem efeitos";
+const refreshOrchestrationGroup = required("vehicle_visual_refresh_decision_group_v2");
+refreshOrchestrationGroup.name =
+  "10. Orquestração visual do refresh — gates, cooldown, cache e dry-run";
 
 const immediateRecovery = required("6473697c19342f07");
 Object.assign(immediateRecovery, { x: 570, y: 240 });

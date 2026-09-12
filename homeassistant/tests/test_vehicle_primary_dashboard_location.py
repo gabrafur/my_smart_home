@@ -122,13 +122,16 @@ def main() -> None:
     assert "**Último comando remoto**" in dashboard
     assert "name: Localizar (segure)" in dashboard
     assert "name: Travar portas" in dashboard
-    assert dashboard.count("action: lock") == 2
+    assert dashboard.count("entity_id: input_button.vehicle_primary_lock_now") == 2
     assert "name: Destravar portas" in dashboard
-    assert dashboard.count("action: unlock") == 2
+    assert dashboard.count("entity_id: input_button.vehicle_primary_unlock_now") == 2
     assert dashboard.count("entity: sensor.vehicle_primary_car_battery_level") == 1
     assert "name: Bateria 12 V" in dashboard
     assert "perform_action: lock.lock" not in dashboard
     assert "perform_action: lock.unlock" not in dashboard
+    assert "entity: lock.vehicle_primary_door_lock" not in dashboard
+    assert "vehicle_primary_lock_now:" in controls
+    assert "vehicle_primary_unlock_now:" in controls
     assert "text: Travar as portas do Creta remotamente?" in dashboard
     assert "O Bluelink não fornece litros consumidos por viagem" in dashboard
     assert "trip.estimated_km_per_l" in dashboard

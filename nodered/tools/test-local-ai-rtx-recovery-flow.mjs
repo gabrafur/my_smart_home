@@ -86,17 +86,25 @@ assert.equal(unknown.rtx_status.state, "LOCAL_AI_UNKNOWN");
 assert.equal(unknown.rtx_status.reason, "unknown");
 
 // Limites exatos são aceitos; inválidos e não inteiros preservam o último valor válido.
-for (const valid of [10, 600]) {
+for (const [cooldownValue, confirmationValue] of [[10, 60], [600, 600]]) {
   const current = memory();
-  const outcome = execute(code.policy, { topic: "recovery_cooldown_seconds", payload: valid }, current);
-  assert.equal(outcome.result, null);
-  assert.equal(current.get("local_ai_rtx_policy_v1").recovery_cooldown_seconds, valid);
+  execute(code.policy, { topic: "recovery_cooldown_seconds", payload: cooldownValue }, current);
+  assert.equal(current.get("local_ai_rtx_policy_v1").complete, false);
+  execute(code.policy, { topic: "unavailable_confirmation_seconds", payload: confirmationValue }, current);
+  assert.equal(current.get("local_ai_rtx_policy_v1").recovery_cooldown_seconds, cooldownValue);
+  assert.equal(current.get("local_ai_rtx_policy_v1").unavailable_confirmation_seconds, confirmationValue);
   assert.equal(current.get("local_ai_rtx_policy_v1").complete, true);
   for (const invalid of [9, 601, 10.5, "not-a-number"]) {
     const rejected = execute(code.policy, { topic: "recovery_cooldown_seconds", payload: invalid }, current);
     assert.equal(rejected.result, null);
     assert.equal(rejected.events.errors.length, 1);
-    assert.equal(current.get("local_ai_rtx_policy_v1").recovery_cooldown_seconds, valid);
+    assert.equal(current.get("local_ai_rtx_policy_v1").recovery_cooldown_seconds, cooldownValue);
+  }
+  for (const invalid of [59, 601, 60.5, "not-a-number"]) {
+    const rejected = execute(code.policy, { topic: "unavailable_confirmation_seconds", payload: invalid }, current);
+    assert.equal(rejected.result, null);
+    assert.equal(rejected.events.errors.length, 1);
+    assert.equal(current.get("local_ai_rtx_policy_v1").unavailable_confirmation_seconds, confirmationValue);
   }
 }
 
@@ -214,6 +222,53 @@ assert.equal(byId.get("local_ai_rtx_host_state_source")?.entity_id, "sensor.code
 assert.equal(byId.get("local_ai_rtx_alert_rbe")?.type, "rbe");
 assert.equal(byId.get("local_ai_rtx_alert_rbe")?.property, "rtx_alert_condition");
 assert.equal(byId.get("local_ai_rtx_alert_rbe")?.septopics, true);
+assert.equal(byId.get("local_ai_rtx_alert_confirm")?.type, "trigger");
+assert.equal(byId.get("local_ai_rtx_alert_confirm")?.duration, "90");
+assert.equal(byId.get("local_ai_rtx_alert_confirm")?.overrideDelay, true);
+assert.equal(byId.get("local_ai_rtx_alert_confirm")?.bytopic, "topic");
+assert.deepEqual(byId.get("local_ai_rtx_alert_dedupe_reset_out")?.links?.sort(), [
+  "local_ai_rtx_alert_confirmation_reset_in",
+  "local_ai_rtx_alert_dedupe_reset_in",
+]);
+assert.deepEqual(byId.get("local_ai_rtx_alert_confirmation_reset_in")?.wires, [["local_ai_rtx_alert_confirm"]]);
+assert.equal(byId.get("local_ai_rtx_alert_delay_valid")?.type, "switch");
+assert.equal(
+  byId.get("local_ai_rtx_alert_test_delay")?.rules?.some(
+    (rule) => rule.t === "set" && rule.p === "delay" && rule.to === "3000" && rule.tot === "num",
+  ),
+  true,
+);
+assert.deepEqual(byId.get("local_ai_rtx_prepare_prod_alert_reset")?.wires, [[
+  "local_ai_rtx_alert_dedupe_reset_out",
+  "local_ai_rtx_status_gate_out",
+  "local_ai_rtx_alert_close_available_out",
+]]);
+assert.deepEqual(byId.get("local_ai_rtx_prepare_test_alert_reset")?.wires, [[
+  "local_ai_rtx_alert_dedupe_reset_out",
+  "local_ai_rtx_status_gate_out",
+]]);
+assert.equal(
+  byId.get("local_ai_rtx_prepare_prod_alert")?.wires?.[0]?.includes("local_ai_rtx_alert_close_unavailable_out"),
+  true,
+);
+assert.deepEqual(byId.get("local_ai_rtx_alert_close_state_in")?.links?.sort(), [
+  "local_ai_rtx_alert_close_available_out",
+  "local_ai_rtx_alert_close_unavailable_out",
+]);
+assert.equal(byId.get("local_ai_rtx_alert_close_rbe")?.type, "rbe");
+assert.equal(byId.get("local_ai_rtx_alert_close_rbe")?.property, "rtx_status.available");
+assert.equal(byId.get("local_ai_rtx_alert_recovered_switch")?.type, "switch");
+assert.deepEqual(byId.get("local_ai_rtx_alert_recovered_switch")?.wires, [
+  ["local_ai_rtx_alert_dismiss"],
+  [],
+]);
+assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.action, "persistent_notification.dismiss");
+assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.dataType, "json");
+assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.queue, "all");
+assert.equal(
+  JSON.parse(byId.get("local_ai_rtx_alert_dismiss")?.data).notification_id,
+  "nodered_observabilidade_global_domain_alert_local_ai_rtx_unavailable",
+);
 assert.deepEqual(byId.get("local_ai_rtx_prod_host_state_switch")?.wires, [
   ["local_ai_rtx_prepare_prod_alert"],
   ["local_ai_rtx_prod_alert_reset_request_out"],
@@ -241,6 +296,8 @@ assert.deepEqual(byId.get("local_ai_rtx_alert_out")?.links, ["global_observer_al
 assert.equal(byId.get("local_ai_rtx_tick")?.repeat, "60");
 assert.equal(byId.get("local_ai_rtx_policy_cooldown")?.payload, "60");
 assert.equal(byId.get("local_ai_rtx_policy_cooldown")?.topic, "recovery_cooldown_seconds");
+assert.equal(byId.get("local_ai_rtx_policy_confirmation")?.payload, "90");
+assert.equal(byId.get("local_ai_rtx_policy_confirmation")?.topic, "unavailable_confirmation_seconds");
 assert.equal(
   byId.get("local_ai_rtx_manual_recovery")?.props.some(
     (prop) => prop.p === "explicit_recovery" && prop.v === "true",

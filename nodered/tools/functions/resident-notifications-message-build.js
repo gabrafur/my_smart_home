@@ -16,7 +16,10 @@ msg.payload = {
     recipient: msg.resident_recipient,
     notification_key: msg.notification_key,
     event_at: msg.event_at,
-    message: (testMode ? "[TESTE] " : "") + display + " está perto de casa.",
+    arrival_stage: msg.arrival_stage,
+    message: (testMode ? "[TESTE] " : "") + display + (
+        msg.arrival_stage === "home" ? " chegou em casa." : " está perto de casa."
+    ),
     test_mode: testMode,
     simulated: testMode,
     dispatched: false

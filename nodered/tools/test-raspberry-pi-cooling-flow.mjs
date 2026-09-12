@@ -553,7 +553,22 @@ assert.match(get("ab4f85af1ed94f86").data, /raspberry_pi_emergency_cooling_failu
 assert.match(get("a240a1bb42481943").data, /raspberry_pi_emergency_cooling_recovered/);
 assert.match(get("4b48bc3c0c58d87c").data, /raspberry_pi_emergency_cooling_recovered/);
 assert.deepEqual(get("bed05acc4339b69c").wires[2], ["048e2325e2e65944"]);
-assert.deepEqual(get("0cca7636547bd45c").wires[2], ["048e2325e2e65944"]);
+assert.deepEqual(get("0cca7636547bd45c").wires, [
+  ["rpi_layout_finalize_started_out"],
+  ["rpi_layout_finalize_failure_clear_out"],
+  ["rpi_layout_finalize_recovery_clear_out"],
+]);
+assert.deepEqual(get("80a75ea8907407b3").wires[1], ["rpi_layout_cancel_snapshot_clear_out"]);
+for (const [newId, originalId] of [
+  ["rpi_layout_finalize_started_out", "aa1a0d2a4b3dfd43"],
+  ["rpi_layout_finalize_failure_clear_out", "b826f528fd92e2bd"],
+  ["rpi_layout_finalize_recovery_clear_out", "048e2325e2e65944"],
+  ["rpi_layout_cancel_snapshot_clear_out", "2721ff200d00c0f6"],
+]) assert.deepEqual(get(newId).links, get(originalId).links);
+assert.deepEqual(get("566d191a914b687b").wires[0], ["rpi_layout_classifier_ownership_out"]);
+assert.deepEqual(get("80a75ea8907407b3").wires[0], ["rpi_layout_cancel_restore_out"]);
+assert.equal(get("rpi_layout_hot_retry_in").links.includes("rpi_layout_classifier_ownership_out"), true);
+assert.equal(get("rpi_layout_startup_rollback_in").links.includes("rpi_layout_cancel_restore_out"), true);
 const startCatch = new Set(get("4e460c1a9e688d48", "catch").scope);
 for (const id of [
   "54b8e92dac5342a4",

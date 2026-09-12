@@ -804,6 +804,31 @@ viagens, bateria 12 V, historico, comandos fisicos e diagnostico. A area
 "Atualizacao dos dados" mostra o estado real do coordenador, a ultima consulta,
 o deadline de retry/cooldown e o botao `Forcar atualizacao agora`.
 
+Os controles de travar e destravar nao chamam mais o binding do veiculo
+diretamente. O dashboard pressiona, respectivamente,
+`input_button.vehicle_primary_lock_now` e
+`input_button.vehicle_primary_unlock_now`; esses helpers representam somente a
+intencao explicita do usuario. No tab `contexto_vehicle_primary`, blocos visuais
+validam o comando, exigem que o estado da trava esteja disponivel, recusam
+concorrencia, separam producao de `test_mode` e so entao chegam aos dois efeitos
+literais `lock`/`unlock`. A primeira mudanca do helper depois de restart tambem
+e aceita, mesmo que o estado anterior ainda seja `unknown`.
+
+Falha de disponibilidade, comando concorrente, valor invalido ou erro do
+servico converge na mesma trilha visual de notificacao. O alerta persistente e
+o push sao emitidos pelo Node-RED; o dashboard nao decide falha nem retry. O
+coordinator sanitiza a excecao e, quando o provedor devolve JSON, preserva
+somente `retCode`, `resCode` e `resMsg` escalares, removendo identificadores e
+tokens. Nao existe retry cego de comando remoto: uma resposta perdida nao prova
+que o provedor deixou de executar o primeiro pedido.
+
+Em 2026-09-12 o caminho completo de producao foi validado ao vivo pelo helper
+de intent: o status passou por `requesting`, foi confirmado como `accepted` e a
+entidade canonica da trava chegou a `locked`. Um erro HTTP transitorio observado
+antes da renovacao da sessao foi entregue como notificacao persistente; se ele
+recorrer, o resumo sanitizado agora preserva o codigo do provedor para o
+diagnostico sem expor dados privados.
+
 O mapa e rotulado como **ultimo estacionamento**, pois a API Hyundai Bluelink
 Brasil rejeita `/location/park` enquanto o veiculo esta em movimento. Com o
 motor ligado, o painel avisa explicitamente que o ponto e o ultimo estacionamento

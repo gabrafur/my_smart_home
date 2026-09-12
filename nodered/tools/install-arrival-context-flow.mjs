@@ -75,7 +75,7 @@ linkIn("9f109b7076619124", groups.input, "Iniciar ciclo coordenado de teste", ["
 linkOut("arrival_context_recovery_request_out", groups.input, "Recovery/teste externo → ciclo", "arrival_context_cycle_input_in", 520, 350);
 grouped(groups.input, { id: "vehicle_primary_manual_refresh_button_v1", type: "server-state-changed", z: TAB, g: groups.input,
   name: "Forçar atualização pelo dashboard", server: "4126427d5e161a03", version: 6, outputs: 1,
-  entities: { entity: ["input_button.vehicle_primary_force_refresh"], substring: [], regex: [] }, outputInitially: false,
+  entities: { entity: ["input_button.vehicle_primary_force_refresh_now"], substring: [], regex: [] }, outputInitially: false,
   stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is", outputOnlyOnStateChange: true,
   for: "0", forType: "num", forUnits: "minutes", ignorePrevStateNull: false, ignorePrevStateUnknown: false,
   ignorePrevStateUnavailable: false, ignoreCurrentStateUnknown: false, ignoreCurrentStateUnavailable: false,

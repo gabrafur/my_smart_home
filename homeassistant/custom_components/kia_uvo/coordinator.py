@@ -1773,8 +1773,9 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                     )
                 raise action_error from err
             except Exception as err:
+                provider_reason = self._remote_command_error_summary(err)
                 action_error = HomeAssistantError(
-                    f"Failed to {error_label}: {err}"
+                    f"Failed to {error_label}: {provider_reason}"
                 )
                 if status_command:
                     self._set_remote_command_failure(
@@ -1878,6 +1879,20 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
     def _remote_command_error_summary(err: Exception) -> str:
         """Return a bounded, non-sensitive reason for UI notifications."""
         value = " ".join(str(err).split()) or type(err).__name__
+        response = getattr(err, "response", None)
+        if response is not None:
+            try:
+                payload = response.json()
+            except (TypeError, ValueError):
+                payload = None
+            if isinstance(payload, dict):
+                provider_parts = []
+                for key in ("retCode", "resCode", "resMsg"):
+                    raw = payload.get(key)
+                    if isinstance(raw, (str, int, float, bool)):
+                        provider_parts.append(f"{key}={raw}")
+                if provider_parts:
+                    value = f"{value}; provider: {', '.join(provider_parts)}"
         value = re.sub(
             r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b",
             "<id>",

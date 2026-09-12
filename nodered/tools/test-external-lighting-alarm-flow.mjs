@@ -313,6 +313,14 @@ assert.equal(confirmation.units, "s");
 assert.equal(confirmation.extend, true);
 assert.equal(confirmation.overrideDelay, true);
 assert.deepEqual(confirmation.wires, [["external_visual_confirmation_mode"]]);
+assert.deepEqual(getNode("external_visual_cancel_confirmation_out").links, [
+  "external_visual_cancel_confirmation_in",
+]);
+assert.deepEqual(getNode("external_visual_cancel_confirmation_in").wires, [["ext_wait_confirm"]]);
+assert.equal(
+  getNode("external_visual_command_blocked").wires[0].includes("ext_wait_confirm"),
+  false,
+);
 
 const buildMessage = compileFunction(getNode("ext_build_alexa_message"));
 const success = buildMessage(

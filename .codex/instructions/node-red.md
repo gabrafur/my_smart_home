@@ -25,6 +25,13 @@ os flows; `flows:validate-layout` bloqueia qualquer regressão. Ao adequar um
 canvas legado, desloque o conjunto inteiro para manter espaçamentos,
 alinhamentos e direção de leitura; não comprima os grupos contra a borda.
 
+Ajuste grupos ao conteúdo, com padding e gutters visíveis.
+Mantenha o caminho principal curto e da esquerda para a direita; empilhe
+alternativas, erros e terminais. Quebre canvases largos em linhas sem inverter
+fios. Preserve a geometria aprovada em
+`nodered/tools/flow-layout-overrides.json`; ela nunca substitui ligações,
+propriedades funcionais nem geradores.
+
 ## Testabilidade obrigatória dos fluxos Node-RED
 
 Todo tab funcional novo ou materialmente alterado deve prever como será testado

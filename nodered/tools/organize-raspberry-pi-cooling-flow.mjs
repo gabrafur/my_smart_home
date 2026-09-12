@@ -9,7 +9,7 @@ const tabId = "456b32bd5d59b0d6";
 
 const groups = {
   c8f8e5b532232a4f: { x: 74, y: 79, w: 1587, h: 312 },
-  "5ae977feca8f9b01": { x: 74, y: 419, w: 4152, h: 442 },
+  "5ae977feca8f9b01": { x: 74, y: 419, w: 4400, h: 442 },
   "4afb66a093b1940d": { x: 64, y: 879, w: 4677, h: 422 },
   f79ed8df25162bcf: { x: 64, y: 1399, w: 1592, h: 182 },
   global_observer_coverage__456b32bd5d59b0d6__group: { x: 4704, y: 59, w: 722, h: 142 },
@@ -123,6 +123,7 @@ const virtualRoutes = [
     outputs: [
       ["rpi_layout_classifier_rollback_out", "Ir para restauração", "c8f8e5b532232a4f", 1280, 260, "566d191a914b687b", 2],
       ["rpi_layout_failure_rollback_out", "Ir para restauração", "5ae977feca8f9b01", 755, 760, "065453aa19652afe", 2],
+      ["rpi_layout_cancel_restore_out", "Ir para restauração", "5ae977feca8f9b01", 1540, 700, "80a75ea8907407b3", 0],
     ],
   },
   {
@@ -141,6 +142,7 @@ const virtualRoutes = [
     input: ["rpi_layout_hot_retry_in", "Retorno: reler ownership", "c8f8e5b532232a4f", 660, 150, "4a38415ec9862e2e"],
     outputs: [
       ["rpi_layout_hot_retry_out", "Ir para ownership", "5ae977feca8f9b01", 1225, 620, "426ce86b78602275", 0],
+      ["rpi_layout_classifier_ownership_out", "Ir para ownership", "c8f8e5b532232a4f", 1280, 190, "566d191a914b687b", 0],
     ],
   },
   {
@@ -222,6 +224,51 @@ for (const { input, outputs } of virtualRoutes) {
       throw new Error(`Cooling route target changed unexpectedly: ${sourceId}[${outputIndex}] -> ${targetId}`);
     }
   }
+}
+
+for (const [id, name, x, y, sourceId, outputIndex, originalLinkOutId] of [
+  ["rpi_layout_finalize_started_out", "Finalizado: início → observabilidade", 4300, 500, "0cca7636547bd45c", 0, "aa1a0d2a4b3dfd43"],
+  ["rpi_layout_finalize_failure_clear_out", "Finalizado: limpar falha → observabilidade", 4300, 540, "0cca7636547bd45c", 1, "b826f528fd92e2bd"],
+  ["rpi_layout_finalize_recovery_clear_out", "Finalizado: limpar recovery → observabilidade", 4300, 580, "0cca7636547bd45c", 2, "048e2325e2e65944"],
+  ["rpi_layout_cancel_snapshot_clear_out", "Cancelado: limpar snapshot → observabilidade", 1540, 780, "80a75ea8907407b3", 1, "2721ff200d00c0f6"],
+]) {
+  const original = byId.get(originalLinkOutId);
+  const source = byId.get(sourceId);
+  if (!original || original.type !== "link out" || !source?.wires?.[outputIndex]) {
+    throw new Error(`Cooling observability route not found: ${sourceId}[${outputIndex}]`);
+  }
+  const linkNode = {
+    id,
+    type: "link out",
+    z: tabId,
+    g: "5ae977feca8f9b01",
+    name,
+    mode: "link",
+    links: [...original.links],
+    x,
+    y,
+    wires: [],
+  };
+  const existing = byId.get(id);
+  if (existing) Object.assign(existing, linkNode);
+  else {
+    flows.push(linkNode);
+    byId.set(id, linkNode);
+  }
+  for (const targetId of linkNode.links) {
+    const target = byId.get(targetId);
+    if (!target || target.type !== "link in" || !Array.isArray(target.links)) {
+      throw new Error(`Cooling observability link target not found: ${targetId}`);
+    }
+    target.links = [...new Set([...target.links, id])];
+  }
+  source.wires[outputIndex] = source.wires[outputIndex].map((targetId) =>
+    targetId === originalLinkOutId || targetId === id ? id : targetId
+  );
+  if (!source.wires[outputIndex].includes(id)) {
+    throw new Error(`Cooling observability target changed unexpectedly: ${sourceId}[${outputIndex}]`);
+  }
+  routedNodeIds.add(id);
 }
 
 for (const [id, geometry] of Object.entries(groups)) {

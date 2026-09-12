@@ -45,8 +45,8 @@ quando uma etapa for concluída.
 | `atualizacoes_diarias` | Sucesso do backup, inventário HA `update.*`, comandos manuais e resultados sanitizados | Switches classificam DietPi, Core, outros containers, Bluelink, HACS versionado, firmware físico e desconhecidos; funções pequenas só adaptam contratos/estado | Pontes coalescentes por etapa; `update.install` existe apenas na fronteira final de firmware, com auto=false e dry-run | Instalador genérico `ha-updates` e agenda Bluelink paralela removidos; Core deixou de compartilhar o mesmo efeito dos demais containers | Migrado: onze trilhas nomeadas, parâmetros validados, uma agenda de inventário, Core isolado, HACS fail-closed e replay integral dry-run |
 | `alertas_codex` | Sensores/helpers de uso do Codex no HA | Função extensa decide nível, cooldown e resumo; HA também calcula `sensor.codex_nivel_de_alerta` | Push, notificação persistente e helpers de último alerta | Decisão duplicada entre Jinja HA e Node-RED; estratégia manual legada | Node-RED calcula e publica nível canônico; painel consome; parâmetros visuais; full dry-run; HA mantém só telemetria/helpers |
 | `guardiao_memoria_host` | Agendas visuais e resultado sanitizado do worker | Switches decidem contrato, presença, duplicidade, status e produção/teste; função curta guarda só a assinatura persistente | Duas pontes `exec`; worker do host executa a política privilegiada de segurança | Duplicação removida do Node-RED; política de processo permanece no único worker seguro | Migrado: parâmetros ativos nomeados, decisões e efeitos explícitos, parser de schema pequeno e replay com duplicata |
-| `recuperacao_rtx` | Health HTTP passivo e comando manual explícito | Funções classificam disponibilidade, pedido MCP e lifecycle | Duas chamadas HTTP e alerta central | Política de disponibilidade e retorno mistura parsing e decisão | Parâmetros visuais; parser HTTP pequeno; `switch` de estado; recovery somente manual; full dry-run preservado |
-| `notificacoes_chegadas_residentes` | Decisão canônica de `localizacao_pessoas` e eventos sintéticos | Switches visuais decidem fonte, frescor, direção, lifecycle, dedupe e destinatário; estado mínimo persiste | Duas notificações móveis isoladas atrás do gate final | Função monolítica e exceção de push manual removidas | Migrado: política validada, adapters pequenos, uma decisão canônica e replay integral sempre dry-run |
+| `recuperacao_rtx` | Health HTTP passivo e comando manual explícito | Switches separam disponibilidade, estado do host, confirmação, cooldown e lifecycle | Health passivo, recovery MCP manual e alerta central | Parser HTTP permanece isolado; alerta recuperado antes não era encerrado | Migrado: parâmetros visuais, host `online`/`offline`/`unknown`, recovery somente manual, dedupe por incidente, encerramento persistente na recuperação e full dry-run |
+| `notificacoes_chegadas_residentes` | Contrato `security.arrival.v1` já decidido por `localizacao_pessoas` e eventos sintéticos | Switches validam contrato, direção, ciclo externo, estágio, destinatário, frescor, reserva e dedupe da entrega; recibos mínimos persistem | Duas notificações móveis isoladas atrás do gate final, com retry limitado | Lifecycle de `near_home`/`home` deixou de ser recalculado neste tab; chegada direta em `home` agora usa a mesma decisão canônica | Migrado: quatro parâmetros de entrega/tempo, adapters pequenos, confirmação do serviço e replay integral sempre dry-run |
 | `observabilidade_global` | `catch`/`status` de todos os tabs e alertas centrais explícitos | Funções extensas classificam, corroboram HA/MQTT, deduplicam e controlam recovery/recursão | Push para `mobile_primary` e notificação persistente | Parâmetros 30 s/60 s/90 s/6 h e classificação ficam em JS | Política visual de severidade/temporização; classificação estrutural pequena; decisões, dedupe, recovery e guard antirrecursão visíveis |
 
 ## Fronteiras fora do Node-RED
@@ -161,7 +161,7 @@ o teste termina com `simulated: true` e `dispatched: false`.
 | `alarme_casa` | Migrado e implantado | Intenção, retry, cadência de aviso e gates visuais; scripts HA passaram a emitir intenção canônica |
 | `alertas_codex` | Migrado e implantado | Thresholds/cooldowns visuais; nível canônico publicado pelo Node-RED e dashboard somente consumidor |
 | `recorder_retention` | Migrado e implantado | Sete parâmetros validados, rotas de compactação e efeitos visíveis; cálculo MAD isolado |
-| `recuperacao_rtx` | Migrado e implantado | Leitura passiva, pedido explícito, cooldown e gate MCP visíveis; computador desligado silencia e computador ligado com endpoint indisponível alerta uma vez por incidente; nenhum recovery automático |
+| `recuperacao_rtx` | Migrado e implantado | Leitura passiva, pedido explícito, cooldown e gate MCP visíveis; computador desligado silencia, computador ligado com endpoint indisponível alerta uma vez e a recuperação encerra o alerta persistente; nenhum recovery automático |
 | `revisao_documental_semanal` | Migrado e implantado | Origem, teste, resposta e código da ponte em switches; worker preservado |
 | `backup_git` | Migrado e implantado | Pedido, resultado, retry, updates e notificações em trilhas visuais e full dry-run |
 | `guardiao_memoria_host` | Migrado e implantado | Agendas/timeout explícitos, 12 switches de decisão, dedupe persistente isolado e replay completo com duplicata; maior função abaixo de 2.000 caracteres |
@@ -174,7 +174,7 @@ o teste termina com `simulated: true` e `dispatched: false`.
 | `alarme_desarme_chegada` | Migrado e implantado | Contrato, armado, pendência, cooldown, entrega, token, expiração, cancelamento e confirmação visíveis; duas notificações só promovem a pendência após aceite HA e o TESTE termina sem desarme |
 | `storage_health` | Migrado e implantado | Onze parâmetros validados, thresholds/histerese/tendência/recovery/autocuidado visuais, zero fios longos ou de retorno e workers privilegiados atrás do gate dry-run |
 | `localizacao_pessoas` | Migrado e implantado | Lifecycle, direção, fonte, stale/futuro, dedupe e recovery separados em fatos e switches; política única compartilhada e replay sem efeitos |
-| `contexto_vehicle_primary` | Migrado e implantado | Localização, chegada, evidência e refresh divididos em trilhas visuais; o coordenador legado de 19 KiB foi removido |
+| `contexto_vehicle_primary` | Migrado e implantado | Localização, chegada, evidência, refresh e comandos remotos divididos em trilhas visuais; intents do dashboard passam por disponibilidade, concorrência, produção/teste, efeito e falha; o coordenador legado de 19 KiB foi removido |
 | `iluminacao_seguranca` | Migrado e implantado | Política de nove parâmetros, contexto/replay, chegada, disponibilidade, lifecycle, recovery e bypass com posse explícita em gates visuais |
 | `iluminacao_externa` | Migrado e implantado | Disponibilidade Zigbee, produção/teste e confirmação visíveis; settle e TTL validados; MQTT, push e Alexa bloqueados no replay manual |
 | `observabilidade_global` | Migrado e implantado | Cinco parâmetros validados; erro/status, carência, corroboração, confirmação e lembrete em switches; guard antirrecursão preservado |
@@ -183,7 +183,7 @@ o teste termina com `simulated: true` e `dispatched: false`.
 
 ## Auditoria final do JavaScript remanescente
 
-Após a regeneração há 529 nós `function`; somente cinco excedem 5.000
+Após a regeneração há 562 nós `function`; somente seis excedem 5.000
 caracteres. Nenhum deles chama um efeito residencial nem contém uma segunda
 definição de parâmetro ajustável:
 
@@ -194,6 +194,7 @@ definição de parâmetro ajustável:
 | Classificação geográfica de pessoas | Cálculo geográfico, precisão e normalização de múltiplos trackers; os raios vêm da política visual. |
 | Telemetria do refresh do veículo | Serialização MQTT/Home Assistant do estado já decidido; não escolhe intervalo nem autoriza chamadas. |
 | Fatos do refresh do veículo | Consolida estado persistente e produz flags; cada decisão correspondente aparece nos switches subsequentes. |
+| Ingestão do observador global | Normaliza envelopes heterogêneos de `catch`, `status` e alertas de domínio; severidade, confirmação, dedupe e efeitos permanecem em blocos visuais externos. |
 
 Também foram removidos os arquivos legados que continham os coordenadores
 monolíticos de refresh do veículo, merge/chegada da iluminação, bypass do motor
@@ -203,15 +204,15 @@ canônica das políticas operacionais.
 
 ## Validação e implantação final
 
-- O artefato final contém 2.271 nós, 24 tabs cobertos pelo manifesto de testes
+- O artefato final contém 2.457 nós, 24 tabs cobertos pelo manifesto de testes
   e 23 tabs funcionais observados pelo monitor global.
 - A suíte pública do Node-RED passou em 37 arquivos. Os replays materiais
   incluem 50 cenários normais, 48 de recovery e 23 adversariais para segurança,
   além de 57 cenários do scheduler de refresh do veículo.
-- Os 21 canvases materialmente alterados foram renderizados em modo estrito sem
+- Os 25 canvases versionados foram renderizados em modo estrito, todos sem
   fios acima de 500 px nem fios de retorno. A inspeção visual também confirmou
   grupos contidos, ausência de sobreposição e direção de leitura consistente.
-- A configuração do Home Assistant e seus 128 testes passaram. A matriz pública
+- A configuração do Home Assistant e seus 129 testes passaram. A matriz pública
   restante passou nos validadores de segurança, privacidade, memória, bridge,
   scripts, scheduler, restore, bootstrap, demo, módulos e Git.
 - Node-RED e Home Assistant foram reiniciados separadamente e de modo incremental
@@ -222,6 +223,8 @@ canônica das políticas operacionais.
   chamava `node.error` antes de carregar sua política visual e emitia alertas
   internos. O gate passou a aguardar a política em modo fail-closed, ganhou
   regressão dedicada e dois restarts posteriores ficaram sem a rajada.
-- Nenhum replay ou teste manual chamou dispositivo, MQTT, HTTP, `exec`, push ou
-  serviço real. Não houve remoção de entidades, históricos, identificadores,
-  tópicos ou dados persistentes.
+- Os replays sintéticos permaneceram em dry-run. O teste real autorizado do
+  intent de travamento percorreu dashboard/HA, decisões e efeito Node-RED até
+  confirmação física `locked`; nenhum outro dispositivo foi acionado pelos
+  testes. Não houve remoção de entidades, históricos, identificadores, tópicos
+  ou dados persistentes.

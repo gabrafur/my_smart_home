@@ -255,6 +255,26 @@ class RemoteCommandLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(statuses[-1]["result_stage"], "confirmed")
         self.assertEqual(statuses[-1]["command"], "unlock")
 
+    def test_http_failure_summary_keeps_provider_code_and_redacts_ids(self):
+        error = RuntimeError(
+            "400 Bad Request for vehicle 265c93d2-f35f-42b9-aba5-b65afb919381"
+        )
+        error.response = SimpleNamespace(
+            json=lambda: {
+                "retCode": "F",
+                "resCode": "4003",
+                "resMsg": "Invalid token for 265c93d2-f35f-42b9-aba5-b65afb919381",
+            }
+        )
+
+        summary = HyundaiKiaConnectDataUpdateCoordinator._remote_command_error_summary(
+            error
+        )
+
+        self.assertIn("resCode=4003", summary)
+        self.assertIn("resMsg=Invalid token", summary)
+        self.assertNotIn("265c93d2", summary)
+
 
 def reading(at: str, value: float):
     """Build a recorder-like state with a UTC timestamp."""

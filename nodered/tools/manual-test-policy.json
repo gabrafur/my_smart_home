@@ -215,14 +215,16 @@
                 "vehicle_primary_remote_command_test_group_v1",
                 "vehicle_primary_remote_command_test_reset_v1",
                 "vehicle_primary_remote_command_test_success_v1",
-                "vehicle_primary_remote_command_test_failure_v1"
+                "vehicle_primary_remote_command_test_failure_v1",
+                "vehicle_primary_remote_request_test_available_v1",
+                "vehicle_primary_remote_request_test_unavailable_v1"
             ],
             "dry_run_terminal_ids": [
                 "vehicle_primary_refresh_dry_run_terminal_v1",
                 "light_full_dry_run_terminal_v1"
             ],
             "automated_test": "test-vehicle-primary-manual-engine-tests.mjs",
-            "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação; sucesso e falha final de comando remoto percorrem classificação, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar veículo nem notificações."
+            "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação; intenções remotas com alvo disponível e indisponível atravessam validação, disponibilidade, concorrência, test_mode, classificação, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar veículo nem notificações."
         },
         "62bb822e033d1623": {
             "strategy": "manual_full_dry_run",
@@ -301,16 +303,18 @@
                 "resident_notifications_test_instructions",
                 "resident_notifications_test_reset",
                 "resident_notifications_test_primary",
+                "resident_notifications_test_home",
                 "resident_notifications_test_secondary",
-                "resident_notifications_test_departure",
+                "resident_notifications_test_direction",
                 "resident_notifications_test_unavailable",
                 "resident_notifications_test_stale",
                 "resident_notifications_test_future",
+                "resident_notifications_test_duplicate",
                 "resident_notifications_dry_run_terminal"
             ],
             "dry_run_terminal_ids": ["resident_notifications_dry_run_terminal"],
             "automated_test": "test-resident-approach-notifications.mjs",
-            "reason": "Positivos, saída, unavailable, evento antigo/futuro, lifecycle e dedupe percorrem a política e os gates reais; qualquer test_mode termina antes das duas fronteiras de push."
+            "reason": "Approach, salto direto para home, ambos os residentes, direção inválida, ciclo não confirmado, evento antigo/futuro e duplicidade percorrem o contrato canônico, a política, a reserva e os gates reais; qualquer test_mode termina antes das duas fronteiras de push."
         },
         "global_flow_observer_tab": {
             "strategy": "manual_explicit_side_effect",

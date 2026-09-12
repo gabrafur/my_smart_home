@@ -300,16 +300,16 @@ removeTab();
 upsert({ id: TAB, type: "tab", label: "alertas_codex", disabled: false, info: "Fonte canônica visual para nível e alertas Codex. Home Assistant e dashboards consomem o nível publicado; TESTE sempre termina em dry-run.", env: [] });
 
 const policyNodes = ["codex_policy_help", "codex_policy_warning", "codex_policy_critical", "codex_policy_cache", "codex_policy_credits", "codex_policy_critical_cd", "codex_policy_standard_cd", "codex_policy_retry", "codex_policy_validate"];
-upsert(group("codex_group_policy", "0. Política visual — edite os valores", policyNodes, 64, 40, 760, 440, "#2563eb", "#dbeafe"));
-upsert(n("codex_policy_help", "comment", "codex_group_policy", "Valores inválidos preservam a última política válida", 430, 80, [], { info: "Uso: aviso 10–95%, crítico 20–100%, aviso < crítico. Cache 0–100%. Créditos 1–100. Cooldowns 1–24/48 h. Retry 10–600 s." }));
+upsert(group("codex_group_policy", "0. PARÂMETROS AJUSTÁVEIS DO CODEX — edite aqui", policyNodes, 64, 40, 760, 440, "#2563eb", "#dbeafe"));
+upsert(n("codex_policy_help", "comment", "codex_group_policy", "Duplo clique no parâmetro; inválidos preservam o último valor válido", 430, 80, [], { info: "Uso: aviso 10–95%, crítico 20–100%, aviso < crítico. Cache 0–100%. Créditos 1–100. Cooldowns 1–24/48 h. Retry 10–600 s." }));
 for (const item of [
-  ["codex_policy_warning", "Aviso de uso — 70 %", "warning_usage_percent", 70, 140],
-  ["codex_policy_critical", "Uso crítico — 90 %", "critical_usage_percent", 90, 190],
-  ["codex_policy_cache", "Cache mínimo — 60 %", "minimum_cache_percent", 60, 240],
-  ["codex_policy_credits", "Créditos mínimos — 10", "minimum_extra_credits", 10, 290],
-  ["codex_policy_critical_cd", "Cooldown crítico — 1 h", "critical_cooldown_hours", 1, 340],
-  ["codex_policy_standard_cd", "Cooldown padrão — 6 h", "standard_cooldown_hours", 6, 390],
-  ["codex_policy_retry", "Retry de entrega — 60 s", "retry_seconds", 60, 440],
+  ["codex_policy_warning", "Limite de aviso do uso — padrão 70 %", "warning_usage_percent", 70, 140],
+  ["codex_policy_critical", "Limite crítico do uso — padrão 90 %", "critical_usage_percent", 90, 190],
+  ["codex_policy_cache", "Cache mínimo — padrão 60 %", "minimum_cache_percent", 60, 240],
+  ["codex_policy_credits", "Créditos mínimos — padrão 10", "minimum_extra_credits", 10, 290],
+  ["codex_policy_critical_cd", "Cooldown crítico — padrão 1 h", "critical_cooldown_hours", 1, 340],
+  ["codex_policy_standard_cd", "Cooldown padrão — padrão 6 h", "standard_cooldown_hours", 6, 390],
+  ["codex_policy_retry", "Retry de entrega — padrão 60 s", "retry_seconds", 60, 440],
 ]) upsert(inject(item[0], "codex_group_policy", item[1], item[2], item[3], "num", 230, item[4], [["codex_policy_validate"]], { once: true }));
 upsert(fn("codex_policy_validate", "codex_group_policy", "Validar e preservar política única", policyValidate, 590, 290, [], 0));
 

@@ -187,24 +187,22 @@ views:
                   confirmation:
                     text: Acionar a buzina e as luzes do Creta por aproximadamente 30 segundos?
               - type: tile
-                entity: lock.vehicle_primary_door_lock
+                entity: input_button.vehicle_primary_lock_now
                 name: Travar portas
                 icon: mdi:lock
                 hide_state: true
                 tap_action:
                   action: perform-action
-                  perform_action: public_bindings.call
-                  data:
-                    role: vehicle_primary
-                    action: lock
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.vehicle_primary_lock_now
                   confirmation:
                     text: Travar as portas do Creta remotamente?
                 icon_tap_action:
                   action: perform-action
-                  perform_action: public_bindings.call
-                  data:
-                    role: vehicle_primary
-                    action: lock
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.vehicle_primary_lock_now
                   confirmation:
                     text: Travar as portas do Creta remotamente?
                 hold_action:
@@ -212,24 +210,22 @@ views:
                 icon_hold_action:
                   action: none
               - type: tile
-                entity: lock.vehicle_primary_door_lock
+                entity: input_button.vehicle_primary_unlock_now
                 name: Destravar portas
                 icon: mdi:lock-open-variant
                 hide_state: true
                 tap_action:
                   action: perform-action
-                  perform_action: public_bindings.call
-                  data:
-                    role: vehicle_primary
-                    action: unlock
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.vehicle_primary_unlock_now
                   confirmation:
                     text: Destravar as portas do Creta remotamente?
                 icon_tap_action:
                   action: perform-action
-                  perform_action: public_bindings.call
-                  data:
-                    role: vehicle_primary
-                    action: unlock
+                  perform_action: input_button.press
+                  target:
+                    entity_id: input_button.vehicle_primary_unlock_now
                   confirmation:
                     text: Destravar as portas do Creta remotamente?
                 hold_action:

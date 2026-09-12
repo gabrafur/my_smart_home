@@ -276,6 +276,19 @@ for (const expected of [
   "vehicle_primary_remote_command_test_reset_v1",
   "vehicle_primary_remote_command_test_success_v1",
   "vehicle_primary_remote_command_test_failure_v1",
+  "vehicle_primary_lock_intent_v1",
+  "vehicle_primary_unlock_intent_v1",
+  "vehicle_primary_remote_request_command_v1",
+  "vehicle_primary_remote_target_available_v1",
+  "vehicle_primary_remote_not_busy_v1",
+  "vehicle_primary_remote_test_mode_v1",
+  "vehicle_primary_remote_effect_select_v1",
+  "vehicle_primary_remote_request_call_v1",
+  "vehicle_primary_remote_request_unlock_call_v1",
+  "vehicle_primary_remote_request_call_catch_v1",
+  "vehicle_primary_remote_request_dry_run_v1",
+  "vehicle_primary_remote_request_test_available_v1",
+  "vehicle_primary_remote_request_test_unavailable_v1",
 ]) {
   assert.equal(ids.filter((id) => id === expected).length, 1, expected);
 }
@@ -490,6 +503,76 @@ assert.equal(remotePersistent.action, "persistent_notification.create");
 assert.match(remotePersistent.data, /notification_id/);
 assert.equal(remotePersistent.queue, "all");
 
+const lockIntent = flows.find(
+  (node) => node.id === "vehicle_primary_lock_intent_v1",
+);
+assert.deepEqual(lockIntent.entities.entity, [
+  "input_button.vehicle_primary_lock_now",
+]);
+assert.match(lockIntent.outputProperties[0].value, /"command":"lock"/);
+assert.equal(lockIntent.ignorePrevStateNull, false);
+assert.equal(lockIntent.ignorePrevStateUnknown, false);
+const unlockIntent = flows.find(
+  (node) => node.id === "vehicle_primary_unlock_intent_v1",
+);
+assert.deepEqual(unlockIntent.entities.entity, [
+  "input_button.vehicle_primary_unlock_now",
+]);
+assert.match(unlockIntent.outputProperties[0].value, /"command":"unlock"/);
+assert.equal(unlockIntent.ignorePrevStateNull, false);
+assert.equal(unlockIntent.ignorePrevStateUnknown, false);
+const availabilityGate = flows.find(
+  (node) => node.id === "vehicle_primary_remote_target_available_v1",
+);
+assert.deepEqual(availabilityGate.rules.map((rule) => rule.v ?? rule.t), [
+  "locked",
+  "unlocked",
+  "else",
+]);
+assert.deepEqual(availabilityGate.wires[2], [
+  "vehicle_primary_remote_request_unavailable_v1",
+]);
+const testModeGate = flows.find(
+  (node) => node.id === "vehicle_primary_remote_test_mode_v1",
+);
+assert.deepEqual(testModeGate.wires, [
+  ["vehicle_primary_remote_request_dry_run_v1"],
+  ["vehicle_primary_remote_effect_select_v1"],
+]);
+const remoteRequestCall = flows.find(
+  (node) => node.id === "vehicle_primary_remote_request_call_v1",
+);
+assert.equal(remoteRequestCall.action, "public_bindings.call");
+assert.deepEqual(JSON.parse(remoteRequestCall.data), {
+  role: "vehicle_primary",
+  action: "lock",
+});
+const remoteRequestUnlockCall = flows.find(
+  (node) => node.id === "vehicle_primary_remote_request_unlock_call_v1",
+);
+assert.deepEqual(JSON.parse(remoteRequestUnlockCall.data), {
+  role: "vehicle_primary",
+  action: "unlock",
+});
+assert.deepEqual(
+  flows.find((node) => node.id === "vehicle_primary_remote_request_call_catch_v1")
+    .scope,
+  [
+    "vehicle_primary_remote_request_call_v1",
+    "vehicle_primary_remote_request_unlock_call_v1",
+  ],
+);
+assert.deepEqual(
+  flows.find((node) => node.id === "vehicle_primary_remote_request_failure_in_v1")
+    .wires,
+  [["vehicle_primary_remote_command_monitor_v1"]],
+);
+const requestDryRun = flows.find(
+  (node) => node.id === "vehicle_primary_remote_request_dry_run_v1",
+);
+assert.match(JSON.stringify(requestDryRun.rules), /simulated/);
+assert.match(JSON.stringify(requestDryRun.rules), /dispatched/);
+
 for (const [id, action] of [
   ["8907830bb7f6c40c", "force_refresh"],
   ["16396e34ff530ac7", "refresh_trip_info"],
@@ -536,4 +619,4 @@ for (const node of flows.filter((item) => item.type === "api-call-service")) {
   }
 }
 
-console.log("vehicle_primary dashboard controls: 10 cenários aprovados.");
+console.log("vehicle_primary dashboard controls: 14 cenários aprovados.");

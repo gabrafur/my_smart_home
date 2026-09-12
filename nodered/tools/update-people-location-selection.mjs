@@ -1173,7 +1173,6 @@ flows.push(
     "people_location_select_v1",
     "people_location_classify_near_home_v1",
     "people_location_to_normalizer_out_v1",
-    "people_location_notification_out_v1",
     "people_location_publish_state_v1",
     "people_location_mqtt_state_v1",
     "people_location_discovery_start_v1",
@@ -1194,7 +1193,7 @@ flows.push(
   },
   functionNode("people_location_observation_v1", PEOPLE_TAB, selectionGroup, "Normalizar as duas observações", normalizeObservations, 1, 780, 540, [["people_location_select_v1"]]),
   functionNode("people_location_select_v1", PEOPLE_TAB, selectionGroup, "Escolher fonte como o antigo mapa", selectLocation, 1, 1090, 540, [["people_location_classify_near_home_v1"]]),
-  functionNode("people_location_classify_near_home_v1", PEOPLE_TAB, selectionGroup, "Aplicar raios home e near_home", classifyPeopleNearHome, 1, 1420, 540, [["people_location_to_normalizer_out_v1", "people_location_notification_out_v1", "people_location_publish_state_v1"]]),
+  functionNode("people_location_classify_near_home_v1", PEOPLE_TAB, selectionGroup, "Aplicar raios home e near_home", classifyPeopleNearHome, 1, 1420, 540, [["people_location_to_normalizer_out_v1", "people_location_publish_state_v1"]]),
   {
     id: "people_location_to_normalizer_out_v1",
     type: "link out",
@@ -1211,11 +1210,10 @@ flows.push(
     id: "people_location_notification_out_v1",
     type: "link out",
     z: PEOPLE_TAB,
-    g: selectionGroup,
-    name: "Decisão canônica → avisos",
+    name: "RETORNO confirmado → avisos de residentes",
     mode: "link",
     links: ["resident_notifications_canonical_in_v1"],
-    x: 1690,
+    x: 2760,
     y: 560,
     wires: [],
   },
@@ -1738,11 +1736,12 @@ peopleNormalizer.x = 2380;
 peopleNormalizer.y = 520;
 const peopleContextOut = requiredById("487984b3aaa29663");
 const peopleArrivalOut = requiredById("397c6032b3dad342");
+const peopleNotificationOut = requiredById("people_location_notification_out_v1");
 const recoveryOut = requiredById("people_lighting_tracker_recovery_arrival_out");
 peopleNormalizer.outputs = 4;
 peopleNormalizer.wires = [
   [peopleContextOut.id],
-  [peopleArrivalOut.id],
+  [peopleArrivalOut.id, peopleNotificationOut.id],
   [recoveryOut.id],
   ["people_arrival_departure_blocked_v1"],
 ];
@@ -1751,9 +1750,15 @@ peopleContextOut.y = 480;
 peopleArrivalOut.name = "RETORNO confirmado → publicar chegada v1";
 peopleArrivalOut.x = 2760;
 peopleArrivalOut.y = 520;
+peopleNotificationOut.g = normalizationGroup.id;
+peopleNotificationOut.x = 2760;
+peopleNotificationOut.y = 560;
+if (!normalizationGroup.nodes.includes(peopleNotificationOut.id)) {
+  normalizationGroup.nodes.push(peopleNotificationOut.id);
+}
 recoveryOut.name = "RECOVERY armado → iluminação";
 recoveryOut.x = 2760;
-recoveryOut.y = 560;
+recoveryOut.y = 600;
 flows.push(
   {
     id: "people_arrival_direction_note_v1",

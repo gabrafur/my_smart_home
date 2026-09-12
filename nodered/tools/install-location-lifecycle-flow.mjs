@@ -102,7 +102,10 @@ policyIn.links = Array.from(new Set([...(policyIn.links ?? []),
 ]));
 policyIn.wires = [["people_visual_policy_validate"]];
 const policyGroup = required("people_location_policy_group_v1");
+policyGroup.x = 64;
+policyGroup.y = 59;
 policyGroup.w = 1510;
+policyGroup.h = 342;
 policyGroup.nodes = policyGroup.nodes.filter((id) => id !== "people_location_policy_apply_v1");
 const store = required("people_location_policy_apply_v1");
 store.name = "Guardar última política válida";
@@ -113,11 +116,17 @@ store.y = 180;
 store.wires = store.wires?.length ? store.wires : [["people_location_policy_out_v1"]];
 store.g = policyGroup.id;
 policyGroup.nodes.push(store.id);
-fn("people_visual_policy_validate", policyGroup.id, "Validar valor, unidade e limites", "location-policy-validate.js", 2, 1140, 260,
+fn("people_visual_policy_validate", policyGroup.id, "Validar valor, unidade e limites", "location-policy-validate.js", 2, 1140, 340,
   [["people_location_policy_apply_v1"], ["people_visual_policy_reject"]]);
-fn("people_visual_policy_reject", policyGroup.id, "Rejeitar sem substituir", "location-policy-reject.js", 0, 1400, 340, []);
+fn("people_visual_policy_reject", policyGroup.id, "Rejeitar sem substituir", "location-policy-reject.js", 0, 1400, 360, []);
 Object.assign(required("people_location_policy_out_v1"), { x: 1530, y: 180 });
 moveGroup("global_observer_coverage__ea0a6aa0d24ff863__group", 3400, 59);
+
+const selectionGroup = required("people_location_selection_group_v1");
+selectionGroup.x = 620;
+selectionGroup.y = 419;
+selectionGroup.w = 1390;
+selectionGroup.h = 302;
 
 const lifecycle = required("8e1c3a19399ad44d");
 lifecycle.name = "3. Lifecycle visual de presença e chegada canônica";
@@ -158,18 +167,36 @@ linkIn("people_visual_finalize_in", lifecycle.id, "Convergir exatamente um camin
   "people_visual_blocked_out", "people_visual_unchanged_out"
 ], "554cb653b2fa4504", 4680, 590);
 const finalizer = required("554cb653b2fa4504");
+const notificationOut = required("people_location_notification_out_v1");
+const peopleClassifier = required("people_location_classify_near_home_v1");
+peopleClassifier.wires = (peopleClassifier.wires ?? []).map((wire) =>
+  Array.isArray(wire) ? wire.filter((id) => id !== notificationOut.id) : wire
+);
+for (const candidate of flows.filter((node) => node.type === "group")) {
+  if (candidate.id !== lifecycle.id && Array.isArray(candidate.nodes)) {
+    candidate.nodes = candidate.nodes.filter((id) => id !== notificationOut.id);
+  }
+}
 finalizer.name = "Persistir contexto e emitir contratos";
 finalizer.func = source("people-lifecycle-finalize.js");
 finalizer.outputs = 4; finalizer.x = 4910; finalizer.y = 590;
+finalizer.wires = [
+  ["487984b3aaa29663"],
+  ["397c6032b3dad342", "people_location_notification_out_v1"],
+  ["people_lighting_tracker_recovery_arrival_out"],
+  ["people_arrival_departure_blocked_v1"],
+];
 for (const [id, x, y] of [
   ["487984b3aaa29663", 5230, 480],
-  ["397c6032b3dad342", 5230, 540],
-  ["people_lighting_tracker_recovery_arrival_out", 5230, 600],
-  ["people_arrival_departure_blocked_v1", 5230, 660]
+  ["397c6032b3dad342", 5230, 520],
+  ["people_location_notification_out_v1", 5230, 560],
+  ["people_lighting_tracker_recovery_arrival_out", 5230, 610],
+  ["people_arrival_departure_blocked_v1", 5230, 670]
 ]) {
   const node = required(id); node.x = x; node.y = y; node.g = lifecycle.id;
   if (!lifecycle.nodes.includes(id)) lifecycle.nodes.push(id);
 }
+notificationOut.name = "RETORNO confirmado → avisos de residentes";
 required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos.";
 
 const vehicleLifecycle = required("d860cb4ad0d1fd89");
@@ -344,7 +371,7 @@ grouped(refreshConfigGroup.id, {
   id: "vehicle_visual_refresh_config_in", type: "link in", z: VEHICLE_TAB,
   g: refreshConfigGroup.id, name: "Receber proteções do refresh",
   links: ["vehicle_visual_refresh_safety_left_out", "vehicle_visual_refresh_safety_middle_out",
-    "vehicle_visual_refresh_safety_right_out"], x: 1660, y: 300,
+    "vehicle_visual_refresh_safety_right_out"], x: 1190, y: 420,
   wires: [["vehicle_primary_refresh_policy_config_apply_v1"]]
 });
 Object.assign(required("vehicle_primary_refresh_policy_config_apply_v1"), {
@@ -356,7 +383,7 @@ Object.assign(required("vehicle_primary_refresh_policy_select_v1"), {
 
 const refreshDecisionGroup = group(
   "vehicle_visual_refresh_decision_group_v2",
-  "9. Orquestração visual do refresh — gates, cooldown, cache e dry-run",
+  "10. Orquestração visual do refresh — gates, cooldown, cache e dry-run",
   64, 2080, 4140, 700, "#0f766e", "#ccfbf1", VEHICLE_TAB
 );
 const refreshGrouped = (node) => grouped(refreshDecisionGroup.id, node);

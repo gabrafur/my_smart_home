@@ -42,6 +42,9 @@ for (const candidate of flows.filter((item) =>
 }
 
 assert.equal(node("codex_alertas_tab").label, "alertas_codex");
+assert.match(node("codex_group_policy").name, /PARÂMETROS AJUSTÁVEIS DO CODEX/);
+assert.match(node("codex_policy_warning").name, /padrão 70 %/);
+assert.match(node("codex_policy_critical").name, /padrão 90 %/);
 for (const id of [
   "codex_group_policy", "codex_group_inputs", "codex_group_level",
   "codex_group_decisions", "codex_group_tests", "codex_group_effects",

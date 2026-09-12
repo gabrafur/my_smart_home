@@ -31,6 +31,11 @@ const call = (fn, msg, flow) => fn(msg, flow, nodeMock, globalMock);
 
 assert.equal(byId.get(TAB)?.label, "contexto_chegadas");
 assert.ok(tabNodes.length >= 100);
+assert.deepEqual(
+  byId.get("vehicle_primary_manual_refresh_button_v1")?.entities?.entity,
+  ["input_button.vehicle_primary_force_refresh_now"],
+  "o botão manual deve observar a entidade canônica existente no Home Assistant",
+);
 for (const id of [
   "arrival_context_policy_switch", "arrival_context_cycle_policy_available", "arrival_context_kind_switch",
   "arrival_context_reset_test_gate", "arrival_context_inflight_switch", "arrival_context_inflight_force",
