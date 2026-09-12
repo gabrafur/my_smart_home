@@ -178,3 +178,27 @@ monolíticos de refresh do veículo, merge/chegada da iluminação, bypass do mo
 e ingestão/avaliação do observador global. Os geradores novos são idempotentes,
 os contratos e IDs externos foram preservados e o canvas é a representação
 canônica das políticas operacionais.
+
+## Validação e implantação final
+
+- O artefato final contém 2.248 nós, 24 tabs cobertos pelo manifesto de testes
+  e 23 tabs funcionais observados pelo monitor global.
+- A suíte pública do Node-RED passou em 37 arquivos. Os replays materiais
+  incluem 50 cenários normais, 48 de recovery e 23 adversariais para segurança,
+  além de 57 cenários do scheduler de refresh do veículo.
+- Os 21 canvases materialmente alterados foram renderizados em modo estrito sem
+  fios acima de 500 px nem fios de retorno. A inspeção visual também confirmou
+  grupos contidos, ausência de sobreposição e direção de leitura consistente.
+- A configuração do Home Assistant e seus 121 testes passaram. A matriz pública
+  restante passou nos validadores de segurança, privacidade, memória, bridge,
+  scripts, scheduler, restore, bootstrap, demo, módulos e Git.
+- Somente o Node-RED foi reiniciado, de modo incremental. Home Assistant, MQTT e
+  Zigbee2MQTT permaneceram disponíveis; as interfaces HTTP do Home Assistant e
+  do Node-RED responderam `200` após o deploy.
+- A primeira verificação de startup revelou uma janela em que o observador
+  chamava `node.error` antes de carregar sua política visual e emitia alertas
+  internos. O gate passou a aguardar a política em modo fail-closed, ganhou
+  regressão dedicada e dois restarts posteriores ficaram sem a rajada.
+- Nenhum replay ou teste manual chamou dispositivo, MQTT, HTTP, `exec`, push ou
+  serviço real. Não houve remoção de entidades, históricos, identificadores,
+  tópicos ou dados persistentes.
