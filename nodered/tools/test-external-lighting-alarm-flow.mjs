@@ -377,4 +377,27 @@ assert.match(networkFailure.notify_text, /Erro na rede Zigbee/);
 assert.match(networkFailure.notify_text, /garagem, jardim/);
 assert.match(networkFailure.notify_text, /não será repetido/);
 
+const policyValues = new Map();
+const policyContext = {
+  get: (key) => policyValues.get(key),
+  set: (key, value) => policyValues.set(key, value),
+};
+const validatePolicy = compileFunction(getNode("external_visual_policy_validate"));
+const storePolicy = compileFunction(getNode("external_visual_policy_store"));
+for (const value of [1, 30]) {
+  const candidate = validatePolicy(
+    { topic: "confirmation_settle_seconds", payload: value }, statusNode,
+    {}, {}, policyContext, {}, setTimeout, clearTimeout,
+  );
+  assert.ok(candidate[0], `limite exato ${value} deve ser aceito`);
+  storePolicy(candidate[0], statusNode, {}, {}, policyContext, {}, setTimeout, clearTimeout);
+}
+const invalidPolicy = validatePolicy(
+  { topic: "confirmation_settle_seconds", payload: 0 }, statusNode,
+  {}, {}, policyContext, {}, setTimeout, clearTimeout,
+);
+assert.equal(invalidPolicy[0], null);
+assert.equal(policyValues.get("external_lighting_policy_v1").confirmation_settle_seconds, 30);
+assert.deepEqual(getNode("external_visual_dry_terminal").wires, []);
+
 console.log("External-lighting independent flow tests passed.");
