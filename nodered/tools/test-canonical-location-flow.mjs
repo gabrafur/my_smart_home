@@ -27,6 +27,20 @@ const LOCATION_POLICY = {
   vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,
 };
+const SECURITY_LIGHT_POLICY = {
+  version: 1,
+  owner: "node_red",
+  complete: true,
+  physical_fresh_seconds: 120,
+  recovery_request_throttle_seconds: 30,
+  off_grace_seconds: 90,
+  backstop_minutes: 15,
+  post_off_cooldown_minutes: 5,
+  lifecycle_retention_hours: 24,
+  deadline_slack_minutes: 1,
+  unavailable_dedupe_seconds: 10,
+  cooldown_max_minutes: 30,
+};
 let clock = Date.parse("2026-09-10T21:00:00.000Z");
 const originalNow = Date.now;
 Date.now = () => clock;
@@ -43,6 +57,7 @@ function memory(initial = {}) {
 function runtimeGlobal(policyOverrides = {}) {
   return memory({
     location_policy_v1: { ...LOCATION_POLICY, ...policyOverrides },
+    security_light_policy_v1: SECURITY_LIGHT_POLICY,
     publicBindings: {
       roles: {
         resident_primary: {
@@ -56,6 +71,34 @@ function runtimeGlobal(policyOverrides = {}) {
       },
     },
   });
+}
+
+function runSecurityArrival(message, flow, globalContext = runtimeGlobal()) {
+  let msg = run("security_visual_arrival_facts", message, flow, globalContext);
+  if (!msg._light_arrival.direction_valid) {
+    msg = run("security_light_arrival_direction_blocked_v1", msg, flow, globalContext);
+  } else {
+    msg = run("security_visual_arrival_pending", msg, flow, globalContext);
+    if (msg._light_arrival.logic_ready) {
+      msg = run("security_visual_arrival_ready", msg, flow, globalContext);
+    } else if (msg._light_arrival.recovery_needed && msg._light_arrival.recovery_allowed) {
+      msg = run("security_visual_arrival_recovery", msg, flow, globalContext);
+    } else if (msg._light_arrival.recovery_needed) {
+      msg = run("security_visual_arrival_throttled", msg, flow, globalContext);
+    } else {
+      msg = run("security_visual_arrival_pending_only", msg, flow, globalContext);
+    }
+  }
+  return run("62f77a1ad440639d", msg, flow, globalContext);
+}
+
+function runSecurityContext(message, flow, globalContext = runtimeGlobal()) {
+  let msg = run("security_visual_context_cache", message, flow, globalContext);
+  msg = run("security_visual_pending_validate", msg, flow, globalContext);
+  if (msg._light_context.replay_ready) {
+    msg = run("security_visual_replay_build", msg, flow, globalContext);
+  }
+  return run("48a5f40d806f6950", msg, flow, globalContext);
 }
 
 function run(id, msg, flow = memory(), globalContext = runtimeGlobal()) {
@@ -439,13 +482,12 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 }
 
 {
-  const prepare = byId.get("62f77a1ad440639d").func;
-  const merge = byId.get("48a5f40d806f6950").func;
-  assert.match(prepare, /arrival_recovery_minutes/);
-  assert.match(prepare, /while_vehicle_approaching/);
-  assert.doesNotMatch(prepare, /SHORT_RECOVERY_TTL_MS/);
-  assert.match(merge, /ARRIVAL_RECOVERY_TTL_MS/);
-  assert.match(merge, /vehicle_left_approach_zone/);
+  assert.equal(byId.get("security_light_arrival_direction_gate_v1").type, "switch");
+  assert.equal(byId.get("security_visual_arrival_logic_ready").type, "switch");
+  assert.equal(byId.get("security_visual_replay_ready").type, "switch");
+  assert.match(byId.get("security_visual_arrival_pending").func, /arrival_recovery_ms/);
+  assert.match(byId.get("security_visual_pending_validate").func, /vehicle_left_approach_zone/);
+  assert.doesNotMatch(byId.get("62f77a1ad440639d").func, /arrival_recovery_minutes/);
 }
 
 {
@@ -467,7 +509,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
     security_light_physical_state: "off",
     security_light_physical_observed_at: start,
   });
-  const prepared = run("62f77a1ad440639d", {
+  const prepared = runSecurityArrival({
     payload: {
       kind: "arrival",
       source: "vehicle_primary",
@@ -485,7 +527,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   );
 
   clock = start + 151_000;
-  const recovered = run("48a5f40d806f6950", {
+  const recovered = runSecurityContext({
     payload: {
       kind: "vehicle_primary_context",
       updated_at: clock,

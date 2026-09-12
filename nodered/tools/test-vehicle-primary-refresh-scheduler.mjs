@@ -291,6 +291,11 @@ function normalize(
   telemetryAt = observedAt,
   { engineAt = observedAt, lockAt = observedAt, engineState = "off" } = {},
 ) {
+  const refreshState = store.get(KEY);
+  if (refreshState && !Number.isFinite(refreshState.semantic_evidence_window_ms)) {
+    refreshState.semantic_evidence_window_ms = 20 * 60_000;
+    store.set(KEY, refreshState);
+  }
   let msg = {
       payload: {
         event: "context_snapshot",
