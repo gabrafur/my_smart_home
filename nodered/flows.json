@@ -20639,1295 +20639,6 @@
         ]
     },
     {
-        "id": "local_ai_rtx_policy_group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "0. Política visual e agenda passiva",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#2563eb",
-            "stroke-opacity": "1",
-            "fill": "#dbeafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "local_ai_rtx_architecture",
-            "local_ai_rtx_tick",
-            "local_ai_rtx_health_tick_out",
-            "local_ai_rtx_policy_cooldown",
-            "local_ai_rtx_policy_validate"
-        ],
-        "x": 64,
-        "y": 20,
-        "w": 700,
-        "h": 300
-    },
-    {
-        "id": "local_ai_rtx_health_group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "1. Saúde, decisões e estado",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0f766e",
-            "stroke-opacity": "1",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "local_ai_rtx_health_tick_in",
-            "local_ai_rtx_manual_recovery",
-            "local_ai_rtx_prepare_health",
-            "local_ai_rtx_health_http",
-            "local_ai_rtx_health_evaluate",
-            "local_ai_rtx_test_health_in",
-            "local_ai_rtx_available_switch",
-            "local_ai_rtx_set_available",
-            "local_ai_rtx_explicit_switch",
-            "local_ai_rtx_set_unavailable",
-            "local_ai_rtx_load_policy",
-            "local_ai_rtx_cooldown_read",
-            "local_ai_rtx_test_mode_switch",
-            "local_ai_rtx_cooldown_switch",
-            "local_ai_rtx_set_requested",
-            "local_ai_rtx_set_cooldown",
-            "local_ai_rtx_state_out_left",
-            "local_ai_rtx_state_out_middle",
-            "local_ai_rtx_state_out_right",
-            "local_ai_rtx_state_in",
-            "local_ai_rtx_state_update",
-            "local_ai_rtx_transition_switch",
-            "local_ai_rtx_status_terminal",
-            "local_ai_rtx_alert_build",
-            "local_ai_rtx_recovery_out",
-            "local_ai_rtx_alert_out"
-        ],
-        "x": 800,
-        "y": 20,
-        "w": 2800,
-        "h": 430
-    },
-    {
-        "id": "local_ai_rtx_recovery_group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "2. Gate final e recovery seguro via MCP",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#dc2626",
-            "stroke-opacity": "1",
-            "fill": "#fee2e2",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "local_ai_rtx_recovery_in",
-            "local_ai_rtx_side_effect_guard",
-            "local_ai_rtx_prepare_recovery",
-            "local_ai_rtx_recovery_http",
-            "local_ai_rtx_recovery_response",
-            "local_ai_rtx_recovery_terminal",
-            "local_ai_rtx_dry_out",
-            "local_ai_rtx_test_response_in"
-        ],
-        "x": 800,
-        "y": 480,
-        "w": 2000,
-        "h": 280
-    },
-    {
-        "id": "local_ai_rtx_test_group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "3. Testes manuais completos — dry-run",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0891b2",
-            "stroke-opacity": "1",
-            "fill": "#cffafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "local_ai_rtx_test_instructions",
-            "local_ai_rtx_test_reset",
-            "local_ai_rtx_test_reset_state",
-            "local_ai_rtx_test_available",
-            "local_ai_rtx_test_unavailable",
-            "local_ai_rtx_test_health_out",
-            "local_ai_rtx_test_recovered",
-            "local_ai_rtx_test_failed",
-            "local_ai_rtx_test_response_out",
-            "local_ai_rtx_dry_in",
-            "local_ai_rtx_dry_run_terminal"
-        ],
-        "x": 64,
-        "y": 800,
-        "w": 2736,
-        "h": 330
-    },
-    {
-        "id": "local_ai_rtx_recovery_tab",
-        "type": "tab",
-        "label": "recuperacao_rtx",
-        "disabled": false,
-        "info": "Observação passiva e decisão visual. Recovery MCP exige clique explícito; cooldown vem da política validada e TESTE termina antes do HTTP autenticado.",
-        "env": []
-    },
-    {
-        "id": "local_ai_rtx_architecture",
-        "type": "comment",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_policy_group",
-        "name": "Leitura é passiva. Recovery nunca é automático.",
-        "info": "O Node-RED não executa WSL, Ollama, netsh, iphlpsvc nem SSH. Essas mutações permanecem exclusivamente no helper versionado chamado pelo MCP.",
-        "x": 410,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_tick",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_policy_group",
-        "name": "Agenda visível — verificar a cada 60 s",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "60",
-        "crontab": "",
-        "once": true,
-        "onceDelay": "15",
-        "topic": "",
-        "x": 240,
-        "y": 130,
-        "wires": [
-            [
-                "local_ai_rtx_health_tick_out"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_health_tick_out",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_policy_group",
-        "name": "Tick passivo → leitura de saúde",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_health_tick_in"
-        ],
-        "x": 560,
-        "y": 130,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_policy_cooldown",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_policy_group",
-        "name": "Cooldown entre recoveries — 60 s",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 0.5,
-        "topic": "recovery_cooldown_seconds",
-        "x": 250,
-        "y": 220,
-        "wires": [
-            [
-                "local_ai_rtx_policy_validate"
-            ]
-        ],
-        "payload": "60",
-        "payloadType": "num"
-    },
-    {
-        "id": "local_ai_rtx_policy_validate",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_policy_group",
-        "name": "Validar 10–600 s e preservar último válido",
-        "func": "const value = Number(msg.payload);\nif (msg.topic !== \"recovery_cooldown_seconds\" || !Number.isInteger(value) || value < 10 || value > 600) {\n    node.error(\"Política RTX inválida: cooldown deve ser inteiro entre 10 e 600 s\", msg);\n    return null;\n}\nconst policy = {\n    version: 1,\n    owner: \"node_red\",\n    recovery_cooldown_seconds: value,\n    complete: true,\n    updated_at: Date.now(),\n};\nflow.set(\"local_ai_rtx_policy_v1\", policy, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: `cooldown ${value} s` });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 570,
-        "y": 220,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_health_tick_in",
-        "type": "link in",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Receber tick passivo",
-        "links": [
-            "local_ai_rtx_health_tick_out"
-        ],
-        "x": 850,
-        "y": 100,
-        "wires": [
-            [
-                "local_ai_rtx_prepare_health"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_manual_recovery",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Pedido explícito: recuperar endpoint via MCP",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "explicit_recovery",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 1000,
-        "y": 170,
-        "wires": [
-            [
-                "local_ai_rtx_prepare_health"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_prepare_health",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Adaptar requisição GET passiva",
-        "func": "msg.method = \"GET\";\nmsg.url = \"http://ai-bridge:8099/usage\";\nmsg.payload = \"\";\ndelete msg.headers;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1200,
-        "y": 100,
-        "wires": [
-            [
-                "local_ai_rtx_health_http"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_health_http",
-        "type": "http request",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "FONTE: ler saúde do bridge",
-        "method": "use",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 1450,
-        "y": 100,
-        "wires": [
-            [
-                "local_ai_rtx_health_evaluate"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_health_evaluate",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Normalizar resposta de saúde",
-        "func": "const testMode = msg.test_mode === true || msg._rtx_test === true;\nconst explicitRecovery = msg.explicit_recovery === true;\nconst now = Number(msg.rtx_now) || Date.now();\nlet payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = {}; }\n}\nconst localAi = payload && typeof payload === \"object\"\n    ? (payload.local_ai && typeof payload.local_ai === \"object\" ? payload.local_ai : payload)\n    : {};\nconst preflight = localAi.preflight && typeof localAi.preflight === \"object\" ? localAi.preflight : {};\nconst state = String(localAi.state || preflight.state || \"LOCAL_AI_UNKNOWN\");\nconst available = localAi.available === true || [\"LOCAL_AI_AVAILABLE\", \"LOCAL_AI_DEGRADED\"].includes(state);\nconst reason = String(preflight.reason || localAi.reason || (available ? \"available\" : \"unknown\"));\nconst snapshot = {\n    state,\n    available,\n    reason,\n    checked_at: preflight.checked_at || new Date(now).toISOString(),\n};\nmsg.test_mode = testMode;\nmsg.explicit_recovery = explicitRecovery;\nmsg.rtx_now = now;\nmsg.rtx_status = snapshot;\nmsg.payload = snapshot;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1690,
-        "y": 150,
-        "wires": [
-            [
-                "local_ai_rtx_available_switch"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_health_in",
-        "type": "link in",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Receber saúde TESTE",
-        "links": [
-            "local_ai_rtx_test_health_out"
-        ],
-        "x": 1450,
-        "y": 250,
-        "wires": [
-            [
-                "local_ai_rtx_health_evaluate"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_available_switch",
-        "type": "switch",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "RTX está disponível?",
-        "property": "rtx_status.available",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1950,
-        "y": 150,
-        "wires": [
-            [
-                "local_ai_rtx_set_available"
-            ],
-            [
-                "local_ai_rtx_explicit_switch"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_set_available",
-        "type": "change",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Transição: disponível",
-        "rules": [
-            {
-                "t": "set",
-                "p": "rtx_transition",
-                "pt": "msg",
-                "to": "available",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 2190,
-        "y": 90,
-        "wires": [
-            [
-                "local_ai_rtx_state_out_left"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_explicit_switch",
-        "type": "switch",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Recovery foi pedido explicitamente?",
-        "property": "explicit_recovery",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2220,
-        "y": 190,
-        "wires": [
-            [
-                "local_ai_rtx_load_policy"
-            ],
-            [
-                "local_ai_rtx_set_unavailable"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_set_unavailable",
-        "type": "change",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Transição: indisponível",
-        "rules": [
-            {
-                "t": "set",
-                "p": "rtx_transition",
-                "pt": "msg",
-                "to": "unavailable",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 2500,
-        "y": 220,
-        "wires": [
-            [
-                "local_ai_rtx_state_out_middle"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_load_policy",
-        "type": "change",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Carregar política visual válida",
-        "rules": [
-            {
-                "t": "set",
-                "p": "policy",
-                "pt": "msg",
-                "to": "$flowContext(\"local_ai_rtx_policy_v1\", \"persistent\")",
-                "tot": "jsonata"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 2480,
-        "y": 150,
-        "wires": [
-            [
-                "local_ai_rtx_cooldown_read"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_cooldown_read",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Ler última tentativa (sem decidir)",
-        "func": "const key = msg.test_mode === true ? \"local_ai_rtx_recovery_v1__test\" : \"local_ai_rtx_recovery_v1\";\nconst previous = flow.get(key) || {};\nconst seconds = Number(msg.policy?.recovery_cooldown_seconds);\nif (!Number.isFinite(seconds)) {\n    node.error(\"Política visual RTX indisponível\", msg);\n    return null;\n}\nmsg.rtx_status = { ...msg.rtx_status, last_attempt_at: Number(previous.last_attempt_at) || null };\nmsg.rtx_cooldown_until = Number(previous.last_attempt_at || 0) + seconds * 1000;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2740,
-        "y": 150,
-        "wires": [
-            [
-                "local_ai_rtx_test_mode_switch"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_mode_switch",
-        "type": "switch",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Pedido é TESTE?",
-        "property": "test_mode",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2990,
-        "y": 150,
-        "wires": [
-            [
-                "local_ai_rtx_set_requested"
-            ],
-            [
-                "local_ai_rtx_cooldown_switch"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_cooldown_switch",
-        "type": "switch",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Cooldown já terminou?",
-        "property": "rtx_now",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "gte",
-                "v": "rtx_cooldown_until",
-                "vt": "msg"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2990,
-        "y": 230,
-        "wires": [
-            [
-                "local_ai_rtx_set_requested"
-            ],
-            [
-                "local_ai_rtx_set_cooldown"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_set_requested",
-        "type": "change",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Transição: recovery solicitado",
-        "rules": [
-            {
-                "t": "set",
-                "p": "rtx_transition",
-                "pt": "msg",
-                "to": "recovery_requested",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3260,
-        "y": 110,
-        "wires": [
-            [
-                "local_ai_rtx_state_out_right"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_set_cooldown",
-        "type": "change",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Transição: bloqueado por cooldown",
-        "rules": [
-            {
-                "t": "set",
-                "p": "rtx_transition",
-                "pt": "msg",
-                "to": "cooldown",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3260,
-        "y": 250,
-        "wires": [
-            [
-                "local_ai_rtx_state_out_right"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_state_out_left",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Estado disponível → persistência",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_state_in"
-        ],
-        "x": 2410,
-        "y": 90,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_state_out_middle",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Estado indisponível → persistência",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_state_in"
-        ],
-        "x": 2760,
-        "y": 260,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_state_out_right",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Decisão de recovery → persistência",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_state_in"
-        ],
-        "x": 3480,
-        "y": 290,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_state_in",
-        "type": "link in",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Receber transição decidida",
-        "links": [
-            "local_ai_rtx_state_out_left",
-            "local_ai_rtx_state_out_middle",
-            "local_ai_rtx_state_out_right"
-        ],
-        "x": 2380,
-        "y": 360,
-        "wires": [
-            [
-                "local_ai_rtx_state_update"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_state_update",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Persistir estado (sem decidir rota)",
-        "func": "const testMode = msg.test_mode === true;\nconst key = testMode ? \"local_ai_rtx_recovery_v1__test\" : \"local_ai_rtx_recovery_v1\";\nconst previous = flow.get(key) || {};\nconst transition = String(msg.rtx_transition || \"status\");\nconst snapshot = { ...previous, ...msg.rtx_status };\nif (transition === \"available\") snapshot.last_result = \"available\";\nelse if (transition === \"unavailable\") snapshot.last_result = \"unavailable\";\nelse if (transition === \"cooldown\") snapshot.last_result = \"cooldown\";\nelse if (transition === \"recovery_requested\") {\n    snapshot.last_attempt_at = Number(msg.rtx_now) || Date.now();\n    snapshot.last_result = \"recovery_requested\";\n}\nflow.set(key, snapshot);\nmsg.rtx_status = snapshot;\nmsg.payload = transition === \"recovery_requested\"\n    ? { requested: true, reason: snapshot.reason }\n    : snapshot;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2610,
-        "y": 360,
-        "wires": [
-            [
-                "local_ai_rtx_transition_switch"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_transition_switch",
-        "type": "switch",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Rota: status, alerta ou recovery?",
-        "property": "rtx_transition",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "available",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "unavailable",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "recovery_requested",
-                "vt": "str"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 4,
-        "x": 2870,
-        "y": 360,
-        "wires": [
-            [
-                "local_ai_rtx_status_terminal"
-            ],
-            [
-                "local_ai_rtx_alert_build"
-            ],
-            [
-                "local_ai_rtx_recovery_out"
-            ],
-            [
-                "local_ai_rtx_status_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_status_terminal",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Estado visível da RTX",
-        "func": "const status = msg.rtx_status || msg.payload || {};\nif (status.available === true) {\n    node.status({ fill: \"green\", shape: \"dot\", text: \"RTX disponível\" });\n} else if (status.last_result === \"recovery_requested\") {\n    node.status({ fill: \"yellow\", shape: \"dot\", text: \"recovery MCP solicitado\" });\n} else {\n    node.status({ fill: \"red\", shape: \"ring\", text: String(status.reason || status.state || \"indisponível\") });\n}\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 3190,
-        "y": 350,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_alert_build",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Adaptar incidente para observador global",
-        "func": "const reason = String(msg.rtx_status?.reason || \"unknown\");\nmsg._global_observer_test = msg.test_mode === true;\nmsg._global_observer = {\n    flow_id: \"local_ai_rtx_recovery_tab\",\n    flow_label: \"recuperacao_rtx\",\n};\nmsg.error = {\n    message: `RTX indisponível: ${reason}`,\n    source: {\n        id: \"local_ai_rtx_health_evaluate\",\n        type: \"function\",\n        name: \"Monitor de disponibilidade da RTX\",\n    },\n};\nmsg.observer_alert = {\n    title: \"RTX indisponível\",\n    message: \"A conexão da RTX está indisponível. A recuperação é manual para não interromper sua VPN: abra a aba recuperacao_rtx e clique em Recuperar endpoint via MCP.\",\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 3200,
-        "y": 410,
-        "wires": [
-            [
-                "local_ai_rtx_alert_out"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_recovery_out",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "Pedido permitido → gate final MCP",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_recovery_in"
-        ],
-        "x": 3220,
-        "y": 290,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_alert_out",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_health_group",
-        "name": "RTX indisponível → alerta central",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 3480,
-        "y": 420,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_recovery_in",
-        "type": "link in",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "Receber recovery permitido",
-        "links": [
-            "local_ai_rtx_recovery_out"
-        ],
-        "x": 850,
-        "y": 570,
-        "wires": [
-            [
-                "local_ai_rtx_side_effect_guard"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_side_effect_guard",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "Gate final: produção ou TESTE?",
-        "func": "if (msg.test_mode === true || msg._rtx_test === true) {\n    msg.payload = { ...(msg.payload || {}), simulated: true, dispatched: false, side_effect: \"mcp_recovery\" };\n    return [null, msg];\n}\nreturn [msg, null];",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1080,
-        "y": 570,
-        "wires": [
-            [
-                "local_ai_rtx_prepare_recovery"
-            ],
-            [
-                "local_ai_rtx_dry_out"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_prepare_recovery",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "Adaptar chamada autenticada",
-        "func": "const token = env.get(\"BRIDGE_TOKEN\");\nif (typeof token !== \"string\" || !token) {\n    node.error(\"BRIDGE_TOKEN ausente para recovery RTX\", msg);\n    return null;\n}\nmsg.method = \"POST\";\nmsg.url = \"http://ai-bridge:8099/local-ai/recover\";\nmsg.headers = { Authorization: `Bearer ${token}`, \"Content-Type\": \"application/json\" };\nmsg.payload = {};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1340,
-        "y": 540,
-        "wires": [
-            [
-                "local_ai_rtx_recovery_http"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_recovery_http",
-        "type": "http request",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "EFEITO: executar local_ai_status via MCP",
-        "method": "use",
-        "ret": "obj",
-        "paytoqs": "body",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 1630,
-        "y": 540,
-        "wires": [
-            [
-                "local_ai_rtx_recovery_response"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_recovery_response",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "Normalizar resultado MCP",
-        "func": "const testMode = msg.test_mode === true || msg._rtx_test === true;\nlet payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = {}; }\n}\nconst localAi = payload && typeof payload === \"object\" && payload.local_ai && typeof payload.local_ai === \"object\"\n    ? payload.local_ai\n    : (payload || {});\nconst state = String(localAi.state || \"LOCAL_AI_UNKNOWN\");\nconst available = localAi.available === true || [\"LOCAL_AI_AVAILABLE\", \"LOCAL_AI_DEGRADED\"].includes(state);\nconst reason = String(localAi.reason || (available ? \"endpoint_recovered\" : \"mcp_recovery_failed\"));\nconst key = testMode ? \"local_ai_rtx_recovery_v1__test\" : \"local_ai_rtx_recovery_v1\";\nconst previous = flow.get(key) || {};\nconst result = {\n    ...previous,\n    state,\n    available,\n    reason,\n    last_result: available ? \"recovered\" : \"failed\",\n    recovery_attempted: localAi.recovery_attempted === true,\n    recovery_succeeded: localAi.recovery_succeeded === true,\n    recovery_attempts: Number(localAi.recovery_attempts) || 0,\n};\nflow.set(key, result);\nnode.status(available\n    ? { fill: \"green\", shape: \"dot\", text: \"endpoint restaurado\" }\n    : { fill: \"red\", shape: \"ring\", text: `falha: ${reason}` });\nmsg.rtx_status = result;\nmsg.payload = result;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1910,
-        "y": 570,
-        "wires": [
-            [
-                "local_ai_rtx_recovery_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_recovery_terminal",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "Resultado visível do recovery",
-        "func": "const status = msg.rtx_status || msg.payload || {};\nif (status.available === true) {\n    node.status({ fill: \"green\", shape: \"dot\", text: \"RTX disponível\" });\n} else if (status.last_result === \"recovery_requested\") {\n    node.status({ fill: \"yellow\", shape: \"dot\", text: \"recovery MCP solicitado\" });\n} else {\n    node.status({ fill: \"red\", shape: \"ring\", text: String(status.reason || status.state || \"indisponível\") });\n}\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2180,
-        "y": 570,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_dry_out",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "TESTE → terminal dry-run",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_dry_in"
-        ],
-        "x": 1340,
-        "y": 650,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_test_response_in",
-        "type": "link in",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_recovery_group",
-        "name": "Receber resposta MCP TESTE",
-        "links": [
-            "local_ai_rtx_test_response_out"
-        ],
-        "x": 1630,
-        "y": 690,
-        "wires": [
-            [
-                "local_ai_rtx_recovery_response"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_instructions",
-        "type": "comment",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "Ordem: reset → disponível → indisponível → sucesso MCP → falha MCP. Nenhum HTTP de recovery é enviado.",
-        "info": "Estados sintéticos usam contexto separado e percorrem normalização, decisões, cooldown, gate e lifecycle reais.",
-        "x": 900,
-        "y": 840,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_test_reset",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "TESTE 1: reset",
-        "props": [
-            {
-                "p": "test_mode",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 170,
-        "y": 920,
-        "wires": [
-            [
-                "local_ai_rtx_test_reset_state"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_reset_state",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "Resetar estado sintético",
-        "func": "flow.set(\"local_ai_rtx_recovery_v1__test\", null);\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 410,
-        "y": 920,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_test_available",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "TESTE 2: RTX disponível",
-        "props": [
-            {
-                "p": "test_mode",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "_rtx_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "explicit_recovery",
-                "v": "false",
-                "vt": "bool"
-            },
-            {
-                "p": "rtx_now",
-                "v": "100000",
-                "vt": "num"
-            },
-            {
-                "p": "payload",
-                "v": "{\"local_ai\":{\"available\":true,\"state\":\"LOCAL_AI_AVAILABLE\",\"preflight\":{\"state\":\"LOCAL_AI_AVAILABLE\",\"reason\":null}}}",
-                "vt": "json"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 190,
-        "y": 990,
-        "wires": [
-            [
-                "local_ai_rtx_test_health_out"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_unavailable",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "TESTE 3: listener ausente",
-        "props": [
-            {
-                "p": "test_mode",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "_rtx_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "explicit_recovery",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "rtx_now",
-                "v": "200000",
-                "vt": "num"
-            },
-            {
-                "p": "payload",
-                "v": "{\"local_ai\":{\"available\":false,\"state\":\"LOCAL_AI_UNAVAILABLE\",\"preflight\":{\"state\":\"LOCAL_AI_UNAVAILABLE\",\"reason\":\"listener_absent\"}}}",
-                "vt": "json"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 190,
-        "y": 1050,
-        "wires": [
-            [
-                "local_ai_rtx_test_health_out"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_health_out",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "Saúde TESTE → caminho real",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_test_health_in"
-        ],
-        "x": 500,
-        "y": 1020,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_test_recovered",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "TESTE 4: recovery concluído",
-        "props": [
-            {
-                "p": "test_mode",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "_rtx_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "payload",
-                "v": "{\"status\":\"ok\",\"local_ai\":{\"available\":true,\"state\":\"LOCAL_AI_AVAILABLE\",\"reason\":\"endpoint_recovered\",\"recovery_attempted\":true,\"recovery_succeeded\":true,\"recovery_attempts\":1}}",
-                "vt": "json"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 800,
-        "y": 970,
-        "wires": [
-            [
-                "local_ai_rtx_test_response_out"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_failed",
-        "type": "inject",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "TESTE 5: recovery falhou",
-        "props": [
-            {
-                "p": "test_mode",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "_rtx_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "payload",
-                "v": "{\"status\":\"ok\",\"local_ai\":{\"available\":false,\"state\":\"LOCAL_AI_UNAVAILABLE\",\"reason\":\"portproxy_add_failed\",\"recovery_attempted\":true,\"recovery_succeeded\":false,\"recovery_attempts\":2}}",
-                "vt": "json"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 800,
-        "y": 1040,
-        "wires": [
-            [
-                "local_ai_rtx_test_response_out"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_test_response_out",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "Resposta TESTE → normalização real",
-        "mode": "link",
-        "links": [
-            "local_ai_rtx_test_response_in"
-        ],
-        "x": 1110,
-        "y": 1005,
-        "wires": []
-    },
-    {
-        "id": "local_ai_rtx_dry_in",
-        "type": "link in",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "Receber efeito TESTE",
-        "links": [
-            "local_ai_rtx_dry_out"
-        ],
-        "x": 1450,
-        "y": 1050,
-        "wires": [
-            [
-                "local_ai_rtx_dry_run_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "local_ai_rtx_dry_run_terminal",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "local_ai_rtx_test_group",
-        "name": "TESTE FINAL: MCP não chamado",
-        "func": "const result = {\n    simulated: true,\n    dispatched: false,\n    side_effect: \"mcp_recovery\",\n    reason: msg.payload && msg.payload.reason ? msg.payload.reason : \"synthetic_unavailable\",\n};\nflow.set(\"local_ai_rtx_last_dry_run_v1\", result);\nmsg.payload = result;\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"dry-run: MCP bloqueado\" });\nnode.warn(\"LOCAL_AI_RTX_DRY_RUN \" + JSON.stringify(result));\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1710,
-        "y": 1050,
-        "wires": []
-    },
-    {
         "id": "host_memory_guardian_input_group",
         "type": "group",
         "z": "host_memory_guardian_tab",
@@ -39962,6 +38673,1967 @@
         "wires": []
     },
     {
+        "id": "local_ai_rtx_policy_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "0. Política visual e agenda passiva",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "local_ai_rtx_architecture",
+            "local_ai_rtx_tick",
+            "local_ai_rtx_health_tick_out",
+            "local_ai_rtx_policy_cooldown",
+            "local_ai_rtx_policy_validate"
+        ],
+        "x": 64,
+        "y": 20,
+        "w": 700,
+        "h": 300
+    },
+    {
+        "id": "local_ai_rtx_health_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "1. Saúde, energia do host, decisões e estado",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "local_ai_rtx_health_tick_in",
+            "local_ai_rtx_manual_recovery",
+            "local_ai_rtx_prepare_health",
+            "local_ai_rtx_health_http",
+            "local_ai_rtx_health_evaluate",
+            "local_ai_rtx_test_health_in",
+            "local_ai_rtx_available_switch",
+            "local_ai_rtx_set_available",
+            "local_ai_rtx_explicit_switch",
+            "local_ai_rtx_set_unavailable",
+            "local_ai_rtx_load_policy",
+            "local_ai_rtx_cooldown_read",
+            "local_ai_rtx_test_mode_switch",
+            "local_ai_rtx_cooldown_switch",
+            "local_ai_rtx_set_requested",
+            "local_ai_rtx_set_cooldown",
+            "local_ai_rtx_state_out_left",
+            "local_ai_rtx_state_out_middle",
+            "local_ai_rtx_state_out_right",
+            "local_ai_rtx_state_in",
+            "local_ai_rtx_state_update",
+            "local_ai_rtx_transition_switch",
+            "local_ai_rtx_available_mode_switch",
+            "local_ai_rtx_unavailable_mode_switch",
+            "local_ai_rtx_host_state_source",
+            "local_ai_rtx_prod_host_state_switch",
+            "local_ai_rtx_test_host_state_switch",
+            "local_ai_rtx_prepare_prod_alert",
+            "local_ai_rtx_prepare_test_alert",
+            "local_ai_rtx_prepare_prod_alert_reset",
+            "local_ai_rtx_prepare_test_alert_reset",
+            "local_ai_rtx_prod_alert_reset_request_out",
+            "local_ai_rtx_prod_alert_reset_request_in",
+            "local_ai_rtx_test_alert_reset_request_out",
+            "local_ai_rtx_test_alert_reset_request_in",
+            "local_ai_rtx_test_alert_reset_in",
+            "local_ai_rtx_alert_dedupe_reset_out",
+            "local_ai_rtx_alert_dedupe_reset_in",
+            "local_ai_rtx_alert_rbe",
+            "local_ai_rtx_status_transition_out",
+            "local_ai_rtx_status_gate_out",
+            "local_ai_rtx_status_in",
+            "local_ai_rtx_status_terminal",
+            "local_ai_rtx_alert_build",
+            "local_ai_rtx_recovery_out",
+            "local_ai_rtx_alert_out"
+        ],
+        "x": 800,
+        "y": 20,
+        "w": 4300,
+        "h": 590
+    },
+    {
+        "id": "local_ai_rtx_recovery_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "2. Gate final e recovery seguro via MCP",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#dc2626",
+            "stroke-opacity": "1",
+            "fill": "#fee2e2",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "local_ai_rtx_recovery_in",
+            "local_ai_rtx_side_effect_guard",
+            "local_ai_rtx_prepare_recovery",
+            "local_ai_rtx_recovery_http",
+            "local_ai_rtx_recovery_response",
+            "local_ai_rtx_recovery_terminal",
+            "local_ai_rtx_dry_out",
+            "local_ai_rtx_test_response_in"
+        ],
+        "x": 800,
+        "y": 640,
+        "w": 2000,
+        "h": 280
+    },
+    {
+        "id": "local_ai_rtx_test_group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "3. Testes manuais completos — dry-run",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0891b2",
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "local_ai_rtx_test_instructions",
+            "local_ai_rtx_test_reset",
+            "local_ai_rtx_test_reset_state",
+            "local_ai_rtx_test_alert_reset_out",
+            "local_ai_rtx_test_available",
+            "local_ai_rtx_test_host_off",
+            "local_ai_rtx_test_host_on",
+            "local_ai_rtx_test_unavailable",
+            "local_ai_rtx_test_health_out",
+            "local_ai_rtx_test_recovered",
+            "local_ai_rtx_test_failed",
+            "local_ai_rtx_test_response_out",
+            "local_ai_rtx_dry_in",
+            "local_ai_rtx_dry_run_terminal"
+        ],
+        "x": 64,
+        "y": 960,
+        "w": 2736,
+        "h": 330
+    },
+    {
+        "id": "local_ai_rtx_recovery_tab",
+        "type": "tab",
+        "label": "recuperacao_rtx",
+        "disabled": false,
+        "info": "Observação passiva e decisão visual. Recovery MCP exige clique explícito; cooldown vem da política validada e TESTE termina antes do HTTP autenticado.",
+        "env": []
+    },
+    {
+        "id": "local_ai_rtx_architecture",
+        "type": "comment",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_policy_group",
+        "name": "Leitura é passiva. Recovery nunca é automático.",
+        "info": "O Node-RED não executa WSL, Ollama, netsh, iphlpsvc nem SSH. A fonte sensor.codex_rtx_host_reachability_raw apenas confirma se o computador está ligado. Computador desligado silencia alertas; ligado com endpoint indisponível alerta uma vez por incidente.",
+        "x": 410,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_tick",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_policy_group",
+        "name": "Agenda visível — verificar a cada 60 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "15",
+        "topic": "",
+        "x": 240,
+        "y": 130,
+        "wires": [
+            [
+                "local_ai_rtx_health_tick_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_health_tick_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_policy_group",
+        "name": "Tick passivo → leitura de saúde",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_health_tick_in"
+        ],
+        "x": 560,
+        "y": 130,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_policy_cooldown",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_policy_group",
+        "name": "Cooldown entre recoveries — 60 s",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.5,
+        "topic": "recovery_cooldown_seconds",
+        "x": 250,
+        "y": 220,
+        "wires": [
+            [
+                "local_ai_rtx_policy_validate"
+            ]
+        ],
+        "payload": "60",
+        "payloadType": "num"
+    },
+    {
+        "id": "local_ai_rtx_policy_validate",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_policy_group",
+        "name": "Validar 10–600 s e preservar último válido",
+        "func": "const value = Number(msg.payload);\nif (msg.topic !== \"recovery_cooldown_seconds\" || !Number.isInteger(value) || value < 10 || value > 600) {\n    node.error(\"Política RTX inválida: cooldown deve ser inteiro entre 10 e 600 s\", msg);\n    return null;\n}\nconst policy = {\n    version: 1,\n    owner: \"node_red\",\n    recovery_cooldown_seconds: value,\n    complete: true,\n    updated_at: Date.now(),\n};\nflow.set(\"local_ai_rtx_policy_v1\", policy, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: `cooldown ${value} s` });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_health_tick_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber tick passivo",
+        "links": [
+            "local_ai_rtx_health_tick_out"
+        ],
+        "x": 850,
+        "y": 100,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_health"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_manual_recovery",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Pedido explícito: recuperar endpoint via MCP",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "explicit_recovery",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1000,
+        "y": 170,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_health"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prepare_health",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Adaptar requisição GET passiva",
+        "func": "msg.method = \"GET\";\nmsg.url = \"http://ai-bridge:8099/usage\";\nmsg.payload = \"\";\ndelete msg.headers;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 100,
+        "wires": [
+            [
+                "local_ai_rtx_health_http"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_health_http",
+        "type": "http request",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "FONTE: ler saúde do bridge",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1450,
+        "y": 100,
+        "wires": [
+            [
+                "local_ai_rtx_health_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_health_evaluate",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Normalizar resposta de saúde",
+        "func": "const testMode = msg.test_mode === true || msg._rtx_test === true;\nconst explicitRecovery = msg.explicit_recovery === true;\nconst now = Number(msg.rtx_now) || Date.now();\nlet payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = {}; }\n}\nconst localAi = payload && typeof payload === \"object\"\n    ? (payload.local_ai && typeof payload.local_ai === \"object\" ? payload.local_ai : payload)\n    : {};\nconst preflight = localAi.preflight && typeof localAi.preflight === \"object\" ? localAi.preflight : {};\nconst state = String(localAi.state || preflight.state || \"LOCAL_AI_UNKNOWN\");\nconst available = localAi.available === true || [\"LOCAL_AI_AVAILABLE\", \"LOCAL_AI_DEGRADED\"].includes(state);\nconst reason = String(preflight.reason || localAi.reason || (available ? \"available\" : \"unknown\"));\nconst snapshot = {\n    state,\n    available,\n    reason,\n    checked_at: preflight.checked_at || new Date(now).toISOString(),\n};\nmsg.test_mode = testMode;\nmsg.explicit_recovery = explicitRecovery;\nmsg.rtx_now = now;\nmsg.rtx_status = snapshot;\nmsg.payload = snapshot;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1690,
+        "y": 150,
+        "wires": [
+            [
+                "local_ai_rtx_available_switch"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_health_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber saúde TESTE",
+        "links": [
+            "local_ai_rtx_test_health_out"
+        ],
+        "x": 1450,
+        "y": 250,
+        "wires": [
+            [
+                "local_ai_rtx_health_evaluate"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_available_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "RTX está disponível?",
+        "property": "rtx_status.available",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1950,
+        "y": 150,
+        "wires": [
+            [
+                "local_ai_rtx_set_available"
+            ],
+            [
+                "local_ai_rtx_explicit_switch"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_set_available",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Transição: disponível",
+        "rules": [
+            {
+                "t": "set",
+                "p": "rtx_transition",
+                "pt": "msg",
+                "to": "available",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2190,
+        "y": 90,
+        "wires": [
+            [
+                "local_ai_rtx_state_out_left"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_explicit_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Recovery foi pedido explicitamente?",
+        "property": "explicit_recovery",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2220,
+        "y": 190,
+        "wires": [
+            [
+                "local_ai_rtx_load_policy"
+            ],
+            [
+                "local_ai_rtx_set_unavailable"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_set_unavailable",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Transição: indisponível",
+        "rules": [
+            {
+                "t": "set",
+                "p": "rtx_transition",
+                "pt": "msg",
+                "to": "unavailable",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2500,
+        "y": 220,
+        "wires": [
+            [
+                "local_ai_rtx_state_out_middle"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_load_policy",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Carregar política visual válida",
+        "rules": [
+            {
+                "t": "set",
+                "p": "policy",
+                "pt": "msg",
+                "to": "$flowContext(\"local_ai_rtx_policy_v1\", \"persistent\")",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2480,
+        "y": 150,
+        "wires": [
+            [
+                "local_ai_rtx_cooldown_read"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_cooldown_read",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Ler última tentativa (sem decidir)",
+        "func": "const key = msg.test_mode === true ? \"local_ai_rtx_recovery_v1__test\" : \"local_ai_rtx_recovery_v1\";\nconst previous = flow.get(key) || {};\nconst seconds = Number(msg.policy?.recovery_cooldown_seconds);\nif (!Number.isFinite(seconds)) {\n    node.error(\"Política visual RTX indisponível\", msg);\n    return null;\n}\nmsg.rtx_status = { ...msg.rtx_status, last_attempt_at: Number(previous.last_attempt_at) || null };\nmsg.rtx_cooldown_until = Number(previous.last_attempt_at || 0) + seconds * 1000;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2740,
+        "y": 150,
+        "wires": [
+            [
+                "local_ai_rtx_test_mode_switch"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_mode_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Pedido é TESTE?",
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2990,
+        "y": 150,
+        "wires": [
+            [
+                "local_ai_rtx_set_requested"
+            ],
+            [
+                "local_ai_rtx_cooldown_switch"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_cooldown_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Cooldown já terminou?",
+        "property": "rtx_now",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "rtx_cooldown_until",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2990,
+        "y": 230,
+        "wires": [
+            [
+                "local_ai_rtx_set_requested"
+            ],
+            [
+                "local_ai_rtx_set_cooldown"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_set_requested",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Transição: recovery solicitado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "rtx_transition",
+                "pt": "msg",
+                "to": "recovery_requested",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 3260,
+        "y": 110,
+        "wires": [
+            [
+                "local_ai_rtx_state_out_right"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_set_cooldown",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Transição: bloqueado por cooldown",
+        "rules": [
+            {
+                "t": "set",
+                "p": "rtx_transition",
+                "pt": "msg",
+                "to": "cooldown",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 3260,
+        "y": 250,
+        "wires": [
+            [
+                "local_ai_rtx_state_out_right"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_state_out_left",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Estado disponível → persistência",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_state_in"
+        ],
+        "x": 2410,
+        "y": 90,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_state_out_middle",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Estado indisponível → persistência",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_state_in"
+        ],
+        "x": 2760,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_state_out_right",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Decisão de recovery → persistência",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_state_in"
+        ],
+        "x": 3480,
+        "y": 290,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_state_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber transição decidida",
+        "links": [
+            "local_ai_rtx_state_out_left",
+            "local_ai_rtx_state_out_middle",
+            "local_ai_rtx_state_out_right"
+        ],
+        "x": 2380,
+        "y": 360,
+        "wires": [
+            [
+                "local_ai_rtx_state_update"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_state_update",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Persistir estado normalizado",
+        "func": "const testMode = msg.test_mode === true;\nconst key = testMode ? \"local_ai_rtx_recovery_v1__test\" : \"local_ai_rtx_recovery_v1\";\nconst store = testMode ? undefined : \"persistent\";\nconst previous = store ? flow.get(key, store) || {} : flow.get(key) || {};\nconst transition = String(msg.rtx_transition || \"status\");\nconst snapshot = { ...previous, ...msg.rtx_status };\nif (transition === \"available\") snapshot.last_result = \"available\";\nelse if (transition === \"unavailable\") snapshot.last_result = \"unavailable\";\nelse if (transition === \"cooldown\") snapshot.last_result = \"cooldown\";\nelse if (transition === \"recovery_requested\") {\n    snapshot.last_attempt_at = Number(msg.rtx_now) || Date.now();\n    snapshot.last_result = \"recovery_requested\";\n}\nif (store) flow.set(key, snapshot, store);\nelse flow.set(key, snapshot);\nmsg.rtx_status = snapshot;\nmsg.payload = transition === \"recovery_requested\"\n    ? { requested: true, reason: snapshot.reason }\n    : snapshot;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2610,
+        "y": 400,
+        "wires": [
+            [
+                "local_ai_rtx_transition_switch"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_transition_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Rota: status, alerta ou recovery?",
+        "property": "rtx_transition",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "available",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "unavailable",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "recovery_requested",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 2870,
+        "y": 400,
+        "wires": [
+            [
+                "local_ai_rtx_available_mode_switch"
+            ],
+            [
+                "local_ai_rtx_unavailable_mode_switch"
+            ],
+            [
+                "local_ai_rtx_recovery_out"
+            ],
+            [
+                "local_ai_rtx_status_transition_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_available_mode_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Disponível em TESTE ou produção?",
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 3200,
+        "y": 380,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_test_alert_reset"
+            ],
+            [
+                "local_ai_rtx_prepare_prod_alert_reset"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_unavailable_mode_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Indisponível em TESTE ou produção?",
+        "property": "test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 3200,
+        "y": 460,
+        "wires": [
+            [
+                "local_ai_rtx_test_host_state_switch"
+            ],
+            [
+                "local_ai_rtx_host_state_source"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_host_state_source",
+        "type": "api-current-state",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "FONTE: computador da RTX está ligado?",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.codex_rtx_host_reachability_raw",
+        "state_type": "str",
+        "blockInputOverrides": true,
+        "outputProperties": [
+            {
+                "property": "rtx_host_state",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 3500,
+        "y": 480,
+        "wires": [
+            [
+                "local_ai_rtx_prod_host_state_switch"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prod_host_state_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Produção: host online, offline ou desconhecido?",
+        "property": "rtx_host_state",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "offline",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 3800,
+        "y": 480,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_prod_alert"
+            ],
+            [
+                "local_ai_rtx_prod_alert_reset_request_out"
+            ],
+            [
+                "local_ai_rtx_status_gate_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_host_state_switch",
+        "type": "switch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "TESTE: host online, offline ou desconhecido?",
+        "property": "rtx_host_state",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "offline",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 3650,
+        "y": 540,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_test_alert"
+            ],
+            [
+                "local_ai_rtx_test_alert_reset_request_out"
+            ],
+            [
+                "local_ai_rtx_status_gate_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prepare_prod_alert",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Condição de alerta: produção",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "production",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "rtx_alert_condition",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "delete",
+                "p": "reset",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4100,
+        "y": 460,
+        "wires": [
+            [
+                "local_ai_rtx_alert_rbe"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prepare_test_alert",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Condição de alerta: TESTE",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "test",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "rtx_alert_condition",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "delete",
+                "p": "reset",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4100,
+        "y": 540,
+        "wires": [
+            [
+                "local_ai_rtx_alert_rbe"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prepare_prod_alert_reset",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Resetar incidente de produção",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "production",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "reset",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "delete",
+                "p": "rtx_alert_condition",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 3500,
+        "y": 360,
+        "wires": [
+            [
+                "local_ai_rtx_alert_dedupe_reset_out"
+            ],
+            [
+                "local_ai_rtx_status_gate_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prepare_test_alert_reset",
+        "type": "change",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Resetar incidente de TESTE",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "test",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "reset",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "delete",
+                "p": "rtx_alert_condition",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 3500,
+        "y": 420,
+        "wires": [
+            [
+                "local_ai_rtx_alert_dedupe_reset_out"
+            ],
+            [
+                "local_ai_rtx_status_gate_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prod_alert_reset_request_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Host offline → reset produção",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_prod_alert_reset_request_in"
+        ],
+        "x": 3950,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_prod_alert_reset_request_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber reset de produção",
+        "links": [
+            "local_ai_rtx_prod_alert_reset_request_out"
+        ],
+        "x": 3300,
+        "y": 300,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_prod_alert_reset"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_alert_reset_request_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Host offline → reset TESTE",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_test_alert_reset_request_in"
+        ],
+        "x": 3900,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_test_alert_reset_request_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber reset de TESTE",
+        "links": [
+            "local_ai_rtx_test_alert_reset_request_out"
+        ],
+        "x": 3350,
+        "y": 580,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_test_alert_reset"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_alert_reset_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber reset manual de TESTE",
+        "links": [
+            "local_ai_rtx_test_alert_reset_out"
+        ],
+        "x": 3300,
+        "y": 520,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_test_alert_reset"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_alert_dedupe_reset_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Reset → dedupe por modo",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_alert_dedupe_reset_in"
+        ],
+        "x": 3800,
+        "y": 390,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_alert_dedupe_reset_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber reset por modo",
+        "links": [
+            "local_ai_rtx_alert_dedupe_reset_out"
+        ],
+        "x": 4050,
+        "y": 390,
+        "wires": [
+            [
+                "local_ai_rtx_alert_rbe"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_alert_rbe",
+        "type": "rbe",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Uma notificação por incidente e modo",
+        "func": "rbe",
+        "gap": "0",
+        "start": "",
+        "inout": "out",
+        "property": "rtx_alert_condition",
+        "topi": "topic",
+        "septopics": true,
+        "x": 4350,
+        "y": 500,
+        "wires": [
+            [
+                "local_ai_rtx_alert_build"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_status_transition_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Status sem gate → terminal",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_status_in"
+        ],
+        "x": 3200,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_status_gate_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Host offline/desconhecido → status",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_status_in"
+        ],
+        "x": 3970,
+        "y": 330,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_status_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Receber status sem alerta",
+        "links": [
+            "local_ai_rtx_status_transition_out",
+            "local_ai_rtx_status_gate_out"
+        ],
+        "x": 4620,
+        "y": 340,
+        "wires": [
+            [
+                "local_ai_rtx_status_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_status_terminal",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Estado visível da RTX",
+        "func": "const status = msg.rtx_status || msg.payload || {};\nif (status.available === true) {\n    node.status({ fill: \"green\", shape: \"dot\", text: \"RTX disponível\" });\n} else if (status.last_result === \"recovery_requested\") {\n    node.status({ fill: \"yellow\", shape: \"dot\", text: \"recovery MCP solicitado\" });\n} else {\n    node.status({ fill: \"red\", shape: \"ring\", text: String(status.reason || status.state || \"indisponível\") });\n}\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4900,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_alert_build",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Adaptar condição para alerta de domínio",
+        "func": "const reason = String(msg.rtx_status?.reason || \"unknown\");\nmsg._global_observer_test = msg.test_mode === true;\nmsg.payload = {\n    test_mode: msg.test_mode === true,\n    observer_kind: \"domain_alert\",\n    incident_key: \"local_ai_rtx_unavailable\",\n    reason,\n};\nmsg.alert = {\n    title: \"RTX indisponível\",\n    message: \"A conexão da RTX está indisponível. A recuperação é manual para não interromper sua VPN: abra a aba recuperacao_rtx e clique em Recuperar endpoint via MCP.\",\n};\ndelete msg.error;\ndelete msg.observer_alert;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 4650,
+        "y": 500,
+        "wires": [
+            [
+                "local_ai_rtx_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_recovery_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Pedido permitido → gate final MCP",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_recovery_in"
+        ],
+        "x": 3220,
+        "y": 290,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_alert_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_health_group",
+        "name": "Host ligado + RTX indisponível → entrega central",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 4950,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_recovery_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "Receber recovery permitido",
+        "links": [
+            "local_ai_rtx_recovery_out"
+        ],
+        "x": 850,
+        "y": 730,
+        "wires": [
+            [
+                "local_ai_rtx_side_effect_guard"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_side_effect_guard",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "Gate final: produção ou TESTE?",
+        "func": "if (msg.test_mode === true || msg._rtx_test === true) {\n    msg.payload = { ...(msg.payload || {}), simulated: true, dispatched: false, side_effect: \"mcp_recovery\" };\n    return [null, msg];\n}\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1080,
+        "y": 730,
+        "wires": [
+            [
+                "local_ai_rtx_prepare_recovery"
+            ],
+            [
+                "local_ai_rtx_dry_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_prepare_recovery",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "Adaptar chamada autenticada",
+        "func": "const token = env.get(\"BRIDGE_TOKEN\");\nif (typeof token !== \"string\" || !token) {\n    node.error(\"BRIDGE_TOKEN ausente para recovery RTX\", msg);\n    return null;\n}\nmsg.method = \"POST\";\nmsg.url = \"http://ai-bridge:8099/local-ai/recover\";\nmsg.headers = { Authorization: `Bearer ${token}`, \"Content-Type\": \"application/json\" };\nmsg.payload = {};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1340,
+        "y": 700,
+        "wires": [
+            [
+                "local_ai_rtx_recovery_http"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_recovery_http",
+        "type": "http request",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "EFEITO: executar local_ai_status via MCP",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "body",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1630,
+        "y": 700,
+        "wires": [
+            [
+                "local_ai_rtx_recovery_response"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_recovery_response",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "Normalizar resultado MCP",
+        "func": "const testMode = msg.test_mode === true || msg._rtx_test === true;\nlet payload = msg.payload;\nif (typeof payload === \"string\") {\n    try { payload = JSON.parse(payload); } catch { payload = {}; }\n}\nconst localAi = payload && typeof payload === \"object\" && payload.local_ai && typeof payload.local_ai === \"object\"\n    ? payload.local_ai\n    : (payload || {});\nconst state = String(localAi.state || \"LOCAL_AI_UNKNOWN\");\nconst available = localAi.available === true || [\"LOCAL_AI_AVAILABLE\", \"LOCAL_AI_DEGRADED\"].includes(state);\nconst reason = String(localAi.reason || (available ? \"endpoint_recovered\" : \"mcp_recovery_failed\"));\nconst key = testMode ? \"local_ai_rtx_recovery_v1__test\" : \"local_ai_rtx_recovery_v1\";\nconst previous = flow.get(key) || {};\nconst result = {\n    ...previous,\n    state,\n    available,\n    reason,\n    last_result: available ? \"recovered\" : \"failed\",\n    recovery_attempted: localAi.recovery_attempted === true,\n    recovery_succeeded: localAi.recovery_succeeded === true,\n    recovery_attempts: Number(localAi.recovery_attempts) || 0,\n};\nflow.set(key, result);\nnode.status(available\n    ? { fill: \"green\", shape: \"dot\", text: \"endpoint restaurado\" }\n    : { fill: \"red\", shape: \"ring\", text: `falha: ${reason}` });\nmsg.rtx_status = result;\nmsg.payload = result;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1910,
+        "y": 730,
+        "wires": [
+            [
+                "local_ai_rtx_recovery_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_recovery_terminal",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "Resultado visível do recovery",
+        "func": "const status = msg.rtx_status || msg.payload || {};\nif (status.available === true) {\n    node.status({ fill: \"green\", shape: \"dot\", text: \"RTX disponível\" });\n} else if (status.last_result === \"recovery_requested\") {\n    node.status({ fill: \"yellow\", shape: \"dot\", text: \"recovery MCP solicitado\" });\n} else {\n    node.status({ fill: \"red\", shape: \"ring\", text: String(status.reason || status.state || \"indisponível\") });\n}\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2180,
+        "y": 730,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_dry_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_dry_in"
+        ],
+        "x": 1340,
+        "y": 810,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_test_response_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_recovery_group",
+        "name": "Receber resposta MCP TESTE",
+        "links": [
+            "local_ai_rtx_test_response_out"
+        ],
+        "x": 1630,
+        "y": 850,
+        "wires": [
+            [
+                "local_ai_rtx_recovery_response"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_instructions",
+        "type": "comment",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "Ordem: reset → disponível → PC desligado → PC ligado → recovery → respostas. Tudo termina em dry-run.",
+        "info": "Estados sintéticos usam contexto e dedupe separados. PC desligado silencia; PC ligado com listener ausente percorre a entrega central até o dry-run.",
+        "x": 900,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_test_reset",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 170,
+        "y": 1080,
+        "wires": [
+            [
+                "local_ai_rtx_test_reset_state",
+                "local_ai_rtx_test_alert_reset_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_reset_state",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "Resetar estado sintético",
+        "func": "flow.set(\"local_ai_rtx_recovery_v1__test\", null);\nnode.status({ fill: \"blue\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_test_alert_reset_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "Reset TESTE → dedupe",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_test_alert_reset_in"
+        ],
+        "x": 650,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_test_available",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE 2: RTX disponível",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_rtx_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "explicit_recovery",
+                "v": "false",
+                "vt": "bool"
+            },
+            {
+                "p": "rtx_host_state",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "rtx_now",
+                "v": "100000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "{\"local_ai\":{\"available\":true,\"state\":\"LOCAL_AI_AVAILABLE\",\"preflight\":{\"state\":\"LOCAL_AI_AVAILABLE\",\"reason\":null}}}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 190,
+        "y": 1150,
+        "wires": [
+            [
+                "local_ai_rtx_test_health_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_host_off",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE 3: PC desligado + listener ausente",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_rtx_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "explicit_recovery",
+                "v": "false",
+                "vt": "bool"
+            },
+            {
+                "p": "rtx_host_state",
+                "v": "offline",
+                "vt": "str"
+            },
+            {
+                "p": "rtx_now",
+                "v": "200000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "{\"local_ai\":{\"available\":false,\"state\":\"LOCAL_AI_UNAVAILABLE\",\"preflight\":{\"state\":\"LOCAL_AI_UNAVAILABLE\",\"reason\":\"listener_absent\"}}}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 210,
+        "y": 1210,
+        "wires": [
+            [
+                "local_ai_rtx_test_health_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_host_on",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE 4: PC ligado + listener ausente",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_rtx_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "explicit_recovery",
+                "v": "false",
+                "vt": "bool"
+            },
+            {
+                "p": "rtx_host_state",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "rtx_now",
+                "v": "200000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "{\"local_ai\":{\"available\":false,\"state\":\"LOCAL_AI_UNAVAILABLE\",\"preflight\":{\"state\":\"LOCAL_AI_UNAVAILABLE\",\"reason\":\"listener_absent\"}}}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 520,
+        "y": 1210,
+        "wires": [
+            [
+                "local_ai_rtx_test_health_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_unavailable",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE 5: pedir recovery com listener ausente",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_rtx_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "explicit_recovery",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "rtx_host_state",
+                "v": "online",
+                "vt": "str"
+            },
+            {
+                "p": "rtx_now",
+                "v": "200000",
+                "vt": "num"
+            },
+            {
+                "p": "payload",
+                "v": "{\"local_ai\":{\"available\":false,\"state\":\"LOCAL_AI_UNAVAILABLE\",\"preflight\":{\"state\":\"LOCAL_AI_UNAVAILABLE\",\"reason\":\"listener_absent\"}}}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 520,
+        "y": 1150,
+        "wires": [
+            [
+                "local_ai_rtx_test_health_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_health_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "Saúde TESTE → caminho real",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_test_health_in"
+        ],
+        "x": 680,
+        "y": 1180,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_test_recovered",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE 6: recovery concluído",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_rtx_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "payload",
+                "v": "{\"status\":\"ok\",\"local_ai\":{\"available\":true,\"state\":\"LOCAL_AI_AVAILABLE\",\"reason\":\"endpoint_recovered\",\"recovery_attempted\":true,\"recovery_succeeded\":true,\"recovery_attempts\":1}}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1100,
+        "y": 1130,
+        "wires": [
+            [
+                "local_ai_rtx_test_response_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_failed",
+        "type": "inject",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE 7: recovery falhou",
+        "props": [
+            {
+                "p": "test_mode",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_rtx_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "payload",
+                "v": "{\"status\":\"ok\",\"local_ai\":{\"available\":false,\"state\":\"LOCAL_AI_UNAVAILABLE\",\"reason\":\"portproxy_add_failed\",\"recovery_attempted\":true,\"recovery_succeeded\":false,\"recovery_attempts\":2}}",
+                "vt": "json"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1100,
+        "y": 1200,
+        "wires": [
+            [
+                "local_ai_rtx_test_response_out"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_test_response_out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "Resposta TESTE → normalização real",
+        "mode": "link",
+        "links": [
+            "local_ai_rtx_test_response_in"
+        ],
+        "x": 1410,
+        "y": 1165,
+        "wires": []
+    },
+    {
+        "id": "local_ai_rtx_dry_in",
+        "type": "link in",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "Receber efeito TESTE",
+        "links": [
+            "local_ai_rtx_dry_out"
+        ],
+        "x": 1650,
+        "y": 1210,
+        "wires": [
+            [
+                "local_ai_rtx_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "local_ai_rtx_dry_run_terminal",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "local_ai_rtx_test_group",
+        "name": "TESTE FINAL: MCP não chamado",
+        "func": "const result = {\n    simulated: true,\n    dispatched: false,\n    side_effect: \"mcp_recovery\",\n    reason: msg.payload && msg.payload.reason ? msg.payload.reason : \"synthetic_unavailable\",\n};\nflow.set(\"local_ai_rtx_last_dry_run_v1\", result);\nmsg.payload = result;\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"dry-run: MCP bloqueado\" });\nnode.warn(\"LOCAL_AI_RTX_DRY_RUN \" + JSON.stringify(result));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1910,
+        "y": 1210,
+        "wires": []
+    },
+    {
         "id": "infra_notify_all_mobiles",
         "type": "subflow",
         "name": "Notificar celulares, Echo e Home Assistant",
@@ -49798,92 +50470,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
-        "type": "group",
-        "z": "local_ai_rtx_recovery_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__local_ai_rtx_recovery_tab__catch",
-            "global_observer_coverage__local_ai_rtx_recovery_tab__status",
-            "global_observer_coverage__local_ai_rtx_recovery_tab__annotate",
-            "global_observer_coverage__local_ai_rtx_recovery_tab__out"
-        ],
-        "x": 3660,
-        "y": 40,
-        "w": 720,
-        "h": 162
-    },
-    {
-        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__catch",
-        "type": "catch",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 3800,
-        "y": 100,
-        "wires": [
-            [
-                "global_observer_coverage__local_ai_rtx_recovery_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__status",
-        "type": "status",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 3810,
-        "y": 160,
-        "wires": [
-            [
-                "global_observer_coverage__local_ai_rtx_recovery_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__annotate",
-        "type": "function",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"local_ai_rtx_recovery_tab\",\"flow_label\":\"recuperacao_rtx\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 4080,
-        "y": 130,
-        "wires": [
-            [
-                "global_observer_coverage__local_ai_rtx_recovery_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__out",
-        "type": "link out",
-        "z": "local_ai_rtx_recovery_tab",
-        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 4325,
-        "y": 130,
-        "wires": []
-    },
-    {
         "id": "global_observer_coverage__host_memory_guardian_tab__group",
         "type": "group",
         "z": "host_memory_guardian_tab",
@@ -50400,6 +50986,92 @@
         "wires": []
     },
     {
+        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
+        "type": "group",
+        "z": "local_ai_rtx_recovery_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__local_ai_rtx_recovery_tab__catch",
+            "global_observer_coverage__local_ai_rtx_recovery_tab__status",
+            "global_observer_coverage__local_ai_rtx_recovery_tab__annotate",
+            "global_observer_coverage__local_ai_rtx_recovery_tab__out"
+        ],
+        "x": 5140,
+        "y": 40,
+        "w": 720,
+        "h": 162
+    },
+    {
+        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__catch",
+        "type": "catch",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 5280,
+        "y": 100,
+        "wires": [
+            [
+                "global_observer_coverage__local_ai_rtx_recovery_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__status",
+        "type": "status",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 5290,
+        "y": 160,
+        "wires": [
+            [
+                "global_observer_coverage__local_ai_rtx_recovery_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__annotate",
+        "type": "function",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"local_ai_rtx_recovery_tab\",\"flow_label\":\"recuperacao_rtx\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5560,
+        "y": 130,
+        "wires": [
+            [
+                "global_observer_coverage__local_ai_rtx_recovery_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__local_ai_rtx_recovery_tab__out",
+        "type": "link out",
+        "z": "local_ai_rtx_recovery_tab",
+        "g": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 5805,
+        "y": 130,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__monitoramento_internet_tab__group",
         "type": "group",
         "z": "monitoramento_internet_tab",
@@ -50761,7 +51433,6 @@
             "global_observer_coverage__shared_integrations_tab__out",
             "global_observer_coverage__storage_health_tab__out",
             "global_observer_coverage__weekly_docs_review_tab__out",
-            "local_ai_rtx_alert_out",
             "global_observer_test_event_out"
         ],
         "x": 120,
@@ -51372,9 +52043,10 @@
         "type": "link in",
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
-        "name": "Receber alertas confirmados",
+        "name": "Receber alertas confirmados ou de domínio",
         "links": [
-            "global_observer_alert_to_dispatch_out"
+            "global_observer_alert_to_dispatch_out",
+            "local_ai_rtx_alert_out"
         ],
         "x": 2280,
         "y": 300,

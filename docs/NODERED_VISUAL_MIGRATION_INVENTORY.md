@@ -62,6 +62,28 @@ quando uma etapa for concluída.
 | `homeassistant/dashboards/location.yaml` | Mapa e diagnóstico | Usa atributos canônicos de raio/seleção | Manter como consumidor; remover somente fallback decisório duplicado encontrado pelos testes de auditoria. |
 | `homeassistant/dashboards/raspberry_pi_health.yaml` | Apresentação e comandos explícitos | Exibe sensores binários classificados no HA | Passar a exibir estados/atributos canônicos do Node-RED; comandos continuam ações explícitas do usuário. |
 
+## Auditoria dos painéis e produtores
+
+Os painéis não são produtores canônicos de automação e, portanto, nem todo dado
+exibido nasce no Node-RED. Integrações do Home Assistant, MQTT, sensores
+`command_line` passivos e workers sanitizados continuam produzindo fatos brutos;
+o Node-RED centraliza as políticas e decisões operacionais; os dashboards apenas
+leem entidades e atributos já publicados. Os templates Jinja restantes calculam
+somente apresentação, como idade legível, percentual, cor, rótulo e barras, sem
+selecionar tracker, autorizar serviço, aplicar cooldown ou acionar efeito.
+
+| Painel | Fonte consumida | Lógica local permitida | Decisão operacional |
+| --- | --- | --- | --- |
+| `chat.yaml` | Sensores canônicos de uso Codex/RTX e resultados sanitizados | Formatação, percentuais, tabelas e gráficos textuais | Nenhuma |
+| `codex.yaml` | Integração de conversa e scripts explícitos | Interface do chat | Nenhuma |
+| `location.yaml` | Trackers, fonte escolhida, frescor e raios publicados pelo Node-RED | Rótulos, datas e formatação | Nenhuma; não recalcula distância nem escolhe fonte |
+| `raspberry_pi_health.yaml` | Sensores e estados canônicos de infraestrutura | Cards nativos e botões explícitos | Nenhuma |
+| `vehicle_primary.yaml` | Estado, localização, refresh, comandos e viagens já classificados | Idades e rótulos de apresentação | Nenhuma; wake, backoff, cooldown e efeitos pertencem ao Node-RED |
+
+Os arquivos `homeassistant/www/codex-chat-card*.js` são componentes de interface:
+mantêm rascunho/histórico visual e enviam ações explícitas do usuário. Eles não
+produzem dados residenciais nem implementam política de automação.
+
 ## JavaScript e fontes geradoras no baseline
 
 Os 244 nós `function` somavam responsabilidades de adaptação, normalização,
@@ -139,7 +161,7 @@ o teste termina com `simulated: true` e `dispatched: false`.
 | `alarme_casa` | Migrado e implantado | Intenção, retry, cadência de aviso e gates visuais; scripts HA passaram a emitir intenção canônica |
 | `alertas_codex` | Migrado e implantado | Thresholds/cooldowns visuais; nível canônico publicado pelo Node-RED e dashboard somente consumidor |
 | `recorder_retention` | Migrado e implantado | Sete parâmetros validados, rotas de compactação e efeitos visíveis; cálculo MAD isolado |
-| `recuperacao_rtx` | Migrado e implantado | Leitura passiva, pedido explícito, cooldown e gate MCP visíveis; nenhum recovery automático |
+| `recuperacao_rtx` | Migrado e implantado | Leitura passiva, pedido explícito, cooldown e gate MCP visíveis; computador desligado silencia e computador ligado com endpoint indisponível alerta uma vez por incidente; nenhum recovery automático |
 | `revisao_documental_semanal` | Migrado e implantado | Origem, teste, resposta e código da ponte em switches; worker preservado |
 | `backup_git` | Migrado e implantado | Pedido, resultado, retry, updates e notificações em trilhas visuais e full dry-run |
 | `guardiao_memoria_host` | Migrado e implantado | Agendas/timeout explícitos, 12 switches de decisão, dedupe persistente isolado e replay completo com duplicata; maior função abaixo de 2.000 caracteres |
@@ -181,7 +203,7 @@ canônica das políticas operacionais.
 
 ## Validação e implantação final
 
-- O artefato final contém 2.248 nós, 24 tabs cobertos pelo manifesto de testes
+- O artefato final contém 2.271 nós, 24 tabs cobertos pelo manifesto de testes
   e 23 tabs funcionais observados pelo monitor global.
 - A suíte pública do Node-RED passou em 37 arquivos. Os replays materiais
   incluem 50 cenários normais, 48 de recovery e 23 adversariais para segurança,
@@ -189,12 +211,13 @@ canônica das políticas operacionais.
 - Os 21 canvases materialmente alterados foram renderizados em modo estrito sem
   fios acima de 500 px nem fios de retorno. A inspeção visual também confirmou
   grupos contidos, ausência de sobreposição e direção de leitura consistente.
-- A configuração do Home Assistant e seus 121 testes passaram. A matriz pública
+- A configuração do Home Assistant e seus 128 testes passaram. A matriz pública
   restante passou nos validadores de segurança, privacidade, memória, bridge,
   scripts, scheduler, restore, bootstrap, demo, módulos e Git.
-- Somente o Node-RED foi reiniciado, de modo incremental. Home Assistant, MQTT e
-  Zigbee2MQTT permaneceram disponíveis; as interfaces HTTP do Home Assistant e
-  do Node-RED responderam `200` após o deploy.
+- Node-RED e Home Assistant foram reiniciados separadamente e de modo incremental
+  para carregar, respectivamente, os fluxos e os produtores/correções do HA.
+  MQTT e Zigbee2MQTT permaneceram disponíveis; as interfaces HTTP do Home
+  Assistant e do Node-RED responderam `200` após o deploy.
 - A primeira verificação de startup revelou uma janela em que o observador
   chamava `node.error` antes de carregar sua política visual e emitia alertas
   internos. O gate passou a aguardar a política em modo fail-closed, ganhou

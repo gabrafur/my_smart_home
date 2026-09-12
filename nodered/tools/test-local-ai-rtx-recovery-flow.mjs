@@ -133,8 +133,10 @@ assert.equal(store.get("local_ai_rtx_recovery_v1").last_result, "unavailable");
 
 const incident = execute(code.alert, productionState, store).result;
 assert.equal(incident._global_observer_test, false);
-assert.equal(incident.error.message, "RTX indisponível: listener_absent");
-assert.match(incident.observer_alert.message, /recuperacao_rtx/);
+assert.equal(incident.error, undefined, "estado de domínio não pode fingir node_error");
+assert.equal(incident.payload.observer_kind, "domain_alert");
+assert.equal(incident.payload.incident_key, "local_ai_rtx_unavailable");
+assert.match(incident.alert.message, /recuperacao_rtx/);
 
 // O gate final é a única fronteira que pode alcançar o HTTP autenticado.
 const guardedTest = execute(code.guard, requested, store).result;
@@ -196,7 +198,46 @@ assert.equal(byId.get("local_ai_rtx_explicit_switch")?.type, "switch");
 assert.equal(byId.get("local_ai_rtx_test_mode_switch")?.type, "switch");
 assert.equal(byId.get("local_ai_rtx_cooldown_switch")?.type, "switch");
 assert.equal(byId.get("local_ai_rtx_transition_switch")?.type, "switch");
-assert.deepEqual(byId.get("local_ai_rtx_alert_out")?.links, ["global_observer_events_in"]);
+assert.equal(byId.has("local_ai_rtx_previous_available_switch"), false);
+assert.deepEqual(byId.get("local_ai_rtx_transition_switch")?.wires, [
+  ["local_ai_rtx_available_mode_switch"],
+  ["local_ai_rtx_unavailable_mode_switch"],
+  ["local_ai_rtx_recovery_out"],
+  ["local_ai_rtx_status_transition_out"],
+]);
+assert.equal(byId.get("local_ai_rtx_available_mode_switch")?.type, "switch");
+assert.equal(byId.get("local_ai_rtx_unavailable_mode_switch")?.type, "switch");
+assert.equal(byId.get("local_ai_rtx_prod_host_state_switch")?.type, "switch");
+assert.equal(byId.get("local_ai_rtx_test_host_state_switch")?.type, "switch");
+assert.equal(byId.get("local_ai_rtx_host_state_source")?.type, "api-current-state");
+assert.equal(byId.get("local_ai_rtx_host_state_source")?.entity_id, "sensor.codex_rtx_host_reachability_raw");
+assert.equal(byId.get("local_ai_rtx_alert_rbe")?.type, "rbe");
+assert.equal(byId.get("local_ai_rtx_alert_rbe")?.property, "rtx_alert_condition");
+assert.equal(byId.get("local_ai_rtx_alert_rbe")?.septopics, true);
+assert.deepEqual(byId.get("local_ai_rtx_prod_host_state_switch")?.wires, [
+  ["local_ai_rtx_prepare_prod_alert"],
+  ["local_ai_rtx_prod_alert_reset_request_out"],
+  ["local_ai_rtx_status_gate_out"],
+]);
+assert.deepEqual(byId.get("local_ai_rtx_test_host_state_switch")?.wires, [
+  ["local_ai_rtx_prepare_test_alert"],
+  ["local_ai_rtx_test_alert_reset_request_out"],
+  ["local_ai_rtx_status_gate_out"],
+]);
+for (const [id, state] of [
+  ["local_ai_rtx_test_host_off", "offline"],
+  ["local_ai_rtx_test_host_on", "online"],
+]) {
+  assert.equal(
+    byId.get(id)?.props.some((prop) => prop.p === "rtx_host_state" && prop.v === state),
+    true,
+  );
+  assert.equal(
+    byId.get(id)?.props.some((prop) => prop.p === "explicit_recovery" && prop.v === "false"),
+    true,
+  );
+}
+assert.deepEqual(byId.get("local_ai_rtx_alert_out")?.links, ["global_observer_alert_to_dispatch_in"]);
 assert.equal(byId.get("local_ai_rtx_tick")?.repeat, "60");
 assert.equal(byId.get("local_ai_rtx_policy_cooldown")?.payload, "60");
 assert.equal(byId.get("local_ai_rtx_policy_cooldown")?.topic, "recovery_cooldown_seconds");

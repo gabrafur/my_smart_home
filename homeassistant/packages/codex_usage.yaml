@@ -1,5 +1,11 @@
 command_line:
   - sensor:
+      name: Codex RTX Host Reachability Raw
+      unique_id: codex_rtx_host_reachability_raw
+      command: "python3 /config/tools/rtx_host_reachability.py --timeout-seconds 2"
+      command_timeout: 6
+      scan_interval: 30
+  - sensor:
       name: Codex RTX Live Raw
       unique_id: codex_rtx_live_raw
       command: "python3 /config/tools/codex_rtx_live.py"

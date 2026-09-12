@@ -34,7 +34,10 @@ for (const node of next) {
   if (Array.isArray(node.links)) {
     node.links = node.links.filter((id) =>
       !owned(id) ||
-      (node.id === "local_ai_rtx_alert_out" && id === "global_observer_events_in"),
+      (
+        node.id === "local_ai_rtx_alert_out" &&
+        ["global_observer_events_in", "global_observer_alert_to_dispatch_in"].includes(id)
+      ),
     );
   }
 }
@@ -317,7 +320,7 @@ const observerNodes = [
     z: OBSERVER_TAB,
     g: productionGroup,
     name: "Receber falhas de todas as abas",
-    links: [...coverageOutIds.sort(), ...externalEventOutIds, "global_observer_test_event_out"],
+    links: [...coverageOutIds.sort(), "global_observer_test_event_out"],
     x: 120,
     y: 160,
     wires: [["global_observer_ingest"]],
@@ -493,7 +496,7 @@ const observerNodes = [
   },
   {
     id: "global_observer_alert_to_dispatch_in", type: "link in", z: OBSERVER_TAB,
-    g: productionGroup, name: "Receber alertas confirmados", links: ["global_observer_alert_to_dispatch_out"],
+    g: productionGroup, name: "Receber alertas confirmados ou de domínio", links: ["global_observer_alert_to_dispatch_out", ...externalEventOutIds],
     x: 2280, y: 300, wires: [["global_observer_dispatch_guard"]],
   },
   {

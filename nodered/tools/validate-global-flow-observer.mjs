@@ -52,6 +52,8 @@ const input = required("global_observer_events_in");
 for (const outputId of expectedOuts) {
   assert.ok(input.links.includes(outputId), `link in não referencia ${outputId}`);
 }
+assert.equal(input.links.includes("local_ai_rtx_alert_out"), false);
+assert.ok(required("global_observer_alert_to_dispatch_in").links.includes("local_ai_rtx_alert_out"));
 assert.deepEqual(input.wires, [["global_observer_ingest"]]);
 const notify = required("global_observer_notify_primary");
 const persistent = required("global_observer_notify_persistent");

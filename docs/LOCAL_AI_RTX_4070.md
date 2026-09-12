@@ -584,6 +584,13 @@ valor inválido é rejeitado sem substituir a última política persistente. A
 disponibilidade, o pedido explícito, `test_mode`, o término do cooldown e a
 rota status/alerta/recovery são switches nomeados; JavaScript permanece apenas
 para normalizar o envelope HTTP, ler/persistir estado e montar o incidente.
+O produtor bruto `sensor.codex_rtx_host_reachability_raw` confirma passivamente,
+a cada 30 segundos, se o computador está alcançável por ICMP ou pela porta SSH
+já configurada em `pc_power_*`; ele nunca acorda nem altera a máquina. No canvas,
+o estado `offline` silencia a indisponibilidade esperada. Somente `online` com o
+endpoint indisponível gera um alerta de domínio, deduplicado visualmente uma vez
+por incidente; `unknown` falha de forma silenciosa e não é convertido em
+`node_error`.
 
 Os controles `TESTE` do tab atravessam a mesma normalização e decisão, mas o
 gate final os envia exclusivamente ao terminal dry-run (`simulated: true`,
