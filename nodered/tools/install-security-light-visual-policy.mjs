@@ -106,9 +106,22 @@ const decision = required("32a89192d93735b1");
 decision.name = "2. Contexto, replay e decisão visual de acendimento";
 decision.x = 64; decision.y = 1540; decision.w = 4300; decision.h = 502;
 decision.nodes = decision.nodes.filter((id) => !generated.has(id));
-for (const id of ["519b09225c268695", "fad81d855058dad1",
-  "security_light_engine_bypass_reevaluate_in_v1"]) required(id).wires = [["security_visual_context_cache"]];
-required("336b58c50f842082").wires = [["security_visual_context_cache"]];
+const inputs = required("e53f5ed6c320c591");
+grouped(inputs.id, { id: "security_visual_context_route_out", type: "link out", z: TAB,
+  g: inputs.id, name: "Contextos → decisão visual", mode: "link",
+  links: ["security_visual_context_route_in"], x: 390, y: 200, wires: [] });
+grouped(inputs.id, { id: "security_visual_arrival_route_out",
+  type: "link out", z: TAB, g: inputs.id, name: "Chegada → decisão visual", mode: "link",
+  links: ["security_visual_arrival_route_in"], x: 390, y: 280, wires: [] });
+for (const id of ["519b09225c268695", "fad81d855058dad1", "336b58c50f842082"]) {
+  required(id).wires = [["security_visual_context_route_out"]];
+}
+required("cf9bc321e0ec89f9").wires = [["security_visual_arrival_route_out"]];
+required("security_light_engine_bypass_reevaluate_in_v1").wires = [["security_visual_context_cache"]];
+linkIn("security_visual_context_route_in", decision.id, "Receber contextos canônicos",
+  ["security_visual_context_route_out"], "security_visual_context_cache", 160, 1660);
+linkIn("security_visual_arrival_route_in", decision.id, "Receber chegada canônica",
+  ["security_visual_arrival_route_out"], "security_visual_arrival_facts", 160, 1900);
 fn("security_visual_context_cache", decision.id, "Normalizar e atualizar cache monotônico",
   "security-light-context-cache.js", 1, 390, 1660, [["security_visual_pending_validate"]]);
 fn("security_visual_pending_validate", decision.id, "Validar intenção pendente e retenção",
@@ -120,7 +133,7 @@ fn("security_visual_replay_build", decision.id, "Montar replay preservando o eve
   "security-light-replay-build.js", 1, 1300, 1600, [["48a5f40d806f6950"]]);
 const contextOutput = required("48a5f40d806f6950");
 Object.assign(contextOutput, { g: decision.id, name: "Emitir contexto, reconciliação e replay",
-  func: source("security-light-context-output.js"), outputs: 3, x: 1580, y: 1660 });
+  func: source("security-light-context-output.js"), outputs: 3, x: 1480, y: 1660 });
 if (!decision.nodes.includes(contextOutput.id)) decision.nodes.push(contextOutput.id);
 for (const [id, x, y] of [["77f539388438547c", 1840, 1600],
   ["68a67feb7cc57957", 1840, 1660], ["light_arrival_replay_route_out_v1", 1840, 1720]]) {
@@ -128,9 +141,7 @@ for (const [id, x, y] of [["77f539388438547c", 1840, 1600],
   if (!decision.nodes.includes(id)) decision.nodes.push(id);
 }
 
-for (const id of ["cf9bc321e0ec89f9", "light_arrival_replay_gate_in_v1"]) {
-  required(id).wires = [["security_visual_arrival_facts"]];
-}
+required("light_arrival_replay_gate_in_v1").wires = [["security_visual_arrival_facts"]];
 fn("security_visual_arrival_facts", decision.id, "Derivar fatos sem decidir efeitos",
   "security-light-arrival-facts.js", 1, 390, 1860, [["security_light_arrival_direction_gate_v1"]]);
 sw("security_light_arrival_direction_gate_v1", decision.id, "Retorno externo está confirmado?",
@@ -202,7 +213,7 @@ for (const [id, x, y] of [
   ["eb9ffff62431e1c3", 210, 2300], ["cd40f5f8e40b07af", 470, 2340]
 ]) Object.assign(required(id), { x, y, g: reconcile.id });
 fn("security_visual_lifecycle_load", reconcile.id, "Validar lifecycle persistido e limites",
-  "security-light-lifecycle-load.js", 1, 730, 2240, [["security_visual_physical_apply"]]);
+  "security-light-lifecycle-load.js", 1, 690, 2280, [["security_visual_physical_apply"]]);
 fn("security_visual_physical_apply", reconcile.id, "Aplicar leitura física monotônica",
   "security-light-physical-apply.js", 1, 1040, 2240, [["security_visual_recovery_facts"]]);
 fn("security_visual_recovery_facts", reconcile.id, "Derivar readiness e deadlines",

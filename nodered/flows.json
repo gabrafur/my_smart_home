@@ -2123,7 +2123,9 @@
             "fad81d855058dad1",
             "cf9bc321e0ec89f9",
             "bd3b7637d53dce33",
-            "336b58c50f842082"
+            "336b58c50f842082",
+            "security_visual_context_route_out",
+            "security_visual_arrival_route_out"
         ],
         "x": 104,
         "y": 59,
@@ -2162,6 +2164,8 @@
             "light_arrival_replay_route_out_v1",
             "light_arrival_replay_gate_in_v1",
             "light_arrival_replay_debug_in_v1",
+            "security_visual_context_route_in",
+            "security_visual_arrival_route_in",
             "security_visual_context_cache",
             "security_visual_pending_validate",
             "security_visual_replay_ready",
@@ -11080,7 +11084,7 @@
         "y": 180,
         "wires": [
             [
-                "security_visual_context_cache"
+                "security_visual_context_route_out"
             ]
         ]
     },
@@ -11097,7 +11101,7 @@
         "y": 220,
         "wires": [
             [
-                "security_visual_context_cache"
+                "security_visual_context_route_out"
             ]
         ]
     },
@@ -11116,7 +11120,7 @@
         "y": 260,
         "wires": [
             [
-                "security_visual_arrival_facts"
+                "security_visual_arrival_route_out"
             ]
         ]
     },
@@ -11180,7 +11184,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1580,
+        "x": 1480,
         "y": 1660,
         "wires": [
             [
@@ -11684,7 +11688,7 @@
         "y": 420,
         "wires": [
             [
-                "security_visual_context_cache"
+                "security_visual_context_route_out"
             ]
         ]
     },
@@ -49398,6 +49402,68 @@
         "wires": []
     },
     {
+        "id": "security_visual_context_route_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "e53f5ed6c320c591",
+        "name": "Contextos → decisão visual",
+        "mode": "link",
+        "links": [
+            "security_visual_context_route_in"
+        ],
+        "x": 390,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "security_visual_arrival_route_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "e53f5ed6c320c591",
+        "name": "Chegada → decisão visual",
+        "mode": "link",
+        "links": [
+            "security_visual_arrival_route_in"
+        ],
+        "x": 390,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "security_visual_context_route_in",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "32a89192d93735b1",
+        "name": "Receber contextos canônicos",
+        "links": [
+            "security_visual_context_route_out"
+        ],
+        "x": 160,
+        "y": 1660,
+        "wires": [
+            [
+                "security_visual_context_cache"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_arrival_route_in",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "32a89192d93735b1",
+        "name": "Receber chegada canônica",
+        "links": [
+            "security_visual_arrival_route_out"
+        ],
+        "x": 160,
+        "y": 1900,
+        "wires": [
+            [
+                "security_visual_arrival_facts"
+            ]
+        ]
+    },
+    {
         "id": "security_visual_context_cache",
         "type": "function",
         "z": "6b7552efb85343f4",
@@ -49861,8 +49927,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 730,
-        "y": 2240,
+        "x": 690,
+        "y": 2280,
         "wires": [
             [
                 "security_visual_physical_apply"
