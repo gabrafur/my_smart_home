@@ -86,6 +86,20 @@ const coverageLayoutOverrides = new Map([
     annotate: { x: 3836, y: 130 },
     out: { x: 4081, y: 130 },
   }],
+  ["c22d8b12055e87f7", {
+    group: { x: 4350, y: 40, w: 720, h: 162 },
+    catch: { x: 4490, y: 100 },
+    status: { x: 4500, y: 160 },
+    annotate: { x: 4770, y: 130 },
+    out: { x: 5015, y: 130 },
+  }],
+  ["6b7552efb85343f4", {
+    group: { x: 3740, y: 40, w: 720, h: 162 },
+    catch: { x: 3880, y: 100 },
+    status: { x: 3890, y: 160 },
+    annotate: { x: 4160, y: 130 },
+    out: { x: 4405, y: 130 },
+  }],
 ]);
 
 for (const tab of tabs) {
@@ -262,7 +276,7 @@ const observerNodes = [
     z: OBSERVER_TAB,
     g: productionGroup,
     name: "Receber falhas de todas as abas",
-    links: [...coverageOutIds, ...externalEventOutIds, "global_observer_test_event_out"],
+    links: [...coverageOutIds.sort(), ...externalEventOutIds, "global_observer_test_event_out"],
     x: 120,
     y: 160,
     wires: [["global_observer_ingest"]],
