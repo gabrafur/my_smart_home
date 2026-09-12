@@ -104,7 +104,7 @@ fn("security_visual_policy_reject", policy.id, "Rejeitar sem substituir",
 
 const decision = required("32a89192d93735b1");
 decision.name = "2. Contexto, replay e decisão visual de acendimento";
-decision.x = 64; decision.y = 1540; decision.w = 3340; decision.h = 502;
+decision.x = 64; decision.y = 1540; decision.w = 4300; decision.h = 502;
 decision.nodes = decision.nodes.filter((id) => !generated.has(id));
 for (const id of ["519b09225c268695", "fad81d855058dad1",
   "security_light_engine_bypass_reevaluate_in_v1"]) required(id).wires = [["security_visual_context_cache"]];
@@ -177,31 +177,47 @@ for (const [id, x, y] of [["e7542f3caa4a99e2", 3100, 1800],
   Object.assign(required(id), { g: decision.id, x, y });
   if (!decision.nodes.includes(id)) decision.nodes.push(id);
 }
+for (const [id, x, y] of [
+  ["security_light_engine_bypass_reevaluate_in_v1", 160, 1600],
+  ["light_arrival_replay_gate_in_v1", 160, 1820],
+  ["light_arrival_replay_debug_in_v1", 2060, 1600],
+  ["1bdb8c52397de8a9", 2310, 1600],
+  ["e10a4b1a9880e827", 3100, 1720],
+  ["276ba50ad0e36bab", 3380, 1800],
+  ["87b2f8eb75cb6359", 3670, 1800],
+  ["light_available_to_output_out_v1", 4000, 1740],
+  ["light_unavailable_to_output_out_v1", 4000, 1820],
+  ["light_unavailable_test_dry_run_out_v1", 4000, 1900]
+]) Object.assign(required(id), { x, y, g: decision.id });
 
 const reconcile = required("6013a28eaa95addd");
 reconcile.name = "0. Startup e recovery visual do lifecycle";
-reconcile.x = 64; reconcile.y = 2100; reconcile.w = 2410; reconcile.h = 282;
+reconcile.x = 64; reconcile.y = 2100; reconcile.w = 2690; reconcile.h = 322;
 reconcile.nodes = reconcile.nodes.filter((id) => !generated.has(id));
 for (const id of ["bfcddf998d4e3a53", "eb9ffff62431e1c3", "cd40f5f8e40b07af"]) {
   required(id).wires = [["security_visual_lifecycle_load"]];
 }
+for (const [id, x, y] of [
+  ["78753a34fe418682", 210, 2160], ["bfcddf998d4e3a53", 470, 2160],
+  ["eb9ffff62431e1c3", 210, 2300], ["cd40f5f8e40b07af", 470, 2340]
+]) Object.assign(required(id), { x, y, g: reconcile.id });
 fn("security_visual_lifecycle_load", reconcile.id, "Validar lifecycle persistido e limites",
-  "security-light-lifecycle-load.js", 1, 540, 2240, [["security_visual_physical_apply"]]);
+  "security-light-lifecycle-load.js", 1, 730, 2240, [["security_visual_physical_apply"]]);
 fn("security_visual_physical_apply", reconcile.id, "Aplicar leitura física monotônica",
-  "security-light-physical-apply.js", 1, 860, 2240, [["security_visual_recovery_facts"]]);
+  "security-light-physical-apply.js", 1, 1040, 2240, [["security_visual_recovery_facts"]]);
 fn("security_visual_recovery_facts", reconcile.id, "Derivar readiness e deadlines",
-  "security-light-recovery-facts.js", 1, 1160, 2240, [["security_visual_recovery_needed"]]);
+  "security-light-recovery-facts.js", 1, 1340, 2240, [["security_visual_recovery_needed"]]);
 sw("security_visual_recovery_needed", reconcile.id, "Há deadline seguro para recuperar?",
-  "_light_reconcile.recovery_needed", 1440, 2240,
+  "_light_reconcile.recovery_needed", 1620, 2240,
   [["security_visual_recovery_build"], []]);
 fn("security_visual_recovery_build", reconcile.id, "Reconstruir timers sem duplicar",
-  "security-light-recovery-build.js", 1, 1730, 2200, [["a0a4977052d1ce06"]]);
+  "security-light-recovery-build.js", 1, 1900, 2200, [["a0a4977052d1ce06"]]);
 const recoveryOutput = required("a0a4977052d1ce06");
 Object.assign(recoveryOutput, { g: reconcile.id, name: "Emitir deadlines reconstruídos",
-  func: source("security-light-recovery-output.js"), outputs: 1, x: 2010, y: 2200 });
+  func: source("security-light-recovery-output.js"), outputs: 1, x: 2170, y: 2200 });
 if (!reconcile.nodes.includes(recoveryOutput.id)) reconcile.nodes.push(recoveryOutput.id);
-Object.assign(required("704af53cd84ba2a2"), { g: reconcile.id, x: 2240, y: 2200 });
-Object.assign(required("2405a253853fa82e"), { g: reconcile.id, x: 2410, y: 2200 });
+Object.assign(required("704af53cd84ba2a2"), { g: reconcile.id, x: 2410, y: 2200 });
+Object.assign(required("2405a253853fa82e"), { g: reconcile.id, x: 2670, y: 2200 });
 for (const id of ["704af53cd84ba2a2", "2405a253853fa82e"]) {
   if (!reconcile.nodes.includes(id)) reconcile.nodes.push(id);
 }

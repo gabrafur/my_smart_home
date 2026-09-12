@@ -80,11 +80,11 @@ const coverageLayoutOverrides = new Map([
     out: { x: 7861, y: 130 },
   }],
   ["ea0a6aa0d24ff863", {
-    group: { x: 1364, y: 59, w: 722, h: 142 },
-    catch: { x: 1520, y: 100 },
-    status: { x: 1530, y: 160 },
-    annotate: { x: 1800, y: 130 },
-    out: { x: 2045, y: 130 },
+    group: { x: 3400, y: 59, w: 722, h: 142 },
+    catch: { x: 3556, y: 100 },
+    status: { x: 3566, y: 160 },
+    annotate: { x: 3836, y: 130 },
+    out: { x: 4081, y: 130 },
   }],
 ]);
 
