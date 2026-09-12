@@ -6,12 +6,14 @@ repo_root=$(dirname "$script_dir")
 trigger_dir="${DAILY_UPDATE_TRIGGER_DIR:-$repo_root/homeassistant/.daily-update-trigger}"
 begin="# BEGIN Smart home Node-RED daily update bridge"
 end="# END Smart home Node-RED daily update bridge"
-request_job="* * * * * /usr/bin/flock -n $repo_root/.daily-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-daily-update-request.sh >> $repo_root/.daily-update-request.cron.log 2>&1"
+dietpi_job="* * * * * /usr/bin/flock -n $repo_root/.dietpi-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh dietpi >> $repo_root/.dietpi-update-request.cron.log 2>&1"
+core_job="* * * * * /usr/bin/flock -n $repo_root/.home-assistant-core-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh home-assistant-core >> $repo_root/.home-assistant-core-update-request.cron.log 2>&1"
+containers_job="* * * * * /usr/bin/flock -n $repo_root/.container-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-update-stage-request.sh containers >> $repo_root/.container-update-request.cron.log 2>&1"
 kia_update_job="* * * * * /usr/bin/flock -n $repo_root/.kia-uvo-update-request-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 $repo_root/scripts/process-kia-uvo-update-request.sh >> $repo_root/.kia-uvo-update-check.cron.log 2>&1"
 kia_promotion_job="* * * * * /usr/bin/flock -n $repo_root/.kia-uvo-promotion-worker.lock /usr/bin/nice -n 15 /usr/bin/ionice -c 3 /usr/bin/node $repo_root/scripts/promote-kia-uvo-candidate.mjs >> $repo_root/.kia-uvo-promotion.cron.log 2>&1"
 
 if [ "${1:-}" = "--dry-run" ]; then
-  printf '%s\n%s\n%s\n%s\n%s\n' "$begin" "$request_job" "$kia_update_job" "$kia_promotion_job" "$end"
+  printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n' "$begin" "$dietpi_job" "$core_job" "$containers_job" "$kia_update_job" "$kia_promotion_job" "$end"
   exit 0
 fi
 [ "$#" -eq 0 ] || { echo "Usage: $0 [--dry-run]" >&2; exit 64; }
@@ -34,10 +36,12 @@ awk -v begin="$begin" -v end="$end" '
 ' "$current" > "$updated"
 {
   printf '%s\n' "$begin"
-  printf '%s\n' "$request_job"
+  printf '%s\n' "$dietpi_job"
+  printf '%s\n' "$core_job"
+  printf '%s\n' "$containers_job"
   printf '%s\n' "$kia_update_job"
   printf '%s\n' "$kia_promotion_job"
   printf '%s\n' "$end"
 } >> "$updated"
 crontab "$updated"
-echo "Installed Node-RED update request bridges and removed direct container and Kia UVO schedules"
+echo "Installed staged Node-RED update bridges and removed direct container and Kia UVO schedules"

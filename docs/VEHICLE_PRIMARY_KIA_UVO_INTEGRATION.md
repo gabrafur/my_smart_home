@@ -735,15 +735,17 @@ release do HACS por cima do fork local**, apagando o fix CCS2 e o trip-log. Nao
 era HACS "sozinho" nem edicao manual — era o nosso cron auto-instalando o update
 do HACS.
 
-**Blindagem (2026-08-02):** `updateLooksSafe` em `docker-auto-update.mjs` ganhou
+**Blindagem histórica (2026-08-02, substituída em 2026-09-12):** `updateLooksSafe` em `docker-auto-update.mjs` ganhou
 uma lista `PROTECTED_UPDATE_PATTERNS` (`kia_uvo`, `hyundai`, `bluelink`, `uvo`)
 que barra o auto-install dessas entidades (match por substring em
 entity_id+friendly_name, resiste a mudanca de id). Testado via unit-test do
 predicado: o update do kia_uvo retorna `false` (nao instala), os demais seguem
-`true`. Agora o fork so muda por acao manual explicita — se um dia quiser
-mesmo atualizar o kia_uvo, faca no HACS e depois **re-aplique o fix CCS2 +
-trip-log** antes de considerar concluido. Se adicionar outro custom_component
-forkado, adicione o padrao dele nessa mesma lista.
+`true`. Essa allowlist deixou de ser a política atual quando todo o inventário
+`update.*` foi movido para switches visuais no Node-RED. Agora o fork só muda
+pelo pipeline dedicado de staging, reconciliação do overlay, rollback e
+promoção. Novos `custom_components` versionados devem entrar no subfluxo HACS
+visual e permanecer em `audit_only`; não devem ganhar outra lista escondida em
+JavaScript.
 
 **Padrao a vigiar:** sempre que o vehicle_primary voltar a ficar `unavailable`, rodar
 `git status homeassistant/custom_components/kia_uvo/` e
@@ -787,8 +789,8 @@ Verificado ao vivo apos `homeassistant.restart`: `fuel_level` 65, autonomia 299,
 `last_updated` do proprio dia, **0x 503**, e o botao de trip retornou as viagens de
 hoje.
 
-**Os DOIS vetores automaticos agora estao fechados:** (1) cron `ha-updates` —
-guard `PROTECTED_UPDATE_PATTERNS` (02/08); (2) HACS `auto_update` por-repo — ja
+**Os DOIS vetores automaticos agora estao fechados:** (1) o cron `ha-updates`
+foi aposentado e o subfluxo visual Bluelink nunca chama `update.install`; (2) HACS `auto_update` por-repo — ja
 `off`. Ou seja, o kia_uvo so muda por **install manual explicito no HACS**. Se
 fizer isso de proposito, **reaplique CCS2 + trip-log logo em seguida** (os scripts
 de patch sao o caminho rapido) e verifique `0x 503` antes de considerar pronto.
@@ -862,14 +864,12 @@ minutos. A promocao so e aceita quando `last_scanned_at` avanca e o combustivel
 continua disponivel, sem injetar uma segunda chamada ao provedor. Qualquer
 falha restaura componente e metadata e reinicia a versao anterior.
 
-O tab Node-RED `atualizacoes_diarias` agenda a analise Kia/Hyundai a cada 30
-minutos e ao subir. A ponte coalescente solicita ao host somente
-o watcher `scripts/docker-auto-update.mjs ha-updates`; o container Node-RED nao
-recebe token, checkout nem Docker socket. Para Kia/Hyundai, o watcher executa
-somente `scripts/kia-uvo-safe-update.mjs check` e resolve o alvo pelo `latest_version` da
-entidade oficial `update.*`, sem depender do metadata HACS possivelmente stale.
-O antigo cron direto `ha-updates` e removido pelo
-instalador da ponte. O estado fica em
+O tab Node-RED `atualizacoes_diarias` inventaria todas as entidades `update.*`
+a cada 30 minutos e ao subir. Switches visuais encaminham a entidade
+Kia/Hyundai ao subfluxo Bluelink, e a ponte coalescente solicita ao host somente
+`scripts/kia-uvo-safe-update.mjs check`; o container Node-RED nao recebe token,
+checkout nem Docker socket. O antigo modo e cron direto `ha-updates` foram
+aposentados. O estado fica em
 `/config/.storage/kia_uvo_safe_update` e aparece como
 `sensor.integracao_vehicle_primary`; `apply` permanece uma decisao explicita
 apos revisar compatibilidade e nunca e chamado pelo fluxo.

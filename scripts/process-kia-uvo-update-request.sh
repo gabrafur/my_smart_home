@@ -5,7 +5,6 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repo_root=$(dirname "$script_dir")
 trigger_dir="${DAILY_UPDATE_TRIGGER_DIR:-$repo_root/homeassistant/.daily-update-trigger}"
 node_bin="${KIA_UVO_UPDATE_NODE_BIN:-/usr/bin/node}"
-detector_script="${KIA_UVO_UPDATE_DETECTOR:-$script_dir/docker-auto-update.mjs}"
 status_script="${KIA_UVO_UPDATE_SCRIPT:-$script_dir/kia-uvo-safe-update.mjs}"
 request_file="$trigger_dir/kia-uvo-requested"
 processing_file="$trigger_dir/kia-uvo-processing"
@@ -15,7 +14,6 @@ case "$trigger_dir" in
   /*) ;;
   *) echo "DAILY_UPDATE_TRIGGER_DIR must be absolute" >&2; exit 64 ;;
 esac
-[ -r "$detector_script" ] || { echo "Kia UVO update detector is unavailable: $detector_script" >&2; exit 66; }
 [ -r "$status_script" ] || { echo "Kia UVO safe updater is unavailable: $status_script" >&2; exit 66; }
 mkdir -p "$trigger_dir"
 
@@ -51,7 +49,7 @@ trap 'restore_request; exit 75' HUP INT TERM
 
 publish_result "kia-uvo-update status=running request_id=$request_id"
 set +e
-"$node_bin" "$detector_script" ha-updates
+"$node_bin" "$status_script" check
 status=$?
 set -e
 

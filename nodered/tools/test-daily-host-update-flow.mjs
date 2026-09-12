@@ -20,16 +20,25 @@ assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after
 assert.deepEqual(node("daily_update_after_backup_in").links, ["git_backup_daily_update_out"]);
 assert.equal(node("global_observer_coverage__daily_host_updates_tab__catch").type, "catch");
 assert.deepEqual(node("global_observer_coverage__daily_host_updates_tab__out").links, ["global_observer_events_in"]);
-assert.equal(node("daily_update_request_host").command, "/opt/request-host-daily-update.sh");
-assert.equal(node("daily_update_read_result").command, "/opt/read-host-daily-update-result.sh");
+assert.equal(node("daily_update_request_host").command, "/opt/request-host-update-stage.sh dietpi");
+assert.equal(node("daily_update_read_result").command, "/opt/read-host-update-stage-result.sh dietpi");
 assert.equal(node("daily_update_result_poll").repeat, "300");
 assert.equal(node("daily_update_result_startup").once, true);
 assert.deepEqual(
   flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.crontab).map((entry) => entry.id),
-  ["daily_update_kia_schedule"],
+  [],
 );
-assert.equal(node("daily_update_kia_schedule").crontab, "*/30 * * * *");
-assert.equal(node("daily_update_kia_schedule").once, true);
+assert.equal(node("daily_update_inventory_schedule").crontab, "");
+assert.equal(node("daily_update_inventory_schedule").once, true);
+assert.equal(node("daily_update_inventory_schedule_delay").pauseType, "delayv");
+assert.match(
+  node("daily_update_inventory_schedule_delay_value").rules[0].to,
+  /update_policy\.scan_interval_minutes.*60000/,
+);
+assert.deepEqual(node("daily_update_inventory_schedule_loop_out").links, ["daily_update_inventory_schedule_loop_in"]);
+assert.deepEqual(node("daily_update_inventory_schedule_loop_in").links, ["daily_update_inventory_schedule_loop_out"]);
+assert.equal(node("daily_update_kia_schedule").type, "link in");
+assert.deepEqual(node("daily_update_kia_schedule").links, ["daily_update_inventory_kia_out"]);
 assert.equal(node("daily_update_kia_request_host").command, "/opt/request-host-kia-uvo-update-check.sh");
 assert.ok(node("git_backup_daily_update_out").links.includes("daily_update_after_backup_in"));
 assert.equal(node("daily_update_kia_read_result").command, "/opt/read-host-kia-uvo-update-result.sh");
@@ -59,11 +68,27 @@ assert.doesNotMatch(JSON.stringify(node("daily_update_kia_request_host")), /upda
 const serializedProduction = JSON.stringify([
   node("daily_update_request_host"),
   node("daily_update_read_result"),
+  node("daily_update_core_request_host"),
+  node("daily_update_core_read_result"),
+  node("daily_update_containers_request_host"),
+  node("daily_update_containers_read_result"),
 ]);
 assert.ok(!serializedProduction.includes("docker.sock"));
 assert.ok(!serializedProduction.includes("sudo"));
 assert.ok(!serializedProduction.includes("apt-get"));
 assert.ok(!serializedProduction.includes("/mnt/data/docker"));
+assert.equal(node("daily_update_core_request_host").command, "/opt/request-host-update-stage.sh home-assistant-core");
+assert.equal(node("daily_update_core_read_result").command, "/opt/read-host-update-stage-result.sh home-assistant-core");
+assert.equal(node("daily_update_containers_request_host").command, "/opt/request-host-update-stage.sh containers");
+assert.equal(node("daily_update_containers_read_result").command, "/opt/read-host-update-stage-result.sh containers");
+assert.deepEqual(node("daily_update_parse_result").wires, [
+  ["daily_update_result_test_out"],
+  ["daily_update_core_request_out"],
+]);
+assert.deepEqual(node("daily_update_core_parse_result").wires, [
+  ["daily_update_core_result_test_out"],
+  ["daily_update_containers_request_out"],
+]);
 
 assert.deepEqual(node("daily_update_route_test").wires, [
   ["daily_update_request_test_out"],
@@ -81,6 +106,9 @@ assert.match(node("daily_update_dry_run_terminal").func, /simulated: true/);
 assert.match(node("daily_update_dry_run_terminal").func, /dispatched: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /apt_commands_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /docker_update_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /home_assistant_core_update_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /hacs_update_install_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /device_firmware_install_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /kia_uvo_update_check_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /kia_uvo_codex_merge_requested: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /codex_worker_started: false/);
@@ -124,31 +152,138 @@ assert.equal(preparedTest.payload.test_mode, true);
 
 const parse = new Function("msg", "node", "flow", node("daily_update_parse_result").func);
 const testFailure = parse(
-  { _daily_update_test: true, payload: "daily-update status=failed request_id=test dietpi_exit=100 dietpi_stage=dietpi-update containers_exit=0" },
+  { _daily_update_test: true, payload: "host-update stage=dietpi status=failed request_id=test stage_exit=100 failure_stage=dietpi-update" },
   runtimeNode,
   flow,
 );
-assert.equal(testFailure.payload.status, "failed");
-assert.equal(testFailure.payload.dietpi_exit, 100);
-assert.equal(testFailure.payload.dietpi_stage, "dietpi-update");
+assert.equal(testFailure[0].payload.status, "failed");
+assert.equal(testFailure[0].payload.stage_exit, 100);
+assert.equal(testFailure[0].payload.failure_stage, "dietpi-update");
+assert.equal(testFailure[1], null);
 assert.equal(errors.length, 0, "synthetic failures must not alert production observers");
 
 const productionFailure = parse(
-  { payload: "daily-update status=failed request_id=prod dietpi_exit=100 dietpi_stage=dietpi-update containers_exit=0" },
+  { payload: "host-update stage=dietpi status=failed request_id=prod stage_exit=100 failure_stage=dietpi-update" },
   runtimeNode,
   flow,
 );
-assert.equal(productionFailure, null);
-assert.match(errors.at(-1), /daily_update_failed/);
-assert.match(errors.at(-1), /dietpi_stage=dietpi-update/);
+assert.deepEqual(productionFailure, [null, null]);
+assert.match(errors.at(-1), /host_update_stage_failed/);
+assert.match(errors.at(-1), /failure_stage=dietpi-update/);
 
 const productionDuplicate = parse(
-  { payload: "daily-update status=failed request_id=prod dietpi_exit=100 dietpi_stage=dietpi-update containers_exit=0" },
+  { payload: "host-update stage=dietpi status=failed request_id=prod stage_exit=100 failure_stage=dietpi-update" },
   runtimeNode,
   flow,
 );
-assert.equal(productionDuplicate, null);
+assert.deepEqual(productionDuplicate, [null, null]);
 assert.equal(errors.length, 1, "duplicate results must be deduplicated");
+
+const dietpiSuccess = parse(
+  { payload: "host-update stage=dietpi status=success request_id=prod-success stage_exit=0" },
+  runtimeNode,
+  flow,
+);
+assert.equal(dietpiSuccess[0], null);
+assert.equal(dietpiSuccess[1].payload.stage, "dietpi");
+const parseCore = new Function("msg", "node", "flow", node("daily_update_core_parse_result").func);
+const coreSuccess = parseCore(
+  { payload: "host-update stage=home-assistant-core status=success request_id=core-success stage_exit=0" },
+  runtimeNode,
+  flow,
+);
+assert.equal(coreSuccess[1].payload.stage, "home-assistant-core");
+
+assert.equal(node("daily_update_inventory_read_ha").type, "ha-api");
+assert.equal(node("daily_update_inventory_read_ha").data, '{"type":"get_states"}');
+assert.equal(node("daily_update_inventory_state").type, "switch");
+for (const id of ["daily_update_hacs_rbe", "daily_update_unknown_rbe", "daily_update_firmware_pending_rbe"]) {
+  assert.equal(node(id).type, "rbe");
+  assert.equal(node(id).property, "payload.signature");
+}
+assert.equal(node("daily_update_inventory_classify").type, "switch");
+assert.equal(node("daily_update_inventory_classify").outputs, 5);
+const classRules = node("daily_update_inventory_classify").rules.map((rule) => rule.v ?? rule.t).join(" ");
+assert.match(classRules, /bluelink/);
+assert.match(classRules, /firmware/);
+assert.match(classRules, /home_assistant_core/);
+assert.match(classRules, /alexa_media/);
+assert.match(classRules, /moni_mobile/);
+assert.deepEqual(node("daily_update_inventory_classify").wires, [
+  ["daily_update_inventory_kia_out"],
+  ["daily_update_inventory_firmware_out"],
+  ["daily_update_inventory_core_out"],
+  ["daily_update_inventory_hacs_out"],
+  ["daily_update_inventory_unknown_out"],
+]);
+const policyValue = JSON.parse(node("daily_update_inventory_parameters").rules[0].to);
+assert.equal(policyValue.scan_interval_minutes, 30);
+assert.equal(policyValue.device_firmware_auto, false);
+assert.equal(policyValue.manual_candidate_max_age_minutes, 40);
+assert.equal(policyValue.hacs_vendored_action, "audit_only");
+assert.equal(policyValue.core_channel, "stable");
+
+const validatePolicy = new Function("msg", "node", "flow", node("daily_update_inventory_validate_policy").func);
+const validPolicyMessage = validatePolicy({ update_policy: policyValue }, runtimeNode, flow);
+assert.deepEqual(validPolicyMessage.update_policy, policyValue);
+for (const boundaryPolicy of [
+  { ...policyValue, scan_interval_minutes: 5 },
+  { ...policyValue, scan_interval_minutes: 1440 },
+  { ...policyValue, manual_candidate_max_age_minutes: 5 },
+  { ...policyValue, manual_candidate_max_age_minutes: 120 },
+]) {
+  assert.deepEqual(validatePolicy({ update_policy: boundaryPolicy }, runtimeNode, flow).update_policy, boundaryPolicy);
+}
+validatePolicy({ update_policy: policyValue }, runtimeNode, flow);
+for (const invalidPolicy of [
+  { ...policyValue, scan_interval_minutes: 4 },
+  { ...policyValue, scan_interval_minutes: 1441 },
+  { ...policyValue, manual_candidate_max_age_minutes: 4 },
+  { ...policyValue, manual_candidate_max_age_minutes: 121 },
+  { ...policyValue, device_firmware_auto: "false" },
+  { ...policyValue, hacs_vendored_action: "install" },
+  { ...policyValue, core_channel: "latest" },
+]) {
+  const rejected = validatePolicy({ update_policy: invalidPolicy }, runtimeNode, flow);
+  assert.deepEqual(rejected.update_policy, policyValue, "invalid visual values must preserve the last valid policy");
+}
+
+const normalizeInventory = new Function("msg", "node", "flow", node("daily_update_inventory_normalize").func);
+const normalizedInventory = normalizeInventory({
+  _ha_updates_test: true,
+  update_observed_at: 1000,
+  update_policy: policyValue,
+  payload: [
+    { entity_id: "update.synthetic_firmware", state: "on", attributes: { friendly_name: "SLZB firmware", installed_version: "1", latest_version: "2" } },
+    { entity_id: "update.synthetic_hacs", state: "off", attributes: { friendly_name: "HACS Update", installed_version: "2", latest_version: "2" } },
+    { entity_id: "update.synthetic_unknown", state: "unavailable", attributes: {} },
+    { entity_id: "sensor.not_an_update", state: "on", attributes: {} },
+  ],
+}, runtimeNode, flow);
+assert.equal(normalizedInventory[0].length, 3);
+assert.deepEqual(normalizedInventory[0].map((message) => message.payload.state_class), ["pending", "current", "unavailable"]);
+assert.equal(normalizedInventory[1].payload.pending, 1);
+assert.equal(normalizedInventory[1].payload.unavailable, 1);
+assert.equal(normalizedInventory[1]._ha_updates_test, true);
+
+const updateEffects = flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.type === "api-call-service" && entry.action === "update.install");
+assert.deepEqual(updateEffects.map((entry) => entry.id), ["daily_update_firmware_install"]);
+assert.deepEqual(node("daily_update_firmware_final_test_gate").wires, [
+  ["daily_update_firmware_test_out"],
+  ["daily_update_firmware_install"],
+]);
+assert.equal(node("daily_update_firmware_install").data, '{"entity_id":payload.entity_id}');
+assert.match(node("daily_update_firmware_fresh").property, /manual_candidate_max_age_minutes/);
+assert.match(node("daily_update_hacs_pending").func, /audit/);
+assert.equal(node("daily_update_kia_request_host").addpay, "");
+const queueFirmware = new Function("msg", "node", "flow", node("daily_update_firmware_store").func);
+queueFirmware({ payload: { entity_id: "update.firmware_b", observed_at: 1, signature: "b:1" } }, runtimeNode, flow);
+queueFirmware({ payload: { entity_id: "update.firmware_a", observed_at: 2, signature: "a:1" } }, runtimeNode, flow);
+queueFirmware({ payload: { entity_id: "update.firmware_b", observed_at: 3, signature: "b:1" } }, runtimeNode, flow);
+const takeFirmware = new Function("msg", "node", "flow", node("daily_update_firmware_take_candidate").func);
+assert.equal(takeFirmware({}, runtimeNode, flow).payload.entity_id, "update.firmware_a");
+assert.equal(takeFirmware({}, runtimeNode, flow).payload.observed_at, 3);
+assert.equal(takeFirmware({}, runtimeNode, flow).payload, null);
 
 const parseKia = new Function("msg", "node", "flow", node("daily_update_kia_parse_result").func);
 const kiaTestConflict = parseKia(
@@ -226,6 +361,8 @@ const compose = fs.readFileSync(path.resolve(here, "..", "..", "docker-compose.y
 assert.match(compose, /\.\/homeassistant\/\.daily-update-trigger:\/run\/daily-update-trigger/);
 assert.match(compose, /request-host-daily-update\.sh:\/opt\/request-host-daily-update\.sh:ro/);
 assert.match(compose, /read-host-daily-update-result\.sh:\/opt\/read-host-daily-update-result\.sh:ro/);
+assert.match(compose, /request-host-update-stage\.sh:\/opt\/request-host-update-stage\.sh:ro/);
+assert.match(compose, /read-host-update-stage-result\.sh:\/opt\/read-host-update-stage-result\.sh:ro/);
 assert.match(compose, /request-host-kia-uvo-update-check\.sh:\/opt\/request-host-kia-uvo-update-check\.sh:ro/);
 assert.match(compose, /read-host-kia-uvo-update-result\.sh:\/opt\/read-host-kia-uvo-update-result\.sh:ro/);
 assert.match(compose, /request-kia-uvo-codex-merge\.sh:\/opt\/request-kia-uvo-codex-merge\.sh:ro/);

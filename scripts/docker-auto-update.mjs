@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,8 +18,20 @@ const imageChannels = [
   { service: "zigbee2mqtt", repo: "koenkk/zigbee2mqtt", tag: "latest" },
 ];
 
-const args = new Set(process.argv.slice(2));
-const mode = process.argv.find((arg) => ["daily", "ha-updates"].includes(arg)) || "daily";
+export function imageChannelsForMode(selectedMode) {
+  if (selectedMode === "daily") return [...imageChannels];
+  if (selectedMode === "home-assistant-core") {
+    return imageChannels.filter((channel) => channel.service === "homeassistant");
+  }
+  if (selectedMode === "containers") {
+    return imageChannels.filter((channel) => channel.service !== "homeassistant");
+  }
+  return null;
+}
+
+const cliArgs = process.argv.slice(2);
+const args = new Set(cliArgs);
+const mode = cliArgs.find((arg) => !arg.startsWith("--")) || "daily";
 const dryRun = args.has("--dry-run");
 
 function log(message) {
@@ -101,30 +112,32 @@ export function replaceServiceImage(compose, service, nextDigest) {
   return { compose: lines.join("\n"), current };
 }
 
-function updateComposeDigests() {
+function updateComposeDigests(channels = imageChannels) {
   let compose = fs.readFileSync(composePath, "utf8");
   const changes = [];
+  const changedServices = [];
 
-  for (const channel of imageChannels) {
+  for (const channel of channels) {
     const nextDigest = repoDigest(channel.repo, channel.tag);
     const replacement = replaceServiceImage(compose, channel.service, nextDigest);
     const { current } = replacement;
     if (current !== nextDigest) {
       changes.push(`${channel.service}: ${current} -> ${nextDigest}`);
+      changedServices.push(channel.service);
       compose = replacement.compose;
     }
   }
 
   if (changes.length === 0) {
     log("docker images already match latest channel digests");
-    return false;
+    return [];
   }
 
   log(`docker image updates found: ${changes.join("; ")}`);
   if (!dryRun) {
     fs.writeFileSync(composePath, compose);
   }
-  return true;
+  return changedServices;
 }
 
 function runInDir(command, commandArgs, cwd, options = {}) {
@@ -145,178 +158,48 @@ function validateAfterComposeEdit() {
   runInDir("npm", ["run", "flows:validate"], path.join(repoRoot, "nodered"));
 }
 
-function dailyUpdate() {
+function reconcileImages(channels, options = {}) {
   try {
-    const changed = updateComposeDigests();
+    const changedServices = updateComposeDigests(channels);
     validateAfterComposeEdit();
 
-    if (changed) {
-      run("docker", ["compose", "up", "-d"], { mutates: true });
+    if (changedServices.length > 0) {
+      run("docker", ["compose", "up", "-d", "--no-deps", ...changedServices], { mutates: true });
       run("docker", ["compose", "ps"]);
       run("bash", ["scripts/git-backup.sh"], { mutates: true });
     }
   } finally {
     // Cleanup must still run when a pull, parse, validation or recreate step
     // fails. The helper never removes volumes, containers or tagged images.
-    run(
-      "bash",
-      ["scripts/storage-maintenance.sh", dryRun ? "--dry-run" : "--apply", "--min-age", "24"],
-      { mutates: !dryRun },
-    );
-  }
-  log("daily docker update finished");
-}
-
-function parseEnvFile() {
-  const envPath = path.join(repoRoot, ".env");
-  if (!fs.existsSync(envPath)) {
-    return {};
-  }
-  return Object.fromEntries(
-    fs.readFileSync(envPath, "utf8")
-      .split(/\r?\n/)
-      .filter((line) => line && !line.trimStart().startsWith("#") && line.includes("="))
-      .map((line) => {
-        const index = line.indexOf("=");
-        return [line.slice(0, index), line.slice(index + 1).replaceAll("$$", "$")];
-      }),
-  );
-}
-
-function haRequest(method, requestPath, token, body) {
-  return new Promise((resolve, reject) => {
-    const payload = body ? JSON.stringify(body) : "";
-    const request = http.request({
-      host: "127.0.0.1",
-      port: 8123,
-      path: requestPath,
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(payload),
-      },
-    }, (response) => {
-      let data = "";
-      response.on("data", (chunk) => { data += chunk; });
-      response.on("end", () => {
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          reject(new Error(`Home Assistant API ${method} ${requestPath} failed: ${response.statusCode} ${data}`));
-          return;
-        }
-        resolve(data ? JSON.parse(data) : {});
-      });
-    });
-    request.on("error", reject);
-    if (payload) {
-      request.write(payload);
-    }
-    request.end();
-  });
-}
-
-// Locally-forked custom_components whose HACS "update" entity must NEVER be
-// auto-installed: installing the upstream release overwrites our on-host
-// patches. kia_uvo carries a local CCS2-endpoint fix (without which the BR
-// vehicle_primary 503s on /status/latest) plus the trip-log sensor; a HACS auto-update
-// silently wiped both twice (2026-07-19, 2026-07-27) before this guard.
-// See docs/VEHICLE_PRIMARY_KIA_UVO_INTEGRATION.md. Match is substring, on entity_id +
-// friendly_name, so it holds even if the exact entity_id changes.
-const PROTECTED_UPDATE_PATTERNS = ["kia_uvo", "hyundai", "bluelink", "uvo"];
-
-export function updateIsProtected(entity) {
-  const name = `${entity.entity_id ?? ""} ${entity.attributes?.friendly_name || ""}`.toLowerCase();
-  return PROTECTED_UPDATE_PATTERNS.some((pattern) => name.includes(pattern));
-}
-
-function updateLooksSafe(entity) {
-  if (!entity.entity_id.startsWith("update.")) {
-    return false;
-  }
-  if (entity.state !== "on") {
-    return false;
-  }
-  const name = `${entity.entity_id} ${entity.attributes?.friendly_name || ""}`.toLowerCase();
-  if (name.includes("firmware") || name.includes("slzb")) {
-    return false;
-  }
-  if (updateIsProtected(entity)) {
-    return false;
-  }
-  return true;
-}
-
-function readHaToken() {
-  // Prefer the host-only secret store (single source of truth, mode 600),
-  // fall back to HA_LONG_LIVED_TOKEN in .env for backwards compatibility.
-  const tokenFile = path.join(repoRoot, ".local-secrets", "ha-long-lived-token.txt");
-  if (fs.existsSync(tokenFile)) {
-    const fromFile = fs.readFileSync(tokenFile, "utf8").trim();
-    if (fromFile) {
-      return fromFile;
-    }
-  }
-  return parseEnvFile().HA_LONG_LIVED_TOKEN;
-}
-
-async function haUpdates() {
-  const token = readHaToken();
-  if (!token) {
-    log("ha-updates skipped: no HA token found (.local-secrets/ha-long-lived-token.txt or HA_LONG_LIVED_TOKEN in .env)");
-    return;
-  }
-
-  const states = await haRequest("GET", "/api/states", token);
-  const protectedPending = states.filter(
-    (entity) =>
-      entity.entity_id.startsWith("update.") &&
-      entity.state === "on" &&
-      updateIsProtected(entity),
-  );
-  for (const entity of protectedPending) {
-    const latest = entity.attributes?.latest_version;
-    log(
-      `VEHICLE_PRIMARY_INTEGRATION_UPDATE_AVAILABLE entity=${entity.entity_id} latest=${latest ?? "unknown"}; analyzing only`,
-    );
-    if (!dryRun) {
+    if (options.cleanup) {
       run(
-        process.execPath,
-        [
-          "scripts/kia-uvo-safe-update.mjs",
-          "check",
-          ...(latest ? ["--target", latest] : []),
-        ],
-        { env: { HA_LONG_LIVED_TOKEN: token } },
+        "bash",
+        ["scripts/storage-maintenance.sh", dryRun ? "--dry-run" : "--apply", "--min-age", "24"],
+        { mutates: !dryRun },
       );
     }
   }
-  const pending = states.filter(updateLooksSafe);
-  if (pending.length === 0) {
-    log("ha-updates: no safe integration updates pending");
-    return;
-  }
-
-  log(`ha-updates pending: ${pending.map((entity) => entity.entity_id).join(", ")}`);
-  for (const entity of pending) {
-    if (dryRun) {
-      continue;
-    }
-    await haRequest("POST", "/api/services/update/install", token, { entity_id: entity.entity_id });
-  }
-
-  if (!dryRun) {
-    run("docker", ["compose", "restart", "homeassistant"], { mutates: true });
-  }
-  log("ha-updates finished");
+  log(`${options.label ?? "docker"} image update finished`);
 }
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
 if (invokedPath === fileURLToPath(import.meta.url)) {
   await withLock(async () => {
-    if (mode === "ha-updates") {
-      await haUpdates();
+    if (mode === "daily") reconcileImages(imageChannelsForMode(mode), { cleanup: true, label: "daily docker" });
+    else if (mode === "home-assistant-core") {
+      reconcileImages(imageChannelsForMode(mode), {
+        cleanup: false,
+        label: "Home Assistant Core",
+      });
+    } else if (mode === "containers") {
+      reconcileImages(imageChannelsForMode(mode), {
+        cleanup: true,
+        label: "non-Core container",
+      });
+    } else if (mode === "ha-updates") {
+      throw new Error("ha-updates was retired; update.* policy is canonical in Node-RED tab atualizacoes_diarias");
     } else {
-      dailyUpdate();
+      throw new Error("usage: docker-auto-update.mjs daily|home-assistant-core|containers [--dry-run]");
     }
   });
 }

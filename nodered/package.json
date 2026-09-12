@@ -5,7 +5,7 @@
     "private": true,
     "scripts": {
         "flows:backup": "node tools/backup-flows.mjs",
-        "flows:update-daily-host-updates": "node tools/install-daily-host-update-flow.mjs flows.json flows.json && node tools/install-git-backup-flow.mjs flows.json flows.json && node tools/install-global-flow-observer.mjs",
+        "flows:update-daily-host-updates": "node tools/install-daily-host-update-flow.mjs flows.json flows.json && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
         "flows:update-weekly-docs-review": "node tools/install-weekly-docs-review-flow.mjs flows.json flows.json && node tools/install-global-flow-observer.mjs",
         "flows:fix-actionable-notifications": "node tools/fix-actionable-notification-bindings.mjs",
         "flows:organize-actionable-tabs": "node tools/organize-actionable-notification-tabs.mjs",

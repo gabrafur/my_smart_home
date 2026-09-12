@@ -5,8 +5,8 @@ import fs from "node:fs";
 import test from "node:test";
 
 import {
+  imageChannelsForMode,
   replaceServiceImage,
-  updateIsProtected,
 } from "./docker-auto-update.mjs";
 import {
   assessKiaRuntimeStates,
@@ -75,15 +75,22 @@ test("does not cross into the next service", () => {
   );
 });
 
-test("routes Hyundai Kia updates to analysis instead of blind install", () => {
-  assert.equal(updateIsProtected({
-    entity_id: "update.kia_uvo_hyundai_bluelink_update",
-    attributes: { friendly_name: "Kia Uvo / Hyundai Bluelink" },
-  }), true);
-  assert.equal(updateIsProtected({
-    entity_id: "update.hacs_update",
-    attributes: { friendly_name: "HACS" },
-  }), false);
+test("keeps Home Assistant Core separate from all other container images", () => {
+  assert.deepEqual(imageChannelsForMode("home-assistant-core").map((item) => item.service), ["homeassistant"]);
+  const containers = imageChannelsForMode("containers").map((item) => item.service);
+  assert.equal(containers.includes("homeassistant"), false);
+  assert.deepEqual([...imageChannelsForMode("daily").map((item) => item.service)].sort(), [
+    "appdaemon", "homeassistant", "matter_server", "mosquitto", "nodered", "portainer", "zigbee2mqtt",
+  ]);
+  assert.equal(imageChannelsForMode("ha-updates"), null);
+});
+
+test("recreates changed image services without touching dependencies", () => {
+  const source = fs.readFileSync("scripts/docker-auto-update.mjs", "utf8");
+  assert.match(
+    source,
+    /\["compose", "up", "-d", "--no-deps", \.\.\.changedServices\]/,
+  );
 });
 
 test("recognizes an already installed Kia UVO target", () => {

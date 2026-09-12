@@ -123,6 +123,32 @@ Em todo tab novo ou materialmente alterado:
 - preserve produção e `test_mode` no mesmo caminho até o gate final, com estado,
   dedupe e chaves de contexto separados.
 
+## Orquestração canônica de updates
+
+Toda atualização recorrente ou detectável da residência deve aparecer no tab
+`atualizacoes_diarias`; não crie cron, watcher, dashboard ou JavaScript paralelo
+que instale updates sem passar por esse canvas. Cada superfície usa um subfluxo
+visual próprio, mesmo quando compartilha uma ponte privilegiada:
+
+- DietPi e pacotes do host;
+- Home Assistant Core, isolado dos demais containers;
+- demais imagens de containers;
+- integrações HACS versionadas;
+- Kia UVO/Hyundai Bluelink com staging, overlay, rollback e promoção próprios;
+- firmware de equipamentos físicos;
+- fontes ainda desconhecidas, que devem falhar fechadas.
+
+O inventário `update.*` pertence ao Home Assistant como produtor de fatos; a
+classificação, autorização, dedupe e escolha do efeito pertencem ao Node-RED.
+Integrações presentes em `homeassistant/custom_components/` nunca podem receber
+`update.install` genérico: a atualização exige auditoria contra o upstream,
+preservação de licença/proveniência, reaplicação mínima dos deltas locais,
+testes e validação do runtime. Firmware físico deve permanecer com instalação
+automática desligada por padrão e exigir gate explícito, candidato recente e
+dry-run integral. O modo compatível `docker-auto-update.mjs daily` pode existir
+para rollback operacional, mas a agenda normal deve usar as etapas visuais
+separadas.
+
 ## Disponibilidade esperada de dependências externas
 
 Modele separadamente `online`, `offline` e `unknown` quando uma responsabilidade

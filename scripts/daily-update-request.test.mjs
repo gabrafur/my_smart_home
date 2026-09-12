@@ -12,6 +12,9 @@ const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const requestScript = path.join(scriptsDir, "request-host-daily-update.sh");
 const readScript = path.join(scriptsDir, "read-host-daily-update-result.sh");
 const processScript = path.join(scriptsDir, "process-daily-update-request.sh");
+const requestStageScript = path.join(scriptsDir, "request-host-update-stage.sh");
+const readStageScript = path.join(scriptsDir, "read-host-update-stage-result.sh");
+const processStageScript = path.join(scriptsDir, "process-update-stage-request.sh");
 const runScript = path.join(scriptsDir, "run-daily-host-update.sh");
 const dietpiScript = path.join(scriptsDir, "dietpi-daily-upgrade.sh");
 const installBridge = path.join(scriptsDir, "install-daily-update-nodered-bridge.sh");
@@ -56,6 +59,89 @@ test("Node-RED requests are coalesced and expose the final host result", () => {
   assert.match(read.stdout, /dietpi_exit=0 containers_exit=0/);
   assert.equal(spawnSync(processScript, [], { encoding: "utf8", env }).status, 0);
   assert.equal(fs.readFileSync(calls, "utf8"), "called\n");
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("staged bridges isolate DietPi, Home Assistant Core and other containers", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "staged-update-request-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const updater = path.join(fixture, "update.sh");
+  const calls = path.join(fixture, "calls");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(updater, `#!/bin/sh\nprintf '%s\\n' "$1" >> "${calls}"\nprintf 'stage=%s stage_exit=0\\n' "$1" > "$DAILY_UPDATE_DETAIL_FILE"\n`);
+  fs.chmodSync(updater, 0o755);
+  const env = {
+    ...process.env,
+    DAILY_UPDATE_TRIGGER_DIR: triggerDir,
+    HOST_UPDATE_STAGE_SCRIPT: updater,
+  };
+
+  for (const stage of ["dietpi", "home-assistant-core", "containers"]) {
+    const requested = spawnSync(requestStageScript, [stage], { encoding: "utf8", env });
+    assert.equal(requested.status, 0, requested.stderr);
+    assert.match(requested.stdout, new RegExp(`stage=${stage} status=accepted`));
+    const duplicate = spawnSync(requestStageScript, [stage], { encoding: "utf8", env });
+    assert.equal(duplicate.status, 0, duplicate.stderr);
+    assert.match(duplicate.stdout, new RegExp(`stage=${stage} status=coalesced`));
+    const processed = spawnSync(processStageScript, [stage], { encoding: "utf8", env });
+    assert.equal(processed.status, 0, processed.stderr);
+    const read = spawnSync(readStageScript, [stage], { encoding: "utf8", env });
+    assert.equal(read.status, 0, read.stderr);
+    assert.match(read.stdout, new RegExp(`host-update stage=${stage} status=success`));
+    assert.match(read.stdout, /stage_exit=0/);
+  }
+  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), [
+    "dietpi", "home-assistant-core", "containers",
+  ]);
+  assert.equal(spawnSync(requestStageScript, ["invalid"], { encoding: "utf8", env }).status, 64);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("a staged resource deferral preserves the exact stage request for retry", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "staged-update-deferred-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const updater = path.join(fixture, "update.sh");
+  const attempts = path.join(fixture, "attempts");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(path.join(triggerDir, "home-assistant-core-requested"), "core-request-75\n");
+  fs.writeFileSync(
+    updater,
+    `#!/bin/sh\ncount=$(cat "${attempts}" 2>/dev/null || echo 0)\ncount=$((count + 1))\nprintf '%s\\n' "$count" > "${attempts}"\n[ "$count" -gt 1 ] || exit 75\nprintf 'stage=%s stage_exit=0\\n' "$1" > "$DAILY_UPDATE_DETAIL_FILE"\n`,
+  );
+  fs.chmodSync(updater, 0o755);
+  const env = { ...process.env, DAILY_UPDATE_TRIGGER_DIR: triggerDir, HOST_UPDATE_STAGE_SCRIPT: updater };
+
+  const deferred = spawnSync(processStageScript, ["home-assistant-core"], { encoding: "utf8", env });
+  assert.equal(deferred.status, 75);
+  assert.ok(fs.existsSync(path.join(triggerDir, "home-assistant-core-requested")));
+  assert.match(fs.readFileSync(path.join(triggerDir, "home-assistant-core-result"), "utf8"), /status=deferred/);
+
+  const retried = spawnSync(processStageScript, ["home-assistant-core"], { encoding: "utf8", env });
+  assert.equal(retried.status, 0, retried.stderr);
+  assert.match(fs.readFileSync(path.join(triggerDir, "home-assistant-core-result"), "utf8"), /status=success/);
+  assert.ok(!fs.existsSync(path.join(triggerDir, "home-assistant-core-requested")));
+  assert.ok(!fs.existsSync(path.join(triggerDir, "home-assistant-core-processing")));
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("a failed staged update is terminal and does not run another surface", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "staged-update-failure-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const updater = path.join(fixture, "update.sh");
+  const calls = path.join(fixture, "calls");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(path.join(triggerDir, "containers-requested"), "containers-failed\n");
+  fs.writeFileSync(updater, `#!/bin/sh\nprintf '%s\\n' "$1" >> "${calls}"\nexit 23\n`);
+  fs.chmodSync(updater, 0o755);
+  const env = { ...process.env, DAILY_UPDATE_TRIGGER_DIR: triggerDir, HOST_UPDATE_STAGE_SCRIPT: updater };
+
+  const failed = spawnSync(processStageScript, ["containers"], { encoding: "utf8", env });
+  assert.equal(failed.status, 23);
+  assert.equal(fs.readFileSync(calls, "utf8"), "containers\n");
+  assert.match(fs.readFileSync(path.join(triggerDir, "containers-result"), "utf8"), /status=failed/);
+  assert.match(fs.readFileSync(path.join(triggerDir, "containers-result"), "utf8"), /exit_code=23/);
+  assert.ok(!fs.existsSync(path.join(triggerDir, "containers-requested")));
+  assert.ok(!fs.existsSync(path.join(triggerDir, "containers-processing")));
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
@@ -109,11 +195,9 @@ test("Node-RED Kia requests run only the safe checker and expose a sanitized res
   const triggerDir = path.join(fixture, "trigger");
   const fakeNode = path.join(fixture, "node");
   const fakeUpdater = path.join(fixture, "kia-uvo-safe-update.mjs");
-  const fakeDetector = path.join(fixture, "docker-auto-update.mjs");
   const calls = path.join(fixture, "calls");
   fs.mkdirSync(triggerDir);
   fs.writeFileSync(fakeUpdater, "fixture\n");
-  fs.writeFileSync(fakeDetector, "fixture\n");
   fs.writeFileSync(fakeNode, `#!/bin/sh\nprintf '%s\\n' "$2" >> "${calls}"\nif [ "$2" = "status" ]; then\n  echo 'kia-uvo-update status=conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T13:30:04.072Z'\nfi\n`);
   fs.chmodSync(fakeNode, 0o755);
   const env = {
@@ -121,7 +205,6 @@ test("Node-RED Kia requests run only the safe checker and expose a sanitized res
     DAILY_UPDATE_TRIGGER_DIR: triggerDir,
     KIA_UVO_UPDATE_NODE_BIN: fakeNode,
     KIA_UVO_UPDATE_SCRIPT: fakeUpdater,
-    KIA_UVO_UPDATE_DETECTOR: fakeDetector,
   };
 
   const request = spawnSync(requestKiaUpdate, [], { encoding: "utf8", env });
@@ -134,7 +217,7 @@ test("Node-RED Kia requests run only the safe checker and expose a sanitized res
 
   const processed = spawnSync(processKiaUpdate, [], { encoding: "utf8", env });
   assert.equal(processed.status, 0, processed.stderr);
-  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), ["ha-updates", "status"]);
+  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), ["check", "status"]);
   const read = spawnSync(readKiaUpdate, [], { encoding: "utf8", env });
   assert.equal(read.status, 0, read.stderr);
   assert.match(read.stdout, /status=conflict/);
@@ -245,6 +328,37 @@ test("dry-run never invokes sudo and keeps the container updater non-mutating", 
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
+test("each host stage invokes only its own updater", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "host-update-stage-isolation-test-"));
+  const calls = path.join(fixture, "calls");
+  const sudo = path.join(fixture, "sudo");
+  const helper = path.join(fixture, "dietpi-helper");
+  const node = path.join(fixture, "node");
+  const dockerUpdater = path.join(fixture, "docker-auto-update.mjs");
+  fs.writeFileSync(sudo, "#!/bin/sh\n[ \"$1\" = \"-n\" ] && shift\n\"$@\"\n");
+  fs.writeFileSync(helper, `#!/bin/sh\nprintf 'dietpi\\n' >> "${calls}"\n`);
+  fs.writeFileSync(node, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\n`);
+  fs.writeFileSync(dockerUpdater, "fixture\n");
+  for (const file of [sudo, helper, node]) fs.chmodSync(file, 0o755);
+  const env = {
+    ...process.env,
+    DAILY_UPDATE_SUDO_BIN: sudo,
+    DIETPI_UPDATE_HELPER: helper,
+    DAILY_UPDATE_NODE_BIN: node,
+    DOCKER_UPDATE_SCRIPT: dockerUpdater,
+  };
+  for (const stage of ["dietpi", "home-assistant-core", "containers"]) {
+    const result = spawnSync(runScript, [stage], { encoding: "utf8", env });
+    assert.equal(result.status, 0, result.stderr);
+  }
+  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), [
+    "dietpi",
+    `${dockerUpdater} home-assistant-core`,
+    `${dockerUpdater} containers`,
+  ]);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
 test("the DietPi helper uses update then bounded non-removing upgrade", () => {
   const source = fs.readFileSync(dietpiScript, "utf8");
   const updateIndex = source.indexOf("APT::Update::Lock::Timeout=300");
@@ -293,7 +407,9 @@ test("the cron installer migrates direct update schedules to Node-RED bridges", 
   assert.equal((installed.match(/BEGIN Smart home Node-RED daily update bridge/g) ?? []).length, 1);
   assert.doesNotMatch(installed, /docker-auto-update\.mjs daily/);
   assert.doesNotMatch(installed, /docker-auto-update\.mjs ha-updates/);
-  assert.match(installed, /process-daily-update-request\.sh/);
+  assert.match(installed, /process-update-stage-request\.sh dietpi/);
+  assert.match(installed, /process-update-stage-request\.sh home-assistant-core/);
+  assert.match(installed, /process-update-stage-request\.sh containers/);
   assert.match(installed, /process-kia-uvo-update-request\.sh/);
   assert.match(installed, /promote-kia-uvo-candidate\.mjs/);
   assert.match(installed, /nice -n 15 .*ionice -c 3/);

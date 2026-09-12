@@ -232,21 +232,27 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
-The daily host-update path in the `atualizacoes_diarias` tab has no independent clock. The scheduled
-job in `backup_git` starts this cycle only after a successful backup. The host
-bridge runs `apt-get update` and `apt-get --with-new-pkgs upgrade` through the
-root-owned helper first. It then runs `/boot/dietpi/dietpi-update 1`, which
-noninteractively checks for and applies a DietPi update when one is available,
-and finally calls `scripts/docker-auto-update.mjs daily` to
-reconcile all seven container image providers. It never reboots automatically.
-The same tab owns a separate 30-minute Kia UVO/Hyundai Bluelink safe-analysis
-schedule. It invokes the existing HA watcher through a coalescing host bridge.
-Kia/Hyundai first goes through `kia-uvo-safe-update.mjs check`; a conflict
-requests the isolated Codex worker, and the resulting candidate is applied by
-the host with rollback before it is promoted to `main`. Other safe entities
-retain the prior policy. The bridge installer removes the legacy direct
-`daily` and `ha-updates` cron entries and installs the one-minute Kia promotion
-worker.
+The `atualizacoes_diarias` tab receives the successful daily backup and runs
+three independent serialized subflows: `DietPi`, `Home Assistant Core`, and
+`other containers`. The first uses the root-owned helper for apt and DietPi.
+The second resolves only the stable Home Assistant image and recreates only
+`homeassistant` when its digest changes. The third reconciles Portainer, MQTT,
+Matter, AppDaemon, Node-RED, and Zigbee2MQTT, then runs safe storage maintenance.
+It never reboots automatically.
+
+The same tab visually inventories every Home Assistant `update.*` entity on
+startup and every 30 minutes by default. A visual parameter validated between
+5 and 1,440 minutes feeds the native loop `delay`. Named switches route Core, Kia UVO/Hyundai Bluelink,
+versioned HACS integrations, physical firmware, and unknown sources to separate
+subflows. Bluelink uses safe staging and overlay reconciliation. Versioned HACS
+components are never blindly installed. Physical firmware is observed and
+deduplicated but defaults to automatic installation off; its production button
+consumes only a candidate observed during the last 40 minutes. Tests stop before
+`update.install`.
+
+The hidden `docker-auto-update.mjs ha-updates` mode was retired. The bridge
+installer removes legacy direct schedules and keeps only one-minute coalescing
+workers for DietPi, Core, other containers, Bluelink analysis, and promotion.
 Node-RED tracks the Codex candidate and the safe promotion separately:
 `candidate ready` never means completed; only `completed` confirms both the
 Home Assistant runtime and `main`. The host exposes only this sanitized
@@ -254,9 +260,10 @@ lifecycle to Node-RED, without internal failure detail.
 
 Node-RED receives neither `sudo`, the checkout, nor the Docker socket. The
 installed `/usr/local/sbin` helper belongs to `root`, and its sudoers rule
-allows only that exact command. `scripts/docker-auto-update.mjs` remains the
-bounded host worker: the dry-run above is still available for diagnostics, and
-changed digests are recorded by a final Git backup.
+allows only that exact command. `scripts/docker-auto-update.mjs` remains a
+bounded host adapter with separate `home-assistant-core` and `containers`
+entrypoints; `daily` remains a compatible diagnostic and rollback path. Changed
+digests are recorded by a final Git backup.
 Failures in `apt`, `dietpi-update`, the bridge, or container reconciliation
 raise `node.error` with a sanitized stage and are delivered to
 `resident_primary` through `observabilidade_global`, using the same six-hour

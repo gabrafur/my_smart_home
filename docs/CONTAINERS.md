@@ -234,20 +234,31 @@ scripts/install-storage-maintenance-cron.sh
 scripts/install-git-backup-nodered-bridge.sh
 ```
 
-A aba separada `atualizacoes_diarias` não possui relógio próprio: o backup
-agendado na aba `backup_git` inicia o ciclo somente depois de concluir com
-sucesso. A ponte do host executa primeiro `apt-get update` e
-`apt-get --with-new-pkgs upgrade` pelo helper root-owned. Em seguida, executa
-`/boot/dietpi/dietpi-update 1`, que verifica e aplica de forma não interativa
-uma atualização do próprio DietPi quando disponível, e depois chama
-`scripts/docker-auto-update.mjs daily` para reconciliar os sete provedores de
-imagem. Não há reboot automático. No mesmo tab, um agendamento de 30 minutos
-aciona o watcher HA no host. Kia UVO/Hyundai Bluelink passa por análise segura;
-um conflito solicita o worker Codex isolado e a candidata resultante é aplicada
-pelo host com rollback antes de ser promovida a `main`. As demais entidades
-seguras preservam a política anterior. O instalador da ponte remove do
-`crontab` as chamadas diretas de `docker-auto-update.mjs daily` e `ha-updates`;
-permanecem os workers coalescentes e o promotor Kia de um minuto.
+A aba `atualizacoes_diarias` recebe o sucesso do backup diário e executa três
+subfluxos serializados e independentes: `DietPi`, `Home Assistant Core` e
+`demais containers`. O primeiro usa o helper root-owned para `apt-get update`,
+`apt-get --with-new-pkgs upgrade` e `/boot/dietpi/dietpi-update 1`. O segundo
+resolve somente `ghcr.io/home-assistant/home-assistant:stable` e recria apenas
+o serviço `homeassistant` quando o digest muda. O terceiro reconcilia Portainer,
+MQTT, Matter, AppDaemon, Node-RED e Zigbee2MQTT e conclui com a manutenção segura
+de storage. Não há reboot automático.
+
+No mesmo tab, um inventário visual consulta todas as entidades `update.*` do
+Home Assistant ao subir e, por padrão, a cada 30 minutos. O intervalo é um
+parâmetro visual validado entre 5 e 1.440 minutos e alimenta o `delay` nativo do
+loop. Switches nomeados encaminham Core,
+Kia UVO/Hyundai Bluelink, integrações HACS versionadas, firmware físico e fontes
+desconhecidas para subfluxos distintos. O Bluelink passa por staging e overlay
+seguros; conflito solicita o worker Codex isolado e o host só promove após
+backup, rollback e validação do runtime. Nenhuma integração versionada é
+instalada cegamente. Firmware físico é acompanhado e deduplicado, mas tem
+automação desligada por padrão; o botão de produção consome apenas um candidato
+observado nos últimos 40 minutos. Testes terminam antes de `update.install`.
+
+O modo legado `docker-auto-update.mjs ha-updates` foi aposentado porque escondia
+classificação e instalação fora do canvas. O instalador remove os antigos crons
+diretos e mantém somente workers coalescentes de um minuto para DietPi, Core,
+demais containers, análise Bluelink e promoção segura.
 O Node-RED acompanha separadamente a candidata do Codex e a promoção segura:
 `candidata pronta` nunca significa concluída; somente `completed` confirma que
 o runtime do Home Assistant e a `main` foram validados. O host publica para o
@@ -255,9 +266,10 @@ Node-RED apenas esse ciclo sanitizado, sem detalhes internos de falha.
 
 O Node-RED não recebe `sudo`, checkout nem socket Docker. O helper instalado em
 `/usr/local/sbin` pertence a `root`, e o arquivo de `sudoers` autoriza somente
-esse comando exato. `scripts/docker-auto-update.mjs` continua sendo o worker
-limitado do host: o dry-run acima permanece disponível para diagnóstico, e um
-novo digest é registrado por backup Git ao final da reconciliação.
+esse comando exato. `scripts/docker-auto-update.mjs` continua sendo o adaptador
+limitado do host e aceita `home-assistant-core` e `containers` como etapas
+separadas; `daily` permanece somente para diagnóstico e rollback compatível.
+Um novo digest é registrado por backup Git ao final da reconciliação.
 Falhas em `apt`, `dietpi-update`, na ponte ou nos containers chamam `node.error`
 com a etapa sanitizada e são entregues a `resident_primary` pelo fluxo
 `observabilidade_global`, com a mesma deduplicação de seis horas dos demais
