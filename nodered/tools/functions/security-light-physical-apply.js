@@ -9,13 +9,16 @@ if (data.physical_signal) {
     const state = msg.payload.state;
     const updatedAt = Number(msg.payload.updated_at ?? 0);
     const previousAt = Number(flow.get("security_light_physical_updated_at") ?? 0);
-    if (updatedAt > now + data.future_ms || (updatedAt && previousAt && updatedAt < previousAt) ||
-        (updatedAt && previousAt && updatedAt === previousAt &&
+    const timestampConflict = updatedAt && previousAt && updatedAt === previousAt &&
         flow.get("security_light_physical_state") !== undefined &&
-        flow.get("security_light_physical_state") !== state)) {
+        flow.get("security_light_physical_state") !== state;
+    if (updatedAt > now + data.future_ms || (updatedAt && previousAt && updatedAt < previousAt) ||
+        timestampConflict) {
         flow.set("light_reconciled", false);
         data.physical_accepted = false;
-        node.warn("iluminacao_seguranca: leitura física fora de ordem, futura ou conflitante; descartada");
+        node.warn(timestampConflict
+            ? "iluminacao_seguranca: conflito de estado físico no mesmo timestamp; primeiro preservado"
+            : "iluminacao_seguranca: leitura física fora de ordem ou futura; descartada");
     } else {
         flow.set("security_light_physical_observed_at", now);
         if (updatedAt) flow.set("security_light_physical_updated_at", updatedAt);
