@@ -13,16 +13,10 @@ const functionDir = path.join(toolsDir, "functions");
 const flows = JSON.parse(
   fs.readFileSync(path.resolve(toolsDir, "../flows.json"), "utf8"),
 );
-const contextCoordinator = flows.find(
-  (node) => node.name === "Coordenar snapshot e refresh",
-);
-assert.match(
-  contextCoordinator?.func ?? "",
-  /any_resident_away:\s*people\?\.best_location_away === true/,
-);
-assert.doesNotMatch(
-  contextCoordinator?.func ?? "",
-  /any_fresh_tracker_away/,
+assert.equal(
+  flows.find((node) => node.id === "arrival_context_people_away")?.type,
+  "switch",
+  "a decisão de ausência deve estar visível no contexto de chegada",
 );
 
 function source(name) {
@@ -50,6 +44,25 @@ const code = {
     (node) => node.name === "Atualizar iPhones agora?",
   )?.func,
   normalizer: flows.find((node) => node.id === "092625f2eb5cc156")?.func,
+  vehicleNormalize: source("vehicle-lifecycle-normalize.js"),
+  vehicleMovement: source("vehicle-lifecycle-movement.js"),
+  vehicleStateLoad: source("vehicle-lifecycle-state-load.js"),
+  vehicleArrivalFacts: source("vehicle-lifecycle-arrival-facts.js"),
+  vehicleArrivalBuild: source("vehicle-lifecycle-arrival-build.js"),
+  vehicleArrivalDedupe: source("vehicle-lifecycle-arrival-dedupe.js"),
+  vehicleBlockedBuild: source("vehicle-lifecycle-blocked-build.js"),
+  vehicleStateFinalize: source("vehicle-lifecycle-state-finalize.js"),
+  vehicleEvidenceRead: source("vehicle-lifecycle-evidence-read.js"),
+  vehicleEvidenceConfirm: source("vehicle-lifecycle-evidence-confirm.js"),
+  vehicleOutput: source("vehicle-lifecycle-output.js"),
+  refreshLoad: source("vehicle-refresh-state-load.js"),
+  refreshFacts: source("vehicle-refresh-facts.js"),
+  refreshSuppress: source("vehicle-refresh-suppress.js"),
+  refreshDeparture: source("vehicle-refresh-departure-covered.js"),
+  refreshWait: source("vehicle-refresh-wait-location.js"),
+  refreshCache: source("vehicle-refresh-cache-build.js"),
+  refreshDispatch: source("vehicle-refresh-dispatch-build.js"),
+  refreshOutput: source("vehicle-refresh-output.js"),
 };
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
@@ -58,6 +71,9 @@ const LOCATION_POLICY = {
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
+  vehicle_recovery_hours: 24,
 };
 
 assert.match(code.policy, /peopleContext\.best_location_away === true/);
@@ -66,7 +82,9 @@ assert.doesNotMatch(code.coordinator, /awayOrApproachingStates/);
 assert.doesNotMatch(code.coordinator, /quietHours =/);
 assert.doesNotMatch(code.accepted, /AWAY_INTERVAL_MS|HOME_INTERVAL_MS/);
 assert.doesNotMatch(code.error, /\[15 \* 60 \* 1000, 30 \* 60 \* 1000\]/);
-assert.match(code.normalizer, /refresh_policy_interval_passthrough_v1/);
+assert.match(code.vehicleEvidenceRead, /baseline_observed_at/);
+assert.match(code.vehicleEvidenceConfirm, /last_success_reason/);
+assert.ok(code.normalizer.length < 4000);
 assert.doesNotMatch(
   code.normalizer,
   /last_request_at \?\? Date\.now\(\)\) \+\s*15 \* 60 \* 1000/,
@@ -191,6 +209,12 @@ function command(overrides = {}) {
         home_interval_ms: 30 * 60_000,
         quiet_start_hour: 0,
         quiet_end_hour: 6,
+        in_flight_lease_ms: 120_000,
+        cache_probe_settle_ms: 15_000,
+        provider_backoff_max_ms: 6 * 60 * 60_000,
+        semantic_evidence_window_ms: 20 * 60_000,
+        unknown_location_start_hour: 7,
+        unknown_location_end_hour: 22,
       },
       refresh_resident_states_known: primary.length > 0 && secondary.length > 0,
       refresh_both_residents_home: bothHome,
@@ -218,9 +242,37 @@ function coordinator(store, now, overrides = {}) {
     msg: prepared, store, now,
   });
   if (!afterQuietHours) return null;
-  return execute(code.coordinator, {
-    msg: afterQuietHours, store, now,
-  });
+  return runVisualCoordinator(afterQuietHours, store, now);
+}
+
+function runVisualCoordinator(input, store, now) {
+  let msg = execute(code.refreshLoad, { msg: input, store, now });
+  if (!msg) return null;
+  msg = execute(code.refreshFacts, { msg, store, now });
+  if (!msg) return null;
+  const data = msg._refresh;
+  if (data.flags.cache_active) {
+    data.suppress_reason = "cache_probe_in_flight";
+    msg = execute(code.refreshSuppress, { msg, store, now });
+  } else if (data.flags.cache_settling) {
+    data.suppress_reason = "cache_probe_settling";
+    msg = execute(code.refreshSuppress, { msg, store, now });
+  } else if (data.flags.request_active) {
+    data.suppress_reason = "in_flight";
+    msg = execute(code.refreshSuppress, { msg, store, now });
+  } else if (data.flags.departure_covered) {
+    msg = execute(code.refreshDeparture, { msg, store, now });
+  } else if (!data.flags.enabled) {
+    msg = execute(code.refreshWait, { msg, store, now });
+  } else if (data.flags.deadline_blocked) {
+    data.suppress_reason = data.flags.waiting_evidence ? "backoff" : "minimum_interval";
+    msg = execute(code.refreshSuppress, { msg, store, now });
+  } else if (data.flags.cache_probe_needed) {
+    msg = execute(code.refreshCache, { msg, store, now });
+  } else {
+    msg = execute(code.refreshDispatch, { msg, store, now });
+  }
+  return execute(code.refreshOutput, { msg, store, now });
 }
 
 function entity(state, updatedAt, attributes = {}) {
@@ -240,10 +292,7 @@ function normalize(
   telemetryAt = observedAt,
   { engineAt = observedAt, lockAt = observedAt, engineState = "off" } = {},
 ) {
-  return execute(code.normalizer, {
-    now,
-    store,
-    msg: {
+  let msg = {
       payload: {
         event: "context_snapshot",
         source: "refresh",
@@ -261,8 +310,30 @@ function normalize(
           observedAt,
         ),
       },
-    },
-  });
+    };
+  msg = execute(code.vehicleNormalize, { now, store, msg });
+  msg = execute(code.vehicleMovement, { now, store, msg });
+  msg = execute(code.vehicleStateLoad, { now, store, msg });
+  if (msg._vehicle.engine_on) {
+    msg._vehicle.in_use = true;
+    msg._vehicle.in_use_reason = "known_engine_on";
+  } else if (msg._vehicle.engine_off) {
+    msg._vehicle.in_use = false;
+    msg._vehicle.in_use_reason = "known_engine_off";
+  }
+  msg = execute(code.vehicleArrivalFacts, { now, store, msg });
+  if (msg._vehicle.facts.arrival_eligible) {
+    msg = execute(code.vehicleArrivalBuild, { now, store, msg });
+    msg = execute(code.vehicleArrivalDedupe, { now, store, msg });
+  } else if (msg._vehicle.facts.blocked_candidate) {
+    msg = execute(code.vehicleBlockedBuild, { now, store, msg });
+  }
+  msg = execute(code.vehicleStateFinalize, { now, store, msg });
+  msg = execute(code.vehicleEvidenceRead, { now, store, msg });
+  if (msg._vehicle.evidence.awaiting && msg._vehicle.evidence.confirmed) {
+    msg = execute(code.vehicleEvidenceConfirm, { now, store, msg });
+  }
+  return execute(code.vehicleOutput, { now, store, msg });
 }
 
 const passed = [];
@@ -328,11 +399,7 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
     store,
     msg: selected[2],
   });
-  const coordinated = execute(code.coordinator, {
-    now: DAY,
-    store,
-    msg: permitted,
-  });
+  const coordinated = runVisualCoordinator(permitted, store, DAY);
   assert(coordinated[0]);
   assert.equal(store.get(KEY).interval_ms, 45 * 60_000);
   assert.equal(store.get(KEY).next_allowed_at, DAY + 45 * 60_000);
