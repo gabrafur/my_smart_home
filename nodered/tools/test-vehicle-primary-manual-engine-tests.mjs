@@ -350,12 +350,7 @@ assert(execute(gate, {
   },
 }, gateFlow, shared), "falha real da API deve invalidar o OFF antigo");
 
-const bypassReplay = execute(
-  mergeContext,
-  bypassOn[1],
-  gateFlow,
-  shared,
-);
+const bypassReplay = mergeLight(bypassOn[1], gateFlow, shared);
 assert(bypassReplay[2], "bypass deve reprocessar chegada quando motor está stale");
 assert.equal(
   bypassReplay[2].payload.arrival_replayed_after_context_recovery,
