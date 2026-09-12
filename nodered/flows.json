@@ -2024,8 +2024,6 @@
             "color": "#a4a4a4"
         },
         "nodes": [
-            "b33e117e55bdb5ed",
-            "eb4b8a519ab0bc28",
             "eedc9dd2ecc0ad7d",
             "727be3d871cf85f0",
             "8907830bb7f6c40c",
@@ -2051,7 +2049,6 @@
             "vehicle_primary_refresh_notification_guard_v1",
             "vehicle_primary_refresh_notify_primary_v1",
             "vehicle_primary_refresh_notification_dry_run_out_v1",
-            "vehicle_primary_refresh_notification_requested_out_v1",
             "vehicle_primary_refresh_error_notification_out_v1",
             "vehicle_primary_refresh_notification_in_v1",
             "vehicle_primary_cache_probe_dispatch_guard_v1",
@@ -2065,10 +2062,12 @@
             "vehicle_primary_api_error_bypass_out_v1",
             "vehicle_primary_api_error_bypass_in_v1",
             "vehicle_primary_refresh_policy_in_v1",
-            "vehicle_primary_manual_blocked_route_out_v1",
             "vehicle_primary_manual_blocked_route_in_v1",
             "vehicle_primary_post_refresh_route_out_v1",
-            "vehicle_primary_post_refresh_route_in_v1"
+            "vehicle_primary_post_refresh_route_in_v1",
+            "vehicle_visual_refresh_command_out",
+            "vehicle_visual_refresh_dispatch_in",
+            "vehicle_visual_refresh_cache_in"
         ],
         "x": 174,
         "y": 579,
@@ -9556,20 +9555,20 @@
         "id": "b33e117e55bdb5ed",
         "type": "function",
         "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
-        "name": "Coordenar refresh do vehicle_primary",
-        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg.payload?.kind !== \"refresh_command\") return null;\n\nconst policyConfig = msg.payload?.refresh_policy_config ?? {};\nconst AWAY_INTERVAL_MS = Number(policyConfig.away_interval_ms);\nconst APPROACHING_INTERVAL_MS = Number(policyConfig.approaching_interval_ms);\nconst HOME_INTERVAL_MS = Number(policyConfig.home_interval_ms);\nconst presenceIntervalMs = Number(msg.payload?.refresh_interval_ms);\nconst policyReady =\n    msg.payload?.refresh_policy_version === 1 &&\n    Number.isFinite(AWAY_INTERVAL_MS) &&\n    Number.isFinite(APPROACHING_INTERVAL_MS) &&\n    Number.isFinite(HOME_INTERVAL_MS) &&\n    Number.isFinite(presenceIntervalMs) &&\n    AWAY_INTERVAL_MS > 0 &&\n    APPROACHING_INTERVAL_MS > 0 &&\n    HOME_INTERVAL_MS > 0 &&\n    presenceIntervalMs > 0;\n\nif (!policyReady) {\n    node.error(\n        \"Política visual de refresh ausente; comando não será despachado\",\n        msg\n    );\n    return null;\n}\n\nconst IN_FLIGHT_LEASE_MS = 2 * 60 * 1000;\nconst CACHE_PROBE_SETTLE_MS = 15 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst MAX_PROVIDER_BACKOFF_MS = 6 * 60 * 60 * 1000;\nconst key = TEST_MODE\n    ? \"security_vehicle_primary_refresh_v1__test\"\n    : \"security_vehicle_primary_refresh_v1\";\nconst nowCandidate = Number(msg.payload?.test_now);\nconst now = TEST_MODE && Number.isFinite(nowCandidate)\n    ? nowCandidate\n    : Date.now();\nconst vehicleContext = TEST_MODE\n    ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n    : flow.get(\"vehicle_primary_context_v1\") ?? {};\nconst residentStatesKnown =\n    msg.payload?.refresh_resident_states_known === true;\nconst bothResidentsHome =\n    msg.payload?.refresh_both_residents_home === true;\nconst anyoneApproaching =\n    msg.payload?.refresh_anyone_approaching === true;\nconst anyoneAwayOrApproaching =\n    msg.payload?.refresh_anyone_away === true ||\n    anyoneApproaching;\n\nfunction stateGet() {\n    return TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\n}\n\nfunction stateSet(value) {\n    return TEST_MODE\n        ? flow.set(key, value)\n        : flow.set(key, value, \"persistent\");\n}\n\nlet state = stateGet();\nif (!state || typeof state !== \"object\" || Array.isArray(state)) {\n    state = {};\n}\n\nconst previousStateVersion = Number(state.version ?? 0);\nstate.version = 14;\nstate.attempts = Number.isFinite(state.attempts)\n    ? Math.max(0, Math.min(5, state.attempts))\n    : 0;\nstate.last_success_at = Number.isFinite(state.last_success_at) &&\n    state.last_success_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_success_at\n        : 0;\nstate.next_allowed_at = Number.isFinite(state.next_allowed_at) &&\n    state.next_allowed_at <= now + MAX_PROVIDER_BACKOFF_MS + FUTURE_TOLERANCE_MS\n        ? state.next_allowed_at\n        : 0;\nstate.last_attempt_at = Number.isFinite(state.last_attempt_at) &&\n    state.last_attempt_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_attempt_at\n        : 0;\nstate.last_request_at = Number.isFinite(state.last_request_at) &&\n    state.last_request_at <= now + FUTURE_TOLERANCE_MS\n        ? state.last_request_at\n        : state.last_attempt_at;\nstate.service_accepted_at = Number.isFinite(state.service_accepted_at) &&\n    state.service_accepted_at <= now + FUTURE_TOLERANCE_MS\n        ? state.service_accepted_at\n        : 0;\n/* A versão 13 promovia o aceite do serviço a sucesso semântico. Reverta esse\n * falso sucesso para que o runtime instalado volte a tentar imediatamente e\n * só se recupere quando o timestamp real do veículo avançar. */\nif (\n    previousStateVersion < 14 &&\n    state.last_success_reason === \"api_accepted_200_or_202\" &&\n    state.service_accepted_at > 0 &&\n    state.service_accepted_at >= state.last_request_at\n) {\n    const lastSemanticEvidenceAt = Number(state.last_evidence_at ?? 0);\n    state.attempts = Math.max(1, state.attempts);\n    state.awaiting_evidence = true;\n    state.evidence_wait_started_at =\n        state.last_request_at || state.service_accepted_at;\n    state.last_success_at = Number.isFinite(lastSemanticEvidenceAt) &&\n        lastSemanticEvidenceAt > 0 &&\n        lastSemanticEvidenceAt < state.service_accepted_at\n            ? lastSemanticEvidenceAt\n            : 0;\n    state.last_success_reason = state.last_success_at > 0\n        ? \"previous_semantic_evidence\"\n        : null;\n    state.last_evidence_domains = state.last_success_at > 0\n        ? [\"telemetry\"]\n        : [];\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n    state.state = \"backoff\";\n    state.reason = \"api_accepted_awaiting_fresh_data\";\n    state.cooldown_until = null;\n}\nconst contextReady =\n    msg.payload?.vehicle_primary_ready === true ||\n    vehicleContext.ready === true;\nconst derivedContextRecoveryNeeded =\n    msg.payload?.recovery_needed === true ||\n    msg.payload?.vehicle_primary_ready === false ||\n    contextReady !== true;\nconst lastSemanticSuccessAt = Number(state.last_success_at ?? 0);\nconst semanticWakeHealthy =\n    state.awaiting_evidence !== true &&\n    state.last_failure_class == null &&\n    Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\") &&\n    lastSemanticSuccessAt > 0 &&\n    lastSemanticSuccessAt <= now + FUTURE_TOLERANCE_MS &&\n    now - lastSemanticSuccessAt <=\n        HOME_INTERVAL_MS + FUTURE_TOLERANCE_MS;\n/*\n * Readiness derivado continua protegendo iluminação e demais automações,\n * mas não deve reduzir sozinho o ciclo de wake depois que o próprio\n * Bluelink aceitou a chamada. Uma recuperação explícita, uma falha real ou\n * uma chamada ainda sem conclusão continuam usando 15 minutos.\n */\nconst recoveryNeeded =\n    msg.payload?.force_recovery === true ||\n    msg.payload?.require_lighting_ready === true ||\n    state.awaiting_evidence === true ||\n    (derivedContextRecoveryNeeded && !semanticWakeHealthy);\nconst requireLightingReady =\n    msg.payload?.require_lighting_ready === true ||\n    (\n        state.awaiting_evidence === true &&\n        state.require_lighting_ready === true\n    );\nconst requestedReason = msg.payload?.reason ??\n    msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\nconst manualBypass = requestedReason === \"manual_force\";\nconst residentDepartureBypass =\n    requestedReason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true;\nconst deadlineBypass = manualBypass || residentDepartureBypass;\n/* Chegada tem precedência inclusive quando o contexto do veículo está\n * pendente: durante a aproximação, a política solicitada é sempre aplicada.\n * Fora desse estado, recuperação usa o intervalo configurado para fora. */\nconst selectedIntervalMs = anyoneApproaching\n    ? APPROACHING_INTERVAL_MS\n    : recoveryNeeded && !deadlineBypass\n        ? AWAY_INTERVAL_MS\n        : presenceIntervalMs;\nconst previousIntervalMs = [\n    AWAY_INTERVAL_MS,\n    APPROACHING_INTERVAL_MS,\n    HOME_INTERVAL_MS\n]\n    .includes(Number(state.interval_ms))\n        ? Number(state.interval_ms)\n        : AWAY_INTERVAL_MS;\nconst intervalChanged = previousIntervalMs !== selectedIntervalMs;\nstate.interval_ms = selectedIntervalMs;\nstate.interval_policy = anyoneApproaching\n    ? \"approaching\"\n    : recoveryNeeded && !deadlineBypass\n        ? \"recovery\"\n        : msg.payload.refresh_interval_policy;\nconst intervalAnchorAt = Math.max(\n    state.last_request_at,\n    state.service_accepted_at,\n    state.last_success_at\n);\nconst requestFloorAt = intervalAnchorAt > 0\n    ? intervalAnchorAt + selectedIntervalMs\n    : 0;\nstate.next_allowed_at = intervalChanged\n    ? requestFloorAt\n    : Math.max(state.next_allowed_at, requestFloorAt);\nstate.in_flight_until = Number.isFinite(state.in_flight_until) &&\n    state.in_flight_until <= now + IN_FLIGHT_LEASE_MS\n        ? state.in_flight_until\n        : 0;\nstate.cache_probe_for_request_at = Number.isFinite(\n    state.cache_probe_for_request_at\n) && state.cache_probe_for_request_at <= now + FUTURE_TOLERANCE_MS\n    ? state.cache_probe_for_request_at\n    : 0;\nstate.cache_probe_completed_for_request_at = Number.isFinite(\n    state.cache_probe_completed_for_request_at\n) && state.cache_probe_completed_for_request_at <= now + FUTURE_TOLERANCE_MS\n    ? state.cache_probe_completed_for_request_at\n    : 0;\nstate.cache_probe_in_flight_until = Number.isFinite(\n    state.cache_probe_in_flight_until\n) && state.cache_probe_in_flight_until <= now + IN_FLIGHT_LEASE_MS\n    ? state.cache_probe_in_flight_until\n    : 0;\nstate.cache_probe_settle_until = Number.isFinite(\n    state.cache_probe_settle_until\n) && state.cache_probe_settle_until <= now + CACHE_PROBE_SETTLE_MS\n    ? state.cache_probe_settle_until\n    : 0;\nstate.failure_notified_at = Number.isFinite(state.failure_notified_at) &&\n    state.failure_notified_at <= now + FUTURE_TOLERANCE_MS\n        ? state.failure_notified_at\n        : 0;\nstate.evidence_wait_started_at =\n    Number.isFinite(state.evidence_wait_started_at) &&\n    state.evidence_wait_started_at > 0 &&\n    state.evidence_wait_started_at <= now + FUTURE_TOLERANCE_MS\n        ? state.evidence_wait_started_at\n        : (\n            state.awaiting_evidence === true\n                ? state.last_request_at || state.last_attempt_at || 0\n                : 0\n        );\n/* Versões anteriores inferiam integration_unavailable apenas por readiness\n * incompleto. Um incidente real, classificado pelo catch da chamada, sempre\n * registra failure_endpoint; reavalie imediatamente somente o estado legado\n * sem essa evidência. */\nif (\n    state.last_failure_class === \"integration_unavailable\" &&\n    !state.failure_endpoint\n) {\n    state.last_failure_class = null;\n    state.failure_source = null;\n    state.failure_stage = null;\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n}\nfunction save(displayState, reason, extra = {}) {\n    state.state = displayState;\n    state.reason = reason ?? null;\n    state.updated_at = now;\n    state.next_retry_at = state.awaiting_evidence === true\n        ? state.next_allowed_at || null\n        : null;\n    state.cooldown_until = state.awaiting_evidence !== true &&\n        state.last_success_at > 0 &&\n        state.next_allowed_at > now\n            ? state.next_allowed_at\n            : null;\n    Object.assign(state, extra);\n    stateSet(state);\n}\n\nfunction blockedNotification(reason, waitS) {\n    if (msg.payload?.reason !== \"manual_force\") return null;\n    const retryAt = new Date(now + waitS * 1000).toLocaleTimeString(\n        \"pt-BR\",\n        { hour: \"2-digit\", minute: \"2-digit\", second: \"2-digit\" }\n    );\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message:\n            \"Já existe uma tentativa de atualização \" +\n            (reason === \"in_flight\"\n                ? \"em andamento\"\n                : reason === \"minimum_interval\"\n                    ? \"dentro do intervalo mínimo do Bluelink\"\n                    : \"aguardando resposta\") +\n            \". O clique foi recebido, mas nenhuma nova consulta foi enviada. \" +\n            `Próxima avaliação em ${waitS} s, às ${retryAt}.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    node.log?.(\n        \"VEHICLE_PRIMARY_REFRESH_SUPPRESSED origin=dashboard \" +\n        `reason=${reason} remaining_seconds=${waitS}`\n    );\n    return [null, null, msg, null, null];\n}\n\nfunction withFailure(result) {\n    return result;\n}\n\nif (\n    state.cache_probe_in_flight === true &&\n    now < state.cache_probe_in_flight_until\n) {\n    const waitS = Math.max(\n        1,\n        Math.ceil((state.cache_probe_in_flight_until - now) / 1000)\n    );\n    save(\"probing_cache\", \"cache_probe_in_flight\", { enabled: true });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `releitura do cache em andamento ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"in_flight\", waitS));\n}\n\nif (state.cache_probe_in_flight === true) {\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.last_failure_class = \"cache_probe_lease_expired\";\n    state.next_allowed_at = Math.max(\n        state.next_allowed_at,\n        now + selectedIntervalMs\n    );\n}\n\nif (now < state.cache_probe_settle_until) {\n    const waitS = Math.max(\n        1,\n        Math.ceil((state.cache_probe_settle_until - now) / 1000)\n    );\n    save(\"probing_cache\", \"cache_probe_settling\", { enabled: true });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `aguardando cache ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"cache_probe_settling\", waitS));\n}\n\nif (state.request_in_flight === true && now < state.in_flight_until) {\n    const waitS = Math.max(1, Math.ceil((state.in_flight_until - now) / 1000));\n    save(\"in_flight\", state.recovery_reason ?? \"request_in_flight\", {\n        enabled: true\n    });\n    node.status({\n        fill: \"yellow\",\n        shape: \"ring\",\n        text: `Bluelink em andamento ${waitS}s`\n    });\n    return withFailure(blockedNotification(\"in_flight\", waitS));\n}\n\nif (state.request_in_flight === true) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\n\n/* A pausa noturna já foi aplicada pelo bloco visual anterior. Aqui resta\n * apenas a compatibilidade diurna para localização ainda desconhecida. */\nconst hour = new Date(now).getHours();\nconst legacyDaytime = hour >= 7 && hour < 22;\n\nconst departureEventAt = Number(msg.payload?.departure_event_at ?? 0);\nif (\n    residentDepartureBypass &&\n    departureEventAt > 0 &&\n    state.last_request_at >= departureEventAt\n) {\n    save(\n        state.awaiting_evidence === true ? \"awaiting_evidence\" : \"cooldown\",\n        \"resident_departure_already_covered\",\n        { enabled: true }\n    );\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"saída do morador já coberta por refresh\"\n    });\n    return withFailure(null);\n}\n\nconst enabled =\n    recoveryNeeded ||\n    anyoneAwayOrApproaching ||\n    bothResidentsHome ||\n    (!residentStatesKnown && legacyDaytime);\n\nif (!enabled) {\n    save(\"waiting\", \"waiting_for_resident_location\", {\n        enabled: false,\n        next_retry_at: null,\n        cooldown_until: null\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"refresh vehicle_primary: aguardando localização\"\n    });\n    return withFailure(null);\n}\n\nconst pendingRequestAt = Number(state.last_request_at ?? 0);\n\nif (!deadlineBypass && now < state.next_allowed_at) {\n    const waitS = Math.max(1, Math.ceil((state.next_allowed_at - now) / 1000));\n    const waitingEvidence = state.awaiting_evidence === true;\n    save(waitingEvidence ? \"backoff\" : \"cooldown\", requestedReason, {\n        enabled: true\n    });\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: waitingEvidence\n            ? `retry Bluelink em ${waitS}s`\n            : `refresh vehicle_primary cooldown ${waitS}s`\n    });\n    if (waitingEvidence) {\n        return withFailure(blockedNotification(\"backoff\", waitS));\n    }\n    return withFailure(blockedNotification(\"minimum_interval\", waitS));\n}\n\n/*\n * Antes de repetir um wake automático, peça ao Home Assistant uma leitura\n * somente do cache. Isso alinha os dois ciclos de 15 minutos: se a telemetria\n * do wake anterior já chegou ao provedor, o snapshot seguinte a confirmará e\n * o novo wake será evitado. O clique manual continua explícito e não passa por\n * esta etapa.\n */\nconst cacheProbeCompletedForPendingRequest =\n    pendingRequestAt > 0 &&\n    state.cache_probe_completed_for_request_at === pendingRequestAt;\nif (\n    !deadlineBypass &&\n    state.awaiting_evidence === true &&\n    pendingRequestAt > 0 &&\n    !cacheProbeCompletedForPendingRequest\n) {\n    state.cache_probe_in_flight = true;\n    state.cache_probe_in_flight_until = now + IN_FLIGHT_LEASE_MS;\n    state.cache_probe_for_request_at = pendingRequestAt;\n    state.cache_probe_settle_until = null;\n    save(\"probing_cache\", \"pre_wake_cache_probe\", { enabled: true });\n    msg.payload.cache_probe_for_request_at = pendingRequestAt;\n    msg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\n    msg.payload.test_mode = TEST_MODE;\n    msg.payload.side_effect = \"vehicle_primary.cache_probe\";\n    node.log?.(\n        \"VEHICLE_PRIMARY_CACHE_PROBE_REQUESTED\" +\n        \" previous_request_at=\" + pendingRequestAt +\n        \" test_mode=\" + String(TEST_MODE)\n    );\n    node.status({\n        fill: TEST_MODE ? \"blue\" : \"yellow\",\n        shape: \"dot\",\n        text: TEST_MODE\n            ? \"TESTE: releitura de cache em dry-run\"\n            : \"relendo cache antes de novo wake\"\n    });\n    return withFailure([null, null, null, null, msg]);\n}\n\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_completed_for_request_at = null;\nstate.cache_probe_settle_until = null;\n\nstate.baseline_observed_at = {\n    telemetry: Number(vehicleContext.telemetry_updated_at ?? 0)\n};\nif (\n    state.awaiting_evidence !== true ||\n    !(Number(state.evidence_wait_started_at) > 0)\n) {\n    state.evidence_wait_started_at = now;\n}\nstate.attempts = Math.min(5, state.attempts + 1);\nstate.last_attempt_at = now;\nstate.last_request_at = now;\nstate.next_allowed_at = now + selectedIntervalMs;\nstate.awaiting_evidence = true;\nstate.request_in_flight = true;\nstate.in_flight_until = now + IN_FLIGHT_LEASE_MS;\nstate.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;\nstate.require_lighting_ready = requireLightingReady;\nstate.recovery_reason = requestedReason;\nstate.manual_force = requestedReason === \"manual_force\";\nstate.resident_departure_force = residentDepartureBypass;\nsave(\"refreshing\", requestedReason, { enabled: true });\n\nnode.log?.(\n    (state.attempts > 1\n        ? \"VEHICLE_PRIMARY_REFRESH_RETRY\"\n        : \"VEHICLE_PRIMARY_REFRESH_REQUESTED\") +\n    \" attempt=\" + state.attempts +\n    \" reason=\" + requestedReason +\n    \" recovery=\" + String(recoveryNeeded) +\n    \" semantic_health=\" + String(semanticWakeHealthy) +\n    \" interval_minutes=\" + String(selectedIntervalMs / 60_000) +\n    \" both_home=\" + String(bothResidentsHome) +\n    \" require_lighting_ready=\" + String(requireLightingReady) +\n    \" test_mode=\" + String(TEST_MODE)\n);\n\nmsg.payload.retry_attempt = state.attempts;\nmsg.payload.refresh_requested_at = now;\nmsg.payload.vehicle_primary_refresh_recovery = recoveryNeeded;\nmsg.payload.require_lighting_ready = requireLightingReady;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.test_mode = TEST_MODE;\n\nnode.status({\n    fill: TEST_MODE ? \"blue\" : (recoveryNeeded ? \"yellow\" : \"green\"),\n    shape: \"dot\",\n    text: TEST_MODE\n        ? `TESTE Bluelink #${state.attempts}: dry-run`\n        : (recoveryNeeded\n            ? `Bluelink #${state.attempts}: ${requestedReason}`\n            : `Bluelink #${state.attempts}: refresh real`)\n});\n\nreturn [\n    msg,\n    TEST_MODE ? null : msg,\n    null,\n    null,\n    null\n];",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Persistir lifecycle e rotear pedido",
+        "func": "const data = msg._refresh;\nif (!data) return [null, null, null, null, null];\ndata.state.next_retry_at = data.state.awaiting_evidence === true\n    ? data.state.next_allowed_at || null : null;\nif (data.test_mode) flow.set(data.state_key, data.state);\nelse flow.set(data.state_key, data.state, \"persistent\");\nconst output = data.output;\nconst mirror = data.mirror_context === true ? { ...msg } : null;\ndelete msg._refresh;\nif (output === 0) return [msg, mirror, null, null, null];\nif (output === 2) return [null, null, msg, null, null];\nif (output === 4) return [null, null, null, null, msg];\nreturn [null, null, null, null, null];",
         "outputs": 5,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 680,
+        "x": 3540,
+        "y": 2580,
         "wires": [
             [
-                "vehicle_primary_refresh_dispatch_guard_v1"
+                "vehicle_visual_refresh_dispatch_out"
             ],
             [
                 "eb4b8a519ab0bc28"
@@ -9581,7 +9580,7 @@
                 "vehicle_primary_refresh_notification_requested_out_v1"
             ],
             [
-                "vehicle_primary_cache_probe_dispatch_guard_v1"
+                "vehicle_visual_refresh_cache_out"
             ]
         ]
     },
@@ -9589,14 +9588,14 @@
         "id": "eb4b8a519ab0bc28",
         "type": "link out",
         "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
+        "g": "vehicle_visual_refresh_decision_group_v2",
         "name": "Refresh vehicle_primary -> sincronizar trackers",
         "mode": "link",
         "links": [
             "555422f47d3a742b"
         ],
-        "x": 630,
-        "y": 780,
+        "x": 3880,
+        "y": 2500,
         "wires": []
     },
     {
@@ -10452,14 +10451,14 @@
         "id": "vehicle_primary_refresh_notification_requested_out_v1",
         "type": "link out",
         "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
+        "g": "vehicle_visual_refresh_decision_group_v2",
         "name": "Falha de refresh → alerta",
         "mode": "link",
         "links": [
             "vehicle_primary_refresh_notification_in_v1"
         ],
-        "x": 635,
-        "y": 620,
+        "x": 3880,
+        "y": 2660,
         "wires": []
     },
     {
@@ -14006,7 +14005,8 @@
             "vehicle_primary_refresh_home_minutes_v1",
             "vehicle_primary_refresh_quiet_start_v1",
             "vehicle_primary_refresh_quiet_end_v1",
-            "vehicle_primary_refresh_policy_config_apply_v1"
+            "vehicle_primary_refresh_policy_config_apply_v1",
+            "vehicle_visual_refresh_config_in"
         ],
         "x": 1640,
         "y": 259,
@@ -14180,7 +14180,7 @@
         "z": "c22d8b12055e87f7",
         "g": "vehicle_primary_refresh_config_group_v1",
         "name": "Validar e salvar configuração",
-        "func": "const CONFIG_KEY = \"vehicle_primary_refresh_policy_config_v1\";\nconst PERSISTENT = \"persistent\";\n\nconst limits = {\n    away_interval_minutes: { min: 15, max: 1440, integer: false },\n    approaching_interval_minutes: { min: 5, max: 1440, integer: false },\n    home_interval_minutes: { min: 15, max: 1440, integer: false },\n    quiet_start_hour: { min: 0, max: 23, integer: true },\n    quiet_end_hour: { min: 1, max: 24, integer: true }\n};\n\nconst key = String(msg.topic ?? \"\");\nconst rule = limits[key];\nconst value = Number(msg.payload);\n\nif (\n    !rule ||\n    !Number.isFinite(value) ||\n    value < rule.min ||\n    value > rule.max ||\n    (rule.integer && !Number.isInteger(value))\n) {\n    node.error(\n        `Política de refresh inválida: ${key || \"campo ausente\"}=${msg.payload}`,\n        msg\n    );\n    return null;\n}\n\nconst current = flow.get(CONFIG_KEY, PERSISTENT);\nconst config = current && current.version === 1\n    ? { ...current }\n    : { version: 1 };\n\nconfig[key] = value;\nconfig.updated_at = Date.now();\nconfig.complete = Object.keys(limits).every(\n    (item) => Number.isFinite(Number(config[item]))\n);\n\nflow.set(CONFIG_KEY, config, PERSISTENT);\n\nnode.status({\n    fill: config.complete ? \"green\" : \"yellow\",\n    shape: config.complete ? \"dot\" : \"ring\",\n    text: config.complete\n        ? `${config.away_interval_minutes} min fora | ` +\n          `${config.approaching_interval_minutes} min near_home | ` +\n          `${config.home_interval_minutes} min casa | ` +\n          `${config.quiet_start_hour}h–${config.quiet_end_hour}h`\n        : \"aguardando todos os valores\"\n});\n\nreturn null;",
+        "func": "const CONFIG_KEY = \"vehicle_primary_refresh_policy_config_v1\";\nconst PERSISTENT = \"persistent\";\n\nconst limits = {\n    away_interval_minutes: { min: 15, max: 1440, integer: false },\n    approaching_interval_minutes: { min: 5, max: 1440, integer: false },\n    home_interval_minutes: { min: 15, max: 1440, integer: false },\n    quiet_start_hour: { min: 0, max: 23, integer: true },\n    quiet_end_hour: { min: 1, max: 24, integer: true },\n    in_flight_lease_seconds: { min: 30, max: 600, integer: true },\n    cache_probe_settle_seconds: { min: 5, max: 120, integer: true },\n    provider_backoff_max_hours: { min: 1, max: 24, integer: false },\n    semantic_evidence_window_minutes: { min: 5, max: 60, integer: false },\n    unknown_location_start_hour: { min: 0, max: 23, integer: true },\n    unknown_location_end_hour: { min: 1, max: 24, integer: true }\n};\n\nconst key = String(msg.topic ?? \"\");\nconst rule = limits[key];\nconst value = Number(msg.payload);\n\nif (\n    !rule ||\n    !Number.isFinite(value) ||\n    value < rule.min ||\n    value > rule.max ||\n    (rule.integer && !Number.isInteger(value))\n) {\n    node.error(\n        `Política de refresh inválida: ${key || \"campo ausente\"}=${msg.payload}`,\n        msg\n    );\n    return null;\n}\n\nconst current = flow.get(CONFIG_KEY, PERSISTENT);\nconst config = current && current.version === 1\n    ? { ...current }\n    : { version: 1 };\n\nconfig[key] = value;\nconfig.updated_at = Date.now();\nconfig.complete = Object.keys(limits).every(\n    (item) => Number.isFinite(Number(config[item]))\n);\n\nflow.set(CONFIG_KEY, config, PERSISTENT);\n\nnode.status({\n    fill: config.complete ? \"green\" : \"yellow\",\n    shape: config.complete ? \"dot\" : \"ring\",\n    text: config.complete\n        ? `${config.away_interval_minutes} min fora | ` +\n          `${config.approaching_interval_minutes} min near_home | ` +\n          `${config.home_interval_minutes} min casa | ` +\n          `${config.quiet_start_hour}h–${config.quiet_end_hour}h | ` +\n          `lease ${config.in_flight_lease_seconds}s`\n        : \"aguardando todos os valores\"\n});\n\nreturn null;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -14199,7 +14199,7 @@
         "z": "c22d8b12055e87f7",
         "g": "vehicle_primary_refresh_policy_group_v1",
         "name": "Escolher pela presença",
-        "func": "const CONFIG_KEY = \"vehicle_primary_refresh_policy_config_v1\";\nconst PERSISTENT = \"persistent\";\n\nif (msg.payload?.kind !== \"refresh_command\") {\n    return [null, null, null, null];\n}\n\nconst config = flow.get(CONFIG_KEY, PERSISTENT);\nconst configReady =\n    config?.version === 1 &&\n    config?.complete === true &&\n    Number.isFinite(Number(config.away_interval_minutes)) &&\n    Number.isFinite(Number(config.approaching_interval_minutes)) &&\n    Number.isFinite(Number(config.home_interval_minutes)) &&\n    Number.isInteger(Number(config.quiet_start_hour)) &&\n    Number.isInteger(Number(config.quiet_end_hour));\n\nif (!configReady) {\n    node.error(\n        \"Política de refresh não configurada; confira os cinco blocos numéricos\",\n        msg\n    );\n    return [null, null, null, null];\n}\n\nconst peopleContext = msg.payload?.test_mode === true\n    ? flow.get(\"people_context_v1__test\") ?? {}\n    : flow.get(\"people_context_v1\") ?? {};\nconst residentPrimaryState = String(\n    msg.payload?.resident_primary_state ??\n    peopleContext.resident_primary?.state ??\n    \"\"\n).toLowerCase();\nconst residentSecondaryState = String(\n    msg.payload?.resident_secondary_state ??\n    peopleContext.resident_secondary?.state ??\n    \"\"\n).toLowerCase();\nconst residentStatesKnown =\n    residentPrimaryState.length > 0 &&\n    residentSecondaryState.length > 0;\nconst anyResidentAway =\n    msg.payload?.any_resident_away === true ||\n    peopleContext.best_location_away === true;\nconst bothResidentsHome =\n    residentPrimaryState === \"home\" &&\n    residentSecondaryState === \"home\" &&\n    !anyResidentAway;\nconst anyoneApproaching =\n    residentPrimaryState === \"near_home\" ||\n    residentSecondaryState === \"near_home\";\nconst anyoneAway =\n    anyResidentAway ||\n    msg.payload?.anyone_away === true ||\n    peopleContext.anyone_away === true ||\n    residentPrimaryState === \"not_home\" ||\n    residentSecondaryState === \"not_home\";\n\nmsg.payload.refresh_policy_version = 1;\nmsg.payload.refresh_policy_config = {\n    away_interval_ms:\n        Number(config.away_interval_minutes) * 60 * 1000,\n    approaching_interval_ms:\n        Number(config.approaching_interval_minutes) * 60 * 1000,\n    home_interval_ms:\n        Number(config.home_interval_minutes) * 60 * 1000,\n    quiet_start_hour: Number(config.quiet_start_hour),\n    quiet_end_hour: Number(config.quiet_end_hour)\n};\nmsg.payload.refresh_resident_states_known = residentStatesKnown;\nmsg.payload.refresh_any_resident_away = anyResidentAway;\nmsg.payload.refresh_both_residents_home = bothResidentsHome;\nmsg.payload.refresh_anyone_approaching = anyoneApproaching;\nmsg.payload.refresh_anyone_away = anyoneAway;\n\nif (bothResidentsHome) {\n    node.status({\n        fill: \"green\",\n        shape: \"dot\",\n        text: `${config.home_interval_minutes} min — ambos em casa`\n    });\n    return [null, null, msg, null];\n}\n\nif (anyoneApproaching) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: `${config.approaching_interval_minutes} min — near_home`\n    });\n    return [msg, null, null, null];\n}\n\nif (anyoneAway) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: `${config.away_interval_minutes} min — fora`\n    });\n    return [null, msg, null, null];\n}\n\nnode.status({\n    fill: \"grey\",\n    shape: \"ring\",\n    text: `${config.away_interval_minutes} min — presença pendente`\n});\nreturn [null, null, null, msg];",
+        "func": "const CONFIG_KEY = \"vehicle_primary_refresh_policy_config_v1\";\nconst PERSISTENT = \"persistent\";\n\nif (msg.payload?.kind !== \"refresh_command\") {\n    return [null, null, null, null];\n}\n\nconst config = flow.get(CONFIG_KEY, PERSISTENT);\nconst configReady =\n    config?.version === 1 &&\n    config?.complete === true &&\n    Number.isFinite(Number(config.away_interval_minutes)) &&\n    Number.isFinite(Number(config.approaching_interval_minutes)) &&\n    Number.isFinite(Number(config.home_interval_minutes)) &&\n    Number.isInteger(Number(config.quiet_start_hour)) &&\n    Number.isInteger(Number(config.quiet_end_hour)) &&\n    Number.isInteger(Number(config.in_flight_lease_seconds)) &&\n    Number.isInteger(Number(config.cache_probe_settle_seconds)) &&\n    Number.isFinite(Number(config.provider_backoff_max_hours)) &&\n    Number.isFinite(Number(config.semantic_evidence_window_minutes)) &&\n    Number.isInteger(Number(config.unknown_location_start_hour)) &&\n    Number.isInteger(Number(config.unknown_location_end_hour));\n\nif (!configReady) {\n    node.error(\n        \"Política de refresh não configurada; confira todos os blocos numéricos\",\n        msg\n    );\n    return [null, null, null, null];\n}\n\nconst peopleContext = msg.payload?.test_mode === true\n    ? flow.get(\"people_context_v1__test\") ?? {}\n    : flow.get(\"people_context_v1\") ?? {};\nconst residentPrimaryState = String(\n    msg.payload?.resident_primary_state ??\n    peopleContext.resident_primary?.state ??\n    \"\"\n).toLowerCase();\nconst residentSecondaryState = String(\n    msg.payload?.resident_secondary_state ??\n    peopleContext.resident_secondary?.state ??\n    \"\"\n).toLowerCase();\nconst residentStatesKnown =\n    residentPrimaryState.length > 0 &&\n    residentSecondaryState.length > 0;\nconst anyResidentAway =\n    msg.payload?.any_resident_away === true ||\n    peopleContext.best_location_away === true;\nconst bothResidentsHome =\n    residentPrimaryState === \"home\" &&\n    residentSecondaryState === \"home\" &&\n    !anyResidentAway;\nconst anyoneApproaching =\n    residentPrimaryState === \"near_home\" ||\n    residentSecondaryState === \"near_home\";\nconst anyoneAway =\n    anyResidentAway ||\n    msg.payload?.anyone_away === true ||\n    peopleContext.anyone_away === true ||\n    residentPrimaryState === \"not_home\" ||\n    residentSecondaryState === \"not_home\";\n\nmsg.payload.refresh_policy_version = 1;\nmsg.payload.refresh_policy_config = {\n    away_interval_ms:\n        Number(config.away_interval_minutes) * 60 * 1000,\n    approaching_interval_ms:\n        Number(config.approaching_interval_minutes) * 60 * 1000,\n    home_interval_ms:\n        Number(config.home_interval_minutes) * 60 * 1000,\n    quiet_start_hour: Number(config.quiet_start_hour),\n    quiet_end_hour: Number(config.quiet_end_hour),\n    in_flight_lease_ms: Number(config.in_flight_lease_seconds) * 1000,\n    cache_probe_settle_ms: Number(config.cache_probe_settle_seconds) * 1000,\n    provider_backoff_max_ms: Number(config.provider_backoff_max_hours) * 3600000,\n    semantic_evidence_window_ms: Number(config.semantic_evidence_window_minutes) * 60000,\n    unknown_location_start_hour: Number(config.unknown_location_start_hour),\n    unknown_location_end_hour: Number(config.unknown_location_end_hour)\n};\nmsg.payload.refresh_resident_states_known = residentStatesKnown;\nmsg.payload.refresh_any_resident_away = anyResidentAway;\nmsg.payload.refresh_both_residents_home = bothResidentsHome;\nmsg.payload.refresh_anyone_approaching = anyoneApproaching;\nmsg.payload.refresh_anyone_away = anyoneAway;\n\nif (bothResidentsHome) {\n    node.status({\n        fill: \"green\",\n        shape: \"dot\",\n        text: `${config.home_interval_minutes} min — ambos em casa`\n    });\n    return [null, null, msg, null];\n}\n\nif (anyoneApproaching) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: `${config.approaching_interval_minutes} min — near_home`\n    });\n    return [msg, null, null, null];\n}\n\nif (anyoneAway) {\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text: `${config.away_interval_minutes} min — fora`\n    });\n    return [null, msg, null, null];\n}\n\nnode.status({\n    fill: \"grey\",\n    shape: \"ring\",\n    text: `${config.away_interval_minutes} min — presença pendente`\n});\nreturn [null, null, null, msg];",
         "outputs": 4,
         "timeout": 0,
         "noerr": 0,
@@ -14361,7 +14361,7 @@
         "y": 680,
         "wires": [
             [
-                "b33e117e55bdb5ed"
+                "vehicle_visual_refresh_command_out"
             ]
         ]
     },
@@ -15705,14 +15705,14 @@
         "id": "vehicle_primary_manual_blocked_route_out_v1",
         "type": "link out",
         "z": "c22d8b12055e87f7",
-        "g": "43a2bc9c218353ae",
+        "g": "vehicle_visual_refresh_decision_group_v2",
         "name": "Bloqueio manual → aviso",
         "mode": "link",
         "links": [
             "vehicle_primary_manual_blocked_route_in_v1"
         ],
-        "x": 520,
-        "y": 740,
+        "x": 3880,
+        "y": 2580,
         "wires": []
     },
     {
@@ -47771,6 +47771,1206 @@
         "wires": [
             [
                 "092625f2eb5cc156"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_safety_config_group_v2",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "3b. Proteções do refresh — padrão, unidade e limites no nome",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#b45309",
+            "stroke-opacity": "1",
+            "fill": "#fef3c7",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "vehicle_visual_refresh_safety_help",
+            "vehicle_visual_refresh_lease",
+            "vehicle_visual_refresh_settle",
+            "vehicle_visual_refresh_backoff",
+            "vehicle_visual_refresh_evidence",
+            "vehicle_visual_refresh_unknown_start",
+            "vehicle_visual_refresh_unknown_end",
+            "vehicle_visual_refresh_safety_left_out",
+            "vehicle_visual_refresh_safety_middle_out",
+            "vehicle_visual_refresh_safety_right_out"
+        ],
+        "x": 5120,
+        "y": 40,
+        "w": 1510,
+        "h": 482
+    },
+    {
+        "id": "vehicle_visual_refresh_safety_help",
+        "type": "comment",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Inválidos são rejeitados; a última configuração completa permanece ativa.",
+        "info": "Lease 30–600 s; settle 5–120 s; backoff 1–24 h; evidência 5–60 min; janela desconhecida 0–24 h.",
+        "x": 5860,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_lease",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Lease em voo — 120 s [30..600]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "in_flight_lease_seconds",
+        "payload": "120",
+        "payloadType": "num",
+        "x": 5380,
+        "y": 150,
+        "wires": [
+            [
+                "vehicle_visual_refresh_safety_left_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_settle",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Assentar cache — 15 s [5..120]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "cache_probe_settle_seconds",
+        "payload": "15",
+        "payloadType": "num",
+        "x": 5380,
+        "y": 210,
+        "wires": [
+            [
+                "vehicle_visual_refresh_safety_left_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_backoff",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Backoff máximo — 6 h [1..24]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "provider_backoff_max_hours",
+        "payload": "6",
+        "payloadType": "num",
+        "x": 5800,
+        "y": 150,
+        "wires": [
+            [
+                "vehicle_visual_refresh_safety_middle_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_evidence",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Evidência — 20 min [5..60]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "semantic_evidence_window_minutes",
+        "payload": "20",
+        "payloadType": "num",
+        "x": 5800,
+        "y": 210,
+        "wires": [
+            [
+                "vehicle_visual_refresh_safety_middle_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_unknown_start",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Sem localização: início 7 h [0..23]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "unknown_location_start_hour",
+        "payload": "7",
+        "payloadType": "num",
+        "x": 6220,
+        "y": 150,
+        "wires": [
+            [
+                "vehicle_visual_refresh_safety_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_unknown_end",
+        "type": "inject",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Sem localização: fim 22 h [1..24]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.5",
+        "topic": "unknown_location_end_hour",
+        "payload": "22",
+        "payloadType": "num",
+        "x": 6220,
+        "y": 210,
+        "wires": [
+            [
+                "vehicle_visual_refresh_safety_right_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_safety_left_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Leases → política",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_config_in"
+        ],
+        "x": 5580,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_safety_middle_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Backoff/evidência → política",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_config_in"
+        ],
+        "x": 6000,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_safety_right_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_safety_config_group_v2",
+        "name": "Janela desconhecida → política",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_config_in"
+        ],
+        "x": 6420,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_config_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_primary_refresh_config_group_v1",
+        "name": "Receber proteções do refresh",
+        "links": [
+            "vehicle_visual_refresh_safety_left_out",
+            "vehicle_visual_refresh_safety_middle_out",
+            "vehicle_visual_refresh_safety_right_out"
+        ],
+        "x": 1660,
+        "y": 300,
+        "wires": [
+            [
+                "vehicle_primary_refresh_policy_config_apply_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_decision_group_v2",
+        "type": "group",
+        "z": "c22d8b12055e87f7",
+        "name": "9. Orquestração visual do refresh — gates, cooldown, cache e dry-run",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "vehicle_visual_refresh_command_in",
+            "vehicle_visual_refresh_load",
+            "vehicle_visual_refresh_facts",
+            "vehicle_visual_refresh_cache_active",
+            "vehicle_visual_refresh_reason_cache_active",
+            "vehicle_visual_refresh_suppress_cache_active",
+            "vehicle_visual_refresh_result_cache_active",
+            "vehicle_visual_refresh_cache_settling",
+            "vehicle_visual_refresh_reason_cache_settle",
+            "vehicle_visual_refresh_suppress_cache_settle",
+            "vehicle_visual_refresh_result_cache_settle",
+            "vehicle_visual_refresh_request_active",
+            "vehicle_visual_refresh_reason_request_active",
+            "vehicle_visual_refresh_suppress_request_active",
+            "vehicle_visual_refresh_result_request_active",
+            "vehicle_visual_refresh_departure_covered",
+            "vehicle_visual_refresh_departure_done",
+            "vehicle_visual_refresh_result_departure",
+            "vehicle_visual_refresh_enabled",
+            "vehicle_visual_refresh_wait_location",
+            "vehicle_visual_refresh_result_wait",
+            "vehicle_visual_refresh_deadline",
+            "vehicle_visual_refresh_waiting_evidence",
+            "vehicle_visual_refresh_reason_backoff",
+            "vehicle_visual_refresh_reason_minimum",
+            "vehicle_visual_refresh_suppress_backoff",
+            "vehicle_visual_refresh_suppress_minimum",
+            "vehicle_visual_refresh_result_backoff",
+            "vehicle_visual_refresh_result_minimum",
+            "vehicle_visual_refresh_cache_needed",
+            "vehicle_visual_refresh_cache_build",
+            "vehicle_visual_refresh_dispatch_build",
+            "vehicle_visual_refresh_result_cache",
+            "vehicle_visual_refresh_result_dispatch",
+            "vehicle_visual_refresh_result_in",
+            "b33e117e55bdb5ed",
+            "eb4b8a519ab0bc28",
+            "vehicle_primary_manual_blocked_route_out_v1",
+            "vehicle_primary_refresh_notification_requested_out_v1",
+            "vehicle_visual_refresh_dispatch_out",
+            "vehicle_visual_refresh_cache_out"
+        ],
+        "x": 64,
+        "y": 2080,
+        "w": 4140,
+        "h": 700
+    },
+    {
+        "id": "vehicle_visual_refresh_command_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Política → orquestração visual",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_command_in"
+        ],
+        "x": 390,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_command_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Receber comando com política",
+        "links": [
+            "vehicle_visual_refresh_command_out"
+        ],
+        "x": 110,
+        "y": 2410,
+        "wires": [
+            [
+                "vehicle_visual_refresh_load"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_load",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Validar política e recuperar estado",
+        "func": "if (msg.payload?.kind !== \"refresh_command\") return null;\nconst config = msg.payload?.refresh_policy_config ?? {};\nconst required = [\"away_interval_ms\", \"approaching_interval_ms\", \"home_interval_ms\",\n    \"in_flight_lease_ms\", \"cache_probe_settle_ms\", \"provider_backoff_max_ms\",\n    \"semantic_evidence_window_ms\", \"unknown_location_start_hour\",\n    \"unknown_location_end_hour\"];\nif (msg.payload?.refresh_policy_version !== 1 ||\n    required.some((key) => !Number.isFinite(Number(config[key]))) ||\n    required.slice(0, 7).some((key) => Number(config[key]) <= 0)) {\n    node.error(\"Política visual de refresh ausente; comando não será despachado\", msg);\n    return null;\n}\nconst testMode = msg._location_test === true || msg.payload?.test_mode === true;\nconst stateKey = testMode\n    ? \"security_vehicle_primary_refresh_v1__test\" : \"security_vehicle_primary_refresh_v1\";\nconst nowCandidate = Number(msg.payload?.test_now);\nconst now = testMode && Number.isFinite(nowCandidate) ? nowCandidate : Date.now();\nconst locationPolicy = global.get(\"location_policy_v1\", \"persistent\") ?? {};\nconst futureMs = Number(locationPolicy.future_tolerance_seconds) * 1000;\nconst futureToleranceMs = Number.isFinite(futureMs) ? futureMs : 60000;\nlet state = testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\");\nif (!state || typeof state !== \"object\" || Array.isArray(state)) state = {};\nconst previousVersion = Number(state.version ?? 0);\nstate.version = 14;\nstate.attempts = Number.isFinite(state.attempts)\n    ? Math.max(0, Math.min(5, state.attempts)) : 0;\nconst validPast = (value) => Number.isFinite(value) && value <= now + futureToleranceMs;\nstate.last_success_at = validPast(state.last_success_at) ? state.last_success_at : 0;\nstate.last_attempt_at = validPast(state.last_attempt_at) ? state.last_attempt_at : 0;\nstate.last_request_at = validPast(state.last_request_at)\n    ? state.last_request_at : state.last_attempt_at;\nstate.service_accepted_at = validPast(state.service_accepted_at)\n    ? state.service_accepted_at : 0;\nstate.next_allowed_at = Number.isFinite(state.next_allowed_at) &&\n    state.next_allowed_at <= now + Number(config.provider_backoff_max_ms) + futureToleranceMs\n        ? state.next_allowed_at : 0;\nif (previousVersion < 14 && state.last_success_reason === \"api_accepted_200_or_202\" &&\n    state.service_accepted_at > 0 && state.service_accepted_at >= state.last_request_at) {\n    const evidenceAt = Number(state.last_evidence_at ?? 0);\n    state.attempts = Math.max(1, state.attempts);\n    state.awaiting_evidence = true;\n    state.evidence_wait_started_at = state.last_request_at || state.service_accepted_at;\n    state.last_success_at = Number.isFinite(evidenceAt) && evidenceAt > 0 &&\n        evidenceAt < state.service_accepted_at ? evidenceAt : 0;\n    state.last_success_reason = state.last_success_at > 0 ? \"previous_semantic_evidence\" : null;\n    state.last_evidence_domains = state.last_success_at > 0 ? [\"telemetry\"] : [];\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n    state.state = \"backoff\";\n    state.reason = \"api_accepted_awaiting_fresh_data\";\n    state.cooldown_until = null;\n}\nconst boundedFuture = (value, max) => Number.isFinite(value) &&\n    value <= now + max + futureToleranceMs ? value : 0;\nstate.in_flight_until = boundedFuture(state.in_flight_until, Number(config.in_flight_lease_ms));\nstate.cache_probe_for_request_at = validPast(state.cache_probe_for_request_at)\n    ? state.cache_probe_for_request_at : 0;\nstate.cache_probe_completed_for_request_at = validPast(state.cache_probe_completed_for_request_at)\n    ? state.cache_probe_completed_for_request_at : 0;\nstate.cache_probe_in_flight_until = boundedFuture(state.cache_probe_in_flight_until,\n    Number(config.in_flight_lease_ms));\nstate.cache_probe_settle_until = boundedFuture(state.cache_probe_settle_until,\n    Number(config.cache_probe_settle_ms));\nstate.failure_notified_at = validPast(state.failure_notified_at)\n    ? state.failure_notified_at : 0;\nstate.evidence_wait_started_at = validPast(state.evidence_wait_started_at) &&\n    state.evidence_wait_started_at > 0 ? state.evidence_wait_started_at\n    : state.awaiting_evidence === true\n        ? state.last_request_at || state.last_attempt_at || 0 : 0;\nif (state.last_failure_class === \"integration_unavailable\" && !state.failure_endpoint) {\n    state.last_failure_class = null;\n    state.failure_source = null;\n    state.failure_stage = null;\n    state.next_allowed_at = Math.min(state.next_allowed_at, now);\n}\nmsg._refresh = {\n    test_mode: testMode,\n    state_key: stateKey,\n    now,\n    future_tolerance_ms: futureToleranceMs,\n    config,\n    state,\n    vehicle_context: testMode\n        ? flow.get(\"vehicle_primary_context_v1__test\") ?? {}\n        : flow.get(\"vehicle_primary_context_v1\") ?? {}\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2410,
+        "wires": [
+            [
+                "vehicle_visual_refresh_facts"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_facts",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Derivar recovery, intervalo e gates",
+        "func": "const data = msg._refresh;\nif (!data) return null;\nconst state = data.state;\nconst now = data.now;\nconst config = data.config;\nconst contextReady = msg.payload?.vehicle_primary_ready === true ||\n    data.vehicle_context.ready === true;\nconst derivedRecovery = msg.payload?.recovery_needed === true ||\n    msg.payload?.vehicle_primary_ready === false || contextReady !== true;\nconst lastSuccessAt = Number(state.last_success_at ?? 0);\nconst semanticHealthy = state.awaiting_evidence !== true &&\n    state.last_failure_class == null && Array.isArray(state.last_evidence_domains) &&\n    state.last_evidence_domains.includes(\"telemetry\") && lastSuccessAt > 0 &&\n    lastSuccessAt <= now + data.future_tolerance_ms &&\n    now - lastSuccessAt <= Number(config.home_interval_ms) + data.future_tolerance_ms;\nconst recoveryNeeded = msg.payload?.force_recovery === true ||\n    msg.payload?.require_lighting_ready === true || state.awaiting_evidence === true ||\n    (derivedRecovery && !semanticHealthy);\nconst requireLighting = msg.payload?.require_lighting_ready === true ||\n    (state.awaiting_evidence === true && state.require_lighting_ready === true);\nconst requestedReason = msg.payload?.reason ?? msg.payload?.recovery_reason ??\n    (recoveryNeeded ? \"readiness_recovery_needed\" : \"scheduled_refresh\");\nconst manualBypass = requestedReason === \"manual_force\";\nconst departureBypass = requestedReason === \"resident_departure\" &&\n    msg.payload?.resident_departure_force === true;\nconst deadlineBypass = manualBypass || departureBypass;\nconst approaching = msg.payload?.refresh_anyone_approaching === true;\nconst selectedInterval = approaching ? Number(config.approaching_interval_ms)\n    : recoveryNeeded && !deadlineBypass ? Number(config.away_interval_ms)\n    : Number(msg.payload?.refresh_interval_ms);\nif (!Number.isFinite(selectedInterval) || selectedInterval <= 0) {\n    node.error(\"Intervalo visual de refresh inválido\", msg);\n    return null;\n}\nconst allowedIntervals = [Number(config.away_interval_ms),\n    Number(config.approaching_interval_ms), Number(config.home_interval_ms)];\nconst previousInterval = allowedIntervals.includes(Number(state.interval_ms))\n    ? Number(state.interval_ms) : Number(config.away_interval_ms);\nconst anchor = Math.max(state.last_request_at, state.service_accepted_at, state.last_success_at);\nconst floor = anchor > 0 ? anchor + selectedInterval : 0;\nstate.next_allowed_at = previousInterval !== selectedInterval\n    ? floor : Math.max(state.next_allowed_at, floor);\nstate.interval_ms = selectedInterval;\nstate.interval_policy = approaching ? \"approaching\"\n    : recoveryNeeded && !deadlineBypass ? \"recovery\" : msg.payload.refresh_interval_policy;\nconst cacheActive = state.cache_probe_in_flight === true &&\n    now < state.cache_probe_in_flight_until;\nif (state.cache_probe_in_flight === true && !cacheActive) {\n    state.cache_probe_in_flight = false;\n    state.cache_probe_in_flight_until = null;\n    state.cache_probe_for_request_at = null;\n    state.last_failure_class = \"cache_probe_lease_expired\";\n    state.next_allowed_at = Math.max(state.next_allowed_at, now + selectedInterval);\n}\nconst requestActive = state.request_in_flight === true && now < state.in_flight_until;\nif (state.request_in_flight === true && !requestActive) {\n    state.request_in_flight = false;\n    state.in_flight_until = null;\n    state.last_failure_class = \"in_flight_lease_expired\";\n}\nconst start = Number(config.unknown_location_start_hour);\nconst end = Number(config.unknown_location_end_hour);\nconst hour = new Date(now).getHours();\nconst unknownWindow = start < end ? hour >= start && hour < end\n    : hour >= start || hour < end;\nconst statesKnown = msg.payload?.refresh_resident_states_known === true;\nconst bothHome = msg.payload?.refresh_both_residents_home === true;\nconst awayOrApproaching = msg.payload?.refresh_anyone_away === true || approaching;\nconst enabled = recoveryNeeded || awayOrApproaching || bothHome ||\n    (!statesKnown && unknownWindow);\nconst pendingRequestAt = Number(state.last_request_at ?? 0);\nconst cacheCompleted = pendingRequestAt > 0 &&\n    state.cache_probe_completed_for_request_at === pendingRequestAt;\ndata.recovery_needed = recoveryNeeded;\ndata.require_lighting_ready = requireLighting;\ndata.requested_reason = requestedReason;\ndata.manual_bypass = manualBypass;\ndata.departure_bypass = departureBypass;\ndata.deadline_bypass = deadlineBypass;\ndata.selected_interval_ms = selectedInterval;\ndata.semantic_healthy = semanticHealthy;\ndata.flags = {\n    cache_active: cacheActive,\n    cache_settling: now < state.cache_probe_settle_until,\n    request_active: requestActive,\n    departure_covered: departureBypass && Number(msg.payload?.departure_event_at ?? 0) > 0 &&\n        state.last_request_at >= Number(msg.payload.departure_event_at),\n    enabled,\n    deadline_blocked: !deadlineBypass && now < state.next_allowed_at,\n    waiting_evidence: state.awaiting_evidence === true,\n    cache_probe_needed: !deadlineBypass && state.awaiting_evidence === true &&\n        pendingRequestAt > 0 && !cacheCompleted\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 2410,
+        "wires": [
+            [
+                "vehicle_visual_refresh_cache_active"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_cache_active",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Cache probe ainda está em voo?",
+        "property": "_refresh.flags.cache_active",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 900,
+        "y": 2200,
+        "wires": [
+            [
+                "vehicle_visual_refresh_reason_cache_active"
+            ],
+            [
+                "vehicle_visual_refresh_cache_settling"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_reason_cache_active",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Bloquear: cache em voo",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_refresh.suppress_reason",
+                "pt": "msg",
+                "to": "cache_probe_in_flight",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1170,
+        "y": 2160,
+        "wires": [
+            [
+                "vehicle_visual_refresh_suppress_cache_active"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_suppress_cache_active",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Calcular espera sem novo efeito",
+        "func": "const data = msg._refresh;\nconst state = data.state;\nconst reason = String(data.suppress_reason ?? \"minimum_interval\");\nconst deadline = reason === \"cache_probe_in_flight\" ? state.cache_probe_in_flight_until\n    : reason === \"cache_probe_settling\" ? state.cache_probe_settle_until\n    : reason === \"in_flight\" ? state.in_flight_until : state.next_allowed_at;\nconst waitS = Math.max(1, Math.ceil((Number(deadline) - data.now) / 1000));\nstate.state = reason.startsWith(\"cache_probe\") ? \"probing_cache\"\n    : reason === \"in_flight\" ? \"in_flight\"\n    : state.awaiting_evidence === true ? \"backoff\" : \"cooldown\";\nstate.reason = reason === \"minimum_interval\" ? data.requested_reason : reason;\nstate.enabled = true;\nstate.updated_at = data.now;\nstate.next_retry_at = state.awaiting_evidence === true ? state.next_allowed_at || null : null;\nstate.cooldown_until = state.awaiting_evidence !== true && state.last_success_at > 0 &&\n    state.next_allowed_at > data.now ? state.next_allowed_at : null;\ndata.output = null;\nif (msg.payload?.reason === \"manual_force\") {\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message: \"Já existe uma tentativa dentro da janela de proteção. \" +\n            `Nenhuma nova consulta foi enviada; reavaliar em ${waitS} s.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    data.output = 2;\n}\ndelete data.suppress_reason;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1440,
+        "y": 2160,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_cache_active"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_result_cache_active",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Bloqueio → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 1650,
+        "y": 2160,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_cache_settling",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Cache ainda está assentando?",
+        "property": "_refresh.flags.cache_settling",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1170,
+        "y": 2280,
+        "wires": [
+            [
+                "vehicle_visual_refresh_reason_cache_settle"
+            ],
+            [
+                "vehicle_visual_refresh_request_active"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_reason_cache_settle",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Bloquear: cache assentando",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_refresh.suppress_reason",
+                "pt": "msg",
+                "to": "cache_probe_settling",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1440,
+        "y": 2240,
+        "wires": [
+            [
+                "vehicle_visual_refresh_suppress_cache_settle"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_suppress_cache_settle",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Calcular espera sem novo efeito",
+        "func": "const data = msg._refresh;\nconst state = data.state;\nconst reason = String(data.suppress_reason ?? \"minimum_interval\");\nconst deadline = reason === \"cache_probe_in_flight\" ? state.cache_probe_in_flight_until\n    : reason === \"cache_probe_settling\" ? state.cache_probe_settle_until\n    : reason === \"in_flight\" ? state.in_flight_until : state.next_allowed_at;\nconst waitS = Math.max(1, Math.ceil((Number(deadline) - data.now) / 1000));\nstate.state = reason.startsWith(\"cache_probe\") ? \"probing_cache\"\n    : reason === \"in_flight\" ? \"in_flight\"\n    : state.awaiting_evidence === true ? \"backoff\" : \"cooldown\";\nstate.reason = reason === \"minimum_interval\" ? data.requested_reason : reason;\nstate.enabled = true;\nstate.updated_at = data.now;\nstate.next_retry_at = state.awaiting_evidence === true ? state.next_allowed_at || null : null;\nstate.cooldown_until = state.awaiting_evidence !== true && state.last_success_at > 0 &&\n    state.next_allowed_at > data.now ? state.next_allowed_at : null;\ndata.output = null;\nif (msg.payload?.reason === \"manual_force\") {\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message: \"Já existe uma tentativa dentro da janela de proteção. \" +\n            `Nenhuma nova consulta foi enviada; reavaliar em ${waitS} s.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    data.output = 2;\n}\ndelete data.suppress_reason;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1710,
+        "y": 2240,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_cache_settle"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_result_cache_settle",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Settle → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 1920,
+        "y": 2240,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_request_active",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Wake ainda está em voo?",
+        "property": "_refresh.flags.request_active",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1440,
+        "y": 2400,
+        "wires": [
+            [
+                "vehicle_visual_refresh_reason_request_active"
+            ],
+            [
+                "vehicle_visual_refresh_departure_covered"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_reason_request_active",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Bloquear: wake em voo",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_refresh.suppress_reason",
+                "pt": "msg",
+                "to": "in_flight",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1710,
+        "y": 2360,
+        "wires": [
+            [
+                "vehicle_visual_refresh_suppress_request_active"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_suppress_request_active",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Calcular espera sem novo efeito",
+        "func": "const data = msg._refresh;\nconst state = data.state;\nconst reason = String(data.suppress_reason ?? \"minimum_interval\");\nconst deadline = reason === \"cache_probe_in_flight\" ? state.cache_probe_in_flight_until\n    : reason === \"cache_probe_settling\" ? state.cache_probe_settle_until\n    : reason === \"in_flight\" ? state.in_flight_until : state.next_allowed_at;\nconst waitS = Math.max(1, Math.ceil((Number(deadline) - data.now) / 1000));\nstate.state = reason.startsWith(\"cache_probe\") ? \"probing_cache\"\n    : reason === \"in_flight\" ? \"in_flight\"\n    : state.awaiting_evidence === true ? \"backoff\" : \"cooldown\";\nstate.reason = reason === \"minimum_interval\" ? data.requested_reason : reason;\nstate.enabled = true;\nstate.updated_at = data.now;\nstate.next_retry_at = state.awaiting_evidence === true ? state.next_allowed_at || null : null;\nstate.cooldown_until = state.awaiting_evidence !== true && state.last_success_at > 0 &&\n    state.next_allowed_at > data.now ? state.next_allowed_at : null;\ndata.output = null;\nif (msg.payload?.reason === \"manual_force\") {\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message: \"Já existe uma tentativa dentro da janela de proteção. \" +\n            `Nenhuma nova consulta foi enviada; reavaliar em ${waitS} s.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    data.output = 2;\n}\ndelete data.suppress_reason;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1980,
+        "y": 2360,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_request_active"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_result_request_active",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Wake em voo → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 2190,
+        "y": 2360,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_departure_covered",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Saída já foi coberta por refresh?",
+        "property": "_refresh.flags.departure_covered",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1710,
+        "y": 2520,
+        "wires": [
+            [
+                "vehicle_visual_refresh_departure_done"
+            ],
+            [
+                "vehicle_visual_refresh_enabled"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_departure_done",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Manter lifecycle já coberto",
+        "func": "const data = msg._refresh;\nObject.assign(data.state, {\n    state: data.state.awaiting_evidence === true ? \"awaiting_evidence\" : \"cooldown\",\n    reason: \"resident_departure_already_covered\",\n    enabled: true,\n    updated_at: data.now\n});\ndata.output = null;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1980,
+        "y": 2480,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_departure"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_result_departure",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Saída coberta → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 2190,
+        "y": 2480,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_enabled",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Há motivo seguro para consultar?",
+        "property": "_refresh.flags.enabled",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1980,
+        "y": 2600,
+        "wires": [
+            [
+                "vehicle_visual_refresh_deadline"
+            ],
+            [
+                "vehicle_visual_refresh_wait_location"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_wait_location",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Aguardar localização dos residentes",
+        "func": "const data = msg._refresh;\nObject.assign(data.state, {\n    state: \"waiting\",\n    reason: \"waiting_for_resident_location\",\n    enabled: false,\n    next_retry_at: null,\n    cooldown_until: null,\n    updated_at: data.now\n});\ndata.output = null;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2250,
+        "y": 2700,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_wait"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_result_wait",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Aguardar → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 2460,
+        "y": 2700,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_deadline",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Intervalo mínimo ainda está ativo?",
+        "property": "_refresh.flags.deadline_blocked",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2250,
+        "y": 2580,
+        "wires": [
+            [
+                "vehicle_visual_refresh_waiting_evidence"
+            ],
+            [
+                "vehicle_visual_refresh_cache_needed"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_waiting_evidence",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Cooldown aguarda evidência?",
+        "property": "_refresh.flags.waiting_evidence",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2510,
+        "y": 2460,
+        "wires": [
+            [
+                "vehicle_visual_refresh_reason_backoff"
+            ],
+            [
+                "vehicle_visual_refresh_reason_minimum"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_reason_backoff",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Bloquear: backoff",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_refresh.suppress_reason",
+                "pt": "msg",
+                "to": "backoff",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2770,
+        "y": 2410,
+        "wires": [
+            [
+                "vehicle_visual_refresh_suppress_backoff"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_reason_minimum",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Bloquear: intervalo mínimo",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_refresh.suppress_reason",
+                "pt": "msg",
+                "to": "minimum_interval",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2770,
+        "y": 2490,
+        "wires": [
+            [
+                "vehicle_visual_refresh_suppress_minimum"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_suppress_backoff",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Calcular retry sem novo efeito",
+        "func": "const data = msg._refresh;\nconst state = data.state;\nconst reason = String(data.suppress_reason ?? \"minimum_interval\");\nconst deadline = reason === \"cache_probe_in_flight\" ? state.cache_probe_in_flight_until\n    : reason === \"cache_probe_settling\" ? state.cache_probe_settle_until\n    : reason === \"in_flight\" ? state.in_flight_until : state.next_allowed_at;\nconst waitS = Math.max(1, Math.ceil((Number(deadline) - data.now) / 1000));\nstate.state = reason.startsWith(\"cache_probe\") ? \"probing_cache\"\n    : reason === \"in_flight\" ? \"in_flight\"\n    : state.awaiting_evidence === true ? \"backoff\" : \"cooldown\";\nstate.reason = reason === \"minimum_interval\" ? data.requested_reason : reason;\nstate.enabled = true;\nstate.updated_at = data.now;\nstate.next_retry_at = state.awaiting_evidence === true ? state.next_allowed_at || null : null;\nstate.cooldown_until = state.awaiting_evidence !== true && state.last_success_at > 0 &&\n    state.next_allowed_at > data.now ? state.next_allowed_at : null;\ndata.output = null;\nif (msg.payload?.reason === \"manual_force\") {\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message: \"Já existe uma tentativa dentro da janela de proteção. \" +\n            `Nenhuma nova consulta foi enviada; reavaliar em ${waitS} s.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    data.output = 2;\n}\ndelete data.suppress_reason;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3040,
+        "y": 2410,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_backoff"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_suppress_minimum",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Calcular cooldown sem novo efeito",
+        "func": "const data = msg._refresh;\nconst state = data.state;\nconst reason = String(data.suppress_reason ?? \"minimum_interval\");\nconst deadline = reason === \"cache_probe_in_flight\" ? state.cache_probe_in_flight_until\n    : reason === \"cache_probe_settling\" ? state.cache_probe_settle_until\n    : reason === \"in_flight\" ? state.in_flight_until : state.next_allowed_at;\nconst waitS = Math.max(1, Math.ceil((Number(deadline) - data.now) / 1000));\nstate.state = reason.startsWith(\"cache_probe\") ? \"probing_cache\"\n    : reason === \"in_flight\" ? \"in_flight\"\n    : state.awaiting_evidence === true ? \"backoff\" : \"cooldown\";\nstate.reason = reason === \"minimum_interval\" ? data.requested_reason : reason;\nstate.enabled = true;\nstate.updated_at = data.now;\nstate.next_retry_at = state.awaiting_evidence === true ? state.next_allowed_at || null : null;\nstate.cooldown_until = state.awaiting_evidence !== true && state.last_success_at > 0 &&\n    state.next_allowed_at > data.now ? state.next_allowed_at : null;\ndata.output = null;\nif (msg.payload?.reason === \"manual_force\") {\n    msg.notification = {\n        title: \"Atualização do vehicle_primary não enviada\",\n        message: \"Já existe uma tentativa dentro da janela de proteção. \" +\n            `Nenhuma nova consulta foi enviada; reavaliar em ${waitS} s.`,\n        id: \"vehicle_primary_refresh_blocked\"\n    };\n    data.output = 2;\n}\ndelete data.suppress_reason;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3040,
+        "y": 2490,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_minimum"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_result_backoff",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Backoff → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 3250,
+        "y": 2410,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_result_minimum",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Cooldown → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 3250,
+        "y": 2490,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_cache_needed",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Evidência pendente exige releitura de cache?",
+        "property": "_refresh.flags.cache_probe_needed",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2510,
+        "y": 2620,
+        "wires": [
+            [
+                "vehicle_visual_refresh_cache_build"
+            ],
+            [
+                "vehicle_visual_refresh_dispatch_build"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_cache_build",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Preparar cache probe protegido",
+        "func": "const data = msg._refresh;\nconst state = data.state;\nconst requestAt = Number(state.last_request_at ?? 0);\nstate.cache_probe_in_flight = true;\nstate.cache_probe_in_flight_until = data.now + Number(data.config.in_flight_lease_ms);\nstate.cache_probe_for_request_at = requestAt;\nstate.cache_probe_settle_until = null;\nObject.assign(state, {\n    state: \"probing_cache\",\n    reason: \"pre_wake_cache_probe\",\n    enabled: true,\n    updated_at: data.now\n});\nmsg.payload.cache_probe_for_request_at = requestAt;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.test_mode = data.test_mode;\nmsg.payload.side_effect = \"vehicle_primary.cache_probe\";\ndata.output = 4;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2790,
+        "y": 2590,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_cache"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_dispatch_build",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Preparar wake e lease",
+        "func": "const data = msg._refresh;\nconst state = data.state;\nstate.cache_probe_in_flight = false;\nstate.cache_probe_in_flight_until = null;\nstate.cache_probe_for_request_at = null;\nstate.cache_probe_completed_for_request_at = null;\nstate.cache_probe_settle_until = null;\nstate.baseline_observed_at = {\n    telemetry: Number(data.vehicle_context.telemetry_updated_at ?? 0)\n};\nif (state.awaiting_evidence !== true || !(Number(state.evidence_wait_started_at) > 0)) {\n    state.evidence_wait_started_at = data.now;\n}\nstate.attempts = Math.min(5, state.attempts + 1);\nstate.last_attempt_at = data.now;\nstate.last_request_at = data.now;\nstate.next_allowed_at = data.now + data.selected_interval_ms;\nstate.awaiting_evidence = true;\nstate.request_in_flight = true;\nstate.in_flight_until = data.now + Number(data.config.in_flight_lease_ms);\nstate.last_attempt_cycle = msg.payload.refresh_cycle_id ?? null;\nstate.require_lighting_ready = data.require_lighting_ready;\nstate.recovery_reason = data.requested_reason;\nstate.manual_force = data.requested_reason === \"manual_force\";\nstate.resident_departure_force = data.departure_bypass;\nObject.assign(state, {\n    state: \"refreshing\",\n    reason: data.requested_reason,\n    enabled: true,\n    updated_at: data.now,\n    next_retry_at: state.next_allowed_at,\n    cooldown_until: null\n});\nmsg.payload.retry_attempt = state.attempts;\nmsg.payload.refresh_requested_at = data.now;\nmsg.payload.vehicle_primary_refresh_recovery = data.recovery_needed;\nmsg.payload.require_lighting_ready = data.require_lighting_ready;\nmsg.payload.origin = msg.payload.origin ?? \"contexto_chegadas\";\nmsg.payload.test_mode = data.test_mode;\ndata.output = 0;\ndata.mirror_context = !data.test_mode;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2790,
+        "y": 2670,
+        "wires": [
+            [
+                "vehicle_visual_refresh_result_dispatch"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_result_cache",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Cache probe → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 3010,
+        "y": 2590,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_result_dispatch",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Wake → resultado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_result_in"
+        ],
+        "x": 3010,
+        "y": 2670,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_result_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Convergir exatamente um resultado",
+        "links": [
+            "vehicle_visual_refresh_result_cache_active",
+            "vehicle_visual_refresh_result_cache_settle",
+            "vehicle_visual_refresh_result_request_active",
+            "vehicle_visual_refresh_result_departure",
+            "vehicle_visual_refresh_result_wait",
+            "vehicle_visual_refresh_result_backoff",
+            "vehicle_visual_refresh_result_minimum",
+            "vehicle_visual_refresh_result_cache",
+            "vehicle_visual_refresh_result_dispatch"
+        ],
+        "x": 3330,
+        "y": 2580,
+        "wires": [
+            [
+                "b33e117e55bdb5ed"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_dispatch_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Wake → gate final",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_dispatch_in"
+        ],
+        "x": 3880,
+        "y": 2420,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_cache_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "vehicle_visual_refresh_decision_group_v2",
+        "name": "Cache → gate final",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_refresh_cache_in"
+        ],
+        "x": 3880,
+        "y": 2740,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_refresh_dispatch_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Receber wake autorizado pela política",
+        "links": [
+            "vehicle_visual_refresh_dispatch_out"
+        ],
+        "x": 550,
+        "y": 720,
+        "wires": [
+            [
+                "vehicle_primary_refresh_dispatch_guard_v1"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_refresh_cache_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "43a2bc9c218353ae",
+        "name": "Receber cache probe autorizado",
+        "links": [
+            "vehicle_visual_refresh_cache_out"
+        ],
+        "x": 550,
+        "y": 1080,
+        "wires": [
+            [
+                "vehicle_primary_cache_probe_dispatch_guard_v1"
             ]
         ]
     }

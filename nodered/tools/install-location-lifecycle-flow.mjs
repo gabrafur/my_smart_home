@@ -349,7 +349,7 @@ Object.assign(required("vehicle_primary_refresh_policy_select_v1"), {
 const refreshDecisionGroup = group(
   "vehicle_visual_refresh_decision_group_v2",
   "9. Orquestração visual do refresh — gates, cooldown, cache e dry-run",
-  64, 2080, 4140, 662, "#0f766e", "#ccfbf1", VEHICLE_TAB
+  64, 2080, 4140, 700, "#0f766e", "#ccfbf1", VEHICLE_TAB
 );
 const refreshGrouped = (node) => grouped(refreshDecisionGroup.id, node);
 const rfn = (id, name, file, outputs, x, y, wires) => refreshGrouped({
@@ -440,6 +440,10 @@ const refreshOutput = required("b33e117e55bdb5ed");
 refreshOutput.name = "Persistir lifecycle e rotear pedido";
 refreshOutput.func = source("vehicle-refresh-output.js");
 refreshOutput.outputs = 5; refreshOutput.x = 3540; refreshOutput.y = 2580;
+refreshOutput.g = refreshDecisionGroup.id;
+if (!refreshDecisionGroup.nodes.includes(refreshOutput.id)) {
+  refreshDecisionGroup.nodes.push(refreshOutput.id);
+}
 for (const id of ["eb4b8a519ab0bc28", "vehicle_primary_manual_blocked_route_out_v1",
   "vehicle_primary_refresh_notification_requested_out_v1"]) {
   const node = required(id);
