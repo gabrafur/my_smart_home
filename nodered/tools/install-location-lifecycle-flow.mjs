@@ -44,8 +44,8 @@ const moveGroup = (id, x, y) => {
     if (Number.isFinite(node.y)) node.y += dy;
   }
 };
-const group = (id, name, x, y, w, h, stroke = "#2563eb", fill = "#dbeafe") =>
-  add({ id, type: "group", z: PEOPLE_TAB, name, style: {
+const group = (id, name, x, y, w, h, stroke = "#2563eb", fill = "#dbeafe", z = PEOPLE_TAB) =>
+  add({ id, type: "group", z, name, style: {
     label: true, "label-position": "nw", color: "#1f2937", stroke,
     "stroke-opacity": "1", fill, "fill-opacity": "0.35"
   }, nodes: [], x, y, w, h });
@@ -298,6 +298,188 @@ for (const [id, x, y] of [
 }
 moveGroup("vehicle_location_panel_group_v1", 3300, 259);
 moveGroup("global_observer_coverage__c22d8b12055e87f7__group", 4350, 40);
+
+const safetyConfig = group(
+  "vehicle_visual_refresh_safety_config_group_v2",
+  "3b. Proteções do refresh — padrão, unidade e limites no nome",
+  5120, 40, 1510, 482, "#b45309", "#fef3c7", VEHICLE_TAB
+);
+const safetyInject = (id, name, topic, payload, x, y, destination) => grouped(safetyConfig.id, {
+  id, type: "inject", z: VEHICLE_TAB, g: safetyConfig.id, name,
+  props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
+  once: true, onceDelay: "0.5", topic, payload: String(payload), payloadType: "num",
+  x, y, wires: [[destination]]
+});
+grouped(safetyConfig.id, {
+  id: "vehicle_visual_refresh_safety_help", type: "comment", z: VEHICLE_TAB,
+  g: safetyConfig.id,
+  name: "Inválidos são rejeitados; a última configuração completa permanece ativa.",
+  info: "Lease 30–600 s; settle 5–120 s; backoff 1–24 h; evidência 5–60 min; janela desconhecida 0–24 h.",
+  x: 5860, y: 80, wires: []
+});
+safetyInject("vehicle_visual_refresh_lease", "Lease em voo — 120 s [30..600]", "in_flight_lease_seconds", 120, 5380, 150, "vehicle_visual_refresh_safety_left_out");
+safetyInject("vehicle_visual_refresh_settle", "Assentar cache — 15 s [5..120]", "cache_probe_settle_seconds", 15, 5380, 210, "vehicle_visual_refresh_safety_left_out");
+safetyInject("vehicle_visual_refresh_backoff", "Backoff máximo — 6 h [1..24]", "provider_backoff_max_hours", 6, 5800, 150, "vehicle_visual_refresh_safety_middle_out");
+safetyInject("vehicle_visual_refresh_evidence", "Evidência — 20 min [5..60]", "semantic_evidence_window_minutes", 20, 5800, 210, "vehicle_visual_refresh_safety_middle_out");
+safetyInject("vehicle_visual_refresh_unknown_start", "Sem localização: início 7 h [0..23]", "unknown_location_start_hour", 7, 6220, 150, "vehicle_visual_refresh_safety_right_out");
+safetyInject("vehicle_visual_refresh_unknown_end", "Sem localização: fim 22 h [1..24]", "unknown_location_end_hour", 22, 6220, 210, "vehicle_visual_refresh_safety_right_out");
+for (const [id, name, x] of [
+  ["vehicle_visual_refresh_safety_left_out", "Leases → política", 5580],
+  ["vehicle_visual_refresh_safety_middle_out", "Backoff/evidência → política", 6000],
+  ["vehicle_visual_refresh_safety_right_out", "Janela desconhecida → política", 6420]
+]) {
+  grouped(safetyConfig.id, { id, type: "link out", z: VEHICLE_TAB, g: safetyConfig.id,
+    name, mode: "link", links: ["vehicle_visual_refresh_config_in"], x, y: 300, wires: [] });
+}
+const refreshConfigGroup = required("vehicle_primary_refresh_config_group_v1");
+grouped(refreshConfigGroup.id, {
+  id: "vehicle_visual_refresh_config_in", type: "link in", z: VEHICLE_TAB,
+  g: refreshConfigGroup.id, name: "Receber proteções do refresh",
+  links: ["vehicle_visual_refresh_safety_left_out", "vehicle_visual_refresh_safety_middle_out",
+    "vehicle_visual_refresh_safety_right_out"], x: 1660, y: 300,
+  wires: [["vehicle_primary_refresh_policy_config_apply_v1"]]
+});
+Object.assign(required("vehicle_primary_refresh_policy_config_apply_v1"), {
+  func: source("vehicle-primary-refresh-policy-config.js")
+});
+Object.assign(required("vehicle_primary_refresh_policy_select_v1"), {
+  func: source("vehicle-primary-refresh-policy.js")
+});
+
+const refreshDecisionGroup = group(
+  "vehicle_visual_refresh_decision_group_v2",
+  "9. Orquestração visual do refresh — gates, cooldown, cache e dry-run",
+  64, 2080, 4140, 662, "#0f766e", "#ccfbf1", VEHICLE_TAB
+);
+const refreshGrouped = (node) => grouped(refreshDecisionGroup.id, node);
+const rfn = (id, name, file, outputs, x, y, wires) => refreshGrouped({
+  id, type: "function", z: VEHICLE_TAB, g: refreshDecisionGroup.id, name,
+  func: source(file), outputs, timeout: 0, noerr: 0,
+  initialize: "", finalize: "", libs: [], x, y, wires
+});
+const rsw = (id, name, property, propertyType, x, y, wires) => refreshGrouped({
+  id, type: "switch", z: VEHICLE_TAB, g: refreshDecisionGroup.id, name,
+  property, propertyType, rules: [{ t: "true" }, { t: "else" }],
+  checkall: "false", repair: false, outputs: 2, x, y, wires
+});
+const rchange = (id, name, value, x, y, wires) => refreshGrouped({
+  id, type: "change", z: VEHICLE_TAB, g: refreshDecisionGroup.id, name,
+  rules: [{ t: "set", p: "_refresh.suppress_reason", pt: "msg", to: value, tot: "str" }],
+  action: "", property: "", from: "", to: "", reg: false, x, y, wires
+});
+const rlinkOut = (id, name, x, y) => refreshGrouped({
+  id, type: "link out", z: VEHICLE_TAB, g: refreshDecisionGroup.id, name,
+  mode: "link", links: ["vehicle_visual_refresh_result_in"], x, y, wires: []
+});
+const executionGroup = required("43a2bc9c218353ae");
+const policyInput = required("vehicle_primary_refresh_policy_in_v1");
+policyInput.wires = [["vehicle_visual_refresh_command_out"]];
+grouped(executionGroup.id, {
+  id: "vehicle_visual_refresh_command_out", type: "link out", z: VEHICLE_TAB,
+  g: executionGroup.id, name: "Política → orquestração visual", mode: "link",
+  links: ["vehicle_visual_refresh_command_in"], x: 390, y: 680, wires: []
+});
+refreshGrouped({
+  id: "vehicle_visual_refresh_command_in", type: "link in", z: VEHICLE_TAB,
+  g: refreshDecisionGroup.id, name: "Receber comando com política",
+  links: ["vehicle_visual_refresh_command_out"], x: 110, y: 2410,
+  wires: [["vehicle_visual_refresh_load"]]
+});
+rfn("vehicle_visual_refresh_load", "Validar política e recuperar estado", "vehicle-refresh-state-load.js", 1, 330, 2410, [["vehicle_visual_refresh_facts"]]);
+rfn("vehicle_visual_refresh_facts", "Derivar recovery, intervalo e gates", "vehicle-refresh-facts.js", 1, 620, 2410, [["vehicle_visual_refresh_cache_active"]]);
+rsw("vehicle_visual_refresh_cache_active", "Cache probe ainda está em voo?", "_refresh.flags.cache_active", "msg", 900, 2200,
+  [["vehicle_visual_refresh_reason_cache_active"], ["vehicle_visual_refresh_cache_settling"]]);
+rchange("vehicle_visual_refresh_reason_cache_active", "Bloquear: cache em voo", "cache_probe_in_flight", 1170, 2160, [["vehicle_visual_refresh_suppress_cache_active"]]);
+rfn("vehicle_visual_refresh_suppress_cache_active", "Calcular espera sem novo efeito", "vehicle-refresh-suppress.js", 1, 1440, 2160, [["vehicle_visual_refresh_result_cache_active"]]);
+rlinkOut("vehicle_visual_refresh_result_cache_active", "Bloqueio → resultado", 1650, 2160);
+rsw("vehicle_visual_refresh_cache_settling", "Cache ainda está assentando?", "_refresh.flags.cache_settling", "msg", 1170, 2280,
+  [["vehicle_visual_refresh_reason_cache_settle"], ["vehicle_visual_refresh_request_active"]]);
+rchange("vehicle_visual_refresh_reason_cache_settle", "Bloquear: cache assentando", "cache_probe_settling", 1440, 2240, [["vehicle_visual_refresh_suppress_cache_settle"]]);
+rfn("vehicle_visual_refresh_suppress_cache_settle", "Calcular espera sem novo efeito", "vehicle-refresh-suppress.js", 1, 1710, 2240, [["vehicle_visual_refresh_result_cache_settle"]]);
+rlinkOut("vehicle_visual_refresh_result_cache_settle", "Settle → resultado", 1920, 2240);
+rsw("vehicle_visual_refresh_request_active", "Wake ainda está em voo?", "_refresh.flags.request_active", "msg", 1440, 2400,
+  [["vehicle_visual_refresh_reason_request_active"], ["vehicle_visual_refresh_departure_covered"]]);
+rchange("vehicle_visual_refresh_reason_request_active", "Bloquear: wake em voo", "in_flight", 1710, 2360, [["vehicle_visual_refresh_suppress_request_active"]]);
+rfn("vehicle_visual_refresh_suppress_request_active", "Calcular espera sem novo efeito", "vehicle-refresh-suppress.js", 1, 1980, 2360, [["vehicle_visual_refresh_result_request_active"]]);
+rlinkOut("vehicle_visual_refresh_result_request_active", "Wake em voo → resultado", 2190, 2360);
+rsw("vehicle_visual_refresh_departure_covered", "Saída já foi coberta por refresh?", "_refresh.flags.departure_covered", "msg", 1710, 2520,
+  [["vehicle_visual_refresh_departure_done"], ["vehicle_visual_refresh_enabled"]]);
+rfn("vehicle_visual_refresh_departure_done", "Manter lifecycle já coberto", "vehicle-refresh-departure-covered.js", 1, 1980, 2480, [["vehicle_visual_refresh_result_departure"]]);
+rlinkOut("vehicle_visual_refresh_result_departure", "Saída coberta → resultado", 2190, 2480);
+rsw("vehicle_visual_refresh_enabled", "Há motivo seguro para consultar?", "_refresh.flags.enabled", "msg", 1980, 2600,
+  [["vehicle_visual_refresh_deadline"], ["vehicle_visual_refresh_wait_location"]]);
+rfn("vehicle_visual_refresh_wait_location", "Aguardar localização dos residentes", "vehicle-refresh-wait-location.js", 1, 2250, 2700, [["vehicle_visual_refresh_result_wait"]]);
+rlinkOut("vehicle_visual_refresh_result_wait", "Aguardar → resultado", 2460, 2700);
+rsw("vehicle_visual_refresh_deadline", "Intervalo mínimo ainda está ativo?", "_refresh.flags.deadline_blocked", "msg", 2250, 2580,
+  [["vehicle_visual_refresh_waiting_evidence"], ["vehicle_visual_refresh_cache_needed"]]);
+rsw("vehicle_visual_refresh_waiting_evidence", "Cooldown aguarda evidência?", "_refresh.flags.waiting_evidence", "msg", 2510, 2460,
+  [["vehicle_visual_refresh_reason_backoff"], ["vehicle_visual_refresh_reason_minimum"]]);
+rchange("vehicle_visual_refresh_reason_backoff", "Bloquear: backoff", "backoff", 2770, 2410, [["vehicle_visual_refresh_suppress_backoff"]]);
+rchange("vehicle_visual_refresh_reason_minimum", "Bloquear: intervalo mínimo", "minimum_interval", 2770, 2490, [["vehicle_visual_refresh_suppress_minimum"]]);
+rfn("vehicle_visual_refresh_suppress_backoff", "Calcular retry sem novo efeito", "vehicle-refresh-suppress.js", 1, 3040, 2410, [["vehicle_visual_refresh_result_backoff"]]);
+rfn("vehicle_visual_refresh_suppress_minimum", "Calcular cooldown sem novo efeito", "vehicle-refresh-suppress.js", 1, 3040, 2490, [["vehicle_visual_refresh_result_minimum"]]);
+rlinkOut("vehicle_visual_refresh_result_backoff", "Backoff → resultado", 3250, 2410);
+rlinkOut("vehicle_visual_refresh_result_minimum", "Cooldown → resultado", 3250, 2490);
+rsw("vehicle_visual_refresh_cache_needed", "Evidência pendente exige releitura de cache?", "_refresh.flags.cache_probe_needed", "msg", 2510, 2620,
+  [["vehicle_visual_refresh_cache_build"], ["vehicle_visual_refresh_dispatch_build"]]);
+rfn("vehicle_visual_refresh_cache_build", "Preparar cache probe protegido", "vehicle-refresh-cache-build.js", 1, 2790, 2590, [["vehicle_visual_refresh_result_cache"]]);
+rfn("vehicle_visual_refresh_dispatch_build", "Preparar wake e lease", "vehicle-refresh-dispatch-build.js", 1, 2790, 2670, [["vehicle_visual_refresh_result_dispatch"]]);
+rlinkOut("vehicle_visual_refresh_result_cache", "Cache probe → resultado", 3010, 2590);
+rlinkOut("vehicle_visual_refresh_result_dispatch", "Wake → resultado", 3010, 2670);
+const resultOrigins = ["vehicle_visual_refresh_result_cache_active", "vehicle_visual_refresh_result_cache_settle",
+  "vehicle_visual_refresh_result_request_active", "vehicle_visual_refresh_result_departure",
+  "vehicle_visual_refresh_result_wait", "vehicle_visual_refresh_result_backoff",
+  "vehicle_visual_refresh_result_minimum", "vehicle_visual_refresh_result_cache",
+  "vehicle_visual_refresh_result_dispatch"];
+refreshGrouped({
+  id: "vehicle_visual_refresh_result_in", type: "link in", z: VEHICLE_TAB,
+  g: refreshDecisionGroup.id, name: "Convergir exatamente um resultado", links: resultOrigins,
+  x: 3330, y: 2580, wires: [["b33e117e55bdb5ed"]]
+});
+const refreshOutput = required("b33e117e55bdb5ed");
+refreshOutput.name = "Persistir lifecycle e rotear pedido";
+refreshOutput.func = source("vehicle-refresh-output.js");
+refreshOutput.outputs = 5; refreshOutput.x = 3540; refreshOutput.y = 2580;
+for (const id of ["eb4b8a519ab0bc28", "vehicle_primary_manual_blocked_route_out_v1",
+  "vehicle_primary_refresh_notification_requested_out_v1"]) {
+  const node = required(id);
+  node.g = refreshDecisionGroup.id;
+  if (!refreshDecisionGroup.nodes.includes(id)) refreshDecisionGroup.nodes.push(id);
+}
+Object.assign(required("eb4b8a519ab0bc28"), { x: 3880, y: 2500 });
+Object.assign(required("vehicle_primary_manual_blocked_route_out_v1"), { x: 3880, y: 2580 });
+Object.assign(required("vehicle_primary_refresh_notification_requested_out_v1"), { x: 3880, y: 2660 });
+refreshGrouped({
+  id: "vehicle_visual_refresh_dispatch_out", type: "link out", z: VEHICLE_TAB,
+  g: refreshDecisionGroup.id, name: "Wake → gate final", mode: "link",
+  links: ["vehicle_visual_refresh_dispatch_in"], x: 3880, y: 2420, wires: []
+});
+refreshGrouped({
+  id: "vehicle_visual_refresh_cache_out", type: "link out", z: VEHICLE_TAB,
+  g: refreshDecisionGroup.id, name: "Cache → gate final", mode: "link",
+  links: ["vehicle_visual_refresh_cache_in"], x: 3880, y: 2740, wires: []
+});
+refreshOutput.wires = [
+  ["vehicle_visual_refresh_dispatch_out"], ["eb4b8a519ab0bc28"],
+  ["vehicle_primary_manual_blocked_route_out_v1"],
+  ["vehicle_primary_refresh_notification_requested_out_v1"],
+  ["vehicle_visual_refresh_cache_out"]
+];
+grouped(executionGroup.id, {
+  id: "vehicle_visual_refresh_dispatch_in", type: "link in", z: VEHICLE_TAB,
+  g: executionGroup.id, name: "Receber wake autorizado pela política",
+  links: ["vehicle_visual_refresh_dispatch_out"], x: 550, y: 720,
+  wires: [["vehicle_primary_refresh_dispatch_guard_v1"]]
+});
+grouped(executionGroup.id, {
+  id: "vehicle_visual_refresh_cache_in", type: "link in", z: VEHICLE_TAB,
+  g: executionGroup.id, name: "Receber cache probe autorizado",
+  links: ["vehicle_visual_refresh_cache_out"], x: 550, y: 1080,
+  wires: [["vehicle_primary_cache_probe_dispatch_guard_v1"]]
+});
+executionGroup.nodes = executionGroup.nodes.filter((id) => id !== "b33e117e55bdb5ed" &&
+  !["eb4b8a519ab0bc28", "vehicle_primary_manual_blocked_route_out_v1",
+    "vehicle_primary_refresh_notification_requested_out_v1"].includes(id));
 required(VEHICLE_TAB).info = "Localização, evidência de uso, direção, armamento, dedupe e confirmação semântica do wake são explícitos. Funções apenas adaptam payloads, calculam distância e persistem contratos; efeitos permanecem em gates próprios.";
 
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
