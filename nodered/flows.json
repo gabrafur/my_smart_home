@@ -1392,7 +1392,7 @@
         "type": "tab",
         "label": "contexto_vehicle_primary",
         "disabled": false,
-        "info": "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv15: ON/OFF conhecidos não expiram pela idade; a idade continua diagnóstica e pode solicitar wake. Somente falha real da API marca o motor como não confiável e permite bypass automático, sempre preservando OFF conhecido como bloqueio. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.",
+        "info": "Localização, evidência de uso, direção, armamento, dedupe e confirmação semântica do wake são explícitos. Funções apenas adaptam payloads, calculam distância e persistem contratos; efeitos permanecem em gates próprios.",
         "env": []
     },
     {
@@ -1946,7 +1946,7 @@
         "id": "d860cb4ad0d1fd89",
         "type": "group",
         "z": "c22d8b12055e87f7",
-        "name": "2. Estado do veículo, viagem e chegada",
+        "name": "2. Lifecycle visual do veículo, chegada e confirmação de refresh",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -1963,12 +1963,50 @@
             "aa9889d5766ce5a0",
             "vehicle_primary_arrival_direction_note_v1",
             "vehicle_primary_arrival_departure_blocked_v1",
-            "vehicle_primary_classify_near_home_v1"
+            "vehicle_primary_classify_near_home_v1",
+            "vehicle_visual_test_adapter",
+            "vehicle_visual_normalize",
+            "vehicle_visual_movement",
+            "vehicle_visual_state_load",
+            "vehicle_visual_engine_on",
+            "vehicle_visual_engine_off",
+            "vehicle_visual_persisted_trip",
+            "vehicle_visual_unlocked_home",
+            "vehicle_visual_use_engine_on",
+            "vehicle_visual_use_engine_off",
+            "vehicle_visual_use_persisted",
+            "vehicle_visual_use_unlocked",
+            "vehicle_visual_use_pending",
+            "vehicle_visual_use_engine_on_out",
+            "vehicle_visual_use_engine_off_out",
+            "vehicle_visual_use_persisted_out",
+            "vehicle_visual_use_unlocked_out",
+            "vehicle_visual_use_pending_out",
+            "vehicle_visual_in_use_in",
+            "vehicle_visual_arrival_facts",
+            "vehicle_visual_arrival_gate",
+            "vehicle_visual_blocked_gate",
+            "vehicle_visual_arrival_build",
+            "vehicle_visual_arrival_dedupe",
+            "vehicle_visual_blocked_build",
+            "vehicle_visual_arrival_out",
+            "vehicle_visual_blocked_out",
+            "vehicle_visual_no_arrival_out",
+            "vehicle_visual_arrival_result_in",
+            "vehicle_visual_state_finalize",
+            "vehicle_visual_evidence_read",
+            "vehicle_visual_awaiting_evidence",
+            "vehicle_visual_evidence_confirmed",
+            "vehicle_visual_evidence_confirm",
+            "vehicle_visual_evidence_success_out",
+            "vehicle_visual_evidence_pending_out",
+            "vehicle_visual_evidence_idle_out",
+            "vehicle_visual_output_in"
         ],
-        "x": 734,
-        "y": 139,
-        "w": 850,
-        "h": 322
+        "x": 1940,
+        "y": 620,
+        "w": 6360,
+        "h": 502
     },
     {
         "id": "43a2bc9c218353ae",
@@ -9436,16 +9474,16 @@
         "type": "function",
         "z": "c22d8b12055e87f7",
         "g": "d860cb4ad0d1fd89",
-        "name": "Normalizar vehicle_primary e detectar transições",
-        "func": "const HOME_LAT = Number(env.get(\"HOME_LAT\"));\nconst HOME_LON = Number(env.get(\"HOME_LON\"));\nconst GATE_LAT = Number(env.get(\"GATE_LAT\"));\nconst GATE_LON = Number(env.get(\"GATE_LON\"));\nconst HOME_KNOWN = Number.isFinite(HOME_LAT) && Number.isFinite(HOME_LON);\nconst GATE_KNOWN = Number.isFinite(GATE_LAT) && Number.isFinite(GATE_LON);\nconst LOCATION_POLICY = global.get(\"location_policy_v1\", \"persistent\");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true) {\n    node.error(\"Política canônica de localização ausente\", msg);\n    return [null, null, null];\n}\nconst HOME_RADIUS_M = Number(LOCATION_POLICY.home_radius_m);\nconst NEAR_HOME_RADIUS_M = Number(LOCATION_POLICY.near_home_radius_m);\nconst MAX_GPS_ACCURACY_M = Number(LOCATION_POLICY.max_gps_accuracy_m);\nconst MOVEMENT_THRESHOLD_M = Number(LOCATION_POLICY.movement_threshold_m);\nconst APPROACH_ZONE = \"near_home\";\nconst PRIMARY_HOME_GRACE_MS = 10 * 60 * 1000;\nconst LOCATION_FRESH_MS = Number(LOCATION_POLICY.vehicle_location_fresh_minutes) * 60 * 1000;\nconst SIGNAL_FRESH_MS = 5 * 60 * 1000;\nconst RECOVERY_TTL_MS = 24 * 60 * 60 * 1000;\nconst FUTURE_TOLERANCE_MS = 60 * 1000;\nconst RECOVERY_KEY = \"security_vehicle_primary_recovery_v1\";\nconst PERSISTENT = \"persistent\";\nconst ARMED_KEY = \"vehicle_primary_arrival_armed\";\nconst IN_USE_KEY = \"vehicle_primary_in_use\";\nconst LOCATION_OBSERVATION_KEY = \"vehicle_primary_location_observation_v1\";\n\n\nconst TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nconst SHARED_TEST_KEY = \"security_location_test_state_v1\";\n\nfunction testBaseline(now = Date.now()) {\n    return {\n        version: 1,\n        resident_primary: \"home\",\n        resident_secondary: \"home\",\n        vehicle_primary: \"home\",\n        vehicle_primary_engine: \"off\",\n        vehicle_primary_lock: \"locked\",\n        observed_at: now,\n        transitions: {}\n    };\n}\n\nfunction clearvehicle_primaryTestState() {\n    [\n        \"security_vehicle_primary_recovery_v1__test\",\n        \"vehicle_primary_arrival_armed__test\",\n        \"vehicle_primary_in_use__test\",\n        \"vehicle_primary_context_v1__test\",\n        \"security_vehicle_primary_recovery_logged__test\",\n        \"security_vehicle_primary_ready_logged__test\",\n        \"vehicle_primary_location_observation_v1__test\",\n        \"security_vehicle_primary_test_clock\",\n        \"security_vehicle_primary_refresh_v1__test\",\n        \"security_vehicle_primary_refresh_v1__test\"\n    ].forEach((key) => flow.set(key, undefined));\n}\n\nif (\n    TEST_MODE &&\n    msg.payload?.event === \"context_snapshot\"\n) {\n    if (msg._location_test_reset === true) {\n        clearvehicle_primaryTestState();\n    }\n\n    let shared = global.get(SHARED_TEST_KEY);\n    if (!shared || shared.version !== 1) {\n        shared = testBaseline();\n        global.set(SHARED_TEST_KEY, shared);\n    }\n\n    const refreshCycleId = msg.payload?.refresh_cycle_id;\n    const testAt = Math.max(\n        Date.now(),\n        Number(shared.observed_at || 0)\n    );\n    const now = new Date(testAt).toISOString();\n\n    function testEntity(entityId, state, attributes = {}) {\n        return {\n            entity_id: entityId,\n            state,\n            attributes,\n            last_changed: now,\n            last_updated: now\n        };\n    }\n\n    const transition = shared.transitions?.vehicle_primary;\n    const activeTransition =\n        transition?.domain === \"vehicle_primary\" &&\n        transition?.test_case === msg._location_test_case &&\n        msg._location_test_reset !== true;\n\n    msg.payload = {\n        event: activeTransition\n            ? \"location_update\"\n            : \"context_snapshot\",\n        source: activeTransition ? \"vehicle_primary\" : \"refresh\",\n        refresh_cycle_id: refreshCycleId,\n        trigger_entity: activeTransition\n            ? \"device_tracker.vehicle_primary\"\n            : undefined,\n        trigger_state: activeTransition\n            ? transition.state\n            : undefined,\n        trigger_prev_state: activeTransition\n            ? transition.prev\n            : undefined,\n        vehicle_primary: testEntity(\n            \"device_tracker.vehicle_primary\",\n            shared.vehicle_primary,\n            { gps_accuracy: 20 }\n        ),\n        vehicle_primary_engine: testEntity(\n            \"binary_sensor.vehicle_primary_engine\",\n            shared.vehicle_primary_engine\n        ),\n        vehicle_primary_lock: testEntity(\n            \"lock.vehicle_primary_door_lock\",\n            shared.vehicle_primary_lock\n        ),\n        vehicle_primary_last_updated: testEntity(\n            \"sensor.vehicle_primary_last_updated_at\",\n            now\n        )\n    };\n}\n\nfunction contextKey(base) {\n    return TEST_MODE ? `${base}__test` : base;\n}\n\nfunction ctxGet(base, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.get(key)\n        : flow.get(key, store);\n}\n\nfunction ctxSet(base, value, store) {\n    const key = contextKey(base);\n    return TEST_MODE || !store\n        ? flow.set(key, value)\n        : flow.set(key, value, store);\n}\n\nfunction validZoneState(value) {\n    return (\n        typeof value === \"string\" &&\n        ![\"\", \"unknown\", \"unavailable\"].includes(value)\n    );\n}\n\nfunction distanceMeters(lat1, lon1, lat2, lon2) {\n    const toRad = (value) => value * Math.PI / 180;\n    const dLat = toRad(lat2 - lat1);\n    const dLon = toRad(lon2 - lon1);\n    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));\n}\nfunction reliableCoords(entity) {\n    const attrs = entity?.attributes ?? {};\n    const lat = Number(attrs.latitude);\n    const lon = Number(attrs.longitude);\n    const accuracy = Number(attrs.gps_accuracy);\n    const hasCoords = Number.isFinite(lat) && Number.isFinite(lon);\n    const hasAccuracy = Number.isFinite(accuracy);\n    return hasCoords && (!hasAccuracy || accuracy <= MAX_GPS_ACCURACY_M) ? { lat, lon } : null;\n}\nfunction primaryHome(entity) {\n    const coords = reliableCoords(entity);\n    if (HOME_KNOWN && coords) return distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon) <= HOME_RADIUS_M;\n    const accuracy = Number(entity?.attributes?.gps_accuracy);\n    if (Number.isFinite(accuracy) && accuracy > MAX_GPS_ACCURACY_M) return false;\n    return entity?.state === \"home\";\n}\nfunction homeForMs(entity) {\n    const changedAt = Date.parse(entity?.last_changed ?? \"\");\n    return Number.isFinite(changedAt) ? Date.now() - changedAt : null;\n}\nfunction observedAt(entity) {\n    const locationObservedAt = Date.parse(\n        entity?.attributes?.location_observed_at ?? \"\"\n    );\n    if (Number.isFinite(locationObservedAt)) return locationObservedAt;\n    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? \"\");\n    return Number.isFinite(value) ? value : null;\n}\nfunction fresh(entity, ttl) {\n    const value = observedAt(entity);\n    return value !== null && value <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - value <= ttl;\n}\nfunction position(entity) {\n    const attrs = entity?.attributes ?? {};\n    const coords = reliableCoords(entity);\n    const accuracy = Number(attrs.gps_accuracy);\n    const state = entity?.state;\n    const validState = typeof state === \"string\" && ![\"unknown\", \"unavailable\", \"\"].includes(state);\n    const updatedAt = observedAt(entity);\n    const stale = !fresh(entity, LOCATION_FRESH_MS);\n    return {\n        entity_id: entity?.entity_id, state,\n        latitude: coords?.lat ?? null, longitude: coords?.lon ?? null,\n        gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n        location_reliable: Boolean(coords),\n        state_valid: validState && !stale && (Boolean(coords) || [\"home\", \"not_home\", APPROACH_ZONE].includes(state)),\n        updated_at: updatedAt, stale, ready: validState && !stale,\n        distance_m: HOME_KNOWN && coords ? Math.round(distanceMeters(HOME_LAT, HOME_LON, coords.lat, coords.lon)) : null,\n        gate_distance_m: GATE_KNOWN && coords ? Math.round(distanceMeters(GATE_LAT, GATE_LON, coords.lat, coords.lon)) : null,\n        primary_home: primaryHome(entity), primary_home_for_ms: homeForMs(entity),\n    };\n}\nfunction isAway(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m > HOME_RADIUS_M;\n    return item?.state === \"not_home\";\n}\nfunction isArmingHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.distance_m !== null) return item.distance_m <= HOME_RADIUS_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\nfunction isNearHome(item) {\n    if (item?.ready !== true) return false;\n    if (item?.gate_distance_m !== null && item.gate_distance_m <= NEAR_HOME_RADIUS_M) return true;\n    if (item?.distance_m !== null) return item.distance_m <= NEAR_HOME_RADIUS_M;\n    if (item?.gps_accuracy !== null && item.gps_accuracy > MAX_GPS_ACCURACY_M) return false;\n    return item?.state === \"home\";\n}\n\n\nfunction semanticTimestamp(entity) {\n    const value = Date.parse(entity?.state ?? \"\");\n    return Number.isFinite(value) ? value : null;\n}\n\nconst vehicle_primary = position(msg.payload?.vehicle_primary);\nconst telemetryUpdatedAt = semanticTimestamp(\n    msg.payload?.vehicle_primary_last_updated\n);\nconst engineState = msg.payload?.vehicle_primary_engine?.state;\nconst lockState = msg.payload?.vehicle_primary_lock?.state;\n/* engine_state_trust_by_api_health_v1:\n * ON/OFF conhecidos continuam válidos independentemente da idade. A idade\n * permanece diagnóstica e pode motivar wake; somente uma falha real da API\n * torna o motor não confiável para a iluminação. */\nconst engineFresh = fresh(msg.payload?.vehicle_primary_engine, SIGNAL_FRESH_MS);\nconst lockFresh = fresh(msg.payload?.vehicle_primary_lock, SIGNAL_FRESH_MS);\nconst engineStateKnown = [\n    \"on\", \"running\", \"off\", \"stopped\", \"idle\"\n].includes(engineState);\nconst engineOn = [\"on\", \"running\"].includes(engineState);\nconst engineOff = [\"off\", \"stopped\", \"idle\"].includes(engineState);\nconst unlocked = lockFresh && lockState === \"unlocked\";\nconst refreshHealthState = TEST_MODE\n    ? flow.get(\"security_vehicle_primary_refresh_v1__test\") ?? {}\n    : flow.get(\"security_vehicle_primary_refresh_v1\", PERSISTENT) ?? {};\nconst engineFailureClasses = new Set([\n    \"integration_unavailable\",\n    \"provider_backoff\",\n    \"authentication\",\n    \"timeout\",\n    \"no_fresh_data\",\n    \"api_error\"\n]);\nconst engineCommunicationFailed =\n    typeof refreshHealthState.engine_communication_failed === \"boolean\"\n        ? refreshHealthState.engine_communication_failed\n        : engineFailureClasses.has(refreshHealthState.last_failure_class);\n\nconst isLocationEvent = msg.payload?.event === \"location_update\";\nconst triggerState = msg.payload?.trigger_state;\nconst triggerPrevState = msg.payload?.trigger_prev_state;\nconst triggerPrevValid = validZoneState(triggerPrevState);\nconst previousLocation =\n    ctxGet(LOCATION_OBSERVATION_KEY, PERSISTENT);\nconst zoneChanged =\n    triggerPrevValid &&\n    triggerState !== triggerPrevState &&\n    [\"home\", \"not_home\", APPROACH_ZONE].includes(triggerState);\nconst movementDistanceM =\n    previousLocation &&\n    Number.isFinite(previousLocation.latitude) &&\n    Number.isFinite(previousLocation.longitude) &&\n    Number.isFinite(vehicle_primary.latitude) &&\n    Number.isFinite(vehicle_primary.longitude)\n        ? distanceMeters(\n            previousLocation.latitude,\n            previousLocation.longitude,\n            vehicle_primary.latitude,\n            vehicle_primary.longitude\n        )\n        : null;\nconst movementAccuracyM = Math.max(\n    MOVEMENT_THRESHOLD_M,\n    Number(previousLocation?.gps_accuracy || 0) +\n        Number(vehicle_primary.gps_accuracy || 0)\n);\nconst significantCoordinateMovement =\n    Number.isFinite(movementDistanceM) &&\n    movementDistanceM >= movementAccuracyM &&\n    Number(vehicle_primary.updated_at || 0) >\n        Number(previousLocation?.updated_at || 0);\nconst freshVehicleMovement =\n    isLocationEvent &&\n    vehicle_primary.ready === true &&\n    (zoneChanged || significantCoordinateMovement);\n\nif (\n    isLocationEvent &&\n    vehicle_primary.location_reliable === true &&\n    (\n        !previousLocation ||\n        zoneChanged ||\n        significantCoordinateMovement\n    )\n) {\n    ctxSet(\n        LOCATION_OBSERVATION_KEY,\n        {\n            version: 1,\n            latitude: vehicle_primary.latitude,\n            longitude: vehicle_primary.longitude,\n            gps_accuracy: vehicle_primary.gps_accuracy,\n            state: vehicle_primary.state,\n            updated_at: vehicle_primary.updated_at\n        },\n        PERSISTENT\n    );\n}\n\nif (!TEST_MODE && freshVehicleMovement) {\n    const movementKind = zoneChanged ? \"zone\" : \"distance\";\n    const distanceBucketM = Number.isFinite(movementDistanceM)\n        ? Math.ceil(movementDistanceM / 100) * 100\n        : null;\n    node.log?.(\n        \"VEHICLE_PRIMARY_LOCATION_CHANGED kind=\" + movementKind +\n        (distanceBucketM === null\n            ? \"\"\n            : \" displacement_bucket_m=\" + distanceBucketM)\n    );\n    node.log?.(\n        \"VEHICLE_PRIMARY_MOVEMENT_DETECTED source=device_tracker \" +\n        \"engine_stale=\" + String(engineFresh !== true)\n    );\n}\nlet recovery = ctxGet(RECOVERY_KEY, PERSISTENT);\nconst recoveryIsObject = recovery && typeof recovery === \"object\" && !Array.isArray(recovery);\nconst inUseTypeValid = recovery?.in_use === undefined || typeof recovery.in_use === \"boolean\";\nconst confirmedAt = Number(recovery?.last_confirmed_at ?? 0);\nconst confirmedAtValid = recovery?.in_use === undefined || Number.isFinite(recovery.last_confirmed_at) && confirmedAt > 0;\nconst confirmedAtCurrent = recovery?.in_use === undefined || confirmedAt <= Date.now() + FUTURE_TOLERANCE_MS && Date.now() - confirmedAt <= RECOVERY_TTL_MS;\nif (!recoveryIsObject || recovery.version !== 1 || !inUseTypeValid || !confirmedAtValid || !confirmedAtCurrent) {\n    if (recovery !== undefined) node.warn(\"contexto_vehicle_primary: recovery persistido invalido ou expirado; descartado\");\n    recovery = { version: 1 };\n}\nif (recovery.trip_active !== undefined && typeof recovery.trip_active !== \"boolean\") recovery.trip_active = false;\nif (recovery.in_use !== true) {\n    recovery.trip_active = false;\n    recovery.trip_started_at = null;\n}\nif (recovery.arrival_armed !== undefined && typeof recovery.arrival_armed !== \"boolean\") recovery.arrival_armed = false;\nif (recovery.trip_started_at !== undefined && recovery.trip_started_at !== null && (!Number.isFinite(recovery.trip_started_at) || recovery.trip_started_at > Date.now() + FUTURE_TOLERANCE_MS)) recovery.trip_started_at = null;\nif (typeof recovery.in_use === \"boolean\" && ctxGet(\"security_vehicle_primary_recovery_logged\") !== true) {\n    node.log?.(\"contexto_vehicle_primary: estado persistido carregado; aguardando revalidacao pelas entidades atuais\");\n    ctxSet(\"security_vehicle_primary_recovery_logged\", true);\n}\nlet inUse = null;\nlet inUseReason = \"insufficient_current_evidence\";\n\n/*\n * Prioridade de evidências:\n * 1) motor atual ON/RUNNING;\n * 2) motor atual OFF/STOPPED/IDLE;\n * 3) viagem persistida revalidada por localização atual;\n * 4) chegada em casa + porta destravada como evidência de fim de uso.\n *\n * IMPORTANTE v9:\n * movimento do tracker do vehicle_primary NÃO transforma sozinho in_use em true.\n * Ele apenas solicita recovery imediato do motor/contexto. Assim, o\n * refletor físico nunca é autorizado só porque o carro mudou de zona.\n */\nif (engineOn) {\n    inUse = true;\n    inUseReason = \"known_engine_on\";\n} else if (engineOff) {\n    inUse = false;\n    inUseReason = \"known_engine_off\";\n} else if (recovery.in_use === true && vehicle_primary.ready && isAway(vehicle_primary)) {\n    inUse = true;\n    inUseReason = \"persisted_trip_revalidated_by_fresh_away_location\";\n} else if (lockFresh && unlocked && vehicle_primary.ready && isNearHome(vehicle_primary)) {\n    inUse = false;\n    inUseReason = \"fresh_home_unlocked_engine_pending\";\n}\nctxSet(IN_USE_KEY, inUse);\n\nlet armed = ctxGet(ARMED_KEY);\nif (typeof armed !== \"boolean\") armed = recovery.arrival_armed === true;\n\nfunction externalArrivalCycleEvidence(state) {\n    return validZoneState(state) && ![\"home\", APPROACH_ZONE].includes(state);\n}\n\nif (vehicle_primary.ready === true && externalArrivalCycleEvidence(vehicle_primary.state)) {\n    armed = true;\n}\nif (\n    isLocationEvent &&\n    vehicle_primary.ready === true &&\n    triggerState === APPROACH_ZONE &&\n    vehicle_primary.current_home !== true &&\n    externalArrivalCycleEvidence(triggerPrevState)\n) {\n    armed = true;\n}\nlet arrival = null;\nlet blockedArrival = null;\nif (isLocationEvent && vehicle_primary.ready === true && triggerPrevValid) {\n    const approachEntry = triggerState === APPROACH_ZONE && triggerPrevState !== APPROACH_ZONE && triggerPrevState !== \"home\";\n    const departureTransition = triggerPrevState === \"home\" && triggerState !== \"home\";\n    if (departureTransition) armed = false;\n    const staleCatchUp = !approachEntry && vehicle_primary.primary_home === true && typeof vehicle_primary.primary_home_for_ms === \"number\" && vehicle_primary.primary_home_for_ms > PRIMARY_HOME_GRACE_MS;\n    if (!departureTransition && !staleCatchUp && (approachEntry || isNearHome(vehicle_primary)) && armed) {\n        arrival = { payload: {\n            contract: \"security.arrival.v1\", kind: \"arrival\", source: \"vehicle_primary\", arriving: [\"vehicle_primary\"],\n            arrival_source_type: \"vehicle_primary\", arrival_stage: approachEntry ? \"approach\" : \"home\",\n            arrival_direction: \"returning\", external_cycle_confirmed: true,\n            request_vehicle_primary_wake: approachEntry, event_at: vehicle_primary.updated_at ?? Date.now(),\n            refresh_cycle_id: msg.payload?.refresh_cycle_id,\n        } };\n    }\n    if (!arrival && triggerState !== triggerPrevState && [\"home\", APPROACH_ZONE].includes(triggerState)) {\n        blockedArrival = {\n            _location_test: TEST_MODE,\n            _location_test_case: TEST_MODE ? (msg._location_test_case ?? null) : undefined,\n            payload: {\n                contract: \"security.arrival-direction.v1\",\n                kind: \"arrival_blocked\",\n                source: \"vehicle_primary\",\n                trigger_state: triggerState,\n                trigger_prev_state: triggerPrevState,\n                direction_reason: departureTransition\n                    ? \"departure_from_home\"\n                    : armed !== true\n                        ? \"external_cycle_not_confirmed\"\n                        : staleCatchUp\n                            ? \"stale_home_catchup\"\n                            : \"transition_not_arrival_eligible\",\n                simulated: TEST_MODE,\n                dispatched: false,\n                event_at: vehicle_primary.updated_at ?? Date.now()\n            }\n        };\n    }\n    if (!approachEntry && isNearHome(vehicle_primary)) armed = false;\n} else if (isArmingHome(vehicle_primary)) {\n    armed = false;\n}\nif (arrival) {\n    const stage = arrival.payload.arrival_stage;\n    const key = [\"vehicle_primary\", stage].join(\":\");\n    const previousAt = Number(recovery.last_arrival_at ?? 0);\n    const previousKey = String(recovery.last_arrival_key ?? \"\");\n    const duplicate =\n        (previousKey === key || previousKey.startsWith(`${key}:`)) &&\n        previousAt <= Date.now() + FUTURE_TOLERANCE_MS &&\n        Date.now() - previousAt < 10 * 60 * 1000;\n    if (duplicate) arrival = null;\n    else {\n        recovery.last_arrival_key = key;\n        recovery.last_arrival_at = Date.now();\n    }\n}\nctxSet(ARMED_KEY, armed);\nrecovery.arrival_armed = armed;\nif (inUse !== null) {\n    recovery.in_use = inUse;\n    recovery.last_confirmed_at = Date.now();\n}\nrecovery.in_use_reason = inUseReason;\nif (inUse !== null) recovery.trip_active = inUse === true && isAway(vehicle_primary);\nif (recovery.trip_active && !Number.isFinite(recovery.trip_started_at)) recovery.trip_started_at = Date.now();\nif (inUse === false) recovery.trip_started_at = null;\nrecovery.updated_at = Date.now();\nctxSet(RECOVERY_KEY, recovery, PERSISTENT);\n\nconst engineUpdatedAt =\n    observedAt(msg.payload?.vehicle_primary_engine);\n\nconst lockUpdatedAt =\n    observedAt(msg.payload?.vehicle_primary_lock);\n\nconst lightingReady =\n    vehicle_primary.ready === true &&\n    engineStateKnown &&\n    !engineCommunicationFailed;\n\nconst currentLocationObservation = ctxGet(\n    LOCATION_OBSERVATION_KEY,\n    PERSISTENT\n);\nconst vehicleContext = {\n    location: vehicle_primary,\n    current_location_since:\n        Number(currentLocationObservation?.updated_at ?? 0) || null,\n    movement_threshold_m: MOVEMENT_THRESHOLD_M,\n    home_radius_m: HOME_RADIUS_M,\n    near_home_radius_m: NEAR_HOME_RADIUS_M,\n    people_fast_refresh_radius_m:\n        Number(LOCATION_POLICY.people_fast_refresh_radius_m),\n    last_confirmed_location: currentLocationObservation\n        ? { ...currentLocationObservation }\n        : null,\n    telemetry_updated_at: telemetryUpdatedAt,\n    distance_home_m: vehicle_primary.distance_m,\n    home: vehicle_primary.ready ? isArmingHome(vehicle_primary) : null,\n    near_home:\n        vehicle_primary.ready\n            ? isNearHome(vehicle_primary) && !isArmingHome(vehicle_primary)\n            : null,\n    away: vehicle_primary.ready ? isAway(vehicle_primary) : null,\n    approaching_home:\n        arrival?.payload?.arrival_stage === \"approach\",\n    arrived_home:\n        arrival?.payload?.arrival_stage === \"home\",\n\n    engine_on: engineOn,\n    engine_state: engineState,\n    engine_state_valid: engineStateKnown,\n    engine_stale: !engineFresh,\n    engine_communication_failed: engineCommunicationFailed,\n    engine_updated_at: engineUpdatedAt,\n\n    lock_state: lockState,\n    unlocked,\n    lock_state_valid:\n        lockFresh &&\n        [\"locked\", \"unlocked\"].includes(lockState),\n    lock_stale: !lockFresh,\n    lock_updated_at: lockUpdatedAt,\n\n    in_use: inUse,\n    in_use_pending: inUse === null,\n    in_use_reason: inUseReason,\n\n    trip_active:\n        inUse === true &&\n        recovery.trip_active === true,\n    trip_started_at:\n        recovery.trip_started_at ?? null,\n\n    state_valid: vehicle_primary.state_valid,\n    ready: vehicle_primary.ready && inUse !== null,\n    lighting_ready: lightingReady,\n    stale: vehicle_primary.stale || inUse === null,\n\n    updated_at: Math.max(\n        ...[\n            vehicle_primary.updated_at,\n            engineUpdatedAt,\n            lockUpdatedAt\n        ].filter(Number.isFinite),\n        0\n    ),\n\n    arrival_armed: armed,\n};\n\n/*\n * Confirma sucesso de refresh somente com evidência observável:\n * pelo menos um timestamp de localização/motor/trava precisa avançar\n * em relação ao baseline capturado imediatamente antes da tentativa.\n *\n * Se houve atualização, mas o alvo de readiness ainda não foi atingido,\n * NÃO cria cooldown de sucesso. Mantém o backoff da tentativa corrente\n * e permite novo retry.\n */\n {\n    const refreshKey = TEST_MODE\n        ? \"security_vehicle_primary_refresh_v1__test\"\n        : \"security_vehicle_primary_refresh_v1\";\n    let refreshState = TEST_MODE\n        ? flow.get(refreshKey)\n        : flow.get(refreshKey, \"persistent\");\n    const setRefreshState = (value) => TEST_MODE\n        ? flow.set(refreshKey, value)\n        : flow.set(refreshKey, value, \"persistent\");\n    /* refresh_policy_interval_passthrough_v1 */\n    const configuredRefreshIntervalMs = Number(\n        refreshState?.interval_ms\n    );\n    const selectedRefreshIntervalMs =\n        Number.isFinite(configuredRefreshIntervalMs) &&\n        configuredRefreshIntervalMs > 0\n            ? configuredRefreshIntervalMs\n            : 0;\n\n    if (\n        refreshState &&\n        typeof refreshState === \"object\" &&\n        refreshState.awaiting_evidence === true\n    ) {\n        /* semantic_telemetry_evidence_v2:\n         * republicar entidades ou reler cache não prova dado novo. */\n        const baseline = Number(\n            refreshState.baseline_observed_at?.telemetry ?? 0\n        );\n        const currentTelemetryAt = Number(\n            vehicleContext.telemetry_updated_at ?? 0\n        );\n        const semanticAdvanced =\n            Number.isFinite(currentTelemetryAt) &&\n            currentTelemetryAt > 0 &&\n            (\n                !Number.isFinite(baseline) ||\n                baseline <= 0 ||\n                currentTelemetryAt > baseline\n            );\n        const requestAt = Number(\n            refreshState.last_request_at ??\n            refreshState.last_attempt_at ??\n            0\n        );\n        const semanticCurrentForAttempt =\n            semanticAdvanced &&\n            Number.isFinite(requestAt) &&\n            requestAt > 0 &&\n            currentTelemetryAt >=\n                requestAt - FUTURE_TOLERANCE_MS;\n        const changedDomains = semanticCurrentForAttempt\n            ? [\"telemetry\"]\n            : [];\n\n        const lastAttemptAt =\n            Number(refreshState.last_attempt_at ?? 0);\n\n        /* cache_probe_evidence_window_v2: a sondagem permite observar a\n         * resposta atrasada, mas nunca remove o limite causal do wake. */\n        const cacheProbeCurrentForAttempt =\n            Number(refreshState.cache_probe_completed_for_request_at ?? 0) ===\n                requestAt &&\n            Number(refreshState.cache_probe_accepted_at ?? 0) > 0;\n        const attemptCurrent =\n            lastAttemptAt > 0 &&\n            lastAttemptAt <= Date.now() + FUTURE_TOLERANCE_MS &&\n            Date.now() - lastAttemptAt <=\n                20 * 60 * 1000 + FUTURE_TOLERANCE_MS;\n\n        const evidenceObserved =\n            attemptCurrent &&\n            semanticCurrentForAttempt;\n\n        /* semantic_wake_confirmation_independent_of_derived_readiness_v2:\n         * telemetria semântica nova confirma que o wake respondeu. A\n         * confiabilidade específica do motor continua separada e protege\n         * o gate da iluminação, sem transformar o wake em falso erro. */\n        const lightingReadyAfterWake =\n            vehicleContext.ready === true &&\n            vehicleContext.engine_state_valid === true;\n\n        if (evidenceObserved) {\n            /* refresh_failure_recovery_cleanup_v1: sucesso confirmado\n             * remove detalhes antigos e agenda o fechamento do aviso no HA. */\n            const failureWasNotified =\n                Number(refreshState.failure_notified_at ?? 0) > 0;\n            refreshState = {\n                ...refreshState,\n                attempts: 0,\n                last_success_at: Date.now(),\n                next_allowed_at: Math.max(\n                    Date.now(),\n                    Number(refreshState.next_allowed_at ?? 0),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        selectedRefreshIntervalMs,\n                    cacheProbeCurrentForAttempt\n                        ? Date.now() + selectedRefreshIntervalMs\n                        : 0\n                ),\n                awaiting_evidence: false,\n                evidence_wait_started_at: null,\n                request_in_flight: false,\n                in_flight_until: null,\n                cache_probe_in_flight: false,\n                cache_probe_in_flight_until: null,\n                cache_probe_for_request_at: null,\n                cache_probe_completed_for_request_at: null,\n                cache_probe_settle_until: null,\n                failure_notified_at: null,\n                failure_notification_key: null,\n                recovery_notification_pending: failureWasNotified,\n                last_failure_class: null,\n                failure_at: null,\n                failure_source: null,\n                failure_endpoint: null,\n                failure_stage: null,\n                state: \"cooldown\",\n                reason: refreshState.recovery_reason ?? \"refresh_success\",\n                cooldown_until: Math.max(\n                    Date.now(),\n                    Number(refreshState.next_allowed_at ?? 0),\n                    Number(refreshState.last_request_at ?? Date.now()) +\n                        selectedRefreshIntervalMs,\n                    cacheProbeCurrentForAttempt\n                        ? Date.now() + selectedRefreshIntervalMs\n                        : 0\n                ),\n                next_retry_at: null,\n                last_evidence_at: Date.now(),\n                last_evidence_domains: changedDomains,\n                engine_communication_failed: false,\n                /* preserve_bypass_recovery_on_semantic_success_v1: uma resposta HTTP\n                 * aceita já pode ter agendado a remoção do bypass antes de\n                 * a evidência semântica chegar. */\n                engine_bypass_recovery_pending:\n                    refreshState.engine_bypass_recovery_pending === true ||\n                    engineCommunicationFailed,\n                lighting_ready_after_wake: lightingReadyAfterWake,\n                last_success_reason:\n                    lightingReadyAfterWake\n                        ? \"fresh_telemetry_engine_state_known\"\n                        : \"fresh_telemetry_context_ready\",\n                baseline_observed_at: null,\n                require_lighting_ready: false,\n                recovery_reason: null\n            };\n\n            setRefreshState(refreshState);\n            vehicleContext.engine_communication_failed = false;\n            vehicleContext.lighting_ready = lightingReadyAfterWake;\n\n            node.log?.(\n                \"VEHICLE_PRIMARY_NEW_DATA_RECEIVED domains=\" +\n                changedDomains.join(\",\") +\n                \" readiness=\" + refreshState.last_success_reason\n            );\n\n            node.status({\n                fill: \"green\",\n                shape: \"dot\",\n                text:\n                    refreshState.last_success_reason ===\n                    \"fresh_entities_lighting_ready\"\n                        ? \"refresh confirmado; motor/contexto ready\"\n                        : \"refresh confirmado; vehicle_primary ready\"\n            });\n        }\n    }\n}\n/* refresh_state_contract_v1: o contexto apenas espelha o estado\n * persistente do único coordenador; não calcula deadlines próprios. */\nconst sharedRefreshState = TEST_MODE\n    ? flow.get(\"security_vehicle_primary_refresh_v1__test\") ?? {}\n    : flow.get(\"security_vehicle_primary_refresh_v1\", \"persistent\") ?? {};\nvehicleContext.refresh = {\n    state: sharedRefreshState.state ?? \"idle\",\n    reason: sharedRefreshState.reason ??\n        sharedRefreshState.recovery_reason ?? null,\n    attempt: Number(sharedRefreshState.attempts ?? 0),\n    last_request_at: Number(sharedRefreshState.last_request_at ??\n        sharedRefreshState.last_attempt_at ?? 0) || null,\n    last_success_at: Number(sharedRefreshState.last_success_at ?? 0) || null,\n    next_retry_at: Number(sharedRefreshState.next_retry_at ?? 0) || null,\n    cooldown_until: Number(sharedRefreshState.cooldown_until ?? 0) || null,\n    awaiting_evidence: sharedRefreshState.awaiting_evidence === true,\n    request_in_flight: sharedRefreshState.request_in_flight === true,\n    in_flight_until: Number(sharedRefreshState.in_flight_until ?? 0) || null,\n    last_failure_class: sharedRefreshState.last_failure_class ?? null,\n    manual_force: sharedRefreshState.manual_force === true\n};\nctxSet(\"vehicle_primary_context_v1\", vehicleContext);\nconst previousReady = ctxGet(\"security_vehicle_primary_ready_logged\");\nif (previousReady !== vehicleContext.ready) {\n    node.log?.(\"contexto_vehicle_primary: contexto \" + (vehicleContext.ready ? \"ready (\" + vehicleContext.in_use_reason + \")\" : \"pending/stale\"));\n    ctxSet(\"security_vehicle_primary_ready_logged\", vehicleContext.ready);\n}\nmsg.payload = {\n    contract: \"security.vehicle_primary-context.v1\", kind: \"vehicle_primary_context\", context: vehicleContext,\n    event: msg.payload?.event, reason: msg.payload?.reason ?? (vehicleContext.ready ? vehicleContext.in_use_reason : \"vehicle_context_pending\"), source: \"vehicle_primary\",\n    trigger_entity: msg.payload?.trigger_entity, trigger_state: triggerState, trigger_prev_state: triggerPrevState,\n    confirmed_home_transition: isLocationEvent && vehicle_primary.ready === true && triggerPrevValid && triggerState === \"home\" && triggerPrevState !== \"home\",\n    refresh_cycle_id: msg.payload?.refresh_cycle_id,\n    updated_at: vehicleContext.updated_at,\n    valid: vehicleContext.state_valid,\n    ready: vehicleContext.ready,\n    lighting_ready: vehicleContext.lighting_ready,\n    stale: vehicleContext.stale,\n    readiness_reason:\n        vehicleContext.ready\n            ? vehicleContext.in_use_reason\n            : \"vehicle_context_pending\",\n};\n\nif (TEST_MODE) {\n    msg._location_test = true;\n    msg._location_test_case = msg._location_test_case ?? null;\n    msg.payload.test_mode = true;\n    msg.payload.test_case = msg._location_test_case;\n\n    if (arrival?.payload) {\n        arrival._location_test = true;\n        arrival._location_test_case = msg._location_test_case;\n        arrival.payload.test_mode = true;\n        arrival.payload.test_case = msg._location_test_case;\n    }\n}\n\nlet recoveryRequest = null;\n\n/*\n * Se o próprio tracker do vehicle_primary acabou de se mover, mas o motor está\n * stale, pedir recovery imediatamente. Isso reduz a chance de o carro\n * já estar desligado quando o próximo tick periódico tentar atualizar.\n */\nif (\n    !TEST_MODE &&\n    freshVehicleMovement\n) {\n    recoveryRequest = {\n        payload: {\n            kind: \"refresh_tick\",\n            origin: \"contexto_vehicle_primary\",\n            reason: engineFresh === true\n                ? \"vehicle_primary_location_changed\"\n                : \"vehicle_primary_location_changed_engine_stale\",\n            force_recovery: true,\n            require_lighting_ready: engineFresh !== true,\n            requested_at: Date.now()\n        }\n    };\n\n    node.status({\n        fill: \"yellow\",\n        shape: \"dot\",\n        text:\n            \"movimento do vehicle_primary; refresh solicitado\"\n    });\n}\n\nreturn [msg, arrival, recoveryRequest, blockedArrival];",
+        "name": "Persistir contexto e emitir contratos",
+        "func": "const data = msg._vehicle;\nconst refresh = data.refresh_state ?? {};\ndata.context.refresh = {\n    state: refresh.state ?? \"idle\",\n    reason: refresh.reason ?? refresh.recovery_reason ?? null,\n    attempt: Number(refresh.attempts ?? 0),\n    last_request_at: Number(refresh.last_request_at ?? refresh.last_attempt_at ?? 0) || null,\n    last_success_at: Number(refresh.last_success_at ?? 0) || null,\n    next_retry_at: Number(refresh.next_retry_at ?? 0) || null,\n    cooldown_until: Number(refresh.cooldown_until ?? 0) || null,\n    awaiting_evidence: refresh.awaiting_evidence === true,\n    request_in_flight: refresh.request_in_flight === true,\n    in_flight_until: Number(refresh.in_flight_until ?? 0) || null,\n    last_failure_class: refresh.last_failure_class ?? null,\n    manual_force: refresh.manual_force === true\n};\nconst contextKey = data.test_mode ? \"vehicle_primary_context_v1__test\" : \"vehicle_primary_context_v1\";\nflow.set(contextKey, data.context);\nconst readyKey = data.test_mode\n    ? \"security_vehicle_primary_ready_logged__test\" : \"security_vehicle_primary_ready_logged\";\nif (flow.get(readyKey) !== data.context.ready) {\n    node.log?.(\"contexto_vehicle_primary: contexto \" +\n        (data.context.ready ? \"ready (\" + data.context.in_use_reason + \")\" : \"pending/stale\"));\n    flow.set(readyKey, data.context.ready);\n}\nmsg.payload = {\n    contract: \"security.vehicle_primary-context.v1\",\n    kind: \"vehicle_primary_context\",\n    context: data.context,\n    event: data.event,\n    reason: data.reason ?? (data.context.ready ? data.context.in_use_reason : \"vehicle_context_pending\"),\n    source: \"vehicle_primary\",\n    trigger_entity: data.trigger_entity,\n    trigger_state: data.trigger_state,\n    trigger_prev_state: data.trigger_prev_state,\n    confirmed_home_transition: data.is_location_event && data.location.ready &&\n        data.facts.trigger_prev_valid && data.trigger_state === \"home\" &&\n        data.trigger_prev_state !== \"home\",\n    refresh_cycle_id: data.refresh_cycle_id,\n    updated_at: data.context.updated_at,\n    valid: data.context.state_valid,\n    ready: data.context.ready,\n    lighting_ready: data.context.lighting_ready,\n    stale: data.context.stale,\n    readiness_reason: data.context.ready ? data.context.in_use_reason : \"vehicle_context_pending\"\n};\nif (data.test_mode) {\n    msg._location_test = true;\n    msg._location_test_case = msg._location_test_case ?? null;\n    msg.payload.test_mode = true;\n    msg.payload.test_case = msg._location_test_case;\n    if (data.arrival?.payload) {\n        data.arrival._location_test = true;\n        data.arrival._location_test_case = msg._location_test_case;\n        data.arrival.payload.test_mode = true;\n        data.arrival.payload.test_case = msg._location_test_case;\n    }\n}\nconst recoveryRequest = !data.test_mode && data.fresh_movement ? {\n    payload: {\n        kind: \"refresh_tick\",\n        origin: \"contexto_vehicle_primary\",\n        reason: data.engine_fresh ? \"vehicle_primary_location_changed\"\n            : \"vehicle_primary_location_changed_engine_stale\",\n        force_recovery: true,\n        require_lighting_ready: !data.engine_fresh,\n        requested_at: Date.now()\n    }\n} : null;\nconst arrival = data.arrival ?? null;\nconst blocked = data.blocked ?? null;\ndelete msg._vehicle;\nreturn [msg, arrival, recoveryRequest, blocked];",
         "outputs": 4,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1250,
-        "y": 240,
+        "x": 8080,
+        "y": 820,
         "wires": [
             [
                 "c298447a6a2e3cef"
@@ -9474,8 +9512,8 @@
             "fad81d855058dad1",
             "vehicle_location_panel_in_v1"
         ],
-        "x": 1515,
-        "y": 180,
+        "x": 8260,
+        "y": 700,
         "wires": []
     },
     {
@@ -9489,8 +9527,8 @@
             "cf9bc321e0ec89f9",
             "6481cb991b3732f5"
         ],
-        "x": 1515,
-        "y": 220,
+        "x": 8260,
+        "y": 760,
         "wires": []
     },
     {
@@ -9503,8 +9541,8 @@
         "links": [
             "eedc9dd2ecc0ad7d"
         ],
-        "x": 1515,
-        "y": 260,
+        "x": 8260,
+        "y": 820,
         "wires": []
     },
     {
@@ -9937,8 +9975,8 @@
         "links": [
             "6473697c19342f07"
         ],
-        "x": 1265,
-        "y": 300,
+        "x": 8260,
+        "y": 880,
         "wires": []
     },
     {
@@ -15331,11 +15369,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 850,
-        "y": 240,
+        "x": 2040,
+        "y": 860,
         "wires": [
             [
-                "092625f2eb5cc156"
+                "vehicle_visual_test_adapter"
             ]
         ]
     },
@@ -15346,8 +15384,8 @@
         "g": "d860cb4ad0d1fd89",
         "name": "SAÍDA bloqueada; RETORNO só após estado externo",
         "info": "O veículo não arma chegada apenas por cruzar 100 m. home→near_home e o rebote near_home→home ficam visíveis no terminal bloqueado.",
-        "x": 1190,
-        "y": 340,
+        "x": 7700,
+        "y": 1040,
         "wires": []
     },
     {
@@ -15363,8 +15401,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1390,
-        "y": 400,
+        "x": 8080,
+        "y": 1040,
         "wires": []
     },
     {
@@ -15388,8 +15426,8 @@
             "vehicle_location_panel_publish_v1",
             "vehicle_location_panel_mqtt_v1"
         ],
-        "x": 1940,
-        "y": 579,
+        "x": 3300,
+        "y": 259,
         "w": 922,
         "h": 242
     },
@@ -15402,8 +15440,8 @@
         "links": [
             "people_location_policy_out_v1"
         ],
-        "x": 2025,
-        "y": 660,
+        "x": 3385,
+        "y": 340,
         "wires": [
             [
                 "vehicle_location_policy_status_v1"
@@ -15423,8 +15461,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2290,
-        "y": 660,
+        "x": 3650,
+        "y": 340,
         "wires": []
     },
     {
@@ -15436,8 +15474,8 @@
         "links": [
             "c298447a6a2e3cef"
         ],
-        "x": 2025,
-        "y": 740,
+        "x": 3385,
+        "y": 420,
         "wires": [
             [
                 "vehicle_location_panel_publish_v1"
@@ -15457,8 +15495,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2300,
-        "y": 740,
+        "x": 3660,
+        "y": 420,
         "wires": [
             [
                 "vehicle_location_panel_mqtt_v1"
@@ -15480,8 +15518,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 2670,
-        "y": 740,
+        "x": 4030,
+        "y": 420,
         "wires": []
     },
     {
@@ -44321,7 +44359,7 @@
             "global_observer_coverage__c22d8b12055e87f7__annotate",
             "global_observer_coverage__c22d8b12055e87f7__out"
         ],
-        "x": 3300,
+        "x": 4350,
         "y": 40,
         "w": 720,
         "h": 162
@@ -44334,7 +44372,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 3440,
+        "x": 4490,
         "y": 100,
         "wires": [
             [
@@ -44349,7 +44387,7 @@
         "g": "global_observer_coverage__c22d8b12055e87f7__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 3450,
+        "x": 4500,
         "y": 160,
         "wires": [
             [
@@ -44370,7 +44408,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 3720,
+        "x": 4770,
         "y": 130,
         "wires": [
             [
@@ -44388,7 +44426,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 3965,
+        "x": 5015,
         "y": 130,
         "wires": []
     },
@@ -46853,6 +46891,865 @@
         "wires": [
             [
                 "554cb653b2fa4504"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_test_adapter",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Adaptar somente o estado sintético",
+        "func": "const TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nif (!TEST_MODE || msg.payload?.event !== \"context_snapshot\") return msg;\nif (msg._location_test_reset === true) {\n    for (const key of [\n        \"security_vehicle_primary_recovery_v1__test\",\n        \"vehicle_primary_arrival_armed__test\",\n        \"vehicle_primary_in_use__test\",\n        \"vehicle_primary_context_v1__test\",\n        \"security_vehicle_primary_recovery_logged__test\",\n        \"security_vehicle_primary_ready_logged__test\",\n        \"vehicle_primary_location_observation_v1__test\",\n        \"security_vehicle_primary_test_clock\",\n        \"security_vehicle_primary_refresh_v1__test\"\n    ]) flow.set(key, undefined);\n}\nconst SHARED = \"security_location_test_state_v1\";\nlet shared = global.get(SHARED);\nif (!shared || shared.version !== 1) {\n    shared = {\n        version: 1,\n        resident_primary: \"home\",\n        resident_secondary: \"home\",\n        vehicle_primary: \"home\",\n        vehicle_primary_engine: \"off\",\n        vehicle_primary_lock: \"locked\",\n        observed_at: Date.now(),\n        transitions: {}\n    };\n    global.set(SHARED, shared);\n}\nconst observedAt = Math.max(Date.now(), Number(shared.observed_at || 0));\nconst timestamp = new Date(observedAt).toISOString();\nconst entity = (entity_id, state, attributes = {}) => ({\n    entity_id, state, attributes, last_changed: timestamp, last_updated: timestamp\n});\nconst transition = shared.transitions?.vehicle_primary;\nconst active = transition?.domain === \"vehicle_primary\" &&\n    transition?.test_case === msg._location_test_case &&\n    msg._location_test_reset !== true;\nconst refreshCycleId = msg.payload?.refresh_cycle_id;\nmsg.payload = {\n    event: active ? \"location_update\" : \"context_snapshot\",\n    source: active ? \"vehicle_primary\" : \"refresh\",\n    refresh_cycle_id: refreshCycleId,\n    trigger_entity: active ? \"device_tracker.vehicle_primary\" : undefined,\n    trigger_state: active ? transition.state : undefined,\n    trigger_prev_state: active ? transition.prev : undefined,\n    vehicle_primary: entity(\"device_tracker.vehicle_primary\", shared.vehicle_primary,\n        { gps_accuracy: 20 }),\n    vehicle_primary_engine: entity(\"binary_sensor.vehicle_primary_engine\",\n        shared.vehicle_primary_engine),\n    vehicle_primary_lock: entity(\"lock.vehicle_primary_door_lock\",\n        shared.vehicle_primary_lock),\n    vehicle_primary_last_updated: entity(\"sensor.vehicle_primary_last_updated_at\", timestamp)\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2300,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_normalize",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Normalizar localização, motor e trava",
+        "func": "const policy = global.get(\"location_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"Política canônica de localização ausente\", msg);\n    return null;\n}\nconst TEST_MODE = msg._location_test === true || msg.payload?.test_mode === true;\nconst futureMs = Number(policy.future_tolerance_seconds) * 1000;\nconst freshMs = Number(policy.vehicle_location_fresh_minutes) * 60000;\nconst signalMs = Number(policy.vehicle_signal_fresh_minutes) * 60000;\nconst observedAt = (entity) => {\n    const preferred = Date.parse(entity?.attributes?.location_observed_at ?? \"\");\n    if (Number.isFinite(preferred)) return preferred;\n    const value = Date.parse(entity?.last_updated ?? entity?.last_changed ?? \"\");\n    return Number.isFinite(value) ? value : null;\n};\nconst fresh = (entity, ttl) => {\n    const value = observedAt(entity);\n    return value !== null && value <= Date.now() + futureMs && Date.now() - value <= ttl;\n};\nconst raw = msg.payload?.vehicle_primary ?? {};\nconst attrs = raw.attributes ?? {};\nconst state = raw.state;\nconst validState = typeof state === \"string\" && ![\"\", \"unknown\", \"unavailable\"].includes(state);\nconst updatedAt = observedAt(raw);\nconst latitude = Number(attrs.latitude);\nconst longitude = Number(attrs.longitude);\nconst accuracy = Number(attrs.gps_accuracy);\nconst distanceHome = Number(attrs.canonical_distance_home_m);\nconst distanceGate = Number(attrs.canonical_distance_gate_m);\nconst location = {\n    entity_id: raw.entity_id,\n    state,\n    latitude: Number.isFinite(latitude) ? latitude : null,\n    longitude: Number.isFinite(longitude) ? longitude : null,\n    gps_accuracy: Number.isFinite(accuracy) ? accuracy : null,\n    location_reliable: Number.isFinite(latitude) && Number.isFinite(longitude),\n    state_valid: validState && fresh(raw, freshMs),\n    updated_at: updatedAt,\n    stale: !fresh(raw, freshMs),\n    ready: validState && fresh(raw, freshMs),\n    distance_m: Number.isFinite(distanceHome) ? distanceHome : null,\n    gate_distance_m: Number.isFinite(distanceGate) ? distanceGate : null,\n    primary_home: Number.isFinite(distanceHome)\n        ? distanceHome <= Number(policy.home_radius_m) : state === \"home\",\n    primary_home_for_ms: Number.isFinite(Date.parse(raw.last_changed ?? \"\"))\n        ? Date.now() - Date.parse(raw.last_changed) : null\n};\nconst engineState = msg.payload?.vehicle_primary_engine?.state;\nconst lockState = msg.payload?.vehicle_primary_lock?.state;\nconst engineKnown = [\"on\", \"running\", \"off\", \"stopped\", \"idle\"].includes(engineState);\nconst engineOn = [\"on\", \"running\"].includes(engineState);\nconst engineOff = [\"off\", \"stopped\", \"idle\"].includes(engineState);\nconst engineFresh = fresh(msg.payload?.vehicle_primary_engine, signalMs);\nconst lockFresh = fresh(msg.payload?.vehicle_primary_lock, signalMs);\nconst refreshKey = TEST_MODE\n    ? \"security_vehicle_primary_refresh_v1__test\" : \"security_vehicle_primary_refresh_v1\";\nconst refreshState = TEST_MODE ? flow.get(refreshKey) : flow.get(refreshKey, \"persistent\") ?? {};\nconst failureClasses = [\"integration_unavailable\", \"provider_backoff\", \"authentication\",\n    \"timeout\", \"no_fresh_data\", \"api_error\"];\nconst engineCommunicationFailed = typeof refreshState?.engine_communication_failed === \"boolean\"\n    ? refreshState.engine_communication_failed\n    : failureClasses.includes(refreshState?.last_failure_class);\nconst telemetryAt = Date.parse(msg.payload?.vehicle_primary_last_updated?.state ?? \"\");\nmsg._vehicle = {\n    test_mode: TEST_MODE,\n    policy,\n    location,\n    engine_state: engineState,\n    engine_on: engineOn,\n    engine_off: engineOff,\n    engine_known: engineKnown,\n    engine_fresh: engineFresh,\n    engine_communication_failed: engineCommunicationFailed,\n    engine_updated_at: observedAt(msg.payload?.vehicle_primary_engine),\n    lock_state: lockState,\n    lock_fresh: lockFresh,\n    lock_updated_at: observedAt(msg.payload?.vehicle_primary_lock),\n    unlocked: lockFresh && lockState === \"unlocked\",\n    telemetry_updated_at: Number.isFinite(telemetryAt) ? telemetryAt : null,\n    is_location_event: msg.payload?.event === \"location_update\",\n    event: msg.payload?.event,\n    reason: msg.payload?.reason,\n    trigger_entity: msg.payload?.trigger_entity,\n    trigger_state: msg.payload?.trigger_state,\n    trigger_prev_state: msg.payload?.trigger_prev_state,\n    refresh_cycle_id: msg.payload?.refresh_cycle_id\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2620,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_movement"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_movement",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Calcular deslocamento e guardar observação",
+        "func": "const data = msg._vehicle;\nif (!data) return null;\nconst key = data.test_mode\n    ? \"vehicle_primary_location_observation_v1__test\"\n    : \"vehicle_primary_location_observation_v1\";\nconst previous = data.test_mode ? flow.get(key) : flow.get(key, \"persistent\");\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst zoneChanged = validZone(data.trigger_prev_state) &&\n    data.trigger_state !== data.trigger_prev_state &&\n    [\"home\", \"not_home\", \"near_home\"].includes(data.trigger_state);\nconst distance = (a, b) => {\n    const rad = (value) => value * Math.PI / 180;\n    const dLat = rad(b.latitude - a.latitude);\n    const dLon = rad(b.longitude - a.longitude);\n    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.latitude)) *\n        Math.cos(rad(b.latitude)) * Math.sin(dLon / 2) ** 2;\n    return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));\n};\nconst comparable = previous && Number.isFinite(previous.latitude) &&\n    Number.isFinite(previous.longitude) && Number.isFinite(data.location.latitude) &&\n    Number.isFinite(data.location.longitude);\nconst movementM = comparable ? distance(previous, data.location) : null;\nconst requiredM = Math.max(Number(data.policy.movement_threshold_m),\n    Number(previous?.gps_accuracy || 0) + Number(data.location.gps_accuracy || 0));\nconst significant = Number.isFinite(movementM) && movementM >= requiredM &&\n    Number(data.location.updated_at || 0) > Number(previous?.updated_at || 0);\ndata.fresh_movement = data.is_location_event && data.location.ready &&\n    (zoneChanged || significant);\ndata.zone_changed = zoneChanged;\ndata.movement_distance_m = movementM;\nif (data.is_location_event && data.location.location_reliable &&\n    (!previous || zoneChanged || significant)) {\n    const value = { version: 1, latitude: data.location.latitude,\n        longitude: data.location.longitude, gps_accuracy: data.location.gps_accuracy,\n        state: data.location.state, updated_at: data.location.updated_at };\n    if (data.test_mode) flow.set(key, value); else flow.set(key, value, \"persistent\");\n}\ndata.location_observation = data.test_mode ? flow.get(key) : flow.get(key, \"persistent\");\nif (!data.test_mode && data.fresh_movement) {\n    node.log?.(\"VEHICLE_PRIMARY_LOCATION_CHANGED kind=\" + (zoneChanged ? \"zone\" : \"distance\"));\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2940,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_state_load"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_state_load",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Recuperar viagem, armamento e uso",
+        "func": "const data = msg._vehicle;\nif (!data) return null;\nconst key = (name) => data.test_mode ? name + \"__test\" : name;\nconst get = (name, store) => data.test_mode || !store\n    ? flow.get(key(name)) : flow.get(key(name), store);\nlet recovery = get(\"security_vehicle_primary_recovery_v1\", \"persistent\");\nconst futureMs = Number(data.policy.future_tolerance_seconds) * 1000;\nconst recoveryMs = Number(data.policy.vehicle_recovery_hours) * 3600000;\nconst confirmedAt = Number(recovery?.last_confirmed_at ?? 0);\nconst valid = recovery && typeof recovery === \"object\" && !Array.isArray(recovery) &&\n    recovery.version === 1 &&\n    (recovery.in_use === undefined || typeof recovery.in_use === \"boolean\") &&\n    (recovery.in_use === undefined || (Number.isFinite(confirmedAt) && confirmedAt > 0 &&\n        confirmedAt <= Date.now() + futureMs && Date.now() - confirmedAt <= recoveryMs));\nif (!valid) {\n    if (recovery !== undefined) node.warn(\"contexto_vehicle_primary: recovery inválido ou expirado descartado\");\n    recovery = { version: 1 };\n}\nif (typeof recovery.trip_active !== \"boolean\") recovery.trip_active = false;\nif (recovery.in_use !== true) {\n    recovery.trip_active = false;\n    recovery.trip_started_at = null;\n}\nif (typeof recovery.arrival_armed !== \"boolean\") recovery.arrival_armed = false;\nif (recovery.trip_started_at != null && (!Number.isFinite(recovery.trip_started_at) ||\n    recovery.trip_started_at > Date.now() + futureMs)) recovery.trip_started_at = null;\ndata.recovery = recovery;\nconst armed = get(\"vehicle_primary_arrival_armed\");\ndata.armed = typeof armed === \"boolean\" ? armed : recovery.arrival_armed === true;\ndata.in_use = null;\ndata.in_use_reason = \"insufficient_current_evidence\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3260,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_engine_on"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_engine_on",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Motor conhecido está ligado?",
+        "property": "_vehicle.engine_on",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 3520,
+        "y": 760,
+        "wires": [
+            [
+                "vehicle_visual_use_engine_on"
+            ],
+            [
+                "vehicle_visual_engine_off"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_engine_off",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Motor conhecido está desligado?",
+        "property": "_vehicle.engine_off",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 3780,
+        "y": 840,
+        "wires": [
+            [
+                "vehicle_visual_use_engine_off"
+            ],
+            [
+                "vehicle_visual_persisted_trip"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_persisted_trip",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Viagem persistida foi revalidada fora?",
+        "property": "_vehicle.recovery.in_use = true and _vehicle.location.ready = true and ((_vehicle.location.distance_m != null and _vehicle.location.distance_m > _vehicle.policy.home_radius_m) or (_vehicle.location.distance_m = null and _vehicle.location.state = \"not_home\"))",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 4050,
+        "y": 920,
+        "wires": [
+            [
+                "vehicle_visual_use_persisted"
+            ],
+            [
+                "vehicle_visual_unlocked_home"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_unlocked_home",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Destravado e perto confirma fim de uso?",
+        "property": "_vehicle.lock_fresh = true and _vehicle.unlocked = true and _vehicle.location.ready = true and ((_vehicle.location.gate_distance_m != null and _vehicle.location.gate_distance_m <= _vehicle.policy.near_home_radius_m) or (_vehicle.location.distance_m != null and _vehicle.location.distance_m <= _vehicle.policy.near_home_radius_m) or (_vehicle.location.distance_m = null and _vehicle.location.gate_distance_m = null and _vehicle.location.state = \"home\"))",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 4320,
+        "y": 1000,
+        "wires": [
+            [
+                "vehicle_visual_use_unlocked"
+            ],
+            [
+                "vehicle_visual_use_pending"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_use_engine_on",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "USO: sim — motor ligado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_vehicle.in_use",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "_vehicle.in_use_reason",
+                "pt": "msg",
+                "to": "known_engine_on",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 3780,
+        "y": 700,
+        "wires": [
+            [
+                "vehicle_visual_use_engine_on_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_use_engine_off",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "USO: não — motor desligado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_vehicle.in_use",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "_vehicle.in_use_reason",
+                "pt": "msg",
+                "to": "known_engine_off",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4050,
+        "y": 780,
+        "wires": [
+            [
+                "vehicle_visual_use_engine_off_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_use_persisted",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "USO: sim — viagem revalidada",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_vehicle.in_use",
+                "pt": "msg",
+                "to": "true",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "_vehicle.in_use_reason",
+                "pt": "msg",
+                "to": "persisted_trip_revalidated_by_fresh_away_location",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4320,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_use_persisted_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_use_unlocked",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "USO: não — chegada destravada",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_vehicle.in_use",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            },
+            {
+                "t": "set",
+                "p": "_vehicle.in_use_reason",
+                "pt": "msg",
+                "to": "fresh_home_unlocked_engine_pending",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4590,
+        "y": 940,
+        "wires": [
+            [
+                "vehicle_visual_use_unlocked_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_use_pending",
+        "type": "change",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "USO: pendente — evidência insuficiente",
+        "rules": [
+            {
+                "t": "set",
+                "p": "_vehicle.in_use",
+                "pt": "msg",
+                "to": "null",
+                "tot": "json"
+            },
+            {
+                "t": "set",
+                "p": "_vehicle.in_use_reason",
+                "pt": "msg",
+                "to": "insufficient_current_evidence",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4590,
+        "y": 1040,
+        "wires": [
+            [
+                "vehicle_visual_use_pending_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_use_engine_on_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Motor ON → contexto",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_in_use_in"
+        ],
+        "x": 4000,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_use_engine_off_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Motor OFF → contexto",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_in_use_in"
+        ],
+        "x": 4270,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_use_persisted_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Viagem → contexto",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_in_use_in"
+        ],
+        "x": 4540,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_use_unlocked_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Destravado → contexto",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_in_use_in"
+        ],
+        "x": 4810,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_use_pending_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Pendente → contexto",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_in_use_in"
+        ],
+        "x": 4810,
+        "y": 1040,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_in_use_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Convergir evidência de uso",
+        "links": [
+            "vehicle_visual_use_engine_on_out",
+            "vehicle_visual_use_engine_off_out",
+            "vehicle_visual_use_persisted_out",
+            "vehicle_visual_use_unlocked_out",
+            "vehicle_visual_use_pending_out"
+        ],
+        "x": 4880,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_arrival_facts"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_arrival_facts",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Derivar direção, proximidade e armamento",
+        "func": "const data = msg._vehicle;\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst external = (state) => validZone(state) && ![\"home\", \"near_home\"].includes(state);\nconst isNear = data.location.ready && (\n    (data.location.gate_distance_m !== null &&\n        data.location.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (data.location.distance_m !== null &&\n        data.location.distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (data.location.distance_m === null && data.location.gate_distance_m === null &&\n        data.location.state === \"home\")\n);\nconst isHome = data.location.ready && (data.location.distance_m !== null\n    ? data.location.distance_m <= Number(data.policy.home_radius_m)\n    : data.location.state === \"home\");\nconst isAway = data.location.ready && (data.location.distance_m !== null\n    ? data.location.distance_m > Number(data.policy.home_radius_m)\n    : data.location.state === \"not_home\");\nif (data.location.ready && external(data.location.state)) data.armed = true;\nif (data.is_location_event && data.location.ready && data.trigger_state === \"near_home\" &&\n    data.location.primary_home !== true && external(data.trigger_prev_state)) data.armed = true;\nconst approach = data.trigger_state === \"near_home\" &&\n    data.trigger_prev_state !== \"near_home\" && data.trigger_prev_state !== \"home\";\nconst departure = data.trigger_prev_state === \"home\" && data.trigger_state !== \"home\";\nif (departure) data.armed = false;\nconst graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;\nconst staleCatchup = !approach && data.location.primary_home === true &&\n    typeof data.location.primary_home_for_ms === \"number\" &&\n    data.location.primary_home_for_ms > graceMs;\ndata.facts = {\n    trigger_prev_valid: validZone(data.trigger_prev_state),\n    approach_entry: approach,\n    departure,\n    stale_catchup: staleCatchup,\n    near_home: isNear,\n    home: isHome,\n    away: isAway,\n    arrival_eligible: data.is_location_event && data.location.ready &&\n        validZone(data.trigger_prev_state) && !departure && !staleCatchup &&\n        (approach || isNear) && data.armed === true,\n    blocked_candidate: data.is_location_event && data.location.ready &&\n        validZone(data.trigger_prev_state) && data.trigger_state !== data.trigger_prev_state &&\n        [\"home\", \"near_home\"].includes(data.trigger_state)\n};\nif (!data.is_location_event && isHome) data.armed = false;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5140,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_arrival_gate"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_arrival_gate",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Retorno externo confirmado?",
+        "property": "_vehicle.facts.arrival_eligible",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 5410,
+        "y": 780,
+        "wires": [
+            [
+                "vehicle_visual_arrival_build"
+            ],
+            [
+                "vehicle_visual_blocked_gate"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_blocked_gate",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Transição para casa foi bloqueada?",
+        "property": "_vehicle.facts.blocked_candidate",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 5410,
+        "y": 940,
+        "wires": [
+            [
+                "vehicle_visual_blocked_build"
+            ],
+            [
+                "vehicle_visual_no_arrival_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_arrival_build",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Montar retorno confirmado",
+        "func": "const data = msg._vehicle;\ndata.arrival = {\n    _location_test: data.test_mode,\n    _location_test_case: data.test_mode ? (msg._location_test_case ?? null) : undefined,\n    payload: {\n        contract: \"security.arrival.v1\",\n        kind: \"arrival\",\n        source: \"vehicle_primary\",\n        arriving: [\"vehicle_primary\"],\n        arrival_source_type: \"vehicle_primary\",\n        arrival_stage: data.facts.approach_entry ? \"approach\" : \"home\",\n        arrival_direction: \"returning\",\n        external_cycle_confirmed: true,\n        request_vehicle_primary_wake: data.facts.approach_entry,\n        event_at: data.location.updated_at ?? Date.now(),\n        refresh_cycle_id: data.refresh_cycle_id\n    }\n};\nif (!data.facts.approach_entry && data.facts.near_home) data.armed = false;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5680,
+        "y": 760,
+        "wires": [
+            [
+                "vehicle_visual_arrival_dedupe"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_arrival_dedupe",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Deduplicar pela etapa e janela",
+        "func": "const data = msg._vehicle;\nif (!data?.arrival) return msg;\nconst key = \"vehicle_primary:\" + data.arrival.payload.arrival_stage;\nconst previousAt = Number(data.recovery.last_arrival_at ?? 0);\nconst previousKey = String(data.recovery.last_arrival_key ?? \"\");\nconst futureMs = Number(data.policy.future_tolerance_seconds) * 1000;\nconst dedupeMs = Number(data.policy.arrival_dedupe_minutes) * 60000;\nconst duplicate = (previousKey === key || previousKey.startsWith(key + \":\")) &&\n    previousAt <= Date.now() + futureMs && Date.now() - previousAt < dedupeMs;\nif (duplicate) {\n    data.arrival = null;\n    data.deduplicated = true;\n} else {\n    data.recovery.last_arrival_key = key;\n    data.recovery.last_arrival_at = Date.now();\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5960,
+        "y": 760,
+        "wires": [
+            [
+                "vehicle_visual_arrival_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_blocked_build",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Registrar motivo do bloqueio",
+        "func": "const data = msg._vehicle;\ndata.blocked = {\n    _location_test: data.test_mode,\n    _location_test_case: data.test_mode ? (msg._location_test_case ?? null) : undefined,\n    payload: {\n        contract: \"security.arrival-direction.v1\",\n        kind: \"arrival_blocked\",\n        source: \"vehicle_primary\",\n        trigger_state: data.trigger_state,\n        trigger_prev_state: data.trigger_prev_state,\n        direction_reason: data.facts.departure ? \"departure_from_home\"\n            : data.armed !== true ? \"external_cycle_not_confirmed\"\n            : data.facts.stale_catchup ? \"stale_home_catchup\"\n            : \"transition_not_arrival_eligible\",\n        simulated: data.test_mode,\n        dispatched: false,\n        event_at: data.location.updated_at ?? Date.now()\n    }\n};\nif (!data.facts.approach_entry && data.facts.near_home) data.armed = false;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 5680,
+        "y": 920,
+        "wires": [
+            [
+                "vehicle_visual_blocked_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_arrival_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Retorno → estado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_arrival_result_in"
+        ],
+        "x": 6180,
+        "y": 760,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_blocked_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Bloqueio → estado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_arrival_result_in"
+        ],
+        "x": 5960,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_no_arrival_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Sem chegada → estado",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_arrival_result_in"
+        ],
+        "x": 5680,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_arrival_result_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Convergir lifecycle de chegada",
+        "links": [
+            "vehicle_visual_arrival_out",
+            "vehicle_visual_blocked_out",
+            "vehicle_visual_no_arrival_out"
+        ],
+        "x": 6240,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_state_finalize"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_state_finalize",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Persistir viagem e montar contexto",
+        "func": "const data = msg._vehicle;\nconst key = (name) => data.test_mode ? name + \"__test\" : name;\nconst set = (name, value, store) => data.test_mode || !store\n    ? flow.set(key(name), value) : flow.set(key(name), value, store);\nset(\"vehicle_primary_in_use\", data.in_use);\nset(\"vehicle_primary_arrival_armed\", data.armed);\ndata.recovery.arrival_armed = data.armed;\nif (data.in_use !== null) {\n    data.recovery.in_use = data.in_use;\n    data.recovery.last_confirmed_at = Date.now();\n}\ndata.recovery.in_use_reason = data.in_use_reason;\nif (data.in_use !== null) data.recovery.trip_active = data.in_use === true && data.facts.away;\nif (data.recovery.trip_active && !Number.isFinite(data.recovery.trip_started_at)) {\n    data.recovery.trip_started_at = Date.now();\n}\nif (data.in_use === false) data.recovery.trip_started_at = null;\ndata.recovery.updated_at = Date.now();\nset(\"security_vehicle_primary_recovery_v1\", data.recovery, \"persistent\");\ndata.context = {\n    location: data.location,\n    current_location_since: Number(data.location_observation?.updated_at ?? 0) || null,\n    movement_threshold_m: Number(data.policy.movement_threshold_m),\n    home_radius_m: Number(data.policy.home_radius_m),\n    near_home_radius_m: Number(data.policy.near_home_radius_m),\n    people_fast_refresh_radius_m: Number(data.policy.people_fast_refresh_radius_m),\n    last_confirmed_location: data.location_observation ? { ...data.location_observation } : null,\n    telemetry_updated_at: data.telemetry_updated_at,\n    distance_home_m: data.location.distance_m,\n    home: data.location.ready ? data.facts.home : null,\n    near_home: data.location.ready ? data.facts.near_home && !data.facts.home : null,\n    away: data.location.ready ? data.facts.away : null,\n    approaching_home: data.arrival?.payload?.arrival_stage === \"approach\",\n    arrived_home: data.arrival?.payload?.arrival_stage === \"home\",\n    engine_on: data.engine_on,\n    engine_state: data.engine_state,\n    engine_state_valid: data.engine_known,\n    engine_stale: !data.engine_fresh,\n    engine_communication_failed: data.engine_communication_failed,\n    engine_updated_at: data.engine_updated_at,\n    lock_state: data.lock_state,\n    unlocked: data.unlocked,\n    lock_state_valid: data.lock_fresh && [\"locked\", \"unlocked\"].includes(data.lock_state),\n    lock_stale: !data.lock_fresh,\n    lock_updated_at: data.lock_updated_at,\n    in_use: data.in_use,\n    in_use_pending: data.in_use === null,\n    in_use_reason: data.in_use_reason,\n    trip_active: data.in_use === true && data.recovery.trip_active === true,\n    trip_started_at: data.recovery.trip_started_at ?? null,\n    state_valid: data.location.state_valid,\n    ready: data.location.ready && data.in_use !== null,\n    lighting_ready: data.location.ready && data.engine_known && !data.engine_communication_failed,\n    stale: data.location.stale || data.in_use === null,\n    updated_at: Math.max(...[data.location.updated_at, data.engine_updated_at,\n        data.lock_updated_at].filter(Number.isFinite), 0),\n    arrival_armed: data.armed\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 6480,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_evidence_read"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_evidence_read",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Comparar telemetria com baseline do wake",
+        "func": "const data = msg._vehicle;\nconst key = data.test_mode\n    ? \"security_vehicle_primary_refresh_v1__test\" : \"security_vehicle_primary_refresh_v1\";\nconst state = data.test_mode ? flow.get(key) : flow.get(key, \"persistent\");\ndata.refresh_key = key;\ndata.refresh_state = state && typeof state === \"object\" ? state : {};\nconst requestAt = Number(data.refresh_state.last_request_at ??\n    data.refresh_state.last_attempt_at ?? 0);\nconst baseline = Number(data.refresh_state.baseline_observed_at?.telemetry ?? 0);\nconst current = Number(data.context.telemetry_updated_at ?? 0);\nconst futureMs = Number(data.policy.future_tolerance_seconds) * 1000;\nconst attemptCurrent = Number(data.refresh_state.last_attempt_at ?? 0) > 0 &&\n    Number(data.refresh_state.last_attempt_at) <= Date.now() + futureMs &&\n    Date.now() - Number(data.refresh_state.last_attempt_at) <= 20 * 60000 + futureMs;\ndata.evidence = {\n    awaiting: data.refresh_state.awaiting_evidence === true,\n    confirmed: attemptCurrent && current > 0 &&\n        (baseline <= 0 || current > baseline) && requestAt > 0 &&\n        current >= requestAt - futureMs\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 6770,
+        "y": 860,
+        "wires": [
+            [
+                "vehicle_visual_awaiting_evidence"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_awaiting_evidence",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Wake aguarda evidência semântica?",
+        "property": "_vehicle.evidence.awaiting",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 7060,
+        "y": 800,
+        "wires": [
+            [
+                "vehicle_visual_evidence_confirmed"
+            ],
+            [
+                "vehicle_visual_evidence_idle_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_evidence_confirmed",
+        "type": "switch",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Timestamp novo pertence à tentativa?",
+        "property": "_vehicle.evidence.confirmed",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 7340,
+        "y": 760,
+        "wires": [
+            [
+                "vehicle_visual_evidence_confirm"
+            ],
+            [
+                "vehicle_visual_evidence_pending_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_evidence_confirm",
+        "type": "function",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Confirmar sucesso e limpar falha",
+        "func": "const data = msg._vehicle;\nconst state = data.refresh_state;\nconst interval = Number(state.interval_ms) > 0 ? Number(state.interval_ms) : 0;\nconst requestAt = Number(state.last_request_at ?? state.last_attempt_at ?? 0);\nconst cacheCurrent = Number(state.cache_probe_completed_for_request_at ?? 0) === requestAt &&\n    Number(state.cache_probe_accepted_at ?? 0) > 0;\nconst next = Math.max(Date.now(), Number(state.next_allowed_at ?? 0),\n    Number(state.last_request_at ?? Date.now()) + interval,\n    cacheCurrent ? Date.now() + interval : 0);\nconst failureWasNotified = Number(state.failure_notified_at ?? 0) > 0;\ndata.refresh_state = {\n    ...state,\n    attempts: 0,\n    last_success_at: Date.now(),\n    next_allowed_at: next,\n    awaiting_evidence: false,\n    evidence_wait_started_at: null,\n    request_in_flight: false,\n    in_flight_until: null,\n    cache_probe_in_flight: false,\n    cache_probe_in_flight_until: null,\n    cache_probe_for_request_at: null,\n    cache_probe_completed_for_request_at: null,\n    cache_probe_settle_until: null,\n    failure_notified_at: null,\n    failure_notification_key: null,\n    recovery_notification_pending: failureWasNotified,\n    last_failure_class: null,\n    failure_at: null,\n    failure_source: null,\n    failure_endpoint: null,\n    failure_stage: null,\n    state: \"cooldown\",\n    reason: state.recovery_reason ?? \"refresh_success\",\n    cooldown_until: next,\n    next_retry_at: null,\n    last_evidence_at: Date.now(),\n    last_evidence_domains: [\"telemetry\"],\n    engine_communication_failed: false,\n    engine_bypass_recovery_pending: state.engine_bypass_recovery_pending === true ||\n        data.engine_communication_failed,\n    lighting_ready_after_wake: data.context.ready && data.context.engine_state_valid,\n    last_success_reason: data.context.ready && data.context.engine_state_valid\n        ? \"fresh_telemetry_engine_state_known\" : \"fresh_telemetry_context_ready\",\n    baseline_observed_at: null,\n    require_lighting_ready: false,\n    recovery_reason: null\n};\nif (data.test_mode) flow.set(data.refresh_key, data.refresh_state);\nelse flow.set(data.refresh_key, data.refresh_state, \"persistent\");\ndata.context.engine_communication_failed = false;\ndata.context.lighting_ready = data.refresh_state.lighting_ready_after_wake;\nnode.log?.(\"VEHICLE_PRIMARY_NEW_DATA_RECEIVED domains=telemetry\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 7620,
+        "y": 700,
+        "wires": [
+            [
+                "vehicle_visual_evidence_success_out"
+            ]
+        ]
+    },
+    {
+        "id": "vehicle_visual_evidence_success_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Sucesso → saída",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_output_in"
+        ],
+        "x": 7840,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_evidence_pending_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Ainda pendente → saída",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_output_in"
+        ],
+        "x": 7620,
+        "y": 820,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_evidence_idle_out",
+        "type": "link out",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Sem wake pendente → saída",
+        "mode": "link",
+        "links": [
+            "vehicle_visual_output_in"
+        ],
+        "x": 7340,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "vehicle_visual_output_in",
+        "type": "link in",
+        "z": "c22d8b12055e87f7",
+        "g": "d860cb4ad0d1fd89",
+        "name": "Convergir confirmação do refresh",
+        "links": [
+            "vehicle_visual_evidence_success_out",
+            "vehicle_visual_evidence_pending_out",
+            "vehicle_visual_evidence_idle_out"
+        ],
+        "x": 7890,
+        "y": 820,
+        "wires": [
+            [
+                "092625f2eb5cc156"
             ]
         ]
     }

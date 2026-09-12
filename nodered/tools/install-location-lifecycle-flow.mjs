@@ -9,6 +9,7 @@ const inputPath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flow
 const outputPath = path.resolve(process.argv[3] ?? inputPath);
 const functionsDir = path.join(here, "functions");
 const PEOPLE_TAB = "ea0a6aa0d24ff863";
+const VEHICLE_TAB = "c22d8b12055e87f7";
 let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const generated = new Set(flows.filter((node) =>
@@ -169,6 +170,134 @@ for (const [id, x, y] of [
   if (!lifecycle.nodes.includes(id)) lifecycle.nodes.push(id);
 }
 required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos.";
+
+const vehicleLifecycle = required("d860cb4ad0d1fd89");
+vehicleLifecycle.name = "2. Lifecycle visual do veículo, chegada e confirmação de refresh";
+vehicleLifecycle.x = 1940;
+vehicleLifecycle.y = 620;
+vehicleLifecycle.w = 6360;
+vehicleLifecycle.h = 502;
+vehicleLifecycle.nodes = vehicleLifecycle.nodes.filter((id) => !generated.has(id));
+const vgrouped = (node) => { add(node); vehicleLifecycle.nodes.push(node.id); return node; };
+const vfn = (id, name, file, outputs, x, y, wires) => vgrouped({
+  id, type: "function", z: VEHICLE_TAB, g: vehicleLifecycle.id, name,
+  func: source(file), outputs, timeout: 0, noerr: 0,
+  initialize: "", finalize: "", libs: [], x, y, wires
+});
+const vsw = (id, name, property, propertyType, x, y, wires) => vgrouped({
+  id, type: "switch", z: VEHICLE_TAB, g: vehicleLifecycle.id, name,
+  property, propertyType, rules: [{ t: "true" }, { t: "else" }],
+  checkall: "false", repair: false, outputs: 2, x, y, wires
+});
+const vchange = (id, name, rules, x, y, wires) => vgrouped({
+  id, type: "change", z: VEHICLE_TAB, g: vehicleLifecycle.id, name,
+  rules, action: "", property: "", from: "", to: "", reg: false, x, y, wires
+});
+const vlinkOut = (id, name, target, x, y) => vgrouped({
+  id, type: "link out", z: VEHICLE_TAB, g: vehicleLifecycle.id, name,
+  mode: "link", links: [target], x, y, wires: []
+});
+const vlinkIn = (id, name, origins, destination, x, y) => vgrouped({
+  id, type: "link in", z: VEHICLE_TAB, g: vehicleLifecycle.id, name,
+  links: origins, x, y, wires: [[destination]]
+});
+const vehicleEvents = required("c1e3fc50d8ed0093");
+const vehicleEventRoute = grouped.bind(null, vehicleEvents.id);
+vehicleEventRoute({
+  id: "vehicle_visual_event_out", type: "link out", z: VEHICLE_TAB,
+  g: vehicleEvents.id, name: "Eventos e snapshots → lifecycle",
+  mode: "link", links: ["vehicle_visual_event_in"], x: 690, y: 300, wires: []
+});
+for (const node of flows.filter((candidate) => candidate.z === VEHICLE_TAB)) {
+  if (node.id === "vehicle_visual_event_out" || !Array.isArray(node.wires)) continue;
+  node.wires = node.wires.map((wire) => wire.map((id) =>
+    id === "vehicle_primary_classify_near_home_v1" ? "vehicle_visual_event_out" : id));
+}
+vlinkIn("vehicle_visual_event_in", "Receber eventos e snapshots", ["vehicle_visual_event_out"],
+  "vehicle_primary_classify_near_home_v1", 1990, 860);
+const classifier = required("vehicle_primary_classify_near_home_v1");
+classifier.x = 2180; classifier.y = 860; classifier.wires = [["vehicle_visual_test_adapter"]];
+vfn("vehicle_visual_test_adapter", "Adaptar somente o estado sintético", "vehicle-lifecycle-test-adapter.js", 1, 2300, 860, [["vehicle_visual_normalize"]]);
+vfn("vehicle_visual_normalize", "Normalizar localização, motor e trava", "vehicle-lifecycle-normalize.js", 1, 2620, 860, [["vehicle_visual_movement"]]);
+vfn("vehicle_visual_movement", "Calcular deslocamento e guardar observação", "vehicle-lifecycle-movement.js", 1, 2940, 860, [["vehicle_visual_state_load"]]);
+vfn("vehicle_visual_state_load", "Recuperar viagem, armamento e uso", "vehicle-lifecycle-state-load.js", 1, 3260, 860, [["vehicle_visual_engine_on"]]);
+vsw("vehicle_visual_engine_on", "Motor conhecido está ligado?", "_vehicle.engine_on", "msg", 3520, 760,
+  [["vehicle_visual_use_engine_on"], ["vehicle_visual_engine_off"]]);
+vsw("vehicle_visual_engine_off", "Motor conhecido está desligado?", "_vehicle.engine_off", "msg", 3780, 840,
+  [["vehicle_visual_use_engine_off"], ["vehicle_visual_persisted_trip"]]);
+vsw("vehicle_visual_persisted_trip", "Viagem persistida foi revalidada fora?",
+  '_vehicle.recovery.in_use = true and _vehicle.location.ready = true and ((_vehicle.location.distance_m != null and _vehicle.location.distance_m > _vehicle.policy.home_radius_m) or (_vehicle.location.distance_m = null and _vehicle.location.state = "not_home"))',
+  "jsonata", 4050, 920, [["vehicle_visual_use_persisted"], ["vehicle_visual_unlocked_home"]]);
+vsw("vehicle_visual_unlocked_home", "Destravado e perto confirma fim de uso?",
+  '_vehicle.lock_fresh = true and _vehicle.unlocked = true and _vehicle.location.ready = true and ((_vehicle.location.gate_distance_m != null and _vehicle.location.gate_distance_m <= _vehicle.policy.near_home_radius_m) or (_vehicle.location.distance_m != null and _vehicle.location.distance_m <= _vehicle.policy.near_home_radius_m) or (_vehicle.location.distance_m = null and _vehicle.location.gate_distance_m = null and _vehicle.location.state = "home"))',
+  "jsonata", 4320, 1000, [["vehicle_visual_use_unlocked"], ["vehicle_visual_use_pending"]]);
+const setUse = (id, name, value, valueType, reason, x, y, output) => {
+  vchange(id, name, [
+    { t: "set", p: "_vehicle.in_use", pt: "msg", to: value, tot: valueType },
+    { t: "set", p: "_vehicle.in_use_reason", pt: "msg", to: reason, tot: "str" }
+  ], x, y, [[output]]);
+};
+setUse("vehicle_visual_use_engine_on", "USO: sim — motor ligado", "true", "bool", "known_engine_on", 3780, 700, "vehicle_visual_use_engine_on_out");
+setUse("vehicle_visual_use_engine_off", "USO: não — motor desligado", "false", "bool", "known_engine_off", 4050, 780, "vehicle_visual_use_engine_off_out");
+setUse("vehicle_visual_use_persisted", "USO: sim — viagem revalidada", "true", "bool", "persisted_trip_revalidated_by_fresh_away_location", 4320, 860, "vehicle_visual_use_persisted_out");
+setUse("vehicle_visual_use_unlocked", "USO: não — chegada destravada", "false", "bool", "fresh_home_unlocked_engine_pending", 4590, 940, "vehicle_visual_use_unlocked_out");
+setUse("vehicle_visual_use_pending", "USO: pendente — evidência insuficiente", "null", "json", "insufficient_current_evidence", 4590, 1040, "vehicle_visual_use_pending_out");
+vlinkOut("vehicle_visual_use_engine_on_out", "Motor ON → contexto", "vehicle_visual_in_use_in", 4000, 700);
+vlinkOut("vehicle_visual_use_engine_off_out", "Motor OFF → contexto", "vehicle_visual_in_use_in", 4270, 780);
+vlinkOut("vehicle_visual_use_persisted_out", "Viagem → contexto", "vehicle_visual_in_use_in", 4540, 860);
+vlinkOut("vehicle_visual_use_unlocked_out", "Destravado → contexto", "vehicle_visual_in_use_in", 4810, 940);
+vlinkOut("vehicle_visual_use_pending_out", "Pendente → contexto", "vehicle_visual_in_use_in", 4810, 1040);
+vlinkIn("vehicle_visual_in_use_in", "Convergir evidência de uso", [
+  "vehicle_visual_use_engine_on_out", "vehicle_visual_use_engine_off_out",
+  "vehicle_visual_use_persisted_out", "vehicle_visual_use_unlocked_out",
+  "vehicle_visual_use_pending_out"
+], "vehicle_visual_arrival_facts", 4880, 860);
+vfn("vehicle_visual_arrival_facts", "Derivar direção, proximidade e armamento", "vehicle-lifecycle-arrival-facts.js", 1, 5140, 860, [["vehicle_visual_arrival_gate"]]);
+vsw("vehicle_visual_arrival_gate", "Retorno externo confirmado?", "_vehicle.facts.arrival_eligible", "msg", 5410, 780,
+  [["vehicle_visual_arrival_build"], ["vehicle_visual_blocked_gate"]]);
+vsw("vehicle_visual_blocked_gate", "Transição para casa foi bloqueada?", "_vehicle.facts.blocked_candidate", "msg", 5410, 940,
+  [["vehicle_visual_blocked_build"], ["vehicle_visual_no_arrival_out"]]);
+vfn("vehicle_visual_arrival_build", "Montar retorno confirmado", "vehicle-lifecycle-arrival-build.js", 1, 5680, 760, [["vehicle_visual_arrival_dedupe"]]);
+vfn("vehicle_visual_arrival_dedupe", "Deduplicar pela etapa e janela", "vehicle-lifecycle-arrival-dedupe.js", 1, 5960, 760, [["vehicle_visual_arrival_out"]]);
+vfn("vehicle_visual_blocked_build", "Registrar motivo do bloqueio", "vehicle-lifecycle-blocked-build.js", 1, 5680, 920, [["vehicle_visual_blocked_out"]]);
+vlinkOut("vehicle_visual_arrival_out", "Retorno → estado", "vehicle_visual_arrival_result_in", 6180, 760);
+vlinkOut("vehicle_visual_blocked_out", "Bloqueio → estado", "vehicle_visual_arrival_result_in", 5960, 920);
+vlinkOut("vehicle_visual_no_arrival_out", "Sem chegada → estado", "vehicle_visual_arrival_result_in", 5680, 1020);
+vlinkIn("vehicle_visual_arrival_result_in", "Convergir lifecycle de chegada", [
+  "vehicle_visual_arrival_out", "vehicle_visual_blocked_out", "vehicle_visual_no_arrival_out"
+], "vehicle_visual_state_finalize", 6240, 860);
+vfn("vehicle_visual_state_finalize", "Persistir viagem e montar contexto", "vehicle-lifecycle-state-finalize.js", 1, 6480, 860, [["vehicle_visual_evidence_read"]]);
+vfn("vehicle_visual_evidence_read", "Comparar telemetria com baseline do wake", "vehicle-lifecycle-evidence-read.js", 1, 6770, 860, [["vehicle_visual_awaiting_evidence"]]);
+vsw("vehicle_visual_awaiting_evidence", "Wake aguarda evidência semântica?", "_vehicle.evidence.awaiting", "msg", 7060, 800,
+  [["vehicle_visual_evidence_confirmed"], ["vehicle_visual_evidence_idle_out"]]);
+vsw("vehicle_visual_evidence_confirmed", "Timestamp novo pertence à tentativa?", "_vehicle.evidence.confirmed", "msg", 7340, 760,
+  [["vehicle_visual_evidence_confirm"], ["vehicle_visual_evidence_pending_out"]]);
+vfn("vehicle_visual_evidence_confirm", "Confirmar sucesso e limpar falha", "vehicle-lifecycle-evidence-confirm.js", 1, 7620, 700, [["vehicle_visual_evidence_success_out"]]);
+vlinkOut("vehicle_visual_evidence_success_out", "Sucesso → saída", "vehicle_visual_output_in", 7840, 700);
+vlinkOut("vehicle_visual_evidence_pending_out", "Ainda pendente → saída", "vehicle_visual_output_in", 7620, 820);
+vlinkOut("vehicle_visual_evidence_idle_out", "Sem wake pendente → saída", "vehicle_visual_output_in", 7340, 900);
+vlinkIn("vehicle_visual_output_in", "Convergir confirmação do refresh", [
+  "vehicle_visual_evidence_success_out", "vehicle_visual_evidence_pending_out",
+  "vehicle_visual_evidence_idle_out"
+], "092625f2eb5cc156", 7890, 820);
+const vehicleOutput = required("092625f2eb5cc156");
+vehicleOutput.name = "Persistir contexto e emitir contratos";
+vehicleOutput.func = source("vehicle-lifecycle-output.js");
+vehicleOutput.outputs = 4; vehicleOutput.x = 8080; vehicleOutput.y = 820;
+for (const [id, x, y] of [
+  ["c298447a6a2e3cef", 8260, 700],
+  ["2aa1b0c2907d4017", 8260, 760],
+  ["67d24b1f56447c94", 8260, 820],
+  ["aa9889d5766ce5a0", 8260, 880],
+  ["vehicle_primary_arrival_departure_blocked_v1", 8080, 1040],
+  ["vehicle_primary_arrival_direction_note_v1", 7700, 1040]
+]) {
+  const node = required(id); node.x = x; node.y = y; node.g = vehicleLifecycle.id;
+  if (!vehicleLifecycle.nodes.includes(id)) vehicleLifecycle.nodes.push(id);
+}
+moveGroup("vehicle_location_panel_group_v1", 3300, 259);
+moveGroup("global_observer_coverage__c22d8b12055e87f7__group", 4350, 40);
+required(VEHICLE_TAB).info = "Localização, evidência de uso, direção, armamento, dedupe e confirmação semântica do wake são explícitos. Funções apenas adaptam payloads, calculam distância e persistem contratos; efeitos permanecem em gates próprios.";
 
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Location lifecycle visual flow installed in ${outputPath}`);
