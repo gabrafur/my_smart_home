@@ -56,7 +56,7 @@ function position(selected, primary, fallback) {
         best_location_away: away,
         any_tracker_home: home,
         any_tracker_away: away,
-        stationary_home: ready && state === "home" && home && !away && sourceReporting,
+        stationary_home: state === "home" && home && !away && sourceReporting,
         primary_home_for_ms: Number.isFinite(changedAt) ? Date.now() - changedAt : null
     };
 }

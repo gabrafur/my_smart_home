@@ -448,11 +448,11 @@ scenario("04b raio near_home configurável aceita 700 m", () => {
   });
   const [, detected] = run(
     "people_normalize",
-    peopleInput({ previous: "near_home", current: "near_home", resident_primary: entity("near_home", 650), resident_primaryIcloud: entity("near_home", 650) }),
+    peopleInput({ previous: "not_home", current: "near_home", resident_primary: entity("near_home", 650), resident_primaryIcloud: entity("near_home", 650) }),
     flow,
     geoEnv,
   );
-  assert.equal(detected.payload.arrival_stage, "home");
+  assert.equal(detected.payload.arrival_stage, "approach");
 });
 
 scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
@@ -485,7 +485,7 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
 
   const bounce = run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "near_home", current: "home", distance: 101, engine: "on" }),
+    vehicle_primaryInput({ previous: "near_home", current: "home", distance: 99, engine: "on" }),
     flow,
     geoEnv,
   );
@@ -502,12 +502,14 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
 });
 
 scenario("05 resident_primary aproximando-se", () => {
-  const [, detected] = run("people_normalize", peopleInput({ source: "resident_primary" }), memoryFlow(), geoEnv);
+  const [, detected] = run("people_normalize", peopleInput({ source: "resident_primary" }),
+    memoryFlow({ people_arrival_armed: { resident_primary: true } }), geoEnv);
   assert.deepEqual(detected.payload.arriving, ["resident_primary"]);
 });
 
 scenario("06 resident_secondary aproximando-se", () => {
-  const [, detected] = run("people_normalize", peopleInput({ source: "resident_secondary" }), memoryFlow(), geoEnv);
+  const [, detected] = run("people_normalize", peopleInput({ source: "resident_secondary" }),
+    memoryFlow({ people_arrival_armed: { resident_secondary: true } }), geoEnv);
   assert.deepEqual(detected.payload.arriving, ["resident_secondary"]);
 });
 
@@ -549,7 +551,7 @@ scenario("09a republicação interna não recria a mesma chegada", () => {
   });
   const observedAt = new Date(Date.now() - 60_000).toISOString();
   const firstInput = vehicle_primaryInput({
-    previous: "near_home",
+    previous: "not_home",
     current: "near_home",
     distance: 200,
   });
@@ -1103,7 +1105,7 @@ scenario("35 near_home exige ciclo externo e recovery fica só na iluminação",
     assert(fromAway[1], "not_home → near_home deve continuar como chegada geral");
     assert.equal(fromAway[2], null);
 
-    for (const previous of ["home", "near_home", "work"]) {
+    for (const previous of ["home", "near_home"]) {
       const blocked = run(
         "people_normalize",
         peopleInput({ source, previous, current: "near_home" }),
@@ -1113,6 +1115,13 @@ scenario("35 near_home exige ciclo externo e recovery fica só na iluminação",
       assert.equal(blocked[1], null, `${previous} → near_home não pode ser chegada geral`);
       assert.equal(blocked[2], null, `${previous} → near_home não pode acionar iluminação`);
     }
+    const namedExternal = run(
+      "people_normalize",
+      peopleInput({ source, previous: "work", current: "near_home" }),
+      memoryFlow({ people_arrival_armed: { [source]: true } }),
+      geoEnv,
+    );
+    assert(namedExternal[1], "zona externa canônica deve equivaler a not_home");
   }
 
   assert.deepEqual(
@@ -1126,28 +1135,25 @@ scenario("35 near_home exige ciclo externo e recovery fica só na iluminação",
 });
 
 scenario("35a gate final rejeita chegada sem direção confirmada", () => {
-  const blocked = run(
-    "light_arrival_direction_gate",
+  assert.equal(byId.get("light_arrival_direction_gate").type, "switch");
+  assert.equal(byId.get("light_arrival_direction_gate").property, "_light_arrival.direction_valid");
+  const blockedFlow = memoryFlow();
+  let blockedMsg = runDirect("security_visual_arrival_facts",
     { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "home" } },
-    memoryFlow(),
-    geoEnv,
-  );
+    blockedFlow, geoEnv);
+  assert.equal(blockedMsg._light_arrival.direction_valid, false);
+  blockedMsg = runDirect("security_light_arrival_direction_blocked_v1", blockedMsg, blockedFlow, geoEnv);
+  const blocked = runDirect("62f77a1ad440639d", blockedMsg, blockedFlow, geoEnv);
   assert.equal(blocked[0], null);
   assert.equal(blocked[1].payload.kind, "arrival_blocked");
   assert.equal(blocked[1].payload.dispatched, false);
 
-  const accepted = run(
-    "light_arrival_direction_gate",
-    arrival("resident_primary", "home"),
-    memoryFlow(),
-    geoEnv,
-  );
-  assert(accepted[0], "retorno com ciclo externo confirmado deve prosseguir");
-  assert.equal(accepted[1], null);
-  assert.deepEqual(
-    byId.get("cf9bc321e0ec89f9").wires,
-    [["security_light_arrival_direction_gate_v1"]],
-  );
+  const accepted = runDirect("security_visual_arrival_facts", arrival("resident_primary", "home"),
+    memoryFlow(), geoEnv);
+  assert.equal(accepted._light_arrival.direction_valid, true,
+    "retorno com ciclo externo confirmado deve prosseguir");
+  assert.deepEqual(byId.get("cf9bc321e0ec89f9").wires,
+    [["security_visual_arrival_route_out"]]);
   assert(
     byId.get("light_merge_context").wires[2].includes(
       "light_arrival_replay_route_out_v1",

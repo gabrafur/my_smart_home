@@ -772,7 +772,7 @@ msg.payload.vehicle_primary = {
 if (msg.payload?.event === "location_update") {
     msg.payload.trigger_prev_state = previousState;
     msg.payload.trigger_state = state;
-    if (state === previousState) msg.payload.event = "context_update";
+    msg.payload.canonical_state_changed = state !== previousState;
 }
 flow.set(KEY, {
     state,

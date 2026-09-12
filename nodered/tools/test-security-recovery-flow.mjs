@@ -1,26 +1,33 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import {
+  ensureArrivalContextPolicy, runArrivalContextVisual, runPeopleVisual,
+  runSecurityArrivalVisual, runSecurityContextVisual, runSecurityReconcileVisual,
+  runVehicleRefreshVisual, runVehicleVisual,
+} from "./visual-flow-test-harness.mjs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((item) => [item.id, item]));
 const aliasesByName = {
-  people_normalize: "Normalizar pessoas e detectar transições",
-  vehicle_primary_normalize: "Normalizar vehicle_primary e detectar transições",
   vehicle_primary_refresh_policy: "Escolher pela presença",
   vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
-  vehicle_primary_refresh_decide: "Coordenar refresh do vehicle_primary",
-  context_coordinator: "Coordenar snapshot e refresh",
-  light_merge_context: "Atualizar contexto de alto nível",
-  light_prepare_arrival: "Montar decisão de acendimento",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
-  light_reconcile: "Revalidar lifecycle e estado físico",
+  light_reconcile: "Emitir deadlines reconstruídos",
 };
 for (const [alias, name] of Object.entries(aliasesByName)) {
   const node = flows.find((item) => item.name === name);
   assert(node, `node ausente pelo nome: ${name}`);
   byId.set(alias, node);
 }
+for (const [alias, id] of Object.entries({
+  people_normalize: "554cb653b2fa4504",
+  vehicle_primary_normalize: "092625f2eb5cc156",
+  vehicle_primary_refresh_decide: "b33e117e55bdb5ed",
+  context_coordinator: "arrival_context_refresh_build",
+  light_merge_context: "48a5f40d806f6950",
+  light_prepare_arrival: "62f77a1ad440639d",
+})) byId.set(alias, byId.get(id));
 const NOW = Date.parse("2026-08-13T12:00:00.000Z");
 const originalNow = Date.now;
 Date.now = () => NOW;
@@ -31,10 +38,21 @@ const LOCATION_POLICY = {
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
+  vehicle_recovery_hours: 24,
+};
+const SECURITY_LIGHT_POLICY = {
+  version: 1, owner: "node_red", complete: true,
+  physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
+  off_grace_seconds: 90, backstop_minutes: 15, post_off_cooldown_minutes: 5,
+  lifecycle_retention_hours: 24, deadline_slack_minutes: 1,
+  unavailable_dedupe_seconds: 10, cooldown_max_minutes: 30,
 };
 
 function memoryGlobal() {
-  const values = new Map([["location_policy_v1", LOCATION_POLICY]]);
+  const values = new Map([["location_policy_v1", LOCATION_POLICY],
+    ["security_light_policy_v1", SECURITY_LIGHT_POLICY]]);
   return {
     get: (key) => values.get(key),
     set: (key, value) => values.set(key, value),
@@ -50,18 +68,31 @@ function memoryFlow(initial = {}) {
   };
 }
 
-function run(id, msg, flow = memoryFlow(), warnings = []) {
+function runDirect(id, msg, flow = memoryFlow(), warnings = []) {
   const target = byId.get(id);
   assert(target, `node ausente: ${id}`);
   const execute = new Function("msg", "node", "context", "flow", "global", "env", "setTimeout", "clearTimeout", target.func);
   const env = { get: (key) => ({ HOME_LAT: "0", HOME_LON: "0", GATE_LAT: "0", GATE_LON: "0" })[key] };
-  return execute(msg, { warn: (text) => warnings.push(text), error() {}, status() {} }, {}, flow, memoryGlobal(), env, setTimeout, clearTimeout);
+  return execute(msg, { warn: (text) => warnings.push(text), error() {}, log() {}, status() {} }, {}, flow, memoryGlobal(), env, setTimeout, clearTimeout);
+}
+
+function run(id, msg, flow = memoryFlow(), warnings = []) {
+  const call = (nodeId, current) => runDirect(nodeId, current, flow, warnings);
+  if (id === "people_normalize") return runPeopleVisual(call, msg);
+  if (id === "vehicle_primary_normalize") return runVehicleVisual(call, msg);
+  if (id === "vehicle_primary_refresh_decide") return runVehicleRefreshVisual(call, msg);
+  if (id === "light_prepare_arrival") return runSecurityArrivalVisual(call, msg);
+  if (id === "light_merge_context") return runSecurityContextVisual(call, msg);
+  if (id === "light_reconcile") return runSecurityReconcileVisual(call, msg);
+  if (id === "context_coordinator") {
+    if (!flow.get("arrival_context_policy_v1")) ensureArrivalContextPolicy(call);
+    return runArrivalContextVisual(call, msg);
+  }
+  return runDirect(id, msg, flow, warnings);
 }
 
 function runPeoplePipeline(msg, flow = memoryFlow()) {
-  const observed = run("people_location_observation_v1", msg, flow);
-  const selected = run("people_location_select_v1", observed, flow);
-  return run("people_normalize", selected, flow);
+  return run("people_normalize", msg, flow);
 }
 
 function runVehicleRefresh(msg, flow) {
@@ -74,6 +105,12 @@ function runVehicleRefresh(msg, flow) {
       home_interval_minutes: 30,
       quiet_start_hour: 0,
       quiet_end_hour: 6,
+      in_flight_lease_seconds: 120,
+      cache_probe_settle_seconds: 15,
+      provider_backoff_max_hours: 6,
+      semantic_evidence_window_minutes: 20,
+      unknown_location_start_hour: 7,
+      unknown_location_end_hour: 22,
     });
   }
   const branches = run("vehicle_primary_refresh_policy", msg, flow);
@@ -178,12 +215,12 @@ scenario("02 restart durante viagem", () => {
 
 scenario("03 restart durante aproximação", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_primary: true } } });
-  const result = run("people_normalize", peopleInput({ event: "location_update", state: "near_home", distance: 1_400 }), flow);
+  const result = run("people_normalize", peopleInput({ event: "location_update", state: "near_home", distance: 650 }), flow);
   assert.equal(result[1].payload.arrival_stage, "approach");
 });
 
 scenario("04 restart dentro do raio near_home", () => {
-  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "location_update", state: "near_home", distance: 1_400, engine: "on" }), memoryFlow());
+  const result = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "location_update", state: "near_home", distance: 650, engine: "on" }), memoryFlow({ vehicle_primary_arrival_armed: true }));
   assert.equal(result[1].payload.request_vehicle_primary_wake, true);
 });
 
@@ -396,6 +433,7 @@ scenario("33 recuperação posterior do Bluelink", () => {
       next_allowed_at: NOW,
       last_attempt_at: NOW - 1_000,
       awaiting_evidence: true,
+      semantic_evidence_window_ms: 20 * 60_000,
       baseline_observed_at: {
         telemetry: NOW - 2_000,
       },
@@ -423,14 +461,14 @@ scenario("35 viagem terminando durante restart", () => {
 
 scenario("36 evento de chegada duplicado após restart", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_primary: true } } });
-  const input = peopleInput({ event: "location_update", state: "near_home", distance: 1_400 });
+  const input = peopleInput({ event: "location_update", state: "near_home", distance: 650 });
   assert(run("people_normalize", structuredClone(input), flow)[1]);
   assert.equal(run("people_normalize", structuredClone(input), flow)[1], null);
 });
 
 scenario("37 normalizador de pessoas não envia notificações laterais", () => {
   const flow = memoryFlow({ security_people_recovery_v1: { version: 1, arrival_armed: { resident_secondary: true } } });
-  const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "near_home", distance: 1_400 });
+  const input = peopleInput({ source: "resident_secondary", event: "location_update", state: "near_home", distance: 650 });
   const result = run("people_normalize", structuredClone(input), flow);
   assert.equal(result.length, 4);
   assert(result[1]);
@@ -560,7 +598,7 @@ scenario("46 bateria do iCloud não renova localização congelada", () => {
 });
 
 scenario("47 near_home recente e preciso vence fallback antigo em home", () => {
-  const mobile = entity("near_home", 1_400, 0, 25);
+  const mobile = entity("near_home", 650, 0, 25);
   mobile.entity_id = "device_tracker.mobile_secondary_source_1";
   const icloud = entity("home", 25, 25 * 60_000, 5);
   icloud.entity_id = "device_tracker.mobile_secondary_source_2";

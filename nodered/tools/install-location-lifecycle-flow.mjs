@@ -221,6 +221,10 @@ for (const id of [
 vlinkIn("vehicle_visual_event_in", "Receber eventos e snapshots", ["vehicle_visual_event_out"],
   "vehicle_primary_classify_near_home_v1", 1960, 860);
 const classifier = required("vehicle_primary_classify_near_home_v1");
+classifier.func = classifier.func.replace(
+  'if (state === previousState) msg.payload.event = "context_update";',
+  "msg.payload.canonical_state_changed = state !== previousState;"
+);
 classifier.x = 2110; classifier.y = 860; classifier.wires = [["vehicle_visual_test_adapter"]];
 vfn("vehicle_visual_test_adapter", "Adaptar somente o estado sintético", "vehicle-lifecycle-test-adapter.js", 1, 2390, 860, [["vehicle_visual_normalize"]]);
 vfn("vehicle_visual_normalize", "Normalizar localização, motor e trava", "vehicle-lifecycle-normalize.js", 1, 2700, 860, [["vehicle_visual_movement"]]);

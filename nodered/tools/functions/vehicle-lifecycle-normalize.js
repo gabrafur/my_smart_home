@@ -83,6 +83,7 @@ msg._vehicle = {
     trigger_entity: msg.payload?.trigger_entity,
     trigger_state: msg.payload?.trigger_state,
     trigger_prev_state: msg.payload?.trigger_prev_state,
+    canonical_state_changed: msg.payload?.canonical_state_changed !== false,
     refresh_cycle_id: msg.payload?.refresh_cycle_id
 };
 return msg;

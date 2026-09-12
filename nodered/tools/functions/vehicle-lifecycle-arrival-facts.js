@@ -33,10 +33,10 @@ data.facts = {
     near_home: isNear,
     home: isHome,
     away: isAway,
-    arrival_eligible: data.is_location_event && data.location.ready &&
+    arrival_eligible: data.is_location_event && data.canonical_state_changed && data.location.ready &&
         validZone(data.trigger_prev_state) && !departure && !staleCatchup &&
         (approach || isNear) && data.armed === true,
-    blocked_candidate: data.is_location_event && data.location.ready &&
+    blocked_candidate: data.is_location_event && data.canonical_state_changed && data.location.ready &&
         validZone(data.trigger_prev_state) && data.trigger_state !== data.trigger_prev_state &&
         ["home", "near_home"].includes(data.trigger_state)
 };
