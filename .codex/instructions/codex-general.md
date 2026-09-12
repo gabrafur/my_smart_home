@@ -92,3 +92,28 @@ the style of `fix: make Codex card loading deterministic`:
 
 Do not imitate legacy commit subjects that predate this policy. Automated
 commits made by repository scripts must follow the same format.
+
+## Atualizações automáticas de integrações vendorizadas
+
+Quando HACS ou outro atualizador alterar uma integração cujo código está
+versionado no repositório, trate a mutação como atualização upstream ainda não
+reconciliada; não a reverta silenciosamente nem a publique sem auditoria.
+
+Antes de deploy, commit ou push:
+
+- resolva a tag, o commit e, quando existir, o objeto de tag exatos;
+- compare byte a byte o diretório versionado com o upstream e enumere cada
+  delta local;
+- preserve e valide a licença upstream, notices e documentos de proveniência;
+- reaplique deltas locais de forma mínima, com teste de regressão específico;
+- não presuma que toda nova classe de entidade expõe atributos de coordenador;
+  faça inscrição por capacidade explícita e mantenha entidades com polling
+  independente fora do conjunto coordenado;
+- valide a configuração do Home Assistant, execute os testes afetados e observe
+  ao menos um ciclo nativo de polling sem repetir o erro;
+- confirme que registros de entidades e o Recorder foram preservados antes de
+  encerrar a tarefa.
+
+Reinicie somente o serviço necessário para carregar a integração. Uma
+atualização automática não autoriza reiniciar o host nem remover entidades,
+histórico ou estado persistente.

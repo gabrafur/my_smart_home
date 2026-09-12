@@ -98,3 +98,57 @@ independente do runtime observado.
   `NODERED_GLOBAL_NOTIFICATION_ACCEPTED ... delivery_test=true` e solicite ao
   usuário a confirmação visual no celular. O título e a mensagem devem conter
   `TESTE`; não use nós de produção individuais para esse smoke test.
+
+## Fronteira canônica de dados e decisões
+
+O Node-RED é a fonte canônica das políticas e decisões que pertencem à
+automação, mas não precisa substituir produtores naturais de fatos brutos.
+Integrações do Home Assistant, MQTT, sensores passivos e workers sanitizados
+podem produzir observações; o canvas deve tornar visíveis a seleção de fonte,
+validação, configuração, decisão, gates, dedupe, lifecycle, efeitos e
+observabilidade. Consumidores recebem o resultado pronto.
+
+Em todo tab novo ou materialmente alterado:
+
+- mantenha parâmetros ajustáveis em grupos próprios, com nome, unidade, valor
+  padrão, finalidade, limites e rejeição sem sobrescrever o último valor válido;
+- use uma única definição para cada regra e encaminhe todos os consumidores ao
+  mesmo contrato por links ou subflows nomeados;
+- deixe JavaScript somente para adaptação de protocolo, validação estrutural,
+  serialização, normalização ou cálculo que fique mais seguro e legível em
+  código;
+- mantenha cada função pequena, de responsabilidade única, sem parâmetros
+  operacionais ocultos e sem side effect residencial direto; teste-a
+  isoladamente e documente sua justificativa;
+- preserve produção e `test_mode` no mesmo caminho até o gate final, com estado,
+  dedupe e chaves de contexto separados.
+
+## Disponibilidade esperada de dependências externas
+
+Modele separadamente `online`, `offline` e `unknown` quando uma responsabilidade
+depender de outra máquina ou serviço. Uma sonda passiva nunca deve acordar,
+reiniciar, reconfigurar ou alterar a dependência. `unknown` não pode ser tratado
+como confirmação de `online` nem de `offline`.
+
+Um estado normal do domínio não deve fingir ser erro de nó: não crie
+`msg.error`, não invoque `node.error()` e não use a rota `node_error` para
+representar equipamento intencionalmente desligado, gate bloqueado ou outra
+condição esperada. Quando uma degradação real precisar de coordenação central,
+publique um alerta de domínio explícito, com `observer_kind`, `incident_key`,
+razão e severidade, diretamente na entrada de dispatch do observador.
+
+Alertas de dependência devem:
+
+- confirmar que o pré-requisito está disponível antes de declarar indisponível
+  a responsabilidade dependente;
+- ser deduplicados uma vez por incidente, com reset explícito na recuperação ou
+  na transição que encerra a responsabilidade;
+- persistir o lifecycle de produção através de restart e manter teste apenas em
+  memória separada;
+- possuir replay para online, offline, unknown, duplicata, recuperação, restart
+  e dry-run da entrega.
+
+No tab `recuperacao_rtx`, computador `offline` é estado esperado e silencioso;
+computador `online` com endpoint RTX indisponível gera um alerta acionável por
+incidente; `unknown` permanece diagnóstico sem alerta. O recovery continua
+manual e explícito porque pode interferir na VPN e no ambiente remoto.

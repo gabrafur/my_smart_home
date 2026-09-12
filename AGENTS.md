@@ -108,6 +108,31 @@ the style of `fix: make Codex card loading deterministic`:
 Do not imitate legacy commit subjects that predate this policy. Automated
 commits made by repository scripts must follow the same format.
 
+## Atualizações automáticas de integrações vendorizadas
+
+Quando HACS ou outro atualizador alterar uma integração cujo código está
+versionado no repositório, trate a mutação como atualização upstream ainda não
+reconciliada; não a reverta silenciosamente nem a publique sem auditoria.
+
+Antes de deploy, commit ou push:
+
+- resolva a tag, o commit e, quando existir, o objeto de tag exatos;
+- compare byte a byte o diretório versionado com o upstream e enumere cada
+  delta local;
+- preserve e valide a licença upstream, notices e documentos de proveniência;
+- reaplique deltas locais de forma mínima, com teste de regressão específico;
+- não presuma que toda nova classe de entidade expõe atributos de coordenador;
+  faça inscrição por capacidade explícita e mantenha entidades com polling
+  independente fora do conjunto coordenado;
+- valide a configuração do Home Assistant, execute os testes afetados e observe
+  ao menos um ciclo nativo de polling sem repetir o erro;
+- confirme que registros de entidades e o Recorder foram preservados antes de
+  encerrar a tarefa.
+
+Reinicie somente o serviço necessário para carregar a integração. Uma
+atualização automática não autoriza reiniciar o host nem remover entidades,
+histórico ou estado persistente.
+
 ---
 
 # Dashboards
@@ -123,6 +148,37 @@ para que o frontend aplique a localização. Valores numéricos renderizados em
 Markdown/Jinja devem importar e usar
 `custom_templates/formatting.jinja::format_number_ptbr`. Ao criar ou alterar
 um dashboard, atualize os testes de regressão que verificam esse contrato.
+
+## Separação entre produtores, decisões e apresentação
+
+Não force todos os dados exibidos a nascer no Node-RED. Integrações do Home
+Assistant, MQTT, sensores passivos e workers sanitizados podem continuar como
+produtores dos fatos brutos que realmente lhes pertencem. Políticas e decisões
+operacionais de automação pertencem ao fluxo canônico do Node-RED; dashboards
+e cards são consumidores.
+
+Em todo dashboard ou card novo ou materialmente alterado:
+
+- consuma entidades, estados, razões e atributos canônicos já publicados;
+- limite Jinja e JavaScript a formatação, localização, layout, tabelas, gráficos,
+  rótulos diretamente derivados do estado canônico e estado local da interface;
+- uma idade pode ser convertida para texto legível, mas sua classificação em
+  `fresh`, `stale`, `available` ou equivalente deve vir pronta do produtor
+  canônico, sem threshold local;
+- não recalcule distância, raio, seleção de fonte, disponibilidade, stale,
+  threshold, cooldown, dedupe, retry, backoff, lifecycle ou autorização de
+  efeito;
+- um botão pode representar uma intenção explícita do usuário, mas o Node-RED
+  deve validar, decidir, deduplicar, aplicar gates e executar ou simular o
+  efeito;
+- JavaScript de custom cards pode manter rascunho, histórico visual, loading e
+  preferências de interface, mas não pode implementar política residencial;
+- acrescente regressão que prove a existência do produtor canônico e rejeite a
+  reintrodução da mesma decisão no dashboard.
+
+Se um valor exibido exigir interpretação operacional, publique também a
+classificação e a razão canônicas. Não esconda essa interpretação em texto,
+cor ou ícone calculado exclusivamente no frontend.
 
 ---
 
@@ -346,6 +402,60 @@ independente do runtime observado.
   `NODERED_GLOBAL_NOTIFICATION_ACCEPTED ... delivery_test=true` e solicite ao
   usuário a confirmação visual no celular. O título e a mensagem devem conter
   `TESTE`; não use nós de produção individuais para esse smoke test.
+
+## Fronteira canônica de dados e decisões
+
+O Node-RED é a fonte canônica das políticas e decisões que pertencem à
+automação, mas não precisa substituir produtores naturais de fatos brutos.
+Integrações do Home Assistant, MQTT, sensores passivos e workers sanitizados
+podem produzir observações; o canvas deve tornar visíveis a seleção de fonte,
+validação, configuração, decisão, gates, dedupe, lifecycle, efeitos e
+observabilidade. Consumidores recebem o resultado pronto.
+
+Em todo tab novo ou materialmente alterado:
+
+- mantenha parâmetros ajustáveis em grupos próprios, com nome, unidade, valor
+  padrão, finalidade, limites e rejeição sem sobrescrever o último valor válido;
+- use uma única definição para cada regra e encaminhe todos os consumidores ao
+  mesmo contrato por links ou subflows nomeados;
+- deixe JavaScript somente para adaptação de protocolo, validação estrutural,
+  serialização, normalização ou cálculo que fique mais seguro e legível em
+  código;
+- mantenha cada função pequena, de responsabilidade única, sem parâmetros
+  operacionais ocultos e sem side effect residencial direto; teste-a
+  isoladamente e documente sua justificativa;
+- preserve produção e `test_mode` no mesmo caminho até o gate final, com estado,
+  dedupe e chaves de contexto separados.
+
+## Disponibilidade esperada de dependências externas
+
+Modele separadamente `online`, `offline` e `unknown` quando uma responsabilidade
+depender de outra máquina ou serviço. Uma sonda passiva nunca deve acordar,
+reiniciar, reconfigurar ou alterar a dependência. `unknown` não pode ser tratado
+como confirmação de `online` nem de `offline`.
+
+Um estado normal do domínio não deve fingir ser erro de nó: não crie
+`msg.error`, não invoque `node.error()` e não use a rota `node_error` para
+representar equipamento intencionalmente desligado, gate bloqueado ou outra
+condição esperada. Quando uma degradação real precisar de coordenação central,
+publique um alerta de domínio explícito, com `observer_kind`, `incident_key`,
+razão e severidade, diretamente na entrada de dispatch do observador.
+
+Alertas de dependência devem:
+
+- confirmar que o pré-requisito está disponível antes de declarar indisponível
+  a responsabilidade dependente;
+- ser deduplicados uma vez por incidente, com reset explícito na recuperação ou
+  na transição que encerra a responsabilidade;
+- persistir o lifecycle de produção através de restart e manter teste apenas em
+  memória separada;
+- possuir replay para online, offline, unknown, duplicata, recuperação, restart
+  e dry-run da entrega.
+
+No tab `recuperacao_rtx`, computador `offline` é estado esperado e silencioso;
+computador `online` com endpoint RTX indisponível gera um alerta acionável por
+incidente; `unknown` permanece diagnóstico sem alerta. O recovery continua
+manual e explícito porque pode interferir na VPN e no ambiente remoto.
 
 ---
 
