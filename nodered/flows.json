@@ -1354,7 +1354,7 @@
         "type": "tab",
         "label": "iluminacao_externa",
         "disabled": false,
-        "info": "Controla a iluminação externa por comando manual e pôr do sol. Não consulta nem recebe eventos do fluxo Moni Mobile."
+        "info": "Iluminação externa com disponibilidade, produção/teste e confirmação visíveis. A política visual controla settle e TTL; funções remanescentes adaptam payloads, datas e tokens. Testes percorrem o pipeline canônico e terminam antes de MQTT, push e Alexa."
     },
     {
         "id": "alarm_house_tab",
@@ -2323,7 +2323,7 @@
         "id": "external_lighting_full_flow_group",
         "type": "group",
         "z": "ce258dec9814b96b",
-        "name": "Comandos, confirmação e recovery da iluminação externa",
+        "name": "1. Entradas, disponibilidade, efeitos e confirmação",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -2362,11 +2362,23 @@
             "ext_commit_recovery_confirmation",
             "ext_recovery_notification_action",
             "ext_validate_recovery_confirmation",
-            "ext_confirm_recovery_sun_check"
+            "ext_confirm_recovery_sun_check",
+            "external_visual_zigbee_available",
+            "external_visual_command_allowed",
+            "external_visual_command_blocked",
+            "external_visual_command_mode",
+            "external_visual_notification_mode",
+            "external_visual_confirmation_mode",
+            "external_visual_command_dry_out",
+            "external_visual_notification_dry_out",
+            "external_visual_recovery_mode",
+            "external_visual_recovery_dry_out",
+            "external_visual_test_command_in",
+            "external_visual_test_recovery_in"
         ],
         "x": 64,
         "y": -1,
-        "w": 2152,
+        "w": 3400,
         "h": 562
     },
     {
@@ -3998,9 +4010,9 @@
         "type": "function",
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
-        "name": "Bloquear se rede Zigbee offline",
-        "func": "const zigbeeState = flow.get('external_lighting_zigbee_state');\n\nif (zigbeeState === 'offline') {\n    msg.zigbee_error = true;\n    msg.cancel_confirmation = true;\n    msg.notify_text = 'Erro na rede Zigbee. A iluminação externa não foi acionada e o comando não será repetido.';\n    node.status({ fill: 'red', shape: 'ring', text: 'comando bloqueado: Zigbee offline' });\n    return [null, msg];\n}\n\nnode.status({});\nreturn [msg, null];",
-        "outputs": 2,
+        "name": "Ler política e disponibilidade Zigbee",
+        "func": "const policy = global.get(\"external_lighting_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"iluminacao_externa: política visual ausente\", msg);\n    return null;\n}\nconst testMode = msg._external_lighting_test === true || msg.payload?.test_mode === true;\nconst testState = msg._external_test_zigbee_state ?? flow.get(\"external_lighting_zigbee_state__test\");\nconst zigbeeState = testMode ? testState : flow.get(\"external_lighting_zigbee_state\");\nmsg._external_command = { test_mode: testMode, zigbee_state: zigbeeState,\n    zigbee_offline: zigbeeState === \"offline\", policy };\nreturn msg;",
+        "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -4010,12 +4022,7 @@
         "y": 160,
         "wires": [
             [
-                "88e6fc3e56fa347c",
-                "ext_wait_confirm"
-            ],
-            [
-                "ext_wait_confirm",
-                "9d81b75a18d482f1"
+                "external_visual_zigbee_available"
             ]
         ]
     },
@@ -4032,7 +4039,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1520,
+        "x": 2240,
         "y": 80,
         "wires": [
             [
@@ -4073,8 +4080,8 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 2120,
-        "y": 340,
+        "x": 3290,
+        "y": 300,
         "wires": [
             []
         ]
@@ -4111,7 +4118,7 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1820,
+        "x": 2620,
         "y": 40,
         "wires": []
     },
@@ -4130,8 +4137,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1830,
-        "y": 80,
+        "x": 2630,
+        "y": 100,
         "wires": []
     },
     {
@@ -4149,30 +4156,35 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1820,
-        "y": 140,
+        "x": 2620,
+        "y": 160,
         "wires": []
     },
     {
         "id": "ext_wait_confirm",
-        "type": "function",
+        "type": "trigger",
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
-        "name": "Confirmar somente o comando mais recente",
-        "func": "const previousTimer = context.get('confirmationTimer');\nif (previousTimer) {\n    clearTimeout(previousTimer);\n}\n\nif (msg.cancel_confirmation) {\n    context.set('confirmationTimer', null);\n    node.status({});\n    return null;\n}\n\nconst timer = setTimeout(() => {\n    context.set('confirmationTimer', null);\n    node.status({});\n    node.send(msg);\n}, 5000);\n\ncontext.set('confirmationTimer', timer);\nnode.status({ fill: 'yellow', shape: 'ring', text: 'aguardando confirmação' });\nreturn null;",
+        "name": "Aguardar confirmação mais recente — 5 s padrão",
         "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "const timer = context.get('confirmationTimer');\nif (timer) {\n    clearTimeout(timer);\n}\ncontext.set('confirmationTimer', null);",
-        "libs": [],
-        "x": 1480,
-        "y": 480,
+        "x": 2200,
+        "y": 180,
         "wires": [
             [
-                "ext_check_states"
+                "external_visual_confirmation_mode"
             ]
-        ]
+        ],
+        "op1": "",
+        "op2": "",
+        "op1type": "nul",
+        "op2type": "payl",
+        "duration": "5",
+        "extend": true,
+        "overrideDelay": true,
+        "units": "s",
+        "reset": "",
+        "bytopic": "all",
+        "topic": "topic"
     },
     {
         "id": "ext_check_states",
@@ -4205,8 +4217,8 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1840,
-        "y": 480,
+        "x": 2730,
+        "y": 300,
         "wires": [
             [
                 "ext_build_alexa_message"
@@ -4226,8 +4238,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1840,
-        "y": 360,
+        "x": 3010,
+        "y": 300,
         "wires": [
             [
                 "9d81b75a18d482f1"
@@ -4326,8 +4338,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1830,
-        "y": 200,
+        "x": 2630,
+        "y": 220,
         "wires": []
     },
     {
@@ -4405,8 +4417,8 @@
         "type": "function",
         "z": "ce258dec9814b96b",
         "g": "external_lighting_full_flow_group",
-        "name": "Preparar confirmação do pôr do sol perdido",
-        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat('en-US', {\n        timeZone,\n        year: 'numeric',\n        month: '2-digit',\n        day: '2-digit'\n    }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\n\nconst STORE = 'persistent';\nconst PENDING_KEY = 'external_lighting_recovery_pending_v1';\nconst PROMPTED_DATE_KEY = 'external_lighting_recovery_prompted_date_v1';\nconst TTL_MS = 12 * 60 * 60 * 1000;\nconst now = new Date();\nconst sunsetAt = new Date(msg.sun_last_changed);\nconst timeZone = env.get('TZ') || 'America/Sao_Paulo';\n\nif (!Number.isFinite(sunsetAt.getTime())) {\n    node.status({ fill: 'red', shape: 'ring', text: 'horário do pôr do sol ausente' });\n    return null;\n}\n\nconst today = localDate(now, timeZone);\nif (localDate(sunsetAt, timeZone) !== today) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'pôr do sol foi em outro dia' });\n    return null;\n}\n\nconst pending = flow.get(PENDING_KEY, STORE);\nconst promptedDate = flow.get(PROMPTED_DATE_KEY, STORE);\nif (promptedDate === today || (pending?.localDate === today && Number(pending.expiresAt) > now.getTime())) {\n    node.status({ fill: 'grey', shape: 'ring', text: 'confirmação já enviada hoje' });\n    return null;\n}\n\nconst token = (now.getTime().toString(36) + '_' + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst candidate = {\n    version: 1,\n    localDate: today,\n    createdAt: now.getTime(),\n    expiresAt: now.getTime() + TTL_MS,\n    confirmAction: 'ILUMINACAO_EXTERNA_LIGAR_' + token,\n    cancelAction: 'ILUMINACAO_EXTERNA_NAO_LIGAR_' + token\n};\n\nmsg.external_lighting_recovery_candidate = candidate;\nmsg.confirm_action = candidate.confirmAction;\nmsg.cancel_action = candidate.cancelAction;\nmsg.notification_title = 'Iluminação externa';\nmsg.notification_message = 'O Node-RED voltou depois do pôr do sol de hoje. Deseja ligar as lâmpadas externas agora?';\nmsg.notification_tag = 'external_lighting_sunset_recovery';\nmsg.notify_text = 'O Node-RED voltou depois do pôr do sol. Você ainda quer ligar a iluminação externa? Responda pela notificação que enviei ao celular.';\nnode.status({ fill: 'yellow', shape: 'dot', text: 'enviando confirmação' });\nreturn msg;",
+        "name": "Validar data e dedupe da confirmação",
+        "func": "const localDate = (value, timeZone) => {\n    const parts = new Intl.DateTimeFormat(\"en-US\", { timeZone, year: \"numeric\", month: \"2-digit\", day: \"2-digit\" }).formatToParts(value);\n    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));\n    return `${values.year}-${values.month}-${values.day}`;\n};\nconst policy = global.get(\"external_lighting_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"iluminacao_externa: política visual ausente\", msg);\n    return null;\n}\nconst testMode = msg._external_lighting_test === true || msg.payload?.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst pendingKey = `external_lighting_recovery_pending_v1${suffix}`;\nconst promptedKey = `external_lighting_recovery_prompted_date_v1${suffix}`;\nconst store = testMode ? undefined : \"persistent\";\nconst get = (key) => store ? flow.get(key, store) : flow.get(key);\nconst now = new Date(msg.external_now ?? Date.now());\nconst sunsetAt = new Date(msg.sun_last_changed);\nconst timeZone = env.get(\"TZ\") || \"America/Sao_Paulo\";\nif (!Number.isFinite(sunsetAt.getTime())) {\n    node.status({ fill: \"red\", shape: \"ring\", text: \"horário do pôr do sol ausente\" });\n    return null;\n}\nconst today = localDate(now, timeZone);\nif (localDate(sunsetAt, timeZone) !== today) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"pôr do sol foi em outro dia\" });\n    return null;\n}\nconst pending = get(pendingKey);\nif (get(promptedKey) === today || (pending?.localDate === today && Number(pending.expiresAt) > now.getTime())) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"confirmação já enviada hoje\" });\n    return null;\n}\nconst token = (now.getTime().toString(36) + \"_\" + Math.random().toString(36).slice(2, 10)).toUpperCase();\nconst candidate = { version: 1, localDate: today, createdAt: now.getTime(),\n    expiresAt: now.getTime() + Number(policy.recovery_ttl_hours) * 3600000,\n    confirmAction: \"ILUMINACAO_EXTERNA_LIGAR_\" + token,\n    cancelAction: \"ILUMINACAO_EXTERNA_NAO_LIGAR_\" + token };\nmsg.external_lighting_recovery_candidate = candidate;\nmsg.confirm_action = candidate.confirmAction;\nmsg.cancel_action = candidate.cancelAction;\nmsg.notification_title = \"Iluminação externa\";\nmsg.notification_message = \"O Node-RED voltou depois do pôr do sol de hoje. Deseja ligar as lâmpadas externas agora?\";\nmsg.notification_tag = \"external_lighting_sunset_recovery\";\nmsg.notify_text = \"O Node-RED voltou depois do pôr do sol. Você ainda quer ligar a iluminação externa? Responda pela notificação que enviei ao celular.\";\nmsg._external_lighting_test = testMode;\nnode.status({ fill: \"yellow\", shape: \"dot\", text: \"enviando confirmação\" });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -4417,7 +4429,7 @@
         "y": 440,
         "wires": [
             [
-                "ext_send_recovery_mobile"
+                "external_visual_recovery_mode"
             ]
         ]
     },
@@ -47903,6 +47915,689 @@
         "wires": []
     },
     {
+        "id": "external_visual_zigbee_available",
+        "type": "switch",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Rede Zigbee está offline?",
+        "property": "_external_command.zigbee_offline",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1430,
+        "y": 160,
+        "wires": [
+            [
+                "external_visual_command_blocked"
+            ],
+            [
+                "external_visual_command_allowed"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_command_allowed",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Preparar confirmação pelo tempo visual",
+        "func": "const data = msg._external_command;\nmsg.delay = Number(data.policy.confirmation_settle_seconds) * 1000;\ndelete msg.reset;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1680,
+        "y": 120,
+        "wires": [
+            [
+                "external_visual_command_mode"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_command_blocked",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Bloquear e cancelar confirmação pendente",
+        "func": "msg.zigbee_error = true;\nmsg.cancel_confirmation = true;\nmsg.reset = true;\nmsg.notify_text = \"Erro na rede Zigbee. A iluminação externa não foi acionada e o comando não será repetido.\";\nnode.status({ fill: \"red\", shape: \"ring\", text: \"comando bloqueado: Zigbee offline\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1680,
+        "y": 220,
+        "wires": [
+            [
+                "ext_wait_confirm",
+                "external_visual_notification_mode"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_command_mode",
+        "type": "switch",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Comando de produção ou TESTE?",
+        "property": "_external_command.test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1930,
+        "y": 120,
+        "wires": [
+            [
+                "ext_wait_confirm"
+            ],
+            [
+                "88e6fc3e56fa347c",
+                "ext_wait_confirm"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_notification_mode",
+        "type": "switch",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Aviso de produção ou TESTE?",
+        "property": "_external_command.test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1930,
+        "y": 240,
+        "wires": [
+            [
+                "external_visual_notification_dry_out"
+            ],
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_confirmation_mode",
+        "type": "switch",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Confirmar em produção ou TESTE?",
+        "property": "_external_command.test_mode",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 2460,
+        "y": 300,
+        "wires": [
+            [
+                "external_visual_command_dry_out"
+            ],
+            [
+                "ext_check_states"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_command_dry_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Comando TESTE → terminal",
+        "mode": "link",
+        "links": [
+            "external_visual_dry_in"
+        ],
+        "x": 2680,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "external_visual_notification_dry_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Aviso TESTE → terminal",
+        "mode": "link",
+        "links": [
+            "external_visual_dry_in"
+        ],
+        "x": 2160,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "external_visual_recovery_mode",
+        "type": "switch",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Pergunta de recovery: produção ou TESTE?",
+        "property": "_external_lighting_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1160,
+        "y": 440,
+        "wires": [
+            [
+                "external_visual_recovery_dry_out"
+            ],
+            [
+                "ext_send_recovery_mobile"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_recovery_dry_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Recovery TESTE → terminal",
+        "mode": "link",
+        "links": [
+            "external_visual_dry_in"
+        ],
+        "x": 1410,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "external_visual_test_command_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Receber comandos TESTE",
+        "links": [
+            "external_visual_test_command_out"
+        ],
+        "x": 910,
+        "y": 260,
+        "wires": [
+            [
+                "ext_zigbee_command_gate"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_recovery_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Receber recovery TESTE",
+        "links": [
+            "external_visual_test_recovery_out"
+        ],
+        "x": 660,
+        "y": 500,
+        "wires": [
+            [
+                "ext_prepare_recovery_confirmation"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_policy_group",
+        "type": "group",
+        "z": "ce258dec9814b96b",
+        "name": "2. Política visual — confirmação e recovery",
+        "style": {
+            "label": true,
+            "color": "#b58b3f"
+        },
+        "nodes": [
+            "external_visual_policy_note",
+            "external_visual_policy_settle",
+            "external_visual_policy_ttl",
+            "external_visual_policy_validate",
+            "external_visual_policy_store",
+            "external_visual_policy_reject"
+        ],
+        "x": 64,
+        "y": 619,
+        "w": 1100,
+        "h": 262
+    },
+    {
+        "id": "external_visual_policy_note",
+        "type": "comment",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_policy_group",
+        "name": "Padrões e limites; inválidos preservam a última política válida.",
+        "info": "Confirmação: 5 s [1..30]. TTL do recovery: 12 h [1..24]. Valores inteiros.",
+        "x": 550,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "external_visual_policy_settle",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_policy_group",
+        "name": "Confirmação = 5 s [1..30]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.2",
+        "topic": "confirmation_settle_seconds",
+        "payload": "5",
+        "payloadType": "num",
+        "x": 260,
+        "y": 720,
+        "wires": [
+            [
+                "external_visual_policy_validate"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_policy_ttl",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_policy_group",
+        "name": "TTL recovery = 12 h [1..24]",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.2",
+        "topic": "recovery_ttl_hours",
+        "payload": "12",
+        "payloadType": "num",
+        "x": 260,
+        "y": 780,
+        "wires": [
+            [
+                "external_visual_policy_validate"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_policy_validate",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_policy_group",
+        "name": "Validar valor e limites",
+        "func": "const DEFAULTS = { confirmation_settle_seconds: 5, recovery_ttl_hours: 12 };\nconst LIMITS = { confirmation_settle_seconds: [1, 30], recovery_ttl_hours: [1, 24] };\nconst parameter = String(msg.topic ?? \"\");\nconst value = Number(msg.payload);\nconst bounds = LIMITS[parameter];\nif (!bounds || !Number.isInteger(value) || value < bounds[0] || value > bounds[1]) {\n    msg.external_policy_rejection = { parameter, value: msg.payload, bounds, preserved: true };\n    return [null, msg];\n}\nconst previous = global.get(\"external_lighting_policy_v1\", \"persistent\");\nmsg.external_policy_candidate = { ...DEFAULTS,\n    ...(previous?.version === 1 && previous?.complete === true ? previous : {}),\n    [parameter]: value, version: 1, owner: \"node_red\", complete: true, updated_at: Date.now() };\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 750,
+        "wires": [
+            [
+                "external_visual_policy_store"
+            ],
+            [
+                "external_visual_policy_reject"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_policy_store",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_policy_group",
+        "name": "Guardar política canônica",
+        "func": "const policy = msg.external_policy_candidate;\nif (policy?.version !== 1 || policy?.complete !== true) return null;\nglobal.set(\"external_lighting_policy_v1\", policy, \"persistent\");\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "external_visual_policy_reject",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_policy_group",
+        "name": "Rejeitar sem substituir",
+        "func": "node.warn(`iluminacao_externa: parâmetro ${msg.external_policy_rejection?.parameter ?? \"desconhecido\"} rejeitado; última política válida preservada`);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 790,
+        "wires": []
+    },
+    {
+        "id": "external_visual_test_group",
+        "type": "group",
+        "z": "ce258dec9814b96b",
+        "name": "3. TESTES — pipeline real até dry-run",
+        "style": {
+            "label": true,
+            "color": "#4b93d1"
+        },
+        "nodes": [
+            "external_visual_test_note",
+            "external_visual_test_reset",
+            "external_visual_test_reset_state",
+            "external_visual_test_online",
+            "external_visual_test_offline",
+            "external_visual_test_command_out",
+            "external_visual_test_recovery",
+            "external_visual_test_recovery_out",
+            "external_visual_dry_in",
+            "external_visual_dry_terminal"
+        ],
+        "x": 1220,
+        "y": 619,
+        "w": 1700,
+        "h": 302
+    },
+    {
+        "id": "external_visual_test_note",
+        "type": "comment",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Ordem: reset; comando online; bloqueio offline; recovery. Nenhum MQTT, push ou Alexa.",
+        "x": 2020,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "external_visual_test_reset",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1370,
+        "y": 720,
+        "wires": [
+            [
+                "external_visual_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_reset_state",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Resetar somente estado sintético",
+        "func": "flow.set(\"external_lighting_zigbee_state__test\", null);\nflow.set(\"external_lighting_recovery_pending_v1__test\", null);\nflow.set(\"external_lighting_recovery_prompted_date_v1__test\", null);\nflow.set(\"external_lighting_last_dry_run_v1\", { version: 1, reset: true, simulated: true, dispatched: false });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1630,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "external_visual_test_online",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE 2: Zigbee online",
+        "props": [
+            {
+                "p": "payload",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "p": "expected_state",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "p": "_external_lighting_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_external_test_zigbee_state",
+                "v": "online",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1390,
+        "y": 780,
+        "wires": [
+            [
+                "external_visual_test_command_out"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_offline",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE 3: Zigbee offline",
+        "props": [
+            {
+                "p": "payload",
+                "v": "ON",
+                "vt": "str"
+            },
+            {
+                "p": "expected_state",
+                "v": "on",
+                "vt": "str"
+            },
+            {
+                "p": "_external_lighting_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_external_test_zigbee_state",
+                "v": "offline",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 1390,
+        "y": 840,
+        "wires": [
+            [
+                "external_visual_test_command_out"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_command_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Comando TESTE → pipeline",
+        "mode": "link",
+        "links": [
+            "external_visual_test_command_in"
+        ],
+        "x": 1680,
+        "y": 810,
+        "wires": []
+    },
+    {
+        "id": "external_visual_test_recovery",
+        "type": "inject",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE 4: recovery pós-pôr do sol",
+        "props": [
+            {
+                "p": "sun_last_changed",
+                "v": "",
+                "vt": "date"
+            },
+            {
+                "p": "_external_lighting_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2030,
+        "y": 780,
+        "wires": [
+            [
+                "external_visual_test_recovery_out"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_test_recovery_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Recovery TESTE → pipeline",
+        "mode": "link",
+        "links": [
+            "external_visual_test_recovery_in"
+        ],
+        "x": 2290,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "external_visual_dry_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "Receber efeitos simulados",
+        "links": [
+            "external_visual_command_dry_out",
+            "external_visual_notification_dry_out",
+            "external_visual_recovery_dry_out"
+        ],
+        "x": 2470,
+        "y": 840,
+        "wires": [
+            [
+                "external_visual_dry_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_dry_terminal",
+        "type": "function",
+        "z": "ce258dec9814b96b",
+        "g": "external_visual_test_group",
+        "name": "TESTE FINAL: nenhum efeito enviado",
+        "func": "const result = { version: 1, simulated: true, dispatched: false,\n    mqtt_sent: false, alexa_called: false, mobile_notification_sent: false,\n    reason: msg.zigbee_error ? \"zigbee_offline\" : msg.external_lighting_recovery_candidate ? \"recovery_prompt\" : \"command_confirmed\",\n    completed_at: Date.now() };\nflow.set(\"external_lighting_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: `TESTE: ${result.reason}; nenhum efeito` });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2730,
+        "y": 840,
+        "wires": []
+    },
+    {
         "id": "global_observer_coverage__recorder_retention_tab__group",
         "type": "group",
         "z": "recorder_retention_tab",
@@ -48261,7 +48956,7 @@
             "global_observer_coverage__ce258dec9814b96b__annotate",
             "global_observer_coverage__ce258dec9814b96b__out"
         ],
-        "x": 2300,
+        "x": 3520,
         "y": 40,
         "w": 720,
         "h": 162
@@ -48274,7 +48969,7 @@
         "name": "Capturar erros de toda a aba",
         "scope": null,
         "uncaught": false,
-        "x": 2440,
+        "x": 3660,
         "y": 100,
         "wires": [
             [
@@ -48289,7 +48984,7 @@
         "g": "global_observer_coverage__ce258dec9814b96b__group",
         "name": "Observar indisponibilidade da aba",
         "scope": null,
-        "x": 2450,
+        "x": 3670,
         "y": 160,
         "wires": [
             [
@@ -48310,7 +49005,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2720,
+        "x": 3940,
         "y": 130,
         "wires": [
             [
@@ -48328,7 +49023,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 2965,
+        "x": 4185,
         "y": 130,
         "wires": []
     },

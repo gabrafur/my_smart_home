@@ -67,10 +67,17 @@
             "reason": "Tab de infraestrutura compartilhada sem automação ou efeito próprio."
         },
         "ce258dec9814b96b": {
-            "strategy": "automated_only",
-            "evidence_node_ids": [],
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "external_visual_test_group",
+                "external_visual_test_reset",
+                "external_visual_test_online",
+                "external_visual_test_offline",
+                "external_visual_test_recovery"
+            ],
+            "dry_run_terminal_ids": ["external_visual_dry_terminal"],
             "automated_test": "test-external-lighting-alarm-flow.mjs",
-            "reason": "Os caminhos comandam iluminação externa real; cenários de alarme, pôr do sol e recovery usam replay offline."
+            "reason": "Comando aceito, Zigbee offline e recovery pós-pôr do sol atravessam política, gates e confirmação canônicos; MQTT, push e Alexa terminam no dry-run."
         },
         "alarm_house_tab": {
             "strategy": "manual_full_dry_run",
