@@ -138,6 +138,10 @@ for (const [id, x, y] of [
   Object.assign(node, { g: bypass.id, x, y });
   if (!bypass.nodes.includes(id)) bypass.nodes.push(id);
 }
+const locationPolicy = required("light_location_policy_group_v1");
+Object.assign(locationPolicy, { x: 3740, y: 1019, w: 602, h: 142 });
+Object.assign(required("light_location_policy_in_v1"), { x: 3835, y: 1100 });
+Object.assign(required("light_location_policy_status_v1"), { x: 4130, y: 1100 });
 
 const policy = group("security_visual_policy_group_v1",
   "7. Política da iluminação — padrão, unidade e limites no nome",

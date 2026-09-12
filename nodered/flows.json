@@ -15547,7 +15547,7 @@
             "light_location_policy_in_v1",
             "light_location_policy_status_v1"
         ],
-        "x": 1510,
+        "x": 3740,
         "y": 1019,
         "w": 602,
         "h": 142
@@ -15561,7 +15561,7 @@
         "links": [
             "people_location_policy_out_v1"
         ],
-        "x": 1605,
+        "x": 3835,
         "y": 1100,
         "wires": [
             [
@@ -15582,7 +15582,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1900,
+        "x": 4130,
         "y": 1100,
         "wires": []
     },
