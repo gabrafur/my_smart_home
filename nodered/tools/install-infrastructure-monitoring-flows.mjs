@@ -23,6 +23,7 @@ for (const script of [
   "install-internet-monitor-flow.mjs",
   "install-zigbee-monitor-flow.mjs",
   "install-tuya-monitor-flow.mjs",
+  "install-external-lighting-visual-policy.mjs",
   "install-global-flow-observer.mjs",
   "apply-left-margin.mjs",
 ]) {
