@@ -295,7 +295,7 @@ const observerNodes = [
     x: 64,
     y: 39,
     w: 3650,
-    h: 482,
+    h: 522,
   },
   {
     id: "global_observer_architecture",
@@ -654,7 +654,19 @@ const observerNodes = [
     name: "Capturar falha interna do monitor",
     scope: [
       "global_observer_ingest",
+      "global_observer_error_accepted_save",
+      "global_observer_error_connection_save",
+      "global_observer_error_mutate",
+      "global_observer_error_alert",
+      "global_observer_status_unmonitored",
+      "global_observer_status_failure",
+      "global_observer_status_recovery",
+      "global_observer_unknown_ignore",
       "global_observer_evaluate",
+      "global_observer_evaluate_clear_uncorroborated",
+      "global_observer_evaluate_clear_transient",
+      "global_observer_evaluate_confirm",
+      "global_observer_evaluate_alert",
       "global_observer_dispatch_guard",
     ],
     uncaught: false,
@@ -674,6 +686,103 @@ const observerNodes = [
       ["global_observer_notify_primary"],
       ["global_observer_notify_persistent"],
     ],
+  ),
+  {
+    id: policyGroup,
+    type: "group",
+    z: OBSERVER_TAB,
+    name: "Política visual — confirmação, dedupe e retenção",
+    style: { label: true, color: "#d9b300" },
+    nodes: [
+      "global_observer_policy_comment",
+      "global_observer_policy_default_grace",
+      "global_observer_policy_default_confirm",
+      "global_observer_policy_default_reminder",
+      "global_observer_policy_default_retention",
+      "global_observer_policy_default_corroboration",
+      "global_observer_policy_validate",
+      "global_observer_policy_store",
+      "global_observer_policy_reject",
+    ],
+    x: 64,
+    y: 579,
+    w: 2100,
+    h: 342,
+  },
+  {
+    id: "global_observer_policy_comment",
+    type: "comment",
+    z: OBSERVER_TAB,
+    g: policyGroup,
+    name: "Cada parâmetro mostra unidade, padrão e limites. Valor inválido preserva a última política válida.",
+    info:
+      "Carência de reconexão: 90 s [10..600]; confirmação: 60 s [10..600]; " +
+      "lembrete: 6 h [1..48]; retenção de erros: 7 dias [1..30]; " +
+      "corroboração HA: 2 fontes [2..10]. Valores inteiros.",
+    x: 1500,
+    y: 620,
+    wires: [],
+  },
+  {
+    id: "global_observer_policy_default_grace",
+    type: "inject", z: OBSERVER_TAB, g: policyGroup,
+    name: "Carência reconexão = 90 s [10..600]",
+    props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
+    once: true, onceDelay: 0.1, topic: "connection_recovery_grace_seconds",
+    payload: "90", payloadType: "num", x: 360, y: 660,
+    wires: [["global_observer_policy_validate"]],
+  },
+  {
+    id: "global_observer_policy_default_confirm",
+    type: "inject", z: OBSERVER_TAB, g: policyGroup,
+    name: "Confirmar falha = 60 s [10..600]",
+    props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
+    once: false, onceDelay: 0.1, topic: "status_confirm_seconds",
+    payload: "60", payloadType: "num", x: 350, y: 710,
+    wires: [["global_observer_policy_validate"]],
+  },
+  {
+    id: "global_observer_policy_default_reminder",
+    type: "inject", z: OBSERVER_TAB, g: policyGroup,
+    name: "Lembrete = 6 h [1..48]",
+    props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
+    once: false, onceDelay: 0.1, topic: "reminder_hours",
+    payload: "6", payloadType: "num", x: 320, y: 760,
+    wires: [["global_observer_policy_validate"]],
+  },
+  {
+    id: "global_observer_policy_default_retention",
+    type: "inject", z: OBSERVER_TAB, g: policyGroup,
+    name: "Retenção de erros = 7 dias [1..30]",
+    props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
+    once: false, onceDelay: 0.1, topic: "error_retention_days",
+    payload: "7", payloadType: "num", x: 350, y: 810,
+    wires: [["global_observer_policy_validate"]],
+  },
+  {
+    id: "global_observer_policy_default_corroboration",
+    type: "inject", z: OBSERVER_TAB, g: policyGroup,
+    name: "Corroborar HA = 2 fontes [2..10]",
+    props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "", crontab: "",
+    once: false, onceDelay: 0.1, topic: "ha_corroboration_sources",
+    payload: "2", payloadType: "num", x: 350, y: 860,
+    wires: [["global_observer_policy_validate"]],
+  },
+  functionNode(
+    "global_observer_policy_validate", policyGroup,
+    "Validar parâmetro e preservar último válido",
+    source("global-flow-observer-policy-validate.js"), 2, 780, 760,
+    [["global_observer_policy_store"], ["global_observer_policy_reject"]],
+  ),
+  functionNode(
+    "global_observer_policy_store", policyGroup,
+    "Publicar política canônica persistente",
+    source("global-flow-observer-policy-store.js"), 0, 1110, 720, [],
+  ),
+  functionNode(
+    "global_observer_policy_reject", policyGroup,
+    "Rejeitar sem alterar política válida",
+    source("global-flow-observer-policy-reject.js"), 0, 1100, 800, [],
   ),
   {
     id: testGroup,
@@ -897,6 +1006,30 @@ const observerNodes = [
     [],
   ),
 ];
+
+const productionLayout = new Map([
+  ["global_observer_architecture", [1740, 80]],
+  ["global_observer_events_in", [120, 220]],
+  ["global_observer_ingest", [350, 220]],
+  ["global_observer_tick", [220, 460]],
+  ["global_observer_test_evaluate_in", [300, 510]],
+  ["global_observer_evaluate", [570, 460]],
+  ["global_observer_test_delivery_in", [2280, 160]],
+  ["global_observer_dispatch_guard", [2530, 240]],
+  ["global_observer_dry_run_out", [2760, 360]],
+  ["global_observer_notify_primary", [2880, 200]],
+  ["global_observer_notify_persistent", [2920, 260]],
+  ["global_observer_notification_ack", [3330, 220]],
+  ["global_observer_notification_catch", [3050, 400]],
+  ["global_observer_notification_failure", [3350, 400]],
+  ["global_observer_internal_catch", [2230, 480]],
+  ["global_observer_internal_failure", [2520, 480]],
+]);
+for (const node of observerNodes) {
+  const position = productionLayout.get(node.id);
+  if (position) [node.x, node.y] = position;
+  if (node.id === testGroup || node.g === testGroup) node.y += 580;
+}
 
 next.push(...coverageNodes, ...observerNodes);
 fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
