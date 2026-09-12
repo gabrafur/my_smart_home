@@ -1,6 +1,11 @@
 const STATE_KEY = "global_flow_observer_internal_failure_v1";
 const STORE = "persistent";
 const now = Date.now();
+const policy = flow.get("global_observer_policy_v1", STORE);
+if (policy?.version !== 1 || policy?.complete !== true) {
+    node.warn("NODERED_GLOBAL_OBSERVER_INTERNAL_FAILURE policy=missing");
+    return [null, null];
+}
 const source = msg.error?.source ?? {};
 const sourceId = String(source.id ?? "unknown").slice(0, 100);
 const sourceName = String(source.name || source.type || "nó desconhecido")
@@ -14,7 +19,7 @@ const previous = flow.get(STATE_KEY, STORE) ?? {};
 
 if (
     previous.signature === signature &&
-    now - Number(previous.notified_at ?? 0) < 6 * 60 * 60 * 1000
+    now - Number(previous.notified_at ?? 0) < Number(policy.reminder_hours) * 60 * 60 * 1000
 ) {
     return [null, null];
 }
@@ -28,7 +33,8 @@ msg.alert = {
     title: "Falha no monitor global do Node-RED",
     message:
         `O próprio monitor de observabilidade falhou no nó “${sourceName}”: ` +
-        `${errorMessage}. Incidentes idênticos serão silenciados por 6 horas.`
+        `${errorMessage}. Incidentes idênticos serão silenciados por ` +
+        `${policy.reminder_hours} horas.`
 };
 msg._observer_persistent_notification_id =
     `nodered_observabilidade_global_monitor_internal_error_${sourceId}`
