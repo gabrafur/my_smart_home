@@ -1,31 +1,35 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import {
+  ensureArrivalContextPolicy,
+  runArrivalContextVisual,
+  runPeopleVisual,
+  runSecurityArrivalVisual,
+  runSecurityContextVisual,
+  runSecurityReconcileVisual,
+  runVehicleRefreshVisual,
+  runVehicleVisual,
+} from "./visual-flow-test-harness.mjs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 const aliasesByName = {
-  people_normalize: "Normalizar pessoas e detectar transições",
   people_refresh_decide: "Atualizar iPhones agora?",
-  vehicle_primary_normalize: "Normalizar vehicle_primary e detectar transições",
   vehicle_primary_refresh_policy: "Escolher pela presença",
   vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
-  vehicle_primary_refresh_decide: "Coordenar refresh do vehicle_primary",
   vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
   vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
   vehicle_primary_unlock_event: "Porta destravada por 5 s",
   vehicle_primary_engine_on_event: "Motor ligado por 5 s",
   vehicle_primary_engine_off_event: "Motor desligado por 5 s",
   vehicle_primary_location_event: "Localização ou telemetria do vehicle_primary mudou",
-  context_coordinator: "Coordenar snapshot e refresh",
-  context_tick: "Reavaliar contextos a cada 30 s",
-  light_merge_context: "Atualizar contexto de alto nível",
-  light_arrival_direction_gate: "Direção: retorno confirmado?",
-  light_prepare_arrival: "Montar decisão de acendimento",
+  context_tick: "POLÍTICA: reavaliar a cada 30 s",
+  light_arrival_direction_gate: "Retorno externo está confirmado?",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_mark_active: "Marcar refletor ativo por chegada",
   light_evaluate_off: "Alguma condição de desligamento ocorreu?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
-  light_reconcile: "Revalidar lifecycle e estado físico",
+  light_reconcile: "Emitir deadlines reconstruídos",
   light_auto_off: "Aguardar backstop de 15 min",
   light_check_inactive: "Refletor disponível para acender?",
   light_off_grace: "Respeitar carência de 90 s",
@@ -37,6 +41,14 @@ for (const [alias, name] of Object.entries(aliasesByName)) {
   assert(node, `node ausente pelo nome: ${name}`);
   byId.set(alias, node);
 }
+for (const [alias, id] of Object.entries({
+  people_normalize: "554cb653b2fa4504",
+  vehicle_primary_normalize: "092625f2eb5cc156",
+  vehicle_primary_refresh_decide: "b33e117e55bdb5ed",
+  context_coordinator: "arrival_context_refresh_build",
+  light_merge_context: "48a5f40d806f6950",
+  light_prepare_arrival: "62f77a1ad440639d",
+})) byId.set(alias, byId.get(id));
 
 function wireNames(alias, output = 0) {
   return (byId.get(alias).wires[output] ?? []).map((id) => byId.get(id)?.name ?? id);
@@ -49,10 +61,23 @@ const LOCATION_POLICY = {
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
+  vehicle_recovery_hours: 24,
+};
+const SECURITY_LIGHT_POLICY = {
+  version: 1, owner: "node_red", complete: true,
+  physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
+  off_grace_seconds: 90, backstop_minutes: 15, post_off_cooldown_minutes: 5,
+  lifecycle_retention_hours: 24, deadline_slack_minutes: 1,
+  unavailable_dedupe_seconds: 10, cooldown_max_minutes: 30,
 };
 
 function memoryGlobal() {
-  const values = new Map([["location_policy_v1", LOCATION_POLICY]]);
+  const values = new Map([
+    ["location_policy_v1", LOCATION_POLICY],
+    ["security_light_policy_v1", SECURITY_LIGHT_POLICY],
+  ]);
   return {
     get: (key) => values.get(key),
     set: (key, value) => values.set(key, value),
@@ -72,12 +97,27 @@ function environment(values = {}) {
   return { get: (key) => values[key] };
 }
 
-function run(id, msg, flow = memoryFlow(), env = environment()) {
+function runDirect(id, msg, flow = memoryFlow(), env = environment()) {
   const node = byId.get(id);
   assert(node, `node ausente: ${id}`);
   assert.equal(node.type, "function", `${id} nao e function node`);
   const execute = new Function("msg", "node", "context", "flow", "global", "env", "setTimeout", "clearTimeout", node.func);
   return execute(msg, { warn() {}, error() {}, status() {} }, {}, flow, memoryGlobal(), env, setTimeout, clearTimeout);
+}
+
+function run(id, msg, flow = memoryFlow(), env = environment()) {
+  const call = (nodeId, current) => runDirect(nodeId, current, flow, env);
+  if (id === "people_normalize") return runPeopleVisual(call, msg);
+  if (id === "vehicle_primary_normalize") return runVehicleVisual(call, msg);
+  if (id === "vehicle_primary_refresh_decide") return runVehicleRefreshVisual(call, msg);
+  if (id === "light_prepare_arrival") return runSecurityArrivalVisual(call, msg);
+  if (id === "light_merge_context") return runSecurityContextVisual(call, msg);
+  if (id === "light_reconcile") return runSecurityReconcileVisual(call, msg);
+  if (id === "context_coordinator") {
+    if (!flow.get("arrival_context_policy_v1")) ensureArrivalContextPolicy(call);
+    return runArrivalContextVisual(call, msg);
+  }
+  return runDirect(id, msg, flow, env);
 }
 
 function runVehicleRefresh(msg, flow, env = environment()) {
@@ -90,6 +130,12 @@ function runVehicleRefresh(msg, flow, env = environment()) {
       home_interval_minutes: 30,
       quiet_start_hour: 0,
       quiet_end_hour: 6,
+      in_flight_lease_seconds: 120,
+      cache_probe_settle_seconds: 15,
+      provider_backoff_max_hours: 6,
+      semantic_evidence_window_minutes: 20,
+      unknown_location_start_hour: 7,
+      unknown_location_end_hour: 22,
     });
   }
   const branches = run(
@@ -182,10 +228,10 @@ function readyLightFlow(extra = {}) {
 
 function peopleInput({
   event = "location_update", source = "resident_primary", previous = "not_home", current = "near_home",
-  resident_primary = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 1_400 : 20),
-  resident_primaryIcloud = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 1_400 : 20),
-  resident_secondary = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 1_400 : 20),
-  resident_secondaryIcloud = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 1_400 : 20),
+  resident_primary = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 650 : 20),
+  resident_primaryIcloud = entity(source === "resident_primary" ? current : "home", source === "resident_primary" ? 650 : 20),
+  resident_secondary = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 650 : 20),
+  resident_secondaryIcloud = entity(source === "resident_secondary" ? current : "home", source === "resident_secondary" ? 650 : 20),
   cycle,
 } = {}) {
   return { payload: {
@@ -260,7 +306,7 @@ scenario("02a eventos de motor ON e OFF são simétricos com filtro de 5 s", () 
     assert.equal(node.for, "5");
     assert.equal(node.forUnits, "seconds");
     assert.match(node.outputProperties[0].value, new RegExp(`\\"event\\":\\"${event}\\"`));
-    assert.deepEqual(wireNames(node.name === "Motor ligado por 5 s" ? "vehicle_primary_engine_on_event" : "vehicle_primary_engine_off_event"), ["Classificar home / near_home"]);
+    assert.deepEqual(wireNames(node.name === "Motor ligado por 5 s" ? "vehicle_primary_engine_on_event" : "vehicle_primary_engine_off_event"), ["Eventos e snapshots → lifecycle"]);
   }
 });
 
@@ -273,27 +319,31 @@ scenario("02b localização e telemetria alimentam o contexto do veículo", () =
   assert.equal(locationEvent.outputOnlyOnStateChange, false);
 
   const home = run("vehicle_primary_normalize", vehicle_primaryInput({ event: "context_snapshot", current: "home", distance: null }), memoryFlow(), geoEnv)[0];
-  const approaching = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "near_home", distance: null, engine: "on" }), memoryFlow(), geoEnv);
-  const away = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "not_home", distance: null, engine: "on" }), memoryFlow(), geoEnv)[0];
+  const approaching = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "near_home", distance: 650, engine: "on" }), memoryFlow(), geoEnv);
+  const away = run("vehicle_primary_normalize", vehicle_primaryInput({ current: "not_home", distance: 5_000, engine: "on" }), memoryFlow(), geoEnv)[0];
   assert.equal(home.payload.context.home, true);
   assert.equal(home.payload.context.away, false);
   assert.equal(approaching[0].payload.context.location.state, "near_home");
   assert.equal(approaching[0].payload.context.location.state_valid, true);
   assert.equal(approaching[0].payload.context.home, false);
-  assert.equal(approaching[0].payload.context.away, false);
+  assert.equal(approaching[0].payload.context.away, true);
   assert.equal(away.payload.context.location.state, "not_home");
   assert.equal(away.payload.context.home, false);
   assert.equal(away.payload.context.away, true);
 });
 
 scenario("03 vehicle_primary ligado e aproximando-se", () => {
-  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "on" }), memoryFlow(), geoEnv);
+  const [, detected] = run("vehicle_primary_normalize", vehicle_primaryInput({ engine: "on", distance: 650 }), memoryFlow({ vehicle_primary_arrival_armed: true }), geoEnv);
   assert.equal(detected.payload.arrival_stage, "approach");
   assert.equal(detected.payload.request_vehicle_primary_wake, true);
 });
 
 scenario("04 entrada no raio near_home de 700 m", () => {
-  const [, detected] = run("people_normalize", peopleInput(), memoryFlow(), geoEnv);
+  const flow = memoryFlow();
+  run("people_normalize", peopleInput({ event: "context_snapshot", current: "not_home",
+    resident_primary: entity("not_home", 1_600),
+    resident_primaryIcloud: entity("not_home", 1_600) }), flow, geoEnv);
+  const [, detected] = run("people_normalize", peopleInput(), flow, geoEnv);
   assert.equal(detected.payload.arrival_stage, "approach");
   assert.equal(detected.payload.arrival_direction, "returning");
   assert.equal(detected.payload.external_cycle_confirmed, true);
@@ -354,8 +404,8 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
     peopleInput({
       previous: "near_home",
       current: "home",
-      resident_primary: entity("home", 101, undefined, 14),
-      resident_primaryIcloud: entity("home", 101, undefined, 14),
+      resident_primary: entity("home", 99, undefined, 14),
+      resident_primaryIcloud: entity("home", 99, undefined, 14),
     }),
     flow,
     geoEnv,
@@ -372,6 +422,7 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
   run(
     "people_normalize",
     peopleInput({
+      event: "context_snapshot",
       previous: "near_home",
       current: "not_home",
       resident_primary: entity("not_home", 2_000),
@@ -380,6 +431,7 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
     flow,
     geoEnv,
   );
+  assert.equal(flow.get("people_arrival_armed").resident_primary, true);
   const returning = run(
     "people_normalize",
     peopleInput(),

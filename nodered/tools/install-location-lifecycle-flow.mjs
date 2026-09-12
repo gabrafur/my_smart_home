@@ -214,6 +214,10 @@ for (const node of flows.filter((candidate) => candidate.z === VEHICLE_TAB)) {
   node.wires = node.wires.map((wire) => wire.map((id) =>
     id === "vehicle_primary_classify_near_home_v1" ? "vehicle_visual_event_out" : id));
 }
+for (const id of [
+  "46c2142f93cfc3e1", "94164ea9e4f5c8d1", "vehicle_primary_engine_on_event_v1",
+  "9bbff0058231747f", "2ff44a30d0a2cf18", "f673b02282a47d31"
+]) required(id).wires = [["vehicle_visual_event_out"]];
 vlinkIn("vehicle_visual_event_in", "Receber eventos e snapshots", ["vehicle_visual_event_out"],
   "vehicle_primary_classify_near_home_v1", 1960, 860);
 const classifier = required("vehicle_primary_classify_near_home_v1");

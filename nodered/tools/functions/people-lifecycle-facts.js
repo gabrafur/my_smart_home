@@ -14,9 +14,6 @@ for (const [role, item] of Object.entries(data.people)) {
 const source = data.people[data.source];
 const approach = data.trigger_state === "near_home" &&
     data.trigger_prev_state === "not_home" && source?.current_home !== true;
-if (data.is_location_event && source?.ready === true &&
-    data.trigger_state === "near_home" && source.current_home !== true &&
-    external(data.trigger_prev_state)) data.armed[data.source] = true;
 const departure = data.trigger_prev_state === "home" && data.trigger_state !== "home";
 const graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;
 data.facts = {

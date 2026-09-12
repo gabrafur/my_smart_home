@@ -9249,7 +9249,9 @@
         "x": 440,
         "y": 180,
         "wires": [
-            []
+            [
+                "vehicle_visual_event_out"
+            ]
         ]
     },
     {
@@ -9294,7 +9296,9 @@
         "x": 440,
         "y": 240,
         "wires": [
-            []
+            [
+                "vehicle_visual_event_out"
+            ]
         ]
     },
     {
@@ -9339,7 +9343,9 @@
         "x": 380,
         "y": 300,
         "wires": [
-            []
+            [
+                "vehicle_visual_event_out"
+            ]
         ]
     },
     {
@@ -9384,7 +9390,9 @@
         "x": 390,
         "y": 360,
         "wires": [
-            []
+            [
+                "vehicle_visual_event_out"
+            ]
         ]
     },
     {
@@ -9429,7 +9437,9 @@
         "x": 400,
         "y": 420,
         "wires": [
-            []
+            [
+                "vehicle_visual_event_out"
+            ]
         ]
     },
     {
@@ -9483,7 +9493,9 @@
         "x": 420,
         "y": 480,
         "wires": [
-            []
+            [
+                "vehicle_visual_event_out"
+            ]
         ]
     },
     {
@@ -46585,7 +46597,7 @@
         "z": "ea0a6aa0d24ff863",
         "g": "8e1c3a19399ad44d",
         "name": "Derivar direção, proximidade e validade",
-        "func": "const data = msg._people;\nif (!data) return null;\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst external = (state) => validZone(state) && ![\"home\", \"near_home\"].includes(state);\nconst near = (item) => item?.ready === true && (\n    (item.gate_distance_m !== null && item.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m !== null && item.distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m === null && item.gate_distance_m === null && item.state === \"home\")\n);\nfor (const [role, item] of Object.entries(data.people)) {\n    if (item?.ready === true && external(item.state)) data.armed[role] = true;\n}\nconst source = data.people[data.source];\nconst approach = data.trigger_state === \"near_home\" &&\n    data.trigger_prev_state === \"not_home\" && source?.current_home !== true;\nif (data.is_location_event && source?.ready === true &&\n    data.trigger_state === \"near_home\" && source.current_home !== true &&\n    external(data.trigger_prev_state)) data.armed[data.source] = true;\nconst departure = data.trigger_prev_state === \"home\" && data.trigger_state !== \"home\";\nconst graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;\ndata.facts = {\n    source_ready: source?.ready === true,\n    trigger_prev_valid: validZone(data.trigger_prev_state),\n    trigger_prev_unavailable: [\"unknown\", \"unavailable\"].includes(data.trigger_prev_state),\n    approach_entry: approach,\n    departure,\n    stale_catchup: !approach && source?.primary_home === true &&\n        typeof source.primary_home_for_ms === \"number\" && source.primary_home_for_ms > graceMs,\n    near_home: near(source),\n    external_cycle_confirmed: data.armed[data.source] === true,\n    directional_candidate: source?.ready === true &&\n        data.trigger_state !== data.trigger_prev_state &&\n        [\"home\", \"near_home\"].includes(data.trigger_state)\n};\nif (departure) data.armed[data.source] = false;\nif (!data.is_location_event) {\n    for (const [role, item] of Object.entries(data.people)) {\n        if (item?.ready === true && (item.distance_m !== null\n            ? item.distance_m <= Number(data.policy.home_radius_m)\n            : item.state === \"home\")) data.armed[role] = false;\n    }\n}\nreturn msg;",
+        "func": "const data = msg._people;\nif (!data) return null;\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst external = (state) => validZone(state) && ![\"home\", \"near_home\"].includes(state);\nconst near = (item) => item?.ready === true && (\n    (item.gate_distance_m !== null && item.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m !== null && item.distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (item.distance_m === null && item.gate_distance_m === null && item.state === \"home\")\n);\nfor (const [role, item] of Object.entries(data.people)) {\n    if (item?.ready === true && external(item.state)) data.armed[role] = true;\n}\nconst source = data.people[data.source];\nconst approach = data.trigger_state === \"near_home\" &&\n    data.trigger_prev_state === \"not_home\" && source?.current_home !== true;\nconst departure = data.trigger_prev_state === \"home\" && data.trigger_state !== \"home\";\nconst graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;\ndata.facts = {\n    source_ready: source?.ready === true,\n    trigger_prev_valid: validZone(data.trigger_prev_state),\n    trigger_prev_unavailable: [\"unknown\", \"unavailable\"].includes(data.trigger_prev_state),\n    approach_entry: approach,\n    departure,\n    stale_catchup: !approach && source?.primary_home === true &&\n        typeof source.primary_home_for_ms === \"number\" && source.primary_home_for_ms > graceMs,\n    near_home: near(source),\n    external_cycle_confirmed: data.armed[data.source] === true,\n    directional_candidate: source?.ready === true &&\n        data.trigger_state !== data.trigger_prev_state &&\n        [\"home\", \"near_home\"].includes(data.trigger_state)\n};\nif (departure) data.armed[data.source] = false;\nif (!data.is_location_event) {\n    for (const [role, item] of Object.entries(data.people)) {\n        if (item?.ready === true && (item.distance_m !== null\n            ? item.distance_m <= Number(data.policy.home_radius_m)\n            : item.state === \"home\")) data.armed[role] = false;\n    }\n}\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -47378,7 +47390,7 @@
         "z": "c22d8b12055e87f7",
         "g": "d860cb4ad0d1fd89",
         "name": "Derivar direção, proximidade e armamento",
-        "func": "const data = msg._vehicle;\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst external = (state) => validZone(state) && ![\"home\", \"near_home\"].includes(state);\nconst isNear = data.location.ready && (\n    (data.location.gate_distance_m !== null &&\n        data.location.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (data.location.distance_m !== null &&\n        data.location.distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (data.location.distance_m === null && data.location.gate_distance_m === null &&\n        data.location.state === \"home\")\n);\nconst isHome = data.location.ready && (data.location.distance_m !== null\n    ? data.location.distance_m <= Number(data.policy.home_radius_m)\n    : data.location.state === \"home\");\nconst isAway = data.location.ready && (data.location.distance_m !== null\n    ? data.location.distance_m > Number(data.policy.home_radius_m)\n    : data.location.state === \"not_home\");\nif (data.location.ready && external(data.location.state)) data.armed = true;\nif (data.is_location_event && data.location.ready && data.trigger_state === \"near_home\" &&\n    data.location.primary_home !== true && external(data.trigger_prev_state)) data.armed = true;\nconst approach = data.trigger_state === \"near_home\" &&\n    data.trigger_prev_state !== \"near_home\" && data.trigger_prev_state !== \"home\";\nconst departure = data.trigger_prev_state === \"home\" && data.trigger_state !== \"home\";\nif (departure) data.armed = false;\nconst graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;\nconst staleCatchup = !approach && data.location.primary_home === true &&\n    typeof data.location.primary_home_for_ms === \"number\" &&\n    data.location.primary_home_for_ms > graceMs;\ndata.facts = {\n    trigger_prev_valid: validZone(data.trigger_prev_state),\n    approach_entry: approach,\n    departure,\n    stale_catchup: staleCatchup,\n    near_home: isNear,\n    home: isHome,\n    away: isAway,\n    arrival_eligible: data.is_location_event && data.location.ready &&\n        validZone(data.trigger_prev_state) && !departure && !staleCatchup &&\n        (approach || isNear) && data.armed === true,\n    blocked_candidate: data.is_location_event && data.location.ready &&\n        validZone(data.trigger_prev_state) && data.trigger_state !== data.trigger_prev_state &&\n        [\"home\", \"near_home\"].includes(data.trigger_state)\n};\nif (!data.is_location_event && isHome) data.armed = false;\nreturn msg;",
+        "func": "const data = msg._vehicle;\nconst validZone = (value) => typeof value === \"string\" &&\n    ![\"\", \"unknown\", \"unavailable\"].includes(value);\nconst external = (state) => validZone(state) && ![\"home\", \"near_home\"].includes(state);\nconst isNear = data.location.ready && (\n    (data.location.gate_distance_m !== null &&\n        data.location.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (data.location.distance_m !== null &&\n        data.location.distance_m <= Number(data.policy.near_home_radius_m)) ||\n    (data.location.distance_m === null && data.location.gate_distance_m === null &&\n        data.location.state === \"home\")\n);\nconst isHome = data.location.ready && (data.location.distance_m !== null\n    ? data.location.distance_m <= Number(data.policy.home_radius_m)\n    : data.location.state === \"home\");\nconst isAway = data.location.ready && (data.location.distance_m !== null\n    ? data.location.distance_m > Number(data.policy.home_radius_m)\n    : data.location.state === \"not_home\");\nif (data.location.ready && external(data.location.state)) data.armed = true;\nconst approach = data.trigger_state === \"near_home\" &&\n    data.trigger_prev_state !== \"near_home\" && data.trigger_prev_state !== \"home\";\nconst departure = data.trigger_prev_state === \"home\" && data.trigger_state !== \"home\";\nif (departure) data.armed = false;\nconst graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;\nconst staleCatchup = !approach && data.location.primary_home === true &&\n    typeof data.location.primary_home_for_ms === \"number\" &&\n    data.location.primary_home_for_ms > graceMs;\ndata.facts = {\n    trigger_prev_valid: validZone(data.trigger_prev_state),\n    approach_entry: approach,\n    departure,\n    stale_catchup: staleCatchup,\n    near_home: isNear,\n    home: isHome,\n    away: isAway,\n    arrival_eligible: data.is_location_event && data.location.ready &&\n        validZone(data.trigger_prev_state) && !departure && !staleCatchup &&\n        (approach || isNear) && data.armed === true,\n    blocked_candidate: data.is_location_event && data.location.ready &&\n        validZone(data.trigger_prev_state) && data.trigger_state !== data.trigger_prev_state &&\n        [\"home\", \"near_home\"].includes(data.trigger_state)\n};\nif (!data.is_location_event && isHome) data.armed = false;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,

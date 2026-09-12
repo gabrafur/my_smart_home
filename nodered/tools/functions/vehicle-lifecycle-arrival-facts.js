@@ -17,8 +17,6 @@ const isAway = data.location.ready && (data.location.distance_m !== null
     ? data.location.distance_m > Number(data.policy.home_radius_m)
     : data.location.state === "not_home");
 if (data.location.ready && external(data.location.state)) data.armed = true;
-if (data.is_location_event && data.location.ready && data.trigger_state === "near_home" &&
-    data.location.primary_home !== true && external(data.trigger_prev_state)) data.armed = true;
 const approach = data.trigger_state === "near_home" &&
     data.trigger_prev_state !== "near_home" && data.trigger_prev_state !== "home";
 const departure = data.trigger_prev_state === "home" && data.trigger_state !== "home";
