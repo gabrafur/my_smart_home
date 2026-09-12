@@ -140,11 +140,11 @@ observe(restarted, "online", now + 160000 + 86400000);
 assert.equal(networkCycle(restarted, now + 220000 + 86400000).zigbee_event, "network_recovery");
 
 const restored = context();
-restore({ payload: { last_outage: "2026-01-01T00:00:00.000Z", last_recovery: "2026-01-01T00:02:00.000Z", last_outage_duration_s: 120 } }, restored, nodeMock, globalMock);
+restore({ payload: { last_outage: new Date(0).toISOString(), last_recovery: new Date(120000).toISOString(), last_outage_duration_s: 120 } }, restored, nodeMock, globalMock);
 assert.equal(restored.get("zigbee_network_monitor_history_v1", "persistent").last_outage_duration_s, 120);
 
 function componentCycle(targetFlow, availability, at, testMode = false) {
-  let current = load({ topic: "zigbee2mqtt/teste_visual/availability", payload: availability, monitor_now: at, _zigbee_test: testMode }, targetFlow, nodeMock, globalMock);
+  let current = load({ topic: "zigbee2mqtt/example_component/availability", payload: availability, monitor_now: at, _zigbee_test: testMode }, targetFlow, nodeMock, globalMock);
   current = normalizeComponent(current, targetFlow, nodeMock, globalMock);
   assert.equal(current.zigbee_component_valid, true);
   current = readComponent(current, targetFlow, nodeMock, globalMock);
@@ -161,7 +161,7 @@ function componentCycle(targetFlow, availability, at, testMode = false) {
 const componentFlow = context({ persistent: { zigbee_monitor_policy_v1: { version: 1, ...defaults } } });
 result = componentCycle(componentFlow, "offline", now);
 assert.equal(result.zigbee_component_event, "down");
-assert.match(componentNotification(result, componentFlow, nodeMock, globalMock).notification.id, /^zigbee_component_teste_visual_/);
+assert.match(componentNotification(result, componentFlow, nodeMock, globalMock).notification.id, /^zigbee_component_example_component_/);
 assert.equal(componentCycle(componentFlow, "offline", now + 1000).zigbee_component_event, "none", "componente duplicado é suprimido");
 let reminderInput = load({ monitor_now: now + 86400000 }, componentFlow, nodeMock, globalMock);
 let reminders = expandReminders(reminderInput, componentFlow, nodeMock, globalMock)[0];
@@ -174,7 +174,7 @@ result = mutateComponent(result, componentFlow, nodeMock, globalMock);
 assert.match(componentNotification(result, componentFlow, nodeMock, globalMock).notification.title, /continua/);
 assert.equal(componentCycle(componentFlow, "online", now + 86401000).zigbee_component_event, "recovery");
 assert.equal(componentCycle(componentFlow, "online", now + 86402000).zigbee_component_event, "none");
-assert.equal(normalizeComponent({ topic: "zigbee2mqtt/teste_visual/state", payload: "offline" }, componentFlow, nodeMock, globalMock).zigbee_component_valid, false);
+assert.equal(normalizeComponent({ topic: "zigbee2mqtt/example_component/state", payload: "offline" }, componentFlow, nodeMock, globalMock).zigbee_component_valid, false);
 assert.equal(normalizeObservation({ payload: "unknown" }, flow, nodeMock, globalMock).zigbee_observation_valid, false);
 
 const testFlow = context({ persistent: { zigbee_monitor_policy_v1: { version: 1, ...defaults } } });
