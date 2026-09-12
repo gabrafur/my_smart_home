@@ -2369,12 +2369,17 @@
             "external_visual_command_mode",
             "external_visual_notification_mode",
             "external_visual_confirmation_mode",
+            "external_visual_alexa_out",
+            "external_visual_alexa_in",
             "external_visual_command_dry_out",
             "external_visual_notification_dry_out",
             "external_visual_recovery_mode",
             "external_visual_recovery_dry_out",
             "external_visual_test_command_in",
-            "external_visual_test_recovery_in"
+            "external_visual_test_recovery_in",
+            "external_visual_sunset_out",
+            "external_visual_confirmed_sunset_out",
+            "external_visual_sunset_in"
         ],
         "x": 64,
         "y": -1,
@@ -3847,7 +3852,7 @@
         "y": 360,
         "wires": [
             [
-                "943c87e6b17f0d68"
+                "external_visual_sunset_out"
             ],
             []
         ]
@@ -4167,7 +4172,7 @@
         "g": "external_lighting_full_flow_group",
         "name": "Aguardar confirmação mais recente — 5 s padrão",
         "outputs": 1,
-        "x": 2200,
+        "x": 2190,
         "y": 180,
         "wires": [
             [
@@ -4457,7 +4462,7 @@
         "blockInputOverrides": true,
         "domain": "public_bindings",
         "service": "call",
-        "x": 1210,
+        "x": 1500,
         "y": 440,
         "wires": [
             [
@@ -4478,11 +4483,11 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1490,
+        "x": 1800,
         "y": 440,
         "wires": [
             [
-                "9d81b75a18d482f1"
+                "external_visual_alexa_out"
             ]
         ]
     },
@@ -4563,7 +4568,7 @@
         "y": 520,
         "wires": [
             [
-                "943c87e6b17f0d68"
+                "external_visual_confirmed_sunset_out"
             ],
             []
         ]
@@ -47978,7 +47983,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1680,
+        "x": 1700,
         "y": 220,
         "wires": [
             [
@@ -48037,14 +48042,14 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 1930,
-        "y": 240,
+        "x": 2000,
+        "y": 260,
         "wires": [
             [
                 "external_visual_notification_dry_out"
             ],
             [
-                "9d81b75a18d482f1"
+                "external_visual_alexa_out"
             ]
         ]
     },
@@ -48079,6 +48084,37 @@
         ]
     },
     {
+        "id": "external_visual_alexa_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Avisos → Alexa",
+        "mode": "link",
+        "links": [
+            "external_visual_alexa_in"
+        ],
+        "x": 2180,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "external_visual_alexa_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Receber aviso confirmado",
+        "links": [
+            "external_visual_alexa_out"
+        ],
+        "x": 3120,
+        "y": 380,
+        "wires": [
+            [
+                "9d81b75a18d482f1"
+            ]
+        ]
+    },
+    {
         "id": "external_visual_command_dry_out",
         "type": "link out",
         "z": "ce258dec9814b96b",
@@ -48102,8 +48138,8 @@
         "links": [
             "external_visual_dry_in"
         ],
-        "x": 2160,
-        "y": 260,
+        "x": 2260,
+        "y": 220,
         "wires": []
     },
     {
@@ -48125,8 +48161,8 @@
         "checkall": "false",
         "repair": false,
         "outputs": 2,
-        "x": 1160,
-        "y": 440,
+        "x": 1180,
+        "y": 360,
         "wires": [
             [
                 "external_visual_recovery_dry_out"
@@ -48146,8 +48182,8 @@
         "links": [
             "external_visual_dry_in"
         ],
-        "x": 1410,
-        "y": 400,
+        "x": 1430,
+        "y": 340,
         "wires": []
     },
     {
@@ -48177,10 +48213,56 @@
             "external_visual_test_recovery_out"
         ],
         "x": 660,
-        "y": 500,
+        "y": 360,
         "wires": [
             [
                 "ext_prepare_recovery_confirmation"
+            ]
+        ]
+    },
+    {
+        "id": "external_visual_sunset_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Pôr do sol → comando ON",
+        "mode": "link",
+        "links": [
+            "external_visual_sunset_in"
+        ],
+        "x": 520,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "external_visual_confirmed_sunset_out",
+        "type": "link out",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Confirmação válida → comando ON",
+        "mode": "link",
+        "links": [
+            "external_visual_sunset_in"
+        ],
+        "x": 1110,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "external_visual_sunset_in",
+        "type": "link in",
+        "z": "ce258dec9814b96b",
+        "g": "external_lighting_full_flow_group",
+        "name": "Receber comando automático ON",
+        "links": [
+            "external_visual_sunset_out",
+            "external_visual_confirmed_sunset_out"
+        ],
+        "x": 700,
+        "y": 220,
+        "wires": [
+            [
+                "943c87e6b17f0d68"
             ]
         ]
     },

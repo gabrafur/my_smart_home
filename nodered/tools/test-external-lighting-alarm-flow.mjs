@@ -49,7 +49,7 @@ assert.equal(
   false,
   "um restart depois do pôr do sol não pode ligar as cargas automaticamente",
 );
-assert.deepEqual(sunset.wires, [["943c87e6b17f0d68"], []]);
+assert.deepEqual(sunset.wires, [["external_visual_sunset_out"], []]);
 
 for (const removedId of [
   "ext_sunset_alarm_check",
@@ -92,7 +92,7 @@ assert.deepEqual(recoveryResponse.wires, [["ext_validate_recovery_confirmation"]
 const confirmSunCheck = getNode("ext_confirm_recovery_sun_check");
 assert.equal(confirmSunCheck.entity_id, "sun.sun");
 assert.equal(confirmSunCheck.halt_if, "below_horizon");
-assert.deepEqual(confirmSunCheck.wires, [["943c87e6b17f0d68"], []]);
+assert.deepEqual(confirmSunCheck.wires, [["external_visual_confirmed_sunset_out"], []]);
 
 const recoveryValues = new Map();
 const recoveryFlow = {
@@ -100,13 +100,20 @@ const recoveryFlow = {
   set: (key, value) => recoveryValues.set(key, value),
 };
 const recoveryEnv = { get: (key) => key === "TZ" ? "America/Sao_Paulo" : undefined };
+const externalPolicy = {
+  version: 1, owner: "node_red", complete: true,
+  confirmation_settle_seconds: 5, recovery_ttl_hours: 12,
+};
+const recoveryGlobal = {
+  get: (key) => key === "external_lighting_policy_v1" ? externalPolicy : undefined,
+};
 const prepareRecovery = compileFunction(getNode("ext_prepare_recovery_confirmation"));
 const recoveryMessage = prepareRecovery(
   { sun_last_changed: new Date().toISOString() },
   { status: () => {} },
   {},
   recoveryFlow,
-  {},
+  recoveryGlobal,
   recoveryEnv,
   setTimeout,
   clearTimeout,
@@ -138,7 +145,7 @@ assert.equal(
     { status: () => {} },
     {},
     recoveryFlow,
-    {},
+    recoveryGlobal,
     recoveryEnv,
     setTimeout,
     clearTimeout,
@@ -201,40 +208,46 @@ storeBridgeState(
 assert.equal(zigbeeFlow.get("external_lighting_zigbee_state"), "offline");
 
 const zigbeeGateNode = getNode("ext_zigbee_command_gate");
-assert.deepEqual(zigbeeGateNode.wires, [
-  ["88e6fc3e56fa347c", "ext_wait_confirm"],
-  ["ext_wait_confirm", "9d81b75a18d482f1"],
-]);
+assert.deepEqual(zigbeeGateNode.wires, [["external_visual_zigbee_available"]]);
+assert.equal(getNode("external_visual_zigbee_available").type, "switch");
 const zigbeeGate = compileFunction(zigbeeGateNode);
-const blocked = zigbeeGate(
+const blockedFacts = zigbeeGate(
   { expected_state: "on" },
   statusNode,
   {},
   zigbeeFlow,
-  {},
+  recoveryGlobal,
   {},
   setTimeout,
   clearTimeout,
 );
-assert.equal(blocked[0], null);
-assert.equal(blocked[1].zigbee_error, true);
-assert.equal(blocked[1].cancel_confirmation, true);
-assert.match(blocked[1].notify_text, /não será repetido/);
+assert.equal(blockedFacts._external_command.zigbee_offline, true);
+const blocked = compileFunction(getNode("external_visual_command_blocked"))(
+  blockedFacts, statusNode, {}, zigbeeFlow, recoveryGlobal, {}, setTimeout, clearTimeout,
+);
+assert.equal(blocked.zigbee_error, true);
+assert.equal(blocked.cancel_confirmation, true);
+assert.equal(blocked.reset, true);
+assert.match(blocked.notify_text, /não será repetido/);
 
 zigbeeFlow.set("external_lighting_zigbee_state", "online");
 const allowedMessage = { expected_state: "off" };
-const allowed = zigbeeGate(
+const allowedFacts = zigbeeGate(
   allowedMessage,
   statusNode,
   {},
   zigbeeFlow,
-  {},
+  recoveryGlobal,
   {},
   setTimeout,
   clearTimeout,
 );
-assert.equal(allowed[0], allowedMessage);
-assert.equal(allowed[1], null);
+assert.equal(allowedFacts._external_command.zigbee_offline, false);
+const allowed = compileFunction(getNode("external_visual_command_allowed"))(
+  allowedFacts, statusNode, {}, zigbeeFlow, recoveryGlobal, {}, setTimeout, clearTimeout,
+);
+assert.equal(allowed, allowedMessage);
+assert.equal(allowed.delay, 5000);
 
 const commandNodes = [
   ["d940e2132bca7ecc", "on"],
@@ -293,75 +306,13 @@ assert.equal(distributor(
   clearTimeout,
 ), null);
 
-const confirmation = compileFunction(getNode("ext_wait_confirm"));
-const contextValues = new Map();
-const context = {
-  get: (key) => contextValues.get(key),
-  set: (key, value) => contextValues.set(key, value),
-};
-const pendingTimers = new Map();
-let nextTimerId = 1;
-const fakeSetTimeout = (callback, delay) => {
-  assert.equal(delay, 5000);
-  const id = nextTimerId++;
-  pendingTimers.set(id, () => {
-    pendingTimers.delete(id);
-    callback();
-  });
-  return id;
-};
-const fakeClearTimeout = (id) => pendingTimers.delete(id);
-const sent = [];
-const fakeNode = {
-  send: (message) => sent.push(message),
-  status: () => {},
-};
-
-confirmation(
-  { expected_state: "on" },
-  fakeNode,
-  context,
-  {},
-  {},
-  {},
-  fakeSetTimeout,
-  fakeClearTimeout,
-);
-confirmation(
-  { expected_state: "off" },
-  fakeNode,
-  context,
-  {},
-  {},
-  {},
-  fakeSetTimeout,
-  fakeClearTimeout,
-);
-assert.equal(pendingTimers.size, 1, "confirmação antiga não foi cancelada");
-pendingTimers.values().next().value();
-assert.deepEqual(sent, [{ expected_state: "off" }]);
-
-confirmation(
-  { expected_state: "on" },
-  fakeNode,
-  context,
-  {},
-  {},
-  {},
-  fakeSetTimeout,
-  fakeClearTimeout,
-);
-confirmation(
-  { cancel_confirmation: true },
-  fakeNode,
-  context,
-  {},
-  {},
-  {},
-  fakeSetTimeout,
-  fakeClearTimeout,
-);
-assert.equal(pendingTimers.size, 0, "erro Zigbee não cancelou confirmação pendente");
+const confirmation = getNode("ext_wait_confirm");
+assert.equal(confirmation.type, "trigger");
+assert.equal(confirmation.duration, "5");
+assert.equal(confirmation.units, "s");
+assert.equal(confirmation.extend, true);
+assert.equal(confirmation.overrideDelay, true);
+assert.deepEqual(confirmation.wires, [["external_visual_confirmation_mode"]]);
 
 const buildMessage = compileFunction(getNode("ext_build_alexa_message"));
 const success = buildMessage(

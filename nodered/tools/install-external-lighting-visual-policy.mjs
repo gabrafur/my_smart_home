@@ -66,14 +66,14 @@ fn("external_visual_command_allowed", main.id, "Preparar confirmação pelo temp
   "external-lighting-command-allowed.js", 1, 1680, 120,
   [["external_visual_command_mode"]]);
 fn("external_visual_command_blocked", main.id, "Bloquear e cancelar confirmação pendente",
-  "external-lighting-command-blocked.js", 1, 1680, 220,
+  "external-lighting-command-blocked.js", 1, 1700, 220,
   [["ext_wait_confirm", "external_visual_notification_mode"]]);
 sw("external_visual_command_mode", main.id, "Comando de produção ou TESTE?",
   "_external_command.test_mode", 1930, 120,
   [["ext_wait_confirm"], ["88e6fc3e56fa347c", "ext_wait_confirm"]]);
 sw("external_visual_notification_mode", main.id, "Aviso de produção ou TESTE?",
-  "_external_command.test_mode", 1930, 240,
-  [["external_visual_notification_dry_out"], ["9d81b75a18d482f1"]]);
+  "_external_command.test_mode", 2000, 260,
+  [["external_visual_notification_dry_out"], ["external_visual_alexa_out"]]);
 
 const distributor = required("88e6fc3e56fa347c");
 Object.assign(distributor, { x: 2240, y: 80 });
@@ -86,7 +86,7 @@ Object.assign(confirmation, {
   type: "trigger", name: "Aguardar confirmação mais recente — 5 s padrão",
   op1: "", op2: "", op1type: "nul", op2type: "payl", duration: "5",
   extend: true, overrideDelay: true, units: "s", reset: "", bytopic: "all",
-  topic: "topic", outputs: 1, x: 2200, y: 180,
+  topic: "topic", outputs: 1, x: 2190, y: 180,
   wires: [["external_visual_confirmation_mode"]],
 });
 for (const field of ["func", "timeout", "noerr", "initialize", "finalize", "libs"]) delete confirmation[field];
@@ -96,23 +96,39 @@ sw("external_visual_confirmation_mode", main.id, "Confirmar em produção ou TES
 Object.assign(required("ext_check_states"), { x: 2730, y: 300 });
 Object.assign(required("ext_build_alexa_message"), { x: 3010, y: 300 });
 Object.assign(required("9d81b75a18d482f1"), { x: 3290, y: 300 });
+linkOut("external_visual_alexa_out", main.id, "Avisos → Alexa",
+  "external_visual_alexa_in", 2180, 300);
+linkIn("external_visual_alexa_in", main.id, "Receber aviso confirmado",
+  ["external_visual_alexa_out"], "9d81b75a18d482f1", 3120, 380);
 linkOut("external_visual_command_dry_out", main.id, "Comando TESTE → terminal",
   "external_visual_dry_in", 2680, 360);
 linkOut("external_visual_notification_dry_out", main.id, "Aviso TESTE → terminal",
-  "external_visual_dry_in", 2160, 260);
+  "external_visual_dry_in", 2260, 220);
 
 const recoveryPrepare = required("ext_prepare_recovery_confirmation");
 Object.assign(recoveryPrepare, { func: source("external-lighting-recovery-prepare.js"),
   name: "Validar data e dedupe da confirmação", outputs: 1, wires: [["external_visual_recovery_mode"]] });
 sw("external_visual_recovery_mode", main.id, "Pergunta de recovery: produção ou TESTE?",
-  "_external_lighting_test", 1160, 440,
+  "_external_lighting_test", 1180, 360,
   [["external_visual_recovery_dry_out"], ["ext_send_recovery_mobile"]]);
 linkOut("external_visual_recovery_dry_out", main.id, "Recovery TESTE → terminal",
-  "external_visual_dry_in", 1410, 400);
+  "external_visual_dry_in", 1430, 340);
+Object.assign(required("ext_send_recovery_mobile"), { x: 1500, y: 440 });
+Object.assign(required("ext_commit_recovery_confirmation"), { x: 1800, y: 440 });
+required("ext_commit_recovery_confirmation").wires = [["external_visual_alexa_out"]];
 linkIn("external_visual_test_command_in", main.id, "Receber comandos TESTE",
   ["external_visual_test_command_out"], "ext_zigbee_command_gate", 910, 260);
 linkIn("external_visual_test_recovery_in", main.id, "Receber recovery TESTE",
-  ["external_visual_test_recovery_out"], "ext_prepare_recovery_confirmation", 660, 500);
+  ["external_visual_test_recovery_out"], "ext_prepare_recovery_confirmation", 660, 360);
+linkOut("external_visual_sunset_out", main.id, "Pôr do sol → comando ON",
+  "external_visual_sunset_in", 520, 340);
+linkOut("external_visual_confirmed_sunset_out", main.id, "Confirmação válida → comando ON",
+  "external_visual_sunset_in", 1110, 520);
+linkIn("external_visual_sunset_in", main.id, "Receber comando automático ON",
+  ["external_visual_sunset_out", "external_visual_confirmed_sunset_out"],
+  "943c87e6b17f0d68", 700, 220);
+required("24743bc9f254d1c1").wires = [["external_visual_sunset_out"], []];
+required("ext_confirm_recovery_sun_check").wires = [["external_visual_confirmed_sunset_out"], []];
 
 const policy = group("external_visual_policy_group", "2. Política visual — confirmação e recovery",
   64, 619, 1100, 262, "#b58b3f");
