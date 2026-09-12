@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
-  runSecurityArrivalVisual, runSecurityAvailabilityVisual,
+  runSecurityArrivalVisual, runSecurityAvailabilityVisual, runSecurityBypassVisual,
   runSecurityContextVisual, runVehicleVisual,
 } from "./visual-flow-test-harness.mjs";
 
@@ -125,6 +125,8 @@ const mergeLight = (msg, targetFlow = flow, targetGlobal = shared) =>
   runSecurityContextVisual((id, current) => compositeCall(id, current, targetFlow, targetGlobal), msg);
 const checkAvailable = (msg, targetFlow = flow, targetGlobal = shared) =>
   runSecurityAvailabilityVisual((id, current) => compositeCall(id, current, targetFlow, targetGlobal), msg);
+const runBypass = (msg, targetFlow = flow, targetGlobal = shared) =>
+  runSecurityBypassVisual((id, current) => compositeCall(id, current, targetFlow, targetGlobal), msg);
 execute(coordinator, { test_case: "reset" }, flow, shared);
 assert.equal(shared.get("security_location_test_state_v1").vehicle_primary_engine, "off");
 
@@ -263,7 +265,7 @@ const sunset = mergeLight({
 assert.equal(sunset[2], null, "bypass desligado ainda deve aguardar motor confiável");
 assert(gateFlow.get(pendingKey), "chegada com mais de 2 min deve permanecer em near_home");
 
-const bypassOn = execute(bypassFunction, {
+const bypassOn = runBypass({
   _location_test: true,
   payload: {
     requested_state: "ON",
@@ -277,7 +279,7 @@ assert.equal(gateFlow.get("security_light_engine_bypass_enabled__test"), true);
 const manualOwnershipFlow = memory({
   security_light_engine_bypass_enabled: true,
 });
-execute(bypassFunction, {
+runBypass({
   payload: JSON.stringify({
     requested_state: "ON",
     source: "provider_backoff",
@@ -288,7 +290,7 @@ assert.equal(
   undefined,
   "um ON manual existente não pode virar propriedade da automação",
 );
-assert.equal(execute(bypassFunction, {
+assert.equal(runBypass({
   payload: JSON.stringify({
     requested_state: "OFF",
     source: "provider_recovered",
@@ -303,7 +305,7 @@ assert.equal(
 const automaticOwnershipFlow = memory({
   security_light_engine_bypass_enabled: false,
 });
-const automaticOn = execute(bypassFunction, {
+const automaticOn = runBypass({
   payload: JSON.stringify({
     requested_state: "ON",
     source: "provider_backoff",
@@ -312,7 +314,7 @@ const automaticOn = execute(bypassFunction, {
 assert(automaticOn[0], "falha da API deve publicar o bypass ON");
 assert.equal(automaticOwnershipFlow.get("security_light_engine_bypass_enabled"), true);
 assert.equal(automaticOwnershipFlow.get("security_light_engine_bypass_automatic"), true);
-const automaticOff = execute(bypassFunction, {
+const automaticOff = runBypass({
   payload: JSON.stringify({
     requested_state: "OFF",
     source: "provider_recovered",

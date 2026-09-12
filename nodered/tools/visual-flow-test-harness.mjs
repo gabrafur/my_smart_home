@@ -145,6 +145,21 @@ export function runSecurityAvailabilityVisual(call, message) {
   return call("87b2f8eb75cb6359", msg);
 }
 
+export function runSecurityBypassVisual(call, message) {
+  let msg = call("security_light_engine_bypass_function_v1", message);
+  if (!msg) return null;
+  const data = msg._engine_bypass;
+  if (data.branch === "startup") msg = call("security_visual_bypass_startup", msg);
+  else if (data.branch === "automatic_activation") msg = call("security_visual_bypass_auto_enable", msg);
+  else if (data.branch === "automatic_recovery") {
+    if (!data.automatic_owned) return call("security_visual_bypass_preserve_manual", msg);
+    msg = call("security_visual_bypass_auto_recover", msg);
+  } else if (data.branch === "manual_enable") msg = call("security_visual_bypass_manual_enable", msg);
+  else if (data.branch === "manual_disable") msg = call("security_visual_bypass_manual_disable", msg);
+  else return call("security_visual_bypass_invalid", msg);
+  return call("security_visual_bypass_output", msg);
+}
+
 export function ensureArrivalContextPolicy(call) {
   let msg = call("arrival_context_policy_validate", {
     payload: { inflight_timeout_s: 10, future_tolerance_s: 60 }
