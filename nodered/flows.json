@@ -16814,8 +16814,7 @@
         "info": "Os cinco blocos são a única configuração dos intervalos e da pausa noturna. Os valores são validados e persistidos no contexto do flow.",
         "x": 1070,
         "y": 120,
-        "wires": [],
-        "width": 430
+        "wires": []
     },
     {
         "id": "vehicle_primary_refresh_away_minutes_v1",
@@ -18479,8 +18478,7 @@
             [
                 "ba55143f392aa361"
             ]
-        ],
-        "mode": "link"
+        ]
     },
     {
         "id": "gar_group_policy",
