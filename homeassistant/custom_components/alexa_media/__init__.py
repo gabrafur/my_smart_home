@@ -973,8 +973,11 @@ async def setup_alexa(hass, config_entry, login_obj: AlexaLogin):
         for binary_sensor in hass.data[DATA_ALEXAMEDIA]["accounts"][email][
             "entities"
         ].get("binary_sensor", []):
-            if binary_sensor.enabled:
-                entities_to_monitor.add(binary_sensor.alexa_entity_id)
+            alexa_entity_id = getattr(binary_sensor, "alexa_entity_id", None)
+            if binary_sensor.enabled and alexa_entity_id:
+                # Independently polled binary sensors, such as Amazon Kids,
+                # intentionally do not participate in coordinator entity data.
+                entities_to_monitor.add(alexa_entity_id)
 
         for guard in (
             hass.data[DATA_ALEXAMEDIA]["accounts"][email]["entities"]

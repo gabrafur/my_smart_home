@@ -10,7 +10,7 @@ pelo Git; caches e runtime ignorados não fazem parte da distribuição pública
 
 | Nome | Projeto e origem | Versão imobilizada | Licença | Modificações locais | Atualização e atribuição | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | tag `v5.15.7`, commit `5365f875c00692771f17c957a58553f30682b5c3` (objeto de tag anotada `eef9f9c95645c485b4028cd2dc7154f9493093de`) | Apache-2.0 | nenhuma nos 39 arquivos rastreados comparados | substituir pelo diretório da release, conferir manifest e manter `LICENSE.upstream`; preservar licença e notices exigidos pela Apache-2.0 | verificado |
+| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | tag `v5.16.0`, commit `3838e40d86e8438fd16477e76380b490382b64e5` (objeto de tag anotada `a14879107a33961008a46ea7fad906277ca3d524`) | Apache-2.0 | 1 de 39 arquivos modificado: `__init__.py` exclui do coordenador sensores binários com polling independente e sem `alexa_entity_id` | substituir pelo diretório da release, conferir manifest, reaplicar/testar o guard local e manter `LICENSE.upstream`; preservar licença e notices exigidos pela Apache-2.0 | verificado, modificado |
 | HACS | [`hacs/integration`](https://github.com/hacs/integration) | tag `2.0.5`, commit `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `const.py` fixa HA mínimo `2024.4.1`; `manifest.json` registra `2.0.5` | reaplicar e revisar somente esses dois deltas após atualização; manter copyright e licença MIT | verificado, modificado |
 | Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | tag `v3.10.1`, commit `2c602560746318fd001db8fe52347e9398f181ed` | MIT | 10 de 34 arquivos alterados: proteção de rate limit, refresh tolerante a falha, histórico/eficiência de viagens, status de comandos e entidades relacionadas | atualização é análise manual; comparar com a tag, portar deltas, executar testes e preservar copyright/licença MIT | verificado, modificado substancialmente |
 | LocalTuya | [`rospogrigio/localtuya`](https://github.com/rospogrigio/localtuya) | tag `v5.2.3`, commit `5f2c027c1e9421a93dcc937bf151b9456add04c6` | GPL-3.0-only | 3 de 24 arquivos alterados: registro de serviço, setup de plataformas/options flow e API `VacuumActivity` | atualização é comparação manual; o código e as modificações deste diretório permanecem sob GPL-3.0-only e a licença deve acompanhar a distribuição | verificado, modificado |
@@ -66,7 +66,7 @@ cada arquivo rastreado foi comparado byte a byte com
 `custom_components/<domínio>` da tag. A verificação desta revisão resultou em:
 
 ```text
-alexa_media       39 iguais,  0 modificados
+alexa_media       38 iguais,  1 modificado
 hacs              62 iguais,  2 modificados
 kia_uvo           24 iguais, 10 modificados
 localtuya         21 iguais,  3 modificados

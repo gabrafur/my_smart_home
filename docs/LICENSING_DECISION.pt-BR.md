@@ -26,18 +26,18 @@ integrações independentes do projeto. O inventário técnico está nos
 | --- | --- | --- |
 | Trabalho original do projeto | `bootstrap/`, `bindings/`, `demo/`, `modules/`, `restore/`, maior parte de `scripts/`, `.github/`, configuração e documentação | sem licença raiz; aplicam-se as restrições autorais padrão |
 | Trabalho original no Home Assistant/Node-RED | YAML/Jinja e dashboards do Home Assistant, `claude_code_chat`, `public_bindings`, flows/settings/tools do Node-RED | sem declaração de licença do projeto |
-| Vendorizado Apache-2.0 | `homeassistant/custom_components/alexa_media/` | 39 arquivos upstream idênticos à `v5.15.7`; licença upstream preservada |
+| Vendorizado Apache-2.0 | `homeassistant/custom_components/alexa_media/` | 38 de 39 arquivos upstream idênticos à `v5.16.0`; um guard local em `__init__.py`; licença upstream preservada |
 | Vendorizado MIT | `hacs/`, `kia_uvo/`, `tuya_vacuum_maps/` em `homeassistant/custom_components/` | HACS tem 2 deltas locais, Kia Uvo tem 10 e Tuya Vacuum Maps não tem deltas; licenças preservadas |
 | Vendorizado GPL-3.0-only | `homeassistant/custom_components/localtuya/` | 3 arquivos modificados localmente; código coberto e modificações mantêm as obrigações GPL-3.0-only |
 | Dependências e imagens gerenciadas | lockfiles npm, requirements de manifests e imagens Compose fixadas por digest | artefatos resolvidos mantêm termos próprios; locks/digests são proveniência, não relicenciamento |
 | Integração externa separada | `moni_mobile` é instalada pelo repositório MIT próprio | o código-fonte não está vendorizado aqui |
 
-A auditoria de 2026-08-24 resolveu todas as tags documentadas e comparou byte a
-byte cada arquivo rastreado dos componentes vendorizados. Contagens e nomes dos
-deltas locais continuam iguais ao guia de proveniência. A tag do Alexa é
-anotada: o objeto de tag é `eef9f9c95645c485b4028cd2dc7154f9493093de`,
-enquanto o commit efetivamente extraído é
-`5365f875c00692771f17c957a58553f30682b5c3`.
+A auditoria de dependências atualizada em 2026-09-12 resolveu todas as tags
+documentadas e comparou byte a byte cada arquivo rastreado dos componentes
+vendorizados. Contagens e nomes dos deltas locais estão no guia de proveniência.
+A tag do Alexa é anotada: o objeto de tag é
+`a14879107a33961008a46ea7fad906277ca3d524`, enquanto o commit efetivamente
+extraído é `3838e40d86e8438fd16477e76380b490382b64e5`.
 
 ## Opções realistas
 

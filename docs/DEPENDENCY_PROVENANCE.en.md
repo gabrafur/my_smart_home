@@ -10,7 +10,7 @@ ignored caches and runtime state are outside the public distribution.
 
 | Name | Upstream project | Pinned origin | License | Local modifications | Update and attribution | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | `v5.15.7`, commit `5365f875c00692771f17c957a58553f30682b5c3` (annotated tag object `eef9f9c95645c485b4028cd2dc7154f9493093de`) | Apache-2.0 | none across 39 tracked files | replace from the release, check the manifest, retain `LICENSE.upstream`, and preserve Apache notices | verified |
+| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | `v5.16.0`, commit `3838e40d86e8438fd16477e76380b490382b64e5` (annotated tag object `a14879107a33961008a46ea7fad906277ca3d524`) | Apache-2.0 | 1 of 39 files: `__init__.py` keeps independently polled binary sensors without `alexa_entity_id` out of coordinator data | replace from the release, check the manifest, reapply/test the local guard, retain `LICENSE.upstream`, and preserve Apache notices | verified, modified |
 | HACS | [`hacs/integration`](https://github.com/hacs/integration) | `2.0.5`, `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | minimum HA version in `const.py`; release version in `manifest.json` | reapply and review only those deltas; retain MIT copyright and license | verified, modified |
 | Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | `v3.10.1`, `2c602560746318fd001db8fe52347e9398f181ed` | MIT | 10 of 34 files: rate-limit guard, failure-tolerant refresh, trip/efficiency history, command status, and related entities | manual analysis only; port deltas, test, and retain MIT copyright/license | verified, substantially modified |
 | LocalTuya | [`rospogrigio/localtuya`](https://github.com/rospogrigio/localtuya) | `v5.2.3`, `5f2c027c1e9421a93dcc937bf151b9456add04c6` | GPL-3.0-only | 3 of 24 files: service registration, platform/options setup, and `VacuumActivity` API | compare manually; this directory and its modifications remain GPL-3.0-only and the license must accompany redistribution | verified, modified |
@@ -61,7 +61,7 @@ tracked component file was then compared byte for byte with the tag's
 `custom_components/<domain>` directory:
 
 ```text
-alexa_media       39 identical,  0 modified
+alexa_media       38 identical,  1 modified
 hacs              62 identical,  2 modified
 kia_uvo           24 identical, 10 modified
 localtuya         21 identical,  3 modified

@@ -26,17 +26,17 @@ documentation, or integrations. The technical inventory is maintained in
 | --- | --- | --- |
 | Original project work | `bootstrap/`, `bindings/`, `demo/`, `modules/`, `restore/`, most of `scripts/`, `.github/`, configuration and documentation | no root license; default copyright restrictions apply |
 | Original Home Assistant/Node-RED work | Home Assistant YAML/Jinja and dashboards, `claude_code_chat`, `public_bindings`, Node-RED flows/settings/tools | no project-level license declaration |
-| Vendored Apache-2.0 | `homeassistant/custom_components/alexa_media/` | 39 upstream files byte-identical to `v5.15.7`; preserved upstream license |
+| Vendored Apache-2.0 | `homeassistant/custom_components/alexa_media/` | 38 of 39 upstream files byte-identical to `v5.16.0`; one local guard in `__init__.py`; preserved upstream license |
 | Vendored MIT | `hacs/`, `kia_uvo/`, `tuya_vacuum_maps/` under `homeassistant/custom_components/` | HACS has 2 local deltas, Kia Uvo has 10, Tuya Vacuum Maps has none; preserved upstream licenses |
 | Vendored GPL-3.0-only | `homeassistant/custom_components/localtuya/` | 3 locally modified files; covered code and modifications retain GPL-3.0-only obligations |
 | Managed dependencies and images | npm lockfiles, Home Assistant manifest requirements, digest-pinned Compose images | resolved artifacts retain their own terms; locks/digests are provenance, not relicensing |
 | Separate external integration | `moni_mobile` is installed from its own MIT repository | source is not vendored here |
 
-The 2026-08-24 audit resolved every documented upstream tag and compared each
-tracked vendored component file byte for byte. Counts and local delta names
-still match the provenance guide. The Alexa tag is annotated: its tag object is
-`eef9f9c95645c485b4028cd2dc7154f9493093de`, while the checked-out commit is
-`5365f875c00692771f17c957a58553f30682b5c3`.
+The dependency audit updated on 2026-09-12 resolved every documented upstream
+tag and compared each tracked vendored component file byte for byte. Counts and
+local delta names are recorded in the provenance guide. The Alexa tag is
+annotated: its tag object is `a14879107a33961008a46ea7fad906277ca3d524`,
+while the checked-out commit is `3838e40d86e8438fd16477e76380b490382b64e5`.
 
 ## Realistic options
 

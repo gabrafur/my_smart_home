@@ -11,7 +11,7 @@ original work.
 
 | Component | Upstream revision | License | Covered path | Local status |
 | --- | --- | --- | --- | --- |
-| Alexa Media Player | `v5.15.7` / `5365f875c00692771f17c957a58553f30682b5c3` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | byte-identical to the tag before this notice |
+| Alexa Media Player | `v5.16.0` / `3838e40d86e8438fd16477e76380b490382b64e5` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | one local coordinator guard in `__init__.py`; all other compared files match the tag |
 | HACS | `2.0.5` / `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `homeassistant/custom_components/hacs/**` | version and minimum-HA metadata changed locally |
 | Kia Uvo / Hyundai Bluelink | `v3.10.1` / `2c602560746318fd001db8fe52347e9398f181ed` | MIT | `homeassistant/custom_components/kia_uvo/**` | locally modified; see the provenance guide |
 | LocalTuya | `v5.2.3` / `5f2c027c1e9421a93dcc937bf151b9456add04c6` | GPL-3.0-only | `homeassistant/custom_components/localtuya/**` | locally modified for Home Assistant compatibility |
