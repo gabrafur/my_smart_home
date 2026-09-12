@@ -2603,7 +2603,7 @@
         "id": "security_light_engine_bypass_group_v1",
         "type": "group",
         "z": "6b7552efb85343f4",
-        "name": "6. Bypass do motor (manual ou falha da API)",
+        "name": "6. Bypass do motor — comando, posse e recuperação visíveis",
         "style": {
             "label": true,
             "label-position": "nw",
@@ -2619,12 +2619,22 @@
             "security_light_engine_bypass_mqtt_out_v1",
             "security_light_engine_bypass_reevaluate_out_v1",
             "security_light_engine_bypass_test_on_v1",
-            "security_light_engine_bypass_test_off_v1"
+            "security_light_engine_bypass_test_off_v1",
+            "security_visual_bypass_branch",
+            "security_visual_bypass_startup",
+            "security_visual_bypass_auto_enable",
+            "security_visual_bypass_auto_owned",
+            "security_visual_bypass_auto_recover",
+            "security_visual_bypass_preserve_manual",
+            "security_visual_bypass_manual_enable",
+            "security_visual_bypass_manual_disable",
+            "security_visual_bypass_invalid",
+            "security_visual_bypass_output"
         ],
         "x": 64,
         "y": 1019,
-        "w": 1362,
-        "h": 282
+        "w": 2000,
+        "h": 442
     },
     {
         "id": "4126427d5e161a03",
@@ -12274,7 +12284,7 @@
         "topic": "",
         "payload": "STARTUP",
         "payloadType": "str",
-        "x": 300,
+        "x": 280,
         "y": 1080,
         "wires": [
             [
@@ -12296,7 +12306,7 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 300,
+        "x": 280,
         "y": 1140,
         "wires": [
             [
@@ -12361,22 +12371,19 @@
         "type": "function",
         "z": "6b7552efb85343f4",
         "g": "security_light_engine_bypass_group_v1",
-        "name": "Persistir bypass manual/automático com posse segura",
-        "func": "const TEST_MODE =\n    msg._location_test === true ||\n    msg.payload?.test_mode === true;\n\nconst STATE_KEY = TEST_MODE\n    ? \"security_light_engine_bypass_enabled__test\"\n    : \"security_light_engine_bypass_enabled\";\nconst AUTOMATIC_KEY = TEST_MODE\n    ? \"security_light_engine_bypass_automatic__test\"\n    : \"security_light_engine_bypass_automatic\";\nconst PERSISTENT = \"persistent\";\n\nfunction getState() {\n    return TEST_MODE\n        ? flow.get(STATE_KEY)\n        : flow.get(STATE_KEY, PERSISTENT);\n}\n\nfunction setState(value) {\n    return TEST_MODE\n        ? flow.set(STATE_KEY, value)\n        : flow.set(STATE_KEY, value, PERSISTENT);\n}\n\nfunction getAutomatic() {\n    return TEST_MODE\n        ? flow.get(AUTOMATIC_KEY) === true\n        : flow.get(AUTOMATIC_KEY, PERSISTENT) === true;\n}\n\nfunction setAutomatic(value) {\n    return TEST_MODE\n        ? flow.set(AUTOMATIC_KEY, value)\n        : flow.set(AUTOMATIC_KEY, value, PERSISTENT);\n}\n\nlet commandPayload = msg.payload;\nif (\n    typeof commandPayload === \"string\" &&\n    commandPayload.trim().startsWith(\"{\")\n) {\n    try {\n        commandPayload = JSON.parse(commandPayload);\n    } catch (_err) {\n        commandPayload = msg.payload;\n    }\n}\nconst raw = commandPayload?.requested_state ?? commandPayload;\nconst command = String(raw ?? \"\").trim().toUpperCase();\nconst startup = command === \"STARTUP\";\nconst source = String(commandPayload?.source ?? \"dashboard\");\nconst automaticActivation = [\n    \"provider_backoff\",\n    \"api_failure\"\n].includes(source);\nconst automaticRecovery = [\n    \"provider_recovered\",\n    \"api_recovered\"\n].includes(source);\n\nlet enabled;\nif (startup) {\n    enabled = getState() === true;\n    if (getState() === undefined) setState(false);\n} else if (automaticActivation) {\n    const wasEnabled = getState() === true;\n    enabled = true;\n    // Se já estava ON, foi uma escolha manual e não deve ser desfeita pela\n    // recuperação posterior da API.\n    if (!wasEnabled) setAutomatic(true);\n} else if (automaticRecovery) {\n    if (!getAutomatic()) return null;\n    enabled = false;\n    setAutomatic(false);\n} else if ([\"ON\", \"TRUE\", \"1\"].includes(command)) {\n    enabled = true;\n    setAutomatic(false);\n} else if ([\"OFF\", \"FALSE\", \"0\"].includes(command)) {\n    enabled = false;\n    setAutomatic(false);\n} else {\n    node.warn(\n        \"iluminacao_seguranca: comando inválido para o bypass manual do motor\"\n    );\n    return null;\n}\n\nconst previous = getState() === true;\nsetState(enabled);\nconst automatic = getAutomatic();\n\nif (previous !== enabled || startup) {\n    node.status({\n        fill: enabled ? \"yellow\" : \"grey\",\n        shape: enabled ? \"dot\" : \"ring\",\n        text: enabled\n            ? (automatic\n                ? \"bypass automático: API indisponível\"\n                : \"bypass manual do motor ATIVO\")\n            : \"bypass manual do motor desligado\"\n    });\n}\n\nif (!TEST_MODE && previous !== enabled) {\n    if (enabled) {\n        node.warn(\n            \"iluminacao_seguranca: bypass do motor ativado\" +\n            (automatic ? \" automaticamente pela indisponibilidade da API; \" : \"; \") +\n            \"só será aplicado enquanto a telemetria do motor estiver não confiável\"\n        );\n    } else {\n        node.log?.(\n            \"iluminacao_seguranca: bypass manual do motor desativado\"\n        );\n    }\n}\n\nconst reevaluate = {\n    payload: {\n        contract: \"security.engine-bypass.v1\",\n        kind: \"engine_bypass_context\",\n        source: TEST_MODE ? \"manual_test\" : source,\n        enabled,\n        automatic,\n        communication_failed: automaticActivation\n            ? true\n            : automaticRecovery\n                ? false\n                : undefined,\n        updated_at: Date.now(),\n        test_mode: TEST_MODE\n    }\n};\n\nif (TEST_MODE) {\n    reevaluate._location_test = true;\n    reevaluate._location_test_case =\n        msg._location_test_case ??\n        msg.payload?.test_case ??\n        \"engine_bypass\";\n    reevaluate.payload.test_case = reevaluate._location_test_case;\n    return [null, reevaluate];\n}\n\nconst discovery = {\n    topic: \"homeassistant/switch/vehicle_primary_engine_bypass/config\",\n    retain: true,\n    qos: 1,\n    payload: JSON.stringify({\n        name: \"Bypass do motor para iluminação de chegada\",\n        unique_id: \"vehicle_primary_engine_bypass\",\n        object_id: \"vehicle_primary_engine_bypass\",\n        state_topic: \"homeassistant/vehicle_primary/engine_bypass/state\",\n        command_topic: \"homeassistant/vehicle_primary/engine_bypass/set\",\n        payload_on: \"ON\",\n        payload_off: \"OFF\",\n        state_on: \"ON\",\n        state_off: \"OFF\",\n        icon: \"mdi:car-light-alert\",\n        device: {\n            identifiers: [\"vehicle_primary_bluelink\"],\n            name: \"vehicle_primary\",\n            manufacturer: \"Hyundai\"\n        }\n    })\n};\n\nconst stateMessage = {\n    topic: \"homeassistant/vehicle_primary/engine_bypass/state\",\n    retain: true,\n    qos: 1,\n    payload: enabled ? \"ON\" : \"OFF\"\n};\n\nreturn [[discovery, stateMessage], reevaluate];",
-        "outputs": 2,
+        "name": "Normalizar comando e derivar fatos de posse",
+        "func": "const testMode = msg._location_test === true || msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"security_light_engine_bypass_enabled__test\" : \"security_light_engine_bypass_enabled\";\nconst automaticKey = testMode ? \"security_light_engine_bypass_automatic__test\" : \"security_light_engine_bypass_automatic\";\nconst store = testMode ? undefined : \"persistent\";\nconst get = (key) => store ? flow.get(key, store) : flow.get(key);\nlet payload = msg.payload;\nif (typeof payload === \"string\" && payload.trim().startsWith(\"{\")) {\n    try { payload = JSON.parse(payload); } catch (_error) { payload = msg.payload; }\n}\nconst command = String(payload?.requested_state ?? payload ?? \"\").trim().toUpperCase();\nconst source = String(payload?.source ?? \"dashboard\");\nlet branch = \"invalid\";\nif (command === \"STARTUP\") branch = \"startup\";\nelse if ([\"provider_backoff\", \"api_failure\"].includes(source)) branch = \"automatic_activation\";\nelse if ([\"provider_recovered\", \"api_recovered\"].includes(source)) branch = \"automatic_recovery\";\nelse if ([\"ON\", \"TRUE\", \"1\"].includes(command)) branch = \"manual_enable\";\nelse if ([\"OFF\", \"FALSE\", \"0\"].includes(command)) branch = \"manual_disable\";\nmsg._engine_bypass = {\n    test_mode: testMode, state_key: stateKey, automatic_key: automaticKey, store,\n    command, source, branch, previous_enabled: get(stateKey) === true,\n    state_defined: get(stateKey) !== undefined, automatic_owned: get(automaticKey) === true\n};\nreturn msg;",
+        "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 710,
-        "y": 1140,
+        "x": 610,
+        "y": 1160,
         "wires": [
             [
-                "security_light_engine_bypass_mqtt_out_v1"
-            ],
-            [
-                "security_light_engine_bypass_reevaluate_out_v1"
+                "security_visual_bypass_branch"
             ]
         ]
     },
@@ -12395,8 +12402,8 @@
         "correl": "",
         "expiry": "",
         "broker": "721c47f31046b8bc",
-        "x": 1080,
-        "y": 1100,
+        "x": 1930,
+        "y": 1120,
         "wires": []
     },
     {
@@ -12409,8 +12416,8 @@
         "links": [
             "security_light_engine_bypass_reevaluate_in_v1"
         ],
-        "x": 1135,
-        "y": 1180,
+        "x": 1980,
+        "y": 1200,
         "wires": []
     },
     {
@@ -46290,6 +46297,263 @@
         ]
     },
     {
+        "id": "security_visual_bypass_branch",
+        "type": "switch",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Qual comando de bypass?",
+        "property": "_engine_bypass.branch",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "startup",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "automatic_activation",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "automatic_recovery",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "manual_enable",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "manual_disable",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 6,
+        "x": 880,
+        "y": 1160,
+        "wires": [
+            [
+                "security_visual_bypass_startup"
+            ],
+            [
+                "security_visual_bypass_auto_enable"
+            ],
+            [
+                "security_visual_bypass_auto_owned"
+            ],
+            [
+                "security_visual_bypass_manual_enable"
+            ],
+            [
+                "security_visual_bypass_manual_disable"
+            ],
+            [
+                "security_visual_bypass_invalid"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_bypass_startup",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Restaurar último estado válido",
+        "func": "const data = msg._engine_bypass;\nconst set = (key, value) => data.store ? flow.set(key, value, data.store) : flow.set(key, value);\nif (!data.state_defined) set(data.state_key, false);\ndata.enabled = data.previous_enabled;\ndata.automatic = data.automatic_owned;\ndata.communication_failed = undefined;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1140,
+        "y": 1060,
+        "wires": [
+            [
+                "security_visual_bypass_output"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_bypass_auto_enable",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Ativar por falha sem roubar posse manual",
+        "func": "const data = msg._engine_bypass;\nconst set = (key, value) => data.store ? flow.set(key, value, data.store) : flow.set(key, value);\nset(data.state_key, true);\nif (!data.previous_enabled) set(data.automatic_key, true);\ndata.enabled = true;\ndata.automatic = data.previous_enabled ? data.automatic_owned : true;\ndata.communication_failed = true;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 1120,
+        "wires": [
+            [
+                "security_visual_bypass_output"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_bypass_auto_owned",
+        "type": "switch",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Ativação atual pertence à automação?",
+        "property": "_engine_bypass.automatic_owned",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 1140,
+        "y": 1200,
+        "wires": [
+            [
+                "security_visual_bypass_auto_recover"
+            ],
+            [
+                "security_visual_bypass_preserve_manual"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_bypass_auto_recover",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Desativar após recovery da API",
+        "func": "const data = msg._engine_bypass;\nconst set = (key, value) => data.store ? flow.set(key, value, data.store) : flow.set(key, value);\nset(data.state_key, false);\nset(data.automatic_key, false);\ndata.enabled = false;\ndata.automatic = false;\ndata.communication_failed = false;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1410,
+        "y": 1180,
+        "wires": [
+            [
+                "security_visual_bypass_output"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_bypass_preserve_manual",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Preservar ON de posse manual",
+        "func": "node.log?.(\"iluminacao_seguranca: recovery da API preservou bypass de posse manual\");\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1410,
+        "y": 1240,
+        "wires": []
+    },
+    {
+        "id": "security_visual_bypass_manual_enable",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Ativar com posse manual",
+        "func": "const data = msg._engine_bypass;\nconst set = (key, value) => data.store ? flow.set(key, value, data.store) : flow.set(key, value);\nset(data.state_key, true);\nset(data.automatic_key, false);\ndata.enabled = true;\ndata.automatic = false;\ndata.communication_failed = undefined;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 1300,
+        "wires": [
+            [
+                "security_visual_bypass_output"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_bypass_manual_disable",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Desativar e liberar posse",
+        "func": "const data = msg._engine_bypass;\nconst set = (key, value) => data.store ? flow.set(key, value, data.store) : flow.set(key, value);\nset(data.state_key, false);\nset(data.automatic_key, false);\ndata.enabled = false;\ndata.automatic = false;\ndata.communication_failed = undefined;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1160,
+        "y": 1360,
+        "wires": [
+            [
+                "security_visual_bypass_output"
+            ]
+        ]
+    },
+    {
+        "id": "security_visual_bypass_invalid",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Rejeitar comando inválido",
+        "func": "node.warn(\"iluminacao_seguranca: comando inválido para o bypass manual do motor\");\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1150,
+        "y": 1420,
+        "wires": []
+    },
+    {
+        "id": "security_visual_bypass_output",
+        "type": "function",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Publicar estado e pedir reavaliação",
+        "func": "const data = msg._engine_bypass;\nif (data.previous_enabled !== data.enabled || data.branch === \"startup\") {\n    node.status({ fill: data.enabled ? \"yellow\" : \"grey\", shape: data.enabled ? \"dot\" : \"ring\",\n        text: data.enabled ? (data.automatic ? \"bypass automático: API indisponível\" :\n            \"bypass manual do motor ATIVO\") : \"bypass manual do motor desligado\" });\n}\nif (!data.test_mode && data.previous_enabled !== data.enabled) {\n    if (data.enabled) node.warn(\"iluminacao_seguranca: bypass do motor ativado\" +\n        (data.automatic ? \" automaticamente pela indisponibilidade da API; \" : \"; \") +\n        \"só será aplicado enquanto a telemetria do motor estiver não confiável\");\n    else node.log?.(\"iluminacao_seguranca: bypass manual do motor desativado\");\n}\nconst reevaluate = { payload: { contract: \"security.engine-bypass.v1\", kind: \"engine_bypass_context\",\n    source: data.test_mode ? \"manual_test\" : data.source, enabled: data.enabled,\n    automatic: data.automatic, communication_failed: data.communication_failed,\n    updated_at: Date.now(), test_mode: data.test_mode } };\nif (data.test_mode) {\n    reevaluate._location_test = true;\n    reevaluate._location_test_case = msg._location_test_case ?? msg.payload?.test_case ?? \"engine_bypass\";\n    reevaluate.payload.test_case = reevaluate._location_test_case;\n    return [null, reevaluate];\n}\nconst discovery = { topic: \"homeassistant/switch/vehicle_primary_engine_bypass/config\", retain: true, qos: 1,\n    payload: JSON.stringify({ name: \"Bypass do motor para iluminação de chegada\",\n        unique_id: \"vehicle_primary_engine_bypass\", object_id: \"vehicle_primary_engine_bypass\",\n        state_topic: \"homeassistant/vehicle_primary/engine_bypass/state\",\n        command_topic: \"homeassistant/vehicle_primary/engine_bypass/set\", payload_on: \"ON\", payload_off: \"OFF\",\n        state_on: \"ON\", state_off: \"OFF\", icon: \"mdi:car-light-alert\",\n        device: { identifiers: [\"vehicle_primary_bluelink\"], name: \"vehicle_primary\", manufacturer: \"Hyundai\" } }) };\nconst state = { topic: \"homeassistant/vehicle_primary/engine_bypass/state\", retain: true, qos: 1,\n    payload: data.enabled ? \"ON\" : \"OFF\" };\nreturn [[discovery, state], reevaluate];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1680,
+        "y": 1160,
+        "wires": [
+            [
+                "security_light_engine_bypass_mqtt_out_v1"
+            ],
+            [
+                "security_light_engine_bypass_reevaluate_out_v1"
+            ]
+        ]
+    },
+    {
         "id": "security_visual_policy_group_v1",
         "type": "group",
         "z": "6b7552efb85343f4",
@@ -49704,7 +49968,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Classificar erro ou status",
-        "func": "const testMode = msg._global_observer_test === true || msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode ? undefined : \"persistent\";\nconst getState = () => store ? flow.get(stateKey, store) : flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"observabilidade_global: política visual ausente\", msg);\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : {\n    version: 2, errors: previousState?.errors ?? {}, status_sources: {},\n    status_incidents: {}, connection_events: {}\n};\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now = Number(msg.observer_now ?? Date.now());\nconst observer = msg._global_observer ?? {};\nconst flowId = String(observer.flow_id ?? \"unknown\").slice(0, 100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceType = String(source.type ?? \"unknown\").slice(0, 80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\",\n    \"api-render-template\", \"events-all\", \"ha-api\", \"poll-state\", \"server-events\",\n    \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity),\n        Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources)\n        .some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && (sharedActive ||\n            (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    const connectionFailure = /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect|connecting|conectando)/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\",\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
+        "func": "const testMode = msg._global_observer_test === true || msg.payload?.test_mode === true;\nconst stateKey = testMode ? \"global_flow_observer_v1__test\" : \"global_flow_observer_v1\";\nconst store = testMode ? undefined : \"persistent\";\nconst getState = () => store ? flow.get(stateKey, store) : flow.get(stateKey);\nconst policy = flow.get(\"global_observer_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.error(\"observabilidade_global: política visual ausente\", msg);\n    return null;\n}\nconst previousState = getState();\nconst state = previousState?.version === 2 ? previousState : { version: 2,\n    errors: previousState?.errors ?? {}, status_sources: {}, status_incidents: {}, connection_events: {} };\nstate.errors ??= {};\nstate.status_sources ??= {};\nstate.status_incidents ??= {};\nstate.connection_events ??= {};\nconst now = Number(msg.observer_now ?? Date.now());\nconst observer = msg._global_observer ?? {};\nconst flowId = String(observer.flow_id ?? \"unknown\").slice(0, 100);\nconst flowLabel = String(observer.flow_label ?? \"fluxo desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst source = msg.error?.source ?? msg.status?.source ?? {};\nconst sourceId = String(source.id ?? \"unknown\").slice(0, 100);\nconst sourceType = String(source.type ?? \"unknown\").slice(0, 80);\nconst sourceName = String(source.name || sourceType || \"nó desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 100);\nconst haTypes = new Set([\"api-call-service\", \"api-current-state\", \"api-get-history\", \"api-render-template\",\n    \"events-all\", \"ha-api\", \"poll-state\", \"server-events\", \"server-state-changed\", \"trigger-state\"]);\nconst haSource = haTypes.has(sourceType) || sourceType.startsWith(\"ha-\");\nconst mqttSource = [\"mqtt in\", \"mqtt out\"].includes(sourceType);\nconst sharedIncidentKey = haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : null;\nconst hash = (value) => {\n    let result = 0x811c9dc5;\n    for (const character of String(value)) {\n        result ^= character.charCodeAt(0);\n        result = Math.imul(result, 0x01000193) >>> 0;\n    }\n    return result.toString(16).padStart(8, \"0\");\n};\nconst classify = (value) => {\n    const text = String(value ?? \"\").toLowerCase();\n    if (/(?:401|unauthori[sz]ed|authentic|credencial)/.test(text)) return \"autenticação\";\n    if (/(?:timeout|timed out|tempo limite)/.test(text)) return \"timeout\";\n    if (/(?:disconnect|offline|unavailable|indispon|sem conexão)/.test(text)) return \"indisponibilidade\";\n    return \"erro de execução\";\n};\nconst data = { test_mode: testMode, state_key: stateKey, store, policy, state, now,\n    flow_id: flowId, flow_label: flowLabel, source_id: sourceId,\n    source_type: sourceType, source_name: sourceName, shared_incident_key: sharedIncidentKey };\nif (msg.error) {\n    const errorText = String(msg.error.message ?? \"erro desconhecido\");\n    const classification = classify(errorText);\n    const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};\n    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));\n    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);\n    const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;\n    const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);\n    const key = `${flowId}:${sourceId}:${signature}`;\n    const previous = state.errors[key] ?? {};\n    Object.assign(data, { kind: \"error\", error_text: errorText, classification, signature, key, previous,\n        accepted_wake_pending: flowId === \"c22d8b12055e87f7\" && sourceId === \"8907830bb7f6c40c\" &&\n            /Bluelink wake accepted but fresh data is pending/i.test(errorText),\n        connection_suppressed: Boolean(sharedIncidentKey && (sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });\n} else if (msg.status) {\n    const text = String(msg.status.text ?? \"\").toLowerCase();\n    const shared = haSource || mqttSource;\n    const connectionFailure = /(?:disconnect|not connected|connection (?:lost|error|failed|timed out)|offline|unavailable|indispon|sem conexão|desconect|connecting|conectando)/.test(text);\n    const nodeFailure = connectionFailure || msg.status.fill === \"red\" ||\n        /(?:error|failed|failure|timed out|timeout|falhou)/.test(text);\n    Object.assign(data, { kind: \"status\", monitored: shared || sourceType === \"DuloNodeDevice\" || sourceType === \"DuloNodeHub\",\n        failing: shared ? connectionFailure : nodeFailure,\n        incident_key: haSource ? \"connection:home_assistant\" : mqttSource ? \"connection:mqtt\" : `node:${flowId}:${sourceId}`,\n        incident_kind: haSource ? \"home_assistant\" : mqttSource ? \"mqtt\" : \"node_status\",\n        key: `${flowId}:${sourceId}` });\n} else data.kind = \"unknown\";\nmsg._observer_event = data;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,

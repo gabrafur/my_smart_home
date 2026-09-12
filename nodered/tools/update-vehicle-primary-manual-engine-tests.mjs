@@ -1306,7 +1306,7 @@ upsert({
   z: ids.lightTab,
   g: ids.bypassGroup,
   name: "Persistir bypass manual/automático com posse segura",
-  func: functionSource("security-light-engine-bypass.js"),
+  func: functionSource("security-light-engine-bypass-facts.js"),
   outputs: 2,
   timeout: "",
   noerr: 0,

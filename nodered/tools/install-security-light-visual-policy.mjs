@@ -49,6 +49,10 @@ const sw = (id, groupId, name, property, x, y, wires) => grouped(groupId, {
   rules: [{ t: "true" }, { t: "else" }], checkall: "false", repair: false,
   outputs: 2, x, y, wires
 });
+const swRules = (id, groupId, name, property, rules, x, y, wires) => grouped(groupId, {
+  id, type: "switch", z: TAB, g: groupId, name, property, propertyType: "msg",
+  rules, checkall: "false", repair: false, outputs: rules.length, x, y, wires
+});
 const linkOut = (id, groupId, name, target, x, y) => grouped(groupId, {
   id, type: "link out", z: TAB, g: groupId, name, mode: "link", links: [target], x, y, wires: []
 });
@@ -61,6 +65,79 @@ const inject = (id, groupId, name, topic, payload, x, y, destination) => grouped
   once: true, onceDelay: "0.8", topic, payload: String(payload), payloadType: "num",
   x, y, wires: [[destination]]
 });
+
+const bypass = required("security_light_engine_bypass_group_v1");
+Object.assign(bypass, {
+  name: "6. Bypass do motor — comando, posse e recuperação visíveis",
+  x: 64, y: 1019, w: 2000, h: 442,
+});
+bypass.nodes = bypass.nodes.filter((id) => !generated.has(id));
+for (const [id, x, y] of [
+  ["security_light_engine_bypass_startup_v1", 280, 1080],
+  ["security_light_engine_bypass_command_v1", 280, 1140],
+  ["security_light_engine_bypass_test_on_v1", 260, 1200],
+  ["security_light_engine_bypass_test_off_v1", 260, 1260],
+]) {
+  const node = required(id);
+  Object.assign(node, { g: bypass.id, x, y, wires: [["security_light_engine_bypass_function_v1"]] });
+  if (!bypass.nodes.includes(id)) bypass.nodes.push(id);
+}
+const bypassFacts = required("security_light_engine_bypass_function_v1");
+Object.assign(bypassFacts, {
+  g: bypass.id, name: "Normalizar comando e derivar fatos de posse",
+  func: source("security-light-engine-bypass-facts.js"), outputs: 1,
+  x: 610, y: 1160, wires: [["security_visual_bypass_branch"]],
+});
+if (!bypass.nodes.includes(bypassFacts.id)) bypass.nodes.push(bypassFacts.id);
+swRules("security_visual_bypass_branch", bypass.id, "Qual comando de bypass?",
+  "_engine_bypass.branch", [
+    { t: "eq", v: "startup", vt: "str" },
+    { t: "eq", v: "automatic_activation", vt: "str" },
+    { t: "eq", v: "automatic_recovery", vt: "str" },
+    { t: "eq", v: "manual_enable", vt: "str" },
+    { t: "eq", v: "manual_disable", vt: "str" },
+    { t: "else" },
+  ], 880, 1160, [
+    ["security_visual_bypass_startup"],
+    ["security_visual_bypass_auto_enable"],
+    ["security_visual_bypass_auto_owned"],
+    ["security_visual_bypass_manual_enable"],
+    ["security_visual_bypass_manual_disable"],
+    ["security_visual_bypass_invalid"],
+  ]);
+fn("security_visual_bypass_startup", bypass.id, "Restaurar último estado válido",
+  "security-light-engine-bypass-startup.js", 1, 1140, 1060,
+  [["security_visual_bypass_output"]]);
+fn("security_visual_bypass_auto_enable", bypass.id, "Ativar por falha sem roubar posse manual",
+  "security-light-engine-bypass-auto-enable.js", 1, 1160, 1120,
+  [["security_visual_bypass_output"]]);
+sw("security_visual_bypass_auto_owned", bypass.id, "Ativação atual pertence à automação?",
+  "_engine_bypass.automatic_owned", 1140, 1200,
+  [["security_visual_bypass_auto_recover"], ["security_visual_bypass_preserve_manual"]]);
+fn("security_visual_bypass_auto_recover", bypass.id, "Desativar após recovery da API",
+  "security-light-engine-bypass-auto-recover.js", 1, 1410, 1180,
+  [["security_visual_bypass_output"]]);
+fn("security_visual_bypass_preserve_manual", bypass.id, "Preservar ON de posse manual",
+  "security-light-engine-bypass-preserve-manual.js", 0, 1410, 1240, []);
+fn("security_visual_bypass_manual_enable", bypass.id, "Ativar com posse manual",
+  "security-light-engine-bypass-manual-enable.js", 1, 1160, 1300,
+  [["security_visual_bypass_output"]]);
+fn("security_visual_bypass_manual_disable", bypass.id, "Desativar e liberar posse",
+  "security-light-engine-bypass-manual-disable.js", 1, 1160, 1360,
+  [["security_visual_bypass_output"]]);
+fn("security_visual_bypass_invalid", bypass.id, "Rejeitar comando inválido",
+  "security-light-engine-bypass-invalid.js", 0, 1150, 1420, []);
+fn("security_visual_bypass_output", bypass.id, "Publicar estado e pedir reavaliação",
+  "security-light-engine-bypass-output.js", 2, 1680, 1160,
+  [["security_light_engine_bypass_mqtt_out_v1"], ["security_light_engine_bypass_reevaluate_out_v1"]]);
+for (const [id, x, y] of [
+  ["security_light_engine_bypass_mqtt_out_v1", 1930, 1120],
+  ["security_light_engine_bypass_reevaluate_out_v1", 1980, 1200],
+]) {
+  const node = required(id);
+  Object.assign(node, { g: bypass.id, x, y });
+  if (!bypass.nodes.includes(id)) bypass.nodes.push(id);
+}
 
 const policy = group("security_visual_policy_group_v1",
   "7. Política da iluminação — padrão, unidade e limites no nome",
