@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const flowUrl = new URL("../flows.json", import.meta.url);
-const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
+const here = path.dirname(fileURLToPath(import.meta.url));
+const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
+const outputPath = path.resolve(process.argv[3] ?? sourcePath);
+const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const MIN_LEFT_MARGIN = 64;
 
 let shifted = 0;
@@ -26,5 +30,5 @@ for (const canvas of flows.filter((node) =>
   shifted += 1;
 }
 
-fs.writeFileSync(flowUrl, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Margem esquerda de ${MIN_LEFT_MARGIN}px aplicada: ${shifted} canvas(es) deslocado(s).`);

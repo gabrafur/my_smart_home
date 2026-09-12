@@ -18,432 +18,153 @@ for (const node of next) {
   for (const field of ["nodes", "scope", "links"]) {
     if (Array.isArray(node[field])) node[field] = node[field].filter((id) => !removed.has(id));
   }
-  if (Array.isArray(node.wires)) {
-    node.wires = node.wires.map((wire) => Array.isArray(wire) ? wire.filter((id) => !removed.has(id)) : wire);
-  }
+  if (Array.isArray(node.wires)) node.wires = node.wires.map((wire) =>
+    Array.isArray(wire) ? wire.filter((id) => !removed.has(id)) : wire
+  );
 }
 
 const nodes = [];
 const add = (node) => { nodes.push(node); return node.id; };
-const group = (id, name, x, y, w, h, color) => add({
-  id,
-  type: "group",
-  z: TAB,
-  name,
-  style: { label: true, color, fill: "#1f1f1f", fillOpacity: "0.18" },
-  nodes: [],
-  x,
-  y,
-  w,
-  h,
+const group = (id, name, x, y, w, h, stroke, fill) => add({
+  id, type: "group", z: TAB, name,
+  style: { label: true, "label-position": "nw", color: "#1f2937", stroke, "stroke-opacity": "1", fill, "fill-opacity": "0.35" },
+  nodes: [], x, y, w, h,
 });
 const groups = {
-  request: group(
-    "host_memory_guardian_request_group",
-    "1. Solicitar verificação recorrente — sem acesso direto aos PIDs",
-    64, 20, 1360, 300, "#5b8db8",
-  ),
-  result: group(
-    "host_memory_guardian_result_group",
-    "2. Ler resultado sanitizado e observar a proteção",
-    64, 360, 1360, 300, "#4d9a6a",
-  ),
-  test: group(
-    "host_memory_guardian_test_group",
-    "TESTE — pedidos e resultados completos em dry-run",
-    64, 700, 1360, 400, "#c9b458",
-  ),
+  input: group("host_memory_guardian_input_group", "0. Parâmetros, agendas e fonte sanitizada", 64, 20, 1100, 510, "#2563eb", "#dbeafe"),
+  decision: group("host_memory_guardian_decision_group", "1. Normalização, estado e decisões visuais", 1200, 20, 3100, 510, "#0f766e", "#ccfbf1"),
+  effect: group("host_memory_guardian_effect_group", "2. Fronteiras de efeito e observabilidade", 4340, 20, 1600, 510, "#dc2626", "#fee2e2"),
+  test: group("host_memory_guardian_test_group", "3. Replay manual completo — dry-run", 64, 580, 2600, 440, "#0891b2", "#cffafe"),
 };
-const grouped = (groupId, node) => {
-  add(node);
-  nodes.find((entry) => entry.id === groupId).nodes.push(node.id);
-  return node.id;
-};
+const grouped = (g, node) => { add(node); nodes.find((entry) => entry.id === g).nodes.push(node.id); return node.id; };
 const fn = (id, g, name, file, outputs, x, y, wires) => grouped(g, {
-  id,
-  type: "function",
-  z: TAB,
-  g,
-  name,
-  func: source(file),
-  outputs,
-  timeout: 0,
-  noerr: 0,
-  initialize: "",
-  finalize: "",
-  libs: [],
-  x,
-  y,
-  wires,
+  id, type: "function", z: TAB, g, name, func: source(file), outputs,
+  timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x, y, wires,
 });
-const inlineFn = (id, g, name, func, x, y) => grouped(g, {
-  id,
-  type: "function",
-  z: TAB,
-  g,
-  name,
-  func,
-  outputs: 1,
-  timeout: 0,
-  noerr: 0,
-  initialize: "",
-  finalize: "",
-  libs: [],
-  x,
-  y,
-  wires: [],
+const terminal = (id, g, name, status, x, y) => grouped(g, {
+  id, type: "function", z: TAB, g, name,
+  func: `node.status(${JSON.stringify(status)});\nreturn null;`, outputs: 0,
+  timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x, y, wires: [],
 });
 const inject = (id, g, name, props, x, y, wires, extra = {}) => grouped(g, {
-  id,
-  type: "inject",
-  z: TAB,
-  g,
-  name,
-  props,
-  repeat: "",
-  crontab: "",
-  once: false,
-  onceDelay: 0.1,
-  topic: "",
-  x,
-  y,
-  wires,
-  ...extra,
+  id, type: "inject", z: TAB, g, name, props, repeat: "", crontab: "", once: false,
+  onceDelay: 0.1, topic: "", payload: "", payloadType: "date", x, y, wires, ...extra,
 });
-const linkOut = (id, g, name, target, x, y) => grouped(g, {
-  id,
-  type: "link out",
-  z: TAB,
-  g,
-  name,
-  mode: "link",
-  links: [target],
-  x,
-  y,
-  wires: [],
+const sw = (id, g, name, property, propertyType, rules, x, y, wires) => grouped(g, {
+  id, type: "switch", z: TAB, g, name, property, propertyType, rules,
+  checkall: "true", repair: false, outputs: rules.length, x, y, wires,
 });
-const linkIn = (id, g, name, origin, destination, x, y) => grouped(g, {
-  id,
-  type: "link in",
-  z: TAB,
-  g,
-  name,
-  links: [origin],
-  x,
-  y,
-  wires: [[destination]],
+const change = (id, g, name, rules, x, y, wires) => grouped(g, {
+  id, type: "change", z: TAB, g, name, rules, action: "", property: "", from: "", to: "", reg: false, x, y, wires,
 });
-const exec = (id, g, name, command, x, y, wires) => grouped(g, {
-  id,
-  type: "exec",
-  z: TAB,
-  g,
-  name,
-  command,
-  addpay: "",
-  append: "",
-  useSpawn: "false",
-  timer: "15",
-  winHide: false,
-  oldrc: false,
-  x,
-  y,
-  wires,
+const linkOut = (id, g, name, targets, x, y) => grouped(g, {
+  id, type: "link out", z: TAB, g, name, mode: "link", links: Array.isArray(targets) ? targets : [targets], x, y, wires: [],
+});
+const linkIn = (id, g, name, origins, destination, x, y) => grouped(g, {
+  id, type: "link in", z: TAB, g, name, links: Array.isArray(origins) ? origins : [origins], x, y, wires: [[destination]],
+});
+const execNode = (id, g, name, command, x, y, wires) => grouped(g, {
+  id, type: "exec", z: TAB, g, name, command, addpay: "", append: "", useSpawn: "false",
+  timer: "15", winHide: false, oldrc: false, x, y, wires,
 });
 
 add({
-  id: TAB,
-  type: "tab",
-  label: "guardiao_memoria_host",
-  disabled: false,
-  info: "Prioriza a saúde do servidor sem dar privilégios ao Node-RED. A cada minuto solicita ao worker do host uma avaliação fail-closed. Somente uma árvore antiga, desconectada e ociosa do VS Code pode ser encerrada; uma sessão conectada nunca é candidata. A limpeza também funciona depois de fechar a única janela remota.",
-  env: [],
+  id: TAB, type: "tab", label: "guardiao_memoria_host", disabled: false,
+  info: "Node-RED agenda, valida, deduplica e observa. O helper allowlisted conserva a decisão de segurança junto ao acesso privilegiado ao host. Testes atravessam o mesmo caminho e terminam em dry-run.", env: [],
 });
 
-grouped(groups.request, {
-  id: "host_memory_guardian_architecture",
-  type: "comment",
-  z: TAB,
-  g: groups.request,
-  name: "A cada 60 s: solicitar análise. Node-RED nunca recebe /proc, sudo, CAP_KILL ou PID namespace do host.",
-  info: "O worker roda como usuário comum. Allowlist fechada: apenas árvores antigas e desconectadas de extensionHost do VS Code; idade mínima, RSS mínimo, dois ciclos ociosos e revalidação são obrigatórios. Se houver sessão conectada, somente uma desconectada mais antiga pode ser candidata.",
-  x: 720,
-  y: 60,
-  wires: [],
+grouped(groups.input, {
+  id: "host_memory_guardian_architecture", type: "comment", z: TAB, g: groups.input,
+  name: "Parâmetros ativos: solicitar 60 s (início 75 s); ler 30 s (início 90 s); timeout 15 s.",
+  info: "Valores inválidos de agenda/timeout são rejeitados pelo editor do Node-RED. O Node-RED nunca recebe /proc, sudo, CAP_KILL ou PID namespace. O worker usa allowlist fechada, idade/RSS mínimos, dois ciclos ociosos, revalidação, cooldown e proteção de sessão conectada.",
+  x: 580, y: 60, wires: [],
 });
-inject(
-  "host_memory_guardian_tick",
-  groups.request,
-  "Verificar a cada 60 s",
-  [{ p: "payload" }],
-  175,
-  140,
-  [["host_memory_guardian_prepare_request"]],
-  { repeat: "60", once: true, onceDelay: "75" },
-);
-linkIn(
-  "host_memory_guardian_test_request_in",
-  groups.request,
-  "Receber pedido TESTE",
-  "host_memory_guardian_test_request_out",
-  "host_memory_guardian_prepare_request",
-  170,
-  230,
-);
-fn(
-  "host_memory_guardian_prepare_request",
-  groups.request,
-  "Preparar solicitação",
-  "host-memory-guardian-prepare-request.js",
-  1,
-  410,
-  160,
-  [["host_memory_guardian_side_effect_guard"]],
-);
-fn(
-  "host_memory_guardian_side_effect_guard",
-  groups.request,
-  "Separar produção e TESTE",
-  "host-memory-guardian-side-effect-guard.js",
-  2,
-  670,
-  160,
-  [["host_memory_guardian_request_host"], ["host_memory_guardian_request_test_out"]],
-);
-exec(
-  "host_memory_guardian_request_host",
-  groups.request,
-  "Solicitar worker do host",
-  "/opt/request-host-memory-guardian.sh",
-  950,
-  120,
-  [["host_memory_guardian_request_ack"], ["host_memory_guardian_request_error"], ["host_memory_guardian_request_complete"]],
-);
-fn(
-  "host_memory_guardian_request_ack",
-  groups.request,
-  "Registrar aceite",
-  "host-memory-guardian-request-ack.js",
-  1,
-  1210,
-  100,
-  [],
-);
-inlineFn(
-  "host_memory_guardian_request_error",
-  groups.request,
-  "Falha da ponte",
-  "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'ponte indisponível' });\nnode.error('host_memory_guardian_bridge_unavailable detail=' + detail, msg);\nreturn null;",
-  1210,
-  170,
-);
-inlineFn(
-  "host_memory_guardian_request_complete",
-  groups.request,
-  "Código da solicitação",
-  "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: 'red', shape: 'ring', text: 'ponte código ' + String(code) });\nreturn null;",
-  1210,
-  240,
-);
-linkOut(
-  "host_memory_guardian_request_test_out",
-  groups.request,
-  "TESTE → terminal dry-run",
-  "host_memory_guardian_dry_in",
-  900,
-  240,
-);
+inject("host_memory_guardian_tick", groups.input, "POLÍTICA: solicitar a cada 60 s", [{ p: "payload" }], 235, 140, [["host_memory_guardian_request_schedule_out"]], { repeat: "60", once: true, onceDelay: "75" });
+linkOut("host_memory_guardian_request_schedule_out", groups.input, "Agenda → validar pedido", "host_memory_guardian_request_in", 600, 140);
+inject("host_memory_guardian_result_tick", groups.input, "POLÍTICA: ler resultado a cada 30 s", [{ p: "payload" }], 245, 250, [["host_memory_guardian_read_result"]], { repeat: "30", once: true, onceDelay: "90" });
+execNode("host_memory_guardian_read_result", groups.input, "FONTE: ler resultado (timeout 15 s)", "/opt/read-host-memory-guardian-result.sh", 540, 250, [["host_memory_guardian_result_out"], ["host_memory_guardian_result_error"], ["host_memory_guardian_result_complete"]]);
+linkOut("host_memory_guardian_result_out", groups.input, "Resultado → normalização", "host_memory_guardian_result_in", 1010, 210);
+fn("host_memory_guardian_result_error", groups.input, "Falha de leitura", "host-memory-guardian-result-error.js", 0, 830, 280, []);
+fn("host_memory_guardian_result_complete", groups.input, "Adaptar código da leitura", "host-memory-guardian-completion-normalize.js", 1, 560, 390, [["host_memory_guardian_result_complete_switch"]]);
+sw("host_memory_guardian_result_complete_switch", groups.input, "Leitura terminou com código zero?", "guardian_exit_code", "msg", [{ t: "eq", v: "0", vt: "num" }, { t: "else" }], 800, 390, [["host_memory_guardian_read_ok"], ["host_memory_guardian_read_failed"]]);
+terminal("host_memory_guardian_read_ok", groups.input, "Leitura concluída", { fill: "green", shape: "dot", text: "leitura concluída" }, 1050, 350);
+terminal("host_memory_guardian_read_failed", groups.input, "Leitura retornou falha", { fill: "red", shape: "ring", text: "leitura falhou" }, 1050, 440);
 
-grouped(groups.result, {
-  id: "host_memory_guardian_result_info",
-  type: "comment",
-  z: TAB,
-  g: groups.result,
-  name: "Resultado contém apenas estado, memória disponível, PID candidato e quantidade encerrada; nenhum comando ou ambiente é publicado.",
-  info: "Falhas entram no observador global. Ações bem-sucedidas geram HOST_MEMORY_GUARDIAN_TERMINATED no log do Node-RED.",
-  x: 720,
-  y: 400,
-  wires: [],
-});
-inject(
-  "host_memory_guardian_result_tick",
-  groups.result,
-  "Ler resultado a cada 30 s",
-  [{ p: "payload" }],
-  190,
-  480,
-  [["host_memory_guardian_read_result"]],
-  { repeat: "30", once: true, onceDelay: "90" },
-);
-exec(
-  "host_memory_guardian_read_result",
-  groups.result,
-  "Ler resultado sanitizado",
-  "/opt/read-host-memory-guardian-result.sh",
-  445,
-  480,
-  [["host_memory_guardian_parse_result"], ["host_memory_guardian_result_error"], ["host_memory_guardian_result_complete"]],
-);
-linkIn(
-  "host_memory_guardian_test_result_in",
-  groups.result,
-  "Receber resultado TESTE",
-  "host_memory_guardian_test_result_out",
-  "host_memory_guardian_parse_result",
-  415,
-  580,
-);
-fn(
-  "host_memory_guardian_parse_result",
-  groups.result,
-  "Normalizar e deduplicar",
-  "host-memory-guardian-result.js",
-  2,
-  720,
-  500,
-  [[], ["host_memory_guardian_result_test_out"]],
-);
-inlineFn(
-  "host_memory_guardian_result_error",
-  groups.result,
-  "Falha de leitura",
-  "const detail = String(msg.payload ?? 'indisponível').replace(/[\\r\\n]+/g, ' ').slice(0, 240);\nnode.status({ fill: 'red', shape: 'ring', text: 'resultado indisponível' });\nnode.error('host_memory_guardian_result_unavailable detail=' + detail, msg);\nreturn null;",
-  930,
-  460,
-);
-inlineFn(
-  "host_memory_guardian_result_complete",
-  groups.result,
-  "Código da leitura",
-  "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: 'red', shape: 'ring', text: 'leitura código ' + String(code) });\nreturn null;",
-  930,
-  520,
-);
-linkOut(
-  "host_memory_guardian_result_test_out",
-  groups.result,
-  "Resultado TESTE → dry-run",
-  "host_memory_guardian_dry_in",
-  965,
-  590,
-);
+linkIn("host_memory_guardian_request_in", groups.decision, "Receber pedido agendado ou TESTE", ["host_memory_guardian_request_schedule_out", "host_memory_guardian_test_request_out"], "host_memory_guardian_prepare_request", 1250, 110);
+fn("host_memory_guardian_prepare_request", groups.decision, "Adaptar pedido ao contrato", "host-memory-guardian-prepare-request.js", 1, 1510, 110, [["host_memory_guardian_request_contract"]]);
+sw("host_memory_guardian_request_contract", groups.decision, "Contrato do pedido é válido?", "payload.event", "msg", [{ t: "eq", v: "host_memory_guardian_requested", vt: "str" }, { t: "else" }], 1800, 110, [["host_memory_guardian_side_effect_guard"], ["host_memory_guardian_invalid_request"]]);
+sw("host_memory_guardian_side_effect_guard", groups.decision, "Pedido está em TESTE?", "_host_memory_guardian_test", "msg", [{ t: "true" }, { t: "else" }], 2100, 90, [["host_memory_guardian_request_dry_out"], ["host_memory_guardian_request_host_out"]]);
+terminal("host_memory_guardian_invalid_request", groups.decision, "Rejeitar pedido inválido", { fill: "red", shape: "ring", text: "pedido inválido rejeitado" }, 2100, 150);
+linkOut("host_memory_guardian_request_dry_out", groups.decision, "Pedido TESTE → dry-run", "host_memory_guardian_dry_in", 2420, 60);
+linkOut("host_memory_guardian_request_host_out", groups.decision, "Produção → worker allowlisted", "host_memory_guardian_request_host_in", 2500, 100);
+
+linkIn("host_memory_guardian_result_in", groups.decision, "Receber resultado real ou sintético", ["host_memory_guardian_result_out", "host_memory_guardian_test_healthy_out", "host_memory_guardian_test_candidate_out", "host_memory_guardian_test_terminated_out", "host_memory_guardian_test_duplicate_out", "host_memory_guardian_test_result_out"], "host_memory_guardian_parse_result", 1250, 285);
+fn("host_memory_guardian_parse_result", groups.decision, "Adaptar resposta estrutural", "host-memory-guardian-result-normalize.js", 1, 1510, 285, [["host_memory_guardian_result_presence"]]);
+sw("host_memory_guardian_result_presence", groups.decision, "Existe resultado novo para avaliar?", "guardian_result_present", "msg", [{ t: "true" }, { t: "else" }], 1800, 285, [["host_memory_guardian_result_protocol"], ["host_memory_guardian_no_result"]]);
+terminal("host_memory_guardian_no_result", groups.decision, "Sem resultado — encerrar ciclo", { fill: "grey", shape: "ring", text: "nenhum resultado novo" }, 2100, 240);
+sw("host_memory_guardian_result_protocol", groups.decision, "Resposta respeita o contrato?", "guardian_protocol_valid", "msg", [{ t: "true" }, { t: "else" }], 2100, 310, [["host_memory_guardian_result_state"], ["host_memory_guardian_protocol_error_out"]]);
+linkOut("host_memory_guardian_protocol_error_out", groups.decision, "Contrato inválido → erro", "host_memory_guardian_protocol_error_in", 2350, 350);
+linkIn("host_memory_guardian_protocol_error_in", groups.decision, "Receber erro estrutural", "host_memory_guardian_protocol_error_out", "host_memory_guardian_mark_error", 3320, 315);
+fn("host_memory_guardian_result_state", groups.decision, "Manter assinatura persistente", "host-memory-guardian-result-dedupe.js", 1, 2400, 285, [["host_memory_guardian_duplicate_switch"]]);
+sw("host_memory_guardian_duplicate_switch", groups.decision, "Assinatura já foi processada?", "guardian_duplicate", "msg", [{ t: "true" }, { t: "else" }], 2700, 285, [["host_memory_guardian_duplicate_mode"], ["host_memory_guardian_status_switch"]]);
+sw("host_memory_guardian_duplicate_mode", groups.decision, "Duplicata pertence a TESTE?", "_host_memory_guardian_test", "msg", [{ t: "true" }, { t: "else" }], 3100, 220, [["host_memory_guardian_mark_duplicate"], ["host_memory_guardian_duplicate_terminal"]]);
+change("host_memory_guardian_mark_duplicate", groups.decision, "Marcar deduplicação simulada", [{ t: "set", p: "payload.status", pt: "msg", to: "duplicate", tot: "str" }], 3500, 200, [["host_memory_guardian_duplicate_dry_out"]]);
+linkOut("host_memory_guardian_duplicate_dry_out", groups.decision, "Duplicata TESTE → dry-run", "host_memory_guardian_dry_in", 3820, 200);
+terminal("host_memory_guardian_duplicate_terminal", groups.decision, "Duplicata descartada", { fill: "grey", shape: "ring", text: "resultado duplicado" }, 3500, 250);
+sw("host_memory_guardian_status_switch", groups.decision, "Status: falha, encerramento, saudável ou pressão?", "guardian_status", "msg", [{ t: "eq", v: "failed", vt: "str" }, { t: "eq", v: "terminated", vt: "str" }, { t: "eq", v: "healthy", vt: "str" }, { t: "eq", v: "running", vt: "str" }, { t: "else" }], 3100, 370, [["host_memory_guardian_mark_error"], ["host_memory_guardian_mark_audit"], ["host_memory_guardian_mark_healthy"], ["host_memory_guardian_mark_healthy"], ["host_memory_guardian_mark_pressure"]]);
+change("host_memory_guardian_mark_error", groups.decision, "Decisão: registrar erro", [{ t: "set", p: "guardian_effect", pt: "msg", to: "error", tot: "str" }], 3500, 310, [["host_memory_guardian_effect_mode"]]);
+change("host_memory_guardian_mark_audit", groups.decision, "Decisão: auditar encerramento", [{ t: "set", p: "guardian_effect", pt: "msg", to: "audit", tot: "str" }], 3500, 355, [["host_memory_guardian_effect_mode"]]);
+change("host_memory_guardian_mark_healthy", groups.decision, "Decisão: estado saudável", [{ t: "set", p: "guardian_effect", pt: "msg", to: "healthy", tot: "str" }], 3500, 410, [["host_memory_guardian_effect_mode"]]);
+change("host_memory_guardian_mark_pressure", groups.decision, "Decisão: observar pressão", [{ t: "set", p: "guardian_effect", pt: "msg", to: "pressure", tot: "str" }], 3500, 465, [["host_memory_guardian_effect_mode"]]);
+sw("host_memory_guardian_effect_mode", groups.decision, "Efeito pertence a TESTE?", "_host_memory_guardian_test", "msg", [{ t: "true" }, { t: "else" }], 3900, 380, [["host_memory_guardian_dry_out"], ["host_memory_guardian_effect_out"]]);
+linkOut("host_memory_guardian_effect_out", groups.decision, "Produção → observabilidade", "host_memory_guardian_effect_in", 4210, 420);
+linkOut("host_memory_guardian_dry_out", groups.decision, "TESTE → terminal dry-run", "host_memory_guardian_dry_in", 4210, 480);
+
+linkIn("host_memory_guardian_request_host_in", groups.effect, "Receber pedido de produção", "host_memory_guardian_request_host_out", "host_memory_guardian_request_host", 4390, 100);
+execNode("host_memory_guardian_request_host", groups.effect, "EFEITO: solicitar worker (timeout 15 s)", "/opt/request-host-memory-guardian.sh", 4690, 100, [["host_memory_guardian_request_ack"], ["host_memory_guardian_request_error"], ["host_memory_guardian_request_complete"]]);
+fn("host_memory_guardian_request_ack", groups.effect, "Adaptar aceite da ponte", "host-memory-guardian-request-response-normalize.js", 1, 4980, 75, [["host_memory_guardian_request_ack_switch"]]);
+sw("host_memory_guardian_request_ack_switch", groups.effect, "Ponte aceitou, coalesceu ou rejeitou?", "guardian_request_status", "msg", [{ t: "eq", v: "accepted", vt: "str" }, { t: "eq", v: "coalesced", vt: "str" }, { t: "else" }], 5290, 75, [["host_memory_guardian_request_accepted"], ["host_memory_guardian_request_coalesced"], ["host_memory_guardian_request_invalid"]]);
+terminal("host_memory_guardian_request_accepted", groups.effect, "Solicitação aceita", { fill: "green", shape: "dot", text: "verificação aceita" }, 5700, 45);
+terminal("host_memory_guardian_request_coalesced", groups.effect, "Solicitação já pendente", { fill: "yellow", shape: "dot", text: "verificação já pendente" }, 5700, 95);
+fn("host_memory_guardian_request_invalid", groups.effect, "Resposta da ponte inválida", "host-memory-guardian-request-invalid.js", 0, 5700, 145, []);
+fn("host_memory_guardian_request_error", groups.effect, "Falha da ponte", "host-memory-guardian-request-error.js", 0, 4980, 155, []);
+fn("host_memory_guardian_request_complete", groups.effect, "Adaptar código da solicitação", "host-memory-guardian-completion-normalize.js", 1, 5000, 225, [["host_memory_guardian_request_complete_switch"]]);
+sw("host_memory_guardian_request_complete_switch", groups.effect, "Solicitação terminou com código zero?", "guardian_exit_code", "msg", [{ t: "eq", v: "0", vt: "num" }, { t: "else" }], 5300, 225, [["host_memory_guardian_request_ok"], ["host_memory_guardian_request_failed"]]);
+terminal("host_memory_guardian_request_ok", groups.effect, "Worker solicitado", { fill: "green", shape: "dot", text: "worker solicitado" }, 5700, 205);
+terminal("host_memory_guardian_request_failed", groups.effect, "Solicitação retornou falha", { fill: "red", shape: "ring", text: "solicitação falhou" }, 5700, 255);
+
+linkIn("host_memory_guardian_effect_in", groups.effect, "Receber decisão canônica", "host_memory_guardian_effect_out", "host_memory_guardian_effect_switch", 4390, 370);
+sw("host_memory_guardian_effect_switch", groups.effect, "Executar erro, auditoria ou status", "guardian_effect", "msg", [{ t: "eq", v: "error", vt: "str" }, { t: "eq", v: "audit", vt: "str" }, { t: "eq", v: "healthy", vt: "str" }, { t: "eq", v: "pressure", vt: "str" }, { t: "else" }], 4690, 370, [["host_memory_guardian_effect_error"], ["host_memory_guardian_effect_log"], ["host_memory_guardian_effect_healthy"], ["host_memory_guardian_effect_pressure"], ["host_memory_guardian_effect_invalid"]]);
+fn("host_memory_guardian_effect_error", groups.effect, "OBSERVAR: falha canônica", "host-memory-guardian-effect-error.js", 0, 5080, 315, []);
+fn("host_memory_guardian_effect_log", groups.effect, "AUDITAR: árvore encerrada", "host-memory-guardian-effect-log.js", 0, 5080, 365, []);
+terminal("host_memory_guardian_effect_healthy", groups.effect, "OBSERVAR: memória saudável", { fill: "green", shape: "dot", text: "memória saudável" }, 5080, 415);
+terminal("host_memory_guardian_effect_pressure", groups.effect, "OBSERVAR: pressão segura", { fill: "yellow", shape: "dot", text: "pressão sem ação insegura" }, 5080, 465);
+terminal("host_memory_guardian_effect_invalid", groups.effect, "Rejeitar efeito desconhecido", { fill: "red", shape: "ring", text: "efeito desconhecido" }, 5080, 510);
 
 grouped(groups.test, {
-  id: "host_memory_guardian_test_instructions",
-  type: "comment",
-  z: TAB,
-  g: groups.test,
-  name: "Ordem: reset → pedido → saudável → candidato → encerramento → falha. Todos terminam com dispatched:false e nenhum sinal.",
-  info: "O teste atravessa preparação, guard, normalização, dedupe e terminal. O algoritmo do host tem fixtures automatizadas separadas para pressão, conectividade, ociosidade, cooldown e denylist essencial.",
-  x: 700,
-  y: 740,
-  wires: [],
+  id: "host_memory_guardian_test_instructions", type: "comment", z: TAB, g: groups.test,
+  name: "Ordem: reset → pedido → saudável → candidato → encerramento → duplicata → falha. Tudo termina com dispatched:false.",
+  info: "Os resultados percorrem o adaptador, validação estrutural, estado persistente isolado, dedupe, classificação e gate de efeitos. O algoritmo privilegiado do host mantém fixtures separadas.", x: 980, y: 620, wires: [],
 });
-inject(
-  "host_memory_guardian_test_reset",
-  groups.test,
-  "TESTE 1: reset",
-  [{ p: "_host_memory_guardian_test", v: "true", vt: "bool" }],
-  170,
-  810,
-  [["host_memory_guardian_reset_test"]],
-);
-fn(
-  "host_memory_guardian_reset_test",
-  groups.test,
-  "Resetar estado sintético",
-  "host-memory-guardian-reset-test.js",
-  1,
-  420,
-  810,
-  [],
-);
-inject(
-  "host_memory_guardian_test_request",
-  groups.test,
-  "TESTE 2: solicitar limpeza",
-  [{ p: "payload" }, { p: "_host_memory_guardian_test", v: "true", vt: "bool" }],
-  190,
-  870,
-  [["host_memory_guardian_test_request_out"]],
-);
-linkOut(
-  "host_memory_guardian_test_request_out",
-  groups.test,
-  "Pedido TESTE → guard real",
-  "host_memory_guardian_test_request_in",
-  470,
-  870,
-);
-const resultProps = (payload) => [
-  { p: "payload", v: JSON.stringify(payload), vt: "json" },
-  { p: "_host_memory_guardian_test", v: "true", vt: "bool" },
-];
-inject(
-  "host_memory_guardian_test_healthy",
-  groups.test,
-  "TESTE 3: memória saudável",
-  resultProps({ status: "healthy", available_mib: 4096, available_percent: 50, terminated: 0, test_mode: true }),
-  190,
-  930,
-  [["host_memory_guardian_test_result_out"]],
-);
-inject(
-  "host_memory_guardian_test_candidate",
-  groups.test,
-  "TESTE 4: candidato observado",
-  resultProps({ status: "candidate_observed", available_mib: 4096, available_percent: 50, candidate_pid: "synthetic", candidate_mib: 640, terminated: 0, test_mode: true }),
-  205,
-  990,
-  [["host_memory_guardian_test_result_out"]],
-);
-inject(
-  "host_memory_guardian_test_terminated",
-  groups.test,
-  "TESTE 5: encerramento aprovado",
-  resultProps({ status: "terminated", available_mib: 4096, available_percent: 50, candidate_pid: "synthetic", candidate_mib: 640, terminated: 4, test_mode: true }),
-  215,
-  1050,
-  [["host_memory_guardian_test_result_out"]],
-);
-inject(
-  "host_memory_guardian_test_failed",
-  groups.test,
-  "TESTE 6: falha do worker",
-  resultProps({ status: "failed", available_mib: 900, available_percent: 11, terminated: 0, test_mode: true }),
-  655,
-  930,
-  [["host_memory_guardian_test_result_out"]],
-);
-linkOut(
-  "host_memory_guardian_test_result_out",
-  groups.test,
-  "Resultado TESTE → normalização real",
-  "host_memory_guardian_test_result_in",
-  650,
-  1000,
-);
-linkIn(
-  "host_memory_guardian_dry_in",
-  groups.test,
-  "Receber efeito TESTE",
-  "host_memory_guardian_request_test_out",
-  "host_memory_guardian_dry_run_terminal",
-  955,
-  900,
-);
-nodes.find((node) => node.id === "host_memory_guardian_dry_in").links.push("host_memory_guardian_result_test_out");
-fn(
-  "host_memory_guardian_dry_run_terminal",
-  groups.test,
-  "TESTE FINAL: sinais bloqueados",
-  "host-memory-guardian-dry-run.js",
-  1,
-  1190,
-  900,
-  [],
-);
+inject("host_memory_guardian_test_reset", groups.test, "TESTE 1: reset", [{ p: "_host_memory_guardian_test", v: "true", vt: "bool" }], 180, 700, [["host_memory_guardian_reset_test"]]);
+fn("host_memory_guardian_reset_test", groups.test, "Resetar estado sintético", "host-memory-guardian-reset-test.js", 0, 410, 700, []);
+inject("host_memory_guardian_test_request", groups.test, "TESTE 2: solicitar limpeza", [{ p: "payload" }, { p: "_host_memory_guardian_test", v: "true", vt: "bool" }], 195, 770, [["host_memory_guardian_test_request_out"]]);
+linkOut("host_memory_guardian_test_request_out", groups.test, "Pedido TESTE → decisões reais", "host_memory_guardian_request_in", 500, 770);
+const resultProps = (payload) => [{ p: "payload", v: JSON.stringify(payload), vt: "json" }, { p: "_host_memory_guardian_test", v: "true", vt: "bool" }];
+inject("host_memory_guardian_test_healthy", groups.test, "TESTE 3: memória saudável", resultProps({ status: "healthy", request_id: "test-healthy", checked_at: "2026-01-01T00:00:00Z", available_mib: 4096, available_percent: 50, terminated: 0, test_mode: true }), 190, 850, [["host_memory_guardian_test_healthy_out"]]);
+linkOut("host_memory_guardian_test_healthy_out", groups.test, "Saudável → decisões", "host_memory_guardian_result_in", 400, 850);
+inject("host_memory_guardian_test_candidate", groups.test, "TESTE 4: candidato observado", resultProps({ status: "candidate_observed", request_id: "test-candidate", checked_at: "2026-01-01T00:01:00Z", available_mib: 4096, available_percent: 50, candidate_pid: "synthetic", candidate_mib: 640, terminated: 0, test_mode: true }), 620, 850, [["host_memory_guardian_test_candidate_out"]]);
+linkOut("host_memory_guardian_test_candidate_out", groups.test, "Candidato → decisões", "host_memory_guardian_result_in", 850, 850);
+const terminated = { status: "terminated", request_id: "test-terminated", checked_at: "2026-01-01T00:02:00Z", available_mib: 4096, available_percent: 50, candidate_pid: "synthetic", candidate_mib: 640, terminated: 4, test_mode: true };
+inject("host_memory_guardian_test_terminated", groups.test, "TESTE 5: encerramento aprovado", resultProps(terminated), 1060, 850, [["host_memory_guardian_test_terminated_out"]]);
+linkOut("host_memory_guardian_test_terminated_out", groups.test, "Encerramento → decisões", "host_memory_guardian_result_in", 1300, 850);
+inject("host_memory_guardian_test_duplicate", groups.test, "TESTE 6: repetir encerramento", resultProps(terminated), 1500, 850, [["host_memory_guardian_test_duplicate_out"]]);
+linkOut("host_memory_guardian_test_duplicate_out", groups.test, "Duplicata → decisões", "host_memory_guardian_result_in", 1730, 850);
+inject("host_memory_guardian_test_failed", groups.test, "TESTE 7: falha do worker", resultProps({ status: "failed", request_id: "test-failed", checked_at: "2026-01-01T00:03:00Z", available_mib: 900, available_percent: 11, terminated: 0, test_mode: true }), 1910, 850, [["host_memory_guardian_test_result_out"]]);
+linkOut("host_memory_guardian_test_result_out", groups.test, "Falha → decisões", "host_memory_guardian_result_in", 2150, 850);
+linkIn("host_memory_guardian_dry_in", groups.test, "Receber efeito TESTE", ["host_memory_guardian_dry_out", "host_memory_guardian_request_dry_out", "host_memory_guardian_duplicate_dry_out"], "host_memory_guardian_dry_run_terminal", 1990, 760);
+fn("host_memory_guardian_dry_run_terminal", groups.test, "TESTE FINAL: sinais e host bloqueados", "host-memory-guardian-dry-run.js", 0, 2260, 760, []);
 
 next.push(...nodes);
 fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
-console.log(`Host memory guardian flow installed in ${outputPath}`);
+console.log(`Host memory guardian visual flow installed in ${outputPath}`);

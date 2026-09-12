@@ -131,11 +131,20 @@ das entidades MQTT porque elas pertencem ao dispositivo `Raspberry Pi`. O
 dashboard usa os IDs efetivamente registrados, evitando cartões de entidade
 não encontrada.
 
-Os limites ficam em um unico function node (`Configurar thresholds`): normal
+Os limites ficam no grupo visual `0. Política visual e MQTT discovery`: normal
 abaixo de 70%, warning de 70% a 79,9%, high de 80% a 89,9% e critical a partir
-de 90%. A histerese e de 3 pontos percentuais. Alertas repetidos usam cooldown
+de 90%. A histerese é de 3 pontos percentuais. Alertas repetidos usam cooldown
 de 12 horas, falhas de coleta/manutencao usam 6 horas, escaladas alertam
 imediatamente e a volta a normal gera notificacao de recuperacao.
+
+Os onze valores ajustáveis têm unidade, limites e validação no canvas:
+thresholds de 1–100% com ordem estrita, histerese de 0–20 pp, cooldowns de
+1–48 h, crescimento de 1–50 pp/24 h e 1–80 pp/7 d, amostragem de 1–120 min e
+retenção de 2–30 dias. Um candidato inválido não substitui a última política.
+Classificação bruta, histerese, recovery, escalada/lembrete, tendência e gate
+de autocuidado são decisões nomeadas. O JavaScript remanescente calcula apenas
+janelas temporais/crescimento e adapta atributos/tópicos MQTT; os workers
+allowlisted continuam atrás da separação produção/dry-run.
 
 Uma amostra compacta e persistida a cada 15 minutos por no maximo oito dias.
 Ela permite calcular 24 h e 7 dias sem gravacao por minuto. O alerta de tendencia

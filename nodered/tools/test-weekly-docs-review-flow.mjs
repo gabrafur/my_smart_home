@@ -38,6 +38,16 @@ assert.deepEqual(node("weekly_docs_review_test_request_out").links, ["weekly_doc
 assert.deepEqual(node("weekly_docs_review_test_request_in").links, ["weekly_docs_review_test_request_out"]);
 assert.deepEqual(node("weekly_docs_review_dry_run_out").links, ["weekly_docs_review_dry_run_in"]);
 assert.deepEqual(node("weekly_docs_review_dry_run_in").links, ["weekly_docs_review_dry_run_out", "weekly_docs_review_error_dry_run_out"]);
+assert.equal(node("weekly_docs_review_mark_manual").type, "change");
+assert.equal(node("weekly_docs_review_source_switch").type, "switch");
+assert.equal(node("weekly_docs_review_test_mode_switch").type, "switch");
+assert.equal(node("weekly_docs_review_result_switch").type, "switch");
+assert.equal(node("weekly_docs_review_error_switch").type, "switch");
+assert.equal(node("weekly_docs_review_complete_switch").type, "switch");
+assert.deepEqual(node("weekly_docs_review_test_mode_switch").wires, [
+  ["weekly_docs_review_dry_run_out"],
+  ["weekly_docs_review_request"],
+]);
 assert.ok(!JSON.stringify(node("weekly_docs_review_test_scheduled")).includes("weekly_docs_review_request"));
 assert.ok(!JSON.stringify(node("weekly_docs_review_test_manual")).includes("weekly_docs_review_request"));
 assert.match(node("weekly_docs_review_dry_run_terminal").func, /external_call_sent: false/);
@@ -50,15 +60,25 @@ const flow = {
 };
 const errors = [];
 const runtimeNode = { error(value, message) { errors.push({ value, message }); }, log() {}, status() {}, warn() {} };
-const prepare = new Function("msg", "node", "flow", node("weekly_docs_review_prepare").func);
-const scheduled = prepare({ _weekly_docs_source: "scheduled" }, runtimeNode, flow);
-assert.equal(scheduled[0].payload, "scheduled");
-assert.equal(scheduled[1], null);
-const manualTest = prepare({ _weekly_docs_source: "manual", _weekly_docs_test: true }, runtimeNode, flow);
-assert.equal(manualTest[0], null);
-assert.equal(manualTest[1].payload, "manual");
-assert.equal(manualTest[1]._weekly_docs_test, true);
-assert.equal(prepare({ _weekly_docs_source: "invalid" }, runtimeNode, flow), null);
+const invalidSource = new Function("msg", "node", "flow", node("weekly_docs_review_invalid_source").func);
+assert.equal(invalidSource({ _weekly_docs_source: "invalid" }, runtimeNode, flow), null);
+assert.match(errors.at(-1).value, /weekly_docs_review_invalid_source/);
+
+const normalizeResult = new Function("msg", "node", "flow", node("weekly_docs_review_result").func);
+const requested = normalizeResult(
+  { payload: "Documentation review requested: source=scheduled" }, runtimeNode, flow,
+);
+assert.equal(requested.weekly_docs_outcome, "requested");
+assert.equal(requested.weekly_docs_result.source, "scheduled");
+const coalesced = normalizeResult(
+  { payload: "Documentation review already pending: source=manual" }, runtimeNode, flow,
+);
+assert.equal(coalesced.weekly_docs_outcome, "coalesced");
+const unrecognized = normalizeResult({ payload: "unexpected" }, runtimeNode, flow);
+assert.equal(unrecognized.weekly_docs_outcome, "invalid");
+const persistResult = new Function("msg", "node", "flow", node("weekly_docs_review_result_state").func);
+assert.equal(persistResult(requested, runtimeNode, flow), null);
+assert.equal(memory.get("weekly_docs_review_last_request_v1").status, "requested");
 
 const trackStatus = new Function("msg", "node", "flow", node("weekly_docs_review_track_status").func);
 assert.equal(trackStatus({ payload: "falha" }, runtimeNode, flow), null);
@@ -71,14 +91,12 @@ assert.equal(trackStatus({ payload: "sucesso" }, runtimeNode, flow), null);
 assert.equal(trackStatus({ payload: "indisponível" }, runtimeNode, flow), null);
 assert.match(errors.at(-1).value, /weekly_docs_review_worker_failed state=indisponível/);
 
-const handleError = new Function("msg", "node", "flow", node("weekly_docs_review_error").func);
-const simulatedFailure = handleError(
-  { payload: "synthetic bridge unavailable", _weekly_docs_test: true, _weekly_docs_source: "manual" },
-  runtimeNode,
-  flow,
-);
-assert.equal(simulatedFailure.payload.status, "failed");
 const dryRun = new Function("msg", "node", "flow", node("weekly_docs_review_dry_run_terminal").func);
+const simulatedFailure = {
+  payload: { status: "failed", detail: "synthetic bridge unavailable", source: "synthetic" },
+  _weekly_docs_test: true,
+  _weekly_docs_source: "manual",
+};
 assert.equal(dryRun(simulatedFailure, runtimeNode, flow), null);
 assert.deepEqual(memory.get("weekly_docs_review_last_dry_run_v1"), {
   version: 1,

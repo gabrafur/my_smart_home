@@ -4,6 +4,12 @@ O backup diário do repositório é agendado na aba `backup_git` do Node-RED. O
 gatilho ocorre às **00:30 em `America/Sao_Paulo`**, preservando o instante do
 cron anterior, que executava às 03:30 UTC.
 
+O canvas separa visualmente entradas, decisões, efeitos e replay. A resposta
+textual do helper é somente normalizada por um adaptador pequeno; nós `switch`
+distintos mostram sucesso, falha, adiamento, origem diária/manual e os gates de
+`test_mode`. O retry de cinco minutos e as fronteiras do worker, das duas
+notificações e das atualizações diárias permanecem visíveis e únicas.
+
 O container não recebe o checkout, credenciais SSH, `sudo` nem o socket Docker.
 O flow chama somente `/opt/request-host-git-backup.sh`, que cria uma solicitação
 em `homeassistant/.git-backup-trigger/`, montada no container em
@@ -31,8 +37,10 @@ updates chama um novo backup ao final para registrar o Compose reconciliado.
   Assistant. Se a validação
   segura estiver sem recursos, a ponte publica `deferred`, mantém o mesmo
   pedido no host e o flow volta a observar o retry após cinco minutos, sem
-  alerta falso. Os controles `TESTE` exercitam sucesso, falha e adiamento sem
-  executar push Git nem notificação.
+  alerta falso. Os controles `TESTE` exercitam o pedido ao worker, sucesso,
+  falha, adiamento e resposta inválida. Todos percorrem os gates canônicos e
+  terminam com `simulated: true` e `dispatched: false`, sem worker, push Git,
+  updates nem notificação.
 - `.git-backup.log` registra o resultado do script no host.
 - `.git-backup-request.cron.log` registra falhas do worker da ponte.
 - A aba não publica nem altera entidades de estado do Home Assistant; somente

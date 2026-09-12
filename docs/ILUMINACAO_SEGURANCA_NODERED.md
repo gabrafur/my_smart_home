@@ -7,7 +7,7 @@ abas:
 | --- | --- |
 | `localizacao_pessoas` | Ler e normalizar os trackers de resident_primary e resident_secondary, comprovar um ciclo externo individual, separar visualmente saída de retorno, detectar aproximação/chegada e controlar o refresh dos iPhones. |
 | `contexto_vehicle_primary` | Normalizar localização, motor e trava do vehicle_primary, manter `vehicle_primary_in_use`, comprovar o ciclo externo, separar visualmente saída de retorno, detectar chegada, atualizar viagens e controlar o refresh do veículo. |
-| `contexto_chegadas` | Sincronizar os snapshots periódicos e calcular somente a política conjunta `anyone_away`. Não interpreta GPS bruto nem envia notificações entre residentes. |
+| `contexto_chegadas` | Sincronizar visualmente os snapshots periódicos e calcular somente a política conjunta `anyone_away`. Não interpreta GPS bruto nem envia notificações entre residentes. |
 | `notificacoes_chegadas_residentes` | Avisar `resident_primary` quando `resident_secondary` entra em `near_home` e vice-versa, durante as 24 horas do dia e sem depender do veículo, iluminação ou reconciliação de contexto. |
 | `iluminacao_seguranca` | Consumir os contratos de alto nível e decidir ligar/desligar `switch.refletor_portao_carros`, incluindo carência, timeout e anti-religamento. |
 
@@ -94,6 +94,22 @@ ciclo. `ready: false` não bloqueia o comando: ele o promove a recovery. O
 comando inclui `origin`, `reason`, `issued_at` e readiness; isso evita
 duplicação e torna loops diagnosticáveis. Cada domínio continua dono de seu
 cooldown. Snapshots com `updated_at` anterior ao cache são ignorados.
+
+O canvas é a fonte dos parâmetros ajustáveis desse coordenador: agenda de
+30 s, timeout do ciclo em voo de 10 s (limite 1–60 s) e tolerância de timestamp
+futuro de 60 s (limite 0–300 s). Um candidato inválido é rejeitado sem substituir
+a última política válida. Switches nomeados tornam visíveis a coalescência, a
+aceitação monotônica, a espera pelos dois domínios, a precedência da saída de
+morador e o motivo final do recovery. As funções remanescentes somente adaptam
+contratos ou fazem mutações atômicas de cache; nenhuma contém esses números ou
+chama efeitos.
+
+Os controles `TESTE 1: reset coordenado` e `TESTE 2: ciclo recovery` usam
+estado sintético separado e percorrem produtores e consumidores reais até as
+fronteiras `vehicle_primary_refresh_dry_run_terminal_v1`,
+`light_full_dry_run_terminal_v1` e
+`resident_notifications_dry_run_terminal`, sempre com `simulated: true` e
+`dispatched: false`.
 
 ## Entidades
 
@@ -214,17 +230,39 @@ residente imediatamente, sem consultar horário, sol, veículo ou os snapshots d
 saída e não gera aviso. Um latch persistente evita duplicidade entre os dois
 trackers e após restart; uma nova passagem por `not_home` rearma o aviso.
 
+No tab `alarme_desarme_chegada`, a confirmação deixou de ser uma função
+monolítica. O canvas valida contrato, origem, estágio, direção e ciclo externo;
+depois mostra separadamente estado armado, pendência, entrega em voo, cooldown,
+token, expiração, cancelamento e confirmação. A política visual concentra
+cooldown de 60 s, TTL real de 300 s, janela de entrega de 30 s e TTL de teste de
+120 s, todos validados e sem fallback oculto. A pendência real só é promovida
+quando o Home Assistant aceita ao menos uma notificação; falha de entrega não
+arma cooldown. O teste usa pendência isolada e termina no terminal dry-run sem
+enviar notificação nem intenção de desarme.
+
+A política fica no primeiro grupo do canvas: zona `near_home`, dedupe de
+10 minutos, idade máxima de 15 minutos e tolerância futura de 60 segundos.
+Dedupe e idade aceitam de 1 a 60 minutos; a tolerância futura aceita de 0 a
+5 minutos e precisa ser menor que a idade máxima. O bloco de validação rejeita
+configurações inválidas sem substituir a última política persistente válida.
+Origem, disponibilidade, futuro, stale, estado atual, direção, latch,
+duplicidade, destinatário e produção/teste são decisões visuais nomeadas.
+
 Os testes sintéticos iniciados em `localizacao_pessoas` também entram nesse tab.
 Eles percorrem a mesma validação e o mesmo dedupe usando memória isolada, mas
-terminam em `TESTE FINAL: aviso simulado — nenhum push`, com `simulated=true` e
-`dispatched=false`. Somente os botões dedicados do próprio tab de notificações
-podem testar a entrega real; essa exceção exige solicitação explícita, marca
-título e mensagem com `TESTE` e usa diretamente o serviço Mobile App.
+terminam em `TESTE FINAL: nenhum push enviado`, com `simulated=true` e
+`dispatched=false`. Os botões dedicados do próprio tab também são dry-run;
+nenhum controle manual possui ligação com os dois serviços de produção.
 
 O nome exibido na mensagem é resolvido em runtime a partir do `source_alias`
 privado do residente. O flow versionado preserva apenas os papéis lógicos; se o
 alias estiver ausente ou for inválido, a mensagem falha fechado para o papel sem
 persistir dados privados no repositório.
+
+O JavaScript remanescente é limitado à validação estrutural da política,
+adaptação do evento, leitura/escrita do lifecycle persistente, composição do
+texto com alias privado e registro dos terminais. Thresholds e decisões não
+ficam nesses adaptadores.
 
 Quando um teste de localização também satisfaz as condições de acendimento,
 inclusive com atuador `unknown`, `unavailable`, stale ou não reconciliado, o

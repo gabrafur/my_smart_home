@@ -96,6 +96,13 @@ respondem. A falha de apenas um host não derruba o estado. Um lock no contexto
 ciclo impedem sobreposição, timers acumulados e mais de três processos `ping`
 simultâneos.
 
+Esses valores agora aparecem no grupo de política do canvas. O JSON visual
+contém os três alvos, quorum 2, três ciclos para queda, dois para retorno,
+timeout ICMP de 2 s e limite de execução de 3 s. Quorum aceita 1–3,
+confirmações aceitam 1–10 ciclos, ping aceita 1–10 s e execução aceita
+1–15 s, sempre maior que o timeout do ping. O validador rejeita candidatos
+inválidos sem substituir a última política persistente válida.
+
 Os endereços foram conferidos nas páginas oficiais do
 [Cloudflare 1.1.1.1](https://developers.cloudflare.com/1.1.1.1/),
 [Google Public DNS](https://developers.google.com/speed/public-dns/) e
@@ -108,6 +115,11 @@ A máquina possui os estados `online`, `checking`, `offline` e `recovering`:
 - `offline -> recovering`: primeiro ciclo positivo;
 - `recovering -> online`: segundo ciclo positivo consecutivo;
 - uma nova falha durante `recovering` volta a `offline` sem gerar outro alerta.
+
+Quorum, incidente aberto, contadores exatos e abertura/recuperação são
+`switch` nomeados. O JavaScript restante apenas executa o adaptador assíncrono
+de ICMP, normaliza resultados, aplica mutações já escolhidas visualmente,
+persiste o estado e monta os contratos MQTT/notificação.
 
 Com a cadência atual, uma queda é confirmada em aproximadamente 60–90 segundos
 e uma recuperação em 30–60 segundos. Enquanto offline, o mesmo ciclo de 30
@@ -146,6 +158,12 @@ Os critérios anteriores foram preservados:
 - um incidente aberto não duplica a queda dentro da janela e, se continuar
   aberto, atualiza o mesmo alerta e repete push/voz a cada 24 horas.
 
+Os três valores aparecem no grupo `CONFIG` do canvas: queda 30 s (limite
+1–300 s), retorno 60 s (1–600 s) e lembrete 24 h (1–168 h). Um candidato
+inválido é rejeitado sem substituir a última política persistente válida. Os
+`switch` nomeados mostram estado bruto, incidente aberto, limites exatos,
+lembrete vencido e tipo de evento; a agenda nativa de 10 s também fica visível.
+
 O estado é exposto como:
 
 - `binary_sensor.zigbee_network`;
@@ -166,8 +184,17 @@ componente, o Node-RED persiste se há incidente aberto:
 - `online` no startup sem incidente: ignorado.
 
 Enquanto o componente permanecer offline, o tick periódico da aba repete o
-mesmo alerta a cada 24 horas, mesmo que nenhuma nova mensagem MQTT de
-availability seja recebida. A recuperação encerra o agendamento.
+mesmo alerta a cada intervalo configurado. A enumeração do mapa persistente é
+um adaptador estrutural pequeno; os blocos visuais decidem se o componente
+continua offline, se o prazo venceu e se deve abrir, tocar, recuperar ou
+lembrar o incidente. Todas as notificações convergem em uma única instância do
+subflow compartilhado.
+
+O JavaScript remanescente nesta aba só adapta MQTT, gera uma chave estável a
+partir do tópico, lê/aplica a mutação já escolhida, enumera o mapa de
+componentes e monta MQTT/discovery/notificação. Cada função tem menos de 2.000
+caracteres e não contém thresholds nem roteamento de efeito. O lembrete não
+depende de nova mensagem MQTT; a recuperação encerra o agendamento.
 
 O identificador da notificação combina um slug legível com um hash estável do
 friendly name completo. Assim, caminhos como `andar1/cozinha/sensor` são
@@ -214,6 +241,19 @@ nome atual do dispositivo no Home Assistant. Assim, o comedouro e novos
 dispositivos Tuya passam a ser descobertos sem gravar seus IDs no repositório.
 Um incidente que continuar aberto atualiza o mesmo alerta e repete push e voz a
 cada 24 horas; a recuperação confirmada encerra os lembretes.
+
+Queda 30 s (limite 1–300), retorno 60 s (1–600) e lembrete 24 h (1–168)
+ficam no grupo de configuração visual. O canvas mostra validação, presença de
+fonte, existência de dispositivo, split/join do ciclo, estado bruto, incidente,
+limites exatos, lembrete, resumo agregado, produção/teste e efeito único. Uma
+configuração inválida não substitui a última versão persistente válida.
+
+O único JavaScript acima de 2.000 caracteres é o adaptador estrutural de 2.052
+caracteres que correlaciona três respostas heterogêneas do Home Assistant,
+agrupa entidades por `device_id`, exclui domínios não confiáveis e cria a chave
+estável. Dividi-lo entre nós nativos perderia atomicidade e legibilidade. Ele
+não decide tempo, incidente, dedupe, recuperação, resumo nem efeito; todas as
+demais funções da aba têm menos de 2.000 caracteres.
 
 Uma falha na própria consulta ao Home Assistant publica `checking`, mas não
 abre nem encerra incidentes de dispositivos. Isso evita interpretar uma queda
@@ -283,22 +323,28 @@ Validação estática e simulação das máquinas de estado:
 
 ```bash
 npm --prefix nodered run flows:validate
+npm --prefix nodered run flows:test-internet-monitor
+npm --prefix nodered run flows:test-zigbee-monitor
+npm --prefix nodered run flows:test-tuya-monitor
 npm --prefix nodered run flows:test-infrastructure
 npm --prefix nodered run flows:test-infrastructure-runtime
 docker exec homeassistant \
   python3 -m homeassistant --script check_config --config /config
 ```
 
-O teste automatizado estático cobre internet normal, um destino falho, três
+O replay manual de internet usa reset, três falhas e dois sucessos, atravessa o
+mesmo quorum, estado, limiares e gates, e termina com MQTT e notificações em
+dry-run. O teste automatizado estático cobre internet normal, um destino falho, três
 falhas, queda única, offline prolongado, recuperação inicial, oscilação,
 recuperação confirmada, duração, segunda queda, restart com incidente, startup
 Zigbee, falha momentânea, 30 segundos offline, dedupe, 60 segundos online,
 ciclo e lembrete de 24 horas de componente, lembrete de 24 horas da rede,
 descoberta/queda/recuperação/lembrete de dispositivos Tuya e LocalTuya e a
-ramificação de voz da Echo Dot. O teste de runtime carrega os corpos exatos das Functions
-em containers Node-RED isolados, força flapping e concorrência, verifica erro
-síncrono ao criar `ping` e faz restarts reais do container com o contexto
-`localfilesystem`. Ele não se conecta ao MQTT ou Home Assistant de produção.
+ramificação de voz da Echo Dot. O replay de runtime executa os corpos exatos
+das funções versionadas com stores `memoryOnly` e `persistent` isolados. Ele
+força flapping, duplicidade, limites exatos e recria o contexto volátil para
+provar recovery após restart sem abrir containers nem se conectar ao MQTT ou
+Home Assistant de produção.
 
 Para validar MQTT ponta a ponta sem desligar a rede real, publique `offline` e
 depois `online`, ambos retained, em um tópico fictício como

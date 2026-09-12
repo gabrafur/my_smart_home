@@ -32,6 +32,14 @@ O tab combina o relatório do host com o estado retained produzido pelo tab
 - VPN saudável por um minuto após incidente: envia recuperação;
 - incidente aberto é deduplicado e só repete após 24 horas.
 
+Esses tempos são definidos uma única vez no grupo visual de política: falha
+120 s (limite 1–600), recovery 60 s (1–300), relatório stale 180 s (30–900) e
+lembrete 86.400 s (300–172.800). Um valor inválido é rejeitado sem substituir
+a última política válida. Supressão pela internet, saúde do relatório,
+confirmação, incidente aberto, lembrete e recovery são `switch` nomeados; o
+JavaScript remanescente apenas valida o schema, aplica a mutação atômica de
+estado ou adapta os três tópicos MQTT.
+
 Queda e recuperação usam o subflow compartilhado de infraestrutura: notificação
 persistente no Home Assistant, push aos papéis móveis configurados e anúncio de
 voz. O estado também é publicado via MQTT Discovery como

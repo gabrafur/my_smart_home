@@ -1,0 +1,10 @@
+const candidate = msg.payload && typeof msg.payload === "object" ? msg.payload : {};
+const inflight = Number(candidate.inflight_timeout_s);
+const future = Number(candidate.future_tolerance_s);
+const errors = [];
+if (!Number.isInteger(inflight) || inflight < 1 || inflight > 60) errors.push("inflight_timeout_s");
+if (!Number.isInteger(future) || future < 0 || future > 300) errors.push("future_tolerance_s");
+msg.policy_valid = errors.length === 0;
+msg.policy_error = errors.join(",");
+msg.policy_candidate = msg.policy_valid ? { version: 1, inflight_timeout_s: inflight, future_tolerance_s: future } : null;
+return msg;

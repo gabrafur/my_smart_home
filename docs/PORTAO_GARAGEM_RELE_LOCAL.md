@@ -39,9 +39,10 @@ Implementado na aba `garagem` do Node-RED. A fonte geradora canônica é
 ```
 botao_portao_garagem (JSON) ─┐
 botao_portao_garagem/action ──┤
-botão do dashboard (evento) ─┴─▶ validar pedido (dedupe 900ms + cooldown 1s)
-        └─▶ botoeira: liga o rele  ──▶ mqtt out (rele set)
-                    └─(delay 0.7s)─▶ botoeira: solta o contato (OFF) ──▶ mqtt out
+botão do dashboard (evento) ─┴─▶ adaptar envelope ─▶ ação `single`?
+        └─▶ carregar política visual ─▶ avaliar dedupe/cooldown/estado
+        └─▶ decisão `pulse` ─▶ gate produção/TESTE
+        └─▶ ON ─▶ delay por `msg.delay` ─▶ OFF ─▶ MQTT
 ```
 
 **Importante — o pulso é por SOFTWARE, não pelo dispositivo.** O relé
@@ -56,11 +57,12 @@ Solução adotada (rápida e confiável):
 - **Liga**: publica `{"state":"ON"}` (comando simples — resposta imediata).
 - **Pulso**: nó `delay` de **700 ms**.
 - **Desliga**: publica `{"state":"OFF"}` — fecha o pulso de ~0,7 s.
-- **Debounce**: reaproveita a função `normalizar clique e evitar duplicado`
-  (janela de 900 ms). Ajustável na constante `dedupeMs` da função.
+- **Debounce**: padrão de 900 ms, editável no grupo visual de política.
 - **Cooldown**: 1 s desde o início do último pulso aceito, compartilhado pelas
-  entradas física e do dashboard.
-- **Largura do pulso**: 700 ms, ajustável no nó `pulso: manter fechado ~0.7s`.
+  entradas física e do dashboard e editável no mesmo grupo.
+- **Largura do pulso**: 700 ms, fornecida pela política visual ao nó `delay`.
+- **Coalescência MQTT**: 500 ms para não alongar o cooldown com o retorno do
+  próprio pulso.
 
 > Não usar `on_time`/`onWithTimedOff` neste relé — só comandos `state` ON/OFF.
 

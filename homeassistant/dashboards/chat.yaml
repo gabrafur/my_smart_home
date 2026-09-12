@@ -236,9 +236,6 @@ views:
                 name: Situação atual
               - entity: input_boolean.codex_alertas_iphone
               - entity: input_boolean.codex_resumo_diario_iphone
-              - entity: input_number.codex_alerta_aviso_percentual
-              - entity: input_number.codex_alerta_critico_percentual
-              - entity: input_number.codex_alerta_saldo_creditos
               - entity: input_text.codex_ultimo_alerta_iphone
               - entity: input_datetime.codex_ultimo_alerta_iphone_em
           - type: markdown

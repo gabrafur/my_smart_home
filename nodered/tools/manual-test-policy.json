@@ -4,16 +4,18 @@
         "git_backup_tab": {
             "strategy": "manual_full_dry_run",
             "evidence_node_ids": [
-                "git_backup_group",
+                "git_backup_test_group",
                 "git_backup_test_instructions",
                 "git_backup_test_reset",
+                "git_backup_test_request",
                 "git_backup_test_success",
                 "git_backup_test_failure",
-                "git_backup_test_deferred"
+                "git_backup_test_deferred",
+                "git_backup_test_invalid"
             ],
             "automated_test": "test-git-backup-flow.mjs",
             "dry_run_terminal_ids": ["git_backup_dry_run_terminal"],
-            "reason": "Sucesso e falha sintéticos atravessam o parser real; push, SSH e notificação são bloqueados no terminal dry-run."
+            "reason": "Pedido, sucesso, falha, adiamento e resposta inválida atravessam gates e decisões canônicos; worker, push, SSH, updates e notificações são bloqueados no terminal dry-run."
         },
         "daily_host_updates_tab": {
             "strategy": "manual_full_dry_run",
@@ -45,10 +47,19 @@
             "reason": "Agendamento, acionamento manual e falha sintéticos usam a normalização real; Codex, Git, commit, push e o trigger externo permanecem bloqueados no terminal dry-run."
         },
         "29d64664bf8cbde8": {
-            "strategy": "automated_only",
-            "evidence_node_ids": [],
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "gar_group_tests",
+                "gar_test_reset",
+                "gar_test_accept",
+                "gar_test_duplicate",
+                "gar_test_cooldown",
+                "gar_test_boundary",
+                "gar_test_relay_on"
+            ],
+            "dry_run_terminal_ids": ["gar_test_dry_run_terminal"],
             "automated_test": "test-garage-gate-flow.mjs",
-            "reason": "Um inject manual acionaria fisicamente o portão; dedupe, cooldown e pulso são validados por replay offline."
+            "reason": "Pedido aceito, duplicidade, cooldown, limite exato e relé já ligado atravessam adaptação, política, decisão e gates reais; MQTT, Logbook e notificação terminam no terminal dry-run."
         },
         "shared_integrations_tab": {
             "strategy": "not_applicable",
@@ -62,10 +73,17 @@
             "reason": "Os caminhos comandam iluminação externa real; cenários de alarme, pôr do sol e recovery usam replay offline."
         },
         "alarm_house_tab": {
-            "strategy": "automated_only",
-            "evidence_node_ids": [],
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "alarm_group_tests",
+                "alarm_test_reset",
+                "alarm_test_arm",
+                "alarm_test_failure_arm",
+                "alarm_test_disarm"
+            ],
+            "dry_run_terminal_ids": ["alarm_test_dry_run_terminal"],
             "automated_test": "test-alarm-house-flow.mjs",
-            "reason": "Armar, desarmar e disparar a sirene são efeitos de segurança; a lógica é validada offline."
+            "reason": "Armar, desarmar, falha e retry sintéticos atravessam a decisão canônica e os gates finais; public_bindings.call, update_entity e notificações terminam obrigatoriamente no dry-run."
         },
         "456b32bd5d59b0d6": {
             "strategy": "automated_only",
@@ -102,10 +120,20 @@
             "reason": "Baseline, valor consecutivo próximo, outlier e liberação do repack percorrem as decisões reais; test_mode bloqueia recorder.purge_entities e recorder.purge e termina no terminal dry-run."
         },
         "monitoramento_internet_tab": {
-            "strategy": "automated_only",
-            "evidence_node_ids": ["grp_internet_tests"],
-            "automated_test": "test-infrastructure-monitoring-flows.mjs",
-            "reason": "Falha e recuperação são injetadas no harness automatizado sem derrubar a conectividade da casa."
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "grp_internet_tests",
+                "internet_test_note",
+                "internet_test_reset",
+                "internet_test_fail_1",
+                "internet_test_fail_2",
+                "internet_test_fail_3",
+                "internet_test_success_1",
+                "internet_test_success_2"
+            ],
+            "dry_run_terminal_ids": ["internet_dry_run_terminal"],
+            "automated_test": "test-internet-monitor-flow.mjs",
+            "reason": "Três falhas e dois sucessos percorrem quorum, estado persistente, limiares e gates reais; MQTT e o subflow de notificações terminam em dry-run."
         },
         "monitoramento_vpn_tab": {
             "strategy": "manual_full_dry_run",
@@ -124,10 +152,21 @@
             "reason": "Queda, supressão durante indisponibilidade da internet e recuperação percorrem a lógica real até o terminal dry-run, sem publicar MQTT nem enviar notificações."
         },
         "monitoramento_zigbee_tab": {
-            "strategy": "automated_only",
-            "evidence_node_ids": ["grp_zigbee_tests"],
-            "automated_test": "test-infrastructure-monitoring-flows.mjs",
-            "reason": "Falha e recuperação são simuladas sem desligar a rede Zigbee residencial."
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "grp_zigbee_tests",
+                "zigbee_test_reset",
+                "zigbee_test_net_offline",
+                "zigbee_test_net_30",
+                "zigbee_test_net_60",
+                "zigbee_test_component_down",
+                "zigbee_test_component_duplicate",
+                "zigbee_test_component_reminder",
+                "zigbee_test_component_up"
+            ],
+            "dry_run_terminal_ids": ["zigbee_dry_run_terminal"],
+            "automated_test": "test-zigbee-monitor-flow.mjs",
+            "reason": "Rede e componentes percorrem parsing, política, estado, dedupe, recovery e as fronteiras reais; MQTT e notificações são obrigatoriamente desviados ao dry-run."
         },
         "ea0a6aa0d24ff863": {
             "strategy": "manual_full_dry_run",
@@ -167,10 +206,19 @@
             "reason": "Motor e localização sintéticos percorrem o fluxo de iluminação; sucesso e falha final de comando remoto percorrem classificação, dedupe e guard. Todos os efeitos terminam em dry-run, sem acionar veículo nem notificações."
         },
         "62bb822e033d1623": {
-            "strategy": "not_applicable",
-            "evidence_node_ids": [],
-            "automated_test": "test-security-light-flow.mjs",
-            "reason": "O tab apenas coordena contratos; seus testes entram pelos domínios produtores."
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "arrival_context_test_group",
+                "arrival_context_test_reset_control",
+                "arrival_context_test_cycle_control"
+            ],
+            "dry_run_terminal_ids": [
+                "vehicle_primary_refresh_dry_run_terminal_v1",
+                "light_full_dry_run_terminal_v1",
+                "resident_notifications_dry_run_terminal"
+            ],
+            "automated_test": "test-arrival-context-flow.mjs",
+            "reason": "Reset e ciclo sintéticos atravessam os produtores, a validação monotônica, o join, a deduplicação e os consumidores; as fronteiras finais registram simulated:true e dispatched:false."
         },
         "6b7552efb85343f4": {
             "strategy": "manual_full_dry_run",
@@ -199,34 +247,52 @@
             "reason": "A trilha manual percorre pendência e confirmação, simula notificações e desarme e termina sem alcançar dispositivos."
         },
         "codex_alertas_tab": {
-            "strategy": "manual_explicit_side_effect",
-            "legacy": true,
-            "evidence_node_ids": ["codex_alertas_group", "codex_alert_manual_test"],
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "codex_group_tests",
+                "codex_test_reset",
+                "codex_test_warning",
+                "codex_test_duplicate",
+                "codex_test_unavailable",
+                "codex_test_daily"
+            ],
+            "dry_run_terminal_ids": ["codex_test_dry_run_terminal"],
             "automated_test": "test-notification-reliability.mjs",
-            "reason": "O efeito explícito e limitado é apenas uma notificação de teste no dispositivo configurado."
+            "reason": "Atenção, duplicidade, indisponibilidade e resumo percorrem snapshot, política, nível, cooldown e gates reais; todos os serviços terminam no dry-run compartilhado."
         },
         "monitoramento_tuya_tab": {
-            "strategy": "automated_only",
-            "evidence_node_ids": ["grp_tuya_tests"],
-            "automated_test": "test-infrastructure-monitoring-flows.mjs",
-            "reason": "A indisponibilidade é simulada sem desconectar dispositivos residenciais."
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "grp_tuya_tests",
+                "tuya_test_reset",
+                "tuya_test_offline_29",
+                "tuya_test_offline_30",
+                "tuya_test_offline_duplicate",
+                "tuya_test_recovery_60",
+                "tuya_test_reminder",
+                "tuya_test_query_failure"
+            ],
+            "dry_run_terminal_ids": ["tuya_dry_run_terminal"],
+            "automated_test": "test-tuya-monitor-flow.mjs",
+            "reason": "Tuya e LocalTuya percorrem snapshot, agrupamento, split/join, limites, dedupe, recovery, resumo e gates; alertas e MQTT terminam em dry-run."
         },
         "resident_notifications_tab": {
-            "strategy": "manual_explicit_side_effect",
-            "explicit_exception": "notification_delivery_under_test",
+            "strategy": "manual_full_dry_run",
             "evidence_node_ids": [
                 "resident_notifications_test_group",
+                "resident_notifications_test_instructions",
+                "resident_notifications_test_reset",
                 "resident_notifications_test_primary",
                 "resident_notifications_test_secondary",
-                "resident_notifications_delivery_ack",
+                "resident_notifications_test_departure",
+                "resident_notifications_test_unavailable",
+                "resident_notifications_test_stale",
+                "resident_notifications_test_future",
                 "resident_notifications_dry_run_terminal"
             ],
-            "delivery_node_ids": [
-                "resident_notifications_notify_primary",
-                "resident_notifications_notify_secondary"
-            ],
+            "dry_run_terminal_ids": ["resident_notifications_dry_run_terminal"],
             "automated_test": "test-resident-approach-notifications.mjs",
-            "reason": "Por solicitação explícita, o push móvel identificado como TESTE é o próprio efeito sob teste; refletor, alarme e demais dispositivos permanecem bloqueados."
+            "reason": "Positivos, saída, unavailable, evento antigo/futuro, lifecycle e dedupe percorrem a política e os gates reais; qualquer test_mode termina antes das duas fronteiras de push."
         },
         "global_flow_observer_tab": {
             "strategy": "manual_explicit_side_effect",
@@ -273,11 +339,12 @@
                 "host_memory_guardian_test_healthy",
                 "host_memory_guardian_test_candidate",
                 "host_memory_guardian_test_terminated",
+                "host_memory_guardian_test_duplicate",
                 "host_memory_guardian_test_failed"
             ],
             "dry_run_terminal_ids": ["host_memory_guardian_dry_run_terminal"],
             "automated_test": "test-host-memory-guardian-flow.mjs",
-            "reason": "Pedido, memória saudável, pressão, candidato ocioso, encerramento e falha atravessam preparação, guard, normalização e dedupe; o terminal dry-run bloqueia a ponte e todos os sinais."
+            "reason": "Pedido, memória saudável, pressão, candidato ocioso, encerramento, duplicidade e falha atravessam adaptação, validação, estado, decisões visuais e gate; o terminal dry-run bloqueia a ponte e todos os sinais."
         }
     }
 }

@@ -5,240 +5,190 @@ import fs from "node:fs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
-const prepare = byId.get("resident_notifications_prepare");
-assert(prepare, "função de avisos de aproximação ausente");
+const TAB = "resident_notifications_tab";
 
-function memoryFlow(initial = {}) {
-  const values = new Map(Object.entries(initial));
+function getFunction(id) {
+  const flowNode = byId.get(id);
+  assert.equal(flowNode?.type, "function", `function ausente: ${id}`);
+  return new Function("msg", "flow", "node", "global", flowNode.func);
+}
+
+function context(initial = {}) {
+  const stores = {
+    default: new Map(Object.entries(initial.default ?? {})),
+    persistent: new Map(Object.entries(initial.persistent ?? {})),
+  };
   return {
-    get: (key) => values.get(key),
-    set: (key, value) => values.set(key, value),
-    values,
+    stores,
+    get(key, store = "default") { return stores[store].get(key); },
+    set(key, value, store = "default") { stores[store].set(key, structuredClone(value)); },
   };
 }
 
-function runNode(id, msg, flow = memoryFlow(), global = memoryFlow()) {
-  const execute = new Function(
-    "msg", "node", "context", "flow", "global", "env", "setTimeout", "clearTimeout",
-    byId.get(id).func,
-  );
-  return execute(msg, { warn() {}, error() {}, status() {} }, {}, flow, global, {}, setTimeout, clearTimeout);
+function nodeMock() {
+  return {
+    errors: [], warnings: [], statuses: [],
+    error(value) { this.errors.push(String(value)); },
+    warn(value) { this.warnings.push(String(value)); },
+    status(value) { this.statuses.push(value); },
+  };
 }
 
-function run(msg, flow = memoryFlow(), global = memoryFlow()) {
-  return runNode(prepare.id, msg, flow, global);
-}
+const tab = byId.get(TAB);
+assert.equal(tab?.label, "notificacoes_chegadas_residentes");
+const tabNodes = flows.filter((node) => node.z === TAB);
+assert.ok(tabNodes.length >= 70);
+assert.equal(tabNodes.filter((node) => node.type === "server-state-changed").length, 0);
+assert.match(tab.info, /Testes manuais nunca enviam push/);
 
-function privateBindingsGlobal(extra = {}) {
-  return memoryFlow({
+for (const id of [
+  "resident_notifications_policy_switch",
+  "resident_notifications_policy_available",
+  "resident_notifications_source_switch",
+  "resident_notifications_states_switch",
+  "resident_notifications_future_switch",
+  "resident_notifications_stale_switch",
+  "resident_notifications_current_switch",
+  "resident_notifications_approach_switch",
+  "resident_notifications_previous_switch",
+  "resident_notifications_notified_switch",
+  "resident_notifications_duplicate_switch",
+  "resident_notifications_state_action_switch",
+  "resident_notifications_test_gate",
+  "resident_notifications_recipient_switch",
+]) assert.equal(byId.get(id)?.type, "switch", `decisão visual ausente: ${id}`);
+
+const peopleOut = byId.get("people_location_notification_out_v1");
+const canonicalIn = byId.get("resident_notifications_canonical_in_v1");
+assert.ok(peopleOut.links.includes(canonicalIn.id));
+assert.ok(canonicalIn.links.includes(peopleOut.id));
+
+const validatePolicy = getFunction("resident_notifications_policy_validate");
+const storePolicy = getFunction("resident_notifications_policy_store");
+const loadPolicy = getFunction("resident_notifications_policy_load");
+const normalize = getFunction("resident_notifications_prepare");
+const readState = getFunction("resident_notifications_state_read");
+const writeState = getFunction("resident_notifications_state_write");
+const buildMessage = getFunction("resident_notifications_message_build");
+const dryRun = getFunction("resident_notifications_dry_run_terminal");
+const flow = context();
+const mock = nodeMock();
+const privateBindings = context({
+  default: {
     publicBindings: {
       roles: {
         resident_primary: { source_alias: "example_primary" },
         resident_secondary: { source_alias: "example_secondary" },
       },
     },
-    ...extra,
-  });
-}
-
-const NOW = Date.parse("2026-08-29T03:00:00.000Z");
+  },
+});
+const NOW = Date.parse("2026-09-12T01:00:00.000Z");
 const originalNow = Date.now;
 Date.now = () => NOW;
 
-function event(source, previous = "not_home", current = "near_home", offset = 0) {
+const defaults = {
+  approach_zone: "near_home",
+  dedupe_ttl_ms: 600000,
+  max_event_age_ms: 900000,
+  future_tolerance_ms: 60000,
+};
+let message = validatePolicy({ payload: defaults }, flow, mock, {});
+assert.equal(message.policy_valid, true);
+assert.equal(storePolicy(message, flow, mock, {}), null);
+message = loadPolicy({}, flow, mock, {});
+assert.equal(message.policy_available, true);
+assert.deepEqual(message.policy, { version: 1, ...defaults });
+
+for (const payload of [
+  { ...defaults, dedupe_ttl_ms: 59999 },
+  { ...defaults, dedupe_ttl_ms: 3600001 },
+  { ...defaults, max_event_age_ms: 59999 },
+  { ...defaults, future_tolerance_ms: -1 },
+  { ...defaults, future_tolerance_ms: 300001 },
+  { ...defaults, max_event_age_ms: 60000, future_tolerance_ms: 60000 },
+  { ...defaults, approach_zone: "" },
+]) assert.equal(validatePolicy({ payload }, flow, mock, {}).policy_valid, false);
+assert.equal(validatePolicy({ payload: { ...defaults, dedupe_ttl_ms: 60000, max_event_age_ms: 60000, future_tolerance_ms: 0 } }, flow, mock, {}).policy_valid, true);
+assert.equal(validatePolicy({ payload: { ...defaults, dedupe_ttl_ms: 3600000, max_event_age_ms: 3600000, future_tolerance_ms: 300000 } }, flow, mock, {}).policy_valid, true);
+assert.deepEqual(loadPolicy({}, flow, mock, {}).policy, { version: 1, ...defaults }, "inválidos não substituem a última política");
+
+function approach(source, previous = "not_home", current = "near_home", offset = 0, testMode = false) {
   return {
+    _location_test: testMode,
+    resident_recipient: source === "resident_primary" ? "resident_secondary" : "resident_primary",
+    policy: { version: 1, ...defaults },
     payload: {
-      event: "location_update",
       source,
-      trigger_entity: `device_tracker.${source}_location`,
       trigger_state: current,
       trigger_prev_state: previous,
       observed_at: new Date(NOW + offset).toISOString(),
+      test_mode: testMode,
     },
   };
 }
 
-const passed = [];
-function scenario(name, callback) {
-  callback();
-  passed.push(name);
+message = normalize(approach("resident_secondary"), flow, mock, {});
+assert.equal(message.resident_states_available, true);
+assert.equal(message.event_at, NOW);
+message = readState(message, flow, mock, {});
+assert.equal(message.notification_previously_sent, false);
+assert.equal(message.notification_duplicate, false);
+message.notification_state_action = "notified";
+message = writeState(message, flow, mock, {});
+message = buildMessage(message, flow, mock, privateBindings);
+assert.equal(message.payload.recipient, "resident_primary");
+assert.equal(message.payload.message, "Example Secondary está perto de casa.");
+assert.equal(message.payload.dispatched, false);
+
+const persisted = structuredClone(flow.get("resident_approach_notification_recovery_v1", "persistent"));
+const restarted = context({ persistent: { resident_approach_notification_recovery_v1: persisted } });
+let repeated = readState(normalize(approach("resident_secondary"), restarted, mock, {}), restarted, mock, {});
+assert.equal(repeated.notification_previously_sent, true);
+assert.equal(repeated.notification_duplicate, true);
+
+let rearm = readState(normalize(approach("resident_secondary", "near_home", "not_home", 1000), restarted, mock, {}), restarted, mock, {});
+rearm.notification_state_action = "rearm";
+writeState(rearm, restarted, mock, {});
+let nextCycle = readState(normalize(approach("resident_secondary", "not_home", "near_home", 2000), restarted, mock, {}), restarted, mock, {});
+assert.equal(nextCycle.notification_previously_sent, false);
+assert.equal(nextCycle.notification_duplicate, false);
+
+assert.equal(normalize(approach("resident_primary", "unavailable"), flow, mock, {}).resident_states_available, false);
+assert.ok(NOW - normalize(approach("resident_primary", "not_home", "near_home", -900001), flow, mock, {}).event_at > defaults.max_event_age_ms);
+assert.ok(normalize(approach("resident_primary", "not_home", "near_home", 60001), flow, mock, {}).event_at > NOW + defaults.future_tolerance_ms);
+assert.equal(NOW - normalize(approach("resident_primary", "not_home", "near_home", -900000), flow, mock, {}).event_at, defaults.max_event_age_ms);
+assert.equal(normalize(approach("resident_primary", "not_home", "near_home", 60000), flow, mock, {}).event_at, NOW + defaults.future_tolerance_ms);
+
+let synthetic = normalize(approach("resident_primary", "not_home", "near_home", 5000, true), flow, mock, {});
+synthetic = readState(synthetic, flow, mock, {});
+synthetic.notification_state_action = "notified";
+synthetic = writeState(synthetic, flow, mock, {});
+synthetic = buildMessage(synthetic, flow, mock, privateBindings);
+assert.equal(synthetic.payload.message, "[TESTE] Example Primary está perto de casa.");
+assert.equal(synthetic.payload.simulated, true);
+assert.equal(dryRun(synthetic, flow, mock, {}), null);
+assert.equal(flow.get("resident_notifications_last_dry_run_v1__test").dispatched, false);
+
+for (const id of ["resident_notifications_notify_primary", "resident_notifications_notify_secondary"]) {
+  const service = byId.get(id);
+  assert.equal(service.type, "api-call-service");
+  assert.match(service.data, /"title":"Casa inteligente"/);
+  assert.doesNotMatch(service.data, /payload.test_mode|notification_delivery_under_test/);
 }
+for (const id of [
+  "resident_notifications_test_primary",
+  "resident_notifications_test_secondary",
+  "resident_notifications_test_departure",
+  "resident_notifications_test_unavailable",
+  "resident_notifications_test_stale",
+  "resident_notifications_test_future",
+]) assert.deepEqual(byId.get(id).wires, [["resident_notifications_test_adapter"]]);
+assert.deepEqual(byId.get("resident_notifications_test_gate").wires[0], ["resident_notifications_dry_run_out"]);
+assert.equal((byId.get("resident_notifications_dry_run_terminal").wires ?? []).flat().length, 0);
 
-scenario("01 fluxo recebe somente a decisão canônica de localização", () => {
-  const tab = byId.get("resident_notifications_tab");
-  const canonicalIn = byId.get("resident_notifications_canonical_in_v1");
-  const canonicalOut = byId.get("people_location_notification_out_v1");
-  assert.equal(tab.label, "notificacoes_chegadas_residentes");
-  assert.doesNotMatch(prepare.func, /vehicle_primary|sun\.|below_horizon|hour|contexto_chegadas/);
-  assert.doesNotMatch(prepare.func, /mobile_primary_source|mobile_secondary_source/);
-  assert(canonicalIn.links.includes(canonicalOut.id));
-  assert(canonicalOut.links.includes(canonicalIn.id));
-  assert.equal(
-    flows.filter((node) => node.z === tab.id && node.type === "server-state-changed").length,
-    0,
-  );
-  assert.deepEqual(prepare.wires, [
-    ["resident_notifications_notify_primary"],
-    ["resident_notifications_notify_secondary"],
-    ["resident_notifications_notify_primary"],
-    ["resident_notifications_notify_secondary"],
-    ["resident_notifications_dry_run_out"],
-  ]);
-});
-
-scenario("02 resident_secondary avisa resident_primary também de madrugada", () => {
-  const output = run(
-    event("resident_secondary"),
-    memoryFlow(),
-    privateBindingsGlobal(),
-  );
-  assert(output[0]);
-  assert.equal(output[1], null);
-  assert.equal(output[0].payload.recipient, "resident_primary");
-  assert.equal(output[0].payload.message, "Example Secondary está perto de casa.");
-});
-
-scenario("03 resident_primary avisa resident_secondary", () => {
-  const output = run(
-    event("resident_primary"),
-    memoryFlow(),
-    privateBindingsGlobal(),
-  );
-  assert.equal(output[0], null);
-  assert(output[1]);
-  assert.equal(output[1].payload.recipient, "resident_secondary");
-  assert.equal(output[1].payload.message, "Example Primary está perto de casa.");
-});
-
-scenario("04 saída de casa não é confundida com chegada", () => {
-  assert.equal(run(event("resident_primary", "home", "near_home")), null);
-});
-
-scenario("05 um novo ciclo fora de casa rearma o aviso", () => {
-  const flow = memoryFlow();
-  assert(run(event("resident_secondary"), flow)?.[0]);
-  assert.equal(run(event("resident_secondary", "near_home", "not_home", 1_000), flow), null);
-  assert(run(event("resident_secondary", "not_home", "near_home", 2_000), flow)?.[0]);
-});
-
-scenario("06 dedupe sobrevive a restart do Node-RED", () => {
-  const firstFlow = memoryFlow();
-  const input = event("resident_primary");
-  assert(run(structuredClone(input), firstFlow)?.[1]);
-  const persisted = structuredClone(firstFlow.get("resident_approach_notification_recovery_v1"));
-  const restartedFlow = memoryFlow({ resident_approach_notification_recovery_v1: persisted });
-  assert.equal(run(structuredClone(input), restartedFlow), null);
-});
-
-scenario("07 evento antigo não produz notificação tardia", () => {
-  assert.equal(run(event("resident_secondary", "not_home", "near_home", -16 * 60_000)), null);
-});
-
-scenario("08 bindings públicos apontam para o destinatário correto", () => {
-  const primary = byId.get("resident_notifications_notify_primary");
-  const secondary = byId.get("resident_notifications_notify_secondary");
-  assert.match(primary.data, /"role":"mobile_primary"/);
-  assert.match(primary.data, /"action":"notify_actionable"/);
-  assert.match(primary.data, /TESTE/);
-  assert.match(secondary.data, /"role":"mobile_secondary"/);
-  assert.match(secondary.data, /"action":"notify_actionable"/);
-  assert.match(secondary.data, /TESTE/);
-  assert.deepEqual(primary.wires, [["resident_notifications_delivery_ack"]]);
-  assert.deepEqual(secondary.wires, [["resident_notifications_delivery_ack"]]);
-});
-
-scenario("09 teste de localização percorre validação e termina em dry-run", () => {
-  const cycleOut = byId.get("bc2afbce89f5a9d5");
-  const cycleIn = byId.get("resident_notifications_test_cycle_in");
-  const adapter = byId.get("resident_notifications_test_adapter");
-  const deliveryAck = byId.get("resident_notifications_delivery_ack");
-  const dryRunTerminal = byId.get("resident_notifications_dry_run_terminal");
-  assert(cycleOut.links.includes(cycleIn.id));
-  assert(cycleIn.links.includes(cycleOut.id));
-  assert.equal(deliveryAck.outputs, 0);
-  assert.equal((deliveryAck.wires ?? []).flat().length, 0);
-
-  const global = privateBindingsGlobal({
-    security_location_test_state_v1: {
-      version: 1,
-      resident_primary: "not_home",
-      resident_secondary: "near_home",
-      observed_at: NOW,
-      transitions: {
-        people: {
-          domain: "people",
-          source: "resident_secondary",
-          state: "near_home",
-          prev: "not_home",
-          test_case: "resident_secondary_approach",
-          at: NOW,
-        },
-      },
-    },
-  });
-  const flow = memoryFlow();
-  const adapted = runNode(adapter.id, {
-    _location_test: true,
-    _location_test_case: "resident_secondary_approach",
-    payload: { kind: "refresh_tick", test_mode: true },
-  }, flow, global);
-  assert.equal(adapted.payload.trigger_prev_state, "not_home");
-  assert.equal(adapted.payload.trigger_state, "near_home");
-  assert.equal(adapted.payload.notification_delivery_under_test, false);
-
-  const output = runNode(prepare.id, adapted, flow, global);
-  assert.equal(output[0], null);
-  assert.equal(output[1], null);
-  assert.equal(output[2], null);
-  assert.equal(output[3], null);
-  assert.equal(output[4].payload.recipient, "resident_primary");
-  assert.equal(
-    output[4].payload.message,
-    "[TESTE] Example Secondary está perto de casa.",
-  );
-  assert.equal(output[4].payload.simulated, true);
-  assert.equal(output[4].payload.dispatched, false);
-
-  assert.equal(runNode(dryRunTerminal.id, output[4], flow, global), null);
-  const result = flow.get("resident_notifications_last_dry_run_v1__test");
-  assert.equal(result.recipient, "resident_primary");
-  assert.equal(result.simulated, true);
-  assert.equal(result.dispatched, false);
-});
-
-scenario("10 somente botões dedicados marcam entrega de push sob teste", () => {
-  for (const id of [
-    "resident_notifications_test_primary",
-    "resident_notifications_test_secondary",
-  ]) {
-    assert.deepEqual(byId.get(id).wires, [["resident_notifications_test_adapter"]]);
-  }
-  const flow = memoryFlow();
-  const global = privateBindingsGlobal();
-  const adapted = runNode("resident_notifications_test_adapter", {
-    test_source: "resident_secondary",
-    _location_test: true,
-    payload: { test_mode: true },
-  }, flow, global);
-  assert.equal(adapted.payload.notification_delivery_under_test, true);
-  const output = runNode(prepare.id, adapted, flow, global);
-  assert(output[2]);
-  assert.equal(output[2].payload.simulated, false);
-  assert.equal(output[2].payload.notification_delivery_under_test, true);
-});
-
-scenario("11 alias privado inválido falha fechado para o papel lógico", () => {
-  const global = memoryFlow({
-    publicBindings: {
-      roles: {
-        resident_secondary: { source_alias: "<script>" },
-      },
-    },
-  });
-  const output = run(event("resident_secondary"), memoryFlow(), global);
-  assert.equal(output[0].payload.message, "resident_secondary está perto de casa.");
-});
+const maxFunctionSize = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));
+assert.ok(maxFunctionSize < 1500, `JavaScript residual grande: ${maxFunctionSize}`);
 
 Date.now = originalNow;
-console.log(`resident approach notifications: ${passed.length} cenários OK`);
-for (const name of passed) console.log(name);
+console.log("Resident notification visual flow tests passed.");

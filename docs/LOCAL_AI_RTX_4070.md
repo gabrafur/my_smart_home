@@ -578,6 +578,13 @@ O canvas mostra saúde, despacho, resultado e motivo sanitizado, incluindo
 comando ausente, SSH indisponível, falha de WSL/Ollama, portproxy, timeout ou
 listener ausente. Requisições concorrentes compartilham a mesma recuperação.
 
+O cooldown entre pedidos explícitos é uma política visual validada no canvas:
+o padrão é **60 segundos**, com limite inteiro de **10 a 600 segundos**. Um
+valor inválido é rejeitado sem substituir a última política persistente. A
+disponibilidade, o pedido explícito, `test_mode`, o término do cooldown e a
+rota status/alerta/recovery são switches nomeados; JavaScript permanece apenas
+para normalizar o envelope HTTP, ler/persistir estado e montar o incidente.
+
 Os controles `TESTE` do tab atravessam a mesma normalização e decisão, mas o
 gate final os envia exclusivamente ao terminal dry-run (`simulated: true`,
 `dispatched: false`). O fluxo não contém SSH, PowerShell, Wake-on-LAN nem

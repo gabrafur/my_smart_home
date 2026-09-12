@@ -6,6 +6,13 @@ sem conceder ao container acesso a `/proc`, ao namespace de PIDs, a `sudo` ou
 um worker no host, executado como o usuário comum, revalida todas as condições
 antes de enviar qualquer sinal.
 
+No canvas, os intervalos ativos de solicitação (60 s), leitura (30 s), atrasos
+iniciais (75 s/90 s) e timeout das pontes (15 s) aparecem no grupo de
+parâmetros e fontes. Presença de resultado, validade do contrato, duplicidade,
+status do worker e produção/teste são decisões `switch` nomeadas. A assinatura
+do último resultado continua persistente para sobreviver ao restart do
+Node-RED, enquanto o replay usa uma chave isolada e volátil.
+
 ## Escopo fechado
 
 O guardião não é um limpador genérico de processos. A única raiz permitida é
@@ -69,7 +76,8 @@ No grupo `TESTE — pedidos e resultados completos em dry-run`, execute na ordem
 3. `TESTE 3: memória saudável`;
 4. `TESTE 4: candidato observado`;
 5. `TESTE 5: encerramento aprovado`;
-6. `TESTE 6: falha do worker`.
+6. `TESTE 6: repetir encerramento`, que comprova a deduplicação;
+7. `TESTE 7: falha do worker`.
 
 Todos os caminhos terminam em `TESTE FINAL: sinais bloqueados`, com
 `simulated: true` e `dispatched: false`. Eles não criam marcador no host e não
@@ -81,3 +89,9 @@ fixtures em `scripts/host-memory-guardian.test.mjs` e
 O tab participa do observador global. Falha do worker ou da ponte produz erro
 centralizado; uma limpeza bem-sucedida registra
 `HOST_MEMORY_GUARDIAN_TERMINATED` no log do Node-RED.
+
+O JavaScript remanescente no tab é deliberadamente pequeno: adapta as duas
+respostas textuais, mantém somente a assinatura persistente, monta o registro
+de auditoria e registra erros/status. A decisão de encerrar processos permanece
+no worker do host porque depende de `/proc`, UID, tempo de início e revalidação
+atômica; movê-la ao container ampliaria privilégios e reduziria a segurança.

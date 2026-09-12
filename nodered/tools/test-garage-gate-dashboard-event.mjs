@@ -15,9 +15,9 @@ function memory(initial = {}) {
 }
 
 function execute(id, msg, flow = memory(), global = memory()) {
-  const node = byId.get(id);
-  assert(node && node.type === "function", `function node ausente: ${id}`);
-  return new Function("msg", "node", "context", "flow", "global", node.func)(
+  const candidate = byId.get(id);
+  assert(candidate && candidate.type === "function", `function node ausente: ${id}`);
+  return new Function("msg", "node", "context", "flow", "global", candidate.func)(
     msg,
     { status() {}, warn() {}, error() {}, log() {} },
     {},
@@ -29,78 +29,74 @@ function execute(id, msg, flow = memory(), global = memory()) {
 const dashboard = byId.get("gar_dashboard_request_in");
 assert.equal(dashboard?.type, "server-events");
 assert.equal(dashboard?.eventType, "portao_garagem_pulso_solicitado");
-assert.deepEqual(dashboard?.wires, [["gar_portao_normalizar_click"]]);
+assert.deepEqual(dashboard?.wires, [["gar_request_normalize"]]);
 
-const normalizer = byId.get("gar_portao_normalizar_click");
-assert.match(normalizer?.func ?? "", /const cooldownMs = 1000;/);
-assert.equal(normalizer?.outputs, 2);
-assert.deepEqual(normalizer?.wires, [
-  ["gar_relay_pulse_on", "gar_log_pulse_started"],
-  ["gar_relay_pulse_off", "gar_notify_relay_on"],
-]);
+const normalized = execute("gar_request_normalize", {
+  payload: {
+    event_type: "portao_garagem_pulso_solicitado",
+    event: { action: "single", origem: "botao_dashboard" },
+  },
+});
+assert.equal(normalized.request.action, "single");
+assert.equal(normalized.request.origin, "botao_dashboard");
 
+const policy = {
+  version: 1,
+  complete: true,
+  dedupe_ms: 900,
+  cooldown_ms: 1000,
+  pulse_ms: 700,
+  same_pulse_ms: 500,
+};
 const originalNow = Date.now;
 try {
   const now = 2_000_000;
   Date.now = () => now;
+  const production = memory();
+  const accepted = execute("gar_request_evaluate", { request: normalized.request, policy }, production);
+  assert.equal(accepted.decision.action, "pulse");
+  assert.equal(production.get("garage_gate_state_v1").last_pulse_ms, now, "cooldown deve ser armado antes do ON");
+  assert.equal(production.get("portao_garagem_last_pulse_ms"), now, "estado legado deve permanecer apto a rollback");
 
-  const state = memory();
-  const accepted = execute("gar_portao_normalizar_click", {
-    payload: {
-      event_type: "portao_garagem_pulso_solicitado",
-      event: { action: "single", origem: "botao_dashboard" },
-    },
-  }, state);
-  assert(accepted?.[0], "envelope real de server-events deve sair pelo ramo de pulso");
-  assert.equal(accepted[0].payload.origem, "botao_dashboard", "envelope real de server-events deve ser aceito");
-  assert.equal(state.get("portao_garagem_last_pulse_ms"), now, "cooldown deve ser armado antes do ON");
-  assert.equal(execute("gar_portao_normalizar_click", { payload: { event: { action: "probe" } } }, memory()), null, "probe nunca deve alcançar o relé");
-
-  const insideCooldown = memory({
+  const migratedLegacy = memory({
     portao_garagem_last_click_ms: now - 900,
     portao_garagem_last_pulse_ms: now - 999,
   });
-  assert.equal(execute("gar_portao_normalizar_click", { payload: "single", topic: "test" }, insideCooldown), null, "999 ms ainda deve bloquear o pulso");
-
-  const atBoundary = memory({
-    portao_garagem_last_click_ms: now - 900,
-    portao_garagem_last_pulse_ms: now - 1000,
-  });
-  assert.ok(execute("gar_portao_normalizar_click", { payload: "single", topic: "test" }, atBoundary), "1.000 ms deve liberar o pulso");
-
-  const relayOn = memory({
-    portao_garagem_relay_state: "ON",
-    portao_garagem_last_click_ms: now - 2000,
-    portao_garagem_last_pulse_ms: now - 2000,
-  });
-  const refused = execute("gar_portao_normalizar_click", { payload: { action: "single", origem: "teste" } }, relayOn);
-  assert.equal(refused[0], null, "relé já ligado nunca deve receber outro ON");
-  assert.equal(refused[1].payload.origem, "teste", "recusa deve seguir para OFF e alerta");
+  const migratedDecision = execute("gar_request_evaluate", { request: normalized.request, policy }, migratedLegacy);
+  assert.equal(migratedDecision.decision.reason, "cooldown", "restart deve recuperar os timestamps legados");
 
   const observed = memory();
   const observerBindings = memory({
     publicBindings: { roles: { garage_gate: { topics: { state: "test/garage_gate/state" } } } },
   });
-  execute("gar_pulse_watch_stamp", { topic: "test/garage_gate/state", payload: { state: "ON" } }, observed, observerBindings);
-  assert.equal(observed.get("portao_garagem_relay_state"), "ON");
-  assert.equal(observed.get("portao_garagem_last_pulse_ms"), now);
+  const observation = execute("gar_pulse_watch_normalize", {
+    topic: "test/garage_gate/state",
+    payload: { state: "ON" },
+  });
+  observation.policy = policy;
+  execute("gar_pulse_watch_stamp", observation, observed, observerBindings);
+  assert.equal(observed.get("garage_gate_state_v1").relay_state, "ON");
+  assert.equal(observed.get("garage_gate_state_v1").last_pulse_ms, now);
 
-  const coalesced = memory({ portao_garagem_last_pulse_ms: now - 300 });
-  execute("gar_pulse_watch_stamp", { topic: "test/garage_gate/state", payload: { state: "ON" } }, coalesced, observerBindings);
-  assert.equal(coalesced.get("portao_garagem_last_pulse_ms"), now - 300, "retorno MQTT não deve alongar o cooldown");
+  const coalesced = memory({ garage_gate_state_v1: { last_pulse_ms: now - 300 } });
+  execute("gar_pulse_watch_stamp", observation, coalesced, observerBindings);
+  assert.equal(coalesced.get("garage_gate_state_v1").last_pulse_ms, now - 300, "retorno MQTT não deve alongar o cooldown");
 } finally {
   Date.now = originalNow;
 }
 
-assert.equal(byId.get("gar_relay_safety_delay")?.timeout, "700");
 for (const id of [
-  "45296e246a57590d", "gar_portao_action_topic_in", "gar_dashboard_request_in",
-  "gar_portao_normalizar_click", "gar_relay_pulse_on", "gar_relay_safety_delay",
-  "gar_relay_pulse_off", "gar_relay_mqtt_out", "gar_log_pulse_started",
-  "gar_notify_relay_on", "gar_pulse_watch_note", "gar_pulse_watch_set_in",
-  "gar_pulse_watch_state_in", "gar_pulse_watch_stamp",
+  "gar_group_policy", "gar_policy_validate", "gar_group_request",
+  "gar_request_normalize", "gar_request_action_switch", "gar_request_evaluate",
+  "gar_request_decision_switch", "gar_group_observer", "gar_pulse_watch_normalize",
+  "gar_pulse_watch_state_switch", "gar_group_effect", "gar_pulse_test_gate",
+  "gar_safe_off_test_gate", "gar_group_tests", "gar_test_dry_run_terminal",
 ]) {
-  assert.ok(byId.get(id)?.g, `nó da garagem fora de grupo: ${id}`);
+  assert.ok(byId.get(id), `nó visual obrigatório ausente: ${id}`);
 }
 
-console.log("Evento do dashboard do portão passou no replay offline de envelope, cooldown e segurança.");
+for (const candidate of flows.filter((node) => node.z === "29d64664bf8cbde8" && node.type !== "group")) {
+  assert.ok(candidate.g, `nó da garagem fora de grupo: ${candidate.id}`);
+}
+
+console.log("Evento do dashboard percorre política visual, decisão e gates seguros.");

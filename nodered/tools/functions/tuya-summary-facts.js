@@ -1,0 +1,12 @@
+const devices = Array.isArray(msg.payload) ? msg.payload : [];
+const offline = devices.filter((item) => item.raw_state === "offline");
+const confirmed = devices.filter((item) => item.phase === "offline");
+const recovering = devices.filter((item) => item.phase === "recovering");
+msg.tuya_monitored_count = devices.length;
+msg.tuya_offline_count = offline.length;
+msg.tuya_confirmed_count = confirmed.length;
+msg.tuya_recovering_count = recovering.length;
+msg.tuya_offline_devices = offline.map((item) => item.name).sort((a, b) => a.localeCompare(b, "pt-BR"));
+msg.tuya_platforms = [...new Set(devices.flatMap((item) => item.platforms))].sort();
+msg.tuya_next_reminders = confirmed.map((item) => item.next_reminder_at).filter(Boolean).sort();
+return msg;

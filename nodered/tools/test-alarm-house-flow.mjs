@@ -1,13 +1,19 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import vm from "node:vm";
 
-const flows = JSON.parse(
-  fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"),
+const flowsPath = new URL("../flows.json", import.meta.url);
+const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
+const byId = new Map(flows.map((item) => [item.id, item]));
+const TAB = "alarm_house_tab";
+const alarmPackage = fs.readFileSync(
+  new URL("../../homeassistant/packages/moni_mobile_alarm.yaml", import.meta.url),
+  "utf8",
 );
-const byId = new Map(flows.map((node) => [node.id, node]));
-const LIGHT_TAB_ID = "ce258dec9814b96b";
-const ALARM_TAB_ID = "alarm_house_tab";
-const SHARED_TAB_ID = "shared_integrations_tab";
 
 function node(id) {
   const result = byId.get(id);
@@ -15,146 +21,221 @@ function node(id) {
   return result;
 }
 
+function store(initial = {}) {
+  return new Map(Object.entries(initial));
+}
+
+function runFunction(id, msg, values = store()) {
+  const statuses = [];
+  const warnings = [];
+  const errors = [];
+  const context = {
+    msg,
+    node: {
+      status: (value) => statuses.push(value),
+      warn: (value) => warnings.push(value),
+      error: (value) => errors.push(value),
+    },
+    flow: {
+      get: (key) => values.get(key),
+      set: (key, value) => values.set(key, value),
+    },
+    global: { get: () => undefined, set: () => undefined },
+    Date, Math, Number, String, Object, JSON,
+  };
+  const result = vm.runInNewContext(`(function () { ${node(id).func}\n})()`, context);
+  return { result, values, statuses, warnings, errors };
+}
+
+assert.equal(node(TAB).label, "alarme_casa");
+assert.match(node(TAB).info, /Fonte canônica visual/);
 assert.equal(new Set(flows.map((item) => item.id)).size, flows.length);
-assert.equal(node(LIGHT_TAB_ID).label, "iluminacao_externa");
-assert.equal(node(SHARED_TAB_ID).type, "tab");
-assert.equal(node(SHARED_TAB_ID).label, "integracoes_compartilhadas");
-assert.equal(node(ALARM_TAB_ID).type, "tab");
-assert.equal(node(ALARM_TAB_ID).label, "alarme_casa");
-
-const alarmNodeIds = [
-  "moni_mobile_arm_event",
-  "de18d31309e8a0ca",
-  "922ddf470a08d43f",
-  "70eb073f8191e69e",
-  "8261c7cfb6756ca8",
-  "arm_alarm_catch",
-  "arm_alarm_retry_decision",
-  "arm_alarm_retry_delay",
-  "arm_alarm_notify_success",
-  "moni_mobile_update_after_arm",
-  "disarm_alarm_notify_success",
-  "disarm_alarm_catch",
-  "disarm_alarm_retry_decision",
-  "disarm_alarm_retry_delay",
-  "alarm_set_desired_arm",
-  "alarm_set_desired_disarm",
-  "alarm_guard_arm",
-  "alarm_guard_disarm",
-  "alarm_arrival_disarm_command_in",
-  "alarm_notify_alexa",
-];
-
-for (const id of alarmNodeIds) {
-  assert.equal(node(id).z, ALARM_TAB_ID, `${id} ficou fora da aba do alarme`);
-}
 
 for (const id of [
-  "2dd5071569184cb4",
-  "ext_zigbee_command_gate",
-  "ext_build_alexa_message",
-  "9d81b75a18d482f1",
+  "alarm_group_policy", "alarm_group_inputs", "alarm_group_retry",
+  "alarm_group_effects", "alarm_group_tests", "alarm_policy_retry_seconds",
+  "alarm_policy_notify_every", "alarm_policy_max_attempts", "alarm_policy_validate",
+  "alarm_intent_action_switch", "alarm_retry_allowed_switch",
+  "alarm_retry_still_desired_switch", "alarm_retry_notify_switch",
+  "alarm_arm_final_gate", "alarm_disarm_final_gate", "alarm_notification_final_gate",
+  "alarm_test_reset", "alarm_test_arm", "alarm_test_failure_arm",
+  "alarm_test_disarm", "alarm_test_dry_run_terminal",
 ]) {
-  assert.equal(node(id).z, LIGHT_TAB_ID, `${id} ficou fora da aba de iluminação`);
+  assert.equal(node(id).z, TAB, `${id} ficou fora da aba canônica`);
+  assert.ok(node(id).name, `${id} precisa de nome visual`);
 }
 
-assert.equal(node("70e147e6b7df9826").z, SHARED_TAB_ID);
-assert.deepEqual(node("70e147e6b7df9826").wires, [
-  ["light_dulo_hub_link_out", "alarm_dulo_hub_link_out"],
-]);
-assert.equal(node("light_dulo_hub_link_out").z, SHARED_TAB_ID);
-assert.deepEqual(node("light_dulo_hub_link_out").links, [
-  "light_dulo_hub_link_in",
-]);
-assert.equal(node("light_dulo_hub_link_in").z, LIGHT_TAB_ID);
-assert.deepEqual(node("light_dulo_hub_link_in").links, [
-  "light_dulo_hub_link_out",
-]);
-assert.deepEqual(node("light_dulo_hub_link_in").wires, [
-  ["2dd5071569184cb4"],
-]);
-assert.equal(node("alarm_dulo_hub_link_out").z, SHARED_TAB_ID);
-assert.deepEqual(node("alarm_dulo_hub_link_out").links, [
-  "alarm_dulo_hub_link_in",
-]);
-assert.deepEqual(node("alarm_dulo_hub_link_in").links, [
-  "alarm_dulo_hub_link_out",
-]);
-assert.deepEqual(node("alarm_dulo_hub_link_in").wires, [
-  ["de18d31309e8a0ca"],
-]);
-
-for (const removedId of [
-  "e380ce19c7f96420",
-  "alarm_real_change_filter",
-  "alarm_armed_lighting_out",
-  "ext_alarm_armed_lighting_in",
-  "ext_alarm_armed_off",
+for (const [id, topic, payload] of [
+  ["alarm_policy_retry_seconds", "retry_seconds", "10"],
+  ["alarm_policy_notify_every", "notify_every_attempts", "5"],
+  ["alarm_policy_max_attempts", "max_attempts", "0"],
 ]) {
-  assert.equal(byId.has(removedId), false, `${removedId} ainda acopla alarme e iluminação`);
+  assert.equal(node(id).topic, topic);
+  assert.equal(node(id).payload, payload);
+  assert.equal(node(id).once, true);
+  assert.deepEqual(node(id).wires, [["alarm_policy_validate"]]);
 }
 
-for (const id of [
-  "arm_alarm_retry_decision",
-  "moni_mobile_update_after_arm",
-  "disarm_alarm_notify_success",
-  "disarm_alarm_retry_decision",
+const policyStore = store();
+for (const [topic, payload] of [
+  ["retry_seconds", 10], ["notify_every_attempts", 5], ["max_attempts", 0],
 ]) {
-  assert.ok(
-    node(id).wires.flat().includes("alarm_notify_alexa"),
-    `${id} não usa o aviso Alexa da aba do alarme`,
+  const applied = runFunction("alarm_policy_validate", { topic, payload }, policyStore);
+  assert.equal(applied.result, null);
+  assert.equal(applied.errors.length, 0);
+}
+assert.deepEqual(
+  JSON.parse(JSON.stringify(policyStore.get("alarm_house_policy_v1"))),
+  {
+    version: 1, owner: "node_red", retry_seconds: 10,
+    notify_every_attempts: 5, max_attempts: 0, complete: true,
+    updated_at: policyStore.get("alarm_house_policy_v1").updated_at,
+  },
+);
+const lastValid = structuredClone(policyStore.get("alarm_house_policy_v1"));
+for (const [topic, payload] of [
+  ["retry_seconds", 0], ["retry_seconds", 301],
+  ["notify_every_attempts", 0], ["notify_every_attempts", 101],
+  ["max_attempts", -1], ["max_attempts", 1001], ["max_attempts", 1.5],
+  ["unknown", 10],
+]) {
+  const rejected = runFunction("alarm_policy_validate", { topic, payload }, policyStore);
+  assert.equal(rejected.result, null);
+  assert.equal(rejected.errors.length, 1);
+  assert.equal(
+    JSON.stringify(policyStore.get("alarm_house_policy_v1")),
+    JSON.stringify(lastValid),
   );
-  assert.ok(!node(id).wires.flat().includes("9d81b75a18d482f1"));
+}
+for (const [topic, payload] of [
+  ["retry_seconds", 1], ["retry_seconds", 300],
+  ["notify_every_attempts", 1], ["notify_every_attempts", 100],
+  ["max_attempts", 0], ["max_attempts", 1000],
+]) {
+  const boundary = runFunction("alarm_policy_validate", { topic, payload }, policyStore);
+  assert.equal(boundary.errors.length, 0, `${topic}=${payload} deveria ser aceito`);
 }
 
-const updateMoniMobile = node("moni_mobile_update_after_arm");
-assert.equal(updateMoniMobile.action, "homeassistant.update_entity");
-assert.deepEqual(updateMoniMobile.entityId, []);
-assert.deepEqual(JSON.parse(updateMoniMobile.data), {
-  entity_id: ["alarm_control_panel.security_panel"],
+const defaultPolicy = {
+  version: 1, owner: "node_red", complete: true,
+  retry_seconds: 10, notify_every_attempts: 5, max_attempts: 0,
+};
+for (const [retryCount, expectedAttempt, notifyNow] of [
+  [0, 1, true], [1, 2, false], [4, 5, true], [9, 10, true],
+]) {
+  const evaluated = runFunction("alarm_retry_evaluate", {
+    policy: defaultPolicy, retry_count: retryCount,
+    alarm_request: { action: "arm" }, test_mode: true,
+  });
+  assert.equal(evaluated.result.retry.attempt, expectedAttempt);
+  assert.equal(evaluated.result.retry.retry_allowed, true);
+  assert.equal(evaluated.result.retry.notify_now, notifyNow);
+  assert.equal(evaluated.result.retry.delay_ms, 10_000);
+}
+const limited = runFunction("alarm_retry_evaluate", {
+  policy: { ...defaultPolicy, max_attempts: 1 }, retry_count: 0,
+  alarm_request: { action: "disarm" },
 });
+assert.equal(limited.result.retry.retry_allowed, false);
+assert.equal(limited.result.retry.notify_now, true);
+assert.match(limited.result.notify_text, /Limite de 1 tentativas atingido/);
+const noPolicy = runFunction("alarm_retry_evaluate", { alarm_request: { action: "arm" } });
+assert.equal(noPolicy.result, null);
+assert.equal(noPolicy.errors.length, 1);
+
+const isolated = store({ alarm_desired: "disarm" });
+const testIntent = runFunction("alarm_record_intent", {
+  alarm_request: { action: "arm", source: "manual_test" }, test_mode: true,
+}, isolated);
+assert.equal(testIntent.result.retry_count, 0);
+assert.equal(isolated.get("alarm_desired"), "disarm", "TESTE não pode alterar o estado legado de produção");
+assert.equal(isolated.get("alarm_house_state_v1"), undefined);
+assert.equal(isolated.get("alarm_house_test_state_v1").desired, "arm");
+const productionIntent = runFunction("alarm_record_intent", {
+  alarm_request: { action: "disarm", source: "arrival_policy" }, test_mode: false,
+}, isolated);
+assert.equal(productionIntent.result.alarm_request.action, "disarm");
+assert.equal(isolated.get("alarm_desired"), "disarm");
+assert.equal(isolated.get("alarm_house_state_v1").desired, "disarm");
+
+const desired = runFunction("alarm_retry_read_desired", {
+  alarm_request: { action: "arm" }, test_mode: true, retry: {},
+}, isolated);
+assert.equal(desired.result.retry.still_desired, true);
+const stale = runFunction("alarm_retry_read_desired", {
+  alarm_request: { action: "arm" }, test_mode: false, retry: {},
+}, isolated);
+assert.equal(stale.result.retry.still_desired, false);
+
+const dryRun = runFunction("alarm_test_dry_run_terminal", {
+  test_mode: true, alarm_request: { action: "arm" },
+  dry_run_boundary: "security_panel_service", retry: { attempt: 2 },
+});
+assert.equal(dryRun.result, null);
+assert.equal(dryRun.warnings.length, 1);
+assert.match(dryRun.warnings[0], /"simulated":true/);
+assert.match(dryRun.warnings[0], /"dispatched":false/);
+
+assert.equal(node("moni_mobile_arm_event").eventType, "node_red_moni_mobile_arm");
+assert.match(alarmPackage, /moni_mobile_armar_via_carplay:[\s\S]*event: node_red_moni_mobile_arm/);
+assert.match(alarmPackage, /source: script\.moni_mobile_armar_via_carplay[\s\S]*action: arm/);
+assert.doesNotMatch(alarmPackage, /moni_mobile_armar_via_carplay:[\s\S]*alarm_control_panel\.alarm_arm_away/);
+assert.deepEqual(node("alarm_arrival_disarm_command_in").wires, [["alarm_set_arrival_disarm"]]);
+assert.deepEqual(node("alarm_arm_final_gate").wires[1], ["alarm_security_dry_run_out"]);
+assert.deepEqual(node("alarm_disarm_final_gate").wires[1], ["alarm_security_dry_run_out"]);
+assert.deepEqual(node("alarm_notification_final_gate").wires[1], ["alarm_notification_dry_run_out"]);
+assert.deepEqual(node("alarm_test_dry_run_in").links.sort(), [
+  "alarm_notification_dry_run_out", "alarm_security_dry_run_out",
+].sort());
+assert.equal(node("alarm_test_dry_run_terminal").outputs, 0);
+assert.equal((node("alarm_test_dry_run_terminal").wires ?? []).flat().length, 0);
 
 for (const [id, action] of [
-  ["70eb073f8191e69e", "arm_away"],
-  ["8261c7cfb6756ca8", "disarm"],
+  ["70eb073f8191e69e", "arm_away"], ["8261c7cfb6756ca8", "disarm"],
 ]) {
-  const command = node(id);
-  assert.equal(command.action, "public_bindings.call");
-  assert.equal(command.domain, "public_bindings");
-  assert.equal(command.service, "call");
-  assert.deepEqual(command.entityId, []);
-  assert.match(command.data, /"role":"security_panel"/);
-  assert.match(command.data, new RegExp(`"action":"${action}"`));
-  assert.deepEqual(
-    JSON.parse(command.data).data,
-    {},
-    `${id}: dados privados devem vir apenas do binding privado`,
-  );
+  const effect = node(id);
+  assert.equal(effect.action, "public_bindings.call");
+  assert.equal(effect.queue, "none");
+  const data = JSON.parse(effect.data);
+  assert.equal(data.role, "security_panel");
+  assert.equal(data.action, action);
+  assert.deepEqual(data.data, {});
 }
+assert.equal(node("alarm_notify_alexa").queue, "all");
+assert.match(node("alarm_notify_alexa").data, /"role":"mobile_primary"/);
+assert.equal(node("moni_mobile_update_after_arm").action, "homeassistant.update_entity");
 
+for (const removed of legacyIdsForTest()) assert.equal(byId.has(removed), false, `${removed} deveria ter sido removido`);
 for (const item of flows.filter((candidate) => candidate.type === "function")) {
-  new Function(
-    "msg",
-    "node",
-    "context",
-    "flow",
-    "global",
-    "env",
-    "setTimeout",
-    "clearTimeout",
-    item.func,
-  );
+  new Function("msg", "node", "context", "flow", "global", "env", "setTimeout", "clearTimeout", item.func);
 }
-
 for (const item of flows.filter((candidate) => candidate.z)) {
   for (const targetId of (item.wires || []).flat()) {
     const target = node(targetId);
-    assert.equal(
-      target.z,
-      item.z,
-      `wire direto entre abas: ${item.id} -> ${targetId}`,
-    );
+    assert.equal(target.z, item.z, `wire direto entre abas: ${item.id} -> ${targetId}`);
   }
 }
+for (const item of flows.filter((candidate) => candidate.z === TAB && candidate.type === "function")) {
+  assert.ok(item.func.length < 3_500, `${item.id} ainda encapsula lógica extensa (${item.func.length})`);
+}
 
-console.log("Alarm-house flow separation tests passed.");
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "alarm-flow-idempotence-"));
+const firstOut = path.join(tempDir, "first.json");
+const secondOut = path.join(tempDir, "second.json");
+for (const output of [firstOut, secondOut]) {
+  const run = spawnSync(process.execPath, [new URL("./install-alarm-house-flow.mjs", import.meta.url).pathname, output], { encoding: "utf8" });
+  assert.equal(run.status, 0, run.stderr || run.stdout);
+}
+const digest = (file) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+assert.equal(digest(firstOut), digest(secondOut), "gerador visual precisa ser idempotente");
+fs.rmSync(tempDir, { recursive: true, force: true });
+
+function legacyIdsForTest() {
+  return [
+    "arm_alarm_retry_decision", "arm_alarm_retry_delay",
+    "disarm_alarm_retry_decision", "disarm_alarm_retry_delay",
+    "alarm_guard_arm", "alarm_guard_disarm", "4043829dac0a9fee", "0543222ad4ed094d",
+  ];
+}
+
+console.log("Alarm-house visual canonical flow tests passed.");

@@ -21,14 +21,25 @@ const ownedIds = new Set([
   "weekly_docs_review_schedule_in",
   "weekly_docs_review_manual",
   "weekly_docs_review_mark_manual",
+  "weekly_docs_review_source_switch",
+  "weekly_docs_review_set_payload",
+  "weekly_docs_review_invalid_source",
+  "weekly_docs_review_test_mode_switch",
   "weekly_docs_review_status_watch",
   "weekly_docs_review_track_status",
   "weekly_docs_review_test_request_in",
   "weekly_docs_review_prepare",
   "weekly_docs_review_request",
   "weekly_docs_review_result",
+  "weekly_docs_review_result_switch",
+  "weekly_docs_review_result_state",
+  "weekly_docs_review_invalid_result",
   "weekly_docs_review_error",
-  "weekly_docs_review_complete",
+  "weekly_docs_review_error_switch",
+  "weekly_docs_review_error_test",
+  "weekly_docs_review_complete_switch",
+  "weekly_docs_review_complete_ok",
+  "weekly_docs_review_complete_failed",
   "weekly_docs_review_dry_run_out",
   "weekly_docs_review_error_dry_run_out",
   "weekly_docs_review_test_instructions",
@@ -62,62 +73,42 @@ const functionNode = (id, group, name, func, outputs, x, y, wires) => ({
   wires,
 });
 
-const markManual = `msg._weekly_docs_source = "manual";
-return msg;`;
-
-const prepareRequest = `const TEST_MODE = msg._weekly_docs_test === true;
-const source = String(msg._weekly_docs_source ?? "");
-if (source !== "manual" && source !== "scheduled") {
-    node.error("weekly_docs_review_invalid_source", msg);
-    node.status({ fill: "red", shape: "ring", text: "origem inválida" });
-    return null;
-}
-msg._weekly_docs_test = TEST_MODE;
-msg.payload = source;
-node.status({
-    fill: TEST_MODE ? "blue" : "green",
-    shape: "dot",
-    text: TEST_MODE ? "TESTE preparado: " + source : "solicitando: " + source
-});
-return TEST_MODE ? [null, msg] : [msg, null];`;
+const invalidSource = `node.status({ fill: "red", shape: "ring", text: "origem inválida" });
+node.error("weekly_docs_review_invalid_source", msg);
+return null;`;
 
 const recordResult = `const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 300);
 const source = text.match(/source=(manual|scheduled)/)?.[1] ?? "unknown";
 const pending = /already pending/.test(text);
 const accepted = /Documentation review (?:requested|already pending)/.test(text);
-if (!accepted) {
-    node.error("weekly_docs_review_result_unrecognized", msg);
-    node.status({ fill: "red", shape: "ring", text: "resposta não reconhecida" });
-    return null;
-}
-const result = {
+msg.weekly_docs_outcome = accepted ? (pending ? "coalesced" : "requested") : "invalid";
+msg.weekly_docs_result = {
     version: 1,
-    status: pending ? "coalesced" : "requested",
+    status: msg.weekly_docs_outcome,
     source,
     requested_at: Date.now()
 };
+return msg;`;
+
+const recordAcceptedResult = `const result = msg.weekly_docs_result;
 flow.set("weekly_docs_review_last_request_v1", result, "persistent");
-node.status({
-    fill: pending ? "yellow" : "green",
-    shape: pending ? "ring" : "dot",
-    text: pending ? "solicitação agrupada" : "worker solicitado"
-});
-node.log("weekly_docs_review_request status=" + result.status + " source=" + source);
+node.status({ fill: result.status === "coalesced" ? "yellow" : "green", shape: result.status === "coalesced" ? "ring" : "dot", text: result.status === "coalesced" ? "solicitação agrupada" : "worker solicitado" });
+node.log("weekly_docs_review_request status=" + result.status + " source=" + result.source);
 return null;`;
 
-const recordError = `const TEST_MODE = msg._weekly_docs_test === true;
-const detail = String(msg.payload ?? msg.error?.message ?? "erro desconhecido").replace(/[\\r\\n]+/g, " ").slice(0, 240);
-node.status({ fill: TEST_MODE ? "yellow" : "red", shape: "ring", text: TEST_MODE ? "TESTE: falha simulada" : "solicitação falhou" });
-if (TEST_MODE) {
-    msg.payload = { status: "failed", detail, source: "synthetic" };
-    return msg;
-}
+const invalidResult = `node.status({ fill: "red", shape: "ring", text: "resposta não reconhecida" });
+node.error("weekly_docs_review_result_unrecognized", msg);
+return null;`;
+
+const recordError = `const detail = String(msg.payload ?? msg.error?.message ?? "erro desconhecido").replace(/[\\r\\n]+/g, " ").slice(0, 240);
+node.status({ fill: "red", shape: "ring", text: "solicitação falhou" });
 node.error("weekly_docs_review_request_failed detail=" + detail, msg);
 return null;`;
 
-const recordCompletion = `const code = Number(msg.payload?.code ?? msg.payload ?? -1);
-if (code === 0) node.status({ fill: "green", shape: "dot", text: "ponte finalizada" });
-else node.status({ fill: "red", shape: "ring", text: "ponte código " + String(code) });
+const recordCompletionOk = `node.status({ fill: "green", shape: "dot", text: "ponte finalizada" });
+return null;`;
+
+const recordCompletionFailed = `node.status({ fill: "red", shape: "ring", text: "ponte código " + String(msg.payload?.code ?? msg.payload ?? -1) });
 return null;`;
 
 const trackStatus = `const state = String(msg.payload ?? "indisponível");
@@ -166,14 +157,25 @@ const productionNodes = [
   "weekly_docs_review_schedule_in",
   "weekly_docs_review_manual",
   "weekly_docs_review_mark_manual",
+  "weekly_docs_review_source_switch",
+  "weekly_docs_review_set_payload",
+  "weekly_docs_review_invalid_source",
+  "weekly_docs_review_test_mode_switch",
   "weekly_docs_review_status_watch",
   "weekly_docs_review_track_status",
   "weekly_docs_review_test_request_in",
-  "weekly_docs_review_prepare",
   "weekly_docs_review_request",
   "weekly_docs_review_result",
+  "weekly_docs_review_result_switch",
+  "weekly_docs_review_result_state",
+  "weekly_docs_review_invalid_result",
   "weekly_docs_review_error",
+  "weekly_docs_review_error_switch",
+  "weekly_docs_review_error_test",
   "weekly_docs_review_complete",
+  "weekly_docs_review_complete_switch",
+  "weekly_docs_review_complete_ok",
+  "weekly_docs_review_complete_failed",
   "weekly_docs_review_dry_run_out",
   "weekly_docs_review_error_dry_run_out",
   "weekly_docs_review_test_failure_in",
@@ -209,8 +211,8 @@ const nodes = [
     nodes: productionNodes,
     x: 64,
     y: 39,
-    w: 1512,
-    h: 322,
+    w: 2420,
+    h: 392,
   },
   {
     id: TEST_GROUP,
@@ -221,7 +223,7 @@ const nodes = [
     nodes: testNodes,
     x: 84,
     y: 439,
-    w: 1502,
+    w: 2132,
     h: 252,
   },
   {
@@ -277,7 +279,7 @@ const nodes = [
     links: ["weekly_docs_review_schedule_out"],
     x: 535,
     y: 120,
-    wires: [["weekly_docs_review_prepare"]],
+    wires: [["weekly_docs_review_source_switch"]],
   },
   {
     id: "weekly_docs_review_manual",
@@ -309,7 +311,22 @@ const nodes = [
     y: 230,
     wires: [["weekly_docs_review_mark_manual"]],
   },
-  functionNode("weekly_docs_review_mark_manual", PRODUCTION_GROUP, "Marcar origem manual", markManual, 1, 490, 230, [["weekly_docs_review_prepare"]]),
+  {
+    id: "weekly_docs_review_mark_manual",
+    type: "change",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Origem: solicitação manual",
+    rules: [{ t: "set", p: "_weekly_docs_source", pt: "msg", to: "manual", tot: "str" }],
+    action: "",
+    property: "",
+    from: "",
+    to: "",
+    reg: false,
+    x: 490,
+    y: 230,
+    wires: [["weekly_docs_review_source_switch"]],
+  },
   {
     id: "weekly_docs_review_status_watch",
     type: "server-state-changed",
@@ -350,9 +367,61 @@ const nodes = [
     links: ["weekly_docs_review_test_request_out"],
     x: 535,
     y: 160,
-    wires: [["weekly_docs_review_prepare"]],
+    wires: [["weekly_docs_review_source_switch"]],
   },
-  functionNode("weekly_docs_review_prepare", PRODUCTION_GROUP, "Validar origem e separar TESTE", prepareRequest, 2, 770, 190, [["weekly_docs_review_request"], ["weekly_docs_review_dry_run_out"]]),
+  {
+    id: "weekly_docs_review_source_switch",
+    type: "switch",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Origem é manual ou agendada?",
+    property: "_weekly_docs_source",
+    propertyType: "msg",
+    rules: [
+      { t: "eq", v: "manual", vt: "str" },
+      { t: "eq", v: "scheduled", vt: "str" },
+      { t: "else" },
+    ],
+    checkall: "true",
+    repair: false,
+    outputs: 3,
+    x: 760,
+    y: 180,
+    wires: [["weekly_docs_review_set_payload"], ["weekly_docs_review_set_payload"], ["weekly_docs_review_invalid_source"]],
+  },
+  {
+    id: "weekly_docs_review_set_payload",
+    type: "change",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Contrato do helper: payload = origem",
+    rules: [{ t: "set", p: "payload", pt: "msg", to: "_weekly_docs_source", tot: "msg" }],
+    action: "",
+    property: "",
+    from: "",
+    to: "",
+    reg: false,
+    x: 1050,
+    y: 160,
+    wires: [["weekly_docs_review_test_mode_switch"]],
+  },
+  functionNode("weekly_docs_review_invalid_source", PRODUCTION_GROUP, "Rejeitar origem inválida", invalidSource, 0, 1040, 230, []),
+  {
+    id: "weekly_docs_review_test_mode_switch",
+    type: "switch",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Solicitação é TESTE?",
+    property: "_weekly_docs_test",
+    propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }],
+    checkall: "true",
+    repair: false,
+    outputs: 2,
+    x: 1320,
+    y: 160,
+    wires: [["weekly_docs_review_dry_run_out"], ["weekly_docs_review_request"]],
+  },
   {
     id: "weekly_docs_review_request",
     type: "exec",
@@ -366,13 +435,82 @@ const nodes = [
     winHide: false,
     oldrc: false,
     name: "Solicitar worker isolado",
-    x: 1040,
+    x: 1580,
     y: 160,
-    wires: [["weekly_docs_review_result"], ["weekly_docs_review_error"], ["weekly_docs_review_complete"]],
+    wires: [["weekly_docs_review_result"], ["weekly_docs_review_error_switch"], ["weekly_docs_review_complete_switch"]],
   },
-  functionNode("weekly_docs_review_result", PRODUCTION_GROUP, "Registrar solicitação aceita", recordResult, 0, 1350, 120, []),
-  functionNode("weekly_docs_review_error", PRODUCTION_GROUP, "Registrar falha segura", recordError, 1, 1330, 180, [["weekly_docs_review_error_dry_run_out"]]),
-  functionNode("weekly_docs_review_complete", PRODUCTION_GROUP, "Registrar código da ponte", recordCompletion, 0, 1330, 240, []),
+  functionNode("weekly_docs_review_result", PRODUCTION_GROUP, "Normalizar resposta textual do helper", recordResult, 1, 1770, 100, [["weekly_docs_review_result_switch"]]),
+  {
+    id: "weekly_docs_review_result_switch",
+    type: "switch",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Helper aceitou, agrupou ou rejeitou?",
+    property: "weekly_docs_outcome",
+    propertyType: "msg",
+    rules: [{ t: "eq", v: "requested", vt: "str" }, { t: "eq", v: "coalesced", vt: "str" }, { t: "else" }],
+    checkall: "true",
+    repair: false,
+    outputs: 3,
+    x: 2080,
+    y: 100,
+    wires: [["weekly_docs_review_result_state"], ["weekly_docs_review_result_state"], ["weekly_docs_review_invalid_result"]],
+  },
+  functionNode("weekly_docs_review_result_state", PRODUCTION_GROUP, "Persistir solicitação aceita", recordAcceptedResult, 0, 2340, 70, []),
+  functionNode("weekly_docs_review_invalid_result", PRODUCTION_GROUP, "Rejeitar resposta desconhecida", invalidResult, 0, 2340, 130, []),
+  {
+    id: "weekly_docs_review_error_switch",
+    type: "switch",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Falha pertence a TESTE?",
+    property: "_weekly_docs_test",
+    propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }],
+    checkall: "true",
+    repair: false,
+    outputs: 2,
+    x: 1810,
+    y: 190,
+    wires: [["weekly_docs_review_error_test"], ["weekly_docs_review_error"]],
+  },
+  {
+    id: "weekly_docs_review_error_test",
+    type: "change",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Marcar falha sintética",
+    rules: [
+      { t: "set", p: "payload", pt: "msg", to: '{"status":"failed","detail":"synthetic bridge unavailable","source":"synthetic"}', tot: "json" },
+    ],
+    action: "",
+    property: "",
+    from: "",
+    to: "",
+    reg: false,
+    x: 2070,
+    y: 180,
+    wires: [["weekly_docs_review_error_dry_run_out"]],
+  },
+  functionNode("weekly_docs_review_error", PRODUCTION_GROUP, "Registrar falha real", recordError, 0, 2070, 230, []),
+  {
+    id: "weekly_docs_review_complete_switch",
+    type: "switch",
+    z: TAB,
+    g: PRODUCTION_GROUP,
+    name: "Código da ponte é zero?",
+    property: "$number(payload.code ? payload.code : payload)",
+    propertyType: "jsonata",
+    rules: [{ t: "eq", v: "0", vt: "num" }, { t: "else" }],
+    checkall: "true",
+    repair: false,
+    outputs: 2,
+    x: 1810,
+    y: 300,
+    wires: [["weekly_docs_review_complete_ok"], ["weekly_docs_review_complete_failed"]],
+  },
+  functionNode("weekly_docs_review_complete_ok", PRODUCTION_GROUP, "Ponte finalizada", recordCompletionOk, 0, 2070, 280, []),
+  functionNode("weekly_docs_review_complete_failed", PRODUCTION_GROUP, "Ponte terminou com falha", recordCompletionFailed, 0, 2070, 340, []),
   {
     id: "weekly_docs_review_dry_run_out",
     type: "link out",
@@ -381,8 +519,8 @@ const nodes = [
     name: "TESTE → terminal dry-run",
     mode: "link",
     links: ["weekly_docs_review_dry_run_in"],
-    x: 1045,
-    y: 250,
+    x: 1535,
+    y: 230,
     wires: [],
   },
   {
@@ -393,7 +531,7 @@ const nodes = [
     name: "Falha TESTE → terminal dry-run",
     mode: "link",
     links: ["weekly_docs_review_dry_run_in"],
-    x: 1535,
+    x: 2345,
     y: 180,
     wires: [],
   },
@@ -404,9 +542,9 @@ const nodes = [
     g: PRODUCTION_GROUP,
     name: "Receber falha TESTE",
     links: ["weekly_docs_review_test_failure_out"],
-    x: 1095,
-    y: 310,
-    wires: [["weekly_docs_review_error"]],
+    x: 1550,
+    y: 360,
+    wires: [["weekly_docs_review_error_switch"]],
   },
   {
     id: "weekly_docs_review_test_instructions",

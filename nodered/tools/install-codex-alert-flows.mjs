@@ -1,60 +1,93 @@
 #!/usr/bin/env node
 
-import fs from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
-const flowUrl = new URL("../flows.json", import.meta.url);
-const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
-
+const FLOWS = new URL("../flows.json", import.meta.url).pathname;
+const OUT = process.argv[2] || FLOWS;
 const TAB = "codex_alertas_tab";
-const GROUP = "codex_alertas_group";
 const HA = "4126427d5e161a03";
+const flows = JSON.parse(readFileSync(FLOWS, "utf8"));
 
-function node(id, type, extra) {
-  return { id, type, z: TAB, ...extra };
+function upsert(value) {
+  const index = flows.findIndex((candidate) => candidate.id === value.id);
+  if (index === -1) flows.push(value);
+  else flows[index] = value;
 }
 
-function stateNode(id, name, entities, outputInitially, wires, payload) {
-  return node(id, "server-state-changed", {
-    g: GROUP,
-    name,
-    server: HA,
-    version: 6,
-    outputs: 1,
-    exposeAsEntityConfig: "",
-    entities: { entity: entities, substring: [], regex: [] },
-    outputInitially,
-    stateType: "str",
-    ifState: "",
-    ifStateType: "str",
-    ifStateOperator: "is",
-    outputOnlyOnStateChange: true,
-    for: "0",
-    forType: "num",
-    forUnits: "minutes",
-    ignorePrevStateNull: false,
-    ignorePrevStateUnknown: false,
-    ignorePrevStateUnavailable: false,
-    ignoreCurrentStateUnknown: true,
-    ignoreCurrentStateUnavailable: true,
-    outputProperties: [{
-      property: "payload",
-      propertyType: "msg",
-      value: payload,
-      valueType: "jsonata",
-    }],
-    x: 190,
-    y: 120,
-    wires: [wires],
+function removeTab() {
+  for (let index = flows.length - 1; index >= 0; index -= 1) {
+    const item = flows[index];
+    if (item.id === TAB || (item.z === TAB && !item.id.startsWith("global_observer_coverage__"))) {
+      flows.splice(index, 1);
+    }
+  }
+}
+
+function n(id, type, group, name, x, y, wires, extra = {}) {
+  return { id, type, z: TAB, g: group, name, x, y, wires, ...extra };
+}
+
+function fn(id, group, name, func, x, y, wires, outputs = 1) {
+  return n(id, "function", group, name, x, y, wires, {
+    func, outputs, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [],
+  });
+}
+
+function inject(id, group, name, topic, payload, payloadType, x, y, wires, options = {}) {
+  return n(id, "inject", group, name, x, y, wires, {
+    props: [{ p: "payload" }, ...(topic ? [{ p: "topic", vt: "str" }] : [])],
+    repeat: options.repeat ?? "", crontab: options.crontab ?? "",
+    once: options.once ?? false, onceDelay: options.once ? 0.5 : 0.1,
+    topic, payload: String(payload), payloadType,
+  });
+}
+
+function group(id, name, nodes, x, y, w, h, stroke, fill) {
+  return {
+    id, type: "group", z: TAB, name, nodes, x, y, w, h,
+    style: {
+      label: true, "label-position": "nw", stroke, "stroke-opacity": "1",
+      fill, "fill-opacity": "0.35", color: "#1f2937",
+    },
+  };
+}
+
+function change(id, groupId, name, rules, x, y, wires) {
+  return n(id, "change", groupId, name, x, y, wires, {
+    rules, action: "", property: "", from: "", to: "", reg: false,
+  });
+}
+
+function sw(id, groupId, name, property, rules, x, y, wires) {
+  return n(id, "switch", groupId, name, x, y, wires, {
+    property, propertyType: "msg", rules, checkall: "true", repair: false,
+    outputs: rules.length,
+  });
+}
+
+function linkIn(id, groupId, name, links, x, y, wires) {
+  return n(id, "link in", groupId, name, x, y, wires, { links });
+}
+
+function linkOut(id, groupId, name, links, x, y) {
+  return n(id, "link out", groupId, name, x, y, [], { mode: "link", links });
+}
+
+function service(id, groupId, name, action, data, dataType, x, y, wires) {
+  const [domain, api] = action.split(".");
+  return n(id, "api-call-service", groupId, name, x, y, wires, {
+    server: HA, version: 7, debugenabled: false, action,
+    floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
+    data, dataType, mergeContext: "", mustacheAltTags: false,
+    outputProperties: [], queue: "all", blockInputOverrides: true,
+    domain, service: api,
   });
 }
 
 const monitored = [
   "input_boolean.codex_alertas_iphone",
   "input_boolean.codex_resumo_diario_iphone",
-  "input_number.codex_alerta_aviso_percentual",
-  "input_number.codex_alerta_critico_percentual",
-  "input_number.codex_alerta_cache_minimo",
-  "input_number.codex_alerta_saldo_creditos",
+  "sensor.codex_dados_de_limite",
   "sensor.codex_previsao_ate_o_reset",
   "sensor.codex_limite_usado",
   "sensor.codex_eficiencia_de_cache",
@@ -66,159 +99,315 @@ const monitored = [
   "sensor.codex_proximo_reset",
 ];
 
-const alertLogic = String.raw`
-const REQUIRED = ${JSON.stringify(monitored)};
-const KEY = "codex_alertas_state_v1";
-let state = flow.get(KEY, "persistent") || { values: {}, ready: false, sent: {} };
-const event = msg.payload || {};
-
-function num(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+const policyValidate = String.raw`const limits = {
+    warning_usage_percent: { min: 10, max: 95 },
+    critical_usage_percent: { min: 20, max: 100 },
+    minimum_cache_percent: { min: 0, max: 100 },
+    minimum_extra_credits: { min: 1, max: 100 },
+    critical_cooldown_hours: { min: 1, max: 24 },
+    standard_cooldown_hours: { min: 1, max: 48 },
+    retry_seconds: { min: 10, max: 600 }
+};
+const key = String(msg.topic ?? "");
+const rule = limits[key];
+const value = Number(msg.payload);
+if (!rule || !Number.isInteger(value) || value < rule.min || value > rule.max) {
+    node.error("Política Codex inválida: " + (key || "campo ausente") + "=" + msg.payload, msg);
+    return null;
 }
-
-function build(title, message, kind) {
-  const now = Date.now();
-  const cooldownMs = kind === "critical" ? 60 * 60 * 1000 : 6 * 60 * 60 * 1000;
-  if (now - Number(state.sent[kind] || 0) < cooldownMs) return null;
-  if (state.pending?.kind === kind && now - Number(state.pending.lastAttemptAt || 0) < 60 * 1000) return null;
-  const alert = {
-    title,
-    message,
-    kind,
-    at: new Date(now).toISOString(),
-    lastAttemptAt: now,
-    deliveryAck: { id: kind + ":" + String(now), kind, at: now },
-  };
-  state.pending = alert;
-  return alert;
+const previous = flow.get("codex_alert_policy_v1", "persistent");
+const candidate = previous?.version === 1 ? { ...previous } : { version: 1, owner: "node_red" };
+candidate[key] = value;
+const complete = Object.keys(limits).every((field) => Number.isFinite(candidate[field]));
+if (complete && candidate.warning_usage_percent >= candidate.critical_usage_percent) {
+    node.error("Política Codex inválida: aviso deve ser menor que crítico", msg);
+    return null;
 }
+candidate.complete = complete;
+candidate.updated_at = Date.now();
+flow.set("codex_alert_policy_v1", candidate, "persistent");
+node.status({ fill: complete ? "green" : "yellow", shape: complete ? "dot" : "ring", text: complete ? "uso " + candidate.warning_usage_percent + "/" + candidate.critical_usage_percent + "%" : "sincronizando" });
+return null;`;
 
-function summary() {
-  if (state.values["input_boolean.codex_alertas_iphone"] !== "on"
-      || state.values["input_boolean.codex_resumo_diario_iphone"] !== "on") return null;
-  return build(
-    "Codex — resumo diário",
-    "Uso: " + (state.values["sensor.codex_limite_usado"] || "?") + "%; " +
-      "projeção no reset: " + (state.values["sensor.codex_uso_projetado_no_reset"] || "?") + "%; " +
-      "folga: " + (state.values["sensor.codex_folga_projetada_no_reset"] || "?") + "%; " +
-      "cache: " + (state.values["sensor.codex_eficiencia_de_cache"] || "?") + "%; " +
-      "previsão: " + (state.values["sensor.codex_previsao_ate_o_reset"] || "?") + ".",
-    "daily",
-  );
+const accumulate = String.raw`const REQUIRED = ${JSON.stringify(monitored)};
+const testMode = msg.test_mode === true || msg.payload?.test_mode === true;
+const key = testMode ? "codex_alert_test_state_v1" : "codex_alertas_state_v2";
+let state = flow.get(key, "persistent") || { values: {}, ready: false, sequence: 0 };
+const event = msg.payload && typeof msg.payload === "object" ? msg.payload : {};
+const entity = String(event.entity_id ?? "");
+let previous = entity ? state.values[entity] : undefined;
+if (entity && REQUIRED.includes(entity)) {
+    if (Object.prototype.hasOwnProperty.call(event, "previous")) previous = String(event.previous ?? "");
+    state.values[entity] = String(event.state ?? "");
 }
+state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));
+state.sequence += 1;
+flow.set(key, state, "persistent");
+msg.test_mode = testMode;
+msg.request_type = msg.topic === "codex.daily_summary" ? "daily" : event.type === "manual_test" ? "manual_test" : "entity";
+msg.snapshot = {
+    values: { ...state.values }, ready: state.ready, sequence: state.sequence,
+    entity_id: entity, current: entity ? state.values[entity] : "", previous,
+    alerts_enabled: state.values["input_boolean.codex_alertas_iphone"] === "on",
+    summary_enabled: state.values["input_boolean.codex_resumo_diario_iphone"] === "on"
+};
+node.status({ fill: state.ready ? "green" : "yellow", shape: "dot", text: state.ready ? "snapshot canônico" : "sincronizando fontes" });
+return msg;`;
 
-if (msg.topic === "codex.daily_summary") {
-  const alert = state.ready ? summary() : null;
-  flow.set(KEY, state, "persistent");
-  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;
+const forecastDecision = String.raw`const current = String(msg.snapshot?.current ?? "");
+const previous = String(msg.snapshot?.previous ?? "");
+msg.decision = { kind: "", reason: "no_transition" };
+if (current !== previous) {
+    if (current === "não aguenta") msg.decision = { kind: "critical", reason: "forecast_risk" };
+    else if (current === "atenção") msg.decision = { kind: "forecast_warning", reason: "forecast_attention" };
+    else if (current === "aguenta" && ["atenção", "não aguenta"].includes(previous)) msg.decision = { kind: "recovery", reason: "forecast_recovered" };
 }
+return msg;`;
 
-if (event.type === "manual_test") {
-  const alert = build(
-    "Codex — teste de alertas",
-    "✅ O Node-RED está conectado ao iPhone de resident_primary. Uso atual: " +
-      (state.values["sensor.codex_limite_usado"] || "?") + "%; projeção no reset: " +
-      (state.values["sensor.codex_uso_projetado_no_reset"] || "?") + "%.",
-    "test",
-  );
-  flow.set(KEY, state, "persistent");
-  return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;
+const usageDecision = String.raw`const current = Number(msg.snapshot?.current);
+const previous = Number(msg.snapshot?.previous);
+msg.decision = { kind: "", reason: "no_threshold_crossing" };
+if (!Number.isFinite(current) || !Number.isFinite(previous)) return msg;
+if (current >= msg.policy.critical_usage_percent && previous < msg.policy.critical_usage_percent) msg.decision = { kind: "critical", reason: "critical_usage_crossed" };
+else if (current >= msg.policy.warning_usage_percent && previous < msg.policy.warning_usage_percent) msg.decision = { kind: "usage_warning", reason: "warning_usage_crossed" };
+return msg;`;
+
+const cacheDecision = String.raw`const current = Number(msg.snapshot?.current);
+const previous = Number(msg.snapshot?.previous);
+const crossed = Number.isFinite(current) && Number.isFinite(previous) && current < msg.policy.minimum_cache_percent && previous >= msg.policy.minimum_cache_percent;
+msg.decision = crossed ? { kind: "cache_low", reason: "cache_minimum_crossed" } : { kind: "", reason: "no_threshold_crossing" };
+return msg;`;
+
+const creditsDecision = String.raw`const current = Number(msg.snapshot?.current);
+const previous = Number(msg.snapshot?.previous);
+const crossed = Number.isFinite(current) && Number.isFinite(previous) && current < msg.policy.minimum_extra_credits && previous >= msg.policy.minimum_extra_credits;
+msg.decision = crossed ? { kind: "credits_low", reason: "credits_minimum_crossed" } : { kind: "", reason: "no_threshold_crossing" };
+return msg;`;
+
+const buildAlert = String.raw`const values = msg.snapshot?.values || {};
+const kind = msg.decision?.kind;
+const now = msg.test_mode === true && Number.isFinite(Number(msg._test_now_ms)) ? Number(msg._test_now_ms) : Date.now();
+const table = {
+    critical: ["Codex — limite crítico", "🚨 Uso chegou a " + (values["sensor.codex_limite_usado"] || "?") + "%. Restam " + (values["sensor.codex_limite_disponivel"] || "?") + "% até o reset."],
+    forecast_warning: ["Codex — pouca folga até o reset", "⚠️ Ritmo atual: " + (values["sensor.codex_ritmo_do_limite"] || "?") + "%/dia. Uso projetado: " + (values["sensor.codex_uso_projetado_no_reset"] || "?") + "%."],
+    recovery: ["Codex — autonomia recuperada", "✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: " + (values["sensor.codex_folga_projetada_no_reset"] || "?") + "%."],
+    usage_warning: ["Codex — limite em atenção", "⚠️ Uso chegou a " + (values["sensor.codex_limite_usado"] || "?") + "%. Folga projetada: " + (values["sensor.codex_folga_projetada_no_reset"] || "?") + "%."],
+    cache_low: ["Codex — eficiência de cache baixa", "⚠️ A eficiência caiu para " + (values["sensor.codex_eficiencia_de_cache"] || "?") + "%. Limite: " + msg.policy.minimum_cache_percent + "%."],
+    credits_low: ["Codex — créditos extras baixos", "⚠️ O saldo caiu para " + (values["sensor.codex_creditos_extras"] || "?") + " créditos."],
+    daily: ["Codex — resumo diário", "Uso: " + (values["sensor.codex_limite_usado"] || "?") + "%; projeção: " + (values["sensor.codex_uso_projetado_no_reset"] || "?") + "%; folga: " + (values["sensor.codex_folga_projetada_no_reset"] || "?") + "%; cache: " + (values["sensor.codex_eficiencia_de_cache"] || "?") + "%."],
+    test: ["Codex — TESTE de alertas", "TESTE: rota canônica pronta; nenhum aviso será enviado."]
+};
+const content = table[kind];
+if (!content) return null;
+msg.alert = { title: content[0], message: content[1], kind, at: new Date(now).toISOString(), deliveryAck: { id: kind + ":" + now, kind, at: now } };
+return msg;`;
+
+const deliveryEvaluate = String.raw`const policy = msg.policy;
+if (policy?.version !== 1 || policy?.complete !== true || !msg.alert) {
+    node.error("Alerta Codex sem política ou candidato válido", msg);
+    return null;
 }
-
-const entity = event.entity_id;
-if (!entity || !REQUIRED.includes(entity)) return null;
-const previous = state.values[entity];
-state.values[entity] = String(event.state ?? "");
-if (!state.ready) {
-  state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));
-  flow.set(KEY, state, "persistent");
-  node.status({ fill: state.ready ? "green" : "yellow", shape: "dot", text: state.ready ? "monitorando" : "sincronizando" });
-  return null;
+const testMode = msg.test_mode === true;
+const key = testMode ? "codex_alert_delivery_test_v1" : "codex_alert_delivery_v1";
+let state = flow.get(key, "persistent");
+if (!state || typeof state !== "object") {
+    const legacy = testMode ? null : flow.get("codex_alertas_state_v1", "persistent");
+    state = { sent: legacy?.sent || {}, pending: legacy?.pending || null, migrated_from_legacy: !testMode };
 }
-
-if (state.values["input_boolean.codex_alertas_iphone"] !== "on") {
-  flow.set(KEY, state, "persistent");
-  node.status({ fill: "grey", shape: "ring", text: "alertas desativados" });
-  return null;
+const now = Number(msg.alert.deliveryAck.at);
+const hours = msg.alert.kind === "critical" ? policy.critical_cooldown_hours : policy.standard_cooldown_hours;
+const elapsed = now - Number(state.sent?.[msg.alert.kind] || 0);
+const pendingAge = now - Number(state.pending?.lastAttemptAt || 0);
+let allowed = elapsed >= hours * 3600000;
+let reason = allowed ? "cooldown_elapsed" : "cooldown_active";
+if (allowed && state.pending?.kind === msg.alert.kind && pendingAge < policy.retry_seconds * 1000) {
+    allowed = false;
+    reason = "delivery_pending";
 }
-
-let alert = null;
-if (entity === "sensor.codex_previsao_ate_o_reset") {
-  if (["atenção", "não aguenta"].includes(event.state) && previous !== event.state) {
-    const critical = event.state === "não aguenta";
-    alert = build(
-      critical ? "Codex — risco de esgotamento" : "Codex — pouca folga até o reset",
-      (critical ? "🔴" : "⚠️") + " Ritmo atual: " +
-        (state.values["sensor.codex_ritmo_do_limite"] || "?") + "%/dia. Uso projetado no reset: " +
-        (state.values["sensor.codex_uso_projetado_no_reset"] || "?") + "%. Reset: " +
-        (state.values["sensor.codex_proximo_reset"] || "?") + ".",
-      critical ? "critical" : "forecast_warning",
-    );
-  } else if (event.state === "aguenta" && ["atenção", "não aguenta"].includes(previous)) {
-    alert = build("Codex — autonomia recuperada", "✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: " + (state.values["sensor.codex_folga_projetada_no_reset"] || "?") + "%.", "recovery");
-  }
-} else if (entity === "sensor.codex_limite_usado") {
-  const used = num(event.state); const old = num(previous, -1);
-  const warning = num(state.values["input_number.codex_alerta_aviso_percentual"], 70);
-  const critical = num(state.values["input_number.codex_alerta_critico_percentual"], 90);
-  if (used >= critical && old < critical) alert = build("Codex — limite crítico", "🚨 Uso chegou a " + used + "%. Restam " + (state.values["sensor.codex_limite_disponivel"] || "?") + "% até o reset.", "critical");
-  else if (used >= warning && old < warning) alert = build("Codex — limite em atenção", "⚠️ Uso chegou a " + used + "%. Folga projetada no reset: " + (state.values["sensor.codex_folga_projetada_no_reset"] || "?") + "%.", "usage_warning");
-} else if (entity === "sensor.codex_eficiencia_de_cache") {
-  const value = num(event.state); const old = num(previous, 101); const minimum = num(state.values["input_number.codex_alerta_cache_minimo"], 60);
-  if (value < minimum && old >= minimum) alert = build("Codex — eficiência de cache baixa", "⚠️ A eficiência caiu para " + value + "%. Limite configurado: " + minimum + "%.", "cache_low");
-} else if (entity === "sensor.codex_creditos_extras") {
-  const value = num(event.state); const old = num(previous, -1); const minimum = num(state.values["input_number.codex_alerta_saldo_creditos"], 10);
-  if (value < minimum && old >= minimum) alert = build("Codex — créditos extras baixos", "⚠️ O saldo caiu para " + value + " créditos.", "credits_low");
+if (allowed) {
+    msg.alert.lastAttemptAt = now;
+    state.pending = msg.alert;
 }
+state.last_candidate_sequence = msg.snapshot?.sequence ?? null;
+flow.set(key, state, "persistent");
+msg.delivery = { allowed, reason, elapsed_ms: elapsed, cooldown_ms: hours * 3600000 };
+return msg;`;
 
-if (!alert && state.pending?.deliveryAck?.id) {
-  const now = Date.now();
-  if (now - Number(state.pending.lastAttemptAt || 0) >= 60 * 1000) {
-    state.pending.lastAttemptAt = now;
-    alert = state.pending;
-  }
+const pendingCheck = String.raw`const policy = msg.policy;
+const state = flow.get("codex_alert_delivery_v1", "persistent");
+const pending = state?.pending;
+if (policy?.complete !== true || !pending) return null;
+const now = Date.now();
+const due = now - Number(pending.lastAttemptAt || 0) >= policy.retry_seconds * 1000;
+msg.alert = pending;
+msg.test_mode = false;
+msg.delivery = { allowed: due, reason: due ? "pending_retry_due" : "pending_retry_wait" };
+if (due) {
+    pending.lastAttemptAt = now;
+    state.pending = pending;
+    flow.set("codex_alert_delivery_v1", state, "persistent");
 }
-
-flow.set(KEY, state, "persistent");
-node.status({ fill: alert ? "red" : "green", shape: alert ? "ring" : "dot", text: alert ? "alerta: " + alert.kind : "monitorando" });
-return alert ? [ { alert }, { alert }, { alert }, { alert } ] : null;
-`;
+return msg;`;
 
 const alertAck = String.raw`const ack = msg.alert?.deliveryAck;
 if (!ack || typeof ack.kind !== "string" || !Number.isFinite(Number(ack.at))) return null;
-const KEY = "codex_alertas_state_v1";
-const state = flow.get(KEY, "persistent") || { values: {}, ready: false, sent: {} };
+const state = flow.get("codex_alert_delivery_v1", "persistent") || { sent: {} };
 state.sent = state.sent || {};
 state.sent[ack.kind] = Number(ack.at);
 if (state.pending?.deliveryAck?.id === ack.id) state.pending = null;
-flow.set(KEY, state, "persistent");
+flow.set("codex_alert_delivery_v1", state, "persistent");
 node.status({ fill: "green", shape: "dot", text: "entrega aceita pelo HA" });
 return null;`;
 
 const alertFailure = String.raw`const source = String(msg.error?.source?.name ?? "notificacao").replace(/[^a-zA-Z0-9 _-]/g, "");
 const detail = String(msg.error?.message ?? "erro desconhecido").replace(/[\r\n]+/g, " ").slice(0, 240);
 node.error("codex_alert_delivery_failed source=" + source + " message=" + detail, msg);
-node.status({ fill: "red", shape: "ring", text: "pendente para nova tentativa" });
+node.status({ fill: "red", shape: "ring", text: "pendente para retry visual" });
 return null;`;
 
-const nodes = [
-  { id: TAB, type: "tab", label: "alertas_codex", disabled: false, info: "Alertas de uso do Codex: lógica, teste manual e deduplicação no Node-RED; painel e configurações no Home Assistant.", env: [] },
-  { id: GROUP, type: "group", z: TAB, name: "Alertas Codex → iPhone de resident_primary", style: { label: true, "label-position": "nw", stroke: "#5d6f96", "stroke-opacity": "1", fill: "none", color: "#a4a4a4" }, nodes: ["codex_alert_state", "codex_alert_manual_test", "codex_alert_daily", "codex_alert_logic", "codex_alert_push", "codex_alert_text", "codex_alert_time", "codex_alert_persistent", "codex_alert_ack", "codex_alert_catch", "codex_alert_failure"], x: 40, y: 40, w: 1760, h: 360 },
-  stateNode("codex_alert_state", "Estados e limites do Codex", monitored, true, ["codex_alert_logic"], "{\"entity_id\":$entity().entity_id,\"state\":$entity().state,\"previous\":$prevEntity().state}"),
-  node("codex_alert_manual_test", "inject", { g: GROUP, name: "Testar push no iPhone", props: [{ p: "payload", v: "{\"type\":\"manual_test\"}", vt: "json" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "{\"type\":\"manual_test\"}", payloadType: "json", x: 180, y: 180, wires: [["codex_alert_logic"]] }),
-  node("codex_alert_daily", "inject", { g: GROUP, name: "Resumo diário — 20:00", props: [{ p: "payload" }, { p: "topic", v: "codex.daily_summary", vt: "str" }], repeat: "", crontab: "00 20 * * *", once: false, onceDelay: 0.1, topic: "codex.daily_summary", payload: "", payloadType: "date", x: 180, y: 240, wires: [["codex_alert_logic"]] }),
-  node("codex_alert_logic", "function", { g: GROUP, name: "Avaliar alertas, cooldown e resumo", func: alertLogic, outputs: 4, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x: 590, y: 160, wires: [["codex_alert_push"], ["codex_alert_text"], ["codex_alert_time"], ["codex_alert_persistent"]] }),
-  node("codex_alert_push", "api-call-service", { g: GROUP, name: "Push iPhone resident_primary", server: HA, version: 7, debugenabled: false, action: "public_bindings.call", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "public_bindings", service: "call", x: 920, y: 100, wires: [["codex_alert_ack"]] }),
-  node("codex_alert_text", "api-call-service", { g: GROUP, name: "Registrar último alerta", server: HA, version: 7, debugenabled: false, action: "input_text.set_value", floorId: [], areaId: [], deviceId: [], entityId: ["input_text.codex_ultimo_alerta_iphone"], labelId: [], data: "{\"value\": alert.title & \": \" & alert.message}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "input_text", service: "set_value", x: 940, y: 160, wires: [[]] }),
-  node("codex_alert_time", "api-call-service", { g: GROUP, name: "Registrar horário", server: HA, version: 7, debugenabled: false, action: "input_datetime.set_datetime", floorId: [], areaId: [], deviceId: [], entityId: ["input_datetime.codex_ultimo_alerta_iphone_em"], labelId: [], data: "{\"datetime\": alert.at}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "input_datetime", service: "set_datetime", x: 920, y: 220, wires: [[]] }),
-  node("codex_alert_persistent", "api-call-service", { g: GROUP, name: "Notificação persistente", server: HA, version: 7, debugenabled: false, action: "persistent_notification.create", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data: "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"codex_alert_\" & alert.kind}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "all", blockInputOverrides: true, domain: "persistent_notification", service: "create", x: 930, y: 280, wires: [["codex_alert_ack"]] }),
-  node("codex_alert_ack", "function", { g: GROUP, name: "Confirmar entrega e iniciar cooldown", func: alertAck, outputs: 0, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x: 1370, y: 120, wires: [] }),
-  node("codex_alert_catch", "catch", { g: GROUP, name: "Capturar falha de entrega", scope: ["codex_alert_push", "codex_alert_persistent"], uncaught: false, x: 930, y: 340, wires: [["codex_alert_failure"]] }),
-  node("codex_alert_failure", "function", { g: GROUP, name: "Manter alerta pendente", func: alertFailure, outputs: 0, timeout: 0, noerr: 0, initialize: "", finalize: "", libs: [], x: 1260, y: 340, wires: [] }),
-];
+const testReset = String.raw`const values = {
+    "input_boolean.codex_alertas_iphone": "on",
+    "input_boolean.codex_resumo_diario_iphone": "on",
+    "sensor.codex_dados_de_limite": "atual",
+    "sensor.codex_previsao_ate_o_reset": "aguenta",
+    "sensor.codex_limite_usado": "69",
+    "sensor.codex_eficiencia_de_cache": "90",
+    "sensor.codex_creditos_extras": "100",
+    "sensor.codex_uso_projetado_no_reset": "75",
+    "sensor.codex_folga_projetada_no_reset": "25",
+    "sensor.codex_ritmo_do_limite": "3",
+    "sensor.codex_limite_disponivel": "31",
+    "sensor.codex_proximo_reset": "2026-08-20T00:00:00Z"
+};
+flow.set("codex_alert_test_state_v1", { values, ready: true, sequence: 0 }, "persistent");
+flow.set("codex_alert_delivery_test_v1", { sent: {}, pending: null }, "persistent");
+node.status({ fill: "blue", shape: "dot", text: "estado TESTE pronto" });
+return null;`;
 
-const retained = flows.filter((item) => item.z !== TAB && item.id !== TAB && item.id !== GROUP);
-retained.push(...nodes);
-fs.writeFileSync(flowUrl, `${JSON.stringify(retained, null, 4)}\n`);
-console.log(`Installed Codex alert flow (${nodes.length} nodes).`);
+const dryRun = String.raw`msg.payload = {
+    simulated: true,
+    dispatched: false,
+    domain: "codex_alerts",
+    level: msg.canonical_level ?? null,
+    alert_kind: msg.alert?.kind ?? null,
+    reason: msg.delivery?.reason ?? "canonical_level_publish"
+};
+node.warn("CODEX_ALERT_DRY_RUN " + JSON.stringify(msg.payload));
+node.status({ fill: "blue", shape: "ring", text: "TESTE: sem efeito" });
+return null;`;
+
+removeTab();
+upsert({ id: TAB, type: "tab", label: "alertas_codex", disabled: false, info: "Fonte canônica visual para nível e alertas Codex. Home Assistant e dashboards consomem o nível publicado; TESTE sempre termina em dry-run.", env: [] });
+
+const policyNodes = ["codex_policy_help", "codex_policy_warning", "codex_policy_critical", "codex_policy_cache", "codex_policy_credits", "codex_policy_critical_cd", "codex_policy_standard_cd", "codex_policy_retry", "codex_policy_validate"];
+upsert(group("codex_group_policy", "0. Política visual — edite os valores", policyNodes, 64, 40, 760, 440, "#2563eb", "#dbeafe"));
+upsert(n("codex_policy_help", "comment", "codex_group_policy", "Valores inválidos preservam a última política válida", 430, 80, [], { info: "Uso: aviso 10–95%, crítico 20–100%, aviso < crítico. Cache 0–100%. Créditos 1–100. Cooldowns 1–24/48 h. Retry 10–600 s." }));
+for (const item of [
+  ["codex_policy_warning", "Aviso de uso — 70 %", "warning_usage_percent", 70, 140],
+  ["codex_policy_critical", "Uso crítico — 90 %", "critical_usage_percent", 90, 190],
+  ["codex_policy_cache", "Cache mínimo — 60 %", "minimum_cache_percent", 60, 240],
+  ["codex_policy_credits", "Créditos mínimos — 10", "minimum_extra_credits", 10, 290],
+  ["codex_policy_critical_cd", "Cooldown crítico — 1 h", "critical_cooldown_hours", 1, 340],
+  ["codex_policy_standard_cd", "Cooldown padrão — 6 h", "standard_cooldown_hours", 6, 390],
+  ["codex_policy_retry", "Retry de entrega — 60 s", "retry_seconds", 60, 440],
+]) upsert(inject(item[0], "codex_group_policy", item[1], item[2], item[3], "num", 230, item[4], [["codex_policy_validate"]], { once: true }));
+upsert(fn("codex_policy_validate", "codex_group_policy", "Validar e preservar política única", policyValidate, 590, 290, [], 0));
+
+const inputNodes = ["codex_alert_state", "codex_alert_daily", "codex_test_input_in", "codex_alert_logic", "codex_sources_ready", "codex_snapshot_level_out", "codex_snapshot_alert_out"];
+upsert(group("codex_group_inputs", "1. Fontes, normalização e snapshot", inputNodes, 864, 40, 1300, 440, "#0f766e", "#ccfbf1"));
+upsert(n("codex_alert_state", "server-state-changed", "codex_group_inputs", "Telemetria bruta e habilitações", 1040, 140, [["codex_alert_logic"]], {
+  server: HA, version: 6, outputs: 1, exposeAsEntityConfig: "",
+  entities: { entity: monitored, substring: [], regex: [] }, outputInitially: true,
+  stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is",
+  outputOnlyOnStateChange: true, for: "0", forType: "num", forUnits: "minutes",
+  ignorePrevStateNull: false, ignorePrevStateUnknown: false, ignorePrevStateUnavailable: false,
+  ignoreCurrentStateUnknown: false, ignoreCurrentStateUnavailable: false,
+  outputProperties: [{ property: "payload", propertyType: "msg", value: '{"entity_id":$entity().entity_id,"state":$entity().state,"previous":$prevEntity().state}', valueType: "jsonata" }],
+}));
+upsert(inject("codex_alert_daily", "codex_group_inputs", "Resumo diário — 20:00", "codex.daily_summary", "", "date", 1050, 230, [["codex_alert_logic"]], { crontab: "00 20 * * *" }));
+upsert(linkIn("codex_test_input_in", "codex_group_inputs", "Receber evento TESTE", ["codex_test_event_out"], 940, 330, [["codex_alert_logic"]]));
+upsert(fn("codex_alert_logic", "codex_group_inputs", "Acumular snapshot (sem política)", accumulate, 1390, 200, [["codex_sources_ready"]]));
+upsert(sw("codex_sources_ready", "codex_group_inputs", "Todas as fontes foram observadas?", "snapshot.ready", [{ t: "eq", v: "true", vt: "bool" }, { t: "else" }], 1690, 200, [["codex_snapshot_level_out", "codex_snapshot_alert_out"], []]));
+upsert(linkOut("codex_snapshot_level_out", "codex_group_inputs", "Snapshot pronto → nível canônico", ["codex_level_in"], 1990, 170));
+upsert(linkOut("codex_snapshot_alert_out", "codex_group_inputs", "Snapshot pronto → decisões de alerta", ["codex_alert_decision_in"], 1990, 230));
+
+const levelNodes = ["codex_level_in", "codex_level_policy", "codex_level_data_current", "codex_level_no_data", "codex_level_critical", "codex_level_set_critical", "codex_level_warning", "codex_level_set_warning", "codex_level_set_normal", "codex_level_effect_out"];
+upsert(group("codex_group_level", "2. Decisão do nível canônico", levelNodes, 64, 500, 1200, 260, "#7c3aed", "#ede9fe"));
+upsert(linkIn("codex_level_in", "codex_group_level", "Receber snapshot", ["codex_snapshot_level_out"], 110, 590, [["codex_level_policy"]]));
+upsert(change("codex_level_policy", "codex_group_level", "Carregar política visual", [{ t: "set", p: "policy", pt: "msg", to: '$flowContext("codex_alert_policy_v1", "persistent")', tot: "jsonata" }], 310, 590, [["codex_level_data_current"]]));
+upsert(sw("codex_level_data_current", "codex_group_level", "Dados do limite estão atuais?", 'snapshot.values["sensor.codex_dados_de_limite"]', [{ t: "eq", v: "atual", vt: "str" }, { t: "else" }], 560, 590, [["codex_level_critical"], ["codex_level_no_data"]]));
+upsert(change("codex_level_no_data", "codex_group_level", "Nível: sem dados atuais", [{ t: "set", p: "canonical_level", pt: "msg", to: "sem dados atuais", tot: "str" }], 820, 550, [["codex_level_effect_out"]]));
+upsert(sw("codex_level_critical", "codex_group_level", "Uso atingiu nível crítico?", 'snapshot.values["sensor.codex_limite_usado"]', [{ t: "gte", v: "policy.critical_usage_percent", vt: "msg" }, { t: "else" }], 820, 610, [["codex_level_set_critical"], ["codex_level_warning"]]));
+upsert(change("codex_level_set_critical", "codex_group_level", "Nível: crítico", [{ t: "set", p: "canonical_level", pt: "msg", to: "crítico", tot: "str" }], 1050, 570, [["codex_level_effect_out"]]));
+upsert(sw("codex_level_warning", "codex_group_level", "Uso atingiu nível de atenção?", 'snapshot.values["sensor.codex_limite_usado"]', [{ t: "gte", v: "policy.warning_usage_percent", vt: "msg" }, { t: "else" }], 820, 680, [["codex_level_set_warning"], ["codex_level_set_normal"]]));
+upsert(change("codex_level_set_warning", "codex_group_level", "Nível: atenção", [{ t: "set", p: "canonical_level", pt: "msg", to: "atenção", tot: "str" }], 1060, 660, [["codex_level_effect_out"]]));
+upsert(change("codex_level_set_normal", "codex_group_level", "Nível: normal", [{ t: "set", p: "canonical_level", pt: "msg", to: "normal", tot: "str" }], 1050, 710, [["codex_level_effect_out"]]));
+upsert(linkOut("codex_level_effect_out", "codex_group_level", "Nível decidido → publicação", ["codex_level_effect_in"], 1210, 620));
+
+const decisionNodes = ["codex_alert_decision_in", "codex_alert_policy", "codex_request_type", "codex_summary_enabled", "codex_alerts_enabled", "codex_entity_route", "codex_forecast_decision", "codex_usage_decision", "codex_cache_decision", "codex_credits_decision", "codex_candidate_available", "codex_daily_kind", "codex_test_kind", "codex_early_candidate_out", "codex_candidate_out"];
+upsert(group("codex_group_decisions", "3. Habilitação e decisões de alerta", decisionNodes, 1300, 500, 1900, 500, "#d97706", "#fef3c7"));
+upsert(linkIn("codex_alert_decision_in", "codex_group_decisions", "Receber snapshot", ["codex_snapshot_alert_out"], 1350, 590, [["codex_alert_policy"]]));
+upsert(change("codex_alert_policy", "codex_group_decisions", "Carregar política visual", [{ t: "set", p: "policy", pt: "msg", to: '$flowContext("codex_alert_policy_v1", "persistent")', tot: "jsonata" }], 1550, 590, [["codex_request_type"]]));
+upsert(sw("codex_request_type", "codex_group_decisions", "Origem: diário, TESTE ou telemetria?", "request_type", [{ t: "eq", v: "daily", vt: "str" }, { t: "eq", v: "manual_test", vt: "str" }, { t: "else" }], 1820, 590, [["codex_summary_enabled"], ["codex_test_kind"], ["codex_alerts_enabled"]]));
+upsert(sw("codex_summary_enabled", "codex_group_decisions", "Resumo diário está habilitado?", "snapshot.summary_enabled", [{ t: "eq", v: "true", vt: "bool" }], 2110, 550, [["codex_daily_kind"]]));
+upsert(change("codex_daily_kind", "codex_group_decisions", "Candidato: resumo diário", [{ t: "set", p: "decision.kind", pt: "msg", to: "daily", tot: "str" }], 2380, 550, [["codex_early_candidate_out"]]));
+upsert(change("codex_test_kind", "codex_group_decisions", "Candidato: TESTE seguro", [{ t: "set", p: "decision.kind", pt: "msg", to: "test", tot: "str" }], 2110, 610, [["codex_early_candidate_out"]]));
+upsert(linkOut("codex_early_candidate_out", "codex_group_decisions", "Resumo/TESTE → dedupe", ["codex_candidate_in"], 2600, 580));
+upsert(sw("codex_alerts_enabled", "codex_group_decisions", "Alertas móveis estão habilitados?", "snapshot.alerts_enabled", [{ t: "eq", v: "true", vt: "bool" }], 2110, 680, [["codex_entity_route"]]));
+upsert(sw("codex_entity_route", "codex_group_decisions", "Qual fonte mudou?", "snapshot.entity_id", [
+  { t: "eq", v: "sensor.codex_previsao_ate_o_reset", vt: "str" },
+  { t: "eq", v: "sensor.codex_limite_usado", vt: "str" },
+  { t: "eq", v: "sensor.codex_eficiencia_de_cache", vt: "str" },
+  { t: "eq", v: "sensor.codex_creditos_extras", vt: "str" },
+], 2390, 680, [["codex_forecast_decision"], ["codex_usage_decision"], ["codex_cache_decision"], ["codex_credits_decision"]]));
+upsert(fn("codex_forecast_decision", "codex_group_decisions", "Calcular transição da previsão", forecastDecision, 2690, 650, [["codex_candidate_available"]]));
+upsert(fn("codex_usage_decision", "codex_group_decisions", "Calcular cruzamento de uso", usageDecision, 2690, 710, [["codex_candidate_available"]]));
+upsert(fn("codex_cache_decision", "codex_group_decisions", "Calcular cruzamento de cache", cacheDecision, 2690, 770, [["codex_candidate_available"]]));
+upsert(fn("codex_credits_decision", "codex_group_decisions", "Calcular cruzamento de créditos", creditsDecision, 2690, 830, [["codex_candidate_available"]]));
+upsert(sw("codex_candidate_available", "codex_group_decisions", "Há candidato de alerta?", "decision.kind", [{ t: "neq", v: "", vt: "str" }], 2980, 740, [["codex_candidate_out"]]));
+upsert(linkOut("codex_candidate_out", "codex_group_decisions", "Candidato → dedupe e efeitos", ["codex_candidate_in"], 3140, 630));
+
+const testNodes = ["codex_test_instructions", "codex_test_reset", "codex_test_reset_state", "codex_test_warning", "codex_test_duplicate", "codex_test_unavailable", "codex_test_daily", "codex_test_event_out", "codex_test_dry_run_in", "codex_test_dry_run_terminal"];
+upsert(group("codex_group_tests", "4. Testes manuais completos — dry-run", testNodes, 64, 780, 760, 600, "#0891b2", "#cffafe"));
+upsert(n("codex_test_instructions", "comment", "codex_group_tests", "Ordem: reset → atenção → duplicado → sem dados → resumo", 430, 820, [], { info: "Todos os cenários percorrem snapshot, política, decisões, cooldown e gates reais; nenhum serviço Home Assistant é chamado." }));
+upsert(inject("codex_test_reset", "codex_group_tests", "TESTE 1: reset", "", "", "date", 180, 890, [["codex_test_reset_state"]]));
+upsert(fn("codex_test_reset_state", "codex_group_tests", "Preparar snapshot sintético", testReset, 480, 890, [], 0));
+upsert(inject("codex_test_warning", "codex_group_tests", "TESTE 2: uso 71 %", "", '{"test_mode":true,"entity_id":"sensor.codex_limite_usado","state":"71","previous":"69"}', "json", 190, 960, [["codex_test_event_out"]]));
+upsert(inject("codex_test_duplicate", "codex_group_tests", "TESTE 3: duplicado 71 %", "", '{"test_mode":true,"entity_id":"sensor.codex_limite_usado","state":"71","previous":"71"}', "json", 210, 1020, [["codex_test_event_out"]]));
+upsert(inject("codex_test_unavailable", "codex_group_tests", "TESTE 4: dados indisponíveis", "", '{"test_mode":true,"entity_id":"sensor.codex_dados_de_limite","state":"unavailable","previous":"atual"}', "json", 220, 1080, [["codex_test_event_out"]]));
+upsert(inject("codex_test_daily", "codex_group_tests", "TESTE 5: resumo diário", "codex.daily_summary", '{"test_mode":true}', "json", 200, 1140, [["codex_test_event_out"]]));
+upsert(linkOut("codex_test_event_out", "codex_group_tests", "Eventos TESTE → snapshot real", ["codex_test_input_in"], 500, 1050));
+upsert(linkIn("codex_test_dry_run_in", "codex_group_tests", "Receber efeito TESTE", ["codex_level_dry_run_out", "codex_alert_dry_run_out"], 420, 1240, [["codex_test_dry_run_terminal"]]));
+upsert(fn("codex_test_dry_run_terminal", "codex_group_tests", "TESTE FINAL: registrar sem enviar", dryRun, 640, 1240, [], 0));
+
+const effectNodes = ["codex_level_effect_in", "codex_level_prepare", "codex_level_final_gate", "codex_level_rbe", "codex_level_publish", "codex_level_dry_run_out", "codex_candidate_in", "codex_build_alert", "codex_delivery_evaluate", "codex_delivery_allowed", "codex_alert_final_gate", "codex_alert_push", "codex_alert_text", "codex_alert_time", "codex_alert_persistent", "codex_alert_ack", "codex_alert_catch", "codex_alert_failure", "codex_alert_dry_run_out", "codex_pending_tick", "codex_pending_policy", "codex_pending_check", "codex_pending_due", "codex_pending_retry_out", "codex_pending_retry_in"];
+upsert(group("codex_group_effects", "5. Estado, dedupe, gates finais, efeitos e recovery", effectNodes, 864, 1020, 2600, 360, "#dc2626", "#fee2e2"));
+upsert(linkIn("codex_level_effect_in", "codex_group_effects", "Receber nível decidido", ["codex_level_effect_out"], 920, 1100, [["codex_level_prepare"]]));
+upsert(change("codex_level_prepare", "codex_group_effects", "Preparar estado canônico", [{ t: "set", p: "payload", pt: "msg", to: "canonical_level", tot: "msg" }], 1120, 1100, [["codex_level_final_gate"]]));
+upsert(sw("codex_level_final_gate", "codex_group_effects", "Gate final: publicar nível ou TESTE?", "test_mode", [{ t: "neq", v: "true", vt: "bool" }, { t: "eq", v: "true", vt: "bool" }], 1370, 1100, [["codex_level_rbe"], ["codex_level_dry_run_out"]]));
+upsert(n("codex_level_rbe", "rbe", "codex_group_effects", "Publicar somente mudança de nível", 1640, 1070, [["codex_level_publish"]], { func: "rbe", gap: "", start: "", inout: "out", septopics: true, property: "payload", topi: "topic" }));
+upsert({ ...service("codex_level_publish", "codex_group_effects", "EFEITO: publicar nível canônico", "input_text.set_value", '{"value":canonical_level}', "jsonata", 1910, 1070, [[]]), entityId: ["input_text.codex_nivel_alerta_canonico"] });
+upsert(linkOut("codex_level_dry_run_out", "codex_group_effects", "Nível TESTE → dry-run", ["codex_test_dry_run_in"], 1640, 1130));
+
+upsert(linkIn("codex_candidate_in", "codex_group_effects", "Receber candidato de alerta", ["codex_early_candidate_out", "codex_candidate_out"], 920, 1210, [["codex_build_alert"]]));
+upsert(fn("codex_build_alert", "codex_group_effects", "Montar texto do candidato", buildAlert, 1130, 1210, [["codex_delivery_evaluate"]]));
+upsert(fn("codex_delivery_evaluate", "codex_group_effects", "Calcular cooldown e registrar pendência", deliveryEvaluate, 1420, 1210, [["codex_delivery_allowed"]]));
+upsert(sw("codex_delivery_allowed", "codex_group_effects", "Cooldown permite entrega?", "delivery.allowed", [{ t: "eq", v: "true", vt: "bool" }, { t: "else" }], 1710, 1210, [["codex_alert_final_gate"], []]));
+upsert(sw("codex_alert_final_gate", "codex_group_effects", "Gate final: alertar produção ou TESTE?", "test_mode", [{ t: "neq", v: "true", vt: "bool" }, { t: "eq", v: "true", vt: "bool" }], 1980, 1210, [["codex_alert_push", "codex_alert_text", "codex_alert_time", "codex_alert_persistent"], ["codex_alert_dry_run_out"]]));
+upsert(service("codex_alert_push", "codex_group_effects", "EFEITO: push mobile_primary", "public_bindings.call", '{"role":"mobile_primary","action":"notify_3","data":{"title":alert.title,"message":alert.message}}', "jsonata", 2290, 1160, [["codex_alert_ack"]]));
+upsert({ ...service("codex_alert_text", "codex_group_effects", "EFEITO: registrar último alerta", "input_text.set_value", '{"value":alert.title & ": " & alert.message}', "jsonata", 2290, 1210, [[]]), entityId: ["input_text.codex_ultimo_alerta_iphone"] });
+upsert({ ...service("codex_alert_time", "codex_group_effects", "EFEITO: registrar horário", "input_datetime.set_datetime", '{"datetime":alert.at}', "jsonata", 2290, 1260, [[]]), entityId: ["input_datetime.codex_ultimo_alerta_iphone_em"] });
+upsert(service("codex_alert_persistent", "codex_group_effects", "EFEITO: notificação persistente", "persistent_notification.create", '{"title":alert.title,"message":alert.message,"notification_id":"codex_alert_" & alert.kind}', "jsonata", 2290, 1310, [["codex_alert_ack"]]));
+upsert(fn("codex_alert_ack", "codex_group_effects", "Confirmar entrega e iniciar cooldown", alertAck, 2590, 1160, [], 0));
+upsert(n("codex_alert_catch", "catch", "codex_group_effects", "Capturar falha dos canais", 2590, 1260, [["codex_alert_failure"]], { scope: ["codex_alert_push", "codex_alert_persistent"], uncaught: false }));
+upsert(fn("codex_alert_failure", "codex_group_effects", "Manter pendência para recovery", alertFailure, 2850, 1260, [], 0));
+upsert(linkOut("codex_alert_dry_run_out", "codex_group_effects", "Alerta TESTE → dry-run", ["codex_test_dry_run_in"], 2290, 1360));
+upsert(inject("codex_pending_tick", "codex_group_effects", "Recovery de pendência — 60 s", "", "", "date", 2850, 1080, [["codex_pending_policy"]], { once: true, repeat: "60" }));
+upsert(change("codex_pending_policy", "codex_group_effects", "Carregar política de recovery", [{ t: "set", p: "policy", pt: "msg", to: '$flowContext("codex_alert_policy_v1", "persistent")', tot: "jsonata" }], 3100, 1080, [["codex_pending_check"]]));
+upsert(fn("codex_pending_check", "codex_group_effects", "Ler pendência persistente", pendingCheck, 3100, 1160, [["codex_pending_due"]]));
+upsert(sw("codex_pending_due", "codex_group_effects", "Retry pendente está vencido?", "delivery.allowed", [{ t: "eq", v: "true", vt: "bool" }], 3280, 1210, [["codex_pending_retry_out"]]));
+upsert(linkOut("codex_pending_retry_out", "codex_group_effects", "Recovery vencido → gate final", ["codex_pending_retry_in"], 3310, 1320));
+upsert(linkIn("codex_pending_retry_in", "codex_group_effects", "Receber recovery vencido", ["codex_pending_retry_out"], 1840, 1310, [["codex_alert_final_gate"]]));
+
+writeFileSync(OUT, JSON.stringify(flows, null, 4) + "\n");
+console.log(`Fluxo visual de alertas Codex escrito em ${OUT}.`);

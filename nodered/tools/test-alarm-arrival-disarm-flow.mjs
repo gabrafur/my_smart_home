@@ -1,292 +1,130 @@
+#!/usr/bin/env node
+
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import vm from "node:vm";
 
-const flows = JSON.parse(
-  fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"),
-);
+const flowsPath = process.argv[2] ?? new URL("../flows.json", import.meta.url);
+const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
-
-function node(id) {
-  const result = byId.get(id);
-  assert.ok(result, `missing node: ${id}`);
-  return result;
-}
-
-function runFunction(id, msg, flowValues = {}) {
-  const statuses = [];
-  const warnings = [];
-  const globalValues = {};
-  const context = {
-    msg,
-    node: {
-      status: (status) => statuses.push(status),
-      warn: (warning) => warnings.push(warning),
-    },
+const tabNodes = flows.filter((node) => node.z === "1f468eaeef0733dd");
+const compile = (id) => {
+  const node = byId.get(id);
+  assert.equal(node?.type, "function", `function ausente: ${id}`);
+  return new Function("msg", "flow", "node", "global", node.func);
+};
+function contexts() {
+  const flowStores = { default: new Map(), persistent: new Map() };
+  const globals = new Map();
+  return {
     flow: {
-      get: (key) => flowValues[key],
-      set: (key, value) => {
-        flowValues[key] = value;
-      },
+      get(key, store = "default") { return flowStores[store].get(key); },
+      set(key, value, store = "default") { flowStores[store].set(key, structuredClone(value)); },
     },
-    global: {
-      get: (key) => globalValues[key],
-      set: (key, value) => {
-        globalValues[key] = value;
-      },
-    },
-    Date,
-    Math,
-    Set,
-    Array,
-    Number,
+    global: { get(key) { return globals.get(key); }, set(key, value) { globals.set(key, structuredClone(value)); } },
+    flowStores, globals,
   };
-  const result = vm.runInNewContext(
-    `(function () { ${node(id).func}\n})()`,
-    context,
-  );
-  return { result, flowValues, statuses, warnings };
 }
+const nodeMock = { status() {}, warn() {}, error() {} };
+const call = (fn, msg, ctx) => fn(msg, ctx.flow, nodeMock, ctx.global);
+const ids = {
+  policyValidate: "alarm_arrival_policy_validate", policyStore: "alarm_arrival_policy_store", policyLoad: "alarm_arrival_request_policy_load",
+  normalize: "alarm_arrival_normalize", requestRead: "alarm_arrival_request_read", requestBuild: "alarm_arrival_request_build",
+  ack: "alarm_arrival_notification_ack_v1", testRead: "alarm_arrival_test_read", testBuild: "alarm_arrival_test_build",
+  simulate: "alarm_arrival_test_simulate_confirmation_v1", confirmationRead: "alarm_arrival_confirmation_read",
+  testFinish: "alarm_arrival_test_finish", realClear: "alarm_arrival_real_clear_cancel", disarmBuild: "alarm_arrival_disarm_build",
+  dryRun: "alarm_arrival_test_dry_run_terminal_v1",
+};
+const f = Object.fromEntries(Object.entries(ids).map(([key, id]) => [key, compile(id)]));
+const defaults = { cooldown_s: 60, confirmation_ttl_s: 300, delivery_window_s: 30, test_ttl_s: 120 };
 
-const arrivalTab = "1f468eaeef0733dd";
-const peopleArrivalOut = "397c6032b3dad342";
-const vehicleArrivalOut = "2aa1b0c2907d4017";
-const arrivalIn = "6481cb991b3732f5";
-const validateArrival = "20b07bd3484da8f9";
-const readAlarm = "af0496cef18e47ca";
-const isArmed = "a305a1379c919215";
-const cooldown = "88bf3513a44e58e6";
-const primaryNotification = "3b95712a74512929";
-const secondaryNotification = "370622ddaaf3fcab";
-const notificationAck = "alarm_arrival_notification_ack_v1";
-const notificationFailure = "alarm_arrival_notification_failure_v1";
-const confirmationEvent = "9d0d42f03aa9013d";
-const validateConfirmation = "815c14ef3c054b25";
-const disarmOut = "dcd87a69ec3c6008";
-const prepareTest = "99644e301cd49e45";
-const routeTestOut = "alarm_arrival_test_route_out_v1";
-const routeTestIn = "alarm_arrival_test_route_in_v1";
-const simulateConfirmation = "alarm_arrival_test_simulate_confirmation_v1";
-const confirmationOut = "alarm_arrival_test_confirmation_out_v1";
-const confirmationIn = "alarm_arrival_test_confirmation_in_v1";
-const dryRunTerminal = "alarm_arrival_test_dry_run_terminal_v1";
+for (const id of [
+  "alarm_arrival_policy_switch", "alarm_arrival_contract_gate", "alarm_arrival_kind_gate", "alarm_arrival_source_gate",
+  "alarm_arrival_stage_gate", "alarm_arrival_direction_gate", "alarm_arrival_cycle_gate", "alarm_arrival_self_gate",
+  "alarm_arrival_test_gate", "a305a1379c919215", "alarm_arrival_pending_gate", "alarm_arrival_inflight_gate",
+  "alarm_arrival_cooldown_gate", "alarm_arrival_action_gate", "alarm_arrival_action_test_gate",
+  "alarm_arrival_test_pending_gate", "alarm_arrival_test_token_gate", "alarm_arrival_test_expired_gate",
+  "alarm_arrival_test_confirm_gate", "alarm_arrival_real_pending_gate", "alarm_arrival_real_expired_gate",
+  "alarm_arrival_real_cancel_gate", "alarm_arrival_real_confirm_gate",
+]) assert.equal(byId.get(id)?.type, "switch", `decisão visual ausente: ${id}`);
 
-assert.equal(node(arrivalTab).type, "tab");
-assert.equal(node(arrivalTab).label, "alarme_desarme_chegada");
-assert.ok(node(peopleArrivalOut).links.includes(arrivalIn));
-assert.ok(node(vehicleArrivalOut).links.includes(arrivalIn));
-assert.deepEqual(node(arrivalIn).links.sort(), [peopleArrivalOut, vehicleArrivalOut].sort());
-assert.equal(
-  node(readAlarm).entity_id,
-  "alarm_control_panel.security_panel",
-);
-assert.deepEqual(node(isArmed).rules, [
-  { t: "eq", v: "armed_away", vt: "str" },
-]);
-assert.deepEqual(node("alarm_arrival_disarm_command_in").wires, [
-  ["alarm_set_desired_disarm"],
-]);
-const arrivalActions = flows.filter(
-  (item) =>
-    item.z === arrivalTab &&
-    item.type === "api-call-service",
-);
-for (const action of arrivalActions) {
-  assert.equal(action.action, "public_bindings.call");
-  assert.match(action.data, /"role":"mobile_(?:primary|secondary)"/);
-}
-const confirmationActions = arrivalActions.filter((action) =>
-  [primaryNotification, secondaryNotification].includes(action.id));
-assert.equal(confirmationActions.length, 2);
-for (const action of confirmationActions) {
-  assert.match(action.data, /"action":"notify_actionable"/);
-  assert.match(action.data, /confirm_action/);
-  assert.match(action.data, /cancel_action/);
-}
-assert.equal(
-  node(confirmationEvent).eventType,
-  "mobile_app_notification_action",
-);
-assert.deepEqual(node(cooldown).wires, [
-  [primaryNotification, secondaryNotification],
-]);
-assert.deepEqual(node(primaryNotification).wires, [[notificationAck]]);
-assert.deepEqual(node(secondaryNotification).wires, [[notificationAck]]);
-assert.equal(node(primaryNotification).queue, "all");
-assert.equal(node(secondaryNotification).queue, "all");
-assert.deepEqual(node("7a19b058661ba5f8").wires, [[notificationFailure]]);
-assert.deepEqual(node(validateConfirmation).wires[0], [disarmOut]);
-assert.deepEqual(node(validateArrival).wires[1], [routeTestOut]);
-assert.deepEqual(node(routeTestOut).links, [routeTestIn]);
-assert.deepEqual(node(routeTestIn).wires, [[prepareTest]]);
-assert.deepEqual(node(prepareTest).wires, [[simulateConfirmation]]);
-assert.deepEqual(node(simulateConfirmation).wires, [[confirmationOut]]);
-assert.deepEqual(node(confirmationOut).links, [confirmationIn]);
-assert.deepEqual(node(confirmationIn).wires, [[validateConfirmation]]);
-assert.deepEqual(node(validateConfirmation).wires[1], [dryRunTerminal]);
-assert.equal(node(dryRunTerminal).outputs, 0);
-assert.equal((node(dryRunTerminal).wires ?? []).flat().length, 0);
-assert.equal(byId.has("40ab3b2f97adac58"), false);
-assert.equal(byId.has("b502fda3391bb41f"), false);
-
-const valid = runFunction(validateArrival, {
-  payload: {
-    contract: "security.arrival.v1",
-    kind: "arrival",
-    source: "resident_secondary",
-    arriving: ["resident_secondary"],
-    arrival_stage: "approach",
-    arrival_direction: "returning",
-    external_cycle_confirmed: true,
-  },
-});
-assert.equal(valid.result[0].arrival_source, "resident_secondary");
-assert.equal(valid.result[0].arrival_stage, "approach");
-
+const ctx = contexts();
+let msg = call(f.policyValidate, { payload: defaults }, ctx);
+assert.equal(msg.policy_valid, true);
+call(f.policyStore, msg, ctx);
+assert.deepEqual(call(f.policyLoad, {}, ctx).policy, { version: 1, ...defaults });
 for (const payload of [
-  { contract: "security.arrival.v1", kind: "arrival", source: "desconhecido", arriving: ["desconhecido"], arrival_stage: "home" },
-  { contract: "security.arrival.v1", kind: "arrival", source: "resident_primary", arriving: [], arrival_stage: "home" },
-  { contract: "security.arrival.v1", kind: "arrival", source: "vehicle_primary", arriving: ["vehicle_primary"], arrival_stage: "away" },
-  { contract: "security.arrival.v1", kind: "arrival", source: "resident_primary", arriving: ["resident_primary"], arrival_stage: "home", arrival_direction: "departure", external_cycle_confirmed: false },
+  { ...defaults, cooldown_s: -1 }, { ...defaults, cooldown_s: 601 },
+  { ...defaults, confirmation_ttl_s: 29 }, { ...defaults, confirmation_ttl_s: 901 },
+  { ...defaults, delivery_window_s: 4 }, { ...defaults, delivery_window_s: 121 },
+  { ...defaults, test_ttl_s: 29 }, { ...defaults, test_ttl_s: 601 },
+]) assert.equal(call(f.policyValidate, { payload }, ctx).policy_valid, false);
+assert.equal(call(f.policyValidate, { payload: { cooldown_s: 0, confirmation_ttl_s: 30, delivery_window_s: 5, test_ttl_s: 30 } }, ctx).policy_valid, true);
+assert.equal(call(f.policyValidate, { payload: { cooldown_s: 600, confirmation_ttl_s: 900, delivery_window_s: 120, test_ttl_s: 600 } }, ctx).policy_valid, true);
+assert.deepEqual(call(f.policyLoad, {}, ctx).policy, { version: 1, ...defaults });
+
+const validPayload = {
+  contract: "security.arrival.v1", kind: "arrival", source: "resident_primary", arriving: ["resident_primary"],
+  arrival_stage: "approach", arrival_direction: "returning", external_cycle_confirmed: true,
+};
+msg = call(f.normalize, { payload: validPayload, arrival_now: 100000 }, ctx);
+for (const field of ["arrival_contract_valid", "arrival_kind_valid", "arrival_source_valid", "arrival_stage_valid", "arrival_direction_valid", "arrival_cycle_confirmed", "arrival_self_listed"]) assert.equal(msg[field], true, field);
+for (const mutation of [
+  { source: "unknown" }, { arriving: [] }, { arrival_stage: "away" }, { arrival_direction: "departure" }, { external_cycle_confirmed: false },
 ]) {
-  assert.deepEqual(Array.from(runFunction(validateArrival, { payload }).result), [null, null]);
+  const invalid = call(f.normalize, { payload: { ...validPayload, ...mutation } }, contexts());
+  assert.equal([
+    invalid.arrival_contract_valid, invalid.arrival_kind_valid, invalid.arrival_source_valid,
+    invalid.arrival_stage_valid, invalid.arrival_direction_valid, invalid.arrival_cycle_confirmed,
+    invalid.arrival_self_listed,
+  ].every(Boolean), false);
 }
 
-const now = Date.now();
-const first = runFunction(
-  cooldown,
-  { arrival_source: "resident_primary", arrival_stage: "approach" },
-  {},
-);
-assert.equal(first.result.alarm_disarm_automatic, undefined);
-assert.match(first.result.confirm_action, /^ALARME_DESARMAR_/);
-assert.match(first.result.cancel_action, /^ALARME_MANTER_ARMADO_/);
-assert.equal(first.flowValues.alarm_arrival_last_confirmation_at, undefined, "cooldown must wait for HA acceptance");
-assert.equal(first.flowValues.alarm_arrival_pending_confirmation, undefined, "pending action must wait for HA acceptance");
-assert.equal(
-  first.flowValues.alarm_arrival_confirmation_inflight.deliveryId,
-  first.result.alarmConfirmationCandidate.deliveryId,
-);
+msg = call(f.policyLoad, { ...msg }, ctx);
+msg = call(f.requestRead, msg, ctx);
+assert.equal(msg.arrival_request.pending_active, false);
+msg = call(f.requestBuild, msg, ctx);
+assert.match(msg.confirm_action, /^ALARME_DESARMAR_/);
+assert.equal(msg.alarmConfirmationCandidate.expiresAt, 400000);
+assert.equal(ctx.flowStores.default.get("alarm_arrival_pending_confirmation"), null, "pendência aguarda aceite HA");
+call(f.ack, msg, ctx);
+assert.equal(ctx.flowStores.default.get("alarm_arrival_pending_confirmation").confirmAction, msg.confirm_action);
+let duplicate = call(f.requestRead, call(f.policyLoad, { arrival_now: 100001 }, ctx), ctx);
+assert.equal(duplicate.arrival_request.pending_active, true);
 
-const duplicate = runFunction(
-  cooldown,
-  { arrival_source: "vehicle_primary", arrival_stage: "approach" },
-  first.flowValues,
-);
-assert.equal(duplicate.result, null);
+let confirmation = call(f.confirmationRead, { arrival_now: 100002, payload: { action: "OUTRA_ACAO" } }, ctx);
+assert.equal(confirmation.confirmation.is_test, false);
+assert.equal(confirmation.confirmation.action === confirmation.confirmation.pending.confirmAction, false);
+assert.ok(ctx.flowStores.default.get("alarm_arrival_pending_confirmation"));
+confirmation = call(f.confirmationRead, { arrival_now: 100003, payload: { action: msg.confirm_action, context: { user_id: "synthetic_user" } } }, ctx);
+let disarm = call(f.disarmBuild, confirmation, ctx);
+assert.equal(disarm.alarm_disarm_automatic, true);
+assert.equal(disarm.alarm_disarm_reason, "chegada_confirmada_resident_primary_approach");
+assert.equal(ctx.flowStores.default.get("alarm_arrival_pending_confirmation"), null);
 
-runFunction(notificationAck, first.result, first.flowValues);
-assert.ok(first.flowValues.alarm_arrival_last_confirmation_at >= now);
-assert.equal(
-  first.flowValues.alarm_arrival_pending_confirmation.confirmAction,
-  first.result.confirm_action,
-);
-assert.ok(
-  first.flowValues.alarm_arrival_pending_confirmation.expiresAt >=
-    now + 5 * 60 * 1000 - 100,
-);
-assert.equal(first.flowValues.alarm_arrival_confirmation_inflight, null);
+const testCtx = contexts();
+call(f.policyStore, call(f.policyValidate, { payload: defaults }, testCtx), testCtx);
+msg = { ...call(f.policyLoad, { arrival_now: 200000, payload: { ...validPayload, test_mode: true, test_case: "manual" }, _location_test: true }, testCtx) };
+msg.arrival_source = "resident_primary";
+msg.arrival_stage = "approach";
+msg = call(f.testRead, msg, testCtx);
+msg = call(f.testBuild, msg, testCtx);
+assert.match(msg.confirm_action, /^ALARME_TESTE_CONFIRMAR_/);
+msg = call(f.simulate, msg, testCtx);
+confirmation = call(f.confirmationRead, { ...msg, arrival_now: 200001 }, testCtx);
+assert.equal(confirmation.confirmation.test_token_matches, true);
+confirmation.alarm_arrival_test_result = "confirmado";
+msg = call(f.testFinish, confirmation, testCtx);
+assert.equal(msg.alarm_arrival_test, true);
+call(f.dryRun, msg, testCtx);
+assert.equal(testCtx.flowStores.default.get("alarm_arrival_last_dry_run_v1").dispatched, false);
+assert.equal(testCtx.flowStores.default.get("alarm_arrival_pending_confirmation"), undefined, "TESTE não contamina produção");
 
-const unrelated = runFunction(
-  validateConfirmation,
-  { payload: { action: "OUTRA_ACAO" } },
-  first.flowValues,
-);
-assert.deepEqual(Array.from(unrelated.result), [null, null]);
-assert.ok(unrelated.flowValues.alarm_arrival_pending_confirmation);
-
-const confirmed = runFunction(
-  validateConfirmation,
-  {
-    payload: {
-      action: first.result.confirm_action,
-      context: { user_id: "synthetic_user" },
-    },
-  },
-  first.flowValues,
-);
-assert.equal(confirmed.result[0].alarm_disarm_automatic, true);
-assert.equal(confirmed.result[0].alarm_disarm_confirmed, true);
-assert.equal(
-  confirmed.result[0].alarm_disarm_reason,
-  "chegada_confirmada_resident_primary_approach",
-);
-assert.equal(confirmed.result[0].alarm_disarm_confirmed_by, "synthetic_user");
-assert.equal(confirmed.flowValues.alarm_arrival_pending_confirmation, null);
-
-const cancelledValues = {
-  alarm_arrival_pending_confirmation: {
-    confirmAction: "CONFIRMAR_TESTE",
-    cancelAction: "CANCELAR_TESTE",
-    expiresAt: Date.now() + 60_000,
-    source: "resident_secondary",
-    stage: "home",
-  },
-};
-const cancelled = runFunction(
-  validateConfirmation,
-  { payload: { action: "CANCELAR_TESTE" } },
-  cancelledValues,
-);
-assert.deepEqual(Array.from(cancelled.result), [null, null]);
-assert.equal(cancelled.flowValues.alarm_arrival_pending_confirmation, null);
-
-const expiredValues = {
-  alarm_arrival_pending_confirmation: {
-    confirmAction: "CONFIRMACAO_EXPIRADA",
-    cancelAction: "CANCELAMENTO_EXPIRADO",
-    expiresAt: Date.now() - 1,
-    source: "vehicle_primary",
-    stage: "approach",
-  },
-};
-const expired = runFunction(
-  validateConfirmation,
-  { payload: { action: "CONFIRMACAO_EXPIRADA" } },
-  expiredValues,
-);
-assert.deepEqual(Array.from(expired.result), [null, null]);
-assert.equal(expired.flowValues.alarm_arrival_pending_confirmation, null);
-
-const testPrepared = runFunction(prepareTest, {
-  _location_test: true,
-  _location_test_case: "vehicle_primary_approach",
-  arrival_source: "vehicle_primary",
-  arrival_stage: "approach",
-  payload: {
-    test_mode: true,
-    source: "vehicle_primary",
-    arrival_stage: "approach",
-  },
-});
-assert.match(testPrepared.result.confirm_action, /^ALARME_TESTE_CONFIRMAR_/);
-assert.ok(testPrepared.flowValues.alarm_arrival_test_pending_confirmation);
-
-const testSimulated = runFunction(
-  simulateConfirmation,
-  testPrepared.result,
-  testPrepared.flowValues,
-);
-assert.equal(testSimulated.result.payload.simulated, true);
-assert.equal(testSimulated.result.payload.dispatched, false);
-
-const testValidated = runFunction(
-  validateConfirmation,
-  testSimulated.result,
-  testPrepared.flowValues,
-);
-assert.equal(testValidated.result[0], null, "TESTE nunca pode alcançar o desarme");
-assert.equal(testValidated.result[1].alarm_arrival_test_result, "confirmado");
-
-const testFinished = runFunction(
-  dryRunTerminal,
-  testValidated.result[1],
-  testPrepared.flowValues,
-);
-assert.equal(testFinished.result, null);
-assert.equal(testFinished.flowValues.alarm_arrival_last_dry_run_v1.simulated, true);
-assert.equal(testFinished.flowValues.alarm_arrival_last_dry_run_v1.dispatched, false);
-assert.equal(testFinished.flowValues.alarm_arrival_last_dry_run_v1.actions.length, 4);
-assert.match(testFinished.warnings.at(-1), /dispatched=false/);
-
-console.log("Fluxo real e dry-run completo do alarme passaram sem efeitos em dispositivos.");
+assert.ok(byId.get("397c6032b3dad342")?.links.includes("6481cb991b3732f5"));
+assert.ok(byId.get("2aa1b0c2907d4017")?.links.includes("6481cb991b3732f5"));
+assert.deepEqual(byId.get("alarm_arrival_disarm_command_in")?.wires, [["alarm_set_arrival_disarm"]]);
+for (const id of ["3b95712a74512929", "370622ddaaf3fcab"]) {
+  assert.equal(byId.get(id)?.action, "public_bindings.call");
+  assert.equal(byId.get(id)?.queue, "all");
+}
+for (const node of tabNodes.filter((entry) => entry.type === "function")) assert.ok(node.func.length < 2000, `JavaScript residual grande: ${node.id}`);
+console.log("Alarm arrival visual flow: contracts, bounds, pending, tokens, confirmation and dry-run passed.");

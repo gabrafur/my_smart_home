@@ -7,4 +7,5 @@ const result = {
 flow.set("local_ai_rtx_last_dry_run_v1", result);
 msg.payload = result;
 node.status({ fill: "blue", shape: "dot", text: "dry-run: MCP bloqueado" });
-return msg;
+node.warn("LOCAL_AI_RTX_DRY_RUN " + JSON.stringify(result));
+return null;

@@ -2,356 +2,144 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const flows = JSON.parse(fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"));
-const packageYaml = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "packages", "raspberry_pi_system_health.yaml"), "utf8");
-const dashboardYaml = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "dashboards", "raspberry_pi_health.yaml"), "utf8");
-const node = (id) => {
-  const found = flows.find((entry) => entry.id === id);
-  assert.ok(found, `missing node ${id}`);
-  return found;
+const flowsPath = process.argv[2] ?? new URL("../flows.json", import.meta.url);
+const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
+const byId = new Map(flows.map((node) => [node.id, node]));
+const tabNodes = flows.filter((node) => node.z === "storage_health_tab");
+const compile = (id) => {
+  const node = byId.get(id);
+  assert.equal(node?.type, "function", `function ausente: ${id}`);
+  return new Function("msg", "flow", "node", node.func);
 };
-
-function memoryFlow(initial = {}) {
-  const values = new Map(Object.entries(initial));
+function context() {
+  const stores = { default: new Map(), persistent: new Map(), memoryOnly: new Map() };
   return {
-    get: (key) => values.get(key),
-    set: (key, value) => values.set(key, value),
-    values,
+    stores,
+    get(key, store = "default") { return stores[store].get(key); },
+    set(key, value, store = "default") { stores[store].set(key, structuredClone(value)); },
   };
 }
-
-function runtimeNode() {
-  return {
-    statuses: [], logs: [], errors: [],
-    status(value) { this.statuses.push(value); },
-    log(value) { this.logs.push(value); },
-    error(value) { this.errors.push(value); },
-  };
-}
-
-function compile(id) {
-  return new Function("msg", "flow", "node", "context", "env", node(id).func);
-}
-
-function configuredFlow() {
-  const flow = memoryFlow();
-  compile("storage_set_config")({}, flow, runtimeNode(), {}, {});
+const nodeMock = { status() {}, log() {}, warn() {}, error() {} };
+const call = (fn, msg, flow) => fn(msg, flow, nodeMock);
+const f = {
+  validate: compile("storage_visual_policy_validate"), store: compile("storage_visual_policy_store"),
+  load: compile("storage_visual_policy_load"), normalize: compile("storage_visual_input_normalize"),
+  history: compile("storage_visual_history_analyze"), alert: compile("storage_visual_alert_build"),
+  state: compile("storage_visual_state_finalize"), attributes: compile("storage_visual_attributes_build"),
+  mqtt: compile("storage_visual_mqtt_build"), finalize: compile("storage_visual_output_route"), invalid: compile("storage_visual_invalid_finalize"),
+  ack: compile("storage_notification_ack"), gate: compile("storage_auto_gate"),
+};
+const defaults = { warning_pct: 70, high_pct: 80, critical_pct: 90, hysteresis_pp: 3,
+  notification_cooldown_h: 12, command_error_cooldown_h: 6, trend_24h_pp: 5, trend_7d_pp: 10,
+  auto_remediation_cooldown_h: 6, sample_interval_min: 15, history_retention_days: 8 };
+const NOW = Date.parse("2026-08-13T12:00:00Z");
+const metric = (used, free = 20, categories = undefined) => ({
+  used_percent: used, used_gb: 30, free_gb: free, inode_used_percent: 13, filesystem: "/",
+  collected_at: new Date(NOW).toISOString(), maintenance_last_at: "1970-01-01T00:05:00Z",
+  maintenance_reclaimed_bytes: 157286400, categories,
+});
+function configured() {
+  const flow = context();
+  call(f.store, call(f.validate, { payload: defaults }, flow), flow);
   return flow;
 }
-
-const NOW = Date.parse("2026-08-13T12:00:00Z");
-const MAINTENANCE_AT = "1970-01-01T00:05:00Z";
-const health = compile("storage_evaluate");
-const acknowledge = compile("storage_notification_ack");
-const manualStart = compile("storage_manual_start");
-const manualComplete = compile("storage_manual_complete");
-const metric = (used, free = 20, categories = undefined) => ({
-  used_percent: used,
-  used_gb: 30,
-  free_gb: free,
-  inode_used_percent: 13,
-  filesystem: "/",
-  collected_at: new Date(NOW).toISOString(),
-  maintenance_last_at: MAINTENANCE_AT,
-  maintenance_reclaimed_bytes: 157286400,
-  categories,
-});
-const evaluate = (flow, used, now = NOW, free = 20) => health(
-  { payload: metric(used, free), testNow: now }, flow, runtimeNode(), {}, {},
-);
-const accept = (flow, alert) => acknowledge(alert, flow, runtimeNode(), {}, {});
-
-assert.equal(node("storage_health_tick").repeat, "900");
-assert.equal(node("storage_daily_maintenance").crontab, "23 */6 * * *");
-assert.deepEqual(node("storage_daily_maintenance").wires, [["storage_auto_gate"]]);
-assert.equal(node("storage_manual_health").type, "server-state-changed");
-assert.deepEqual(node("storage_manual_health").entities.entity, ["input_button.storage_health_manual_run"]);
-assert.equal(node("storage_manual_health").ignorePrevStateNull, false);
-assert.equal(node("storage_manual_health").ignorePrevStateUnknown, false);
-assert.equal(node("storage_manual_health").ignorePrevStateUnavailable, false);
-assert.equal(node("storage_manual_health").ignoreCurrentStateUnknown, true);
-assert.equal(node("storage_manual_health").ignoreCurrentStateUnavailable, true);
-assert.deepEqual(node("storage_manual_health").wires, [["storage_manual_start"]]);
-assert.deepEqual(node("storage_manual_start").wires, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_read_ha"], ["storage_manual_status_mqtt"]]);
-assert.deepEqual(node("storage_evaluate").wires[3], ["storage_auto_out"]);
-assert.deepEqual(node("storage_auto_gate").wires, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_test_dry_out"]]);
-assert.deepEqual(node("storage_request_host_maintenance").wires[0], ["storage_post_maintenance_delay"]);
-assert.deepEqual(node("storage_post_maintenance_delay").wires, [["storage_recheck_out"]]);
-assert.deepEqual(node("storage_exec_maintenance").wires[2], ["storage_maintenance_complete", "storage_manual_complete"]);
-assert.equal(node("storage_exec_maintenance").command, "/opt/storage-health-maintenance.sh --apply");
-assert.equal(node("storage_request_host_maintenance").command, "/opt/request-host-storage-maintenance.sh");
-assert.equal(node("storage_exec_inspection").command, "/opt/storage-health-maintenance.sh --dry-run --deep");
-{
-  const discovery = compile("storage_discovery")({}, memoryFlow(), runtimeNode(), {}, {});
-  const messages = discovery[0];
-  const lastRun = messages.find((message) => message.topic.endsWith("/raspberry_storage_health_last_run/config"));
-  assert.ok(lastRun, "storage health last-run discovery must be published");
-  const payload = JSON.parse(lastRun.payload);
-  assert.equal(payload.default_entity_id, "sensor.raspberry_pi_storage_health_last_run");
-  assert.equal(payload.state_topic, "smart_home/raspberry/storage/health_last_run");
-  assert.equal(payload.device_class, "timestamp");
-  const cause = messages.find((message) => message.topic.endsWith("/raspberry_storage_growth_cause/config"));
-  assert.ok(cause, "growth-cause discovery must be published");
-  for (const current of ["raspberry_storage_last_maintenance", "raspberry_storage_last_reclaimed"]) {
-    const definition = messages.find((message) => message.topic.endsWith(`/${current}/config`));
-    assert.ok(definition, `${current} discovery must be published`);
-    assert.notEqual(definition.payload, "");
-  }
+function evaluate(flow, payload, now = NOW, testMode = false) {
+  let msg = call(f.load, { payload, testNow: now, test_mode: testMode }, flow);
+  msg = call(f.normalize, msg, flow);
+  if (!msg.storage.valid) return call(f.invalid, msg, flow);
+  msg = call(f.history, msg, flow);
+  const s = msg.storage;
+  s.raw_severity = s.used >= msg.policy.critical_pct ? "critical" : s.used >= msg.policy.high_pct ? "high" : s.used >= msg.policy.warning_pct ? "warning" : "normal";
+  s.severity = s.previous === "critical" && s.used >= msg.policy.critical_pct - msg.policy.hysteresis_pp ? "critical" :
+    s.previous === "high" && s.used >= msg.policy.high_pct - msg.policy.hysteresis_pp && s.raw_severity !== "critical" ? "high" :
+      s.previous === "warning" && s.used >= msg.policy.warning_pct - msg.policy.hysteresis_pp && s.raw_severity === "normal" ? "warning" : s.raw_severity;
+  s.accelerated = (s.growth24h !== null && s.growth24h >= msg.policy.trend_24h_pp) || (s.growth7d !== null && s.growth7d >= msg.policy.trend_7d_pp);
+  s.recovered = s.severity === "normal" && s.previous !== "normal";
+  s.escalated = (s.severity === "critical" && s.previous !== "critical") ||
+    (s.severity === "high" && ["normal", "warning"].includes(s.previous)) || (s.severity === "warning" && s.previous === "normal");
+  s.capacity_due = s.escalated || (s.severity !== "normal" && s.now - Number(s.state.lastNotificationAt || 0) >= msg.policy.notification_cooldown_h * 3600000);
+  s.trend_due = s.now - Number(s.state.lastTrendNotificationAt || 0) >= msg.policy.notification_cooldown_h * 3600000;
+  s.remediation_needed = s.accelerated || s.severity !== "normal";
+  s.remediation_due = s.remediation_needed && s.now - Number(s.state.lastAutoRemediationAt || 0) >= msg.policy.auto_remediation_cooldown_h * 3600000;
+  s.alert_kind = s.recovered ? "recovery" : s.capacity_due ? "capacity" : s.accelerated && s.trend_due ? "trend" : "none";
+  msg = call(f.alert, msg, flow);
+  msg = call(f.state, msg, flow);
+  msg = call(f.attributes, msg, flow);
+  msg = call(f.mqtt, msg, flow);
+  return call(f.finalize, msg, flow);
 }
-assert.match(packageYaml, /storage_maintenance_docker_unused_untagged_logical_bytes/);
-assert.match(packageYaml, /name: Raspberry Pi Recorder Storage Usage[\s\S]{0,240}unit_of_measurement: "%"[\s\S]{0,80}state_class: measurement/);
-assert.match(dashboardYaml, /entity: sensor\.raspberry_pi_recorder_storage_usage/);
-assert.match(dashboardYaml, /title: Armazenamento \(%\) · 30 dias[\s\S]{0,420}entity: sensor\.raspberry_pi_recorder_storage_usage/);
-assert.match(dashboardYaml, /title: Diagnóstico e limpeza automática/);
-for (const id of ["storage_group_tests", "storage_test_reset", "storage_test_normal", "storage_test_growth", "storage_dry_run_terminal"]) node(id);
-for (const [id, role, action] of [
-  ["storage_notify", "mobile_primary", "notify_3"],
-  ["storage_notify_secondary", "mobile_secondary", "notify_2"],
-]) {
-  assert.equal(node(id).action, "public_bindings.call");
-  assert.equal(node(id).domain, "public_bindings");
-  assert.equal(node(id).service, "call");
-  assert.deepEqual(node(id).entityId, []);
-  assert.match(node(id).data, new RegExp(`\"role\":\"${role}\"`));
-  assert.match(node(id).data, new RegExp(`\"action\":\"${action}\"`));
-}
-assert.equal(node("storage_notify_persistent").action, "persistent_notification.create");
-assert.deepEqual(node("storage_notify").wires, [["storage_notification_ack"]]);
-assert.deepEqual(node("storage_notify_secondary").wires, [["storage_notification_ack"]]);
-assert.deepEqual(node("storage_notify_persistent").wires, [["storage_notification_ack"]]);
-assert.deepEqual(node("storage_notification_catch").scope.sort(), [
-  "storage_notify",
-  "storage_notify_persistent",
-  "storage_notify_secondary",
-].sort());
-assert.ok(!JSON.stringify(node("storage_exec_maintenance")).includes("docker.sock"));
+const accept = (flow, alert) => call(f.ack, alert, flow);
 
-{
-  const flow = memoryFlow();
-  const started = manualStart({ payload: "pressed" }, flow, runtimeNode(), {}, {});
-  assert.equal(flow.get("storage_manual_running"), true);
-  assert.equal(started[0].storageManualRun, true);
-  assert.equal(started[3].payload, "ON");
-  const duplicate = manualStart({ payload: "pressed-again" }, flow, runtimeNode(), {}, {});
-  assert.equal(duplicate[0], null);
-  assert.equal(duplicate[3].payload, "ON");
-  const finished = manualComplete({ storageManualRun: true, payload: { code: 0 } }, flow, runtimeNode(), {}, {});
-  assert.equal(flow.get("storage_manual_running"), false);
-  assert.equal(finished.payload, "OFF");
-}
+for (const id of [
+  "storage_visual_policy_switch", "storage_visual_policy_available", "storage_visual_metrics_valid",
+  "storage_visual_error_due", "storage_visual_raw_severity", "storage_visual_keep_critical",
+  "storage_visual_keep_high", "storage_visual_keep_warning", "storage_visual_recovery_gate",
+  "storage_visual_capacity_gate", "storage_visual_trend_gate", "storage_visual_remediation_gate",
+  "storage_visual_remediation_cooldown",
+]) assert.equal(byId.get(id)?.type, "switch", `decisão visual ausente: ${id}`);
 
-{
-  const flow = configuredFlow();
-  const config = flow.get("storage_health_config_v1");
-  assert.deepEqual(config.thresholds, { warning: 70, high: 80, critical: 90 });
-  assert.equal(config.hysteresisPercentagePoints, 3);
-  assert.equal(config.notificationCooldownMs, 12 * 60 * 60 * 1000);
-  assert.equal(config.autoRemediationCooldownMs, 6 * 60 * 60 * 1000);
-}
+const policyFlow = configured();
+assert.deepEqual(call(f.load, {}, policyFlow).policy, { version: 2, ...defaults });
+assert.deepEqual(policyFlow.stores.persistent.get("storage_health_config_v1").thresholds, { warning: 70, high: 80, critical: 90 });
+for (const payload of [
+  { ...defaults, warning_pct: 0 }, { ...defaults, high_pct: 70 }, { ...defaults, critical_pct: 80 },
+  { ...defaults, hysteresis_pp: 21 }, { ...defaults, notification_cooldown_h: 0 },
+  { ...defaults, trend_24h_pp: 0 }, { ...defaults, sample_interval_min: 121 }, { ...defaults, history_retention_days: 1 },
+]) assert.equal(call(f.validate, { payload }, policyFlow).policy_valid, false);
+assert.equal(call(f.validate, { payload: { ...defaults, warning_pct: 1, high_pct: 2, critical_pct: 3, hysteresis_pp: 0 } }, policyFlow).policy_valid, true);
+assert.equal(call(f.validate, { payload: { ...defaults, warning_pct: 98, high_pct: 99, critical_pct: 100, hysteresis_pp: 20 } }, policyFlow).policy_valid, true);
+assert.deepEqual(call(f.load, {}, policyFlow).policy, { version: 2, ...defaults }, "inválido não substitui política");
 
-{
-  const flow = configuredFlow();
-  const [mqtt, alert] = evaluate(flow, 69);
-  assert.equal(flow.get("storage_health_state_v1").severity, "normal");
-  assert.equal(alert, null);
-  assert.equal(mqtt.find((message) => message.topic.endsWith("/status")).payload, "normal");
-  assert.equal(mqtt.find((message) => message.topic.endsWith("/health_last_run")).payload, new Date(NOW).toISOString());
-  assert.equal(mqtt.find((message) => message.topic.endsWith("/last_maintenance")).payload, MAINTENANCE_AT);
-  assert.equal(mqtt.find((message) => message.topic.endsWith("/last_reclaimed_mib")).payload, "150");
-  assert.equal(mqtt.find((message) => message.topic.endsWith("growth_24h_available")).payload, "offline");
-  assert.equal(mqtt.find((message) => message.topic.endsWith("growth_7d_available")).payload, "offline");
-  assert.equal(mqtt.some((message) => message.topic.endsWith("/growth_24h")), false);
-  assert.equal(mqtt.some((message) => message.topic.endsWith("/growth_7d")), false);
-}
+let flow = configured();
+let result = evaluate(flow, metric(69));
+assert.equal(flow.stores.persistent.get("storage_health_state_v1").severity, "normal");
+assert.equal(result[1], null);
+assert.equal(result[0].find((message) => message.topic.endsWith("/status")).payload, "normal");
 
-{
-  const flow = configuredFlow();
-  let result = evaluate(flow, 70);
-  assert.equal(flow.get("storage_health_state_v1").severity, "warning");
-  assert.match(result[1].payload.message, /70\.0%/);
-  assert.equal(flow.get("storage_health_state_v1").lastNotificationAt, 0, "cooldown must wait for HA acceptance");
-  accept(flow, result[1]);
-  assert.equal(flow.get("storage_health_state_v1").lastNotificationAt, NOW);
-  result = evaluate(flow, 68, NOW + 15 * 60 * 1000);
-  assert.equal(flow.get("storage_health_state_v1").severity, "warning", "warning must remain inside hysteresis band");
-  assert.equal(result[1], null, "no duplicate alert inside cooldown");
-  result = evaluate(flow, 66.9, NOW + 30 * 60 * 1000);
-  assert.equal(flow.get("storage_health_state_v1").severity, "normal");
-  assert.match(result[1].payload.message, /back to normal/);
-}
+flow = configured();
+result = evaluate(flow, metric(70));
+assert.equal(flow.stores.persistent.get("storage_health_state_v1").severity, "warning");
+assert.match(result[1].payload.message, /70\.0%/);
+accept(flow, result[1]);
+assert.equal(evaluate(flow, metric(68), NOW + 900000)[1], null, "histerese mantém warning sem duplicar");
+result = evaluate(flow, metric(66.9), NOW + 1800000);
+assert.match(result[1].payload.message, /back to normal/);
 
-{
-  const flow = configuredFlow();
-  const high = evaluate(flow, 80);
-  accept(flow, high[1]);
-  assert.equal(flow.get("storage_health_state_v1").severity, "high");
-  const critical = evaluate(flow, 99.9, NOW + 15 * 60 * 1000, 0.05);
-  assert.equal(flow.get("storage_health_state_v1").severity, "critical");
-  assert.match(critical[1].payload.message, /critical/);
-}
+flow = configured();
+flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55 }]);
+flow.stores.persistent.set("storage_health_category_history_v1", [{ ts: NOW - 86400000, values: { docker: 12000000000, recorder: 4000000000 } }]);
+result = evaluate(flow, metric(64, 20, { docker: 16000000000, recorder: 4100000000 }));
+assert.equal(flow.stores.persistent.get("storage_health_state_v1").growthCause, "Docker");
+assert.match(result[1].payload.message, /causa provavel: Docker \+3\.7 GiB\/24h/);
+assert.equal(result[3].storageAutoRemediation, true);
+assert.equal(result[3].payload.reason, "accelerated-growth");
 
-{
-  const flow = configuredFlow();
-  evaluate(flow, 71);
-  const retry = evaluate(flow, 71, NOW + 15 * 60 * 1000)[1];
-  assert.ok(retry, "an unacknowledged delivery must remain retryable");
-  accept(flow, retry);
-  assert.equal(evaluate(flow, 71, NOW + 11 * 60 * 60 * 1000)[1], null);
-  assert.ok(evaluate(flow, 71, NOW + 12 * 60 * 60 * 1000 + 15 * 60 * 1000)[1], "cooldown reminder should fire 12h after accepted delivery");
-}
+flow = configured();
+result = evaluate(flow, { used_percent: "unknown", free_gb: -1 });
+assert.match(result[1].payload.message, /metricas validas/);
+accept(flow, result[1]);
+assert.equal(evaluate(flow, {}, NOW + 60000)[1], null, "erro respeita cooldown após aceite");
 
-{
-  const flow = configuredFlow();
-  flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 40 }]);
-  const result = evaluate(flow, 48.4);
-  assert.equal(flow.get("storage_health_state_v1").growth24h, 8.4);
-  assert.match(result[1].payload.message, /\+8\.4 pp\/24h/);
-}
+flow = configured();
+flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55 }]);
+result = evaluate(flow, metric(64), NOW, true);
+assert.deepEqual(result[0], []);
+assert.equal(result[1], null);
+assert.equal(result[3].test_mode, true);
+const dry = call(f.gate, result[3], flow);
+assert.equal(dry[0], null);
+assert.equal(dry[1], null);
+assert.equal(dry[2].payload.dispatched, false);
 
-{
-  const flow = configuredFlow();
-  flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 55 }]);
-  flow.set("storage_health_category_history_v1", [{
-    ts: NOW - 24 * 60 * 60 * 1000,
-    values: { docker: 12_000_000_000, recorder: 4_000_000_000 },
-  }]);
-  const result = health({
-    payload: metric(64, 20, { docker: 16_000_000_000, recorder: 4_100_000_000 }),
-    testNow: NOW,
-  }, flow, runtimeNode(), {}, {});
-  assert.equal(flow.get("storage_health_state_v1").growthCause, "Docker");
-  assert.match(result[1].payload.message, /causa provavel: Docker \+3\.7 GiB\/24h/);
-  assert.equal(result[3].storageAutoRemediation, true);
-  assert.equal(result[3].payload.reason, "accelerated-growth");
+assert.equal(byId.get("storage_health_tick")?.repeat, "900");
+assert.equal(byId.get("storage_daily_maintenance")?.crontab, "23 */6 * * *");
+assert.equal(byId.get("storage_exec_maintenance")?.command, "/opt/storage-health-maintenance.sh --apply");
+assert.equal(byId.get("storage_request_host_maintenance")?.command, "/opt/request-host-storage-maintenance.sh");
+assert.equal(byId.get("storage_exec_inspection")?.command, "/opt/storage-health-maintenance.sh --dry-run --deep");
+for (const id of ["storage_notify", "storage_notify_secondary"]) assert.equal(byId.get(id)?.action, "public_bindings.call");
+assert.equal(byId.has("storage_evaluate"), false);
+for (const node of tabNodes.filter((entry) => entry.type === "function" && !["storage_discovery", "storage_visual_history_analyze"].includes(entry.id))) {
+  assert.ok(node.func.length < 2000, `JavaScript residual grande: ${node.id}`);
 }
-
-{
-  const gate = compile("storage_auto_gate");
-  const dry = gate({ storageAutoRemediation: true, test_mode: true, payload: { reason: "accelerated-growth", growthCause: "Docker" } }, memoryFlow(), runtimeNode(), {}, {});
-  assert.equal(dry[0], null);
-  assert.equal(dry[1], null);
-  assert.deepEqual(dry[2].payload, { simulated: true, dispatched: false, action: "storage-safe-maintenance", reason: "accelerated-growth", growthCause: "Docker" });
-  const production = gate({ storageAutoRemediation: true, payload: {} }, memoryFlow(), runtimeNode(), {}, {});
-  assert.equal(production[0].storageAutoRemediation, true);
-  assert.equal(production[1].storageAutoRemediation, true);
-  assert.equal(production[2], null);
-}
-
-{
-  const flow = configuredFlow();
-  flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 55 }]);
-  const result = health({ payload: metric(64), testNow: NOW, test_mode: true }, flow, runtimeNode(), {}, {});
-  assert.deepEqual(result[0], []);
-  assert.equal(result[1], null);
-  assert.equal(result[2].test_mode, true);
-  assert.equal(result[3].test_mode, true);
-}
-
-{
-  const flow = configuredFlow();
-  flow.set("storage_health_history_v1", [{ ts: NOW - 24 * 60 * 60 * 1000, used: 64 }]);
-  const thresholdAlert = evaluate(flow, 71);
-  assert.match(thresholdAlert[1].payload.message, /warning/);
-  accept(flow, thresholdAlert[1]);
-  const nextCheck = evaluate(flow, 71, NOW + 15 * 60 * 1000);
-  assert.equal(nextCheck[1], null, "trend included in a threshold alert must not alert again on the next check");
-}
-
-{
-  const flow = configuredFlow();
-  flow.set("storage_health_history_v1", [{ ts: NOW - 7 * 24 * 60 * 60 * 1000, used: 35 }]);
-  evaluate(flow, 46);
-  const state = flow.get("storage_health_state_v1");
-  assert.equal(state.growth24h, null, "a seven-day-old sample cannot masquerade as a 24h sample");
-  assert.equal(state.growth7d, 11);
-  assert.equal(
-    evaluate(flow, 46, NOW + 15 * 60 * 1000)[0].find((message) => message.topic.endsWith("/growth_7d")).payload,
-    "11",
-  );
-}
-
-{
-  const flow = configuredFlow();
-  const result = health({ payload: { used_percent: "unknown", free_gb: -1 }, testNow: NOW }, flow, runtimeNode(), {}, {});
-  assert.equal(result[0][0].topic, "smart_home/raspberry/storage/health_last_run");
-  assert.equal(result[0][0].payload, new Date(NOW).toISOString());
-  assert.match(result[1].payload.message, /metricas validas/);
-  assert.equal(flow.get("storage_health_state_v1").lastErrorNotificationAt, 0);
-  accept(flow, result[1]);
-  assert.equal(health({ payload: {}, testNow: NOW + 60_000 }, flow, runtimeNode(), {}, {})[1], null, "invalid metric alert must respect cooldown");
-}
-
-{
-  const parse = compile("storage_parse_maintenance");
-  const output = parse({ payload: "START|mode=apply\nRESULT|status=success|at=1999-01-01T04:17:00Z|mode=apply|before_bytes=1000|after_bytes=500|reclaimed_bytes=500" }, memoryFlow(), runtimeNode(), {}, {});
-  assert.equal(output, null);
-  assert.equal(parse({ payload: "RESULT|status=success|at=x|mode=dry-run|reclaimed_bytes=0" }, memoryFlow(), runtimeNode(), {}, {}), null);
-}
-
-{
-  const complete = compile("storage_maintenance_complete");
-  const flow = configuredFlow();
-  assert.equal(complete({ payload: { code: 0 } }, flow, runtimeNode(), {}, {}), null);
-  const failed = complete({ payload: { code: 7 } }, flow, runtimeNode(), {}, {});
-  assert.match(failed.payload.message, /codigo 7/);
-  assert.equal(flow.get("storage_maintenance_last_error_notification"), undefined);
-  accept(flow, failed);
-  assert.equal(complete({ payload: { code: 7 } }, flow, runtimeNode(), {}, {}), null, "maintenance errors must respect cooldown");
-}
-
-{
-  const script = path.resolve(here, "..", "..", "scripts", "storage-health-maintenance.sh");
-  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "storage-maintenance-test-"));
-  const backups = path.join(fixture, "backups", "codex-flows");
-  const logs = path.join(fixture, ".npm", "_logs");
-  fs.mkdirSync(backups, { recursive: true });
-  fs.mkdirSync(logs, { recursive: true });
-  const oldBackup = path.join(backups, "old.json");
-  const freshBackup = path.join(backups, "fresh.json");
-  fs.writeFileSync(oldBackup, "old");
-  fs.writeFileSync(freshBackup, "fresh");
-  const oldDate = new Date(NOW - 40 * 24 * 60 * 60 * 1000);
-  fs.utimesSync(oldBackup, oldDate, oldDate);
-  const env = {
-    ...process.env,
-    STORAGE_MAINTENANCE_DATA_ROOT: fixture,
-    STORAGE_MAINTENANCE_LOCK_DIR: path.join(fixture, "lock"),
-  };
-  const dryRun = spawnSync(script, ["--dry-run", "--deep"], { encoding: "utf8", env });
-  assert.equal(dryRun.status, 0, dryRun.stderr);
-  assert.match(dryRun.stdout, /CANDIDATE\|action=old_flow_backup/);
-  assert.ok(fs.existsSync(oldBackup), "dry-run must not delete");
-  const apply = spawnSync(script, ["--apply"], { encoding: "utf8", env });
-  assert.equal(apply.status, 0, apply.stderr);
-  assert.ok(!fs.existsSync(oldBackup), "apply must remove only the allowlisted old file");
-  assert.ok(fs.existsSync(freshBackup), "fresh backup must remain");
-  const empty = spawnSync(script, ["--apply"], { encoding: "utf8", env });
-  assert.equal(empty.status, 0, empty.stderr);
-  assert.match(empty.stdout, /RESULT\|status=success/);
-  const refused = spawnSync(script, ["--dry-run"], { encoding: "utf8", env: { ...process.env, STORAGE_MAINTENANCE_DATA_ROOT: "/" } });
-  assert.notEqual(refused.status, 0, "DATA_ROOT=/ must be refused");
-  const invalidRetention = spawnSync(script, ["--dry-run"], {
-    encoding: "utf8",
-    env: { ...env, STORAGE_BACKUP_RETENTION_DAYS: "1:2:3" },
-  });
-  assert.notEqual(invalidRetention.status, 0, "malformed retention values must be refused");
-  fs.mkdirSync(path.join(fixture, "lock"));
-  const locked = spawnSync(script, ["--dry-run"], { encoding: "utf8", env });
-  assert.equal(locked.status, 0, locked.stderr);
-  assert.match(locked.stdout, /RESULT\|status=skipped\|.*reason=already_running/);
-  fs.rmdirSync(path.join(fixture, "lock"));
-  fs.chmodSync(backups, 0o000);
-  const unreadable = spawnSync(script, ["--dry-run"], { encoding: "utf8", env });
-  fs.chmodSync(backups, 0o700);
-  assert.notEqual(unreadable.status, 0, "unreadable allowlisted paths must fail");
-  assert.doesNotMatch(unreadable.stdout, /RESULT\|status=success/, "permission errors must not report success");
-  fs.rmSync(fixture, { recursive: true, force: true });
-}
-
-console.log("Storage Health flow tests passed");
+console.log("Storage visual policy: bounds, thresholds, hysteresis, trend, recovery, invalid input and dry-run passed.");

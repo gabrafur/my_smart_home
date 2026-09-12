@@ -15,6 +15,12 @@ chama `scripts/request-weekly-docs-review.sh`, montado como somente leitura.
 Esse helper cria somente o gatilho compartilhado; execução, lock, allowlist,
 validação, commit e push continuam sob autoridade do worker.
 
+No canvas, a origem manual/agendada, o gate de `test_mode`, a classificação da
+resposta como solicitada/agrupada/inválida, o tratamento de falha e o código de
+saída são decisões visuais nomeadas. JavaScript permanece apenas para
+normalizar a linha textual do helper, persistir o estado sanitizado e adaptar
+status do worker.
+
 ## Entidade no Home Assistant
 
 O package `homeassistant/packages/weekly_documentation_review.yaml` cria o

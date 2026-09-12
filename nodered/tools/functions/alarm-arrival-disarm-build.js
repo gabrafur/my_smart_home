@@ -1,0 +1,10 @@
+const pending = msg.confirmation.pending;
+flow.set("alarm_arrival_pending_confirmation", null);
+msg.arrival_source = pending.source;
+msg.arrival_stage = pending.stage;
+msg.refresh_cycle_id = pending.refreshCycleId ?? null;
+msg.alarm_disarm_automatic = true;
+msg.alarm_disarm_confirmed = true;
+msg.alarm_disarm_reason = `chegada_confirmada_${pending.source}_${pending.stage}`;
+msg.alarm_disarm_confirmed_by = msg.payload?.context?.user_id ?? msg.payload?.event?.context?.user_id ?? "home_assistant";
+return msg;

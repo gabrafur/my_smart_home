@@ -15,12 +15,14 @@ script:
       - event: node_red_moni_mobile_arm
         event_data:
           source: script.moni_mobile_atualizar_estado
+          action: arm
 
   moni_mobile_armar_via_carplay:
     alias: Alarme Casa - Armar via CarPlay
     icon: mdi:shield-lock
     mode: single
     sequence:
-      - action: alarm_control_panel.alarm_arm_away
-        target:
-          entity_id: alarm_control_panel.alarme_moni_mobile
+      - event: node_red_moni_mobile_arm
+        event_data:
+          source: script.moni_mobile_armar_via_carplay
+          action: arm

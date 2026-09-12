@@ -203,7 +203,8 @@ flows.push({
   wires: [],
 });
 
-const coordinator = required("Coordenar snapshot e refresh");
+const coordinator = flows.find((node) => node.name === "Coordenar snapshot e refresh");
+if (coordinator) {
 coordinator.func = coordinator.func
   .replace('const NOTIFICATION_TTL_MS = 10 * 60 * 1000;\n', "")
   .replace('const PENDING_NOTIFICATION_KEY = "security_pending_resident_secondary_notification_v1";\n', "")
@@ -254,6 +255,7 @@ Object.assign(contextOutputGroup, { x: 734, y: 379, w: 322, h: 82 });
 const contextTab = flows.find((node) => node.type === "tab" && node.label === "contexto_chegadas");
 if (!contextTab) throw new Error("Tab contexto_chegadas ausente");
 contextTab.info = "Coordena snapshots e a política conjunta de presença sem interpretar GPS. As notificações entre residentes ficam no tab notificacoes_chegadas_residentes.\n\nRecovery forçado preservado entre ciclos e proteção contra corrida entre tick periódico e recovery imediato.";
+}
 
 const ids = {
   tab: "resident_notifications_tab",

@@ -1,0 +1,159 @@
+# Inventário da migração visual do Node-RED
+
+Este documento registra o baseline observado antes da refatoração visual. Ele
+é deliberadamente um mapa de migração, não uma segunda fonte de políticas. Os
+valores operacionais canônicos devem aparecer no canvas e nos contratos
+executáveis; este inventário referencia esses locais e deve ser atualizado
+quando uma etapa for concluída.
+
+## Baseline e rollback
+
+- Commit de referência: `f2e1de79684243bb02746be214cc05ed94417575`.
+- SHA-256 inicial de `nodered/flows.json`:
+  `7f5b1f47fabbd38256ddf7eddcdba93791ef6da9027b79c2590ef126e9e2a50f`.
+- Estado inicial: árvore limpa; Home Assistant, Node-RED e MQTT em execução;
+  Home Assistant e Node-RED reportando saúde.
+- Escala inicial: 24 tabs, 1.085 nós, 244 nós `function`; 87 funções possuíam
+  pelo menos 1.000 caracteres.
+- Rollback de cada etapa: restaurar somente os arquivos da etapa para o commit
+  acima, regenerar o tab pela fonte versionada, validar o artefato e fazer
+  deploy apenas do Node-RED. Watchdogs nativos do Home Assistant não devem ser
+  removidos antes de o caminho substituto ter paridade comprovada.
+
+## Matriz atual e destino canônico
+
+| Domínio / tab | Produção dos dados | Decisão e estado atuais | Efeitos e consumidores | Duplicação ou risco observado | Fluxo canônico de destino |
+| --- | --- | --- | --- | --- | --- |
+| `recorder_retention` | Eventos de sensores HA e agendamento diário | Funções configuram baseline, outlier, retenção, fila e lifecycle em contexto persistente | `recorder.purge_entities` e `recorder.purge`; Recorder e painel de storage consomem o resultado | Limites, elegibilidade e liberação do repack estão embutidos em funções | Parâmetros visuais; normalização pura; decisões `switch`; fila e gate final visíveis; terminal dry-run comum |
+| `revisao_documental_semanal` | Cron do Node-RED, botão HA e status sanitizado do worker | Funções classificam origem, lifecycle e falhas | Ponte `exec` para worker isolado; dashboard consome helpers HA | Orquestração e classificação ainda aparecem em funções; gerador é a fonte versionada | Agenda, seleção produção/teste, sucesso/falha e lifecycle em blocos visuais; parser estrutural pequeno |
+| `backup_git` | Cron, pedido manual e resultado sanitizado do host | Funções classificam sucesso, falha, adiamento e retry | Ponte `exec`, notificação móvel e persistente; `atualizacoes_diarias` recebe sucesso | Política de retry e notificação distribuída no tab | Política visual, rotas nomeadas, gate final, confirmação e retry explícitos |
+| `garagem` | MQTT do botão Zigbee e evento do dashboard | Uma função combina envelope, dedupe e cooldown; contexto guarda o último pulso | MQTT `ON/OFF`, Logbook e alerta; relé físico consome | Dedupe de 900 ms, cooldown de 1 s e pulso de 700 ms aparecem em função/info/delay | Três parâmetros visuais validados; normalização pequena; dedupe/cooldown/produção-teste e pulso em blocos separados |
+| `integracoes_compartilhadas` | Hub DuloNode | Sem política; apenas integração compartilhada e links | `alarme_casa` e `iluminacao_externa` | Nenhuma duplicação funcional; falta explicitação de contrato de saída | Manter como infraestrutura compartilhada, com comentário de contrato e observabilidade |
+| `iluminacao_externa` | DuloNode, pôr do sol, MQTT de disponibilidade e confirmação mobile | Funções guardam disponibilidade, confirmação mais recente e recovery de startup | Quatro tópicos MQTT, Alexa e confirmação mobile | Gate, fan-out e recovery misturam política com adaptação de payload | Parâmetros visuais de confirmação/recovery; caminhos manual/pôr do sol; disponibilidade; fan-out; confirmação; falha e dry-run visíveis |
+| `alarme_casa` | DuloNode e link de desarme confirmado | Funções mantêm intenção e retry de armar/desarmar | `public_bindings.call` para painel e Alexa | Retry e “ainda deseja?” ficam em funções; não há trilha manual full dry-run | Intenção em `change`, decisão em `switch`, retry limitado visual, gate final e replay completo sem efeito |
+| `resfriamento_raspberry_pi` | Sensores de CPU/climate/ownership do HA | Muitas funções controlam snapshot, locks, retry, restauração e recovery; helpers HA persistem ownership/snapshot | Serviços `climate.*`, helpers HA e notificações | Thresholds também são decididos em templates/automação HA; tab não possui teste manual full dry-run | Métricas HA como entrada; política única visual; decisões/gates/retries visíveis; adaptadores pequenos; alertas de saúde consolidados no domínio de infraestrutura |
+| `storage_health` | Sensores de storage HA, cron e botão manual | Switches classificam thresholds, histerese, recovery, cooldown, tendência e autocuidado; histórico/categorias ficam em cálculo isolado | MQTT discovery/state, workers allowlisted e três destinatários atrás de uma entrada de efeito | Monólito de 11,6 KiB removido; onze parâmetros têm uma única definição visual | Migrado: configuração validada, decisões explícitas, chamadas privilegiadas unificadas por links e replay integral dry-run |
+| `monitoramento_internet` | Agenda visual, política validada e adaptador ICMP | Switches decidem quorum, incidente, 3 falhas e 2 sucessos; mutador curto persiste o estado | MQTT retained e subflow de notificações atrás de gates finais | Máquina monolítica removida; alvos e thresholds têm uma única definição visual | Migrado: seis parâmetros, decisões explícitas, recovery persistente e replay integral dry-run |
+| `monitoramento_zigbee` | Estado/availability MQTT, status do broker e agenda nativa | Switches confirmam queda/retorno, dedupe e lembretes; estado de rede/componentes permanece persistente | MQTT retained e uma única instância do subflow de notificações atrás dos gates finais | Monólitos de rede/componentes removidos; 30 s, 60 s e 24 h têm uma única definição visual | Migrado: três parâmetros validados, 19 decisões visuais, recovery/dedupe persistentes e replay integral dry-run |
+| `localizacao_pessoas` | Trackers Mobile App/iCloud e snapshots coordenados | Seleção, classificação geográfica, lifecycle de chegada e refresh usam funções extensas e contexto persistente; política de localização já é visual | MQTT canônico, refresh dos iPhones, links para chegada/iluminação/notificações | O tab é o padrão parcial, mas seleção, lifecycle e refresh ainda concentram decisões em JS; dashboards ainda classificam apresentação por thresholds próprios | Preservar política única; separar adaptação, seleção, geografia e lifecycle; razões e rotas em `switch`; publicar status canônico de apresentação |
+| `contexto_vehicle_primary` | Entidades Kia UVO, política de localização, presença e comandos manuais | Normalização, chegada, refresh, backoff, cache probe, viagens e comandos remotos usam várias funções e contexto persistente | `kia_uvo.update`, bindings de wake/viagens, MQTT e notificações; dashboards/localização/iluminação consomem | Maior concentração de lógica: funções de 34 mil e 19 mil caracteres; política visual de refresh ainda termina em coordenador monolítico | Subtrilhas independentes para localização, refresh, backoff, comandos e viagens; políticas visuais; máquinas de estado pequenas; uma fronteira de efeito por responsabilidade |
+| `contexto_chegadas` | Contextos canônicos de pessoas/veículo, agenda de 30 s e recovery | Switches nomeados decidem coalescência, monotonicidade, completude, saída de morador, precedência e recovery; estado transitório fica isolado por produção/teste | Links preservados de snapshot e política de refresh para os dois domínios | Monólito de 13 mil caracteres removido; 10 s e 60 s têm uma única definição na política visual | Migrado: dois parâmetros validados, decisões visuais, dedupe persistente de saída e replay coordenado até os dry-runs dos consumidores |
+| `iluminacao_seguranca` | Contextos e chegada canônicos, luminosidade, estado físico e bypass | Várias funções extensas controlam decisão, motor, disponibilidade, lifecycle e recovery | Refletor, notificações, MQTT do bypass e observabilidade | Decisões críticas e lifecycle ficam em funções de 4–10 mil caracteres | Política visual; cada condição em bloco nomeado; gates independentes; lifecycle e timer explícitos; fronteira única produção/dry-run |
+| `alarme_desarme_chegada` | Chegada canônica, estado do alarme e resposta mobile | Gates visuais validam contrato, direção, ciclo, pendência, cooldown, tokens, timeout, cancelamento e confirmação | Duas notificações acionáveis atrás do aceite HA e intenção de desarme para `alarme_casa` | Validadores de 5,7 e 4 KiB removidos; quatro tempos têm uma única definição visual | Migrado: quatro parâmetros validados, decisões nomeadas, token em adapter pequeno e replay integral dry-run |
+| `monitoramento_tuya` | Registros/estados HA e agenda nativa de 30 s | Split/join nativo e switches decidem falha, recovery, lembrete e resumo; estado por dispositivo é persistente | MQTT retained e uma única instância do subflow de notificações atrás dos gates finais | Monólito de 9,5 mil caracteres removido; adaptador estrutural de 2.052 caracteres não contém política | Migrado: três parâmetros validados, 18 decisões visuais, dedupe/recovery persistentes e replay integral dry-run |
+| `monitoramento_vpn` | Relatório sanitizado do host e estado canônico da internet | Switches decidem supressão, saúde, confirmação, incidente, lembrete e recovery; estado mínimo é persistente | MQTT discovery/state e uma instância do subflow de notificações atrás dos gates finais | Avaliador monolítico removido; 120 s, 60 s, 180 s e 86.400 s têm uma única definição visual | Migrado: quatro parâmetros validados, oito decisões visuais, adapters pequenos e replay integral dry-run |
+| `atualizacoes_diarias` | Sucesso do backup, crons, comandos manuais e resultados sanitizados | 26 funções classificam pedidos/resultados de host, Kia, Codex e promoção | Sete pontes `exec`; workers isolados consomem | Quatro lifecycles semelhantes duplicam parser, falha e código de saída | Trilhas visuais separadas por worker; subflow comum somente para envelope/lifecycle; agendas, gates e resultados visíveis |
+| `alertas_codex` | Sensores/helpers de uso do Codex no HA | Função extensa decide nível, cooldown e resumo; HA também calcula `sensor.codex_nivel_de_alerta` | Push, notificação persistente e helpers de último alerta | Decisão duplicada entre Jinja HA e Node-RED; estratégia manual legada | Node-RED calcula e publica nível canônico; painel consome; parâmetros visuais; full dry-run; HA mantém só telemetria/helpers |
+| `guardiao_memoria_host` | Agendas visuais e resultado sanitizado do worker | Switches decidem contrato, presença, duplicidade, status e produção/teste; função curta guarda só a assinatura persistente | Duas pontes `exec`; worker do host executa a política privilegiada de segurança | Duplicação removida do Node-RED; política de processo permanece no único worker seguro | Migrado: parâmetros ativos nomeados, decisões e efeitos explícitos, parser de schema pequeno e replay com duplicata |
+| `recuperacao_rtx` | Health HTTP passivo e comando manual explícito | Funções classificam disponibilidade, pedido MCP e lifecycle | Duas chamadas HTTP e alerta central | Política de disponibilidade e retorno mistura parsing e decisão | Parâmetros visuais; parser HTTP pequeno; `switch` de estado; recovery somente manual; full dry-run preservado |
+| `notificacoes_chegadas_residentes` | Decisão canônica de `localizacao_pessoas` e eventos sintéticos | Switches visuais decidem fonte, frescor, direção, lifecycle, dedupe e destinatário; estado mínimo persiste | Duas notificações móveis isoladas atrás do gate final | Função monolítica e exceção de push manual removidas | Migrado: política validada, adapters pequenos, uma decisão canônica e replay integral sempre dry-run |
+| `observabilidade_global` | `catch`/`status` de todos os tabs e alertas centrais explícitos | Funções extensas classificam, corroboram HA/MQTT, deduplicam e controlam recovery/recursão | Push para `mobile_primary` e notificação persistente | Parâmetros 30 s/60 s/90 s/6 h e classificação ficam em JS | Política visual de severidade/temporização; classificação estrutural pequena; decisões, dedupe, recovery e guard antirrecursão visíveis |
+
+## Fronteiras fora do Node-RED
+
+| Superfície | Papel atual | Decisão | Destino |
+| --- | --- | --- | --- |
+| `homeassistant/packages/nodered_flow_health.yaml` | Watchdog independente pelo LWT MQTT | Offline por 90 s, recuperação e notificação | Permanecer nativo: o monitor não pode depender do runtime observado. |
+| `homeassistant/packages/portao_garagem.yaml` | Watchdog independente do relé | Força somente `OFF` após 5 s | Permanecer nativo como defesa em profundidade; nunca emite `ON`. |
+| `homeassistant/automations.yaml` | Lifecycle/API interna da TV | Wake-on-LAN solicitado pelo HA | Permanecer nativo por depender do trigger interno `samsungtv.turn_on`. |
+| `homeassistant/packages/raspberry_pi_system_health.yaml` | Produção de métricas, classificação e notificações | Thresholds de temperatura, CPU, load, memória, swap, storage e hardware | Manter métricas como produtor; migrar classificação operacional e notificações para política visual Node-RED; preservar startup nativo do HA. |
+| `homeassistant/packages/codex_usage.yaml` | Produção/derivação de telemetria e helpers | Também calcula nível normal/atenção/crítico | Manter dados brutos; publicar nível canônico pelo Node-RED e fazer sensores/painéis apenas consumirem. |
+| `homeassistant/dashboards/vehicle_primary.yaml` | Apresentação | Reclassifica idade de telemetria/cache com limites próprios | Substituir limites Jinja por status/razões canônicos publicados pelo Node-RED. |
+| `homeassistant/dashboards/location.yaml` | Mapa e diagnóstico | Usa atributos canônicos de raio/seleção | Manter como consumidor; remover somente fallback decisório duplicado encontrado pelos testes de auditoria. |
+| `homeassistant/dashboards/raspberry_pi_health.yaml` | Apresentação e comandos explícitos | Exibe sensores binários classificados no HA | Passar a exibir estados/atributos canônicos do Node-RED; comandos continuam ações explícitas do usuário. |
+
+## JavaScript e fontes geradoras no baseline
+
+Os 244 nós `function` somavam responsabilidades de adaptação, normalização,
+decisão, configuração, estado e efeito. As maiores concentrações eram:
+
+| Tab | Função | Linhas aproximadas | Classificação de migração |
+| --- | --- | ---: | --- |
+| `contexto_vehicle_primary` | Normalizar veículo e detectar transições | 848 | Separar normalização, geografia, mudança semântica e lifecycle. |
+| `localizacao_pessoas` | Normalizar pessoas e detectar transições | 1.181 | Separar envelope, fonte, seleção, geografia, transição e chegada. |
+| `contexto_vehicle_primary` | Coordenar refresh | 530 | Manter apenas máquina de estado mínima; externalizar política e rotas. |
+| `contexto_chegadas` | Coordenar snapshot e refresh | 415 | Converter coordenação em blocos e deixar apenas merge estrutural. |
+| `iluminacao_seguranca` | Decisão e merge de contexto | 325/340 | Separar estado derivado de cada gate e roteá-lo visualmente. |
+| `storage_health` | Diagnóstico, tendência e autocuidado | 188 | Separar cálculo de tendência das políticas de ação. |
+| `monitoramento_tuya` | Falha/retorno por dispositivo | 207 | Externalizar timers e rotas; manter mapa de dispositivos. |
+| `observabilidade_global` | Classificar erro/status | 244 | Externalizar severidade, confirmação, dedupe e efeitos. |
+
+Há 50 arquivos em `nodered/tools/functions/*.js`. Eles são carregados pelos
+geradores de observabilidade, veículo, iluminação de segurança, VPN, guardião
+de memória e recovery RTX, e pelos respectivos testes. Os demais corpos estão
+embutidos nos geradores/migradores ou diretamente no artefato legado.
+
+As fontes de reconstrução são atualmente incrementais e sobrepostas:
+
+- geradores `install-*-flow.mjs` para retenção, revisão semanal, backup,
+  storage, infraestrutura, veículo, VPN, atualizações, alertas Codex, guardião,
+  RTX e observabilidade;
+- migradores `update-*.mjs` para localização, notificações de residentes,
+  veículo e iluminação de segurança;
+- organizadores/correções `configure-*`, `split-*`, `organize-*`, `fix-*` e
+  `refactor-*` para tabs legados.
+
+Cada tab migrado deve ganhar uma fonte idempotente inequívoca. Correções antigas
+podem continuar disponíveis para histórico/compatibilidade, mas não podem
+sobrescrever a representação canônica na próxima regeneração.
+
+## Valores operacionais encontrados
+
+O baseline contém valores visíveis somente em quatro políticas (localização e
+refresh do veículo) e muitos valores ainda embutidos. A migração deve cobrir,
+entre outros:
+
+- localização: raios `home`/`near_home`/refresh, precisão, frescor, empate de
+  recência, movimento e retenção de chegada;
+- veículo: intervalos por presença, pausa noturna, janela causal, rechecks,
+  leases, cooldowns de comandos e backoff do provedor;
+- segurança: escuridão, disponibilidade, carência e backstop do refletor,
+  pendência da confirmação do alarme e retries;
+- infraestrutura: cadências de coleta, quantidade de falhas/sucessos,
+  confirmação de queda/recuperação, lembretes e cooldowns;
+- host: thresholds térmicos, CPU/load/memória/swap/storage, hysteresis, retries
+  e ownership;
+- manutenção: agendamentos, intervalos de polling, cooldowns, filas, retenção,
+  tendência e autocuidado;
+- notificações: destinatários, severidade, confirmação, dedupe, resumo e
+  recovery;
+- portão: dedupe, cooldown e duração do pulso.
+
+Valores inválidos devem ser rejeitados antes de substituir a última política
+persistente válida. O canvas, e não este documento, é a fonte do valor padrão.
+
+## Contrato comum da migração
+
+Cada domínio alterado deve mostrar, da esquerda para a direita: entradas,
+normalização, política visual, decisões, gates de segurança, estado/dedupe,
+efeitos, confirmação, observabilidade e testes. Funções remanescentes não podem
+chamar efeitos; recebem a política em `msg.policy`, produzem decisão estruturada
+e possuem teste. Produção e `test_mode` compartilham o caminho até o gate final;
+o teste termina com `simulated: true` e `dispatched: false`.
+
+## Progresso verificado desta migração
+
+| Domínio | Situação | Evidência principal |
+| --- | --- | --- |
+| `garagem` | Migrado e implantado | Política visual de dedupe/cooldown/pulso/coalescência, gates produção/teste, replay e render estrito |
+| `alarme_casa` | Migrado e implantado | Intenção, retry, cadência de aviso e gates visuais; scripts HA passaram a emitir intenção canônica |
+| `alertas_codex` | Migrado e implantado | Thresholds/cooldowns visuais; nível canônico publicado pelo Node-RED e dashboard somente consumidor |
+| `recorder_retention` | Migrado e implantado | Sete parâmetros validados, rotas de compactação e efeitos visíveis; cálculo MAD isolado |
+| `recuperacao_rtx` | Migrado e implantado | Leitura passiva, pedido explícito, cooldown e gate MCP visíveis; nenhum recovery automático |
+| `revisao_documental_semanal` | Migrado e implantado | Origem, teste, resposta e código da ponte em switches; worker preservado |
+| `backup_git` | Migrado e implantado | Pedido, resultado, retry, updates e notificações em trilhas visuais e full dry-run |
+| `guardiao_memoria_host` | Migrado e implantado | Agendas/timeout explícitos, 12 switches de decisão, dedupe persistente isolado e replay completo com duplicata; maior função abaixo de 2.000 caracteres |
+| `notificacoes_chegadas_residentes` | Migrado e implantado | Quatro parâmetros visuais, 14 decisões nomeadas, lifecycle persistente, serviços por destinatário e todos os testes em dry-run |
+| `monitoramento_internet` | Migrado e implantado | Alvos/quorum/timeouts/contagens visuais, estado persistente, ICMP isolado e 3-falhas/2-sucessos em replay dry-run; runtime saudável após dois ciclos |
+| `monitoramento_zigbee` | Migrado e implantado | Queda/retorno/lembrete visuais, dedupe por componente, estado persistente, efeito único e replay integral dry-run; runtime recompôs retained sem alerta falso |
+| `monitoramento_tuya` | Migrado e implantado | Coleta HA, split/join, timers, dedupe, resumo e fronteiras visíveis; runtime saudável após dois ciclos e somente o correlacionador estrutural excede 2.000 caracteres |
+| `contexto_chegadas` | Migrado e implantado | Agenda, coalescência, validação monotônica, precedência e recovery em blocos visuais; contratos de link preservados, replay completo e maior função residual abaixo de 2.000 caracteres |
+| `monitoramento_vpn` | Migrado e implantado | Quatro tempos validados, supressão causal, confirmação, dedupe e recovery visuais; maior função de política removida e replay integral dry-run |
+| `alarme_desarme_chegada` | Migrado e implantado | Contrato, armado, pendência, cooldown, entrega, token, expiração, cancelamento e confirmação visíveis; duas notificações só promovem a pendência após aceite HA e o TESTE termina sem desarme |
+| `storage_health` | Migrado e implantado | Onze parâmetros validados, thresholds/histerese/tendência/recovery/autocuidado visuais, zero fios longos ou de retorno e workers privilegiados atrás do gate dry-run |
+
+Os demais domínios continuam com o estado descrito na matriz inicial. Em
+especial, `contexto_vehicle_primary`, `localizacao_pessoas`,
+`iluminacao_seguranca`, os monitores de infraestrutura restantes e
+`observabilidade_global` ainda contêm políticas migráveis em funções extensas;
+portanto, este documento não classifica a migração integral como concluída.

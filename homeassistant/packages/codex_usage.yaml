@@ -523,16 +523,13 @@ template:
           {% else %}mdi:shield-check
           {% endif %}
         state: >-
-          {% set usado = states('sensor.codex_limite_usado') | float(0) %}
-          {% if states('sensor.codex_dados_de_limite') != 'atual' %}
-            sem dados atuais
-          {% elif usado >= states('input_number.codex_alerta_critico_percentual') | float(90) %}
-            crítico
-          {% elif usado >= states('input_number.codex_alerta_aviso_percentual') | float(70) %}
-            atenção
-          {% else %}
-            normal
-          {% endif %}
+          {{ states('input_text.codex_nivel_alerta_canonico') }}
+        availability: >-
+          {{ states('input_text.codex_nivel_alerta_canonico') in
+             ['normal', 'atenção', 'crítico', 'sem dados atuais'] }}
+        attributes:
+          fonte_decisao: node_red
+          politica: codex_alert_policy_v1
 
       - name: Codex Local AI Status
         unique_id: codex_local_ai_status
@@ -1708,6 +1705,9 @@ input_boolean:
     icon: mdi:calendar-text
 
 input_number:
+  # Entidades preservadas para compatibilidade e histórico. Elas não alimentam
+  # mais decisões: os valores canônicos ficam no grupo de política visual do
+  # tab alertas_codex e estes helpers não são expostos no dashboard.
   codex_alerta_aviso_percentual:
     name: Codex - aviso de uso
     icon: mdi:alert-outline
@@ -1742,6 +1742,10 @@ input_number:
     mode: box
 
 input_text:
+  codex_nivel_alerta_canonico:
+    name: Codex - nível canônico publicado pelo Node-RED
+    icon: mdi:source-branch-check
+    max: 32
   codex_ultimo_alerta_iphone:
     name: Codex - último alerta enviado
     icon: mdi:message-badge-outline

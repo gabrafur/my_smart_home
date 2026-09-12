@@ -1,0 +1,14 @@
+const payload = msg.payload;
+const source = payload.source;
+const position = payload.context?.[source];
+const eventAt = Number(position?.updated_at ?? msg.context_incoming_at ?? msg.context_now);
+const signature = [source, payload.trigger_prev_state, payload.trigger_state, eventAt].join(":");
+const key = msg._location_test === true ? "resident_departure_refresh_v1__test" : "resident_departure_refresh_v1";
+const previous = msg._location_test === true ? flow.get(key) : flow.get(key, "persistent");
+msg.departure_key = key;
+msg.departure_signature = signature;
+msg.departure_source = source;
+msg.departure_position = position;
+msg.departure_event_at = eventAt;
+msg.departure_previous_signature = previous?.key ?? null;
+return msg;

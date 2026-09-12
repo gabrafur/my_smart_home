@@ -1,0 +1,14 @@
+const payload = msg.payload ?? {};
+msg.arrival_source = payload.source;
+msg.arrival_stage = payload.arrival_stage;
+msg.arrival_detected_at = Number(msg.arrival_now ?? Date.now());
+msg.arrival_contract_valid = payload.contract === "security.arrival.v1";
+msg.arrival_kind_valid = payload.kind === "arrival";
+msg.arrival_source_valid = ["resident_primary", "resident_secondary", "vehicle_primary"].includes(payload.source);
+msg.arrival_stage_valid = ["approach", "home"].includes(payload.arrival_stage);
+msg.arrival_direction_valid = payload.arrival_direction === "returning";
+msg.arrival_cycle_confirmed = payload.external_cycle_confirmed === true;
+msg.arrival_self_listed = Array.isArray(payload.arriving) && payload.arriving.includes(payload.source);
+msg.arrival_test_mode = msg._location_test === true || payload.test_mode === true;
+msg._location_test_case = msg._location_test_case ?? payload.test_case ?? null;
+return msg;
