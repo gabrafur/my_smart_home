@@ -49,10 +49,8 @@ if (msg.error) {
     const errorText = String(msg.error.message ?? "erro desconhecido");
     const classification = classify(errorText);
     const connectionEvent = sharedIncidentKey ? state.connection_events[sharedIncidentKey] ?? {} : {};
-    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity),
-        Number(connectionEvent.last_recovered_at ?? -Infinity));
-    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources)
-        .some((entry) => entry.incident_key === sharedIncidentKey);
+    const lastTransitionAt = Math.max(Number(connectionEvent.last_failure_at ?? -Infinity), Number(connectionEvent.last_recovered_at ?? -Infinity));
+    const sharedActive = sharedIncidentKey !== null && Object.values(state.status_sources).some((entry) => entry.incident_key === sharedIncidentKey);
     const graceMs = Number(policy.connection_recovery_grace_seconds) * 1000;
     const signature = hash(`${flowId}:${sourceId}:${classification}:${errorText}`);
     const key = `${flowId}:${sourceId}:${signature}`;
@@ -60,8 +58,7 @@ if (msg.error) {
     Object.assign(data, { kind: "error", error_text: errorText, classification, signature, key, previous,
         accepted_wake_pending: flowId === "c22d8b12055e87f7" && sourceId === "8907830bb7f6c40c" &&
             /Bluelink wake accepted but fresh data is pending/i.test(errorText),
-        connection_suppressed: Boolean(sharedIncidentKey && (sharedActive ||
-            (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
+        connection_suppressed: Boolean(sharedIncidentKey && (sharedActive || (Number.isFinite(lastTransitionAt) && now >= lastTransitionAt && now - lastTransitionAt <= graceMs))) });
 } else if (msg.status) {
     const text = String(msg.status.text ?? "").toLowerCase();
     const shared = haSource || mqttSource;
