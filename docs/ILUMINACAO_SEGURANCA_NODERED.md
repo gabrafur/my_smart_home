@@ -264,6 +264,12 @@ adaptação do evento, leitura/escrita do lifecycle persistente, composição do
 texto com alias privado e registro dos terminais. Thresholds e decisões não
 ficam nesses adaptadores.
 
+O bypass do motor segue o mesmo contrato: o canvas mostra separadamente
+startup, ativação automática por falha, verificação de posse no recovery,
+ativação/desativação manual e rejeição. Assim, a recuperação da API só desliga
+um bypass que tenha sido adquirido automaticamente; um `ON` manual é
+preservado. O antigo coordenador JavaScript dessa regra foi removido.
+
 Quando um teste de localização também satisfaz as condições de acendimento,
 inclusive com atuador `unknown`, `unavailable`, stale ou não reconciliado, o
 diagnóstico segue apenas ao terminal dry-run. Refletor, notificações, alarme,

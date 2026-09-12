@@ -151,9 +151,30 @@ o teste termina com `simulated: true` e `dispatched: false`.
 | `monitoramento_vpn` | Migrado e implantado | Quatro tempos validados, supressão causal, confirmação, dedupe e recovery visuais; maior função de política removida e replay integral dry-run |
 | `alarme_desarme_chegada` | Migrado e implantado | Contrato, armado, pendência, cooldown, entrega, token, expiração, cancelamento e confirmação visíveis; duas notificações só promovem a pendência após aceite HA e o TESTE termina sem desarme |
 | `storage_health` | Migrado e implantado | Onze parâmetros validados, thresholds/histerese/tendência/recovery/autocuidado visuais, zero fios longos ou de retorno e workers privilegiados atrás do gate dry-run |
+| `localizacao_pessoas` | Migrado e implantado | Lifecycle, direção, fonte, stale/futuro, dedupe e recovery separados em fatos e switches; política única compartilhada e replay sem efeitos |
+| `contexto_vehicle_primary` | Migrado e implantado | Localização, chegada, evidência e refresh divididos em trilhas visuais; o coordenador legado de 19 KiB foi removido |
+| `iluminacao_seguranca` | Migrado e implantado | Política de nove parâmetros, contexto/replay, chegada, disponibilidade, lifecycle, recovery e bypass com posse explícita em gates visuais |
+| `iluminacao_externa` | Migrado e implantado | Disponibilidade Zigbee, produção/teste e confirmação visíveis; settle e TTL validados; MQTT, push e Alexa bloqueados no replay manual |
+| `observabilidade_global` | Migrado e implantado | Cinco parâmetros validados; erro/status, carência, corroboração, confirmação e lembrete em switches; guard antirrecursão preservado |
+| `atualizacoes_diarias` | Auditado e preservado | Agendas, pontes isoladas, produção/teste e efeitos já são blocos; parsers remanescentes apenas adaptam os contratos sanitizados dos workers |
+| `resfriamento_raspberry_pi` | Auditado e preservado | Thresholds, janelas, delays, leituras, ownership, serviços, confirmação e rollback são nós nomeados; funções pequenas mantêm somente a transação de recovery |
 
-Os demais domínios continuam com o estado descrito na matriz inicial. Em
-especial, `contexto_vehicle_primary`, `localizacao_pessoas`,
-`iluminacao_seguranca`, os monitores de infraestrutura restantes e
-`observabilidade_global` ainda contêm políticas migráveis em funções extensas;
-portanto, este documento não classifica a migração integral como concluída.
+## Auditoria final do JavaScript remanescente
+
+Após a regeneração há 529 nós `function`; somente cinco excedem 5.000
+caracteres. Nenhum deles chama um efeito residencial nem contém uma segunda
+definição de parâmetro ajustável:
+
+| Função | Motivo técnico para permanecer em JavaScript |
+| --- | --- |
+| Erro da API do `vehicle_primary` | Adapta exceções heterogêneas do provedor, extrai endpoint/estágio e atualiza evidência estrutural para os gates visuais. |
+| Coordenador dos testes de localização | Mantém exclusivamente o cenário sintético cumulativo; nunca é executado na trilha de produção. |
+| Classificação geográfica de pessoas | Cálculo geográfico, precisão e normalização de múltiplos trackers; os raios vêm da política visual. |
+| Telemetria do refresh do veículo | Serialização MQTT/Home Assistant do estado já decidido; não escolhe intervalo nem autoriza chamadas. |
+| Fatos do refresh do veículo | Consolida estado persistente e produz flags; cada decisão correspondente aparece nos switches subsequentes. |
+
+Também foram removidos os arquivos legados que continham os coordenadores
+monolíticos de refresh do veículo, merge/chegada da iluminação, bypass do motor
+e ingestão/avaliação do observador global. Os geradores novos são idempotentes,
+os contratos e IDs externos foram preservados e o canvas é a representação
+canônica das políticas operacionais.
