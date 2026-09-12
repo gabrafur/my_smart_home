@@ -1,27 +1,26 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import {
+  ensureArrivalContextPolicy, runArrivalContextVisual, runPeopleVisual,
+  runSecurityArrivalVisual, runSecurityContextVisual, runSecurityReconcileVisual,
+  runVehicleRefreshVisual, runVehicleVisual,
+} from "./visual-flow-test-harness.mjs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 const aliasesByName = {
-  people_normalize: "Normalizar pessoas e detectar transições",
   people_refresh_decide: "Atualizar iPhones agora?",
-  vehicle_primary_normalize: "Normalizar vehicle_primary e detectar transições",
   vehicle_primary_refresh_policy: "Escolher pela presença",
   vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
-  vehicle_primary_refresh_decide: "Coordenar refresh do vehicle_primary",
   vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
   vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
   vehicle_primary_unlock_event: "Porta destravada por 5 s",
-  context_coordinator: "Coordenar snapshot e refresh",
-  context_tick: "Reavaliar contextos a cada 30 s",
-  light_merge_context: "Atualizar contexto de alto nível",
-  light_prepare_arrival: "Montar decisão de acendimento",
+  context_tick: "POLÍTICA: reavaliar a cada 30 s",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_mark_active: "Marcar refletor ativo por chegada",
   light_evaluate_off: "Alguma condição de desligamento ocorreu?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
-  light_reconcile: "Revalidar lifecycle e estado físico",
+  light_reconcile: "Emitir deadlines reconstruídos",
   light_auto_off: "Aguardar backstop de 15 min",
   light_check_inactive: "Refletor disponível para acender?",
   light_off_grace: "Respeitar carência de 90 s",
@@ -33,6 +32,14 @@ for (const [alias, name] of Object.entries(aliasesByName)) {
   assert(node, `node ausente pelo nome: ${name}`);
   byId.set(alias, node);
 }
+for (const [alias, id] of Object.entries({
+  people_normalize: "554cb653b2fa4504",
+  vehicle_primary_normalize: "092625f2eb5cc156",
+  vehicle_primary_refresh_decide: "b33e117e55bdb5ed",
+  context_coordinator: "arrival_context_refresh_build",
+  light_merge_context: "48a5f40d806f6950",
+  light_prepare_arrival: "62f77a1ad440639d",
+})) byId.set(alias, byId.get(id));
 
 
 function wireNames(alias, output = 0) {
@@ -49,10 +56,21 @@ const LOCATION_POLICY = {
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
+  vehicle_recovery_hours: 24,
+};
+const SECURITY_LIGHT_POLICY = {
+  version: 1, owner: "node_red", complete: true,
+  physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
+  off_grace_seconds: 90, backstop_minutes: 15, post_off_cooldown_minutes: 5,
+  lifecycle_retention_hours: 24, deadline_slack_minutes: 1,
+  unavailable_dedupe_seconds: 10, cooldown_max_minutes: 30,
 };
 
 function memoryGlobal() {
-  const values = new Map([["location_policy_v1", LOCATION_POLICY]]);
+  const values = new Map([["location_policy_v1", LOCATION_POLICY],
+    ["security_light_policy_v1", SECURITY_LIGHT_POLICY]]);
   return {
     get: (key) => values.get(key),
     set: (key, value) => values.set(key, value),
@@ -68,7 +86,7 @@ function memoryFlow(initial = {}) {
   };
 }
 
-function run(id, msg, flow = memoryFlow(), diagnostics = []) {
+function runDirect(id, msg, flow = memoryFlow(), diagnostics = []) {
   const target = byId.get(id);
   assert(target, `node ausente: ${id}`);
   assert.equal(target.type, "function", `${id} nao e Function node`);
@@ -83,6 +101,21 @@ function run(id, msg, flow = memoryFlow(), diagnostics = []) {
   return execute(msg, node, {}, flow, memoryGlobal(), env, setTimeout, clearTimeout);
 }
 
+function run(id, msg, flow = memoryFlow(), diagnostics = []) {
+  const call = (nodeId, current) => runDirect(nodeId, current, flow, diagnostics);
+  if (id === "people_normalize") return runPeopleVisual(call, msg);
+  if (id === "vehicle_primary_normalize") return runVehicleVisual(call, msg);
+  if (id === "vehicle_primary_refresh_decide") return runVehicleRefreshVisual(call, msg);
+  if (id === "light_prepare_arrival") return runSecurityArrivalVisual(call, msg);
+  if (id === "light_merge_context") return runSecurityContextVisual(call, msg);
+  if (id === "light_reconcile") return runSecurityReconcileVisual(call, msg);
+  if (id === "context_coordinator") {
+    if (!flow.get("arrival_context_policy_v1")) ensureArrivalContextPolicy(call);
+    return runArrivalContextVisual(call, msg);
+  }
+  return runDirect(id, msg, flow, diagnostics);
+}
+
 function runVehicleRefresh(msg, flow) {
   if (!flow.get("vehicle_primary_refresh_policy_config_v1")) {
     flow.set("vehicle_primary_refresh_policy_config_v1", {
@@ -93,6 +126,12 @@ function runVehicleRefresh(msg, flow) {
       home_interval_minutes: 30,
       quiet_start_hour: 0,
       quiet_end_hour: 6,
+      in_flight_lease_seconds: 120,
+      cache_probe_settle_seconds: 15,
+      provider_backoff_max_hours: 6,
+      semantic_evidence_window_minutes: 20,
+      unknown_location_start_hour: 7,
+      unknown_location_end_hour: 22,
     });
   }
   const branches = run("vehicle_primary_refresh_policy", msg, flow);
@@ -359,7 +398,7 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
   assert.deepEqual(wireNames("light_turn_off_if_active"), ["Desligar refletor do portão"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 0), ["Chegada → coordenador único de refresh"]);
   assert.deepEqual(wireNames("vehicle_primary_arrival_actions", 1), ["Separar viagens reais e dry-run"]);
-  assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Separar refresh real e dry-run"]);
+  assert.deepEqual(wireNames("vehicle_primary_refresh_decide"), ["Wake → gate final"]);
   assert.deepEqual(wireNames("context_coordinator", 2), []);
 });
 
