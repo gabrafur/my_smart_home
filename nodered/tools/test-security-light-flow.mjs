@@ -385,6 +385,7 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
   assert.equal(immediateExternalBounce[3].payload.direction_reason, "external_cycle_not_confirmed");
 
   const confirmedExternalFlow = memoryFlow();
+  const returnFlow = memoryFlow();
   run(
     "people_normalize",
     peopleInput({ event: "context_snapshot", previous: undefined, current: "not_home", resident_primary: entity("not_home", 1_600), resident_primaryIcloud: entity("not_home", 1_600) }),
@@ -428,14 +429,14 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
       resident_primary: entity("not_home", 2_000),
       resident_primaryIcloud: entity("not_home", 2_000),
     }),
-    flow,
+    returnFlow,
     geoEnv,
   );
-  assert.equal(flow.get("people_arrival_armed").resident_primary, true);
+  assert.equal(returnFlow.get("people_arrival_armed").resident_primary, true);
   const returning = run(
     "people_normalize",
     peopleInput(),
-    flow,
+    returnFlow,
     geoEnv,
   );
   assert.equal(returning[1].payload.external_cycle_confirmed, true);
