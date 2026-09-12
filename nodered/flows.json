@@ -15170,8 +15170,8 @@
         "type": "comment",
         "z": "daily_host_updates_tab",
         "g": "daily_update_inventory_group",
-        "name": "PARÂMETROS: scan 30 min [5–1440]; firmware auto=false; candidato manual 40 min [5–120]; HACS versionado=audit_only; Core=stable",
-        "info": "Edite os valores no bloco PARÂMETROS. Valores inválidos preservam a última configuração válida. A classificação fica no switch nomeado; o adaptador JavaScript apenas normaliza a estrutura devolvida pelo Home Assistant.",
+        "name": "PARÂMETROS: scan 30 min [5–1440]; firmware auto=false; candidato manual 40 min [5–120] | REGRAS: HACS=audit_only; Core=stable",
+        "info": "Edite somente os três valores no bloco PARÂMETROS. Valores inválidos preservam a última configuração válida. HACS audit_only e Core stable são invariantes visíveis nos respectivos subfluxos, não opções sem efeito. A classificação fica no switch nomeado; o adaptador JavaScript apenas normaliza a estrutura devolvida pelo Home Assistant.",
         "x": 820,
         "y": 2280,
         "wires": []
@@ -15281,7 +15281,7 @@
                 "t": "set",
                 "p": "update_policy",
                 "pt": "msg",
-                "to": "{\"version\":1,\"scan_interval_minutes\":30,\"device_firmware_auto\":false,\"manual_candidate_max_age_minutes\":40,\"hacs_vendored_action\":\"audit_only\",\"core_channel\":\"stable\"}",
+                "to": "{\"version\":1,\"scan_interval_minutes\":30,\"device_firmware_auto\":false,\"manual_candidate_max_age_minutes\":40}",
                 "tot": "json"
             }
         ],
@@ -15304,7 +15304,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_inventory_group",
         "name": "Validar e preservar último válido",
-        "func": "const policy = msg.update_policy;\nconst valid = policy && policy.version === 1 &&\n    Number.isInteger(policy.scan_interval_minutes) && policy.scan_interval_minutes >= 5 && policy.scan_interval_minutes <= 1440 &&\n    typeof policy.device_firmware_auto === \"boolean\" &&\n    Number.isInteger(policy.manual_candidate_max_age_minutes) && policy.manual_candidate_max_age_minutes >= 5 && policy.manual_candidate_max_age_minutes <= 120 &&\n    policy.hacs_vendored_action === \"audit_only\" &&\n    policy.core_channel === \"stable\";\nconst key = \"daily_update_visual_policy_v1\";\nif (!valid) {\n    const previous = flow.get(key, \"persistent\");\n    if (!previous) {\n        node.error(\"daily_update_visual_policy_invalid_without_previous\", msg);\n        return null;\n    }\n    msg.update_policy = previous;\n    node.status({ fill: \"red\", shape: \"ring\", text: \"inválido; último válido preservado\" });\n    return msg;\n}\nflow.set(key, policy, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política visual válida\" });\nreturn msg;",
+        "func": "const policy = msg.update_policy;\nconst valid = policy && policy.version === 1 &&\n    Number.isInteger(policy.scan_interval_minutes) && policy.scan_interval_minutes >= 5 && policy.scan_interval_minutes <= 1440 &&\n    typeof policy.device_firmware_auto === \"boolean\" &&\n    Number.isInteger(policy.manual_candidate_max_age_minutes) && policy.manual_candidate_max_age_minutes >= 5 && policy.manual_candidate_max_age_minutes <= 120;\nconst key = \"daily_update_visual_policy_v1\";\nif (!valid) {\n    const previous = flow.get(key, \"persistent\");\n    if (!previous) {\n        node.error(\"daily_update_visual_policy_invalid_without_previous\", msg);\n        return null;\n    }\n    msg.update_policy = previous;\n    node.status({ fill: \"red\", shape: \"ring\", text: \"inválido; último válido preservado\" });\n    return msg;\n}\nflow.set(key, policy, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política visual válida\" });\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,

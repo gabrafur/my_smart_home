@@ -220,8 +220,9 @@ const policyValue = JSON.parse(node("daily_update_inventory_parameters").rules[0
 assert.equal(policyValue.scan_interval_minutes, 30);
 assert.equal(policyValue.device_firmware_auto, false);
 assert.equal(policyValue.manual_candidate_max_age_minutes, 40);
-assert.equal(policyValue.hacs_vendored_action, "audit_only");
-assert.equal(policyValue.core_channel, "stable");
+assert.deepEqual(Object.keys(policyValue).sort(), [
+  "device_firmware_auto", "manual_candidate_max_age_minutes", "scan_interval_minutes", "version",
+]);
 
 const validatePolicy = new Function("msg", "node", "flow", node("daily_update_inventory_validate_policy").func);
 const validPolicyMessage = validatePolicy({ update_policy: policyValue }, runtimeNode, flow);
@@ -241,8 +242,6 @@ for (const invalidPolicy of [
   { ...policyValue, manual_candidate_max_age_minutes: 4 },
   { ...policyValue, manual_candidate_max_age_minutes: 121 },
   { ...policyValue, device_firmware_auto: "false" },
-  { ...policyValue, hacs_vendored_action: "install" },
-  { ...policyValue, core_channel: "latest" },
 ]) {
   const rejected = validatePolicy({ update_policy: invalidPolicy }, runtimeNode, flow);
   assert.deepEqual(rejected.update_policy, policyValue, "invalid visual values must preserve the last valid policy");

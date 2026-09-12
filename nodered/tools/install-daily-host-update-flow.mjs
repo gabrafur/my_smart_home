@@ -317,9 +317,7 @@ const validateUpdatePolicy = `const policy = msg.update_policy;
 const valid = policy && policy.version === 1 &&
     Number.isInteger(policy.scan_interval_minutes) && policy.scan_interval_minutes >= 5 && policy.scan_interval_minutes <= 1440 &&
     typeof policy.device_firmware_auto === "boolean" &&
-    Number.isInteger(policy.manual_candidate_max_age_minutes) && policy.manual_candidate_max_age_minutes >= 5 && policy.manual_candidate_max_age_minutes <= 120 &&
-    policy.hacs_vendored_action === "audit_only" &&
-    policy.core_channel === "stable";
+    Number.isInteger(policy.manual_candidate_max_age_minutes) && policy.manual_candidate_max_age_minutes >= 5 && policy.manual_candidate_max_age_minutes <= 120;
 const key = "daily_update_visual_policy_v1";
 if (!valid) {
     const previous = flow.get(key, "persistent");
@@ -872,8 +870,8 @@ const nodes = [
   },
   {
     id: "daily_update_inventory_architecture", type: "comment", z: TAB, g: inventoryGroup,
-    name: "PARÂMETROS: scan 30 min [5–1440]; firmware auto=false; candidato manual 40 min [5–120]; HACS versionado=audit_only; Core=stable",
-    info: "Edite os valores no bloco PARÂMETROS. Valores inválidos preservam a última configuração válida. A classificação fica no switch nomeado; o adaptador JavaScript apenas normaliza a estrutura devolvida pelo Home Assistant.",
+    name: "PARÂMETROS: scan 30 min [5–1440]; firmware auto=false; candidato manual 40 min [5–120] | REGRAS: HACS=audit_only; Core=stable",
+    info: "Edite somente os três valores no bloco PARÂMETROS. Valores inválidos preservam a última configuração válida. HACS audit_only e Core stable são invariantes visíveis nos respectivos subfluxos, não opções sem efeito. A classificação fica no switch nomeado; o adaptador JavaScript apenas normaliza a estrutura devolvida pelo Home Assistant.",
     x: 800, y: 2280, wires: [],
   },
   {
@@ -902,7 +900,7 @@ const nodes = [
     id: "daily_update_inventory_parameters", type: "change", z: TAB, g: inventoryGroup,
     name: "PARÂMETROS visuais de updates", rules: [{
       t: "set", p: "update_policy", pt: "msg",
-      to: '{"version":1,"scan_interval_minutes":30,"device_firmware_auto":false,"manual_candidate_max_age_minutes":40,"hacs_vendored_action":"audit_only","core_channel":"stable"}', tot: "json",
+      to: '{"version":1,"scan_interval_minutes":30,"device_firmware_auto":false,"manual_candidate_max_age_minutes":40}', tot: "json",
     }], action: "", property: "", from: "", to: "", reg: false,
     x: 500, y: 2440, wires: [["daily_update_inventory_validate_policy"]],
   },
