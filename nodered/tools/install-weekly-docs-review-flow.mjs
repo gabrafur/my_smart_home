@@ -499,7 +499,7 @@ const nodes = [
     z: TAB,
     g: PRODUCTION_GROUP,
     name: "Código da ponte é zero?",
-    property: "$number(payload.code ? payload.code : payload)",
+    property: "$number($exists(payload.code) ? payload.code : payload)",
     propertyType: "jsonata",
     rules: [{ t: "eq", v: "0", vt: "num" }, { t: "else" }],
     checkall: "true",

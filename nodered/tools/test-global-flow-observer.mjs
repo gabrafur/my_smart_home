@@ -65,12 +65,17 @@ function memory() {
   };
 }
 
-function execute(body, msg, flow) {
+function execute(body, msg, flow, events = []) {
   return vm.runInNewContext(`(function () {\n${body}\n})()`, {
     msg,
     flow,
     structuredClone,
-    node: { status() {}, log() {}, warn() {}, error() {} },
+    node: {
+      status(value) { events.push(["status", value]); },
+      log(value) { events.push(["log", value]); },
+      warn(value) { events.push(["warn", value]); },
+      error(value) { events.push(["error", value]); },
+    },
     Date,
     Math,
     Number,
@@ -92,6 +97,38 @@ const DEFAULT_POLICY = {
   error_retention_days: 7,
   ha_corroboration_sources: 2,
 };
+
+{
+  const startupFlow = memory();
+  const normalizeEvents = [];
+  assert.equal(execute(code.normalize, {
+    error: { message: "startup", source: { id: "startup", type: "function" } },
+  }, startupFlow, normalizeEvents), null);
+  assert.equal(
+    normalizeEvents.some(([kind]) => kind === "error" || kind === "warn"),
+    false,
+    "a janela anterior à política deve ficar fail-closed sem abrir incidente",
+  );
+  assert.ok(normalizeEvents.some(([kind, value]) =>
+    kind === "status" && /aguardando política visual/.test(value?.text ?? "")));
+
+  const evaluateEvents = [];
+  assert.equal(execute(code.evaluateExpand, {}, startupFlow, evaluateEvents), null);
+  assert.equal(evaluateEvents.some(([kind]) => kind === "error" || kind === "warn"), false);
+
+  const internalEvents = [];
+  const internalResult = execute(
+    code.internalFailure,
+    { error: {} },
+    startupFlow,
+    internalEvents,
+  );
+  assert.equal(internalResult.length, 2);
+  assert.equal(internalResult[0], null);
+  assert.equal(internalResult[1], null);
+  assert.equal(internalEvents.some(([kind]) => kind === "error" || kind === "warn"), false);
+}
+
 function ensurePolicy(flow) {
   if (!flow.get("global_observer_policy_v1")) {
     flow.set("global_observer_policy_v1", structuredClone(DEFAULT_POLICY));

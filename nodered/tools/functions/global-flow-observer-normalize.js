@@ -4,7 +4,7 @@ const store = testMode?undefined:"persistent";
 const getState = () => store?flow.get(stateKey,store):flow.get(stateKey);
 const policy = flow.get("global_observer_policy_v1","persistent");
 if (policy?.version !== 1 || policy?.complete !== true) {
-    node.error("observabilidade_global: política visual ausente", msg);
+    node.status({ fill: "yellow", shape: "ring", text: "aguardando política visual" });
     return null;
 }
 const previousState = getState();

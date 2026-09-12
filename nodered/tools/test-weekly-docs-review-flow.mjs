@@ -44,6 +44,7 @@ assert.equal(node("weekly_docs_review_test_mode_switch").type, "switch");
 assert.equal(node("weekly_docs_review_result_switch").type, "switch");
 assert.equal(node("weekly_docs_review_error_switch").type, "switch");
 assert.equal(node("weekly_docs_review_complete_switch").type, "switch");
+assert.match(node("weekly_docs_review_complete_switch").property, /\$exists\(payload\.code\)/);
 assert.deepEqual(node("weekly_docs_review_test_mode_switch").wires, [
   ["weekly_docs_review_dry_run_out"],
   ["weekly_docs_review_request"],

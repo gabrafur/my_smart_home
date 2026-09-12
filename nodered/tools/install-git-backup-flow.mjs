@@ -130,7 +130,7 @@ grouped(groups.effect, {
 linkOut("git_backup_result_out", groups.effect, "Resultado do worker → decisões", "git_backup_result_in", 2480, 80);
 fn("git_backup_error", groups.effect, "Normalizar erro da ponte", "git-backup-error-build.js", 1, 2480, 150, [["git_backup_notification_direct"]]);
 linkOut("git_backup_notification_direct", groups.effect, "Erro da ponte → notificações", "git_backup_notification_in", 2740, 150);
-sw("git_backup_complete", groups.effect, "Código da ponte é zero?", "$number(payload.code ? payload.code : payload)", "jsonata", [
+sw("git_backup_complete", groups.effect, "Código da ponte é zero?", "$number($exists(payload.code) ? payload.code : payload)", "jsonata", [
   { t: "eq", v: "0", vt: "num" }, { t: "else" },
 ], 2480, 220, [["git_backup_complete_ok"], ["git_backup_complete_failed"]]);
 terminal("git_backup_complete_ok", groups.effect, "Worker finalizado", { fill: "green", shape: "dot", text: "worker finalizado" }, 2740, 200);

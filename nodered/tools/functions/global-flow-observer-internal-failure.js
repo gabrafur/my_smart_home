@@ -3,7 +3,7 @@ const STORE = "persistent";
 const now = Date.now();
 const policy = flow.get("global_observer_policy_v1", STORE);
 if (policy?.version !== 1 || policy?.complete !== true) {
-    node.warn("NODERED_GLOBAL_OBSERVER_INTERNAL_FAILURE policy=missing");
+    node.status({ fill: "yellow", shape: "ring", text: "aguardando política visual" });
     return [null, null];
 }
 const source = msg.error?.source ?? {};
