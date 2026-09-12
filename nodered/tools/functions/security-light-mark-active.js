@@ -1,4 +1,15 @@
 const now = Date.now();
+const LOCATION_POLICY = global.get("location_policy_v1", "persistent");
+const LIGHT_POLICY = global.get("security_light_policy_v1", "persistent");
+if (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true ||
+    LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {
+    node.error("iluminacao_seguranca: política canônica ausente", msg);
+    return null;
+}
+const FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;
+const PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;
+const ARRIVAL_DEDUPE_MS = Number(LOCATION_POLICY.arrival_dedupe_minutes) * 60000;
+const BACKSTOP_MS = Number(LIGHT_POLICY.backstop_minutes) * 60000;
 const TEST_MODE =
     msg._location_test === true ||
     msg.payload?.test_mode === true;
@@ -30,8 +41,8 @@ const physicalObservedAt = Number(
 );
 const physicalFresh =
     Number.isFinite(physicalObservedAt) &&
-    physicalObservedAt <= now + 60 * 1000 &&
-    now - physicalObservedAt <= 2 * 60 * 1000;
+    physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&
+    now - physicalObservedAt <= PHYSICAL_FRESH_MS;
 const people = ctxGet("people_context_v1") ?? {};
 const arrivalSource = String(msg.payload?.source ?? "");
 const residentArrival = ["resident_primary", "resident_secondary"].includes(
@@ -79,8 +90,8 @@ const lastArrivalAt = Number(lifecycle.last_arrival_at ?? 0);
 if (
     arrivalKey &&
     lifecycle.last_arrival_key === arrivalKey &&
-    lastArrivalAt <= now + 60 * 1000 &&
-    now - lastArrivalAt < 10 * 60 * 1000
+    lastArrivalAt <= now + FUTURE_TOLERANCE_MS &&
+    now - lastArrivalAt < ARRIVAL_DEDUPE_MS
 ) {
     return null;
 }
@@ -88,7 +99,7 @@ if (
 lifecycle.version = 1;
 lifecycle.active_by_arrival = true;
 lifecycle.on_since = now;
-lifecycle.force_off_at = now + 15 * 60 * 1000;
+lifecycle.force_off_at = now + BACKSTOP_MS;
 lifecycle.pending_off_at = null;
 lifecycle.pending_off_reason = null;
 lifecycle.pending_off_source = null;
@@ -109,7 +120,7 @@ ctxSet(
     PERSISTENT
 );
 
-msg.delay = 15 * 60 * 1000;
+msg.delay = BACKSTOP_MS;
 msg.payload.deadline_type = "backstop";
 msg.payload.deadline_at = lifecycle.force_off_at;
 msg.payload.reason = bypassAllowed

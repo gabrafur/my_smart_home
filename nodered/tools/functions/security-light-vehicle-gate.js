@@ -2,6 +2,11 @@ const TEST_MODE =
     msg._location_test === true ||
     msg.payload?.test_mode === true;
 const PERSISTENT = "persistent";
+const LIGHT_POLICY = global.get("security_light_policy_v1", PERSISTENT);
+if (LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) {
+    node.error("iluminacao_seguranca: política canônica ausente", msg);
+    return null;
+}
 
 function contextKey(base) {
     return TEST_MODE ? `${base}__test` : base;
