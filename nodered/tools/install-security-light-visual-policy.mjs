@@ -104,7 +104,7 @@ fn("security_visual_policy_reject", policy.id, "Rejeitar sem substituir",
 
 const decision = required("32a89192d93735b1");
 decision.name = "2. Contexto, replay e decisão visual de acendimento";
-decision.x = 64; decision.y = 1540; decision.w = 4300; decision.h = 502;
+decision.x = 64; decision.y = 1540; decision.w = 6500; decision.h = 502;
 decision.nodes = decision.nodes.filter((id) => !generated.has(id));
 const inputs = required("e53f5ed6c320c591");
 grouped(inputs.id, { id: "security_visual_context_route_out", type: "link out", z: TAB,
@@ -194,12 +194,63 @@ for (const [id, x, y] of [
   ["light_arrival_replay_debug_in_v1", 2060, 1600],
   ["1bdb8c52397de8a9", 2310, 1600],
   ["e10a4b1a9880e827", 3100, 1720],
-  ["276ba50ad0e36bab", 3380, 1800],
-  ["87b2f8eb75cb6359", 3670, 1800],
-  ["light_available_to_output_out_v1", 4000, 1740],
-  ["light_unavailable_to_output_out_v1", 4000, 1820],
-  ["light_unavailable_test_dry_run_out_v1", 4000, 1900]
+  ["276ba50ad0e36bab", 3380, 1800]
 ]) Object.assign(required(id), { x, y, g: decision.id });
+const vehicleGate = required("276ba50ad0e36bab");
+vehicleGate.func = source("security-light-vehicle-gate.js");
+vehicleGate.wires = [["security_visual_availability_facts"]];
+fn("security_visual_availability_facts", decision.id, "Derivar fatos do atuador sem efeitos",
+  "security-light-availability-facts.js", 1, 3670, 1800, [["security_visual_availability_latched"]]);
+sw("security_visual_availability_latched", decision.id, "Aviso de ON já foi reservado?",
+  "_light_availability.latched", 3960, 1660, [[], ["security_visual_availability_on"]]);
+sw("security_visual_availability_on", decision.id, "Refletor já está ON e reconciliado?",
+  "_light_availability.physical_known_on", 4230, 1740, [[], ["security_visual_availability_cycle"]]);
+sw("security_visual_availability_cycle", decision.id, "Lifecycle de chegada já está ativo?",
+  "_light_availability.cycle_active", 4500, 1820, [[], ["security_visual_availability_ready"]]);
+sw("security_visual_availability_ready", decision.id, "Refletor OFF está disponível?",
+  "_light_availability.available", 4770, 1820,
+  [["security_visual_availability_ready_build"], ["security_visual_availability_duplicate"]]);
+fn("security_visual_availability_ready_build", decision.id, "Autorizar acendimento",
+  "security-light-availability-ready.js", 1, 5050, 1720, [["security_visual_availability_ready_out"]]);
+sw("security_visual_availability_duplicate", decision.id, "Diagnóstico indisponível já foi emitido?",
+  "_light_availability.duplicate_unavailable", 5050, 1920,
+  [[], ["security_visual_availability_unavailable_build"]]);
+fn("security_visual_availability_unavailable_build", decision.id, "Montar aviso sem chamar o atuador",
+  "security-light-availability-unavailable.js", 1, 5350, 1900,
+  [["security_visual_availability_unavailable_out"]]);
+linkOut("security_visual_availability_ready_out", decision.id, "Disponível → resultado",
+  "security_visual_availability_result_in", 5300, 1720);
+linkOut("security_visual_availability_unavailable_out", decision.id, "Indisponível → resultado",
+  "security_visual_availability_result_in", 5620, 1900);
+linkIn("security_visual_availability_result_in", decision.id, "Convergir disponibilidade",
+  ["security_visual_availability_ready_out", "security_visual_availability_unavailable_out"],
+  "87b2f8eb75cb6359", 5680, 1800);
+const availabilityOutput = required("87b2f8eb75cb6359");
+Object.assign(availabilityOutput, { g: decision.id, name: "Rotear disponibilidade do refletor",
+  func: source("security-light-availability-output.js"), outputs: 3, x: 5900, y: 1800 });
+if (!decision.nodes.includes(availabilityOutput.id)) decision.nodes.push(availabilityOutput.id);
+for (const [id, x, y] of [
+  ["light_available_to_output_out_v1", 6220, 1720],
+  ["light_unavailable_to_output_out_v1", 6220, 1800],
+  ["light_unavailable_test_dry_run_out_v1", 6220, 1880]
+]) Object.assign(required(id), { x, y, g: decision.id });
+
+const markActive = required("354c9839bfca592f");
+markActive.func = source("security-light-mark-active.js");
+const canonicalPrelude = `const LOCATION_POLICY = global.get("location_policy_v1", "persistent");\nconst LIGHT_POLICY = global.get("security_light_policy_v1", "persistent");\nif (LOCATION_POLICY?.version !== 1 || LOCATION_POLICY?.complete !== true || LIGHT_POLICY?.version !== 1 || LIGHT_POLICY?.complete !== true) { node.error("iluminacao_seguranca: política canônica ausente", msg); return null; }\nconst FUTURE_TOLERANCE_MS = Number(LOCATION_POLICY.future_tolerance_seconds) * 1000;\nconst PHYSICAL_FRESH_MS = Number(LIGHT_POLICY.physical_fresh_seconds) * 1000;\n`;
+const evaluateOff = required("374d4e39be0a30ac");
+if (!evaluateOff.func.includes("LIGHT_POLICY = global.get")) evaluateOff.func = canonicalPrelude + evaluateOff.func;
+evaluateOff.func = evaluateOff.func
+  .replace("const GRACE_MS = 90 * 1000;", "const GRACE_MS = Number(LIGHT_POLICY.off_grace_seconds) * 1000;")
+  .replaceAll("physicalObservedAt <= now + 60 * 1000", "physicalObservedAt <= now + FUTURE_TOLERANCE_MS")
+  .replaceAll("now - physicalObservedAt <= 2 * 60 * 1000", "now - physicalObservedAt <= PHYSICAL_FRESH_MS");
+const turnOff = required("84d450933e67b8c1");
+if (!turnOff.func.includes("LIGHT_POLICY = global.get")) turnOff.func = canonicalPrelude + turnOff.func;
+turnOff.func = turnOff.func
+  .replaceAll("physicalObservedAt <= now + 60 * 1000", "physicalObservedAt <= now + FUTURE_TOLERANCE_MS")
+  .replaceAll("now - physicalObservedAt <= 2 * 60 * 1000", "now - physicalObservedAt <= PHYSICAL_FRESH_MS")
+  .replace("lifecycle.cooldown_until = now + 5 * 60 * 1000;",
+    "lifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;");
 
 const reconcile = required("6013a28eaa95addd");
 reconcile.name = "0. Startup e recovery visual do lifecycle";

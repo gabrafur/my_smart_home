@@ -134,6 +134,17 @@ export function runSecurityReconcileVisual(call, message) {
   return call("a0a4977052d1ce06", msg);
 }
 
+export function runSecurityAvailabilityVisual(call, message) {
+  let msg = call("security_visual_availability_facts", message);
+  if (!msg) return null;
+  const data = msg._light_availability;
+  if (data.latched || data.physical_known_on || data.cycle_active ||
+      (!data.available && data.duplicate_unavailable)) return [null, null, null];
+  msg = call(data.available ? "security_visual_availability_ready_build"
+    : "security_visual_availability_unavailable_build", msg);
+  return call("87b2f8eb75cb6359", msg);
+}
+
 export function ensureArrivalContextPolicy(call) {
   let msg = call("arrival_context_policy_validate", {
     payload: { inflight_timeout_s: 10, future_tolerance_s: 60 }

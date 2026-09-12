@@ -5,6 +5,7 @@ import {
   runArrivalContextVisual,
   runPeopleVisual,
   runSecurityArrivalVisual,
+  runSecurityAvailabilityVisual,
   runSecurityContextVisual,
   runSecurityReconcileVisual,
   runVehicleRefreshVisual,
@@ -31,7 +32,7 @@ const aliasesByName = {
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
   light_reconcile: "Emitir deadlines reconstruídos",
   light_auto_off: "Aguardar backstop de 15 min",
-  light_check_inactive: "Refletor disponível para acender?",
+  light_check_inactive: "Rotear disponibilidade do refletor",
   light_off_grace: "Respeitar carência de 90 s",
   light_sun_event: "Luminosidade mudou",
   light_timeout: "Solicitar desligamento por timeout",
@@ -111,6 +112,7 @@ function run(id, msg, flow = memoryFlow(), env = environment()) {
   if (id === "vehicle_primary_normalize") return runVehicleVisual(call, msg);
   if (id === "vehicle_primary_refresh_decide") return runVehicleRefreshVisual(call, msg);
   if (id === "light_prepare_arrival") return runSecurityArrivalVisual(call, msg);
+  if (id === "light_check_inactive") return runSecurityAvailabilityVisual(call, msg);
   if (id === "light_merge_context") return runSecurityContextVisual(call, msg);
   if (id === "light_reconcile") return runSecurityReconcileVisual(call, msg);
   if (id === "context_coordinator") {
