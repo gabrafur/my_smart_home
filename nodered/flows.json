@@ -9557,7 +9557,7 @@
         "z": "c22d8b12055e87f7",
         "g": "vehicle_visual_refresh_decision_group_v2",
         "name": "Persistir lifecycle e rotear pedido",
-        "func": "const data = msg._refresh;\nif (!data) return [null, null, null, null, null];\ndata.state.next_retry_at = data.state.awaiting_evidence === true\n    ? data.state.next_allowed_at || null : null;\nif (data.test_mode) flow.set(data.state_key, data.state);\nelse flow.set(data.state_key, data.state, \"persistent\");\nconst output = data.output;\nconst mirror = data.mirror_context === true ? { ...msg } : null;\ndelete msg._refresh;\nif (output === 0) return [msg, mirror, null, null, null];\nif (output === 2) return [null, null, msg, null, null];\nif (output === 4) return [null, null, null, null, msg];\nreturn [null, null, null, null, null];",
+        "func": "const data = msg._refresh;\nif (!data) return null;\ndata.state.next_retry_at = data.state.awaiting_evidence === true\n    ? data.state.next_allowed_at || null : null;\nif (data.test_mode) flow.set(data.state_key, data.state);\nelse flow.set(data.state_key, data.state, \"persistent\");\nconst output = data.output;\nconst mirror = data.mirror_context === true ? { ...msg } : null;\ndelete msg._refresh;\nif (output === 0) return [msg, mirror, null, null, null];\nif (output === 2) return [null, null, msg, null, null];\nif (output === 4) return [null, null, null, null, msg];\nreturn null;",
         "outputs": 5,
         "timeout": "",
         "noerr": 0,

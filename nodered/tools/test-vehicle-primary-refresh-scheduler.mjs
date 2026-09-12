@@ -14,7 +14,7 @@ const flows = JSON.parse(
   fs.readFileSync(path.resolve(toolsDir, "../flows.json"), "utf8"),
 );
 assert.equal(
-  flows.find((node) => node.id === "arrival_context_people_away")?.type,
+  flows.find((node) => node.id === "arrival_context_departure_away")?.type,
   "switch",
   "a decisão de ausência deve estar visível no contexto de chegada",
 );
@@ -39,7 +39,6 @@ const code = {
   dryRun: source("vehicle-primary-dry-run-terminal.js"),
   notificationGuard: source("vehicle-primary-notification-dispatch-guard.js"),
   arrival: source("vehicle-primary-arrival-actions.js"),
-  contextCoordinator: contextCoordinator?.func,
   peopleRefresh: flows.find(
     (node) => node.name === "Atualizar iPhones agora?",
   )?.func,
@@ -90,16 +89,16 @@ assert.doesNotMatch(
   /last_request_at \?\? Date\.now\(\)\) \+\s*15 \* 60 \* 1000/,
 );
 
-const refreshCoordinatorNode = flows.find(
-  (node) => node.name === "Coordenar refresh do vehicle_primary",
-);
-const coordinatorInbound = flows.filter((node) =>
-  (node.wires ?? []).flat().includes(refreshCoordinatorNode?.id),
+assert.deepEqual(
+  flows.find((node) => node.id === "vehicle_primary_refresh_policy_in_v1")?.wires?.[0],
+  ["vehicle_visual_refresh_command_out"],
 );
 assert.deepEqual(
-  coordinatorInbound.map((node) => node.id),
-  ["vehicle_primary_refresh_policy_in_v1"],
+  flows.find((node) => node.id === "vehicle_visual_refresh_result_in")?.wires?.[0],
+  ["b33e117e55bdb5ed"],
 );
+assert.equal(flows.find((node) => node.id === "vehicle_visual_refresh_deadline")?.type, "switch");
+assert.equal(flows.find((node) => node.id === "vehicle_visual_refresh_cache_needed")?.type, "switch");
 const approachingConfigNode = flows.find(
   (node) => node.id === "vehicle_primary_refresh_approaching_minutes_v1",
 );
@@ -350,6 +349,12 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
     ["home_interval_minutes", 45],
     ["quiet_start_hour", 1],
     ["quiet_end_hour", 7],
+    ["in_flight_lease_seconds", 120],
+    ["cache_probe_settle_seconds", 15],
+    ["provider_backoff_max_hours", 6],
+    ["semantic_evidence_window_minutes", 20],
+    ["unknown_location_start_hour", 7],
+    ["unknown_location_end_hour", 22],
   ]) {
     execute(code.policyConfig, {
       now: DAY,
@@ -370,6 +375,12 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
       home_interval_minutes: 45,
       quiet_start_hour: 1,
       quiet_end_hour: 7,
+      in_flight_lease_seconds: 120,
+      cache_probe_settle_seconds: 15,
+      provider_backoff_max_hours: 6,
+      semantic_evidence_window_minutes: 20,
+      unknown_location_start_hour: 7,
+      unknown_location_end_hour: 22,
       complete: true,
     },
   );
@@ -501,60 +512,6 @@ scenario("02a melhor localização fora seleciona intervalo de 15 minutos", () =
   assert(result[0]);
   assert.equal(store.get(KEY).interval_ms, 15 * 60_000);
   assert.equal(store.get(KEY).interval_policy, "away");
-});
-
-scenario("02b localização stale não reduz sozinha o ciclo do veículo", () => {
-  const store = memory({
-    vehicle_primary_context_v1: readyContext(DAY),
-  });
-  const started = execute(code.contextCoordinator, {
-    now: DAY,
-    store,
-    msg: { payload: { kind: "refresh_tick" } },
-  });
-  const cycle = started[0].payload.refresh_cycle_id;
-
-  execute(code.contextCoordinator, {
-    now: DAY,
-    store,
-    msg: {
-      payload: {
-        kind: "people_context",
-        refresh_cycle_id: cycle,
-        ready: false,
-        updated_at: DAY,
-        context: {
-          resident_primary: { state: "home" },
-          resident_secondary: { state: "home" },
-          best_location_away: false,
-          ready: false,
-          updated_at: DAY,
-        },
-      },
-    },
-  });
-  const paired = execute(code.contextCoordinator, {
-    now: DAY,
-    store,
-    msg: {
-      payload: {
-        kind: "vehicle_primary_context",
-        refresh_cycle_id: cycle,
-        ready: true,
-        updated_at: DAY,
-        context: readyContext(DAY),
-      },
-    },
-  });
-
-  assert(paired[1]);
-  assert.equal(paired[1].payload.people_recovery_needed, true);
-  assert.equal(paired[1].payload.recovery_needed, false);
-  assert.equal(paired[1].payload.any_resident_away, false);
-  const request = coordinator(store, DAY, paired[1].payload);
-  assert(request[0]);
-  assert.equal(store.get(KEY).interval_ms, 30 * 60_000);
-  assert.equal(store.get(KEY).interval_policy, "both_home");
 });
 
 scenario("03 ambos em casa ficam pausados entre 00h e 06h", () => {
@@ -1866,63 +1823,6 @@ scenario("42 somente telemetria nova limpa detalhes e fecha alerta", () => {
   assert.equal(dismiss[2], null);
   assert.equal(dismiss[3].notification.id, "vehicle_primary_refresh_failed");
   assert.equal(store.get(KEY).recovery_notification_pending, false);
-});
-
-scenario("43 saída de morador emite refresh prioritário do veículo", () => {
-  const previousAt = DAY - 60_000;
-  const previousPeople = {
-    resident_primary: { state: "home", ready: true, updated_at: previousAt },
-    resident_secondary: { state: "home", ready: true, updated_at: previousAt },
-    best_location_away: false,
-    any_tracker_away: false,
-    updated_at: previousAt,
-    ready: true,
-  };
-  const currentPeople = {
-    ...previousPeople,
-    resident_primary: {
-      state: "not_home",
-      ready: true,
-      best_location_away: true,
-      updated_at: DAY,
-    },
-    best_location_away: true,
-    any_tracker_away: true,
-    updated_at: DAY,
-  };
-  const store = memory({
-    people_context_v1: previousPeople,
-    vehicle_primary_context_v1: readyContext(previousAt),
-  });
-  const departureMessage = {
-    payload: {
-      kind: "people_context",
-      source: "resident_primary",
-      trigger_prev_state: "home",
-      trigger_state: "not_home",
-      context: currentPeople,
-      updated_at: DAY,
-      ready: true,
-    },
-  };
-
-  const result = execute(code.contextCoordinator, {
-    now: DAY,
-    store,
-    msg: departureMessage,
-  });
-  assert(result[1]);
-  assert.equal(result[1].payload.reason, "resident_departure");
-  assert.equal(result[1].payload.resident_departure_force, true);
-  assert.equal(result[1].payload.any_resident_away, true);
-  assert.equal(result[1].payload.departure_event_at, DAY);
-
-  const duplicate = execute(code.contextCoordinator, {
-    now: DAY + 1_000,
-    store,
-    msg: departureMessage,
-  });
-  assert.equal(duplicate, null);
 });
 
 scenario("44 saída ignora deadline, mas não duplica o mesmo wake", () => {
