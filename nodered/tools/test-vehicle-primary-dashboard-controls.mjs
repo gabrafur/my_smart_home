@@ -332,7 +332,6 @@ function resolvedPolicy(overrides = {}) {
 const ids = flows.map((node) => node.id);
 for (const expected of [
   "vehicle_primary_manual_refresh_button_v1",
-  "vehicle_primary_manual_refresh_request_v1",
   "vehicle_primary_refresh_telemetry_tick_v1",
   "vehicle_primary_refresh_telemetry_v1",
   "vehicle_primary_refresh_mqtt_v1",
@@ -362,22 +361,23 @@ for (const expected of [
 }
 
 const normalizer = flows.find((node) => node.id === "092625f2eb5cc156");
-assert.match(normalizer.func, /refresh_state_contract_v1/);
-assert.match(normalizer.func, /vehicleContext\.refresh/);
+assert.ok(normalizer.func.length < 4000);
+assert.match(normalizer.func, /data\.context\.refresh/);
 assert.match(
-  normalizer.func,
-  /semantic_wake_confirmation_independent_of_derived_readiness_v2/,
+  flows.find((node) => node.id === "vehicle_visual_normalize")?.func ?? "",
+  /engine_communication_failed/,
 );
-assert.match(normalizer.func, /if \(evidenceObserved\)/);
-assert.doesNotMatch(normalizer.func, /else if \(evidenceObserved\)/);
-assert.match(normalizer.func, /lighting_ready_after_wake/);
-assert.match(normalizer.func, /engine_state_trust_by_api_health_v1/);
-assert.match(normalizer.func, /engine_communication_failed/);
 assert.doesNotMatch(normalizer.func, /fresh_telemetry_engine_unreliable/);
+assert.equal(flows.find((node) => node.id === "vehicle_visual_engine_on")?.type, "switch");
+assert.equal(flows.find((node) => node.id === "vehicle_visual_evidence_confirmed")?.type, "switch");
+assert.match(
+  flows.find((node) => node.id === "vehicle_visual_evidence_confirm")?.func ?? "",
+  /lighting_ready_after_wake/,
+);
 
 const refreshDecision = flows.find((node) => node.id === "b33e117e55bdb5ed");
 assert.equal(refreshDecision.outputs, 5);
-assert.deepEqual(refreshDecision.wires[0], ["vehicle_primary_refresh_dispatch_guard_v1"]);
+assert.deepEqual(refreshDecision.wires[0], ["vehicle_visual_refresh_dispatch_out"]);
 assert.deepEqual(
   refreshDecision.wires[2],
   ["vehicle_primary_manual_blocked_route_out_v1"],
@@ -392,6 +392,14 @@ assert.deepEqual(
 );
 assert.deepEqual(
   refreshDecision.wires[4],
+  ["vehicle_visual_refresh_cache_out"],
+);
+assert.deepEqual(
+  flows.find((node) => node.id === "vehicle_visual_refresh_dispatch_in")?.wires?.[0],
+  ["vehicle_primary_refresh_dispatch_guard_v1"],
+);
+assert.deepEqual(
+  flows.find((node) => node.id === "vehicle_visual_refresh_cache_in")?.wires?.[0],
   ["vehicle_primary_cache_probe_dispatch_guard_v1"],
 );
 
