@@ -18,6 +18,33 @@ COMPONENT = ROOT / "homeassistant" / "custom_components" / "claude_code_chat" / 
 BEHAVIOR_TEST = ROOT / "homeassistant" / "tests" / "codex_chat_card_behavior.test.mjs"
 
 
+def _literal_assignment(source: str, name: str):
+    """Read one top-level literal without parsing unrelated Python syntax."""
+    prefix = f"{name} = "
+    lines = source.splitlines()
+
+    for index, line in enumerate(lines):
+        if not line.startswith(prefix):
+            continue
+
+        expression = line.removeprefix(prefix)
+        last_error = None
+        for continuation in lines[index + 1 :]:
+            try:
+                return ast.literal_eval(expression)
+            except (SyntaxError, ValueError) as error:
+                last_error = error
+                expression += f"\n{continuation}"
+
+        try:
+            return ast.literal_eval(expression)
+        except (SyntaxError, ValueError) as error:
+            last_error = error
+        raise AssertionError(f"{name} is not a literal assignment") from last_error
+
+    raise AssertionError(f"{name} assignment not found")
+
+
 class CodexChatResourceTest(unittest.TestCase):
     def test_card_is_registered_as_a_lovelace_yaml_resource(self):
         configuration = CONFIGURATION.read_text(encoding="utf-8")
@@ -92,11 +119,14 @@ class CodexChatResourceTest(unittest.TestCase):
         self.assertIsNotNone(frontend_match)
         frontend_models = ast.literal_eval(frontend_match.group(1))
 
-        assignments = {}
-        for node in ast.walk(ast.parse(component)):
-            if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
-                if node.targets[0].id in {"CODEX_MODELS", "DEFAULT_CODEX_MODEL", "DEFAULT_CODEX_REASONING_EFFORT"}:
-                    assignments[node.targets[0].id] = ast.literal_eval(node.value)
+        assignments = {
+            name: _literal_assignment(component, name)
+            for name in {
+                "CODEX_MODELS",
+                "DEFAULT_CODEX_MODEL",
+                "DEFAULT_CODEX_REASONING_EFFORT",
+            }
+        }
 
         self.assertEqual(
             {model: set(efforts) for model, efforts in frontend_models.items()},
