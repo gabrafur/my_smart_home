@@ -23,6 +23,7 @@ state.require_lighting_ready = data.require_lighting_ready;
 state.recovery_reason = data.requested_reason;
 state.manual_force = data.requested_reason === "manual_force";
 state.resident_departure_force = data.departure_bypass;
+state.semantic_evidence_window_ms = Number(data.config.semantic_evidence_window_ms);
 Object.assign(state, {
     state: "refreshing",
     reason: data.requested_reason,

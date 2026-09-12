@@ -62,6 +62,7 @@ state.cache_probe_settle_until = boundedFuture(state.cache_probe_settle_until,
     Number(config.cache_probe_settle_ms));
 state.failure_notified_at = validPast(state.failure_notified_at)
     ? state.failure_notified_at : 0;
+state.semantic_evidence_window_ms = Number(config.semantic_evidence_window_ms);
 state.evidence_wait_started_at = validPast(state.evidence_wait_started_at) &&
     state.evidence_wait_started_at > 0 ? state.evidence_wait_started_at
     : state.awaiting_evidence === true
