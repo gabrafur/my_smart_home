@@ -2,6 +2,10 @@
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import {
+  runSecurityArrivalVisual, runSecurityAvailabilityVisual,
+  runSecurityContextVisual, runVehicleVisual,
+} from "./visual-flow-test-harness.mjs";
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
@@ -18,6 +22,18 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250,
   home_radius_m: 100,
   arrival_recovery_minutes: 10,
+  arrival_dedupe_minutes: 10,
+  primary_home_grace_minutes: 10,
+  future_tolerance_seconds: 60,
+  vehicle_signal_fresh_minutes: 5,
+  vehicle_recovery_hours: 24,
+};
+const SECURITY_LIGHT_POLICY = {
+  version: 1, owner: "node_red", complete: true,
+  physical_fresh_seconds: 120, recovery_request_throttle_seconds: 30,
+  off_grace_seconds: 90, backstop_minutes: 15, post_off_cooldown_minutes: 5,
+  lifecycle_retention_hours: 24, deadline_slack_minutes: 1,
+  unavailable_dedupe_seconds: 10, cooldown_max_minutes: 30,
 };
 
 const ids = {
@@ -59,11 +75,11 @@ function execute(node, msg, flow, global, envValues = {}, nodeOverrides = {}) {
 
 const group = byId.get(ids.group);
 const coordinator = byId.get(ids.coordinator);
-const normalizer = flows.find((node) => node.name === "Normalizar vehicle_primary e detectar transições");
+const normalizer = byId.get("092625f2eb5cc156");
 const gate = flows.find((node) => node.name === "vehicle_primary está em uso?");
-const mergeContext = flows.find((node) => node.name === "Atualizar contexto de alto nível");
-const prepareArrival = flows.find((node) => node.name === "Montar decisão de acendimento");
-const checkInactive = flows.find((node) => node.name === "Refletor disponível para acender?");
+const mergeContext = byId.get("48a5f40d806f6950");
+const prepareArrival = byId.get("62f77a1ad440639d");
+const checkInactive = byId.get("87b2f8eb75cb6359");
 const markActive = flows.find((node) => node.name === "Marcar refletor ativo por chegada");
 const bypassFunction = byId.get(ids.bypassFunction);
 const dryRunTerminal = byId.get("light_full_dry_run_terminal_v1");
@@ -96,8 +112,19 @@ for (const [id, requestedState] of [
   assert.deepEqual(node.wires, [[ids.bypassFunction]]);
 }
 
-const shared = memory({ location_policy_v1: LOCATION_POLICY });
+const shared = memory({ location_policy_v1: LOCATION_POLICY,
+  security_light_policy_v1: SECURITY_LIGHT_POLICY });
 const flow = memory();
+const compositeCall = (nodeId, msg, targetFlow = flow, targetGlobal = shared, envValues = {}) =>
+  execute(byId.get(nodeId), msg, targetFlow, targetGlobal, envValues);
+const normalizeVehicle = (msg, targetFlow = flow, targetGlobal = shared, envValues = {}) =>
+  runVehicleVisual((id, current) => compositeCall(id, current, targetFlow, targetGlobal, envValues), msg);
+const prepareLight = (msg, targetFlow = flow, targetGlobal = shared) =>
+  runSecurityArrivalVisual((id, current) => compositeCall(id, current, targetFlow, targetGlobal), msg);
+const mergeLight = (msg, targetFlow = flow, targetGlobal = shared) =>
+  runSecurityContextVisual((id, current) => compositeCall(id, current, targetFlow, targetGlobal), msg);
+const checkAvailable = (msg, targetFlow = flow, targetGlobal = shared) =>
+  runSecurityAvailabilityVisual((id, current) => compositeCall(id, current, targetFlow, targetGlobal), msg);
 execute(coordinator, { test_case: "reset" }, flow, shared);
 assert.equal(shared.get("security_location_test_state_v1").vehicle_primary_engine, "off");
 
@@ -110,7 +137,7 @@ execute(coordinator, { test_case: "vehicle_primary_away" }, flow, shared);
 assert.equal(shared.get("security_location_test_state_v1").vehicle_primary_engine, "on", "localização deve preservar ON");
 assert.equal(shared.get("security_location_test_state_v1").vehicle_primary, "not_home");
 
-const normalizedOn = execute(normalizer, {
+const normalizedOn = normalizeVehicle({
   _location_test: true,
   _location_test_case: "vehicle_primary_engine_on",
   payload: { event: "context_snapshot", test_mode: true },
@@ -124,7 +151,7 @@ assert.equal(offMessage.payload.test_state.vehicle_primary_engine, "off");
 execute(coordinator, { test_case: "vehicle_primary_approach" }, flow, shared);
 assert.equal(shared.get("security_location_test_state_v1").vehicle_primary_engine, "off", "localização deve preservar OFF");
 
-const normalizedOff = execute(normalizer, {
+const normalizedOff = normalizeVehicle({
   _location_test: true,
   _location_test_case: "vehicle_primary_engine_off",
   payload: { event: "context_snapshot", test_mode: true },
@@ -201,7 +228,7 @@ gateFlow.set("vehicle_primary_context_v1__test", {
   engine_communication_failed: true,
   updated_at: arrivalAt,
 });
-const queued = execute(prepareArrival, {
+const queued = prepareLight({
   _location_test: true,
   _location_test_case: "arrival_before_sunset",
   payload: {
@@ -223,7 +250,7 @@ assert(
 );
 
 gateFlow.set("sun_below_horizon", true);
-const sunset = execute(mergeContext, {
+const sunset = mergeLight({
   _location_test: true,
   _location_test_case: "arrival_before_sunset",
   payload: {
@@ -336,7 +363,7 @@ assert.equal(
 );
 assert.equal(bypassReplay[2].payload.test_mode, true);
 
-const prepared = execute(prepareArrival, bypassReplay[2], gateFlow, shared)[0];
+const prepared = prepareLight(bypassReplay[2], gateFlow, shared)[0];
 assert(prepared, "replay com bypass deve atravessar a preparação de acendimento");
 assert.equal(prepared.payload.sun_below_horizon, true);
 assert.equal(prepared.payload.engine_bypass_allowed, true);
@@ -344,7 +371,7 @@ assert.equal(prepared.payload.engine_bypass_allowed, true);
 const gated = execute(gate, prepared, gateFlow, shared);
 assert(gated, "replay com bypass deve atravessar o gate em test_mode");
 assert.equal(gated.payload.vehicle_primary_gate, "manual_bypass_for_unreliable_engine");
-const available = execute(checkInactive, gated, gateFlow, shared)[0];
+const available = checkAvailable(gated, gateFlow, shared)[0];
 assert(available, "refletor OFF reconciliado deve chegar ao lifecycle de teste");
 const dispatched = execute(markActive, available, gateFlow, shared);
 assert.equal(dispatched[0], null, "test_mode nunca pode entrar na saída física");
@@ -403,7 +430,7 @@ const cancelFlow = memory({
     },
   },
 });
-execute(mergeContext, {
+mergeLight({
   _location_test: true,
   payload: {
     kind: "people_context",
