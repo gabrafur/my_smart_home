@@ -107,28 +107,32 @@ swRules("security_visual_bypass_branch", bypass.id, "Qual comando de bypass?",
   ]);
 fn("security_visual_bypass_startup", bypass.id, "Restaurar último estado válido",
   "security-light-engine-bypass-startup.js", 1, 1140, 1060,
-  [["security_visual_bypass_output"]]);
+  [["security_visual_bypass_result_out"]]);
 fn("security_visual_bypass_auto_enable", bypass.id, "Ativar por falha sem roubar posse manual",
   "security-light-engine-bypass-auto-enable.js", 1, 1160, 1120,
-  [["security_visual_bypass_output"]]);
+  [["security_visual_bypass_result_out"]]);
 sw("security_visual_bypass_auto_owned", bypass.id, "Ativação atual pertence à automação?",
   "_engine_bypass.automatic_owned", 1140, 1200,
   [["security_visual_bypass_auto_recover"], ["security_visual_bypass_preserve_manual"]]);
 fn("security_visual_bypass_auto_recover", bypass.id, "Desativar após recovery da API",
   "security-light-engine-bypass-auto-recover.js", 1, 1410, 1180,
-  [["security_visual_bypass_output"]]);
+  [["security_visual_bypass_result_out"]]);
 fn("security_visual_bypass_preserve_manual", bypass.id, "Preservar ON de posse manual",
   "security-light-engine-bypass-preserve-manual.js", 0, 1410, 1240, []);
 fn("security_visual_bypass_manual_enable", bypass.id, "Ativar com posse manual",
   "security-light-engine-bypass-manual-enable.js", 1, 1160, 1300,
-  [["security_visual_bypass_output"]]);
+  [["security_visual_bypass_result_out"]]);
 fn("security_visual_bypass_manual_disable", bypass.id, "Desativar e liberar posse",
   "security-light-engine-bypass-manual-disable.js", 1, 1160, 1360,
-  [["security_visual_bypass_output"]]);
+  [["security_visual_bypass_result_out"]]);
 fn("security_visual_bypass_invalid", bypass.id, "Rejeitar comando inválido",
   "security-light-engine-bypass-invalid.js", 0, 1150, 1420, []);
+linkOut("security_visual_bypass_result_out", bypass.id, "Estado decidido → publicação",
+  "security_visual_bypass_result_in", 1510, 1060);
+linkIn("security_visual_bypass_result_in", bypass.id, "Receber estado decidido",
+  ["security_visual_bypass_result_out"], "security_visual_bypass_output", 1620, 1160);
 fn("security_visual_bypass_output", bypass.id, "Publicar estado e pedir reavaliação",
-  "security-light-engine-bypass-output.js", 2, 1680, 1160,
+  "security-light-engine-bypass-output.js", 2, 1800, 1160,
   [["security_light_engine_bypass_mqtt_out_v1"], ["security_light_engine_bypass_reevaluate_out_v1"]]);
 for (const [id, x, y] of [
   ["security_light_engine_bypass_mqtt_out_v1", 1930, 1120],

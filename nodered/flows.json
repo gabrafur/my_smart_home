@@ -2629,6 +2629,8 @@
             "security_visual_bypass_manual_enable",
             "security_visual_bypass_manual_disable",
             "security_visual_bypass_invalid",
+            "security_visual_bypass_result_out",
+            "security_visual_bypass_result_in",
             "security_visual_bypass_output"
         ],
         "x": 64,
@@ -46377,7 +46379,7 @@
         "y": 1060,
         "wires": [
             [
-                "security_visual_bypass_output"
+                "security_visual_bypass_result_out"
             ]
         ]
     },
@@ -46398,7 +46400,7 @@
         "y": 1120,
         "wires": [
             [
-                "security_visual_bypass_output"
+                "security_visual_bypass_result_out"
             ]
         ]
     },
@@ -46449,7 +46451,7 @@
         "y": 1180,
         "wires": [
             [
-                "security_visual_bypass_output"
+                "security_visual_bypass_result_out"
             ]
         ]
     },
@@ -46487,7 +46489,7 @@
         "y": 1300,
         "wires": [
             [
-                "security_visual_bypass_output"
+                "security_visual_bypass_result_out"
             ]
         ]
     },
@@ -46508,7 +46510,7 @@
         "y": 1360,
         "wires": [
             [
-                "security_visual_bypass_output"
+                "security_visual_bypass_result_out"
             ]
         ]
     },
@@ -46530,6 +46532,37 @@
         "wires": []
     },
     {
+        "id": "security_visual_bypass_result_out",
+        "type": "link out",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Estado decidido → publicação",
+        "mode": "link",
+        "links": [
+            "security_visual_bypass_result_in"
+        ],
+        "x": 1510,
+        "y": 1060,
+        "wires": []
+    },
+    {
+        "id": "security_visual_bypass_result_in",
+        "type": "link in",
+        "z": "6b7552efb85343f4",
+        "g": "security_light_engine_bypass_group_v1",
+        "name": "Receber estado decidido",
+        "links": [
+            "security_visual_bypass_result_out"
+        ],
+        "x": 1620,
+        "y": 1160,
+        "wires": [
+            [
+                "security_visual_bypass_output"
+            ]
+        ]
+    },
+    {
         "id": "security_visual_bypass_output",
         "type": "function",
         "z": "6b7552efb85343f4",
@@ -46542,7 +46575,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1680,
+        "x": 1800,
         "y": 1160,
         "wires": [
             [
