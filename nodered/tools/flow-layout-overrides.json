@@ -4342,6 +4342,22 @@
           "x": 1823,
           "y": 1520
         },
+        "security_visual_arrival_final_confirmation_needed": {
+          "x": 3083,
+          "y": 1780
+        },
+        "security_visual_arrival_final_confirmation_throttle": {
+          "x": 3363,
+          "y": 1740
+        },
+        "security_visual_arrival_final_confirmation": {
+          "x": 3643,
+          "y": 1700
+        },
+        "security_visual_arrival_final_confirmation_out": {
+          "x": 3893,
+          "y": 1700
+        },
         "security_visual_arrival_recovery_out": {
           "x": 2363,
           "y": 1580

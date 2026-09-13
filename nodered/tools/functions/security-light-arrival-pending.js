@@ -6,6 +6,18 @@ const existingAt = Number(existing?.event_at ?? 0);
 const residentApproach = data.resident_arrival && data.stage === "approach";
 const vehicleApproach = data.source === "vehicle_primary" && data.stage === "approach";
 if (!existing || !Number.isFinite(existingAt) || data.event_at >= existingAt) {
+    /* Persist only the replay contract. The live Node-RED message contains
+     * transient runtime objects (including _light_arrival itself); retaining
+     * that object graph makes the file context circular after we attach the
+     * diagnostic below. */
+    const replayMessage = {
+        payload: { ...(msg.payload ?? {}) }
+    };
+    if (msg.topic !== undefined) replayMessage.topic = msg.topic;
+    if (msg._location_test === true) replayMessage._location_test = true;
+    if (msg._location_test_case !== undefined) {
+        replayMessage._location_test_case = msg._location_test_case;
+    }
     const pending = {
         version: 2,
         queued_at: data.queued_at,
@@ -15,7 +27,7 @@ if (!existing || !Number.isFinite(existingAt) || data.event_at >= existingAt) {
             : vehicleApproach ? "while_vehicle_approaching" : "recovery_window",
         source: data.source,
         arrival_stage: data.stage,
-        message: { ...msg, payload: { ...(msg.payload ?? {}) } }
+        message: replayMessage
     };
     if (data.test_mode) flow.set(key + suffix, pending);
     else flow.set(key, pending, "persistent");

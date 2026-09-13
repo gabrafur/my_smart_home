@@ -11,12 +11,13 @@ const ready = people.ready === true && vehicle.ready === true && flow.get("sun_r
 const wasReady = flow.get("security_light_ready");
 flow.set("security_light_ready", ready);
 if (wasReady !== ready) node.log?.(`iluminacao_seguranca: readiness ${ready ? "completo" : "pendente"}`);
-data.recovery_needed = data.physical_accepted && ready &&
-    flow.get("security_light_physical_state") === "on" && data.lifecycle.active_by_arrival === true;
-data.deadlines = data.recovery_needed ? [
+const activePhysical = data.physical_accepted &&
+    flow.get("security_light_physical_state") === "on" &&
+    data.lifecycle.active_by_arrival === true;
+data.deadlines = activePhysical ? [
     Number.isFinite(data.lifecycle.force_off_at)
         ? { type: "backstop", at: data.lifecycle.force_off_at, reason: "recovered_backstop" } : null,
-    Number.isFinite(data.lifecycle.pending_off_at)
+    ready && Number.isFinite(data.lifecycle.pending_off_at)
         ? { type: "pending_off", at: data.lifecycle.pending_off_at,
             reason: data.lifecycle.pending_off_reason ?? "recovered_pending_off" } : null
 ].filter(Boolean) : [];

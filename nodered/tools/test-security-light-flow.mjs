@@ -63,6 +63,7 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,
 };
@@ -342,9 +343,10 @@ scenario("03 vehicle_primary ligado e aproximando-se", () => {
 
 scenario("04 entrada no raio near_home de 700 m", () => {
   const flow = memoryFlow();
+  const confirmedExternalAt = new Date(Date.now() - 61_000).toISOString();
   run("people_normalize", peopleInput({ event: "context_snapshot", current: "not_home",
-    resident_primary: entity("not_home", 1_600),
-    resident_primaryIcloud: entity("not_home", 1_600) }), flow, geoEnv);
+    resident_primary: entity("not_home", 1_600, confirmedExternalAt),
+    resident_primaryIcloud: entity("not_home", 1_600, confirmedExternalAt) }), flow, geoEnv);
   const [, detected] = run("people_normalize", peopleInput(), flow, geoEnv);
   assert.equal(detected.payload.arrival_stage, "approach");
   assert.equal(detected.payload.arrival_direction, "returning");
@@ -369,14 +371,24 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
   assert.equal(flow.get("people_arrival_armed").resident_primary, false);
 
   const externalBounceFlow = memoryFlow();
+  const duplicatedExternalAt = new Date().toISOString();
   const firstExternalSample = run(
     "people_normalize",
-    peopleInput({ previous: "home", current: "not_home", resident_primary: entity("not_home", 1_600), resident_primaryIcloud: entity("not_home", 1_600) }),
+    peopleInput({ previous: "home", current: "not_home", resident_primary: entity("not_home", 1_600, duplicatedExternalAt), resident_primaryIcloud: entity("not_home", 1_600, duplicatedExternalAt) }),
     externalBounceFlow,
     geoEnv,
   );
   assert.equal(firstExternalSample[1], null);
   assert.equal(externalBounceFlow.get("people_arrival_armed").resident_primary, false);
+  const pairedSnapshot = run(
+    "people_normalize",
+    peopleInput({ event: "context_snapshot", previous: undefined, current: "not_home", resident_primary: entity("not_home", 1_600, duplicatedExternalAt), resident_primaryIcloud: entity("not_home", 1_600, duplicatedExternalAt) }),
+    externalBounceFlow,
+    geoEnv,
+  );
+  assert.equal(pairedSnapshot[1], null);
+  assert.equal(externalBounceFlow.get("people_arrival_armed").resident_primary, false,
+    "snapshot duplicado da mesma observação não confirma saída");
   const immediateExternalBounce = run(
     "people_normalize",
     peopleInput({ previous: "not_home", current: "home", resident_primary: entity("home", 101), resident_primaryIcloud: entity("home", 101) }),
@@ -388,9 +400,10 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
 
   const confirmedExternalFlow = memoryFlow();
   const returnFlow = memoryFlow();
+  const confirmedExternalAt = new Date(Date.now() - 61_000).toISOString();
   run(
     "people_normalize",
-    peopleInput({ event: "context_snapshot", previous: undefined, current: "not_home", resident_primary: entity("not_home", 1_600), resident_primaryIcloud: entity("not_home", 1_600) }),
+    peopleInput({ event: "context_snapshot", previous: undefined, current: "not_home", resident_primary: entity("not_home", 1_600, confirmedExternalAt), resident_primaryIcloud: entity("not_home", 1_600, confirmedExternalAt) }),
     confirmedExternalFlow,
     geoEnv,
   );
@@ -428,13 +441,13 @@ scenario("04a saída e rebote near_home → home não viram chegada", () => {
       event: "context_snapshot",
       previous: "near_home",
       current: "not_home",
-      resident_primary: entity("not_home", 2_000),
-      resident_primaryIcloud: entity("not_home", 2_000),
+      resident_primary: entity("not_home", 2_000, confirmedExternalAt),
+      resident_primaryIcloud: entity("not_home", 2_000, confirmedExternalAt),
     }),
     returnFlow,
     geoEnv,
   );
-  assert.equal(returnFlow.get("people_arrival_armed").resident_primary, true);
+  assert.equal(returnFlow.get("people_arrival_armed").resident_primary, false);
   const returning = run(
     "people_normalize",
     peopleInput(),
@@ -470,12 +483,21 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
   assert.equal(flow.get("vehicle_primary_arrival_armed"), false);
 
   const externalBounceFlow = memoryFlow();
+  const duplicatedVehicleExternalAt = new Date().toISOString();
   run(
     "vehicle_primary_normalize",
-    vehicle_primaryInput({ previous: "home", current: "not_home", distance: 1_600, engine: "on" }),
+    vehicle_primaryInput({ previous: "home", current: "not_home", distance: 1_600, engine: "on", changed: duplicatedVehicleExternalAt }),
     externalBounceFlow,
     geoEnv,
   );
+  run(
+    "vehicle_primary_normalize",
+    vehicle_primaryInput({ event: "context_snapshot", previous: "not_home", current: "not_home", distance: 1_600, engine: "on", changed: duplicatedVehicleExternalAt }),
+    externalBounceFlow,
+    geoEnv,
+  );
+  assert.equal(externalBounceFlow.get("vehicle_primary_arrival_armed"), false,
+    "snapshot duplicado do veículo não confirma saída");
   const immediateExternalBounce = run(
     "vehicle_primary_normalize",
     vehicle_primaryInput({ previous: "not_home", current: "home", distance: 101, engine: "on" }),
@@ -501,6 +523,22 @@ scenario("04c saída e rebote do veículo também ficam bloqueados", () => {
     flow.get("vehicle_primary_last_blocked_arrival_v1").dispatched,
     false,
   );
+
+  const confirmedVehicleFlow = memoryFlow();
+  const confirmedVehicleExternalAt = new Date(Date.now() - 61_000).toISOString();
+  run(
+    "vehicle_primary_normalize",
+    vehicle_primaryInput({ event: "context_snapshot", previous: undefined, current: "not_home", distance: 1_600, engine: "on", changed: confirmedVehicleExternalAt }),
+    confirmedVehicleFlow,
+    geoEnv,
+  );
+  const confirmedVehicleReturn = run(
+    "vehicle_primary_normalize",
+    vehicle_primaryInput({ previous: "not_home", current: "near_home", distance: 650, engine: "on" }),
+    confirmedVehicleFlow,
+    geoEnv,
+  );
+  assert(confirmedVehicleReturn[1], "veículo realmente fora deve publicar retorno");
 });
 
 scenario("05 resident_primary aproximando-se", () => {
@@ -763,7 +801,7 @@ scenario("30a fontes ativas e paradas em casa nao solicitam GPS", () => {
   assert.equal(flow.get("security_people_last_refresh_at"), undefined);
 });
 
-scenario("30b recovery de localizacao respeita cooldown de 15 minutos", () => {
+scenario("30b recovery de localizacao respeita cooldown de 30 minutos", () => {
   const flow = memoryFlow({
     people_context_v1: { ready: false },
     security_people_last_refresh_at: Date.now() - 60_000,
@@ -772,8 +810,55 @@ scenario("30b recovery de localizacao respeita cooldown de 15 minutos", () => {
     payload: { kind: "refresh_command", anyone_away: false, people_ready: false },
   };
   assert.equal(run("people_refresh_decide", structuredClone(command), flow, geoEnv), null);
-  flow.set("security_people_last_refresh_at", Date.now() - 16 * 60_000);
+  flow.set("security_people_last_refresh_at", Date.now() - 31 * 60_000);
   assert(run("people_refresh_decide", structuredClone(command), flow, geoEnv));
+});
+
+scenario("30b1 jitter do tick nao adia recovery por mais 30 segundos", () => {
+  const command = {
+    payload: { kind: "refresh_command", anyone_away: true, people_ready: false },
+  };
+  const early = memoryFlow({
+    people_context_v1: {
+      ready: false,
+      anyone_away: true,
+      nearest_distance_m: 5_000,
+    },
+    security_people_last_refresh_at: Date.now() - (30 * 60_000 - 750),
+  });
+  assert.equal(
+    run("people_refresh_decide", structuredClone(command), early, geoEnv),
+    null,
+  );
+
+  const schedulerJitter = memoryFlow({
+    people_context_v1: {
+      ready: false,
+      anyone_away: true,
+      nearest_distance_m: 5_000,
+    },
+    security_people_last_refresh_at: Date.now() - (30 * 60_000 - 250),
+  });
+  assert(run(
+    "people_refresh_decide",
+    structuredClone(command),
+    schedulerJitter,
+    geoEnv,
+  ));
+});
+
+scenario("30b2 posição atual fora não força polling silencioso", () => {
+  const flow = memoryFlow({
+    people_context_v1: {
+      ready: true,
+      anyone_away: true,
+      nearest_distance_m: 5_000,
+    },
+    security_people_last_refresh_at: Date.now() - 60 * 60_000,
+  });
+  assert.equal(run("people_refresh_decide", {
+    payload: { kind: "refresh_command", anyone_away: true, people_ready: true },
+  }, flow, geoEnv), null);
 });
 
 scenario("30c vehicle_primary fora sozinho nao atualiza iPhones", () => {
@@ -1278,6 +1363,68 @@ scenario("37 tracker stale da outra pessoa não bloqueia chegada válida", () =>
   assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, true);
 });
 
-assert.equal(passed.length, 50);
+scenario("38 chegada pendente persiste somente contrato reexecutável", () => {
+  const flow = readyLightFlow();
+  let msg = runDirect(
+    "security_visual_arrival_facts",
+    arrival("resident_primary", "approach"),
+    flow,
+    geoEnv,
+  );
+  msg = runDirect("security_visual_arrival_pending", msg, flow, geoEnv);
+  const pending = flow.get("security_light_pending_arrival_v1");
+  assert.doesNotThrow(() => structuredClone(pending));
+  assert.equal(pending.version, 2);
+  assert.equal(pending.message._light_arrival, undefined);
+  assert.equal(msg._light_arrival.diagnostic.payload.diagnostic, "arrival_trigger_received");
+});
+
+scenario("39 chegada em casa força confirmação visual do carro", () => {
+  assert.equal(
+    byId.get("security_visual_arrival_final_confirmation_needed")?.type,
+    "switch",
+  );
+  assert.equal(
+    byId.get("security_visual_arrival_final_confirmation_throttle")?.type,
+    "switch",
+  );
+  const result = run(
+    "light_prepare_arrival",
+    arrival("resident_primary", "home"),
+    activeLightFlow(),
+    geoEnv,
+  );
+  assert(result[0], "a decisão principal deve continuar");
+  assert.equal(result[2].payload.reason, "resident_arrival_confirmation");
+  assert.equal(result[2].payload.resident_arrival_force, true);
+  assert.equal(result[2].payload.require_lighting_ready, false);
+});
+
+scenario("40 confirmação final respeita throttle e estado do motor", () => {
+  const throttled = activeLightFlow({
+    security_light_last_recovery_request_at: Date.now(),
+  });
+  assert.equal(
+    run("light_prepare_arrival", arrival("resident_primary", "home"), throttled, geoEnv)[2],
+    null,
+  );
+  const engineOff = activeLightFlow({
+    vehicle_primary_context_v1: {
+      ready: true,
+      lighting_ready: true,
+      engine_on: false,
+      engine_state_valid: true,
+      updated_at: Date.now(),
+      home: true,
+      in_use: false,
+    },
+  });
+  assert.equal(
+    run("light_prepare_arrival", arrival("resident_primary", "home"), engineOff, geoEnv)[2],
+    null,
+  );
+});
+
+assert.equal(passed.length, 55);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

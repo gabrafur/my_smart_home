@@ -27,6 +27,9 @@ if (recovery.trip_started_at != null && (!Number.isFinite(recovery.trip_started_
 data.recovery = recovery;
 const armed = get("vehicle_primary_arrival_armed");
 data.armed = typeof armed === "boolean" ? armed : recovery.arrival_armed === true;
+const externalSince = Number(recovery.external_since ?? 0);
+data.external_since = Number.isFinite(externalSince) && externalSince > 0 &&
+    externalSince <= Date.now() + futureMs ? externalSince : null;
 data.in_use = null;
 data.in_use_reason = "insufficient_current_evidence";
 return msg;

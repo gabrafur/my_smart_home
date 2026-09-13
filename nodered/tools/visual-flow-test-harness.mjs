@@ -113,7 +113,14 @@ export function runSecurityArrivalVisual(call, message) {
     else if (data.recovery_needed) msg = call("security_visual_arrival_throttled", msg);
     else msg = call("security_visual_arrival_pending_only", msg);
   }
-  return call("62f77a1ad440639d", msg);
+  const output = call("62f77a1ad440639d", msg);
+  if (output?.[0]?.payload?.final_vehicle_confirmation_needed === true &&
+      output[0].payload.final_vehicle_confirmation_allowed === true) {
+    output[2] = call("security_visual_arrival_final_confirmation", {
+      ...output[0], payload: { ...output[0].payload },
+    });
+  }
+  return output;
 }
 
 export function runSecurityContextVisual(call, message) {

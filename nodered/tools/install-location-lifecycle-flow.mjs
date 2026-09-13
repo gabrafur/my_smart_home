@@ -74,6 +74,10 @@ const inject = (id, g, name, topic, payload, x, y, destination) => grouped(g, {
   wires: [[destination]]
 });
 
+required("402fd0cc609443b7").func = source("people-refresh-decide.js");
+required("b35563e0f73e5b64").name =
+  "3. Localização nativa + fallback dos iPhones (máx. 2/h)";
+
 const config = group(
   "people_location_lifecycle_config_group_v2",
   "0b. Tempos de lifecycle — padrão, unidade e limites no nome",
@@ -82,7 +86,7 @@ const config = group(
 grouped(config.id, {
   id: "people_visual_lifecycle_help", type: "comment", z: PEOPLE_TAB, g: config.id,
   name: "Valores inválidos são rejeitados; a última política válida permanece ativa para todos os consumidores.",
-  info: "Dedupe: 1–60 min; graça: 1–60 min; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
+  info: "Dedupe: 1–60 min; graça: 1–60 min; ciclo externo: 15–600 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
   x: 2740, y: 100, wires: []
 });
 inject("people_visual_arrival_dedupe_config", config.id, "Dedupe chegada — 10 min [1..60]", "arrival_dedupe_minutes", 10, 2370, 160, "people_visual_lifecycle_config_left_out");
@@ -90,6 +94,7 @@ inject("people_visual_primary_home_grace", config.id, "Graça home — 10 min [1
 inject("people_visual_future_tolerance", config.id, "Tolerância futura — 60 s [0..300]", "future_tolerance_seconds", 60, 2740, 160, "people_visual_lifecycle_config_middle_out");
 inject("people_visual_vehicle_signal_fresh", config.id, "Sinal do veículo — 5 min [1..30]", "vehicle_signal_fresh_minutes", 5, 2740, 210, "people_visual_lifecycle_config_middle_out");
 inject("people_visual_vehicle_recovery", config.id, "Recovery veículo — 24 h [1..168]", "vehicle_recovery_hours", 24, 3110, 160, "people_visual_lifecycle_config_right_out");
+inject("people_visual_external_confirm", config.id, "Confirmar ciclo externo — 60 s [15..600]", "external_cycle_confirm_seconds", 60, 3110, 210, "people_visual_lifecycle_config_right_out");
 linkOut("people_visual_lifecycle_config_left_out", config.id, "Tempos de chegada → política", "people_location_values_route_in_v1", 2550, 270);
 linkOut("people_visual_lifecycle_config_middle_out", config.id, "Validade → política", "people_location_values_route_in_v1", 2920, 270);
 linkOut("people_visual_lifecycle_config_right_out", config.id, "Recovery → política", "people_location_values_route_in_v1", 3290, 270);

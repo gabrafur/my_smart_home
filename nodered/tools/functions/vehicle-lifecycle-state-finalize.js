@@ -5,6 +5,7 @@ const set = (name, value, store) => data.test_mode || !store
 set("vehicle_primary_in_use", data.in_use);
 set("vehicle_primary_arrival_armed", data.armed);
 data.recovery.arrival_armed = data.armed;
+data.recovery.external_since = data.external_since;
 if (data.in_use !== null) {
     data.recovery.in_use = data.in_use;
     data.recovery.last_confirmed_at = Date.now();

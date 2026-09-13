@@ -34,9 +34,13 @@ const manualBypass = requestedReason === "manual_force";
 const departureBypass =
     requestedReason === "resident_departure" &&
     msg.payload?.resident_departure_force === true;
+const arrivalBypass =
+    requestedReason === "resident_arrival_confirmation" &&
+    msg.payload?.resident_arrival_force === true;
 const paused =
     !manualBypass &&
     !departureBypass &&
+    !arrivalBypass &&
     msg.payload?.refresh_both_residents_home === true &&
     quietHours;
 

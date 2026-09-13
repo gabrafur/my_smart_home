@@ -248,8 +248,11 @@ de 0 a 5 minutos e o retry de 10 a 600 segundos. O bloco de validação rejeita
 configurações inválidas sem substituir a última política persistente válida.
 Contrato, tipo, direção, ciclo externo, estágio, origem, timestamp, futuro,
 stale, reserva, duplicidade, destinatário, retry e produção/teste são decisões
-visuais nomeadas. O recibo só é confirmado depois que o Home Assistant aceita a
-notificação; uma falha libera a reserva e permite no máximo três tentativas.
+visuais nomeadas. O estado persistente registra somente que o Home Assistant
+aceitou a chamada; isso não comprova que o iOS exibiu o aviso. Os pushes reais
+pedem som padrão e nível `time-sensitive`, preservando a entrega visível mesmo
+com o aplicativo em segundo plano. Uma falha do serviço libera a reserva e
+permite no máximo três tentativas.
 
 Os testes sintéticos iniciados em `localizacao_pessoas` também entram nesse tab.
 Eles percorrem a mesma validação e o mesmo dedupe usando memória isolada, mas
@@ -384,6 +387,14 @@ restritas à iluminação e não são publicadas como chegada geral para o desar
 Também chama `switch.turn_on`, avisa os moradores e inicia o backstop de 15
 minutos.
 
+Se um residente chega ao estágio `home` enquanto o lifecycle do refletor ainda
+está ativo e o último motor conhecido continua `on`, o canvas mostra um gate
+específico que solicita uma confirmação final do carro ao coordenador canônico.
+Essa confirmação atravessa o deadline periódico e a pausa noturna, mas continua
+serializada pelo controle de chamada em andamento. Assim que o carro responde
+`home` com motor `off`, o caminho normal desliga o refletor sem esperar o
+backstop de 15 minutos.
+
 O primeiro ciclo que liga o refletor — ou que determinaria o acendimento, mas
 encontra o atuador `unknown`, `unavailable`, stale ou não reconciliado — grava
 um latch persistente de notificação. Enquanto esse latch estiver ativo, novas
@@ -450,6 +461,10 @@ depende exclusivamente de um `delay` residente em memória.
   busca o estado novo para determinar se o morador está usando o carro. Eventos
   repetidos são deduplicados e uma chamada realmente em andamento continua
   serializada.
+- A transição confirmada de chegada ao estágio `home`, com refletor ativo e
+  último motor conhecido ainda `on`, solicita uma confirmação final imediata
+  pelo mesmo coordenador. O bypass é uma decisão visual nomeada no tab de
+  iluminação; não existe agendador JavaScript paralelo.
 - O Node-RED é o único agendador de wake real. No backend brasileiro, o
   `kia_uvo` no Home Assistant lê somente o cache do Bluelink a cada 15 min;
   esse polling não acorda o carro nem chama o agendador nativo de force

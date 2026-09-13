@@ -40,6 +40,8 @@ const queuedAt = Number.isFinite(queuedCandidate) && queuedCandidate > 0 &&
     queuedCandidate <= now + futureMs ? queuedCandidate : now;
 const lastRecoveryAt = Number(get("security_light_last_recovery_request_at") ?? 0);
 const recoveryThrottleMs = Number(lightPolicy.recovery_request_throttle_seconds) * 1000;
+const finalVehicleConfirmationNeeded = residentArrival && stage === "home" &&
+    lifecycle.active_by_arrival === true && trustedEngine && vehicle.engine_on === true;
 msg._light_arrival = {
     test_mode: testMode,
     test_case: testCase,
@@ -71,6 +73,7 @@ msg._light_arrival = {
     recovery_needed: !vehicleLightingReady && !bypassAllowed,
     recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||
         now - lastRecoveryAt >= recoveryThrottleMs,
+    final_vehicle_confirmation_needed: finalVehicleConfirmationNeeded,
     arrival_recovery_ms: Number(locationPolicy.arrival_recovery_minutes) * 60000
 };
 return msg;

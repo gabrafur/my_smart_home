@@ -180,10 +180,33 @@ assert.equal(message.payload.message, "Example Secondary está perto de casa.");
 assert.equal(message.payload.dispatched, false);
 assert.equal(acknowledge(message, flow, mock, {}), null);
 
-const persisted = structuredClone(flow.get("resident_notification_delivery_v2", "persistent"));
-const restarted = context({ persistent: { resident_notification_delivery_v2: persisted } });
+let primaryApproach = recipient(normalize(arrival("resident_primary", "approach", 500), flow, mock, {}));
+assert.equal(primaryApproach.resident_recipient, "resident_secondary");
+primaryApproach = readState(primaryApproach, flow, mock, {});
+assert.equal(primaryApproach.notification_duplicate, false);
+primaryApproach = reserve(primaryApproach, flow, mock, {});
+primaryApproach = buildMessage(primaryApproach, flow, mock, privateBindings);
+assert.equal(primaryApproach.payload.recipient, "resident_secondary");
+assert.equal(primaryApproach.payload.message, "Example Primary está perto de casa.");
+
+const persisted = structuredClone(flow.get("resident_notification_delivery_v3", "persistent"));
+const restarted = context({ persistent: { resident_notification_delivery_v3: persisted } });
 let repeated = readState(recipient(normalize(arrival("resident_secondary"), restarted, mock, {})), restarted, mock, {});
-assert.equal(repeated.notification_duplicate, true, "recibo deve sobreviver ao restart");
+assert.equal(repeated.notification_duplicate, true, "aceite deve sobreviver ao restart");
+
+const legacy = context({ persistent: { resident_notification_delivery_v2: {
+  version: 2,
+  residents: { resident_secondary: {
+    delivered_key: repeated.notification_key,
+    delivered_at: NOW,
+  } },
+} } });
+const migrated = readState(
+  recipient(normalize(arrival("resident_secondary"), legacy, mock, {})),
+  legacy, mock, {},
+);
+assert.equal(migrated.notification_duplicate, true, "recibo v2 deve migrar como aceite v3");
+assert.equal(migrated.notification_delivery_state.version, 3);
 
 let directHome = recipient(normalize(arrival("resident_secondary", "home", 1000), flow, mock, {}));
 assert.equal(directHome.arrival_stage, "home");
@@ -213,7 +236,7 @@ failed = failDelivery(failed, flow, mock, {});
 assert.equal(failed.notification_retry_allowed, true);
 assert.equal(failed.notification_retry_count, 1);
 assert.equal(failed.delay, 60000);
-assert.equal(flow.get("resident_notification_delivery_v2", "persistent").residents.resident_primary.pending_key, null);
+assert.equal(flow.get("resident_notification_delivery_v3", "persistent").residents.resident_primary.pending_key, null);
 failed.notification_retry_count = 2;
 failed = failDelivery(failed, flow, mock, {});
 assert.equal(failed.notification_retry_allowed, false, "terceira falha deve encerrar retries");
@@ -232,8 +255,13 @@ for (const id of ["resident_notifications_notify_primary", "resident_notificatio
   const service = byId.get(id);
   assert.equal(service.type, "api-call-service");
   assert.match(service.data, /"title":"Casa inteligente"/);
+  assert.match(service.data, /"tag":payload\.notification_key/);
+  assert.match(service.data, /"sound":"default"/);
+  assert.match(service.data, /"interruption-level":"time-sensitive"/);
   assert.doesNotMatch(service.data, /payload.test_mode|notification_delivery_under_test/);
 }
+assert.match(byId.get("resident_notifications_notify_secondary").data, /"role":"mobile_secondary"/);
+assert.match(byId.get("resident_notifications_delivery_ack").name, /aceite do Home Assistant/);
 for (const id of [
   "resident_notifications_test_primary",
   "resident_notifications_test_home",

@@ -70,6 +70,7 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,
 };
@@ -1960,6 +1961,51 @@ scenario("47 sucesso limpa o início da espera semântica", () => {
   normalize(store, DAY, DAY, DAY - 60_000);
   assert.equal(store.get(KEY).awaiting_evidence, false);
   assert.equal(store.get(KEY).evidence_wait_started_at, null);
+});
+
+scenario("48 chegada em casa ignora deadline para confirmar o carro", () => {
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(DAY - 60_000),
+    [KEY]: {
+      attempts: 0,
+      awaiting_evidence: false,
+      last_request_at: DAY - 60_000,
+      last_success_at: DAY - 60_000,
+      next_allowed_at: DAY + 29 * 60_000,
+      interval_ms: 30 * 60_000,
+    },
+  });
+  const result = coordinator(store, DAY, {
+    reason: "resident_arrival_confirmation",
+    force_recovery: true,
+    resident_arrival_force: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  });
+  assert(result?.[0], "a confirmação final deve solicitar um wake imediato");
+  assert.equal(store.get(KEY).resident_arrival_force, true);
+  assert.equal(store.get(KEY).reason, "resident_arrival_confirmation");
+  assert.equal(store.get(KEY).last_request_at, DAY);
+});
+
+scenario("49 confirmação de chegada atravessa a pausa da madrugada", () => {
+  const store = memory({ vehicle_primary_context_v1: readyContext(NIGHT) });
+  const result = coordinator(store, NIGHT, {
+    reason: "resident_arrival_confirmation",
+    force_recovery: true,
+    resident_arrival_force: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  });
+  assert(result?.[0], "a chegada deve confirmar o carro mesmo na madrugada");
+
+  const ordinary = coordinator(memory(), NIGHT, {
+    reason: "resident_arrival_confirmation",
+    force_recovery: true,
+    resident_primary_state: "home",
+    resident_secondary_state: "home",
+  });
+  assert.equal(ordinary, null, "sem o gate visual explícito a pausa deve permanecer");
 });
 
 console.log(

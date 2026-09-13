@@ -39,6 +39,7 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,
 };
@@ -486,8 +487,17 @@ scenario("38 condição de desligamento desaparece durante 90 s", () => {
 });
 
 scenario("39 timeout expirou enquanto Node-RED estava offline", () => {
-  const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ force_off_at: NOW - 1 }) });
-  assert(run("light_turn_off_if_active", { payload: { deadline_type: "backstop" } }, flow));
+  const flow = readyFlow({
+    people_context_v1: { ready: false },
+    vehicle_primary_context_v1: { ready: false },
+    sun_ready: false,
+    light_reconciled: false,
+    security_light_physical_observed_at: NOW - 60 * 60_000,
+    security_light_lifecycle_v1: lifecycle({ force_off_at: NOW - 1 }),
+  });
+  const command = run("light_turn_off_if_active", { payload: { deadline_type: "backstop" } }, flow);
+  assert(command, "backstop não pode depender de contextos de localização");
+  assert.equal(command.payload.backstop_forced, true);
   assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, false);
 });
 

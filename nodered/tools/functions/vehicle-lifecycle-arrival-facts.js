@@ -2,6 +2,11 @@ const data = msg._vehicle;
 const validZone = (value) => typeof value === "string" &&
     !["", "unknown", "unavailable"].includes(value);
 const external = (state) => validZone(state) && !["home", "near_home"].includes(state);
+const now = Date.now();
+const futureMs = Number(data.policy.future_tolerance_seconds) * 1000;
+const confirmMs = Number(data.policy.external_cycle_confirm_seconds ?? 60) * 1000;
+const validObservedAt = (value) => Number.isFinite(value) && value > 0 &&
+    value <= now + futureMs;
 const isNear = data.location.ready && (
     (data.location.gate_distance_m !== null &&
         data.location.gate_distance_m <= Number(data.policy.near_home_radius_m)) ||
@@ -16,7 +21,18 @@ const isHome = data.location.ready && (data.location.distance_m !== null
 const isAway = data.location.ready && (data.location.distance_m !== null
     ? data.location.distance_m > Number(data.policy.home_radius_m)
     : data.location.state === "not_home");
-if (data.location.ready && external(data.location.state)) data.armed = true;
+const observedAt = Number(data.location.updated_at);
+if (data.location.ready && external(data.location.state)) {
+    if (!validObservedAt(Number(data.external_since))) {
+        data.external_since = validObservedAt(observedAt) ? observedAt : now;
+    }
+    if (validObservedAt(observedAt) && validObservedAt(Number(data.external_since)) &&
+        observedAt - Number(data.external_since) >= confirmMs) data.armed = true;
+}
+if (data.is_location_event && data.location.ready &&
+    external(data.trigger_prev_state) && !external(data.trigger_state) &&
+    validObservedAt(observedAt) && validObservedAt(Number(data.external_since)) &&
+    observedAt - Number(data.external_since) >= confirmMs) data.armed = true;
 const approach = data.trigger_state === "near_home" &&
     data.trigger_prev_state !== "near_home" && data.trigger_prev_state !== "home";
 const departure = data.trigger_prev_state === "home" && data.trigger_state !== "home";
@@ -40,5 +56,6 @@ data.facts = {
         validZone(data.trigger_prev_state) && data.trigger_state !== data.trigger_prev_state &&
         ["home", "near_home"].includes(data.trigger_state)
 };
+if (data.location.ready && !external(data.location.state)) data.external_since = null;
 if (!data.is_location_event && isHome) data.armed = false;
 return msg;

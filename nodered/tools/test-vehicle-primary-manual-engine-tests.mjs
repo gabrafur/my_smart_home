@@ -24,6 +24,7 @@ const LOCATION_POLICY = {
   arrival_recovery_minutes: 10,
   arrival_dedupe_minutes: 10,
   primary_home_grace_minutes: 10,
+  external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60,
   vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,

@@ -28,4 +28,17 @@ data.armed = {
     resident_primary: armed.resident_primary === true,
     resident_secondary: armed.resident_secondary === true
 };
+const recoveredExternal = recovery.external_since &&
+    typeof recovery.external_since === "object" &&
+    !Array.isArray(recovery.external_since)
+    ? recovery.external_since
+    : {};
+const validExternalAt = (value) => Number.isFinite(value) && value > 0 &&
+    value <= now + futureMs;
+data.external_since = {
+    resident_primary: validExternalAt(Number(recoveredExternal.resident_primary))
+        ? Number(recoveredExternal.resident_primary) : null,
+    resident_secondary: validExternalAt(Number(recoveredExternal.resident_secondary))
+        ? Number(recoveredExternal.resident_secondary) : null
+};
 return msg;

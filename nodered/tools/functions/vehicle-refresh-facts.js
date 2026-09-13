@@ -23,7 +23,9 @@ const requestedReason = msg.payload?.reason ?? msg.payload?.recovery_reason ??
 const manualBypass = requestedReason === "manual_force";
 const departureBypass = requestedReason === "resident_departure" &&
     msg.payload?.resident_departure_force === true;
-const deadlineBypass = manualBypass || departureBypass;
+const arrivalBypass = requestedReason === "resident_arrival_confirmation" &&
+    msg.payload?.resident_arrival_force === true;
+const deadlineBypass = manualBypass || departureBypass || arrivalBypass;
 const approaching = msg.payload?.refresh_anyone_approaching === true;
 const selectedInterval = approaching ? Number(config.approaching_interval_ms)
     : recoveryNeeded && !deadlineBypass ? Number(config.away_interval_ms)
@@ -76,6 +78,7 @@ data.require_lighting_ready = requireLighting;
 data.requested_reason = requestedReason;
 data.manual_bypass = manualBypass;
 data.departure_bypass = departureBypass;
+data.arrival_bypass = arrivalBypass;
 data.deadline_bypass = deadlineBypass;
 data.selected_interval_ms = selectedInterval;
 data.semantic_healthy = semanticHealthy;

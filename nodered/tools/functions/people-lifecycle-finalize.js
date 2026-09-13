@@ -4,6 +4,7 @@ const key = (name) => data.test_mode ? name + "__test" : name;
 const set = (name, value, store) => data.test_mode || !store
     ? flow.set(key(name), value) : flow.set(key(name), value, store);
 data.recovery.arrival_armed = { ...data.armed };
+data.recovery.external_since = { ...data.external_since };
 data.recovery.updated_at = Date.now();
 set("people_arrival_armed", data.armed);
 set("security_people_recovery_v1", data.recovery, "persistent");

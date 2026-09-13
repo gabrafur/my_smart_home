@@ -1,11 +1,11 @@
 const delivery = msg.notification_delivery_state;
 const resident = msg.notification_resident_state;
-resident.delivered_key = msg.notification_key;
-resident.delivered_at = Date.now();
+resident.accepted_key = msg.notification_key;
+resident.accepted_at = Date.now();
 resident.pending_key = null;
 resident.pending_at = 0;
 delivery.residents[msg.resident_source] = resident;
 delivery.updated_at = Date.now();
 flow.set(msg.notification_state_key, delivery, "persistent");
-node.status({ fill: "green", shape: "dot", text: "notificação de chegada enviada" });
+node.status({ fill: "green", shape: "dot", text: "push aceito pelo Home Assistant" });
 return null;

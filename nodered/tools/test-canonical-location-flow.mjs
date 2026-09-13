@@ -23,6 +23,7 @@ const LOCATION_POLICY = {
   arrival_recovery_minutes: 10,
   arrival_dedupe_minutes: 10,
   primary_home_grace_minutes: 10,
+  external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60,
   vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,
@@ -335,7 +336,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   );
   assert.equal(far.payload.vehicle_primary.state, "not_home");
   runVehicleLifecycle(far, flow);
-  clock += 1_000;
+  clock += 61_000;
   const near = run(
     "vehicle_primary_classify_near_home_v1",
     vehicleMessage(650),
@@ -429,7 +430,9 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.ok(people.func.length < 4000, "finalizador de pessoas deve ser pequeno");
   assert.ok(vehicle.func.length < 4000, "finalizador do veículo deve ser pequeno");
   assert.match(byId.get("people_visual_normalize").func, /policy\.home_radius_m/);
+  assert.match(byId.get("people_visual_facts").func, /external_cycle_confirm_seconds/);
   assert.match(byId.get("vehicle_visual_normalize").func, /location_policy_v1/);
+  assert.match(byId.get("vehicle_visual_arrival_facts").func, /external_cycle_confirm_seconds/);
   assert.match(byId.get("vehicle_visual_movement").func, /movement_threshold_m/);
   assert.equal(byId.get("people_visual_decision").type, "switch");
   assert.equal(byId.get("vehicle_visual_engine_on").type, "switch");
@@ -443,6 +446,8 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.doesNotMatch(byId.get("402fd0cc609443b7").func, /nearest_distance_m <= 2000/);
   assert.equal(byId.get("4189bb901d6a15c4").outputOnlyOnStateChange, false);
   assert.equal(byId.get("bc70805a5fe2f35d").outputOnlyOnStateChange, false);
+  assert.equal(byId.get("people_visual_external_confirm").topic, "external_cycle_confirm_seconds");
+  assert.equal(byId.get("people_visual_external_confirm").payload, "60");
 
   const flow = memory({ vehicle_primary_arrival_armed: true });
   const changed = iso();

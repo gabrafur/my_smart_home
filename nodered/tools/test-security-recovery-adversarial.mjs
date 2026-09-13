@@ -57,6 +57,7 @@ const LOCATION_POLICY = {
   movement_threshold_m: 250, home_radius_m: 100,
   arrival_recovery_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
+  external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
   vehicle_recovery_hours: 24,
 };
@@ -299,18 +300,18 @@ scenario("10 state de versao anterior e descartado conservadoramente", () => {
   assert.equal(context.trip_active, false);
 });
 
-scenario("11 deadline recuperado bloqueado pode ser reagendado", () => {
+scenario("11 deadline recuperado vence mesmo com estado físico stale", () => {
   const deadline = clock - 1;
   const flow = readyLight({
     security_light_lifecycle_v1: lifecycle({ force_off_at: deadline }),
     security_light_physical_observed_at: clock - 3 * 60_000,
     security_light_recovery_scheduled: { backstop: deadline },
   });
-  assert.equal(run("light_turn_off_if_active", { payload: { deadline_type: "backstop", recovered: true } }, flow), null);
+  const command = run("light_turn_off_if_active", { payload: { deadline_type: "backstop", recovered: true } }, flow);
+  assert(command);
+  assert.equal(command.payload.backstop_forced, true);
   assert.equal(flow.get("security_light_recovery_scheduled").backstop, undefined);
-  const recovered = run("light_reconcile", { payload: { kind: "light_physical", state: "on", updated_at: clock } }, flow);
-  assert.equal(recovered[0][0].payload.deadline_type, "backstop");
-  assert.equal(recovered[0][0].delay, 0);
+  assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, false);
 });
 
 scenario("12 dedupe do refletor so e gravado depois dos gates", () => {
@@ -412,7 +413,7 @@ scenario("17 store nomeado nao muda o default global", () => {
   assert.match(settings, /flushInterval:\s*30/);
 });
 
-scenario("18 readiness parcial bloqueia ligar e desligar", () => {
+scenario("18 readiness parcial bloqueia efeitos condicionais, nunca o backstop", () => {
   const pending = readyLight({ people_context_v1: { ready: false, updated_at: clock }, security_light_physical_state: "off" });
   const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", arrival_direction: "returning", external_cycle_confirmed: true, event_at: clock, arrival_key: `resident_primary:approach:${clock}` } };
   assert.equal(run("light_mark_active", arrival, pending), null);
@@ -420,7 +421,9 @@ scenario("18 readiness parcial bloqueia ligar e desligar", () => {
     people_context_v1: { ready: false, updated_at: clock },
     security_light_lifecycle_v1: lifecycle({ on_since: clock - 15 * 60_000, force_off_at: clock - 1 }),
   });
-  assert.equal(run("light_turn_off_if_active", { payload: { deadline_type: "backstop" } }, active), null);
+  const command = run("light_turn_off_if_active", { payload: { deadline_type: "backstop" } }, active);
+  assert(command);
+  assert.equal(command.payload.backstop_forced, true);
   assert.equal(run("light_evaluate_off", { payload: { event: "turn_off", vehicle_primary_ready: false, vehicle_primary_engine_on: false, vehicle_primary_unlocked: true } }, active), null);
 });
 

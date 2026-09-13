@@ -86,7 +86,7 @@ const policy = {
 
 add({
   id: TAB, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false,
-  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, escolhe o destinatário, garante entrega idempotente e separa produção/teste. Testes manuais nunca enviam push.", env: [],
+  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, escolhe o destinatário, solicita push visível e urgente ao iOS, registra apenas o aceite do Home Assistant e separa produção/teste. Testes manuais nunca enviam push.", env: [],
 });
 
 grouped(groups.config, {
@@ -165,7 +165,7 @@ grouped(groups.output, {
   id: "resident_notifications_notify_primary", type: "api-call-service", z: TAB, g: groups.output,
   name: "EFEITO: avisar resident_primary", server: SERVER, version: 7, debugenabled: false,
   action: "public_bindings.call", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
-  data: '{"role":"mobile_primary","action":"notify_actionable","data":{"title":"Casa inteligente","message":payload.message}}',
+  data: '{"role":"mobile_primary","action":"notify_actionable","data":{"title":"Casa inteligente","message":payload.message,"data":{"tag":payload.notification_key,"push":{"sound":"default","interruption-level":"time-sensitive"}}}}',
   dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [],
   queue: "all", blockInputOverrides: true, domain: "public_bindings", service: "call",
   x: 7720, y: 230, wires: [["resident_notifications_delivery_ack"]],
@@ -175,12 +175,12 @@ grouped(groups.output, {
   id: "resident_notifications_notify_secondary", type: "api-call-service", z: TAB, g: groups.output,
   name: "EFEITO: avisar resident_secondary", server: SERVER, version: 7, debugenabled: false,
   action: "public_bindings.call", floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
-  data: '{"role":"mobile_secondary","action":"notify_actionable","data":{"title":"Casa inteligente","message":payload.message}}',
+  data: '{"role":"mobile_secondary","action":"notify_actionable","data":{"title":"Casa inteligente","message":payload.message,"data":{"tag":payload.notification_key,"push":{"sound":"default","interruption-level":"time-sensitive"}}}}',
   dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [],
   queue: "all", blockInputOverrides: true, domain: "public_bindings", service: "call",
   x: 7720, y: 310, wires: [["resident_notifications_delivery_ack"]],
 });
-fn("resident_notifications_delivery_ack", groups.output, "Confirmar recibo persistente", "resident-notifications-delivery-ack.js", 0, 8040, 270, []);
+fn("resident_notifications_delivery_ack", groups.output, "Registrar aceite do Home Assistant", "resident-notifications-delivery-ack.js", 0, 8040, 270, []);
 grouped(groups.output, {
   id: "resident_notifications_delivery_catch", type: "catch", z: TAB, g: groups.output,
   name: "Capturar falha dos dois serviços", scope: ["resident_notifications_notify_primary", "resident_notifications_notify_secondary"],
@@ -193,8 +193,8 @@ linkOut("resident_notifications_retry_out", groups.output, "Retry → dedupe da 
 terminal("resident_notifications_retry_exhausted", groups.output, "Falha após três tentativas", { fill: "red", shape: "ring", text: "retry esgotado" }, 8010, 450);
 grouped(groups.output, {
   id: "resident_notifications_output_note", type: "comment", z: TAB, g: groups.output,
-  name: "Somente estas duas fronteiras enviam push; sucesso grava recibo, falha libera a reserva e tenta novamente.",
-  info: "queue: all preserva eventos durante queda temporária do HA. Nenhum botão manual possui ligação com estes serviços.", x: 7300, y: 80, wires: [],
+  name: "Somente estas duas fronteiras enviam push; aceite grava recibo, falha libera a reserva e tenta novamente.",
+  info: "queue: all preserva eventos durante queda temporária do HA. O recibo confirma somente o aceite do serviço; a entrega no iOS continua best-effort. Nenhum botão manual possui ligação com estes serviços.", x: 7300, y: 80, wires: [],
 });
 
 grouped(groups.test, {

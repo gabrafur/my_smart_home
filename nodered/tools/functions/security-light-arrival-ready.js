@@ -14,7 +14,9 @@ Object.assign(msg.payload, {
     active: data.lifecycle.active_by_arrival === true || data.physical === "on",
     reflector_state: data.physical,
     reflector_physical_fresh: data.physical_fresh,
-    reflector_reconciled: data.light_reconciled
+    reflector_reconciled: data.light_reconciled,
+    final_vehicle_confirmation_needed: data.final_vehicle_confirmation_needed,
+    final_vehicle_confirmation_allowed: data.recovery_allowed
 });
 if (data.test_mode) {
     msg._location_test = true;

@@ -267,12 +267,28 @@ linkIn("security_visual_arrival_result_in", decision.id, "Convergir um único ca
 const arrivalOutput = required("62f77a1ad440639d");
 Object.assign(arrivalOutput, { g: decision.id, name: "Emitir decisão, diagnóstico e recovery",
   func: source("security-light-arrival-output.js"), outputs: 3, x: 2760, y: 1880 });
+arrivalOutput.wires[0] = [...new Set([
+  ...(arrivalOutput.wires[0] ?? []),
+  "security_visual_arrival_final_confirmation_needed",
+])];
 if (!decision.nodes.includes(arrivalOutput.id)) decision.nodes.push(arrivalOutput.id);
 for (const [id, x, y] of [["e7542f3caa4a99e2", 3100, 1800],
   ["81994a8c6c38a4c1", 3100, 1880], ["54b3d667ae845416", 3100, 1960]]) {
   Object.assign(required(id), { g: decision.id, x, y });
   if (!decision.nodes.includes(id)) decision.nodes.push(id);
 }
+sw("security_visual_arrival_final_confirmation_needed", decision.id,
+  "Chegada em casa exige confirmação final do carro?",
+  "payload.final_vehicle_confirmation_needed", 3100, 1780,
+  [["security_visual_arrival_final_confirmation_throttle"], []]);
+sw("security_visual_arrival_final_confirmation_throttle", decision.id,
+  "Throttle permite confirmação final?", "payload.final_vehicle_confirmation_allowed",
+  3380, 1740, [["security_visual_arrival_final_confirmation"], []]);
+fn("security_visual_arrival_final_confirmation", decision.id,
+  "Montar refresh final do carro", "security-light-arrival-final-confirmation.js",
+  1, 3660, 1700, [["security_visual_arrival_final_confirmation_out"]]);
+linkOut("security_visual_arrival_final_confirmation_out", decision.id,
+  "Confirmar carro → coordenador", "6473697c19342f07", 3920, 1700);
 for (const [id, x, y] of [
   ["security_light_engine_bypass_reevaluate_in_v1", 160, 1600],
   ["light_arrival_replay_gate_in_v1", 160, 1820],
@@ -330,12 +346,7 @@ evaluateOff.func = evaluateOff.func
   .replaceAll("physicalObservedAt <= now + 60 * 1000", "physicalObservedAt <= now + FUTURE_TOLERANCE_MS")
   .replaceAll("now - physicalObservedAt <= 2 * 60 * 1000", "now - physicalObservedAt <= PHYSICAL_FRESH_MS");
 const turnOff = required("84d450933e67b8c1");
-if (!turnOff.func.includes("LIGHT_POLICY = global.get")) turnOff.func = canonicalPrelude + turnOff.func;
-turnOff.func = turnOff.func
-  .replaceAll("physicalObservedAt <= now + 60 * 1000", "physicalObservedAt <= now + FUTURE_TOLERANCE_MS")
-  .replaceAll("now - physicalObservedAt <= 2 * 60 * 1000", "now - physicalObservedAt <= PHYSICAL_FRESH_MS")
-  .replace("lifecycle.cooldown_until = now + 5 * 60 * 1000;",
-    "lifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;");
+turnOff.func = source("security-light-turn-off-if-active.js");
 
 const reconcile = required("6013a28eaa95addd");
 reconcile.name = "0. Startup e recovery visual do lifecycle";
