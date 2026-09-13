@@ -81,6 +81,26 @@ assert.equal(node("daily_update_core_request_host").command, "/opt/request-host-
 assert.equal(node("daily_update_core_read_result").command, "/opt/read-host-update-stage-result.sh home-assistant-core");
 assert.equal(node("daily_update_containers_request_host").command, "/opt/request-host-update-stage.sh containers");
 assert.equal(node("daily_update_containers_read_result").command, "/opt/read-host-update-stage-result.sh containers");
+assert.deepEqual(node("daily_update_containers_parse_result").wires, [
+  ["daily_update_containers_result_test_out"],
+  ["daily_update_dependency_chain_out"],
+]);
+assert.deepEqual(node("daily_update_dependency_chain_out").links, ["daily_update_dependency_chain_in"]);
+assert.equal(node("daily_update_dependency_scan").command, "node /data/tools/scan-repository-dependency-audit.mjs");
+assert.equal(node("daily_update_dependency_request").command, "/opt/request-host-repository-dependency-update.sh");
+assert.equal(node("daily_update_dependency_request").addpay, "payload");
+assert.equal(node("daily_update_dependency_read_result").command, "/opt/read-host-repository-dependency-update-result.sh");
+assert.equal(node("daily_update_dependency_fix_gate").type, "switch");
+assert.equal(node("daily_update_dependency_surface_gate").rules[0].v, "override");
+assert.equal(node("daily_update_dependency_severity_gate").type, "switch");
+assert.equal(node("daily_update_dependency_auto_gate").type, "switch");
+assert.equal(node("daily_update_dependency_dedupe").type, "rbe");
+assert.deepEqual(node("daily_update_dependency_final_gate").wires, [
+  ["daily_update_dependency_test_out"],
+  ["daily_update_dependency_request"],
+]);
+assert.deepEqual(node("daily_update_dependency_backup_out").links, ["git_backup_request_in"]);
+assert.ok(node("git_backup_request_in").links.includes("daily_update_dependency_backup_out"));
 assert.deepEqual(node("daily_update_parse_result").wires, [
   ["daily_update_result_test_out"],
   ["daily_update_core_request_out"],
@@ -106,6 +126,8 @@ assert.match(node("daily_update_dry_run_terminal").func, /simulated: true/);
 assert.match(node("daily_update_dry_run_terminal").func, /dispatched: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /apt_commands_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /docker_update_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /repository_dependency_update_sent: false/);
+assert.match(node("daily_update_dry_run_terminal").func, /npm_install_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /home_assistant_core_update_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /hacs_update_install_sent: false/);
 assert.match(node("daily_update_dry_run_terminal").func, /device_firmware_install_sent: false/);
@@ -362,6 +384,8 @@ assert.match(compose, /request-host-daily-update\.sh:\/opt\/request-host-daily-u
 assert.match(compose, /read-host-daily-update-result\.sh:\/opt\/read-host-daily-update-result\.sh:ro/);
 assert.match(compose, /request-host-update-stage\.sh:\/opt\/request-host-update-stage\.sh:ro/);
 assert.match(compose, /read-host-update-stage-result\.sh:\/opt\/read-host-update-stage-result\.sh:ro/);
+assert.match(compose, /request-host-repository-dependency-update\.sh:\/opt\/request-host-repository-dependency-update\.sh:ro/);
+assert.match(compose, /read-host-repository-dependency-update-result\.sh:\/opt\/read-host-repository-dependency-update-result\.sh:ro/);
 assert.match(compose, /request-host-kia-uvo-update-check\.sh:\/opt\/request-host-kia-uvo-update-check\.sh:ro/);
 assert.match(compose, /read-host-kia-uvo-update-result\.sh:\/opt\/read-host-kia-uvo-update-result\.sh:ro/);
 assert.match(compose, /request-kia-uvo-codex-merge\.sh:\/opt\/request-kia-uvo-codex-merge\.sh:ro/);

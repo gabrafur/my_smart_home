@@ -140,6 +140,8 @@ visual próprio, mesmo quando compartilha uma ponte privilegiada:
 - DietPi e pacotes do host;
 - Home Assistant Core, isolado dos demais containers;
 - demais imagens de containers;
+- dependências npm versionadas do repositório, com audit, atualização de lock e
+  rollback próprios;
 - integrações HACS versionadas;
 - Kia UVO/Hyundai Bluelink com staging, overlay, rollback e promoção próprios;
 - firmware de equipamentos físicos;

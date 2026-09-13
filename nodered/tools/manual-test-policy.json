@@ -39,11 +39,17 @@
                 "daily_update_unknown_group",
                 "daily_update_kia_group",
                 "daily_update_kia_test_request",
-                "daily_update_kia_test_result"
+                "daily_update_kia_test_result",
+                "daily_update_repository_dependency_group",
+                "daily_update_repository_dependency_test_group",
+                "daily_update_dependency_test_reset",
+                "daily_update_dependency_test_safe",
+                "daily_update_dependency_test_blocked",
+                "daily_update_dependency_test_result"
             ],
             "automated_test": "test-daily-host-update-flow.mjs",
             "dry_run_terminal_ids": ["daily_update_dry_run_terminal"],
-            "reason": "DietPi, Core e demais containers percorrem pontes serializadas próprias; o inventário sintético cobre Bluelink, HACS versionado, firmware, Core, indisponibilidade e classe desconhecida. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, Codex, commit, push, update.install e reboot permanecem bloqueados."
+            "reason": "DietPi, Core, containers e dependências do repositório percorrem pontes serializadas próprias; os inventários sintéticos cobrem Bluelink, HACS, firmware, Core, classes desconhecidas, override elegível e dependência transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
         },
         "weekly_docs_review_tab": {
             "strategy": "manual_full_dry_run",

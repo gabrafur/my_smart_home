@@ -137,6 +137,8 @@ services:
       - ./scripts/read-host-daily-update-result.sh:/opt/read-host-daily-update-result.sh:ro
       - ./scripts/request-host-update-stage.sh:/opt/request-host-update-stage.sh:ro
       - ./scripts/read-host-update-stage-result.sh:/opt/read-host-update-stage-result.sh:ro
+      - ./scripts/request-host-repository-dependency-update.sh:/opt/request-host-repository-dependency-update.sh:ro
+      - ./scripts/read-host-repository-dependency-update-result.sh:/opt/read-host-repository-dependency-update-result.sh:ro
       - ./scripts/request-host-kia-uvo-update-check.sh:/opt/request-host-kia-uvo-update-check.sh:ro
       - ./scripts/read-host-kia-uvo-update-result.sh:/opt/read-host-kia-uvo-update-result.sh:ro
       - ./scripts/request-kia-uvo-codex-merge.sh:/opt/request-kia-uvo-codex-merge.sh:ro

@@ -410,6 +410,7 @@ test("the cron installer migrates direct update schedules to Node-RED bridges", 
   assert.match(installed, /process-update-stage-request\.sh dietpi/);
   assert.match(installed, /process-update-stage-request\.sh home-assistant-core/);
   assert.match(installed, /process-update-stage-request\.sh containers/);
+  assert.match(installed, /process-repository-dependency-update-request\.sh/);
   assert.match(installed, /process-kia-uvo-update-request\.sh/);
   assert.match(installed, /promote-kia-uvo-candidate\.mjs/);
   assert.match(installed, /nice -n 15 .*ionice -c 3/);

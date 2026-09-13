@@ -53,6 +53,92 @@ const recordCompletion = `const code = Number(msg.payload?.code ?? msg.payload ?
 if (code !== 0) node.status({ fill: "red", shape: "ring", text: "ponte código " + String(code) });
 return null;`;
 
+const normalizeRepositoryDependencyAudit = `const TEST_MODE = msg._repository_dependency_test === true;
+let report = msg.payload;
+try {
+    if (typeof report === "string") report = JSON.parse(report);
+} catch {
+    report = null;
+}
+if (!report || report.version !== 1 || report.status !== "ok" || !Array.isArray(report.candidates)) {
+    if (!TEST_MODE) node.error("repository_dependency_audit_unavailable", msg);
+    return [null, null];
+}
+const candidates = report.candidates.map((candidate) => ({
+    payload: candidate,
+    dependency_policy: msg.dependency_policy,
+    _repository_dependency_test: TEST_MODE
+}));
+const summary = {
+    payload: { version: 1, status: "scanned", candidate_count: candidates.length, test_mode: TEST_MODE },
+    _repository_dependency_test: TEST_MODE
+};
+node.status({ fill: candidates.length ? "yellow" : "green", shape: "dot", text: candidates.length + " vulnerável(is)" });
+return [candidates.length ? candidates : null, summary];`;
+
+const prepareRepositoryDependencyRequest = `const candidate = msg.payload;
+if (!candidate || typeof candidate.package !== "string" || !/^[a-z0-9][a-z0-9._-]{0,79}$/.test(candidate.package)) {
+    if (!msg._repository_dependency_test) node.error("repository_dependency_candidate_invalid", msg);
+    return null;
+}
+msg.repository_dependency = candidate;
+msg.payload = candidate.package;
+node.status({ fill: msg._repository_dependency_test ? "blue" : "green", shape: "dot", text: candidate.package + " elegível" });
+return msg;`;
+
+const recordRepositoryDependencyRequest = `const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 400);
+const status = text.match(/\\bstatus=(accepted|coalesced|deferred)\\b/)?.[1];
+if (!status) {
+    node.error("repository_dependency_request_unrecognized", msg);
+    return null;
+}
+node.status({ fill: status === "accepted" ? "green" : "yellow", shape: "dot", text: status });
+return null;`;
+
+const parseRepositoryDependencyResult = `const TEST_MODE = msg._repository_dependency_test === true;
+const text = String(msg.payload ?? "").replace(/[\\r\\n]+/g, " ").trim().slice(0, 700);
+if (!text) return [null, null, null];
+const statusMatches = [...text.matchAll(/\\bstatus=(running|success|current|failed|deferred)\\b/g)];
+const status = statusMatches.at(-1)?.[1];
+const packageMatches = [...text.matchAll(/\\bpackage=([a-z0-9._-]+)\\b/g)];
+const packageName = packageMatches.at(-1)?.[1] ?? "unknown";
+const requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? "unknown";
+if (!status) {
+    if (!TEST_MODE) node.error("repository_dependency_result_unrecognized", msg);
+    return [null, null, null];
+}
+const result = {
+    version: 1, status, package: packageName, request_id: requestId,
+    from: text.match(/\\bfrom=([^ ]+)\\b/)?.[1] ?? null,
+    to: text.match(/\\bto=([^ ]+)\\b/)?.[1] ?? null,
+    test_mode: TEST_MODE, observed_at: Date.now()
+};
+const signature = [packageName, requestId, status, result.to].join(":");
+const key = TEST_MODE ? "repository_dependency_last_result_v1__test" : "repository_dependency_last_result_v1";
+const previous = TEST_MODE ? flow.get(key) : flow.get(key, "persistent");
+if (!TEST_MODE && previous?.signature === signature) return [null, null, null];
+result.signature = signature;
+if (TEST_MODE) flow.set(key, result); else flow.set(key, result, "persistent");
+msg.payload = result;
+node.status({ fill: status === "failed" ? "red" : status === "success" || status === "current" ? "green" : "yellow", shape: status === "failed" ? "ring" : "dot", text: packageName + ": " + status });
+if (TEST_MODE) return [msg, null, null];
+if (status === "failed") {
+    node.error("repository_dependency_update_failed package=" + packageName + " request_id=" + requestId, msg);
+    return [null, null, null];
+}
+if (status === "success") return [null, msg, null];
+if (status === "deferred") return [null, null, msg];
+return [null, null, null];`;
+
+const recordRepositoryDependencyBlocked = `const candidate = msg.payload ?? {};
+node.status({ fill: "yellow", shape: "ring", text: String(candidate.package ?? "candidato") + " bloqueado pela política" });
+if (msg._repository_dependency_test) {
+    msg.payload = { version: 1, status: "policy_blocked", package: candidate.package ?? null, test_mode: true };
+    return msg;
+}
+node.warn("repository_dependency_candidate_blocked package=" + String(candidate.package ?? "unknown"));
+return null;`;
+
 const prepareHostStage = (stage) => `const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;
 msg._daily_update_test = TEST_MODE;
 msg.payload = {
@@ -281,6 +367,7 @@ const resetTest = `flow.set("daily_update_last_result_v1__test", undefined);
 flow.set("host_update_dietpi_last_result_v1__test", undefined);
 flow.set("host_update_home-assistant-core_last_result_v1__test", undefined);
 flow.set("host_update_containers_last_result_v1__test", undefined);
+flow.set("repository_dependency_last_result_v1__test", undefined);
 flow.set("daily_update_inventory_last_v1__test", undefined);
 flow.set("kia_uvo_update_last_result_v1__test", undefined);
 flow.set("kia_uvo_codex_merge_last_result_v1__test", undefined);
@@ -300,6 +387,8 @@ const dryRunTerminal = `const result = {
     apt_commands_sent: false,
     home_assistant_core_update_sent: false,
     docker_update_sent: false,
+    repository_dependency_update_sent: false,
+    npm_install_sent: false,
     hacs_update_install_sent: false,
     device_firmware_install_sent: false,
     kia_uvo_update_check_sent: false,
@@ -417,6 +506,8 @@ const productionGroup = "daily_update_production_group";
 const resultGroup = "daily_update_result_group";
 const coreGroup = "daily_update_core_group";
 const containersGroup = "daily_update_containers_group";
+const dependencyGroup = "daily_update_repository_dependency_group";
+const dependencyTestGroup = "daily_update_repository_dependency_test_group";
 const testGroup = "daily_update_test_group";
 const inventoryGroup = "daily_update_inventory_group";
 const hacsGroup = "daily_update_hacs_group";
@@ -647,6 +738,7 @@ const nodes = [
       "daily_update_containers_request_test_out", "daily_update_containers_result_startup", "daily_update_containers_result_poll",
       "daily_update_containers_read_result", "daily_update_containers_read_error", "daily_update_containers_read_complete",
       "daily_update_containers_test_result_in", "daily_update_containers_parse_result", "daily_update_containers_result_test_out",
+      "daily_update_dependency_chain_out",
     ],
     x: 44, y: 1099, w: 1402, h: 402,
   },
@@ -714,11 +806,16 @@ const nodes = [
     name: "Receber resultado containers TESTE", links: ["daily_update_containers_test_result_out"],
     x: 645, y: 1340, wires: [["daily_update_containers_parse_result"]],
   },
-  functionNode("daily_update_containers_parse_result", containersGroup, "Normalizar resultado containers", parseHostStageResult("containers", "Containers", false), 2, 900, 1400, [["daily_update_containers_result_test_out"], []]),
+  functionNode("daily_update_containers_parse_result", containersGroup, "Normalizar resultado containers", parseHostStageResult("containers", "Containers", true), 2, 900, 1400, [["daily_update_containers_result_test_out"], ["daily_update_dependency_chain_out"]]),
   {
     id: "daily_update_containers_result_test_out", type: "link out", z: TAB, g: containersGroup,
     name: "Resultado containers TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"],
     x: 1235, y: 1400, wires: [],
+  },
+  {
+    id: "daily_update_dependency_chain_out", type: "link out", z: TAB, g: containersGroup,
+    name: "Containers concluídos → dependências", mode: "link", links: ["daily_update_dependency_chain_in"],
+    x: 1240, y: 1460, wires: [],
   },
   {
     id: testGroup, type: "group", z: TAB,
@@ -845,6 +942,8 @@ const nodes = [
       "daily_update_hacs_test_out", "daily_update_unknown_test_out", "daily_update_firmware_test_out", "daily_update_firmware_queue_test_out",
       "daily_update_kia_test_out", "daily_update_kia_result_test_out",
       "daily_update_kia_codex_result_test_out", "daily_update_kia_promotion_result_test_out",
+      "daily_update_dependency_test_out", "daily_update_dependency_blocked_test_out",
+      "daily_update_dependency_result_test_out", "daily_update_dependency_summary_test_out",
     ],
     x: 715, y: 870, wires: [["daily_update_dry_run_terminal"]],
   },
@@ -1426,6 +1525,286 @@ const nodes = [
     id: "daily_update_kia_promotion_test_result_in", type: "link in", z: TAB, g: kiaCodexGroup,
     name: "Receber falha promoção TESTE", links: ["daily_update_kia_promotion_test_result_out"],
     x: 610, y: 2410, wires: [["daily_update_kia_promotion_parse_result"]],
+  },
+  {
+    id: dependencyGroup, type: "group", z: TAB,
+    name: "12. SUBFLUXO dependências do repositório: audit, política e atualização segura",
+    style: { label: true, color: "#6d8f3f" },
+    nodes: [
+      "daily_update_dependency_architecture", "daily_update_dependency_chain_in",
+      "daily_update_dependency_manual", "daily_update_dependency_test_source_in",
+      "daily_update_dependency_policy", "daily_update_dependency_source",
+      "daily_update_dependency_scan", "daily_update_dependency_scan_error",
+      "daily_update_dependency_scan_complete", "daily_update_dependency_normalize",
+      "daily_update_dependency_summary", "daily_update_dependency_summary_test_out", "daily_update_dependency_candidate_out",
+      "daily_update_dependency_candidate_in", "daily_update_dependency_fix_gate",
+      "daily_update_dependency_surface_gate", "daily_update_dependency_severity_gate",
+      "daily_update_dependency_auto_gate", "daily_update_dependency_dedupe",
+      "daily_update_dependency_prepare", "daily_update_dependency_final_gate",
+      "daily_update_dependency_test_out", "daily_update_dependency_request",
+      "daily_update_dependency_request_ack", "daily_update_dependency_request_error",
+      "daily_update_dependency_request_complete", "daily_update_dependency_blocked",
+      "daily_update_dependency_blocked_from_fix", "daily_update_dependency_blocked_from_surface",
+      "daily_update_dependency_blocked_from_severity", "daily_update_dependency_blocked_from_auto",
+      "daily_update_dependency_blocked_in", "daily_update_dependency_blocked_test_out", "daily_update_dependency_result_startup",
+      "daily_update_dependency_result_poll", "daily_update_dependency_read_result",
+      "daily_update_dependency_read_error", "daily_update_dependency_read_complete",
+      "daily_update_dependency_test_result_in", "daily_update_dependency_parse_result",
+      "daily_update_dependency_result_test_out", "daily_update_dependency_retry",
+      "daily_update_dependency_retry_out", "daily_update_dependency_retry_in",
+      "daily_update_dependency_test_reset_in",
+      "daily_update_dependency_backup_out",
+    ],
+    x: 44, y: 5450, w: 2502, h: 722,
+  },
+  {
+    id: "daily_update_dependency_architecture", type: "comment", z: TAB, g: dependencyGroup,
+    name: "POLÍTICA: override exato + correção disponível + mesma major + qualquer severidade → aplicar",
+    info: "O npm audit é apenas o produtor. Switches visuais autorizam somente overrides exatos com correção disponível. O worker mantém a mesma major, atualiza lock, revalida audit e flows, instala no runtime e reinicia somente o Node-RED com rollback. Sucesso solicita o backup Git canônico.",
+    x: 970, y: 5490, wires: [],
+  },
+  {
+    id: "daily_update_dependency_chain_in", type: "link in", z: TAB, g: dependencyGroup,
+    name: "Receber sucesso dos containers", links: ["daily_update_dependency_chain_out"],
+    x: 85, y: 5570, wires: [["daily_update_dependency_policy"]],
+  },
+  {
+    id: "daily_update_dependency_manual", type: "inject", z: TAB, g: dependencyGroup,
+    name: "Verificar dependências agora", props: [{ p: "payload" }], repeat: "", crontab: "",
+    once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 220, y: 5630, wires: [["daily_update_dependency_policy"]],
+  },
+  {
+    id: "daily_update_dependency_test_source_in", type: "link in", z: TAB, g: dependencyGroup,
+    name: "Receber audit TESTE", links: ["daily_update_dependency_test_source_out"],
+    x: 85, y: 5690, wires: [["daily_update_dependency_policy"]],
+  },
+  {
+    id: "daily_update_dependency_policy", type: "change", z: TAB, g: dependencyGroup,
+    name: "PARÂMETROS: override, mesma major, auto", rules: [{ t: "set", p: "dependency_policy", pt: "msg", to: '{"version":1,"managed_surface":"override","same_major_only":true,"auto_apply":true,"severities":["low","moderate","high","critical"]}', tot: "json" }],
+    action: "", property: "", from: "", to: "", reg: false, x: 500, y: 5600,
+    wires: [["daily_update_dependency_source"]],
+  },
+  {
+    id: "daily_update_dependency_source", type: "switch", z: TAB, g: dependencyGroup,
+    name: "Audit real ou TESTE?", property: "_repository_dependency_test", propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 780, y: 5600, wires: [["daily_update_dependency_normalize"], ["daily_update_dependency_scan"]],
+  },
+  {
+    id: "daily_update_dependency_scan", type: "exec", z: TAB, g: dependencyGroup,
+    command: "node /data/tools/scan-repository-dependency-audit.mjs", addpay: "", append: "", useSpawn: "false",
+    timer: "90", winHide: false, oldrc: false, name: "Produzir npm audit sanitizado", x: 1060, y: 5590,
+    wires: [["daily_update_dependency_normalize"], ["daily_update_dependency_scan_error"], ["daily_update_dependency_scan_complete"]],
+  },
+  functionNode("daily_update_dependency_scan_error", dependencyGroup, "Falha do produtor audit", recordExecError, 0, 1350, 5500, []),
+  functionNode("daily_update_dependency_scan_complete", dependencyGroup, "Código do npm audit", `const code=Number(msg.payload?.code ?? msg.payload ?? -1); if (![0,1].includes(code)) node.status({fill:"red",shape:"ring",text:"audit código "+code}); return null;`, 0, 1350, 5610, []),
+  functionNode("daily_update_dependency_normalize", dependencyGroup, "Normalizar contrato do audit", normalizeRepositoryDependencyAudit, 2, 1250, 5690, [["daily_update_dependency_candidate_out"], ["daily_update_dependency_summary"]]),
+  functionNode("daily_update_dependency_summary", dependencyGroup, "Registrar inventário npm", `const summary=msg.payload; node.status({fill:summary.candidate_count?"yellow":"green",shape:"dot",text:summary.candidate_count+" candidato(s)"}); return summary.test_mode ? msg : null;`, 1, 1540, 5550, [["daily_update_dependency_summary_test_out"]]),
+  {
+    id: "daily_update_dependency_summary_test_out", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Resumo TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"], x: 1810, y: 5550, wires: [],
+  },
+  {
+    id: "daily_update_dependency_candidate_out", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Candidatos → política", mode: "link", links: ["daily_update_dependency_candidate_in"], x: 1510, y: 5690, wires: [],
+  },
+  {
+    id: "daily_update_dependency_candidate_in", type: "link in", z: TAB, g: dependencyGroup,
+    name: "Receber candidatos", links: ["daily_update_dependency_candidate_out"], x: 85, y: 5790,
+    wires: [["daily_update_dependency_fix_gate"]],
+  },
+  {
+    id: "daily_update_dependency_fix_gate", type: "switch", z: TAB, g: dependencyGroup,
+    name: "Correção disponível?", property: "payload.fix_available", propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 220, y: 5790, wires: [["daily_update_dependency_surface_gate"], ["daily_update_dependency_blocked_from_fix"]],
+  },
+  {
+    id: "daily_update_dependency_surface_gate", type: "switch", z: TAB, g: dependencyGroup,
+    name: "É override gerenciado?", property: "payload.managed_surface", propertyType: "msg",
+    rules: [{ t: "eq", v: "override", vt: "str" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 480, y: 5790, wires: [["daily_update_dependency_severity_gate"], ["daily_update_dependency_blocked_from_surface"]],
+  },
+  {
+    id: "daily_update_dependency_severity_gate", type: "switch", z: TAB, g: dependencyGroup,
+    name: "Severidade reconhecida?", property: "payload.severity", propertyType: "msg",
+    rules: [{ t: "regex", v: "^(low|moderate|high|critical)$", vt: "str", case: false }, { t: "else" }],
+    checkall: "true", repair: false, outputs: 2, x: 760, y: 5790,
+    wires: [["daily_update_dependency_auto_gate"], ["daily_update_dependency_blocked_from_severity"]],
+  },
+  {
+    id: "daily_update_dependency_auto_gate", type: "switch", z: TAB, g: dependencyGroup,
+    name: "Auto apply habilitado?", property: "dependency_policy.auto_apply", propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 1040, y: 5790, wires: [["daily_update_dependency_dedupe"], ["daily_update_dependency_blocked_from_auto"]],
+  },
+  {
+    id: "daily_update_dependency_dedupe", type: "rbe", z: TAB, g: dependencyGroup,
+    name: "Deduplicar candidato", func: "rbe", gap: "", start: "", inout: "out", septopics: false,
+    property: "payload.signature", topi: "topic", x: 1290, y: 5790,
+    wires: [["daily_update_dependency_prepare"]],
+  },
+  functionNode("daily_update_dependency_prepare", dependencyGroup, "Preparar pacote", prepareRepositoryDependencyRequest, 1, 1510, 5790, [["daily_update_dependency_final_gate"]]),
+  {
+    id: "daily_update_dependency_final_gate", type: "switch", z: TAB, g: dependencyGroup,
+    name: "GATE FINAL: produção ou TESTE?", property: "_repository_dependency_test", propertyType: "msg",
+    rules: [{ t: "true" }, { t: "else" }], checkall: "true", repair: false, outputs: 2,
+    x: 1770, y: 5790, wires: [["daily_update_dependency_test_out"], ["daily_update_dependency_request"]],
+  },
+  {
+    id: "daily_update_dependency_test_out", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Atualização TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"], x: 2055, y: 5750, wires: [],
+  },
+  {
+    id: "daily_update_dependency_request", type: "exec", z: TAB, g: dependencyGroup,
+    command: "/opt/request-host-repository-dependency-update.sh", addpay: "payload", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Solicitar atualização ao host", x: 2040, y: 5830,
+    wires: [["daily_update_dependency_request_ack"], ["daily_update_dependency_request_error"], ["daily_update_dependency_request_complete"]],
+  },
+  functionNode("daily_update_dependency_request_ack", dependencyGroup, "Registrar solicitação npm", recordRepositoryDependencyRequest, 0, 2360, 5790, []),
+  functionNode("daily_update_dependency_request_error", dependencyGroup, "Falha segura da ponte npm", recordExecError, 0, 2360, 5850, []),
+  functionNode("daily_update_dependency_request_complete", dependencyGroup, "Código da ponte npm", recordCompletion, 0, 2360, 5910, []),
+  {
+    id: "daily_update_dependency_blocked_from_fix", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Sem correção → bloqueio", mode: "link", links: ["daily_update_dependency_blocked_in"], x: 390, y: 5850, wires: [],
+  },
+  {
+    id: "daily_update_dependency_blocked_from_surface", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Fora do override → bloqueio", mode: "link", links: ["daily_update_dependency_blocked_in"], x: 660, y: 5850, wires: [],
+  },
+  {
+    id: "daily_update_dependency_blocked_from_severity", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Severidade inválida → bloqueio", mode: "link", links: ["daily_update_dependency_blocked_in"], x: 930, y: 5850, wires: [],
+  },
+  {
+    id: "daily_update_dependency_blocked_from_auto", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Auto desligado → bloqueio", mode: "link", links: ["daily_update_dependency_blocked_in"], x: 1190, y: 5850, wires: [],
+  },
+  {
+    id: "daily_update_dependency_blocked_in", type: "link in", z: TAB, g: dependencyGroup,
+    name: "Receber bloqueio da política", links: [
+      "daily_update_dependency_blocked_from_fix", "daily_update_dependency_blocked_from_surface",
+      "daily_update_dependency_blocked_from_severity", "daily_update_dependency_blocked_from_auto",
+    ], x: 850, y: 5910, wires: [["daily_update_dependency_blocked"]],
+  },
+  functionNode("daily_update_dependency_blocked", dependencyGroup, "Bloquear candidato fora da política", recordRepositoryDependencyBlocked, 1, 1080, 5910, [["daily_update_dependency_blocked_test_out"]]),
+  {
+    id: "daily_update_dependency_blocked_test_out", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Bloqueio TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"], x: 1295, y: 5870, wires: [],
+  },
+  {
+    id: "daily_update_dependency_result_startup", type: "inject", z: TAB, g: dependencyGroup,
+    name: "Ler resultado ao subir", props: [{ p: "payload" }], repeat: "", crontab: "", once: true, onceDelay: "45",
+    topic: "", payload: "", payloadType: "date", x: 210, y: 5990, wires: [["daily_update_dependency_read_result"]],
+  },
+  {
+    id: "daily_update_dependency_result_poll", type: "inject", z: TAB, g: dependencyGroup,
+    name: "Resultado a cada 1 min", props: [{ p: "payload" }], repeat: "60", crontab: "", once: false, onceDelay: 0.1,
+    topic: "", payload: "", payloadType: "date", x: 220, y: 6050, wires: [["daily_update_dependency_read_result"]],
+  },
+  {
+    id: "daily_update_dependency_read_result", type: "exec", z: TAB, g: dependencyGroup,
+    command: "/opt/read-host-repository-dependency-update-result.sh", addpay: "", append: "", useSpawn: "false",
+    timer: "15", winHide: false, oldrc: false, name: "Ler resultado npm seguro", x: 510, y: 6020,
+    wires: [["daily_update_dependency_parse_result"], ["daily_update_dependency_read_error"], ["daily_update_dependency_read_complete"]],
+  },
+  functionNode("daily_update_dependency_read_error", dependencyGroup, "Falha ao ler resultado npm", recordExecError, 0, 750, 6100, []),
+  functionNode("daily_update_dependency_read_complete", dependencyGroup, "Código da leitura npm", recordCompletion, 0, 970, 6100, []),
+  {
+    id: "daily_update_dependency_test_result_in", type: "link in", z: TAB, g: dependencyGroup,
+    name: "Receber resultado npm TESTE", links: ["daily_update_dependency_test_result_out"],
+    x: 820, y: 5940, wires: [["daily_update_dependency_parse_result"]],
+  },
+  functionNode("daily_update_dependency_parse_result", dependencyGroup, "Normalizar resultado npm", parseRepositoryDependencyResult, 3, 1000, 6020, [["daily_update_dependency_result_test_out"], ["daily_update_dependency_backup_out"], ["daily_update_dependency_retry"]]),
+  {
+    id: "daily_update_dependency_result_test_out", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Resultado npm TESTE → dry-run", mode: "link", links: ["daily_update_dry_run_in"], x: 1260, y: 5980, wires: [],
+  },
+  {
+    id: "daily_update_dependency_retry", type: "delay", z: TAB, g: dependencyGroup,
+    name: "Reconsultar após deferimento", pauseType: "delay", timeout: "75", timeoutUnits: "seconds",
+    rate: "1", nbRateUnits: "1", rateUnits: "second", randomFirst: "1", randomLast: "5", randomUnits: "seconds",
+    drop: false, allowrate: false, outputs: 1, x: 1320, y: 6070, wires: [["daily_update_dependency_retry_out"]],
+  },
+  {
+    id: "daily_update_dependency_retry_out", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Retry → releitura", mode: "link", links: ["daily_update_dependency_retry_in"], x: 1530, y: 6070, wires: [],
+  },
+  {
+    id: "daily_update_dependency_retry_in", type: "link in", z: TAB, g: dependencyGroup,
+    name: "Receber retry", links: ["daily_update_dependency_retry_out"], x: 305, y: 6140,
+    wires: [["daily_update_dependency_read_result"]],
+  },
+  {
+    id: "daily_update_dependency_test_reset_in", type: "link in", z: TAB, g: dependencyGroup,
+    name: "Receber reset TESTE", links: ["daily_update_dependency_test_reset_out"], x: 1130, y: 5730,
+    wires: [["daily_update_dependency_dedupe"]],
+  },
+  {
+    id: "daily_update_dependency_backup_out", type: "link out", z: TAB, g: dependencyGroup,
+    name: "Atualização concluída → backup Git", mode: "link", links: ["git_backup_request_in"], x: 1420, y: 5980, wires: [],
+  },
+  {
+    id: dependencyTestGroup, type: "group", z: TAB,
+    name: "13. TESTES da atualização de dependências: caminho completo sem npm, restart ou push",
+    style: { label: true, color: "#7d6ba8" },
+    nodes: [
+      "daily_update_dependency_test_instructions", "daily_update_dependency_test_reset",
+      "daily_update_dependency_test_reset_out",
+      "daily_update_dependency_test_safe", "daily_update_dependency_test_blocked",
+      "daily_update_dependency_test_source_out", "daily_update_dependency_test_result",
+      "daily_update_dependency_test_result_out",
+    ],
+    x: 44, y: 6210, w: 1392, h: 302,
+  },
+  {
+    id: "daily_update_dependency_test_instructions", type: "comment", z: TAB, g: dependencyTestGroup,
+    name: "TESTE: 1) reset 2) elegível ou transitive bloqueado 3) resultado; confira o terminal dry-run",
+    info: "Os candidatos sintéticos atravessam normalização, política, dedupe e gate final. Nenhum npm install, restart ou push é executado.",
+    x: 670, y: 6250, wires: [],
+  },
+  {
+    id: "daily_update_dependency_test_reset", type: "inject", z: TAB, g: dependencyTestGroup,
+    name: "TESTE 1: reset do dedupe", props: [{ p: "reset", v: "true", vt: "bool" }], repeat: "", crontab: "",
+    once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date", x: 220, y: 6330,
+    wires: [["daily_update_dependency_test_reset_out"]],
+  },
+  {
+    id: "daily_update_dependency_test_reset_out", type: "link out", z: TAB, g: dependencyTestGroup,
+    name: "Reset TESTE → dedupe", mode: "link", links: ["daily_update_dependency_test_reset_in"], x: 490, y: 6330, wires: [],
+  },
+  {
+    id: "daily_update_dependency_test_safe", type: "inject", z: TAB, g: dependencyTestGroup,
+    name: "TESTE 2A: override elegível", props: [
+      { p: "payload", v: '{"version":1,"status":"ok","candidates":[{"package":"joi","severity":"low","current_version":"17.13.4","declared_version":"17.13.4","managed_surface":"override","fix_available":true,"signature":"joi:test:eligible"}]}', vt: "json" },
+      { p: "_repository_dependency_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 230, y: 6390, wires: [["daily_update_dependency_test_source_out"]],
+  },
+  {
+    id: "daily_update_dependency_test_blocked", type: "inject", z: TAB, g: dependencyTestGroup,
+    name: "TESTE 2B: transitive bloqueado", props: [
+      { p: "payload", v: '{"version":1,"status":"ok","candidates":[{"package":"indireta","severity":"high","current_version":"1.0.0","declared_version":null,"managed_surface":"transitive","fix_available":true,"signature":"indireta:test:blocked"}]}', vt: "json" },
+      { p: "_repository_dependency_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 240, y: 6450, wires: [["daily_update_dependency_test_source_out"]],
+  },
+  {
+    id: "daily_update_dependency_test_source_out", type: "link out", z: TAB, g: dependencyTestGroup,
+    name: "Audit TESTE → subfluxo", mode: "link", links: ["daily_update_dependency_test_source_in"], x: 540, y: 6420, wires: [],
+  },
+  {
+    id: "daily_update_dependency_test_result", type: "inject", z: TAB, g: dependencyTestGroup,
+    name: "TESTE 3: resultado concluído", props: [
+      { p: "payload", v: "repository-dependency-update package=joi status=success request_id=test from=17.13.4 to=17.13.6", vt: "str" },
+      { p: "_repository_dependency_test", v: "true", vt: "bool" },
+    ], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "", payloadType: "date",
+    x: 850, y: 6390, wires: [["daily_update_dependency_test_result_out"]],
+  },
+  {
+    id: "daily_update_dependency_test_result_out", type: "link out", z: TAB, g: dependencyTestGroup,
+    name: "Resultado TESTE → parser", mode: "link", links: ["daily_update_dependency_test_result_in"], x: 1150, y: 6390, wires: [],
   },
 ];
 

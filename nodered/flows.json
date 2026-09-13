@@ -133,14 +133,6 @@
         "env": []
     },
     {
-        "id": "git_backup_tab",
-        "type": "tab",
-        "label": "backup_git",
-        "disabled": false,
-        "info": "Node-RED agenda e decide; o helper allowlisted executa Git/SSH no host. Testes percorrem as mesmas decisões e terminam antes de qualquer efeito.",
-        "env": []
-    },
-    {
         "id": "local_ai_rtx_recovery_tab",
         "type": "tab",
         "label": "recuperacao_rtx",
@@ -1602,7 +1594,8 @@
             "daily_update_containers_read_complete",
             "daily_update_containers_test_result_in",
             "daily_update_containers_parse_result",
-            "daily_update_containers_result_test_out"
+            "daily_update_containers_result_test_out",
+            "daily_update_dependency_chain_out"
         ],
         "x": 68,
         "y": 1083,
@@ -3282,142 +3275,6 @@
         "y": 260,
         "w": 6844,
         "h": 627
-    },
-    {
-        "id": "git_backup_input_group",
-        "type": "group",
-        "z": "git_backup_tab",
-        "name": "0. Entradas, agenda e pedido",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#2563eb",
-            "stroke-opacity": "1",
-            "fill": "#dbeafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_architecture",
-            "git_backup_schedule",
-            "git_backup_manual",
-            "git_backup_retry_in",
-            "git_backup_request_out"
-        ],
-        "x": 100,
-        "y": 3,
-        "w": 477,
-        "h": 311
-    },
-    {
-        "id": "git_backup_decision_group",
-        "type": "group",
-        "z": "git_backup_tab",
-        "name": "1. Normalização e decisões visuais",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0f766e",
-            "stroke-opacity": "1",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_request_in",
-            "git_backup_request_gate",
-            "git_backup_request_dry_out",
-            "git_backup_worker_out",
-            "git_backup_result_in",
-            "git_backup_result",
-            "git_backup_status_switch",
-            "git_backup_success_origin",
-            "git_backup_success_gate",
-            "git_backup_mark_daily_success",
-            "git_backup_manual_success",
-            "git_backup_alert_build",
-            "git_backup_failure_gate",
-            "git_backup_deferred_gate",
-            "git_backup_invalid_gate",
-            "git_backup_invalid_result",
-            "git_backup_notification_out",
-            "git_backup_retry_effect_out",
-            "git_backup_daily_update_out",
-            "git_backup_dry_out",
-            "git_backup_test_request_in"
-        ],
-        "x": 733,
-        "y": 7,
-        "w": 1344,
-        "h": 430
-    },
-    {
-        "id": "git_backup_effect_group",
-        "type": "group",
-        "z": "git_backup_tab",
-        "name": "2. Efeitos isolados, retry e confirmação",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#dc2626",
-            "stroke-opacity": "1",
-            "fill": "#fee2e2",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_worker_in",
-            "git_backup_request",
-            "git_backup_result_out",
-            "git_backup_error",
-            "git_backup_notification_direct",
-            "git_backup_complete",
-            "git_backup_complete_ok",
-            "git_backup_complete_failed",
-            "git_backup_notification_in",
-            "git_backup_notify_primary",
-            "git_backup_notify_persistent",
-            "git_backup_retry_effect_in",
-            "git_backup_retry_delay",
-            "git_backup_retry_out"
-        ],
-        "x": 1558,
-        "y": 510,
-        "w": 952,
-        "h": 437
-    },
-    {
-        "id": "git_backup_test_group",
-        "type": "group",
-        "z": "git_backup_tab",
-        "name": "3. Replay manual completo — dry-run",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0891b2",
-            "stroke-opacity": "1",
-            "fill": "#cffafe",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "git_backup_test_instructions",
-            "git_backup_test_reset",
-            "git_backup_test_reset_state",
-            "git_backup_test_request",
-            "git_backup_test_request_out",
-            "git_backup_test_success",
-            "git_backup_test_failure",
-            "git_backup_test_deferred",
-            "git_backup_test_invalid",
-            "git_backup_test_result_out",
-            "git_backup_dry_in",
-            "git_backup_dry_run_terminal"
-        ],
-        "x": 72,
-        "y": 523,
-        "w": 1418,
-        "h": 414
     },
     {
         "id": "resident_notifications_config_group",
@@ -26278,7 +26135,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_test_group",
         "name": "Resetar teste",
-        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"host_update_dietpi_last_result_v1__test\", undefined);\nflow.set(\"host_update_home-assistant-core_last_result_v1__test\", undefined);\nflow.set(\"host_update_containers_last_result_v1__test\", undefined);\nflow.set(\"daily_update_inventory_last_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_codex_merge_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_promotion_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "func": "flow.set(\"daily_update_last_result_v1__test\", undefined);\nflow.set(\"host_update_dietpi_last_result_v1__test\", undefined);\nflow.set(\"host_update_home-assistant-core_last_result_v1__test\", undefined);\nflow.set(\"host_update_containers_last_result_v1__test\", undefined);\nflow.set(\"repository_dependency_last_result_v1__test\", undefined);\nflow.set(\"daily_update_inventory_last_v1__test\", undefined);\nflow.set(\"kia_uvo_update_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_codex_merge_last_result_v1__test\", undefined);\nflow.set(\"kia_uvo_promotion_last_result_v1__test\", undefined);\nflow.set(\"daily_update_last_dry_run_v1\", {\n    version: 1, reset: true, simulated: true, dispatched: false,\n    completed_at: Date.now()\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -26439,7 +26296,11 @@
             "daily_update_kia_test_out",
             "daily_update_kia_result_test_out",
             "daily_update_kia_codex_result_test_out",
-            "daily_update_kia_promotion_result_test_out"
+            "daily_update_kia_promotion_result_test_out",
+            "daily_update_dependency_test_out",
+            "daily_update_dependency_blocked_test_out",
+            "daily_update_dependency_result_test_out",
+            "daily_update_dependency_summary_test_out"
         ],
         "x": 735,
         "y": 1770,
@@ -26455,7 +26316,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_test_group",
         "name": "TESTE FINAL: host simulado",
-        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    apt_commands_sent: false,\n    home_assistant_core_update_sent: false,\n    docker_update_sent: false,\n    hacs_update_install_sent: false,\n    device_firmware_install_sent: false,\n    kia_uvo_update_check_sent: false,\n    kia_uvo_codex_merge_requested: false,\n    codex_worker_started: false,\n    git_push_sent: false,\n    status: msg.payload?.status ?? msg.payload?.event ?? \"request_prepared\",\n    completed_at: Date.now()\n};\nflow.set(\"daily_update_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; host bloqueado\" });\nreturn null;",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    host_request_sent: false,\n    apt_commands_sent: false,\n    home_assistant_core_update_sent: false,\n    docker_update_sent: false,\n    repository_dependency_update_sent: false,\n    npm_install_sent: false,\n    hacs_update_install_sent: false,\n    device_firmware_install_sent: false,\n    kia_uvo_update_check_sent: false,\n    kia_uvo_codex_merge_requested: false,\n    codex_worker_started: false,\n    git_push_sent: false,\n    status: msg.payload?.status ?? msg.payload?.event ?? \"request_prepared\",\n    completed_at: Date.now()\n};\nflow.set(\"daily_update_last_dry_run_v1\", result);\nnode.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; host bloqueado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -28243,7 +28104,7 @@
         "z": "daily_host_updates_tab",
         "g": "daily_update_containers_group",
         "name": "Normalizar resultado containers",
-        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nif (!status || stage !== \"containers\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=containers\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_containers_last_result_v1__test\" : \"host_update_containers_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"Containers concluído\" : status\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=containers request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit), msg);\n    return [null, null];\n}\nif (status === \"success\" && false) return [null, msg];\nreturn [null, null];",
+        "func": "const TEST_MODE = msg._daily_update_test === true || msg.payload?.test_mode === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null];\nconst status = text.match(/\\bstatus=(running|success|failed|deferred|unavailable)\\b/)?.[1];\nconst stage = text.match(/\\bstage=([a-z-]+)\\b/)?.[1] ?? null;\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nconst stageExit = Number(text.match(/\\bstage_exit=(\\d+)\\b/)?.[1] ?? NaN);\nconst failureStage = text.match(/\\bfailure_stage=([A-Za-z0-9_.-]+)\\b/)?.[1] ?? null;\nif (!status || stage !== \"containers\") {\n    if (!TEST_MODE) node.error(\"host_update_stage_result_unrecognized expected=containers\", msg);\n    return [null, null];\n}\nconst signature = [stage, requestId, status].join(\":\");\nconst key = TEST_MODE ? \"host_update_containers_last_result_v1__test\" : \"host_update_containers_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null];\nconst result = {\n    version: 1, signature, stage, request_id: requestId, status,\n    stage_exit: Number.isFinite(stageExit) ? stageExit : null,\n    failure_stage: failureStage,\n    test_mode: TEST_MODE,\n    observed_at: Date.now()\n};\nif (TEST_MODE) flow.set(key, result);\nelse flow.set(key, result, \"persistent\");\nconst failed = [\"failed\", \"unavailable\"].includes(status);\nnode.status({\n    fill: failed ? \"red\" : status === \"success\" ? \"green\" : \"yellow\",\n    shape: failed ? \"ring\" : \"dot\",\n    text: status === \"success\" ? \"Containers concluído\" : status\n});\nmsg.payload = result;\nif (TEST_MODE) return [msg, null];\nif (failed) {\n    node.error(\"host_update_stage_failed stage=containers request_id=\" + requestId + \" failure_stage=\" + String(failureStage) + \" stage_exit=\" + String(result.stage_exit), msg);\n    return [null, null];\n}\nif (status === \"success\" && true) return [null, msg];\nreturn [null, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -28256,7 +28117,9 @@
             [
                 "daily_update_containers_result_test_out"
             ],
-            []
+            [
+                "daily_update_dependency_chain_out"
+            ]
         ]
     },
     {
@@ -29906,6 +29769,1225 @@
                 "daily_update_inventory_parameters"
             ]
         ]
+    },
+    {
+        "id": "daily_update_dependency_chain_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_containers_group",
+        "name": "Containers concluídos → dependências",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_chain_in"
+        ],
+        "x": 1260,
+        "y": 1460,
+        "wires": []
+    },
+    {
+        "id": "daily_update_repository_dependency_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "12. SUBFLUXO dependências do repositório: audit, política e atualização segura",
+        "style": {
+            "label": true,
+            "color": "#6d8f3f"
+        },
+        "nodes": [
+            "daily_update_dependency_architecture",
+            "daily_update_dependency_chain_in",
+            "daily_update_dependency_manual",
+            "daily_update_dependency_test_source_in",
+            "daily_update_dependency_policy",
+            "daily_update_dependency_source",
+            "daily_update_dependency_scan",
+            "daily_update_dependency_scan_error",
+            "daily_update_dependency_scan_complete",
+            "daily_update_dependency_normalize",
+            "daily_update_dependency_summary",
+            "daily_update_dependency_summary_test_out",
+            "daily_update_dependency_candidate_out",
+            "daily_update_dependency_candidate_in",
+            "daily_update_dependency_fix_gate",
+            "daily_update_dependency_surface_gate",
+            "daily_update_dependency_severity_gate",
+            "daily_update_dependency_auto_gate",
+            "daily_update_dependency_dedupe",
+            "daily_update_dependency_prepare",
+            "daily_update_dependency_final_gate",
+            "daily_update_dependency_test_out",
+            "daily_update_dependency_request",
+            "daily_update_dependency_request_ack",
+            "daily_update_dependency_request_error",
+            "daily_update_dependency_request_complete",
+            "daily_update_dependency_blocked",
+            "daily_update_dependency_blocked_from_fix",
+            "daily_update_dependency_blocked_from_surface",
+            "daily_update_dependency_blocked_from_severity",
+            "daily_update_dependency_blocked_from_auto",
+            "daily_update_dependency_blocked_in",
+            "daily_update_dependency_blocked_test_out",
+            "daily_update_dependency_result_startup",
+            "daily_update_dependency_result_poll",
+            "daily_update_dependency_read_result",
+            "daily_update_dependency_read_error",
+            "daily_update_dependency_read_complete",
+            "daily_update_dependency_test_result_in",
+            "daily_update_dependency_parse_result",
+            "daily_update_dependency_result_test_out",
+            "daily_update_dependency_retry",
+            "daily_update_dependency_retry_out",
+            "daily_update_dependency_retry_in",
+            "daily_update_dependency_test_reset_in",
+            "daily_update_dependency_backup_out"
+        ],
+        "x": 68,
+        "y": 5433,
+        "w": 2437,
+        "h": 741
+    },
+    {
+        "id": "daily_update_dependency_architecture",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "POLÍTICA: override exato + correção disponível + mesma major + qualquer severidade → aplicar",
+        "info": "O npm audit é apenas o produtor. Switches visuais autorizam somente overrides exatos com correção disponível. O worker mantém a mesma major, atualiza lock, revalida audit e flows, instala no runtime e reinicia somente o Node-RED com rollback. Sucesso solicita o backup Git canônico.",
+        "x": 990,
+        "y": 5490,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_chain_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Receber sucesso dos containers",
+        "links": [
+            "daily_update_dependency_chain_out"
+        ],
+        "x": 105,
+        "y": 5570,
+        "wires": [
+            [
+                "daily_update_dependency_policy"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_manual",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Verificar dependências agora",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 5630,
+        "wires": [
+            [
+                "daily_update_dependency_policy"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_source_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Receber audit TESTE",
+        "links": [
+            "daily_update_dependency_test_source_out"
+        ],
+        "x": 105,
+        "y": 5690,
+        "wires": [
+            [
+                "daily_update_dependency_policy"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_policy",
+        "type": "change",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "PARÂMETROS: override, mesma major, auto",
+        "rules": [
+            {
+                "t": "set",
+                "p": "dependency_policy",
+                "pt": "msg",
+                "to": "{\"version\":1,\"managed_surface\":\"override\",\"same_major_only\":true,\"auto_apply\":true,\"severities\":[\"low\",\"moderate\",\"high\",\"critical\"]}",
+                "tot": "json"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 520,
+        "y": 5600,
+        "wires": [
+            [
+                "daily_update_dependency_source"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_source",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Audit real ou TESTE?",
+        "property": "_repository_dependency_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 800,
+        "y": 5600,
+        "wires": [
+            [
+                "daily_update_dependency_normalize"
+            ],
+            [
+                "daily_update_dependency_scan"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_scan",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "command": "node /data/tools/scan-repository-dependency-audit.mjs",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "90",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Produzir npm audit sanitizado",
+        "x": 1080,
+        "y": 5590,
+        "wires": [
+            [
+                "daily_update_dependency_normalize"
+            ],
+            [
+                "daily_update_dependency_scan_error"
+            ],
+            [
+                "daily_update_dependency_scan_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_scan_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Falha do produtor audit",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1370,
+        "y": 5500,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_scan_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Código do npm audit",
+        "func": "const code=Number(msg.payload?.code ?? msg.payload ?? -1); if (![0,1].includes(code)) node.status({fill:\"red\",shape:\"ring\",text:\"audit código \"+code}); return null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1370,
+        "y": 5610,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_normalize",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Normalizar contrato do audit",
+        "func": "const TEST_MODE = msg._repository_dependency_test === true;\nlet report = msg.payload;\ntry {\n    if (typeof report === \"string\") report = JSON.parse(report);\n} catch {\n    report = null;\n}\nif (!report || report.version !== 1 || report.status !== \"ok\" || !Array.isArray(report.candidates)) {\n    if (!TEST_MODE) node.error(\"repository_dependency_audit_unavailable\", msg);\n    return [null, null];\n}\nconst candidates = report.candidates.map((candidate) => ({\n    payload: candidate,\n    dependency_policy: msg.dependency_policy,\n    _repository_dependency_test: TEST_MODE\n}));\nconst summary = {\n    payload: { version: 1, status: \"scanned\", candidate_count: candidates.length, test_mode: TEST_MODE },\n    _repository_dependency_test: TEST_MODE\n};\nnode.status({ fill: candidates.length ? \"yellow\" : \"green\", shape: \"dot\", text: candidates.length + \" vulnerável(is)\" });\nreturn [candidates.length ? candidates : null, summary];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1270,
+        "y": 5690,
+        "wires": [
+            [
+                "daily_update_dependency_candidate_out"
+            ],
+            [
+                "daily_update_dependency_summary"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_summary",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Registrar inventário npm",
+        "func": "const summary=msg.payload; node.status({fill:summary.candidate_count?\"yellow\":\"green\",shape:\"dot\",text:summary.candidate_count+\" candidato(s)\"}); return summary.test_mode ? msg : null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1560,
+        "y": 5550,
+        "wires": [
+            [
+                "daily_update_dependency_summary_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_fix_gate",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Correção disponível?",
+        "property": "payload.fix_available",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 240,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_surface_gate"
+            ],
+            [
+                "daily_update_dependency_blocked_from_fix"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_surface_gate",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "É override gerenciado?",
+        "property": "payload.managed_surface",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "override",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 500,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_severity_gate"
+            ],
+            [
+                "daily_update_dependency_blocked_from_surface"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_severity_gate",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Severidade reconhecida?",
+        "property": "payload.severity",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "regex",
+                "v": "^(low|moderate|high|critical)$",
+                "vt": "str",
+                "case": false
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 780,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_auto_gate"
+            ],
+            [
+                "daily_update_dependency_blocked_from_severity"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_auto_gate",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Auto apply habilitado?",
+        "property": "dependency_policy.auto_apply",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1060,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_dedupe"
+            ],
+            [
+                "daily_update_dependency_blocked_from_auto"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_dedupe",
+        "type": "rbe",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Deduplicar candidato",
+        "func": "rbe",
+        "gap": "",
+        "start": "",
+        "inout": "out",
+        "septopics": false,
+        "property": "payload.signature",
+        "topi": "topic",
+        "x": 1310,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_prepare"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_prepare",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Preparar pacote",
+        "func": "const candidate = msg.payload;\nif (!candidate || typeof candidate.package !== \"string\" || !/^[a-z0-9][a-z0-9._-]{0,79}$/.test(candidate.package)) {\n    if (!msg._repository_dependency_test) node.error(\"repository_dependency_candidate_invalid\", msg);\n    return null;\n}\nmsg.repository_dependency = candidate;\nmsg.payload = candidate.package;\nnode.status({ fill: msg._repository_dependency_test ? \"blue\" : \"green\", shape: \"dot\", text: candidate.package + \" elegível\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1530,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_final_gate"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_final_gate",
+        "type": "switch",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "GATE FINAL: produção ou TESTE?",
+        "property": "_repository_dependency_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1790,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_test_out"
+            ],
+            [
+                "daily_update_dependency_request"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Atualização TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 2075,
+        "y": 5750,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_request",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "command": "/opt/request-host-repository-dependency-update.sh",
+        "addpay": "payload",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Solicitar atualização ao host",
+        "x": 2060,
+        "y": 5830,
+        "wires": [
+            [
+                "daily_update_dependency_request_ack"
+            ],
+            [
+                "daily_update_dependency_request_error"
+            ],
+            [
+                "daily_update_dependency_request_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_request_ack",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Registrar solicitação npm",
+        "func": "const text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 400);\nconst status = text.match(/\\bstatus=(accepted|coalesced|deferred)\\b/)?.[1];\nif (!status) {\n    node.error(\"repository_dependency_request_unrecognized\", msg);\n    return null;\n}\nnode.status({ fill: status === \"accepted\" ? \"green\" : \"yellow\", shape: \"dot\", text: status });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2380,
+        "y": 5790,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_request_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Falha segura da ponte npm",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2380,
+        "y": 5850,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_request_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Código da ponte npm",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2380,
+        "y": 5910,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_blocked",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Bloquear candidato fora da política",
+        "func": "const candidate = msg.payload ?? {};\nnode.status({ fill: \"yellow\", shape: \"ring\", text: String(candidate.package ?? \"candidato\") + \" bloqueado pela política\" });\nif (msg._repository_dependency_test) {\n    msg.payload = { version: 1, status: \"policy_blocked\", package: candidate.package ?? null, test_mode: true };\n    return msg;\n}\nnode.warn(\"repository_dependency_candidate_blocked package=\" + String(candidate.package ?? \"unknown\"));\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1100,
+        "y": 5910,
+        "wires": [
+            [
+                "daily_update_dependency_blocked_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_blocked_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Bloqueio TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1315,
+        "y": 5870,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_result_startup",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Ler resultado ao subir",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "45",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 230,
+        "y": 5990,
+        "wires": [
+            [
+                "daily_update_dependency_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_result_poll",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Resultado a cada 1 min",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 6050,
+        "wires": [
+            [
+                "daily_update_dependency_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_read_result",
+        "type": "exec",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "command": "/opt/read-host-repository-dependency-update-result.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "15",
+        "winHide": false,
+        "oldrc": false,
+        "name": "Ler resultado npm seguro",
+        "x": 530,
+        "y": 6020,
+        "wires": [
+            [
+                "daily_update_dependency_parse_result"
+            ],
+            [
+                "daily_update_dependency_read_error"
+            ],
+            [
+                "daily_update_dependency_read_complete"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_read_error",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Falha ao ler resultado npm",
+        "func": "const detail = String(msg.payload ?? \"indisponível\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.status({ fill: \"red\", shape: \"ring\", text: \"ponte indisponível\" });\nnode.error(\"daily_update_bridge_unavailable detail=\" + detail, msg);\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 770,
+        "y": 6100,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_read_complete",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Código da leitura npm",
+        "func": "const code = Number(msg.payload?.code ?? msg.payload ?? -1);\nif (code !== 0) node.status({ fill: \"red\", shape: \"ring\", text: \"ponte código \" + String(code) });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 990,
+        "y": 6100,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_test_result_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Receber resultado npm TESTE",
+        "links": [
+            "daily_update_dependency_test_result_out"
+        ],
+        "x": 840,
+        "y": 5940,
+        "wires": [
+            [
+                "daily_update_dependency_parse_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_parse_result",
+        "type": "function",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Normalizar resultado npm",
+        "func": "const TEST_MODE = msg._repository_dependency_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 700);\nif (!text) return [null, null, null];\nconst statusMatches = [...text.matchAll(/\\bstatus=(running|success|current|failed|deferred)\\b/g)];\nconst status = statusMatches.at(-1)?.[1];\nconst packageMatches = [...text.matchAll(/\\bpackage=([a-z0-9._-]+)\\b/g)];\nconst packageName = packageMatches.at(-1)?.[1] ?? \"unknown\";\nconst requestId = text.match(/\\brequest_id=([^ ]+)\\b/)?.[1] ?? \"unknown\";\nif (!status) {\n    if (!TEST_MODE) node.error(\"repository_dependency_result_unrecognized\", msg);\n    return [null, null, null];\n}\nconst result = {\n    version: 1, status, package: packageName, request_id: requestId,\n    from: text.match(/\\bfrom=([^ ]+)\\b/)?.[1] ?? null,\n    to: text.match(/\\bto=([^ ]+)\\b/)?.[1] ?? null,\n    test_mode: TEST_MODE, observed_at: Date.now()\n};\nconst signature = [packageName, requestId, status, result.to].join(\":\");\nconst key = TEST_MODE ? \"repository_dependency_last_result_v1__test\" : \"repository_dependency_last_result_v1\";\nconst previous = TEST_MODE ? flow.get(key) : flow.get(key, \"persistent\");\nif (!TEST_MODE && previous?.signature === signature) return [null, null, null];\nresult.signature = signature;\nif (TEST_MODE) flow.set(key, result); else flow.set(key, result, \"persistent\");\nmsg.payload = result;\nnode.status({ fill: status === \"failed\" ? \"red\" : status === \"success\" || status === \"current\" ? \"green\" : \"yellow\", shape: status === \"failed\" ? \"ring\" : \"dot\", text: packageName + \": \" + status });\nif (TEST_MODE) return [msg, null, null];\nif (status === \"failed\") {\n    node.error(\"repository_dependency_update_failed package=\" + packageName + \" request_id=\" + requestId, msg);\n    return [null, null, null];\n}\nif (status === \"success\") return [null, msg, null];\nif (status === \"deferred\") return [null, null, msg];\nreturn [null, null, null];",
+        "outputs": 3,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1020,
+        "y": 6020,
+        "wires": [
+            [
+                "daily_update_dependency_result_test_out"
+            ],
+            [
+                "daily_update_dependency_backup_out"
+            ],
+            [
+                "daily_update_dependency_retry"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_result_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Resultado npm TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1280,
+        "y": 5980,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_retry",
+        "type": "delay",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Reconsultar após deferimento",
+        "pauseType": "delay",
+        "timeout": "75",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1340,
+        "y": 6070,
+        "wires": [
+            [
+                "daily_update_dependency_retry_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_backup_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Atualização concluída → backup Git",
+        "mode": "link",
+        "links": [
+            "git_backup_request_in"
+        ],
+        "x": 1440,
+        "y": 5980,
+        "wires": []
+    },
+    {
+        "id": "daily_update_repository_dependency_test_group",
+        "type": "group",
+        "z": "daily_host_updates_tab",
+        "name": "13. TESTES da atualização de dependências: caminho completo sem npm, restart ou push",
+        "style": {
+            "label": true,
+            "color": "#7d6ba8"
+        },
+        "nodes": [
+            "daily_update_dependency_test_instructions",
+            "daily_update_dependency_test_reset",
+            "daily_update_dependency_test_reset_out",
+            "daily_update_dependency_test_safe",
+            "daily_update_dependency_test_blocked",
+            "daily_update_dependency_test_source_out",
+            "daily_update_dependency_test_result",
+            "daily_update_dependency_test_result_out"
+        ],
+        "x": 118,
+        "y": 6193,
+        "w": 1089,
+        "h": 294
+    },
+    {
+        "id": "daily_update_dependency_test_instructions",
+        "type": "comment",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "TESTE: 1) reset 2) elegível ou transitive bloqueado 3) resultado; confira o terminal dry-run",
+        "info": "Os candidatos sintéticos atravessam normalização, política, dedupe e gate final. Nenhum npm install, restart ou push é executado.",
+        "x": 690,
+        "y": 6250,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_test_reset",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "TESTE 1: reset do dedupe",
+        "props": [
+            {
+                "p": "reset",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 240,
+        "y": 6330,
+        "wires": [
+            [
+                "daily_update_dependency_test_reset_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_safe",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "TESTE 2A: override elegível",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"version\":1,\"status\":\"ok\",\"candidates\":[{\"package\":\"joi\",\"severity\":\"low\",\"current_version\":\"17.13.4\",\"declared_version\":\"17.13.4\",\"managed_surface\":\"override\",\"fix_available\":true,\"signature\":\"joi:test:eligible\"}]}",
+                "vt": "json"
+            },
+            {
+                "p": "_repository_dependency_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 250,
+        "y": 6390,
+        "wires": [
+            [
+                "daily_update_dependency_test_source_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_blocked",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "TESTE 2B: transitive bloqueado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"version\":1,\"status\":\"ok\",\"candidates\":[{\"package\":\"indireta\",\"severity\":\"high\",\"current_version\":\"1.0.0\",\"declared_version\":null,\"managed_surface\":\"transitive\",\"fix_available\":true,\"signature\":\"indireta:test:blocked\"}]}",
+                "vt": "json"
+            },
+            {
+                "p": "_repository_dependency_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 260,
+        "y": 6450,
+        "wires": [
+            [
+                "daily_update_dependency_test_source_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_source_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "Audit TESTE → subfluxo",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_test_source_in"
+        ],
+        "x": 560,
+        "y": 6420,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_test_result",
+        "type": "inject",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "TESTE 3: resultado concluído",
+        "props": [
+            {
+                "p": "payload",
+                "v": "repository-dependency-update package=joi status=success request_id=test from=17.13.4 to=17.13.6",
+                "vt": "str"
+            },
+            {
+                "p": "_repository_dependency_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 870,
+        "y": 6390,
+        "wires": [
+            [
+                "daily_update_dependency_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_result_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "Resultado TESTE → parser",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_test_result_in"
+        ],
+        "x": 1170,
+        "y": 6390,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_summary_test_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Resumo TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "daily_update_dry_run_in"
+        ],
+        "x": 1830,
+        "y": 5550,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_candidate_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Candidatos → política",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_candidate_in"
+        ],
+        "x": 1530,
+        "y": 5690,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_candidate_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Receber candidatos",
+        "links": [
+            "daily_update_dependency_candidate_out"
+        ],
+        "x": 105,
+        "y": 5790,
+        "wires": [
+            [
+                "daily_update_dependency_fix_gate"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_blocked_from_fix",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Sem correção → bloqueio",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_blocked_in"
+        ],
+        "x": 410,
+        "y": 5850,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_blocked_from_surface",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Fora do override → bloqueio",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_blocked_in"
+        ],
+        "x": 680,
+        "y": 5850,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_blocked_from_severity",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Severidade inválida → bloqueio",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_blocked_in"
+        ],
+        "x": 950,
+        "y": 5850,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_blocked_from_auto",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Auto desligado → bloqueio",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_blocked_in"
+        ],
+        "x": 1210,
+        "y": 5850,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_blocked_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Receber bloqueio da política",
+        "links": [
+            "daily_update_dependency_blocked_from_fix",
+            "daily_update_dependency_blocked_from_surface",
+            "daily_update_dependency_blocked_from_severity",
+            "daily_update_dependency_blocked_from_auto"
+        ],
+        "x": 870,
+        "y": 5910,
+        "wires": [
+            [
+                "daily_update_dependency_blocked"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_retry_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Retry → releitura",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_retry_in"
+        ],
+        "x": 1550,
+        "y": 6070,
+        "wires": []
+    },
+    {
+        "id": "daily_update_dependency_retry_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Receber retry",
+        "links": [
+            "daily_update_dependency_retry_out"
+        ],
+        "x": 325,
+        "y": 6140,
+        "wires": [
+            [
+                "daily_update_dependency_read_result"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_reset_in",
+        "type": "link in",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_group",
+        "name": "Receber reset TESTE",
+        "links": [
+            "daily_update_dependency_test_reset_out"
+        ],
+        "x": 1150,
+        "y": 5730,
+        "wires": [
+            [
+                "daily_update_dependency_dedupe"
+            ]
+        ]
+    },
+    {
+        "id": "daily_update_dependency_test_reset_out",
+        "type": "link out",
+        "z": "daily_host_updates_tab",
+        "g": "daily_update_repository_dependency_test_group",
+        "name": "Reset TESTE → dedupe",
+        "mode": "link",
+        "links": [
+            "daily_update_dependency_test_reset_in"
+        ],
+        "x": 510,
+        "y": 6330,
+        "wires": []
     },
     {
         "id": "host_memory_guardian_architecture",
@@ -39774,1184 +40856,6 @@
         "wires": []
     },
     {
-        "id": "git_backup_architecture",
-        "type": "comment",
-        "z": "git_backup_tab",
-        "g": "git_backup_input_group",
-        "name": "00:30 America/Sao_Paulo (03:30 UTC). Worker e credenciais ficam fora do Node-RED.",
-        "info": "O retry de cinco minutos apenas observa a solicitação pendente. Backup manual não inicia atualizações diárias.",
-        "x": 350,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "git_backup_schedule",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_input_group",
-        "name": "Agenda: diariamente 00:30 (03:30 UTC)",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "v": "scheduled",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "30 00 * * *",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 250,
-        "y": 130,
-        "wires": [
-            [
-                "git_backup_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_manual",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_input_group",
-        "name": "Pedido manual: executar backup agora",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "v": "manual",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 250,
-        "y": 200,
-        "wires": [
-            [
-                "git_backup_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_retry_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_input_group",
-        "name": "Receber observação após retry",
-        "links": [
-            "git_backup_retry_out"
-        ],
-        "x": 160,
-        "y": 280,
-        "wires": [
-            [
-                "git_backup_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_request_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_input_group",
-        "name": "Pedido → gate do worker",
-        "mode": "link",
-        "links": [
-            "git_backup_request_in"
-        ],
-        "x": 540,
-        "y": 180,
-        "wires": []
-    },
-    {
-        "id": "git_backup_request_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Receber pedido",
-        "links": [
-            "git_backup_request_out"
-        ],
-        "x": 770,
-        "y": 90,
-        "wires": [
-            [
-                "git_backup_request_gate"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_request_gate",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Pedido é TESTE?",
-        "property": "_git_backup_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 970,
-        "y": 90,
-        "wires": [
-            [
-                "git_backup_request_dry_out"
-            ],
-            [
-                "git_backup_worker_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_request_dry_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Pedido TESTE → dry-run",
-        "mode": "link",
-        "links": [
-            "git_backup_dry_in"
-        ],
-        "x": 1180,
-        "y": 70,
-        "wires": []
-    },
-    {
-        "id": "git_backup_worker_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Produção → worker allowlisted",
-        "mode": "link",
-        "links": [
-            "git_backup_worker_in"
-        ],
-        "x": 1180,
-        "y": 110,
-        "wires": []
-    },
-    {
-        "id": "git_backup_result_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Receber resultado real ou sintético",
-        "links": [
-            "git_backup_result_out",
-            "git_backup_test_result_out"
-        ],
-        "x": 770,
-        "y": 220,
-        "wires": [
-            [
-                "git_backup_result"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_result",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Normalizar resposta textual",
-        "func": "const testMode = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nif (!text) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"sem saída; erro tratado separadamente\" });\n    return null;\n}\nconst status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1] ?? \"invalid\";\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nconst result = { status, finished_at: finishedAt };\nif (testMode) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nmsg.git_backup_status = status;\nmsg.payload = { ...result, test_mode: testMode };\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 940,
-        "y": 220,
-        "wires": [
-            [
-                "git_backup_status_switch"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_status_switch",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Resultado: sucesso, falha ou adiado?",
-        "property": "git_backup_status",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "success",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "failed",
-                "vt": "str"
-            },
-            {
-                "t": "eq",
-                "v": "deferred",
-                "vt": "str"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 4,
-        "x": 1230,
-        "y": 220,
-        "wires": [
-            [
-                "git_backup_success_origin"
-            ],
-            [
-                "git_backup_alert_build"
-            ],
-            [
-                "git_backup_deferred_gate"
-            ],
-            [
-                "git_backup_invalid_gate"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_success_origin",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Sucesso veio da agenda diária?",
-        "property": "topic",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "scheduled",
-                "vt": "str"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1550,
-        "y": 140,
-        "wires": [
-            [
-                "git_backup_success_gate"
-            ],
-            [
-                "git_backup_manual_success"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_success_gate",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Atualização posterior é TESTE?",
-        "property": "_git_backup_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1840,
-        "y": 100,
-        "wires": [
-            [
-                "git_backup_dry_out"
-            ],
-            [
-                "git_backup_mark_daily_success"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_mark_daily_success",
-        "type": "change",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Marcar sucesso diário",
-        "rules": [
-            {
-                "t": "set",
-                "p": "payload.event",
-                "pt": "msg",
-                "to": "git_backup_completed",
-                "tot": "str"
-            },
-            {
-                "t": "set",
-                "p": "payload.status",
-                "pt": "msg",
-                "to": "success",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 1860,
-        "y": 60,
-        "wires": [
-            [
-                "git_backup_daily_update_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_manual_success",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Sucesso manual — encerrar sem updates",
-        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"backup manual concluído\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1900,
-        "y": 160,
-        "wires": []
-    },
-    {
-        "id": "git_backup_alert_build",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Montar alerta de falha",
-        "func": "msg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host.\",\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1540,
-        "y": 220,
-        "wires": [
-            [
-                "git_backup_failure_gate"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_failure_gate",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Notificação de falha é TESTE?",
-        "property": "_git_backup_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1810,
-        "y": 220,
-        "wires": [
-            [
-                "git_backup_dry_out"
-            ],
-            [
-                "git_backup_notification_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_deferred_gate",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Retry adiado é TESTE?",
-        "property": "_git_backup_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1500,
-        "y": 320,
-        "wires": [
-            [
-                "git_backup_dry_out"
-            ],
-            [
-                "git_backup_retry_effect_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_invalid_gate",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Resposta inválida pertence a TESTE?",
-        "property": "_git_backup_test",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1350,
-        "y": 390,
-        "wires": [
-            [
-                "git_backup_dry_out"
-            ],
-            [
-                "git_backup_invalid_result"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_invalid_result",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Rejeitar resposta não reconhecida",
-        "func": "node.warn(\"git_backup_result_unrecognized\");\nnode.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1780,
-        "y": 400,
-        "wires": []
-    },
-    {
-        "id": "git_backup_notification_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Falha real → notificações",
-        "mode": "link",
-        "links": [
-            "git_backup_notification_in"
-        ],
-        "x": 2005,
-        "y": 240,
-        "wires": []
-    },
-    {
-        "id": "git_backup_retry_effect_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Adiado real → retry",
-        "mode": "link",
-        "links": [
-            "git_backup_retry_effect_in"
-        ],
-        "x": 1740,
-        "y": 330,
-        "wires": []
-    },
-    {
-        "id": "git_backup_daily_update_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Sucesso diário → updates",
-        "mode": "link",
-        "links": [
-            "daily_update_after_backup_in"
-        ],
-        "x": 2040,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "git_backup_dry_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "TESTE → terminal dry-run",
-        "mode": "link",
-        "links": [
-            "git_backup_dry_in"
-        ],
-        "x": 1820,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "git_backup_worker_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Receber pedido de produção",
-        "links": [
-            "git_backup_worker_out"
-        ],
-        "x": 1595,
-        "y": 580,
-        "wires": [
-            [
-                "git_backup_request"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_request",
-        "type": "exec",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "command": "/opt/request-host-git-backup.sh",
-        "addpay": "",
-        "append": "",
-        "useSpawn": "false",
-        "timer": "240",
-        "winHide": false,
-        "oldrc": false,
-        "name": "EFEITO: solicitar backup ao host",
-        "x": 1855,
-        "y": 580,
-        "wires": [
-            [
-                "git_backup_result_out"
-            ],
-            [
-                "git_backup_error"
-            ],
-            [
-                "git_backup_complete"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_result_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Resultado do worker → decisões",
-        "mode": "link",
-        "links": [
-            "git_backup_result_in"
-        ],
-        "x": 2125,
-        "y": 560,
-        "wires": []
-    },
-    {
-        "id": "git_backup_error",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Normalizar erro da ponte",
-        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail, msg);\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"A solicitação de backup não terminou no prazo ou o worker do host ficou indisponível. Verifique o fluxo backup_git e o log seguro do host.\",\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2125,
-        "y": 630,
-        "wires": [
-            [
-                "git_backup_notification_direct"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_notification_direct",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Erro da ponte → notificações",
-        "mode": "link",
-        "links": [
-            "git_backup_notification_in"
-        ],
-        "x": 2385,
-        "y": 630,
-        "wires": []
-    },
-    {
-        "id": "git_backup_complete",
-        "type": "switch",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Código da ponte é zero?",
-        "property": "$number($exists(payload.code) ? payload.code : payload)",
-        "propertyType": "jsonata",
-        "rules": [
-            {
-                "t": "eq",
-                "v": "0",
-                "vt": "num"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2125,
-        "y": 700,
-        "wires": [
-            [
-                "git_backup_complete_ok"
-            ],
-            [
-                "git_backup_complete_failed"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_complete_ok",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Worker finalizado",
-        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"worker finalizado\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2385,
-        "y": 680,
-        "wires": []
-    },
-    {
-        "id": "git_backup_complete_failed",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Worker terminou com falha",
-        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"worker falhou\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2385,
-        "y": 730,
-        "wires": []
-    },
-    {
-        "id": "git_backup_notification_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Receber alerta canônico",
-        "links": [
-            "git_backup_notification_out",
-            "git_backup_notification_direct"
-        ],
-        "x": 1595,
-        "y": 820,
-        "wires": [
-            [
-                "git_backup_notify_primary",
-                "git_backup_notify_persistent"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_notify_primary",
-        "type": "api-call-service",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "EFEITO: avisar resident_primary",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "public_bindings.call",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "public_bindings",
-        "service": "call",
-        "x": 1895,
-        "y": 800,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "git_backup_notify_persistent",
-        "type": "api-call-service",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "EFEITO: registrar aviso persistente",
-        "server": "4126427d5e161a03",
-        "version": 7,
-        "debugenabled": false,
-        "action": "persistent_notification.create",
-        "floorId": [],
-        "areaId": [],
-        "deviceId": [],
-        "entityId": [],
-        "labelId": [],
-        "data": "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"git_backup_failure\"}",
-        "dataType": "jsonata",
-        "mergeContext": "",
-        "mustacheAltTags": false,
-        "outputProperties": [],
-        "queue": "all",
-        "blockInputOverrides": true,
-        "domain": "persistent_notification",
-        "service": "create",
-        "x": 1925,
-        "y": 850,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "git_backup_retry_effect_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Receber retry permitido",
-        "links": [
-            "git_backup_retry_effect_out"
-        ],
-        "x": 1595,
-        "y": 910,
-        "wires": [
-            [
-                "git_backup_retry_delay"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_retry_delay",
-        "type": "delay",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "POLÍTICA: aguardar 5 min para observar retry",
-        "pauseType": "delay",
-        "timeout": "5",
-        "timeoutUnits": "minutes",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 1895,
-        "y": 910,
-        "wires": [
-            [
-                "git_backup_retry_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_retry_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_effect_group",
-        "name": "Retry → novo pedido",
-        "mode": "link",
-        "links": [
-            "git_backup_retry_in"
-        ],
-        "x": 2155,
-        "y": 910,
-        "wires": []
-    },
-    {
-        "id": "git_backup_test_instructions",
-        "type": "comment",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "Ordem: reset → pedido → sucesso/falha/adiado/inválido. Worker, push e avisos permanecem bloqueados.",
-        "info": "O pedido sintético prova o gate antes do worker. Os resultados sintéticos percorrem o parser e todas as decisões até as fronteiras de efeito.",
-        "x": 900,
-        "y": 580,
-        "wires": []
-    },
-    {
-        "id": "git_backup_test_reset",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "TESTE 1: reset",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 170,
-        "y": 660,
-        "wires": [
-            [
-                "git_backup_test_reset_state"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_test_reset_state",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "Resetar estado sintético",
-        "func": "flow.set(\"git_backup_last_result_v1__test\", undefined);\nflow.set(\"git_backup_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now(),\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 410,
-        "y": 660,
-        "wires": []
-    },
-    {
-        "id": "git_backup_test_request",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "TESTE 2: pedido ao worker",
-        "props": [
-            {
-                "p": "_git_backup_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "topic",
-                "v": "scheduled",
-                "vt": "str"
-            },
-            {
-                "p": "payload",
-                "v": "request_simulated",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 730,
-        "wires": [
-            [
-                "git_backup_test_request_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_test_request_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "Pedido TESTE → gate real",
-        "mode": "link",
-        "links": [
-            "git_backup_test_request_in"
-        ],
-        "x": 480,
-        "y": 730,
-        "wires": []
-    },
-    {
-        "id": "git_backup_test_request_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_decision_group",
-        "name": "Receber pedido TESTE",
-        "links": [
-            "git_backup_test_request_out"
-        ],
-        "x": 770,
-        "y": 150,
-        "wires": [
-            [
-                "git_backup_request_gate"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_test_success",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "TESTE 3A: sucesso agendado",
-        "props": [
-            {
-                "p": "payload",
-                "v": "git-backup status=success request_id=test finished_at=synthetic",
-                "vt": "str"
-            },
-            {
-                "p": "_git_backup_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "topic",
-                "v": "scheduled",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 800,
-        "wires": [
-            [
-                "git_backup_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_test_failure",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "TESTE 3B: falha",
-        "props": [
-            {
-                "p": "payload",
-                "v": "git-backup status=failed request_id=test finished_at=synthetic",
-                "vt": "str"
-            },
-            {
-                "p": "_git_backup_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "topic",
-                "v": "manual",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 850,
-        "wires": [
-            [
-                "git_backup_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_test_deferred",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "TESTE 3C: adiado",
-        "props": [
-            {
-                "p": "payload",
-                "v": "git-backup status=deferred request_id=test finished_at=synthetic",
-                "vt": "str"
-            },
-            {
-                "p": "_git_backup_test",
-                "v": "true",
-                "vt": "bool"
-            },
-            {
-                "p": "topic",
-                "v": "scheduled",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 200,
-        "y": 900,
-        "wires": [
-            [
-                "git_backup_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_test_invalid",
-        "type": "inject",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "TESTE 3D: resposta inválida",
-        "props": [
-            {
-                "p": "payload",
-                "v": "synthetic invalid result",
-                "vt": "str"
-            },
-            {
-                "p": "_git_backup_test",
-                "v": "true",
-                "vt": "bool"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 520,
-        "y": 850,
-        "wires": [
-            [
-                "git_backup_test_result_out"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_test_result_out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "Resultado TESTE → parser real",
-        "mode": "link",
-        "links": [
-            "git_backup_result_in"
-        ],
-        "x": 680,
-        "y": 850,
-        "wires": []
-    },
-    {
-        "id": "git_backup_dry_in",
-        "type": "link in",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "Receber efeito TESTE",
-        "links": [
-            "git_backup_dry_out",
-            "git_backup_request_dry_out"
-        ],
-        "x": 1060,
-        "y": 730,
-        "wires": [
-            [
-                "git_backup_dry_run_terminal"
-            ]
-        ]
-    },
-    {
-        "id": "git_backup_dry_run_terminal",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "git_backup_test_group",
-        "name": "TESTE FINAL: nenhum efeito enviado",
-        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    notification_sent: false,\n    persistent_notification_sent: false,\n    status: msg.payload?.status ?? msg.git_backup_status ?? \"request_simulated\",\n    completed_at: Date.now(),\n};\nflow.set(\"git_backup_last_dry_run_v1\", result);\nmsg.payload = result;\nnode.status({ fill: result.status === \"failed\" ? \"yellow\" : \"green\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; efeitos bloqueados\" });\nnode.warn(\"GIT_BACKUP_DRY_RUN \" + JSON.stringify(result));\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1340,
-        "y": 730,
-        "wires": []
-    },
-    {
         "id": "local_ai_rtx_architecture",
         "type": "comment",
         "z": "local_ai_rtx_recovery_tab",
@@ -45202,6 +45106,1329 @@
         "links": [
             "codex_pending_retry_out"
         ]
+    },
+    {
+        "id": "git_backup_input_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "0. Entradas, agenda e pedido",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#2563eb",
+            "stroke-opacity": "1",
+            "fill": "#dbeafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_architecture",
+            "git_backup_schedule",
+            "git_backup_manual",
+            "git_backup_retry_in",
+            "git_backup_request_out"
+        ],
+        "x": 100,
+        "y": 3,
+        "w": 477,
+        "h": 311
+    },
+    {
+        "id": "git_backup_decision_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "1. Normalização e decisões visuais",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "stroke-opacity": "1",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_request_in",
+            "git_backup_request_gate",
+            "git_backup_request_dry_out",
+            "git_backup_worker_out",
+            "git_backup_result_in",
+            "git_backup_result",
+            "git_backup_status_switch",
+            "git_backup_success_origin",
+            "git_backup_success_gate",
+            "git_backup_mark_daily_success",
+            "git_backup_manual_success",
+            "git_backup_alert_build",
+            "git_backup_failure_gate",
+            "git_backup_deferred_gate",
+            "git_backup_invalid_gate",
+            "git_backup_invalid_result",
+            "git_backup_notification_out",
+            "git_backup_retry_effect_out",
+            "git_backup_daily_update_out",
+            "git_backup_dry_out",
+            "git_backup_test_request_in"
+        ],
+        "x": 733,
+        "y": 7,
+        "w": 1344,
+        "h": 430
+    },
+    {
+        "id": "git_backup_effect_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "2. Efeitos isolados, retry e confirmação",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#dc2626",
+            "stroke-opacity": "1",
+            "fill": "#fee2e2",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_worker_in",
+            "git_backup_request",
+            "git_backup_result_out",
+            "git_backup_error",
+            "git_backup_notification_direct",
+            "git_backup_complete",
+            "git_backup_complete_ok",
+            "git_backup_complete_failed",
+            "git_backup_notification_in",
+            "git_backup_notify_primary",
+            "git_backup_notify_persistent",
+            "git_backup_retry_effect_in",
+            "git_backup_retry_delay",
+            "git_backup_retry_out"
+        ],
+        "x": 1558,
+        "y": 510,
+        "w": 952,
+        "h": 437
+    },
+    {
+        "id": "git_backup_test_group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "3. Replay manual completo — dry-run",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0891b2",
+            "stroke-opacity": "1",
+            "fill": "#cffafe",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "git_backup_test_instructions",
+            "git_backup_test_reset",
+            "git_backup_test_reset_state",
+            "git_backup_test_request",
+            "git_backup_test_request_out",
+            "git_backup_test_success",
+            "git_backup_test_failure",
+            "git_backup_test_deferred",
+            "git_backup_test_invalid",
+            "git_backup_test_result_out",
+            "git_backup_dry_in",
+            "git_backup_dry_run_terminal"
+        ],
+        "x": 72,
+        "y": 523,
+        "w": 1418,
+        "h": 414
+    },
+    {
+        "id": "git_backup_tab",
+        "type": "tab",
+        "label": "backup_git",
+        "disabled": false,
+        "info": "Node-RED agenda e decide; o helper allowlisted executa Git/SSH no host. Testes percorrem as mesmas decisões e terminam antes de qualquer efeito.",
+        "env": []
+    },
+    {
+        "id": "git_backup_architecture",
+        "type": "comment",
+        "z": "git_backup_tab",
+        "g": "git_backup_input_group",
+        "name": "00:30 America/Sao_Paulo (03:30 UTC). Worker e credenciais ficam fora do Node-RED.",
+        "info": "O retry de cinco minutos apenas observa a solicitação pendente. Backup manual não inicia atualizações diárias.",
+        "x": 350,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "git_backup_schedule",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_input_group",
+        "name": "Agenda: diariamente 00:30 (03:30 UTC)",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "scheduled",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "30 00 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 250,
+        "y": 130,
+        "wires": [
+            [
+                "git_backup_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_manual",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_input_group",
+        "name": "Pedido manual: executar backup agora",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "v": "manual",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 250,
+        "y": 200,
+        "wires": [
+            [
+                "git_backup_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_retry_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_input_group",
+        "name": "Receber observação após retry",
+        "links": [
+            "git_backup_retry_out"
+        ],
+        "x": 160,
+        "y": 280,
+        "wires": [
+            [
+                "git_backup_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_request_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_input_group",
+        "name": "Pedido → gate do worker",
+        "mode": "link",
+        "links": [
+            "git_backup_request_in"
+        ],
+        "x": 540,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "git_backup_request_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Receber pedido",
+        "links": [
+            "git_backup_request_out",
+            "daily_update_dependency_backup_out"
+        ],
+        "x": 770,
+        "y": 90,
+        "wires": [
+            [
+                "git_backup_request_gate"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_request_gate",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Pedido é TESTE?",
+        "property": "_git_backup_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 970,
+        "y": 90,
+        "wires": [
+            [
+                "git_backup_request_dry_out"
+            ],
+            [
+                "git_backup_worker_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_request_dry_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Pedido TESTE → dry-run",
+        "mode": "link",
+        "links": [
+            "git_backup_dry_in"
+        ],
+        "x": 1180,
+        "y": 70,
+        "wires": []
+    },
+    {
+        "id": "git_backup_worker_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Produção → worker allowlisted",
+        "mode": "link",
+        "links": [
+            "git_backup_worker_in"
+        ],
+        "x": 1180,
+        "y": 110,
+        "wires": []
+    },
+    {
+        "id": "git_backup_result_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Receber resultado real ou sintético",
+        "links": [
+            "git_backup_result_out",
+            "git_backup_test_result_out"
+        ],
+        "x": 770,
+        "y": 220,
+        "wires": [
+            [
+                "git_backup_result"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_result",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Normalizar resposta textual",
+        "func": "const testMode = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nif (!text) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"sem saída; erro tratado separadamente\" });\n    return null;\n}\nconst status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1] ?? \"invalid\";\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nconst result = { status, finished_at: finishedAt };\nif (testMode) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nmsg.git_backup_status = status;\nmsg.payload = { ...result, test_mode: testMode };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 220,
+        "wires": [
+            [
+                "git_backup_status_switch"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_status_switch",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Resultado: sucesso, falha ou adiado?",
+        "property": "git_backup_status",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "success",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "failed",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "deferred",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 1230,
+        "y": 220,
+        "wires": [
+            [
+                "git_backup_success_origin"
+            ],
+            [
+                "git_backup_alert_build"
+            ],
+            [
+                "git_backup_deferred_gate"
+            ],
+            [
+                "git_backup_invalid_gate"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_success_origin",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Sucesso veio da agenda diária?",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "scheduled",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1550,
+        "y": 140,
+        "wires": [
+            [
+                "git_backup_success_gate"
+            ],
+            [
+                "git_backup_manual_success"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_success_gate",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Atualização posterior é TESTE?",
+        "property": "_git_backup_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1840,
+        "y": 100,
+        "wires": [
+            [
+                "git_backup_dry_out"
+            ],
+            [
+                "git_backup_mark_daily_success"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_mark_daily_success",
+        "type": "change",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Marcar sucesso diário",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload.event",
+                "pt": "msg",
+                "to": "git_backup_completed",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload.status",
+                "pt": "msg",
+                "to": "success",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 1860,
+        "y": 60,
+        "wires": [
+            [
+                "git_backup_daily_update_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_manual_success",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Sucesso manual — encerrar sem updates",
+        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"backup manual concluído\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1900,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "git_backup_alert_build",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Montar alerta de falha",
+        "func": "msg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"O backup do sistema não conseguiu concluir o push. A tentativa automática foi encerrada; verifique o fluxo backup_git e o log seguro do host.\",\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1540,
+        "y": 220,
+        "wires": [
+            [
+                "git_backup_failure_gate"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_failure_gate",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Notificação de falha é TESTE?",
+        "property": "_git_backup_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1810,
+        "y": 220,
+        "wires": [
+            [
+                "git_backup_dry_out"
+            ],
+            [
+                "git_backup_notification_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_deferred_gate",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Retry adiado é TESTE?",
+        "property": "_git_backup_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1500,
+        "y": 320,
+        "wires": [
+            [
+                "git_backup_dry_out"
+            ],
+            [
+                "git_backup_retry_effect_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_invalid_gate",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Resposta inválida pertence a TESTE?",
+        "property": "_git_backup_test",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1350,
+        "y": 390,
+        "wires": [
+            [
+                "git_backup_dry_out"
+            ],
+            [
+                "git_backup_invalid_result"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_invalid_result",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Rejeitar resposta não reconhecida",
+        "func": "node.warn(\"git_backup_result_unrecognized\");\nnode.status({ fill: \"yellow\", shape: \"ring\", text: \"resultado não reconhecido\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1780,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "git_backup_notification_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Falha real → notificações",
+        "mode": "link",
+        "links": [
+            "git_backup_notification_in"
+        ],
+        "x": 2005,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "git_backup_retry_effect_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Adiado real → retry",
+        "mode": "link",
+        "links": [
+            "git_backup_retry_effect_in"
+        ],
+        "x": 1740,
+        "y": 330,
+        "wires": []
+    },
+    {
+        "id": "git_backup_daily_update_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Sucesso diário → updates",
+        "mode": "link",
+        "links": [
+            "daily_update_after_backup_in"
+        ],
+        "x": 2040,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "git_backup_dry_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "TESTE → terminal dry-run",
+        "mode": "link",
+        "links": [
+            "git_backup_dry_in"
+        ],
+        "x": 1820,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "git_backup_worker_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Receber pedido de produção",
+        "links": [
+            "git_backup_worker_out"
+        ],
+        "x": 1595,
+        "y": 580,
+        "wires": [
+            [
+                "git_backup_request"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_request",
+        "type": "exec",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "command": "/opt/request-host-git-backup.sh",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "240",
+        "winHide": false,
+        "oldrc": false,
+        "name": "EFEITO: solicitar backup ao host",
+        "x": 1855,
+        "y": 580,
+        "wires": [
+            [
+                "git_backup_result_out"
+            ],
+            [
+                "git_backup_error"
+            ],
+            [
+                "git_backup_complete"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_result_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Resultado do worker → decisões",
+        "mode": "link",
+        "links": [
+            "git_backup_result_in"
+        ],
+        "x": 2125,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "git_backup_error",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Normalizar erro da ponte",
+        "func": "const detail = String(msg.payload ?? \"erro desconhecido\").replace(/[\\r\\n]+/g, \" \").slice(0, 240);\nnode.error(\"git_backup_request_failed detail=\" + detail, msg);\nmsg.alert = {\n    title: \"Falha no backup Git\",\n    message: \"A solicitação de backup não terminou no prazo ou o worker do host ficou indisponível. Verifique o fluxo backup_git e o log seguro do host.\",\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2125,
+        "y": 630,
+        "wires": [
+            [
+                "git_backup_notification_direct"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_notification_direct",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Erro da ponte → notificações",
+        "mode": "link",
+        "links": [
+            "git_backup_notification_in"
+        ],
+        "x": 2385,
+        "y": 630,
+        "wires": []
+    },
+    {
+        "id": "git_backup_complete",
+        "type": "switch",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Código da ponte é zero?",
+        "property": "$number($exists(payload.code) ? payload.code : payload)",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "num"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2125,
+        "y": 700,
+        "wires": [
+            [
+                "git_backup_complete_ok"
+            ],
+            [
+                "git_backup_complete_failed"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_complete_ok",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Worker finalizado",
+        "func": "node.status({\"fill\":\"green\",\"shape\":\"dot\",\"text\":\"worker finalizado\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2385,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "git_backup_complete_failed",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Worker terminou com falha",
+        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"worker falhou\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2385,
+        "y": 730,
+        "wires": []
+    },
+    {
+        "id": "git_backup_notification_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Receber alerta canônico",
+        "links": [
+            "git_backup_notification_out",
+            "git_backup_notification_direct"
+        ],
+        "x": 1595,
+        "y": 820,
+        "wires": [
+            [
+                "git_backup_notify_primary",
+                "git_backup_notify_persistent"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_notify_primary",
+        "type": "api-call-service",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "EFEITO: avisar resident_primary",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "public_bindings.call",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"role\":\"mobile_primary\",\"action\":\"notify_3\",\"data\":{\"title\":alert.title,\"message\":alert.message}}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "public_bindings",
+        "service": "call",
+        "x": 1895,
+        "y": 800,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "git_backup_notify_persistent",
+        "type": "api-call-service",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "EFEITO: registrar aviso persistente",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "persistent_notification.create",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "labelId": [],
+        "data": "{\"title\":alert.title,\"message\":alert.message,\"notification_id\":\"git_backup_failure\"}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "all",
+        "blockInputOverrides": true,
+        "domain": "persistent_notification",
+        "service": "create",
+        "x": 1925,
+        "y": 850,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "git_backup_retry_effect_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Receber retry permitido",
+        "links": [
+            "git_backup_retry_effect_out"
+        ],
+        "x": 1595,
+        "y": 910,
+        "wires": [
+            [
+                "git_backup_retry_delay"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_retry_delay",
+        "type": "delay",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "POLÍTICA: aguardar 5 min para observar retry",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1895,
+        "y": 910,
+        "wires": [
+            [
+                "git_backup_retry_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_retry_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_effect_group",
+        "name": "Retry → novo pedido",
+        "mode": "link",
+        "links": [
+            "git_backup_retry_in"
+        ],
+        "x": 2155,
+        "y": 910,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_instructions",
+        "type": "comment",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "Ordem: reset → pedido → sucesso/falha/adiado/inválido. Worker, push e avisos permanecem bloqueados.",
+        "info": "O pedido sintético prova o gate antes do worker. Os resultados sintéticos percorrem o parser e todas as decisões até as fronteiras de efeito.",
+        "x": 900,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_reset",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "TESTE 1: reset",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 170,
+        "y": 660,
+        "wires": [
+            [
+                "git_backup_test_reset_state"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_reset_state",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "Resetar estado sintético",
+        "func": "flow.set(\"git_backup_last_result_v1__test\", undefined);\nflow.set(\"git_backup_last_dry_run_v1\", {\n    version: 1,\n    reset: true,\n    simulated: true,\n    dispatched: false,\n    completed_at: Date.now(),\n});\nnode.status({ fill: \"grey\", shape: \"ring\", text: \"estado de teste resetado\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_request",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "TESTE 2: pedido ao worker",
+        "props": [
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "topic",
+                "v": "scheduled",
+                "vt": "str"
+            },
+            {
+                "p": "payload",
+                "v": "request_simulated",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 730,
+        "wires": [
+            [
+                "git_backup_test_request_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_request_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "Pedido TESTE → gate real",
+        "mode": "link",
+        "links": [
+            "git_backup_test_request_in"
+        ],
+        "x": 480,
+        "y": 730,
+        "wires": []
+    },
+    {
+        "id": "git_backup_test_request_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_decision_group",
+        "name": "Receber pedido TESTE",
+        "links": [
+            "git_backup_test_request_out"
+        ],
+        "x": 770,
+        "y": 150,
+        "wires": [
+            [
+                "git_backup_request_gate"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_success",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "TESTE 3A: sucesso agendado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "git-backup status=success request_id=test finished_at=synthetic",
+                "vt": "str"
+            },
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "topic",
+                "v": "scheduled",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 800,
+        "wires": [
+            [
+                "git_backup_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_failure",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "TESTE 3B: falha",
+        "props": [
+            {
+                "p": "payload",
+                "v": "git-backup status=failed request_id=test finished_at=synthetic",
+                "vt": "str"
+            },
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "topic",
+                "v": "manual",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 850,
+        "wires": [
+            [
+                "git_backup_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_deferred",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "TESTE 3C: adiado",
+        "props": [
+            {
+                "p": "payload",
+                "v": "git-backup status=deferred request_id=test finished_at=synthetic",
+                "vt": "str"
+            },
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "topic",
+                "v": "scheduled",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 200,
+        "y": 900,
+        "wires": [
+            [
+                "git_backup_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_invalid",
+        "type": "inject",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "TESTE 3D: resposta inválida",
+        "props": [
+            {
+                "p": "payload",
+                "v": "synthetic invalid result",
+                "vt": "str"
+            },
+            {
+                "p": "_git_backup_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 520,
+        "y": 850,
+        "wires": [
+            [
+                "git_backup_test_result_out"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_test_result_out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "Resultado TESTE → parser real",
+        "mode": "link",
+        "links": [
+            "git_backup_result_in"
+        ],
+        "x": 680,
+        "y": 850,
+        "wires": []
+    },
+    {
+        "id": "git_backup_dry_in",
+        "type": "link in",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "Receber efeito TESTE",
+        "links": [
+            "git_backup_dry_out",
+            "git_backup_request_dry_out"
+        ],
+        "x": 1060,
+        "y": 730,
+        "wires": [
+            [
+                "git_backup_dry_run_terminal"
+            ]
+        ]
+    },
+    {
+        "id": "git_backup_dry_run_terminal",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "git_backup_test_group",
+        "name": "TESTE FINAL: nenhum efeito enviado",
+        "func": "const result = {\n    version: 1,\n    simulated: true,\n    dispatched: false,\n    external_call_sent: false,\n    notification_sent: false,\n    persistent_notification_sent: false,\n    status: msg.payload?.status ?? msg.git_backup_status ?? \"request_simulated\",\n    completed_at: Date.now(),\n};\nflow.set(\"git_backup_last_dry_run_v1\", result);\nmsg.payload = result;\nnode.status({ fill: result.status === \"failed\" ? \"yellow\" : \"green\", shape: \"dot\", text: \"TESTE: \" + result.status + \"; efeitos bloqueados\" });\nnode.warn(\"GIT_BACKUP_DRY_RUN \" + JSON.stringify(result));\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1340,
+        "y": 730,
+        "wires": []
     },
     {
         "id": "infra_notify_all_mobiles",
@@ -55415,92 +56642,6 @@
         "wires": []
     },
     {
-        "id": "global_observer_coverage__git_backup_tab__group",
-        "type": "group",
-        "z": "git_backup_tab",
-        "name": "Observabilidade global: erros e indisponibilidade",
-        "style": {
-            "label": true,
-            "color": "#d97b72"
-        },
-        "nodes": [
-            "global_observer_coverage__git_backup_tab__catch",
-            "global_observer_coverage__git_backup_tab__status",
-            "global_observer_coverage__git_backup_tab__annotate",
-            "global_observer_coverage__git_backup_tab__out"
-        ],
-        "x": 2120,
-        "y": 87,
-        "w": 702,
-        "h": 150
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__catch",
-        "type": "catch",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Capturar erros de toda a aba",
-        "scope": null,
-        "uncaught": false,
-        "x": 2260,
-        "y": 140,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__status",
-        "type": "status",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Observar indisponibilidade da aba",
-        "scope": null,
-        "x": 2270,
-        "y": 200,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__annotate"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__annotate",
-        "type": "function",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Identificar fluxo observado",
-        "func": "msg._global_observer = {\"flow_id\":\"git_backup_tab\",\"flow_label\":\"backup_git\"};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2540,
-        "y": 170,
-        "wires": [
-            [
-                "global_observer_coverage__git_backup_tab__out"
-            ]
-        ]
-    },
-    {
-        "id": "global_observer_coverage__git_backup_tab__out",
-        "type": "link out",
-        "z": "git_backup_tab",
-        "g": "global_observer_coverage__git_backup_tab__group",
-        "name": "Falha da aba → monitor global",
-        "mode": "link",
-        "links": [
-            "global_observer_events_in"
-        ],
-        "x": 2785,
-        "y": 170,
-        "wires": []
-    },
-    {
         "id": "global_observer_coverage__local_ai_rtx_recovery_tab__group",
         "type": "group",
         "z": "local_ai_rtx_recovery_tab",
@@ -55670,6 +56811,92 @@
         ],
         "x": 4185,
         "y": 130,
+        "wires": []
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__group",
+        "type": "group",
+        "z": "git_backup_tab",
+        "name": "Observabilidade global: erros e indisponibilidade",
+        "style": {
+            "label": true,
+            "color": "#d97b72"
+        },
+        "nodes": [
+            "global_observer_coverage__git_backup_tab__catch",
+            "global_observer_coverage__git_backup_tab__status",
+            "global_observer_coverage__git_backup_tab__annotate",
+            "global_observer_coverage__git_backup_tab__out"
+        ],
+        "x": 2120,
+        "y": 87,
+        "w": 702,
+        "h": 150
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__catch",
+        "type": "catch",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Capturar erros de toda a aba",
+        "scope": null,
+        "uncaught": false,
+        "x": 2260,
+        "y": 140,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__status",
+        "type": "status",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Observar indisponibilidade da aba",
+        "scope": null,
+        "x": 2270,
+        "y": 200,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__annotate"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__annotate",
+        "type": "function",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Identificar fluxo observado",
+        "func": "msg._global_observer = {\"flow_id\":\"git_backup_tab\",\"flow_label\":\"backup_git\"};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2540,
+        "y": 170,
+        "wires": [
+            [
+                "global_observer_coverage__git_backup_tab__out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_coverage__git_backup_tab__out",
+        "type": "link out",
+        "z": "git_backup_tab",
+        "g": "global_observer_coverage__git_backup_tab__group",
+        "name": "Falha da aba → monitor global",
+        "mode": "link",
+        "links": [
+            "global_observer_events_in"
+        ],
+        "x": 2785,
+        "y": 170,
         "wires": []
     },
     {
