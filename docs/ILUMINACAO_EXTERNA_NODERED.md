@@ -55,9 +55,10 @@ Node-RED durante o evento solar nunca e compensada com uma ligacao automatica.
 
 ## Avisos
 
-Os avisos desta aba usam o node `Avisar Alexa`, resolvido pela acao allowlisted
-`mobile_primary/notify` em `public_bindings.call`. O flow `alarme_casa` possui
-um node de aviso proprio, evitando fios diretos entre abas.
+Os avisos desta aba chamam o hub Alexa com o target lógico
+`voice_assistant_primary`. Somente o hub conhece a ação allowlisted
+`mobile_primary/notify`. O flow `alarme_casa` possui seu próprio adaptador para
+o mesmo hub, evitando fios diretos entre fluxos de negócio.
 
 ## Historico relevante
 

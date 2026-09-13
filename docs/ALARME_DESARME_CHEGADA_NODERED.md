@@ -42,10 +42,9 @@ ou duplicação durante a ordem variável do startup.
 4. `Preparar confirmacao (5 min)` cria identificadores de acao exclusivos e
    absorve eventos quase simultaneos, por exemplo resident_secondary e vehicle_primary entrando
    juntos no anel.
-5. `Pedir confirmacao no Home Assistant` envia a notificacao aos entities
-   os papéis `mobile_primary` e `mobile_secondary` via
-   `public_bindings.call` / `notify_actionable`, com os
-   botoes `Desarmar` e `Manter armado`.
+5. `Pedir confirmacao no Home Assistant` faz duas chamadas explícitas ao hub
+   móvel, uma para `resident_primary` e outra para `resident_secondary`, no
+   perfil `actionable`, com os botões `Desarmar` e `Manter armado`.
 6. `Resposta da notificacao` escuta
    `mobile_app_notification_action`. `Validar confirmacao pendente` aceita
    somente o token da solicitacao atual e dentro do prazo de cinco minutos.

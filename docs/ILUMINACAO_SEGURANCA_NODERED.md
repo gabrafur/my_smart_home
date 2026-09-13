@@ -119,8 +119,8 @@ fronteiras `vehicle_primary_refresh_dry_run_terminal_v1`,
 - `device_tracker.mobile_secondary_source_1` e `_source_2`
 - `device_tracker.resident_primary_location` e
   `device_tracker.resident_secondary_location` (resultados MQTT canônicos)
-- ações móveis allowlisted via `public_bindings.call`, incluindo push e
-  `request_location_update`
+- chamadas ao hub móvel com destinatário explícito, incluindo push e o perfil
+  `background_command` para `request_location_update`
 
 A seleção existe somente nos blocos visuais de `localizacao_pessoas` e usa
 `location_observed_at`, publicado pelo adapter a partir de

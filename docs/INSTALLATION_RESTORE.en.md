@@ -224,8 +224,9 @@ availability:
   enabled: true
 ```
 
-Also confirm the targets in the `Notificar celulares, Echo e Home Assistant`
-subflow and run `npm --prefix nodered run flows:test-infrastructure`.
+Also confirm the roles and targets in the three
+[canonical notification hubs](NODERED_NOTIFICATION_HUBS.md) and run
+`npm --prefix nodered run flows:test-infrastructure`.
 `binary_sensor.internet_connection`, `binary_sensor.zigbee_network`, and
 `binary_sensor.tuya_devices` are discovered through MQTT after Node-RED starts.
 The `monitoramento_tuya` flow automatically discovers devices registered under

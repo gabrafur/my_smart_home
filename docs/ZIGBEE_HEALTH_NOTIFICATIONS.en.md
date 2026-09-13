@@ -13,21 +13,19 @@ closes these incidents. The former
 ## Shared architecture and notifications
 
 The three tabs read left to right: trigger, collection, state/confirmation,
-failure/recovery, notification, and retained MQTT publication. The shared
-`Notificar celulares, Echo e Home Assistant` subflow creates a persistent Home
-Assistant notification and sends the same message to
-the logical roles `mobile_primary` and `mobile_secondary` through
-`public_bindings.call`. It also announces the title and message on the Echo Dot
-through the existing logical `mobile_primary/notify` binding; no private Echo
-entity ID is stored in the flow. Recovery also
-dismisses the prior failure alert. Home Assistant calls use the connector's
+failure/recovery, notification, and retained MQTT publication. Each monitor
+fans out visibly to the independent
+[canonical notification hubs](NODERED_NOTIFICATION_HUBS.md): mobile through
+two independent calls with one explicit logical recipient each, Alexa with its logical target, and Home
+Assistant persistent notification. No private phone or Echo entity ID is
+stored in the business flow. Recovery also dismisses the prior failure alert
+through the persistent hub. Home Assistant calls use the connector's
 `all` queue during short HA restarts. That connector queue does not retain a
 mobile push merely because the WAN is down.
 
-The input contract, also shown in the subflow's visual documentation, is
-`msg.notification = { id, title, message, dismiss_id? }`. The first three
-strings are required. The subflow only validates and distributes the message;
-state, retry, and deduplication remain in the calling monitor.
+The monitor envelope is adapted to each hub contract. The hubs only validate,
+route, and deliver; state, retry, and deduplication remain in the calling
+monitor.
 
 ### Mobile push during a WAN outage
 

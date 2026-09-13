@@ -1,9 +1,10 @@
 # Notificações globais de falha do Node-RED
 
 O tab `observabilidade_global` centraliza falhas de todas as abas funcionais do
-Node-RED. Cada incidente de produção envia um push ao papel `resident_primary`
-pelo binding lógico `mobile_primary/notify_3` e cria uma notificação persistente
-na aba **Notificações** do Home Assistant.
+Node-RED. Cada incidente de produção chama o hub móvel somente para
+`resident_primary` e o hub persistente com um ID estável. Os detalhes de
+`mobile_primary/notify_3` e `persistent_notification.create` ficam restritos
+aos [hubs canônicos](NODERED_NOTIFICATION_HUBS.md).
 
 ## Cobertura
 

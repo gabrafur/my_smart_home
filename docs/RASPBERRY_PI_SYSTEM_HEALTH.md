@@ -359,11 +359,10 @@ comandos de emergencia concluem com sucesso. Assim, ele representa ownership
 efetivo e nunca e usado para desligar um ar que o fluxo nao controlou.
 
 Quando o controle de emergencia comeca, o fluxo preserva o aviso de ID estavel
-na central do Home Assistant e envia a mesma mensagem ao papel logico
-`mobile_primary` por `public_bindings.call/notify_3`. Em paralelo, anuncia o
-mesmo incidente na Alexa pelo binding `mobile_primary/notify`. As duas chamadas
-usam `queue: all` para aguardar a reconexao com o Home Assistant sem duplicar a
-decisao de resfriamento.
+na central do Home Assistant e envia a mesma mensagem somente ao papel lógico
+`resident_primary` pelo hub móvel. Em paralelo, chama o hub Alexa com
+`voice_assistant_primary`. Os hubs preservam `queue: all` para aguardar a
+reconexão com o Home Assistant sem duplicar a decisão de resfriamento.
 
 Depois de 10 minutos abaixo de 70 °C, o estado anterior e restaurado: se o ar
 estava desligado, volta a desligado; se estava em uso, modo HVAC, temperatura e

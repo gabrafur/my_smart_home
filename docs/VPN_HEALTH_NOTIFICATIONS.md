@@ -40,9 +40,9 @@ confirmação, incidente aberto, lembrete e recovery são `switch` nomeados; o
 JavaScript remanescente apenas valida o schema, aplica a mutação atômica de
 estado ou adapta os três tópicos MQTT.
 
-Queda e recuperação usam o subflow compartilhado de infraestrutura: notificação
-persistente no Home Assistant, push aos papéis móveis configurados e anúncio de
-voz. O estado também é publicado via MQTT Discovery como
+Queda e recuperação usam três hubs independentes: notificação persistente no
+Home Assistant, duas chamadas móveis com um destinatário explícito em cada uma
+e anúncio no target lógico Alexa. O estado também é publicado via MQTT Discovery como
 `binary_sensor.vpn_primary_connection` e
 `sensor.vpn_primary_connection_state`.
 
@@ -52,7 +52,7 @@ O tab `monitoramento_internet` permanece responsável pela conectividade geral.
 Ele exige três ciclos negativos contra três destinos independentes, abre uma
 única notificação, exige dois ciclos positivos para recuperação e preserva o
 dedupe após restart. A regressão isolada confirma que queda e recuperação
-chegam ao subflow compartilhado de notificação sem duplicação.
+chegam aos hubs canônicos sem duplicação.
 
 ## Teste seguro
 

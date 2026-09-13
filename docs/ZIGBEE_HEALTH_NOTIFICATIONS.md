@@ -22,12 +22,13 @@ gatilho -> coleta -> avaliação/estado -> queda ou retorno -> notificação
                               `-> MQTT retained -> Home Assistant
 ```
 
-O subflow `Notificar celulares, Echo e Home Assistant` é reutilizado pelos três
-monitores. Para cada evento ele:
+Cada monitor separa visualmente a mesma decisão em chamadas independentes aos
+três [hubs canônicos de notificação](NODERED_NOTIFICATION_HUBS.md). Para cada
+evento ele:
 
 1. cria ou atualiza uma notificação persistente no Home Assistant;
-2. envia push para os papéis lógicos `mobile_primary` e `mobile_secondary`
-   pelo serviço `public_bindings.call`;
+2. faz duas chamadas independentes ao hub móvel, uma para
+   `resident_primary` e outra para `resident_secondary`, sem fallback;
 3. anuncia o título e a mensagem na Echo Dot pelo binding lógico
    `mobile_primary/notify`, já usado pelos avisos Alexa do repositório;
 4. em uma recuperação, remove o alerta persistente da falha anterior.
@@ -35,7 +36,7 @@ monitores. Para cada evento ele:
 Nenhum entity ID da Echo é gravado no flow. O destino real continua na
 configuração privada de bindings.
 
-O contrato de entrada, também documentado visualmente no subflow, é:
+O envelope do monitor é adaptado, em cada ramo, ao contrato do respectivo hub:
 
 ```javascript
 msg.notification = {
@@ -46,8 +47,8 @@ msg.notification = {
 }
 ```
 
-O subflow apenas valida e distribui essa mensagem. Estado, retry e deduplicação
-continuam pertencendo ao monitor que o chamou.
+Os hubs apenas validam, roteiam e entregam. Estado, retry e deduplicação
+continuam pertencendo ao monitor que os chamou.
 
 Os calls usam fila `all` do conector do Home Assistant. Essa fila só protege a
 chamada enquanto a conexão do Node-RED com o Home Assistant está indisponível;
@@ -57,7 +58,8 @@ ela não é uma fila de entrega de push durante uma queda da WAN.
 
 Node-RED e Home Assistant continuam se comunicando pela rede local. Portanto, a
 chamada de serviço é aceita e a ramificação independente de
-`persistent_notification.create` cria o alerta local mesmo sem internet.
+o hub persistente chama `persistent_notification.create` e cria o alerta local
+mesmo sem internet.
 
 O comportamento do push do Home Assistant Mobile App depende do canal ativo:
 
