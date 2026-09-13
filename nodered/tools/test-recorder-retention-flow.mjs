@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const flows = JSON.parse(fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"));
 const codexPackage = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "packages", "codex_usage.yaml"), "utf8");
+const recorderPackage = fs.readFileSync(path.resolve(here, "..", "..", "homeassistant", "packages", "recorder_retention.yaml"), "utf8");
 const node = (id) => {
   const found = flows.find((entry) => entry.id === id);
   assert.ok(found, `missing node ${id}`);
@@ -20,7 +21,14 @@ const memoryFlow = (initial = {}) => {
 const runtimeNode = () => ({ statuses: [], errors: [], logs: [], status(value) { this.statuses.push(value); }, error(value) { this.errors.push(value); }, log(value) { this.logs.push(value); } });
 const compile = (id) => new Function("msg", "flow", "node", "context", "env", node(id).func);
 
-assert.equal(node("recorder_retention_schedule").crontab, "30 04 * * *");
+assert.equal(node("recorder_retention_schedule").crontab, "15 01 * * *");
+assert.match(node("recorder_retention_schedule").info, /backup nativo do Home Assistant/);
+assert.match(recorderPackage, /command_timeout:\s*15\b/);
+assert.match(recorderPackage, /recorder_retention_cycle_started_at:/);
+assert.equal(node("recorder_retention_cycle_marker").action, "input_number.set_value");
+assert.deepEqual(node("recorder_retention_cycle_marker").entityId, ["input_number.recorder_retention_cycle_started_at"]);
+assert.match(node("recorder_retention_cycle_marker").data, /\$millis/);
+assert.deepEqual(node("recorder_retention_schedule").wires, [["recorder_retention_cycle_marker"]]);
 assert.equal(node("recorder_retention_policy_raw_days").payload, "2");
 assert.equal(node("recorder_retention_policy_compact_days").payload, "30");
 assert.equal(node("recorder_retention_policy_baseline_hours").payload, "6");
@@ -30,6 +38,7 @@ assert.equal(node("recorder_retention_policy_mad_multiplier").payload, "3");
 assert.equal(node("recorder_retention_policy_warmup_days").payload, "2");
 assert.equal(node("recorder_retention_purge").action, "recorder.purge_entities");
 assert.equal(node("recorder_retention_repack").action, "recorder.purge");
+assert.deepEqual(node("recorder_retention_repack_status").outputProperties.map((entry) => entry.valueType), ["entityState", "entity"]);
 assert.equal(node("recorder_retention_purge").dataType, "jsonata");
 assert.equal(node("recorder_retention_rate_limit").rate, "1");
 assert.equal(node("recorder_retention_rate_limit").nbRateUnits, "2");
@@ -134,5 +143,9 @@ const repackDryRun = repackEvaluate({ test_mode: true, payload: "ready", recorde
 assert.deepEqual(repackDryRun[2].payload, { simulated: true, dispatched: false, action: "recorder.purge", repack: true, ready: true });
 const repackWait = repackEvaluate({ payload: "pending", recorderRetention: { targetKeys: ["codex_diagnostics"] }, data: { attributes: { pending_targets: ["codex_diagnostics"] } } }, flow, runtimeNode(), {}, {});
 assert.ok(repackWait[1], "repack aguarda enquanto a fila do alvo ainda tiver linhas");
+const repackPendingWithoutAttributes = repackEvaluate({ payload: "pending", recorderRetention: { targetKeys: ["codex_diagnostics"] } }, flow, runtimeNode(), {}, {});
+assert.ok(repackPendingWithoutAttributes[1], "estado pending nunca libera repack sem atributos");
+const repackReadyWithoutAttributes = repackEvaluate({ payload: "ready", recorderRetention: { targetKeys: ["codex_diagnostics"] } }, flow, runtimeNode(), {}, {});
+assert.ok(repackReadyWithoutAttributes[1], "contrato incompleto nunca libera repack");
 
 console.log("Recorder retention flow policy valid.");

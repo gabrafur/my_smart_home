@@ -14,6 +14,7 @@ import time
 
 
 DATABASE_URI = "file:/config/home-assistant_v2.db?mode=ro"
+CYCLE_ENTITY_ID = "input_number.recorder_retention_cycle_started_at"
 TARGETS = {
     "codex_diagnostics": (
         0,
@@ -39,12 +40,34 @@ TARGETS = {
 }
 
 
-def target_has_pending(connection: sqlite3.Connection, keep_days: int, clause: str, values: tuple[str, ...], now: float) -> bool:
+def read_cycle_started_at(connection: sqlite3.Connection) -> float | None:
+    row = connection.execute(
+        """
+        SELECT s.state
+        FROM states AS s
+        JOIN states_meta AS sm ON sm.metadata_id = s.metadata_id
+        WHERE sm.entity_id = ?
+        ORDER BY s.state_id DESC
+        LIMIT 1
+        """,
+        (CYCLE_ENTITY_ID,),
+    ).fetchone()
+    if row is None:
+        return None
+    try:
+        value = float(row[0])
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+def target_has_pending(connection: sqlite3.Connection, keep_days: int, clause: str, values: tuple[str, ...], cycle_started_at: float) -> bool:
     placeholders = ", ".join("?" for _ in values)
     entity_clause = clause.format(placeholders)
-    # keep_days=0 deliberately uses the current instant: every historical row
-    # is eligible, while the current state continues to be served by HA.
-    cutoff = now - keep_days * 24 * 60 * 60
+    # The service computes its cutoff when the cycle starts. Using the current
+    # time here would make new rows become eligible while the purge is running
+    # and could keep the readiness sensor pending forever.
+    cutoff = cycle_started_at - keep_days * 24 * 60 * 60
     query = f"""
         SELECT EXISTS(
             SELECT 1
@@ -61,12 +84,16 @@ def main() -> None:
     checked_at = int(time.time())
     try:
         with sqlite3.connect(DATABASE_URI, uri=True, timeout=1) as connection:
+            cycle_started_at = read_cycle_started_at(connection)
+            if cycle_started_at is None or cycle_started_at > checked_at + 300:
+                print(json.dumps({"status": "unavailable", "pending_targets": [], "checked_at": checked_at, "cycle_started_at": cycle_started_at}))
+                return
             pending = [
                 key
                 for key, (keep_days, clause, values) in TARGETS.items()
-                if target_has_pending(connection, keep_days, clause, values, checked_at)
+                if target_has_pending(connection, keep_days, clause, values, cycle_started_at)
             ]
-        print(json.dumps({"status": "ready" if not pending else "pending", "pending_targets": pending, "checked_at": checked_at}))
+        print(json.dumps({"status": "ready" if not pending else "pending", "pending_targets": pending, "checked_at": checked_at, "cycle_started_at": int(cycle_started_at)}))
     except sqlite3.Error as error:
         print(json.dumps({"status": "unavailable", "pending_targets": [], "checked_at": checked_at, "error": str(error)[:160]}))
 

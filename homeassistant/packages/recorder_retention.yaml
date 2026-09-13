@@ -1,11 +1,20 @@
+input_number:
+  recorder_retention_cycle_started_at:
+    name: Recorder Retention Cycle Started At
+    min: 0
+    max: 4102444800
+    step: 1
+    mode: box
+
 command_line:
   - sensor:
       name: Recorder Retention Purge Ready
       unique_id: recorder_retention_purge_ready
       command: "python3 /config/tools/recorder_retention_status.py"
-      command_timeout: 5
+      command_timeout: 15
       scan_interval: 300
       value_template: "{{ value_json.status }}"
       json_attributes:
         - checked_at
+        - cycle_started_at
         - pending_targets

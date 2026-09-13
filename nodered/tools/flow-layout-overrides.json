@@ -21,7 +21,7 @@
         "recorder_retention_group_execution": {
           "x": 24,
           "y": 599,
-          "w": 1902,
+          "w": 2180,
           "h": 222
         },
         "recorder_retention_group_tests": {
@@ -56,24 +56,32 @@
           "x": 220,
           "y": 680
         },
-        "recorder_retention_plan": {
+        "recorder_retention_cycle_marker": {
+          "x": 500,
+          "y": 680
+        },
+        "recorder_retention_plan_targets": {
           "x": 760,
           "y": 680
         },
+        "recorder_retention_plan": {
+          "x": 1040,
+          "y": 680
+        },
         "recorder_retention_split": {
-          "x": 930,
+          "x": 1260,
           "y": 640
         },
         "recorder_retention_dispatch_guard": {
-          "x": 1180,
+          "x": 1500,
           "y": 640
         },
         "recorder_retention_rate_limit": {
-          "x": 1450,
+          "x": 1780,
           "y": 640
         },
         "recorder_retention_purge": {
-          "x": 1750,
+          "x": 2080,
           "y": 640
         },
         "recorder_retention_test_instructions": {
@@ -113,19 +121,19 @@
           "y": 990
         },
         "recorder_retention_repack_delay": {
-          "x": 950,
+          "x": 1150,
           "y": 740
         },
         "recorder_retention_repack_status": {
-          "x": 1250,
+          "x": 1450,
           "y": 740
         },
         "recorder_retention_repack_evaluate": {
-          "x": 1510,
+          "x": 1750,
           "y": 740
         },
         "recorder_retention_repack": {
-          "x": 1750,
+          "x": 2070,
           "y": 740
         },
         "recorder_retention_test_repack_ready": {
@@ -133,23 +141,23 @@
           "y": 1130
         },
         "recorder_retention_repack_retry_out": {
-          "x": 1680,
+          "x": 2070,
           "y": 690
         },
         "recorder_retention_repack_delay_in": {
-          "x": 780,
+          "x": 900,
           "y": 740
         },
         "recorder_retention_repack_test_in": {
-          "x": 1280,
+          "x": 1450,
           "y": 780
         },
         "recorder_retention_guard_dry_out": {
-          "x": 1400,
+          "x": 1770,
           "y": 690
         },
         "recorder_retention_repack_dry_out": {
-          "x": 1700,
+          "x": 2070,
           "y": 780
         },
         "recorder_retention_test_repack_out": {
@@ -215,10 +223,6 @@
         "recorder_retention_discard_terminal": {
           "x": 1320,
           "y": 520
-        },
-        "recorder_retention_plan_targets": {
-          "x": 500,
-          "y": 680
         },
         "recorder_retention_test_compact_in": {
           "x": 430,

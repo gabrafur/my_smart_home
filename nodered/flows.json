@@ -212,6 +212,7 @@
         },
         "nodes": [
             "recorder_retention_schedule",
+            "recorder_retention_cycle_marker",
             "recorder_retention_plan_targets",
             "recorder_retention_plan",
             "recorder_retention_split",
@@ -230,7 +231,7 @@
         ],
         "x": 64,
         "y": 587,
-        "w": 1902,
+        "w": 2206,
         "h": 234
     },
     {
@@ -4060,14 +4061,15 @@
         "type": "inject",
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_execution",
-        "name": "Agenda visível — diariamente 04:30",
+        "name": "Agenda visível — diariamente 01:15",
+        "info": "A janela começa após as atualizações da meia-noite e termina antes do backup nativo do Home Assistant, agendado entre 04:45 e 05:45.",
         "props": [
             {
                 "p": "payload"
             }
         ],
         "repeat": "",
-        "crontab": "30 04 * * *",
+        "crontab": "15 01 * * *",
         "once": false,
         "onceDelay": "0.1",
         "topic": "",
@@ -4077,7 +4079,7 @@
         "y": 680,
         "wires": [
             [
-                "recorder_retention_plan_targets"
+                "recorder_retention_cycle_marker"
             ]
         ]
     },
@@ -4094,7 +4096,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 800,
+        "x": 1080,
         "y": 680,
         "wires": [
             [
@@ -4118,7 +4120,7 @@
         "stream": false,
         "addname": "",
         "property": "payload",
-        "x": 970,
+        "x": 1300,
         "y": 640,
         "wires": [
             [
@@ -4139,7 +4141,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1220,
+        "x": 1540,
         "y": 640,
         "wires": [
             [
@@ -4168,7 +4170,7 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 1490,
+        "x": 1820,
         "y": 640,
         "wires": [
             [
@@ -4200,7 +4202,7 @@
         "blockInputOverrides": true,
         "domain": "recorder",
         "service": "purge_entities",
-        "x": 1790,
+        "x": 2120,
         "y": 640,
         "wires": [
             []
@@ -4415,7 +4417,7 @@
         "drop": false,
         "allowrate": false,
         "outputs": 1,
-        "x": 990,
+        "x": 1190,
         "y": 740,
         "wires": [
             [
@@ -4444,6 +4446,12 @@
                 "propertyType": "msg",
                 "value": "",
                 "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
             }
         ],
         "for": "0",
@@ -4454,7 +4462,7 @@
         "override_payload": "msg",
         "entity_location": "data",
         "override_data": "msg",
-        "x": 1290,
+        "x": 1490,
         "y": 740,
         "wires": [
             [
@@ -4468,14 +4476,14 @@
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_execution",
         "name": "Fila concluída libera repack?",
-        "func": "const TEST = msg.test_mode === true;\nconst retention = msg.recorderRetention ?? {};\nconst targets = Array.isArray(retention.targetKeys) ? retention.targetKeys : [];\nif (!targets.length) return [null, null, null];\nconst pending = Array.isArray(msg.data?.attributes?.pending_targets) ? msg.data.attributes.pending_targets : [];\nconst state = String(msg.payload ?? \"unavailable\");\nconst complete = state !== \"unavailable\" && !targets.some((target) => pending.includes(target));\nif (TEST) {\n    return [null, null, { ...msg, payload: { simulated: true, dispatched: false, action: \"recorder.purge\", repack: true, ready: complete } }];\n}\nif (!complete) {\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"aguardando fila de purge\" });\n    return [null, msg, null];\n}\nconst active = flow.get(\"recorder_retention_active_cycle_v1\", \"persistent\");\nif (!active || active.id !== retention.cycleId || active.phase === \"repack_queued\") return [null, null, null];\nflow.set(\"recorder_retention_active_cycle_v1\", { ...active, phase: \"repack_queued\" }, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"fila concluída; repack solicitado\" });\nconst keepDays = Number(retention.compactRetentionDays);\nif (!Number.isInteger(keepDays)) {\n    node.error(\"recorder_retention: retenção compacta ausente no ciclo\", msg);\n    return [null, null, null];\n}\nreturn [{ ...msg, payload: { keep_days: keepDays, repack: true, apply_filter: false } }, null, null];",
+        "func": "const TEST = msg.test_mode === true;\nconst retention = msg.recorderRetention ?? {};\nconst targets = Array.isArray(retention.targetKeys) ? retention.targetKeys : [];\nif (!targets.length) return [null, null, null];\nconst pending = msg.data?.attributes?.pending_targets;\nconst state = String(msg.payload ?? \"unavailable\");\nconst complete = state === \"ready\" && Array.isArray(pending) && !targets.some((target) => pending.includes(target));\nif (TEST) {\n    return [null, null, { ...msg, payload: { simulated: true, dispatched: false, action: \"recorder.purge\", repack: true, ready: complete } }];\n}\nif (!complete) {\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"aguardando fila de purge\" });\n    return [null, msg, null];\n}\nconst active = flow.get(\"recorder_retention_active_cycle_v1\", \"persistent\");\nif (!active || active.id !== retention.cycleId || active.phase === \"repack_queued\") return [null, null, null];\nflow.set(\"recorder_retention_active_cycle_v1\", { ...active, phase: \"repack_queued\" }, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"fila concluída; repack solicitado\" });\nconst keepDays = Number(retention.compactRetentionDays);\nif (!Number.isInteger(keepDays)) {\n    node.error(\"recorder_retention: retenção compacta ausente no ciclo\", msg);\n    return [null, null, null];\n}\nreturn [{ ...msg, payload: { keep_days: keepDays, repack: true, apply_filter: false } }, null, null];",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1550,
+        "x": 1790,
         "y": 740,
         "wires": [
             [
@@ -4513,7 +4521,7 @@
         "blockInputOverrides": true,
         "domain": "recorder",
         "service": "purge",
-        "x": 1790,
+        "x": 2110,
         "y": 740,
         "wires": [
             []
@@ -4572,7 +4580,7 @@
         "links": [
             "recorder_retention_repack_delay_in"
         ],
-        "x": 1720,
+        "x": 2110,
         "y": 690,
         "wires": []
     },
@@ -4585,7 +4593,7 @@
         "links": [
             "recorder_retention_repack_retry_out"
         ],
-        "x": 820,
+        "x": 940,
         "y": 740,
         "wires": [
             [
@@ -4602,7 +4610,7 @@
         "links": [
             "recorder_retention_test_repack_out"
         ],
-        "x": 1320,
+        "x": 1490,
         "y": 780,
         "wires": [
             [
@@ -4620,7 +4628,7 @@
         "links": [
             "recorder_retention_dry_run_in"
         ],
-        "x": 1440,
+        "x": 1810,
         "y": 690,
         "wires": []
     },
@@ -4634,7 +4642,7 @@
         "links": [
             "recorder_retention_dry_run_in"
         ],
-        "x": 1740,
+        "x": 2110,
         "y": 780,
         "wires": []
     },
@@ -5050,7 +5058,7 @@
                 "tot": "json"
             }
         ],
-        "x": 540,
+        "x": 800,
         "y": 680,
         "wires": [
             [
@@ -5141,6 +5149,40 @@
         "wires": [
             [
                 "recorder_retention_test_finalize"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_cycle_marker",
+        "type": "api-call-service",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_execution",
+        "name": "Marcar início imutável do ciclo",
+        "server": "4126427d5e161a03",
+        "version": 7,
+        "debugenabled": false,
+        "action": "input_number.set_value",
+        "floorId": [],
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "input_number.recorder_retention_cycle_started_at"
+        ],
+        "labelId": [],
+        "data": "{\"value\": $floor($millis() / 1000)}",
+        "dataType": "jsonata",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "blockInputOverrides": true,
+        "domain": "input_number",
+        "service": "set_value",
+        "x": 540,
+        "y": 680,
+        "wires": [
+            [
+                "recorder_retention_plan_targets"
             ]
         ]
     },
