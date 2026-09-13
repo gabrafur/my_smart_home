@@ -53,6 +53,47 @@ function run(command, commandArgs, options = {}) {
   });
 }
 
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+export async function waitForHealthyService(service, options = {}) {
+  const inspect = options.inspect ?? ((selectedService) => run(
+    "docker",
+    [
+      "inspect",
+      selectedService,
+      "--format",
+      "{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+    ],
+    { capture: true },
+  ));
+  const pause = options.pause ?? delay;
+  const attempts = options.attempts ?? 36;
+  const intervalMs = options.intervalMs ?? 5000;
+  let lastState = "unavailable";
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      lastState = inspect(service).trim();
+    } catch {
+      lastState = "unavailable";
+    }
+
+    if (lastState === "running|healthy") {
+      return lastState;
+    }
+    if (/^(exited|dead)\|/.test(lastState) || lastState === "running|unhealthy") {
+      throw new Error(`Service ${service} failed while waiting for health: ${lastState}`);
+    }
+    if (attempt < attempts) {
+      await pause(intervalMs);
+    }
+  }
+
+  throw new Error(`Service ${service} did not become healthy: ${lastState}`);
+}
+
 async function withLock(fn) {
   if (fs.existsSync(lockPath)) {
     const ageMs = Date.now() - fs.statSync(lockPath).mtimeMs;
@@ -158,13 +199,17 @@ function validateAfterComposeEdit() {
   runInDir("npm", ["run", "flows:validate"], path.join(repoRoot, "nodered"));
 }
 
-function reconcileImages(channels, options = {}) {
+async function reconcileImages(channels, options = {}) {
   try {
     const changedServices = updateComposeDigests(channels);
     validateAfterComposeEdit();
 
     if (changedServices.length > 0) {
       run("docker", ["compose", "up", "-d", "--no-deps", ...changedServices], { mutates: true });
+      if (changedServices.includes("homeassistant")) {
+        log("waiting for Home Assistant runtime health before backup");
+        await waitForHealthyService("homeassistant");
+      }
       run("docker", ["compose", "ps"]);
       run("bash", ["scripts/git-backup.sh"], { mutates: true });
     }
@@ -185,14 +230,14 @@ function reconcileImages(channels, options = {}) {
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
 if (invokedPath === fileURLToPath(import.meta.url)) {
   await withLock(async () => {
-    if (mode === "daily") reconcileImages(imageChannelsForMode(mode), { cleanup: true, label: "daily docker" });
+    if (mode === "daily") await reconcileImages(imageChannelsForMode(mode), { cleanup: true, label: "daily docker" });
     else if (mode === "home-assistant-core") {
-      reconcileImages(imageChannelsForMode(mode), {
+      await reconcileImages(imageChannelsForMode(mode), {
         cleanup: false,
         label: "Home Assistant Core",
       });
     } else if (mode === "containers") {
-      reconcileImages(imageChannelsForMode(mode), {
+      await reconcileImages(imageChannelsForMode(mode), {
         cleanup: true,
         label: "non-Core container",
       });

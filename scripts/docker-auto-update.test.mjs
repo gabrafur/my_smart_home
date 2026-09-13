@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   imageChannelsForMode,
   replaceServiceImage,
+  waitForHealthyService,
 } from "./docker-auto-update.mjs";
 import {
   assessKiaRuntimeStates,
@@ -90,6 +91,31 @@ test("recreates changed image services without touching dependencies", () => {
   assert.match(
     source,
     /\["compose", "up", "-d", "--no-deps", \.\.\.changedServices\]/,
+  );
+});
+
+test("waits for Home Assistant health before recording an update", async () => {
+  const observed = ["running|starting", "running|starting", "running|healthy"];
+  const pauses = [];
+  const result = await waitForHealthyService("homeassistant", {
+    inspect: () => observed.shift(),
+    pause: async (milliseconds) => pauses.push(milliseconds),
+    attempts: 4,
+    intervalMs: 25,
+  });
+
+  assert.equal(result, "running|healthy");
+  assert.deepEqual(pauses, [25, 25]);
+});
+
+test("rejects an unhealthy Home Assistant runtime", async () => {
+  await assert.rejects(
+    waitForHealthyService("homeassistant", {
+      inspect: () => "running|unhealthy",
+      pause: async () => {},
+      attempts: 2,
+    }),
+    /failed while waiting for health/,
   );
 });
 
