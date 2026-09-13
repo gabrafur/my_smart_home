@@ -73,7 +73,11 @@ function waitForNodeRed() {
 }
 
 function installRuntime() {
-  run(dockerBin, ["exec", "-w", "/data", "nodered", "npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
+  // The bind-mounted node_modules directory is maintained by the host account.
+  // Installing there as the container's UID can fail after repository checks
+  // legitimately recreate .bin entries with host ownership.
+  run(npmBin, ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
+    cwd: nodeRedDir,
     failure: "nodered_npm_ci_failed",
   });
   run(dockerBin, ["exec", "-w", "/data", "nodered", "npm", "run", "flows:validate"], {

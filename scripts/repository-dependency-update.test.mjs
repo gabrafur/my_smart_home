@@ -96,3 +96,10 @@ fi
   assert.match(result.stdout, /status=eligible package=joi from=17.13.4 to=17.13.6/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
+
+test("runtime installation uses the host-owned bind mount before isolated restart", () => {
+  const source = fs.readFileSync(updateScript, "utf8");
+  assert.match(source, /run\(npmBin, \["ci"/);
+  assert.doesNotMatch(source, /\["exec", "-w", "\/data", "nodered", "npm", "ci"/);
+  assert.match(source, /\["compose", "restart", "nodered"\]/);
+});
