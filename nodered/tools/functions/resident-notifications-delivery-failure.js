@@ -1,11 +1,15 @@
-const delivery = msg.notification_delivery_state;
-const resident = msg.notification_resident_state;
-if (delivery?.version === 3 && resident && resident.pending_key === msg.notification_key) {
-    resident.pending_key = null;
-    resident.pending_at = 0;
-    delivery.residents[msg.resident_source] = resident;
+const testMode = msg._location_test === true;
+const stored = testMode
+    ? flow.get(msg.notification_state_key)
+    : flow.get(msg.notification_state_key, "persistent");
+const delivery = stored?.version === 4 ? stored : msg.notification_delivery_state;
+const recipient = delivery?.deliveries?.[msg.notification_delivery_id] || msg.notification_recipient_state;
+if (delivery?.version === 4 && recipient?.pending_key === msg.notification_key) {
+    recipient.pending_key = null;
+    recipient.pending_at = 0;
+    delivery.deliveries[msg.notification_delivery_id] = recipient;
     delivery.updated_at = Date.now();
-    if (msg._location_test === true) flow.set(msg.notification_state_key, delivery);
+    if (testMode) flow.set(msg.notification_state_key, delivery);
     else flow.set(msg.notification_state_key, delivery, "persistent");
 }
 

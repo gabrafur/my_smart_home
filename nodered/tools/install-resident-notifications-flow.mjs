@@ -39,7 +39,7 @@ const group = (id, name, x, y, w, h, stroke, fill) => add({
 const groups = {
   config: group("resident_notifications_config_group", "0. PARÂMETROS AJUSTÁVEIS — aviso de chegada", 64, 40, 1300, 450, "#2563eb", "#dbeafe"),
   input: group("resident_notifications_input_group", "1. Entrada do evento canônico", 1370, 40, 1360, 450, "#0f766e", "#ccfbf1"),
-  decision: group("resident_notifications_decision_group", "2. Validação da chegada e destinatário", 2780, 40, 1950, 450, "#7c3aed", "#ede9fe"),
+  decision: group("resident_notifications_decision_group", "2. Validação da chegada e fan-out de destinatários", 2780, 40, 1950, 450, "#7c3aed", "#ede9fe"),
   state: group("resident_notifications_state_group", "3. Frescor, reserva e deduplicação da entrega", 4730, 40, 1650, 450, "#b45309", "#fef3c7"),
   output: group("resident_notifications_output_group", "4. Gate final, efeitos e retry", 6430, 40, 1900, 450, "#dc2626", "#fee2e2"),
   test: group("resident_notifications_test_group", "5. Replay dry-run + teste explícito de entrega", 64, 560, 2900, 680, "#0891b2", "#cffafe"),
@@ -86,7 +86,7 @@ const policy = {
 
 add({
   id: TAB, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false,
-  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, escolhe o destinatário, solicita push visível e urgente ao iOS, registra apenas o aceite do Home Assistant e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.", env: [],
+  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, distribui cada chegada para mobile_primary e mobile_secondary, solicita push visível e urgente ao iOS, registra o aceite do Home Assistant por destinatário e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.", env: [],
 });
 
 grouped(groups.config, {
@@ -113,7 +113,7 @@ sw("resident_notifications_policy_switch", groups.config, "Configuração comple
 fn("resident_notifications_policy_store", groups.config, "Guardar última política válida", "resident-notifications-policy-store.js", 0, 1220, 190, []);
 fn("resident_notifications_policy_reject", groups.config, "Rejeitar sem substituir", "resident-notifications-policy-reject.js", 0, 1220, 290, []);
 
-linkIn("resident_notifications_canonical_in_v1", groups.input, "Receber security.arrival.v1", "people_location_notification_out_v1", "resident_notifications_prepare", 1420, 240);
+linkIn("resident_notifications_canonical_in_v1", groups.input, "Receber security.arrival.v1 real ou sintético", ["people_location_notification_out_v1", "resident_notifications_test_event_out"], "resident_notifications_prepare", 1420, 240);
 fn("resident_notifications_prepare", groups.input, "Adaptar estrutura do contrato", "resident-notifications-event-normalize.js", 1, 1640, 240, [["resident_notifications_contract_switch"]]);
 sw("resident_notifications_contract_switch", groups.input, "Contrato é security.arrival.v1?", "arrival_contract_valid", "msg", [{ t: "true" }, { t: "else" }], 1880, 200, [["resident_notifications_kind_switch"], ["resident_notifications_contract_invalid"]]);
 terminal("resident_notifications_contract_invalid", groups.input, "Bloquear contrato desconhecido", { fill: "red", shape: "ring", text: "contrato inválido" }, 2140, 130);
@@ -121,7 +121,7 @@ sw("resident_notifications_kind_switch", groups.input, "É chegada de pessoa?", 
 terminal("resident_notifications_kind_invalid", groups.input, "Bloquear tipo não compatível", { fill: "grey", shape: "ring", text: "não é chegada de pessoa" }, 2400, 330);
 linkOut("resident_notifications_canonical_out", groups.input, "Contrato válido → direção", "resident_notifications_event_in", 2610, 240);
 
-linkIn("resident_notifications_event_in", groups.decision, "Receber chegada real ou sintética", ["resident_notifications_canonical_out", "resident_notifications_test_event_out"], "resident_notifications_policy_load", 2830, 240);
+linkIn("resident_notifications_event_in", groups.decision, "Receber chegada normalizada", "resident_notifications_canonical_out", "resident_notifications_policy_load", 2830, 240);
 fn("resident_notifications_policy_load", groups.decision, "Carregar política canônica", "resident-notifications-policy-load.js", 1, 3030, 240, [["resident_notifications_policy_available"]]);
 sw("resident_notifications_policy_available", groups.decision, "Existe política válida?", "policy_available", "msg", [{ t: "true" }, { t: "else" }], 3250, 200, [["resident_notifications_direction_switch"], ["resident_notifications_policy_missing"]]);
 terminal("resident_notifications_policy_missing", groups.decision, "Falha fechada sem política", { fill: "red", shape: "ring", text: "política indisponível" }, 3490, 120);
@@ -131,9 +131,9 @@ sw("resident_notifications_cycle_switch", groups.decision, "Ciclo externo foi co
 terminal("resident_notifications_cycle_invalid", groups.decision, "Bloquear chegada sem ciclo externo", { fill: "yellow", shape: "ring", text: "ciclo externo não confirmado" }, 4090, 120);
 sw("resident_notifications_stage_switch", groups.decision, "Etapa é approach ou home?", "arrival_stage", "msg", [{ t: "eq", v: "approach", vt: "str" }, { t: "eq", v: "home", vt: "str" }, { t: "else" }], 4090, 240, [["resident_notifications_source_switch"], ["resident_notifications_source_switch"], ["resident_notifications_stage_invalid"]]);
 terminal("resident_notifications_stage_invalid", groups.decision, "Bloquear etapa desconhecida", { fill: "grey", shape: "ring", text: "etapa inválida" }, 4370, 120);
-sw("resident_notifications_source_switch", groups.decision, "Quem está chegando?", "resident_source", "msg", [{ t: "eq", v: "resident_primary", vt: "str" }, { t: "eq", v: "resident_secondary", vt: "str" }, { t: "else" }], 4370, 260, [["resident_notifications_recipient_secondary"], ["resident_notifications_recipient_primary"], ["resident_notifications_source_invalid"]]);
-change("resident_notifications_recipient_secondary", groups.decision, "Destinatário: resident_secondary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_secondary", tot: "str" }], 4590, 180, [["resident_notifications_decision_out"]]);
-change("resident_notifications_recipient_primary", groups.decision, "Destinatário: resident_primary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_primary", tot: "str" }], 4590, 340, [["resident_notifications_decision_out"]]);
+sw("resident_notifications_source_switch", groups.decision, "Quem está chegando?", "resident_source", "msg", [{ t: "eq", v: "resident_primary", vt: "str" }, { t: "eq", v: "resident_secondary", vt: "str" }, { t: "else" }], 4370, 260, [["resident_notifications_recipient_primary", "resident_notifications_recipient_secondary"], ["resident_notifications_recipient_primary", "resident_notifications_recipient_secondary"], ["resident_notifications_source_invalid"]]);
+change("resident_notifications_recipient_secondary", groups.decision, "Fan-out: incluir resident_secondary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_secondary", tot: "str" }], 4590, 180, [["resident_notifications_decision_out"]]);
+change("resident_notifications_recipient_primary", groups.decision, "Fan-out: incluir resident_primary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_primary", tot: "str" }], 4590, 340, [["resident_notifications_decision_out"]]);
 terminal("resident_notifications_source_invalid", groups.decision, "Ignorar origem desconhecida", { fill: "grey", shape: "ring", text: "origem não canônica" }, 4370, 400);
 linkOut("resident_notifications_decision_out", groups.decision, "Chegada válida → frescor e entrega", "resident_notifications_state_in", 4710, 260);
 
@@ -143,13 +143,14 @@ sw("resident_notifications_event_time_switch", groups.state, "Timestamp canônic
 terminal("resident_notifications_time_invalid", groups.state, "Bloquear timestamp inválido", { fill: "yellow", shape: "ring", text: "timestamp inválido" }, 5280, 110);
 sw("resident_notifications_future_switch", groups.state, "Evento ultrapassa tolerância futura?", "event_at > $millis() + policy.future_tolerance_ms", "jsonata", [{ t: "true" }, { t: "else" }], 5280, 220, [["resident_notifications_future_terminal"], ["resident_notifications_stale_switch"]]);
 terminal("resident_notifications_future_terminal", groups.state, "Descartar evento futuro", { fill: "yellow", shape: "ring", text: "evento futuro descartado" }, 5560, 110);
-sw("resident_notifications_stale_switch", groups.state, "Evento excede idade máxima?", "$millis() - event_at > policy.max_event_age_ms", "jsonata", [{ t: "true" }, { t: "else" }], 5560, 240, [["resident_notifications_stale_terminal"], ["resident_notifications_state_read"]]);
+sw("resident_notifications_stale_switch", groups.state, "Evento excede idade máxima?", "$millis() - event_at > policy.max_event_age_ms", "jsonata", [{ t: "true" }, { t: "else" }], 5560, 240, [["resident_notifications_stale_terminal"], ["resident_notifications_state_migrate"]]);
 terminal("resident_notifications_stale_terminal", groups.state, "Descartar evento antigo", { fill: "yellow", shape: "ring", text: "evento antigo descartado" }, 5840, 110);
-fn("resident_notifications_state_read", groups.state, "Ler recibo e reserva de entrega", "resident-notifications-state-read.js", 1, 5840, 260, [["resident_notifications_duplicate_switch"]]);
-sw("resident_notifications_duplicate_switch", groups.state, "Entrega já ocorreu ou está reservada?", "notification_duplicate", "msg", [{ t: "true" }, { t: "else" }], 6120, 260, [["resident_notifications_duplicate_terminal"], ["resident_notifications_state_write"]]);
+fn("resident_notifications_state_migrate", groups.state, "Migrar recibos para estado por destinatário", "resident-notifications-state-migrate.js", 1, 5600, 330, [["resident_notifications_state_read"]]);
+fn("resident_notifications_state_read", groups.state, "Ler recibo e reserva do destinatário", "resident-notifications-state-read.js", 1, 5820, 330, [["resident_notifications_duplicate_switch"]]);
+sw("resident_notifications_duplicate_switch", groups.state, "Entrega já ocorreu ou está reservada?", "notification_duplicate", "msg", [{ t: "true" }, { t: "else" }], 6100, 330, [["resident_notifications_duplicate_terminal"], ["resident_notifications_state_write"]]);
 terminal("resident_notifications_duplicate_terminal", groups.state, "Duplicata descartada", { fill: "grey", shape: "ring", text: "entrega duplicada" }, 6120, 150);
-fn("resident_notifications_state_write", groups.state, "Reservar entrega antes do efeito", "resident-notifications-state-write.js", 1, 6120, 350, [["resident_notifications_delivery_out"]]);
-linkOut("resident_notifications_delivery_out", groups.state, "Entrega reservada → gate final", "resident_notifications_delivery_in", 6340, 350);
+fn("resident_notifications_state_write", groups.state, "Reservar entrega antes do efeito", "resident-notifications-state-write.js", 1, 6100, 410, [["resident_notifications_delivery_out"]]);
+linkOut("resident_notifications_delivery_out", groups.state, "Entrega reservada → gate final", "resident_notifications_delivery_in", 6330, 410);
 
 linkIn("resident_notifications_delivery_in", groups.output, "Receber entrega reservada", "resident_notifications_delivery_out", "resident_notifications_message_build", 6480, 240);
 fn("resident_notifications_message_build", groups.output, "Montar envelope da notificação", "resident-notifications-message-build.js", 1, 6700, 240, [["resident_notifications_test_gate"]]);
@@ -193,7 +194,7 @@ linkOut("resident_notifications_retry_out", groups.output, "Retry → dedupe da 
 terminal("resident_notifications_retry_exhausted", groups.output, "Falha após três tentativas", { fill: "red", shape: "ring", text: "retry esgotado" }, 8010, 450);
 grouped(groups.output, {
   id: "resident_notifications_output_note", type: "comment", z: TAB, g: groups.output,
-  name: "Somente estas duas fronteiras enviam push; aceite grava recibo, falha libera a reserva e tenta novamente.",
+  name: "Cada chegada passa pelas duas fronteiras; aceite e retry são isolados por destinatário.",
   info: "queue: all preserva eventos durante queda temporária do HA. O recibo confirma somente o aceite do serviço; a entrega no iOS continua best-effort. Nenhum botão manual possui ligação com estes serviços.", x: 7300, y: 80, wires: [],
 });
 
@@ -214,7 +215,7 @@ inject("resident_notifications_test_future", groups.test, "TESTE 8: evento futur
 inject("resident_notifications_test_duplicate", groups.test, "TESTE 9: repetir última chegada", [{ p: "test_case", v: "duplicate", vt: "str" }], 220, 1130, [["resident_notifications_test_adapter"]]);
 linkIn("resident_notifications_test_cycle_in", groups.test, "Receber teste de localizacao_pessoas", "bc2afbce89f5a9d5", "resident_notifications_test_adapter", 620, 750);
 fn("resident_notifications_test_adapter", groups.test, "Adaptar somente cenário sintético", "resident-notifications-test-adapter.js", 1, 670, 920, [["resident_notifications_test_event_out"]]);
-linkOut("resident_notifications_test_event_out", groups.test, "security.arrival.v1 de TESTE → caminho real", "resident_notifications_event_in", 1040, 920);
+linkOut("resident_notifications_test_event_out", groups.test, "security.arrival.v1 de TESTE → normalização real", "resident_notifications_canonical_in_v1", 1040, 920);
 linkIn("resident_notifications_dry_run_in", groups.test, "Receber notificação TESTE", "resident_notifications_dry_run_out", "resident_notifications_dry_run_terminal", 1430, 780);
 fn("resident_notifications_dry_run_terminal", groups.test, "TESTE FINAL: nenhum push enviado", "resident-notifications-dry-run.js", 0, 1730, 780, []);
 inject("resident_notifications_test_delivery_secondary", groups.test,
