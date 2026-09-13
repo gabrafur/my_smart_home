@@ -55,6 +55,7 @@ test("Node-RED bridge coalesces requests and publishes a sanitized success", () 
     DAILY_UPDATE_TRIGGER_DIR: triggerDir,
     REPOSITORY_DEPENDENCY_RESOURCE_SAFE_SCRIPT: fakeSafe,
     REPOSITORY_DEPENDENCY_UPDATE_SCRIPT: fakeUpdate,
+    REPOSITORY_DEPENDENCY_NODE_BIN: process.execPath,
   };
   const request = spawnSync(requestScript, ["joi"], { encoding: "utf8", env });
   assert.equal(request.status, 0, request.stderr);

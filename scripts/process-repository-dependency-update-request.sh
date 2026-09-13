@@ -6,6 +6,7 @@ repo_root=$(dirname "$script_dir")
 trigger_dir="${DAILY_UPDATE_TRIGGER_DIR:-$repo_root/homeassistant/.daily-update-trigger}"
 resource_safe="${REPOSITORY_DEPENDENCY_RESOURCE_SAFE_SCRIPT:-$script_dir/run-resource-safe.sh}"
 update_script="${REPOSITORY_DEPENDENCY_UPDATE_SCRIPT:-$script_dir/update-repository-dependency.mjs}"
+node_bin="${REPOSITORY_DEPENDENCY_NODE_BIN:-/usr/bin/node}"
 request_file="$trigger_dir/repository-dependency-requested"
 processing_file="$trigger_dir/repository-dependency-processing"
 result_file="$trigger_dir/repository-dependency-result"
@@ -16,6 +17,11 @@ case "$trigger_dir" in
 esac
 [ -x "$resource_safe" ] || { echo "Resource-safe runner is unavailable: $resource_safe" >&2; exit 66; }
 [ -r "$update_script" ] || { echo "Repository dependency updater is unavailable: $update_script" >&2; exit 66; }
+case "$node_bin" in
+  /*) ;;
+  *) echo "REPOSITORY_DEPENDENCY_NODE_BIN must be absolute" >&2; exit 64 ;;
+esac
+[ -x "$node_bin" ] || { echo "Node.js runtime is unavailable: $node_bin" >&2; exit 66; }
 mkdir -p "$trigger_dir"
 
 if [ ! -f "$processing_file" ]; then
@@ -57,7 +63,7 @@ output_file=$(mktemp)
 cleanup() { rm -f -- "$output_file"; }
 trap 'cleanup; restore_request; exit 75' HUP INT TERM
 set +e
-"$resource_safe" /usr/bin/node "$update_script" --package "$package" > "$output_file" 2>&1
+"$resource_safe" "$node_bin" "$update_script" --package "$package" > "$output_file" 2>&1
 status=$?
 set -e
 finished_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
