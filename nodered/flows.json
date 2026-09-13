@@ -39934,7 +39934,7 @@
         "z": "git_backup_tab",
         "g": "git_backup_decision_group",
         "name": "Normalizar resposta textual",
-        "func": "const testMode = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nconst status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1] ?? \"invalid\";\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nconst result = { status, finished_at: finishedAt };\nif (testMode) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nmsg.git_backup_status = status;\nmsg.payload = { ...result, test_mode: testMode };\nreturn msg;",
+        "func": "const testMode = msg._git_backup_test === true;\nconst text = String(msg.payload ?? \"\").replace(/[\\r\\n]+/g, \" \").trim().slice(0, 500);\nif (!text) {\n    node.status({ fill: \"grey\", shape: \"ring\", text: \"sem saída; erro tratado separadamente\" });\n    return null;\n}\nconst status = text.match(/\\bstatus=(success|failed|deferred)\\b/)?.[1] ?? \"invalid\";\nconst finishedAt = text.match(/\\bfinished_at=([^ ]+)\\b/)?.[1] ?? null;\nconst result = { status, finished_at: finishedAt };\nif (testMode) flow.set(\"git_backup_last_result_v1__test\", result);\nelse flow.set(\"git_backup_last_result_v1\", result, \"persistent\");\nmsg.git_backup_status = status;\nmsg.payload = { ...result, test_mode: testMode };\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -40292,7 +40292,7 @@
             "git_backup_dry_in"
         ],
         "x": 1820,
-        "y": 320,
+        "y": 360,
         "wires": []
     },
     {

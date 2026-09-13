@@ -110,6 +110,10 @@ for (const [status, testMode] of [["success", true], ["failed", true], ["deferre
 }
 const invalid = execute(normalize, { _git_backup_test: true, payload: "unexpected" }, flow).result;
 assert.equal(invalid.git_backup_status, "invalid");
+const emptyStdout = execute(normalize, { payload: "\n" }, flow);
+assert.equal(emptyStdout.result, null);
+assert.match(emptyStdout.events.statuses[0].text, /erro tratado separadamente/);
+assert.equal(flow.get("git_backup_last_result_v1", "persistent").status, "deferred");
 
 const alert = execute(source("git-backup-alert-build.js"), { payload: { status: "failed" } }, flow).result;
 assert.match(alert.alert.title, /Falha no backup Git/);
