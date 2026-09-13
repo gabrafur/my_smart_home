@@ -10,6 +10,7 @@ msg.storage_mqtt = [
     { topic: "smart_home/raspberry/storage/status", payload: s.severity, retain: true },
     { topic: "smart_home/raspberry/storage/attributes", payload: JSON.stringify(msg.storage_attributes), retain: true },
     { topic: "smart_home/raspberry/storage/health_last_run", payload: new Date(s.now).toISOString(), retain: true },
+    { topic: "smart_home/raspberry/storage/history_coverage_hours", payload: String(s.history_coverage_hours), retain: true },
     { topic: "smart_home/raspberry/storage/growth_cause", payload: s.growth_cause, retain: true },
     ...(input.maintenance_last_at && !Number.isNaN(Date.parse(input.maintenance_last_at))
         ? [{ topic: "smart_home/raspberry/storage/last_maintenance", payload: input.maintenance_last_at, retain: true }] : []),

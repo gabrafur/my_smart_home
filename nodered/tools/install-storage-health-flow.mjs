@@ -135,6 +135,10 @@ const definitions = [
         payload: { name: "Raspberry Storage Growth 7d", unique_id: "raspberry_storage_growth_7d", object_id: "raspberry_storage_growth_7d", state_topic: "smart_home/raspberry/storage/growth_7d", availability_topic: "smart_home/raspberry/storage/growth_7d_available", payload_available: "online", payload_not_available: "offline", unit_of_measurement: "pp", state_class: "measurement", icon: "mdi:chart-line", device }
     },
     {
+        topic: "homeassistant/sensor/raspberry_storage_history_coverage/config",
+        payload: { name: "Raspberry Storage History Coverage", unique_id: "raspberry_storage_history_coverage", object_id: "raspberry_storage_history_coverage", default_entity_id: "sensor.raspberry_pi_storage_history_coverage", state_topic: "smart_home/raspberry/storage/history_coverage_hours", unit_of_measurement: "h", device_class: "duration", state_class: "measurement", icon: "mdi:timeline-clock-outline", device }
+    },
+    {
         topic: "homeassistant/sensor/raspberry_storage_last_maintenance/config",
         payload: { name: "Raspberry Storage Last Maintenance", unique_id: "raspberry_storage_last_maintenance", object_id: "raspberry_storage_last_maintenance", state_topic: "smart_home/raspberry/storage/last_maintenance", device_class: "timestamp", icon: "mdi:broom", device }
     },

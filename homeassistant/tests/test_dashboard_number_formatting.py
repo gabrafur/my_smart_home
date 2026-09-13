@@ -211,6 +211,8 @@ class DashboardNumberFormattingTest(unittest.TestCase):
         section = dashboard[heading:next_heading]
         self.assertIn("entity: sensor.raspberry_pi_storage_health_last_run", section)
         self.assertIn("name: Última verificação do Storage Health", section)
+        self.assertIn("entity: sensor.raspberry_pi_storage_history_coverage", section)
+        self.assertIn("name: Histórico disponível para tendências", section)
         self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_backup_archives", section)
         self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_manual_snapshots", section)
         self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_recorder_reclaimable", section)

@@ -25,7 +25,7 @@ const call = (fn, msg, flow) => fn(msg, flow, nodeMock);
 const f = {
   validate: compile("storage_visual_policy_validate"), store: compile("storage_visual_policy_store"),
   load: compile("storage_visual_policy_load"), normalize: compile("storage_visual_input_normalize"),
-  history: compile("storage_visual_history_analyze"), alert: compile("storage_visual_alert_build"),
+  seed: compile("storage_visual_history_seed"), history: compile("storage_visual_history_analyze"), alert: compile("storage_visual_alert_build"),
   state: compile("storage_visual_state_finalize"), attributes: compile("storage_visual_attributes_build"),
   mqtt: compile("storage_visual_mqtt_build"), finalize: compile("storage_visual_output_route"), invalid: compile("storage_visual_invalid_finalize"),
   ack: compile("storage_notification_ack"), gate: compile("storage_auto_gate"),
@@ -116,6 +116,23 @@ assert.equal(result[3].storageAutoRemediation, true);
 assert.equal(result[3].payload.reason, "accelerated-growth");
 
 flow = configured();
+const originalNow = Date.now;
+Date.now = () => NOW;
+call(f.seed, { payload: [
+  { state: "50", last_updated: new Date(NOW - 604800000).toISOString() },
+  { state: "55", last_updated: new Date(NOW - 86400000).toISOString() },
+  { state: null, last_updated: new Date(NOW - 172800000).toISOString() },
+  { state: "unavailable", last_updated: new Date(NOW - 43200000).toISOString() },
+  { state: "80", last_updated: new Date(NOW + 86400000).toISOString() },
+] }, flow);
+Date.now = originalNow;
+result = evaluate(flow, metric(64));
+assert.equal(flow.stores.persistent.get("storage_health_state_v1").growth24h, 9);
+assert.equal(flow.stores.persistent.get("storage_health_state_v1").growth7d, 14);
+assert.equal(flow.stores.persistent.get("storage_health_state_v1").historyCoverageHours, 168);
+assert.equal(result[0].find((message) => message.topic.endsWith("/history_coverage_hours")).payload, "168");
+
+flow = configured();
 result = evaluate(flow, { used_percent: "unknown", free_gb: -1 });
 assert.match(result[1].payload.message, /metricas validas/);
 accept(flow, result[1]);
@@ -144,6 +161,14 @@ result = evaluate(flow, metric(64, 20, { manualSnapshots: 3000000000, backupArch
 assert.equal(flow.stores.persistent.get("storage_health_state_v1").growthCause, "snapshots manuais do Home Assistant");
 
 assert.equal(byId.get("storage_health_tick")?.repeat, "900");
+assert.equal(byId.get("storage_visual_history_seed_tick")?.crontab, "10 02 * * *");
+assert.equal(byId.get("storage_visual_history_seed_tick")?.onceDelay, "12");
+assert.equal(byId.get("storage_visual_history_fetch")?.type, "api-get-history");
+assert.equal(byId.get("storage_visual_history_fetch")?.entityId, "sensor.raspberry_pi_storage_usage");
+assert.equal(byId.get("storage_visual_history_fetch")?.relativeTime, "8 days");
+assert.deepEqual(byId.get("storage_visual_history_seed_in")?.wires, [["storage_read_ha"]]);
+assert.match(byId.get("storage_discovery")?.func ?? "", /raspberry_storage_history_coverage/);
+assert.match(byId.get("storage_discovery")?.func ?? "", /sensor\.raspberry_pi_storage_history_coverage/);
 assert.equal(byId.get("storage_daily_maintenance")?.crontab, "23 */6 * * *");
 assert.equal(byId.get("storage_exec_maintenance")?.command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(byId.get("storage_request_host_maintenance")?.command, "/opt/request-host-storage-maintenance.sh");

@@ -1930,7 +1930,7 @@
           "x": 94,
           "y": 279,
           "w": 957,
-          "h": 372
+          "h": 552
         },
         "storage_group_alerts": {
           "x": 9589,
@@ -2169,6 +2169,26 @@
         "storage_visual_test_input_out": {
           "x": 590,
           "y": 610
+        },
+        "storage_visual_history_seed_tick": {
+          "x": 290,
+          "y": 700
+        },
+        "storage_visual_history_fetch": {
+          "x": 650,
+          "y": 700
+        },
+        "storage_visual_history_seed": {
+          "x": 790,
+          "y": 790
+        },
+        "storage_visual_history_seed_out": {
+          "x": 1010,
+          "y": 790
+        },
+        "storage_visual_history_seed_in": {
+          "x": 200,
+          "y": 790
         },
         "storage_visual_input_in": {
           "x": 1185,

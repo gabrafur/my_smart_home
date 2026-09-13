@@ -128,6 +128,8 @@ views:
                 name: Crescimento em 24 h
               - entity: sensor.raspberry_pi_raspberry_storage_growth_7d
                 name: Crescimento em 7 dias
+              - entity: sensor.raspberry_pi_storage_history_coverage
+                name: Histórico disponível para tendências
               - entity: sensor.raspberry_pi_raspberry_storage_last_maintenance
                 name: Última limpeza segura
               - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed

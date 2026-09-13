@@ -26,7 +26,7 @@
         "flows:update-host-memory-guardian": "node tools/install-host-memory-guardian-flow.mjs && node tools/install-global-flow-observer.mjs",
         "flows:update-local-ai-rtx-recovery": "node tools/install-local-ai-rtx-recovery-flow.mjs && node tools/install-global-flow-observer.mjs",
         "flows:update-vpn-monitor": "node tools/install-vpn-monitor-flow.mjs && node tools/install-global-flow-observer.mjs",
-        "flows:update-storage": "node tools/install-storage-health-flow.mjs && node tools/install-storage-visual-policy.mjs && node tools/install-global-flow-observer.mjs && node tools/apply-left-margin.mjs",
+        "flows:update-storage": "node tools/install-storage-health-flow.mjs && node tools/install-storage-visual-policy.mjs && node tools/install-infrastructure-monitoring-flows.mjs flows.json flows.json",
         "flows:update-recorder-retention": "node tools/install-recorder-retention-flow.mjs && node tools/install-global-flow-observer.mjs",
         "flows:apply-left-margin": "node tools/apply-left-margin.mjs",
         "flows:update-garage-gate": "node tools/configure-garage-gate-flow.mjs",

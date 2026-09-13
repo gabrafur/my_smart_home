@@ -11,6 +11,9 @@ if (!last || s.now - last.ts >= interval / 2) history.push({ ts: s.now, used: s.
 else history[history.length - 1] = { ts: s.now, used: s.used, source };
 history.sort((a, b) => a.ts - b.ts);
 if (s.testMode) flow.set(s.historyKey, history); else flow.set(s.historyKey, history, "persistent");
+s.history_samples = history.length;
+s.history_coverage_hours = history.length ? Math.max(0, Math.round((s.now - history[0].ts) / 360000) / 10) : 0;
+s.history_oldest_at = history.length ? new Date(history[0].ts).toISOString() : null;
 const growth = (age) => {
     const point = history.filter((x) => x.ts <= s.now - age).at(-1);
     if (!point || Math.abs((s.now - point.ts) - age) > 7200000) return null;

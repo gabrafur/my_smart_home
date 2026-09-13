@@ -115,6 +115,7 @@ discovery publica somente dados novos:
 - `sensor.raspberry_pi_raspberry_storage_status`;
 - `sensor.raspberry_pi_raspberry_storage_growth_24h`;
 - `sensor.raspberry_pi_raspberry_storage_growth_7d`;
+- `sensor.raspberry_pi_storage_history_coverage`;
 - `sensor.raspberry_pi_raspberry_storage_last_maintenance`;
 - `sensor.raspberry_pi_raspberry_storage_last_reclaimed`.
 
@@ -158,9 +159,16 @@ uma amostra velha nao e usada como se fosse de 24 horas.
 
 Os replays manuais usam chaves `__test` somente em memória e nunca escrevem no
 histórico persistente de produção. Entradas legadas sem a origem explícita são
-descartadas: depois de deploy/reset, 24 h e 7 d ficam indisponíveis até existir
-uma série real contínua próxima de cada janela. Publicar zero nesse intervalo
-seria um dado falso, por isso a disponibilidade MQTT permanece `offline`.
+descartadas. Ao iniciar e uma vez por dia, o Node-RED recompõe a série compacta
+com estados numéricos reais de `sensor.raspberry_pi_storage_usage` guardados no
+Recorder e reavalia as tendências. Valores inválidos, futuros ou fora da
+retenção são rejeitados. O sensor `Raspberry Storage History Coverage` mostra
+quantas horas reais cobrem a série usada no cálculo.
+
+Se o Recorder ainda não contiver uma amostra próxima de 24 h ou 7 d, a janela
+correspondente permanece indisponível. Publicar zero ou extrapolar nesse
+intervalo seria um dado falso, por isso a disponibilidade MQTT fica `offline`
+até existir cobertura suficiente.
 
 O fluxo também persiste snapshots das categorias Docker, checkout, VS Code,
 Recorder, backups operacionais TAR, snapshots manuais de banco, cache npm e

@@ -67,6 +67,17 @@ Object.assign(required("storage_health_tick"), { x: 1740, y: 140, name: "POLÍTI
 Object.assign(required("storage_recheck_in"), { x: 1660, y: 220 });
 Object.assign(required("storage_read_ha"), { x: 2050, y: 180, wires: [["storage_visual_input_out"]] });
 linkOut("storage_visual_input_out", healthGroup.id, "Métricas HA → política", "storage_visual_input_in", 2450, 180);
+grouped(healthGroup.id, { id: "storage_visual_history_seed_tick", type: "inject", z: TAB, g: healthGroup.id,
+  name: "Recompor histórico ao iniciar e diariamente", props: [{ p: "payload" }], repeat: "", crontab: "10 02 * * *",
+  once: true, onceDelay: "12", payload: "", payloadType: "date", x: 1780, y: 80, wires: [["storage_visual_history_fetch"]] });
+grouped(healthGroup.id, { id: "storage_visual_history_fetch", type: "api-get-history", z: TAB, g: healthGroup.id,
+  name: "Ler 8 dias reais do Recorder", server: required("storage_read_ha").server, version: 1, startDate: "", endDate: "",
+  entityId: "sensor.raspberry_pi_storage_usage", entityIdType: "equals", useRelativeTime: true, relativeTime: "8 days",
+  flatten: true, outputType: "array", outputLocationType: "msg", outputLocation: "payload", x: 2070, y: 80,
+  wires: [["storage_visual_history_seed"]] });
+fn("storage_visual_history_seed", healthGroup.id, "Validar e compactar histórico real", "storage-history-seed.js", 1, 2320, 80, [["storage_visual_history_seed_out"]]);
+linkOut("storage_visual_history_seed_out", healthGroup.id, "Histórico recomposto → avaliar", "storage_visual_history_seed_in", 2520, 80);
+linkIn("storage_visual_history_seed_in", healthGroup.id, "Reavaliar após recomposição", "storage_visual_history_seed_out", "storage_read_ha", 1660, 270);
 Object.assign(required("storage_manual_health"), { x: 1760, y: 330 });
 Object.assign(required("storage_manual_start"), { x: 2050, y: 330, wires: [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_read_ha"], ["storage_manual_status_mqtt"]] });
 Object.assign(required("storage_test_input_in"), { x: 1660, y: 430, wires: [["storage_visual_test_input_out"]] });
