@@ -6,6 +6,11 @@ import fs from "node:fs";
 const flowsPath = process.argv[2] ?? new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
+const logicalWireTargets = (id, output = 0) => (byId.get(id)?.wires?.[output] ?? []).flatMap((targetId) => {
+  const target = byId.get(targetId);
+  if (target?.type !== "link out" || !target.notification_hub_wire_route) return [targetId];
+  return (target.links ?? []).flatMap((linkInId) => byId.get(linkInId)?.wires?.[0] ?? []);
+});
 const tabNodes = flows.filter((node) => node.z === "storage_health_tab");
 const compile = (id) => {
   const node = byId.get(id);
@@ -166,14 +171,18 @@ assert.equal(byId.get("storage_visual_history_seed_tick")?.onceDelay, "12");
 assert.equal(byId.get("storage_visual_history_fetch")?.type, "api-get-history");
 assert.equal(byId.get("storage_visual_history_fetch")?.entityId, "sensor.raspberry_pi_storage_usage");
 assert.equal(byId.get("storage_visual_history_fetch")?.relativeTime, "8 days");
-assert.deepEqual(byId.get("storage_visual_history_seed_in")?.wires, [["storage_read_ha"]]);
+assert.deepEqual(logicalWireTargets("storage_visual_history_seed_in"), ["storage_read_ha"]);
 assert.match(byId.get("storage_discovery")?.func ?? "", /raspberry_storage_history_coverage/);
 assert.match(byId.get("storage_discovery")?.func ?? "", /sensor\.raspberry_pi_storage_history_coverage/);
 assert.equal(byId.get("storage_daily_maintenance")?.crontab, "23 */6 * * *");
 assert.equal(byId.get("storage_exec_maintenance")?.command, "/opt/storage-health-maintenance.sh --apply");
 assert.equal(byId.get("storage_request_host_maintenance")?.command, "/opt/request-host-storage-maintenance.sh");
 assert.equal(byId.get("storage_exec_inspection")?.command, "/opt/storage-health-maintenance.sh --dry-run --deep");
-for (const id of ["storage_notify", "storage_notify_secondary"]) assert.equal(byId.get(id)?.action, "public_bindings.call");
+for (const [id, recipient] of [["storage_notify", "resident_primary"], ["storage_notify_secondary", "resident_secondary"]]) {
+  assert.equal(byId.get(id)?.type, "change");
+  assert.match(byId.get(id).rules.map((rule) => String(rule.to ?? "")).join("\n"), new RegExp(`"recipients":\\["${recipient}"\\]`));
+  assert.deepEqual(byId.get(`${id}__hub_call`)?.links, ["notification_hub_mobile_in"]);
+}
 assert.equal(byId.has("storage_evaluate"), false);
 for (const node of tabNodes.filter((entry) => entry.type === "function" && !["storage_discovery", "storage_visual_history_analyze"].includes(entry.id))) {
   assert.ok(node.func.length < 2000, `JavaScript residual grande: ${node.id}`);

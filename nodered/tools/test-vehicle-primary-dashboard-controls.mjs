@@ -9,6 +9,12 @@ const functionDir = path.join(toolsDir, "functions");
 const flows = JSON.parse(
   fs.readFileSync(path.resolve(toolsDir, "../flows.json"), "utf8"),
 );
+const byId = new Map(flows.map((node) => [node.id, node]));
+const logicalWireTargets = (id, output) => (byId.get(id)?.wires?.[output] ?? []).flatMap((targetId) => {
+  const target = byId.get(targetId);
+  if (target?.type !== "link out" || !target.notification_hub_wire_route) return [targetId];
+  return (target.links ?? []).flatMap((linkInId) => byId.get(linkInId)?.wires?.[0] ?? []);
+});
 
 function source(name) {
   return fs.readFileSync(path.join(functionDir, name), "utf8");
@@ -339,8 +345,11 @@ assert.deepEqual(
 const blockedNotification = flows.find(
   (node) => node.id === "vehicle_primary_manual_refresh_blocked_notification_v1",
 );
-assert.equal(blockedNotification.action, "persistent_notification.create");
-assert.equal(blockedNotification.dataType, "jsonata");
+const notificationContract = (candidate) => candidate.rules.map((rule) => String(rule.to ?? "")).join("\n");
+assert.equal(blockedNotification.type, "change");
+assert.match(notificationContract(blockedNotification), /"operation":"create"/);
+assert.match(notificationContract(blockedNotification), /"delivery":"immediate"/);
+assert.deepEqual(flows.find((node) => node.id === "vehicle_primary_manual_refresh_blocked_notification_v1__hub_call")?.links, ["notification_hub_persistent_in"]);
 
 const dispatchGuard = flows.find(
   (node) => node.id === "vehicle_primary_refresh_dispatch_guard_v1",
@@ -449,25 +458,27 @@ assert.deepEqual(refreshTelemetry.wires[2], [
 const refreshNotification = flows.find(
   (node) => node.id === "vehicle_primary_refresh_notify_primary_v1",
 );
-assert.equal(refreshNotification.action, "public_bindings.call");
-assert.match(refreshNotification.data, /"role":"mobile_primary"/);
-assert.match(refreshNotification.data, /"action":"notify_3"/);
-assert.match(refreshNotification.data, /"title":alert\.title/);
-assert.match(refreshNotification.data, /"message":alert\.message/);
-assert.equal(refreshNotification.queue, "all");
+assert.equal(refreshNotification.type, "change");
+assert.match(notificationContract(refreshNotification), /"recipients":\["resident_primary"\]/);
+assert.match(notificationContract(refreshNotification), /"profile":"simple"/);
+assert.match(notificationContract(refreshNotification), /"title":alert\.title/);
+assert.deepEqual(flows.find((node) => node.id === "vehicle_primary_refresh_notify_primary_v1__hub_call")?.links, ["notification_hub_mobile_in"]);
 
 const refreshPersistent = flows.find(
   (node) => node.id === "vehicle_primary_refresh_notify_persistent_v1",
 );
-assert.equal(refreshPersistent.action, "persistent_notification.create");
-assert.match(refreshPersistent.data, /notification_id/);
-assert.equal(refreshPersistent.queue, "all");
+assert.equal(refreshPersistent.type, "change");
+assert.match(notificationContract(refreshPersistent), /"operation":"create"/);
+assert.match(notificationContract(refreshPersistent), /"delivery":"queued"/);
+assert.match(notificationContract(refreshPersistent), /notification_id/);
+assert.deepEqual(flows.find((node) => node.id === "vehicle_primary_refresh_notify_persistent_v1__hub_call")?.links, ["notification_hub_persistent_in"]);
 
 const refreshDismiss = flows.find(
   (node) => node.id === "vehicle_primary_refresh_dismiss_persistent_v1",
 );
-assert.equal(refreshDismiss.action, "persistent_notification.dismiss");
-assert.equal(refreshDismiss.queue, "all");
+assert.equal(refreshDismiss.type, "change");
+assert.match(notificationContract(refreshDismiss), /"operation":"dismiss"/);
+assert.match(notificationContract(refreshDismiss), /"delivery":"queued"/);
 const refreshNotificationGuard = flows.find(
   (node) => node.id === "vehicle_primary_refresh_notification_guard_v1",
 );
@@ -486,7 +497,7 @@ assert.equal(remoteEvent.ifState, "failed");
 const remoteGuard = flows.find(
   (node) => node.id === "vehicle_primary_remote_command_guard_v1",
 );
-assert.deepEqual(remoteGuard.wires, [
+assert.deepEqual(remoteGuard.wires.map((_, output) => logicalWireTargets(remoteGuard.id, output)), [
   ["vehicle_primary_remote_command_notify_primary_v1"],
   ["vehicle_primary_remote_command_notify_persistent_v1"],
   ["vehicle_primary_remote_command_dry_run_out_v1"],
@@ -494,14 +505,16 @@ assert.deepEqual(remoteGuard.wires, [
 const remoteMobile = flows.find(
   (node) => node.id === "vehicle_primary_remote_command_notify_primary_v1",
 );
-assert.equal(remoteMobile.action, "public_bindings.call");
-assert.equal(remoteMobile.queue, "all");
+assert.equal(remoteMobile.type, "change");
+assert.match(notificationContract(remoteMobile), /"recipients":\["resident_primary"\]/);
+assert.deepEqual(flows.find((node) => node.id === "vehicle_primary_remote_command_notify_primary_v1__hub_call")?.links, ["notification_hub_mobile_in"]);
 const remotePersistent = flows.find(
   (node) => node.id === "vehicle_primary_remote_command_notify_persistent_v1",
 );
-assert.equal(remotePersistent.action, "persistent_notification.create");
-assert.match(remotePersistent.data, /notification_id/);
-assert.equal(remotePersistent.queue, "all");
+assert.equal(remotePersistent.type, "change");
+assert.match(notificationContract(remotePersistent), /"operation":"create"/);
+assert.match(notificationContract(remotePersistent), /"delivery":"queued"/);
+assert.match(notificationContract(remotePersistent), /notification_id/);
 
 const lockIntent = flows.find(
   (node) => node.id === "vehicle_primary_lock_intent_v1",

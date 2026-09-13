@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const FLOWS = new URL("../flows.json", import.meta.url).pathname;
 const OUT = process.argv[2] || FLOWS;
@@ -431,5 +432,5 @@ upsert(sw("codex_pending_due", "codex_group_effects", "Retry pendente está venc
 upsert(linkOut("codex_pending_retry_out", "codex_group_effects", "Recovery vencido → gate final", ["codex_pending_retry_in"], 3310, 1320));
 upsert(linkIn("codex_pending_retry_in", "codex_group_effects", "Receber recovery vencido", ["codex_pending_retry_out"], 1840, 1310, [["codex_alert_final_gate"]]));
 
-writeFileSync(OUT, JSON.stringify(flows, null, 4) + "\n");
+writeFileSync(OUT, JSON.stringify(installNotificationHubs(flows), null, 4) + "\n");
 console.log(`Fluxo visual de alertas Codex escrito em ${OUT}.`);

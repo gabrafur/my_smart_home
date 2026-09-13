@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const FLOWS = new URL("../flows.json", import.meta.url).pathname;
 const OUT = process.argv[2] || FLOWS;
@@ -344,5 +345,5 @@ upsert({ id: "gar_test_dry_run_in", type: "link in", z: TAB, g: "gar_group_tests
 upsert(functionNode("gar_test_dry_run_terminal", "gar_group_tests", "TESTE FINAL: nenhum efeito enviado", dryRun, 0, 1450, 870, []));
 upsert(group("gar_group_tests", "4. Testes manuais completos — dry-run", ["gar_test_instructions", "gar_test_reset", "gar_test_reset_state", "gar_test_accept", "gar_test_duplicate", "gar_test_cooldown", "gar_test_boundary", "gar_test_request_out_left", "gar_test_relay_on", "gar_test_relay_on_prepare", "gar_test_request_out_right", "gar_test_dry_run_in", "gar_test_dry_run_terminal"], 64, 670, 1846, 340, "#0891b2", "#cffafe"));
 
-writeFileSync(OUT, JSON.stringify(flows, null, 4) + "\n");
+writeFileSync(OUT, JSON.stringify(installNotificationHubs(flows), null, 4) + "\n");
 console.log(`Fluxo visual da garagem escrito em ${OUT}.`);

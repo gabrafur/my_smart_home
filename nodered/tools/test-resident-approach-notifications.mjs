@@ -275,24 +275,28 @@ assert.equal(dryRun(synthetic, flow, mock, {}), null);
 assert.equal(flow.get("resident_notifications_last_dry_run_v2__test")["resident_primary:resident_primary"].dispatched, false);
 assert.equal(readState(recipient(normalize(arrival("resident_primary", "home", 5000, true), flow, mock, {}), "resident_primary"), flow, mock, {}).notification_duplicate, true);
 
-for (const id of ["resident_notifications_notify_primary", "resident_notifications_notify_secondary"]) {
-  const service = byId.get(id);
-  assert.equal(service.type, "api-call-service");
-  assert.match(service.data, /"title":"Casa inteligente"/);
-  assert.match(service.data, /"tag":payload\.notification_key/);
-  assert.match(service.data, /"sound":"default"/);
-  assert.match(service.data, /"interruption-level":"time-sensitive"/);
-  assert.doesNotMatch(service.data, /payload.test_mode|notification_delivery_under_test/);
+for (const [id, resident] of [["resident_notifications_notify_primary", "resident_primary"], ["resident_notifications_notify_secondary", "resident_secondary"]]) {
+  const adapter = byId.get(id);
+  assert.equal(adapter.type, "change");
+  const contract = adapter.rules.map((rule) => String(rule.to ?? "")).join("\n");
+  assert.match(contract, /"title":"Casa inteligente"/);
+  assert.match(contract, /"tag":_notification_hub_context\.payload\.notification_key/);
+  assert.match(contract, /"sound":"default"/);
+  assert.match(contract, /"interruption-level":"time-sensitive"/);
+  assert.match(contract, new RegExp(`"recipients":\\["${resident}"\\]`));
+  assert.doesNotMatch(contract, /notification_delivery_under_test/);
+  assert.deepEqual(byId.get(`${id}__hub_call`).links, ["notification_hub_mobile_in"]);
 }
-assert.match(byId.get("resident_notifications_notify_secondary").data, /"role":"mobile_secondary"/);
 assert.match(byId.get("resident_notifications_delivery_ack").name, /aceite do Home Assistant/);
 const deliveryTest = byId.get("resident_notifications_test_notify_secondary");
-assert.equal(deliveryTest.type, "api-call-service");
-assert.equal(deliveryTest.action, "public_bindings.call");
-assert.match(deliveryTest.data, /"role":"mobile_secondary"/);
-assert.match(deliveryTest.data, /"title":"TESTE/);
-assert.match(deliveryTest.data, /"message":"TESTE/);
-assert.match(deliveryTest.data, /"interruption-level":"time-sensitive"/);
+assert.equal(deliveryTest.type, "change");
+const deliveryTestContract = deliveryTest.rules.map((rule) => String(rule.to ?? "")).join("\n");
+assert.match(deliveryTestContract, /"recipients":\["resident_secondary"\]/);
+assert.doesNotMatch(deliveryTestContract, /resident_primary/);
+assert.match(deliveryTestContract, /"title":"TESTE/);
+assert.match(deliveryTestContract, /"delivery_under_test":true/);
+assert.match(deliveryTestContract, /"interruption-level":"time-sensitive"/);
+assert.deepEqual(byId.get("resident_notifications_test_notify_secondary__hub_call").links, ["notification_hub_mobile_in"]);
 assert.deepEqual(
   byId.get("resident_notifications_test_delivery_secondary").wires,
   [["resident_notifications_test_notify_secondary"]],
@@ -309,7 +313,7 @@ for (const id of [
 ]) assert.deepEqual(byId.get(id).wires, [["resident_notifications_test_adapter"]]);
 assert.deepEqual(byId.get("resident_notifications_test_gate").wires[0], ["resident_notifications_dry_run_out"]);
 assert.equal((byId.get("resident_notifications_dry_run_terminal").wires ?? []).flat().length, 0);
-assert.deepEqual(byId.get("resident_notifications_delivery_catch").scope.sort(), ["resident_notifications_notify_primary", "resident_notifications_notify_secondary"].sort());
+assert.deepEqual(byId.get("resident_notifications_delivery_catch").scope.sort(), ["resident_notifications_notify_primary__hub_call", "resident_notifications_notify_secondary__hub_call"].sort());
 assert.deepEqual(byId.get("resident_notifications_delivery_ack").wires, []);
 
 const maxFunctionSize = Math.max(...tabNodes.filter((node) => node.type === "function").map((node) => node.func.length));

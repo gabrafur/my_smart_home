@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowUrl = new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
@@ -784,5 +785,5 @@ flows.push(
 peopleTestGroup.nodes.push(recoveryTestRoute.out, recoveryTestRoute.in);
 peopleTestGroup.h = 782;
 
-fs.writeFileSync(flowUrl, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowUrl, `${JSON.stringify(installNotificationHubs(flows), null, 4)}\n`);
 console.log("Notificações recíprocas de aproximação movidas para fluxo independente.");

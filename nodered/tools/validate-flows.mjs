@@ -12,6 +12,11 @@ for (const file of files) {
 }
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
+const notificationHubTabs = new Set([
+  "notification_hub_mobile_tab",
+  "notification_hub_alexa_tab",
+  "notification_hub_persistent_tab",
+]);
 const byId = new Map();
 for (const node of flows) {
   if (!node.id) throw new Error("Node sem id");
@@ -24,6 +29,14 @@ for (const node of flows) {
 
 for (const node of flows) {
   if (node.type === "api-call-service") {
+    const serviceAction = String(node.action ?? "");
+    const rawService = `${serviceAction}\n${String(node.data ?? "")}\n${String(node.name ?? "")}`;
+    if (/^(?:notify|tts)\./.test(serviceAction) && !notificationHubTabs.has(node.z)) {
+      throw new Error(`Serviço direto de notificação/TTS fora dos hubs canônicos: ${node.id}`);
+    }
+    if (/^media_player\./.test(serviceAction) && /alexa|announce|announcement|\btts\b/i.test(rawService) && node.z !== "notification_hub_alexa_tab") {
+      throw new Error(`Saída Alexa/media_player fora do hub canônico: ${node.id}`);
+    }
     const directNotifyEntities = (node.entityId ?? []).filter((entityId) => entityId.startsWith("notify."));
     if (directNotifyEntities.length > 0 || node.action === "notify.send_message") {
       throw new Error(`Notificação direta fora de public_bindings.call: ${node.id}`);
@@ -37,9 +50,19 @@ for (const node of flows) {
       }
       const mobilePush = /"action":"(?:notify_[23]|notify_actionable)"/.test(node.data);
       const transientCommand = /request_location_update|clear_notification/.test(node.data);
-      if (mobilePush && !transientCommand && node.queue !== "all") {
+      const backgroundHub = [
+        "notification_hub_mobile_primary_background",
+        "notification_hub_mobile_secondary_background",
+      ].includes(node.id);
+      if (mobilePush && !transientCommand && !backgroundHub && node.queue !== "all") {
         throw new Error(`Push móvel pode se perder durante reconexão: ${node.id}`);
       }
+      if (/"action":"notify/.test(node.data) && !notificationHubTabs.has(node.z)) {
+        throw new Error(`Saída móvel/Alexa fora do hub canônico: ${node.id}`);
+      }
+    }
+    if (String(node.action ?? "").startsWith("persistent_notification.") && node.z !== "notification_hub_persistent_tab") {
+      throw new Error(`Saída persistente fora do hub canônico: ${node.id}`);
     }
   }
   for (const target of (node.wires ?? []).flat()) {

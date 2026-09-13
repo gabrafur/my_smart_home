@@ -262,13 +262,12 @@ assert.deepEqual(byId.get("local_ai_rtx_alert_recovered_switch")?.wires, [
   ["local_ai_rtx_alert_dismiss"],
   [],
 ]);
-assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.action, "persistent_notification.dismiss");
-assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.dataType, "json");
-assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.queue, "all");
-assert.equal(
-  JSON.parse(byId.get("local_ai_rtx_alert_dismiss")?.data).notification_id,
-  "nodered_observabilidade_global_domain_alert_local_ai_rtx_unavailable",
-);
+assert.equal(byId.get("local_ai_rtx_alert_dismiss")?.type, "change");
+const dismissContract = byId.get("local_ai_rtx_alert_dismiss").rules.map((rule) => String(rule.to ?? "")).join("\n");
+assert.match(dismissContract, /"operation":"dismiss"/);
+assert.match(dismissContract, /"delivery":"queued"/);
+assert.match(dismissContract, /nodered_observabilidade_global_domain_alert_local_ai_rtx_unavailable/);
+assert.deepEqual(byId.get("local_ai_rtx_alert_dismiss__hub_call")?.links, ["notification_hub_persistent_in"]);
 assert.deepEqual(byId.get("local_ai_rtx_prod_host_state_switch")?.wires, [
   ["local_ai_rtx_prepare_prod_alert"],
   ["local_ai_rtx_prod_alert_reset_request_out"],

@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -11,7 +12,6 @@ const functionsDir = path.join(here, "functions");
 const TAB = "monitoramento_tuya_tab";
 const MQTT = "721c47f31046b8bc";
 const SERVER = "4126427d5e161a03";
-const NOTIFY = "infra_notify_all_mobiles";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("tuya_") || node.id.startsWith("grp_tuya_");
@@ -23,7 +23,6 @@ for (const node of next) {
 }
 if (!next.some((node) => node.id === MQTT)) throw new Error("Configuração MQTT ausente");
 if (!next.some((node) => node.id === SERVER)) throw new Error("Servidor Home Assistant ausente");
-if (!next.some((node) => node.id === NOTIFY)) throw new Error("Subflow de notificação ausente");
 
 const nodes = [];
 const add = (node) => { nodes.push(node); return node.id; };
@@ -163,8 +162,8 @@ fn("tuya_device_notification_build", groups.effect, "Montar alerta do dispositiv
 terminal("tuya_no_notification", groups.effect, "Sem nova notificação", { fill: "grey", shape: "ring", text: "dedupe ativo" }, 5830, 735);
 sw("tuya_notification_test_gate", groups.effect, "Alerta pertence a TESTE?", "_tuya_test", "msg", [{ t: "true" }, { t: "else" }], 6120, 660, [["tuya_notification_dry_out"], ["tuya_notify_effect"]]);
 linkOut("tuya_notification_dry_out", groups.effect, "Alerta TESTE → dry-run", "tuya_dry_in", 6380, 620);
-grouped(groups.effect, { id: "tuya_notify_effect", type: `subflow:${NOTIFY}`, z: TAB, g: groups.effect,
-  name: "EFEITO ÚNICO: notificar infraestrutura", env: [], x: 6560, y: 700, wires: [[]] });
+grouped(groups.effect, { id: "tuya_notify_effect", type: "change", z: TAB, g: groups.effect,
+  name: "Solicitar canais canônicos", rules: [], action: "", property: "", from: "", to: "", reg: false, x: 6560, y: 700, wires: [[]] });
 linkIn("tuya_discovery_in", groups.effect, "Receber discovery HA", "tuya_discovery_out", "tuya_mqtt_publish", 6070, 840);
 grouped(groups.effect, { id: "tuya_mqtt_publish", type: "mqtt out", z: TAB, g: groups.effect,
   name: "EFEITO: publicar MQTT retained", topic: "", qos: "1", retain: "true", respTopic: "", contentType: "",
@@ -201,5 +200,5 @@ linkIn("tuya_dry_in", groups.test, "Receber qualquer efeito TESTE", ["tuya_publi
 fn("tuya_dry_run_terminal", groups.test, "TESTE FINAL: efeito bloqueado", "tuya-dry-run.js", 0, 2850, 1290, []);
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Tuya monitor visual flow installed in ${outputPath}`);

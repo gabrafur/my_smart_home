@@ -78,12 +78,15 @@ assert.equal(recoverySunCheck.halt_if, "below_horizon");
 assert.deepEqual(recoverySunCheck.wires, [["ext_prepare_recovery_confirmation"], []]);
 
 const mobileQuestion = getNode("ext_send_recovery_mobile");
-assert.equal(mobileQuestion.action, "public_bindings.call");
-assert.match(mobileQuestion.data, /"role":"mobile_primary"/);
-assert.match(mobileQuestion.data, /"action":"notify_actionable"/);
-assert.match(mobileQuestion.data, /confirm_action/);
-assert.match(mobileQuestion.data, /cancel_action/);
-assert.deepEqual(mobileQuestion.wires, [["ext_commit_recovery_confirmation"]]);
+assert.equal(mobileQuestion.type, "change");
+const mobileQuestionContract = mobileQuestion.rules.map((rule) => String(rule.to ?? "")).join("\n");
+assert.match(mobileQuestionContract, /"recipients":\["resident_primary"\]/);
+assert.match(mobileQuestionContract, /"profile":"actionable"/);
+assert.match(mobileQuestionContract, /confirm_action/);
+assert.match(mobileQuestionContract, /cancel_action/);
+assert.deepEqual(mobileQuestion.wires, [["ext_send_recovery_mobile__hub_call"]]);
+assert.deepEqual(getNode("ext_send_recovery_mobile__hub_call").links, ["notification_hub_mobile_in"]);
+assert.deepEqual(getNode("ext_send_recovery_mobile__hub_result").wires[0], ["ext_commit_recovery_confirmation"]);
 
 const recoveryResponse = getNode("ext_recovery_notification_action");
 assert.equal(recoveryResponse.eventType, "mobile_app_notification_action");

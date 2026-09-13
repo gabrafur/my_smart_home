@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -274,5 +275,5 @@ linkIn("local_ai_rtx_dry_in", groups.test, "Receber efeito TESTE", "local_ai_rtx
 fn("local_ai_rtx_dry_run_terminal", groups.test, "TESTE FINAL: MCP não chamado", "local-ai-rtx-dry-run.js", 0, 1910, 1210, []);
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Fluxo visual de recovery RTX instalado em ${outputPath}`);

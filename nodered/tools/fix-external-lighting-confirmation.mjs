@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowsPath = new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowsPath, "utf8"));
@@ -350,5 +351,5 @@ return msg;`,
   },
 );
 
-fs.writeFileSync(flowsPath, JSON.stringify(orderFlowsForNodeRed(keptFlows), null, 4));
+fs.writeFileSync(flowsPath, JSON.stringify(installNotificationHubs(orderFlowsForNodeRed(keptFlows)), null, 4));
 console.log("Updated iluminacao_externa confirmation flow.");

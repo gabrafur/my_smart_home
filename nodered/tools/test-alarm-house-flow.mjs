@@ -201,8 +201,9 @@ for (const [id, action] of [
   assert.equal(data.action, action);
   assert.deepEqual(data.data, {});
 }
-assert.equal(node("alarm_notify_alexa").queue, "all");
-assert.match(node("alarm_notify_alexa").data, /"role":"mobile_primary"/);
+assert.equal(node("alarm_notify_alexa").type, "change");
+assert.match(node("alarm_notify_alexa").rules.map((rule) => String(rule.to ?? "")).join("\n"), /"targets":\["voice_assistant_primary"\]/);
+assert.deepEqual(node("alarm_notify_alexa__hub_call").links, ["notification_hub_alexa_in"]);
 assert.equal(node("moni_mobile_update_after_arm").action, "homeassistant.update_entity");
 
 for (const removed of legacyIdsForTest()) assert.equal(byId.has(removed), false, `${removed} deveria ter sido removido`);

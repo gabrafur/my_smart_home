@@ -23,12 +23,19 @@ for (const removed of ["internet_evaluate", "zigbee_network_evaluate", "zigbee_c
 const broker = byId.get("721c47f31046b8bc");
 assert.equal(broker.birthTopic, "nodered/status");
 assert.equal(broker.willPayload, "offline");
-const notifier = byId.get("infra_notify_all_mobiles");
-assert.equal(notifier?.type, "subflow");
-for (const id of ["infra_notify_persistent", "infra_notify_mobile", "infra_notify_mobile_secondary", "infra_notify_echo", "infra_notify_dismiss"]) {
-  assert.equal(byId.get(id)?.type, "api-call-service", `efeito compartilhado ausente: ${id}`);
+assert.equal(byId.has("infra_notify_all_mobiles"), false, "subflow monolítico legado ainda existe");
+for (const [id, hubInput] of [
+  ["internet_notify_down", "notification_hub_mobile_in"],
+  ["internet_notify_recovery", "notification_hub_mobile_in"],
+  ["zigbee_notify_effect", "notification_hub_mobile_in"],
+  ["tuya_notify_effect", "notification_hub_mobile_in"],
+]) {
+  assert.equal(byId.get(id)?.type, "change", `fanout visual ausente: ${id}`);
+  assert.deepEqual(byId.get(`${id}__mobile_call`)?.links, [hubInput]);
+  assert.deepEqual(byId.get(`${id}__mobile_secondary_call`)?.links, [hubInput]);
+  assert.deepEqual(byId.get(`${id}__alexa_call`)?.links, ["notification_hub_alexa_in"]);
+  assert.deepEqual(byId.get(`${id}__persistent_call`)?.links, ["notification_hub_persistent_in"]);
 }
-assert.equal(byId.get("infra_notify_route")?.func.length < 600, true);
 
 const temporary = path.join(os.tmpdir(), `node-red-infrastructure-${process.pid}.json`);
 const generated = spawnSync(process.execPath, [path.join(here, "install-infrastructure-monitoring-flows.mjs"), flowPath, temporary], {

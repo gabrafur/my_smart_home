@@ -16,6 +16,11 @@ const node = (id) => {
   assert.ok(found, `missing node ${id}`);
   return found;
 };
+const logicalWireTargets = (id, output = 0) => (node(id).wires?.[output] ?? []).flatMap((targetId) => {
+  const target = node(targetId);
+  if (target.type !== "link out" || !target.notification_hub_wire_route) return [targetId];
+  return (target.links ?? []).flatMap((linkInId) => node(linkInId).wires?.[0] ?? []);
+});
 function memory() {
   const stores = { default: new Map(), persistent: new Map() };
   return {
@@ -76,20 +81,21 @@ assert.deepEqual(node("git_backup_deferred_gate").wires, [
   ["git_backup_dry_out"],
   ["git_backup_retry_effect_out"],
 ]);
-assert.deepEqual(node("git_backup_notification_in").wires, [[
+assert.deepEqual(logicalWireTargets("git_backup_notification_in"), [
   "git_backup_notify_primary",
   "git_backup_notify_persistent",
-]]);
-assert.deepEqual(node("git_backup_retry_delay").wires, [["git_backup_retry_out"]]);
+]);
+assert.deepEqual(logicalWireTargets("git_backup_retry_delay"), ["git_backup_retry_out"]);
 assert.equal(node("git_backup_retry_delay").timeout, "5");
 assert.equal(node("git_backup_retry_delay").timeoutUnits, "minutes");
 assert.match(node("git_backup_complete").property, /\$exists\(payload\.code\)/);
 assert.deepEqual(node("git_backup_retry_out").links, ["git_backup_retry_in"]);
 assert.deepEqual(node("git_backup_daily_update_out").links, ["daily_update_after_backup_in"]);
 assert.ok(node("git_backup_mark_daily_success").rules.some((rule) => rule.p === "payload.event" && rule.to === "git_backup_completed"));
-assert.match(node("git_backup_notify_primary").data, /"role":"mobile_primary"/);
-assert.equal(node("git_backup_notify_persistent").action, "persistent_notification.create");
-assert.match(node("git_backup_notify_persistent").data, /"notification_id":"git_backup_failure"/);
+assert.match(node("git_backup_notify_primary").rules.map((rule) => String(rule.to ?? "")).join("\n"), /"recipients":\["resident_primary"\]/);
+assert.deepEqual(node("git_backup_notify_primary__hub_call").links, ["notification_hub_mobile_in"]);
+assert.match(node("git_backup_notify_persistent").rules.map((rule) => String(rule.to ?? "")).join("\n"), /"notification_id":"git_backup_failure"/);
+assert.deepEqual(node("git_backup_notify_persistent__hub_call").links, ["notification_hub_persistent_in"]);
 assert.deepEqual(node("git_backup_test_request_out").links, ["git_backup_test_request_in"]);
 assert.deepEqual(node("git_backup_test_result_out").links, ["git_backup_result_in"]);
 assert.ok(!JSON.stringify(node("git_backup_test_request")).includes("git_backup_request"));

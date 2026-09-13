@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const flowsPath = path.resolve(here, "..", "flows.json");
@@ -591,5 +592,5 @@ for (const node of flows) {
 }
 const missing = canonicalNodes.filter((node) => !installed.has(node.id));
 updated.splice(lastOwnedIndex + 1, 0, ...missing);
-fs.writeFileSync(flowsPath, `${JSON.stringify(updated, null, 4)}\n`);
+fs.writeFileSync(flowsPath, `${JSON.stringify(installNotificationHubs(updated), null, 4)}\n`);
 console.log(`Installed ${canonicalNodes.length} Storage Health nodes in ${flowsPath}`);

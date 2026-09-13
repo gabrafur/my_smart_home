@@ -26,9 +26,18 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
   if (!tab || !["tab", "subflow"].includes(tab.type)) {
     throw new Error(`Canvas do override ausente: ${canvasId}`);
   }
+  const managedGroups = new Set(flows
+    .filter((node) => node.z === canvasId && node.type === "group" && node.notification_hub_layout_version === 1)
+    .map((node) => node.id));
+  const canvasHasManagedNotifications = managedGroups.size > 0;
   for (const [nodeId, geometry] of Object.entries(canvas.nodes ?? {})) {
     const node = byId.get(nodeId);
     if (!node || node.z !== canvasId) throw new Error(`Nó do override ausente: ${nodeId}`);
+    if (
+      managedGroups.has(node.id) ||
+      managedGroups.has(node.g) ||
+      (canvasHasManagedNotifications && node.id.startsWith(`global_observer_coverage__${canvasId}__`))
+    ) continue;
     for (const field of ["x", "y", "w", "h"]) {
       if (geometry[field] !== undefined) {
         if (!Number.isFinite(geometry[field])) throw new Error(`Geometria inválida: ${nodeId}.${field}`);
@@ -58,16 +67,23 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     const contentRight = Math.max(...bounds.map((item) => item.right + 20));
     const contentBottom = Math.max(...bounds.map((item) => item.bottom + 20));
     const labelWidth = String(group.name ?? "").length * 7 + 32;
-    const left = compact ? contentLeft : Math.min(group.x, contentLeft);
+    const notificationManaged = group.notification_hub_layout_version === 1;
+    const left = compact
+      ? notificationManaged
+        ? Math.max(MIN_LEFT_MARGIN, group.x, contentLeft)
+        : contentLeft
+      : Math.min(group.x, contentLeft);
     const top = compact ? contentTop : Math.min(group.y, contentTop);
     const right = compact
       ? Math.max(contentRight, left + labelWidth)
       : Math.max(group.x + group.w, contentRight);
     const bottom = compact ? contentBottom : Math.max(group.y + group.h, contentBottom);
-    group.x = Math.round(left);
-    group.y = Math.round(top);
-    group.w = Math.round(right - left);
-    group.h = Math.round(bottom - top);
+    const roundedLeft = Math.round(left);
+    const roundedTop = Math.round(top);
+    group.x = roundedLeft;
+    group.y = roundedTop;
+    group.w = Math.round(right - roundedLeft);
+    group.h = Math.round(bottom - roundedTop);
   }
 }
 
@@ -87,7 +103,13 @@ for (const canvas of flows.filter((node) =>
   const delta = Math.max(0, MIN_LEFT_MARGIN - currentMargin);
   if (delta === 0) continue;
 
-  for (const node of items) node.x += delta;
+  const notificationManagedGroups = new Set(groups
+    .filter((group) => group.notification_hub_layout_version === 1)
+    .map((group) => group.id));
+  for (const node of items) {
+    if (notificationManagedGroups.has(node.id) || notificationManagedGroups.has(node.g)) continue;
+    node.x += delta;
+  }
   shifted += 1;
 }
 

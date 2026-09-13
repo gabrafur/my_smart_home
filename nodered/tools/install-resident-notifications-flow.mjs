@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -249,5 +250,5 @@ for (const [linkNode, target] of [
   linkNode.links ??= [];
   if (!linkNode.links.includes(target)) linkNode.links.push(target);
 }
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Resident notification visual flow installed in ${outputPath}`);

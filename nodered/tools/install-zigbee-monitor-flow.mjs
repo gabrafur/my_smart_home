@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -10,7 +11,6 @@ const outputPath = path.resolve(process.argv[3] ?? sourcePath);
 const functionsDir = path.join(here, "functions");
 const TAB = "monitoramento_zigbee_tab";
 const MQTT = "721c47f31046b8bc";
-const NOTIFY = "infra_notify_all_mobiles";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("zigbee_") || node.id.startsWith("grp_zigbee_");
@@ -25,7 +25,6 @@ for (const node of next) {
   );
 }
 if (!next.some((node) => node.id === MQTT)) throw new Error("Configuração MQTT ausente");
-if (!next.some((node) => node.id === NOTIFY)) throw new Error("Subflow de notificação ausente");
 
 const nodes = [];
 const add = (node) => { nodes.push(node); return node.id; };
@@ -190,8 +189,8 @@ linkOut("zigbee_component_notification_route_out", groups.effect, "Alerta de com
 linkIn("zigbee_component_notification_route_in", groups.effect, "Receber alerta de componente", "zigbee_component_notification_route_out", "zigbee_notification_test_gate", 5880, 365);
 terminal("zigbee_component_no_event", groups.effect, "Componente sem transição", { fill: "grey", shape: "ring", text: "dedupe ativo" }, 5750, 820);
 sw("zigbee_notification_test_gate", groups.effect, "Alerta pertence a TESTE?", "_zigbee_test", "msg", [{ t: "true" }, { t: "else" }], 6060, 300, [["zigbee_notification_dry_out"], ["zigbee_notify_effect"]]);
-grouped(groups.effect, { id: "zigbee_notify_effect", type: `subflow:${NOTIFY}`, z: TAB, g: groups.effect,
-  name: "EFEITO ÚNICO: notificar infraestrutura", env: [], x: 6500, y: 300, wires: [[]] });
+grouped(groups.effect, { id: "zigbee_notify_effect", type: "change", z: TAB, g: groups.effect,
+  name: "Solicitar canais canônicos", rules: [], action: "", property: "", from: "", to: "", reg: false, x: 6500, y: 300, wires: [[]] });
 linkOut("zigbee_notification_dry_out", groups.effect, "Alerta TESTE → dry-run", "zigbee_dry_in", 6300, 380);
 
 grouped(groups.test, { id: "zigbee_test_note", type: "comment", z: TAB, g: groups.test,
@@ -225,5 +224,5 @@ linkIn("zigbee_dry_in", groups.test, "Receber qualquer efeito TESTE", ["zigbee_n
 fn("zigbee_dry_run_terminal", groups.test, "TESTE FINAL: efeito bloqueado", "zigbee-dry-run.js", 0, 2860, 1540, []);
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Zigbee monitor visual flow installed in ${outputPath}`);

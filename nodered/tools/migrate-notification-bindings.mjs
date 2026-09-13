@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowUrl = new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
@@ -164,5 +165,5 @@ const lightGroup = required("95e7527bc7a0a9a1");
 appendUnique(lightGroup.nodes, "light_notify_on_secondary");
 appendUnique(lightGroup.nodes, "light_notify_unavailable_secondary");
 
-fs.writeFileSync(flowUrl, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowUrl, `${JSON.stringify(installNotificationHubs(flows), null, 4)}\n`);
 console.log("Node-RED notifications migrated to public_bindings.call.");

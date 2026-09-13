@@ -208,11 +208,13 @@ assert.equal(dry.result, null);
 assert.match(dry.warnings[0], /"simulated":true/);
 assert.match(dry.warnings[0], /"dispatched":false/);
 
-assert.deepEqual(node("codex_alert_push").wires, [["codex_alert_ack"]]);
-assert.deepEqual(node("codex_alert_persistent").wires, [["codex_alert_ack"]]);
-assert.deepEqual(node("codex_alert_catch").scope.sort(), ["codex_alert_persistent", "codex_alert_push"].sort());
-assert.equal(node("codex_alert_push").queue, "all");
-assert.match(node("codex_alert_push").data, /"role":"mobile_primary"/);
+assert.deepEqual(node("codex_alert_push").wires, [["codex_alert_push__hub_call"]]);
+assert.deepEqual(node("codex_alert_persistent").wires, [["codex_alert_persistent__hub_call"]]);
+assert.deepEqual(node("codex_alert_push__hub_result").wires[0], ["codex_alert_ack"]);
+assert.deepEqual(node("codex_alert_persistent__hub_result").wires[0], ["codex_alert_ack"]);
+assert.deepEqual(node("codex_alert_catch").scope.sort(), ["codex_alert_persistent__hub_call", "codex_alert_push__hub_call"].sort());
+assert.match(node("codex_alert_push").rules.map((rule) => String(rule.to ?? "")).join("\n"), /"recipients":\["resident_primary"\]/);
+assert.deepEqual(node("codex_alert_push__hub_call").links, ["notification_hub_mobile_in"]);
 assert.deepEqual(node("codex_level_publish").entityId, ["input_text.codex_nivel_alerta_canonico"]);
 assert.deepEqual(node("codex_level_final_gate").wires[1], ["codex_level_dry_run_out"]);
 assert.deepEqual(node("codex_alert_final_gate").wires[1], ["codex_alert_dry_run_out"]);

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowPath = new URL("../flows.json", import.meta.url);
 const outputPath = process.env.NODE_RED_FLOW_OUTPUT
@@ -2436,5 +2437,5 @@ flows.push(
   },
 );
 
-fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(flows), null, 4)}\n`);
 console.log("Seleção canônica de localização instalada em blocos no Node-RED.");

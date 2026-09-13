@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -174,5 +175,5 @@ fn("alarm_arrival_test_simulate_confirmation_v1", groups.test, "Simular entrega 
 linkOut("alarm_arrival_test_confirmation_out_v1", groups.test, "Confirmação simulada → decisão", "alarm_arrival_test_confirmation_in_v1", 2860, 1370);
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Alarm arrival visual flow installed in ${outputPath}`);

@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -10,7 +11,6 @@ const outputPath = path.resolve(process.argv[3] ?? sourcePath);
 const functionsDir = path.join(here, "functions");
 const TAB = "monitoramento_internet_tab";
 const MQTT = "721c47f31046b8bc";
-const NOTIFY_SUBFLOW = "infra_notify_all_mobiles";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const owned = (node) => node.id === TAB || node.z === TAB || node.id.startsWith("internet_") || node.id.startsWith("grp_internet_");
@@ -25,7 +25,6 @@ for (const node of next) {
   );
 }
 if (!next.some((node) => node.id === MQTT)) throw new Error("Configuração MQTT ausente");
-if (!next.some((node) => node.id === NOTIFY_SUBFLOW)) throw new Error("Subflow de notificação de infraestrutura ausente");
 
 const nodes = [];
 const add = (node) => { nodes.push(node); return node.id; };
@@ -150,8 +149,8 @@ fn("internet_notification_build", groups.effect, "Montar envelope do alerta", "i
 terminal("internet_notification_none", groups.effect, "Sem novo alerta", { fill: "grey", shape: "ring", text: "sem notificação nova" }, 5710, 295);
 sw("internet_notification_test_gate", groups.effect, "Alerta pertence a TESTE?", "_internet_test", "msg", [{ t: "true" }, { t: "else" }], 5990, 240, [["internet_dry_out"], ["internet_notify_route"]]);
 sw("internet_notify_route", groups.effect, "Enviar queda ou recuperação?", "internet_event", "msg", [{ t: "eq", v: "down", vt: "str" }, { t: "eq", v: "recovery", vt: "str" }], 6240, 220, [["internet_notify_down"], ["internet_notify_recovery"]]);
-grouped(groups.effect, { id: "internet_notify_down", type: "subflow:" + NOTIFY_SUBFLOW, z: TAB, g: groups.effect, name: "EFEITO: notificar queda", x: 6560, y: 195, wires: [[]] });
-grouped(groups.effect, { id: "internet_notify_recovery", type: "subflow:" + NOTIFY_SUBFLOW, z: TAB, g: groups.effect, name: "EFEITO: notificar retorno", x: 6560, y: 245, wires: [[]] });
+grouped(groups.effect, { id: "internet_notify_down", type: "change", z: TAB, g: groups.effect, name: "Solicitar canais para queda", rules: [], action: "", property: "", from: "", to: "", reg: false, x: 6560, y: 195, wires: [[]] });
+grouped(groups.effect, { id: "internet_notify_recovery", type: "change", z: TAB, g: groups.effect, name: "Solicitar canais para retorno", rules: [], action: "", property: "", from: "", to: "", reg: false, x: 6560, y: 245, wires: [[]] });
 fn("internet_publications_expand", groups.effect, "Expandir 3 publicações MQTT", "internet-publications-expand.js", 1, 5440, 380, [["internet_publication_test_gate"]]);
 sw("internet_publication_test_gate", groups.effect, "Publicação pertence a TESTE?", "_internet_test", "msg", [{ t: "true" }, { t: "else" }], 5710, 380, [["internet_publication_dry_out"], ["internet_mqtt_publish"]]);
 linkOut("internet_publication_dry_out", groups.effect, "MQTT TESTE → dry-run", "internet_dry_in", 6000, 360);
@@ -185,5 +184,5 @@ linkIn("internet_dry_in", groups.test, "Receber efeito TESTE", ["internet_dry_ou
 fn("internet_dry_run_terminal", groups.test, "TESTE FINAL: MQTT e alertas bloqueados", "internet-dry-run.js", 0, 1080, 760, []);
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Internet monitor visual flow installed in ${outputPath}`);

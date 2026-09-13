@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowsPath = new URL("../flows.json", import.meta.url);
 const issuesPath = new URL(
@@ -328,7 +329,7 @@ const kept = flows.filter(
 );
 kept.push(...newNodes);
 
-fs.writeFileSync(flowsPath, `${JSON.stringify(kept, null, 4)}\n`);
+fs.writeFileSync(flowsPath, `${JSON.stringify(installNotificationHubs(kept), null, 4)}\n`);
 
 if (fs.existsSync(issuesPath)) {
   const issues = JSON.parse(fs.readFileSync(issuesPath, "utf8"));

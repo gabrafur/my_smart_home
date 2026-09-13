@@ -9,6 +9,11 @@ import {
 
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
+const logicalWireTargets = (id, output) => (byId.get(id)?.wires?.[output] ?? []).flatMap((targetId) => {
+  const target = byId.get(targetId);
+  if (target?.type !== "link out" || !target.notification_hub_wire_route) return [targetId];
+  return (target.links ?? []).flatMap((linkInId) => byId.get(linkInId)?.wires?.[0] ?? []);
+});
 const LOCATION_POLICY = {
   version: 1,
   owner: "node_red",
@@ -377,13 +382,13 @@ assert(dispatched[1], "test_mode deve chegar ao terminal dry-run");
 assert.equal(gateFlow.get("security_light_lifecycle_v1"), undefined);
 assert.equal(gateFlow.get("security_light_lifecycle_v1__test").active_by_arrival, true);
 assert.equal(gateFlow.get(pendingKey), null, "intenção só é removida após despacho");
-assert.deepEqual(markActive.wires[0], [
+assert.deepEqual(logicalWireTargets(markActive.id, 0), [
   "f863fcd77744a4da",
   "9f047ccb2ce2c3aa",
   "2818bf202b397612",
   "light_notify_on_secondary",
 ]);
-assert.deepEqual(markActive.wires[1], ["light_test_to_terminal_out_v1"]);
+assert.deepEqual(logicalWireTargets(markActive.id, 1), ["light_test_to_terminal_out_v1"]);
 
 execute(dryRunTerminal, dispatched[1], gateFlow, shared);
 const finalResult = gateFlow.get("security_light_last_dry_run_v1__test");

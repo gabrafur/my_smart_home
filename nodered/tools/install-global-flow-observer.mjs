@@ -4,13 +4,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { NOTIFICATION_HUBS, installNotificationHubs, refreshNotificationWireRoutes } from "./install-notification-hubs.mjs";
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
 const outputPath = path.resolve(process.argv[3] ?? sourcePath);
 const functionDir = path.join(here, "functions");
 const OBSERVER_TAB = "global_flow_observer_tab";
-const SERVER = "4126427d5e161a03";
-const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const externalEventOutIds = [
+  "local_ai_rtx_alert_out",
+  "notification_hub_mobile_observer_out",
+  "notification_hub_alexa_observer_out",
+  "notification_hub_persistent_observer_out",
+];
+const flows = installNotificationHubs(JSON.parse(fs.readFileSync(sourcePath, "utf8")));
 
 const source = (name) =>
   fs.readFileSync(path.join(functionDir, name), "utf8").trimEnd();
@@ -35,7 +42,7 @@ for (const node of next) {
     node.links = node.links.filter((id) =>
       !owned(id) ||
       (
-        node.id === "local_ai_rtx_alert_out" &&
+        externalEventOutIds.includes(node.id) &&
         ["global_observer_events_in", "global_observer_alert_to_dispatch_in"].includes(id)
       ),
     );
@@ -44,7 +51,6 @@ for (const node of next) {
 
 const tabs = next.filter((node) => node.type === "tab" && node.id !== OBSERVER_TAB);
 const coverageOutIds = [];
-const externalEventOutIds = ["local_ai_rtx_alert_out"];
 const coverageNodes = [];
 const coverageLayoutOverrides = new Map([
   ["weekly_docs_review_tab", {
@@ -121,7 +127,9 @@ for (const tab of tabs) {
         : Number(node.x ?? 0) + 140,
     ),
   );
-  const layoutOverride = coverageLayoutOverrides.get(tab.id);
+  const layoutOverride = tabNodes.some((node) => node.type === "group" && node.notification_hub_layout_version === 1)
+    ? undefined
+    : coverageLayoutOverrides.get(tab.id);
   const groupX = layoutOverride?.group?.x ?? Math.ceil((rightEdge + 40) / 20) * 20;
   const groupY = layoutOverride?.group?.y ?? 40;
   coverageOutIds.push(outId);
@@ -288,7 +296,11 @@ const observerNodes = [
       "global_observer_dispatch_guard",
       "global_observer_dry_run_out",
       "global_observer_notify_primary",
+      "global_observer_notify_primary__hub_call",
+      "global_observer_notify_primary__hub_result",
       "global_observer_notify_persistent",
+      "global_observer_notify_persistent__hub_call",
+      "global_observer_notify_persistent__hub_result",
       "global_observer_notification_ack",
       "global_observer_notification_catch",
       "global_observer_notification_failure",
@@ -299,6 +311,7 @@ const observerNodes = [
     y: 39,
     w: 3650,
     h: 522,
+    notification_hub_layout_version: 1,
   },
   {
     id: "global_observer_architecture",
@@ -538,76 +551,67 @@ const observerNodes = [
   },
   {
     id: "global_observer_notify_primary",
-    type: "api-call-service",
+    type: "change",
     z: OBSERVER_TAB,
     g: productionGroup,
-    name: "Avisar resident_primary",
-    server: SERVER,
-    version: 7,
-    debugenabled: false,
-    action: "public_bindings.call",
-    floorId: [],
-    areaId: [],
-    deviceId: [],
-    entityId: [],
-    labelId: [],
-    data:
-      '{"role":"mobile_primary","action":"notify_3","data":{"title":_observer_delivery_test=true ? "TESTE — Monitor global do Node-RED" : alert.title,"message":_observer_delivery_test=true ? "TESTE de entrega do canal central de falhas do Node-RED via Home Assistant." : alert.message}}',
-    dataType: "jsonata",
-    mergeContext: "",
-    mustacheAltTags: false,
-    outputProperties: [],
-    queue: "all",
-    blockInputOverrides: true,
-    domain: "public_bindings",
-    service: "call",
+    name: "Preparar alerta móvel para resident_primary",
+    rules: [
+      { t: "set", p: "_notification_hub_context", pt: "msg", to: '{"payload":payload,"notification":notification,"had_notification":$exists(notification)}', tot: "jsonata" },
+      { t: "set", p: "_observer_notification_channel", pt: "msg", to: "mobile_primary", tot: "str" },
+      { t: "set", p: "notification", pt: "msg", to: '{"source":"observabilidade_global","recipients":["resident_primary"],"profile":"simple","title":_observer_delivery_test=true ? "TESTE — Monitor global do Node-RED" : alert.title,"test_mode":_observer_delivery_test=true,"delivery_under_test":_observer_delivery_test=true}', tot: "jsonata" },
+      { t: "set", p: "payload", pt: "msg", to: '_observer_delivery_test=true ? "TESTE de entrega do canal central de falhas do Node-RED via Home Assistant." : alert.message', tot: "jsonata" },
+    ],
+    action: "", property: "", from: "", to: "", reg: false,
     x: 1110,
     y: 140,
-    wires: [["global_observer_notification_ack"]],
-    outputProperties: [
-      {
-        property: "_observer_notification_channel",
-        propertyType: "msg",
-        value: "mobile_primary",
-        valueType: "str",
-      },
-    ],
+    wires: [["global_observer_notify_primary__hub_call"]],
+  },
+  {
+    id: "global_observer_notify_primary__hub_call",
+    type: "link call", z: OBSERVER_TAB, g: productionGroup,
+    name: "Hub móvel → resident_primary", links: [NOTIFICATION_HUBS.mobile.input],
+    linkType: "static", timeout: "30", x: 1330, y: 140,
+    wires: [["global_observer_notify_primary__hub_result"]],
+  },
+  {
+    id: "global_observer_notify_primary__hub_result",
+    type: "switch", z: OBSERVER_TAB, g: productionGroup,
+    name: "Hub móvel aceitou?", property: "notification_delivery.status", propertyType: "msg",
+    rules: [{ t: "eq", v: "accepted", vt: "str" }, { t: "else" }], checkall: "true", repair: false,
+    outputs: 2, x: 1550, y: 140,
+    wires: [["global_observer_notification_ack"], ["global_observer_notification_failure"]],
   },
   {
     id: "global_observer_notify_persistent",
-    type: "api-call-service",
+    type: "change",
     z: OBSERVER_TAB,
     g: productionGroup,
-    name: "Notificação persistente no Home Assistant",
-    server: SERVER,
-    version: 7,
-    debugenabled: false,
-    action: "persistent_notification.create",
-    floorId: [],
-    areaId: [],
-    deviceId: [],
-    entityId: [],
-    labelId: [],
-    data:
-      '{"title":alert.title,"message":alert.message,"notification_id":_observer_persistent_notification_id}',
-    dataType: "jsonata",
-    mergeContext: "",
-    mustacheAltTags: false,
-    outputProperties: [
-      {
-        property: "_observer_notification_channel",
-        propertyType: "msg",
-        value: "persistent_notification",
-        valueType: "str",
-      },
+    name: "Preparar notificação persistente",
+    rules: [
+      { t: "set", p: "_notification_hub_context", pt: "msg", to: '{"payload":payload,"notification":notification,"had_notification":$exists(notification)}', tot: "jsonata" },
+      { t: "set", p: "_observer_notification_channel", pt: "msg", to: "persistent_notification", tot: "str" },
+      { t: "set", p: "notification", pt: "msg", to: '{"source":"observabilidade_global","operation":"create","delivery":"queued","notification_id":_observer_persistent_notification_id,"title":alert.title}', tot: "jsonata" },
+      { t: "set", p: "payload", pt: "msg", to: "alert.message", tot: "jsonata" },
     ],
-    queue: "all",
-    blockInputOverrides: true,
-    domain: "persistent_notification",
-    service: "create",
+    action: "", property: "", from: "", to: "", reg: false,
     x: 1140,
     y: 200,
-    wires: [["global_observer_notification_ack"]],
+    wires: [["global_observer_notify_persistent__hub_call"]],
+  },
+  {
+    id: "global_observer_notify_persistent__hub_call",
+    type: "link call", z: OBSERVER_TAB, g: productionGroup,
+    name: "Hub HA → criar/atualizar", links: [NOTIFICATION_HUBS.persistent.input],
+    linkType: "static", timeout: "30", x: 1350, y: 200,
+    wires: [["global_observer_notify_persistent__hub_result"]],
+  },
+  {
+    id: "global_observer_notify_persistent__hub_result",
+    type: "switch", z: OBSERVER_TAB, g: productionGroup,
+    name: "Hub persistente aceitou?", property: "notification_delivery.status", propertyType: "msg",
+    rules: [{ t: "eq", v: "accepted", vt: "str" }, { t: "else" }], checkall: "true", repair: false,
+    outputs: 2, x: 1570, y: 200,
+    wires: [["global_observer_notification_ack"], ["global_observer_notification_failure"]],
   },
   functionNode(
     "global_observer_notification_ack",
@@ -630,8 +634,8 @@ const observerNodes = [
     g: productionGroup,
     name: "Capturar falha do canal de notificação",
     scope: [
-      "global_observer_notify_primary",
-      "global_observer_notify_persistent",
+      "global_observer_notify_primary__hub_call",
+      "global_observer_notify_persistent__hub_call",
     ],
     uncaught: false,
     x: 1240,
@@ -1020,9 +1024,13 @@ const productionLayout = new Map([
   ["global_observer_test_delivery_in", [2280, 160]],
   ["global_observer_dispatch_guard", [2530, 240]],
   ["global_observer_dry_run_out", [2760, 360]],
-  ["global_observer_notify_primary", [2880, 200]],
-  ["global_observer_notify_persistent", [2920, 260]],
-  ["global_observer_notification_ack", [3330, 220]],
+  ["global_observer_notify_primary", [2810, 200]],
+  ["global_observer_notify_primary__hub_call", [3070, 200]],
+  ["global_observer_notify_primary__hub_result", [3320, 200]],
+  ["global_observer_notify_persistent", [2830, 280]],
+  ["global_observer_notify_persistent__hub_call", [3090, 280]],
+  ["global_observer_notify_persistent__hub_result", [3340, 280]],
+  ["global_observer_notification_ack", [3590, 230]],
   ["global_observer_notification_catch", [3050, 400]],
   ["global_observer_notification_failure", [3350, 400]],
   ["global_observer_internal_catch", [2230, 480]],
@@ -1035,7 +1043,8 @@ for (const node of observerNodes) {
 }
 
 next.push(...coverageNodes, ...observerNodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+const finalized = refreshNotificationWireRoutes(next);
+fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
 console.log(
   `Global flow observer installed for ${tabs.length} tabs in ${outputPath}`,
 );

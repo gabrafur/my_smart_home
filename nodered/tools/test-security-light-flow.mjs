@@ -881,12 +881,17 @@ scenario("31 desconexão transitória do HA é enfileirada e tratada", () => {
   assert.equal(server.heartbeat, true);
   assert.equal(Number(server.heartbeatInterval), 30);
 
-  const calls = flows.filter((item) =>
-    item.type === "api-call-service" &&
-    item.name?.startsWith("Solicitar localização do iPhone ")
-  );
-  assert.equal(calls.length, 2);
-  assert(calls.every((item) => item.queue === "first"));
+  const locationAdapters = ["564fdc36031eaef8", "e0b7c0ecf1d8ee28"].map((id) => byId.get(id));
+  assert(locationAdapters.every((item) => item?.type === "change"));
+  const contracts = locationAdapters.map((item) => item.rules.map((rule) => String(rule.to ?? "")).join("\n"));
+  assert.match(contracts[0], /"recipients":\["resident_primary"\]/);
+  assert.match(contracts[1], /"recipients":\["resident_secondary"\]/);
+  const calls = locationAdapters.map((item) => byId.get(`${item.id}__hub_call`));
+  assert(calls.every((item) => item?.type === "link call"));
+  assert(calls.every((item) => item.links?.includes("notification_hub_mobile_in")));
+  for (const id of ["notification_hub_mobile_primary_background", "notification_hub_mobile_secondary_background"]) {
+    assert.equal(byId.get(id)?.queue, "first");
+  }
 
   const catcher = flows.find((item) => item.name === "Capturar desconexão transitória dos iPhones");
   const handler = flows.find((item) => item.name === "Tratar desconexão transitória do HA");

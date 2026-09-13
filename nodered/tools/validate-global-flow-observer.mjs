@@ -53,19 +53,27 @@ for (const outputId of expectedOuts) {
   assert.ok(input.links.includes(outputId), `link in não referencia ${outputId}`);
 }
 assert.equal(input.links.includes("local_ai_rtx_alert_out"), false);
-assert.ok(required("global_observer_alert_to_dispatch_in").links.includes("local_ai_rtx_alert_out"));
+const dispatchInput = required("global_observer_alert_to_dispatch_in");
+for (const id of [
+  "local_ai_rtx_alert_out",
+  "notification_hub_mobile_observer_out",
+  "notification_hub_alexa_observer_out",
+  "notification_hub_persistent_observer_out",
+]) assert.ok(dispatchInput.links.includes(id), `entrada de domínio não referencia ${id}`);
 assert.deepEqual(input.wires, [["global_observer_ingest"]]);
 const notify = required("global_observer_notify_primary");
 const persistent = required("global_observer_notify_persistent");
 const guard = required("global_observer_dispatch_guard");
-assert.equal(notify.action, "public_bindings.call");
-assert.match(notify.data, /"role":"mobile_primary"/);
-assert.match(notify.data, /"action":"notify_3"/);
-assert.equal(notify.queue, "all");
-assert.equal(persistent.action, "persistent_notification.create");
-assert.equal(persistent.domain, "persistent_notification");
-assert.match(persistent.data, /_observer_persistent_notification_id/);
-assert.equal(persistent.queue, "all");
+assert.equal(notify.type, "change");
+const notifyRules = notify.rules.map((rule) => String(rule.to ?? "")).join("\n");
+assert.match(notifyRules, /"recipients":\["resident_primary"\]/);
+assert.match(notifyRules, /delivery_under_test/);
+assert.equal(required("global_observer_notify_primary__hub_call").type, "link call");
+assert.deepEqual(required("global_observer_notify_primary__hub_call").links, ["notification_hub_mobile_in"]);
+assert.equal(persistent.type, "change");
+assert.match(persistent.rules.map((rule) => String(rule.to ?? "")).join("\n"), /_observer_persistent_notification_id/);
+assert.equal(required("global_observer_notify_persistent__hub_call").type, "link call");
+assert.deepEqual(required("global_observer_notify_persistent__hub_call").links, ["notification_hub_persistent_in"]);
 assert.equal(guard.outputs, 3);
 assert.deepEqual(guard.wires, [
   [notify.id],
@@ -74,7 +82,7 @@ assert.deepEqual(guard.wires, [
 ]);
 assert.deepEqual(
   required("global_observer_notification_catch").scope,
-  [notify.id, persistent.id],
+  ["global_observer_notify_primary__hub_call", "global_observer_notify_persistent__hub_call"],
 );
 const internalCatch = required("global_observer_internal_catch");
 const expectedInternalScope = [

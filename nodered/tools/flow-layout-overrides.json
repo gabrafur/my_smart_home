@@ -9698,36 +9698,6 @@
         }
       }
     },
-    "infra_notify_all_mobiles": {
-      "label": "Notificar celulares, Echo e Home Assistant",
-      "compact_groups": true,
-      "nodes": {
-        "infra_notify_route": {
-          "x": 240,
-          "y": 140
-        },
-        "infra_notify_persistent": {
-          "x": 560,
-          "y": 40
-        },
-        "infra_notify_mobile": {
-          "x": 560,
-          "y": 90
-        },
-        "infra_notify_mobile_secondary": {
-          "x": 560,
-          "y": 140
-        },
-        "infra_notify_echo": {
-          "x": 560,
-          "y": 190
-        },
-        "infra_notify_dismiss": {
-          "x": 560,
-          "y": 240
-        }
-      }
-    },
     "resident_notifications_tab": {
       "label": "notificacoes_chegadas_residentes",
       "compact_groups": true,

@@ -122,9 +122,13 @@ assert.equal(testCtx.flowStores.default.get("alarm_arrival_pending_confirmation"
 assert.ok(byId.get("397c6032b3dad342")?.links.includes("6481cb991b3732f5"));
 assert.ok(byId.get("2aa1b0c2907d4017")?.links.includes("6481cb991b3732f5"));
 assert.deepEqual(byId.get("alarm_arrival_disarm_command_in")?.wires, [["alarm_set_arrival_disarm"]]);
-for (const id of ["3b95712a74512929", "370622ddaaf3fcab"]) {
-  assert.equal(byId.get(id)?.action, "public_bindings.call");
-  assert.equal(byId.get(id)?.queue, "all");
+for (const [id, recipient] of [["3b95712a74512929", "resident_primary"], ["370622ddaaf3fcab", "resident_secondary"]]) {
+  assert.equal(byId.get(id)?.type, "change");
+  const contract = byId.get(id).rules.map((rule) => String(rule.to ?? "")).join("\n");
+  assert.match(contract, new RegExp(`"recipients":\\["${recipient}"\\]`));
+  assert.match(contract, /confirm_action/);
+  assert.match(contract, /cancel_action/);
+  assert.deepEqual(byId.get(`${id}__hub_call`)?.links, ["notification_hub_mobile_in"]);
 }
 for (const node of tabNodes.filter((entry) => entry.type === "function")) assert.ok(node.func.length < 2000, `JavaScript residual grande: ${node.id}`);
 console.log("Alarm arrival visual flow: contracts, bounds, pending, tokens, confirmation and dry-run passed.");

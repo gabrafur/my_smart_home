@@ -1,6 +1,42 @@
 {
     "version": 2,
     "tabs": {
+        "notification_hub_mobile_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "notification_hub_mobile_test_group",
+                "notification_hub_mobile_test_primary",
+                "notification_hub_mobile_test_secondary",
+                "notification_hub_mobile_test_both",
+                "notification_hub_mobile_test_invalid"
+            ],
+            "automated_test": "test-notification-hubs.mjs",
+            "dry_run_terminal_ids": ["notification_hub_mobile_dry_run_assert"],
+            "reason": "Destinatário primário, secundário, ambos explicitamente e contrato sem destinatário atravessam o mesmo validador e roteamento do hub; todos terminam com simulated:true e dispatched:false, sem chamar o Home Assistant."
+        },
+        "notification_hub_alexa_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "notification_hub_alexa_test_group",
+                "notification_hub_alexa_test_valid",
+                "notification_hub_alexa_test_invalid"
+            ],
+            "automated_test": "test-notification-hubs.mjs",
+            "dry_run_terminal_ids": ["notification_hub_alexa_dry_run_assert"],
+            "reason": "Target lógico válido e inválido atravessam o contrato real do hub com test_mode e terminam com simulated:true e dispatched:false, sem acionar qualquer Alexa."
+        },
+        "notification_hub_persistent_tab": {
+            "strategy": "manual_full_dry_run",
+            "evidence_node_ids": [
+                "notification_hub_persistent_test_group",
+                "notification_hub_persistent_test_create",
+                "notification_hub_persistent_test_dismiss",
+                "notification_hub_persistent_test_invalid"
+            ],
+            "automated_test": "test-notification-hubs.mjs",
+            "dry_run_terminal_ids": ["notification_hub_persistent_dry_run_assert"],
+            "reason": "Create, dismiss e contrato sem notification_id atravessam operação e fila canônicas em test_mode e terminam com simulated:true e dispatched:false, sem criar ou remover alertas no Home Assistant."
+        },
         "git_backup_tab": {
             "strategy": "manual_full_dry_run",
             "evidence_node_ids": [
@@ -158,7 +194,7 @@
             ],
             "dry_run_terminal_ids": ["internet_dry_run_terminal"],
             "automated_test": "test-internet-monitor-flow.mjs",
-            "reason": "Três falhas e dois sucessos percorrem quorum, estado persistente, limiares e gates reais; MQTT e o subflow de notificações terminam em dry-run."
+            "reason": "Três falhas e dois sucessos percorrem quorum, estado persistente, limiares e gates reais; MQTT e os três hubs canônicos de notificação terminam em dry-run."
         },
         "monitoramento_vpn_tab": {
             "strategy": "manual_full_dry_run",

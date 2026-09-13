@@ -42,8 +42,23 @@ for (const [alias, id] of Object.entries({
 })) byId.set(alias, byId.get(id));
 
 
+function resolveWireTargets(alias, output = 0) {
+  return (byId.get(alias).wires[output] ?? []).flatMap((id) => {
+    const node = byId.get(id);
+    if (node?.type !== "link out" || !node.notification_hub_wire_route) {
+      return node ? [node] : [{ id, name: id }];
+    }
+    return (node.links ?? []).flatMap((linkId) => {
+      const linkIn = byId.get(linkId);
+      return (linkIn?.wires ?? []).flatMap((wire) =>
+        wire.map((targetId) => byId.get(targetId) ?? { id: targetId, name: targetId }),
+      );
+    });
+  });
+}
+
 function wireNames(alias, output = 0) {
-  return (byId.get(alias).wires[output] ?? []).map((id) => byId.get(id)?.name ?? id);
+  return resolveWireTargets(alias, output).map((node) => node.name ?? node.id);
 }
 const BASE_NOW = Date.parse("2026-08-13T12:00:00.000Z");
 let clock = BASE_NOW;
@@ -368,9 +383,16 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
   assert.deepEqual(wireNames("light_mark_active", 0), [
     "Ligar refletor do portão",
     "Aguardar backstop de 15 min",
-    "Avisar resident_primary: refletor ligado",
-    "Avisar resident_secondary: refletor ligado",
+    "Preparar mobile para o hub",
+    "Preparar mobile para o hub",
   ]);
+  const mobileAdapters = resolveWireTargets("light_mark_active", 0).slice(2);
+  assert(mobileAdapters.every((node) => node.type === "change"));
+  const contracts = mobileAdapters.map((node) =>
+    node.rules.map((rule) => String(rule.to ?? "")).join("\n"),
+  );
+  assert.match(contracts[0], /"recipients":\["resident_primary"\]/);
+  assert.match(contracts[1], /"recipients":\["resident_secondary"\]/);
   assert.deepEqual(wireNames("light_mark_active", 1), [
     "Teste → terminal dry-run",
   ]);

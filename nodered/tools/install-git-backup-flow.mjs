@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -200,5 +201,5 @@ const dependencyBackupOutput = next.find((node) => node.id === "daily_update_dep
 if (dependencyBackupOutput && Array.isArray(dependencyBackupOutput.links) && !dependencyBackupOutput.links.includes("git_backup_request_in")) {
   dependencyBackupOutput.links.push("git_backup_request_in");
 }
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Fluxo visual de backup Git instalado em ${outputPath}`);

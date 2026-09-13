@@ -77,7 +77,7 @@ sw("external_visual_notification_mode", main.id, "Aviso de produção ou TESTE?"
 linkOut("external_visual_cancel_confirmation_out", main.id, "Bloqueio → cancelar confirmação",
   "external_visual_cancel_confirmation_in", 1980, 200);
 linkIn("external_visual_cancel_confirmation_in", main.id, "Receber cancelamento pendente",
-  ["external_visual_cancel_confirmation_out"], "ext_wait_confirm", 2260, 220);
+  ["external_visual_cancel_confirmation_out"], "ext_wait_confirm", 2180, 240);
 
 const distributor = required("88e6fc3e56fa347c");
 Object.assign(distributor, { x: 2240, y: 80 });
@@ -102,12 +102,14 @@ Object.assign(required("ext_build_alexa_message"), { x: 3010, y: 300 });
 Object.assign(required("9d81b75a18d482f1"), { x: 3290, y: 300 });
 linkOut("external_visual_alexa_out", main.id, "Avisos → Alexa",
   "external_visual_alexa_in", 2180, 300);
+linkOut("external_visual_recovery_alexa_out", main.id, "Recovery confirmado → Alexa",
+  "external_visual_alexa_in", 2550, 440);
 linkIn("external_visual_alexa_in", main.id, "Receber aviso confirmado",
-  ["external_visual_alexa_out"], "9d81b75a18d482f1", 3120, 380);
+  ["external_visual_alexa_out", "external_visual_recovery_alexa_out"], "9d81b75a18d482f1", 3120, 380);
 linkOut("external_visual_command_dry_out", main.id, "Comando TESTE → terminal",
   "external_visual_dry_in", 2680, 360);
 linkOut("external_visual_notification_dry_out", main.id, "Aviso TESTE → terminal",
-  "external_visual_dry_in", 2260, 220);
+  "external_visual_dry_in", 2260, 280);
 
 const recoveryPrepare = required("ext_prepare_recovery_confirmation");
 Object.assign(recoveryPrepare, { func: source("external-lighting-recovery-prepare.js"),
@@ -118,8 +120,8 @@ sw("external_visual_recovery_mode", main.id, "Pergunta de recovery: produção o
 linkOut("external_visual_recovery_dry_out", main.id, "Recovery TESTE → terminal",
   "external_visual_dry_in", 1430, 340);
 Object.assign(required("ext_send_recovery_mobile"), { x: 1500, y: 440 });
-Object.assign(required("ext_commit_recovery_confirmation"), { x: 1800, y: 440 });
-required("ext_commit_recovery_confirmation").wires = [["external_visual_alexa_out"]];
+Object.assign(required("ext_commit_recovery_confirmation"), { x: 2300, y: 440 });
+required("ext_commit_recovery_confirmation").wires = [["external_visual_recovery_alexa_out"]];
 linkIn("external_visual_test_command_in", main.id, "Receber comandos TESTE",
   ["external_visual_test_command_out"], "ext_zigbee_command_gate", 910, 260);
 linkIn("external_visual_test_recovery_in", main.id, "Receber recovery TESTE",

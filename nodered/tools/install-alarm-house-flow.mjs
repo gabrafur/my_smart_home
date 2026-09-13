@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const FLOWS = new URL("../flows.json", import.meta.url).pathname;
 const OUT = process.argv[2] || FLOWS;
@@ -445,5 +446,5 @@ upsert(group("alarm_group_tests", "4. Testes manuais completos — dry-run", [
   "alarm_test_dry_run_terminal",
 ], 64, 930, 1600, 280, "#0891b2", "#cffafe"));
 
-writeFileSync(OUT, JSON.stringify(flows, null, 4) + "\n");
+writeFileSync(OUT, JSON.stringify(installNotificationHubs(flows), null, 4) + "\n");
 console.log(`Fluxo visual do alarme escrito em ${OUT}.`);

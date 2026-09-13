@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowUrl = new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
@@ -37,5 +38,5 @@ for (const id of actionableIds) {
   }
 }
 
-fs.writeFileSync(flowUrl, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowUrl, `${JSON.stringify(installNotificationHubs(flows), null, 4)}\n`);
 console.log(`Bindings acionáveis corrigidos: ${changed} alteração(ões).`);

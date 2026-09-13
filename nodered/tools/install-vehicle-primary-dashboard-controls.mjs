@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const toolsDir = path.dirname(fileURLToPath(import.meta.url));
 const flowPath = path.resolve(toolsDir, "../flows.json");
@@ -2988,5 +2989,5 @@ refreshOrchestrationGroup.name =
 const immediateRecovery = required("6473697c19342f07");
 Object.assign(immediateRecovery, { x: 570, y: 240 });
 
-fs.writeFileSync(flowOutputPath, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowOutputPath, `${JSON.stringify(installNotificationHubs(flows), null, 4)}\n`);
 console.log("Controles e telemetria do vehicle_primary instalados sem duplicar o coordenador.");

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowInputUrl = new URL("../flows.json", import.meta.url);
 const flowOutputUrl = process.env.NODE_RED_FLOW_OUTPUT
@@ -1606,5 +1607,5 @@ group.h = 402;
 const tab = required(ids.tab);
 tab.info = "Normaliza estado/localização do vehicle_primary, mantém vehicle_primary_in_use, detecta chegada e controla refresh/viagens.\n\nv15: ON/OFF conhecidos não expiram pela idade; a idade continua diagnóstica e pode solicitar wake. Somente falha real da API marca o motor como não confiável e permite bypass automático, sempre preservando OFF conhecido como bloqueio. Testes atravessam iluminacao_seguranca até o terminal dry-run, sem acionar dispositivos.";
 
-fs.writeFileSync(flowOutputUrl, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowOutputUrl, `${JSON.stringify(installNotificationHubs(flows), null, 4)}\n`);
 console.log("Controles manuais ON/OFF do vehicle_primary atualizados.");

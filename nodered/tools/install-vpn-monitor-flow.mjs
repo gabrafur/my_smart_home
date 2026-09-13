@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -10,10 +11,9 @@ const outputPath = path.resolve(process.argv[3] ?? sourcePath);
 const functionsDir = path.join(here, "functions");
 const TAB = "monitoramento_vpn_tab";
 const BROKER = "721c47f31046b8bc";
-const NOTIFY = "infra_notify_all_mobiles";
 const flows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
-for (const [id, type] of [[BROKER, "mqtt-broker"], [NOTIFY, "subflow"]]) {
+for (const [id, type] of [[BROKER, "mqtt-broker"]]) {
   if (!flows.some((node) => node.id === id && node.type === type)) throw new Error(`${type} obrigatório ausente: ${id}`);
 }
 const removed = new Set(flows.filter((node) => node.id === TAB || node.z === TAB || node.id.startsWith("vpn_monitor_")).map((node) => node.id));
@@ -111,7 +111,7 @@ linkOut("vpn_monitor_publish_out", groups.decision, "Estado → publicação can
 
 linkIn("vpn_monitor_notify_in", groups.notify, "Receber queda ou recovery", ["vpn_monitor_down_notify_out", "vpn_monitor_recovery_notify_out"], "vpn_monitor_notify_guard", 6230, 150);
 fn("vpn_monitor_notify_guard", groups.notify, "Produção ou TESTE?", "vpn-monitor-side-effect-guard.js", 2, 6480, 150, [["vpn_monitor_notify_dispatch"], ["vpn_monitor_dry_out"]]);
-grouped(groups.notify, { id: "vpn_monitor_notify_dispatch", type: `subflow:${NOTIFY}`, z: TAB, g: groups.notify, name: "Notificar uma vez", env: [], x: 6790, y: 110, wires: [] });
+grouped(groups.notify, { id: "vpn_monitor_notify_dispatch", type: "change", z: TAB, g: groups.notify, name: "Solicitar canais canônicos", rules: [], action: "", property: "", from: "", to: "", reg: false, x: 6790, y: 110, wires: [] });
 linkOut("vpn_monitor_dry_out", groups.notify, "Notificação TESTE → dry-run", "vpn_monitor_dry_in", 6790, 190);
 
 linkIn("vpn_monitor_publish_in", groups.publish, "Receber estado decidido", "vpn_monitor_publish_out", "vpn_monitor_publications_build", 6230, 450);
@@ -143,5 +143,5 @@ linkIn("vpn_monitor_dry_in", groups.test, "Receber efeitos TESTE", ["vpn_monitor
 fn("vpn_monitor_dry_run_terminal", groups.test, "TESTE FINAL: nenhum efeito enviado", "vpn-monitor-dry-run.js", 1, 1770, 1020, []);
 
 next.push(...nodes);
-fs.writeFileSync(outputPath, `${JSON.stringify(next, null, 4)}\n`);
+fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`VPN monitor visual flow installed in ${outputPath}`);

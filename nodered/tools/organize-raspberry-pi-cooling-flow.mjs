@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { installNotificationHubs } from "./install-notification-hubs.mjs";
 
 const flowUrl = new URL("../flows.json", import.meta.url);
 const flows = JSON.parse(fs.readFileSync(flowUrl, "utf8"));
@@ -388,5 +389,5 @@ if (unpositioned.length) {
   throw new Error(`Cooling nodes without a layout position: ${unpositioned.map((node) => node.id).join(", ")}`);
 }
 
-fs.writeFileSync(flowUrl, `${JSON.stringify(flows, null, 4)}\n`);
+fs.writeFileSync(flowUrl, `${JSON.stringify(installNotificationHubs(flows), null, 4)}\n`);
 console.log("Raspberry Pi cooling flow layout organized.");

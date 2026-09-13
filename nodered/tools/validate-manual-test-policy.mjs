@@ -116,13 +116,19 @@ for (const tab of tabs) {
       }
       for (const deliveryId of entry.delivery_node_ids) {
         const delivery = byId.get(deliveryId);
+        const serializedDelivery = (delivery?.rules ?? []).map((rule) => String(rule.to ?? "")).join("\n");
+        const callId = `${deliveryId}__hub_call`;
+        const call = byId.get(callId);
         if (
           !delivery ||
           delivery.z !== tab.id ||
-          delivery.type !== "api-call-service" ||
-          delivery.action !== "public_bindings.call" ||
-          !/"action":"(?:notify_[23]|notify_actionable)"/.test(delivery.data ?? "") ||
-          !/TESTE/.test(delivery.data ?? "")
+          delivery.type !== "change" ||
+          !/"delivery_under_test"/.test(serializedDelivery) ||
+          !/TESTE/.test(serializedDelivery) ||
+          !call ||
+          call.type !== "link call" ||
+          !Array.isArray(call.links) ||
+          !call.links.includes("notification_hub_mobile_in")
         ) {
           throw new Error(`Entrega de TESTE inválida em ${tab.label}: ${deliveryId}`);
         }
