@@ -5,7 +5,10 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { nodeDimensions as dimensions } from "./flow-layout-validator.mjs";
 
-const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
+const flowsSource = process.env.FLOW_LAYOUT_SOURCE
+  ? path.resolve(process.env.FLOW_LAYOUT_SOURCE)
+  : new URL("../flows.json", import.meta.url);
+const flows = JSON.parse(fs.readFileSync(flowsSource, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 const selected = new Set(process.argv.slice(2));
 const outputDir = process.env.FLOW_LAYOUT_DIR || "/tmp/nodered-flow-layouts";

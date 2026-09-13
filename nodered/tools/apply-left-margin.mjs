@@ -14,6 +14,12 @@ const overridesPath = path.join(here, "flow-layout-overrides.json");
 const overrides = fs.existsSync(overridesPath)
   ? JSON.parse(fs.readFileSync(overridesPath, "utf8"))
   : { version: 1, canvases: {} };
+const selectedCanvases = new Set(
+  String(process.env.FLOW_LAYOUT_CANVASES ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
 
 if (overrides.version !== 1 || typeof overrides.canvases !== "object") {
   throw new Error("flow-layout-overrides.json inválido");
@@ -22,6 +28,7 @@ if (overrides.version !== 1 || typeof overrides.canvases !== "object") {
 const byId = new Map(flows.map((node) => [node.id, node]));
 let overridden = 0;
 for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
+  if (selectedCanvases.size > 0 && !selectedCanvases.has(canvasId) && !selectedCanvases.has(canvas.label)) continue;
   const tab = byId.get(canvasId);
   if (!tab || !["tab", "subflow"].includes(tab.type)) {
     throw new Error(`Canvas do override ausente: ${canvasId}`);
@@ -30,12 +37,14 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     .filter((node) => node.z === canvasId && node.type === "group" && node.notification_hub_layout_version === 1)
     .map((node) => node.id));
   const canvasHasManagedNotifications = managedGroups.size > 0;
+  const managedGroupOverrides = new Set(canvas.managed_group_overrides ?? []);
+  const managedNodeOverrides = new Set(canvas.managed_node_overrides ?? []);
   for (const [nodeId, geometry] of Object.entries(canvas.nodes ?? {})) {
     const node = byId.get(nodeId);
     if (!node || node.z !== canvasId) throw new Error(`Nó do override ausente: ${nodeId}`);
     if (
       managedGroups.has(node.id) ||
-      managedGroups.has(node.g) ||
+      (managedGroups.has(node.g) && !managedGroupOverrides.has(node.g) && !managedNodeOverrides.has(node.id)) ||
       (canvasHasManagedNotifications && node.id.startsWith(`global_observer_coverage__${canvasId}__`))
     ) continue;
     for (const field of ["x", "y", "w", "h"]) {
@@ -92,6 +101,7 @@ let shifted = 0;
 for (const canvas of flows.filter((node) =>
   node.type === "tab" || node.type === "subflow"
 )) {
+  if (selectedCanvases.size > 0 && !selectedCanvases.has(canvas.id) && !selectedCanvases.has(canvas.label || canvas.name)) continue;
   const items = flows.filter(
     (node) => node.z === canvas.id && Number.isFinite(node.x),
   );

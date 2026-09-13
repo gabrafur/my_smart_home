@@ -469,6 +469,9 @@
     "29d64664bf8cbde8": {
       "label": "garagem",
       "compact_groups": true,
+      "managed_group_overrides": [
+        "gar_group_effect"
+      ],
       "nodes": {
         "gar_group_policy": {
           "x": 54,
@@ -603,60 +606,80 @@
           "y": 340
         },
         "gar_effect_pulse_in": {
-          "x": 945,
-          "y": 480
+          "x": 960,
+          "y": 420
         },
         "gar_effect_safe_off_in": {
-          "x": 945,
-          "y": 600
+          "x": 960,
+          "y": 700
         },
         "gar_pulse_test_gate": {
-          "x": 1145,
-          "y": 480
+          "x": 1180,
+          "y": 420
         },
         "gar_prepare_pulse_delay": {
-          "x": 1405,
-          "y": 450
+          "x": 1520,
+          "y": 420
         },
         "gar_relay_pulse_on": {
-          "x": 1685,
-          "y": 450
+          "x": 2500,
+          "y": 380
         },
         "gar_relay_safety_delay": {
-          "x": 1685,
-          "y": 510
+          "x": 2600,
+          "y": 460
         },
         "gar_relay_pulse_off": {
-          "x": 1945,
-          "y": 510
+          "x": 2870,
+          "y": 500
         },
         "gar_relay_mqtt_out": {
-          "x": 1945,
-          "y": 450
+          "x": 3000,
+          "y": 380
         },
         "gar_log_pulse_started": {
-          "x": 1685,
-          "y": 570
+          "x": 2120,
+          "y": 500
         },
         "gar_safe_off_test_gate": {
-          "x": 1145,
-          "y": 600
+          "x": 1180,
+          "y": 700
         },
         "gar_effect_safe_off_adapter_out": {
-          "x": 1405,
-          "y": 580
-        },
-        "gar_effect_safe_off_adapter_in": {
-          "x": 1785,
-          "y": 630
-        },
-        "gar_effect_dry_run_out": {
-          "x": 1405,
+          "x": 1450,
           "y": 660
         },
+        "gar_effect_safe_off_adapter_in": {
+          "x": 2500,
+          "y": 700
+        },
+        "gar_effect_dry_run_out": {
+          "x": 1450,
+          "y": 560
+        },
         "gar_notify_relay_on": {
-          "x": 1625,
-          "y": 630
+          "x": 1650,
+          "y": 740
+        },
+        "gar_notify_relay_on__hub_call": {
+          "x": 1950,
+          "y": 740
+        },
+        "notification_hub_wire_out_270bc4ef8706": {
+          "x": 1750,
+          "y": 380
+        },
+        "notification_hub_wire_in_270bc4ef8706": {
+          "x": 2250,
+          "y": 380
+        },
+        "notification_hub_wire_out_92eda6ec8d9a": {
+          "x": 1750,
+          "y": 500
+        },
+        "notification_hub_wire_in_92eda6ec8d9a": {
+          "x": 1900,
+          "y": 500
         },
         "gar_pulse_watch_note": {
           "x": 430,
@@ -688,55 +711,55 @@
         },
         "gar_test_instructions": {
           "x": 410,
-          "y": 800
+          "y": 980
         },
         "gar_test_reset": {
           "x": 135,
-          "y": 860
+          "y": 1040
         },
         "gar_test_reset_state": {
           "x": 385,
-          "y": 860
+          "y": 1040
         },
         "gar_test_accept": {
           "x": 155,
-          "y": 920
+          "y": 1100
         },
         "gar_test_duplicate": {
           "x": 185,
-          "y": 970
+          "y": 1150
         },
         "gar_test_cooldown": {
           "x": 185,
-          "y": 1020
+          "y": 1200
         },
         "gar_test_boundary": {
           "x": 190,
-          "y": 1070
+          "y": 1250
         },
         "gar_test_request_out_left": {
           "x": 465,
-          "y": 1000
+          "y": 1180
         },
         "gar_test_relay_on": {
           "x": 655,
-          "y": 920
+          "y": 1100
         },
         "gar_test_relay_on_prepare": {
           "x": 925,
-          "y": 920
+          "y": 1100
         },
         "gar_test_request_out_right": {
           "x": 1135,
-          "y": 920
+          "y": 1100
         },
         "gar_test_dry_run_in": {
           "x": 1195,
-          "y": 1000
+          "y": 1180
         },
         "gar_test_dry_run_terminal": {
           "x": 1405,
-          "y": 970
+          "y": 1150
         },
         "global_observer_coverage__29d64664bf8cbde8__catch": {
           "x": 2300,
@@ -799,6 +822,9 @@
     "ce258dec9814b96b": {
       "label": "iluminacao_externa",
       "compact_groups": true,
+      "managed_group_overrides": [
+        "external_lighting_full_flow_group"
+      ],
       "nodes": {
         "external_lighting_full_flow_group": {
           "x": 64,
@@ -864,10 +890,6 @@
           "x": 2510,
           "y": 80
         },
-        "9d81b75a18d482f1": {
-          "x": 3290,
-          "y": 300
-        },
         "ext_zigbee_broker_status": {
           "x": 210,
           "y": 280
@@ -895,14 +917,6 @@
         "external_visual_cancel_confirmation_in": {
           "x": 2260,
           "y": 220
-        },
-        "ext_check_states": {
-          "x": 2770,
-          "y": 320
-        },
-        "ext_build_alexa_message": {
-          "x": 3070,
-          "y": 300
         },
         "133ec4c36a116175": {
           "x": 670,
@@ -933,12 +947,12 @@
           "y": 440
         },
         "ext_send_recovery_mobile": {
-          "x": 1680,
-          "y": 360
+          "x": 1500,
+          "y": 440
         },
         "ext_commit_recovery_confirmation": {
-          "x": 2010,
-          "y": 360
+          "x": 2300,
+          "y": 440
         },
         "ext_recovery_notification_action": {
           "x": 280,
@@ -981,11 +995,27 @@
           "y": 340
         },
         "external_visual_alexa_in": {
-          "x": 3120,
-          "y": 380
+          "x": 3200,
+          "y": 420
         },
         "external_visual_command_dry_out": {
-          "x": 2665,
+          "x": 2700,
+          "y": 460
+        },
+        "ext_check_states": {
+          "x": 2900,
+          "y": 280
+        },
+        "ext_build_alexa_message": {
+          "x": 3200,
+          "y": 280
+        },
+        "9d81b75a18d482f1": {
+          "x": 3480,
+          "y": 280
+        },
+        "9d81b75a18d482f1__hub_call": {
+          "x": 3760,
           "y": 280
         },
         "external_visual_notification_dry_out": {
@@ -1396,7 +1426,7 @@
         },
         "alarm_test_failure_prepare": {
           "x": 1010,
-          "y": 1100
+          "y": 1160
         },
         "alarm_test_failure_out": {
           "x": 1230,
@@ -1800,7 +1830,7 @@
         },
         "rpi_layout_start_failure_in": {
           "x": 360,
-          "y": 760
+          "y": 820
         },
         "rpi_layout_lock_failure_out": {
           "x": 1280,
@@ -2188,7 +2218,7 @@
         },
         "storage_visual_history_seed_in": {
           "x": 200,
-          "y": 790
+          "y": 440
         },
         "storage_visual_input_in": {
           "x": 1185,
@@ -2383,39 +2413,39 @@
           "y": 740
         },
         "storage_visual_remediation_gate": {
-          "x": 6475,
+          "x": 6470,
           "y": 740
         },
         "storage_visual_remediation_cooldown": {
-          "x": 6755,
-          "y": 690
+          "x": 6750,
+          "y": 680
         },
         "storage_visual_no_remediation": {
-          "x": 6755,
-          "y": 800
+          "x": 6950,
+          "y": 820
         },
         "storage_visual_state_finalize": {
-          "x": 6975,
+          "x": 7240,
           "y": 740
         },
         "storage_visual_attributes_build": {
-          "x": 7215,
+          "x": 7500,
           "y": 740
         },
         "storage_visual_mqtt_build": {
-          "x": 7455,
+          "x": 7740,
           "y": 740
         },
         "storage_visual_output_route": {
-          "x": 7695,
+          "x": 7980,
           "y": 740
         },
         "storage_visual_mqtt_out": {
-          "x": 7955,
+          "x": 8240,
           "y": 670
         },
         "storage_visual_notify_out": {
-          "x": 7955,
+          "x": 8240,
           "y": 730
         },
         "storage_visual_mqtt_in": {
@@ -2463,8 +2493,8 @@
           "y": 1310
         },
         "storage_visual_stderr_in": {
-          "x": 980,
-          "y": 1460
+          "x": 800,
+          "y": 1120
         },
         "storage_visual_request_done_out": {
           "x": 1010,
@@ -2507,6 +2537,9 @@
     "ea0a6aa0d24ff863": {
       "label": "localizacao_pessoas",
       "compact_groups": true,
+      "managed_node_overrides": [
+        "555422f47d3a742b"
+      ],
       "nodes": {
         "98945604e99f7604": {
           "x": 64,
@@ -2614,11 +2647,11 @@
         },
         "555422f47d3a742b": {
           "x": 115,
-          "y": 940
+          "y": 700
         },
         "19a91d7fce3b9db2": {
           "x": 280,
-          "y": 1060
+          "y": 1020
         },
         "2ae7acacaed0e3d6": {
           "x": 310,
@@ -3931,7 +3964,7 @@
           "y": 380
         },
         "48a5f40d806f6950": {
-          "x": 1650,
+          "x": 1330,
           "y": 1400
         },
         "62f77a1ad440639d": {
@@ -4043,7 +4076,7 @@
           "y": 700
         },
         "68a67feb7cc57957": {
-          "x": 2010,
+          "x": 1650,
           "y": 1400
         },
         "cd40f5f8e40b07af": {
@@ -4083,7 +4116,7 @@
           "y": 620
         },
         "77f539388438547c": {
-          "x": 2010,
+          "x": 1650,
           "y": 1340
         },
         "light_full_dry_run_terminal_v1": {
@@ -4163,7 +4196,7 @@
           "y": 720
         },
         "light_arrival_replay_route_out_v1": {
-          "x": 2010,
+          "x": 1650,
           "y": 1460
         },
         "light_arrival_replay_gate_in_v1": {
@@ -4594,55 +4627,55 @@
         },
         "daily_update_request_host": {
           "x": 940,
-          "y": 200
+          "y": 220
         },
         "daily_update_request_ack": {
           "x": 1200,
-          "y": 120
+          "y": 140
         },
         "daily_update_request_error": {
           "x": 1200,
-          "y": 180
+          "y": 220
         },
         "daily_update_request_complete": {
           "x": 1200,
-          "y": 240
+          "y": 300
         },
         "daily_update_request_test_out": {
-          "x": 925,
-          "y": 240
+          "x": 940,
+          "y": 140
         },
         "daily_update_result_startup": {
           "x": 220,
-          "y": 440
-        },
-        "daily_update_result_poll": {
-          "x": 200,
-          "y": 500
-        },
-        "daily_update_read_result": {
-          "x": 490,
           "y": 470
         },
+        "daily_update_result_poll": {
+          "x": 220,
+          "y": 530
+        },
+        "daily_update_read_result": {
+          "x": 500,
+          "y": 500
+        },
         "daily_update_read_error": {
-          "x": 780,
-          "y": 550
+          "x": 820,
+          "y": 520
         },
         "daily_update_read_complete": {
-          "x": 960,
-          "y": 550
+          "x": 820,
+          "y": 600
         },
         "daily_update_test_result_in": {
-          "x": 475,
-          "y": 550
+          "x": 500,
+          "y": 400
         },
         "daily_update_parse_result": {
           "x": 820,
-          "y": 470
+          "y": 440
         },
         "daily_update_result_test_out": {
           "x": 1105,
-          "y": 470
+          "y": 420
         },
         "daily_update_test_instructions": {
           "x": 680,
@@ -4694,11 +4727,11 @@
         },
         "daily_update_kia_manual": {
           "x": 220,
-          "y": 4140
+          "y": 4200
         },
         "daily_update_kia_test_request": {
           "x": 240,
-          "y": 4200
+          "y": 4260
         },
         "daily_update_kia_prepare": {
           "x": 490,
@@ -4813,7 +4846,7 @@
           "y": 4950
         },
         "daily_update_kia_codex_read_complete": {
-          "x": 520,
+          "x": 820,
           "y": 5010
         },
         "daily_update_kia_codex_parse_result": {
@@ -4878,7 +4911,7 @@
         },
         "daily_update_core_request_out": {
           "x": 1105,
-          "y": 530
+          "y": 480
         },
         "daily_update_core_architecture": {
           "x": 920,
@@ -5090,7 +5123,7 @@
         },
         "daily_update_inventory_test": {
           "x": 230,
-          "y": 2500
+          "y": 2620
         },
         "daily_update_inventory_parameters": {
           "x": 520,
@@ -5109,8 +5142,8 @@
           "y": 2400
         },
         "daily_update_inventory_test_snapshot_out": {
-          "x": 1340,
-          "y": 2660
+          "x": 1540,
+          "y": 2480
         },
         "daily_update_inventory_real_snapshot_out": {
           "x": 1560,
@@ -5137,12 +5170,16 @@
           "y": 2880
         },
         "daily_update_inventory_unavailable": {
-          "x": 770,
+          "x": 1050,
           "y": 2840
         },
         "daily_update_inventory_current": {
-          "x": 770,
-          "y": 2900
+          "x": 1050,
+          "y": 2940
+        },
+        "daily_update_inventory_nonpending_test_out": {
+          "x": 1350,
+          "y": 2890
         },
         "daily_update_inventory_summary_test_out": {
           "x": 620,
@@ -5193,12 +5230,24 @@
           "y": 3220
         },
         "daily_update_hacs_unavailable": {
-          "x": 490,
+          "x": 650,
           "y": 3200
         },
         "daily_update_hacs_current": {
-          "x": 490,
-          "y": 3260
+          "x": 500,
+          "y": 3300
+        },
+        "daily_update_hacs_rbe": {
+          "x": 900,
+          "y": 3100
+        },
+        "daily_update_hacs_pending": {
+          "x": 1200,
+          "y": 3100
+        },
+        "daily_update_hacs_test_out": {
+          "x": 850,
+          "y": 3000
         },
         "daily_update_hacs_test_out": {
           "x": 845,
@@ -5249,11 +5298,11 @@
           "y": 3540
         },
         "daily_update_firmware_pending_rbe": {
-          "x": 1290,
-          "y": 3600
+          "x": 1510,
+          "y": 3540
         },
         "daily_update_firmware_pending": {
-          "x": 1510,
+          "x": 1810,
           "y": 3540
         },
         "daily_update_firmware_unavailable": {
@@ -5340,6 +5389,22 @@
           "x": 105,
           "y": 2560
         },
+        "daily_update_dependency_manual": {
+          "x": 240,
+          "y": 5520
+        },
+        "daily_update_dependency_summary": {
+          "x": 1600,
+          "y": 5750
+        },
+        "daily_update_dependency_summary_test_out": {
+          "x": 1830,
+          "y": 5750
+        },
+        "daily_update_dependency_read_complete": {
+          "x": 760,
+          "y": 6160
+        },
         "global_observer_coverage__daily_host_updates_tab__catch": {
           "x": 1940,
           "y": 100
@@ -5361,6 +5426,9 @@
     "codex_alertas_tab": {
       "label": "alertas_codex",
       "compact_groups": true,
+      "managed_node_overrides": [
+        "codex_alert_dry_run_out"
+      ],
       "nodes": {
         "codex_group_policy": {
           "x": 64,
@@ -5450,7 +5518,7 @@
         },
         "codex_test_input_in": {
           "x": 940,
-          "y": 330
+          "y": 400
         },
         "codex_alert_logic": {
           "x": 1390,
@@ -5481,8 +5549,8 @@
           "y": 590
         },
         "codex_level_no_data": {
-          "x": 820,
-          "y": 550
+          "x": 1050,
+          "y": 500
         },
         "codex_level_critical": {
           "x": 820,
@@ -5681,8 +5749,8 @@
           "y": 1260
         },
         "codex_alert_dry_run_out": {
-          "x": 2290,
-          "y": 1360
+          "x": 2200,
+          "y": 1430
         },
         "codex_pending_tick": {
           "x": 2850,
@@ -5858,7 +5926,7 @@
         },
         "host_memory_guardian_protocol_error_in": {
           "x": 3320,
-          "y": 315
+          "y": 240
         },
         "host_memory_guardian_result_state": {
           "x": 2400,
@@ -5882,7 +5950,7 @@
         },
         "host_memory_guardian_duplicate_terminal": {
           "x": 3500,
-          "y": 250
+          "y": 140
         },
         "host_memory_guardian_status_switch": {
           "x": 3100,
@@ -7289,44 +7357,44 @@
           "y": 300
         },
         "internet_action_switch": {
-          "x": 4200,
+          "x": 4350,
           "y": 300
         },
         "internet_recovery_threshold": {
-          "x": 4370,
+          "x": 4520,
           "y": 220
         },
         "internet_mark_recovered": {
-          "x": 4630,
+          "x": 4800,
           "y": 200
         },
         "internet_failure_threshold": {
-          "x": 4370,
-          "y": 370
+          "x": 4600,
+          "y": 400
         },
         "internet_mark_down": {
-          "x": 4630,
-          "y": 350
+          "x": 4870,
+          "y": 440
         },
         "internet_mutate_again_out": {
-          "x": 4890,
-          "y": 275
+          "x": 5100,
+          "y": 300
         },
         "internet_finalize_route_out": {
-          "x": 4500,
-          "y": 465
+          "x": 4700,
+          "y": 650
         },
         "internet_finalize_in": {
-          "x": 4760,
-          "y": 440
+          "x": 5000,
+          "y": 650
         },
         "internet_finalize": {
-          "x": 4930,
-          "y": 440
+          "x": 5250,
+          "y": 650
         },
         "internet_effect_out": {
-          "x": 5040,
-          "y": 490
+          "x": 5500,
+          "y": 650
         },
         "internet_effect_in": {
           "x": 1465,
@@ -7711,16 +7779,24 @@
           "y": 910
         },
         "zigbee_component_policy_missing": {
-          "x": 1880,
-          "y": 850
+          "x": 1850,
+          "y": 970
         },
         "zigbee_component_normalize": {
-          "x": 1870,
-          "y": 990
+          "x": 1850,
+          "y": 850
         },
         "zigbee_component_valid": {
-          "x": 2180,
-          "y": 910
+          "x": 2150,
+          "y": 850
+        },
+        "zigbee_component_invalid": {
+          "x": 2450,
+          "y": 780
+        },
+        "zigbee_component_state_read": {
+          "x": 2450,
+          "y": 920
         },
         "zigbee_component_invalid": {
           "x": 2470,
@@ -8251,12 +8327,12 @@
           "y": 760
         },
         "tuya_empty_phase_out": {
-          "x": 1940,
-          "y": 700
+          "x": 2170,
+          "y": 550
         },
         "tuya_empty_phase_in": {
           "x": 2530,
-          "y": 700
+          "y": 550
         },
         "tuya_summary_confirmed": {
           "x": 2010,
@@ -8268,7 +8344,7 @@
         },
         "tuya_offline_phase_in": {
           "x": 2530,
-          "y": 770
+          "y": 740
         },
         "tuya_summary_offline": {
           "x": 2300,
@@ -8279,12 +8355,12 @@
           "y": 860
         },
         "tuya_phase_checking": {
-          "x": 2750,
-          "y": 710
+          "x": 2700,
+          "y": 550
         },
         "tuya_phase_offline": {
           "x": 2750,
-          "y": 770
+          "y": 740
         },
         "tuya_phase_recovering": {
           "x": 2900,
@@ -8295,7 +8371,7 @@
           "y": 920
         },
         "tuya_summary_out": {
-          "x": 3200,
+          "x": 3100,
           "y": 820
         },
         "tuya_summary_in": {
@@ -9437,6 +9513,9 @@
     "global_flow_observer_tab": {
       "label": "observabilidade_global",
       "compact_groups": false,
+      "managed_node_overrides": [
+        "global_observer_notification_failure"
+      ],
       "nodes": {
         "global_observer_production_group": {
           "x": 14,
@@ -9601,7 +9680,7 @@
           "y": 400
         },
         "global_observer_notification_failure": {
-          "x": 3350,
+          "x": 3500,
           "y": 400
         },
         "global_observer_internal_catch": {
@@ -9701,6 +9780,9 @@
     "resident_notifications_tab": {
       "label": "notificacoes_chegadas_residentes",
       "compact_groups": true,
+      "managed_node_overrides": [
+        "notification_hub_wire_in_be8bb6bde419"
+      ],
       "nodes": {
         "resident_notifications_config_group": {
           "x": 100,
@@ -9851,19 +9933,19 @@
           "y": 260
         },
         "resident_notifications_recipient_secondary": {
-          "x": 4590,
+          "x": 4800,
           "y": 180
         },
         "resident_notifications_recipient_primary": {
-          "x": 4590,
+          "x": 4800,
           "y": 340
         },
         "resident_notifications_source_invalid": {
-          "x": 4370,
-          "y": 400
+          "x": 4650,
+          "y": 650
         },
         "resident_notifications_decision_out": {
-          "x": 4710,
+          "x": 5100,
           "y": 260
         },
         "resident_notifications_state_in": {
@@ -9873,6 +9955,10 @@
         "resident_notifications_retry_in": {
           "x": 5600,
           "y": 400
+        },
+        "resident_notifications_state_migrate": {
+          "x": 5400,
+          "y": 330
         },
         "resident_notifications_event_time_switch": {
           "x": 5020,
@@ -9973,6 +10059,10 @@
         "resident_notifications_delivery_catch": {
           "x": 7200,
           "y": 410
+        },
+        "notification_hub_wire_in_be8bb6bde419": {
+          "x": 7400,
+          "y": 210
         },
         "resident_notifications_delivery_failure": {
           "x": 7490,

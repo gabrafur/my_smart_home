@@ -66,6 +66,8 @@
         "flows:render": "node tools/render-flow-layout.mjs",
         "flows:render-strict": "FLOW_LAYOUT_ENFORCE_LINKS=1 node tools/render-flow-layout.mjs",
         "flows:validate-layout": "node tools/validate-flow-layout.mjs",
+        "flows:validate-layout-only": "node tools/validate-layout-only.mjs",
+        "flows:audit-layout": "node tools/audit-flow-layout.mjs",
         "flows:validate": "node tools/validate-flows.mjs && node tools/test-notification-hubs.mjs && node tools/validate-manual-test-policy.mjs && node tools/validate-global-flow-observer.mjs",
         "flows:validate-observability": "node tools/validate-global-flow-observer.mjs",
         "flows:validate-manual-tests": "node tools/validate-manual-test-policy.mjs",

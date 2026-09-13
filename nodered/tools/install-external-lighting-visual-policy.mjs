@@ -97,17 +97,17 @@ for (const field of ["func", "timeout", "noerr", "initialize", "finalize", "libs
 sw("external_visual_confirmation_mode", main.id, "Confirmar em produção ou TESTE?",
   "_external_command.test_mode", 2460, 300,
   [["external_visual_command_dry_out"], ["ext_check_states"]]);
-Object.assign(required("ext_check_states"), { x: 2730, y: 300 });
-Object.assign(required("ext_build_alexa_message"), { x: 3010, y: 300 });
-Object.assign(required("9d81b75a18d482f1"), { x: 3290, y: 300 });
+Object.assign(required("ext_check_states"), { x: 2900, y: 280 });
+Object.assign(required("ext_build_alexa_message"), { x: 3200, y: 280 });
+Object.assign(required("9d81b75a18d482f1"), { x: 3480, y: 280 });
 linkOut("external_visual_alexa_out", main.id, "Avisos → Alexa",
   "external_visual_alexa_in", 2180, 300);
 linkOut("external_visual_recovery_alexa_out", main.id, "Recovery confirmado → Alexa",
   "external_visual_alexa_in", 2550, 440);
 linkIn("external_visual_alexa_in", main.id, "Receber aviso confirmado",
-  ["external_visual_alexa_out", "external_visual_recovery_alexa_out"], "9d81b75a18d482f1", 3120, 380);
+  ["external_visual_alexa_out", "external_visual_recovery_alexa_out"], "9d81b75a18d482f1", 3200, 420);
 linkOut("external_visual_command_dry_out", main.id, "Comando TESTE → terminal",
-  "external_visual_dry_in", 2680, 360);
+  "external_visual_dry_in", 2700, 460);
 linkOut("external_visual_notification_dry_out", main.id, "Aviso TESTE → terminal",
   "external_visual_dry_in", 2260, 280);
 
