@@ -123,13 +123,13 @@ views:
               - entity: sensor.raspberry_pi_raspberry_storage_status
                 name: Status Node-RED
               - entity: sensor.raspberry_pi_storage_health_last_run
-                name: Última execução do Storage Health
+                name: Última verificação do Storage Health
               - entity: sensor.raspberry_pi_raspberry_storage_growth_24h
                 name: Crescimento em 24 h
               - entity: sensor.raspberry_pi_raspberry_storage_growth_7d
                 name: Crescimento em 7 dias
               - entity: sensor.raspberry_pi_raspberry_storage_last_maintenance
-                name: Última manutenção segura
+                name: Última limpeza segura
               - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed
                 name: Recuperado na última manutenção
               - entity: binary_sensor.raspberry_pi_storage_warning
@@ -152,6 +152,10 @@ views:
                 name: Recorder
               - entity: sensor.raspberry_pi_storage_maintenance_home_assistant_backups
                 name: Backups e snapshots do Home Assistant
+              - entity: sensor.raspberry_pi_storage_maintenance_backup_archives
+                name: Backups operacionais TAR
+              - entity: sensor.raspberry_pi_storage_maintenance_manual_snapshots
+                name: Snapshots manuais para revisão
               - entity: sensor.raspberry_pi_storage_maintenance_result
                 name: Resultado da manutenção
           - type: entities

@@ -107,8 +107,8 @@ result = evaluate(flow, metric(66.9), NOW + 1800000);
 assert.match(result[1].payload.message, /back to normal/);
 
 flow = configured();
-flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55 }]);
-flow.stores.persistent.set("storage_health_category_history_v1", [{ ts: NOW - 86400000, values: { docker: 12000000000, recorder: 4000000000 } }]);
+flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55, source: "production" }]);
+flow.stores.persistent.set("storage_health_category_history_v1", [{ ts: NOW - 86400000, source: "production", values: { docker: 12000000000, recorder: 4000000000 } }]);
 result = evaluate(flow, metric(64, 20, { docker: 16000000000, recorder: 4100000000 }));
 assert.equal(flow.stores.persistent.get("storage_health_state_v1").growthCause, "Docker");
 assert.match(result[1].payload.message, /causa provavel: Docker \+3\.7 GiB\/24h/);
@@ -122,7 +122,9 @@ accept(flow, result[1]);
 assert.equal(evaluate(flow, {}, NOW + 60000)[1], null, "erro respeita cooldown após aceite");
 
 flow = configured();
-flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55 }]);
+flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55, source: "production" }]);
+flow.stores.default.set("storage_health_history_v1__test", [{ ts: NOW - 86400000, used: 55, source: "test" }]);
+const productionHistory = structuredClone(flow.stores.persistent.get("storage_health_history_v1"));
 result = evaluate(flow, metric(64), NOW, true);
 assert.deepEqual(result[0], []);
 assert.equal(result[1], null);
@@ -131,6 +133,15 @@ const dry = call(f.gate, result[3], flow);
 assert.equal(dry[0], null);
 assert.equal(dry[1], null);
 assert.equal(dry[2].payload.dispatched, false);
+assert.deepEqual(flow.stores.persistent.get("storage_health_history_v1"), productionHistory, "teste não altera histórico de produção");
+assert.equal(flow.stores.persistent.has("storage_health_state_v1"), false, "teste não altera estado de produção");
+assert.equal(flow.stores.default.get("storage_health_state_v1__test").severity, "normal");
+
+flow = configured();
+flow.stores.persistent.set("storage_health_history_v1", [{ ts: NOW - 86400000, used: 55, source: "production" }]);
+flow.stores.persistent.set("storage_health_category_history_v1", [{ ts: NOW - 86400000, source: "production", values: { manualSnapshots: 1000000000 } }]);
+result = evaluate(flow, metric(64, 20, { manualSnapshots: 3000000000, backupArchives: 2000000000 }));
+assert.equal(flow.stores.persistent.get("storage_health_state_v1").growthCause, "snapshots manuais do Home Assistant");
 
 assert.equal(byId.get("storage_health_tick")?.repeat, "900");
 assert.equal(byId.get("storage_daily_maintenance")?.crontab, "23 */6 * * *");

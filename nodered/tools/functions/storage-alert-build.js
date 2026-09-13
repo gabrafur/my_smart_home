@@ -23,5 +23,5 @@ if (s.alert_kind === "recovery") {
     message = `⚠️ Storage crescendo rapidamente: ${parts.join(", ")}. Uso atual: ${s.used.toFixed(1)}% (${freeText})${cause}. A limpeza segura foi solicitada automaticamente.`;
     fields.push("lastTrendNotificationAt");
 } else return msg;
-msg.storage_alert = { payload: { title, message }, notificationAck: { id: `${s.now}:${fields.join(",")}`, at: s.now, targets: fields.map((field) => ({ key: "storage_health_state_v1", field })) } };
+msg.storage_alert = { payload: { title, message }, notificationAck: { id: `${s.now}:${fields.join(",")}`, at: s.now, targets: fields.map((field) => ({ key: s.stateKey, field })) } };
 return msg;

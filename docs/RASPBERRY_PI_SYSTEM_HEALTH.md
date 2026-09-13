@@ -118,9 +118,13 @@ discovery publica somente dados novos:
 - `sensor.raspberry_pi_raspberry_storage_last_maintenance`;
 - `sensor.raspberry_pi_raspberry_storage_last_reclaimed`.
 
-`Raspberry Storage Last Maintenance` e `Raspberry Storage Last Reclaimed`
-continuam sendo entidades MQTT para preservar o histórico e a apresentação do
-painel, mas seus estados vêm dos atributos autoritativos
+`Storage Health Last Check` marca cada avaliação leve, normalmente a cada 15
+minutos. `Raspberry Storage Last Maintenance` e
+`Raspberry Storage Last Reclaimed` mudam somente depois de uma limpeza real no
+host, agendada a cada seis horas ou iniciada pelo painel/fluxo diário. As duas
+noções não são unificadas porque uma coleta bem-sucedida não prova que houve
+limpeza. Os IDs e tópicos anteriores são preservados para não perder histórico.
+Os estados de manutenção vêm dos atributos autoritativos
 `storage_maintenance_last_at` e `storage_maintenance_last_reclaimed_bytes` do
 arquivo de métricas do host. O fluxo os republica em cada leitura e depois da
 reavaliação pós-manutenção; não usa o resultado parcial do housekeeping interno
@@ -146,15 +150,24 @@ de autocuidado são decisões nomeadas. O JavaScript remanescente calcula apenas
 janelas temporais/crescimento e adapta atributos/tópicos MQTT; os workers
 allowlisted continuam atrás da separação produção/dry-run.
 
-Uma amostra compacta e persistida a cada 15 minutos por no maximo oito dias.
+Uma amostra compacta é persistida a cada 15 minutos por no máximo oito dias.
 Ela permite calcular 24 h e 7 dias sem gravacao por minuto. O alerta de tendencia
 dispara a partir de +5 pontos percentuais/24 h ou +10 pontos/7 dias, tambem com
 cooldown. Sao aceitas apenas amostras dentro de duas horas da janela desejada;
 uma amostra velha nao e usada como se fosse de 24 horas.
 
+Os replays manuais usam chaves `__test` somente em memória e nunca escrevem no
+histórico persistente de produção. Entradas legadas sem a origem explícita são
+descartadas: depois de deploy/reset, 24 h e 7 d ficam indisponíveis até existir
+uma série real contínua próxima de cada janela. Publicar zero nesse intervalo
+seria um dado falso, por isso a disponibilidade MQTT permanece `offline`.
+
 O fluxo também persiste snapshots das categorias Docker, checkout, VS Code,
-Recorder, backups, cache npm e logs. Ao detectar crescimento acelerado ou uso
-acima do limite, identifica a maior variação de 24 h, solicita automaticamente
+Recorder, backups operacionais TAR, snapshots manuais de banco, cache npm e
+logs. O dashboard separa os dois tipos de backup; snapshots manuais continuam
+somente para revisão e nunca entram na exclusão automática. Ao detectar
+crescimento acelerado ou uso acima do limite, identifica a maior variação de
+24 h, solicita automaticamente
 o housekeeping allowlisted, aguarda o worker do host e mede novamente. O
 cooldown de seis horas impede limpezas repetidas. O caminho manual de teste usa
 `test_mode` até o terminal dry-run e nunca chama exec, MQTT ou notificações.

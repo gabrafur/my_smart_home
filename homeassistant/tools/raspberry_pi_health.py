@@ -220,6 +220,8 @@ def storage_maintenance_metrics() -> dict:
         "pm2_logs_logical_bytes",
         "home_assistant_recorder_logical_bytes",
         "home_assistant_backups_logical_bytes",
+        "home_assistant_backup_archives_logical_bytes",
+        "home_assistant_manual_snapshots_logical_bytes",
         "deleted_open_bytes",
         "deleted_open_count",
         "last_reclaimed_bytes",

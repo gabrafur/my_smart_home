@@ -40,6 +40,8 @@ class StorageMaintenanceMetricsTests(unittest.TestCase):
                         "pm2_logs_logical_bytes": 7,
                         "home_assistant_recorder_logical_bytes": 500,
                         "home_assistant_backups_logical_bytes": 600,
+                        "home_assistant_backup_archives_logical_bytes": 250,
+                        "home_assistant_manual_snapshots_logical_bytes": 350,
                         "deleted_open_bytes": 0,
                         "deleted_open_count": 0,
                         "deleted_open_scan_complete": False,
@@ -63,6 +65,8 @@ class StorageMaintenanceMetricsTests(unittest.TestCase):
         self.assertEqual(metrics["storage_maintenance_docker_logical_bytes"], 200)
         self.assertEqual(metrics["storage_maintenance_vscode_server_logical_bytes"], 400)
         self.assertEqual(metrics["storage_maintenance_cursor_server_logical_bytes"], 0)
+        self.assertEqual(metrics["storage_maintenance_home_assistant_backup_archives_logical_bytes"], 250)
+        self.assertEqual(metrics["storage_maintenance_home_assistant_manual_snapshots_logical_bytes"], 350)
         self.assertFalse(metrics["storage_maintenance_deleted_open_scan_complete"])
         self.assertEqual(
             metrics["storage_maintenance_last_reclaimed_by_category"],

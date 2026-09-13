@@ -17,5 +17,5 @@ if (s.remediation_due) {
             growthCauseBytes: s.growth_cause_bytes }
     };
 }
-flow.set("storage_health_state_v1", state, "persistent");
+if (s.testMode) flow.set(s.stateKey, state); else flow.set(s.stateKey, state, "persistent");
 return msg;

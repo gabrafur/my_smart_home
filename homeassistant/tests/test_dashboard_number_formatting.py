@@ -210,7 +210,9 @@ class DashboardNumberFormattingTest(unittest.TestCase):
         next_heading = dashboard.index("heading:", heading + 1)
         section = dashboard[heading:next_heading]
         self.assertIn("entity: sensor.raspberry_pi_storage_health_last_run", section)
-        self.assertIn("name: Última execução do Storage Health", section)
+        self.assertIn("name: Última verificação do Storage Health", section)
+        self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_backup_archives", section)
+        self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_manual_snapshots", section)
 
     def test_manual_action_buttons_expose_running_state(self):
         dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")

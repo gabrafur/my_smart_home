@@ -124,7 +124,7 @@ const definitions = [
     },
     {
         topic: "homeassistant/sensor/raspberry_storage_health_last_run/config",
-        payload: { name: "Storage Health Last Run", unique_id: "raspberry_storage_health_last_run", object_id: "raspberry_storage_health_last_run", default_entity_id: "sensor.raspberry_pi_storage_health_last_run", state_topic: "smart_home/raspberry/storage/health_last_run", device_class: "timestamp", icon: "mdi:clock-check-outline", device }
+        payload: { name: "Storage Health Last Check", unique_id: "raspberry_storage_health_last_run", object_id: "raspberry_storage_health_last_run", default_entity_id: "sensor.raspberry_pi_storage_health_last_run", state_topic: "smart_home/raspberry/storage/health_last_run", device_class: "timestamp", icon: "mdi:clock-check-outline", device }
     },
     {
         topic: "homeassistant/sensor/raspberry_storage_growth_24h/config",
@@ -186,7 +186,7 @@ const inodeUsed = input.inode_used_percent === undefined ? null : Number(input.i
 const maintenanceAt = typeof input.maintenance_last_at === "string" && !Number.isNaN(Date.parse(input.maintenance_last_at)) ? input.maintenance_last_at : null;
 const maintenanceReclaimedBytes = Number(input.maintenance_reclaimed_bytes);
 const categoryInput = input.categories ?? {};
-const categoryLabels = { docker: "Docker", repository: "repositorio", vscode: "VS Code Server", recorder: "Recorder", backups: "backups do Home Assistant", npmCache: "cache npm", knownLogs: "logs" };
+const categoryLabels = { docker: "Docker", repository: "repositorio", vscode: "VS Code Server", recorder: "Recorder", backupArchives: "backups operacionais do Home Assistant", manualSnapshots: "snapshots manuais do Home Assistant", npmCache: "cache npm", knownLogs: "logs" };
 const categoryValues = {};
 for (const [key, raw] of Object.entries(categoryInput)) {
     const value = Number(raw);
@@ -368,7 +368,7 @@ if (msg.test_mode === true) {
 node.status({ fill: "blue", shape: "dot", text: "limpeza automatica solicitada" });
 return [{ ...msg }, { ...msg }, null];`;
 
-const testReset = `for (const key of ["storage_health_state_v1", "storage_health_history_v1", "storage_health_category_history_v1"]) flow.set(key, null, "persistent");
+const testReset = `for (const key of ["storage_health_state_v1__test", "storage_health_history_v1__test", "storage_health_category_history_v1__test"]) flow.set(key, null);
 node.status({ fill: "green", shape: "dot", text: "teste resetado" });
 return null;`;
 
@@ -376,8 +376,8 @@ const testPrepare = `const now = Date.now();
 const growth = msg.payload === "growth";
 const beforeUsed = growth ? 55 : 60;
 const currentUsed = growth ? 64 : 60;
-flow.set("storage_health_history_v1", [{ ts: now - 24 * 60 * 60 * 1000, used: beforeUsed }], "persistent");
-flow.set("storage_health_category_history_v1", [{ ts: now - 24 * 60 * 60 * 1000, values: { docker: growth ? 12000000000 : 16000000000, recorder: 4000000000, backups: 1600000000 } }], "persistent");
+flow.set("storage_health_history_v1__test", [{ ts: now - 24 * 60 * 60 * 1000, used: beforeUsed, source: "test" }]);
+flow.set("storage_health_category_history_v1__test", [{ ts: now - 24 * 60 * 60 * 1000, source: "test", values: { docker: growth ? 12000000000 : 16000000000, recorder: 4000000000, backupArchives: 1600000000, manualSnapshots: 0 } }]);
 return {
     test_mode: true,
     testNow: now,
@@ -388,7 +388,7 @@ return {
         inode_used_percent: 18,
         filesystem: "/",
         collected_at: new Date(now).toISOString(),
-        categories: { docker: 16000000000, recorder: 4000000000, backups: 1600000000 }
+        categories: { docker: 16000000000, recorder: 4000000000, backupArchives: 1600000000, manualSnapshots: 0 }
     }
 };`;
 
@@ -467,7 +467,7 @@ const nodes = [
   { id: "storage_health_tick", type: "inject", z: TAB, g: "storage_group_health", name: "A cada 15 min", props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "900", crontab: "", once: true, onceDelay: "10", topic: "", payload: "", payloadType: "date", x: 160, y: 310, wires: [["storage_read_ha"]] },
   { id: "storage_manual_health", type: "server-state-changed", z: TAB, g: "storage_group_health", name: "Executar pelo painel HA", server: SERVER, version: 6, outputs: 1, exposeAsEntityConfig: "", entities: { entity: ["input_button.storage_health_manual_run"], substring: [], regex: [] }, outputInitially: false, stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is", outputOnlyOnStateChange: true, for: "0", forType: "num", forUnits: "minutes", ignorePrevStateNull: false, ignorePrevStateUnknown: false, ignorePrevStateUnavailable: false, ignoreCurrentStateUnknown: true, ignoreCurrentStateUnavailable: true, outputProperties: [], x: 170, y: 370, wires: [["storage_manual_start"]] },
   functionNode("storage_manual_start", "storage_group_health", "Iniciar execução manual", manualStart, 4, 430, 370, [["storage_exec_maintenance"], ["storage_request_host_maintenance"], ["storage_read_ha"], ["storage_manual_status_mqtt"]]),
-  { id: "storage_read_ha", type: "api-current-state", z: TAB, g: "storage_group_health", name: "Ler storage e categorias no HA", server: SERVER, version: 3, outputs: 1, halt_if: "", halt_if_type: "str", halt_if_compare: "is", entity_id: "sensor.raspberry_pi_storage_usage", state_type: "str", blockInputOverrides: true, outputProperties: [{ property: "payload", propertyType: "msg", value: "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at,\n  \"maintenance_last_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_at,\n  \"maintenance_reclaimed_bytes\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_reclaimed_bytes,\n  \"categories\": {\n    \"docker\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_docker_logical_bytes,\n    \"repository\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_repository_bytes,\n    \"vscode\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_vscode_server_logical_bytes,\n    \"recorder\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_recorder_logical_bytes,\n    \"backups\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_backups_logical_bytes,\n    \"npmCache\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_npm_cache_logical_bytes,\n    \"knownLogs\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_known_logs_bytes\n  }\n}", valueType: "jsonata" }], for: "0", forType: "num", forUnits: "minutes", override_topic: false, state_location: "payload", override_payload: "msg", entity_location: "data", override_data: "msg", x: 430, y: 310, wires: [["storage_evaluate"]] },
+  { id: "storage_read_ha", type: "api-current-state", z: TAB, g: "storage_group_health", name: "Ler storage e categorias no HA", server: SERVER, version: 3, outputs: 1, halt_if: "", halt_if_type: "str", halt_if_compare: "is", entity_id: "sensor.raspberry_pi_storage_usage", state_type: "str", blockInputOverrides: true, outputProperties: [{ property: "payload", propertyType: "msg", value: "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at,\n  \"maintenance_last_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_at,\n  \"maintenance_reclaimed_bytes\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_reclaimed_bytes,\n  \"categories\": {\n    \"docker\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_docker_logical_bytes,\n    \"repository\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_repository_bytes,\n    \"vscode\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_vscode_server_logical_bytes,\n    \"recorder\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_recorder_logical_bytes,\n    \"backupArchives\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_backup_archives_logical_bytes,\n    \"manualSnapshots\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_manual_snapshots_logical_bytes,\n    \"npmCache\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_npm_cache_logical_bytes,\n    \"knownLogs\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_known_logs_bytes\n  }\n}", valueType: "jsonata" }], for: "0", forType: "num", forUnits: "minutes", override_topic: false, state_location: "payload", override_payload: "msg", entity_location: "data", override_data: "msg", x: 430, y: 310, wires: [["storage_evaluate"]] },
   functionNode("storage_evaluate", "storage_group_health", "Diagnosticar + tendencia + autocuidado", evaluate, 4, 740, 310, [["storage_mqtt_state"], ["storage_notify", "storage_notify_secondary", "storage_notify_persistent"], ["storage_test_decision_out"], ["storage_auto_out"]]),
   { id: "storage_recheck_in", type: "link in", z: TAB, g: "storage_group_health", name: "Reavaliar apos limpeza", links: ["storage_recheck_out"], x: 295, y: 270, wires: [["storage_read_ha"]] },
   { id: "storage_test_input_in", type: "link in", z: TAB, g: "storage_group_health", name: "Metricas sinteticas", links: ["storage_test_input_out"], x: 595, y: 370, wires: [["storage_evaluate"]] },

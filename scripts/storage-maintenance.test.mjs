@@ -243,6 +243,11 @@ test("automatic HA backup retention keeps only the two newest archives", () => {
   });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.deepEqual(fs.readdirSync(backupRoot).sort(), ["four.tar", "manual-snapshot.db", "three.tar"]);
+  const metrics = JSON.parse(fs.readFileSync(item.metricsFile, "utf8"));
+  assert.equal(metrics.home_assistant_backups_logical_bytes, 25);
+  assert.equal(metrics.home_assistant_backup_archives_logical_bytes, 17);
+  assert.equal(metrics.home_assistant_manual_snapshots_logical_bytes, 8);
+  assert.match(result.stdout, /component=home-assistant-manual-snapshots .*status=review-only/);
   removeFixture(item);
 });
 

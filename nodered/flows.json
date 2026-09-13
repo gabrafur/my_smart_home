@@ -3198,85 +3198,6 @@
         "h": 290
     },
     {
-        "id": "storage_visual_decision_group",
-        "type": "group",
-        "z": "storage_health_tab",
-        "name": "3. Tendência, severidade, alertas e autocuidado",
-        "style": {
-            "label": true,
-            "label-position": "nw",
-            "color": "#1f2937",
-            "stroke": "#0f766e",
-            "fill": "#ccfbf1",
-            "fill-opacity": "0.35"
-        },
-        "nodes": [
-            "storage_visual_input_in",
-            "storage_visual_policy_load",
-            "storage_visual_policy_available",
-            "storage_visual_policy_missing",
-            "storage_visual_input_normalize",
-            "storage_visual_metrics_valid",
-            "storage_visual_error_due",
-            "storage_visual_invalid_finalize",
-            "storage_visual_invalid_mqtt_out",
-            "storage_visual_invalid_notify_out",
-            "storage_visual_invalid_test_out",
-            "storage_visual_history_analyze",
-            "storage_visual_raw_severity",
-            "storage_visual_set_critical",
-            "storage_visual_set_critical_out",
-            "storage_visual_set_high",
-            "storage_visual_set_high_out",
-            "storage_visual_set_warning",
-            "storage_visual_set_warning_out",
-            "storage_visual_set_normal",
-            "storage_visual_set_normal_out",
-            "storage_visual_hysteresis_in",
-            "storage_visual_keep_critical",
-            "storage_visual_keep_high",
-            "storage_visual_keep_warning",
-            "storage_visual_final_critical",
-            "storage_visual_final_critical_out",
-            "storage_visual_final_high",
-            "storage_visual_final_high_out",
-            "storage_visual_final_warning",
-            "storage_visual_final_warning_out",
-            "storage_visual_final_raw",
-            "storage_visual_final_raw_out",
-            "storage_visual_facts_in",
-            "storage_visual_facts",
-            "storage_visual_recovery_gate",
-            "storage_visual_alert_recovery",
-            "storage_visual_alert_recovery_out",
-            "storage_visual_capacity_gate",
-            "storage_visual_alert_capacity",
-            "storage_visual_alert_capacity_out",
-            "storage_visual_trend_gate",
-            "storage_visual_alert_trend",
-            "storage_visual_alert_trend_out",
-            "storage_visual_alert_none",
-            "storage_visual_alert_none_out",
-            "storage_visual_alert_build_in",
-            "storage_visual_alert_build",
-            "storage_visual_remediation_gate",
-            "storage_visual_remediation_cooldown",
-            "storage_visual_no_remediation",
-            "storage_visual_state_finalize",
-            "storage_visual_attributes_build",
-            "storage_visual_mqtt_build",
-            "storage_visual_output_route",
-            "storage_visual_mqtt_out",
-            "storage_visual_notify_out",
-            "storage_test_decision_out",
-            "storage_auto_out"
-        ],
-        "x": 1148,
-        "y": 260,
-        "w": 6844,
-        "h": 627
-    },
-    {
         "id": "resident_notifications_config_group",
         "type": "group",
         "z": "resident_notifications_tab",
@@ -12431,7 +12352,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_config",
         "name": "Publicar discovery",
-        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_health_last_run/config\",\n        payload: { name: \"Storage Health Last Run\", unique_id: \"raspberry_storage_health_last_run\", object_id: \"raspberry_storage_health_last_run\", default_entity_id: \"sensor.raspberry_pi_storage_health_last_run\", state_topic: \"smart_home/raspberry/storage/health_last_run\", device_class: \"timestamp\", icon: \"mdi:clock-check-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_cause/config\",\n        payload: { name: \"Raspberry Storage Growth Cause\", unique_id: \"raspberry_storage_growth_cause\", object_id: \"raspberry_storage_growth_cause\", state_topic: \"smart_home/raspberry/storage/growth_cause\", icon: \"mdi:magnify-scan\", device }\n    },\n    {\n        topic: \"homeassistant/binary_sensor/raspberry_storage_manual_running/config\",\n        payload: { name: \"Storage Health Manual Running\", unique_id: \"raspberry_storage_manual_running\", object_id: \"raspberry_storage_manual_running\", default_entity_id: \"binary_sensor.raspberry_pi_storage_manual_running\", state_topic: \"smart_home/raspberry/storage/manual_running\", payload_on: \"ON\", payload_off: \"OFF\", device_class: \"running\", icon: \"mdi:harddisk\", device }\n    }\n];\nreturn [[\n    ...definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true })),\n    { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true }\n]];",
+        "func": "const device = {\n    identifiers: [\"raspberry_pi_5_host\"],\n    name: \"Raspberry Pi\",\n    manufacturer: \"Raspberry Pi\",\n    model: \"Raspberry Pi 5\"\n};\nconst definitions = [\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_status/config\",\n        payload: { name: \"Raspberry Storage Status\", unique_id: \"raspberry_storage_status\", object_id: \"raspberry_storage_status\", state_topic: \"smart_home/raspberry/storage/status\", json_attributes_topic: \"smart_home/raspberry/storage/attributes\", icon: \"mdi:harddisk\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_health_last_run/config\",\n        payload: { name: \"Storage Health Last Check\", unique_id: \"raspberry_storage_health_last_run\", object_id: \"raspberry_storage_health_last_run\", default_entity_id: \"sensor.raspberry_pi_storage_health_last_run\", state_topic: \"smart_home/raspberry/storage/health_last_run\", device_class: \"timestamp\", icon: \"mdi:clock-check-outline\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_24h/config\",\n        payload: { name: \"Raspberry Storage Growth 24h\", unique_id: \"raspberry_storage_growth_24h\", object_id: \"raspberry_storage_growth_24h\", state_topic: \"smart_home/raspberry/storage/growth_24h\", availability_topic: \"smart_home/raspberry/storage/growth_24h_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_7d/config\",\n        payload: { name: \"Raspberry Storage Growth 7d\", unique_id: \"raspberry_storage_growth_7d\", object_id: \"raspberry_storage_growth_7d\", state_topic: \"smart_home/raspberry/storage/growth_7d\", availability_topic: \"smart_home/raspberry/storage/growth_7d_available\", payload_available: \"online\", payload_not_available: \"offline\", unit_of_measurement: \"pp\", state_class: \"measurement\", icon: \"mdi:chart-line\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_maintenance/config\",\n        payload: { name: \"Raspberry Storage Last Maintenance\", unique_id: \"raspberry_storage_last_maintenance\", object_id: \"raspberry_storage_last_maintenance\", state_topic: \"smart_home/raspberry/storage/last_maintenance\", device_class: \"timestamp\", icon: \"mdi:broom\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_last_reclaimed/config\",\n        payload: { name: \"Raspberry Storage Last Reclaimed\", unique_id: \"raspberry_storage_last_reclaimed\", object_id: \"raspberry_storage_last_reclaimed\", state_topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", unit_of_measurement: \"MiB\", state_class: \"measurement\", icon: \"mdi:delete-sweep\", device }\n    },\n    {\n        topic: \"homeassistant/sensor/raspberry_storage_growth_cause/config\",\n        payload: { name: \"Raspberry Storage Growth Cause\", unique_id: \"raspberry_storage_growth_cause\", object_id: \"raspberry_storage_growth_cause\", state_topic: \"smart_home/raspberry/storage/growth_cause\", icon: \"mdi:magnify-scan\", device }\n    },\n    {\n        topic: \"homeassistant/binary_sensor/raspberry_storage_manual_running/config\",\n        payload: { name: \"Storage Health Manual Running\", unique_id: \"raspberry_storage_manual_running\", object_id: \"raspberry_storage_manual_running\", default_entity_id: \"binary_sensor.raspberry_pi_storage_manual_running\", state_topic: \"smart_home/raspberry/storage/manual_running\", payload_on: \"ON\", payload_off: \"OFF\", device_class: \"running\", icon: \"mdi:harddisk\", device }\n    }\n];\nreturn [[\n    ...definitions.map((entry) => ({ topic: entry.topic, payload: JSON.stringify(entry.payload), retain: true })),\n    { topic: \"smart_home/raspberry/storage/manual_running\", payload: \"OFF\", retain: true }\n]];",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -12554,7 +12475,7 @@
             {
                 "property": "payload",
                 "propertyType": "msg",
-                "value": "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at,\n  \"maintenance_last_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_at,\n  \"maintenance_reclaimed_bytes\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_reclaimed_bytes,\n  \"categories\": {\n    \"docker\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_docker_logical_bytes,\n    \"repository\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_repository_bytes,\n    \"vscode\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_vscode_server_logical_bytes,\n    \"recorder\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_recorder_logical_bytes,\n    \"backups\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_backups_logical_bytes,\n    \"npmCache\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_npm_cache_logical_bytes,\n    \"knownLogs\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_known_logs_bytes\n  }\n}",
+                "value": "{\n  \"used_percent\": $entities(\"sensor.raspberry_pi_storage_usage\").state,\n  \"used_gb\": $entities(\"sensor.raspberry_pi_storage_used\").state,\n  \"free_gb\": $entities(\"sensor.raspberry_pi_storage_free\").state,\n  \"inode_used_percent\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_inodes_used_percent,\n  \"filesystem\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.disk_path,\n  \"collected_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.collected_at,\n  \"maintenance_last_at\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_at,\n  \"maintenance_reclaimed_bytes\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_last_reclaimed_bytes,\n  \"categories\": {\n    \"docker\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_docker_logical_bytes,\n    \"repository\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_repository_bytes,\n    \"vscode\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_vscode_server_logical_bytes,\n    \"recorder\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_recorder_logical_bytes,\n    \"backupArchives\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_backup_archives_logical_bytes,\n    \"manualSnapshots\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_home_assistant_manual_snapshots_logical_bytes,\n    \"npmCache\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_npm_cache_logical_bytes,\n    \"knownLogs\": $entities(\"sensor.raspberry_pi_metrics_raw\").attributes.storage_maintenance_known_logs_bytes\n  }\n}",
                 "valueType": "jsonata"
             }
         ],
@@ -13199,7 +13120,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_tests",
         "name": "Resetar estado sintetico",
-        "func": "for (const key of [\"storage_health_state_v1\", \"storage_health_history_v1\", \"storage_health_category_history_v1\"]) flow.set(key, null, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"teste resetado\" });\nreturn null;",
+        "func": "for (const key of [\"storage_health_state_v1__test\", \"storage_health_history_v1__test\", \"storage_health_category_history_v1__test\"]) flow.set(key, null);\nnode.status({ fill: \"green\", shape: \"dot\", text: \"teste resetado\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -13268,7 +13189,7 @@
         "z": "storage_health_tab",
         "g": "storage_group_tests",
         "name": "Preparar metricas sinteticas",
-        "func": "const now = Date.now();\nconst growth = msg.payload === \"growth\";\nconst beforeUsed = growth ? 55 : 60;\nconst currentUsed = growth ? 64 : 60;\nflow.set(\"storage_health_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, used: beforeUsed }], \"persistent\");\nflow.set(\"storage_health_category_history_v1\", [{ ts: now - 24 * 60 * 60 * 1000, values: { docker: growth ? 12000000000 : 16000000000, recorder: 4000000000, backups: 1600000000 } }], \"persistent\");\nreturn {\n    test_mode: true,\n    testNow: now,\n    payload: {\n        used_percent: currentUsed,\n        used_gb: 37,\n        free_gb: 21,\n        inode_used_percent: 18,\n        filesystem: \"/\",\n        collected_at: new Date(now).toISOString(),\n        categories: { docker: 16000000000, recorder: 4000000000, backups: 1600000000 }\n    }\n};",
+        "func": "const now = Date.now();\nconst growth = msg.payload === \"growth\";\nconst beforeUsed = growth ? 55 : 60;\nconst currentUsed = growth ? 64 : 60;\nflow.set(\"storage_health_history_v1__test\", [{ ts: now - 24 * 60 * 60 * 1000, used: beforeUsed, source: \"test\" }]);\nflow.set(\"storage_health_category_history_v1__test\", [{ ts: now - 24 * 60 * 60 * 1000, source: \"test\", values: { docker: growth ? 12000000000 : 16000000000, recorder: 4000000000, backupArchives: 1600000000, manualSnapshots: 0 } }]);\nreturn {\n    test_mode: true,\n    testNow: now,\n    payload: {\n        used_percent: currentUsed,\n        used_gb: 37,\n        free_gb: 21,\n        inode_used_percent: 18,\n        filesystem: \"/\",\n        collected_at: new Date(now).toISOString(),\n        categories: { docker: 16000000000, recorder: 4000000000, backupArchives: 1600000000, manualSnapshots: 0 }\n    }\n};",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -13398,1743 +13319,6 @@
         "wires": [
             [
                 "storage_auto_gate"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_policy_validate",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_config",
-        "name": "Validar percentuais e tempos",
-        "func": "const p = msg.payload ?? {};\nconst n = (key) => Number(p[key]);\nconst integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;\nmsg.policy_candidate = {\n    warning_pct: n(\"warning_pct\"), high_pct: n(\"high_pct\"), critical_pct: n(\"critical_pct\"),\n    hysteresis_pp: n(\"hysteresis_pp\"), notification_cooldown_h: n(\"notification_cooldown_h\"),\n    command_error_cooldown_h: n(\"command_error_cooldown_h\"), trend_24h_pp: n(\"trend_24h_pp\"),\n    trend_7d_pp: n(\"trend_7d_pp\"), auto_remediation_cooldown_h: n(\"auto_remediation_cooldown_h\"),\n    sample_interval_min: n(\"sample_interval_min\"), history_retention_days: n(\"history_retention_days\")\n};\nconst c = msg.policy_candidate;\nmsg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&\n    c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&\n    integer(c.notification_cooldown_h, 1, 48) && integer(c.command_error_cooldown_h, 1, 48) &&\n    integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&\n    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30);\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 560,
-        "y": 160,
-        "wires": [
-            [
-                "storage_visual_policy_switch"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_policy_switch",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_group_config",
-        "name": "Configuração é válida e ordenada?",
-        "property": "policy_valid",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 815,
-        "y": 170,
-        "wires": [
-            [
-                "storage_visual_policy_store"
-            ],
-            [
-                "storage_visual_policy_reject"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_policy_store",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_config",
-        "name": "Guardar última política válida",
-        "func": "const c = msg.policy_candidate;\nconst policy = { version: 2, ...c };\nflow.set(\"storage_health_policy_v2\", policy, \"persistent\");\nflow.set(\"storage_health_config_v1\", {\n    version: 1, thresholds: { warning: c.warning_pct, high: c.high_pct, critical: c.critical_pct },\n    hysteresisPercentagePoints: c.hysteresis_pp, notificationCooldownMs: c.notification_cooldown_h * 3600000,\n    commandErrorCooldownMs: c.command_error_cooldown_h * 3600000, trendAlert24hPercentagePoints: c.trend_24h_pp,\n    trendAlert7dPercentagePoints: c.trend_7d_pp, autoRemediationCooldownMs: c.auto_remediation_cooldown_h * 3600000,\n    sampleIntervalMs: c.sample_interval_min * 60000, historyRetentionMs: c.history_retention_days * 86400000\n}, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política visual válida\" });\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1080,
-        "y": 140,
-        "wires": [
-            [
-                "storage_discovery"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_policy_reject",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_group_config",
-        "name": "Rejeitar sem substituir",
-        "func": "node.warn(\"STORAGE_POLICY_REJECTED\");\nnode.status({ fill: \"red\", shape: \"ring\", text: \"configuração inválida preservada\" });\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1050,
-        "y": 210,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_input_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Métricas HA → política",
-        "mode": "link",
-        "links": [
-            "storage_visual_input_in"
-        ],
-        "x": 990,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_test_input_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Métricas TESTE → mesma política",
-        "mode": "link",
-        "links": [
-            "storage_visual_input_in"
-        ],
-        "x": 590,
-        "y": 610,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_input_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Receber métricas reais ou sintéticas",
-        "links": [
-            "storage_visual_input_out",
-            "storage_visual_test_input_out"
-        ],
-        "x": 1185,
-        "y": 500,
-        "wires": [
-            [
-                "storage_visual_policy_load"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_policy_load",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Carregar política canônica",
-        "func": "msg.policy = flow.get(\"storage_health_policy_v2\", \"persistent\");\nmsg.policy_available = msg.policy?.version === 2;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1385,
-        "y": 500,
-        "wires": [
-            [
-                "storage_visual_policy_available"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_policy_available",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Existe política válida?",
-        "property": "policy_available",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 1625,
-        "y": 500,
-        "wires": [
-            [
-                "storage_visual_input_normalize"
-            ],
-            [
-                "storage_visual_policy_missing"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_policy_missing",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Falha fechada sem política",
-        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"política ausente\"});\nreturn null;",
-        "outputs": 0,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1885,
-        "y": 400,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_input_normalize",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Validar métricas e carregar estado",
-        "func": "const input = msg.payload ?? {};\nconst now = Number(msg.testNow ?? Date.now());\nconst used = Number(input.used_percent);\nconst free = Number(input.free_gb);\nconst state = flow.get(\"storage_health_state_v1\", \"persistent\") ?? {\n    severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0\n};\nconst labels = { docker: \"Docker\", repository: \"repositorio\", vscode: \"VS Code Server\", recorder: \"Recorder\", backups: \"backups do Home Assistant\", npmCache: \"cache npm\", knownLogs: \"logs\" };\nconst categories = {};\nfor (const [key, raw] of Object.entries(input.categories ?? {})) {\n    const value = Number(raw);\n    if (Number.isFinite(value) && value >= 0 && Object.hasOwn(labels, key)) categories[key] = value;\n}\nmsg.storage = {\n    input, now, used, free, state, labels, categories,\n    valid: Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(free) && free >= 0,\n    previous: state.severity ?? \"normal\",\n    error_due: now - Number(state.lastErrorNotificationAt || 0) >= msg.policy.command_error_cooldown_h * 3600000\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 1895,
-        "y": 500,
-        "wires": [
-            [
-                "storage_visual_metrics_valid"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_metrics_valid",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Percentual e espaço livre são válidos?",
-        "property": "storage.valid",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2155,
-        "y": 500,
-        "wires": [
-            [
-                "storage_visual_history_analyze"
-            ],
-            [
-                "storage_visual_error_due"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_error_due",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Alerta de coleta venceu cooldown de 6 h?",
-        "property": "storage.error_due",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 2425,
-        "y": 360,
-        "wires": [
-            [
-                "storage_visual_invalid_finalize"
-            ],
-            [
-                "storage_visual_invalid_finalize"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_invalid_finalize",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Publicar indisponibilidade sem autocuidado",
-        "func": "const s = msg.storage;\nlet alert = null;\nif (s.error_due) {\n    alert = {\n        payload: { title: \"Raspberry Pi - storage indisponivel\", message: \"Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada.\" },\n        notificationAck: { id: `${s.now}:lastErrorNotificationAt`, at: s.now, targets: [{ key: \"storage_health_state_v1\", field: \"lastErrorNotificationAt\" }] }\n    };\n    s.state.pendingAlert = alert;\n}\nflow.set(\"storage_health_state_v1\", s.state, \"persistent\");\nconst mqtt = [{ topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(s.now).toISOString(), retain: true }];\nconst event = { ...msg, payload: { event: \"invalid_metrics\", at: new Date(s.now).toISOString(), input: s.input } };\nreturn [msg.test_mode === true ? [] : mqtt, msg.test_mode === true ? null : alert, event, null];",
-        "outputs": 4,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2735,
-        "y": 360,
-        "wires": [
-            [
-                "storage_visual_invalid_mqtt_out"
-            ],
-            [
-                "storage_visual_invalid_notify_out"
-            ],
-            [
-                "storage_visual_invalid_test_out"
-            ],
-            []
-        ]
-    },
-    {
-        "id": "storage_visual_invalid_mqtt_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Indisponível → MQTT",
-        "mode": "link",
-        "links": [
-            "storage_visual_mqtt_in"
-        ],
-        "x": 3035,
-        "y": 310,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_invalid_notify_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Indisponível → alerta",
-        "mode": "link",
-        "links": [
-            "storage_visual_notify_in"
-        ],
-        "x": 3035,
-        "y": 360,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_invalid_test_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Indisponível TESTE → resultado",
-        "mode": "link",
-        "links": [
-            "storage_test_decision_in"
-        ],
-        "x": 3035,
-        "y": 410,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_history_analyze",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Calcular janelas e causa provável",
-        "func": "const s = msg.storage;\nconst p = msg.policy;\nconst retention = p.history_retention_days * 86400000;\nconst interval = p.sample_interval_min * 60000;\nlet history = flow.get(\"storage_health_history_v1\", \"persistent\");\nif (!Array.isArray(history)) history = [];\nhistory = history.filter((x) => Number.isFinite(x?.ts) && Number.isFinite(x?.used) && x.ts >= s.now - retention && x.ts <= s.now + interval);\nconst last = history.at(-1);\nif (!last || s.now - last.ts >= interval / 2) history.push({ ts: s.now, used: s.used });\nelse history[history.length - 1] = { ts: s.now, used: s.used };\nhistory.sort((a, b) => a.ts - b.ts);\nflow.set(\"storage_health_history_v1\", history, \"persistent\");\nconst growth = (age) => {\n    const point = history.filter((x) => x.ts <= s.now - age).at(-1);\n    if (!point || Math.abs((s.now - point.ts) - age) > 7200000) return null;\n    return Math.round((s.used - point.used) * 10) / 10;\n};\ns.growth24h = growth(86400000);\ns.growth7d = growth(604800000);\nlet categoryHistory = flow.get(\"storage_health_category_history_v1\", \"persistent\");\nif (!Array.isArray(categoryHistory)) categoryHistory = [];\ncategoryHistory = categoryHistory.filter((x) => Number.isFinite(x?.ts) && x.ts >= s.now - retention && x.ts <= s.now + interval);\nif (Object.keys(s.categories).length) {\n    const categoryLast = categoryHistory.at(-1);\n    if (!categoryLast || s.now - categoryLast.ts >= interval / 2) categoryHistory.push({ ts: s.now, values: s.categories });\n    else categoryHistory[categoryHistory.length - 1] = { ts: s.now, values: s.categories };\n}\ncategoryHistory.sort((a, b) => a.ts - b.ts);\nflow.set(\"storage_health_category_history_v1\", categoryHistory, \"persistent\");\nconst baseline = categoryHistory.filter((x) => x.ts <= s.now - 86400000 && s.now - x.ts >= 79200000 && s.now - x.ts <= 93600000).at(-1);\ns.category_growth = {};\nfor (const [key, value] of Object.entries(s.categories)) if (Number.isFinite(Number(baseline?.values?.[key]))) s.category_growth[key] = value - Number(baseline.values[key]);\nconst largest = Object.entries(s.category_growth).filter(([, bytes]) => bytes >= 67108864).sort((a, b) => b[1] - a[1])[0];\ns.growth_cause = largest ? s.labels[largest[0]] : \"nao identificado\";\ns.growth_cause_bytes = largest?.[1] ?? null;\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 2435,
-        "y": 550,
-        "wires": [
-            [
-                "storage_visual_raw_severity"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_raw_severity",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Classificar uso pelos thresholds",
-        "property": "storage.used",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "gte",
-                "v": "policy.critical_pct",
-                "vt": "msg"
-            },
-            {
-                "t": "gte",
-                "v": "policy.high_pct",
-                "vt": "msg"
-            },
-            {
-                "t": "gte",
-                "v": "policy.warning_pct",
-                "vt": "msg"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 4,
-        "x": 2705,
-        "y": 550,
-        "wires": [
-            [
-                "storage_visual_set_critical"
-            ],
-            [
-                "storage_visual_set_high"
-            ],
-            [
-                "storage_visual_set_warning"
-            ],
-            [
-                "storage_visual_set_normal"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_set_critical",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw: critical",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.raw_severity",
-                "pt": "msg",
-                "to": "critical",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 2975,
-        "y": 470,
-        "wires": [
-            [
-                "storage_visual_set_critical_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_set_critical_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw → histerese",
-        "mode": "link",
-        "links": [
-            "storage_visual_hysteresis_in"
-        ],
-        "x": 3185,
-        "y": 470,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_set_high",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw: high",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.raw_severity",
-                "pt": "msg",
-                "to": "high",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 2975,
-        "y": 530,
-        "wires": [
-            [
-                "storage_visual_set_high_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_set_high_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw → histerese",
-        "mode": "link",
-        "links": [
-            "storage_visual_hysteresis_in"
-        ],
-        "x": 3185,
-        "y": 530,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_set_warning",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw: warning",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.raw_severity",
-                "pt": "msg",
-                "to": "warning",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 2975,
-        "y": 590,
-        "wires": [
-            [
-                "storage_visual_set_warning_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_set_warning_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw → histerese",
-        "mode": "link",
-        "links": [
-            "storage_visual_hysteresis_in"
-        ],
-        "x": 3185,
-        "y": 590,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_set_normal",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw: normal",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.raw_severity",
-                "pt": "msg",
-                "to": "normal",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 2975,
-        "y": 650,
-        "wires": [
-            [
-                "storage_visual_set_normal_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_set_normal_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Raw → histerese",
-        "mode": "link",
-        "links": [
-            "storage_visual_hysteresis_in"
-        ],
-        "x": 3185,
-        "y": 650,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_hysteresis_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Receber severidade bruta",
-        "links": [
-            "storage_visual_set_critical_out",
-            "storage_visual_set_high_out",
-            "storage_visual_set_warning_out",
-            "storage_visual_set_normal_out"
-        ],
-        "x": 3275,
-        "y": 550,
-        "wires": [
-            [
-                "storage_visual_keep_critical"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_keep_critical",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Manter critical dentro de 3 pp?",
-        "property": "storage.previous = \"critical\" and storage.used >= policy.critical_pct - policy.hysteresis_pp",
-        "propertyType": "jsonata",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 3495,
-        "y": 550,
-        "wires": [
-            [
-                "storage_visual_final_critical"
-            ],
-            [
-                "storage_visual_keep_high"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_keep_high",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Manter high dentro de 3 pp?",
-        "property": "storage.previous = \"high\" and storage.used >= policy.high_pct - policy.hysteresis_pp and storage.raw_severity != \"critical\"",
-        "propertyType": "jsonata",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 3775,
-        "y": 550,
-        "wires": [
-            [
-                "storage_visual_final_high"
-            ],
-            [
-                "storage_visual_keep_warning"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_keep_warning",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Manter warning dentro de 3 pp?",
-        "property": "storage.previous = \"warning\" and storage.used >= policy.warning_pct - policy.hysteresis_pp and storage.raw_severity = \"normal\"",
-        "propertyType": "jsonata",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 4055,
-        "y": 550,
-        "wires": [
-            [
-                "storage_visual_final_warning"
-            ],
-            [
-                "storage_visual_final_raw"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_final_critical",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Final: critical",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.severity",
-                "pt": "msg",
-                "to": "critical",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 3775,
-        "y": 370,
-        "wires": [
-            [
-                "storage_visual_final_critical_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_final_critical_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Severidade → fatos",
-        "mode": "link",
-        "links": [
-            "storage_visual_facts_in"
-        ],
-        "x": 3985,
-        "y": 370,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_final_high",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Final: high",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.severity",
-                "pt": "msg",
-                "to": "high",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 4055,
-        "y": 440,
-        "wires": [
-            [
-                "storage_visual_final_high_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_final_high_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Severidade → fatos",
-        "mode": "link",
-        "links": [
-            "storage_visual_facts_in"
-        ],
-        "x": 4265,
-        "y": 440,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_final_warning",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Final: warning",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.severity",
-                "pt": "msg",
-                "to": "warning",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 4335,
-        "y": 510,
-        "wires": [
-            [
-                "storage_visual_final_warning_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_final_warning_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Severidade → fatos",
-        "mode": "link",
-        "links": [
-            "storage_visual_facts_in"
-        ],
-        "x": 4545,
-        "y": 510,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_final_raw",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Final: usar classificação bruta",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.severity",
-                "pt": "msg",
-                "to": "storage.raw_severity",
-                "tot": "msg"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 4335,
-        "y": 620,
-        "wires": [
-            [
-                "storage_visual_final_raw_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_final_raw_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Severidade → fatos",
-        "mode": "link",
-        "links": [
-            "storage_visual_facts_in"
-        ],
-        "x": 4545,
-        "y": 620,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_facts_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Receber severidade final",
-        "links": [
-            "storage_visual_final_critical_out",
-            "storage_visual_final_high_out",
-            "storage_visual_final_warning_out",
-            "storage_visual_final_raw_out"
-        ],
-        "x": 4245,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_facts"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_facts",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Calcular fatos sem rotear",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.accelerated",
-                "pt": "msg",
-                "to": "(storage.growth24h != null and storage.growth24h >= policy.trend_24h_pp) or (storage.growth7d != null and storage.growth7d >= policy.trend_7d_pp)",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "storage.recovered",
-                "pt": "msg",
-                "to": "storage.severity = \"normal\" and storage.previous != \"normal\"",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "storage.escalated",
-                "pt": "msg",
-                "to": "(storage.severity = \"critical\" and storage.previous != \"critical\") or (storage.severity = \"high\" and (storage.previous = \"normal\" or storage.previous = \"warning\")) or (storage.severity = \"warning\" and storage.previous = \"normal\")",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "storage.capacity_due",
-                "pt": "msg",
-                "to": "storage.escalated or (storage.severity != \"normal\" and storage.now - storage.state.lastNotificationAt >= policy.notification_cooldown_h * 3600000)",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "storage.trend_due",
-                "pt": "msg",
-                "to": "storage.now - storage.state.lastTrendNotificationAt >= policy.notification_cooldown_h * 3600000",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "storage.remediation_needed",
-                "pt": "msg",
-                "to": "storage.accelerated or storage.severity != \"normal\"",
-                "tot": "jsonata"
-            },
-            {
-                "t": "set",
-                "p": "storage.remediation_due",
-                "pt": "msg",
-                "to": "storage.now - storage.state.lastAutoRemediationAt >= policy.auto_remediation_cooldown_h * 3600000",
-                "tot": "jsonata"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 4495,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_recovery_gate"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_recovery_gate",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Severidade voltou ao normal?",
-        "property": "storage.recovered",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 4745,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_alert_recovery"
-            ],
-            [
-                "storage_visual_capacity_gate"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_recovery",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Alerta: recovery",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.alert_kind",
-                "pt": "msg",
-                "to": "recovery",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 4995,
-        "y": 650,
-        "wires": [
-            [
-                "storage_visual_alert_recovery_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_recovery_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Recovery → construir alerta",
-        "mode": "link",
-        "links": [
-            "storage_visual_alert_build_in"
-        ],
-        "x": 5245,
-        "y": 650,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_capacity_gate",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Escalada ou lembrete de capacidade?",
-        "property": "storage.capacity_due",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 5045,
-        "y": 760,
-        "wires": [
-            [
-                "storage_visual_alert_capacity"
-            ],
-            [
-                "storage_visual_trend_gate"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_capacity",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Alerta: capacidade",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.alert_kind",
-                "pt": "msg",
-                "to": "capacity",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 5345,
-        "y": 710,
-        "wires": [
-            [
-                "storage_visual_alert_capacity_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_capacity_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Capacidade → construir alerta",
-        "mode": "link",
-        "links": [
-            "storage_visual_alert_build_in"
-        ],
-        "x": 5595,
-        "y": 710,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_trend_gate",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Crescimento acelerado venceu cooldown?",
-        "property": "storage.accelerated and storage.trend_due",
-        "propertyType": "jsonata",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 5345,
-        "y": 810,
-        "wires": [
-            [
-                "storage_visual_alert_trend"
-            ],
-            [
-                "storage_visual_alert_none"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_trend",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Alerta: tendência",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.alert_kind",
-                "pt": "msg",
-                "to": "trend",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 5645,
-        "y": 780,
-        "wires": [
-            [
-                "storage_visual_alert_trend_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_trend_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Tendência → construir alerta",
-        "mode": "link",
-        "links": [
-            "storage_visual_alert_build_in"
-        ],
-        "x": 5875,
-        "y": 780,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_alert_none",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Sem novo alerta",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.alert_kind",
-                "pt": "msg",
-                "to": "none",
-                "tot": "str"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 5645,
-        "y": 850,
-        "wires": [
-            [
-                "storage_visual_alert_none_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_none_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Sem alerta → continuar",
-        "mode": "link",
-        "links": [
-            "storage_visual_alert_build_in"
-        ],
-        "x": 5875,
-        "y": 850,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_alert_build_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Receber seleção de alerta",
-        "links": [
-            "storage_visual_alert_recovery_out",
-            "storage_visual_alert_capacity_out",
-            "storage_visual_alert_trend_out",
-            "storage_visual_alert_none_out"
-        ],
-        "x": 5975,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_alert_build"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_alert_build",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Montar alerta selecionado",
-        "func": "const s = msg.storage;\nconst fields = [];\nlet title;\nlet message;\nconst freeText = `${s.free.toFixed(1)} GiB livres`;\nconst trendText = s.growth24h === null ? \"\" : `; ${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`;\nconst cause = s.growth_cause_bytes === null ? \"\" : `; causa provavel: ${s.growth_cause} +${(s.growth_cause_bytes / 1073741824).toFixed(1)} GiB/24h`;\nif (s.alert_kind === \"recovery\") {\n    title = \"Raspberry Pi - storage recuperado\";\n    message = `✅ Raspberry Pi storage back to normal: ${s.used.toFixed(1)}% used (${freeText})${trendText}.`;\n    fields.push(\"lastNotificationAt\");\n} else if (s.alert_kind === \"capacity\") {\n    const icon = s.severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    title = `Raspberry Pi - storage ${s.severity}`;\n    message = `${icon} Raspberry Pi storage ${s.severity}: ${s.used.toFixed(1)}% used (${freeText})${trendText}${cause}.`;\n    fields.push(\"lastNotificationAt\");\n    if (s.accelerated) fields.push(\"lastTrendNotificationAt\");\n} else if (s.alert_kind === \"trend\") {\n    const parts = [];\n    if (s.growth24h !== null) parts.push(`${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`);\n    if (s.growth7d !== null) parts.push(`${s.growth7d >= 0 ? \"+\" : \"\"}${s.growth7d.toFixed(1)} pp/7d`);\n    title = \"Raspberry Pi - crescimento de storage\";\n    message = `⚠️ Storage crescendo rapidamente: ${parts.join(\", \")}. Uso atual: ${s.used.toFixed(1)}% (${freeText})${cause}. A limpeza segura foi solicitada automaticamente.`;\n    fields.push(\"lastTrendNotificationAt\");\n} else return msg;\nmsg.storage_alert = { payload: { title, message }, notificationAck: { id: `${s.now}:${fields.join(\",\")}`, at: s.now, targets: fields.map((field) => ({ key: \"storage_health_state_v1\", field })) } };\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 6195,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_remediation_gate"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_remediation_gate",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Capacidade ou tendência exigem autocuidado?",
-        "property": "storage.remediation_needed",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 6475,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_remediation_cooldown"
-            ],
-            [
-                "storage_visual_no_remediation"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_remediation_cooldown",
-        "type": "switch",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Cooldown de autocuidado venceu?",
-        "property": "storage.remediation_due",
-        "propertyType": "msg",
-        "rules": [
-            {
-                "t": "true"
-            },
-            {
-                "t": "else"
-            }
-        ],
-        "checkall": "true",
-        "repair": false,
-        "outputs": 2,
-        "x": 6755,
-        "y": 690,
-        "wires": [
-            [
-                "storage_visual_state_finalize"
-            ],
-            [
-                "storage_visual_no_remediation"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_no_remediation",
-        "type": "change",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Não solicitar autocuidado",
-        "rules": [
-            {
-                "t": "set",
-                "p": "storage.remediation_due",
-                "pt": "msg",
-                "to": "false",
-                "tot": "bool"
-            }
-        ],
-        "action": "",
-        "property": "",
-        "from": "",
-        "to": "",
-        "reg": false,
-        "x": 6755,
-        "y": 800,
-        "wires": [
-            [
-                "storage_visual_state_finalize"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_state_finalize",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Persistir estado e intenção",
-        "func": "const s = msg.storage;\nconst state = s.state;\nmsg.storage_selected_alert = msg.storage_alert ?? state.pendingAlert ?? null;\nif (msg.storage_alert) state.pendingAlert = msg.storage_alert;\nObject.assign(state, {\n    severity: s.severity, updatedAt: s.now, usedPercent: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes\n});\nmsg.storage_remediation = null;\nif (s.remediation_due) {\n    state.lastAutoRemediationAt = s.now;\n    msg.storage_remediation = {\n        ...msg, storageAutoRemediation: true, test_mode: msg.test_mode === true,\n        payload: { reason: s.accelerated ? \"accelerated-growth\" : \"capacity-threshold\", used: s.used,\n            growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n            growthCauseBytes: s.growth_cause_bytes }\n    };\n}\nflow.set(\"storage_health_state_v1\", state, \"persistent\");\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 6975,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_attributes_build"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_attributes_build",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Adaptar atributos canônicos",
-        "func": "const s = msg.storage;\nconst input = s.input;\nmsg.storage_attributes = {\n    used_percent: s.used,\n    used_gib: Number.isFinite(Number(input.used_gb)) ? Number(input.used_gb) : null,\n    free_gib: s.free,\n    filesystem: input.filesystem ?? \"/\",\n    inode_used_percent: Number.isFinite(Number(input.inode_used_percent)) ? Number(input.inode_used_percent) : null,\n    growth_24h_percentage_points: s.growth24h,\n    growth_7d_percentage_points: s.growth7d,\n    growth_cause: s.growth_cause,\n    growth_cause_bytes: s.growth_cause_bytes,\n    category_growth_24h_bytes: s.category_growth,\n    collected_at: input.collected_at ?? new Date(s.now).toISOString(),\n    thresholds: { warning: msg.policy.warning_pct, high: msg.policy.high_pct, critical: msg.policy.critical_pct },\n    hysteresis_percentage_points: msg.policy.hysteresis_pp\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 7215,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_mqtt_build"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_mqtt_build",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Adaptar tópicos MQTT",
-        "func": "const s = msg.storage;\nconst input = s.input;\nconst growth = (window, value) => value === null\n    ? [{ topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"offline\", retain: true }]\n    : [\n        { topic: `smart_home/raspberry/storage/growth_${window}`, payload: String(value), retain: true },\n        { topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"online\", retain: true }\n    ];\nmsg.storage_mqtt = [\n    { topic: \"smart_home/raspberry/storage/status\", payload: s.severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(msg.storage_attributes), retain: true },\n    { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(s.now).toISOString(), retain: true },\n    { topic: \"smart_home/raspberry/storage/growth_cause\", payload: s.growth_cause, retain: true },\n    ...(input.maintenance_last_at && !Number.isNaN(Date.parse(input.maintenance_last_at))\n        ? [{ topic: \"smart_home/raspberry/storage/last_maintenance\", payload: input.maintenance_last_at, retain: true }] : []),\n    ...(Number.isFinite(Number(input.maintenance_reclaimed_bytes)) && Number(input.maintenance_reclaimed_bytes) >= 0\n        ? [{ topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", payload: String(Math.round(Number(input.maintenance_reclaimed_bytes) / 104857.6) / 10), retain: true }] : []),\n    ...growth(\"24h\", s.growth24h), ...growth(\"7d\", s.growth7d)\n];\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 7455,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_output_route"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_output_route",
-        "type": "function",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Emitir quatro contratos",
-        "func": "const s = msg.storage;\nconst event = { ...msg, payload: {\n    event: \"health_check\", severity: s.severity, previous: s.previous, used: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes, remediationRequested: msg.storage_remediation !== null,\n    at: new Date(s.now).toISOString()\n} };\nreturn [\n    msg.test_mode === true ? [] : msg.storage_mqtt,\n    msg.test_mode === true ? null : msg.storage_selected_alert,\n    event,\n    msg.storage_remediation\n];",
-        "outputs": 4,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 7695,
-        "y": 740,
-        "wires": [
-            [
-                "storage_visual_mqtt_out"
-            ],
-            [
-                "storage_visual_notify_out"
-            ],
-            [
-                "storage_test_decision_out"
-            ],
-            [
-                "storage_auto_out"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_mqtt_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Estado → MQTT",
-        "mode": "link",
-        "links": [
-            "storage_visual_mqtt_in"
-        ],
-        "x": 7955,
-        "y": 670,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_notify_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_visual_decision_group",
-        "name": "Alerta → destinatários",
-        "mode": "link",
-        "links": [
-            "storage_visual_notify_in"
-        ],
-        "x": 7955,
-        "y": 730,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_mqtt_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Receber publicações canônicas",
-        "links": [
-            "storage_visual_mqtt_out",
-            "storage_visual_invalid_mqtt_out"
-        ],
-        "x": 9630,
-        "y": 140,
-        "wires": [
-            [
-                "storage_mqtt_state"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_notify_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Receber alerta decidido",
-        "links": [
-            "storage_visual_notify_out",
-            "storage_visual_invalid_notify_out",
-            "storage_visual_maintenance_notify_out"
-        ],
-        "x": 9630,
-        "y": 380,
-        "wires": [
-            [
-                "storage_notify",
-                "storage_notify_secondary",
-                "storage_notify_persistent"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_manual_exec_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Manual → housekeeping",
-        "mode": "link",
-        "links": [
-            "storage_visual_manual_exec_in"
-        ],
-        "x": 1010,
-        "y": 480,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_manual_host_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Manual → worker do host",
-        "mode": "link",
-        "links": [
-            "storage_visual_manual_host_in"
-        ],
-        "x": 1010,
-        "y": 530,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_manual_status_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_health",
-        "name": "Manual running → MQTT",
-        "mode": "link",
-        "links": [
-            "storage_visual_manual_status_in"
-        ],
-        "x": 1010,
-        "y": 580,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_manual_exec_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Receber housekeeping manual",
-        "links": [
-            "storage_visual_manual_exec_out"
-        ],
-        "x": 580,
-        "y": 980,
-        "wires": [
-            [
-                "storage_exec_maintenance"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_manual_host_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Receber worker manual",
-        "links": [
-            "storage_visual_manual_host_out"
-        ],
-        "x": 580,
-        "y": 1240,
-        "wires": [
-            [
-                "storage_request_host_maintenance"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_exec_done_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Exec concluído → lifecycle",
-        "mode": "link",
-        "links": [
-            "storage_visual_exec_done_in"
-        ],
-        "x": 1000,
-        "y": 980,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_exec_done_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Receber conclusão do exec",
-        "links": [
-            "storage_visual_exec_done_out"
-        ],
-        "x": 1260,
-        "y": 980,
-        "wires": [
-            [
-                "storage_maintenance_complete",
-                "storage_manual_complete"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_inspection_stderr_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Stderr inspeção → parser",
-        "mode": "link",
-        "links": [
-            "storage_visual_stderr_in"
-        ],
-        "x": 740,
-        "y": 1460,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_inspection_done_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Inspeção concluída → lifecycle",
-        "mode": "link",
-        "links": [
-            "storage_visual_request_done_in"
-        ],
-        "x": 740,
-        "y": 1310,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_stderr_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Receber stderr distante",
-        "links": [
-            "storage_visual_inspection_stderr_out"
-        ],
-        "x": 980,
-        "y": 1460,
-        "wires": [
-            [
-                "storage_store_maintenance_stderr"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_request_done_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Worker concluído → lifecycle",
-        "mode": "link",
-        "links": [
-            "storage_visual_request_done_in"
-        ],
-        "x": 1010,
-        "y": 1300,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_request_done_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Receber conclusão de inspeção/worker",
-        "links": [
-            "storage_visual_inspection_done_out",
-            "storage_visual_request_done_out"
-        ],
-        "x": 1260,
-        "y": 1340,
-        "wires": [
-            [
-                "storage_maintenance_complete"
-            ]
-        ]
-    },
-    {
-        "id": "storage_visual_maintenance_notify_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Resultado → alerta unificado",
-        "mode": "link",
-        "links": [
-            "storage_visual_notify_in"
-        ],
-        "x": 1700,
-        "y": 1080,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_manual_complete_status_out",
-        "type": "link out",
-        "z": "storage_health_tab",
-        "g": "storage_group_maintenance",
-        "name": "Manual idle → MQTT",
-        "mode": "link",
-        "links": [
-            "storage_visual_manual_status_in"
-        ],
-        "x": 1700,
-        "y": 1380,
-        "wires": []
-    },
-    {
-        "id": "storage_visual_manual_status_in",
-        "type": "link in",
-        "z": "storage_health_tab",
-        "g": "storage_group_alerts",
-        "name": "Receber lifecycle manual",
-        "links": [
-            "storage_visual_manual_status_out",
-            "storage_visual_manual_complete_status_out"
-        ],
-        "x": 9630,
-        "y": 220,
-        "wires": [
-            [
-                "storage_manual_status_mqtt"
             ]
         ]
     },
@@ -46429,6 +44613,1822 @@
         "x": 1340,
         "y": 730,
         "wires": []
+    },
+    {
+        "id": "storage_visual_decision_group",
+        "type": "group",
+        "z": "storage_health_tab",
+        "name": "3. Tendência, severidade, alertas e autocuidado",
+        "style": {
+            "label": true,
+            "label-position": "nw",
+            "color": "#1f2937",
+            "stroke": "#0f766e",
+            "fill": "#ccfbf1",
+            "fill-opacity": "0.35"
+        },
+        "nodes": [
+            "storage_visual_input_in",
+            "storage_visual_policy_load",
+            "storage_visual_policy_available",
+            "storage_visual_policy_missing",
+            "storage_visual_input_normalize",
+            "storage_visual_metrics_valid",
+            "storage_visual_error_due",
+            "storage_visual_invalid_finalize",
+            "storage_visual_invalid_mqtt_out",
+            "storage_visual_invalid_notify_out",
+            "storage_visual_invalid_test_out",
+            "storage_visual_history_analyze",
+            "storage_visual_raw_severity",
+            "storage_visual_set_critical",
+            "storage_visual_set_critical_out",
+            "storage_visual_set_high",
+            "storage_visual_set_high_out",
+            "storage_visual_set_warning",
+            "storage_visual_set_warning_out",
+            "storage_visual_set_normal",
+            "storage_visual_set_normal_out",
+            "storage_visual_hysteresis_in",
+            "storage_visual_keep_critical",
+            "storage_visual_keep_high",
+            "storage_visual_keep_warning",
+            "storage_visual_final_critical",
+            "storage_visual_final_critical_out",
+            "storage_visual_final_high",
+            "storage_visual_final_high_out",
+            "storage_visual_final_warning",
+            "storage_visual_final_warning_out",
+            "storage_visual_final_raw",
+            "storage_visual_final_raw_out",
+            "storage_visual_facts_in",
+            "storage_visual_facts",
+            "storage_visual_recovery_gate",
+            "storage_visual_alert_recovery",
+            "storage_visual_alert_recovery_out",
+            "storage_visual_capacity_gate",
+            "storage_visual_alert_capacity",
+            "storage_visual_alert_capacity_out",
+            "storage_visual_trend_gate",
+            "storage_visual_alert_trend",
+            "storage_visual_alert_trend_out",
+            "storage_visual_alert_none",
+            "storage_visual_alert_none_out",
+            "storage_visual_alert_build_in",
+            "storage_visual_alert_build",
+            "storage_visual_remediation_gate",
+            "storage_visual_remediation_cooldown",
+            "storage_visual_no_remediation",
+            "storage_visual_state_finalize",
+            "storage_visual_attributes_build",
+            "storage_visual_mqtt_build",
+            "storage_visual_output_route",
+            "storage_visual_mqtt_out",
+            "storage_visual_notify_out",
+            "storage_test_decision_out",
+            "storage_auto_out"
+        ],
+        "x": 1148,
+        "y": 260,
+        "w": 6844,
+        "h": 627
+    },
+    {
+        "id": "storage_visual_policy_validate",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_config",
+        "name": "Validar percentuais e tempos",
+        "func": "const p = msg.payload ?? {};\nconst n = (key) => Number(p[key]);\nconst integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;\nmsg.policy_candidate = {\n    warning_pct: n(\"warning_pct\"), high_pct: n(\"high_pct\"), critical_pct: n(\"critical_pct\"),\n    hysteresis_pp: n(\"hysteresis_pp\"), notification_cooldown_h: n(\"notification_cooldown_h\"),\n    command_error_cooldown_h: n(\"command_error_cooldown_h\"), trend_24h_pp: n(\"trend_24h_pp\"),\n    trend_7d_pp: n(\"trend_7d_pp\"), auto_remediation_cooldown_h: n(\"auto_remediation_cooldown_h\"),\n    sample_interval_min: n(\"sample_interval_min\"), history_retention_days: n(\"history_retention_days\")\n};\nconst c = msg.policy_candidate;\nmsg.policy_valid = integer(c.warning_pct, 1, 98) && integer(c.high_pct, 2, 99) && integer(c.critical_pct, 3, 100) &&\n    c.warning_pct < c.high_pct && c.high_pct < c.critical_pct && integer(c.hysteresis_pp, 0, 20) &&\n    integer(c.notification_cooldown_h, 1, 48) && integer(c.command_error_cooldown_h, 1, 48) &&\n    integer(c.trend_24h_pp, 1, 50) && integer(c.trend_7d_pp, 1, 80) && integer(c.auto_remediation_cooldown_h, 1, 48) &&\n    integer(c.sample_interval_min, 1, 120) && integer(c.history_retention_days, 2, 30);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 160,
+        "wires": [
+            [
+                "storage_visual_policy_switch"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_policy_switch",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_group_config",
+        "name": "Configuração é válida e ordenada?",
+        "property": "policy_valid",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 815,
+        "y": 170,
+        "wires": [
+            [
+                "storage_visual_policy_store"
+            ],
+            [
+                "storage_visual_policy_reject"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_policy_store",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_config",
+        "name": "Guardar última política válida",
+        "func": "const c = msg.policy_candidate;\nconst policy = { version: 2, ...c };\nflow.set(\"storage_health_policy_v2\", policy, \"persistent\");\nflow.set(\"storage_health_config_v1\", {\n    version: 1, thresholds: { warning: c.warning_pct, high: c.high_pct, critical: c.critical_pct },\n    hysteresisPercentagePoints: c.hysteresis_pp, notificationCooldownMs: c.notification_cooldown_h * 3600000,\n    commandErrorCooldownMs: c.command_error_cooldown_h * 3600000, trendAlert24hPercentagePoints: c.trend_24h_pp,\n    trendAlert7dPercentagePoints: c.trend_7d_pp, autoRemediationCooldownMs: c.auto_remediation_cooldown_h * 3600000,\n    sampleIntervalMs: c.sample_interval_min * 60000, historyRetentionMs: c.history_retention_days * 86400000\n}, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"política visual válida\" });\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1080,
+        "y": 140,
+        "wires": [
+            [
+                "storage_discovery"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_policy_reject",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_group_config",
+        "name": "Rejeitar sem substituir",
+        "func": "node.warn(\"STORAGE_POLICY_REJECTED\");\nnode.status({ fill: \"red\", shape: \"ring\", text: \"configuração inválida preservada\" });\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1050,
+        "y": 210,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_input_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Métricas HA → política",
+        "mode": "link",
+        "links": [
+            "storage_visual_input_in"
+        ],
+        "x": 990,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_test_input_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Métricas TESTE → mesma política",
+        "mode": "link",
+        "links": [
+            "storage_visual_input_in"
+        ],
+        "x": 590,
+        "y": 610,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_input_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Receber métricas reais ou sintéticas",
+        "links": [
+            "storage_visual_input_out",
+            "storage_visual_test_input_out"
+        ],
+        "x": 1185,
+        "y": 500,
+        "wires": [
+            [
+                "storage_visual_policy_load"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_policy_load",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Carregar política canônica",
+        "func": "msg.policy = flow.get(\"storage_health_policy_v2\", \"persistent\");\nmsg.policy_available = msg.policy?.version === 2;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1385,
+        "y": 500,
+        "wires": [
+            [
+                "storage_visual_policy_available"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_policy_available",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Existe política válida?",
+        "property": "policy_available",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 1625,
+        "y": 500,
+        "wires": [
+            [
+                "storage_visual_input_normalize"
+            ],
+            [
+                "storage_visual_policy_missing"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_policy_missing",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Falha fechada sem política",
+        "func": "node.status({\"fill\":\"red\",\"shape\":\"ring\",\"text\":\"política ausente\"});\nreturn null;",
+        "outputs": 0,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1885,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_input_normalize",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Validar métricas e carregar estado",
+        "func": "const input = msg.payload ?? {};\nconst now = Number(msg.testNow ?? Date.now());\nconst used = Number(input.used_percent);\nconst free = Number(input.free_gb);\nconst testMode = msg.test_mode === true;\nconst suffix = testMode ? \"__test\" : \"\";\nconst stateKey = \"storage_health_state_v1\" + suffix;\nconst historyKey = \"storage_health_history_v1\" + suffix;\nconst categoryHistoryKey = \"storage_health_category_history_v1\" + suffix;\nconst state = (testMode ? flow.get(stateKey) : flow.get(stateKey, \"persistent\")) ?? {\n    severity: \"normal\", lastNotificationAt: 0, lastTrendNotificationAt: 0, lastErrorNotificationAt: 0\n};\nconst labels = { docker: \"Docker\", repository: \"repositorio\", vscode: \"VS Code Server\", recorder: \"Recorder\", backupArchives: \"backups operacionais do Home Assistant\", manualSnapshots: \"snapshots manuais do Home Assistant\", npmCache: \"cache npm\", knownLogs: \"logs\" };\nconst categories = {};\nfor (const [key, raw] of Object.entries(input.categories ?? {})) {\n    const value = Number(raw);\n    if (Number.isFinite(value) && value >= 0 && Object.hasOwn(labels, key)) categories[key] = value;\n}\nmsg.storage = {\n    input, now, used, free, state, labels, categories, testMode, stateKey, historyKey, categoryHistoryKey,\n    valid: Number.isFinite(used) && used >= 0 && used <= 100 && Number.isFinite(free) && free >= 0,\n    previous: state.severity ?? \"normal\",\n    error_due: now - Number(state.lastErrorNotificationAt || 0) >= msg.policy.command_error_cooldown_h * 3600000\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1895,
+        "y": 500,
+        "wires": [
+            [
+                "storage_visual_metrics_valid"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_metrics_valid",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Percentual e espaço livre são válidos?",
+        "property": "storage.valid",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2155,
+        "y": 500,
+        "wires": [
+            [
+                "storage_visual_history_analyze"
+            ],
+            [
+                "storage_visual_error_due"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_error_due",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Alerta de coleta venceu cooldown de 6 h?",
+        "property": "storage.error_due",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 2425,
+        "y": 360,
+        "wires": [
+            [
+                "storage_visual_invalid_finalize"
+            ],
+            [
+                "storage_visual_invalid_finalize"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_invalid_finalize",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Publicar indisponibilidade sem autocuidado",
+        "func": "const s = msg.storage;\nlet alert = null;\nif (s.error_due) {\n    alert = {\n        payload: { title: \"Raspberry Pi - storage indisponivel\", message: \"Falha ao obter metricas validas de armazenamento do Home Assistant. Nenhuma manutencao foi executada.\" },\n        notificationAck: { id: `${s.now}:lastErrorNotificationAt`, at: s.now, targets: [{ key: s.stateKey, field: \"lastErrorNotificationAt\" }] }\n    };\n    s.state.pendingAlert = alert;\n}\nif (s.testMode) flow.set(s.stateKey, s.state); else flow.set(s.stateKey, s.state, \"persistent\");\nconst mqtt = [{ topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(s.now).toISOString(), retain: true }];\nconst event = { ...msg, payload: { event: \"invalid_metrics\", at: new Date(s.now).toISOString(), input: s.input } };\nreturn [msg.test_mode === true ? [] : mqtt, msg.test_mode === true ? null : alert, event, null];",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2735,
+        "y": 360,
+        "wires": [
+            [
+                "storage_visual_invalid_mqtt_out"
+            ],
+            [
+                "storage_visual_invalid_notify_out"
+            ],
+            [
+                "storage_visual_invalid_test_out"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "storage_visual_invalid_mqtt_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Indisponível → MQTT",
+        "mode": "link",
+        "links": [
+            "storage_visual_mqtt_in"
+        ],
+        "x": 3035,
+        "y": 310,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_invalid_notify_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Indisponível → alerta",
+        "mode": "link",
+        "links": [
+            "storage_visual_notify_in"
+        ],
+        "x": 3035,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_invalid_test_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Indisponível TESTE → resultado",
+        "mode": "link",
+        "links": [
+            "storage_test_decision_in"
+        ],
+        "x": 3035,
+        "y": 410,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_history_analyze",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Calcular janelas e causa provável",
+        "func": "const s = msg.storage;\nconst p = msg.policy;\nconst retention = p.history_retention_days * 86400000;\nconst interval = p.sample_interval_min * 60000;\nconst source = s.testMode ? \"test\" : \"production\";\nlet history = s.testMode ? flow.get(s.historyKey) : flow.get(s.historyKey, \"persistent\");\nif (!Array.isArray(history)) history = [];\nhistory = history.filter((x) => x?.source === source && Number.isFinite(x?.ts) && Number.isFinite(x?.used) && x.ts >= s.now - retention && x.ts <= s.now + interval);\nconst last = history.at(-1);\nif (!last || s.now - last.ts >= interval / 2) history.push({ ts: s.now, used: s.used, source });\nelse history[history.length - 1] = { ts: s.now, used: s.used, source };\nhistory.sort((a, b) => a.ts - b.ts);\nif (s.testMode) flow.set(s.historyKey, history); else flow.set(s.historyKey, history, \"persistent\");\nconst growth = (age) => {\n    const point = history.filter((x) => x.ts <= s.now - age).at(-1);\n    if (!point || Math.abs((s.now - point.ts) - age) > 7200000) return null;\n    return Math.round((s.used - point.used) * 10) / 10;\n};\ns.growth24h = growth(86400000);\ns.growth7d = growth(604800000);\nlet categoryHistory = s.testMode ? flow.get(s.categoryHistoryKey) : flow.get(s.categoryHistoryKey, \"persistent\");\nif (!Array.isArray(categoryHistory)) categoryHistory = [];\ncategoryHistory = categoryHistory.filter((x) => x?.source === source && Number.isFinite(x?.ts) && x.ts >= s.now - retention && x.ts <= s.now + interval);\nif (Object.keys(s.categories).length) {\n    const categoryLast = categoryHistory.at(-1);\n    if (!categoryLast || s.now - categoryLast.ts >= interval / 2) categoryHistory.push({ ts: s.now, values: s.categories, source });\n    else categoryHistory[categoryHistory.length - 1] = { ts: s.now, values: s.categories, source };\n}\ncategoryHistory.sort((a, b) => a.ts - b.ts);\nif (s.testMode) flow.set(s.categoryHistoryKey, categoryHistory); else flow.set(s.categoryHistoryKey, categoryHistory, \"persistent\");\nconst baseline = categoryHistory.filter((x) => x.ts <= s.now - 86400000 && s.now - x.ts >= 79200000 && s.now - x.ts <= 93600000).at(-1);\ns.category_growth = {};\nfor (const [key, value] of Object.entries(s.categories)) if (Number.isFinite(Number(baseline?.values?.[key]))) s.category_growth[key] = value - Number(baseline.values[key]);\nconst largest = Object.entries(s.category_growth).filter(([, bytes]) => bytes >= 67108864).sort((a, b) => b[1] - a[1])[0];\ns.growth_cause = largest ? s.labels[largest[0]] : \"nao identificado\";\ns.growth_cause_bytes = largest?.[1] ?? null;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2435,
+        "y": 550,
+        "wires": [
+            [
+                "storage_visual_raw_severity"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_raw_severity",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Classificar uso pelos thresholds",
+        "property": "storage.used",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "gte",
+                "v": "policy.critical_pct",
+                "vt": "msg"
+            },
+            {
+                "t": "gte",
+                "v": "policy.high_pct",
+                "vt": "msg"
+            },
+            {
+                "t": "gte",
+                "v": "policy.warning_pct",
+                "vt": "msg"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 2705,
+        "y": 550,
+        "wires": [
+            [
+                "storage_visual_set_critical"
+            ],
+            [
+                "storage_visual_set_high"
+            ],
+            [
+                "storage_visual_set_warning"
+            ],
+            [
+                "storage_visual_set_normal"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_set_critical",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw: critical",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.raw_severity",
+                "pt": "msg",
+                "to": "critical",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2975,
+        "y": 470,
+        "wires": [
+            [
+                "storage_visual_set_critical_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_set_critical_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw → histerese",
+        "mode": "link",
+        "links": [
+            "storage_visual_hysteresis_in"
+        ],
+        "x": 3185,
+        "y": 470,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_set_high",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw: high",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.raw_severity",
+                "pt": "msg",
+                "to": "high",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2975,
+        "y": 530,
+        "wires": [
+            [
+                "storage_visual_set_high_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_set_high_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw → histerese",
+        "mode": "link",
+        "links": [
+            "storage_visual_hysteresis_in"
+        ],
+        "x": 3185,
+        "y": 530,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_set_warning",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw: warning",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.raw_severity",
+                "pt": "msg",
+                "to": "warning",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2975,
+        "y": 590,
+        "wires": [
+            [
+                "storage_visual_set_warning_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_set_warning_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw → histerese",
+        "mode": "link",
+        "links": [
+            "storage_visual_hysteresis_in"
+        ],
+        "x": 3185,
+        "y": 590,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_set_normal",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw: normal",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.raw_severity",
+                "pt": "msg",
+                "to": "normal",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2975,
+        "y": 650,
+        "wires": [
+            [
+                "storage_visual_set_normal_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_set_normal_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Raw → histerese",
+        "mode": "link",
+        "links": [
+            "storage_visual_hysteresis_in"
+        ],
+        "x": 3185,
+        "y": 650,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_hysteresis_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Receber severidade bruta",
+        "links": [
+            "storage_visual_set_critical_out",
+            "storage_visual_set_high_out",
+            "storage_visual_set_warning_out",
+            "storage_visual_set_normal_out"
+        ],
+        "x": 3275,
+        "y": 550,
+        "wires": [
+            [
+                "storage_visual_keep_critical"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_keep_critical",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Manter critical dentro de 3 pp?",
+        "property": "storage.previous = \"critical\" and storage.used >= policy.critical_pct - policy.hysteresis_pp",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 3495,
+        "y": 550,
+        "wires": [
+            [
+                "storage_visual_final_critical"
+            ],
+            [
+                "storage_visual_keep_high"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_keep_high",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Manter high dentro de 3 pp?",
+        "property": "storage.previous = \"high\" and storage.used >= policy.high_pct - policy.hysteresis_pp and storage.raw_severity != \"critical\"",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 3775,
+        "y": 550,
+        "wires": [
+            [
+                "storage_visual_final_high"
+            ],
+            [
+                "storage_visual_keep_warning"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_keep_warning",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Manter warning dentro de 3 pp?",
+        "property": "storage.previous = \"warning\" and storage.used >= policy.warning_pct - policy.hysteresis_pp and storage.raw_severity = \"normal\"",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 4055,
+        "y": 550,
+        "wires": [
+            [
+                "storage_visual_final_warning"
+            ],
+            [
+                "storage_visual_final_raw"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_final_critical",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Final: critical",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.severity",
+                "pt": "msg",
+                "to": "critical",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 3775,
+        "y": 370,
+        "wires": [
+            [
+                "storage_visual_final_critical_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_final_critical_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Severidade → fatos",
+        "mode": "link",
+        "links": [
+            "storage_visual_facts_in"
+        ],
+        "x": 3985,
+        "y": 370,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_final_high",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Final: high",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.severity",
+                "pt": "msg",
+                "to": "high",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4055,
+        "y": 440,
+        "wires": [
+            [
+                "storage_visual_final_high_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_final_high_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Severidade → fatos",
+        "mode": "link",
+        "links": [
+            "storage_visual_facts_in"
+        ],
+        "x": 4265,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_final_warning",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Final: warning",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.severity",
+                "pt": "msg",
+                "to": "warning",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4335,
+        "y": 510,
+        "wires": [
+            [
+                "storage_visual_final_warning_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_final_warning_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Severidade → fatos",
+        "mode": "link",
+        "links": [
+            "storage_visual_facts_in"
+        ],
+        "x": 4545,
+        "y": 510,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_final_raw",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Final: usar classificação bruta",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.severity",
+                "pt": "msg",
+                "to": "storage.raw_severity",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4335,
+        "y": 620,
+        "wires": [
+            [
+                "storage_visual_final_raw_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_final_raw_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Severidade → fatos",
+        "mode": "link",
+        "links": [
+            "storage_visual_facts_in"
+        ],
+        "x": 4545,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_facts_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Receber severidade final",
+        "links": [
+            "storage_visual_final_critical_out",
+            "storage_visual_final_high_out",
+            "storage_visual_final_warning_out",
+            "storage_visual_final_raw_out"
+        ],
+        "x": 4245,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_facts"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_facts",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Calcular fatos sem rotear",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.accelerated",
+                "pt": "msg",
+                "to": "(storage.growth24h != null and storage.growth24h >= policy.trend_24h_pp) or (storage.growth7d != null and storage.growth7d >= policy.trend_7d_pp)",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "storage.recovered",
+                "pt": "msg",
+                "to": "storage.severity = \"normal\" and storage.previous != \"normal\"",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "storage.escalated",
+                "pt": "msg",
+                "to": "(storage.severity = \"critical\" and storage.previous != \"critical\") or (storage.severity = \"high\" and (storage.previous = \"normal\" or storage.previous = \"warning\")) or (storage.severity = \"warning\" and storage.previous = \"normal\")",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "storage.capacity_due",
+                "pt": "msg",
+                "to": "storage.escalated or (storage.severity != \"normal\" and storage.now - storage.state.lastNotificationAt >= policy.notification_cooldown_h * 3600000)",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "storage.trend_due",
+                "pt": "msg",
+                "to": "storage.now - storage.state.lastTrendNotificationAt >= policy.notification_cooldown_h * 3600000",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "storage.remediation_needed",
+                "pt": "msg",
+                "to": "storage.accelerated or storage.severity != \"normal\"",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "storage.remediation_due",
+                "pt": "msg",
+                "to": "storage.now - storage.state.lastAutoRemediationAt >= policy.auto_remediation_cooldown_h * 3600000",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4495,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_recovery_gate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_recovery_gate",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Severidade voltou ao normal?",
+        "property": "storage.recovered",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 4745,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_alert_recovery"
+            ],
+            [
+                "storage_visual_capacity_gate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_recovery",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Alerta: recovery",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.alert_kind",
+                "pt": "msg",
+                "to": "recovery",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 4995,
+        "y": 650,
+        "wires": [
+            [
+                "storage_visual_alert_recovery_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_recovery_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Recovery → construir alerta",
+        "mode": "link",
+        "links": [
+            "storage_visual_alert_build_in"
+        ],
+        "x": 5245,
+        "y": 650,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_capacity_gate",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Escalada ou lembrete de capacidade?",
+        "property": "storage.capacity_due",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 5045,
+        "y": 760,
+        "wires": [
+            [
+                "storage_visual_alert_capacity"
+            ],
+            [
+                "storage_visual_trend_gate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_capacity",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Alerta: capacidade",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.alert_kind",
+                "pt": "msg",
+                "to": "capacity",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 5345,
+        "y": 710,
+        "wires": [
+            [
+                "storage_visual_alert_capacity_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_capacity_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Capacidade → construir alerta",
+        "mode": "link",
+        "links": [
+            "storage_visual_alert_build_in"
+        ],
+        "x": 5595,
+        "y": 710,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_trend_gate",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Crescimento acelerado venceu cooldown?",
+        "property": "storage.accelerated and storage.trend_due",
+        "propertyType": "jsonata",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 5345,
+        "y": 810,
+        "wires": [
+            [
+                "storage_visual_alert_trend"
+            ],
+            [
+                "storage_visual_alert_none"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_trend",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Alerta: tendência",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.alert_kind",
+                "pt": "msg",
+                "to": "trend",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 5645,
+        "y": 780,
+        "wires": [
+            [
+                "storage_visual_alert_trend_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_trend_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Tendência → construir alerta",
+        "mode": "link",
+        "links": [
+            "storage_visual_alert_build_in"
+        ],
+        "x": 5875,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_alert_none",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Sem novo alerta",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.alert_kind",
+                "pt": "msg",
+                "to": "none",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 5645,
+        "y": 850,
+        "wires": [
+            [
+                "storage_visual_alert_none_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_none_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Sem alerta → continuar",
+        "mode": "link",
+        "links": [
+            "storage_visual_alert_build_in"
+        ],
+        "x": 5875,
+        "y": 850,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_alert_build_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Receber seleção de alerta",
+        "links": [
+            "storage_visual_alert_recovery_out",
+            "storage_visual_alert_capacity_out",
+            "storage_visual_alert_trend_out",
+            "storage_visual_alert_none_out"
+        ],
+        "x": 5975,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_alert_build"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_alert_build",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Montar alerta selecionado",
+        "func": "const s = msg.storage;\nconst fields = [];\nlet title;\nlet message;\nconst freeText = `${s.free.toFixed(1)} GiB livres`;\nconst trendText = s.growth24h === null ? \"\" : `; ${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`;\nconst cause = s.growth_cause_bytes === null ? \"\" : `; causa provavel: ${s.growth_cause} +${(s.growth_cause_bytes / 1073741824).toFixed(1)} GiB/24h`;\nif (s.alert_kind === \"recovery\") {\n    title = \"Raspberry Pi - storage recuperado\";\n    message = `✅ Raspberry Pi storage back to normal: ${s.used.toFixed(1)}% used (${freeText})${trendText}.`;\n    fields.push(\"lastNotificationAt\");\n} else if (s.alert_kind === \"capacity\") {\n    const icon = s.severity === \"critical\" ? \"🚨\" : \"⚠️\";\n    title = `Raspberry Pi - storage ${s.severity}`;\n    message = `${icon} Raspberry Pi storage ${s.severity}: ${s.used.toFixed(1)}% used (${freeText})${trendText}${cause}.`;\n    fields.push(\"lastNotificationAt\");\n    if (s.accelerated) fields.push(\"lastTrendNotificationAt\");\n} else if (s.alert_kind === \"trend\") {\n    const parts = [];\n    if (s.growth24h !== null) parts.push(`${s.growth24h >= 0 ? \"+\" : \"\"}${s.growth24h.toFixed(1)} pp/24h`);\n    if (s.growth7d !== null) parts.push(`${s.growth7d >= 0 ? \"+\" : \"\"}${s.growth7d.toFixed(1)} pp/7d`);\n    title = \"Raspberry Pi - crescimento de storage\";\n    message = `⚠️ Storage crescendo rapidamente: ${parts.join(\", \")}. Uso atual: ${s.used.toFixed(1)}% (${freeText})${cause}. A limpeza segura foi solicitada automaticamente.`;\n    fields.push(\"lastTrendNotificationAt\");\n} else return msg;\nmsg.storage_alert = { payload: { title, message }, notificationAck: { id: `${s.now}:${fields.join(\",\")}`, at: s.now, targets: fields.map((field) => ({ key: s.stateKey, field })) } };\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 6195,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_remediation_gate"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_remediation_gate",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Capacidade ou tendência exigem autocuidado?",
+        "property": "storage.remediation_needed",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 6475,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_remediation_cooldown"
+            ],
+            [
+                "storage_visual_no_remediation"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_remediation_cooldown",
+        "type": "switch",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Cooldown de autocuidado venceu?",
+        "property": "storage.remediation_due",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 6755,
+        "y": 690,
+        "wires": [
+            [
+                "storage_visual_state_finalize"
+            ],
+            [
+                "storage_visual_no_remediation"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_no_remediation",
+        "type": "change",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Não solicitar autocuidado",
+        "rules": [
+            {
+                "t": "set",
+                "p": "storage.remediation_due",
+                "pt": "msg",
+                "to": "false",
+                "tot": "bool"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 6755,
+        "y": 800,
+        "wires": [
+            [
+                "storage_visual_state_finalize"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_state_finalize",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Persistir estado e intenção",
+        "func": "const s = msg.storage;\nconst state = s.state;\nmsg.storage_selected_alert = msg.storage_alert ?? state.pendingAlert ?? null;\nif (msg.storage_alert) state.pendingAlert = msg.storage_alert;\nObject.assign(state, {\n    severity: s.severity, updatedAt: s.now, usedPercent: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes\n});\nmsg.storage_remediation = null;\nif (s.remediation_due) {\n    state.lastAutoRemediationAt = s.now;\n    msg.storage_remediation = {\n        ...msg, storageAutoRemediation: true, test_mode: msg.test_mode === true,\n        payload: { reason: s.accelerated ? \"accelerated-growth\" : \"capacity-threshold\", used: s.used,\n            growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n            growthCauseBytes: s.growth_cause_bytes }\n    };\n}\nif (s.testMode) flow.set(s.stateKey, state); else flow.set(s.stateKey, state, \"persistent\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 6975,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_attributes_build"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_attributes_build",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Adaptar atributos canônicos",
+        "func": "const s = msg.storage;\nconst input = s.input;\nmsg.storage_attributes = {\n    used_percent: s.used,\n    used_gib: Number.isFinite(Number(input.used_gb)) ? Number(input.used_gb) : null,\n    free_gib: s.free,\n    filesystem: input.filesystem ?? \"/\",\n    inode_used_percent: Number.isFinite(Number(input.inode_used_percent)) ? Number(input.inode_used_percent) : null,\n    growth_24h_percentage_points: s.growth24h,\n    growth_7d_percentage_points: s.growth7d,\n    growth_cause: s.growth_cause,\n    growth_cause_bytes: s.growth_cause_bytes,\n    category_growth_24h_bytes: s.category_growth,\n    collected_at: input.collected_at ?? new Date(s.now).toISOString(),\n    thresholds: { warning: msg.policy.warning_pct, high: msg.policy.high_pct, critical: msg.policy.critical_pct },\n    hysteresis_percentage_points: msg.policy.hysteresis_pp\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 7215,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_mqtt_build"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_mqtt_build",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Adaptar tópicos MQTT",
+        "func": "const s = msg.storage;\nconst input = s.input;\nconst growth = (window, value) => value === null\n    ? [{ topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"offline\", retain: true }]\n    : [\n        { topic: `smart_home/raspberry/storage/growth_${window}`, payload: String(value), retain: true },\n        { topic: `smart_home/raspberry/storage/growth_${window}_available`, payload: \"online\", retain: true }\n    ];\nmsg.storage_mqtt = [\n    { topic: \"smart_home/raspberry/storage/status\", payload: s.severity, retain: true },\n    { topic: \"smart_home/raspberry/storage/attributes\", payload: JSON.stringify(msg.storage_attributes), retain: true },\n    { topic: \"smart_home/raspberry/storage/health_last_run\", payload: new Date(s.now).toISOString(), retain: true },\n    { topic: \"smart_home/raspberry/storage/growth_cause\", payload: s.growth_cause, retain: true },\n    ...(input.maintenance_last_at && !Number.isNaN(Date.parse(input.maintenance_last_at))\n        ? [{ topic: \"smart_home/raspberry/storage/last_maintenance\", payload: input.maintenance_last_at, retain: true }] : []),\n    ...(Number.isFinite(Number(input.maintenance_reclaimed_bytes)) && Number(input.maintenance_reclaimed_bytes) >= 0\n        ? [{ topic: \"smart_home/raspberry/storage/last_reclaimed_mib\", payload: String(Math.round(Number(input.maintenance_reclaimed_bytes) / 104857.6) / 10), retain: true }] : []),\n    ...growth(\"24h\", s.growth24h), ...growth(\"7d\", s.growth7d)\n];\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 7455,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_output_route"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_output_route",
+        "type": "function",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Emitir quatro contratos",
+        "func": "const s = msg.storage;\nconst event = { ...msg, payload: {\n    event: \"health_check\", severity: s.severity, previous: s.previous, used: s.used, freeGiB: s.free,\n    growth24h: s.growth24h, growth7d: s.growth7d, growthCause: s.growth_cause,\n    growthCauseBytes: s.growth_cause_bytes, remediationRequested: msg.storage_remediation !== null,\n    at: new Date(s.now).toISOString()\n} };\nreturn [\n    msg.test_mode === true ? [] : msg.storage_mqtt,\n    msg.test_mode === true ? null : msg.storage_selected_alert,\n    event,\n    msg.storage_remediation\n];",
+        "outputs": 4,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 7695,
+        "y": 740,
+        "wires": [
+            [
+                "storage_visual_mqtt_out"
+            ],
+            [
+                "storage_visual_notify_out"
+            ],
+            [
+                "storage_test_decision_out"
+            ],
+            [
+                "storage_auto_out"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_mqtt_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Estado → MQTT",
+        "mode": "link",
+        "links": [
+            "storage_visual_mqtt_in"
+        ],
+        "x": 7955,
+        "y": 670,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_notify_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_visual_decision_group",
+        "name": "Alerta → destinatários",
+        "mode": "link",
+        "links": [
+            "storage_visual_notify_in"
+        ],
+        "x": 7955,
+        "y": 730,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_mqtt_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Receber publicações canônicas",
+        "links": [
+            "storage_visual_mqtt_out",
+            "storage_visual_invalid_mqtt_out"
+        ],
+        "x": 9630,
+        "y": 140,
+        "wires": [
+            [
+                "storage_mqtt_state"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_notify_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Receber alerta decidido",
+        "links": [
+            "storage_visual_notify_out",
+            "storage_visual_invalid_notify_out",
+            "storage_visual_maintenance_notify_out"
+        ],
+        "x": 9630,
+        "y": 380,
+        "wires": [
+            [
+                "storage_notify",
+                "storage_notify_secondary",
+                "storage_notify_persistent"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_manual_exec_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Manual → housekeeping",
+        "mode": "link",
+        "links": [
+            "storage_visual_manual_exec_in"
+        ],
+        "x": 1010,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_manual_host_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Manual → worker do host",
+        "mode": "link",
+        "links": [
+            "storage_visual_manual_host_in"
+        ],
+        "x": 1010,
+        "y": 530,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_manual_status_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_health",
+        "name": "Manual running → MQTT",
+        "mode": "link",
+        "links": [
+            "storage_visual_manual_status_in"
+        ],
+        "x": 1010,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_manual_exec_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber housekeeping manual",
+        "links": [
+            "storage_visual_manual_exec_out"
+        ],
+        "x": 580,
+        "y": 980,
+        "wires": [
+            [
+                "storage_exec_maintenance"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_manual_host_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber worker manual",
+        "links": [
+            "storage_visual_manual_host_out"
+        ],
+        "x": 580,
+        "y": 1240,
+        "wires": [
+            [
+                "storage_request_host_maintenance"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_exec_done_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Exec concluído → lifecycle",
+        "mode": "link",
+        "links": [
+            "storage_visual_exec_done_in"
+        ],
+        "x": 1000,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_exec_done_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber conclusão do exec",
+        "links": [
+            "storage_visual_exec_done_out"
+        ],
+        "x": 1260,
+        "y": 980,
+        "wires": [
+            [
+                "storage_maintenance_complete",
+                "storage_manual_complete"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_inspection_stderr_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Stderr inspeção → parser",
+        "mode": "link",
+        "links": [
+            "storage_visual_stderr_in"
+        ],
+        "x": 740,
+        "y": 1460,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_inspection_done_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Inspeção concluída → lifecycle",
+        "mode": "link",
+        "links": [
+            "storage_visual_request_done_in"
+        ],
+        "x": 740,
+        "y": 1310,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_stderr_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber stderr distante",
+        "links": [
+            "storage_visual_inspection_stderr_out"
+        ],
+        "x": 980,
+        "y": 1460,
+        "wires": [
+            [
+                "storage_store_maintenance_stderr"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_request_done_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Worker concluído → lifecycle",
+        "mode": "link",
+        "links": [
+            "storage_visual_request_done_in"
+        ],
+        "x": 1010,
+        "y": 1300,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_request_done_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Receber conclusão de inspeção/worker",
+        "links": [
+            "storage_visual_inspection_done_out",
+            "storage_visual_request_done_out"
+        ],
+        "x": 1260,
+        "y": 1340,
+        "wires": [
+            [
+                "storage_maintenance_complete"
+            ]
+        ]
+    },
+    {
+        "id": "storage_visual_maintenance_notify_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Resultado → alerta unificado",
+        "mode": "link",
+        "links": [
+            "storage_visual_notify_in"
+        ],
+        "x": 1700,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_manual_complete_status_out",
+        "type": "link out",
+        "z": "storage_health_tab",
+        "g": "storage_group_maintenance",
+        "name": "Manual idle → MQTT",
+        "mode": "link",
+        "links": [
+            "storage_visual_manual_status_in"
+        ],
+        "x": 1700,
+        "y": 1380,
+        "wires": []
+    },
+    {
+        "id": "storage_visual_manual_status_in",
+        "type": "link in",
+        "z": "storage_health_tab",
+        "g": "storage_group_alerts",
+        "name": "Receber lifecycle manual",
+        "links": [
+            "storage_visual_manual_status_out",
+            "storage_visual_manual_complete_status_out"
+        ],
+        "x": 9630,
+        "y": 220,
+        "wires": [
+            [
+                "storage_manual_status_mqtt"
+            ]
+        ]
     },
     {
         "id": "infra_notify_all_mobiles",

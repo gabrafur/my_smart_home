@@ -955,7 +955,7 @@ report_git() {
 }
 
 clean_home_assistant_backups() {
-  local before backup_root count bytes old_count old_bytes summary entry path index=0
+  local before backup_root count bytes archive_count archive_bytes snapshot_count snapshot_bytes snapshot_old_count snapshot_old_bytes summary entry path index=0
   local -a backup_archives=()
   STEP="category-home-assistant-backups"
   before=$(filesystem_used_bytes)
@@ -963,10 +963,18 @@ clean_home_assistant_backups() {
   if [[ -d "$backup_root" && ! -L "$backup_root" ]]; then
     validate_existing_directory "$backup_root" home-assistant-backup-root
     [[ $(realpath -e -- "$backup_root") == "$backup_root" ]] || die "home-assistant-backup-root-has-symlink-component" 65
-    summary=$(find "$backup_root" -xdev -maxdepth 1 -type f -printf '%s %T@\n' |
+    summary=$(find "$backup_root" -xdev -maxdepth 1 -type f -printf '%s\n' |
+      awk '{count++; bytes+=$1} END {printf "%d %d\n",count,bytes}')
+    read -r count bytes <<<"$summary"
+    summary=$(find "$backup_root" -xdev -maxdepth 1 -type f -name '*.tar' -printf '%s\n' |
+      awk '{count++; bytes+=$1} END {printf "%d %d\n",count,bytes}')
+    read -r archive_count archive_bytes <<<"$summary"
+    summary=$(find "$backup_root" -xdev -maxdepth 1 -type f -name '*.db' -printf '%s %T@\n' |
       awk -v cutoff="$(date -u -d "$HA_BACKUP_RETENTION_DAYS days ago" +%s)" '{count++; bytes+=$1; if ($2<cutoff) {old_count++; old_bytes+=$1}} END {printf "%d %d %d %d\n",count,bytes,old_count,old_bytes}')
-    read -r count bytes old_count old_bytes <<<"$summary"
-    log "metric component=home-assistant-backups count=$count bytes=$bytes older_than_days=$HA_BACKUP_RETENTION_DAYS old_count=$old_count old_bytes=$old_bytes"
+    read -r snapshot_count snapshot_bytes snapshot_old_count snapshot_old_bytes <<<"$summary"
+    log "metric component=home-assistant-backups count=$count bytes=$bytes"
+    log "metric component=home-assistant-backup-archives count=$archive_count bytes=$archive_bytes keep_count=$HA_BACKUP_KEEP_COUNT"
+    log "metric component=home-assistant-manual-snapshots count=$snapshot_count bytes=$snapshot_bytes older_than_days=$HA_BACKUP_RETENTION_DAYS old_count=$snapshot_old_count old_bytes=$snapshot_old_bytes status=review-only"
     mapfile -d '' -t backup_archives < <(find "$backup_root" -xdev -maxdepth 1 -type f -name '*.tar' -printf '%T@|%p\0' | sort -z -nr)
     for entry in "${backup_archives[@]}"; do
       path=${entry#*|}
@@ -982,6 +990,8 @@ clean_home_assistant_backups() {
     done
   else
     log "metric component=home-assistant-backups count=0 bytes=0"
+    log "metric component=home-assistant-backup-archives count=0 bytes=0 keep_count=$HA_BACKUP_KEEP_COUNT"
+    log "metric component=home-assistant-manual-snapshots count=0 bytes=0 older_than_days=$HA_BACKUP_RETENTION_DAYS old_count=0 old_bytes=0 status=review-only"
   fi
   log "status=policy category=home-assistant-backups archives_only=true keep_count=$HA_BACKUP_KEEP_COUNT"
   measure_category home-assistant-backups "$before"
@@ -1076,6 +1086,20 @@ home_assistant_backup_bytes() {
     awk '{total += $1} END {print total + 0}'
 }
 
+home_assistant_backup_archive_bytes() {
+  local root="$HA_BACKUP_ROOT"
+  [[ -d "$root" && ! -L "$root" ]] || { printf '0\n'; return; }
+  find "$root" -xdev -maxdepth 1 -type f -name '*.tar' -printf '%s\n' 2>/dev/null |
+    awk '{total += $1} END {print total + 0}'
+}
+
+home_assistant_manual_snapshot_bytes() {
+  local root="$HA_BACKUP_ROOT"
+  [[ -d "$root" && ! -L "$root" ]] || { printf '0\n'; return; }
+  find "$root" -xdev -maxdepth 1 -type f -name '*.db' -printf '%s\n' 2>/dev/null |
+    awk '{total += $1} END {print total + 0}'
+}
+
 allowlisted_user_cache_bytes() {
   local total=0 path
   for path in "$NPM_CACHE_ROOT" "$USER_CACHE_ROOT/pip" "$USER_CACHE_ROOT/puppeteer" "$USER_CACHE_ROOT/chromium-headless" "$USER_CACHE_ROOT/typescript"; do
@@ -1099,7 +1123,7 @@ known_logs_bytes() {
 
 write_metrics() {
   local result=$1 reclaimed=$2 total used free used_percent inode_total inode_free inode_used docker_bytes logs_bytes repo_bytes now inode_summary
-  local vscode_bytes cursor_bytes npm_bytes user_cache_bytes pm2_bytes recorder_bytes backup_bytes deleted_count deleted_bytes deleted_inaccessible
+  local vscode_bytes cursor_bytes npm_bytes user_cache_bytes pm2_bytes recorder_bytes backup_bytes backup_archive_bytes manual_snapshot_bytes deleted_count deleted_bytes deleted_inaccessible
   local docker_images_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes category category_json separator
   [[ "$MODE" == apply ]] || return 0
   total=$(df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $2}')
@@ -1120,6 +1144,8 @@ write_metrics() {
   pm2_bytes=$(pm2_log_bytes)
   recorder_bytes=$(logical_bytes_for_path "$REPO_ROOT/homeassistant/home-assistant_v2.db")
   backup_bytes=$(home_assistant_backup_bytes)
+  backup_archive_bytes=$(home_assistant_backup_archive_bytes)
+  manual_snapshot_bytes=$(home_assistant_manual_snapshot_bytes)
   read -r deleted_count deleted_bytes deleted_inaccessible < <(deleted_open_metrics)
   category_json='{'
   separator=''
@@ -1131,8 +1157,8 @@ write_metrics() {
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   METRICS_TEMP=$(mktemp "$metrics_parent/.storage-maintenance-status.XXXXXX")
   chmod 0644 "$METRICS_TEMP"
-  printf '{\n  "schema_version": 1,\n  "filesystem_total_bytes": %s,\n  "filesystem_used_bytes": %s,\n  "filesystem_free_bytes": %s,\n  "filesystem_used_percent": %s,\n  "inodes_total": %s,\n  "inodes_used": %s,\n  "docker_logical_bytes": %s,\n  "docker_images_logical_bytes": %s,\n  "docker_unused_tagged_logical_bytes": %s,\n  "docker_unused_untagged_logical_bytes": %s,\n  "known_logs_bytes": %s,\n  "repository_bytes": %s,\n  "vscode_server_logical_bytes": %s,\n  "cursor_server_logical_bytes": %s,\n  "npm_cache_logical_bytes": %s,\n  "allowlisted_user_caches_logical_bytes": %s,\n  "pm2_logs_logical_bytes": %s,\n  "home_assistant_recorder_logical_bytes": %s,\n  "home_assistant_backups_logical_bytes": %s,\n  "deleted_open_bytes": %s,\n  "deleted_open_count": %s,\n  "deleted_open_scan_complete": %s,\n  "last_maintenance_at": "%s",\n  "phase2_last_maintenance_at": "%s",\n  "last_reclaimed_bytes": %s,\n  "last_filesystem_net_reclaimed_bytes": %s,\n  "last_reclaimed_by_category": %s,\n  "last_result": "%s"\n}\n' \
-    "$total" "$used" "$free" "$used_percent" "$inode_total" "$inode_used" "$docker_bytes" "$docker_images_bytes" "$docker_unused_tagged_bytes" "$docker_unused_untagged_bytes" "$logs_bytes" "$repo_bytes" "$vscode_bytes" "$cursor_bytes" "$npm_bytes" "$user_cache_bytes" "$pm2_bytes" "$recorder_bytes" "$backup_bytes" "$deleted_bytes" "$deleted_count" "$([[ $deleted_inaccessible -eq 0 ]] && echo true || echo false)" "$now" "$now" "$reclaimed" "$reclaimed" "$category_json" "$result" > "$METRICS_TEMP"
+  printf '{\n  "schema_version": 1,\n  "filesystem_total_bytes": %s,\n  "filesystem_used_bytes": %s,\n  "filesystem_free_bytes": %s,\n  "filesystem_used_percent": %s,\n  "inodes_total": %s,\n  "inodes_used": %s,\n  "docker_logical_bytes": %s,\n  "docker_images_logical_bytes": %s,\n  "docker_unused_tagged_logical_bytes": %s,\n  "docker_unused_untagged_logical_bytes": %s,\n  "known_logs_bytes": %s,\n  "repository_bytes": %s,\n  "vscode_server_logical_bytes": %s,\n  "cursor_server_logical_bytes": %s,\n  "npm_cache_logical_bytes": %s,\n  "allowlisted_user_caches_logical_bytes": %s,\n  "pm2_logs_logical_bytes": %s,\n  "home_assistant_recorder_logical_bytes": %s,\n  "home_assistant_backups_logical_bytes": %s,\n  "home_assistant_backup_archives_logical_bytes": %s,\n  "home_assistant_manual_snapshots_logical_bytes": %s,\n  "deleted_open_bytes": %s,\n  "deleted_open_count": %s,\n  "deleted_open_scan_complete": %s,\n  "last_maintenance_at": "%s",\n  "phase2_last_maintenance_at": "%s",\n  "last_reclaimed_bytes": %s,\n  "last_filesystem_net_reclaimed_bytes": %s,\n  "last_reclaimed_by_category": %s,\n  "last_result": "%s"\n}\n' \
+    "$total" "$used" "$free" "$used_percent" "$inode_total" "$inode_used" "$docker_bytes" "$docker_images_bytes" "$docker_unused_tagged_bytes" "$docker_unused_untagged_bytes" "$logs_bytes" "$repo_bytes" "$vscode_bytes" "$cursor_bytes" "$npm_bytes" "$user_cache_bytes" "$pm2_bytes" "$recorder_bytes" "$backup_bytes" "$backup_archive_bytes" "$manual_snapshot_bytes" "$deleted_bytes" "$deleted_count" "$([[ $deleted_inaccessible -eq 0 ]] && echo true || echo false)" "$now" "$now" "$reclaimed" "$reclaimed" "$category_json" "$result" > "$METRICS_TEMP"
   mv -f -- "$METRICS_TEMP" "$METRICS_FILE"
   METRICS_TEMP=""
   log "metric status_file=$METRICS_FILE"

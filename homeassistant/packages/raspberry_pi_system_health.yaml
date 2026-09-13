@@ -72,6 +72,8 @@ command_line:
         - storage_maintenance_pm2_logs_logical_bytes
         - storage_maintenance_home_assistant_recorder_logical_bytes
         - storage_maintenance_home_assistant_backups_logical_bytes
+        - storage_maintenance_home_assistant_backup_archives_logical_bytes
+        - storage_maintenance_home_assistant_manual_snapshots_logical_bytes
         - storage_maintenance_deleted_open_bytes
         - storage_maintenance_deleted_open_count
         - storage_maintenance_deleted_open_scan_complete
@@ -412,6 +414,28 @@ template:
           {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_backups_logical_bytes') %}
           {{ (value / 1073741824) | round(3) if value is number else none }}
         availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_backups_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Backup Archives
+        unique_id: raspberry_pi_storage_maintenance_backup_archives
+        icon: mdi:archive-check-outline
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_backup_archives_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_backup_archives_logical_bytes') is number }}"
+
+      - name: Raspberry Pi Storage Maintenance Manual Snapshots
+        unique_id: raspberry_pi_storage_maintenance_manual_snapshots
+        icon: mdi:database-alert-outline
+        device_class: data_size
+        unit_of_measurement: "GiB"
+        state_class: measurement
+        state: >-
+          {% set value = state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_manual_snapshots_logical_bytes') %}
+          {{ (value / 1073741824) | round(3) if value is number else none }}
+        availability: "{{ state_attr('sensor.raspberry_pi_metrics_raw', 'storage_maintenance_home_assistant_manual_snapshots_logical_bytes') is number }}"
 
       - name: Raspberry Pi Storage Maintenance Deleted Open Files
         unique_id: raspberry_pi_storage_maintenance_deleted_open_files
