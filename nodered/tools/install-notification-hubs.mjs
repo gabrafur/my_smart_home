@@ -143,6 +143,14 @@ const inject = (id, z, g, name, payload, notification, x, y, wires) => ({
   ],
   repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", x, y, wires,
 });
+const dashboardAlexaInject = (id, z, g, name, message, x, y, wires) => ({
+  id, type: "inject", z, g, name,
+  props: [
+    { p: "payload", v: JSON.stringify({ message, origin: "manual_test" }), vt: "json" },
+    { p: "_notification_hub_dashboard_test", v: "true", vt: "bool" },
+  ],
+  repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", x, y, wires,
+});
 const service = (id, z, g, name, action, data, queue, x, y, wires) => ({
   id, type: "api-call-service", z, g, name, server: SERVER, version: 7, debugenabled: false,
   action, floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [], data, dataType: "jsonata",
@@ -241,7 +249,7 @@ function alexaHubNodes() {
     info: "Única fronteira Node-RED para Alexa. O target lógico explícito preserva o binding atual sem fallback para todas as Alexas." }];
   const groups = new Map();
   const main = group("notification_hub_alexa_main_group", z, "Contrato, target lógico e anúncio", 64, 40, 1880, 440, "#7c3aed", "#ede9fe");
-  const test = group("notification_hub_alexa_test_group", z, "TESTES — target válido e inválido", 64, 540, 1320, 280, "#0891b2", "#cffafe");
+  const test = group("notification_hub_alexa_test_group", z, "TESTES — target, mensagem do painel e rejeições", 64, 540, 1320, 340, "#0891b2", "#cffafe");
   nodes.push(main, test); groups.set(main.id, main); groups.set(test.id, test); const add = (node) => addGrouped(nodes, groups, node);
   add(comment("notification_hub_alexa_contract", z, main.id, "payload=mensagem | target obrigatório | nunca todas as Alexas", "O target voice_assistant_primary mantém exatamente public_bindings mobile_primary/notify. Dados adicionais são repassados sem escolher outro dispositivo.", 690, 80));
   add(linkIn(NOTIFICATION_HUBS.alexa.input, z, main.id, "Entrada canônica Alexa", [], 120, 150, [["notification_hub_alexa_mark_channel"]]));
@@ -262,6 +270,17 @@ function alexaHubNodes() {
   add(fn("notification_hub_alexa_reject", z, main.id, "Rejeitar sem anunciar", "notification-hub-reject.js", 1, 1120, 270, [["notification_hub_alexa_return_reject"]]));
   add(linkOut("notification_hub_alexa_return_reject", z, main.id, "Retornar rejeição ao chamador", [], 1380, 270, "return"));
   add(linkOut("notification_hub_alexa_dry_out", z, main.id, "TESTE seguro → terminal", ["notification_hub_alexa_dry_in"], 1090, 230));
+  add({
+    id: "notification_hub_alexa_dashboard_event", type: "server-events", z, g: main.id,
+    name: "Mensagem enviada pelo painel Chat", server: SERVER, version: 3,
+    exposeAsEntityConfig: "", eventType: "alexa_text_announcement_requested", eventData: "",
+    waitForRunning: true,
+    outputProperties: [{ property: "payload", propertyType: "msg", value: "", valueType: "eventData" }],
+    x: 220, y: 360, wires: [["notification_hub_alexa_dashboard_request"]],
+  });
+  add(linkIn("notification_hub_alexa_dashboard_test_in", z, main.id, "Receber mensagem TESTE do painel", ["notification_hub_alexa_dashboard_test_out"], 180, 420, [["notification_hub_alexa_dashboard_request"]]));
+  add(fn("notification_hub_alexa_dashboard_request", z, main.id, "Adaptar intenção do painel", "notification-hub-alexa-dashboard-request.js", 1, 500, 390, [["notification_hub_alexa_dashboard_call"]]));
+  add(caller("notification_hub_alexa_dashboard_call", z, main.id, "Entregar pelo hub canônico", NOTIFICATION_HUBS.alexa.input, 760, 390, [[]]));
   add(comment("notification_hub_alexa_test_note", z, test.id, "Teste válido e target inválido", "Ambos atravessam o validador real com test_mode. Nenhuma Alexa é acionada.", 430, 590));
   add(inject("notification_hub_alexa_test_valid", z, test.id, "TESTE D: Alexa definida", "TESTE — anúncio sem efeito", { source: "hub_alexa_manual_test", targets: ["voice_assistant_primary"], mode: "announce", test_mode: true }, 220, 660, [["notification_hub_alexa_test_out"]]));
   add(inject("notification_hub_alexa_test_invalid", z, test.id, "TESTE: target inválido", "TESTE — anúncio sem efeito", { source: "hub_alexa_manual_test", targets: ["unknown"], mode: "announce", test_mode: true }, 220, 720, [["notification_hub_alexa_test_out"]]));
@@ -270,6 +289,9 @@ function alexaHubNodes() {
   add(fn("notification_hub_alexa_dry_run_terminal", z, test.id, "Registrar resultado dry-run Alexa", "notification-hub-dry-run.js", 2, 940, 690, [["notification_hub_alexa_dry_run_assert"], ["notification_hub_alexa_return_dry"]]));
   add(fn("notification_hub_alexa_dry_run_assert", z, test.id, "TESTE FINAL: nenhuma Alexa acionada", "notification-hub-dry-run-terminal.js", 0, 1190, 650, []));
   add(linkOut("notification_hub_alexa_return_dry", z, test.id, "Retornar dry-run ao chamador", [], 1200, 690, "return"));
+  add(dashboardAlexaInject("notification_hub_alexa_dashboard_test_valid", z, test.id, "TESTE: mensagem do painel", "TESTE — mensagem digitada", 230, 790, [["notification_hub_alexa_dashboard_test_out"]]));
+  add(dashboardAlexaInject("notification_hub_alexa_dashboard_test_empty", z, test.id, "TESTE: mensagem vazia", "   ", 230, 850, [["notification_hub_alexa_dashboard_test_out"]]));
+  add(linkOut("notification_hub_alexa_dashboard_test_out", z, test.id, "Pedido do painel → adaptador real", ["notification_hub_alexa_dashboard_test_in"], 520, 820));
   return nodes;
 }
 

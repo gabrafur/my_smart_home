@@ -19,11 +19,13 @@
             "evidence_node_ids": [
                 "notification_hub_alexa_test_group",
                 "notification_hub_alexa_test_valid",
-                "notification_hub_alexa_test_invalid"
+                "notification_hub_alexa_test_invalid",
+                "notification_hub_alexa_dashboard_test_valid",
+                "notification_hub_alexa_dashboard_test_empty"
             ],
             "automated_test": "test-notification-hubs.mjs",
             "dry_run_terminal_ids": ["notification_hub_alexa_dry_run_assert"],
-            "reason": "Target lógico válido e inválido atravessam o contrato real do hub com test_mode e terminam com simulated:true e dispatched:false, sem acionar qualquer Alexa."
+            "reason": "Target lógico válido e inválido, mensagem digitada e texto vazio atravessam o contrato real do hub com test_mode e terminam com simulated:true e dispatched:false, sem acionar qualquer Alexa."
         },
         "notification_hub_persistent_tab": {
             "strategy": "manual_full_dry_run",

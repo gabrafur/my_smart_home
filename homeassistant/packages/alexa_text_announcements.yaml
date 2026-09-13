@@ -1,0 +1,25 @@
+# Mensagens digitadas no painel Chat para leitura na Alexa principal.
+#
+# O helper guarda somente o rascunho da interface. O botão publica uma intenção
+# explícita; validação, seleção do destino e entrega pertencem ao Node-RED.
+
+input_text:
+  alexa_mensagem:
+    name: Mensagem para Alexa
+    icon: mdi:message-text-outline
+    max: 255
+
+template:
+  - button:
+      - name: Ler mensagem na Alexa
+        unique_id: alexa_ler_mensagem_do_painel
+        icon: mdi:account-voice
+        press:
+          - variables:
+              mensagem: "{{ states('input_text.alexa_mensagem') | trim }}"
+          - condition: template
+            value_template: "{{ mensagem | length > 0 }}"
+          - event: alexa_text_announcement_requested
+            event_data:
+              message: "{{ mensagem }}"
+              origin: chat_dashboard

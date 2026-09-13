@@ -64,6 +64,16 @@ for (const [id, [tab, action, queue, dataPattern]] of expectedEffects) {
   assert.match(effect.data, dataPattern, `${id}: binding/metadata incorreto`);
 }
 
+const dashboardAlexaEvent = node("notification_hub_alexa_dashboard_event");
+assert.equal(dashboardAlexaEvent.type, "server-events");
+assert.equal(dashboardAlexaEvent.eventType, "alexa_text_announcement_requested");
+assert.deepEqual(dashboardAlexaEvent.wires, [["notification_hub_alexa_dashboard_request"]]);
+assert.deepEqual(
+  node("notification_hub_alexa_dashboard_call").links,
+  [NOTIFICATION_HUBS.alexa.input],
+  "o painel deve atravessar a entrada canônica do hub Alexa",
+);
+
 assert.equal(NOTIFICATION_MIGRATIONS.length, 39, "a matriz explícita deve cobrir os 39 efeitos fora do subflow legado");
 assert.equal(new Set(NOTIFICATION_MIGRATIONS.map(({ id }) => id)).size, 39);
 for (const migration of NOTIFICATION_MIGRATIONS) {
@@ -250,6 +260,30 @@ const alexaBroadcast = executeFunction("notification-hub-alexa-validate.js", {
   notification: { source: "test", targets: ["all"], mode: "announce" },
 });
 assert.equal(alexaBroadcast.result[0], null);
+const alexaTooLong = executeFunction("notification-hub-alexa-validate.js", {
+  payload: "x".repeat(256),
+  notification: { source: "test", targets: ["voice_assistant_primary"], mode: "announce" },
+});
+assert.equal(alexaTooLong.result[0], null);
+
+const dashboardAlexa = executeFunction("notification-hub-alexa-dashboard-request.js", {
+  payload: { message: "  Olá pela Alexa  ", origin: "manual_test" },
+  _notification_hub_dashboard_test: true,
+});
+assert.equal(dashboardAlexa.result.payload, "Olá pela Alexa");
+assert.equal(dashboardAlexa.result.notification.source, "chat_dashboard");
+assert.equal(dashboardAlexa.result.notification.mode, "announce");
+assert.equal(dashboardAlexa.result.notification.targets[0], "voice_assistant_primary");
+assert.equal(dashboardAlexa.result.notification.test_mode, true);
+assert.equal(dashboardAlexa.result._notification_hub_dashboard_test, undefined);
+const dashboardAlexaEmpty = executeFunction("notification-hub-alexa-dashboard-request.js", {
+  payload: { message: "   " },
+});
+const rejectedDashboardAlexa = executeFunction(
+  "notification-hub-alexa-validate.js",
+  dashboardAlexaEmpty.result,
+);
+assert.equal(rejectedDashboardAlexa.result[0], null);
 
 const persistentCreate = executeFunction("notification-hub-persistent-validate.js", {
   payload: "mensagem",

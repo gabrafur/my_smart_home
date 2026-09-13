@@ -5150,18 +5150,22 @@
             "notification_hub_alexa_observer_out",
             "notification_hub_alexa_reject",
             "notification_hub_alexa_return_reject",
-            "notification_hub_alexa_dry_out"
+            "notification_hub_alexa_dry_out",
+            "notification_hub_alexa_dashboard_event",
+            "notification_hub_alexa_dashboard_test_in",
+            "notification_hub_alexa_dashboard_request",
+            "notification_hub_alexa_dashboard_call"
         ],
         "x": 83,
         "y": 23,
         "w": 2104,
-        "h": 401
+        "h": 431
     },
     {
         "id": "notification_hub_alexa_test_group",
         "type": "group",
         "z": "notification_hub_alexa_tab",
-        "name": "TESTES — target válido e inválido",
+        "name": "TESTES — target, mensagem do painel e rejeições",
         "style": {
             "label": true,
             "color": "#0891b2",
@@ -5175,12 +5179,15 @@
             "notification_hub_alexa_dry_in",
             "notification_hub_alexa_dry_run_terminal",
             "notification_hub_alexa_dry_run_assert",
-            "notification_hub_alexa_return_dry"
+            "notification_hub_alexa_return_dry",
+            "notification_hub_alexa_dashboard_test_valid",
+            "notification_hub_alexa_dashboard_test_empty",
+            "notification_hub_alexa_dashboard_test_out"
         ],
         "x": 103,
         "y": 533,
         "w": 1237,
-        "h": 224
+        "h": 354
     },
     {
         "id": "notification_hub_persistent_main_group",
@@ -63502,7 +63509,7 @@
         "z": "notification_hub_alexa_tab",
         "g": "notification_hub_alexa_main_group",
         "name": "Validar contrato e target Alexa",
-        "func": "const notification = msg.notification;\nconst targets = notification?.targets;\nconst validData = notification?.data === undefined || (\n    notification.data !== null &&\n    typeof notification.data === \"object\" &&\n    !Array.isArray(notification.data)\n);\nconst valid =\n    typeof msg.payload === \"string\" &&\n    msg.payload.length > 0 &&\n    notification !== null &&\n    typeof notification === \"object\" &&\n    !Array.isArray(notification) &&\n    typeof notification.source === \"string\" &&\n    notification.source.length > 0 &&\n    notification.mode === \"announce\" &&\n    Array.isArray(targets) &&\n    targets.length === 1 &&\n    targets[0] === \"voice_assistant_primary\" &&\n    validData;\n\nif (!valid) {\n    msg._notification_hub_failure_reason = \"invalid_alexa_contract\";\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "func": "const notification = msg.notification;\nconst targets = notification?.targets;\nconst validData = notification?.data === undefined || (\n    notification.data !== null &&\n    typeof notification.data === \"object\" &&\n    !Array.isArray(notification.data)\n);\nconst valid =\n    typeof msg.payload === \"string\" &&\n    msg.payload.length > 0 &&\n    msg.payload.length <= 255 &&\n    notification !== null &&\n    typeof notification === \"object\" &&\n    !Array.isArray(notification) &&\n    typeof notification.source === \"string\" &&\n    notification.source.length > 0 &&\n    notification.mode === \"announce\" &&\n    Array.isArray(targets) &&\n    targets.length === 1 &&\n    targets[0] === \"voice_assistant_primary\" &&\n    validData;\n\nif (!valid) {\n    msg._notification_hub_failure_reason = \"invalid_alexa_contract\";\n    return [null, msg];\n}\n\nreturn [msg, null];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -66447,5 +66454,164 @@
                 "gar_relay_mqtt_out"
             ]
         ]
+    },
+    {
+        "id": "notification_hub_alexa_dashboard_event",
+        "type": "server-events",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_main_group",
+        "name": "Mensagem enviada pelo painel Chat",
+        "server": "4126427d5e161a03",
+        "version": 3,
+        "exposeAsEntityConfig": "",
+        "eventType": "alexa_text_announcement_requested",
+        "eventData": "",
+        "waitForRunning": true,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            }
+        ],
+        "x": 220,
+        "y": 360,
+        "wires": [
+            [
+                "notification_hub_alexa_dashboard_request"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_dashboard_test_in",
+        "type": "link in",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_main_group",
+        "name": "Receber mensagem TESTE do painel",
+        "links": [
+            "notification_hub_alexa_dashboard_test_out"
+        ],
+        "x": 180,
+        "y": 420,
+        "wires": [
+            [
+                "notification_hub_alexa_dashboard_request"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_dashboard_request",
+        "type": "function",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_main_group",
+        "name": "Adaptar intenção do painel",
+        "func": "const event = msg.payload;\nconst message = typeof event?.message === \"string\" ? event.message.trim() : \"\";\nconst testMode = msg._notification_hub_dashboard_test === true;\n\nmsg._notification_hub_context = {\n    payload: event,\n    notification: msg.notification,\n    had_notification: Object.hasOwn(msg, \"notification\")\n};\nmsg.payload = message;\nmsg.notification = {\n    source: \"chat_dashboard\",\n    targets: [\"voice_assistant_primary\"],\n    mode: \"announce\"\n};\nif (testMode) msg.notification.test_mode = true;\ndelete msg._notification_hub_dashboard_test;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 390,
+        "wires": [
+            [
+                "notification_hub_alexa_dashboard_call"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_dashboard_call",
+        "type": "link call",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_main_group",
+        "name": "Entregar pelo hub canônico",
+        "links": [
+            "notification_hub_alexa_in"
+        ],
+        "linkType": "static",
+        "timeout": "30",
+        "x": 760,
+        "y": 390,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_dashboard_test_valid",
+        "type": "inject",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_test_group",
+        "name": "TESTE: mensagem do painel",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"message\":\"TESTE — mensagem digitada\",\"origin\":\"manual_test\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_notification_hub_dashboard_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 230,
+        "y": 790,
+        "wires": [
+            [
+                "notification_hub_alexa_dashboard_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_dashboard_test_empty",
+        "type": "inject",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_test_group",
+        "name": "TESTE: mensagem vazia",
+        "props": [
+            {
+                "p": "payload",
+                "v": "{\"message\":\"   \",\"origin\":\"manual_test\"}",
+                "vt": "json"
+            },
+            {
+                "p": "_notification_hub_dashboard_test",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 230,
+        "y": 850,
+        "wires": [
+            [
+                "notification_hub_alexa_dashboard_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "notification_hub_alexa_dashboard_test_out",
+        "type": "link out",
+        "z": "notification_hub_alexa_tab",
+        "g": "notification_hub_alexa_test_group",
+        "name": "Pedido do painel → adaptador real",
+        "mode": "link",
+        "links": [
+            "notification_hub_alexa_dashboard_test_in"
+        ],
+        "x": 520,
+        "y": 820,
+        "wires": []
     }
 ]

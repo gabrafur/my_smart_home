@@ -8,6 +8,30 @@ views:
       - type: custom:codex-chat-card-v2
         title: Codex
         history_limit: 200
+  - title: Alexa
+    path: alexa
+    icon: mdi:account-voice
+    cards:
+      - type: entities
+        title: Mensagem para Alexa
+        show_header_toggle: false
+        entities:
+          - entity: input_text.alexa_mensagem
+            name: Texto a ser lido
+      - type: button
+        entity: button.ler_mensagem_na_alexa
+        name: Ler na Alexa
+        icon: mdi:send
+        show_state: false
+        tap_action:
+          action: perform-action
+          perform_action: button.press
+          target:
+            entity_id: button.ler_mensagem_na_alexa
+      - type: markdown
+        content: >-
+          Digite a mensagem acima e toque em **Ler na Alexa**. Mensagens vazias
+          são ignoradas, e o texto é enviado somente para a Alexa principal.
   - title: Uso
     path: uso-codex
     icon: mdi:chart-donut

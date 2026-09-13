@@ -8,6 +8,7 @@ const validData = notification?.data === undefined || (
 const valid =
     typeof msg.payload === "string" &&
     msg.payload.length > 0 &&
+    msg.payload.length <= 255 &&
     notification !== null &&
     typeof notification === "object" &&
     !Array.isArray(notification) &&
