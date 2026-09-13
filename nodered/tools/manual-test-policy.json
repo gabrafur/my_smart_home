@@ -297,7 +297,8 @@
             "reason": "Tuya e LocalTuya percorrem snapshot, agrupamento, split/join, limites, dedupe, recovery, resumo e gates; alertas e MQTT terminam em dry-run."
         },
         "resident_notifications_tab": {
-            "strategy": "manual_full_dry_run",
+            "strategy": "manual_explicit_side_effect",
+            "explicit_exception": "notification_delivery_under_test",
             "evidence_node_ids": [
                 "resident_notifications_test_group",
                 "resident_notifications_test_instructions",
@@ -310,11 +311,13 @@
                 "resident_notifications_test_stale",
                 "resident_notifications_test_future",
                 "resident_notifications_test_duplicate",
-                "resident_notifications_dry_run_terminal"
+                "resident_notifications_dry_run_terminal",
+                "resident_notifications_test_delivery_secondary"
             ],
             "dry_run_terminal_ids": ["resident_notifications_dry_run_terminal"],
+            "delivery_node_ids": ["resident_notifications_test_notify_secondary"],
             "automated_test": "test-resident-approach-notifications.mjs",
-            "reason": "Approach, salto direto para home, ambos os residentes, direção inválida, ciclo não confirmado, evento antigo/futuro e duplicidade percorrem o contrato canônico, a política, a reserva e os gates reais; qualquer test_mode termina antes das duas fronteiras de push."
+            "reason": "Approach, salto direto para home, ambos os residentes, direção inválida, ciclo não confirmado, evento antigo/futuro e duplicidade percorrem o contrato canônico e terminam em dry-run; por solicitação explícita, um único botão marcado TESTE valida a entrega ao mobile_secondary sem acionar qualquer outro dispositivo."
         },
         "global_flow_observer_tab": {
             "strategy": "manual_explicit_side_effect",

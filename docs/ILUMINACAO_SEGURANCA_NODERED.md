@@ -257,8 +257,10 @@ permite no máximo três tentativas.
 Os testes sintéticos iniciados em `localizacao_pessoas` também entram nesse tab.
 Eles percorrem a mesma validação e o mesmo dedupe usando memória isolada, mas
 terminam em `TESTE FINAL: nenhum push enviado`, com `simulated=true` e
-`dispatched=false`. Os botões dedicados do próprio tab também são dry-run;
-nenhum controle manual possui ligação com os dois serviços de produção.
+`dispatched=false`. Os testes 1–9 do próprio tab também são dry-run. O botão
+`TESTE 10` é a única exceção explícita: envia somente um push claramente
+marcado `TESTE` ao `mobile_secondary`, para confirmar o canal ponta a ponta,
+sem acionar luz, Alexa, alarme ou qualquer outro dispositivo.
 
 O nome exibido na mensagem é resolvido em runtime a partir do `source_alias`
 privado do residente. O flow versionado preserva apenas os papéis lógicos; se o

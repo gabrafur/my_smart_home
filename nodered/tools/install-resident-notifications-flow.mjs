@@ -42,7 +42,7 @@ const groups = {
   decision: group("resident_notifications_decision_group", "2. Validação da chegada e destinatário", 2780, 40, 1950, 450, "#7c3aed", "#ede9fe"),
   state: group("resident_notifications_state_group", "3. Frescor, reserva e deduplicação da entrega", 4730, 40, 1650, 450, "#b45309", "#fef3c7"),
   output: group("resident_notifications_output_group", "4. Gate final, efeitos e retry", 6430, 40, 1900, 450, "#dc2626", "#fee2e2"),
-  test: group("resident_notifications_test_group", "5. Replay manual completo — sempre dry-run", 64, 560, 2900, 610, "#0891b2", "#cffafe"),
+  test: group("resident_notifications_test_group", "5. Replay dry-run + teste explícito de entrega", 64, 560, 2900, 680, "#0891b2", "#cffafe"),
 };
 const grouped = (g, node) => { add(node); nodes.find((entry) => entry.id === g).nodes.push(node.id); return node.id; };
 const fn = (id, g, name, file, outputs, x, y, wires) => grouped(g, {
@@ -86,7 +86,7 @@ const policy = {
 
 add({
   id: TAB, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false,
-  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, escolhe o destinatário, solicita push visível e urgente ao iOS, registra apenas o aceite do Home Assistant e separa produção/teste. Testes manuais nunca enviam push.", env: [],
+  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, escolhe o destinatário, solicita push visível e urgente ao iOS, registra apenas o aceite do Home Assistant e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.", env: [],
 });
 
 grouped(groups.config, {
@@ -199,8 +199,8 @@ grouped(groups.output, {
 
 grouped(groups.test, {
   id: "resident_notifications_test_instructions", type: "comment", z: TAB, g: groups.test,
-  name: "Ordem: reset → approach → home direto → outro residente → direção inválida → stale → futuro → duplicata. Nenhum push é enviado.",
-  info: "Os casos usam security.arrival.v1 e percorrem contrato, direção, ciclo externo, etapa, frescor, reserva, dedupe, destinatário e gate final da produção.", x: 1350, y: 610, wires: [],
+  name: "TESTES 1–9: dry-run. TESTE 10: único push real, marcado TESTE, para mobile_secondary.",
+  info: "Os casos 1–9 usam security.arrival.v1 e percorrem contrato, direção, ciclo externo, etapa, frescor, reserva, dedupe, destinatário e gate final sem efeitos. O caso 10 existe somente para conferir a entrega ponta a ponta no celular secundário.", x: 1450, y: 610, wires: [],
 });
 inject("resident_notifications_test_reset", groups.test, "TESTE 1: reset", [{ p: "_location_test", v: "true", vt: "bool" }], 190, 680, [["resident_notifications_reset_test"]]);
 fn("resident_notifications_reset_test", groups.test, "Resetar recibos sintéticos", "resident-notifications-reset-test.js", 0, 450, 680, []);
@@ -217,6 +217,28 @@ fn("resident_notifications_test_adapter", groups.test, "Adaptar somente cenário
 linkOut("resident_notifications_test_event_out", groups.test, "security.arrival.v1 de TESTE → caminho real", "resident_notifications_event_in", 1040, 920);
 linkIn("resident_notifications_dry_run_in", groups.test, "Receber notificação TESTE", "resident_notifications_dry_run_out", "resident_notifications_dry_run_terminal", 1430, 780);
 fn("resident_notifications_dry_run_terminal", groups.test, "TESTE FINAL: nenhum push enviado", "resident-notifications-dry-run.js", 0, 1730, 780, []);
+inject("resident_notifications_test_delivery_secondary", groups.test,
+  "TESTE 10: enviar push real para mobile_secondary",
+  [{ p: "payload", v: "TESTE — confirmação do push de chegada para o celular.", vt: "str" }],
+  2110, 1080, [["resident_notifications_test_notify_secondary"]]);
+grouped(groups.test, {
+  id: "resident_notifications_test_notify_secondary", type: "api-call-service",
+  z: TAB, g: groups.test, name: "EFEITO DE TESTE: push real mobile_secondary",
+  server: SERVER, version: 7, debugenabled: false, action: "public_bindings.call",
+  floorId: [], areaId: [], deviceId: [], entityId: [], labelId: [],
+  data: '{"role":"mobile_secondary","action":"notify_actionable","data":{"title":"TESTE — Casa inteligente","message":"TESTE — confirmação do push de chegada para o celular.","data":{"tag":"resident-notification-delivery-test","push":{"sound":"default","interruption-level":"time-sensitive"}}}}',
+  dataType: "json", mergeContext: "", mustacheAltTags: false,
+  outputProperties: [], queue: "all", blockInputOverrides: true,
+  domain: "public_bindings", service: "call", x: 2450, y: 1080,
+  wires: [["resident_notifications_test_delivery_accepted"]],
+});
+grouped(groups.test, {
+  id: "resident_notifications_test_delivery_accepted", type: "debug", z: TAB,
+  g: groups.test, name: "TESTE: push mobile_secondary aceito pelo HA",
+  active: true, tosidebar: false, console: true, tostatus: false,
+  complete: "payload", targetType: "msg", statusVal: "", statusType: "auto",
+  x: 2770, y: 1080, wires: [],
+});
 
 next.push(...nodes);
 for (const [linkNode, target] of [

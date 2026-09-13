@@ -40,7 +40,7 @@ const tabNodes = flows.filter((node) => node.z === TAB);
 assert.ok(tabNodes.length >= 60);
 assert.equal(tabNodes.filter((node) => node.type === "server-state-changed").length, 0);
 assert.match(tab.info, /security\.arrival\.v1/);
-assert.match(tab.info, /Testes manuais nunca enviam push/);
+assert.match(tab.info, /somente o botão explicitamente marcado envia um push TESTE/);
 
 for (const id of [
   "resident_notifications_policy_switch",
@@ -262,6 +262,17 @@ for (const id of ["resident_notifications_notify_primary", "resident_notificatio
 }
 assert.match(byId.get("resident_notifications_notify_secondary").data, /"role":"mobile_secondary"/);
 assert.match(byId.get("resident_notifications_delivery_ack").name, /aceite do Home Assistant/);
+const deliveryTest = byId.get("resident_notifications_test_notify_secondary");
+assert.equal(deliveryTest.type, "api-call-service");
+assert.equal(deliveryTest.action, "public_bindings.call");
+assert.match(deliveryTest.data, /"role":"mobile_secondary"/);
+assert.match(deliveryTest.data, /"title":"TESTE/);
+assert.match(deliveryTest.data, /"message":"TESTE/);
+assert.match(deliveryTest.data, /"interruption-level":"time-sensitive"/);
+assert.deepEqual(
+  byId.get("resident_notifications_test_delivery_secondary").wires,
+  [["resident_notifications_test_notify_secondary"]],
+);
 for (const id of [
   "resident_notifications_test_primary",
   "resident_notifications_test_home",

@@ -289,6 +289,10 @@ fn("security_visual_arrival_final_confirmation", decision.id,
   1, 3660, 1700, [["security_visual_arrival_final_confirmation_out"]]);
 linkOut("security_visual_arrival_final_confirmation_out", decision.id,
   "Confirmar carro → coordenador", "6473697c19342f07", 3920, 1700);
+required("6473697c19342f07").links = [...new Set([
+  ...(required("6473697c19342f07").links ?? []),
+  "security_visual_arrival_final_confirmation_out",
+])];
 for (const [id, x, y] of [
   ["security_light_engine_bypass_reevaluate_in_v1", 160, 1600],
   ["light_arrival_replay_gate_in_v1", 160, 1820],
