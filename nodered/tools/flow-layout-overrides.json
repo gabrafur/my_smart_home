@@ -4,7 +4,7 @@
   "canvases": {
     "recorder_retention_tab": {
       "label": "recorder_retention",
-      "compact_groups": true,
+      "compact_groups": false,
       "nodes": {
         "recorder_retention_group_config": {
           "x": 124,
@@ -9399,7 +9399,7 @@
     },
     "global_flow_observer_tab": {
       "label": "observabilidade_global",
-      "compact_groups": true,
+      "compact_groups": false,
       "nodes": {
         "global_observer_production_group": {
           "x": 14,

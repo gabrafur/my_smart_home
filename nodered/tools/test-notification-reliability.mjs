@@ -110,7 +110,7 @@ const seed = {
   "sensor.codex_limite_disponivel": "31",
   "sensor.codex_proximo_reset": "2026-08-20T00:00:00Z",
 };
-const snapshots = memory({ codex_alert_test_state_v1: { values: seed, ready: true, sequence: 0 } });
+const snapshots = memory({ codex_alert_test_state_v2: { values: seed, last_valid_values: { ...seed }, ready: true, sequence: 0 } });
 const accumulated = run("codex_alert_logic", {
   test_mode: true,
   payload: { test_mode: true, entity_id: "sensor.codex_limite_usado", state: "71", previous: "69" },
@@ -118,7 +118,23 @@ const accumulated = run("codex_alert_logic", {
 assert.equal(accumulated.result.snapshot.ready, true);
 assert.equal(accumulated.result.snapshot.current, "71");
 assert.equal(accumulated.result.snapshot.previous, "69");
-assert.equal(snapshots.get("codex_alertas_state_v2"), undefined, "TESTE não pode tocar snapshot de produção");
+assert.equal(snapshots.get("codex_alertas_state_v3"), undefined, "TESTE não pode tocar snapshot de produção");
+
+const transientSnapshots = memory({ codex_alert_test_state_v2: {
+  values: seed, last_valid_values: { ...seed, "sensor.codex_previsao_ate_o_reset": "não aguenta" }, ready: true, sequence: 2,
+} });
+const unavailableForecast = run("codex_alert_logic", {
+  test_mode: true,
+  payload: { test_mode: true, entity_id: "sensor.codex_previsao_ate_o_reset", state: "unavailable", previous: "não aguenta" },
+}, transientSnapshots);
+assert.equal(unavailableForecast.result.snapshot.current, "unavailable");
+assert.equal(unavailableForecast.result.snapshot.previous, "não aguenta");
+const restoredForecast = run("codex_alert_logic", {
+  test_mode: true,
+  payload: { test_mode: true, entity_id: "sensor.codex_previsao_ate_o_reset", state: "não aguenta", previous: "unavailable" },
+}, transientSnapshots);
+assert.equal(restoredForecast.result.snapshot.previous, "não aguenta");
+assert.equal(run("codex_forecast_decision", restoredForecast.result).result.decision.kind, "");
 
 for (const [current, previous, expected] of [
   ["70", "69", "usage_warning"], ["90", "89", "critical"],
@@ -135,10 +151,23 @@ assert.equal(run("codex_credits_decision", { snapshot: { current: "9", previous:
 assert.equal(run("codex_credits_decision", { snapshot: { current: "10", previous: "11" }, policy: validPolicy }).result.decision.kind, "");
 for (const [current, previous, expected] of [
   ["atenção", "aguenta", "forecast_warning"],
-  ["não aguenta", "atenção", "critical"],
+  ["não aguenta", "atenção", "forecast_critical"],
+  ["não aguenta", "aguenta", "forecast_critical"],
+  ["não aguenta", "unavailable", ""],
+  ["não aguenta", "dados insuficientes", ""],
   ["aguenta", "não aguenta", "recovery"],
   ["aguenta", "aguenta", ""],
 ]) assert.equal(run("codex_forecast_decision", { snapshot: { current, previous } }).result.decision.kind, expected);
+
+const forecastCandidate = run("codex_build_alert", {
+  test_mode: false, decision: { kind: "forecast_critical" },
+  snapshot: { values: { ...seed, "sensor.codex_limite_usado": "29", "sensor.codex_ritmo_do_limite": "52,48" }, sequence: 1 },
+  policy: validPolicy,
+});
+assert.equal(forecastCandidate.result.alert.kind, "forecast_critical");
+assert.match(forecastCandidate.result.alert.title, /ritmo pode esgotar/);
+assert.doesNotMatch(forecastCandidate.result.alert.title, /limite crítico/);
+assert.match(forecastCandidate.result.alert.message, /uso atual 29%/);
 
 const deliveryMemory = memory();
 const candidate = run("codex_build_alert", {

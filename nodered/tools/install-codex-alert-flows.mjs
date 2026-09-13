@@ -131,14 +131,35 @@ return null;`;
 
 const accumulate = String.raw`const REQUIRED = ${JSON.stringify(monitored)};
 const testMode = msg.test_mode === true || msg.payload?.test_mode === true;
-const key = testMode ? "codex_alert_test_state_v1" : "codex_alertas_state_v2";
-let state = flow.get(key, "persistent") || { values: {}, ready: false, sequence: 0 };
+const key = testMode ? "codex_alert_test_state_v2" : "codex_alertas_state_v3";
+let state = flow.get(key, "persistent");
+if (!state || typeof state !== "object") {
+    const legacy = testMode
+        ? flow.get("codex_alert_test_state_v1", "persistent")
+        : flow.get("codex_alertas_state_v2", "persistent");
+    const values = legacy?.values && typeof legacy.values === "object" ? { ...legacy.values } : {};
+    const valid = (value) => !["", "unknown", "unavailable", "none", "null"].includes(String(value ?? "").trim().toLowerCase());
+    state = {
+        values,
+        last_valid_values: Object.fromEntries(Object.entries(values).filter(([, value]) => valid(value))),
+        ready: legacy?.ready === true,
+        sequence: Number(legacy?.sequence) || 0,
+        migrated_from: legacy ? (testMode ? "v1" : "v2") : null
+    };
+}
+state.values = state.values && typeof state.values === "object" ? state.values : {};
+state.last_valid_values = state.last_valid_values && typeof state.last_valid_values === "object" ? state.last_valid_values : {};
 const event = msg.payload && typeof msg.payload === "object" ? msg.payload : {};
 const entity = String(event.entity_id ?? "");
-let previous = entity ? state.values[entity] : undefined;
+let previous = entity ? state.last_valid_values[entity] : undefined;
 if (entity && REQUIRED.includes(entity)) {
-    if (Object.prototype.hasOwnProperty.call(event, "previous")) previous = String(event.previous ?? "");
-    state.values[entity] = String(event.state ?? "");
+    const current = String(event.state ?? "");
+    const currentIsValid = !["", "unknown", "unavailable", "none", "null"].includes(current.trim().toLowerCase());
+    state.values[entity] = current;
+    if (currentIsValid) {
+        if (!Object.prototype.hasOwnProperty.call(state.last_valid_values, entity)) previous = current;
+        state.last_valid_values[entity] = current;
+    }
 }
 state.ready = REQUIRED.every((id) => Object.prototype.hasOwnProperty.call(state.values, id));
 state.sequence += 1;
@@ -158,8 +179,8 @@ const forecastDecision = String.raw`const current = String(msg.snapshot?.current
 const previous = String(msg.snapshot?.previous ?? "");
 msg.decision = { kind: "", reason: "no_transition" };
 if (current !== previous) {
-    if (current === "não aguenta") msg.decision = { kind: "critical", reason: "forecast_risk" };
-    else if (current === "atenção") msg.decision = { kind: "forecast_warning", reason: "forecast_attention" };
+    if (current === "não aguenta" && ["aguenta", "atenção"].includes(previous)) msg.decision = { kind: "forecast_critical", reason: "forecast_risk" };
+    else if (current === "atenção" && previous === "aguenta") msg.decision = { kind: "forecast_warning", reason: "forecast_attention" };
     else if (current === "aguenta" && ["atenção", "não aguenta"].includes(previous)) msg.decision = { kind: "recovery", reason: "forecast_recovered" };
 }
 return msg;`;
@@ -189,6 +210,7 @@ const kind = msg.decision?.kind;
 const now = msg.test_mode === true && Number.isFinite(Number(msg._test_now_ms)) ? Number(msg._test_now_ms) : Date.now();
 const table = {
     critical: ["Codex — limite crítico", "🚨 Uso chegou a " + (values["sensor.codex_limite_usado"] || "?") + "%. Restam " + (values["sensor.codex_limite_disponivel"] || "?") + "% até o reset."],
+    forecast_critical: ["Codex — ritmo pode esgotar o limite", "⚠️ Projeção de ritmo: uso atual " + (values["sensor.codex_limite_usado"] || "?") + "%, ritmo " + (values["sensor.codex_ritmo_do_limite"] || "?") + "%/dia e projeção " + (values["sensor.codex_uso_projetado_no_reset"] || "?") + "% no reset."],
     forecast_warning: ["Codex — pouca folga até o reset", "⚠️ Ritmo atual: " + (values["sensor.codex_ritmo_do_limite"] || "?") + "%/dia. Uso projetado: " + (values["sensor.codex_uso_projetado_no_reset"] || "?") + "%."],
     recovery: ["Codex — autonomia recuperada", "✅ O ritmo voltou a ser sustentável até o reset. Folga projetada: " + (values["sensor.codex_folga_projetada_no_reset"] || "?") + "%."],
     usage_warning: ["Codex — limite em atenção", "⚠️ Uso chegou a " + (values["sensor.codex_limite_usado"] || "?") + "%. Folga projetada: " + (values["sensor.codex_folga_projetada_no_reset"] || "?") + "%."],
@@ -279,7 +301,7 @@ const testReset = String.raw`const values = {
     "sensor.codex_limite_disponivel": "31",
     "sensor.codex_proximo_reset": "2026-08-20T00:00:00Z"
 };
-flow.set("codex_alert_test_state_v1", { values, ready: true, sequence: 0 }, "persistent");
+flow.set("codex_alert_test_state_v2", { values, last_valid_values: { ...values }, ready: true, sequence: 0 }, "persistent");
 flow.set("codex_alert_delivery_test_v1", { sent: {}, pending: null }, "persistent");
 node.status({ fill: "blue", shape: "dot", text: "estado TESTE pronto" });
 return null;`;
