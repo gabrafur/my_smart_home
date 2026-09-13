@@ -29,8 +29,13 @@ class StorageMaintenanceMetricsTests(unittest.TestCase):
                         "inodes_used": 10,
                         "docker_logical_bytes": 200,
                         "docker_images_logical_bytes": 180,
+                        "docker_build_cache_logical_bytes": 120,
+                        "docker_build_cache_reclaimable_bytes": 40,
                         "docker_unused_tagged_logical_bytes": 80,
                         "docker_unused_untagged_logical_bytes": 10,
+                        "docker_reclaimable_untagged_logical_bytes": 6,
+                        "docker_protected_untagged_logical_bytes": 3,
+                        "docker_recent_untagged_logical_bytes": 1,
                         "known_logs_bytes": 20,
                         "repository_bytes": 300,
                         "vscode_server_logical_bytes": 400,
@@ -39,9 +44,12 @@ class StorageMaintenanceMetricsTests(unittest.TestCase):
                         "allowlisted_user_caches_logical_bytes": 60,
                         "pm2_logs_logical_bytes": 7,
                         "home_assistant_recorder_logical_bytes": 500,
+                        "home_assistant_recorder_reclaimable_bytes": 200,
                         "home_assistant_backups_logical_bytes": 600,
                         "home_assistant_backup_archives_logical_bytes": 250,
                         "home_assistant_manual_snapshots_logical_bytes": 350,
+                        "home_assistant_expired_manual_snapshots_logical_bytes": 150,
+                        "home_assistant_manual_snapshot_retention_days": 14,
                         "deleted_open_bytes": 0,
                         "deleted_open_count": 0,
                         "deleted_open_scan_complete": False,
@@ -63,10 +71,16 @@ class StorageMaintenanceMetricsTests(unittest.TestCase):
                 metrics = HEALTH.storage_maintenance_metrics()
 
         self.assertEqual(metrics["storage_maintenance_docker_logical_bytes"], 200)
+        self.assertEqual(metrics["storage_maintenance_docker_build_cache_reclaimable_bytes"], 40)
+        self.assertEqual(metrics["storage_maintenance_docker_reclaimable_untagged_logical_bytes"], 6)
+        self.assertEqual(metrics["storage_maintenance_docker_protected_untagged_logical_bytes"], 3)
         self.assertEqual(metrics["storage_maintenance_vscode_server_logical_bytes"], 400)
         self.assertEqual(metrics["storage_maintenance_cursor_server_logical_bytes"], 0)
         self.assertEqual(metrics["storage_maintenance_home_assistant_backup_archives_logical_bytes"], 250)
         self.assertEqual(metrics["storage_maintenance_home_assistant_manual_snapshots_logical_bytes"], 350)
+        self.assertEqual(metrics["storage_maintenance_home_assistant_recorder_reclaimable_bytes"], 200)
+        self.assertEqual(metrics["storage_maintenance_home_assistant_expired_manual_snapshots_logical_bytes"], 150)
+        self.assertEqual(metrics["storage_maintenance_home_assistant_manual_snapshot_retention_days"], 14)
         self.assertFalse(metrics["storage_maintenance_deleted_open_scan_complete"])
         self.assertEqual(
             metrics["storage_maintenance_last_reclaimed_by_category"],

@@ -9,7 +9,7 @@
         "recorder_retention_group_config": {
           "x": 124,
           "y": 39,
-          "w": 1292,
+          "w": 1740,
           "h": 292
         },
         "recorder_retention_group_capture": {
@@ -195,6 +195,18 @@
         "recorder_retention_policy_warmup_days": {
           "x": 600,
           "y": 260
+        },
+        "recorder_retention_policy_repack_min_mib": {
+          "x": 1550,
+          "y": 140
+        },
+        "recorder_retention_policy_repack_min_percent": {
+          "x": 1550,
+          "y": 270
+        },
+        "recorder_retention_policy_repack_updates_out": {
+          "x": 1750,
+          "y": 205
         },
         "recorder_retention_policy_updates_out": {
           "x": 790,

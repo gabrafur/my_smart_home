@@ -21,8 +21,10 @@ const memoryFlow = (initial = {}) => {
 const runtimeNode = () => ({ statuses: [], errors: [], logs: [], status(value) { this.statuses.push(value); }, error(value) { this.errors.push(value); }, log(value) { this.logs.push(value); } });
 const compile = (id) => new Function("msg", "flow", "node", "context", "env", node(id).func);
 
-assert.equal(node("recorder_retention_schedule").crontab, "15 01 * * *");
+assert.equal(node("recorder_retention_schedule").crontab, "15 08 * * *");
 assert.match(node("recorder_retention_schedule").info, /backup nativo do Home Assistant/);
+assert.match(node("recorder_retention_schedule").info, /não disputem o lock do Recorder/);
+assert.match(node("recorder_retention_schedule").info, /margem para retries/);
 assert.match(recorderPackage, /command_timeout:\s*15\b/);
 assert.match(recorderPackage, /recorder_retention_cycle_started_at:/);
 assert.equal(node("recorder_retention_cycle_marker").action, "input_number.set_value");
@@ -36,6 +38,10 @@ assert.equal(node("recorder_retention_policy_absolute_tolerance").payload, "0.5"
 assert.equal(node("recorder_retention_policy_relative_percent").payload, "1");
 assert.equal(node("recorder_retention_policy_mad_multiplier").payload, "3");
 assert.equal(node("recorder_retention_policy_warmup_days").payload, "2");
+assert.equal(node("recorder_retention_policy_repack_min_mib").payload, "256");
+assert.equal(node("recorder_retention_policy_repack_min_percent").payload, "20");
+assert.deepEqual(node("recorder_retention_policy_repack_updates_out").links, ["recorder_retention_policy_updates_in"]);
+assert.ok(node("recorder_retention_policy_updates_in").links.includes("recorder_retention_policy_repack_updates_out"));
 assert.equal(node("recorder_retention_purge").action, "recorder.purge_entities");
 assert.equal(node("recorder_retention_repack").action, "recorder.purge");
 assert.deepEqual(node("recorder_retention_repack_status").outputProperties.map((entry) => entry.valueType), ["entityState", "entity"]);
@@ -81,12 +87,15 @@ for (const [topic, payload] of [
   ["numericRelativeTolerancePercent", 1],
   ["madMultiplier", 3],
   ["warmupDays", 2],
+  ["repackMinMiB", 256],
+  ["repackMinPercent", 20],
 ]) configure({ topic, payload }, flow, runtimeNode(), {}, {});
 const policy = flow.get("recorder_retention_policy_v2");
 assert.equal(policy.complete, true);
 assert.equal(policy.baselineIntervalMs, 6 * 60 * 60 * 1000);
 assert.equal(policy.numericRelativeTolerance, 0.01);
 assert.equal(policy.warmupMs, 2 * 24 * 60 * 60 * 1000);
+assert.equal(policy.repackMinBytes, 256 * 1024 * 1024);
 for (const [topic, payload] of [
   ["rawRetentionDays", 0],
   ["compactRetentionDays", 181],
@@ -95,6 +104,8 @@ for (const [topic, payload] of [
   ["numericRelativeTolerancePercent", 10.1],
   ["madMultiplier", 0.9],
   ["warmupDays", 15],
+  ["repackMinMiB", 63],
+  ["repackMinPercent", 81],
 ]) {
   const before = JSON.stringify(flow.get("recorder_retention_policy_v2"));
   const errors = runtimeNode();
@@ -139,8 +150,19 @@ assert.deepEqual(testDispatch[1].payload, { simulated: true, dispatched: false, 
 const productionDispatch = guard({ payload: warm[0].payload[1] }, flow, runtimeNode(), {}, {});
 assert.equal(productionDispatch[0].payload.keep_days, 2);
 assert.ok(Array.isArray(productionDispatch[0].payload.entity_id));
-const repackDryRun = repackEvaluate({ test_mode: true, payload: "ready", recorderRetention: { targetKeys: ["codex_diagnostics"], compactRetentionDays: 30 }, data: { attributes: { pending_targets: [] } } }, flow, runtimeNode(), {}, {});
-assert.deepEqual(repackDryRun[2].payload, { simulated: true, dispatched: false, action: "recorder.purge", repack: true, ready: true });
+const repackContract = { targetKeys: ["codex_diagnostics"], compactRetentionDays: 30, repackMinBytes: 256 * 1024 * 1024, repackMinPercent: 20 };
+const repackDryRun = repackEvaluate({ test_mode: true, payload: "ready", recorderRetention: repackContract, data: { attributes: { pending_targets: [], reclaimable_bytes: 300 * 1024 * 1024, reclaimable_percent: 30 } } }, flow, runtimeNode(), {}, {});
+assert.deepEqual(repackDryRun[2].payload, { simulated: true, dispatched: false, action: "recorder.purge", repack: true, ready: true, metrics_valid: true });
+const repackSkippedDryRun = repackEvaluate({ test_mode: true, payload: "ready", recorderRetention: repackContract, data: { attributes: { pending_targets: [], reclaimable_bytes: 128 * 1024 * 1024, reclaimable_percent: 30 } } }, flow, runtimeNode(), {}, {});
+assert.deepEqual(repackSkippedDryRun[2].payload, { simulated: true, dispatched: false, action: "recorder.purge", repack: false, ready: true, metrics_valid: true });
+flow.set("recorder_retention_active_cycle_v1", { id: "skip-cycle", phase: "purging" });
+const repackSkipped = repackEvaluate({ payload: "ready", recorderRetention: { ...repackContract, cycleId: "skip-cycle" }, data: { attributes: { pending_targets: [], reclaimable_bytes: 128 * 1024 * 1024, reclaimable_percent: 30 } } }, flow, runtimeNode(), {}, {});
+assert.deepEqual(repackSkipped, [null, null, null]);
+assert.equal(flow.get("recorder_retention_active_cycle_v1").phase, "repack_skipped");
+flow.set("recorder_retention_active_cycle_v1", { id: "repack-cycle", phase: "purging" });
+const repackRequested = repackEvaluate({ payload: "ready", recorderRetention: { ...repackContract, cycleId: "repack-cycle" }, data: { attributes: { pending_targets: [], reclaimable_bytes: 300 * 1024 * 1024, reclaimable_percent: 30 } } }, flow, runtimeNode(), {}, {});
+assert.deepEqual(repackRequested[0].payload, { keep_days: 30, repack: true, apply_filter: false });
+assert.equal(flow.get("recorder_retention_active_cycle_v1").phase, "repack_queued");
 const repackWait = repackEvaluate({ payload: "pending", recorderRetention: { targetKeys: ["codex_diagnostics"] }, data: { attributes: { pending_targets: ["codex_diagnostics"] } } }, flow, runtimeNode(), {}, {});
 assert.ok(repackWait[1], "repack aguarda enquanto a fila do alvo ainda tiver linhas");
 const repackPendingWithoutAttributes = repackEvaluate({ payload: "pending", recorderRetention: { targetKeys: ["codex_diagnostics"] } }, flow, runtimeNode(), {}, {});

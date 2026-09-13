@@ -19,6 +19,7 @@ JOURNALCTL_BIN="${STORAGE_MAINTENANCE_JOURNALCTL_BIN-journalctl}"
 APT_GET_BIN="${STORAGE_MAINTENANCE_APT_GET_BIN-apt-get}"
 NPM_BIN="${STORAGE_MAINTENANCE_NPM_BIN-npm}"
 PYTHON_BIN="${STORAGE_MAINTENANCE_PYTHON_BIN-python3}"
+SQLITE3_BIN="${STORAGE_MAINTENANCE_SQLITE3_BIN-sqlite3}"
 USER_HOME="${STORAGE_MAINTENANCE_USER_HOME-/home/gabriel}"
 USER_CACHE_ROOT="${STORAGE_MAINTENANCE_USER_CACHE_ROOT-$USER_HOME/.cache}"
 NPM_CACHE_ROOT="${STORAGE_MAINTENANCE_NPM_CACHE_ROOT-$USER_HOME/.npm}"
@@ -39,6 +40,7 @@ HA_BACKUP_KEEP_COUNT="${STORAGE_MAINTENANCE_HA_BACKUP_KEEP_COUNT-2}"
 HA_CONFIG_ROOT="${STORAGE_MAINTENANCE_HA_CONFIG_ROOT-$REPO_ROOT/homeassistant}"
 HA_BACKUP_ROOT="${STORAGE_MAINTENANCE_HA_BACKUP_ROOT-$HA_CONFIG_ROOT/backups}"
 HA_CONTAINER="${STORAGE_MAINTENANCE_HA_CONTAINER-homeassistant}"
+RECORDER_DB="${STORAGE_MAINTENANCE_RECORDER_DB-$REPO_ROOT/homeassistant/home-assistant_v2.db}"
 PM2_LOG_MAX_BYTES="${STORAGE_MAINTENANCE_PM2_LOG_MAX_BYTES-10485760}"
 PM2_LOG_RETENTION_FILES="${STORAGE_MAINTENANCE_PM2_LOG_RETENTION_FILES-7}"
 VSCODE_KEEP_VERSIONS="${STORAGE_MAINTENANCE_VSCODE_KEEP_VERSIONS-2}"
@@ -314,6 +316,7 @@ validate_safe_absolute "$VSCODE_ROOT" vscode-root
 validate_safe_absolute "$CURSOR_ROOT" cursor-root
 validate_existing_directory "$HA_CONFIG_ROOT" home-assistant-config-root
 validate_safe_absolute "$HA_BACKUP_ROOT" home-assistant-backup-root
+validate_safe_absolute "$RECORDER_DB" recorder-db
 [[ "$HA_CONTAINER" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || die "home-assistant-container-name-invalid" 65
 validate_safe_absolute "$METRICS_FILE" metrics-file
 metrics_parent=$(dirname "$METRICS_FILE")
@@ -1058,25 +1061,52 @@ docker_total_bytes() {
   printf '%s\n' "$total"
 }
 
+docker_system_df_bytes() {
+  local type=$1 field=$2 line value
+  if ! docker_available; then printf '0\n'; return; fi
+  while IFS= read -r line; do
+    [[ "$line" == *"\"Type\":\"$type\""* ]] || continue
+    value=$(sed -n "s/.*\"$field\":\"\([^\"]*\)\".*/\1/p" <<<"$line")
+    value=${value%% *}
+    human_size_to_bytes "$value"
+    return
+  done < <("$DOCKER_BIN" system df --format '{{json .}}')
+  printf '0\n'
+}
+
 docker_image_metrics() {
-  local id repository tag containers size total=0 unused_tagged=0 unused_untagged=0
+  local id repository tag containers size created created_epoch cutoff_epoch
+  local total=0 unused_tagged=0 unused_untagged=0 reclaimable_untagged=0 protected_untagged=0 recent_untagged=0
   local -A seen=()
-  if ! docker_available; then printf '0 0 0\n'; return; fi
+  if ! docker_available; then printf '0 0 0 0 0 0\n'; return; fi
+  total=$(docker_system_df_bytes Images Size)
+  cutoff_epoch=$(date -u -d "$MIN_AGE_HOURS hours ago" +%s)
   "$DOCKER_BIN" image ls --all --no-trunc --format '{{.ID}}\t{{.Repository}}\t{{.Tag}}\t{{.Containers}}' |
     while IFS=$'\t' read -r id repository tag containers; do
       [[ -z ${seen[$id]+x} ]] || continue
       seen[$id]=1
-      size=$($DOCKER_BIN image inspect -f '{{.Size}}' "$id" 2>/dev/null || printf '0')
+      size=$("$DOCKER_BIN" image inspect -f '{{.Size}}' "$id" 2>/dev/null || printf '0')
       is_uint "$size" || size=0
-      total=$((total + size))
       [[ "$containers" == 0 ]] || continue
       if [[ "$tag" == '<none>' ]]; then
         unused_untagged=$((unused_untagged + size))
+        if docker_image_referenced_by_repository "$id"; then
+          protected_untagged=$((protected_untagged + size))
+          continue
+        fi
+        created=$("$DOCKER_BIN" image inspect -f '{{.Created}}' "$id" 2>/dev/null || true)
+        created_epoch=$(date -u -d "$created" +%s 2>/dev/null || printf '0')
+        if (( created_epoch > 0 && created_epoch <= cutoff_epoch )); then
+          reclaimable_untagged=$((reclaimable_untagged + size))
+        else
+          recent_untagged=$((recent_untagged + size))
+        fi
       else
         unused_tagged=$((unused_tagged + size))
       fi
     done
-  printf '%s %s %s\n' "$total" "$unused_tagged" "$unused_untagged"
+  printf '%s %s %s %s %s %s\n' \
+    "$total" "$unused_tagged" "$unused_untagged" "$reclaimable_untagged" "$protected_untagged" "$recent_untagged"
 }
 
 home_assistant_backup_bytes() {
@@ -1098,6 +1128,24 @@ home_assistant_manual_snapshot_bytes() {
   [[ -d "$root" && ! -L "$root" ]] || { printf '0\n'; return; }
   find "$root" -xdev -maxdepth 1 -type f -name '*.db' -printf '%s\n' 2>/dev/null |
     awk '{total += $1} END {print total + 0}'
+}
+
+home_assistant_expired_manual_snapshot_bytes() {
+  local root="$HA_BACKUP_ROOT"
+  [[ -d "$root" && ! -L "$root" ]] || { printf '0\n'; return; }
+  find "$root" -xdev -maxdepth 1 -type f -name '*.db' -mtime "+$HA_BACKUP_RETENTION_DAYS" -printf '%s\n' 2>/dev/null |
+    awk '{total += $1} END {print total + 0}'
+}
+
+home_assistant_recorder_reclaimable_bytes() {
+  local values page_size freelist_count
+  [[ -f "$RECORDER_DB" && ! -L "$RECORDER_DB" ]] || { printf '0\n'; return; }
+  command -v "$SQLITE3_BIN" >/dev/null 2>&1 || { printf '0\n'; return; }
+  values=$("$SQLITE3_BIN" -readonly -cmd '.timeout 1000' "$RECORDER_DB" 'PRAGMA page_size; PRAGMA freelist_count;' 2>/dev/null || true)
+  page_size=$(sed -n '1p' <<<"$values")
+  freelist_count=$(sed -n '2p' <<<"$values")
+  is_uint "$page_size" && is_uint "$freelist_count" || { printf '0\n'; return; }
+  printf '%s\n' "$((page_size * freelist_count))"
 }
 
 allowlisted_user_cache_bytes() {
@@ -1123,8 +1171,8 @@ known_logs_bytes() {
 
 write_metrics() {
   local result=$1 reclaimed=$2 total used free used_percent inode_total inode_free inode_used docker_bytes logs_bytes repo_bytes now inode_summary
-  local vscode_bytes cursor_bytes npm_bytes user_cache_bytes pm2_bytes recorder_bytes backup_bytes backup_archive_bytes manual_snapshot_bytes deleted_count deleted_bytes deleted_inaccessible
-  local docker_images_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes category category_json separator
+  local vscode_bytes cursor_bytes npm_bytes user_cache_bytes pm2_bytes recorder_bytes recorder_reclaimable_bytes backup_bytes backup_archive_bytes manual_snapshot_bytes expired_manual_snapshot_bytes deleted_count deleted_bytes deleted_inaccessible
+  local docker_images_bytes docker_build_cache_bytes docker_build_cache_reclaimable_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes docker_reclaimable_untagged_bytes docker_protected_untagged_bytes docker_recent_untagged_bytes category category_json separator
   [[ "$MODE" == apply ]] || return 0
   total=$(df -P -B1 "$FILESYSTEM" | awk 'NR == 2 {print $2}')
   used=$(filesystem_used_bytes)
@@ -1134,7 +1182,9 @@ write_metrics() {
   read -r inode_total inode_free <<<"$inode_summary"
   inode_used=$((inode_total - inode_free))
   docker_bytes=$(docker_total_bytes)
-  read -r docker_images_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes < <(docker_image_metrics)
+  read -r docker_images_bytes docker_unused_tagged_bytes docker_unused_untagged_bytes docker_reclaimable_untagged_bytes docker_protected_untagged_bytes docker_recent_untagged_bytes < <(docker_image_metrics)
+  docker_build_cache_bytes=$(docker_system_df_bytes 'Build Cache' Size)
+  docker_build_cache_reclaimable_bytes=$(docker_system_df_bytes 'Build Cache' Reclaimable)
   logs_bytes=$(known_logs_bytes)
   repo_bytes=$(bytes_for_path "$REPO_ROOT")
   vscode_bytes=$(logical_bytes_for_path "$VSCODE_ROOT")
@@ -1142,10 +1192,12 @@ write_metrics() {
   npm_bytes=$(logical_bytes_for_path "$NPM_CACHE_ROOT")
   user_cache_bytes=$(allowlisted_user_cache_bytes)
   pm2_bytes=$(pm2_log_bytes)
-  recorder_bytes=$(logical_bytes_for_path "$REPO_ROOT/homeassistant/home-assistant_v2.db")
+  recorder_bytes=$(logical_bytes_for_path "$RECORDER_DB")
+  recorder_reclaimable_bytes=$(home_assistant_recorder_reclaimable_bytes)
   backup_bytes=$(home_assistant_backup_bytes)
   backup_archive_bytes=$(home_assistant_backup_archive_bytes)
   manual_snapshot_bytes=$(home_assistant_manual_snapshot_bytes)
+  expired_manual_snapshot_bytes=$(home_assistant_expired_manual_snapshot_bytes)
   read -r deleted_count deleted_bytes deleted_inaccessible < <(deleted_open_metrics)
   category_json='{'
   separator=''
@@ -1157,8 +1209,8 @@ write_metrics() {
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   METRICS_TEMP=$(mktemp "$metrics_parent/.storage-maintenance-status.XXXXXX")
   chmod 0644 "$METRICS_TEMP"
-  printf '{\n  "schema_version": 1,\n  "filesystem_total_bytes": %s,\n  "filesystem_used_bytes": %s,\n  "filesystem_free_bytes": %s,\n  "filesystem_used_percent": %s,\n  "inodes_total": %s,\n  "inodes_used": %s,\n  "docker_logical_bytes": %s,\n  "docker_images_logical_bytes": %s,\n  "docker_unused_tagged_logical_bytes": %s,\n  "docker_unused_untagged_logical_bytes": %s,\n  "known_logs_bytes": %s,\n  "repository_bytes": %s,\n  "vscode_server_logical_bytes": %s,\n  "cursor_server_logical_bytes": %s,\n  "npm_cache_logical_bytes": %s,\n  "allowlisted_user_caches_logical_bytes": %s,\n  "pm2_logs_logical_bytes": %s,\n  "home_assistant_recorder_logical_bytes": %s,\n  "home_assistant_backups_logical_bytes": %s,\n  "home_assistant_backup_archives_logical_bytes": %s,\n  "home_assistant_manual_snapshots_logical_bytes": %s,\n  "deleted_open_bytes": %s,\n  "deleted_open_count": %s,\n  "deleted_open_scan_complete": %s,\n  "last_maintenance_at": "%s",\n  "phase2_last_maintenance_at": "%s",\n  "last_reclaimed_bytes": %s,\n  "last_filesystem_net_reclaimed_bytes": %s,\n  "last_reclaimed_by_category": %s,\n  "last_result": "%s"\n}\n' \
-    "$total" "$used" "$free" "$used_percent" "$inode_total" "$inode_used" "$docker_bytes" "$docker_images_bytes" "$docker_unused_tagged_bytes" "$docker_unused_untagged_bytes" "$logs_bytes" "$repo_bytes" "$vscode_bytes" "$cursor_bytes" "$npm_bytes" "$user_cache_bytes" "$pm2_bytes" "$recorder_bytes" "$backup_bytes" "$backup_archive_bytes" "$manual_snapshot_bytes" "$deleted_bytes" "$deleted_count" "$([[ $deleted_inaccessible -eq 0 ]] && echo true || echo false)" "$now" "$now" "$reclaimed" "$reclaimed" "$category_json" "$result" > "$METRICS_TEMP"
+  printf '{\n  "schema_version": 1,\n  "filesystem_total_bytes": %s,\n  "filesystem_used_bytes": %s,\n  "filesystem_free_bytes": %s,\n  "filesystem_used_percent": %s,\n  "inodes_total": %s,\n  "inodes_used": %s,\n  "docker_logical_bytes": %s,\n  "docker_images_logical_bytes": %s,\n  "docker_build_cache_logical_bytes": %s,\n  "docker_build_cache_reclaimable_bytes": %s,\n  "docker_unused_tagged_logical_bytes": %s,\n  "docker_unused_untagged_logical_bytes": %s,\n  "docker_reclaimable_untagged_logical_bytes": %s,\n  "docker_protected_untagged_logical_bytes": %s,\n  "docker_recent_untagged_logical_bytes": %s,\n  "known_logs_bytes": %s,\n  "repository_bytes": %s,\n  "vscode_server_logical_bytes": %s,\n  "cursor_server_logical_bytes": %s,\n  "npm_cache_logical_bytes": %s,\n  "allowlisted_user_caches_logical_bytes": %s,\n  "pm2_logs_logical_bytes": %s,\n  "home_assistant_recorder_logical_bytes": %s,\n  "home_assistant_recorder_reclaimable_bytes": %s,\n  "home_assistant_backups_logical_bytes": %s,\n  "home_assistant_backup_archives_logical_bytes": %s,\n  "home_assistant_manual_snapshots_logical_bytes": %s,\n  "home_assistant_expired_manual_snapshots_logical_bytes": %s,\n  "home_assistant_manual_snapshot_retention_days": %s,\n  "deleted_open_bytes": %s,\n  "deleted_open_count": %s,\n  "deleted_open_scan_complete": %s,\n  "last_maintenance_at": "%s",\n  "phase2_last_maintenance_at": "%s",\n  "last_reclaimed_bytes": %s,\n  "last_filesystem_net_reclaimed_bytes": %s,\n  "last_reclaimed_by_category": %s,\n  "last_result": "%s"\n}\n' \
+    "$total" "$used" "$free" "$used_percent" "$inode_total" "$inode_used" "$docker_bytes" "$docker_images_bytes" "$docker_build_cache_bytes" "$docker_build_cache_reclaimable_bytes" "$docker_unused_tagged_bytes" "$docker_unused_untagged_bytes" "$docker_reclaimable_untagged_bytes" "$docker_protected_untagged_bytes" "$docker_recent_untagged_bytes" "$logs_bytes" "$repo_bytes" "$vscode_bytes" "$cursor_bytes" "$npm_bytes" "$user_cache_bytes" "$pm2_bytes" "$recorder_bytes" "$recorder_reclaimable_bytes" "$backup_bytes" "$backup_archive_bytes" "$manual_snapshot_bytes" "$expired_manual_snapshot_bytes" "$HA_BACKUP_RETENTION_DAYS" "$deleted_bytes" "$deleted_count" "$([[ $deleted_inaccessible -eq 0 ]] && echo true || echo false)" "$now" "$now" "$reclaimed" "$reclaimed" "$category_json" "$result" > "$METRICS_TEMP"
   mv -f -- "$METRICS_TEMP" "$METRICS_FILE"
   METRICS_TEMP=""
   log "metric status_file=$METRICS_FILE"

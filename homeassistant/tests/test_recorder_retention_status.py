@@ -50,6 +50,13 @@ class RecorderRetentionStatusTest(unittest.TestCase):
     def test_reads_persisted_cycle_marker(self) -> None:
         self.assertEqual(MODULE.read_cycle_started_at(self.connection), self.cycle_started_at)
 
+    def test_reports_raw_space_without_embedding_repack_policy(self) -> None:
+        metrics = MODULE.database_space_metrics(self.connection)
+        self.assertGreater(metrics["database_bytes"], 0)
+        self.assertGreaterEqual(metrics["reclaimable_bytes"], 0)
+        self.assertGreaterEqual(metrics["reclaimable_percent"], 0)
+        self.assertNotIn("repack_recommended", metrics)
+
     def test_rows_eligible_at_cycle_start_block_readiness(self) -> None:
         cutoff = self.cycle_started_at - 2 * 24 * 60 * 60
         self.connection.execute("INSERT INTO states VALUES (?, ?, ?, ?)", (2, 2, "old", cutoff - 1))

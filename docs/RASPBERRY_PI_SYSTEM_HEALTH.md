@@ -214,11 +214,24 @@ O painel usa o layout nativo responsivo `sections`, com três colunas no desktop
 e uma no celular. Os históricos ficam no fim da página, redistribuídos com os
 demais grupos de saúde do sistema.
 
-O painel também mostra o tamanho do Recorder e seu percentual sobre o
-filesystem total. O percentual é uma entidade numérica com `state_class:
+O painel também mostra o tamanho alocado do Recorder, seu percentual sobre o
+filesystem e os bytes que o SQLite mantém em páginas livres, recuperáveis por
+`repack`. O percentual continua sendo uma entidade numérica com `state_class:
 measurement`, gravada pelo Recorder e exibida no histórico de armazenamento de
-30 dias. Esse indicador é apenas diagnóstico: purge, repack e mudanças de
-retenção do banco permanecem decisões manuais.
+30 dias. Purge e repack pertencem ao fluxo canônico `recorder_retention`; a
+rotina genérica de storage apenas mede o banco e nunca o altera. Depois do
+purge, o fluxo só solicita o `repack` quando as páginas livres representam ao
+mesmo tempo pelo menos 256 MiB e 20% do banco. Abaixo desses limites ele encerra
+o ciclo sem compactação pesada, evitando I/O e indisponibilidades sem ganho
+material; os limites ficam visíveis e validados no próprio canvas.
+
+O diagnóstico separa totais de subconjuntos. `Total lógico do Docker` é um
+agregado de referência e não deve ser somado às linhas de imagens ou cache. Os
+backups não exibem uma terceira linha total: TAR e snapshots de rollback são as
+duas parcelas. Imagens sem tag são classificadas pelo produtor como elegíveis,
+protegidas por referência versionada ou recentes em carência; o dashboard não
+deduz essa política. O cache recuperável é o valor informado pelo Docker e
+pode incluir camadas compartilhadas que o prune corretamente preserve.
 
 ### SAFE AUTO-MAINTENANCE
 
@@ -258,6 +271,8 @@ No diretório de backups do Home Assistant, somente arquivos regulares `*.tar`
 são candidatos automáticos. Os dois arquivos mais recentes são sempre
 preservados; arquivos mais antigos são removidos independentemente da idade.
 Snapshots manuais de banco (`*.db`) e outros formatos não entram nessa rotina.
+O painel publica separadamente o total desses snapshots e a parcela acima de
+14 dias para revisão, sem chamar essa parcela de automaticamente descartável.
 
 ```bash
 scripts/storage-maintenance.sh --dry-run
@@ -276,7 +291,10 @@ Continuam deliberadamente manuais:
 - remocao de imagens tagged mantidas para rollback;
 - remoção integral de VS Code/Cursor e de extensões que não estejam marcadas
   como obsoletas pelo próprio VS Code;
-- purge/repack do Recorder e alteração da retenção do banco;
+- disparo avulso de purge/repack do Recorder e alteração da política de
+  retenção; o ciclo canônico automático ocorre diariamente às 08:15, depois da
+  janela do backup nativo e de sua margem de retry, para evitar disputa pelo
+  lock do banco;
 - vacuum ou mudanca de retencao do journald;
 - limpeza de logs PM2 e caches npm/IDE fora das allowlists do projeto;
 - qualquer `du` completo em `/`.

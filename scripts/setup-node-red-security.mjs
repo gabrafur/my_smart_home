@@ -53,7 +53,7 @@ function bcryptHash(password) {
             "--rm",
             "--entrypoint",
             "node",
-            "nodered/node-red@sha256:10f40d0a83e7e5852b13d4d472b2006b05b1cca6d55e2f29a55a12c25a630cb6",
+            "nodered/node-red@sha256:a649dd711d55490151a2c39a8e48ad0c44325488fbc0e66315f2d2e19e5e1ace",
             "-e",
             "const bcrypt=require('bcryptjs'); console.log(bcrypt.hashSync(process.argv[1], 8));",
             password,

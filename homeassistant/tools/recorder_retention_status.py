@@ -61,6 +61,21 @@ def read_cycle_started_at(connection: sqlite3.Connection) -> float | None:
     return value if value > 0 else None
 
 
+def database_space_metrics(connection: sqlite3.Connection) -> dict[str, int | float]:
+    """Return raw SQLite allocation facts without deciding repack policy."""
+    page_size = int(connection.execute("PRAGMA page_size").fetchone()[0])
+    page_count = int(connection.execute("PRAGMA page_count").fetchone()[0])
+    freelist_count = int(connection.execute("PRAGMA freelist_count").fetchone()[0])
+    database_bytes = page_size * page_count
+    reclaimable_bytes = page_size * freelist_count
+    reclaimable_percent = round((reclaimable_bytes / database_bytes) * 100, 2) if database_bytes else 0.0
+    return {
+        "database_bytes": database_bytes,
+        "reclaimable_bytes": reclaimable_bytes,
+        "reclaimable_percent": reclaimable_percent,
+    }
+
+
 def target_has_pending(connection: sqlite3.Connection, keep_days: int, clause: str, values: tuple[str, ...], cycle_started_at: float) -> bool:
     placeholders = ", ".join("?" for _ in values)
     entity_clause = clause.format(placeholders)
@@ -84,16 +99,17 @@ def main() -> None:
     checked_at = int(time.time())
     try:
         with sqlite3.connect(DATABASE_URI, uri=True, timeout=1) as connection:
+            space = database_space_metrics(connection)
             cycle_started_at = read_cycle_started_at(connection)
             if cycle_started_at is None or cycle_started_at > checked_at + 300:
-                print(json.dumps({"status": "unavailable", "pending_targets": [], "checked_at": checked_at, "cycle_started_at": cycle_started_at}))
+                print(json.dumps({"status": "unavailable", "pending_targets": [], "checked_at": checked_at, "cycle_started_at": cycle_started_at, **space}))
                 return
             pending = [
                 key
                 for key, (keep_days, clause, values) in TARGETS.items()
                 if target_has_pending(connection, keep_days, clause, values, cycle_started_at)
             ]
-        print(json.dumps({"status": "ready" if not pending else "pending", "pending_targets": pending, "checked_at": checked_at, "cycle_started_at": int(cycle_started_at)}))
+        print(json.dumps({"status": "ready" if not pending else "pending", "pending_targets": pending, "checked_at": checked_at, "cycle_started_at": int(cycle_started_at), **space}))
     except sqlite3.Error as error:
         print(json.dumps({"status": "unavailable", "pending_targets": [], "checked_at": checked_at, "error": str(error)[:160]}))
 

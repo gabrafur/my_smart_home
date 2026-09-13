@@ -133,29 +133,47 @@ views:
               - entity: sensor.raspberry_pi_raspberry_storage_last_reclaimed
                 name: Recuperado na última manutenção
               - entity: binary_sensor.raspberry_pi_storage_warning
-                name: Armazenamento em atencao
+                name: Armazenamento em atenção
               - entity: binary_sensor.raspberry_pi_storage_critical
-                name: Armazenamento critico
+                name: Armazenamento crítico
           - type: entities
             title: Diagnóstico e limpeza automática
             show_header_toggle: false
             entities:
+              - type: section
+                label: Docker — total agregado, não somar com os subconjuntos
               - entity: sensor.raspberry_pi_storage_maintenance_docker
-                name: Docker total (tamanho lógico)
-              - entity: sensor.raspberry_pi_storage_maintenance_docker_unused_untagged
-                name: Imagens Docker descartáveis
+                name: Total lógico do Docker
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_build_cache
+                name: Cache de build lógico
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_build_cache_reclaimable
+                name: Cache marcado como recuperável pelo Docker
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_reclaimable_untagged
+                name: Imagens sem tag elegíveis para limpeza
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_protected_untagged
+                name: Imagens sem tag protegidas pelo repositório
+              - entity: sensor.raspberry_pi_storage_maintenance_docker_recent_untagged
+                name: Imagens sem tag recentes, em carência
               - entity: sensor.raspberry_pi_storage_maintenance_docker_unused_tagged
-                name: Imagens Docker para revisão
+                name: Imagens com tag sem container — revisão
+              - type: section
+                label: Host e Home Assistant — itens independentes
               - entity: sensor.raspberry_pi_storage_maintenance_vs_code_server
                 name: VS Code Server
               - entity: sensor.raspberry_pi_storage_maintenance_recorder
-                name: Recorder
-              - entity: sensor.raspberry_pi_storage_maintenance_home_assistant_backups
-                name: Backups e snapshots do Home Assistant
+                name: Recorder alocado
+              - entity: sensor.raspberry_pi_storage_maintenance_recorder_reclaimable
+                name: Recorder recuperável após repack
+              - type: section
+                label: Backups — os dois itens abaixo formam o total
               - entity: sensor.raspberry_pi_storage_maintenance_backup_archives
                 name: Backups operacionais TAR
               - entity: sensor.raspberry_pi_storage_maintenance_manual_snapshots
-                name: Snapshots manuais para revisão
+                name: Snapshots manuais de rollback
+              - entity: sensor.raspberry_pi_storage_maintenance_expired_manual_snapshots
+                name: Snapshots fora da retenção de 14 dias
+              - type: section
+                label: Última execução da limpeza
               - entity: sensor.raspberry_pi_storage_maintenance_result
                 name: Resultado da manutenção
           - type: entities

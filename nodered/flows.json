@@ -158,13 +158,16 @@
             "recorder_retention_policy_relative_percent",
             "recorder_retention_policy_mad_multiplier",
             "recorder_retention_policy_warmup_days",
+            "recorder_retention_policy_repack_min_mib",
+            "recorder_retention_policy_repack_min_percent",
+            "recorder_retention_policy_repack_updates_out",
             "recorder_retention_policy_updates_out",
             "recorder_retention_policy_updates_in",
             "recorder_retention_config"
         ],
         "x": 164,
         "y": 23,
-        "w": 1292,
+        "w": 1740,
         "h": 308
     },
     {
@@ -3725,7 +3728,7 @@
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_config",
         "name": "Inválido não substitui a política persistente. Agenda, serialização e espera ficam nos nós nativos abaixo.",
-        "info": "Limites: bruto 1–14 d; compacto 7–180 d; baseline 1–24 h; tolerâncias 0,1–10; MAD 1–10; aquecimento 0–14 d. Compacto deve superar bruto.",
+        "info": "Limites: bruto 1–14 d; compacto 7–180 d; baseline 1–24 h; tolerâncias 0,1–10; MAD 1–10; aquecimento 0–14 d; repack 64–4.096 MiB e 5–80%. Compacto deve superar bruto. O repack só ocorre se os dois mínimos forem atingidos.",
         "x": 800,
         "y": 80,
         "wires": []
@@ -3736,7 +3739,7 @@
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_config",
         "name": "Validar e preservar política única",
-        "func": "const limits = {\n    rawRetentionDays: { min: 1, max: 14, integer: true },\n    compactRetentionDays: { min: 7, max: 180, integer: true },\n    baselineIntervalHours: { min: 1, max: 24, integer: true },\n    numericAbsoluteTolerance: { min: 0.1, max: 10 },\n    numericRelativeTolerancePercent: { min: 0.1, max: 10 },\n    madMultiplier: { min: 1, max: 10 },\n    warmupDays: { min: 0, max: 14, integer: true }\n};\nconst key = String(msg.topic ?? \"\");\nconst rule = limits[key];\nconst value = Number(msg.payload);\nif (!rule || !Number.isFinite(value) || (rule.integer && !Number.isInteger(value)) || value < rule.min || value > rule.max) {\n    node.error(\"recorder_retention: política inválida \" + (key || \"campo ausente\") + \"=\" + msg.payload, msg);\n    return null;\n}\nconst previous = flow.get(\"recorder_retention_policy_v2\", \"persistent\");\nconst policy = previous?.version === 2 ? { ...previous } : { version: 2, owner: \"node_red\" };\npolicy[key] = value;\nconst complete = Object.keys(limits).every((field) => Number.isFinite(policy[field]));\nif (complete && policy.compactRetentionDays <= policy.rawRetentionDays) {\n    node.error(\"recorder_retention: retenção compacta deve superar a retenção bruta\", msg);\n    return null;\n}\npolicy.complete = complete;\npolicy.baselineIntervalMs = Number(policy.baselineIntervalHours || 0) * 3600000;\npolicy.numericRelativeTolerance = Number(policy.numericRelativeTolerancePercent || 0) / 100;\npolicy.warmupMs = Number(policy.warmupDays || 0) * 86400000;\npolicy.updated_at = Date.now();\nflow.set(\"recorder_retention_policy_v2\", policy, \"persistent\");\nif (!flow.get(\"recorder_retention_started_at_v1\", \"persistent\")) {\n    flow.set(\"recorder_retention_started_at_v1\", Date.now(), \"persistent\");\n}\nnode.status({ fill: complete ? \"green\" : \"yellow\", shape: complete ? \"dot\" : \"ring\", text: complete ? \"bruto \" + policy.rawRetentionDays + \" d | compacto \" + policy.compactRetentionDays + \" d\" : \"sincronizando política\" });\nreturn null;",
+        "func": "const limits = {\n    rawRetentionDays: { min: 1, max: 14, integer: true },\n    compactRetentionDays: { min: 7, max: 180, integer: true },\n    baselineIntervalHours: { min: 1, max: 24, integer: true },\n    numericAbsoluteTolerance: { min: 0.1, max: 10 },\n    numericRelativeTolerancePercent: { min: 0.1, max: 10 },\n    madMultiplier: { min: 1, max: 10 },\n    warmupDays: { min: 0, max: 14, integer: true },\n    repackMinMiB: { min: 64, max: 4096, integer: true },\n    repackMinPercent: { min: 5, max: 80 }\n};\nconst key = String(msg.topic ?? \"\");\nconst rule = limits[key];\nconst value = Number(msg.payload);\nif (!rule || !Number.isFinite(value) || (rule.integer && !Number.isInteger(value)) || value < rule.min || value > rule.max) {\n    node.error(\"recorder_retention: política inválida \" + (key || \"campo ausente\") + \"=\" + msg.payload, msg);\n    return null;\n}\nconst previous = flow.get(\"recorder_retention_policy_v2\", \"persistent\");\nconst policy = previous?.version === 2 ? { ...previous } : { version: 2, owner: \"node_red\" };\npolicy[key] = value;\nconst complete = Object.keys(limits).every((field) => Number.isFinite(policy[field]));\nif (complete && policy.compactRetentionDays <= policy.rawRetentionDays) {\n    node.error(\"recorder_retention: retenção compacta deve superar a retenção bruta\", msg);\n    return null;\n}\npolicy.complete = complete;\npolicy.baselineIntervalMs = Number(policy.baselineIntervalHours || 0) * 3600000;\npolicy.numericRelativeTolerance = Number(policy.numericRelativeTolerancePercent || 0) / 100;\npolicy.warmupMs = Number(policy.warmupDays || 0) * 86400000;\npolicy.repackMinBytes = Number(policy.repackMinMiB || 0) * 1048576;\npolicy.updated_at = Date.now();\nflow.set(\"recorder_retention_policy_v2\", policy, \"persistent\");\nif (!flow.get(\"recorder_retention_started_at_v1\", \"persistent\")) {\n    flow.set(\"recorder_retention_started_at_v1\", Date.now(), \"persistent\");\n}\nnode.status({ fill: complete ? \"green\" : \"yellow\", shape: complete ? \"dot\" : \"ring\", text: complete ? \"bruto \" + policy.rawRetentionDays + \" d | compacto \" + policy.compactRetentionDays + \" d\" : \"sincronizando política\" });\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -3839,15 +3842,15 @@
         "type": "inject",
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_execution",
-        "name": "Agenda visível — diariamente 01:15",
-        "info": "A janela começa após as atualizações da meia-noite e termina antes do backup nativo do Home Assistant, agendado entre 04:45 e 05:45.",
+        "name": "Agenda visível — diariamente 08:15",
+        "info": "A janela começa depois do backup nativo do Home Assistant, agendado entre 04:45 e 05:45, com margem para retries, para que purge e repack não disputem o lock do Recorder com o backup.",
         "props": [
             {
                 "p": "payload"
             }
         ],
         "repeat": "",
-        "crontab": "15 01 * * *",
+        "crontab": "15 08 * * *",
         "once": false,
         "onceDelay": "0.1",
         "topic": "",
@@ -3867,7 +3870,7 @@
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_execution",
         "name": "Calcular aquecimento e plano",
-        "func": "const TEST = msg.test_mode === true;\nconst STORE = TEST ? undefined : \"persistent\";\nconst get = (key) => STORE ? flow.get(key, STORE) : flow.get(key);\nconst set = (key, value) => STORE ? flow.set(key, value, STORE) : flow.set(key, value);\nconst config = flow.get(\"recorder_retention_policy_v2\", \"persistent\");\nif (!config || config.complete !== true) return null;\nconst now = Number(msg.testNow ?? Date.now());\nconst startedAt = Number(get(\"recorder_retention_started_at_v1\") ?? now);\nconst warmedUp = now >= startedAt + config.warmupMs;\nconst purgeTargets = Array.isArray(msg.purgeTargets) ? msg.purgeTargets : [];\nconst actions = purgeTargets\n    .filter((target) => target.key === \"codex_diagnostics\" || warmedUp)\n    .map((target) => ({\n        key: target.key,\n        keep_days: target.key === \"codex_diagnostics\" ? 0 : config.rawRetentionDays,\n        ...(Array.isArray(target.entityId) ? { entity_id: target.entityId } : {}),\n        ...(Array.isArray(target.entityGlobs) ? { entity_globs: target.entityGlobs } : {})\n    }));\nif (!warmedUp && !TEST) node.status({ fill: \"blue\", shape: \"ring\", text: \"compactando antes do primeiro purge\" });\nconst cycleId = String(now);\nif (!TEST) set(\"recorder_retention_active_cycle_v1\", { id: cycleId, phase: \"purging\", targetKeys: actions.map((action) => action.key) });\nconst retention = { warmedUp, test_mode: TEST, cycleId, targetKeys: actions.map((action) => action.key), compactRetentionDays: config.compactRetentionDays };\nreturn [{ ...msg, payload: actions, recorderRetention: retention }, { ...msg, recorderRetention: retention }];",
+        "func": "const TEST = msg.test_mode === true;\nconst STORE = TEST ? undefined : \"persistent\";\nconst get = (key) => STORE ? flow.get(key, STORE) : flow.get(key);\nconst set = (key, value) => STORE ? flow.set(key, value, STORE) : flow.set(key, value);\nconst config = flow.get(\"recorder_retention_policy_v2\", \"persistent\");\nif (!config || config.complete !== true) return null;\nconst now = Number(msg.testNow ?? Date.now());\nconst startedAt = Number(get(\"recorder_retention_started_at_v1\") ?? now);\nconst warmedUp = now >= startedAt + config.warmupMs;\nconst purgeTargets = Array.isArray(msg.purgeTargets) ? msg.purgeTargets : [];\nconst actions = purgeTargets\n    .filter((target) => target.key === \"codex_diagnostics\" || warmedUp)\n    .map((target) => ({\n        key: target.key,\n        keep_days: target.key === \"codex_diagnostics\" ? 0 : config.rawRetentionDays,\n        ...(Array.isArray(target.entityId) ? { entity_id: target.entityId } : {}),\n        ...(Array.isArray(target.entityGlobs) ? { entity_globs: target.entityGlobs } : {})\n    }));\nif (!warmedUp && !TEST) node.status({ fill: \"blue\", shape: \"ring\", text: \"compactando antes do primeiro purge\" });\nconst cycleId = String(now);\nif (!TEST) set(\"recorder_retention_active_cycle_v1\", { id: cycleId, phase: \"purging\", targetKeys: actions.map((action) => action.key) });\nconst retention = { warmedUp, test_mode: TEST, cycleId, targetKeys: actions.map((action) => action.key), compactRetentionDays: config.compactRetentionDays, repackMinBytes: config.repackMinBytes, repackMinPercent: config.repackMinPercent };\nreturn [{ ...msg, payload: actions, recorderRetention: retention }, { ...msg, recorderRetention: retention }];",
         "outputs": 2,
         "timeout": 0,
         "noerr": 0,
@@ -4254,7 +4257,7 @@
         "z": "recorder_retention_tab",
         "g": "recorder_retention_group_execution",
         "name": "Fila concluída libera repack?",
-        "func": "const TEST = msg.test_mode === true;\nconst retention = msg.recorderRetention ?? {};\nconst targets = Array.isArray(retention.targetKeys) ? retention.targetKeys : [];\nif (!targets.length) return [null, null, null];\nconst pending = msg.data?.attributes?.pending_targets;\nconst state = String(msg.payload ?? \"unavailable\");\nconst complete = state === \"ready\" && Array.isArray(pending) && !targets.some((target) => pending.includes(target));\nif (TEST) {\n    return [null, null, { ...msg, payload: { simulated: true, dispatched: false, action: \"recorder.purge\", repack: true, ready: complete } }];\n}\nif (!complete) {\n    node.status({ fill: \"blue\", shape: \"ring\", text: \"aguardando fila de purge\" });\n    return [null, msg, null];\n}\nconst active = flow.get(\"recorder_retention_active_cycle_v1\", \"persistent\");\nif (!active || active.id !== retention.cycleId || active.phase === \"repack_queued\") return [null, null, null];\nflow.set(\"recorder_retention_active_cycle_v1\", { ...active, phase: \"repack_queued\" }, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"fila concluída; repack solicitado\" });\nconst keepDays = Number(retention.compactRetentionDays);\nif (!Number.isInteger(keepDays)) {\n    node.error(\"recorder_retention: retenção compacta ausente no ciclo\", msg);\n    return [null, null, null];\n}\nreturn [{ ...msg, payload: { keep_days: keepDays, repack: true, apply_filter: false } }, null, null];",
+        "func": "const TEST = msg.test_mode === true;\nconst retention = msg.recorderRetention ?? {};\nconst targets = Array.isArray(retention.targetKeys) ? retention.targetKeys : [];\nif (!targets.length) return [null, null, null];\nconst pending = msg.data?.attributes?.pending_targets;\nconst state = String(msg.payload ?? \"unavailable\");\nconst complete = state === \"ready\" && Array.isArray(pending) && !targets.some((target) => pending.includes(target));\nconst reclaimableBytes = Number(msg.data?.attributes?.reclaimable_bytes);\nconst reclaimablePercent = Number(msg.data?.attributes?.reclaimable_percent);\nconst minBytes = Number(retention.repackMinBytes);\nconst minPercent = Number(retention.repackMinPercent);\nconst metricsValid = Number.isFinite(reclaimableBytes) && reclaimableBytes >= 0\n    && Number.isFinite(reclaimablePercent) && reclaimablePercent >= 0\n    && Number.isFinite(minBytes) && minBytes > 0\n    && Number.isFinite(minPercent) && minPercent > 0;\nconst worthwhile = metricsValid && reclaimableBytes >= minBytes && reclaimablePercent >= minPercent;\nif (TEST) {\n    return [null, null, { ...msg, payload: { simulated: true, dispatched: false, action: \"recorder.purge\", repack: worthwhile, ready: complete, metrics_valid: metricsValid } }];\n}\nif (!complete || !metricsValid) {\n    node.status({ fill: \"blue\", shape: \"ring\", text: complete ? \"aguardando métricas do Recorder\" : \"aguardando fila de purge\" });\n    return [null, msg, null];\n}\nconst active = flow.get(\"recorder_retention_active_cycle_v1\", \"persistent\");\nif (!active || active.id !== retention.cycleId || [\"repack_queued\", \"repack_skipped\"].includes(active.phase)) return [null, null, null];\nif (!worthwhile) {\n    flow.set(\"recorder_retention_active_cycle_v1\", { ...active, phase: \"repack_skipped\", reclaimableBytes, reclaimablePercent }, \"persistent\");\n    node.status({ fill: \"green\", shape: \"ring\", text: \"repack dispensado: pouco espaço livre\" });\n    return [null, null, null];\n}\nflow.set(\"recorder_retention_active_cycle_v1\", { ...active, phase: \"repack_queued\" }, \"persistent\");\nnode.status({ fill: \"green\", shape: \"dot\", text: \"fila concluída; repack solicitado\" });\nconst keepDays = Number(retention.compactRetentionDays);\nif (!Number.isInteger(keepDays)) {\n    node.error(\"recorder_retention: retenção compacta ausente no ciclo\", msg);\n    return [null, null, null];\n}\nreturn [{ ...msg, payload: { keep_days: keepDays, repack: true, apply_filter: false } }, null, null];",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
@@ -4324,12 +4327,12 @@
             },
             {
                 "p": "recorderRetention",
-                "v": "{\"targetKeys\":[\"codex_diagnostics\"]}",
+                "v": "{\"targetKeys\":[\"codex_diagnostics\"],\"repackMinBytes\":268435456,\"repackMinPercent\":20}",
                 "vt": "json"
             },
             {
                 "p": "data",
-                "v": "{\"attributes\":{\"pending_targets\":[]}}",
+                "v": "{\"attributes\":{\"pending_targets\":[],\"reclaimable_bytes\":314572800,\"reclaimable_percent\":30}}",
                 "vt": "json"
             }
         ],
@@ -4687,7 +4690,8 @@
         "g": "recorder_retention_group_config",
         "name": "Receber valor de política",
         "links": [
-            "recorder_retention_policy_updates_out"
+            "recorder_retention_policy_updates_out",
+            "recorder_retention_policy_repack_updates_out"
         ],
         "x": 1020,
         "y": 220,
@@ -4963,6 +4967,80 @@
                 "recorder_retention_plan_targets"
             ]
         ]
+    },
+    {
+        "id": "recorder_retention_policy_repack_min_mib",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_config",
+        "name": "Repack mínimo — 256 MiB",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.5,
+        "topic": "repackMinMiB",
+        "payload": "256",
+        "payloadType": "num",
+        "x": 1590,
+        "y": 140,
+        "wires": [
+            [
+                "recorder_retention_policy_repack_updates_out"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_policy_repack_min_percent",
+        "type": "inject",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_config",
+        "name": "Repack mínimo — 20 %",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.5,
+        "topic": "repackMinPercent",
+        "payload": "20",
+        "payloadType": "num",
+        "x": 1590,
+        "y": 270,
+        "wires": [
+            [
+                "recorder_retention_policy_repack_updates_out"
+            ]
+        ]
+    },
+    {
+        "id": "recorder_retention_policy_repack_updates_out",
+        "type": "link out",
+        "z": "recorder_retention_tab",
+        "g": "recorder_retention_group_config",
+        "name": "Limites do repack → validador",
+        "mode": "link",
+        "links": [
+            "recorder_retention_policy_updates_in"
+        ],
+        "x": 1790,
+        "y": 205,
+        "wires": []
     },
     {
         "id": "weekly_docs_review_architecture",

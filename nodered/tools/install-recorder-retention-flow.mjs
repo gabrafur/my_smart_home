@@ -25,6 +25,9 @@ const ownedIds = new Set([
   "recorder_retention_policy_relative_percent",
   "recorder_retention_policy_mad_multiplier",
   "recorder_retention_policy_warmup_days",
+  "recorder_retention_policy_repack_min_mib",
+  "recorder_retention_policy_repack_min_percent",
+  "recorder_retention_policy_repack_updates_out",
   "recorder_retention_policy_updates_out",
   "recorder_retention_policy_updates_in",
   "recorder_retention_config",
@@ -101,7 +104,9 @@ const configuration = `const limits = {
     numericAbsoluteTolerance: { min: 0.1, max: 10 },
     numericRelativeTolerancePercent: { min: 0.1, max: 10 },
     madMultiplier: { min: 1, max: 10 },
-    warmupDays: { min: 0, max: 14, integer: true }
+    warmupDays: { min: 0, max: 14, integer: true },
+    repackMinMiB: { min: 64, max: 4096, integer: true },
+    repackMinPercent: { min: 5, max: 80 }
 };
 const key = String(msg.topic ?? "");
 const rule = limits[key];
@@ -122,6 +127,7 @@ policy.complete = complete;
 policy.baselineIntervalMs = Number(policy.baselineIntervalHours || 0) * 3600000;
 policy.numericRelativeTolerance = Number(policy.numericRelativeTolerancePercent || 0) / 100;
 policy.warmupMs = Number(policy.warmupDays || 0) * 86400000;
+policy.repackMinBytes = Number(policy.repackMinMiB || 0) * 1048576;
 policy.updated_at = Date.now();
 flow.set("recorder_retention_policy_v2", policy, "persistent");
 if (!flow.get("recorder_retention_started_at_v1", "persistent")) {
@@ -220,7 +226,7 @@ const actions = purgeTargets
 if (!warmedUp && !TEST) node.status({ fill: "blue", shape: "ring", text: "compactando antes do primeiro purge" });
 const cycleId = String(now);
 if (!TEST) set("recorder_retention_active_cycle_v1", { id: cycleId, phase: "purging", targetKeys: actions.map((action) => action.key) });
-const retention = { warmedUp, test_mode: TEST, cycleId, targetKeys: actions.map((action) => action.key), compactRetentionDays: config.compactRetentionDays };
+const retention = { warmedUp, test_mode: TEST, cycleId, targetKeys: actions.map((action) => action.key), compactRetentionDays: config.compactRetentionDays, repackMinBytes: config.repackMinBytes, repackMinPercent: config.repackMinPercent };
 return [{ ...msg, payload: actions, recorderRetention: retention }, { ...msg, recorderRetention: retention }];`;
 
 const dispatchGuard = `const action = msg.payload ?? {};
@@ -241,15 +247,29 @@ if (!targets.length) return [null, null, null];
 const pending = msg.data?.attributes?.pending_targets;
 const state = String(msg.payload ?? "unavailable");
 const complete = state === "ready" && Array.isArray(pending) && !targets.some((target) => pending.includes(target));
+const reclaimableBytes = Number(msg.data?.attributes?.reclaimable_bytes);
+const reclaimablePercent = Number(msg.data?.attributes?.reclaimable_percent);
+const minBytes = Number(retention.repackMinBytes);
+const minPercent = Number(retention.repackMinPercent);
+const metricsValid = Number.isFinite(reclaimableBytes) && reclaimableBytes >= 0
+    && Number.isFinite(reclaimablePercent) && reclaimablePercent >= 0
+    && Number.isFinite(minBytes) && minBytes > 0
+    && Number.isFinite(minPercent) && minPercent > 0;
+const worthwhile = metricsValid && reclaimableBytes >= minBytes && reclaimablePercent >= minPercent;
 if (TEST) {
-    return [null, null, { ...msg, payload: { simulated: true, dispatched: false, action: "recorder.purge", repack: true, ready: complete } }];
+    return [null, null, { ...msg, payload: { simulated: true, dispatched: false, action: "recorder.purge", repack: worthwhile, ready: complete, metrics_valid: metricsValid } }];
 }
-if (!complete) {
-    node.status({ fill: "blue", shape: "ring", text: "aguardando fila de purge" });
+if (!complete || !metricsValid) {
+    node.status({ fill: "blue", shape: "ring", text: complete ? "aguardando métricas do Recorder" : "aguardando fila de purge" });
     return [null, msg, null];
 }
 const active = flow.get("recorder_retention_active_cycle_v1", "persistent");
-if (!active || active.id !== retention.cycleId || active.phase === "repack_queued") return [null, null, null];
+if (!active || active.id !== retention.cycleId || ["repack_queued", "repack_skipped"].includes(active.phase)) return [null, null, null];
+if (!worthwhile) {
+    flow.set("recorder_retention_active_cycle_v1", { ...active, phase: "repack_skipped", reclaimableBytes, reclaimablePercent }, "persistent");
+    node.status({ fill: "green", shape: "ring", text: "repack dispensado: pouco espaço livre" });
+    return [null, null, null];
+}
 flow.set("recorder_retention_active_cycle_v1", { ...active, phase: "repack_queued" }, "persistent");
 node.status({ fill: "green", shape: "dot", text: "fila concluída; repack solicitado" });
 const keepDays = Number(retention.compactRetentionDays);
@@ -304,11 +324,11 @@ const purgeTargets = [
   { key: "internet_diagnostics", entityId: ["sensor.internet_connection_state", "binary_sensor.internet_connection"] },
 ];
 
-const policyInject = (id, name, topic, payload, x, y) => ({
+const policyInject = (id, name, topic, payload, x, y, target = "recorder_retention_policy_updates_out") => ({
   id, type: "inject", z: TAB, g: "recorder_retention_group_config", name,
   props: [{ p: "payload" }, { p: "topic", vt: "str" }], repeat: "",
   crontab: "", once: true, onceDelay: 0.5, topic, payload: String(payload),
-  payloadType: "num", x, y, wires: [["recorder_retention_policy_updates_out"]],
+  payloadType: "num", x, y, wires: [[target]],
 });
 
 const resultTerminal = (id, name, x, y) => ({
@@ -320,11 +340,11 @@ const resultTerminal = (id, name, x, y) => ({
 
 const nodes = [
   { id: TAB, type: "tab", label: "recorder_retention", disabled: false, info: "Política visual única: compacta baseline, mudanças e outliers antes do purge suportado. Parâmetros inválidos preservam a última configuração válida; TESTE termina em dry-run." },
-  { id: "recorder_retention_group_config", type: "group", z: TAB, name: "0. Política visual — edite os valores", style: { label: true, color: "#7d6ba8" }, nodes: ["recorder_retention_comment", "recorder_retention_policy_raw_days", "recorder_retention_policy_compact_days", "recorder_retention_policy_baseline_hours", "recorder_retention_policy_absolute_tolerance", "recorder_retention_policy_relative_percent", "recorder_retention_policy_mad_multiplier", "recorder_retention_policy_warmup_days", "recorder_retention_policy_updates_out", "recorder_retention_policy_updates_in", "recorder_retention_config"], x: 64, y: 40, w: 1450, h: 300 },
+  { id: "recorder_retention_group_config", type: "group", z: TAB, name: "0. Política visual — edite os valores", style: { label: true, color: "#7d6ba8" }, nodes: ["recorder_retention_comment", "recorder_retention_policy_raw_days", "recorder_retention_policy_compact_days", "recorder_retention_policy_baseline_hours", "recorder_retention_policy_absolute_tolerance", "recorder_retention_policy_relative_percent", "recorder_retention_policy_mad_multiplier", "recorder_retention_policy_warmup_days", "recorder_retention_policy_repack_min_mib", "recorder_retention_policy_repack_min_percent", "recorder_retention_policy_repack_updates_out", "recorder_retention_policy_updates_out", "recorder_retention_policy_updates_in", "recorder_retention_config"], x: 64, y: 40, w: 1740, h: 300 },
   { id: "recorder_retention_group_capture", type: "group", z: TAB, name: "1. Captura e decisão: baseline, mudança, outlier ou descarte", style: { label: true, color: "#3fadb5" }, nodes: ["recorder_retention_changes", "recorder_retention_test_compact_in", "recorder_retention_compact", "recorder_retention_result_switch", "recorder_retention_test_output_gate", "recorder_retention_test_result_out", "recorder_retention_baseline_terminal", "recorder_retention_change_terminal", "recorder_retention_outlier_terminal", "recorder_retention_discard_terminal"], x: 64, y: 359, w: 1662, h: 202 },
   { id: "recorder_retention_group_execution", type: "group", z: TAB, name: "2. Alvos visíveis, purge serial e repack após a fila", style: { label: true, color: "#4d9a6a" }, nodes: ["recorder_retention_schedule", "recorder_retention_cycle_marker", "recorder_retention_plan_targets", "recorder_retention_plan", "recorder_retention_split", "recorder_retention_dispatch_guard", "recorder_retention_rate_limit", "recorder_retention_purge", "recorder_retention_repack_delay", "recorder_retention_repack_status", "recorder_retention_repack_evaluate", "recorder_retention_repack", "recorder_retention_repack_retry_out", "recorder_retention_repack_delay_in", "recorder_retention_repack_test_in", "recorder_retention_guard_dry_out", "recorder_retention_repack_dry_out"], x: 64, y: 579, w: 2180, h: 202 },
   { id: "recorder_retention_group_tests", type: "group", z: TAB, name: "3. Testes manuais completos — dry-run", style: { label: true, color: "#c9b458" }, nodes: ["recorder_retention_test_instructions", "recorder_retention_test_reset", "recorder_retention_test_reset_state", "recorder_retention_test_baseline", "recorder_retention_test_near", "recorder_retention_test_outlier", "recorder_retention_test_repack_ready", "recorder_retention_test_repack_out", "recorder_retention_test_prepare", "recorder_retention_test_compact_out", "recorder_retention_test_result_in", "recorder_retention_test_finalize", "recorder_retention_dry_run_in", "recorder_retention_dry_run_terminal"], x: 64, y: 799, w: 1662, h: 302 },
-  { id: "recorder_retention_comment", type: "comment", z: TAB, g: "recorder_retention_group_config", name: "Inválido não substitui a política persistente. Agenda, serialização e espera ficam nos nós nativos abaixo.", info: "Limites: bruto 1–14 d; compacto 7–180 d; baseline 1–24 h; tolerâncias 0,1–10; MAD 1–10; aquecimento 0–14 d. Compacto deve superar bruto.", x: 760, y: 80, wires: [] },
+  { id: "recorder_retention_comment", type: "comment", z: TAB, g: "recorder_retention_group_config", name: "Inválido não substitui a política persistente. Agenda, serialização e espera ficam nos nós nativos abaixo.", info: "Limites: bruto 1–14 d; compacto 7–180 d; baseline 1–24 h; tolerâncias 0,1–10; MAD 1–10; aquecimento 0–14 d; repack 64–4.096 MiB e 5–80%. Compacto deve superar bruto. O repack só ocorre se os dois mínimos forem atingidos.", x: 760, y: 80, wires: [] },
   policyInject("recorder_retention_policy_raw_days", "Retenção bruta — 2 dias", "rawRetentionDays", 2, 300, 140),
   policyInject("recorder_retention_policy_compact_days", "Retenção compacta — 30 dias", "compactRetentionDays", 30, 300, 190),
   policyInject("recorder_retention_policy_baseline_hours", "Intervalo baseline — 6 h", "baselineIntervalHours", 6, 300, 240),
@@ -332,8 +352,11 @@ const nodes = [
   policyInject("recorder_retention_policy_relative_percent", "Tolerância relativa — 1 %", "numericRelativeTolerancePercent", 1, 600, 140),
   policyInject("recorder_retention_policy_mad_multiplier", "Multiplicador MAD — 3", "madMultiplier", 3, 600, 200),
   policyInject("recorder_retention_policy_warmup_days", "Aquecimento — 2 dias", "warmupDays", 2, 600, 260),
+  policyInject("recorder_retention_policy_repack_min_mib", "Repack mínimo — 256 MiB", "repackMinMiB", 256, 1550, 140, "recorder_retention_policy_repack_updates_out"),
+  policyInject("recorder_retention_policy_repack_min_percent", "Repack mínimo — 20 %", "repackMinPercent", 20, 1550, 270, "recorder_retention_policy_repack_updates_out"),
+  { id: "recorder_retention_policy_repack_updates_out", type: "link out", z: TAB, g: "recorder_retention_group_config", name: "Limites do repack → validador", mode: "link", links: ["recorder_retention_policy_updates_in"], x: 1750, y: 205, wires: [] },
   { id: "recorder_retention_policy_updates_out", type: "link out", z: TAB, g: "recorder_retention_group_config", name: "Valor editado → validador", mode: "link", links: ["recorder_retention_policy_updates_in"], x: 790, y: 220, wires: [] },
-  { id: "recorder_retention_policy_updates_in", type: "link in", z: TAB, g: "recorder_retention_group_config", name: "Receber valor de política", links: ["recorder_retention_policy_updates_out"], x: 980, y: 220, wires: [["recorder_retention_config"]] },
+  { id: "recorder_retention_policy_updates_in", type: "link in", z: TAB, g: "recorder_retention_group_config", name: "Receber valor de política", links: ["recorder_retention_policy_updates_out", "recorder_retention_policy_repack_updates_out"], x: 980, y: 220, wires: [["recorder_retention_config"]] },
   functionNode("recorder_retention_config", "recorder_retention_group_config", "Validar e preservar política única", configuration, 0, 1260, 220, []),
   { id: "recorder_retention_changes", type: "server-state-changed", z: TAB, g: "recorder_retention_group_capture", name: "Observar entidades de alta frequência", server: SERVER, version: 6, outputs: 1, exposeAsEntityConfig: "", entities: { entity: ["sensor.vehicle_primary_refresh_coordinator", "sensor.zigbee_network_state", "binary_sensor.zigbee_network", "sensor.tuya_devices_state", "binary_sensor.tuya_devices", "sensor.internet_connection_state", "binary_sensor.internet_connection", "sensor.raspberry_pi_metrics_raw", "sensor.raspberry_pi_health", "sensor.raspberry_pi_cpu_temperature", "sensor.raspberry_pi_cpu_usage", "sensor.raspberry_pi_cpu_frequency", "sensor.raspberry_pi_load_1m", "sensor.raspberry_pi_load_5m", "sensor.raspberry_pi_load_15m", "sensor.raspberry_pi_memory_usage", "sensor.raspberry_pi_memory_used", "sensor.raspberry_pi_memory_available", "sensor.raspberry_pi_swap_usage", "sensor.raspberry_pi_swap_used", "sensor.raspberry_pi_storage_usage", "sensor.raspberry_pi_storage_used", "sensor.raspberry_pi_storage_free", "sensor.raspberry_pi_storage_inodes_usage", "sensor.raspberry_pi_uptime", "sensor.raspberry_pi_network_rx", "sensor.raspberry_pi_network_tx"], substring: [], regex: [] }, outputInitially: false, stateType: "str", ifState: "", ifStateType: "str", ifStateOperator: "is", outputOnlyOnStateChange: false, for: "0", forType: "num", forUnits: "minutes", ignorePrevStateNull: false, ignorePrevStateUnknown: false, ignorePrevStateUnavailable: false, ignoreCurrentStateUnknown: true, ignoreCurrentStateUnavailable: true, outputProperties: [], x: 270, y: 460, wires: [["recorder_retention_compact"]] },
   { id: "recorder_retention_test_compact_in", type: "link in", z: TAB, g: "recorder_retention_group_capture", name: "Receber amostra TESTE", links: ["recorder_retention_test_compact_out"], x: 430, y: 530, wires: [["recorder_retention_compact"]] },
@@ -345,7 +368,7 @@ const nodes = [
   resultTerminal("recorder_retention_change_terminal", "Estado: mudança preservada", 1320, 440),
   resultTerminal("recorder_retention_outlier_terminal", "Estado: outlier preservado", 1320, 480),
   resultTerminal("recorder_retention_discard_terminal", "Estado: valor próximo descartado", 1320, 520),
-  { id: "recorder_retention_schedule", type: "inject", z: TAB, g: "recorder_retention_group_execution", name: "Agenda visível — diariamente 01:15", info: "A janela começa após as atualizações da meia-noite e termina antes do backup nativo do Home Assistant, agendado entre 04:45 e 05:45.", props: [{ p: "payload" }], repeat: "", crontab: "15 01 * * *", once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date", x: 220, y: 620, wires: [["recorder_retention_cycle_marker"]] },
+  { id: "recorder_retention_schedule", type: "inject", z: TAB, g: "recorder_retention_group_execution", name: "Agenda visível — diariamente 08:15", info: "A janela começa depois do backup nativo do Home Assistant, agendado entre 04:45 e 05:45, com margem para retries, para que purge e repack não disputem o lock do Recorder com o backup.", props: [{ p: "payload" }], repeat: "", crontab: "15 08 * * *", once: false, onceDelay: "0.1", topic: "", payload: "", payloadType: "date", x: 220, y: 620, wires: [["recorder_retention_cycle_marker"]] },
   { id: "recorder_retention_cycle_marker", type: "api-call-service", z: TAB, g: "recorder_retention_group_execution", name: "Marcar início imutável do ciclo", server: SERVER, version: 7, debugenabled: false, action: "input_number.set_value", floorId: [], areaId: [], deviceId: [], entityId: ["input_number.recorder_retention_cycle_started_at"], labelId: [], data: "{\"value\": $floor($millis() / 1000)}", dataType: "jsonata", mergeContext: "", mustacheAltTags: false, outputProperties: [], queue: "none", blockInputOverrides: true, domain: "input_number", service: "set_value", x: 500, y: 620, wires: [["recorder_retention_plan_targets"]] },
   { id: "recorder_retention_plan_targets", type: "change", z: TAB, g: "recorder_retention_group_execution", name: "Alvos canônicos de retenção", rules: [{ t: "set", p: "purgeTargets", pt: "msg", to: JSON.stringify(purgeTargets), tot: "json" }], x: 760, y: 620, wires: [["recorder_retention_plan"]] },
   functionNode("recorder_retention_plan", "recorder_retention_group_execution", "Calcular aquecimento e plano", planPurge, 2, 1040, 620, [["recorder_retention_split"], ["recorder_retention_repack_delay"]]),
@@ -368,7 +391,7 @@ const nodes = [
   { id: "recorder_retention_test_baseline", type: "inject", z: TAB, g: "recorder_retention_group_tests", name: "TESTE 2: baseline 40", props: [{ p: "payload" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "baseline", payloadType: "str", x: 210, y: 950, wires: [["recorder_retention_test_prepare"]] },
   { id: "recorder_retention_test_near", type: "inject", z: TAB, g: "recorder_retention_group_tests", name: "TESTE 3: próximo 40,2", props: [{ p: "payload" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "near", payloadType: "str", x: 220, y: 1000, wires: [["recorder_retention_test_prepare"]] },
   { id: "recorder_retention_test_outlier", type: "inject", z: TAB, g: "recorder_retention_group_tests", name: "TESTE 4: outlier 87", props: [{ p: "payload" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "outlier", payloadType: "str", x: 210, y: 1050, wires: [["recorder_retention_test_prepare"]] },
-  { id: "recorder_retention_test_repack_ready", type: "inject", z: TAB, g: "recorder_retention_group_tests", name: "TESTE 5: repack com fila pronta", props: [{ p: "payload", v: "ready", vt: "str" }, { p: "test_mode", v: "true", vt: "bool" }, { p: "recorderRetention", v: "{\"targetKeys\":[\"codex_diagnostics\"]}", vt: "json" }, { p: "data", v: "{\"attributes\":{\"pending_targets\":[]}}", vt: "json" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "ready", payloadType: "str", x: 700, y: 1070, wires: [["recorder_retention_test_repack_out"]] },
+  { id: "recorder_retention_test_repack_ready", type: "inject", z: TAB, g: "recorder_retention_group_tests", name: "TESTE 5: repack com fila pronta", props: [{ p: "payload", v: "ready", vt: "str" }, { p: "test_mode", v: "true", vt: "bool" }, { p: "recorderRetention", v: "{\"targetKeys\":[\"codex_diagnostics\"],\"repackMinBytes\":268435456,\"repackMinPercent\":20}", vt: "json" }, { p: "data", v: "{\"attributes\":{\"pending_targets\":[],\"reclaimable_bytes\":314572800,\"reclaimable_percent\":30}}", vt: "json" }], repeat: "", crontab: "", once: false, onceDelay: 0.1, topic: "", payload: "ready", payloadType: "str", x: 700, y: 1070, wires: [["recorder_retention_test_repack_out"]] },
   { id: "recorder_retention_test_repack_out", type: "link out", z: TAB, g: "recorder_retention_group_tests", name: "Enviar teste ao gate", mode: "link", links: ["recorder_retention_repack_test_in"], x: 950, y: 1070, wires: [] },
   functionNode("recorder_retention_test_prepare", "recorder_retention_group_tests", "Preparar estado sintético", testPrepare, 1, 500, 990, [["recorder_retention_test_compact_out"]]),
   { id: "recorder_retention_test_compact_out", type: "link out", z: TAB, g: "recorder_retention_group_tests", name: "Amostra TESTE → cálculo real", mode: "link", links: ["recorder_retention_test_compact_in"], x: 730, y: 990, wires: [] },

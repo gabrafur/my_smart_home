@@ -7,6 +7,15 @@ import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "storage-maintenance.sh");
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+test("Node-RED security helper reuses the current Compose image digest", () => {
+  const compose = fs.readFileSync(path.join(repoRoot, "docker-compose.yml"), "utf8");
+  const helper = fs.readFileSync(path.join(repoRoot, "scripts", "setup-node-red-security.mjs"), "utf8");
+  const digest = compose.match(/image:\s+nodered\/node-red@(sha256:[a-f0-9]{64})/)?.[1];
+  assert.ok(digest, "Compose must pin the Node-RED image by digest");
+  assert.match(helper, new RegExp(`nodered/node-red@${digest}`));
+});
 
 function fixture({ name = "storage-maintenance-test-" } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), name));
@@ -24,6 +33,7 @@ function fixture({ name = "storage-maintenance-test-" } = {}) {
   const pm2Root = path.join(userHome, ".pm2");
   const vscodeRoot = path.join(userHome, ".vscode-server");
   const cursorRoot = path.join(userHome, ".cursor-server");
+  const recorderDb = path.join(root, "recorder.db");
   fs.mkdirSync(bin);
   fs.mkdirSync(filesystem);
   fs.mkdirSync(metricsRoot);
@@ -43,7 +53,7 @@ case "$1 $2" in
   "info ") exit 0 ;;
   "system df")
     case " $* " in
-      *" --format "*) printf '%s\n' '{"Type":"Images","Size":"2GB"}' '{"Type":"Build Cache","Size":"500MB"}' ;;
+      *" --format "*) printf '%s\n' '{"Type":"Images","Size":"2GB","Reclaimable":"400MB (20%)"}' '{"Type":"Build Cache","Size":"500MB","Reclaimable":"200MB"}' ;;
       *) printf '%s\n' 'TYPE TOTAL ACTIVE SIZE RECLAIMABLE' ;;
     esac
     ;;
@@ -134,6 +144,7 @@ esac
       STORAGE_MAINTENANCE_PM2_ROOT: pm2Root,
       STORAGE_MAINTENANCE_VSCODE_ROOT: vscodeRoot,
       STORAGE_MAINTENANCE_CURSOR_ROOT: cursorRoot,
+      STORAGE_MAINTENANCE_RECORDER_DB: recorderDb,
     },
   };
 }
@@ -182,6 +193,9 @@ test("apply enforces bounded cache and image policy without broad prune", () => 
   assert.doesNotMatch(calls, /volume|container prune|system prune|image prune -a/);
   const metrics = JSON.parse(fs.readFileSync(item.metricsFile, "utf8"));
   assert.equal(metrics.docker_logical_bytes, 2_500_000_000);
+  assert.equal(metrics.docker_images_logical_bytes, 2_000_000_000);
+  assert.equal(metrics.docker_build_cache_logical_bytes, 500_000_000);
+  assert.equal(metrics.docker_build_cache_reclaimable_bytes, 200_000_000);
   assert.equal(metrics.last_result, "success");
   removeFixture(item);
 });
@@ -202,6 +216,9 @@ test("containerd-only untagged images are explicitly removed after safety checks
   assert.match(calls, /image ls --all --no-trunc/);
   assert.match(calls, new RegExp(`ps -aq --filter ancestor=${removable}`));
   assert.match(calls, new RegExp(`image rm ${removable}`));
+  const metrics = JSON.parse(fs.readFileSync(item.metricsFile, "utf8"));
+  assert.equal(metrics.docker_reclaimable_untagged_logical_bytes, 500_000_000);
+  assert.equal(metrics.docker_protected_untagged_logical_bytes, 0);
   removeFixture(item);
 });
 
@@ -218,6 +235,9 @@ test("untagged images pinned by repository digest are preserved", () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /reason=repository-reference/);
   assert.doesNotMatch(fs.readFileSync(item.calls, "utf8"), /image rm sha256:storage-maintenance-referenced-fixture/);
+  const metrics = JSON.parse(fs.readFileSync(item.metricsFile, "utf8"));
+  assert.equal(metrics.docker_reclaimable_untagged_logical_bytes, 0);
+  assert.equal(metrics.docker_protected_untagged_logical_bytes, 500_000_000);
   removeFixture(item);
 });
 
@@ -247,6 +267,8 @@ test("automatic HA backup retention keeps only the two newest archives", () => {
   assert.equal(metrics.home_assistant_backups_logical_bytes, 25);
   assert.equal(metrics.home_assistant_backup_archives_logical_bytes, 17);
   assert.equal(metrics.home_assistant_manual_snapshots_logical_bytes, 8);
+  assert.equal(metrics.home_assistant_expired_manual_snapshots_logical_bytes, 0);
+  assert.equal(metrics.home_assistant_manual_snapshot_retention_days, 14);
   assert.match(result.stdout, /component=home-assistant-manual-snapshots .*status=review-only/);
   removeFixture(item);
 });
@@ -459,6 +481,9 @@ test("extended metrics remain schema-compatible and exclude private content", ()
   assert.equal(metrics.schema_version, 1);
   assert.equal(metrics.cursor_server_logical_bytes, 0);
   assert.equal(metrics.pm2_logs_logical_bytes, 3);
+  assert.equal(metrics.home_assistant_recorder_reclaimable_bytes, 0);
+  assert.equal(metrics.docker_reclaimable_untagged_logical_bytes, 0);
+  assert.equal(metrics.docker_protected_untagged_logical_bytes, 0);
   assert.equal(typeof metrics.last_reclaimed_by_category, "object");
   assert.equal(metrics.last_filesystem_net_reclaimed_bytes, 0);
   assert.ok(!JSON.stringify(metrics).includes("application.log"));

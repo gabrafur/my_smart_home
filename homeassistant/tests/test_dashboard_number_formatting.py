@@ -213,6 +213,12 @@ class DashboardNumberFormattingTest(unittest.TestCase):
         self.assertIn("name: Última verificação do Storage Health", section)
         self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_backup_archives", section)
         self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_manual_snapshots", section)
+        self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_recorder_reclaimable", section)
+        self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_docker_reclaimable_untagged", section)
+        self.assertIn("entity: sensor.raspberry_pi_storage_maintenance_docker_protected_untagged", section)
+        self.assertIn("label: Docker — total agregado, não somar com os subconjuntos", section)
+        self.assertNotIn("entity: sensor.raspberry_pi_storage_maintenance_home_assistant_backups", section)
+        self.assertNotIn("name: Imagens Docker descartáveis", section)
 
     def test_manual_action_buttons_expose_running_state(self):
         dashboard = (DASHBOARDS / "raspberry_pi_health.yaml").read_text(encoding="utf-8")

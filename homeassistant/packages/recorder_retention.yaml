@@ -18,3 +18,6 @@ command_line:
         - checked_at
         - cycle_started_at
         - pending_targets
+        - database_bytes
+        - reclaimable_bytes
+        - reclaimable_percent
