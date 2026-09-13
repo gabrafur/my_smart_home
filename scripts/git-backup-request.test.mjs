@@ -74,6 +74,35 @@ test("Node-RED request is executed once by the host bridge", async () => {
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
+test("host bridge does not leak its worker lock into backup validation", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-lock-scope-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const backup = path.join(fixture, "backup.sh");
+  const observed = path.join(fixture, "observed-lock");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(path.join(triggerDir, "requested"), "20260818T003000Z-41\n");
+  fs.writeFileSync(
+    backup,
+    `#!/bin/sh\nprintf '%s\\n' "\${RESOURCE_SAFE_LOCK_FILE-unset}" > "${observed}"\n`,
+  );
+  fs.chmodSync(backup, 0o755);
+
+  const result = spawnSync(processScript, [], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_BACKUP_TRIGGER_DIR: triggerDir,
+      GIT_BACKUP_SCRIPT: backup,
+      RESOURCE_SAFE_LOCK_FILE: path.join(fixture, "worker.lock"),
+    },
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(fs.readFileSync(observed, "utf8"), "unset\n");
+  assert.match(fs.readFileSync(path.join(triggerDir, "result"), "utf8"), /status=success/);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
 test("host bridge publishes a failed result without retaining the request", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-failure-test-"));
   const triggerDir = path.join(fixture, "trigger");

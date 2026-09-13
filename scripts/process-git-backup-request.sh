@@ -29,7 +29,11 @@ esac
 
 status=success
 exit_code=0
-if "$backup_script"; then
+# The cron bridge uses RESOURCE_SAFE_LOCK_FILE for its lightweight worker
+# serialization. Do not leak that private lock into git push: the pre-push
+# hook starts the canonical validation through run-resource-safe.sh and must
+# use the independent public-validation lock.
+if (unset RESOURCE_SAFE_LOCK_FILE; "$backup_script"); then
   :
 else
   exit_code=$?
