@@ -276,6 +276,20 @@ assert.equal(dashboardAlexa.result.notification.mode, "announce");
 assert.equal(dashboardAlexa.result.notification.targets[0], "voice_assistant_primary");
 assert.equal(dashboardAlexa.result.notification.test_mode, true);
 assert.equal(dashboardAlexa.result._notification_hub_dashboard_test, undefined);
+const dashboardAlexaHomeAssistantEvent = executeFunction("notification-hub-alexa-dashboard-request.js", {
+  payload: {
+    event_type: "alexa_text_announcement_requested",
+    event: { message: "  Mensagem real do Home Assistant  ", origin: "chat_dashboard" },
+    origin: "LOCAL",
+  },
+});
+assert.equal(dashboardAlexaHomeAssistantEvent.result.payload, "Mensagem real do Home Assistant");
+assert.equal(dashboardAlexaHomeAssistantEvent.result.notification.source, "chat_dashboard");
+assert.equal(dashboardAlexaHomeAssistantEvent.result.notification.test_mode, undefined);
+assert.equal(
+  dashboardAlexaHomeAssistantEvent.result._notification_hub_context.payload.event_type,
+  "alexa_text_announcement_requested",
+);
 const dashboardAlexaEmpty = executeFunction("notification-hub-alexa-dashboard-request.js", {
   payload: { message: "   " },
 });
