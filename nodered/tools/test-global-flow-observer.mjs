@@ -31,6 +31,8 @@ const code = {
   guard: source("global-flow-observer-dispatch-guard.js"),
   internalFailure: source("global-flow-observer-internal-failure.js"),
   dryRun: source("global-flow-observer-dry-run.js"),
+  integrationNormalize: source("global-flow-observer-integration-normalize.js"),
+  integrationLifecycle: source("global-flow-observer-integration-lifecycle.js"),
 };
 const flowNodeIds = {
   policyValidate: "global_observer_policy_validate",
@@ -50,6 +52,8 @@ const flowNodeIds = {
   guard: "global_observer_dispatch_guard",
   internalFailure: "global_observer_internal_failure",
   dryRun: "global_observer_dry_run_terminal",
+  integrationNormalize: "global_observer_integration_normalize",
+  integrationLifecycle: "global_observer_integration_lifecycle",
 };
 for (const [name, body] of Object.entries(code)) {
   new Function("msg", "node", "flow", body);
@@ -174,6 +178,17 @@ function runEvaluate(msg, flow) {
     }
   }
   return [alerts.length ? alerts : null];
+}
+function runIntegrationSnapshot(entries, observerNow, flow) {
+  ensurePolicy(flow);
+  const normalized = execute(code.integrationNormalize, {
+    _global_observer_test: true,
+    observer_now: observerNow,
+    config_entries: entries,
+  }, flow);
+  return normalized
+    ? execute(code.integrationLifecycle, normalized, flow)
+    : null;
 }
 
 {
@@ -465,6 +480,134 @@ assert.equal(
   production[1]._observer_persistent_notification_id,
   "nodered_observabilidade_global_node_error_flow_test_node_test",
 );
+
+const persistentOnlyRecovery = execute(code.guard, {
+  payload: {
+    observer_kind: "integration_recovery",
+    persistent_incident_kind: "integration_failure",
+    incident_key: "config_entry_test_icloud",
+    persistent_notification_operation: "dismiss",
+    mobile_notification: false,
+  },
+  alert: { title: "Recuperada", message: "Recuperada" },
+}, store);
+assert.equal(persistentOnlyRecovery[0], null);
+assert.ok(persistentOnlyRecovery[1], "recuperação deve remover o alerta persistente");
+assert.equal(persistentOnlyRecovery[2], null);
+assert.equal(
+  persistentOnlyRecovery[1]._observer_persistent_notification_id,
+  "nodered_observabilidade_global_integration_failure_config_entry_test_icloud",
+);
+
+const integrationStore = memory();
+ensurePolicy(integrationStore);
+execute(code.integrationLifecycle, {
+  _global_observer_test: true,
+  _global_observer_integration_reset: true,
+}, integrationStore);
+const failedEntry = [{
+  entry_id: "test_icloud",
+  domain: "icloud",
+  state: "setup_error",
+  disabled_by: null,
+  title: "private-account-identifier",
+}];
+assert.equal(
+  runIntegrationSnapshot(failedEntry, 1_000_000, integrationStore),
+  null,
+  "primeira observação deve apenas abrir a confirmação",
+);
+assert.equal(
+  runIntegrationSnapshot(failedEntry, 1_059_000, integrationStore),
+  null,
+  "falha antes do limiar deve permanecer silenciosa",
+);
+const integrationConfirmed = runIntegrationSnapshot(
+  failedEntry,
+  1_061_000,
+  integrationStore,
+);
+assert.equal(integrationConfirmed[0].length, 1);
+assert.equal(
+  integrationConfirmed[0][0].payload.observer_kind,
+  "integration_failure",
+);
+assert.match(integrationConfirmed[0][0].alert.title, /TESTE/);
+assert.doesNotMatch(
+  JSON.stringify(integrationConfirmed),
+  /private-account-identifier/,
+  "snapshot normalizado não pode encaminhar o título privado da entrada",
+);
+assert.equal(
+  runIntegrationSnapshot(failedEntry, 1_062_000, integrationStore),
+  null,
+  "falha repetida deve ser deduplicada",
+);
+const integrationRecovered = runIntegrationSnapshot([{
+  entry_id: "test_icloud",
+  domain: "icloud",
+  state: "loaded",
+  disabled_by: null,
+}], 1_063_000, integrationStore);
+assert.equal(integrationRecovered[0].length, 1);
+assert.equal(
+  integrationRecovered[0][0].payload.observer_kind,
+  "integration_recovery",
+);
+assert.equal(
+  integrationRecovered[0][0].payload.persistent_notification_operation,
+  "dismiss",
+);
+assert.equal(
+  integrationStore.values.get("global_flow_observer_integrations_v1__test")
+    .incidents.test_icloud,
+  undefined,
+  "loaded deve encerrar o incidente e liberar uma falha futura",
+);
+assert.equal(
+  runIntegrationSnapshot(failedEntry, 2_000_000, integrationStore),
+  null,
+);
+assert.ok(
+  runIntegrationSnapshot(failedEntry, 2_061_000, integrationStore),
+  "nova falha após recuperação deve alertar novamente",
+);
+const integrationDisabled = runIntegrationSnapshot([{
+  entry_id: "test_icloud",
+  domain: "icloud",
+  state: "not_loaded",
+  disabled_by: "user",
+}], 2_062_000, integrationStore);
+assert.equal(integrationDisabled[0][0].payload.mobile_notification, false);
+assert.equal(
+  integrationDisabled[0][0].payload.persistent_notification_operation,
+  "dismiss",
+);
+
+const reminderIntegrationStore = memory();
+assert.equal(
+  runIntegrationSnapshot(failedEntry, 3_000_000, reminderIntegrationStore),
+  null,
+);
+assert.ok(runIntegrationSnapshot(
+  failedEntry,
+  3_061_000,
+  reminderIntegrationStore,
+));
+assert.equal(
+  runIntegrationSnapshot(
+    failedEntry,
+    3_061_000 + 6 * 60 * 60 * 1000 - 1,
+    reminderIntegrationStore,
+  ),
+  null,
+);
+const integrationReminder = runIntegrationSnapshot(
+  failedEntry,
+  3_061_000 + 6 * 60 * 60 * 1000,
+  reminderIntegrationStore,
+);
+assert.match(integrationReminder[0][0].alert.title, /persiste/);
 
 const internalFailureStore = memory();
 ensurePolicy(internalFailureStore);

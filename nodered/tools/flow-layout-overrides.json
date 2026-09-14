@@ -11390,8 +11390,8 @@
           "y": 420
         },
         "global_observer_alert_to_dispatch_out": {
-          "x": 2390,
-          "y": 420
+          "x": 2050,
+          "y": 320
         },
         "global_observer_alert_to_dispatch_in": {
           "x": 2245,
@@ -11422,11 +11422,11 @@
           "y": 260
         },
         "global_observer_notification_catch": {
-          "x": 3580,
+          "x": 3200,
           "y": 400
         },
         "global_observer_notification_failure": {
-          "x": 4030,
+          "x": 3680,
           "y": 380
         },
         "global_observer_internal_catch": {
@@ -11524,8 +11524,8 @@
       },
       "node_positions": {
         "global_observer_alert_to_dispatch_out": {
-          "x": 2390,
-          "y": 420
+          "x": 2050,
+          "y": 320
         },
         "global_observer_dispatch_guard": {
           "x": 2640,

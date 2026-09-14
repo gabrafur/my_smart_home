@@ -44690,7 +44690,7 @@
         "z": "local_ai_rtx_recovery_tab",
         "g": "local_ai_rtx_health_group",
         "name": "Adaptar condição para alerta de domínio",
-        "func": "const reason = String(msg.rtx_status?.reason || \"unknown\");\nmsg._global_observer_test = msg.test_mode === true;\nmsg.payload = {\n    test_mode: msg.test_mode === true,\n    observer_kind: \"domain_alert\",\n    incident_key: \"local_ai_rtx_unavailable\",\n    reason,\n};\nmsg.alert = {\n    title: \"RTX indisponível\",\n    message: \"A conexão da RTX está indisponível. A recuperação é manual para não interromper sua VPN: abra a aba recuperacao_rtx e clique em Recuperar endpoint via MCP.\",\n};\ndelete msg.error;\ndelete msg.observer_alert;\nreturn msg;",
+        "func": "const reason = String(msg.rtx_status?.reason || \"unknown\");\nmsg._global_observer_test = msg.test_mode === true;\nmsg.payload = {\n    test_mode: msg.test_mode === true,\n    observer_kind: \"domain_alert\",\n    incident_key: \"local_ai_rtx_unavailable\",\n    mobile_notification: false,\n    reason,\n};\nmsg.alert = {\n    title: \"RTX indisponível\",\n    message: \"A conexão da RTX está indisponível. A recuperação é manual para não interromper sua VPN: abra a aba recuperacao_rtx e clique em Recuperar endpoint via MCP.\",\n};\ndelete msg.error;\ndelete msg.observer_alert;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -64938,7 +64938,7 @@
         "type": "tab",
         "label": "observabilidade_global",
         "disabled": false,
-        "info": "Recebe erros e estados de indisponibilidade de todas as abas, deduplica incidentes, notifica resident_primary e cria uma notificação persistente no Home Assistant.",
+        "info": "Recebe erros e estados de indisponibilidade de todas as abas, monitora os estados das entradas de integração do Home Assistant, deduplica incidentes, notifica resident_primary e cria uma notificação persistente no Home Assistant.",
         "env": []
     },
     {
@@ -64997,7 +64997,7 @@
         ],
         "x": 64,
         "y": 23,
-        "w": 4101,
+        "w": 3900,
         "h": 538,
         "notification_hub_layout_version": 1
     },
@@ -65646,8 +65646,8 @@
         "links": [
             "global_observer_alert_to_dispatch_in"
         ],
-        "x": 2390,
-        "y": 420,
+        "x": 2050,
+        "y": 320,
         "wires": []
     },
     {
@@ -65658,6 +65658,7 @@
         "name": "Receber alertas confirmados ou de domínio",
         "links": [
             "global_observer_alert_to_dispatch_out",
+            "global_observer_integration_alert_out",
             "local_ai_rtx_alert_out",
             "notification_hub_mobile_observer_out",
             "notification_hub_alexa_observer_out",
@@ -65694,7 +65695,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Separar produção, TESTE real e dry-run",
-        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst DELIVERY_TEST = msg._observer_delivery_test === true;\n\nif (TEST_MODE && !DELIVERY_TEST) return [null, null, msg];\n\nif (DELIVERY_TEST) {\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: true,\n        notification_delivery_under_test: true\n    };\n    msg.alert = {\n        title: \"TESTE — Monitor global do Node-RED\",\n        message:\n            \"TESTE de entrega: o canal central de falhas dos fluxos \" +\n            \"Node-RED conseguiu solicitar esta notificação ao Home Assistant.\"\n    };\n    return [msg, null, null];\n}\n\nconst kind = String(msg.payload?.observer_kind ?? \"unknown\");\nconst incident = String(\n    msg.payload?.incident_key ??\n    (\n        [msg.payload?.flow_id, msg.payload?.source_id]\n            .filter(Boolean)\n            .join(\"_\") ||\n        \"unknown\"\n    )\n);\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_${kind}_${incident}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\nreturn [msg, msg, null];",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg.payload?.test_mode === true;\nconst DELIVERY_TEST = msg._observer_delivery_test === true;\n\nif (TEST_MODE && !DELIVERY_TEST) return [null, null, msg];\n\nif (DELIVERY_TEST) {\n    msg.payload = {\n        ...(msg.payload ?? {}),\n        test_mode: true,\n        notification_delivery_under_test: true\n    };\n    msg.alert = {\n        title: \"TESTE — Monitor global do Node-RED\",\n        message:\n            \"TESTE de entrega: o canal central de falhas dos fluxos \" +\n            \"Node-RED conseguiu solicitar esta notificação ao Home Assistant.\"\n    };\n    return [msg, null, null];\n}\n\nconst kind = String(msg.payload?.observer_kind ?? \"unknown\");\nconst persistentKind = String(\n    msg.payload?.persistent_incident_kind ?? kind\n);\nconst incident = String(\n    msg.payload?.incident_key ??\n    (\n        [msg.payload?.flow_id, msg.payload?.source_id]\n            .filter(Boolean)\n            .join(\"_\") ||\n        \"unknown\"\n    )\n);\nmsg._observer_persistent_notification_id =\n    `nodered_observabilidade_global_${persistentKind}_${incident}`\n        .replace(/[^a-zA-Z0-9_-]+/g, \"_\")\n        .slice(0, 255);\n\nif (msg.payload?.mobile_notification === false) {\n    return [null, msg, null];\n}\n\nreturn [msg, msg, null];",
         "outputs": 3,
         "timeout": 0,
         "noerr": 0,
@@ -65854,7 +65855,7 @@
                 "t": "set",
                 "p": "notification",
                 "pt": "msg",
-                "to": "{\"source\":\"observabilidade_global\",\"operation\":\"create\",\"delivery\":\"queued\",\"notification_id\":_observer_persistent_notification_id,\"title\":alert.title}",
+                "to": "{\"source\":\"observabilidade_global\",\"operation\":payload.persistent_notification_operation=\"dismiss\" ? \"dismiss\" : \"create\",\"delivery\":\"queued\",\"notification_id\":_observer_persistent_notification_id,\"title\":alert.title}",
                 "tot": "jsonata"
             },
             {
@@ -65957,7 +65958,7 @@
             "global_observer_notify_persistent__hub_call"
         ],
         "uncaught": false,
-        "x": 3050,
+        "x": 3200,
         "y": 400,
         "wires": [
             [
@@ -65978,7 +65979,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 4030,
+        "x": 3680,
         "y": 380,
         "wires": []
     },
@@ -66003,7 +66004,10 @@
             "global_observer_evaluate_clear_transient",
             "global_observer_evaluate_confirm",
             "global_observer_evaluate_alert",
-            "global_observer_dispatch_guard"
+            "global_observer_dispatch_guard",
+            "global_observer_integration_entries",
+            "global_observer_integration_normalize",
+            "global_observer_integration_lifecycle"
         ],
         "uncaught": false,
         "x": 2230,
@@ -66302,21 +66306,26 @@
             "global_observer_test_evaluate_out",
             "global_observer_test_delivery",
             "global_observer_test_delivery_out",
+            "global_observer_test_integration_reset",
+            "global_observer_test_integration_failure",
+            "global_observer_test_integration_confirm",
+            "global_observer_test_integration_recovery",
+            "global_observer_integration_test_out",
             "global_observer_dry_run_in",
             "global_observer_dry_run_terminal"
         ],
         "x": 114,
         "y": 943,
-        "w": 1522,
-        "h": 318
+        "w": 2033,
+        "h": 354
     },
     {
         "id": "global_observer_test_instructions",
         "type": "comment",
         "z": "global_flow_observer_tab",
         "g": "global_observer_test_group",
-        "name": "TESTE: 1 reset; 2 erro; 3 status indisponível; 4 avaliar 1 min; 5 opcional: push real identificado como TESTE",
-        "info": "Erro e status atravessam classificação, dedupe e guard até o dry-run. Somente o passo 5 chama o Home Assistant; é o smoke test do canal.",
+        "name": "TESTE: 1–4 erro/status; 5 push real opcional; 6–9 integração falha, confirma e recupera",
+        "info": "Erro e status atravessam classificação, dedupe e guard até o dry-run. Os passos 6–9 usam um snapshot sintético de config_entries. Somente o passo 5 chama o Home Assistant; ele é o smoke test explícito do canal.",
         "x": 770,
         "y": 1000,
         "wires": []
@@ -68802,5 +68811,327 @@
             "target": "git_backup_retry_out",
             "output": 0
         }
+    },
+    {
+        "id": "global_observer_integration_group",
+        "type": "group",
+        "z": "global_flow_observer_tab",
+        "name": "Integrações do Home Assistant — estado, confirmação e recuperação",
+        "style": {
+            "label": true,
+            "color": "#c2410c"
+        },
+        "nodes": [
+            "global_observer_integration_architecture",
+            "global_observer_integration_tick",
+            "global_observer_integration_test_in",
+            "global_observer_integration_entries",
+            "global_observer_integration_normalize",
+            "global_observer_integration_lifecycle",
+            "global_observer_integration_alert_out"
+        ],
+        "x": 2200,
+        "y": 563,
+        "w": 1960,
+        "h": 358
+    },
+    {
+        "id": "global_observer_integration_architecture",
+        "type": "comment",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "HA produz config_entries → Node-RED confirma falha → dedupe persistente → push + alerta no HA",
+        "info": "setup_error, setup_retry, migration_error e failed_unload são falhas. loaded encerra o incidente; entradas desativadas são silenciosas. Confirmação e lembrete usam os parâmetros visuais do observador.",
+        "x": 3150,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "global_observer_integration_tick",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "Ler integrações a cada 60 s",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "60",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "20",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 2340,
+        "y": 720,
+        "wires": [
+            [
+                "global_observer_integration_entries"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_integration_test_in",
+        "type": "link in",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "Receber cenários TESTE",
+        "links": [
+            "global_observer_integration_test_out"
+        ],
+        "x": 2480,
+        "y": 820,
+        "wires": [
+            [
+                "global_observer_integration_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_integration_entries",
+        "type": "ha-api",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "FONTE: entradas do Home Assistant",
+        "server": "4126427d5e161a03",
+        "version": 1,
+        "debugenabled": false,
+        "protocol": "websocket",
+        "method": "get",
+        "path": "",
+        "data": "{\"type\":\"config_entries/get\"}",
+        "dataType": "json",
+        "responseType": "json",
+        "outputProperties": [
+            {
+                "property": "config_entries",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "results"
+            }
+        ],
+        "x": 2650,
+        "y": 720,
+        "wires": [
+            [
+                "global_observer_integration_normalize"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_integration_normalize",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "Sanitizar snapshot de integrações",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg._global_observer_integration_test === true ||\n    msg.payload?.test_mode === true;\n\nif (msg._global_observer_integration_reset === true) {\n    msg._global_observer_integration_test = TEST_MODE;\n    return msg;\n}\n\nconst entries = Array.isArray(msg.config_entries)\n    ? msg.config_entries\n    : Array.isArray(msg.payload)\n        ? msg.payload\n        : null;\n\nif (!entries || entries.length === 0 || entries.length > 1000) {\n    node.error(\n        \"INTEGRATION_MONITOR_INVALID_SNAPSHOT expected_non_empty_config_entries\",\n        msg\n    );\n    return null;\n}\n\nconst normalized = entries\n    .filter((entry) => entry && typeof entry === \"object\")\n    .map((entry) => ({\n        entry_id: String(entry.entry_id ?? \"\").slice(0, 80),\n        domain: String(entry.domain ?? \"\").slice(0, 80),\n        state: String(entry.state ?? \"unknown\").toLowerCase().slice(0, 40),\n        disabled: entry.disabled_by !== null && entry.disabled_by !== undefined\n    }))\n    .filter((entry) => entry.entry_id && entry.domain);\n\nif (normalized.length === 0) {\n    node.error(\n        \"INTEGRATION_MONITOR_INVALID_SNAPSHOT no_valid_config_entries\",\n        msg\n    );\n    return null;\n}\n\ndelete msg.config_entries;\nmsg.payload = { test_mode: TEST_MODE };\nmsg._global_observer_integration_test = TEST_MODE;\nmsg._integration_monitor_snapshot = {\n    version: 1,\n    entries: normalized\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 2950,
+        "y": 720,
+        "wires": [
+            [
+                "global_observer_integration_lifecycle"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_integration_lifecycle",
+        "type": "function",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "Confirmar, deduplicar e encerrar",
+        "func": "const TEST_MODE =\n    msg._global_observer_test === true ||\n    msg._global_observer_integration_test === true ||\n    msg.payload?.test_mode === true;\nconst STORE = TEST_MODE ? undefined : \"persistent\";\nconst STATE_KEY = TEST_MODE\n    ? \"global_flow_observer_integrations_v1__test\"\n    : \"global_flow_observer_integrations_v1\";\nconst getState = () => STORE\n    ? flow.get(STATE_KEY, STORE)\n    : flow.get(STATE_KEY);\nconst setState = (value) => STORE\n    ? flow.set(STATE_KEY, value, STORE)\n    : flow.set(STATE_KEY, value);\n\nif (msg._global_observer_integration_reset === true) {\n    if (!TEST_MODE) {\n        node.error(\"INTEGRATION_MONITOR_RESET_REFUSED production_state\", msg);\n        return null;\n    }\n    setState({ version: 1, incidents: {}, last_scan_at: null });\n    node.status({ fill: \"blue\", shape: \"dot\", text: \"TESTE integrações resetado\" });\n    return null;\n}\n\nconst policy = flow.get(\"global_observer_policy_v1\", \"persistent\");\nif (policy?.version !== 1 || policy?.complete !== true) {\n    node.status({ fill: \"yellow\", shape: \"ring\", text: \"aguardando política visual\" });\n    return null;\n}\n\nconst snapshot = msg._integration_monitor_snapshot;\nif (snapshot?.version !== 1 || !Array.isArray(snapshot.entries)) {\n    node.error(\"INTEGRATION_MONITOR_INVALID_NORMALIZED_SNAPSHOT\", msg);\n    return null;\n}\n\nconst suppliedNow = Number(msg.observer_now);\nconst now = Number.isFinite(suppliedNow) && suppliedNow > 0\n    ? suppliedNow\n    : Date.now();\nconst confirmMs = Number(policy.status_confirm_seconds) * 1000;\nconst reminderMs = Number(policy.reminder_hours) * 60 * 60 * 1000;\nif (\n    !Number.isFinite(confirmMs) || confirmMs < 10000 ||\n    !Number.isFinite(reminderMs) || reminderMs < 60 * 60 * 1000\n) {\n    node.error(\"INTEGRATION_MONITOR_INVALID_POLICY\", msg);\n    return null;\n}\n\nconst failureStates = new Set([\n    \"setup_error\",\n    \"setup_retry\",\n    \"migration_error\",\n    \"failed_unload\"\n]);\nconst current = new Map(\n    snapshot.entries.map((entry) => [entry.entry_id, entry])\n);\nconst previous = getState();\nconst state = previous?.version === 1\n    ? previous\n    : { version: 1, incidents: {}, last_scan_at: null };\nif (!state.incidents || typeof state.incidents !== \"object\") {\n    state.incidents = {};\n}\n\nconst formatInteger = new Intl.NumberFormat(\"pt-BR\", {\n    maximumFractionDigits: 0\n});\nconst safeIncident = (entryId) =>\n    `config_entry_${entryId}`.replace(/[^a-zA-Z0-9_-]+/g, \"_\").slice(0, 120);\nconst knownDomainLabels = {\n    hacs: \"HACS\",\n    homekit: \"HomeKit\",\n    icloud: \"iCloud\",\n    mqtt: \"MQTT\",\n    tuya: \"Tuya\"\n};\nconst domainLabel = (domain) => knownDomainLabels[domain] ?? domain\n    .split(\"_\")\n    .filter(Boolean)\n    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))\n    .join(\" \");\nconst output = [];\n\nconst recoveryMessage = (incident, resolution, mobileNotification) => ({\n    _global_observer_test: TEST_MODE,\n    _global_observer_integration_test: TEST_MODE,\n    payload: {\n        test_mode: TEST_MODE,\n        observer_kind: \"integration_recovery\",\n        incident_key: safeIncident(incident.entry_id),\n        integration_domain: incident.domain,\n        persistent_incident_kind: \"integration_failure\",\n        persistent_notification_operation: \"dismiss\",\n        mobile_notification: mobileNotification,\n        resolution\n    },\n    alert: {\n        title: TEST_MODE\n            ? `TESTE — Integração ${domainLabel(incident.domain)} recuperada`\n            : `Integração ${domainLabel(incident.domain)} recuperada`,\n        message:\n            `A integração ${domainLabel(incident.domain)} voltou ao estado loaded. ` +\n            \"O incidente anterior foi encerrado.\"\n    }\n});\n\nfor (const entry of snapshot.entries) {\n    const incident = state.incidents[entry.entry_id];\n\n    if (entry.disabled) {\n        if (incident?.notified_at) {\n            output.push(recoveryMessage(incident, \"disabled\", false));\n        }\n        delete state.incidents[entry.entry_id];\n        continue;\n    }\n\n    if (failureStates.has(entry.state)) {\n        const active = incident ?? {\n            entry_id: entry.entry_id,\n            domain: entry.domain,\n            first_seen_at: now,\n            notified_at: null\n        };\n        active.domain = entry.domain;\n        active.state = entry.state;\n        active.last_seen_at = now;\n        state.incidents[entry.entry_id] = active;\n\n        const confirmed = now - Number(active.first_seen_at) >= confirmMs;\n        const reminderDue =\n            active.notified_at === null ||\n            now - Number(active.notified_at) >= reminderMs;\n        if (!confirmed || !reminderDue) continue;\n\n        const durationMinutes = Math.max(\n            1,\n            Math.round((now - Number(active.first_seen_at)) / 60000)\n        );\n        const reminder = active.notified_at !== null;\n        active.notified_at = now;\n        const failureTitle = reminder\n            ? `Falha persiste na integração ${domainLabel(entry.domain)}`\n            : `Falha na integração ${domainLabel(entry.domain)}`;\n        output.push({\n            _global_observer_test: TEST_MODE,\n            _global_observer_integration_test: TEST_MODE,\n            payload: {\n                test_mode: TEST_MODE,\n                observer_kind: \"integration_failure\",\n                incident_key: safeIncident(entry.entry_id),\n                integration_domain: entry.domain,\n                integration_state: entry.state,\n                persistent_notification_operation: \"create\",\n                mobile_notification: true\n            },\n            alert: {\n                title: TEST_MODE\n                    ? `TESTE — ${failureTitle}`\n                    : failureTitle,\n                message:\n                    `A integração ${domainLabel(entry.domain)} permanece em ` +\n                    `${entry.state} há ${formatInteger.format(durationMinutes)} min. ` +\n                    \"Abra Configurações → Dispositivos e serviços no Home Assistant \" +\n                    \"para consultar ou reautenticar a entrada.\"\n            }\n        });\n        node.warn(\n            \"HOME_ASSISTANT_INTEGRATION_FAILURE \" +\n            `domain=${entry.domain} state=${entry.state} reminder=${reminder}`\n        );\n        continue;\n    }\n\n    if (entry.state === \"loaded\") {\n        if (incident?.notified_at) {\n            output.push(recoveryMessage(incident, \"loaded\", true));\n            node.log(\n                \"HOME_ASSISTANT_INTEGRATION_RECOVERED \" +\n                `domain=${incident.domain}`\n            );\n        }\n        delete state.incidents[entry.entry_id];\n    } else if (incident) {\n        incident.last_seen_at = now;\n        incident.transition_state = entry.state;\n    }\n}\n\nfor (const [entryId, incident] of Object.entries(state.incidents)) {\n    if (current.has(entryId)) continue;\n    if (incident.notified_at) {\n        output.push(recoveryMessage(incident, \"removed\", false));\n    }\n    delete state.incidents[entryId];\n}\n\nconst activeEntries = snapshot.entries.filter((entry) => !entry.disabled).length;\nconst failingEntries = snapshot.entries.filter(\n    (entry) => !entry.disabled && failureStates.has(entry.state)\n).length;\nstate.last_scan_at = now;\nstate.active_entries = activeEntries;\nstate.failing_entries = failingEntries;\nsetState(state);\n\nnode.status(failingEntries > 0\n    ? {\n        fill: \"red\",\n        shape: \"ring\",\n        text: `${formatInteger.format(failingEntries)} integração(ões) em falha`\n    }\n    : {\n        fill: \"green\",\n        shape: \"dot\",\n        text: `${formatInteger.format(activeEntries)} entradas; nenhuma falha`\n    });\n\nreturn output.length ? [output] : null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 3260,
+        "y": 720,
+        "wires": [
+            [
+                "global_observer_integration_alert_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_integration_alert_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_integration_group",
+        "name": "Integração falhou/recuperou → entrega",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 3580,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "global_observer_test_integration_reset",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 6: reset integrações",
+        "props": [
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_global_observer_integration_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "_global_observer_integration_reset",
+                "v": "true",
+                "vt": "bool"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1770,
+        "y": 1080,
+        "wires": [
+            [
+                "global_observer_integration_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_integration_failure",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 7: integração falhou",
+        "props": [
+            {
+                "p": "config_entries",
+                "v": "[{\"entry_id\":\"test_icloud\",\"domain\":\"icloud\",\"state\":\"setup_error\",\"disabled_by\":null}]",
+                "vt": "json"
+            },
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "observer_now",
+                "v": "1000000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1780,
+        "y": 1140,
+        "wires": [
+            [
+                "global_observer_integration_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_integration_confirm",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 8: confirmar após 1 min",
+        "props": [
+            {
+                "p": "config_entries",
+                "v": "[{\"entry_id\":\"test_icloud\",\"domain\":\"icloud\",\"state\":\"setup_error\",\"disabled_by\":null}]",
+                "vt": "json"
+            },
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "observer_now",
+                "v": "1061000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1800,
+        "y": 1200,
+        "wires": [
+            [
+                "global_observer_integration_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_test_integration_recovery",
+        "type": "inject",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "TESTE 9: integração recuperou",
+        "props": [
+            {
+                "p": "config_entries",
+                "v": "[{\"entry_id\":\"test_icloud\",\"domain\":\"icloud\",\"state\":\"loaded\",\"disabled_by\":null}]",
+                "vt": "json"
+            },
+            {
+                "p": "_global_observer_test",
+                "v": "true",
+                "vt": "bool"
+            },
+            {
+                "p": "observer_now",
+                "v": "1062000",
+                "vt": "num"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 1800,
+        "y": 1260,
+        "wires": [
+            [
+                "global_observer_integration_test_out"
+            ]
+        ]
+    },
+    {
+        "id": "global_observer_integration_test_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_test_group",
+        "name": "Cenários de integração → monitor real",
+        "mode": "link",
+        "links": [
+            "global_observer_integration_test_in"
+        ],
+        "x": 2110,
+        "y": 1170,
+        "wires": []
     }
 ]

@@ -21,6 +21,9 @@ if (DELIVERY_TEST) {
 }
 
 const kind = String(msg.payload?.observer_kind ?? "unknown");
+const persistentKind = String(
+    msg.payload?.persistent_incident_kind ?? kind
+);
 const incident = String(
     msg.payload?.incident_key ??
     (
@@ -31,8 +34,12 @@ const incident = String(
     )
 );
 msg._observer_persistent_notification_id =
-    `nodered_observabilidade_global_${kind}_${incident}`
+    `nodered_observabilidade_global_${persistentKind}_${incident}`
         .replace(/[^a-zA-Z0-9_-]+/g, "_")
         .slice(0, 255);
+
+if (msg.payload?.mobile_notification === false) {
+    return [null, msg, null];
+}
 
 return [msg, msg, null];

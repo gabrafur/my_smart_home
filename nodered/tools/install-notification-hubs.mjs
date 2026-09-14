@@ -76,7 +76,10 @@ export const NOTIFICATION_MIGRATIONS = Object.freeze([
   mobile("resident_notifications_notify_secondary", "notificacoes_chegadas_residentes", "resident_secondary", "actionable", '"Casa inteligente"', "_notification_hub_context.payload.message", '{"tag":_notification_hub_context.payload.notification_key,"push":{"sound":"default","interruption-level":"time-sensitive"}}', { testMode: "_location_test = true" }),
   mobile("resident_notifications_test_notify_secondary", "notificacoes_chegadas_residentes", "resident_secondary", "actionable", '"TESTE — Casa inteligente"', '"TESTE — confirmação do push de chegada para o celular."', '{"tag":"resident-notification-delivery-test","push":{"sound":"default","interruption-level":"time-sensitive"}}', { testMode: "true", deliveryUnderTest: "true" }),
   mobile("global_observer_notify_primary", "observabilidade_global", "resident_primary", "simple", '_observer_delivery_test=true ? "TESTE — Monitor global do Node-RED" : alert.title', '_observer_delivery_test=true ? "TESTE de entrega do canal central de falhas do Node-RED via Home Assistant." : alert.message', null, { testMode: "_observer_delivery_test = true", deliveryUnderTest: "_observer_delivery_test = true", beforeRules: [{ t: "set", p: "_observer_notification_channel", pt: "msg", to: "mobile_primary", tot: "str" }] }),
-  persistent("global_observer_notify_persistent", "observabilidade_global", "create", "queued", "_observer_persistent_notification_id", "alert.title", "alert.message", { beforeRules: [{ t: "set", p: "_observer_notification_channel", pt: "msg", to: "persistent_notification", tot: "str" }] }),
+  persistent("global_observer_notify_persistent", "observabilidade_global", "create", "queued", "_observer_persistent_notification_id", "alert.title", "alert.message", {
+    operationExpression: 'payload.persistent_notification_operation="dismiss" ? "dismiss" : "create"',
+    beforeRules: [{ t: "set", p: "_observer_notification_channel", pt: "msg", to: "persistent_notification", tot: "str" }],
+  }),
 ]);
 
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
@@ -97,8 +100,9 @@ const notificationExpression = (migration) => {
     fields.push(`"targets":["${migration.target}"]`, `"mode":"${migration.mode}"`);
     if (migration.data) fields.push(`"data":${migration.data}`);
   } else {
+    const operation = migration.operationExpression ?? `"${migration.operation}"`;
     fields.push(
-      `"operation":"${migration.operation}"`,
+      `"operation":${operation}`,
       `"delivery":"${migration.delivery}"`,
       `"notification_id":${migration.notificationId}`,
     );

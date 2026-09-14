@@ -4,6 +4,7 @@ msg.payload = {
     test_mode: msg.test_mode === true,
     observer_kind: "domain_alert",
     incident_key: "local_ai_rtx_unavailable",
+    mobile_notification: false,
     reason,
 };
 msg.alert = {

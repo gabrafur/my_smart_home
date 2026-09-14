@@ -144,6 +144,7 @@ assert.equal(incident._global_observer_test, false);
 assert.equal(incident.error, undefined, "estado de domínio não pode fingir node_error");
 assert.equal(incident.payload.observer_kind, "domain_alert");
 assert.equal(incident.payload.incident_key, "local_ai_rtx_unavailable");
+assert.equal(incident.payload.mobile_notification, false, "falha da RTX deve ficar somente no Home Assistant");
 assert.match(incident.alert.message, /recuperacao_rtx/);
 
 // O gate final é a única fronteira que pode alcançar o HTTP autenticado.

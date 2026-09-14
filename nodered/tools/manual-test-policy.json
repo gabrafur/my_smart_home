@@ -374,7 +374,11 @@
                 "global_observer_test_error",
                 "global_observer_test_status_failure",
                 "global_observer_test_evaluate",
-                "global_observer_test_delivery"
+                "global_observer_test_delivery",
+                "global_observer_test_integration_reset",
+                "global_observer_test_integration_failure",
+                "global_observer_test_integration_confirm",
+                "global_observer_test_integration_recovery"
             ],
             "dry_run_terminal_ids": [
                 "global_observer_dry_run_terminal"
@@ -383,7 +387,7 @@
                 "global_observer_notify_primary"
             ],
             "automated_test": "test-global-flow-observer.mjs",
-            "reason": "Erro e indisponibilidade sintéticos atravessam classificação, dedupe e guard até o dry-run; por solicitação explícita, um único push marcado TESTE valida o canal central compartilhado por todas as abas."
+            "reason": "Erro, indisponibilidade e estados sintéticos de config_entries atravessam normalização, confirmação, dedupe, recuperação e guard até o dry-run; por solicitação explícita, um único push marcado TESTE valida o canal central compartilhado por todas as abas e integrações."
         },
         "local_ai_rtx_recovery_tab": {
             "strategy": "manual_full_dry_run",

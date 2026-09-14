@@ -17,13 +17,22 @@ const externalEventOutIds = [
   "notification_hub_alexa_observer_out",
   "notification_hub_persistent_observer_out",
 ];
-const flows = installNotificationHubs(JSON.parse(fs.readFileSync(sourcePath, "utf8")));
+const parsedFlows = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+const notificationHubTabs = Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab);
+const hasNotificationHubs = notificationHubTabs.every((tabId) =>
+  parsedFlows.some((node) => node.id === tabId && node.type === "tab")
+);
+const flows = hasNotificationHubs
+  ? parsedFlows
+  : installNotificationHubs(parsedFlows);
 
 const source = (name) =>
   fs.readFileSync(path.join(functionDir, name), "utf8").trimEnd();
+const isCoverageId = (id) =>
+  typeof id === "string" && id.startsWith("global_observer_coverage__");
 const owned = (id) =>
   id === OBSERVER_TAB ||
-  id.startsWith("global_observer_");
+  (id.startsWith("global_observer_") && !isCoverageId(id));
 
 let next = flows.filter((node) => !owned(node.id));
 for (const node of next) {
@@ -50,6 +59,13 @@ for (const node of next) {
 }
 
 const tabs = next.filter((node) => node.type === "tab" && node.id !== OBSERVER_TAB);
+const homeAssistantServers = next.filter((node) => node.type === "server");
+if (homeAssistantServers.length !== 1) {
+  throw new Error(
+    `Expected exactly one Home Assistant server, found ${homeAssistantServers.length}`,
+  );
+}
+const HOME_ASSISTANT_SERVER = homeAssistantServers[0].id;
 const coverageOutIds = [];
 const coverageNodes = [];
 const coverageLayoutOverrides = new Map([
@@ -118,7 +134,9 @@ for (const tab of tabs) {
   const statusId = `${prefix}__status`;
   const annotateId = `${prefix}__annotate`;
   const outId = `${prefix}__out`;
-  const tabNodes = next.filter((node) => node.z === tab.id);
+  const tabNodes = next.filter(
+    (node) => node.z === tab.id && !isCoverageId(node.id),
+  );
   const rightEdge = Math.max(
     0,
     ...tabNodes.map((node) =>
@@ -133,7 +151,7 @@ for (const tab of tabs) {
   const groupX = layoutOverride?.group?.x ?? Math.ceil((rightEdge + 40) / 20) * 20;
   const groupY = layoutOverride?.group?.y ?? 40;
   coverageOutIds.push(outId);
-  coverageNodes.push(
+  const desiredCoverageNodes = [
     {
       id: groupId,
       type: "group",
@@ -202,7 +220,20 @@ for (const tab of tabs) {
       y: layoutOverride?.out?.y ?? groupY + 90,
       wires: [],
     },
-  );
+  ];
+  for (const desired of desiredCoverageNodes) {
+    const existing = next.find((node) => node.id === desired.id);
+    if (!existing) {
+      coverageNodes.push(desired);
+      continue;
+    }
+    const preservedLayout = Object.fromEntries(
+      ["x", "y", "w", "h"]
+        .filter((property) => Object.hasOwn(existing, property))
+        .map((property) => [property, existing[property]]),
+    );
+    Object.assign(existing, desired, preservedLayout);
+  }
 }
 
 const functionNode = (id, group, name, func, outputs, x, y, wires) => ({
@@ -242,6 +273,7 @@ const switchNode = (id, group, name, property, rules, x, y, wires) => ({
 
 const productionGroup = "global_observer_production_group";
 const policyGroup = "global_observer_policy_group";
+const integrationGroup = "global_observer_integration_group";
 const testGroup = "global_observer_test_group";
 const resetTest = source("global-flow-observer-reset-test.js");
 const observerNodes = [
@@ -251,7 +283,8 @@ const observerNodes = [
     label: "observabilidade_global",
     disabled: false,
     info:
-      "Recebe erros e estados de indisponibilidade de todas as abas, " +
+      "Recebe erros e estados de indisponibilidade de todas as abas, monitora " +
+      "os estados das entradas de integração do Home Assistant, " +
       "deduplica incidentes, notifica resident_primary e cria uma notificação " +
       "persistente no Home Assistant.",
     env: [],
@@ -309,7 +342,7 @@ const observerNodes = [
     ],
     x: 64,
     y: 39,
-    w: 3650,
+    w: 3900,
     h: 522,
     notification_hub_layout_version: 1,
   },
@@ -505,11 +538,11 @@ const observerNodes = [
   {
     id: "global_observer_alert_to_dispatch_out", type: "link out", z: OBSERVER_TAB,
     g: productionGroup, name: "Alertas confirmados → entrega", mode: "link",
-    links: ["global_observer_alert_to_dispatch_in"], x: 2070, y: 320, wires: [],
+    links: ["global_observer_alert_to_dispatch_in"], x: 2050, y: 320, wires: [],
   },
   {
     id: "global_observer_alert_to_dispatch_in", type: "link in", z: OBSERVER_TAB,
-    g: productionGroup, name: "Receber alertas confirmados ou de domínio", links: ["global_observer_alert_to_dispatch_out", ...externalEventOutIds],
+    g: productionGroup, name: "Receber alertas confirmados ou de domínio", links: ["global_observer_alert_to_dispatch_out", "global_observer_integration_alert_out", ...externalEventOutIds],
     x: 2280, y: 300, wires: [["global_observer_dispatch_guard"]],
   },
   {
@@ -590,7 +623,7 @@ const observerNodes = [
     rules: [
       { t: "set", p: "_notification_hub_context", pt: "msg", to: '{"payload":payload,"notification":notification,"had_notification":$exists(notification)}', tot: "jsonata" },
       { t: "set", p: "_observer_notification_channel", pt: "msg", to: "persistent_notification", tot: "str" },
-      { t: "set", p: "notification", pt: "msg", to: '{"source":"observabilidade_global","operation":"create","delivery":"queued","notification_id":_observer_persistent_notification_id,"title":alert.title}', tot: "jsonata" },
+      { t: "set", p: "notification", pt: "msg", to: '{"source":"observabilidade_global","operation":payload.persistent_notification_operation="dismiss" ? "dismiss" : "create","delivery":"queued","notification_id":_observer_persistent_notification_id,"title":alert.title}', tot: "jsonata" },
       { t: "set", p: "payload", pt: "msg", to: "alert.message", tot: "jsonata" },
     ],
     action: "", property: "", from: "", to: "", reg: false,
@@ -675,6 +708,9 @@ const observerNodes = [
       "global_observer_evaluate_confirm",
       "global_observer_evaluate_alert",
       "global_observer_dispatch_guard",
+      "global_observer_integration_entries",
+      "global_observer_integration_normalize",
+      "global_observer_integration_lifecycle",
     ],
     uncaught: false,
     x: 600,
@@ -792,6 +828,128 @@ const observerNodes = [
     source("global-flow-observer-policy-reject.js"), 0, 1100, 800, [],
   ),
   {
+    id: integrationGroup,
+    type: "group",
+    z: OBSERVER_TAB,
+    name: "Integrações do Home Assistant — estado, confirmação e recuperação",
+    style: { label: true, color: "#c2410c" },
+    nodes: [
+      "global_observer_integration_architecture",
+      "global_observer_integration_tick",
+      "global_observer_integration_test_in",
+      "global_observer_integration_entries",
+      "global_observer_integration_normalize",
+      "global_observer_integration_lifecycle",
+      "global_observer_integration_alert_out",
+    ],
+    x: 2200,
+    y: 579,
+    w: 1960,
+    h: 342,
+  },
+  {
+    id: "global_observer_integration_architecture",
+    type: "comment",
+    z: OBSERVER_TAB,
+    g: integrationGroup,
+    name: "HA produz config_entries → Node-RED confirma falha → dedupe persistente → push + alerta no HA",
+    info:
+      "setup_error, setup_retry, migration_error e failed_unload são falhas. " +
+      "loaded encerra o incidente; entradas desativadas são silenciosas. " +
+      "Confirmação e lembrete usam os parâmetros visuais do observador.",
+    x: 3150,
+    y: 620,
+    wires: [],
+  },
+  {
+    id: "global_observer_integration_tick",
+    type: "inject",
+    z: OBSERVER_TAB,
+    g: integrationGroup,
+    name: "Ler integrações a cada 60 s",
+    props: [{ p: "payload" }],
+    repeat: "60",
+    crontab: "",
+    once: true,
+    onceDelay: "20",
+    topic: "",
+    payload: "",
+    payloadType: "date",
+    x: 2340,
+    y: 720,
+    wires: [["global_observer_integration_entries"]],
+  },
+  {
+    id: "global_observer_integration_test_in",
+    type: "link in",
+    z: OBSERVER_TAB,
+    g: integrationGroup,
+    name: "Receber cenários TESTE",
+    links: ["global_observer_integration_test_out"],
+    x: 2480,
+    y: 820,
+    wires: [["global_observer_integration_normalize"]],
+  },
+  {
+    id: "global_observer_integration_entries",
+    type: "ha-api",
+    z: OBSERVER_TAB,
+    g: integrationGroup,
+    name: "FONTE: entradas do Home Assistant",
+    server: HOME_ASSISTANT_SERVER,
+    version: 1,
+    debugenabled: false,
+    protocol: "websocket",
+    method: "get",
+    path: "",
+    data: '{"type":"config_entries/get"}',
+    dataType: "json",
+    responseType: "json",
+    outputProperties: [
+      {
+        property: "config_entries",
+        propertyType: "msg",
+        value: "",
+        valueType: "results",
+      },
+    ],
+    x: 2650,
+    y: 720,
+    wires: [["global_observer_integration_normalize"]],
+  },
+  functionNode(
+    "global_observer_integration_normalize",
+    integrationGroup,
+    "Sanitizar snapshot de integrações",
+    source("global-flow-observer-integration-normalize.js"),
+    1,
+    2950,
+    720,
+    [["global_observer_integration_lifecycle"]],
+  ),
+  functionNode(
+    "global_observer_integration_lifecycle",
+    integrationGroup,
+    "Confirmar, deduplicar e encerrar",
+    source("global-flow-observer-integration-lifecycle.js"),
+    1,
+    3260,
+    720,
+    [["global_observer_integration_alert_out"]],
+  ),
+  {
+    id: "global_observer_integration_alert_out",
+    type: "link out",
+    z: OBSERVER_TAB,
+    g: integrationGroup,
+    name: "Integração falhou/recuperou → entrega",
+    mode: "link",
+    links: ["global_observer_alert_to_dispatch_in"],
+    x: 3580,
+    y: 720,
+    wires: [],
+  },
+  {
     id: testGroup,
     type: "group",
     z: OBSERVER_TAB,
@@ -808,12 +966,17 @@ const observerNodes = [
       "global_observer_test_evaluate_out",
       "global_observer_test_delivery",
       "global_observer_test_delivery_out",
+      "global_observer_test_integration_reset",
+      "global_observer_test_integration_failure",
+      "global_observer_test_integration_confirm",
+      "global_observer_test_integration_recovery",
+      "global_observer_integration_test_out",
       "global_observer_dry_run_in",
       "global_observer_dry_run_terminal",
     ],
     x: 64,
     y: 379,
-    w: 1570,
+    w: 2320,
     h: 322,
   },
   {
@@ -822,10 +985,11 @@ const observerNodes = [
     z: OBSERVER_TAB,
     g: testGroup,
     name:
-      "TESTE: 1 reset; 2 erro; 3 status indisponível; 4 avaliar 1 min; 5 opcional: push real identificado como TESTE",
+      "TESTE: 1–4 erro/status; 5 push real opcional; 6–9 integração falha, confirma e recupera",
     info:
       "Erro e status atravessam classificação, dedupe e guard até o dry-run. " +
-      "Somente o passo 5 chama o Home Assistant; é o smoke test do canal.",
+      "Os passos 6–9 usam um snapshot sintético de config_entries. Somente o " +
+      "passo 5 chama o Home Assistant; ele é o smoke test explícito do canal.",
     x: 710,
     y: 420,
     wires: [],
@@ -992,6 +1156,110 @@ const observerNodes = [
     wires: [],
   },
   {
+    id: "global_observer_test_integration_reset",
+    type: "inject",
+    z: OBSERVER_TAB,
+    g: testGroup,
+    name: "TESTE 6: reset integrações",
+    props: [
+      { p: "_global_observer_test", v: "true", vt: "bool" },
+      { p: "_global_observer_integration_test", v: "true", vt: "bool" },
+      { p: "_global_observer_integration_reset", v: "true", vt: "bool" },
+    ],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    x: 1770,
+    y: 500,
+    wires: [["global_observer_integration_test_out"]],
+  },
+  {
+    id: "global_observer_test_integration_failure",
+    type: "inject",
+    z: OBSERVER_TAB,
+    g: testGroup,
+    name: "TESTE 7: integração falhou",
+    props: [
+      {
+        p: "config_entries",
+        v: '[{"entry_id":"test_icloud","domain":"icloud","state":"setup_error","disabled_by":null}]',
+        vt: "json",
+      },
+      { p: "_global_observer_test", v: "true", vt: "bool" },
+      { p: "observer_now", v: "1000000", vt: "num" },
+    ],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    x: 1780,
+    y: 560,
+    wires: [["global_observer_integration_test_out"]],
+  },
+  {
+    id: "global_observer_test_integration_confirm",
+    type: "inject",
+    z: OBSERVER_TAB,
+    g: testGroup,
+    name: "TESTE 8: confirmar após 1 min",
+    props: [
+      {
+        p: "config_entries",
+        v: '[{"entry_id":"test_icloud","domain":"icloud","state":"setup_error","disabled_by":null}]',
+        vt: "json",
+      },
+      { p: "_global_observer_test", v: "true", vt: "bool" },
+      { p: "observer_now", v: "1061000", vt: "num" },
+    ],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    x: 1800,
+    y: 620,
+    wires: [["global_observer_integration_test_out"]],
+  },
+  {
+    id: "global_observer_test_integration_recovery",
+    type: "inject",
+    z: OBSERVER_TAB,
+    g: testGroup,
+    name: "TESTE 9: integração recuperou",
+    props: [
+      {
+        p: "config_entries",
+        v: '[{"entry_id":"test_icloud","domain":"icloud","state":"loaded","disabled_by":null}]',
+        vt: "json",
+      },
+      { p: "_global_observer_test", v: "true", vt: "bool" },
+      { p: "observer_now", v: "1062000", vt: "num" },
+    ],
+    repeat: "",
+    crontab: "",
+    once: false,
+    onceDelay: 0.1,
+    topic: "",
+    x: 1800,
+    y: 680,
+    wires: [["global_observer_integration_test_out"]],
+  },
+  {
+    id: "global_observer_integration_test_out",
+    type: "link out",
+    z: OBSERVER_TAB,
+    g: testGroup,
+    name: "Cenários de integração → monitor real",
+    mode: "link",
+    links: ["global_observer_integration_test_in"],
+    x: 2110,
+    y: 590,
+    wires: [],
+  },
+  {
     id: "global_observer_dry_run_in",
     type: "link in",
     z: OBSERVER_TAB,
@@ -1031,8 +1299,8 @@ const productionLayout = new Map([
   ["global_observer_notify_persistent__hub_call", [3090, 280]],
   ["global_observer_notify_persistent__hub_result", [3340, 280]],
   ["global_observer_notification_ack", [3590, 230]],
-  ["global_observer_notification_catch", [3050, 400]],
-  ["global_observer_notification_failure", [3350, 400]],
+  ["global_observer_notification_catch", [3200, 400]],
+  ["global_observer_notification_failure", [3680, 380]],
   ["global_observer_internal_catch", [2230, 480]],
   ["global_observer_internal_failure", [2520, 480]],
 ]);
@@ -1043,7 +1311,21 @@ for (const node of observerNodes) {
 }
 
 next.push(...coverageNodes, ...observerNodes);
-const finalized = refreshNotificationWireRoutes(next);
+const finalizedUnordered = hasNotificationHubs
+  ? next
+  : refreshNotificationWireRoutes(next);
+const originalOrder = new Map(
+  parsedFlows.map((node, index) => [node.id, index]),
+);
+const appendedOrder = new Map();
+let appendedIndex = parsedFlows.length;
+for (const node of finalizedUnordered) {
+  if (!originalOrder.has(node.id)) appendedOrder.set(node.id, appendedIndex++);
+}
+const finalized = finalizedUnordered.sort((left, right) =>
+  (originalOrder.get(left.id) ?? appendedOrder.get(left.id)) -
+  (originalOrder.get(right.id) ?? appendedOrder.get(right.id)),
+);
 fs.writeFileSync(outputPath, `${JSON.stringify(finalized, null, 4)}\n`);
 console.log(
   `Global flow observer installed for ${tabs.length} tabs in ${outputPath}`,

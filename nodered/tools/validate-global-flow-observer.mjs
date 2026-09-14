@@ -55,6 +55,7 @@ for (const outputId of expectedOuts) {
 assert.equal(input.links.includes("local_ai_rtx_alert_out"), false);
 const dispatchInput = required("global_observer_alert_to_dispatch_in");
 for (const id of [
+  "global_observer_integration_alert_out",
   "local_ai_rtx_alert_out",
   "notification_hub_mobile_observer_out",
   "notification_hub_alexa_observer_out",
@@ -71,7 +72,11 @@ assert.match(notifyRules, /delivery_under_test/);
 assert.equal(required("global_observer_notify_primary__hub_call").type, "link call");
 assert.deepEqual(required("global_observer_notify_primary__hub_call").links, ["notification_hub_mobile_in"]);
 assert.equal(persistent.type, "change");
-assert.match(persistent.rules.map((rule) => String(rule.to ?? "")).join("\n"), /_observer_persistent_notification_id/);
+const persistentRules = persistent.rules
+  .map((rule) => String(rule.to ?? ""))
+  .join("\n");
+assert.match(persistentRules, /_observer_persistent_notification_id/);
+assert.match(persistentRules, /persistent_notification_operation/);
 assert.equal(required("global_observer_notify_persistent__hub_call").type, "link call");
 assert.deepEqual(required("global_observer_notify_persistent__hub_call").links, ["notification_hub_persistent_in"]);
 assert.equal(guard.outputs, 3);
@@ -101,6 +106,9 @@ const expectedInternalScope = [
   "global_observer_evaluate_confirm",
   "global_observer_evaluate_alert",
   guard.id,
+  "global_observer_integration_entries",
+  "global_observer_integration_normalize",
+  "global_observer_integration_lifecycle",
 ];
 assert.deepEqual(internalCatch.scope, expectedInternalScope);
 assert.deepEqual(internalCatch.wires, [["global_observer_internal_failure"]]);
@@ -111,6 +119,48 @@ assert.deepEqual(required("global_observer_internal_failure").wires, [
 assert.ok(required("global_observer_test_delivery").props.some(
   (property) => property.p === "_observer_delivery_test" && property.v === "true",
 ));
+const integrationGroup = required("global_observer_integration_group");
+assert.equal(integrationGroup.type, "group");
+for (const id of [
+  "global_observer_integration_architecture",
+  "global_observer_integration_tick",
+  "global_observer_integration_test_in",
+  "global_observer_integration_entries",
+  "global_observer_integration_normalize",
+  "global_observer_integration_lifecycle",
+  "global_observer_integration_alert_out",
+]) {
+  assert.ok(integrationGroup.nodes.includes(id), `grupo de integrações não contém ${id}`);
+}
+const integrationTick = required("global_observer_integration_tick");
+assert.equal(integrationTick.type, "inject");
+assert.equal(integrationTick.repeat, "60");
+assert.equal(integrationTick.once, true);
+const integrationEntries = required("global_observer_integration_entries");
+assert.equal(integrationEntries.type, "ha-api");
+assert.equal(integrationEntries.protocol, "websocket");
+assert.equal(integrationEntries.data, '{"type":"config_entries/get"}');
+assert.deepEqual(integrationEntries.wires, [["global_observer_integration_normalize"]]);
+assert.deepEqual(
+  required("global_observer_integration_normalize").wires,
+  [["global_observer_integration_lifecycle"]],
+);
+assert.deepEqual(
+  required("global_observer_integration_lifecycle").wires,
+  [["global_observer_integration_alert_out"]],
+);
+assert.deepEqual(
+  required("global_observer_integration_alert_out").links,
+  ["global_observer_alert_to_dispatch_in"],
+);
+for (const id of [
+  "global_observer_test_integration_reset",
+  "global_observer_test_integration_failure",
+  "global_observer_test_integration_confirm",
+  "global_observer_test_integration_recovery",
+]) {
+  assert.deepEqual(required(id).wires, [["global_observer_integration_test_out"]]);
+}
 assert.match(required("global_observer_dry_run_terminal").func, /dispatched: false/);
 for (const id of [
   "global_observer_event_kind",
