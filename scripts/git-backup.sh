@@ -20,7 +20,7 @@ cd "$REPO_DIR"
 # oficial do GitHub na 443. HostKeyAlias mantém a validação presa à chave já
 # aprovada para github.com; nunca aceite uma chave nova durante um backup.
 remote_url="$(git remote get-url "$REMOTE" 2>/dev/null || true)"
-if [[ "$remote_url" == git@github.com:* || "$remote_url" == ssh://git@github.com/* ]]; then
+if [[ "$remote_url" == *github.com* && "$remote_url" != http://* && "$remote_url" != https://* ]]; then
   ssh_identity=""
   if [[ -n "$SSH_KEY" ]]; then
     ssh_identity="-i \"$SSH_KEY\" -o IdentitiesOnly=yes"

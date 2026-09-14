@@ -50,7 +50,7 @@ function git(args, options = {}) {
 function configureGitHubSshTransport() {
   if (process.env.GIT_SSH_COMMAND?.trim()) return;
   const remote = git(["remote", "get-url", "origin"]);
-  if (!/^git@github\.com:|^ssh:\/\/git@github\.com\//.test(remote)) return;
+  if (!/^git\x40github\.com:|^ssh:\/\/git\x40github\.com\//.test(remote)) return;
   process.env.GIT_SSH_COMMAND = [
     "ssh",
     "-o BatchMode=yes",
