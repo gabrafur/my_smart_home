@@ -45,7 +45,8 @@ for (const [alias, id] of Object.entries({
 function resolveWireTargets(alias, output = 0) {
   return (byId.get(alias).wires[output] ?? []).flatMap((id) => {
     const node = byId.get(id);
-    if (node?.type !== "link out" || !node.notification_hub_wire_route) {
+    const generatedRoute = node?.notification_hub_wire_route || /^notification_hub_wire_out_[a-f0-9]{12}$/.test(node?.id ?? "");
+    if (node?.type !== "link out" || !generatedRoute) {
       return node ? [node] : [{ id, name: id }];
     }
     return (node.links ?? []).flatMap((linkId) => {

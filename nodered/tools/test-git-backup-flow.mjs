@@ -18,7 +18,8 @@ const node = (id) => {
 };
 const logicalWireTargets = (id, output = 0) => (node(id).wires?.[output] ?? []).flatMap((targetId) => {
   const target = node(targetId);
-  if (target.type !== "link out" || !target.notification_hub_wire_route) return [targetId];
+  const generatedRoute = target.notification_hub_wire_route || /^notification_hub_wire_out_[a-f0-9]{12}$/.test(target.id);
+  if (target.type !== "link out" || !generatedRoute) return [targetId];
   return (target.links ?? []).flatMap((linkInId) => node(linkInId).wires?.[0] ?? []);
 });
 function memory() {

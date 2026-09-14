@@ -451,17 +451,45 @@ function migrateInfrastructureCaller(flows, id) {
 }
 
 function restoreGeneratedWireRoutes(inputFlows) {
-  const routeNodes = inputFlows.filter((node) => node.notification_hub_wire_route);
+  const routeNodes = inputFlows.filter((node) =>
+    node.notification_hub_wire_route || /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(node.id),
+  );
   if (!routeNodes.length) return inputFlows;
   const byId = new Map(inputFlows.map((node) => [node.id, node]));
-  const removed = new Set(routeNodes.map((node) => node.id));
+  const removed = new Set();
   for (const routeOut of routeNodes.filter((node) => node.type === "link out")) {
-    const route = routeOut.notification_hub_wire_route;
+    let route = routeOut.notification_hub_wire_route;
+    let routeIn = null;
+    if (!route) {
+      const match = /^notification_hub_wire_out_([a-f0-9]{12})$/.exec(routeOut.id);
+      routeIn = match ? byId.get(`notification_hub_wire_in_${match[1]}`) : null;
+      const sources = [];
+      for (const candidate of inputFlows) {
+        for (const [output, targets] of (candidate.wires ?? []).entries()) {
+          if (targets.includes(routeOut.id)) sources.push({ candidate, output });
+        }
+      }
+      const targets = routeIn?.wires?.[0] ?? [];
+      if (
+        routeIn?.type !== "link in" ||
+        routeIn.z !== routeOut.z ||
+        !routeOut.links?.includes(routeIn.id) ||
+        !routeIn.links?.includes(routeOut.id) ||
+        sources.length !== 1 ||
+        targets.length !== 1
+      ) continue;
+      route = { source: sources[0].candidate.id, target: targets[0], output: sources[0].output };
+    } else {
+      routeIn = (routeOut.links ?? []).map((id) => byId.get(id)).find((node) => node?.type === "link in") ?? null;
+    }
     const source = byId.get(route?.source);
     if (!source || !Array.isArray(source.wires?.[route.output])) continue;
     source.wires[route.output] = source.wires[route.output]
       .flatMap((target) => target === routeOut.id ? [route.target] : [target]);
+    removed.add(routeOut.id);
+    if (routeIn) removed.add(routeIn.id);
   }
+  if (!removed.size) return inputFlows;
   for (const node of inputFlows) {
     if (Array.isArray(node.nodes)) node.nodes = node.nodes.filter((id) => !removed.has(id));
     if (Array.isArray(node.scope)) node.scope = node.scope.filter((id) => !removed.has(id));

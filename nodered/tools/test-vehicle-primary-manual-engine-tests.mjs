@@ -11,7 +11,8 @@ const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.ur
 const byId = new Map(flows.map((node) => [node.id, node]));
 const logicalWireTargets = (id, output) => (byId.get(id)?.wires?.[output] ?? []).flatMap((targetId) => {
   const target = byId.get(targetId);
-  if (target?.type !== "link out" || !target.notification_hub_wire_route) return [targetId];
+  const generatedRoute = target?.notification_hub_wire_route || /^notification_hub_wire_out_[a-f0-9]{12}$/.test(target?.id ?? "");
+  if (target?.type !== "link out" || !generatedRoute) return [targetId];
   return (target.links ?? []).flatMap((linkInId) => byId.get(linkInId)?.wires?.[0] ?? []);
 });
 const LOCATION_POLICY = {
