@@ -497,8 +497,9 @@ function routeLongNotificationTabWires(flows) {
     for (const candidate of candidates) {
       const probe = { id, type: direction > 0 ? "link out" : "link in", name, ...candidate };
       const box = bounds(probe);
+      const physicalBox = bounds(probe, 0);
       if (candidate.x < 64 || candidate.y < 40) continue;
-      if (owner && (box.left < owner.x + 12 || box.right > owner.x + owner.w - 12 || box.top < owner.y + 32 || box.bottom > owner.y + owner.h - 12)) continue;
+      if (owner && (physicalBox.left < owner.x + 12 || physicalBox.right > owner.x + owner.w - 12 || physicalBox.top < owner.y + 32 || physicalBox.bottom > owner.y + owner.h - 12)) continue;
       if (occupiedByTab.get(endpoint.z).some((node) => overlaps(box, bounds(node)))) continue;
       occupiedByTab.get(endpoint.z).push(probe);
       return candidate;
