@@ -27,8 +27,7 @@ documentation, or integrations. The technical inventory is maintained in
 | Original project work | `bootstrap/`, `bindings/`, `demo/`, `modules/`, `restore/`, most of `scripts/`, `.github/`, configuration and documentation | no root license; default copyright restrictions apply |
 | Original Home Assistant/Node-RED work | Home Assistant YAML/Jinja and dashboards, `claude_code_chat`, `public_bindings`, Node-RED flows/settings/tools | no project-level license declaration |
 | Vendored Apache-2.0 | `homeassistant/custom_components/alexa_media/` | 38 of 39 upstream files byte-identical to `v5.16.0`; one local guard in `__init__.py`; preserved upstream license |
-| Vendored MIT | `hacs/`, `kia_uvo/`, `tuya_vacuum_maps/` under `homeassistant/custom_components/` | HACS has 2 local deltas, Kia Uvo has 10, Tuya Vacuum Maps has none; preserved upstream licenses |
-| Vendored GPL-3.0-only | `homeassistant/custom_components/localtuya/` | 3 locally modified files; covered code and modifications retain GPL-3.0-only obligations |
+| Vendored MIT | `hacs/` and `kia_uvo/` under `homeassistant/custom_components/` | HACS has 2 local deltas and Kia Uvo has 10; preserved upstream licenses |
 | Managed dependencies and images | npm lockfiles, Home Assistant manifest requirements, digest-pinned Compose images | resolved artifacts retain their own terms; locks/digests are provenance, not relicensing |
 | Separate external integration | `moni_mobile` is installed from its own MIT repository | source is not vendored here |
 
@@ -55,8 +54,7 @@ while the checked-out commit is `3838e40d86e8438fd16477e76380b490382b64e5`.
 - Decide whether documentation uses the same terms or a separate content
   license.
 - Practical consequence: template/reuse language becomes coherent, but the
-  mixed distribution and GPL-covered LocalTuya directory still require clear
-  notices and compatibility review.
+  mixed distribution still requires clear notices and compatibility review.
 
 ### 3. License original work under reciprocal terms
 
@@ -94,7 +92,7 @@ while the checked-out commit is `3838e40d86e8438fd16477e76380b490382b64e5`.
 4. Should GitHub's template setting remain enabled after the terms are chosen?
 5. What contribution terms should apply to external pull requests?
 6. Is a professional license-compatibility review warranted for the selected
-   distribution, particularly around modified GPL-3.0-only code?
+   distribution, particularly around modified vendored code?
 
 ## Interim public policy
 

@@ -48,15 +48,6 @@
       "degradation": "voice/media entities are absent without blocking core"
     },
     {
-      "name": "localtuya",
-      "optional": true,
-      "profile": null,
-      "services": [],
-      "depends_on": ["core"],
-      "configuration": ["homeassistant/custom_components/localtuya"],
-      "degradation": "LocalTuya entities are absent without blocking core"
-    },
-    {
       "name": "matter",
       "optional": true,
       "profile": "matter",

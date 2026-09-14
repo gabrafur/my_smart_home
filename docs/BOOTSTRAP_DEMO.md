@@ -57,8 +57,8 @@ core
 └── mosquitto
 ```
 
-Os módulos opcionais são `zigbee`, `vehicle`, `alarm`, `alexa`, `localtuya`,
-`matter`, `portainer`, `appdaemon`, `local-ai`, `agent-bridge`,
+Os módulos opcionais são `zigbee`, `vehicle`, `alarm`, `alexa`, `matter`,
+`portainer`, `appdaemon`, `local-ai`, `agent-bridge`,
 `raspberry-specific` e `automation`. Cada um declara dependências, serviços,
 configuração e degradação segura.
 

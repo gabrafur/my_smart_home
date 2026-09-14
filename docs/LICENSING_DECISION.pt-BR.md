@@ -27,8 +27,7 @@ integrações independentes do projeto. O inventário técnico está nos
 | Trabalho original do projeto | `bootstrap/`, `bindings/`, `demo/`, `modules/`, `restore/`, maior parte de `scripts/`, `.github/`, configuração e documentação | sem licença raiz; aplicam-se as restrições autorais padrão |
 | Trabalho original no Home Assistant/Node-RED | YAML/Jinja e dashboards do Home Assistant, `claude_code_chat`, `public_bindings`, flows/settings/tools do Node-RED | sem declaração de licença do projeto |
 | Vendorizado Apache-2.0 | `homeassistant/custom_components/alexa_media/` | 38 de 39 arquivos upstream idênticos à `v5.16.0`; um guard local em `__init__.py`; licença upstream preservada |
-| Vendorizado MIT | `hacs/`, `kia_uvo/`, `tuya_vacuum_maps/` em `homeassistant/custom_components/` | HACS tem 2 deltas locais, Kia Uvo tem 10 e Tuya Vacuum Maps não tem deltas; licenças preservadas |
-| Vendorizado GPL-3.0-only | `homeassistant/custom_components/localtuya/` | 3 arquivos modificados localmente; código coberto e modificações mantêm as obrigações GPL-3.0-only |
+| Vendorizado MIT | `hacs/` e `kia_uvo/` em `homeassistant/custom_components/` | HACS tem 2 deltas locais e Kia Uvo tem 10; licenças preservadas |
 | Dependências e imagens gerenciadas | lockfiles npm, requirements de manifests e imagens Compose fixadas por digest | artefatos resolvidos mantêm termos próprios; locks/digests são proveniência, não relicenciamento |
 | Integração externa separada | `moni_mobile` é instalada pelo repositório MIT próprio | o código-fonte não está vendorizado aqui |
 
@@ -55,8 +54,7 @@ extraído é `3838e40d86e8438fd16477e76380b490382b64e5`.
   exclusões explícitas para caminhos vendorizados e suas licenças atuais.
 - Decidir se a documentação usa os mesmos termos ou uma licença de conteúdo.
 - Consequência prática: linguagem de template/reuso passa a ser coerente, mas a
-  distribuição mista e o diretório LocalTuya coberto por GPL ainda exigem
-  notices claros e revisão de compatibilidade.
+  distribuição mista ainda exige notices claros e revisão de compatibilidade.
 
 ### 3. Licenciar o trabalho original com termos recíprocos
 
@@ -94,7 +92,7 @@ extraído é `3838e40d86e8438fd16477e76380b490382b64e5`.
 4. O template do GitHub continuará habilitado depois da escolha dos termos?
 5. Quais termos valerão para pull requests externos?
 6. É necessária revisão profissional de compatibilidade para a distribuição
-   escolhida, em especial pelo código GPL-3.0-only modificado?
+   escolhida, em especial pelo código vendorizado modificado?
 
 ## Política pública interina
 

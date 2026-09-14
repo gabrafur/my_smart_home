@@ -13,8 +13,6 @@ pelo Git; caches e runtime ignorados não fazem parte da distribuição pública
 | Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | origem exata em `scripts/alexa-media-upstream.json` (`v5.16.0` nesta revisão) | Apache-2.0 | `__init__.py` contém um guard local permitido; o aplicador exige o marcador ou prova que o alvo o absorveu | resolver tag/commit/objeto de tag, comparar byte a byte, aceitar apenas deltas permitidos, validar manifest/compilação, manter `LICENSE.upstream` e preservar notices Apache | verificado, atualização protegida |
 | HACS | [`hacs/integration`](https://github.com/hacs/integration) | tag `2.0.5`, commit `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `const.py` fixa HA mínimo `2024.4.1`; `manifest.json` registra `2.0.5` | reaplicar e revisar somente esses dois deltas após atualização; manter copyright e licença MIT | verificado, modificado |
 | Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | origem exata em `scripts/kia-uvo-upstream.json` (`v3.12.0`, commit `97f5d61b92209a0476762f625f5053e414063eba` nesta revisão) | MIT | proteção de rate limit, refresh tolerante a falha, histórico/eficiência de viagens, status de comandos e entidades relacionadas | reconciliar por staging/Codex, preservar copyright/licença MIT e promover somente após testes, backup, rollback e validação do runtime | verificado, modificado substancialmente |
-| LocalTuya | [`rospogrigio/localtuya`](https://github.com/rospogrigio/localtuya) | tag `v5.2.3`, commit `5f2c027c1e9421a93dcc937bf151b9456add04c6` | GPL-3.0-only | 3 de 24 arquivos alterados: registro de serviço, setup de plataformas/options flow e API `VacuumActivity` | atualização é comparação manual; o código e as modificações deste diretório permanecem sob GPL-3.0-only e a licença deve acompanhar a distribuição | verificado, modificado |
-| Tuya Vacuum Maps | [`jaidenlabelle/tuya-vacuum-maps`](https://github.com/jaidenlabelle/tuya-vacuum-maps) | tag `v0.1.4`, commit `796da700777fa084fe844ed70c882303a09fc268` | MIT | nenhuma nos 5 arquivos rastreados comparados | substituir pela release, conferir manifest e manter copyright/licença MIT | verificado |
 
 Os caminhos cobertos são, respectivamente,
 `homeassistant/custom_components/<domínio>/**`. Cada diretório contém uma cópia
@@ -69,8 +67,6 @@ cada arquivo rastreado foi comparado byte a byte com
 alexa_media       38 iguais,  1 modificado
 hacs              62 iguais,  2 modificados
 kia_uvo           24 iguais, 10 modificados
-localtuya         21 iguais,  3 modificados
-tuya_vacuum_maps   5 iguais,  0 modificados
 ```
 
 Hashes SHA-256 das licenças preservadas:
@@ -79,8 +75,6 @@ Hashes SHA-256 das licenças preservadas:
 alexa_media       c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4
 hacs              75eb6a4da2ae957a05b187d677f71b72d00a6ffd0f94f7859fb4740b4023e0d8
 kia_uvo           5ba515e35c827b547f02f7adf15b6cc707496abd7c9f8d1bdcc4676c43076662
-localtuya         3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
-tuya_vacuum_maps  6234c4decf5931fe8b0ab35a4d75bd279353083e329f82d4fd827c32f8eaff0c
 ```
 
 Ao atualizar um componente, repita a comparação e atualize tag/commit,
@@ -92,6 +86,7 @@ validada. Por fim, rode `make validate-public`.
 
 Não existe `LICENSE` na raiz por decisão intencional: o proprietário ainda
 precisa escolher a licença do trabalho original e avaliar a distribuição
-mista. A licença GPL do LocalTuya continua válida no diretório coberto, mas não
-autoriza presumir uma licença para arquivos independentes. Este documento é
-evidência técnica de proveniência, não aconselhamento jurídico.
+mista. As licenças dos componentes vendorizados continuam válidas somente nos
+respectivos diretórios cobertos e não autorizam presumir uma licença para
+arquivos independentes. Este documento é evidência técnica de proveniência,
+não aconselhamento jurídico.

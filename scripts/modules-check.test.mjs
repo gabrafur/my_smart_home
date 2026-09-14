@@ -25,7 +25,7 @@ test("the public module graph and Compose profile overlay are coherent", (t) => 
   assert.deepEqual(validateModules(root), {
     valid: true,
     errors: [],
-    modules: 13,
+    modules: 12,
     core_services: 3,
   });
 });

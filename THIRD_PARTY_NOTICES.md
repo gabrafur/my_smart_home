@@ -14,8 +14,6 @@ original work.
 | Alexa Media Player | `v5.16.0` / `3838e40d86e8438fd16477e76380b490382b64e5` | Apache-2.0 | `homeassistant/custom_components/alexa_media/**` | one local coordinator guard in `__init__.py`; all other compared files match the tag |
 | HACS | `2.0.5` / `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `homeassistant/custom_components/hacs/**` | version and minimum-HA metadata changed locally |
 | Kia Uvo / Hyundai Bluelink | `v3.10.1` / `2c602560746318fd001db8fe52347e9398f181ed` | MIT | `homeassistant/custom_components/kia_uvo/**` | locally modified; see the provenance guide |
-| LocalTuya | `v5.2.3` / `5f2c027c1e9421a93dcc937bf151b9456add04c6` | GPL-3.0-only | `homeassistant/custom_components/localtuya/**` | locally modified for Home Assistant compatibility |
-| Tuya Vacuum Maps | `v0.1.4` / `796da700777fa084fe844ed70c882303a09fc268` | MIT | `homeassistant/custom_components/tuya_vacuum_maps/**` | byte-identical to the tag before this notice |
 
 The corresponding license text is preserved as `LICENSE.upstream` inside
 each component directory. Copyright remains with the upstream authors.
@@ -44,7 +42,7 @@ copyright restrictions. Third-party portions remain governed by their own
 licenses above.
 
 Selecting a root license requires an explicit owner decision and, if needed,
-legal review—especially because this distribution includes GPL-3.0-only code
-and locally modified upstream components. This notice is an inventory, not
-legal advice. The options and the currently enabled GitHub template setting are
+legal review—especially because this distribution includes locally modified
+upstream components. This notice is an inventory, not legal advice. The options
+and the currently enabled GitHub template setting are
 recorded in the [licensing decision memo](docs/LICENSING_DECISION.md).
