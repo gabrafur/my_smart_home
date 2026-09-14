@@ -13,6 +13,7 @@ import {
   nextPromotionStatus,
   normalizeCandidateStatus,
   promotionCommitMatches,
+  protectedComparisonBase,
   shouldResumeCandidateCleanup,
 } from "./promote-kia-uvo-candidate.mjs";
 
@@ -124,4 +125,19 @@ test("resume accepts a validated Kia commit before newer unrelated commits", () 
     "v3.13.0",
     expected,
   ), false);
+  assert.equal(protectedComparisonBase({
+    resumeGit: true,
+    parent: "candidate-parent",
+    appliedCommit: "local-promotion-commit",
+  }), "local-promotion-commit");
+  assert.equal(protectedComparisonBase({
+    resumeGit: false,
+    parent: "candidate-parent",
+    appliedCommit: null,
+  }), "candidate-parent");
+  assert.throws(() => protectedComparisonBase({
+    resumeGit: true,
+    parent: "candidate-parent",
+    appliedCommit: null,
+  }), /promotion commit is unavailable/);
 });

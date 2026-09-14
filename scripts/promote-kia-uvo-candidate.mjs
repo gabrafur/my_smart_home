@@ -160,7 +160,26 @@ export function promotionCommitMatches(subject, paths, target, expectedPaths) {
     samePaths([...paths].sort(), [...expectedPaths].sort());
 }
 
-function fetchAndValidate(candidate) {
+function findPromotionCommit(candidate, expectedPaths) {
+  return git([
+    "rev-list", "--first-parent", "--max-count=64", "HEAD",
+  ]).split("\n").filter(Boolean).find((commit) => promotionCommitMatches(
+    git(["show", "-s", "--format=%s", commit]),
+    changedPaths(commit),
+    candidate.target,
+    expectedPaths,
+  ));
+}
+
+export function protectedComparisonBase({ resumeGit, parent, appliedCommit }) {
+  if (!resumeGit) return parent;
+  if (!appliedCommit) {
+    throw new Error("runtime is applied but the promotion commit is unavailable");
+  }
+  return appliedCommit;
+}
+
+function fetchAndValidate(candidate, { resumeGit = false } = {}) {
   git([
     "fetch",
     "--no-tags",
@@ -182,10 +201,15 @@ function fetchAndValidate(candidate) {
   if (!paths.length || paths.some((file) => !isAllowedCandidatePath(file))) {
     throw new Error(`candidate paths rejected: ${paths.join(", ") || "none"}`);
   }
+  const comparisonBase = protectedComparisonBase({
+    resumeGit,
+    parent,
+    appliedCommit: resumeGit ? findPromotionCommit(candidate, paths) : null,
+  });
   const newerProtectedChanges = git([
     "diff",
     "--name-only",
-    `${parent}..HEAD`,
+    `${comparisonBase}..HEAD`,
     "--",
     "homeassistant/custom_components/kia_uvo",
     "scripts/kia-uvo-upstream.json",
@@ -249,14 +273,7 @@ function commitAndPush(candidate, expectedPaths) {
     run("node", ["scripts/commit-message-check.mjs", "--subject", subject]);
     git(["commit", "-m", subject], { inherit: true });
   } else {
-    const appliedCommit = git([
-      "rev-list", "--first-parent", "--max-count=64", "HEAD",
-    ]).split("\n").filter(Boolean).find((commit) => promotionCommitMatches(
-      git(["show", "-s", "--format=%s", commit]),
-      changedPaths(commit),
-      candidate.target,
-      expectedPaths,
-    ));
+    const appliedCommit = findPromotionCommit(candidate, expectedPaths);
     if (!appliedCommit) {
       throw new Error("runtime is applied but the promotion commit is unavailable");
     }
@@ -347,7 +364,7 @@ export async function promote({ checkOnly = false } = {}) {
       writeStatus({ state: "deferred", source_commit: candidate.commit, target: candidate.target, reason: "working_tree_not_clean" });
       return false;
     }
-    expectedPaths = fetchAndValidate(candidate);
+    expectedPaths = fetchAndValidate(candidate, { resumeGit });
     if (checkOnly) {
       const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "kia-uvo-promotion-check-"));
       try {
