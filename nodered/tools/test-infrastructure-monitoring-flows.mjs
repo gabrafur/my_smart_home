@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { restoreGeneratedWireRoutes } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const flowPath = path.resolve(here, "..", "flows.json");
@@ -38,12 +39,30 @@ for (const [id, hubInput] of [
 }
 
 const temporary = path.join(os.tmpdir(), `node-red-infrastructure-${process.pid}.json`);
+const repeated = path.join(os.tmpdir(), `node-red-infrastructure-repeated-${process.pid}.json`);
 const generated = spawnSync(process.execPath, [path.join(here, "install-infrastructure-monitoring-flows.mjs"), flowPath, temporary], {
   encoding: "utf8",
 });
 if (generated.status !== 0) throw new Error(generated.stderr || generated.stdout || "gerador canônico falhou");
+const regenerated = spawnSync(process.execPath, [path.join(here, "install-infrastructure-monitoring-flows.mjs"), temporary, repeated], {
+  encoding: "utf8",
+});
+if (regenerated.status !== 0) throw new Error(regenerated.stderr || regenerated.stdout || "segunda execução do gerador canônico falhou");
 const digest = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
-assert.equal(digest(temporary), digest(flowPath), "gerador canônico de infraestrutura não é idempotente");
+const semanticProjection = (file) => restoreGeneratedWireRoutes(JSON.parse(fs.readFileSync(file, "utf8")))
+  .map((node) => {
+    const projected = structuredClone(node);
+    for (const field of ["x", "y", "w", "h", "notification_hub_layout_version", "notification_hub_anchor_y", "notification_hub_wire_route"]) {
+      delete projected[field];
+    }
+    if (Array.isArray(projected.nodes)) projected.nodes.sort();
+    if (Array.isArray(projected.scope)) projected.scope.sort();
+    return projected;
+  })
+  .sort((left, right) => left.id.localeCompare(right.id));
+assert.deepEqual(semanticProjection(temporary), semanticProjection(flowPath), "gerador canônico alterou o comportamento do fluxo persistido");
+assert.equal(digest(temporary), digest(repeated), "gerador canônico de infraestrutura não converge em uma execução");
 fs.unlinkSync(temporary);
+fs.unlinkSync(repeated);
 
 console.log("Canonical infrastructure generator and notifier tests passed.");

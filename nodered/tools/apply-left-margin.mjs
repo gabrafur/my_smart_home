@@ -29,6 +29,7 @@ const selectedGroupIds = new Set(
     .map((value) => value.trim())
     .filter(Boolean),
 );
+const isGeneratedNotificationRoute = (id) => /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(id);
 
 if (overrides.version !== 1 || typeof overrides.canvases !== "object") {
   throw new Error("flow-layout-overrides.json inválido");
@@ -50,6 +51,7 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
   const managedNodeOverrides = new Set(canvas.managed_node_overrides ?? []);
   for (const [nodeId, geometry] of Object.entries(canvas.apply_nodes === false || !applyBaseNodes ? {} : (canvas.nodes ?? {}))) {
     const node = byId.get(nodeId);
+    if (!node && isGeneratedNotificationRoute(nodeId)) continue;
     if (!node || node.z !== canvasId) throw new Error(`Nó do override ausente: ${nodeId}`);
     if (
       managedGroups.has(node.id) ||
@@ -60,6 +62,9 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
       if (geometry[field] !== undefined) {
         if (!Number.isFinite(geometry[field])) throw new Error(`Geometria inválida: ${nodeId}.${field}`);
         node[field] = geometry[field];
+        if (field === "y" && Number.isFinite(node.notification_hub_anchor_y)) {
+          node.notification_hub_anchor_y = geometry[field];
+        }
       }
     }
     overridden += 1;
@@ -82,12 +87,16 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     for (const child of flows.filter((node) => node.z === canvasId && node.g === groupId && Number.isFinite(node.x) && Number.isFinite(node.y))) {
       child.x += deltaX;
       child.y += deltaY;
+      if (Number.isFinite(child.notification_hub_anchor_y)) {
+        child.notification_hub_anchor_y += deltaY;
+      }
     }
     overridden += 1;
   }
 
   for (const [nodeId, target] of Object.entries(applyNodePositions ? (canvas.node_positions ?? {}) : {})) {
     const node = byId.get(nodeId);
+    if (!node && isGeneratedNotificationRoute(nodeId)) continue;
     if (!node || node.z !== canvasId || node.type === "group") {
       throw new Error(`Nó do posicionamento final ausente: ${nodeId}`);
     }
@@ -96,6 +105,9 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     }
     node.x = target.x;
     node.y = target.y;
+    if (Number.isFinite(node.notification_hub_anchor_y)) {
+      node.notification_hub_anchor_y = target.y;
+    }
     overridden += 1;
   }
 

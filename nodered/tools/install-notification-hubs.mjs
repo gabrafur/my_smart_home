@@ -450,7 +450,7 @@ function migrateInfrastructureCaller(flows, id) {
   return output;
 }
 
-function restoreGeneratedWireRoutes(inputFlows) {
+export function restoreGeneratedWireRoutes(inputFlows) {
   const routeNodes = inputFlows.filter((node) =>
     node.notification_hub_wire_route || /^notification_hub_wire_(?:out|in)_[a-f0-9]{12}$/.test(node.id),
   );
@@ -517,7 +517,7 @@ function routeLongNotificationTabWires(flows) {
   const findPoint = (endpoint, direction, id, name) => {
     const owner = endpoint.g ? byId.get(endpoint.g) : null;
     const candidates = [];
-    for (const dx of [180, 220, 140, 260, 100, 300, 340]) {
+    for (const dx of [180, 220, 140, 260, 100, 300, 340, 60, 0]) {
       for (const dy of [0, 50, -50, 100, -100, 150, -150, 200, -200, 250, -250, 300, -300]) {
         if (Math.hypot(dx, dy) < 480) candidates.push({ x: endpoint.x + direction * dx, y: endpoint.y + dy });
       }
@@ -554,8 +554,14 @@ function routeLongNotificationTabWires(flows) {
     const route = { source: source.id, target: target.id, output };
     const outName = `Encurtar: ${source.name ?? source.type}`;
     const inName = `Continuar: ${target.name ?? target.type}`;
-    const outPoint = findPoint(source, 1, outId, outName);
-    const inPoint = findPoint(target, -1, inId, inName);
+    let outPoint;
+    let inPoint;
+    try {
+      outPoint = findPoint(source, 1, outId, outName);
+      inPoint = findPoint(target, -1, inId, inName);
+    } catch (error) {
+      throw new Error(`${error.message}; rota ${source.id}:${output} -> ${target.id}`, { cause: error });
+    }
     const out = { id: outId, type: "link out", z: source.z, ...(source.g ? { g: source.g } : {}), name: outName, mode: "link", links: [inId], ...outPoint, wires: [], notification_hub_wire_route: route };
     const input = { id: inId, type: "link in", z: target.z, ...(target.g ? { g: target.g } : {}), name: inName, links: [outId], ...inPoint, wires: [[target.id]], notification_hub_wire_route: route };
     source.wires[output][index] = outId;
@@ -671,7 +677,8 @@ function applyInfrastructureCallerLayout(flows) {
   return flows;
 }
 
-export function installNotificationHubs(inputFlows) {
+export function installNotificationHubs(inputFlows, options = {}) {
+  const routeWires = options.routeWires ?? process.env.NODE_RED_NOTIFICATION_ROUTE_WIRES !== "0";
   inputFlows = restoreGeneratedWireRoutes(inputFlows);
   const hubTabs = new Set(Object.values(NOTIFICATION_HUBS).map(({ tab }) => tab));
   const legacyOwned = new Set(inputFlows.filter((node) => node.id === LEGACY_SUBFLOW || node.z === LEGACY_SUBFLOW).map((node) => node.id));
@@ -690,7 +697,7 @@ export function installNotificationHubs(inputFlows) {
   for (const id of INFRASTRUCTURE_CALLERS) flows = migrateInfrastructureCaller(flows, id);
   flows = applyBusinessCallerLayout(flows);
   flows = applyInfrastructureCallerLayout(flows);
-  flows = routeLongNotificationTabWires(flows);
+  if (routeWires) flows = routeLongNotificationTabWires(flows);
   flows.push(...mobileHubNodes(), ...alexaHubNodes(), ...persistentHubNodes());
 
   const observerInput = flows.find((node) => node.id === OBSERVER_INPUT);

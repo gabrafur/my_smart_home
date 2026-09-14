@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { refreshNotificationWireRoutes } from "./install-notification-hubs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.resolve(process.argv[2] ?? path.resolve(here, "..", "flows.json"));
@@ -25,8 +26,12 @@ for (const script of [
   "install-tuya-monitor-flow.mjs",
   "install-external-lighting-visual-policy.mjs",
   "install-global-flow-observer.mjs",
-  "apply-left-margin.mjs",
 ]) {
-  execFileSync(process.execPath, [path.join(here, script), outputPath, outputPath], { stdio: "inherit" });
+  execFileSync(process.execPath, [path.join(here, script), outputPath, outputPath], {
+    stdio: "inherit",
+    env: { ...process.env, NODE_RED_NOTIFICATION_ROUTE_WIRES: "0" },
+  });
 }
+const routedFlows = refreshNotificationWireRoutes(JSON.parse(fs.readFileSync(outputPath, "utf8")));
+fs.writeFileSync(outputPath, `${JSON.stringify(routedFlows, null, 4)}\n`);
 console.log(`Canonical infrastructure flows installed in ${outputPath}`);
