@@ -5,6 +5,21 @@
     "recorder_retention_tab": {
       "label": "recorder_retention",
       "compact_groups": false,
+      "group_positions": {
+        "recorder_retention_group_capture": { "x": 94, "y": 468 },
+        "recorder_retention_group_execution": { "x": 64, "y": 750 },
+        "recorder_retention_group_tests": { "x": 64, "y": 1030 }
+      },
+      "node_positions": {
+        "recorder_retention_repack_delay": { "x": 1280, "y": 903 },
+        "recorder_retention_repack_status": { "x": 1570, "y": 903 },
+        "recorder_retention_repack_evaluate": { "x": 1850, "y": 903 },
+        "recorder_retention_repack_test_in": { "x": 1650, "y": 983 },
+        "recorder_retention_repack_retry_out": { "x": 2000, "y": 850 },
+        "recorder_retention_repack_dry_out": { "x": 2000, "y": 980 },
+        "recorder_retention_test_output_gate": { "x": 1280, "y": 680 },
+        "recorder_retention_test_result_out": { "x": 1550, "y": 680 }
+      },
       "nodes": {
         "recorder_retention_group_config": {
           "x": 124,
@@ -41,8 +56,8 @@
           "y": 80
         },
         "recorder_retention_config": {
-          "x": 1260,
-          "y": 220
+          "x": 1100,
+          "y": 270
         },
         "recorder_retention_changes": {
           "x": 270,
@@ -150,11 +165,11 @@
         },
         "recorder_retention_repack_test_in": {
           "x": 1450,
-          "y": 780
+          "y": 820
         },
         "recorder_retention_guard_dry_out": {
-          "x": 1770,
-          "y": 690
+          "x": 1600,
+          "y": 700
         },
         "recorder_retention_repack_dry_out": {
           "x": 2070,
@@ -170,31 +185,31 @@
         },
         "recorder_retention_policy_raw_days": {
           "x": 300,
-          "y": 140
+          "y": 120
         },
         "recorder_retention_policy_compact_days": {
           "x": 300,
-          "y": 190
+          "y": 170
         },
         "recorder_retention_policy_baseline_hours": {
           "x": 300,
-          "y": 240
+          "y": 220
         },
         "recorder_retention_policy_absolute_tolerance": {
           "x": 300,
-          "y": 290
+          "y": 270
         },
         "recorder_retention_policy_relative_percent": {
-          "x": 600,
-          "y": 140
+          "x": 300,
+          "y": 320
         },
         "recorder_retention_policy_mad_multiplier": {
-          "x": 600,
-          "y": 200
+          "x": 300,
+          "y": 370
         },
         "recorder_retention_policy_warmup_days": {
-          "x": 600,
-          "y": 260
+          "x": 300,
+          "y": 420
         },
         "recorder_retention_policy_repack_min_mib": {
           "x": 1550,
@@ -209,12 +224,12 @@
           "y": 205
         },
         "recorder_retention_policy_updates_out": {
-          "x": 790,
-          "y": 220
+          "x": 600,
+          "y": 270
         },
         "recorder_retention_policy_updates_in": {
-          "x": 980,
-          "y": 220
+          "x": 800,
+          "y": 270
         },
         "recorder_retention_result_switch": {
           "x": 980,
@@ -472,6 +487,9 @@
       "managed_group_overrides": [
         "gar_group_effect"
       ],
+      "group_positions": {
+        "global_observer_coverage__29d64664bf8cbde8__group": { "x": 2875, "y": 230 }
+      },
       "nodes": {
         "gar_group_policy": {
           "x": 54,
@@ -607,79 +625,79 @@
         },
         "gar_effect_pulse_in": {
           "x": 960,
-          "y": 420
+          "y": 500
         },
         "gar_effect_safe_off_in": {
           "x": 960,
-          "y": 700
+          "y": 780
         },
         "gar_pulse_test_gate": {
           "x": 1180,
-          "y": 420
+          "y": 500
         },
         "gar_prepare_pulse_delay": {
           "x": 1520,
-          "y": 420
+          "y": 500
         },
         "gar_relay_pulse_on": {
           "x": 2500,
-          "y": 380
-        },
-        "gar_relay_safety_delay": {
-          "x": 2600,
           "y": 460
         },
+        "gar_relay_safety_delay": {
+          "x": 2800,
+          "y": 540
+        },
         "gar_relay_pulse_off": {
-          "x": 2870,
-          "y": 500
+          "x": 3100,
+          "y": 580
         },
         "gar_relay_mqtt_out": {
-          "x": 3000,
-          "y": 380
+          "x": 3400,
+          "y": 500
         },
         "gar_log_pulse_started": {
           "x": 2120,
-          "y": 500
+          "y": 580
         },
         "gar_safe_off_test_gate": {
           "x": 1180,
-          "y": 700
+          "y": 780
         },
         "gar_effect_safe_off_adapter_out": {
           "x": 1450,
-          "y": 660
+          "y": 740
         },
         "gar_effect_safe_off_adapter_in": {
-          "x": 2500,
-          "y": 700
+          "x": 2800,
+          "y": 780
         },
         "gar_effect_dry_run_out": {
           "x": 1450,
-          "y": 560
+          "y": 640
         },
         "gar_notify_relay_on": {
           "x": 1650,
-          "y": 740
+          "y": 820
         },
         "gar_notify_relay_on__hub_call": {
           "x": 1950,
-          "y": 740
+          "y": 820
         },
         "notification_hub_wire_out_270bc4ef8706": {
           "x": 1750,
-          "y": 380
+          "y": 460
         },
         "notification_hub_wire_in_270bc4ef8706": {
           "x": 2250,
-          "y": 380
+          "y": 460
         },
         "notification_hub_wire_out_92eda6ec8d9a": {
           "x": 1750,
-          "y": 500
+          "y": 580
         },
         "notification_hub_wire_in_92eda6ec8d9a": {
           "x": 1900,
-          "y": 500
+          "y": 580
         },
         "gar_pulse_watch_note": {
           "x": 430,
@@ -825,6 +843,17 @@
       "managed_group_overrides": [
         "external_lighting_full_flow_group"
       ],
+      "group_positions": {
+        "global_observer_coverage__ce258dec9814b96b__group": {
+          "x": 4050,
+          "y": 47
+        }
+      },
+      "node_positions": {
+        "external_visual_confirmation_mode": { "x": 2630, "y": 300 },
+        "external_visual_command_dry_out": { "x": 2930, "y": 460 },
+        "ext_check_states": { "x": 2930, "y": 280 }
+      },
       "nodes": {
         "external_lighting_full_flow_group": {
           "x": 64,
@@ -911,12 +940,12 @@
           "y": 180
         },
         "external_visual_cancel_confirmation_out": {
-          "x": 1980,
-          "y": 200
+          "x": 2015,
+          "y": 180
         },
         "external_visual_cancel_confirmation_in": {
-          "x": 2260,
-          "y": 220
+          "x": 2155,
+          "y": 180
         },
         "133ec4c36a116175": {
           "x": 670,
@@ -987,8 +1016,12 @@
           "y": 240
         },
         "external_visual_confirmation_mode": {
-          "x": 2460,
+          "x": 2650,
           "y": 300
+        },
+        "external_visual_command_dry_out": {
+          "x": 2900,
+          "y": 460
         },
         "external_visual_alexa_out": {
           "x": 2255,
@@ -997,10 +1030,6 @@
         "external_visual_alexa_in": {
           "x": 3200,
           "y": 420
-        },
-        "external_visual_command_dry_out": {
-          "x": 2700,
-          "y": 460
         },
         "ext_check_states": {
           "x": 2900,
@@ -1135,6 +1164,22 @@
     "alarm_house_tab": {
       "label": "alarme_casa",
       "compact_groups": true,
+      "group_positions": {
+        "alarm_group_retry": { "x": 68, "y": 420 },
+        "alarm_group_effects": { "x": 68, "y": 670 },
+        "alarm_group_tests": { "x": 103, "y": 1010 },
+        "global_observer_coverage__alarm_house_tab__group": { "x": 2500, "y": 47 }
+      },
+      "node_positions": {
+        "alarm_arrival_intent_in": { "x": 1600, "y": 360 },
+        "alarm_test_action_switch": { "x": 1410, "y": 330 },
+        "alarm_record_intent": { "x": 1880, "y": 230 },
+        "alarm_retry_exhausted_terminal": { "x": 1280, "y": 510 },
+        "alarm_notification_final_gate": { "x": 2150, "y": 830 },
+        "alarm_notify_alexa": { "x": 2405, "y": 800 },
+        "alarm_notify_alexa__hub_call": { "x": 2685, "y": 800 },
+        "alarm_notification_dry_run_out": { "x": 2405, "y": 880 }
+      },
       "nodes": {
         "alarm_group_policy": {
           "x": 64,
@@ -1461,6 +1506,39 @@
     "456b32bd5d59b0d6": {
       "label": "resfriamento_raspberry_pi",
       "compact_groups": true,
+      "group_positions": {
+        "global_observer_coverage__456b32bd5d59b0d6__group": { "x": 1850, "y": 47 }
+      },
+      "node_positions": {
+        "54b8e92dac5342a4": { "x": 1300, "y": 500 },
+        "b8c032f35ca26623": { "x": 1580, "y": 500 },
+        "26d9d7195ce14910": { "x": 1850, "y": 460 },
+        "8c3d9e9163059731": { "x": 2050, "y": 560 },
+        "2e77d30f5abbb9e8": { "x": 2350, "y": 560 },
+        "cc598d0965e30fe5": { "x": 2570, "y": 560 },
+        "a32c4cc997cdaee0": { "x": 2830, "y": 560 },
+        "47cae39680ac8969": { "x": 3090, "y": 560 },
+        "c57195edaf731fea": { "x": 3370, "y": 560 },
+        "303ec8403542617c": { "x": 3650, "y": 560 },
+        "bed05acc4339b69c": { "x": 3920, "y": 560 },
+        "a6f0fa154aac7b84": { "x": 4210, "y": 540 },
+        "0cca7636547bd45c": { "x": 4490, "y": 540 },
+        "rpi_layout_finalize_started_out": { "x": 4670, "y": 500 },
+        "rpi_layout_finalize_failure_clear_out": { "x": 4670, "y": 540 },
+        "rpi_layout_finalize_recovery_clear_out": { "x": 4670, "y": 580 },
+        "rpi_layout_snapshot_failure_out": { "x": 1750, "y": 630 },
+        "rpi_layout_classifier_ownership_out": { "x": 1500, "y": 180 },
+        "rpi_layout_classifier_rollback_out": { "x": 1500, "y": 300 },
+        "29b85bea56c558c5": { "x": 1420, "y": 350 },
+        "rpi_layout_cancel_timer_in": { "x": 1220, "y": 350 },
+        "a35f9d7d54ac6026": { "x": 1570, "y": 220 },
+        "rpi_layout_startup_timer_out": { "x": 1770, "y": 220 },
+        "rpi_layout_validation_failure_out": { "x": 3825, "y": 640 },
+        "aa1a0d2a4b3dfd43": { "x": 4100, "y": 660 },
+        "b826f528fd92e2bd": { "x": 4100, "y": 700 },
+        "048e2325e2e65944": { "x": 4100, "y": 740 },
+        "rpi_layout_restore_decision_failure_out": { "x": 1810, "y": 1120 }
+      },
       "nodes": {
         "c8f8e5b532232a4f": {
           "x": 74,
@@ -1949,6 +2027,22 @@
     "storage_health_tab": {
       "label": "storage_health",
       "compact_groups": true,
+      "group_positions": {
+        "storage_visual_decision_group": { "x": 1300, "y": 260 },
+        "storage_group_alerts": { "x": 8670, "y": 87 },
+        "global_observer_coverage__storage_health_tab__group": { "x": 10320, "y": 47 }
+      },
+      "node_positions": {
+        "storage_manual_start": { "x": 520, "y": 510 },
+        "storage_read_ha": { "x": 680, "y": 360 },
+        "storage_visual_manual_exec_out": { "x": 920, "y": 480 },
+        "storage_visual_manual_host_out": { "x": 920, "y": 530 },
+        "storage_visual_manual_status_out": { "x": 920, "y": 580 },
+        "storage_visual_history_seed": { "x": 950, "y": 790 },
+        "storage_visual_history_seed_out": { "x": 1200, "y": 790 },
+        "storage_test_decision_out": { "x": 8480, "y": 800 },
+        "storage_auto_out": { "x": 8480, "y": 850 }
+      },
       "nodes": {
         "storage_group_config": {
           "x": 94,
@@ -2540,6 +2634,45 @@
       "managed_node_overrides": [
         "555422f47d3a742b"
       ],
+      "group_positions": {
+        "b35563e0f73e5b64": {
+          "x": 68,
+          "y": 800
+        },
+        "6e71dbc937fe5669": {
+          "x": 125,
+          "y": 1128
+        },
+        "people_location_lifecycle_config_group_v2": {
+          "x": 2450,
+          "y": 43
+        },
+        "global_observer_coverage__ea0a6aa0d24ff863__group": {
+          "x": 5420,
+          "y": 220
+        }
+      },
+      "node_positions": {
+        "people_visual_policy_validate": { "x": 1650, "y": 220 },
+        "people_location_policy_apply_v1": { "x": 1950, "y": 140 },
+        "people_location_policy_out_v1": { "x": 2200, "y": 140 },
+        "people_visual_policy_reject": { "x": 1950, "y": 300 },
+        "people_visual_recovery_gate": { "x": 4000, "y": 580 },
+        "people_visual_recovery_build": { "x": 4300, "y": 550 },
+        "people_visual_recovery_dedupe": { "x": 4600, "y": 550 },
+        "people_visual_recovery_out": { "x": 4880, "y": 540 },
+        "people_visual_blocked_gate": { "x": 4300, "y": 650 },
+        "people_visual_blocked_build": { "x": 4600, "y": 650 },
+        "people_visual_blocked_out": { "x": 4880, "y": 650 },
+        "people_visual_unchanged_out": { "x": 4450, "y": 720 },
+        "people_visual_finalize_in": { "x": 5000, "y": 590 },
+        "554cb653b2fa4504": { "x": 5250, "y": 590 },
+        "487984b3aaa29663": { "x": 5560, "y": 480 },
+        "397c6032b3dad342": { "x": 5560, "y": 520 },
+        "people_location_notification_out_v1": { "x": 5560, "y": 560 },
+        "people_lighting_tracker_recovery_arrival_out": { "x": 5560, "y": 600 },
+        "people_arrival_departure_blocked_v1": { "x": 5560, "y": 660 }
+      },
       "nodes": {
         "98945604e99f7604": {
           "x": 64,
@@ -2994,6 +3127,62 @@
     "c22d8b12055e87f7": {
       "label": "contexto_vehicle_primary",
       "compact_groups": true,
+      "group_positions": {
+        "c1e3fc50d8ed0093": { "x": 64, "y": 59 },
+        "vehicle_primary_refresh_config_group_v1": { "x": 650, "y": 79 },
+        "vehicle_primary_refresh_policy_group_v1": { "x": 1290, "y": 179 },
+        "vehicle_location_panel_group_v1": { "x": 2450, "y": 299 },
+        "vehicle_visual_refresh_safety_config_group_v2": { "x": 3380, "y": 39 },
+        "vehicle_primary_remote_request_group_v1": { "x": 192, "y": 1450 },
+        "vehicle_primary_remote_command_group_v1": { "x": 2550, "y": 1279 },
+        "5df25064f701ecd2": { "x": 174, "y": 2000 },
+        "vehicle_primary_remote_command_test_group_v1": { "x": 1224, "y": 2000 },
+        "vehicle_visual_refresh_decision_group_v2": { "x": 69, "y": 2550 },
+        "global_observer_coverage__c22d8b12055e87f7__group": { "x": 4740, "y": 47 }
+      },
+      "node_positions": {
+        "vehicle_visual_engine_off": { "x": 3820, "y": 840 },
+        "vehicle_visual_blocked_gate": { "x": 5650, "y": 940 },
+        "vehicle_visual_blocked_build": { "x": 5900, "y": 920 },
+        "vehicle_visual_no_arrival_out": { "x": 5900, "y": 1020 },
+        "vehicle_visual_blocked_out": { "x": 6180, "y": 920 },
+        "c298447a6a2e3cef": { "x": 8400, "y": 700 },
+        "2aa1b0c2907d4017": { "x": 8400, "y": 760 },
+        "67d24b1f56447c94": { "x": 8400, "y": 820 },
+        "aa9889d5766ce5a0": { "x": 8400, "y": 880 },
+        "vehicle_primary_arrival_departure_blocked_v1": { "x": 8400, "y": 1040 },
+        "vehicle_primary_refresh_notify_primary_v1": { "x": 1390, "y": 1040 },
+        "vehicle_primary_refresh_notify_primary_v1__hub_call": { "x": 1700, "y": 1040 },
+        "vehicle_primary_refresh_notify_persistent_v1": { "x": 1390, "y": 1100 },
+        "vehicle_primary_refresh_notify_persistent_v1__hub_call": { "x": 1700, "y": 1100 },
+        "vehicle_primary_refresh_notification_dry_run_out_v1": { "x": 1390, "y": 1200 },
+        "vehicle_primary_refresh_dismiss_persistent_v1": { "x": 1400, "y": 1280 },
+        "vehicle_primary_refresh_dismiss_persistent_v1__hub_call": { "x": 1700, "y": 1280 },
+        "vehicle_primary_remote_request_busy_v1": { "x": 1660, "y": 1750 },
+        "vehicle_primary_remote_request_busy_out_v1": { "x": 1940, "y": 1750 },
+        "vehicle_primary_remote_request_unavailable_out_v1": { "x": 1500, "y": 1760 },
+        "vehicle_primary_remote_request_call_catch_v1": { "x": 1740, "y": 1830 },
+        "vehicle_primary_remote_request_service_failure_v1": { "x": 2000, "y": 1830 },
+        "vehicle_primary_remote_request_failure_out_v1": { "x": 2305, "y": 1830 },
+        "vehicle_primary_remote_request_dry_run_v1": { "x": 1780, "y": 1650 },
+        "vehicle_primary_remote_request_dry_run_out_v1": { "x": 2080, "y": 1650 },
+        "vehicle_primary_remote_effect_invalid_out_v1": { "x": 1900, "y": 1420 },
+        "vehicle_primary_remote_command_test_in_v1": { "x": 2681, "y": 1400 },
+        "vehicle_primary_remote_request_failure_in_v1": { "x": 2681, "y": 1460 },
+        "vehicle_primary_remote_command_event_v1": { "x": 2686, "y": 1320 },
+        "vehicle_primary_remote_command_monitor_v1": { "x": 3006, "y": 1360 },
+        "vehicle_primary_remote_command_architecture_v1": { "x": 3136, "y": 1500 },
+        "vehicle_primary_remote_command_guard_v1": { "x": 3336, "y": 1360 },
+        "notification_hub_wire_out_cd6c9923c45e": { "x": 3516, "y": 1410 },
+        "notification_hub_wire_out_51fdb341b993": { "x": 3596, "y": 1410 },
+        "vehicle_primary_remote_command_notify_primary_v1": { "x": 3646, "y": 1320 },
+        "vehicle_primary_remote_command_notify_primary_v1__hub_call": { "x": 3926, "y": 1320 },
+        "notification_hub_wire_in_51fdb341b993": { "x": 4111, "y": 1440 },
+        "notification_hub_wire_in_cd6c9923c45e": { "x": 4146, "y": 1380 },
+        "vehicle_primary_remote_command_dry_run_out_v1": { "x": 4291, "y": 1440 },
+        "vehicle_primary_remote_command_notify_persistent_v1": { "x": 4326, "y": 1380 },
+        "vehicle_primary_remote_command_notify_persistent_v1__hub_call": { "x": 4606, "y": 1380 }
+      },
       "nodes": {
         "c1e3fc50d8ed0093": {
           "x": 174,
@@ -3882,6 +4071,94 @@
     "6b7552efb85343f4": {
       "label": "iluminacao_seguranca",
       "compact_groups": true,
+      "apply_nodes": false,
+      "group_positions": {
+        "e53f5ed6c320c591": { "x": 64, "y": 63 },
+        "ed8fa1d49205cbdb": { "x": 1480, "y": 680 },
+        "light_location_policy_group_v1": { "x": 1980, "y": 680 },
+        "security_visual_policy_group_v1": { "x": 2580, "y": 1040 },
+        "32a89192d93735b1": { "x": 106, "y": 1750 },
+        "6013a28eaa95addd": { "x": 121, "y": 2310 },
+        "global_observer_coverage__6b7552efb85343f4__group": { "x": 3250, "y": 20 }
+      },
+      "node_positions": {
+        "security_visual_context_route_out": { "x": 650, "y": 300 },
+        "light_available_to_output_in_v1": { "x": 800, "y": 100 },
+        "354c9839bfca592f": { "x": 1050, "y": 100 },
+        "notification_hub_wire_out_33aba8ee0945": { "x": 1350, "y": 60 },
+        "notification_hub_wire_out_9691eb37bd5f": { "x": 1350, "y": 100 },
+        "notification_hub_wire_out_5e4e15fa0779": { "x": 1350, "y": 140 },
+        "notification_hub_wire_out_fa4355492e8d": { "x": 1350, "y": 180 },
+        "notification_hub_wire_out_66619a69a7c0": { "x": 1350, "y": 240 },
+        "notification_hub_wire_in_33aba8ee0945": { "x": 1500, "y": 60 },
+        "f863fcd77744a4da": { "x": 1750, "y": 60 },
+        "notification_hub_wire_in_9691eb37bd5f": { "x": 1500, "y": 120 },
+        "9f047ccb2ce2c3aa": { "x": 1750, "y": 120 },
+        "notification_hub_wire_out_58d452601a4e": { "x": 2000, "y": 120 },
+        "notification_hub_wire_in_58d452601a4e": { "x": 2150, "y": 120 },
+        "8fbbd9e9e8fdaacc": { "x": 2400, "y": 120 },
+        "225a9b23f78894c9": { "x": 2650, "y": 120 },
+        "notification_hub_wire_in_5e4e15fa0779": { "x": 1500, "y": 180 },
+        "2818bf202b397612": { "x": 1750, "y": 180 },
+        "2818bf202b397612__hub_call": { "x": 2050, "y": 180 },
+        "notification_hub_wire_in_fa4355492e8d": { "x": 2150, "y": 240 },
+        "light_notify_on_secondary": { "x": 2400, "y": 240 },
+        "light_notify_on_secondary__hub_call": { "x": 2700, "y": 240 },
+        "notification_hub_wire_in_66619a69a7c0": { "x": 1500, "y": 300 },
+        "notification_hub_wire_in_bfe3c043c2a2": { "x": 1500, "y": 360 },
+        "light_test_to_terminal_out_v1": { "x": 1750, "y": 330 },
+        "light_unavailable_to_output_in_v1": { "x": 800, "y": 480 },
+        "04007cc1732f60c9": { "x": 1050, "y": 420 },
+        "04007cc1732f60c9__hub_call": { "x": 1350, "y": 420 },
+        "notification_hub_wire_out_f2303c347ebe": { "x": 1050, "y": 480 },
+        "notification_hub_wire_out_8aa37f8df48f": { "x": 1050, "y": 540 },
+        "notification_hub_wire_in_f2303c347ebe": { "x": 1500, "y": 480 },
+        "d710ac9de2f98569": { "x": 1750, "y": 480 },
+        "notification_hub_wire_in_8aa37f8df48f": { "x": 1500, "y": 540 },
+        "light_notify_unavailable_secondary": { "x": 1750, "y": 540 },
+        "light_notify_unavailable_secondary__hub_call": { "x": 2050, "y": 540 },
+        "light_unavailable_test_dry_run_in_v1": { "x": 800, "y": 620 },
+        "notification_hub_wire_out_bfe3c043c2a2": { "x": 1050, "y": 620 },
+        "d2cc7a5873776be0": { "x": 2300, "y": 360 },
+        "notification_hub_wire_out_4a052cb333c8": { "x": 2500, "y": 360 },
+        "notification_hub_wire_in_4a052cb333c8": { "x": 2700, "y": 360 },
+        "light_test_to_terminal_in_v1": { "x": 2700, "y": 460 },
+        "light_full_dry_run_terminal_v1": { "x": 3050, "y": 410 },
+        "security_visual_replay_ready": { "x": 1050, "y": 1863 },
+        "security_visual_replay_build": { "x": 1250, "y": 1803 },
+        "48a5f40d806f6950": { "x": 1540, "y": 1863 },
+        "77f539388438547c": { "x": 1840, "y": 1803 },
+        "68a67feb7cc57957": { "x": 1840, "y": 1863 },
+        "light_arrival_replay_route_out_v1": { "x": 1840, "y": 1923 },
+        "aaeec8223d98ab0b": { "x": 160, "y": 830 },
+        "374d4e39be0a30ac": { "x": 420, "y": 830 },
+        "light_off_decision_route_out_v1": { "x": 650, "y": 790 },
+        "71976ffe382e6d7d": { "x": 650, "y": 890 },
+        "a5cbd5aa62c5a99b": { "x": 760, "y": 730 },
+        "light_off_decision_route_in_v1": { "x": 760, "y": 810 },
+        "f59d2ceb5ba88ddf": { "x": 760, "y": 970 },
+        "84d450933e67b8c1": { "x": 1050, "y": 830 },
+        "82539910c43d6cf5": { "x": 1320, "y": 830 },
+        "security_light_engine_bypass_startup_v1": { "x": 250, "y": 1230 },
+        "security_light_engine_bypass_command_v1": { "x": 250, "y": 1290 },
+        "security_light_engine_bypass_test_on_v1": { "x": 250, "y": 1350 },
+        "security_light_engine_bypass_test_off_v1": { "x": 250, "y": 1410 },
+        "security_light_engine_bypass_function_v1": { "x": 700, "y": 1350 },
+        "security_visual_bypass_branch": { "x": 1050, "y": 1350 },
+        "security_visual_bypass_startup": { "x": 1400, "y": 1150 },
+        "security_visual_bypass_auto_enable": { "x": 1450, "y": 1230 },
+        "security_visual_bypass_auto_owned": { "x": 1500, "y": 1350 },
+        "security_visual_bypass_manual_enable": { "x": 1450, "y": 1470 },
+        "security_visual_bypass_manual_disable": { "x": 1400, "y": 1550 },
+        "security_visual_bypass_invalid": { "x": 1350, "y": 1630 },
+        "security_visual_bypass_auto_recover": { "x": 1700, "y": 1100 },
+        "security_visual_bypass_preserve_manual": { "x": 1700, "y": 1600 },
+        "security_visual_bypass_result_out": { "x": 1850, "y": 1350 },
+        "security_visual_bypass_result_in": { "x": 1950, "y": 1350 },
+        "security_visual_bypass_output": { "x": 2150, "y": 1350 },
+        "security_light_engine_bypass_mqtt_out_v1": { "x": 2400, "y": 1310 },
+        "security_light_engine_bypass_reevaluate_out_v1": { "x": 2400, "y": 1390 }
+      },
       "nodes": {
         "e53f5ed6c320c591": {
           "x": 134,
@@ -4532,6 +4809,33 @@
     "daily_host_updates_tab": {
       "label": "atualizacoes_diarias",
       "compact_groups": true,
+      "group_positions": {
+        "daily_update_core_group": { "x": 68, "y": 660 },
+        "daily_update_containers_group": { "x": 68, "y": 1120 },
+        "daily_update_test_group": { "x": 102, "y": 1580 },
+        "daily_update_inventory_group": { "x": 68, "y": 2260 },
+        "daily_update_hacs_group": { "x": 68, "y": 3050 },
+        "daily_update_unknown_group": { "x": 1400, "y": 3050 },
+        "daily_update_firmware_group": { "x": 68, "y": 3400 },
+        "daily_update_kia_group": { "x": 68, "y": 3980 },
+        "daily_update_kia_codex_group": { "x": 90, "y": 4600 },
+        "daily_update_repository_dependency_group": { "x": 68, "y": 5470 },
+        "daily_update_repository_dependency_test_group": { "x": 118, "y": 6270 },
+        "global_observer_coverage__daily_host_updates_tab__group": { "x": 1480, "y": 47 }
+      },
+      "node_positions": {
+        "daily_update_kia_promotion_read_complete": { "x": 1000, "y": 5280 },
+        "daily_update_inventory_record": { "x": 650, "y": 2901 },
+        "daily_update_inventory_summary_test_out": { "x": 850, "y": 2941 },
+        "daily_update_hacs_current": { "x": 520, "y": 3331 },
+        "daily_update_unknown_test_gate": { "x": 1545, "y": 3131 },
+        "daily_update_unknown_rbe": { "x": 1675, "y": 3191 },
+        "daily_update_firmware_invalid": { "x": 1100, "y": 3881 },
+        "daily_update_firmware_install": { "x": 1520, "y": 3801 },
+        "daily_update_firmware_installed": { "x": 1700, "y": 3861 },
+        "daily_update_inventory_schedule_delay": { "x": 1530, "y": 2581 },
+        "daily_update_inventory_schedule_loop_out": { "x": 1634, "y": 2640 }
+      },
       "nodes": {
         "daily_update_production_group": {
           "x": 124,
@@ -5185,10 +5489,6 @@
           "x": 620,
           "y": 2920
         },
-        "daily_update_inventory_nonpending_test_out": {
-          "x": 1070,
-          "y": 2920
-        },
         "daily_update_inventory_kia_out": {
           "x": 1530,
           "y": 2660
@@ -5426,9 +5726,28 @@
     "codex_alertas_tab": {
       "label": "alertas_codex",
       "compact_groups": true,
-      "managed_node_overrides": [
-        "codex_alert_dry_run_out"
-      ],
+      "apply_nodes": false,
+      "group_positions": {
+        "codex_group_level": {
+          "x": 73,
+          "y": 553
+        },
+        "codex_group_tests": {
+          "x": 85,
+          "y": 880
+        },
+        "codex_group_decisions": { "x": 1520, "y": 497 },
+        "global_observer_coverage__codex_alertas_tab__group": { "x": 2100, "y": 47 }
+      },
+      "node_positions": {
+        "codex_level_warning": { "x": 990, "y": 786 },
+        "codex_level_set_warning": { "x": 1250, "y": 766 },
+        "codex_level_set_normal": { "x": 1250, "y": 816 },
+        "codex_level_effect_out": { "x": 1450, "y": 726 },
+        "codex_pending_check": { "x": 3950, "y": 1160 },
+        "codex_pending_due": { "x": 4200, "y": 1210 },
+        "codex_pending_retry_out": { "x": 4450, "y": 1320 }
+      },
       "nodes": {
         "codex_group_policy": {
           "x": 64,
@@ -5797,6 +6116,17 @@
     "host_memory_guardian_tab": {
       "label": "guardiao_memoria_host",
       "compact_groups": true,
+      "group_positions": {
+        "host_memory_guardian_decision_group": { "x": 1510, "y": 10 },
+        "host_memory_guardian_effect_group": { "x": 4600, "y": -8 },
+        "global_observer_coverage__host_memory_guardian_tab__group": { "x": 6200, "y": 47 }
+      },
+      "node_positions": {
+        "host_memory_guardian_result_complete": { "x": 800, "y": 390 },
+        "host_memory_guardian_result_complete_switch": { "x": 1080, "y": 390 },
+        "host_memory_guardian_read_ok": { "x": 1350, "y": 350 },
+        "host_memory_guardian_read_failed": { "x": 1350, "y": 440 }
+      },
       "nodes": {
         "host_memory_guardian_input_group": {
           "x": 64,
@@ -5857,19 +6187,19 @@
           "y": 280
         },
         "host_memory_guardian_result_complete": {
-          "x": 560,
-          "y": 390
-        },
-        "host_memory_guardian_result_complete_switch": {
           "x": 800,
           "y": 390
         },
+        "host_memory_guardian_result_complete_switch": {
+          "x": 1080,
+          "y": 390
+        },
         "host_memory_guardian_read_ok": {
-          "x": 1050,
+          "x": 1350,
           "y": 350
         },
         "host_memory_guardian_read_failed": {
-          "x": 1050,
+          "x": 1350,
           "y": 440
         },
         "host_memory_guardian_request_in": {
@@ -6149,6 +6479,21 @@
     "monitoramento_vpn_tab": {
       "label": "monitoramento_vpn",
       "compact_groups": true,
+      "group_positions": {
+        "vpn_monitor_test_group": { "x": 101, "y": 410 },
+        "vpn_monitor_decision_group": { "x": 2500, "y": 167 },
+        "vpn_monitor_notify_group": { "x": 6050, "y": -93 },
+        "vpn_monitor_publish_group": { "x": 6050, "y": 500 },
+        "global_observer_coverage__monitoramento_vpn_tab__group": { "x": 8040, "y": 47 }
+      },
+      "node_positions": {
+        "vpn_monitor_notify_dispatch": { "x": 6500, "y": 110 },
+        "vpn_monitor_notify_dispatch__contract_gate": { "x": 6800, "y": 110 },
+        "vpn_monitor_notify_dispatch__contract_reject": { "x": 7040, "y": 450 },
+        "vpn_monitor_notify_dispatch__dismiss_gate": { "x": 7247, "y": 270 },
+        "vpn_monitor_notify_dispatch__dismiss_prepare": { "x": 7547, "y": 270 },
+        "vpn_monitor_notify_dispatch__dismiss_call": { "x": 7827, "y": 270 }
+      },
       "nodes": {
         "vpn_monitor_policy_group": {
           "x": 64,
@@ -6505,6 +6850,18 @@
     "1f468eaeef0733dd": {
       "label": "alarme_desarme_chegada",
       "compact_groups": true,
+      "group_positions": {
+        "global_observer_coverage__1f468eaeef0733dd__group": { "x": 3150, "y": 47 }
+      },
+      "node_positions": {
+        "alarm_arrival_contract_gate_reject_out": { "x": 820, "y": 430 },
+        "alarm_arrival_kind_gate_reject_out": { "x": 1065, "y": 430 },
+        "alarm_arrival_source_gate_reject_out": { "x": 1375, "y": 430 },
+        "alarm_arrival_stage_gate_reject_out": { "x": 1705, "y": 430 },
+        "alarm_arrival_direction_gate_reject_out": { "x": 1985, "y": 430 },
+        "alarm_arrival_cycle_gate_reject_out": { "x": 2315, "y": 430 },
+        "alarm_arrival_self_gate_reject_out": { "x": 2620, "y": 430 }
+      },
       "nodes": {
         "alarm_arrival_policy_group": {
           "x": 224,
@@ -6941,6 +7298,83 @@
     "git_backup_tab": {
       "label": "backup_git",
       "compact_groups": true,
+      "apply_nodes": false,
+      "group_positions": {
+        "git_backup_input_group": {
+          "x": 64,
+          "y": 20
+        },
+        "git_backup_decision_group": {
+          "x": 570,
+          "y": 20
+        },
+        "global_observer_coverage__git_backup_tab__group": {
+          "x": 2200,
+          "y": 20
+        },
+        "git_backup_test_group": {
+          "x": 64,
+          "y": 500
+        },
+        "git_backup_effect_group": {
+          "x": 1510,
+          "y": 500
+        }
+      },
+      "node_positions": {
+        "git_backup_dry_out": {
+          "x": 1750,
+          "y": 300
+        },
+        "git_backup_success_origin": {
+          "x": 1350,
+          "y": 140
+        },
+        "git_backup_success_gate": {
+          "x": 1550,
+          "y": 100
+        },
+        "git_backup_manual_success": {
+          "x": 1550,
+          "y": 180
+        },
+        "git_backup_mark_daily_success": {
+          "x": 1800,
+          "y": 80
+        },
+        "git_backup_daily_update_out": {
+          "x": 2050,
+          "y": 70
+        },
+        "git_backup_notification_out": {
+          "x": 2030,
+          "y": 240
+        },
+        "git_backup_failure_gate": {
+          "x": 1550,
+          "y": 280
+        },
+        "git_backup_retry_effect_out": {
+          "x": 1700,
+          "y": 360
+        },
+        "git_backup_invalid_gate": {
+          "x": 1270,
+          "y": 400
+        },
+        "git_backup_invalid_result": {
+          "x": 1550,
+          "y": 450
+        },
+        "notification_hub_wire_out_96c34caf8ddc": {
+          "x": 2100,
+          "y": 900
+        },
+        "git_backup_test_invalid": {
+          "x": 192,
+          "y": 937
+        }
+      },
       "nodes": {
         "git_backup_input_group": {
           "x": 24,
@@ -7161,8 +7595,8 @@
           "y": 900
         },
         "git_backup_test_invalid": {
-          "x": 520,
-          "y": 850
+          "x": 200,
+          "y": 960
         },
         "git_backup_test_result_out": {
           "x": 680,
@@ -7193,14 +7627,42 @@
           "y": 170
         },
         "git_backup_dry_out": {
-          "x": 1820,
+          "x": 2100,
           "y": 360
+        },
+        "notification_hub_wire_out_96c34caf8ddc": {
+          "x": 2150,
+          "y": 910
         }
       }
     },
     "monitoramento_internet_tab": {
       "label": "monitoramento_internet",
       "compact_groups": true,
+      "apply_nodes": false,
+      "group_positions": {
+        "grp_internet_publish": {
+          "x": 1429,
+          "y": 800
+        },
+        "grp_internet_tests": {
+          "x": 64,
+          "y": 680
+        },
+        "global_observer_coverage__monitoramento_internet_tab__group": {
+          "x": 5680,
+          "y": 47
+        }
+      },
+      "node_positions": {
+        "internet_action_switch": { "x": 4400, "y": 300 },
+        "internet_failure_threshold": { "x": 4650, "y": 700 },
+        "internet_mark_down": { "x": 5000, "y": 700 },
+        "internet_finalize_route_out": { "x": 4800, "y": 600 },
+        "internet_dry_run_terminal": { "x": 1030, "y": 861 },
+        "internet_notify_down__contract_reject": { "x": 3437, "y": 1120 },
+        "internet_notify_recovery__contract_reject": { "x": 3437, "y": 1510 }
+      },
       "nodes": {
         "grp_internet_triggers": {
           "x": 44,
@@ -7353,48 +7815,56 @@
           "y": 300
         },
         "internet_state_mutate": {
-          "x": 3890,
+          "x": 4000,
           "y": 300
         },
         "internet_action_switch": {
-          "x": 4350,
+          "x": 4400,
           "y": 300
         },
         "internet_recovery_threshold": {
-          "x": 4520,
-          "y": 220
+          "x": 4600,
+          "y": 200
         },
         "internet_mark_recovered": {
-          "x": 4800,
+          "x": 5000,
           "y": 200
         },
         "internet_failure_threshold": {
-          "x": 4600,
-          "y": 400
+          "x": 4750,
+          "y": 500
+        },
+        "internet_notify_down__contract_reject": {
+          "x": 3450,
+          "y": 1038
+        },
+        "internet_notify_recovery__contract_reject": {
+          "x": 3450,
+          "y": 1428
         },
         "internet_mark_down": {
-          "x": 4870,
-          "y": 440
+          "x": 5000,
+          "y": 500
         },
         "internet_mutate_again_out": {
-          "x": 5100,
-          "y": 300
+          "x": 5250,
+          "y": 325
         },
         "internet_finalize_route_out": {
-          "x": 4700,
-          "y": 650
+          "x": 4800,
+          "y": 600
         },
         "internet_finalize_in": {
-          "x": 5000,
-          "y": 650
+          "x": 5100,
+          "y": 600
         },
         "internet_finalize": {
-          "x": 5250,
-          "y": 650
+          "x": 5350,
+          "y": 600
         },
         "internet_effect_out": {
-          "x": 5500,
-          "y": 650
+          "x": 5600,
+          "y": 600
         },
         "internet_effect_in": {
           "x": 1465,
@@ -7533,6 +8003,22 @@
     "monitoramento_zigbee_tab": {
       "label": "monitoramento_zigbee",
       "compact_groups": true,
+      "group_positions": {
+        "grp_zigbee_notify": { "x": 4300, "y": 17 },
+        "grp_zigbee_tests": { "x": 103, "y": 1400 },
+        "global_observer_coverage__monitoramento_zigbee_tab__group": { "x": 7050, "y": 47 }
+      },
+      "node_positions": {
+        "zigbee_mark_checking": { "x": 2980, "y": 555 },
+        "zigbee_component_availability_switch": { "x": 2700, "y": 910 },
+        "zigbee_component_policy_missing": { "x": 1950, "y": 970 },
+        "zigbee_component_reminder_due": { "x": 2580, "y": 1240 },
+        "zigbee_component_mark_reminder": { "x": 2860, "y": 1320 },
+        "zigbee_component_no_reminder": { "x": 2850, "y": 1080 },
+        "zigbee_notify_effect": { "x": 5500, "y": 300 },
+        "zigbee_notify_effect__contract_gate": { "x": 5800, "y": 300 },
+        "zigbee_notify_effect__contract_reject": { "x": 6040, "y": 650 }
+      },
       "nodes": {
         "grp_zigbee_triggers": {
           "x": 64,
@@ -8075,6 +8561,15 @@
     "monitoramento_tuya_tab": {
       "label": "monitoramento_tuya",
       "compact_groups": true,
+      "group_positions": {
+        "grp_tuya_notify": { "x": 5550, "y": 17 },
+        "global_observer_coverage__monitoramento_tuya_tab__group": { "x": 8320, "y": 47 }
+      },
+      "node_positions": {
+        "tuya_device_result": { "x": 5200, "y": 560 },
+        "tuya_result_join_out": { "x": 5450, "y": 560 },
+        "tuya_notify_effect__contract_reject": { "x": 7430, "y": 940 }
+      },
       "nodes": {
         "grp_tuya_triggers": {
           "x": 64,
@@ -8295,11 +8790,11 @@
           "y": 220
         },
         "tuya_device_result": {
-          "x": 4970,
+          "x": 5200,
           "y": 560
         },
         "tuya_result_join_out": {
-          "x": 5120,
+          "x": 5450,
           "y": 560
         },
         "tuya_result_join_in": {
@@ -8575,6 +9070,12 @@
     "62bb822e033d1623": {
       "label": "contexto_chegadas",
       "compact_groups": true,
+      "group_positions": {
+        "arrival_context_snapshot_group": { "x": 3760, "y": 20 },
+        "arrival_context_pending_group": { "x": 3380, "y": 760 },
+        "arrival_context_test_group": { "x": 64, "y": 1330 },
+        "global_observer_coverage__62bb822e033d1623__group": { "x": 7080, "y": 47 }
+      },
       "nodes": {
         "arrival_context_input_group": {
           "x": 64,
@@ -8739,31 +9240,31 @@
           "y": 410
         },
         "arrival_context_cycle_read": {
-          "x": 2500,
+          "x": 2650,
           "y": 330
         },
         "arrival_context_inflight_switch": {
-          "x": 2760,
+          "x": 2950,
           "y": 330
         },
         "arrival_context_inflight_force": {
-          "x": 3030,
+          "x": 3230,
           "y": 240
         },
         "arrival_context_cycle_promote": {
-          "x": 3300,
+          "x": 3500,
           "y": 210
         },
         "arrival_context_cycle_coalesced": {
-          "x": 3300,
+          "x": 3500,
           "y": 270
         },
         "arrival_context_cycle_start": {
-          "x": 3060,
+          "x": 3260,
           "y": 410
         },
         "3514854bb1279cbb": {
-          "x": 3380,
+          "x": 3550,
           "y": 410
         },
         "arrival_context_snapshot_in": {
@@ -8823,12 +9324,12 @@
           "y": 470
         },
         "arrival_context_reject_missing": {
-          "x": 5800,
-          "y": 240
+          "x": 6100,
+          "y": 550
         },
         "arrival_context_missing_decision_out": {
-          "x": 6010,
-          "y": 240
+          "x": 6350,
+          "y": 550
         },
         "arrival_context_snapshot_newer": {
           "x": 5550,
@@ -8907,56 +9408,56 @@
           "y": 960
         },
         "arrival_context_departure_away": {
-          "x": 2110,
+          "x": 2250,
           "y": 960
         },
         "arrival_context_departure_duplicate": {
-          "x": 2380,
+          "x": 2520,
           "y": 960
         },
         "arrival_context_departure_build": {
-          "x": 2660,
+          "x": 2950,
           "y": 960
         },
         "arrival_context_departure_command_out": {
-          "x": 2950,
+          "x": 3240,
           "y": 920
         },
         "arrival_context_departure_no_domain": {
-          "x": 570,
-          "y": 1190
+          "x": 740,
+          "y": 1090
         },
         "arrival_context_departure_no_accept": {
-          "x": 820,
-          "y": 1190
+          "x": 990,
+          "y": 1090
         },
         "arrival_context_departure_no_source": {
-          "x": 1080,
-          "y": 1190
+          "x": 1250,
+          "y": 1090
         },
         "arrival_context_departure_no_previous": {
-          "x": 1340,
-          "y": 1190
+          "x": 1510,
+          "y": 1090
         },
         "arrival_context_departure_no_state": {
-          "x": 1600,
-          "y": 1190
+          "x": 1770,
+          "y": 1090
         },
         "arrival_context_departure_no_ready": {
-          "x": 1860,
-          "y": 1190
+          "x": 2100,
+          "y": 1160
         },
         "arrival_context_departure_no_away": {
-          "x": 2110,
-          "y": 1190
+          "x": 2450,
+          "y": 1090
         },
         "arrival_context_departure_no_duplicate": {
-          "x": 2380,
-          "y": 1190
+          "x": 2720,
+          "y": 1090
         },
         "arrival_context_departure_selected_out": {
-          "x": 2950,
-          "y": 1190
+          "x": 3240,
+          "y": 1090
         },
         "arrival_context_pending_in": {
           "x": 3650,
@@ -9103,6 +9604,76 @@
     "local_ai_rtx_recovery_tab": {
       "label": "recuperacao_rtx",
       "compact_groups": true,
+      "group_positions": {
+        "local_ai_rtx_recovery_group": { "x": 800, "y": 880 },
+        "local_ai_rtx_alert_close_group": { "x": 2400, "y": 700 },
+        "local_ai_rtx_test_group": { "x": 64, "y": 1060 },
+        "global_observer_coverage__local_ai_rtx_recovery_tab__group": { "x": 6550, "y": 40 }
+      },
+      "node_positions": {
+        "local_ai_rtx_state_in": { "x": 2400, "y": 350 },
+        "local_ai_rtx_state_update": { "x": 2680, "y": 350 },
+        "local_ai_rtx_transition_switch": { "x": 2960, "y": 350 },
+        "local_ai_rtx_test_mode_switch": { "x": 3050, "y": 80 },
+        "local_ai_rtx_cooldown_switch": { "x": 3300, "y": 150 },
+        "local_ai_rtx_set_requested": { "x": 3500, "y": 70 },
+        "local_ai_rtx_set_cooldown": { "x": 3550, "y": 160 },
+        "local_ai_rtx_state_out_right": { "x": 3820, "y": 110 },
+        "local_ai_rtx_recovery_out": { "x": 3200, "y": 240 },
+        "local_ai_rtx_available_mode_switch": { "x": 3350, "y": 310 },
+        "local_ai_rtx_unavailable_mode_switch": { "x": 3350, "y": 450 },
+        "local_ai_rtx_status_transition_out": { "x": 3200, "y": 610 },
+        "local_ai_rtx_prod_alert_reset_request_in": { "x": 3600, "y": 260 },
+        "local_ai_rtx_test_alert_reset_in": { "x": 3500, "y": 610 },
+        "local_ai_rtx_test_alert_reset_request_in": { "x": 3450, "y": 650 },
+        "local_ai_rtx_prepare_prod_alert_reset": { "x": 3820, "y": 290 },
+        "local_ai_rtx_prepare_test_alert_reset": { "x": 3820, "y": 370 },
+        "local_ai_rtx_test_host_state_switch": { "x": 3820, "y": 460 },
+        "local_ai_rtx_host_state_source": { "x": 3700, "y": 700 },
+        "local_ai_rtx_alert_close_available_out": { "x": 4120, "y": 250 },
+        "local_ai_rtx_alert_dedupe_reset_out": { "x": 4120, "y": 330 },
+        "local_ai_rtx_test_alert_reset_request_out": { "x": 4220, "y": 500 },
+        "local_ai_rtx_prod_host_state_switch": { "x": 4000, "y": 700 },
+        "local_ai_rtx_prepare_test_alert": { "x": 4220, "y": 460 },
+        "local_ai_rtx_prepare_prod_alert": { "x": 4400, "y": 700 },
+        "local_ai_rtx_prod_alert_reset_request_out": { "x": 4200, "y": 780 },
+        "local_ai_rtx_status_gate_out": { "x": 4200, "y": 600 },
+        "local_ai_rtx_alert_dedupe_reset_in": { "x": 4220, "y": 330 },
+        "local_ai_rtx_alert_close_unavailable_out": { "x": 4820, "y": 680 },
+        "local_ai_rtx_alert_rbe": { "x": 4600, "y": 620 },
+        "local_ai_rtx_alert_load_delay": { "x": 4870, "y": 620 },
+        "local_ai_rtx_status_in": { "x": 4650, "y": 300 },
+        "local_ai_rtx_status_terminal": { "x": 4940, "y": 300 },
+        "local_ai_rtx_alert_delay_valid": { "x": 5140, "y": 620 },
+        "local_ai_rtx_alert_policy_missing": { "x": 5410, "y": 540 },
+        "local_ai_rtx_alert_mode_switch": { "x": 5410, "y": 620 },
+        "local_ai_rtx_alert_test_delay": { "x": 5680, "y": 700 },
+        "local_ai_rtx_alert_confirmation_reset_in": { "x": 5780, "y": 800 },
+        "local_ai_rtx_alert_confirm": { "x": 5900, "y": 620 },
+        "local_ai_rtx_alert_build": { "x": 6180, "y": 620 },
+        "local_ai_rtx_alert_out": { "x": 6430, "y": 620 },
+        "local_ai_rtx_alert_close_state_in": { "x": 2450, "y": 930 },
+        "local_ai_rtx_alert_close_rbe": { "x": 2720, "y": 930 },
+        "local_ai_rtx_alert_recovered_switch": { "x": 3000, "y": 930 },
+        "local_ai_rtx_alert_dismiss": { "x": 3300, "y": 930 },
+        "local_ai_rtx_alert_dismiss__hub_call": { "x": 3600, "y": 930 },
+        "local_ai_rtx_alert_dismiss__hub_result": { "x": 3890, "y": 930 },
+        "local_ai_rtx_alert_closed": { "x": 4200, "y": 930 },
+        "local_ai_rtx_test_reset": { "x": 200, "y": 1310 },
+        "local_ai_rtx_test_reset_state": { "x": 550, "y": 1280 },
+        "local_ai_rtx_test_alert_reset_out": { "x": 550, "y": 1340 },
+        "local_ai_rtx_test_available": { "x": 200, "y": 1390 },
+        "local_ai_rtx_test_host_off": { "x": 200, "y": 1460 },
+        "local_ai_rtx_test_unavailable": { "x": 200, "y": 1530 },
+        "local_ai_rtx_test_host_on": { "x": 200, "y": 1600 },
+        "local_ai_rtx_test_health_out": { "x": 570, "y": 1495 },
+        "local_ai_rtx_test_instructions": { "x": 900, "y": 1270 },
+        "local_ai_rtx_test_recovered": { "x": 1100, "y": 1430 },
+        "local_ai_rtx_test_failed": { "x": 1100, "y": 1510 },
+        "local_ai_rtx_test_response_out": { "x": 1420, "y": 1470 },
+        "local_ai_rtx_dry_in": { "x": 1660, "y": 1600 },
+        "local_ai_rtx_dry_run_terminal": { "x": 1940, "y": 1600 }
+      },
       "nodes": {
         "local_ai_rtx_policy_group": {
           "x": 64,
@@ -9780,6 +10351,38 @@
     "resident_notifications_tab": {
       "label": "notificacoes_chegadas_residentes",
       "compact_groups": true,
+      "apply_nodes": false,
+      "group_positions": {
+        "resident_notifications_input_group": { "x": 1420, "y": 77 },
+        "resident_notifications_state_group": { "x": 5200, "y": 57 },
+        "resident_notifications_output_group": { "x": 7420, "y": 23 },
+        "resident_notifications_test_group": { "x": 75, "y": 760 },
+        "global_observer_coverage__resident_notifications_tab__group": { "x": 10000, "y": 47 }
+      },
+      "node_positions": {
+        "resident_notifications_policy_store": { "x": 1260, "y": 190 },
+        "resident_notifications_policy_reject": { "x": 1260, "y": 290 },
+        "resident_notifications_source_switch": { "x": 4500, "y": 260 },
+        "resident_notifications_source_invalid": { "x": 4850, "y": 600 },
+        "resident_notifications_recipient_primary": { "x": 4980, "y": 130 },
+        "resident_notifications_recipient_secondary": { "x": 4970, "y": 400 },
+        "resident_notifications_decision_out": { "x": 5100, "y": 350 },
+        "resident_notifications_stale_terminal": { "x": 6250, "y": 150 },
+        "resident_notifications_state_migrate": { "x": 6250, "y": 330 },
+        "resident_notifications_retry_in": { "x": 6200, "y": 600 },
+        "resident_notifications_state_read": { "x": 6550, "y": 330 },
+        "resident_notifications_duplicate_switch": { "x": 6850, "y": 330 },
+        "resident_notifications_duplicate_terminal": { "x": 7150, "y": 260 },
+        "resident_notifications_state_write": { "x": 7150, "y": 400 },
+        "resident_notifications_delivery_out": { "x": 7350, "y": 400 },
+        "resident_notifications_delivery_catch": { "x": 8250, "y": 410 },
+        "notification_hub_wire_in_1ecb0204c49e": { "x": 8400, "y": 500 },
+        "notification_hub_wire_in_be8bb6bde419": { "x": 8400, "y": 560 },
+        "resident_notifications_delivery_failure": { "x": 8700, "y": 530 },
+        "notification_hub_wire_out_3e1229d83eeb": { "x": 9000, "y": 530 },
+        "resident_notifications_test_cycle_in": { "x": 400, "y": 1450 },
+        "resident_notifications_test_adapter": { "x": 680, "y": 1150 }
+      },
       "managed_node_overrides": [
         "notification_hub_wire_in_be8bb6bde419"
       ],
@@ -10174,6 +10777,62 @@
           "x": 9125,
           "y": 130
         }
+      }
+    },
+    "notification_hub_alexa_tab": {
+      "label": "hub_notificacoes_alexa",
+      "compact_groups": true,
+      "apply_nodes": false,
+      "group_positions": {
+        "global_observer_coverage__notification_hub_alexa_tab__group": { "x": 2250, "y": 40 }
+      },
+      "node_positions": {
+        "notification_hub_alexa_reject": { "x": 1340, "y": 270 },
+        "notification_hub_alexa_return_reject": { "x": 1600, "y": 270 },
+        "notification_hub_alexa_success": { "x": 1900, "y": 200 },
+        "notification_hub_alexa_return_success": { "x": 2150, "y": 200 }
+      }
+    },
+    "notification_hub_mobile_tab": {
+      "label": "hub_notificacoes_moveis",
+      "compact_groups": true,
+      "apply_nodes": false,
+      "group_positions": {
+        "global_observer_coverage__notification_hub_mobile_tab__group": { "x": 3820, "y": 40 }
+      },
+      "node_positions": {
+        "notification_hub_mobile_count": { "x": 1250, "y": 175 },
+        "notification_hub_mobile_single": { "x": 1450, "y": 100 },
+        "notification_hub_mobile_only_primary": { "x": 1700, "y": 60 },
+        "notification_hub_mobile_only_secondary": { "x": 1700, "y": 140 },
+        "notification_hub_mobile_both_primary": { "x": 1700, "y": 260 },
+        "notification_hub_mobile_pair_continue_in": { "x": 1300, "y": 320 },
+        "notification_hub_mobile_both_secondary": { "x": 1700, "y": 320 },
+        "notification_hub_mobile_reject_selection_out": { "x": 1600, "y": 500 },
+        "notification_hub_mobile_profile": { "x": 2100, "y": 260 },
+        "notification_hub_mobile_simple_recipient": { "x": 2350, "y": 60 },
+        "notification_hub_mobile_actionable_recipient": { "x": 2350, "y": 160 },
+        "notification_hub_mobile_background_recipient": { "x": 2350, "y": 400 },
+        "notification_hub_mobile_reject_late_out": { "x": 2600, "y": 260 },
+        "notification_hub_mobile_primary_simple": { "x": 2800, "y": 50 },
+        "notification_hub_mobile_secondary_simple": { "x": 2800, "y": 100 },
+        "notification_hub_mobile_primary_actionable": { "x": 2800, "y": 150 },
+        "notification_hub_mobile_secondary_actionable": { "x": 2800, "y": 200 },
+        "notification_hub_mobile_primary_background": { "x": 2800, "y": 390 },
+        "notification_hub_mobile_secondary_background": { "x": 2800, "y": 440 },
+        "notification_hub_mobile_after_service": { "x": 3150, "y": 260 },
+        "notification_hub_mobile_pair_continue_out": { "x": 3450, "y": 120 },
+        "notification_hub_mobile_success": { "x": 3450, "y": 220 },
+        "notification_hub_mobile_failure": { "x": 3300, "y": 400 },
+        "notification_hub_mobile_return_success": { "x": 3750, "y": 220 },
+        "notification_hub_mobile_return_failure": { "x": 3700, "y": 380 },
+        "notification_hub_mobile_observer_out": { "x": 3700, "y": 440 },
+        "notification_hub_mobile_service_catch": { "x": 2500, "y": 520 },
+        "notification_hub_mobile_leg_failure": { "x": 2850, "y": 520 },
+        "notification_hub_mobile_pair_retry_out": { "x": 3150, "y": 500 },
+        "notification_hub_mobile_reject_in": { "x": 3000, "y": 600 },
+        "notification_hub_mobile_reject": { "x": 3300, "y": 600 },
+        "notification_hub_mobile_return_reject": { "x": 3600, "y": 600 }
       }
     }
   }

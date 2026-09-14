@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
+const flowSource = process.env.NODE_RED_FLOWS_SOURCE || new URL("../flows.json", import.meta.url);
+const flows = JSON.parse(fs.readFileSync(flowSource, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 
 function memory(initial = {}) {
@@ -139,5 +140,9 @@ assert.deepEqual(byId.get("gar_safe_off_test_gate")?.wires, [
 ]);
 assert.equal(byId.get("gar_relay_safety_delay")?.pauseType, "delayv");
 assert.equal(byId.get("gar_prepare_pulse_delay")?.rules?.[0]?.to, "policy.pulse_ms");
+assert.deepEqual(byId.get("gar_relay_pulse_on")?.wires, [["gar_relay_on_publish_out", "gar_relay_safety_delay"]]);
+assert.deepEqual(byId.get("gar_relay_on_publish_out")?.links, ["gar_relay_on_publish_in"]);
+assert.deepEqual(byId.get("gar_relay_on_publish_in")?.links, ["gar_relay_on_publish_out"]);
+assert.deepEqual(byId.get("gar_relay_on_publish_in")?.wires, [["gar_relay_mqtt_out"]]);
 
 console.log("Fluxo visual do portão: política, limites, decisões e dry-run passaram.");

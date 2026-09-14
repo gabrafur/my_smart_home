@@ -4,6 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { auditFlows } from "./audit-flow-layout.mjs";
+import { validateFlowLayout } from "./flow-layout-validator.mjs";
 
 const MAX_REPORTED_DIFFERENCES = 50;
 
@@ -104,7 +106,41 @@ export function compareLayoutOnly(before, after) {
   }
 
   compareValue(before, after, "$", null);
-  return { functionalDifferences, visualChanges };
+
+  const afterById = new Map(after.filter(isJsonObject).map((node) => [node.id, node]));
+  const changedCanvasIds = new Set(
+    visualChanges
+      .map((change) => afterById.get(change.id)?.z)
+      .filter((canvasId) => typeof canvasId === "string"),
+  );
+  const changedRoots = after.filter((node) => changedCanvasIds.has(node.id) && ["tab", "subflow"].includes(node.type));
+  const changedRootNames = new Map(changedRoots.map((root) => [root.id, root.label || root.name || root.id]));
+  const geometryProblems = [];
+  const geometryWarnings = [];
+
+  for (const issue of validateFlowLayout(after)) {
+    if ([...changedRootNames.values()].some((rootName) => issue.startsWith(`${rootName}:`))) {
+      geometryProblems.push(issue);
+    }
+  }
+  for (const audit of auditFlows(after).filter((canvas) => changedCanvasIds.has(canvas.id))) {
+    if (audit.wireNodeIntersections > 0) {
+      geometryProblems.push(`${audit.name}: ${audit.wireNodeIntersections} wire(s) cross node(s)`);
+    }
+    if (audit.isolatedGroups > 0) {
+      geometryProblems.push(`${audit.name}: ${audit.isolatedGroups} group(s) farther than 160px from the nearest group`);
+    }
+    if (audit.separatedGroupClusters > 0) {
+      geometryProblems.push(`${audit.name}: ${audit.separatedGroupClusters + 1} disconnected group cluster(s) exceed the 160px chain gap`);
+    }
+    if (audit.longWires > 0) geometryProblems.push(`${audit.name}: ${audit.longWires} wire(s) exceed 500px`);
+    if (audit.reverseWires > 0) geometryProblems.push(`${audit.name}: ${audit.reverseWires} right-to-left wire(s)`);
+    if (audit.crossings > 0) {
+      geometryWarnings.push(`${audit.name}: inspect ${audit.crossings} possible wire crossing(s) in the rendered canvas`);
+    }
+  }
+
+  return { functionalDifferences, visualChanges, geometryProblems, geometryWarnings };
 }
 
 export function renderComparison(result) {
@@ -125,6 +161,17 @@ export function renderComparison(result) {
     return { ok: false, text: lines.join("\n") };
   }
 
+  if ((result.geometryProblems ?? []).length > 0) {
+    return {
+      ok: false,
+      text: [
+        "FAIL:",
+        `Visual quality violation detected (${result.geometryProblems.length} problem(s)).`,
+        ...result.geometryProblems.map((problem) => `- ${problem}`),
+      ].join("\n"),
+    };
+  }
+
   const byProperty = new Map();
   const changedNodes = new Set();
   for (const change of result.visualChanges) {
@@ -135,12 +182,14 @@ export function renderComparison(result) {
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([property, count]) => `${property}=${count}`)
     .join(", ") || "no coordinate changes";
+  const warningLines = (result.geometryWarnings ?? []).map((warning) => `WARNING: ${warning}`);
   return {
     ok: true,
     text: [
       "PASS:",
       "Only approved visual properties changed.",
       `Visual changes: ${result.visualChanges.length} field(s) across ${changedNodes.size} object(s) (${summary}).`,
+      ...warningLines,
     ].join("\n"),
   };
 }

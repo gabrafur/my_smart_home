@@ -7,6 +7,9 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { nodeDimensions } from "./flow-layout-validator.mjs";
 
+const MAX_GROUP_NEAREST_GAP = 160;
+const MAX_PORT_BACKTRACK = 60;
+
 function boundsForNode(node) {
   const { width, height } = nodeDimensions(node);
   return {
@@ -25,6 +28,34 @@ function edgeGap(left, right) {
   const dx = Math.max(0, left.left - right.right, right.left - left.right);
   const dy = Math.max(0, left.top - right.bottom, right.top - left.bottom);
   return Math.hypot(dx, dy);
+}
+
+function rectangleDistance(left, right) {
+  const horizontal = Math.max(left.left - right.right, right.left - left.right, 0);
+  const vertical = Math.max(left.top - right.bottom, right.top - left.bottom, 0);
+  return Math.hypot(horizontal, vertical);
+}
+
+function connectedGroupClusters(groups, boundsById) {
+  const remaining = new Set(groups.map((group) => group.id));
+  const clusters = [];
+  while (remaining.size > 0) {
+    const seed = remaining.values().next().value;
+    remaining.delete(seed);
+    const cluster = [seed];
+    const queue = [seed];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      for (const candidate of [...remaining]) {
+        if (rectangleDistance(boundsById.get(current), boundsById.get(candidate)) > MAX_GROUP_NEAREST_GAP) continue;
+        remaining.delete(candidate);
+        cluster.push(candidate);
+        queue.push(candidate);
+      }
+    }
+    clusters.push(cluster);
+  }
+  return clusters;
 }
 
 function orientation(a, b, c) {
@@ -68,10 +99,10 @@ function label(node) {
 }
 
 function classification(metrics) {
-  if (metrics.overlaps > 0 || metrics.wireNodeIntersections >= 8 || metrics.reverseWires >= 4 || metrics.crossings >= 20) return "SEVERELY DISORGANIZED";
+  if (metrics.groupOverlaps > 0 || metrics.overlaps > 0 || metrics.wireNodeIntersections >= 8 || metrics.reverseWires >= 4 || metrics.isolatedGroups >= 3 || metrics.separatedGroupClusters >= 2 || metrics.crossings >= 20) return "SEVERELY DISORGANIZED";
   if (
     metrics.leftMargin < 64 || metrics.wireNodeIntersections > 0 || metrics.longWires > 0 || metrics.reverseWires > 0 ||
-    metrics.crossings >= 5 || metrics.closePairs >= 8 || metrics.zigZags >= 4
+    metrics.isolatedGroups > 0 || metrics.separatedGroupClusters > 0 || metrics.crossings >= 5 || metrics.closePairs >= 8 || metrics.zigZags >= 4
   ) return "NEEDS REORGANIZATION";
   if (metrics.crossings > 0 || metrics.closePairs > 0 || metrics.branchMisalignment > 0 || metrics.concentration > 0) {
     return "MINOR CLEANUP";
@@ -94,6 +125,31 @@ export function auditFlows(flows) {
     const testGroupIds = new Set(groups.filter((group) => /test/i.test(`${group.id} ${group.name ?? ""}`)).map((group) => group.id));
     const isTestNode = (node) => testGroupIds.has(node.g) || /test/i.test(`${node.id} ${node.name ?? ""}`);
     let overlapsCount = 0;
+    const groupOverlapDetails = [];
+    for (let index = 0; index < groups.length; index += 1) {
+      for (let candidate = index + 1; candidate < groups.length; candidate += 1) {
+        const left = groups[index];
+        const right = groups[candidate];
+        const leftBounds = { left: left.x, right: left.x + left.w, top: left.y, bottom: left.y + left.h };
+        const rightBounds = { left: right.x, right: right.x + right.w, top: right.y, bottom: right.y + right.h };
+        if (overlaps(leftBounds, rightBounds)) {
+          groupOverlapDetails.push({ left: left.id, right: right.id });
+        }
+      }
+    }
+    const groupBoundsById = new Map(groups.map((group) => [group.id, {
+      left: group.x,
+      right: group.x + group.w,
+      top: group.y,
+      bottom: group.y + group.h,
+    }]));
+    const isolatedGroupDetails = groups.length < 2 ? [] : groups.flatMap((group) => {
+      const nearestGap = Math.min(...groups
+        .filter((candidate) => candidate.id !== group.id)
+        .map((candidate) => rectangleDistance(groupBoundsById.get(group.id), groupBoundsById.get(candidate.id))));
+      return nearestGap > MAX_GROUP_NEAREST_GAP ? [{ group: group.id, nearestGap: Math.round(nearestGap) }] : [];
+    });
+    const groupClusters = connectedGroupClusters(groups, groupBoundsById);
     let closePairs = 0;
     let testClosePairs = 0;
 
@@ -142,7 +198,9 @@ export function auditFlows(flows) {
         const outputCount = Math.max(1, outputGroups.length);
         indegree.set(target.id, (indegree.get(target.id) ?? 0) + 1);
         const distance = Math.hypot(target.x - node.x, target.y - node.y);
-        const reverse = target.x < node.x - 30;
+        const sourceWidth = nodeDimensions(node).width;
+        const targetWidth = nodeDimensions(target).width;
+        const reverse = target.x - targetWidth / 2 < node.x + sourceWidth / 2 - MAX_PORT_BACKTRACK;
         const verticalTurn = Math.abs(target.y - node.y) > 220 && Math.abs(target.x - node.x) < 180;
         if (distance > 500) longWires += 1;
         if (reverse) reverseWires += 1;
@@ -223,6 +281,12 @@ export function auditFlows(flows) {
       height: Math.round(maxY - minY),
       leftMargin: Math.round(Math.min(...leftMarginAnchors)),
       overlaps: overlapsCount,
+      groupOverlaps: groupOverlapDetails.length,
+      groupOverlapDetails,
+      isolatedGroups: isolatedGroupDetails.length,
+      isolatedGroupDetails,
+      separatedGroupClusters: Math.max(0, groupClusters.length - 1),
+      groupClusterDetails: groupClusters,
       closePairs,
       longWires,
       reverseWires,
@@ -258,19 +322,19 @@ export function renderAudit(flows, sourcePath) {
     "",
     `Baseline auditado: ${sourcePath.startsWith(`${path.sep}tmp${path.sep}`) ? "snapshot temporário anterior à mudança" : `\`${path.relative(process.cwd(), sourcePath) || sourcePath}\``} (SHA-256 \`${digest}\`).`,
     "",
-    "Esta é a medição **antes** da padronização. A análise é conservadora e combina topologia e geometria aproximada: dimensões visuais estimadas pelo renderizador do repositório, distância entre retângulos, direção dos wires, dispersão das branches e interseção de segmentos entre centros. Cruzamentos e proximidades são candidatos para inspeção visual, não prova de defeito funcional. Links virtuais entre tabs não são tratados como wires locais.",
+    "Esta é a medição **antes** da padronização. A análise é conservadora e combina topologia e geometria aproximada: dimensões visuais estimadas pelo renderizador do repositório, colisão entre retângulos de groups e nodes, curva Bézier aproximada desde cada porta de saída até a entrada, direção real entre as portas dos wires, dispersão das branches, distância ao group vizinho, conectividade espacial entre todos os groups e interseção de segmentos entre centros. Wire sobre node, sobreposição, retorno visual, group isolado, cadeias de groups separadas e gap excessivo são violações; cruzamentos entre wires e proximidades continuam candidatos para inspeção visual. Links virtuais entre tabs não são tratados como wires locais.",
     "",
-    "Limites usados: margem esquerda de 64 px; node praticamente encostado quando a folga estimada é menor que 20 px; gap excessivo quando um wire mede mais de 500 px; retorno quando o destino fica mais de 30 px à esquerda da origem; mudança vertical potencialmente em zig-zag quando supera 220 px com avanço horizontal inferior a 180 px; concentração quando um node soma pelo menos seis entradas e saídas locais.",
+    "Limites usados: margem esquerda de 64 px; groups não podem se sobrepor; nenhum group pode ficar a mais de 160 px do vizinho mais próximo e todos os groups do canvas devem formar uma única cadeia espacial nesse limite; node praticamente encostado quando a folga estimada é menor que 20 px; gap excessivo quando um wire mede mais de 500 px; retorno visual quando a entrada do destino recua mais de 60 px em relação à saída da origem; mudança vertical potencialmente em zig-zag quando supera 220 px com avanço horizontal inferior a 180 px; concentração quando um node soma pelo menos seis entradas e saídas locais.",
     "",
     "## Resumo por canvas",
     "",
-    "| Canvas | Tipo | Nodes | Groups | Área aproximada (px) | Margem | Sobreposições | Próximos | Wires sobre nodes | Gaps >500 | Retornos | Zig-zags | Branches desalinhadas | Concentrações | Cruzamentos possíveis | Testes (nodes / conflitos) | Classificação |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+    "| Canvas | Tipo | Nodes | Groups | Área aproximada (px) | Margem | Groups sobrepostos | Groups isolados | Cadeias separadas | Nodes sobrepostos | Próximos | Wires sobre nodes | Gaps >500 | Retornos visuais | Zig-zags | Branches desalinhadas | Concentrações | Cruzamentos possíveis | Testes (nodes / conflitos) | Classificação |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
   ];
   for (const audit of audits) {
     lines.push(
       `| ${escapeCell(audit.name)} | ${audit.kind} | ${audit.nodes} | ${audit.groups} | ` +
-      `${audit.width} × ${audit.height} | ${audit.leftMargin} | ${audit.overlaps} | ${audit.closePairs} | ${audit.wireNodeIntersections} | ` +
+      `${audit.width} × ${audit.height} | ${audit.leftMargin} | ${audit.groupOverlaps} | ${audit.isolatedGroups} | ${audit.separatedGroupClusters} | ${audit.overlaps} | ${audit.closePairs} | ${audit.wireNodeIntersections} | ` +
       `${audit.longWires} | ${audit.reverseWires} | ${audit.zigZags} | ${audit.branchMisalignment} | ` +
       `${audit.concentration} | ${audit.crossings} | ${audit.tests} / ${audit.testClosePairs + audit.testCrossings} | ` +
       `**${audit.classification}** |`,
@@ -281,6 +345,9 @@ export function renderAudit(flows, sourcePath) {
   for (const audit of audits) {
     const findings = [];
     if (audit.leftMargin < 64) findings.push(`margem esquerda de ${audit.leftMargin} px`);
+    if (audit.groupOverlaps) findings.push(`${audit.groupOverlaps} sobreposição(ões) entre groups: ${audit.groupOverlapDetails.map((item) => `\`${item.left} / ${item.right}\``).join(", ")}`);
+    if (audit.isolatedGroups) findings.push(`${audit.isolatedGroups} group(s) isolado(s): ${audit.isolatedGroupDetails.map((item) => `\`${item.group} (${item.nearestGap} px)\``).join(", ")}`);
+    if (audit.separatedGroupClusters) findings.push(`${audit.separatedGroupClusters + 1} cadeias de groups separadas: ${audit.groupClusterDetails.map((cluster) => `\`${cluster.join(", ")}\``).join(" / ")}`);
     if (audit.overlaps) findings.push(`${audit.overlaps} possível(is) sobreposição(ões)`);
     if (audit.closePairs) findings.push(`${audit.closePairs} par(es) praticamente encostado(s)`);
     if (audit.wireNodeIntersections) findings.push(`${audit.wireNodeIntersections} wire(s) possivelmente atravessando node(s): ${audit.wireNodeExamples.map((item) => `\`${item}\``).join(", ")}`);

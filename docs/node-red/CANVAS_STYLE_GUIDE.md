@@ -75,6 +75,8 @@ Os grupos de cobertura global ficam em uma borda previsível do canvas e não at
 - Preserve ID, nome, membros, estilo e semântica de cada group.
 - Um node pertencente a um group deve ficar integralmente dentro dele.
 - Groups não se sobrepõem e mantêm gutters visíveis.
+- Entre groups independentes, preserve ao menos 24 px de gutter; bordas, títulos e áreas preenchidas não podem invadir outro group.
+- Nenhum group pode ficar a mais de 160 px do vizinho mais próximo e todos os groups do canvas devem formar uma única cadeia espacial nesse limite. O observador global também deve permanecer junto ao canvas, sem parecer uma ilha desconectada. A inspeção ampliada deve ainda rejeitar vazios desnecessários dentro dessa cadeia, mesmo quando o limite automático for atendido.
 - Empilhe groups por fase ou responsabilidade quando uma única linha produzir largura excessiva.
 - Quebrar o canvas em linhas é permitido apenas por reposicionamento; não crie retornos funcionais nem altere a topologia.
 - Remova grandes vazios que não separem responsabilidades, mas mantenha espaço suficiente para reconhecer as fases do flow.
@@ -82,6 +84,8 @@ Os grupos de cobertura global ficam em uma borda previsível do canvas e não at
 ## Wires
 
 - Minimize cruzamentos, passagens sobre nodes e diagonais longas por reposicionamento das extremidades.
+- Valide a curva renderizada desde a porta de saída até a porta de entrada contra o retângulo de todo terceiro node; verificar apenas centros ou extremidades não é suficiente.
+- Meça a direção pelas portas, não apenas pelos centros: se a entrada do destino recuar mais de 60 px em relação à saída da origem, o wire é um retorno visual inválido mesmo que o centro do destino esteja à direita. Esse caso costuma produzir laços curtos ao redor de `link in`/`link out` e nodes largos.
 - Evite destinos à esquerda da origem e sequências em zig-zag.
 - Wires acima de 500 px são candidatos obrigatórios a correção visual.
 - Nesta classe de trabalho, é proibido criar, remover ou converter wires, junctions ou link nodes. Se a topologia existente impedir a correção somente por coordenadas, registre a exceção.
@@ -93,13 +97,13 @@ Os grupos de cobertura global ficam em uma borda previsível do canvas e não at
 2. Gere a auditoria anterior à mudança e renderize todos os tabs/subflows.
 3. Altere a fonte visual canônica em `nodered/tools/flow-layout-overrides.json`; não edite apenas a saída gerada.
 4. Reaplique a geometria com `npm --prefix nodered run flows:apply-left-margin`.
-5. Depois de cada lote ou tab, execute o comparador layout-only contra o snapshot.
+5. Depois de cada lote ou tab, execute o comparador layout-only contra o snapshot. Ele deve reprovar alteração funcional, groups ou nodes sobrepostos, nodes fora do group, groups isolados por mais de 160 px, mais de uma cadeia espacial de groups, fios sobre nodes, fios acima de 500 px e retornos visuais medidos entre portas.
 6. Execute `npm --prefix nodered run flows:validate-layout` e renderize os tabs alterados.
-7. Execute `npm --prefix nodered run flows:render-strict -- <tab...>` e inspecione os SVG/PNG, sem aceitar piora do benchmark.
+7. Execute `npm --prefix nodered run flows:render-strict -- <tab...>` e inspecione os SVG/PNG em escala legível, sem aceitar piora do benchmark. Possíveis cruzamentos entre fios são aviso obrigatório porque a aproximação geométrica pode incluir bifurcações legítimas.
 8. Execute os validadores e replays Node-RED relevantes, uma suíte por vez e pelo wrapper seguro do repositório quando a validação for ampla.
 9. Inspecione o diff final. Toda diferença fora das propriedades aprovadas deve ser investigada e revertida.
 10. Não faça deploy automaticamente. Um carregamento no ambiente residencial exige autorização e procedimento operacional separados.
 
 ## Critério de aceite
 
-Um canvas está padronizado quando o happy path é evidente, branches e efeitos têm lanes claras, falhas não confundem o caminho nominal, testes são legíveis, groups contêm seus membros, não há sobreposição, os labels têm espaço e os wires têm o mínimo razoável de cruzamentos. Alinhamento em grade, isoladamente, não é suficiente.
+Um canvas está padronizado quando o happy path é evidente, branches e efeitos têm lanes claras, falhas não confundem o caminho nominal, testes são legíveis, groups contêm seus membros, groups mantêm gutter entre si, não há sobreposição nem wire atravessando node, os labels têm espaço e os wires têm o mínimo razoável de cruzamentos. Alinhamento em grade, isoladamente, não é suficiente.

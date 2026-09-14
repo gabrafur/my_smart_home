@@ -20,6 +20,15 @@ const selectedCanvases = new Set(
     .map((value) => value.trim())
     .filter(Boolean),
 );
+const applyBaseNodes = process.env.FLOW_LAYOUT_APPLY_BASE_NODES !== "0";
+const applyNodePositions = process.env.FLOW_LAYOUT_APPLY_NODE_POSITIONS !== "0";
+const compactGroups = process.env.FLOW_LAYOUT_COMPACT_GROUPS !== "0";
+const selectedGroupIds = new Set(
+  String(process.env.FLOW_LAYOUT_GROUP_IDS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
 
 if (overrides.version !== 1 || typeof overrides.canvases !== "object") {
   throw new Error("flow-layout-overrides.json inválido");
@@ -39,7 +48,7 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
   const canvasHasManagedNotifications = managedGroups.size > 0;
   const managedGroupOverrides = new Set(canvas.managed_group_overrides ?? []);
   const managedNodeOverrides = new Set(canvas.managed_node_overrides ?? []);
-  for (const [nodeId, geometry] of Object.entries(canvas.nodes ?? {})) {
+  for (const [nodeId, geometry] of Object.entries(canvas.apply_nodes === false || !applyBaseNodes ? {} : (canvas.nodes ?? {}))) {
     const node = byId.get(nodeId);
     if (!node || node.z !== canvasId) throw new Error(`Nó do override ausente: ${nodeId}`);
     if (
@@ -56,6 +65,41 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
     overridden += 1;
   }
 
+  for (const [groupId, target] of Object.entries(canvas.group_positions ?? {})) {
+    if (selectedGroupIds.size > 0 && !selectedGroupIds.has(groupId)) continue;
+    const group = byId.get(groupId);
+    if (!group || group.z !== canvasId || group.type !== "group") {
+      throw new Error(`Group do posicionamento ausente: ${groupId}`);
+    }
+    if (!Number.isFinite(target.x) || !Number.isFinite(target.y)) {
+      throw new Error(`Posicionamento de group inválido: ${groupId}`);
+    }
+    const deltaX = target.x - group.x;
+    const deltaY = target.y - group.y;
+    if (deltaX === 0 && deltaY === 0) continue;
+    group.x += deltaX;
+    group.y += deltaY;
+    for (const child of flows.filter((node) => node.z === canvasId && node.g === groupId && Number.isFinite(node.x) && Number.isFinite(node.y))) {
+      child.x += deltaX;
+      child.y += deltaY;
+    }
+    overridden += 1;
+  }
+
+  for (const [nodeId, target] of Object.entries(applyNodePositions ? (canvas.node_positions ?? {}) : {})) {
+    const node = byId.get(nodeId);
+    if (!node || node.z !== canvasId || node.type === "group") {
+      throw new Error(`Nó do posicionamento final ausente: ${nodeId}`);
+    }
+    if (!Number.isFinite(target.x) || !Number.isFinite(target.y)) {
+      throw new Error(`Posicionamento final de nó inválido: ${nodeId}`);
+    }
+    node.x = target.x;
+    node.y = target.y;
+    overridden += 1;
+  }
+
+  if (!compactGroups) continue;
   for (const group of flows.filter((node) => node.z === canvasId && node.type === "group")) {
     const children = flows.filter((node) =>
       node.z === canvasId && node.g === group.id && Number.isFinite(node.x) && Number.isFinite(node.y)
@@ -70,7 +114,7 @@ for (const [canvasId, canvas] of Object.entries(overrides.canvases)) {
         bottom: node.y + size.height / 2,
       };
     });
-    const compact = canvas.compact_groups === true;
+    const compact = compactGroups && canvas.compact_groups === true;
     const contentLeft = Math.min(...bounds.map((item) => item.left - 20));
     const contentTop = Math.min(...bounds.map((item) => item.top - 36));
     const contentRight = Math.max(...bounds.map((item) => item.right + 20));
