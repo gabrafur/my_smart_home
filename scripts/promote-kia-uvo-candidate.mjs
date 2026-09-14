@@ -18,6 +18,8 @@ const promotionPublicStatusPath = process.env.KIA_UVO_PROMOTION_PUBLIC_STATUS_PA
   path.join(mergeStateDir, "promotion-public-status.json");
 const safeUpdater = process.env.KIA_UVO_SAFE_UPDATER ||
   path.join(scriptDir, "kia-uvo-safe-update.mjs");
+const dailyUpdateTriggerDir = process.env.DAILY_UPDATE_TRIGGER_DIR ||
+  path.join(repoRoot, "homeassistant/.daily-update-trigger");
 const allowedPrefixes = ["homeassistant/custom_components/kia_uvo/"];
 const allowedExact = new Set(["scripts/kia-uvo-upstream.json"]);
 
@@ -100,6 +102,11 @@ export function isAllowedCandidatePath(file) {
 export function shouldResumeCandidateCleanup(promotion, candidate) {
   return promotion?.state === "main_published" &&
     promotion.source_commit === candidate.commit;
+}
+
+export function findActiveHostUpdateStage(triggerDir) {
+  return ["dietpi", "home-assistant-core", "containers", "repository-dependency"]
+    .find((stage) => fs.existsSync(path.join(triggerDir, `${stage}-processing`))) ?? null;
 }
 
 function readHaToken() {
@@ -283,6 +290,20 @@ export async function promote({ checkOnly = false } = {}) {
   if (promotion.source_commit === candidate.commit &&
       ["completed", "failed"].includes(promotion.state)) {
     writePublicStatus(promotion);
+    return false;
+  }
+  const busyStage = findActiveHostUpdateStage(dailyUpdateTriggerDir);
+  if (busyStage) {
+    if (promotion.source_commit !== candidate.commit ||
+        promotion.state !== "deferred" ||
+        promotion.reason !== `host_update_in_progress:${busyStage}`) {
+      writeStatus({
+        state: "deferred",
+        source_commit: candidate.commit,
+        target: candidate.target,
+        reason: `host_update_in_progress:${busyStage}`,
+      });
+    }
     return false;
   }
   const resumeGit = promotion.source_commit === candidate.commit &&

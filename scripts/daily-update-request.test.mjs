@@ -24,6 +24,9 @@ const readKiaUpdate = path.join(scriptsDir, "read-host-kia-uvo-update-result.sh"
 const processKiaUpdate = path.join(scriptsDir, "process-kia-uvo-update-request.sh");
 const readKiaCodexMerge = path.join(scriptsDir, "read-kia-uvo-codex-merge-result.sh");
 const readKiaPromotion = path.join(scriptsDir, "read-kia-uvo-promotion-result.sh");
+const requestAlexaMediaUpdate = path.join(scriptsDir, "request-host-alexa-media-update.sh");
+const readAlexaMediaUpdate = path.join(scriptsDir, "read-host-alexa-media-update-result.sh");
+const processAlexaMediaUpdate = path.join(scriptsDir, "process-alexa-media-update-request.sh");
 
 test("Node-RED requests are coalesced and expose the final host result", () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "daily-update-request-test-"));
@@ -198,7 +201,7 @@ test("Node-RED Kia requests run only the safe checker and expose a sanitized res
   const calls = path.join(fixture, "calls");
   fs.mkdirSync(triggerDir);
   fs.writeFileSync(fakeUpdater, "fixture\n");
-  fs.writeFileSync(fakeNode, `#!/bin/sh\nprintf '%s\\n' "$2" >> "${calls}"\nif [ "$2" = "status" ]; then\n  echo 'kia-uvo-update status=conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T13:30:04.072Z'\nfi\n`);
+  fs.writeFileSync(fakeNode, `#!/bin/sh\nprintf '%s|%s|%s\\n' "$2" "$3" "$4" >> "${calls}"\nif [ "$2" = "status" ]; then\n  echo 'kia-uvo-update status=conflict installed_version=3.10.1 latest_version=v3.13.0 patch_state=conflict conflicts=1 checked_at=2026-08-31T13:30:04.072Z'\nfi\n`);
   fs.chmodSync(fakeNode, 0o755);
   const env = {
     ...process.env,
@@ -207,23 +210,74 @@ test("Node-RED Kia requests run only the safe checker and expose a sanitized res
     KIA_UVO_UPDATE_SCRIPT: fakeUpdater,
   };
 
-  const request = spawnSync(requestKiaUpdate, [], { encoding: "utf8", env });
+  const rejected = spawnSync(requestKiaUpdate, ["install:v3.13.0;invalid"], { encoding: "utf8", env });
+  assert.equal(rejected.status, 64);
+  const request = spawnSync(requestKiaUpdate, ["audit:v3.13.0"], { encoding: "utf8", env });
   assert.equal(request.status, 0, request.stderr);
-  assert.match(request.stdout, /status=accepted/);
+  assert.match(request.stdout, /status=accepted.*mode=audit.*target=v3\.13\.0/);
   assert.equal(fs.statSync(path.join(triggerDir, "kia-uvo-requested")).mode & 0o060, 0o060);
-  const duplicate = spawnSync(requestKiaUpdate, [], { encoding: "utf8", env });
+  const upgraded = spawnSync(requestKiaUpdate, ["install:v3.13.0"], { encoding: "utf8", env });
+  assert.equal(upgraded.status, 0, upgraded.stderr);
+  assert.match(upgraded.stdout, /status=accepted.*mode=install.*target=v3\.13\.0.*reason=upgraded/);
+  const duplicate = spawnSync(requestKiaUpdate, ["audit:v3.13.0"], { encoding: "utf8", env });
   assert.equal(duplicate.status, 0, duplicate.stderr);
-  assert.match(duplicate.stdout, /status=coalesced/);
+  assert.match(duplicate.stdout, /status=coalesced.*mode=install.*target=v3\.13\.0/);
 
   const processed = spawnSync(processKiaUpdate, [], { encoding: "utf8", env });
   assert.equal(processed.status, 0, processed.stderr);
-  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), ["check", "status"]);
+  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), [
+    "check|--target|v3.13.0",
+    "status||",
+  ]);
   const read = spawnSync(readKiaUpdate, [], { encoding: "utf8", env });
   assert.equal(read.status, 0, read.stderr);
   assert.match(read.stdout, /status=conflict/);
   assert.match(read.stdout, /request_id=/);
+  assert.match(read.stdout, /mode=install/);
+  assert.match(read.stdout, /latest_version=v3\.13\.0/);
   assert.equal(fs.statSync(path.join(triggerDir, "kia-uvo-result")).mode & 0o060, 0o060);
   assert.doesNotMatch(read.stdout, /private|message=/);
+  fs.rmSync(fixture, { recursive: true, force: true });
+});
+
+test("Node-RED Alexa Media requests preserve the exact target and sanitize the result", () => {
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "alexa-media-update-request-test-"));
+  const triggerDir = path.join(fixture, "trigger");
+  const fakeNode = path.join(fixture, "node");
+  const fakeUpdater = path.join(fixture, "alexa-media-safe-update.mjs");
+  const calls = path.join(fixture, "calls");
+  fs.mkdirSync(triggerDir);
+  fs.writeFileSync(fakeUpdater, "fixture\n");
+  fs.writeFileSync(fakeNode, `#!/bin/sh\nprintf '%s|%s|%s\\n' "$2" "$3" "$4" >> "${calls}"\nif [ "$2" = "status" ]; then\n  echo 'alexa-media-update status=success target=v5.16.1 patch_state=absorbed checked_at=2026-09-14T13:30:04.072Z'\nfi\n`);
+  fs.chmodSync(fakeNode, 0o755);
+  const env = {
+    ...process.env,
+    DAILY_UPDATE_TRIGGER_DIR: triggerDir,
+    ALEXA_MEDIA_UPDATE_NODE_BIN: fakeNode,
+    ALEXA_MEDIA_UPDATE_SCRIPT: fakeUpdater,
+  };
+
+  const rejected = spawnSync(requestAlexaMediaUpdate, ["v5.16.1;invalid"], { encoding: "utf8", env });
+  assert.equal(rejected.status, 64);
+  assert.ok(!fs.existsSync(path.join(triggerDir, "alexa-media-requested")));
+  const request = spawnSync(requestAlexaMediaUpdate, ["v5.16.1"], { encoding: "utf8", env });
+  assert.equal(request.status, 0, request.stderr);
+  assert.match(request.stdout, /status=accepted target=v5\.16\.1/);
+  const duplicate = spawnSync(requestAlexaMediaUpdate, ["v5.16.1"], { encoding: "utf8", env });
+  assert.equal(duplicate.status, 0, duplicate.stderr);
+  assert.match(duplicate.stdout, /status=coalesced target=v5\.16\.1/);
+
+  const processed = spawnSync(processAlexaMediaUpdate, [], { encoding: "utf8", env });
+  assert.equal(processed.status, 0, processed.stderr);
+  assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n"), [
+    "apply|--target|v5.16.1",
+    "status||",
+  ]);
+  const read = spawnSync(readAlexaMediaUpdate, [], { encoding: "utf8", env });
+  assert.equal(read.status, 0, read.stderr);
+  assert.match(read.stdout, /status=success target=v5\.16\.1/);
+  assert.match(read.stdout, /request_id=/);
+  assert.doesNotMatch(read.stdout, /private|patch_state|checked_at/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 
@@ -412,6 +466,7 @@ test("the cron installer migrates direct update schedules to Node-RED bridges", 
   assert.match(installed, /process-update-stage-request\.sh containers/);
   assert.match(installed, /process-repository-dependency-update-request\.sh/);
   assert.match(installed, /process-kia-uvo-update-request\.sh/);
+  assert.match(installed, /process-alexa-media-update-request\.sh/);
   assert.match(installed, /promote-kia-uvo-candidate\.mjs/);
   assert.match(installed, /nice -n 15 .*ionice -c 3/);
   fs.rmSync(fixture, { recursive: true, force: true });

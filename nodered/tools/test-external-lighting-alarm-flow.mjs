@@ -12,6 +12,20 @@ function getNode(id) {
   return node;
 }
 
+function resolveSingleWireTarget(source, output = 0) {
+  const [targetId] = source.wires?.[output] ?? [];
+  const target = getNode(targetId);
+  if (target.type !== "link out") return target.id;
+  assert.match(target.name, /^Encurtar:/);
+  assert.equal(target.links?.length, 1);
+  const linkIn = getNode(target.links[0]);
+  assert.equal(linkIn.type, "link in");
+  assert.match(linkIn.name, /^Continuar:/);
+  assert.deepEqual(linkIn.links, [target.id]);
+  assert.equal(linkIn.wires?.[0]?.length, 1);
+  return linkIn.wires[0][0];
+}
+
 function compileFunction(node) {
   assert.equal(node.type, "function", `${node.id} deveria ser function`);
   return new Function(
@@ -86,7 +100,10 @@ assert.match(mobileQuestionContract, /confirm_action/);
 assert.match(mobileQuestionContract, /cancel_action/);
 assert.deepEqual(mobileQuestion.wires, [["ext_send_recovery_mobile__hub_call"]]);
 assert.deepEqual(getNode("ext_send_recovery_mobile__hub_call").links, ["notification_hub_mobile_in"]);
-assert.deepEqual(getNode("ext_send_recovery_mobile__hub_result").wires[0], ["ext_commit_recovery_confirmation"]);
+assert.equal(
+  resolveSingleWireTarget(getNode("ext_send_recovery_mobile__hub_result")),
+  "ext_commit_recovery_confirmation",
+);
 
 const recoveryResponse = getNode("ext_recovery_notification_action");
 assert.equal(recoveryResponse.eventType, "mobile_app_notification_action");

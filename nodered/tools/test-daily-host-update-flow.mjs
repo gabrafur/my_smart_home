@@ -26,8 +26,10 @@ assert.equal(node("daily_update_result_poll").repeat, "300");
 assert.equal(node("daily_update_result_startup").once, true);
 assert.deepEqual(
   flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.crontab).map((entry) => entry.id),
-  [],
+  ["daily_update_inventory_apply_schedule"],
 );
+assert.equal(node("daily_update_inventory_apply_schedule").crontab, "00 03 * * *");
+assert.equal(node("daily_update_inventory_apply_schedule").props.find((item) => item.p === "_update_apply_authorized").v, "true");
 assert.equal(node("daily_update_inventory_schedule").crontab, "");
 assert.equal(node("daily_update_inventory_schedule").once, true);
 assert.equal(node("daily_update_inventory_schedule_delay").pauseType, "delayv");
@@ -40,6 +42,7 @@ assert.deepEqual(node("daily_update_inventory_schedule_loop_in").links, ["daily_
 assert.equal(node("daily_update_kia_schedule").type, "link in");
 assert.deepEqual(node("daily_update_kia_schedule").links, ["daily_update_inventory_kia_out"]);
 assert.equal(node("daily_update_kia_request_host").command, "/opt/request-host-kia-uvo-update-check.sh");
+assert.equal(node("daily_update_kia_request_host").addpay, "payload");
 assert.ok(node("git_backup_daily_update_out").links.includes("daily_update_after_backup_in"));
 assert.equal(node("daily_update_kia_read_result").command, "/opt/read-host-kia-uvo-update-result.sh");
 assert.equal(node("daily_update_kia_result_poll").repeat, "60");
@@ -55,10 +58,23 @@ assert.equal(node("daily_update_kia_codex_read_result").command, "/opt/read-kia-
 assert.equal(node("daily_update_kia_codex_result_poll").repeat, "60");
 assert.equal(node("daily_update_kia_promotion_read_result").command, "/opt/read-kia-uvo-promotion-result.sh");
 assert.equal(node("daily_update_kia_promotion_result_poll").repeat, "60");
+assert.equal(node("daily_update_alexa_media_request").command, "/opt/request-host-alexa-media-update.sh");
+assert.equal(node("daily_update_alexa_media_request").addpay, "payload");
+assert.equal(node("daily_update_alexa_media_read_result").command, "/opt/read-host-alexa-media-update-result.sh");
+assert.equal(node("daily_update_alexa_media_result_poll").repeat, "60");
+assert.deepEqual(node("daily_update_alexa_media_final_gate").wires, [
+  ["daily_update_alexa_media_test_out"],
+  ["daily_update_alexa_media_request"],
+]);
+assert.deepEqual(node("daily_update_alexa_media_backup_out").links, ["git_backup_request_in"]);
+assert.ok(node("git_backup_request_in").links.includes("daily_update_alexa_media_backup_out"));
 assert.deepEqual(node("daily_update_kia_route_test").wires, [
   ["daily_update_kia_test_out"],
   ["daily_update_kia_request_host"],
 ]);
+assert.deepEqual(node("daily_update_kia_test_request").wires, [["daily_update_kia_test_request_route_out"]]);
+assert.deepEqual(node("daily_update_kia_test_request_route_out").links, ["daily_update_kia_test_request_route_in"]);
+assert.deepEqual(node("daily_update_kia_test_request_route_in").wires, [["daily_update_kia_prepare"]]);
 assert.ok(!JSON.stringify([
   node("daily_update_kia_test_request"),
   node("daily_update_kia_test_result"),
@@ -72,6 +88,8 @@ const serializedProduction = JSON.stringify([
   node("daily_update_core_read_result"),
   node("daily_update_containers_request_host"),
   node("daily_update_containers_read_result"),
+  node("daily_update_alexa_media_request"),
+  node("daily_update_alexa_media_read_result"),
 ]);
 assert.ok(!serializedProduction.includes("docker.sock"));
 assert.ok(!serializedProduction.includes("sudo"));
@@ -219,12 +237,12 @@ assert.equal(coreSuccess[1].payload.stage, "home-assistant-core");
 assert.equal(node("daily_update_inventory_read_ha").type, "ha-api");
 assert.equal(node("daily_update_inventory_read_ha").data, '{"type":"get_states"}');
 assert.equal(node("daily_update_inventory_state").type, "switch");
-for (const id of ["daily_update_hacs_rbe", "daily_update_unknown_rbe", "daily_update_firmware_pending_rbe"]) {
+for (const id of ["daily_update_hacs_rbe", "daily_update_unknown_rbe", "daily_update_firmware_pending_rbe", "daily_update_alexa_media_pending_rbe"]) {
   assert.equal(node(id).type, "rbe");
   assert.equal(node(id).property, "payload.signature");
 }
 assert.equal(node("daily_update_inventory_classify").type, "switch");
-assert.equal(node("daily_update_inventory_classify").outputs, 5);
+assert.equal(node("daily_update_inventory_classify").outputs, 6);
 const classRules = node("daily_update_inventory_classify").rules.map((rule) => rule.v ?? rule.t).join(" ");
 assert.match(classRules, /bluelink/);
 assert.match(classRules, /firmware/);
@@ -235,15 +253,19 @@ assert.deepEqual(node("daily_update_inventory_classify").wires, [
   ["daily_update_inventory_kia_out"],
   ["daily_update_inventory_firmware_out"],
   ["daily_update_inventory_core_out"],
+  ["daily_update_inventory_alexa_out"],
   ["daily_update_inventory_hacs_out"],
   ["daily_update_inventory_unknown_out"],
 ]);
 const policyValue = JSON.parse(node("daily_update_inventory_parameters").rules[0].to);
 assert.equal(policyValue.scan_interval_minutes, 30);
 assert.equal(policyValue.device_firmware_auto, false);
+assert.equal(policyValue.versioned_hacs_auto_apply, true);
+assert.equal(policyValue.kia_uvo_auto_apply, true);
 assert.equal(policyValue.manual_candidate_max_age_minutes, 40);
 assert.deepEqual(Object.keys(policyValue).sort(), [
-  "device_firmware_auto", "manual_candidate_max_age_minutes", "scan_interval_minutes", "version",
+  "device_firmware_auto", "kia_uvo_auto_apply", "manual_candidate_max_age_minutes",
+  "scan_interval_minutes", "version", "versioned_hacs_auto_apply",
 ]);
 
 const validatePolicy = new Function("msg", "node", "flow", node("daily_update_inventory_validate_policy").func);
@@ -264,6 +286,8 @@ for (const invalidPolicy of [
   { ...policyValue, manual_candidate_max_age_minutes: 4 },
   { ...policyValue, manual_candidate_max_age_minutes: 121 },
   { ...policyValue, device_firmware_auto: "false" },
+  { ...policyValue, versioned_hacs_auto_apply: "true" },
+  { ...policyValue, kia_uvo_auto_apply: "true" },
 ]) {
   const rejected = validatePolicy({ update_policy: invalidPolicy }, runtimeNode, flow);
   assert.deepEqual(rejected.update_policy, policyValue, "invalid visual values must preserve the last valid policy");
@@ -272,6 +296,7 @@ for (const invalidPolicy of [
 const normalizeInventory = new Function("msg", "node", "flow", node("daily_update_inventory_normalize").func);
 const normalizedInventory = normalizeInventory({
   _ha_updates_test: true,
+  _update_apply_authorized: true,
   update_observed_at: 1000,
   update_policy: policyValue,
   payload: [
@@ -286,6 +311,8 @@ assert.deepEqual(normalizedInventory[0].map((message) => message.payload.state_c
 assert.equal(normalizedInventory[1].payload.pending, 1);
 assert.equal(normalizedInventory[1].payload.unavailable, 1);
 assert.equal(normalizedInventory[1]._ha_updates_test, true);
+assert.equal(normalizedInventory[0][0]._update_apply_authorized, true);
+assert.equal(normalizedInventory[1].payload.apply_authorized, true);
 
 const updateEffects = flows.filter((entry) => entry.z === "daily_host_updates_tab" && entry.type === "api-call-service" && entry.action === "update.install");
 assert.deepEqual(updateEffects.map((entry) => entry.id), ["daily_update_firmware_install"]);
@@ -296,7 +323,7 @@ assert.deepEqual(node("daily_update_firmware_final_test_gate").wires, [
 assert.equal(node("daily_update_firmware_install").data, '{"entity_id":payload.entity_id}');
 assert.match(node("daily_update_firmware_fresh").property, /manual_candidate_max_age_minutes/);
 assert.match(node("daily_update_hacs_pending").func, /audit/);
-assert.equal(node("daily_update_kia_request_host").addpay, "");
+assert.match(node("daily_update_alexa_media_pending").func, /aguarda 03:00/);
 const queueFirmware = new Function("msg", "node", "flow", node("daily_update_firmware_store").func);
 queueFirmware({ payload: { entity_id: "update.firmware_b", observed_at: 1, signature: "b:1" } }, runtimeNode, flow);
 queueFirmware({ payload: { entity_id: "update.firmware_a", observed_at: 2, signature: "a:1" } }, runtimeNode, flow);
@@ -306,24 +333,46 @@ assert.equal(takeFirmware({}, runtimeNode, flow).payload.entity_id, "update.firm
 assert.equal(takeFirmware({}, runtimeNode, flow).payload.observed_at, 3);
 assert.equal(takeFirmware({}, runtimeNode, flow).payload, null);
 
+const prepareKia = new Function("msg", "node", "flow", node("daily_update_kia_prepare").func);
+const exactKiaTarget = prepareKia({
+  kia_update_mode: "install",
+  payload: { latest_version: "v3.13.0" },
+}, runtimeNode, flow);
+assert.equal(exactKiaTarget.payload, "install:v3.13.0");
+assert.equal(exactKiaTarget.kia_uvo_target, "v3.13.0");
+assert.equal(prepareKia({ payload: { latest_version: "invalid;target" } }, runtimeNode, flow), null);
+const errorsBeforeSyntheticKia = errors.length;
+
 const parseKia = new Function("msg", "node", "flow", node("daily_update_kia_parse_result").func);
 const kiaTestConflict = parseKia(
-  { _kia_update_test: true, payload: "kia-uvo-update status=conflict request_id=test installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=synthetic" },
+  { _kia_update_test: true, payload: "kia-uvo-update status=conflict request_id=test mode=install installed_version=3.12.0 latest_version=v3.13.0 patch_state=conflict conflicts=1 checked_at=synthetic" },
   runtimeNode,
   flow,
 );
 assert.equal(kiaTestConflict[0].payload.status, "conflict");
 assert.equal(kiaTestConflict[0].payload.conflicts, 1);
 assert.equal(kiaTestConflict[1], null, "synthetic conflicts must not reach Codex");
-assert.equal(errors.length, 1, "synthetic Kia conflicts must not alert production observers");
+assert.equal(errors.length, errorsBeforeSyntheticKia, "synthetic Kia conflicts must not alert production observers");
 const kiaProductionConflict = parseKia(
-  { payload: "kia-uvo-update status=conflict request_id=prod-conflict installed_version=3.10.1 latest_version=v3.11.0 patch_state=conflict conflicts=1 checked_at=synthetic" },
+  { payload: "kia-uvo-update status=conflict request_id=prod-conflict mode=install installed_version=3.12.0 latest_version=v3.13.0 patch_state=conflict conflicts=1 checked_at=synthetic" },
   runtimeNode,
   flow,
 );
 assert.equal(kiaProductionConflict[0], null);
-assert.equal(kiaProductionConflict[1].payload, "v3.11.0");
+assert.equal(kiaProductionConflict[1].payload, "v3.13.0");
 assert.equal(kiaProductionConflict[1].kia_uvo_update.status, "conflict");
+const kiaProductionCompatible = parseKia(
+  { payload: "kia-uvo-update status=compatible request_id=prod-compatible mode=install installed_version=3.12.0 latest_version=v3.13.0 patch_state=applied conflicts=0 checked_at=synthetic-2" },
+  runtimeNode,
+  flow,
+);
+assert.equal(kiaProductionCompatible[1].payload, "v3.13.0");
+const kiaAuditCompatible = parseKia(
+  { payload: "kia-uvo-update status=compatible request_id=prod-audit mode=audit installed_version=3.12.0 latest_version=v3.13.0 patch_state=applied conflicts=0 checked_at=synthetic-3" },
+  runtimeNode,
+  flow,
+);
+assert.deepEqual(kiaAuditCompatible, [null, null]);
 assert.deepEqual(parseKia(
   { payload: "kia-uvo-update status=failed request_id=prod-kia" },
   runtimeNode,
@@ -331,7 +380,34 @@ assert.deepEqual(parseKia(
 ), [null, null]);
 assert.match(errors.at(-1), /kia_uvo_update_check_failed/);
 
+const prepareAlexaMedia = new Function("msg", "node", "flow", node("daily_update_alexa_media_prepare").func);
+const alexaCandidate = prepareAlexaMedia({
+  payload: { entity_id: "update.alexa_media_player_update", latest_version: "v5.16.1" },
+}, runtimeNode, flow);
+assert.equal(alexaCandidate.payload, "v5.16.1");
+assert.equal(alexaCandidate.alexa_media_update.target, "v5.16.1");
+assert.equal(prepareAlexaMedia({
+  payload: { entity_id: "update.unknown", latest_version: "v5.16.1" },
+}, runtimeNode, flow), null);
+const parseAlexaMedia = new Function("msg", "node", "flow", node("daily_update_alexa_media_parse_result").func);
+const alexaTestResult = parseAlexaMedia({
+  _alexa_media_update_test: true,
+  payload: "alexa-media-update status=success target=v5.16.1 request_id=test",
+}, runtimeNode, flow);
+assert.equal(alexaTestResult[0].payload.status, "success");
+assert.equal(alexaTestResult[1], null);
+const alexaSuccess = parseAlexaMedia({
+  payload: "alexa-media-update status=success target=v5.16.1 request_id=production",
+}, runtimeNode, flow);
+assert.equal(alexaSuccess[0], null);
+assert.equal(alexaSuccess[1].payload.target, "v5.16.1");
+assert.deepEqual(parseAlexaMedia({
+  payload: "alexa-media-update status=rollback target=v5.16.1 request_id=rollback",
+}, runtimeNode, flow), [null, null]);
+assert.match(errors.at(-1), /alexa_media_update_failed status=rollback/);
+
 const parseKiaCodexMerge = new Function("msg", "node", "flow", node("daily_update_kia_codex_parse_result").func);
+const errorsBeforeSyntheticCodex = errors.length;
 const kiaCodexTestFailure = parseKiaCodexMerge(
   { _kia_codex_merge_test: true, payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=synthetic" },
   runtimeNode,
@@ -340,7 +416,7 @@ const kiaCodexTestFailure = parseKiaCodexMerge(
 assert.equal(kiaCodexTestFailure.payload.state, "failed");
 assert.equal(kiaCodexTestFailure.payload.target, "v3.12.0");
 assert.equal(kiaCodexTestFailure.payload.updated_at, "synthetic");
-assert.match(errors.at(-1), /kia_uvo_update_check_failed/, "synthetic Codex failures must not alert production observers");
+assert.equal(errors.length, errorsBeforeSyntheticCodex, "synthetic Codex failures must not alert production observers");
 assert.equal(parseKiaCodexMerge(
   { payload: "kia-uvo-codex-merge state=failed target=v3.12.0 updated_at=synthetic" },
   runtimeNode,
@@ -388,6 +464,8 @@ assert.match(compose, /request-host-repository-dependency-update\.sh:\/opt\/requ
 assert.match(compose, /read-host-repository-dependency-update-result\.sh:\/opt\/read-host-repository-dependency-update-result\.sh:ro/);
 assert.match(compose, /request-host-kia-uvo-update-check\.sh:\/opt\/request-host-kia-uvo-update-check\.sh:ro/);
 assert.match(compose, /read-host-kia-uvo-update-result\.sh:\/opt\/read-host-kia-uvo-update-result\.sh:ro/);
+assert.match(compose, /request-host-alexa-media-update\.sh:\/opt\/request-host-alexa-media-update\.sh:ro/);
+assert.match(compose, /read-host-alexa-media-update-result\.sh:\/opt\/read-host-alexa-media-update-result\.sh:ro/);
 assert.match(compose, /request-kia-uvo-codex-merge\.sh:\/opt\/request-kia-uvo-codex-merge\.sh:ro/);
 assert.match(compose, /read-kia-uvo-codex-merge-result\.sh:\/opt\/read-kia-uvo-codex-merge-result\.sh:ro/);
 assert.match(compose, /read-kia-uvo-promotion-result\.sh:\/opt\/read-kia-uvo-promotion-result\.sh:ro/);

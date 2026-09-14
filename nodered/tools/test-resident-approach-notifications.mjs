@@ -7,6 +7,19 @@ const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.ur
 const byId = new Map(flows.map((node) => [node.id, node]));
 const TAB = "resident_notifications_tab";
 
+function resolvedWireTargets(id, output = 0) {
+  return (byId.get(id)?.wires?.[output] ?? []).flatMap((targetId) => {
+    const routeOut = byId.get(targetId);
+    if (!routeOut?.notification_hub_wire_route) return [targetId];
+    assert.equal(routeOut.type, "link out");
+    assert.equal(routeOut.links?.length, 1);
+    const routeIn = byId.get(routeOut.links[0]);
+    assert.equal(routeIn?.type, "link in");
+    assert.deepEqual(routeIn.links, [routeOut.id]);
+    return routeIn.wires?.[0] ?? [];
+  });
+}
+
 function getFunction(id) {
   const flowNode = byId.get(id);
   assert.equal(flowNode?.type, "function", `function ausente: ${id}`);
@@ -310,7 +323,7 @@ for (const id of [
   "resident_notifications_test_stale",
   "resident_notifications_test_future",
   "resident_notifications_test_duplicate",
-]) assert.deepEqual(byId.get(id).wires, [["resident_notifications_test_adapter"]]);
+]) assert.deepEqual(resolvedWireTargets(id), ["resident_notifications_test_adapter"]);
 assert.deepEqual(byId.get("resident_notifications_test_gate").wires[0], ["resident_notifications_dry_run_out"]);
 assert.equal((byId.get("resident_notifications_dry_run_terminal").wires ?? []).flat().length, 0);
 assert.deepEqual(byId.get("resident_notifications_delivery_catch").scope.sort(), ["resident_notifications_notify_primary__hub_call", "resident_notifications_notify_secondary__hub_call"].sort());

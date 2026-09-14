@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
+  findActiveHostUpdateStage,
   isAllowedCandidatePath,
   normalizeCandidateStatus,
   shouldResumeCandidateCleanup,
@@ -33,6 +37,14 @@ test("promotion allowlist excludes infrastructure and secrets", () => {
   assert.equal(isAllowedCandidatePath("scripts/kia-uvo-upstream.json"), true);
   assert.equal(isAllowedCandidatePath("docker-compose.yml"), false);
   assert.equal(isAllowedCandidatePath(".local-secrets/token"), false);
+});
+
+test("Kia promotion defers while another host update stage is active", () => {
+  const triggerDir = fs.mkdtempSync(path.join(os.tmpdir(), "kia-promotion-stage-test-"));
+  assert.equal(findActiveHostUpdateStage(triggerDir), null);
+  fs.writeFileSync(path.join(triggerDir, "containers-processing"), "request\n");
+  assert.equal(findActiveHostUpdateStage(triggerDir), "containers");
+  fs.rmSync(triggerDir, { recursive: true, force: true });
 });
 
 test("only resumes candidate cleanup after main has been published", () => {

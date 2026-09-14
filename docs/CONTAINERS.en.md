@@ -241,18 +241,36 @@ Matter, AppDaemon, Node-RED, and Zigbee2MQTT, then runs safe storage maintenance
 It never reboots automatically.
 
 The same tab visually inventories every Home Assistant `update.*` entity on
-startup and every 30 minutes by default. A visual parameter validated between
-5 and 1,440 minutes feeds the native loop `delay`. Named switches route Core, Kia UVO/Hyundai Bluelink,
-versioned HACS integrations, physical firmware, and unknown sources to separate
-subflows. Bluelink uses safe staging and overlay reconciliation. Versioned HACS
-components are never blindly installed. Physical firmware is observed and
-deduplicated but defaults to automatic installation off; its production button
-consumes only a candidate observed during the last 40 minutes. Tests stop before
-`update.install`.
+startup and every 30 minutes by default. These scans are detection-only. A
+daily run at 03:00, or the manual production button, creates an ephemeral
+authorization that applies only to that inventory. A visual parameter validated
+between 5 and 1,440 minutes feeds the native loop `delay`. Named switches route
+Core, Alexa Media Player, Kia UVO/Hyundai Bluelink, other versioned HACS
+integrations, physical firmware, and unknown sources to separate subflows.
+
+Alexa and Bluelink always receive the exact version advertised by the Home
+Assistant entity. Alexa resolves the official tag and commit, compares the
+component byte for byte with the recorded base, permits only allowlisted or
+upstream-absorbed local deltas, and preserves license and provenance before
+installation. It then reapplies the validated staging tree, restarts only Home
+Assistant, and verifies the version, entity registry, Recorder, and runtime
+state; any failure restores the component and metadata. Bluelink uses safe
+staging and overlay reconciliation. During an authorized window, both a clean
+compatibility result and a conflict request the isolated Codex worker; the host
+promotes only after backup, rollback coverage, native polling, and runtime
+validation. Alexa and Bluelink workers share a lock so two versioned HACS
+integrations are never changed concurrently.
+
+Other versioned integrations remain `audit_only` and never receive a generic
+`update.install`. Physical firmware is observed and deduplicated but defaults
+to automatic installation off; its production button consumes only a candidate
+observed during the last 40 minutes. Unknown sources fail closed. Synthetic
+tests follow the same gates and end in dry-run before the effect boundary.
 
 The hidden `docker-auto-update.mjs ha-updates` mode was retired. The bridge
 installer removes legacy direct schedules and keeps only one-minute coalescing
-workers for DietPi, Core, other containers, Bluelink analysis, and promotion.
+workers for DietPi, Core, other containers, Alexa, Bluelink analysis, and
+promotion.
 Node-RED tracks the Codex candidate and the safe promotion separately:
 `candidate ready` never means completed; only `completed` confirms both the
 Home Assistant runtime and `main`. The host exposes only this sanitized

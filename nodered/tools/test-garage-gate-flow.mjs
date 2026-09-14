@@ -7,6 +7,19 @@ const flowSource = process.env.NODE_RED_FLOWS_SOURCE || new URL("../flows.json",
 const flows = JSON.parse(fs.readFileSync(flowSource, "utf8"));
 const byId = new Map(flows.map((node) => [node.id, node]));
 
+function resolvedWireTargets(id, output = 0) {
+  return (byId.get(id)?.wires?.[output] ?? []).flatMap((targetId) => {
+    const routeOut = byId.get(targetId);
+    if (!routeOut?.notification_hub_wire_route) return [targetId];
+    assert.equal(routeOut.type, "link out");
+    assert.equal(routeOut.links?.length, 1);
+    const routeIn = byId.get(routeOut.links[0]);
+    assert.equal(routeIn?.type, "link in");
+    assert.deepEqual(routeIn.links, [routeOut.id]);
+    return routeIn.wires?.[0] ?? [];
+  });
+}
+
 function memory(initial = {}) {
   const values = new Map(Object.entries(initial));
   return {
@@ -140,9 +153,9 @@ assert.deepEqual(byId.get("gar_safe_off_test_gate")?.wires, [
 ]);
 assert.equal(byId.get("gar_relay_safety_delay")?.pauseType, "delayv");
 assert.equal(byId.get("gar_prepare_pulse_delay")?.rules?.[0]?.to, "policy.pulse_ms");
-assert.deepEqual(byId.get("gar_relay_pulse_on")?.wires, [["gar_relay_on_publish_out", "gar_relay_safety_delay"]]);
+assert.deepEqual(resolvedWireTargets("gar_relay_pulse_on"), ["gar_relay_on_publish_out", "gar_relay_safety_delay"]);
 assert.deepEqual(byId.get("gar_relay_on_publish_out")?.links, ["gar_relay_on_publish_in"]);
 assert.deepEqual(byId.get("gar_relay_on_publish_in")?.links, ["gar_relay_on_publish_out"]);
-assert.deepEqual(byId.get("gar_relay_on_publish_in")?.wires, [["gar_relay_mqtt_out"]]);
+assert.deepEqual(resolvedWireTargets("gar_relay_on_publish_in"), ["gar_relay_mqtt_out"]);
 
 console.log("Fluxo visual do portão: política, limites, decisões e dry-run passaram.");

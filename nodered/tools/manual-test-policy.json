@@ -72,6 +72,8 @@
                 "daily_update_inventory_group",
                 "daily_update_inventory_test",
                 "daily_update_hacs_group",
+                "daily_update_alexa_media_group",
+                "daily_update_alexa_media_result_test",
                 "daily_update_firmware_group",
                 "daily_update_firmware_test_auto",
                 "daily_update_unknown_group",
@@ -87,7 +89,7 @@
             ],
             "automated_test": "test-daily-host-update-flow.mjs",
             "dry_run_terminal_ids": ["daily_update_dry_run_terminal"],
-            "reason": "DietPi, Core, containers e dependências do repositório percorrem pontes serializadas próprias; os inventários sintéticos cobrem Bluelink, HACS, firmware, Core, classes desconhecidas, override elegível e dependência transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
+            "reason": "DietPi, Core, containers e dependências do repositório percorrem pontes serializadas próprias; os inventários sintéticos cobrem Bluelink, Alexa Media auditada, demais HACS, firmware, Core, classes desconhecidas, override elegível e dependência transitiva bloqueada. Todos os caminhos TESTE chegam ao gate dry-run; sudo, apt, Docker, npm install, restart, Codex, commit, push, update.install e reboot permanecem bloqueados."
         },
         "weekly_docs_review_tab": {
             "strategy": "manual_full_dry_run",

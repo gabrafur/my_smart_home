@@ -244,21 +244,36 @@ MQTT, Matter, AppDaemon, Node-RED e Zigbee2MQTT e conclui com a manutenção seg
 de storage. Não há reboot automático.
 
 No mesmo tab, um inventário visual consulta todas as entidades `update.*` do
-Home Assistant ao subir e, por padrão, a cada 30 minutos. O intervalo é um
-parâmetro visual validado entre 5 e 1.440 minutos e alimenta o `delay` nativo do
-loop. Switches nomeados encaminham Core,
-Kia UVO/Hyundai Bluelink, integrações HACS versionadas, firmware físico e fontes
-desconhecidas para subfluxos distintos. O Bluelink passa por staging e overlay
-seguros; conflito solicita o worker Codex isolado e o host só promove após
-backup, rollback e validação do runtime. Nenhuma integração versionada é
-instalada cegamente. Firmware físico é acompanhado e deduplicado, mas tem
+Home Assistant ao subir e, por padrão, a cada 30 minutos. Essas consultas são
+somente detecção. Uma execução diária às 03:00, ou o botão manual de produção,
+cria uma autorização efêmera que vale apenas para aquele inventário. O
+intervalo é um parâmetro visual validado entre 5 e 1.440 minutos e alimenta o
+`delay` nativo do loop. Switches nomeados encaminham Core, Alexa Media Player,
+Kia UVO/Hyundai Bluelink, demais integrações HACS versionadas, firmware físico
+e fontes desconhecidas para subfluxos distintos.
+
+Alexa e Bluelink recebem sempre a versão exata anunciada pela entidade do Home
+Assistant. O Alexa resolve a tag e o commit oficiais, compara o componente byte
+a byte com a base registrada, aceita apenas deltas locais permitidos ou já
+absorvidos pelo upstream, preserva licença e proveniência e só então instala.
+Depois da instalação, reaplica o staging validado, reinicia somente o Home
+Assistant e confirma versão, entidades registradas, Recorder e estado do
+runtime; qualquer falha restaura componente e metadados. O Bluelink passa por
+staging e overlay seguros; tanto compatibilidade quanto conflito em uma janela
+autorizada solicitam o worker Codex isolado, e o host só promove após backup,
+rollback, polling nativo e validação do runtime. Os workers Alexa e Bluelink
+compartilham um lock para nunca alterar duas integrações HACS ao mesmo tempo.
+
+As demais integrações versionadas continuam em `audit_only`: não recebem
+`update.install` genérico. Firmware físico é acompanhado e deduplicado, mas tem
 automação desligada por padrão; o botão de produção consome apenas um candidato
-observado nos últimos 40 minutos. Testes terminam antes de `update.install`.
+observado nos últimos 40 minutos. Fontes desconhecidas falham fechadas. Todo
+teste sintético atravessa os mesmos gates e termina em dry-run antes do efeito.
 
 O modo legado `docker-auto-update.mjs ha-updates` foi aposentado porque escondia
 classificação e instalação fora do canvas. O instalador remove os antigos crons
 diretos e mantém somente workers coalescentes de um minuto para DietPi, Core,
-demais containers, análise Bluelink e promoção segura.
+demais containers, Alexa, análise Bluelink e promoção segura.
 O Node-RED acompanha separadamente a candidata do Codex e a promoção segura:
 `candidata pronta` nunca significa concluída; somente `completed` confirma que
 o runtime do Home Assistant e a `main` foram validados. O host publica para o

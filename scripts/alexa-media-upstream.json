@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "repository": "alandtse/alexa_media_player",
+  "component_domain": "alexa_media",
+  "component_path": "homeassistant/custom_components/alexa_media",
+  "component_source_path": "custom_components/alexa_media",
+  "update_entity_id": "update.alexa_media_player_update",
+  "base_version": "v5.16.0",
+  "base_commit": "3838e40d86e8438fd16477e76380b490382b64e5",
+  "base_tag_object": "a14879107a33961008a46ea7fad906277ca3d524",
+  "license_source_path": "LICENSE",
+  "license_target_name": "LICENSE.upstream",
+  "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "allowed_local_delta_files": [
+    "__init__.py"
+  ],
+  "absorbable_local_delta_files": [
+    "__init__.py"
+  ],
+  "required_markers": [
+    {
+      "file": "__init__.py",
+      "text": "getattr(binary_sensor, \"alexa_entity_id\", None)"
+    }
+  ]
+}

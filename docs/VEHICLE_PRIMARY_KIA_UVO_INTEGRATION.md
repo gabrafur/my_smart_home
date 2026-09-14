@@ -744,8 +744,9 @@ predicado: o update do kia_uvo retorna `false` (nao instala), os demais seguem
 `update.*` foi movido para switches visuais no Node-RED. Agora o fork só muda
 pelo pipeline dedicado de staging, reconciliação do overlay, rollback e
 promoção. Novos `custom_components` versionados devem entrar no subfluxo HACS
-visual e permanecer em `audit_only`; não devem ganhar outra lista escondida em
-JavaScript.
+visual e permanecer em `audit_only` até receberem um aplicador dedicado que
+cumpra auditoria, licença, staging, rollback e validação do runtime; não devem
+ganhar outra lista escondida em JavaScript.
 
 **Padrao a vigiar:** sempre que o vehicle_primary voltar a ficar `unavailable`, rodar
 `git status homeassistant/custom_components/kia_uvo/` e
@@ -789,11 +790,13 @@ Verificado ao vivo apos `homeassistant.restart`: `fuel_level` 65, autonomia 299,
 `last_updated` do proprio dia, **0x 503**, e o botao de trip retornou as viagens de
 hoje.
 
-**Os DOIS vetores automaticos agora estao fechados:** (1) o cron `ha-updates`
-foi aposentado e o subfluxo visual Bluelink nunca chama `update.install`; (2) HACS `auto_update` por-repo — ja
-`off`. Ou seja, o kia_uvo so muda por **install manual explicito no HACS**. Se
-fizer isso de proposito, **reaplique CCS2 + trip-log logo em seguida** (os scripts
-de patch sao o caminho rapido) e verifique `0x 503` antes de considerar pronto.
+**Estado histórico em 2026-08-07:** os dois vetores cegos ficaram fechados: o
+cron `ha-updates` foi aposentado e o `auto_update` por-repo do HACS ficou `off`.
+Esse texto não descreve mais a política atual. Desde 2026-09-14, o Kia só muda
+automaticamente pelo caminho dedicado do tab `atualizacoes_diarias`, com alvo
+exato, autorização efêmera, staging, reconciliação Codex, backup, rollback,
+polling nativo e promoção validada. Instalação manual direta pelo HACS continua
+fora do contrato porque pode apagar o overlay local.
 
 ## Dashboard, comandos e manutencao segura (atualizado em 2026-08-16)
 
@@ -881,7 +884,7 @@ executada uma vez e o overlay local reaplicado.
 versionada + commits do proprio repositorio**. Em `check` ele baixa base e
 alvo para diretorio temporario, gera o delta local, aplica com `git apply` no
 alvo, compila e verifica marcadores. Conflito para antes de tocar na instalacao.
-Em `apply`, que exige token e comando explicitos, cria backup do componente e
+Em `apply`, que exige token e alvo explícitos, cria backup do componente e
 dos metadados HACS, chama o servico oficial `update.install`, reaplica o staging,
 reinicia somente o Home Assistant, valida entidades/biblioteca/HACS e faz uma
 segunda observacao por ate 18 minutos, aguardando o polling natural de 15
@@ -890,14 +893,17 @@ continua disponivel, sem injetar uma segunda chamada ao provedor. Qualquer
 falha restaura componente e metadata e reinicia a versao anterior.
 
 O tab Node-RED `atualizacoes_diarias` inventaria todas as entidades `update.*`
-a cada 30 minutos e ao subir. Switches visuais encaminham a entidade
-Kia/Hyundai ao subfluxo Bluelink, e a ponte coalescente solicita ao host somente
-`scripts/kia-uvo-safe-update.mjs check`; o container Node-RED nao recebe token,
-checkout nem Docker socket. O antigo modo e cron direto `ha-updates` foram
-aposentados. O estado fica em
-`/config/.storage/kia_uvo_safe_update` e aparece como
-`sensor.integracao_vehicle_primary`; `apply` permanece uma decisao explicita
-apos revisar compatibilidade e nunca e chamado pelo fluxo.
+a cada 30 minutos e ao subir sem autorizar efeito. Às 03:00, ou pelo botão
+manual de produção, uma autorização efêmera acompanha somente aquele
+inventário. Switches visuais encaminham a entidade Kia/Hyundai ao subfluxo
+Bluelink, preservando a `latest_version` exata. A ponte coalescente solicita ao
+host `check --target vX.Y.Z` em modo `audit` ou `install`; o container Node-RED
+não recebe token, checkout nem Docker socket. Em `audit`, o resultado só é
+registrado. Em `install`, tanto `compatible` quanto `conflict` acionam o worker
+Codex isolado, e o promotor chama `apply` apenas após reconciliar o overlay e
+revalidar a candidata. O antigo modo e cron direto `ha-updates` foram
+aposentados. O estado fica em `/config/.storage/kia_uvo_safe_update` e aparece
+como `sensor.integracao_vehicle_primary`.
 
 O estado do motor no recorder continua sendo telemetria amostrada, nao um log
 de ignicao garantido. Para saber quando o carro rodou, o `/tripinfo` permanece

@@ -10,9 +10,9 @@ pelo Git; caches e runtime ignorados não fazem parte da distribuição pública
 
 | Nome | Projeto e origem | Versão imobilizada | Licença | Modificações locais | Atualização e atribuição | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
-| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | tag `v5.16.0`, commit `3838e40d86e8438fd16477e76380b490382b64e5` (objeto de tag anotada `a14879107a33961008a46ea7fad906277ca3d524`) | Apache-2.0 | 1 de 39 arquivos modificado: `__init__.py` exclui do coordenador sensores binários com polling independente e sem `alexa_entity_id` | substituir pelo diretório da release, conferir manifest, reaplicar/testar o guard local e manter `LICENSE.upstream`; preservar licença e notices exigidos pela Apache-2.0 | verificado, modificado |
+| Alexa Media Player | [`alandtse/alexa_media_player`](https://github.com/alandtse/alexa_media_player) | origem exata em `scripts/alexa-media-upstream.json` (`v5.16.0` nesta revisão) | Apache-2.0 | `__init__.py` contém um guard local permitido; o aplicador exige o marcador ou prova que o alvo o absorveu | resolver tag/commit/objeto de tag, comparar byte a byte, aceitar apenas deltas permitidos, validar manifest/compilação, manter `LICENSE.upstream` e preservar notices Apache | verificado, atualização protegida |
 | HACS | [`hacs/integration`](https://github.com/hacs/integration) | tag `2.0.5`, commit `c0dfd8b44297c3673c21973e2539375a53687a9c` | MIT | `const.py` fixa HA mínimo `2024.4.1`; `manifest.json` registra `2.0.5` | reaplicar e revisar somente esses dois deltas após atualização; manter copyright e licença MIT | verificado, modificado |
-| Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | tag `v3.10.1`, commit `2c602560746318fd001db8fe52347e9398f181ed` | MIT | 10 de 34 arquivos alterados: proteção de rate limit, refresh tolerante a falha, histórico/eficiência de viagens, status de comandos e entidades relacionadas | atualização é análise manual; comparar com a tag, portar deltas, executar testes e preservar copyright/licença MIT | verificado, modificado substancialmente |
+| Kia Uvo / Hyundai Bluelink | [`Hyundai-Kia-Connect/kia_uvo`](https://github.com/Hyundai-Kia-Connect/kia_uvo) | origem exata em `scripts/kia-uvo-upstream.json` (`v3.12.0`, commit `97f5d61b92209a0476762f625f5053e414063eba` nesta revisão) | MIT | proteção de rate limit, refresh tolerante a falha, histórico/eficiência de viagens, status de comandos e entidades relacionadas | reconciliar por staging/Codex, preservar copyright/licença MIT e promover somente após testes, backup, rollback e validação do runtime | verificado, modificado substancialmente |
 | LocalTuya | [`rospogrigio/localtuya`](https://github.com/rospogrigio/localtuya) | tag `v5.2.3`, commit `5f2c027c1e9421a93dcc937bf151b9456add04c6` | GPL-3.0-only | 3 de 24 arquivos alterados: registro de serviço, setup de plataformas/options flow e API `VacuumActivity` | atualização é comparação manual; o código e as modificações deste diretório permanecem sob GPL-3.0-only e a licença deve acompanhar a distribuição | verificado, modificado |
 | Tuya Vacuum Maps | [`jaidenlabelle/tuya-vacuum-maps`](https://github.com/jaidenlabelle/tuya-vacuum-maps) | tag `v0.1.4`, commit `796da700777fa084fe844ed70c882303a09fc268` | MIT | nenhuma nos 5 arquivos rastreados comparados | substituir pela release, conferir manifest e manter copyright/licença MIT | verificado |
 
@@ -83,8 +83,10 @@ localtuya         3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb369
 tuya_vacuum_maps  6234c4decf5931fe8b0ab35a4d75bd279353083e329f82d4fd827c32f8eaff0c
 ```
 
-Ao atualizar um componente, repita a comparação, atualize tag/commit,
-modificações e hash, e rode `make validate-public`.
+Ao atualizar um componente, repita a comparação e atualize tag/commit,
+modificações e hash. Para Alexa e Kia, os JSONs de upstream são a fonte
+executável da origem exata e são atualizados apenas depois de uma promoção
+validada. Por fim, rode `make validate-public`.
 
 ## Limite jurídico
 

@@ -33,6 +33,10 @@ homeassistant/.daily-update-trigger/
 .vpn-health-publisher.lock
 .vpn-health-publisher.cron.log
 .kia-uvo-updater-state/
+.alexa-media-updater-state/
+.hacs-integration-update-worker.lock
+.alexa-media-update-request-worker.lock
+.alexa-media-update.cron.log
 restore/bundles/
 restore/private-bundles/
 bindings/private/

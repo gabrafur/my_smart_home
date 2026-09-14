@@ -17,6 +17,19 @@ function node(id) {
   return value;
 }
 
+function resolvedWireTargets(id, output = 0) {
+  return (node(id).wires?.[output] ?? []).flatMap((targetId) => {
+    const routeOut = node(targetId);
+    if (!routeOut.notification_hub_wire_route) return [targetId];
+    assert.equal(routeOut.type, "link out");
+    assert.equal(routeOut.links?.length, 1);
+    const routeIn = node(routeOut.links[0]);
+    assert.equal(routeIn.type, "link in");
+    assert.deepEqual(routeIn.links, [routeOut.id]);
+    return routeIn.wires?.[0] ?? [];
+  });
+}
+
 function memory(initial = {}) {
   return new Map(Object.entries(initial));
 }
@@ -210,8 +223,8 @@ assert.match(dry.warnings[0], /"dispatched":false/);
 
 assert.deepEqual(node("codex_alert_push").wires, [["codex_alert_push__hub_call"]]);
 assert.deepEqual(node("codex_alert_persistent").wires, [["codex_alert_persistent__hub_call"]]);
-assert.deepEqual(node("codex_alert_push__hub_result").wires[0], ["codex_alert_ack"]);
-assert.deepEqual(node("codex_alert_persistent__hub_result").wires[0], ["codex_alert_ack"]);
+assert.deepEqual(resolvedWireTargets("codex_alert_push__hub_result"), ["codex_alert_ack"]);
+assert.deepEqual(resolvedWireTargets("codex_alert_persistent__hub_result"), ["codex_alert_ack"]);
 assert.deepEqual(node("codex_alert_catch").scope.sort(), ["codex_alert_persistent__hub_call", "codex_alert_push__hub_call"].sort());
 assert.match(node("codex_alert_push").rules.map((rule) => String(rule.to ?? "")).join("\n"), /"recipients":\["resident_primary"\]/);
 assert.deepEqual(node("codex_alert_push__hub_call").links, ["notification_hub_mobile_in"]);

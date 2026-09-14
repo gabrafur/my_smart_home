@@ -20,7 +20,8 @@ for (const node of next) {
     if (Array.isArray(node[field])) node[field] = node[field].filter((id) =>
       !removed.has(id) ||
       (field === "links" && node.id === "daily_update_after_backup_in" && id === "git_backup_daily_update_out") ||
-      (field === "links" && node.id === "daily_update_dependency_backup_out" && id === "git_backup_request_in")
+      (field === "links" && node.id === "daily_update_dependency_backup_out" && id === "git_backup_request_in") ||
+      (field === "links" && node.id === "daily_update_alexa_media_backup_out" && id === "git_backup_request_in")
     );
   }
   if (Array.isArray(node.wires)) node.wires = node.wires.map((wire) => Array.isArray(wire) ? wire.filter((id) => !removed.has(id)) : wire);
@@ -79,7 +80,7 @@ inject("git_backup_manual", groups.input, "Pedido manual: executar backup agora"
 linkIn("git_backup_retry_in", groups.input, "Receber observação após retry", "git_backup_retry_out", "git_backup_request_out", 160, 280);
 linkOut("git_backup_request_out", groups.input, "Pedido → gate do worker", "git_backup_request_in", 540, 180);
 
-linkIn("git_backup_request_in", groups.decision, "Receber pedido", ["git_backup_request_out", "daily_update_dependency_backup_out"], "git_backup_request_gate", 770, 90);
+linkIn("git_backup_request_in", groups.decision, "Receber pedido", ["git_backup_request_out", "daily_update_dependency_backup_out", "daily_update_alexa_media_backup_out"], "git_backup_request_gate", 770, 90);
 sw("git_backup_request_gate", groups.decision, "Pedido é TESTE?", "_git_backup_test", "msg", [
   { t: "true" }, { t: "else" },
 ], 970, 90, [["git_backup_request_dry_out"], ["git_backup_worker_out"]]);
@@ -200,6 +201,10 @@ if (dailyUpdateInput && Array.isArray(dailyUpdateInput.links) && !dailyUpdateInp
 const dependencyBackupOutput = next.find((node) => node.id === "daily_update_dependency_backup_out");
 if (dependencyBackupOutput && Array.isArray(dependencyBackupOutput.links) && !dependencyBackupOutput.links.includes("git_backup_request_in")) {
   dependencyBackupOutput.links.push("git_backup_request_in");
+}
+const alexaMediaBackupOutput = next.find((node) => node.id === "daily_update_alexa_media_backup_out");
+if (alexaMediaBackupOutput && Array.isArray(alexaMediaBackupOutput.links) && !alexaMediaBackupOutput.links.includes("git_backup_request_in")) {
+  alexaMediaBackupOutput.links.push("git_backup_request_in");
 }
 fs.writeFileSync(outputPath, `${JSON.stringify(installNotificationHubs(next), null, 4)}\n`);
 console.log(`Fluxo visual de backup Git instalado em ${outputPath}`);
