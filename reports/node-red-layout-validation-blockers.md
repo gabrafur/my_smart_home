@@ -19,10 +19,12 @@ O comparador layout-only é executado novamente a cada lote contra um snapshot d
 Os itens abaixo não são mais tratados como bloqueios preexistentes aceitáveis em um canvas alterado. O comparador layout-only agora reprova o candidato quando encontra:
 
 - groups ou nodes sobrepostos;
-- group a mais de 160 px de seu vizinho mais próximo, inclusive o observador global, ou canvas dividido em mais de uma cadeia espacial de groups nesse limite; vazios residuais dentro da cadeia continuam sujeitos à inspeção ampliada;
+- group a mais de 160 px de seu vizinho mais próximo, inclusive o observador global, ou canvas dividido em mais de uma cadeia espacial de groups nesse limite;
+- regressão do gutter-alvo de 80 px ou aumento relevante da largura/área do envelope completo de groups; observabilidade, testes e efeitos devem reutilizar faixas livres antes de alongar o canvas;
 - node fora dos limites de seu group;
 - wire cuja curva atravessa um terceiro node;
 - wire local acima de 500 px;
 - wire local com retorno visual: a entrada do destino recua mais de 60 px em relação à porta de saída, ainda que os centros aparentem avançar.
+- branches de um mesmo node cuja ordem vertical contradiz a ordem das portas de saída; produção, alternativas, retry e dry-run devem permanecer empilhados nessa sequência.
 
 Cruzamentos possíveis entre wires são emitidos como aviso obrigatório e exigem inspeção do PNG/SVG em escala legível, pois bifurcações legítimas podem produzir interseções na aproximação geométrica. A auditoria anterior às mudanças mantém esses indicadores como baseline histórico; ela não autoriza reintroduzi-los no resultado.

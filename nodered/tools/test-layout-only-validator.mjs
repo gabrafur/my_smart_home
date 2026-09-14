@@ -62,13 +62,16 @@ test("rejects coordinates on objects that are not placed in a canvas", () => {
   assert.match(renderComparison(compareLayoutOnly(before, after)).text, /Functional change detected/);
 });
 
-test("rejects property addition, removal, and array reordering", () => {
+test("rejects property addition and nested array reordering", () => {
   const afterWithProperty = clone(baseline);
   afterWithProperty[2].y2 = 100;
   assert.equal(renderComparison(compareLayoutOnly(baseline, afterWithProperty)).ok, false);
 
-  const afterReordered = [baseline[1], baseline[0], baseline[2]];
-  assert.equal(renderComparison(compareLayoutOnly(baseline, afterReordered)).ok, false);
+  const beforeWithOrderedWires = clone(baseline);
+  beforeWithOrderedWires[2].wires = [["first", "second"]];
+  const afterWithReorderedWires = clone(beforeWithOrderedWires);
+  afterWithReorderedWires[2].wires = [["second", "first"]];
+  assert.equal(renderComparison(compareLayoutOnly(beforeWithOrderedWires, afterWithReorderedWires)).ok, false);
 });
 
 test("rejects overlapping groups in a changed canvas", () => {
@@ -170,4 +173,69 @@ test("rejects separated group chains even when every group has a close neighbor"
   assert.equal(rendered.ok, false);
   assert.doesNotMatch(rendered.text, /farther than 160px/);
   assert.match(rendered.text, /disconnected group cluster/);
+});
+
+
+test("rejects regression beyond the 80px target gutter", () => {
+  const before = [
+    { id: "tab", type: "tab", label: "example" },
+    { id: "left", type: "group", z: "tab", name: "Left", nodes: [], x: 64, y: 20, w: 200, h: 160 },
+    { id: "right", type: "group", z: "tab", name: "Right", nodes: [], x: 324, y: 20, w: 200, h: 160 },
+  ];
+  const after = clone(before);
+  after[2].x = 364;
+  const rendered = renderComparison(compareLayoutOnly(before, after));
+  assert.equal(rendered.ok, false);
+  assert.match(rendered.text, /gutter regressed.*target <=80px/);
+});
+
+test("rejects spreading a connected chain across a wider group envelope", () => {
+  const before = [{ id: "tab", type: "tab", label: "example" }];
+  const after = [{ id: "tab", type: "tab", label: "example" }];
+  for (let index = 0; index < 5; index += 1) {
+    before.push({ id: `g${index}`, type: "group", z: "tab", name: `G${index}`, nodes: [], x: 64 + index * 220, y: 20, w: 200, h: 160 });
+    after.push({ id: `g${index}`, type: "group", z: "tab", name: `G${index}`, nodes: [], x: 64 + index * 270, y: 20, w: 200, h: 160 });
+  }
+  const rendered = renderComparison(compareLayoutOnly(before, after));
+  assert.equal(rendered.ok, false);
+  assert.match(rendered.text, /group envelope width regressed/);
+});
+
+test("rejects output branches whose vertical order contradicts the port order", () => {
+  const before = [
+    { id: "tab", type: "tab", label: "example" },
+    { id: "source", type: "switch", z: "tab", name: "Gate", x: 180, y: 200, wires: [["production"], ["retry"], ["dry"]], rules: [] },
+    { id: "production", type: "function", z: "tab", name: "Production", x: 460, y: 140, wires: [[]], func: "return msg;" },
+    { id: "retry", type: "link out", z: "tab", name: "Retry", x: 460, y: 220, wires: [] },
+    { id: "dry", type: "link out", z: "tab", name: "Dry-run", x: 460, y: 300, wires: [] },
+  ];
+  const after = clone(before);
+  after[2].y = 260;
+  const rendered = renderComparison(compareLayoutOnly(before, after));
+  assert.equal(rendered.ok, false);
+  assert.match(rendered.text, /invert the vertical order of output branches/);
+});
+
+test("accepts top-level node reordering performed by the Node-RED editor", () => {
+  const before = [
+    { id: "tab", type: "tab", label: "example" },
+    { id: "first", type: "inject", z: "tab", x: 100, y: 100, wires: [[]] },
+    { id: "second", type: "debug", z: "tab", x: 300, y: 100, wires: [] },
+  ];
+  const after = [clone(before[2]), clone(before[0]), clone(before[1])];
+  const rendered = renderComparison(compareLayoutOnly(before, after));
+  assert.equal(rendered.ok, true);
+  assert.match(rendered.text, /Only approved visual properties changed/);
+});
+
+test("rejects a node removed while the editor also reorders the flow", () => {
+  const before = [
+    { id: "tab", type: "tab", label: "example" },
+    { id: "kept", type: "inject", z: "tab", x: 100, y: 100, wires: [[]] },
+    { id: "removed", type: "debug", z: "tab", x: 300, y: 100, wires: [] },
+  ];
+  const after = [clone(before[1]), clone(before[0])];
+  const rendered = renderComparison(compareLayoutOnly(before, after));
+  assert.equal(rendered.ok, false);
+  assert.match(rendered.text, /node removed/);
 });

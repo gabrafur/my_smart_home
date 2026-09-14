@@ -68,15 +68,16 @@ Efeitos independentes começam em uma coluna comum e ocupam lanes paralelas. Con
 
 ### Observabilidade
 
-Os grupos de cobertura global ficam em uma borda previsível do canvas e não atravessam o domínio funcional. `catch`, `status`, identificação e link de saída devem formar uma pequena sequência local.
+Os grupos de cobertura global ocupam a faixa livre mais próxima do domínio funcional — normalmente logo abaixo ou acima de uma trilha curta — em vez de alongar o canvas até a direita. Eles não atravessam o domínio funcional. `catch`, `status`, identificação e link de saída devem formar uma pequena sequência local.
 
 ## Groups e tamanho do canvas
 
 - Preserve ID, nome, membros, estilo e semântica de cada group.
 - Um node pertencente a um group deve ficar integralmente dentro dele.
 - Groups não se sobrepõem e mantêm gutters visíveis.
-- Entre groups independentes, preserve ao menos 24 px de gutter; bordas, títulos e áreas preenchidas não podem invadir outro group.
-- Nenhum group pode ficar a mais de 160 px do vizinho mais próximo e todos os groups do canvas devem formar uma única cadeia espacial nesse limite. O observador global também deve permanecer junto ao canvas, sem parecer uma ilha desconectada. A inspeção ampliada deve ainda rejeitar vazios desnecessários dentro dessa cadeia, mesmo quando o limite automático for atendido.
+- Entre groups independentes, use normalmente 24–80 px de gutter; bordas, títulos e áreas preenchidas não podem invadir outro group.
+- Nenhum group pode ficar a mais de 160 px do vizinho mais próximo e todos os groups do canvas devem formar uma única cadeia espacial nesse limite. Distâncias legadas acima do alvo de 80 px nunca podem piorar numa reorganização. O observador global também deve permanecer junto ao canvas, sem parecer uma ilha desconectada.
+- A largura e a área do envelope que contém todos os groups não podem aumentar significativamente numa reorganização layout-only. Reaproveite faixas livres e quebre linhas largas antes de empurrar observabilidade, testes ou efeitos para a extrema direita.
 - Empilhe groups por fase ou responsabilidade quando uma única linha produzir largura excessiva.
 - Quebrar o canvas em linhas é permitido apenas por reposicionamento; não crie retornos funcionais nem altere a topologia.
 - Remova grandes vazios que não separem responsabilidades, mas mantenha espaço suficiente para reconhecer as fases do flow.
@@ -87,6 +88,7 @@ Os grupos de cobertura global ficam em uma borda previsível do canvas e não at
 - Valide a curva renderizada desde a porta de saída até a porta de entrada contra o retângulo de todo terceiro node; verificar apenas centros ou extremidades não é suficiente.
 - Meça a direção pelas portas, não apenas pelos centros: se a entrada do destino recuar mais de 60 px em relação à saída da origem, o wire é um retorno visual inválido mesmo que o centro do destino esteja à direita. Esse caso costuma produzir laços curtos ao redor de `link in`/`link out` e nodes largos.
 - Evite destinos à esquerda da origem e sequências em zig-zag.
+- Em nodes com múltiplas saídas, preserve a mesma ordem vertical das portas: caminho principal/produção acima, alternativas no meio e retry/dry-run abaixo. Não intercale um terminal de saída acima do efeito anterior, pois isso cria uma trança que pode escapar da detecção simples de cruzamentos.
 - Wires acima de 500 px são candidatos obrigatórios a correção visual.
 - Nesta classe de trabalho, é proibido criar, remover ou converter wires, junctions ou link nodes. Se a topologia existente impedir a correção somente por coordenadas, registre a exceção.
 - Em trabalho funcional futuro, a política geral do repositório para links longos continua válida, mas exige escopo e validação próprios.
@@ -97,7 +99,7 @@ Os grupos de cobertura global ficam em uma borda previsível do canvas e não at
 2. Gere a auditoria anterior à mudança e renderize todos os tabs/subflows.
 3. Altere a fonte visual canônica em `nodered/tools/flow-layout-overrides.json`; não edite apenas a saída gerada.
 4. Reaplique a geometria com `npm --prefix nodered run flows:apply-left-margin`.
-5. Depois de cada lote ou tab, execute o comparador layout-only contra o snapshot. Ele deve reprovar alteração funcional, groups ou nodes sobrepostos, nodes fora do group, groups isolados por mais de 160 px, mais de uma cadeia espacial de groups, fios sobre nodes, fios acima de 500 px e retornos visuais medidos entre portas.
+5. Depois de cada lote ou tab, execute o comparador layout-only contra o snapshot. Ele deve reprovar alteração funcional, groups ou nodes sobrepostos, nodes fora do group, groups isolados por mais de 160 px, mais de uma cadeia espacial de groups, regressão do gutter-alvo de 80 px, aumento relevante da largura/área do envelope, inversão vertical da ordem das saídas, fios sobre nodes, fios acima de 500 px e retornos visuais medidos entre portas.
 6. Execute `npm --prefix nodered run flows:validate-layout` e renderize os tabs alterados.
 7. Execute `npm --prefix nodered run flows:render-strict -- <tab...>` e inspecione os SVG/PNG em escala legível, sem aceitar piora do benchmark. Possíveis cruzamentos entre fios são aviso obrigatório porque a aproximação geométrica pode incluir bifurcações legítimas.
 8. Execute os validadores e replays Node-RED relevantes, uma suíte por vez e pelo wrapper seguro do repositório quando a validação for ampla.

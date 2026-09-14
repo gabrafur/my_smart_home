@@ -55,6 +55,26 @@ export function compareLayoutOnly(before, after) {
         recordDifference(pathName, beforeValue, afterValue, "type changed");
         return;
       }
+      if (pathName === "$" && [...beforeValue, ...afterValue].every((item) =>
+        isJsonObject(item) && typeof item.id === "string"
+      )) {
+        const beforeById = new Map(beforeValue.map((item) => [item.id, item]));
+        const afterById = new Map(afterValue.map((item) => [item.id, item]));
+        for (const [id, itemBefore] of beforeById) {
+          const itemAfter = afterById.get(id);
+          if (!itemAfter) {
+            recordDifference(`$[id=${id}]`, itemBefore, undefined, "node removed");
+            continue;
+          }
+          compareValue(itemBefore, itemAfter, `$[id=${id}]`, itemBefore);
+        }
+        for (const [id, itemAfter] of afterById) {
+          if (!beforeById.has(id)) {
+            recordDifference(`$[id=${id}]`, undefined, itemAfter, "node added");
+          }
+        }
+        return;
+      }
       if (beforeValue.length !== afterValue.length) {
         recordDifference(`${pathName}.length`, beforeValue.length, afterValue.length, "array length changed");
       }
@@ -115,6 +135,7 @@ export function compareLayoutOnly(before, after) {
   );
   const changedRoots = after.filter((node) => changedCanvasIds.has(node.id) && ["tab", "subflow"].includes(node.type));
   const changedRootNames = new Map(changedRoots.map((root) => [root.id, root.label || root.name || root.id]));
+  const beforeAudits = new Map(auditFlows(before).map((canvas) => [canvas.id, canvas]));
   const geometryProblems = [];
   const geometryWarnings = [];
 
@@ -124,6 +145,7 @@ export function compareLayoutOnly(before, after) {
     }
   }
   for (const audit of auditFlows(after).filter((canvas) => changedCanvasIds.has(canvas.id))) {
+    const beforeAudit = beforeAudits.get(audit.id);
     if (audit.wireNodeIntersections > 0) {
       geometryProblems.push(`${audit.name}: ${audit.wireNodeIntersections} wire(s) cross node(s)`);
     }
@@ -133,8 +155,18 @@ export function compareLayoutOnly(before, after) {
     if (audit.separatedGroupClusters > 0) {
       geometryProblems.push(`${audit.name}: ${audit.separatedGroupClusters + 1} disconnected group cluster(s) exceed the 160px chain gap`);
     }
+    if (beforeAudit && audit.maxGroupNearestGap > Math.max(80, beforeAudit.maxGroupNearestGap + 1)) {
+      geometryProblems.push(`${audit.name}: nearest-group gutter regressed from ${beforeAudit.maxGroupNearestGap}px to ${audit.maxGroupNearestGap}px (target <=80px)`);
+    }
+    if (beforeAudit && audit.groupHullWidth - beforeAudit.groupHullWidth > 80 && audit.groupHullWidth > beforeAudit.groupHullWidth * 1.05) {
+      geometryProblems.push(`${audit.name}: group envelope width regressed from ${beforeAudit.groupHullWidth}px to ${audit.groupHullWidth}px`);
+    }
+    if (beforeAudit && audit.groupHullArea - beforeAudit.groupHullArea > 50000 && audit.groupHullArea > beforeAudit.groupHullArea * 1.08) {
+      geometryProblems.push(`${audit.name}: group envelope area regressed from ${beforeAudit.groupHullArea}px² to ${audit.groupHullArea}px²`);
+    }
     if (audit.longWires > 0) geometryProblems.push(`${audit.name}: ${audit.longWires} wire(s) exceed 500px`);
     if (audit.reverseWires > 0) geometryProblems.push(`${audit.name}: ${audit.reverseWires} right-to-left wire(s)`);
+    if (audit.branchOrderInversions > 0) geometryProblems.push(`${audit.name}: ${audit.branchOrderInversions} node(s) invert the vertical order of output branches`);
     if (audit.crossings > 0) {
       geometryWarnings.push(`${audit.name}: inspect ${audit.crossings} possible wire crossing(s) in the rendered canvas`);
     }
