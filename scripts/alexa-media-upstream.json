@@ -20,7 +20,7 @@
   "required_markers": [
     {
       "file": "__init__.py",
-      "text": "getattr(binary_sensor, \"alexa_entity_id\", None)"
+      "text": "if alexa_entity_id and binary_sensor.enabled:\n                entities_to_monitor.add(alexa_entity_id)"
     }
   ]
 }

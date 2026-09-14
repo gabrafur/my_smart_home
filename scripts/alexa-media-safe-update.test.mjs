@@ -45,7 +45,10 @@ test("only reviewed Alexa Media deltas may be treated as absorbed upstream", () 
   assert.deepEqual(changedFilesFromDelta(delta), ["__init__.py"]);
   const metadata = {
     absorbable_local_delta_files: ["__init__.py"],
-    required_markers: [{ file: "__init__.py", text: "getattr" }],
+    required_markers: [{
+      file: "__init__.py",
+      text: "if alexa_entity_id and binary_sensor.enabled:\n                entities_to_monitor.add(alexa_entity_id)",
+    }],
   };
   assert.equal(canAcceptAbsorbedDelta(metadata, ["__init__.py"], () => true), true);
   assert.equal(canAcceptAbsorbedDelta(metadata, ["const.py"], () => true), false);

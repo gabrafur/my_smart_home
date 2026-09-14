@@ -92,6 +92,7 @@ def _load_coordinator_without_home_assistant():
             "ClimateRequestOptions",
             "POIInfo",
             "ScheduleChargingClimateRequestOptions",
+            "SVMDetails",
             "Token",
             "Vehicle",
             "VehicleManager",

@@ -1,6 +1,7 @@
 """Regression tests for the locally patched Alexa Media Player release."""
 
 from pathlib import Path
+import re
 import unittest
 
 
@@ -18,7 +19,14 @@ class AlexaMediaAmazonKidsRegressionTest(unittest.TestCase):
             'alexa_entity_id = getattr(binary_sensor, "alexa_entity_id", None)',
             source,
         )
-        self.assertIn("if binary_sensor.enabled and alexa_entity_id:", source)
+        self.assertRegex(
+            source,
+            re.compile(
+                r"if (?:binary_sensor\.enabled and alexa_entity_id|"
+                r"alexa_entity_id and binary_sensor\.enabled):\s*"
+                r"entities_to_monitor\.add\(alexa_entity_id\)"
+            ),
+        )
         self.assertNotIn(
             "entities_to_monitor.add(binary_sensor.alexa_entity_id)", source
         )
