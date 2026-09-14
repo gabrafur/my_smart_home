@@ -10,7 +10,9 @@ import { fileURLToPath } from "node:url";
 import {
   findActiveHostUpdateStage,
   isAllowedCandidatePath,
+  nextPromotionStatus,
   normalizeCandidateStatus,
+  promotionCommitMatches,
   shouldResumeCandidateCleanup,
 } from "./promote-kia-uvo-candidate.mjs";
 
@@ -82,4 +84,44 @@ test("only resumes candidate cleanup after main has been published", () => {
     state: "main_published",
     source_commit: "f".repeat(40),
   }, candidate), false);
+});
+
+test("a new candidate lifecycle does not inherit stale promotion fields", () => {
+  const next = nextPromotionStatus({
+    source_commit: "a".repeat(40),
+    state: "completed",
+    commit: "b".repeat(40),
+    pushed: true,
+    resolution: "runtime_reconciled",
+  }, {
+    source_commit: "c".repeat(40),
+    state: "applying",
+    target: "v3.13.0",
+  }, "2026-09-14T14:00:00.000Z");
+  assert.deepEqual(next, {
+    schema_version: 1,
+    source_commit: "c".repeat(40),
+    state: "applying",
+    target: "v3.13.0",
+    updated_at: "2026-09-14T14:00:00.000Z",
+  });
+});
+
+test("resume accepts a validated Kia commit before newer unrelated commits", () => {
+  const expected = [
+    "homeassistant/custom_components/kia_uvo/manifest.json",
+    "scripts/kia-uvo-upstream.json",
+  ];
+  assert.equal(promotionCommitMatches(
+    "fix(kia-uvo): merge upstream v3.13.0",
+    [...expected].reverse(),
+    "v3.13.0",
+    expected,
+  ), true);
+  assert.equal(promotionCommitMatches(
+    "fix(updates): preserve privacy in Git transport rules",
+    ["scripts/promote-kia-uvo-candidate.mjs"],
+    "v3.13.0",
+    expected,
+  ), false);
 });

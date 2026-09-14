@@ -77,15 +77,21 @@ function writePublicStatus(status) {
   fs.renameSync(temporary, promotionPublicStatusPath);
 }
 
+export function nextPromotionStatus(previous, patch, updatedAt = new Date().toISOString()) {
+  const sourceChanged = previous?.source_commit && patch?.source_commit &&
+    previous.source_commit !== patch.source_commit;
+  return {
+    schema_version: 1,
+    ...(sourceChanged ? {} : previous),
+    ...patch,
+    updated_at: updatedAt,
+  };
+}
+
 function writeStatus(patch) {
   let previous = {};
   try { previous = readJson(promotionStatusPath); } catch { /* first run */ }
-  const next = {
-    schema_version: 1,
-    ...previous,
-    ...patch,
-    updated_at: new Date().toISOString(),
-  };
+  const next = nextPromotionStatus(previous, patch);
   fs.mkdirSync(path.dirname(promotionStatusPath), { recursive: true });
   const temporary = `${promotionStatusPath}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
@@ -147,6 +153,11 @@ function workingTreePaths() {
 
 function samePaths(left, right) {
   return left.length === right.length && left.every((item, index) => item === right[index]);
+}
+
+export function promotionCommitMatches(subject, paths, target, expectedPaths) {
+  return subject === `fix(kia-uvo): merge upstream ${target}` &&
+    samePaths([...paths].sort(), [...expectedPaths].sort());
 }
 
 function fetchAndValidate(candidate) {
@@ -238,12 +249,18 @@ function commitAndPush(candidate, expectedPaths) {
     run("node", ["scripts/commit-message-check.mjs", "--subject", subject]);
     git(["commit", "-m", subject], { inherit: true });
   } else {
-    const subject = git(["show", "-s", "--format=%s", "HEAD"]);
-    const headPaths = changedPaths("HEAD");
-    if (subject !== `fix(kia-uvo): merge upstream ${candidate.target}` ||
-        !samePaths(headPaths, expectedPaths)) {
+    const appliedCommit = git([
+      "rev-list", "--first-parent", "--max-count=64", "HEAD",
+    ]).split("\n").filter(Boolean).find((commit) => promotionCommitMatches(
+      git(["show", "-s", "--format=%s", commit]),
+      changedPaths(commit),
+      candidate.target,
+      expectedPaths,
+    ));
+    if (!appliedCommit) {
       throw new Error("runtime is applied but the promotion commit is unavailable");
     }
+    assertCandidateContent(candidate, expectedPaths);
   }
   git(["push", "origin", "HEAD:main"], { inherit: true });
   return git(["rev-parse", "HEAD"]);
