@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   findActiveHostUpdateStage,
@@ -12,6 +13,20 @@ import {
   normalizeCandidateStatus,
   shouldResumeCandidateCleanup,
 } from "./promote-kia-uvo-candidate.mjs";
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const promotionScript = path.join(scriptDir, "promote-kia-uvo-candidate.mjs");
+const mergeEntrypoint = path.join(scriptDir, "kia-uvo-codex-merge-entrypoint.sh");
+
+test("Kia publication uses GitHub SSH 443 with strict host verification", () => {
+  for (const file of [promotionScript, mergeEntrypoint]) {
+    const source = fs.readFileSync(file, "utf8");
+    assert.match(source, /Hostname=ssh\.github\.com/);
+    assert.match(source, /HostKeyAlias=github\.com/);
+    assert.match(source, /Port=443/);
+    assert.match(source, /StrictHostKeyChecking=yes/);
+  }
+});
 
 test("accepts only a successful pushed Kia UVO candidate", () => {
   const candidate = normalizeCandidateStatus({

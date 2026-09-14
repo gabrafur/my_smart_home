@@ -30,5 +30,5 @@ chown -R "$repo_uid:$repo_gid" "$runtime_home/.codex"
 
 exec setpriv --reuid "$repo_uid" --regid "$repo_gid" --clear-groups \
   env HOME="$runtime_home" CODEX_HOME="$runtime_home/.codex" \
-  GIT_SSH_COMMAND="ssh -i $runtime_home/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$runtime_home/.ssh/known_hosts" \
+  GIT_SSH_COMMAND="ssh -i $runtime_home/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$runtime_home/.ssh/known_hosts -o Hostname=ssh.github.com -o HostKeyAlias=github.com -o Port=443" \
   "$@"

@@ -47,6 +47,20 @@ function git(args, options = {}) {
   return run("git", args, options);
 }
 
+function configureGitHubSshTransport() {
+  if (process.env.GIT_SSH_COMMAND?.trim()) return;
+  const remote = git(["remote", "get-url", "origin"]);
+  if (!/^git@github\.com:|^ssh:\/\/git@github\.com\//.test(remote)) return;
+  process.env.GIT_SSH_COMMAND = [
+    "ssh",
+    "-o BatchMode=yes",
+    "-o StrictHostKeyChecking=yes",
+    "-o Hostname=ssh.github.com",
+    "-o HostKeyAlias=github.com",
+    "-o Port=443",
+  ].join(" ");
+}
+
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }
@@ -252,6 +266,7 @@ function deleteCandidateBranch(candidate) {
 }
 
 export async function promote({ checkOnly = false } = {}) {
+  configureGitHubSshTransport();
   if (!fs.existsSync(workerStatusPath)) return false;
   const candidate = normalizeCandidateStatus(readJson(workerStatusPath));
   if (!candidate) return false;

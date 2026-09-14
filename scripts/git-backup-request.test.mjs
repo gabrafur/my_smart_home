@@ -45,6 +45,15 @@ test("automated backups use the repository commit convention", () => {
   assert.doesNotMatch(source, /Automated smart home backup/);
 });
 
+test("GitHub backups use authenticated SSH on port 443 with strict host verification", () => {
+  const source = fs.readFileSync(backupScript, "utf8");
+  assert.match(source, /Hostname=ssh\.github\.com/);
+  assert.match(source, /HostKeyAlias=github\.com/);
+  assert.match(source, /Port=443/);
+  assert.match(source, /StrictHostKeyChecking=yes/);
+  assert.doesNotMatch(source, /StrictHostKeyChecking=accept-new/);
+});
+
 test("Node-RED request is executed once by the host bridge", async () => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "git-backup-request-test-"));
   const triggerDir = path.join(fixture, "trigger");
