@@ -468,6 +468,10 @@ test("the cron installer migrates direct update schedules to Node-RED bridges", 
   assert.match(installed, /process-kia-uvo-update-request\.sh/);
   assert.match(installed, /process-alexa-media-update-request\.sh/);
   assert.match(installed, /promote-kia-uvo-candidate\.mjs/);
+  const hacsWorkers = installed.split("\n").filter((line) =>
+    line.includes(".hacs-integration-update-worker.lock"));
+  assert.equal(hacsWorkers.length, 3);
+  assert.ok(hacsWorkers.every((line) => line.includes("/usr/bin/flock -w 55 ")));
   assert.match(installed, /nice -n 15 .*ionice -c 3/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
