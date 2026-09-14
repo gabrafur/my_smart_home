@@ -17,7 +17,6 @@ const contextValue = {
     resident_secondary: secondary,
     home_radius_m: Number(data.policy.home_radius_m),
     near_home_radius_m: Number(data.policy.near_home_radius_m),
-    people_fast_refresh_radius_m: Number(data.policy.people_fast_refresh_radius_m),
     best_location_away: primary.best_location_away === true || secondary.best_location_away === true,
     any_tracker_away: primary.any_tracker_away === true || secondary.any_tracker_away === true,
     anyone_away: primary.ready && secondary.ready

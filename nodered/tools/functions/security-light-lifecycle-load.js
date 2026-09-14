@@ -21,13 +21,23 @@ if (lifecycle.active_by_arrival === true && (!Number.isFinite(lifecycle.on_since
     lifecycle.force_off_at < lifecycle.on_since || lifecycle.force_off_at > lifecycle.on_since + maxDeadlineMs)) {
     node.warn("iluminacao_seguranca: lifecycle ativo sem deadline coerente; tratado como origem desconhecida");
     Object.assign(lifecycle, { active_by_arrival: false, on_since: null, force_off_at: null,
-        pending_off_at: null, pending_off_reason: null, pending_off_source: null });
+        pending_off_at: null, pending_off_reason: null, pending_off_source: null,
+        vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null });
 }
-if (lifecycle.active_by_arrival === true && lifecycle.pending_off_at != null &&
-    (!Number.isFinite(lifecycle.pending_off_at) || lifecycle.pending_off_at < lifecycle.on_since ||
-    lifecycle.pending_off_at > lifecycle.force_off_at)) {
-    node.warn("iluminacao_seguranca: deadline de carência inválido; descartado");
-    Object.assign(lifecycle, { pending_off_at: null, pending_off_reason: null, pending_off_source: null });
+if (lifecycle.active_by_arrival === true && lifecycle.vehicle_refresh_at == null &&
+    lifecycle.pending_off_at != null) {
+    lifecycle.vehicle_refresh_at = lifecycle.pending_off_at;
+    lifecycle.vehicle_refresh_reason = lifecycle.pending_off_reason ?? "legacy_home_confirmation";
+    lifecycle.vehicle_refresh_source = lifecycle.pending_off_source ?? null;
+    node.warn("iluminacao_seguranca: carência legada migrada para atualização do carro");
+}
+Object.assign(lifecycle, { pending_off_at: null, pending_off_reason: null, pending_off_source: null });
+if (lifecycle.active_by_arrival === true && lifecycle.vehicle_refresh_at != null &&
+    (!Number.isFinite(lifecycle.vehicle_refresh_at) || lifecycle.vehicle_refresh_at < lifecycle.on_since ||
+    lifecycle.vehicle_refresh_at > lifecycle.force_off_at)) {
+    node.warn("iluminacao_seguranca: deadline de atualização do carro inválido; descartado");
+    Object.assign(lifecycle, { vehicle_refresh_at: null, vehicle_refresh_reason: null,
+        vehicle_refresh_source: null });
 }
 const cooldownMaxMs = Number(policy.cooldown_max_minutes) * 60000;
 if (lifecycle.cooldown_until != null && (!Number.isFinite(lifecycle.cooldown_until) ||

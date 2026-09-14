@@ -13,19 +13,6 @@ if (TEST_MODE) {
 
 if (msg.payload?.kind !== "refresh_command") return null;
 
-const LOCATION_POLICY = global.get("location_policy_v1", "persistent");
-const FAST_REFRESH_RADIUS_M = Number(
-    LOCATION_POLICY?.people_fast_refresh_radius_m
-);
-if (
-    LOCATION_POLICY?.version !== 1 ||
-    LOCATION_POLICY?.complete !== true ||
-    !Number.isFinite(FAST_REFRESH_RADIUS_M)
-) {
-    node.error("Raio de refresh rápido ausente", msg);
-    return null;
-}
-
 /* A saída confirmada de um morador é um gatilho exclusivo do veículo.
  * O próprio evento acabou de trazer a posição do telefone; não duplique
  * essa atualização no Companion App. */

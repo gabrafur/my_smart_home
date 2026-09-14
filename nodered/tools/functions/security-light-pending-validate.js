@@ -24,12 +24,6 @@ if (pending) {
         valid = resident?.ready === true && resident?.stale !== true && resident?.state === "near_home";
         if (!valid) reason = resident?.state === "home" ? "resident_home" :
             resident?.stale === true || resident?.ready !== true ? "resident_location_stale" : "resident_left_approach_zone";
-    } else if (valid && pending.version === 2 && pending.retention === "while_vehicle_approaching" &&
-        pending.source === "vehicle_primary") {
-        const location = data.vehicle.location ?? {};
-        valid = location.ready === true && location.stale !== true && location.state === "near_home";
-        if (!valid) reason = location.state === "home" ? "vehicle_home" :
-            location.stale === true || location.ready !== true ? "vehicle_location_stale" : "vehicle_left_approach_zone";
     } else if (valid && pending.retention !== "recovery_window") {
         valid = false;
         reason = "invalid_retention";
@@ -41,7 +35,8 @@ if (pending) {
     }
 }
 data.pending = pending;
-data.replay_ready = Boolean(pending && data.sun_ready && data.dark &&
+data.replay_ready = Boolean((pending || data.engine_on_arrival) &&
+    data.sun_ready && data.dark &&
     (data.engine_allowed || data.bypass_allowed));
 data.reconcile = data.test_mode ? null : { payload: { kind: "reconcile_signal", reason: "context_update" } };
 if (["people_context", "vehicle_primary_context"].includes(data.kind) && !data.accepted) {

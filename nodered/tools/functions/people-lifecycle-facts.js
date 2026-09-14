@@ -39,7 +39,7 @@ if (data.is_location_event && source?.ready === true &&
 }
 
 const approach = data.trigger_state === "near_home" &&
-    data.trigger_prev_state === "not_home" && source?.current_home !== true;
+    external(data.trigger_prev_state) && source?.current_home !== true;
 const departure = data.trigger_prev_state === "home" && data.trigger_state !== "home";
 const graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;
 data.facts = {

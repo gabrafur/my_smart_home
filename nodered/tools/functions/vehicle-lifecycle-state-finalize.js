@@ -24,7 +24,6 @@ data.context = {
     movement_threshold_m: Number(data.policy.movement_threshold_m),
     home_radius_m: Number(data.policy.home_radius_m),
     near_home_radius_m: Number(data.policy.near_home_radius_m),
-    people_fast_refresh_radius_m: Number(data.policy.people_fast_refresh_radius_m),
     last_confirmed_location: data.location_observation ? { ...data.location_observation } : null,
     telemetry_updated_at: data.telemetry_updated_at,
     distance_home_m: data.location.distance_m,

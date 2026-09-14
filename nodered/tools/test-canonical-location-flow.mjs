@@ -12,7 +12,6 @@ const LOCATION_POLICY = {
   owner: "node_red",
   complete: true,
   near_home_radius_m: 700,
-  people_fast_refresh_radius_m: 2000,
   location_fresh_minutes: 15,
   source_report_fresh_minutes: 75,
   recency_tie_seconds: 60,
@@ -231,16 +230,16 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   const controls = {
     near: byId.get("people_location_near_home_radius_v1"),
     home: byId.get("people_location_home_radius_v1"),
-    refresh: byId.get("people_location_fast_refresh_radius_v1"),
   };
   assert.deepEqual(
-    [controls.near.topic, controls.home.topic, controls.refresh.topic],
-    ["near_home_radius_m", "home_radius_m", "people_fast_refresh_radius_m"],
+    [controls.near.topic, controls.home.topic],
+    ["near_home_radius_m", "home_radius_m"],
   );
   assert.deepEqual(
-    [controls.near.payload, controls.home.payload, controls.refresh.payload],
-    ["700", "100", "2000"],
+    [controls.near.payload, controls.home.payload],
+    ["700", "100"],
   );
+  assert.equal(byId.has("people_location_fast_refresh_radius_v1"), false);
 
   const policyContext = runtimeGlobal();
   const rejected = run(
@@ -422,6 +421,28 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
 }
 
 {
+  const stale = select(input(
+    tracker(primaryId, "home", { ageMs: 25 * 60_000, distanceM: 20 }),
+    tracker(fallbackId, "location_update_ring", { ageMs: 20 * 60_000, distanceM: 429 }),
+    "resident_primary",
+  ));
+  const published = run("people_location_publish_state_v1", structuredClone(stale), memory());
+  const stateMessage = published[0].find(
+    (message) => message.topic === "smart_home/location/resident_primary/state",
+  );
+  const attributes = JSON.parse(published[0].find(
+    (message) => message.topic === "smart_home/location/resident_primary/attributes",
+  ).payload);
+  assert.equal(stateMessage.payload, "unavailable");
+  assert.equal(attributes.state, "unavailable");
+  assert.equal(attributes.raw_location_state, "location_update_ring");
+  assert.equal(attributes.location_fresh, false);
+  assert.equal(attributes.latitude, null);
+  assert.equal(attributes.longitude, null);
+  assert.equal(attributes.gps_accuracy, null);
+}
+
+{
   const people = byId.get("554cb653b2fa4504");
   const vehicle = byId.get("092625f2eb5cc156");
   const peopleClassifier = byId.get("people_location_classify_near_home_v1");
@@ -439,9 +460,9 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.equal(byId.get("vehicle_visual_evidence_confirmed").type, "switch");
   assert.match(peopleClassifier.func, /location_update_ring/);
   assert.match(vehicleClassifier.func, /location_update_ring/);
-  assert.match(
+  assert.doesNotMatch(
     byId.get("402fd0cc609443b7").func,
-    /LOCATION_POLICY\?\.people_fast_refresh_radius_m/,
+    /people_fast_refresh_radius_m|FAST_REFRESH_RADIUS_M/,
   );
   assert.doesNotMatch(byId.get("402fd0cc609443b7").func, /nearest_distance_m <= 2000/);
   assert.equal(byId.get("4189bb901d6a15c4").outputOnlyOnStateChange, false);
@@ -491,7 +512,8 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   assert.equal(byId.get("security_visual_arrival_logic_ready").type, "switch");
   assert.equal(byId.get("security_visual_replay_ready").type, "switch");
   assert.match(byId.get("security_visual_arrival_pending").func, /arrival_recovery_ms/);
-  assert.match(byId.get("security_visual_pending_validate").func, /vehicle_left_approach_zone/);
+  assert.match(byId.get("security_visual_pending_validate").func, /resident_left_approach_zone/);
+  assert.doesNotMatch(byId.get("security_visual_pending_validate").func, /vehicle_left_approach_zone/);
   assert.doesNotMatch(byId.get("62f77a1ad440639d").func, /arrival_recovery_minutes/);
 }
 

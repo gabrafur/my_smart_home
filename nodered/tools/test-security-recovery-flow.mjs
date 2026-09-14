@@ -14,6 +14,7 @@ const aliasesByName = {
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
   light_reconcile: "Emitir deadlines reconstruídos",
+  light_vehicle_refresh: "Atualizar carro e aguardar motor OFF",
 };
 for (const [alias, name] of Object.entries(aliasesByName)) {
   const node = flows.find((item) => item.name === name);
@@ -33,7 +34,7 @@ const originalNow = Date.now;
 Date.now = () => NOW;
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 700, people_fast_refresh_radius_m: 2000, location_fresh_minutes: 15,
+  near_home_radius_m: 700, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -175,7 +176,7 @@ function vehicle_primaryInput({ state = "home", previous = "not_home", distance 
 }
 
 function arrival(source = "resident_primary", stage = "approach", eventAt = NOW) {
-  return { payload: { contract: "security.arrival.v1", kind: "arrival", source, arriving: [source], arrival_source_type: source === "vehicle_primary" ? "vehicle_primary" : "person", arrival_stage: stage, arrival_direction: "returning", external_cycle_confirmed: true, event_at: eventAt } };
+  return { payload: { contract: "security.arrival.v1", kind: "arrival", source, arriving: [source], arrival_source_type: source === "vehicle_primary" ? "vehicle_primary" : "person", arrival_stage: stage, arrival_previous_state: stage === "approach" ? "not_home" : "near_home", arrival_direction: "returning", external_cycle_confirmed: true, event_at: eventAt } };
 }
 
 function lifecycle(overrides = {}) {
@@ -184,7 +185,9 @@ function lifecycle(overrides = {}) {
 
 function readyFlow(extra = {}) {
   return memoryFlow({
-    people_context_v1: { ready: true, updated_at: NOW, resident_primary: { current_home: true, primary_home: true }, resident_secondary: { current_home: true, primary_home: true } },
+    people_context_v1: { ready: true, updated_at: NOW,
+      resident_primary: { ready: true, stale: false, state: "home", current_home: true, primary_home: true },
+      resident_secondary: { ready: true, stale: false, state: "home", current_home: true, primary_home: true } },
     vehicle_primary_context_v1: { ready: true, updated_at: NOW, home: true, in_use: true },
     sun_ready: true, sun_below_horizon: true, light_reconciled: true, security_light_ready: true,
     security_light_physical_observed_at: NOW,
@@ -236,10 +239,10 @@ scenario("06 restart durante cooldown de 5 minutos", () => {
   assert.equal(run("light_check_vehicle_primary_in_use", { payload: { vehicle_primary_in_use: true } }, flow), null);
 });
 
-scenario("07 restart durante carência de 90 segundos", () => {
-  const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ pending_off_at: NOW + 30_000, pending_off_source: "resident_primary" }) });
+scenario("07 restart durante espera de 90 segundos para atualizar o carro", () => {
+  const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW + 30_000, vehicle_refresh_source: "resident_primary" }) });
   const recovered = run("light_reconcile", { payload: { kind: "light_physical", state: "on" } }, flow)[0];
-  assert.equal(recovered.find((msg) => msg.payload.deadline_type === "pending_off").delay, 30_000);
+  assert.equal(recovered.find((msg) => msg.payload.deadline_type === "vehicle_refresh").delay, 30_000);
 });
 
 scenario("08 restart durante timeout de 15 minutos", () => {
@@ -343,15 +346,15 @@ scenario("22 restart durante retry do vehicle_primary", () => {
 });
 
 scenario("23 restart após início da condição antes dos 90 s", () => {
-  const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ pending_off_at: NOW + 45_000, pending_off_source: "resident_primary" }) });
+  const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW + 45_000, vehicle_refresh_source: "resident_primary" }) });
   const messages = run("light_reconcile", { payload: { kind: "light_physical", state: "on" } }, flow)[0];
-  assert.equal(messages.find((msg) => msg.payload.deadline_type === "pending_off").delay, 45_000);
+  assert.equal(messages.find((msg) => msg.payload.deadline_type === "vehicle_refresh").delay, 45_000);
 });
 
 scenario("24 restart após os 90 segundos expirarem", () => {
-  const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ pending_off_at: NOW - 1_000, pending_off_source: "resident_primary" }) });
+  const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW - 1_000, vehicle_refresh_source: "resident_primary" }) });
   const messages = run("light_reconcile", { payload: { kind: "light_physical", state: "on" } }, flow)[0];
-  assert.equal(messages.find((msg) => msg.payload.deadline_type === "pending_off").delay, 0);
+  assert.equal(messages.find((msg) => msg.payload.deadline_type === "vehicle_refresh").delay, 0);
 });
 
 scenario("25 restart após os 15 minutos expirarem", () => {
@@ -382,7 +385,10 @@ scenario("29 chegada recebida antes de readiness completo", () => {
   const [physicalAction, pendingArrival, recovery] = run(
     "light_prepare_arrival",
     arrival(),
-    memoryFlow(),
+    memoryFlow({ people_context_v1: {
+      ready: false,
+      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false },
+    } }),
   );
   assert.equal(physicalAction, null);
   assert.equal(pendingArrival.payload.pending_arrival_queued, true);
@@ -477,13 +483,14 @@ scenario("37 normalizador de pessoas não envia notificações laterais", () => 
   assert.equal(result[3], null);
 });
 
-scenario("38 condição de desligamento desaparece durante 90 s", () => {
+scenario("38 saída de home durante 90 s cancela somente o refresh", () => {
   const flow = readyFlow({
     people_context_v1: { ready: true, resident_primary: { current_home: false } },
-    security_light_lifecycle_v1: lifecycle({ pending_off_at: NOW - 1, pending_off_source: "resident_primary" }),
+    security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW - 1, vehicle_refresh_source: "resident_primary" }),
   });
-  assert.equal(run("light_turn_off_if_active", { payload: { deadline_type: "pending_off" } }, flow), null);
-  assert.equal(flow.get("security_light_lifecycle_v1").pending_off_at, null);
+  assert.equal(run("light_vehicle_refresh", { payload: { deadline_type: "vehicle_refresh" } }, flow), null);
+  assert.equal(flow.get("security_light_lifecycle_v1").vehicle_refresh_at, null);
+  assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, true);
 });
 
 scenario("39 timeout expirou enquanto Node-RED estava offline", () => {

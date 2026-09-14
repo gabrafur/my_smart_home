@@ -23,6 +23,21 @@ const physicalFresh = Number.isFinite(observedAt) && observedAt <= now + futureM
 const source = msg.payload?.source;
 const stage = msg.payload?.arrival_stage;
 const residentArrival = ["resident_primary", "resident_secondary"].includes(source);
+const resident = people[source];
+const previousState = msg.payload?.arrival_previous_state;
+const previousAway = typeof previousState === "string" &&
+    !["", "home", "near_home", "unknown", "unavailable"].includes(previousState);
+const recoveredAway = msg.payload?.illumination_only === true &&
+    ["unknown", "unavailable"].includes(previousState) &&
+    msg.payload?.external_cycle_confirmed === true;
+const residentApproachValid =
+    residentArrival &&
+    stage === "approach" &&
+    (previousAway || recoveredAway) &&
+    resident?.ready === true &&
+    resident?.stale !== true &&
+    resident?.state === "near_home" &&
+    resident?.current_home !== true;
 const bypassEnabled = get("security_light_engine_bypass_enabled", "persistent") === true;
 const bypassAutomatic = get("security_light_engine_bypass_automatic", "persistent") === true;
 const engineKnown = vehicle.engine_state_valid === true;
@@ -30,8 +45,7 @@ const communicationFailed = vehicle.engine_communication_failed === true || bypa
 const engineKnownOff = engineKnown && vehicle.engine_on === false && !communicationFailed;
 const bypassAllowed = bypassEnabled && communicationFailed;
 const trustedEngine = engineKnown && !communicationFailed;
-const vehicleLightingReady = trustedEngine && (residentArrival ||
-    (vehicle.ready === true && vehicle.lighting_ready === true));
+const vehicleLightingReady = trustedEngine && residentArrival;
 const vehicleDecisionReady = engineKnownOff || vehicleLightingReady || bypassAllowed;
 const sunReady = flow.get("sun_ready") === true;
 const eventAt = Number(msg.payload?.event_at ?? msg.payload?.updated_at ?? now);
@@ -40,8 +54,6 @@ const queuedAt = Number.isFinite(queuedCandidate) && queuedCandidate > 0 &&
     queuedCandidate <= now + futureMs ? queuedCandidate : now;
 const lastRecoveryAt = Number(get("security_light_last_recovery_request_at") ?? 0);
 const recoveryThrottleMs = Number(lightPolicy.recovery_request_throttle_seconds) * 1000;
-const finalVehicleConfirmationNeeded = residentArrival && stage === "home" &&
-    lifecycle.active_by_arrival === true && trustedEngine && vehicle.engine_on === true;
 msg._light_arrival = {
     test_mode: testMode,
     test_case: testCase,
@@ -60,6 +72,7 @@ msg._light_arrival = {
     physical_fresh: physicalFresh,
     light_reconciled: flow.get("light_reconciled") === true,
     resident_arrival: residentArrival,
+    resident_approach_valid: residentApproachValid,
     bypass_enabled: bypassEnabled,
     bypass_allowed: bypassAllowed,
     engine_communication_failed: communicationFailed,
@@ -73,7 +86,6 @@ msg._light_arrival = {
     recovery_needed: !vehicleLightingReady && !bypassAllowed,
     recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||
         now - lastRecoveryAt >= recoveryThrottleMs,
-    final_vehicle_confirmation_needed: finalVehicleConfirmationNeeded,
     arrival_recovery_ms: Number(locationPolicy.arrival_recovery_minutes) * 60000
 };
 return msg;

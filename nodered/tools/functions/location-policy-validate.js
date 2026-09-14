@@ -1,7 +1,6 @@
 const DEFAULTS = {
     near_home_radius_m: 700,
     home_radius_m: 100,
-    people_fast_refresh_radius_m: 2000,
     location_fresh_minutes: 15,
     source_report_fresh_minutes: 75,
     recency_tie_seconds: 60,
@@ -19,7 +18,6 @@ const DEFAULTS = {
 const LIMITS = {
     near_home_radius_m: [50, 1500],
     home_radius_m: [20, 500],
-    people_fast_refresh_radius_m: [100, 10000],
     location_fresh_minutes: [1, 120],
     source_report_fresh_minutes: [5, 1440],
     recency_tie_seconds: [0, 300],
@@ -59,4 +57,5 @@ msg.location_policy_candidate = {
     complete: true,
     updated_at: Date.now()
 };
+delete msg.location_policy_candidate.people_fast_refresh_radius_m;
 return [msg, null];

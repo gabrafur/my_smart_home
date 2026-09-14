@@ -1,5 +1,10 @@
 const data = msg._light_context;
 const pending = data.pending;
+if (!pending && data.engine_on_arrival) {
+    data.replay = data.engine_on_arrival;
+    return msg;
+}
+if (!pending) return msg;
 const replay = {
     ...pending.message,
     payload: {

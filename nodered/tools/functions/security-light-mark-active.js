@@ -103,9 +103,13 @@ lifecycle.force_off_at = now + BACKSTOP_MS;
 lifecycle.pending_off_at = null;
 lifecycle.pending_off_reason = null;
 lifecycle.pending_off_source = null;
+lifecycle.vehicle_refresh_at = null;
+lifecycle.vehicle_refresh_reason = null;
+lifecycle.vehicle_refresh_source = null;
 lifecycle.last_arrival_key = arrivalKey ?? null;
 lifecycle.last_arrival_at = now;
 lifecycle.updated_at = now;
+
 ctxSet("security_light_lifecycle_v1", lifecycle, PERSISTENT);
 ctxSet("security_light_pending_arrival_v1", null, PERSISTENT);
 ctxSet(

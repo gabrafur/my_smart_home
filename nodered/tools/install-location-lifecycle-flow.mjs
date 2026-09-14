@@ -14,8 +14,15 @@ let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 const source = (name) => fs.readFileSync(path.join(functionsDir, name), "utf8").trimEnd();
 const generated = new Set(flows.filter((node) =>
   node.id.startsWith("people_visual_") || node.id.startsWith("vehicle_visual_") ||
-  node.id === "people_location_lifecycle_config_group_v2"
+  node.id === "people_location_lifecycle_config_group_v2" ||
+  node.id === "people_location_fast_refresh_radius_v1"
 ).map((node) => node.id));
+for (const node of flows) {
+  const route = node.notification_hub_wire_route;
+  if (route && (generated.has(route.source) || generated.has(route.target))) {
+    generated.add(node.id);
+  }
+}
 flows = flows.filter((node) => !generated.has(node.id));
 for (const node of flows) {
   for (const field of ["nodes", "scope", "links"]) {
@@ -75,6 +82,7 @@ const inject = (id, g, name, topic, payload, x, y, destination) => grouped(g, {
 });
 
 required("402fd0cc609443b7").func = source("people-refresh-decide.js");
+required("people_location_publish_state_v1").func = source("people-location-publish.js");
 required("b35563e0f73e5b64").name =
   "3. Localização nativa + fallback dos iPhones (máx. 2/h)";
 
@@ -100,6 +108,8 @@ linkOut("people_visual_lifecycle_config_middle_out", config.id, "Validade → po
 linkOut("people_visual_lifecycle_config_right_out", config.id, "Recovery → política", "people_location_values_route_in_v1", 3290, 270);
 
 const policyIn = required("people_location_values_route_in_v1");
+policyIn.x = 900;
+policyIn.y = 300;
 policyIn.links = Array.from(new Set([...(policyIn.links ?? []),
   "people_visual_lifecycle_config_left_out",
   "people_visual_lifecycle_config_middle_out",
@@ -140,6 +150,7 @@ lifecycle.y = 419;
 lifecycle.w = 3400;
 lifecycle.h = 322;
 lifecycle.nodes = lifecycle.nodes.filter((id) => !generated.has(id));
+Object.assign(required("people_arrival_direction_note_v1"), { x: 2700, y: 700 });
 const input = required("people_location_to_normalizer_in_v1");
 input.x = 2120; input.y = 560; input.wires = [["people_visual_test_adapter"]];
 fn("people_visual_test_adapter", lifecycle.id, "Adaptar somente o estado sintético", "people-lifecycle-test-adapter.js", 1, 2360, 560, [["people_visual_normalize"]]);

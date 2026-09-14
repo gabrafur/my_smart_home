@@ -32,6 +32,7 @@ if (data.physical_signal) {
             if (state === "off" && lifecycle.active_by_arrival === true) {
                 Object.assign(lifecycle, { active_by_arrival: false, on_since: null, force_off_at: null,
                     pending_off_at: null, pending_off_reason: null, pending_off_source: null,
+                    vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null,
                     cooldown_until: now + Number(data.policy.post_off_cooldown_minutes) * 60000,
                     updated_at: now });
                 node.warn("iluminacao_seguranca: contexto ON corrigido porque o refletor físico está OFF");

@@ -25,15 +25,16 @@ const aliasesByName = {
   vehicle_primary_engine_off_event: "Motor desligado por 5 s",
   vehicle_primary_location_event: "Localização ou telemetria do vehicle_primary mudou",
   context_tick: "POLÍTICA: reavaliar a cada 30 s",
-  light_arrival_direction_gate: "Retorno externo está confirmado?",
+  light_arrival_direction_gate: "Morador atual veio de away e permanece em near_home?",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_mark_active: "Marcar refletor ativo por chegada",
-  light_evaluate_off: "Alguma condição de desligamento ocorreu?",
+  light_evaluate_off: "Desligar agora ou agendar atualização do carro?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
   light_reconcile: "Emitir deadlines reconstruídos",
   light_auto_off: "Aguardar backstop de 15 min",
   light_check_inactive: "Rotear disponibilidade do refletor",
-  light_off_grace: "Respeitar carência de 90 s",
+  light_off_grace: "Aguardar 90 s após HOME",
+  light_vehicle_refresh: "Atualizar carro e aguardar motor OFF",
   light_sun_event: "Luminosidade mudou",
   light_timeout: "Solicitar desligamento por timeout",
 };
@@ -57,7 +58,7 @@ function wireNames(alias, output = 0) {
 const passed = [];
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 700, people_fast_refresh_radius_m: 2000, location_fresh_minutes: 15,
+  near_home_radius_m: 700, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -191,8 +192,10 @@ const geoEnv = environment({ HOME_LAT: "0", HOME_LON: "0", GATE_LAT: "0", GATE_L
 function activeLightFlow(extra = {}) {
   const now = Date.now();
   return memoryFlow({
-    people_context_v1: { ready: true, updated_at: now, resident_primary: { current_home: true }, resident_secondary: { current_home: true } },
-    vehicle_primary_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, updated_at: now, home: true, in_use: true },
+    people_context_v1: { ready: true, updated_at: now,
+      resident_primary: { ready: true, stale: false, state: "home", current_home: true },
+      resident_secondary: { ready: true, stale: false, state: "home", current_home: true } },
+    vehicle_primary_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, unlocked: false, updated_at: now, home: true, in_use: true },
     sun_ready: true,
     security_light_physical_state: "on",
     security_light_lifecycle_v1: {
@@ -266,6 +269,7 @@ function arrival(source = "resident_primary", stage = "approach") {
   return { payload: {
     contract: "security.arrival.v1", kind: "arrival", source, arriving: [source],
     arrival_source_type: source === "vehicle_primary" ? "vehicle_primary" : "person", arrival_stage: stage,
+    arrival_previous_state: stage === "approach" ? "not_home" : "near_home",
     arrival_direction: "returning", external_cycle_confirmed: true,
   } };
 }
@@ -662,18 +666,49 @@ scenario("16 timeout de 15 minutos", () => {
   assert.equal(byId.get("light_timeout").rules.some((rule) => rule.to === "timeout_15min"), true);
 });
 
-scenario("17 desligamento respeita carencia de 90 segundos", () => {
+scenario("17 HOME agenda atualização do carro após 90 segundos", () => {
   const flow = activeLightFlow();
+  const lifecycle = flow.get("security_light_lifecycle_v1");
+  lifecycle.on_since = Date.now() - 5 * 60_000;
+  flow.set("security_light_lifecycle_v1", lifecycle);
   const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source: "resident_primary" } }, flow, geoEnv);
   assert(decision[1].delay > 89_000 && decision[1].delay <= 90_000);
+  assert.equal(decision[1].payload.deadline_type, "vehicle_refresh");
   assert.equal(byId.get("light_off_grace").pauseType, "delayv");
+  assert.equal(wireNames("light_off_grace")[0], "Atualizar carro e aguardar motor OFF");
 });
 
-scenario("18 cinco condicoes independentes de desligamento", () => {
-  for (const source of ["resident_primary", "resident_secondary", "vehicle_primary"]) {
+scenario("18 HOME agenda refresh e motor OFF continua desligando imediatamente", () => {
+  for (const source of ["resident_primary", "resident_secondary"]) {
     const decision = run("light_evaluate_off", { payload: { active: true, confirmed_home_transition: true, source } }, activeLightFlow(), geoEnv);
-    assert.equal(decision[1].payload.off_reason, `chegada_confirmada_${source}`);
+    assert.equal(decision[1].payload.refresh_reason, `home_confirmation_${source}`);
   }
+  assert.equal(run("light_evaluate_off", {
+    payload: { active: true, confirmed_home_transition: true, source: "vehicle_primary" },
+  }, activeLightFlow(), geoEnv), null,
+  "posição home do carro não pode iniciar a confirmação extraordinária");
+  const unavailableVehicleFlow = activeLightFlow({
+    vehicle_primary_context_v1: { ready: false, engine_state_valid: false },
+  });
+  const bypassHome = run("light_evaluate_off", {
+    payload: { active: true, confirmed_home_transition: true, source: "resident_primary" },
+  }, unavailableVehicleFlow, geoEnv);
+  assert(bypassHome[1], "HOME do morador deve agendar refresh mesmo com integração fora do ar");
+  const otherResidentStaleFlow = activeLightFlow({ people_context_v1: {
+    ready: false,
+    resident_primary: { ready: true, stale: false, state: "home", current_home: true },
+    resident_secondary: { ready: false, stale: true, state: "unavailable", current_home: false },
+  } });
+  assert(run("light_evaluate_off", {
+    payload: { active: true, confirmed_home_transition: true, source: "resident_primary" },
+  }, otherResidentStaleFlow, geoEnv)[1],
+  "tracker stale do outro morador não pode impedir a confirmação de HOME da origem");
+  const immediateFlow = activeLightFlow({ vehicle_primary_context_v1: {
+    ready: true, lighting_ready: true, engine_on: false, engine_state_valid: true,
+    unlocked: true, updated_at: Date.now(), home: true, in_use: false,
+  } });
+  const immediate = run("light_evaluate_off", { payload: { event: "turn_off", vehicle_primary_ready: true, vehicle_primary_engine_on: false, vehicle_primary_unlocked: true } }, immediateFlow, geoEnv);
+  assert.equal(immediate[0].payload.off_reason, "vehicle_primary_desligado_e_destravado");
   assert.equal(byId.get("light_auto_off").timeout, "15");
 });
 
@@ -1006,6 +1041,107 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
   assert(run("light_check_vehicle_primary_in_use", preparedOn, flow, geoEnv));
 });
 
+scenario("33a motor ON reavalia morador armado que permanece em near_home", () => {
+  const now = Date.now();
+  const people = {
+    ready: true,
+    updated_at: now,
+    arrival_armed: { resident_primary: false, resident_secondary: true },
+    resident_primary: {
+      ready: true, stale: false, state: "home", current_home: true,
+      distance_m: 20,
+    },
+    resident_secondary: {
+      ready: true, stale: false, state: "near_home", current_home: false,
+      distance_m: 650,
+    },
+  };
+  const vehicleOff = {
+    ready: true, lighting_ready: true, in_use: false,
+    engine_on: false, engine_state_valid: true, updated_at: now,
+  };
+  const vehicleOn = {
+    ...vehicleOff,
+    in_use: true,
+    engine_on: true,
+    updated_at: now + 1,
+  };
+  const flow = readyLightFlow({
+    people_context_v1: people,
+    vehicle_primary_context_v1: vehicleOff,
+  });
+  const engineOn = run("light_merge_context", {
+    payload: {
+      kind: "vehicle_primary_context",
+      event: "turn_on",
+      updated_at: now + 1,
+      context: vehicleOn,
+    },
+  }, flow, geoEnv);
+  assert(engineOn[2], "motor ON deve gerar reavaliação imediata da chegada armada");
+  assert.equal(engineOn[2].payload.source, "resident_secondary");
+  assert.equal(engineOn[2].payload.arrival_stage, "approach");
+  assert.equal(engineOn[2].payload.arrival_replayed_after_engine_authorization, true);
+  assert.equal(engineOn[2].payload.arrival_replayed_after_engine_on, true);
+  const prepared = run("light_prepare_arrival", engineOn[2], flow, geoEnv)[0];
+  assert(prepared, "reavaliação deve atravessar a decisão normal de chegada");
+  assert(run("light_check_vehicle_primary_in_use", prepared, flow, geoEnv));
+
+  const unarmed = readyLightFlow({
+    people_context_v1: {
+      ...people,
+      arrival_armed: { resident_primary: false, resident_secondary: false },
+    },
+    vehicle_primary_context_v1: vehicleOff,
+  });
+  assert.equal(run("light_merge_context", {
+    payload: {
+      kind: "vehicle_primary_context",
+      event: "turn_on",
+      updated_at: now + 1,
+      context: vehicleOn,
+    },
+  }, unarmed, geoEnv)[2], null, "near_home sem ciclo externo armado não pode acender");
+
+  const repeated = readyLightFlow({
+    people_context_v1: people,
+    vehicle_primary_context_v1: vehicleOff,
+  });
+  assert.equal(run("light_merge_context", {
+    payload: {
+      kind: "vehicle_primary_context",
+      event: "context_update",
+      updated_at: now + 1,
+      context: vehicleOn,
+    },
+  }, repeated, geoEnv)[2], null, "snapshot com motor já ON não pode recriar chegada");
+
+  const bypassFlow = readyLightFlow({
+    people_context_v1: people,
+    vehicle_primary_context_v1: {
+      ...vehicleOff,
+      ready: false,
+      lighting_ready: false,
+      engine_communication_failed: true,
+    },
+    security_light_engine_bypass_enabled: true,
+  });
+  const bypassReplay = run("light_merge_context", {
+    payload: {
+      kind: "engine_bypass_context",
+      enabled: true,
+      communication_failed: true,
+      updated_at: now + 2,
+    },
+  }, bypassFlow, geoEnv);
+  assert(bypassReplay[2],
+    "bypass que se torna válido deve reavaliar o morador armado mesmo sem intenção pendente");
+  assert.equal(bypassReplay[2].payload.arrival_replayed_after_engine_bypass, true);
+  const bypassPrepared = run("light_prepare_arrival", bypassReplay[2], bypassFlow, geoEnv)[0];
+  assert.equal(bypassPrepared.payload.engine_bypass_allowed, true);
+  assert(run("light_check_vehicle_primary_in_use", bypassPrepared, bypassFlow, geoEnv));
+});
+
 scenario("34 pessoa near_home aciona com motor ON sem o carro estar near_home", () => {
   for (const source of ["resident_primary", "resident_secondary"]) {
     const flow = readyLightFlow({
@@ -1055,7 +1191,7 @@ scenario("34a posição antiga do carro não bloqueia chegada de morador", () =>
     });
     const decision = run(
       "light_prepare_arrival",
-      arrival(source, "home"),
+      arrival(source, "approach"),
       flow,
       geoEnv,
     );
@@ -1067,12 +1203,13 @@ scenario("34a posição antiga do carro não bloqueia chegada de morador", () =>
 
     const vehicleDecision = run(
       "light_prepare_arrival",
-      arrival("vehicle_primary", "home"),
+      arrival("vehicle_primary", "approach"),
       readyLightFlow({ vehicle_primary_context_v1: staleVehicle }),
       geoEnv,
     );
-    assert.equal(vehicleDecision[0], null, "chegada do carro exige posição válida");
-    assert(vehicleDecision[2], "chegada do carro stale deve solicitar recovery");
+    assert.equal(vehicleDecision[0], null, "chegada do carro não pode acender o refletor");
+    assert.equal(vehicleDecision[2], null, "posição do carro não deve solicitar recovery para acender");
+    assert.equal(vehicleDecision[1].payload.kind, "arrival_blocked");
   }
 });
 
@@ -1093,7 +1230,7 @@ scenario("34b OFF conhecido bloqueia morador mesmo com posição antiga", () => 
   });
   const decision = run(
     "light_prepare_arrival",
-    arrival("resident_primary", "home"),
+    arrival("resident_primary", "approach"),
     flow,
     geoEnv,
   );
@@ -1124,7 +1261,7 @@ scenario("34c falha de comunicação invalida OFF antigo e libera fallback", () 
   });
   const decision = run(
     "light_prepare_arrival",
-    arrival("resident_primary", "home"),
+    arrival("resident_primary", "approach"),
     flow,
     geoEnv,
   );
@@ -1183,6 +1320,8 @@ scenario("35 near_home exige ciclo externo e recovery fica só na iluminação",
       assert.equal(recoveredAwayCycle[2].payload.illumination_only, true);
       assert.equal(recoveredAwayCycle[2].payload.arrival_previous_state, previous);
       assert.equal(recoveredAwayCycle[2].payload.external_cycle_confirmed, true);
+      assert(run("light_prepare_arrival", recoveredAwayCycle[2], readyLightFlow(), geoEnv)[0],
+        `${previous} → near_home armado e atual deve atravessar o gate final`);
     }
 
     const armedFlow = memoryFlow({
@@ -1214,6 +1353,9 @@ scenario("35 near_home exige ciclo externo e recovery fica só na iluminação",
       geoEnv,
     );
     assert(namedExternal[1], "zona externa canônica deve equivaler a not_home");
+    assert.equal(namedExternal[1].payload.arrival_stage, "approach");
+    assert(run("light_prepare_arrival", namedExternal[1], readyLightFlow(), geoEnv)[0],
+      "zona externa nomeada deve atravessar o gate final como away");
   }
 
   assert.deepEqual(
@@ -1228,7 +1370,10 @@ scenario("35 near_home exige ciclo externo e recovery fica só na iluminação",
 
 scenario("35a gate final rejeita chegada sem direção confirmada", () => {
   assert.equal(byId.get("light_arrival_direction_gate").type, "switch");
-  assert.equal(byId.get("light_arrival_direction_gate").property, "_light_arrival.direction_valid");
+  assert.equal(
+    byId.get("light_arrival_direction_gate").property,
+    "_light_arrival.direction_valid and _light_arrival.resident_approach_valid",
+  );
   const blockedFlow = memoryFlow();
   let blockedMsg = runDirect("security_visual_arrival_facts",
     { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "home" } },
@@ -1240,10 +1385,22 @@ scenario("35a gate final rejeita chegada sem direção confirmada", () => {
   assert.equal(blocked[1].payload.kind, "arrival_blocked");
   assert.equal(blocked[1].payload.dispatched, false);
 
-  const accepted = runDirect("security_visual_arrival_facts", arrival("resident_primary", "home"),
-    memoryFlow(), geoEnv);
+  const accepted = runDirect("security_visual_arrival_facts", arrival("resident_primary", "approach"),
+    readyLightFlow(), geoEnv);
   assert.equal(accepted._light_arrival.direction_valid, true,
     "retorno com ciclo externo confirmado deve prosseguir");
+  assert.equal(accepted._light_arrival.resident_approach_valid, true,
+    "somente morador atual em near_home vindo de away deve prosseguir");
+
+  const homeBlocked = runDirect("security_visual_arrival_facts",
+    arrival("resident_primary", "home"), readyLightFlow(), geoEnv);
+  assert.equal(homeBlocked._light_arrival.resident_approach_valid, false,
+    "entrada em home não pode mais iniciar o acendimento");
+
+  const vehicleBlocked = runDirect("security_visual_arrival_facts",
+    arrival("vehicle_primary", "approach"), readyLightFlow(), geoEnv);
+  assert.equal(vehicleBlocked._light_arrival.resident_approach_valid, false,
+    "localização do carro não pode iniciar o acendimento");
   assert.deepEqual(byId.get("cf9bc321e0ec89f9").wires,
     [["security_visual_arrival_route_out"]]);
   assert(
@@ -1384,52 +1541,35 @@ scenario("38 chegada pendente persiste somente contrato reexecutável", () => {
   assert.equal(msg._light_arrival.diagnostic.payload.diagnostic, "arrival_trigger_received");
 });
 
-scenario("39 chegada em casa força confirmação visual do carro", () => {
-  assert.equal(
-    byId.get("security_visual_arrival_final_confirmation_needed")?.type,
-    "switch",
-  );
-  assert.equal(
-    byId.get("security_visual_arrival_final_confirmation_throttle")?.type,
-    "switch",
-  );
-  const result = run(
-    "light_prepare_arrival",
-    arrival("resident_primary", "home"),
-    activeLightFlow(),
-    geoEnv,
-  );
-  assert(result[0], "a decisão principal deve continuar");
-  assert.equal(result[2].payload.reason, "resident_arrival_confirmation");
-  assert.equal(result[2].payload.resident_arrival_force, true);
-  assert.equal(result[2].payload.require_lighting_ready, false);
+scenario("39 HOME não inicia acendimento; near_home não arma o refresh de 90 s", () => {
+  const home = run("light_prepare_arrival",
+    arrival("resident_primary", "home"), readyLightFlow(), geoEnv);
+  assert.equal(home[0], null, "a chegada HOME não deve iniciar o acendimento");
+  assert.equal(home[1].payload.kind, "arrival_blocked");
+  const approach = run("light_mark_active", {
+    payload: { ...arrival("resident_primary", "approach").payload,
+      arrival_key: "resident_primary:approach:real", vehicle_primary_gate: "known_engine_on" },
+  }, readyLightFlow(), geoEnv);
+  assert.equal(approach.length, 2);
+  assert.equal(approach[0]?.payload.deadline_type, "backstop");
 });
 
-scenario("40 confirmação final respeita throttle e estado do motor", () => {
-  const throttled = activeLightFlow({
-    security_light_last_recovery_request_at: Date.now(),
-  });
-  assert.equal(
-    run("light_prepare_arrival", arrival("resident_primary", "home"), throttled, geoEnv)[2],
-    null,
-  );
-  const engineOff = activeLightFlow({
-    vehicle_primary_context_v1: {
-      ready: true,
-      lighting_ready: true,
-      engine_on: false,
-      engine_state_valid: true,
-      updated_at: Date.now(),
-      home: true,
-      in_use: false,
-    },
-  });
-  assert.equal(
-    run("light_prepare_arrival", arrival("resident_primary", "home"), engineOff, geoEnv)[2],
-    null,
-  );
+scenario("40 refresh vencido força consulta mesmo com intervalo normal de 30 min", () => {
+  const flow = activeLightFlow();
+  const lifecycle = flow.get("security_light_lifecycle_v1");
+  lifecycle.vehicle_refresh_at = Date.now() - 1;
+  lifecycle.vehicle_refresh_source = "resident_primary";
+  lifecycle.vehicle_refresh_reason = "home_confirmation_resident_primary";
+  flow.set("security_light_lifecycle_v1", lifecycle);
+  const refresh = run("light_vehicle_refresh", {
+    payload: { deadline_type: "vehicle_refresh" },
+  }, flow, geoEnv);
+  assert.equal(refresh.payload.reason, "resident_arrival_confirmation");
+  assert.equal(refresh.payload.resident_arrival_force, true);
+  assert.equal(refresh.payload.require_lighting_ready, true);
+  assert.equal(flow.get("security_light_lifecycle_v1").vehicle_refresh_at, null);
 });
 
-assert.equal(passed.length, 55);
+assert.equal(passed.length, 56);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

@@ -2842,105 +2842,25 @@
     "ea0a6aa0d24ff863": {
       "label": "localizacao_pessoas",
       "compact_groups": true,
+      "apply_nodes": false,
       "managed_node_overrides": [
         "555422f47d3a742b"
       ],
       "group_positions": {
         "b35563e0f73e5b64": {
           "x": 64,
-          "y": 769
+          "y": 750
         },
         "6e71dbc937fe5669": {
           "x": 74,
-          "y": 1080
-        },
-        "people_location_lifecycle_config_group_v2": {
-          "x": 954,
-          "y": 1085
+          "y": 1100
         },
         "global_observer_coverage__ea0a6aa0d24ff863__group": {
           "x": 2400,
           "y": 1080
         }
       },
-      "node_positions": {
-        "people_visual_policy_validate": {
-          "x": 1650,
-          "y": 220
-        },
-        "people_location_policy_apply_v1": {
-          "x": 1950,
-          "y": 140
-        },
-        "people_location_policy_out_v1": {
-          "x": 2200,
-          "y": 140
-        },
-        "people_visual_policy_reject": {
-          "x": 1950,
-          "y": 300
-        },
-        "people_visual_recovery_gate": {
-          "x": 2895,
-          "y": 1660
-        },
-        "people_visual_recovery_build": {
-          "x": 3195,
-          "y": 1630
-        },
-        "people_visual_recovery_dedupe": {
-          "x": 3495,
-          "y": 1630
-        },
-        "people_visual_recovery_out": {
-          "x": 3775,
-          "y": 1620
-        },
-        "people_visual_blocked_gate": {
-          "x": 3195,
-          "y": 1730
-        },
-        "people_visual_blocked_build": {
-          "x": 3495,
-          "y": 1730
-        },
-        "people_visual_blocked_out": {
-          "x": 3775,
-          "y": 1730
-        },
-        "people_visual_unchanged_out": {
-          "x": 3345,
-          "y": 1800
-        },
-        "people_visual_finalize_in": {
-          "x": 3895,
-          "y": 1670
-        },
-        "554cb653b2fa4504": {
-          "x": 4145,
-          "y": 1670
-        },
-        "487984b3aaa29663": {
-          "x": 4455,
-          "y": 1560
-        },
-        "397c6032b3dad342": {
-          "x": 4455,
-          "y": 1600
-        },
-        "people_location_notification_out_v1": {
-          "x": 4455,
-          "y": 1640
-        },
-        "people_lighting_tracker_recovery_arrival_out": {
-          "x": 4455,
-          "y": 1680
-        },
-        "people_arrival_departure_blocked_v1": {
-          "x": 4455,
-          "y": 1740
-        }
-      },
+      "node_positions": {},
       "nodes": {
         "98945604e99f7604": {
           "x": 64,
@@ -2977,12 +2897,6 @@
           "y": 419,
           "w": 1442,
           "h": 322
-        },
-        "people_location_lifecycle_config_group_v2": {
-          "x": 954,
-          "y": 1039,
-          "w": 1147,
-          "h": 252
         },
         "global_observer_coverage__ea0a6aa0d24ff863__group": {
           "x": 964,
@@ -3141,10 +3055,6 @@
         "people_location_home_radius_v1": {
           "x": 250,
           "y": 200
-        },
-        "people_location_fast_refresh_radius_v1": {
-          "x": 250,
-          "y": 240
         },
         "people_location_fresh_minutes_v1": {
           "x": 590,
@@ -4696,27 +4606,27 @@
           "y": 410
         },
         "security_visual_replay_ready": {
-          "x": 1080,
+          "x": 1380,
           "y": 1863
         },
         "security_visual_replay_build": {
-          "x": 1280,
+          "x": 1590,
           "y": 1803
         },
         "48a5f40d806f6950": {
-          "x": 1570,
+          "x": 1880,
           "y": 1863
         },
         "77f539388438547c": {
-          "x": 1870,
+          "x": 2180,
           "y": 1803
         },
         "68a67feb7cc57957": {
-          "x": 1870,
+          "x": 2180,
           "y": 1863
         },
         "light_arrival_replay_route_out_v1": {
-          "x": 1870,
+          "x": 2180,
           "y": 1923
         },
         "aaeec8223d98ab0b": {
@@ -4914,7 +4824,7 @@
           "y": 380
         },
         "48a5f40d806f6950": {
-          "x": 1570,
+          "x": 1880,
           "y": 1863
         },
         "62f77a1ad440639d": {
@@ -5026,7 +4936,7 @@
           "y": 970
         },
         "68a67feb7cc57957": {
-          "x": 1870,
+          "x": 2180,
           "y": 1863
         },
         "cd40f5f8e40b07af": {
@@ -5066,7 +4976,7 @@
           "y": 830
         },
         "77f539388438547c": {
-          "x": 1870,
+          "x": 2180,
           "y": 1803
         },
         "light_full_dry_run_terminal_v1": {
@@ -5146,7 +5056,7 @@
           "y": 820
         },
         "light_arrival_replay_route_out_v1": {
-          "x": 1870,
+          "x": 2180,
           "y": 1923
         },
         "light_arrival_replay_gate_in_v1": {
@@ -5306,11 +5216,11 @@
           "y": 1863
         },
         "security_visual_replay_ready": {
-          "x": 1080,
+          "x": 1380,
           "y": 1863
         },
         "security_visual_replay_build": {
-          "x": 1280,
+          "x": 1590,
           "y": 1803
         },
         "security_visual_arrival_facts": {
@@ -6476,8 +6386,8 @@
           "y": 6137
         },
         "daily_update_dependency_summary": {
-          "x": 1590,
-          "y": 6340
+          "x": 1740,
+          "y": 6250
         },
         "daily_update_dependency_summary_test_out": {
           "x": 1830,
@@ -8207,7 +8117,7 @@
         },
         "git_backup_test_group": {
           "x": 92,
-          "y": 516
+          "y": 576
         },
         "git_backup_effect_group": {
           "x": 1657,
@@ -8251,9 +8161,13 @@
           "x": 1911,
           "y": 357
         },
+        "git_backup_deferred_gate": {
+          "x": 1548,
+          "y": 370
+        },
         "git_backup_invalid_gate": {
-          "x": 1481,
-          "y": 397
+          "x": 1520,
+          "y": 500
         },
         "git_backup_invalid_result": {
           "x": 1761,
@@ -8263,9 +8177,21 @@
           "x": 2251,
           "y": 930
         },
+        "git_backup_test_success": {
+          "x": 268,
+          "y": 800
+        },
+        "git_backup_test_failure": {
+          "x": 268,
+          "y": 860
+        },
+        "git_backup_test_deferred": {
+          "x": 268,
+          "y": 920
+        },
         "git_backup_test_invalid": {
           "x": 268,
-          "y": 937
+          "y": 980
         }
       },
       "nodes": {

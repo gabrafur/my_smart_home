@@ -32,31 +32,12 @@ if (type === "backstop") {
     const physicalFresh = Number.isFinite(physicalObservedAt) &&
         physicalObservedAt <= now + FUTURE_TOLERANCE_MS &&
         now - physicalObservedAt <= PHYSICAL_FRESH_MS;
-    const peopleContext = flow.get(contextKey("people_context_v1")) ?? {};
     const vehicleContext = flow.get(contextKey("vehicle_primary_context_v1")) ?? {};
-    const ready = peopleContext.ready === true && vehicleContext.ready === true &&
-        flow.get("sun_ready") === true && flow.get("light_reconciled") === true &&
-        physicalFresh;
+    const ready = flow.get("light_reconciled") === true && physicalFresh &&
+        type === "immediate" && vehicleContext.ready === true &&
+        vehicleContext.engine_state_valid === true &&
+        vehicleContext.engine_on === false && vehicleContext.unlocked === true;
     if (!ready || physical !== "on") return null;
-}
-
-if (type === "pending_off") {
-    if (now < Number(lifecycle.pending_off_at ?? Infinity)) return null;
-    const source = lifecycle.pending_off_source;
-    const people = flow.get(contextKey("people_context_v1")) ?? {};
-    const vehicle = flow.get(contextKey("vehicle_primary_context_v1")) ?? {};
-    const stillHome = source === "vehicle_primary"
-        ? vehicle.ready === true && vehicle.home === true
-        : people.ready === true && people[source]?.current_home === true;
-    if (!stillHome) {
-        lifecycle.pending_off_at = null;
-        lifecycle.pending_off_reason = null;
-        lifecycle.pending_off_source = null;
-        lifecycle.updated_at = now;
-        flow.set(key, lifecycle, "persistent");
-        node.warn("iluminacao_seguranca: desligamento pendente cancelado após revalidação");
-        return null;
-    }
 }
 
 lifecycle.active_by_arrival = false;
@@ -65,6 +46,9 @@ lifecycle.force_off_at = null;
 lifecycle.pending_off_at = null;
 lifecycle.pending_off_reason = null;
 lifecycle.pending_off_source = null;
+lifecycle.vehicle_refresh_at = null;
+lifecycle.vehicle_refresh_reason = null;
+lifecycle.vehicle_refresh_source = null;
 lifecycle.cooldown_until = now + Number(LIGHT_POLICY.post_off_cooldown_minutes) * 60000;
 lifecycle.updated_at = now;
 flow.set(key, lifecycle, "persistent");

@@ -200,7 +200,6 @@ const PERSISTENT = "persistent";
 const limits = {
     near_home_radius_m: { min: 50, max: 1500, integer: true },
     home_radius_m: { min: 20, max: 500, integer: true },
-    people_fast_refresh_radius_m: { min: 100, max: 10000, integer: true },
     location_fresh_minutes: { min: 1, max: 120, integer: false },
     source_report_fresh_minutes: { min: 5, max: 1440, integer: false },
     recency_tie_seconds: { min: 0, max: 300, integer: false },
@@ -235,6 +234,7 @@ const policy = previous?.version === 1
 policy[key] = value;
 delete policy.arrival_distance_m;
 delete policy.arm_distance_m;
+delete policy.people_fast_refresh_radius_m;
 policy.updated_at = Date.now();
 const allValuesPresent = Object.keys(limits).every(
     (field) => Number.isFinite(Number(policy[field]))
@@ -242,12 +242,11 @@ const allValuesPresent = Object.keys(limits).every(
 if (
     allValuesPresent &&
     (
-        policy.near_home_radius_m <= policy.home_radius_m ||
-        policy.people_fast_refresh_radius_m < policy.near_home_radius_m
+        policy.near_home_radius_m <= policy.home_radius_m
     )
 ) {
     node.error(
-        "Raios inválidos: home < near_home <= atualização acelerada",
+        "Raios inválidos: home < near_home",
         msg
     );
     return null;
@@ -260,8 +259,7 @@ node.status({
     shape: policy.complete ? "dot" : "ring",
     text: policy.complete
         ? "home " + policy.home_radius_m + " m | near_home " +
-          policy.near_home_radius_m + " m | refresh ≤ " +
-          policy.people_fast_refresh_radius_m + " m"
+          policy.near_home_radius_m + " m"
         : "aguardando todos os valores"
 });
 
@@ -798,6 +796,8 @@ for (const role of ["resident_primary", "resident_secondary"]) {
     const decision = msg._canonical_locations?.[role];
     const selected = decision?.selected;
     if (!selected) continue;
+    const current = selected.fresh === true && selected.state_valid === true;
+    const publishedState = current ? selected.state : "unavailable";
     const locationSources = (decision.candidates ?? []).map((candidate) => ({
         name: candidate.label,
         last_updated: candidate.reported_at === null
@@ -812,7 +812,7 @@ for (const role of ["resident_primary", "resident_secondary"]) {
         gps_accuracy: candidate.accuracy
     }));
     const payload = {
-        state: selected.state,
+        state: publishedState,
         raw_location_state: selected.raw_state ?? selected.state,
         selected_location_source: selected.label,
         location_sources: locationSources,
@@ -828,13 +828,16 @@ for (const role of ["resident_primary", "resident_secondary"]) {
             : new Date(selected.reported_at).toISOString(),
         home_radius_m: Number(policy.home_radius_m),
         near_home_radius_m: Number(policy.near_home_radius_m),
-        people_fast_refresh_radius_m:
-            Number(policy.people_fast_refresh_radius_m),
         location_fresh_minutes: Number(policy.location_fresh_minutes),
         source_report_fresh_minutes:
-            Number(policy.source_report_fresh_minutes)
+            Number(policy.source_report_fresh_minutes),
+        location_fresh: current,
+        latitude: null,
+        longitude: null,
+        gps_accuracy: null
     };
     if (
+        current &&
         selected.reliable_coordinates === true &&
         Number.isFinite(selected.latitude) &&
         Number.isFinite(selected.longitude)
@@ -849,7 +852,7 @@ for (const role of ["resident_primary", "resident_secondary"]) {
     const baseTopic = "smart_home/location/" + role;
     outputs.push({
         topic: baseTopic + "/state",
-        payload: String(selected.state ?? "unknown"),
+        payload: publishedState,
         qos: "1",
         retain: true
     });
@@ -980,9 +983,7 @@ const trackerPayload = {
     location_fresh: location.ready === true && location.stale !== true,
     movement_threshold_m: Number(vehicleContext.movement_threshold_m),
     home_radius_m: Number(vehicleContext.home_radius_m),
-    near_home_radius_m: Number(vehicleContext.near_home_radius_m),
-    people_fast_refresh_radius_m:
-        Number(vehicleContext.people_fast_refresh_radius_m)
+    near_home_radius_m: Number(vehicleContext.near_home_radius_m)
 };
 if (
     (location.ready === true || fallbackReady) &&
@@ -1030,7 +1031,6 @@ const policyNodes = [
   "people_location_policy_help_v1",
   "people_location_near_home_radius_v1",
   "people_location_home_radius_v1",
-  "people_location_fast_refresh_radius_v1",
   "people_location_fresh_minutes_v1",
   "people_location_source_report_minutes_v1",
   "people_location_recency_tie_seconds_v1",
@@ -1060,7 +1060,6 @@ flows.push(
   },
   inject("people_location_near_home_radius_v1", policyGroup, "Raio near_home (m)", "near_home_radius_m", 700, 250, 160),
   inject("people_location_home_radius_v1", policyGroup, "Raio home (m)", "home_radius_m", 100, 250, 200),
-  inject("people_location_fast_refresh_radius_v1", policyGroup, "Raio refresh rápido (m)", "people_fast_refresh_radius_m", 2000, 250, 240),
   inject("people_location_fresh_minutes_v1", policyGroup, "Posição atual — 15 min", "location_fresh_minutes", 15, 550, 160),
   inject("people_location_source_report_minutes_v1", policyGroup, "Fonte ativa — 75 min", "source_report_fresh_minutes", 75, 550, 200),
   inject("people_location_vehicle_fresh_minutes_v1", policyGroup, "Posição do carro — 30 min", "vehicle_location_fresh_minutes", 30, 550, 240),
@@ -1140,7 +1139,6 @@ flows.push(
 for (const id of [
   "people_location_near_home_radius_v1",
   "people_location_home_radius_v1",
-  "people_location_fast_refresh_radius_v1",
 ]) {
   flows.find((node) => node.id === id).wires = [[
     "people_location_values_route_out_v1",
@@ -1403,7 +1401,7 @@ if (
 ) {
   throw new Error("Normalizador ainda contém decisão duplicada de tracker");
 }
-if (!peopleNormalizer.func.includes("people_fast_refresh_radius_m:")) {
+if (!peopleNormalizer.func.includes("near_home_radius_m:")) {
   peopleNormalizer.func = replaceRequired(
     peopleNormalizer.func,
     `const peopleContext = {
@@ -1413,12 +1411,14 @@ if (!peopleNormalizer.func.includes("people_fast_refresh_radius_m:")) {
     resident_primary,
     resident_secondary,
     home_radius_m: HOME_RADIUS_M,
-    near_home_radius_m: NEAR_HOME_RADIUS_M,
-    people_fast_refresh_radius_m:
-        Number(LOCATION_POLICY.people_fast_refresh_radius_m),`,
+    near_home_radius_m: NEAR_HOME_RADIUS_M,`,
     "raios canônicos no contexto das pessoas",
   );
 }
+peopleNormalizer.func = peopleNormalizer.func.replace(
+  /\n    people_fast_refresh_radius_m:\s*\n?\s*Number\(LOCATION_POLICY\.people_fast_refresh_radius_m\),?/,
+  "",
+);
 
 const peopleArrivalCycleV2 = String.raw`/* ================================
  * ARMAMENTO DO CICLO EXTERNO
@@ -1869,12 +1869,14 @@ if (!vehicleNormalizer.func.includes("near_home_radius_m: NEAR_HOME_RADIUS_M")) 
     "    movement_threshold_m: MOVEMENT_THRESHOLD_M,",
     `    movement_threshold_m: MOVEMENT_THRESHOLD_M,
     home_radius_m: HOME_RADIUS_M,
-    near_home_radius_m: NEAR_HOME_RADIUS_M,
-    people_fast_refresh_radius_m:
-        Number(LOCATION_POLICY.people_fast_refresh_radius_m),`,
+    near_home_radius_m: NEAR_HOME_RADIUS_M,`,
     "raios canônicos no contexto do veículo",
   );
 }
+vehicleNormalizer.func = vehicleNormalizer.func.replace(
+  /\n    people_fast_refresh_radius_m:\s*\n?\s*Number\(LOCATION_POLICY\.people_fast_refresh_radius_m\),?/,
+  "",
+);
 vehicleNormalizer.func = vehicleNormalizer.func.replace(
   "home: vehicle_primary.ready ? isNearHome(vehicle_primary) : null,",
   `home: vehicle_primary.ready ? isArmingHome(vehicle_primary) : null,
@@ -2137,33 +2139,10 @@ flows.push(
 );
 
 const peopleRefreshDecider = requiredByName("Atualizar iPhones agora?");
-if (!peopleRefreshDecider.func.includes("people_fast_refresh_radius_m")) {
-  peopleRefreshDecider.func = replaceRequired(
-    peopleRefreshDecider.func,
-    "if (msg.payload?.kind !== \"refresh_command\") return null;",
-    `if (msg.payload?.kind !== "refresh_command") return null;
-
-const LOCATION_POLICY = global.get("location_policy_v1", "persistent");
-const FAST_REFRESH_RADIUS_M = Number(
-    LOCATION_POLICY?.people_fast_refresh_radius_m
-);
-if (
-    LOCATION_POLICY?.version !== 1 ||
-    LOCATION_POLICY?.complete !== true ||
-    !Number.isFinite(FAST_REFRESH_RADIUS_M)
-) {
-    node.error("Raio de refresh rápido ausente", msg);
-    return null;
-}`,
-    "raio do refresh adaptativo das pessoas",
-  );
-  peopleRefreshDecider.func = replaceRequired(
-    peopleRefreshDecider.func,
-    /peopleContext\.nearest_distance_m\s*<=\s*\d+/,
-    "peopleContext.nearest_distance_m <= FAST_REFRESH_RADIUS_M",
-    "limite do refresh adaptativo das pessoas",
-  );
-}
+peopleRefreshDecider.func = fs.readFileSync(
+  new URL("./functions/people-refresh-decide.js", import.meta.url),
+  "utf8",
+).trimEnd();
 
 const lightDecisionGroup = requiredById("32a89192d93735b1");
 const lightMergeContext = requiredById("48a5f40d806f6950");

@@ -20,9 +20,14 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   heartbeat e a posição apenas inalterada; automações de chegada continuam
   exigindo `location_observed_at` fresco.
 - Os raios de decisão ficam somente no grupo visual de política do tab
-  `localizacao_pessoas`: `home` 100 m, `near_home` 700 m e refresh rápido
-  2.000 m por padrão. A zona HA `location_update_ring` (1.500 m) é apenas um
-  geofence de transporte do iOS e não é consumida por painéis ou automações.
+  `localizacao_pessoas`: `home` 100 m e `near_home` 700 m. A zona HA
+  `location_update_ring` (1.500 m) é apenas um geofence de transporte do iOS e
+  não é consumida por painéis ou automações. O antigo controle inativo de
+  refresh rápido em 2.000 m foi removido; pedidos explícitos de localização dos
+  iPhones existem apenas para recovery, com limite de duas vezes por hora.
+- Quando nenhuma fonte tem posição observada nos últimos 15 min, o tracker
+  canônico publica `unavailable` e mantém o último estado bruto apenas como
+  diagnóstico, sem republicar coordenadas vencidas como localização atual.
 - Uma transição confirmada de qualquer residente de `home` para `near_home` ou
   `not_home` exige `force_refresh` imediato do `vehicle_primary` (wake seguido
   da obtenção de estado novo), com deduplicação e serialização de chamadas.
@@ -33,6 +38,18 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   `home -> near_home` é saída e um rebote
   posterior para `home` termina em um bloco visível sem efeitos, tanto para
   residentes quanto para `vehicle_primary`.
+- O refletor do portão usa somente a aproximação de um morador com localização
+  atual de `not_home`/zona externa para `near_home` (ou recovery de ciclo externo
+  já armado), durante a noite, com motor `on` confiável.
+  A posição do `vehicle_primary` nunca autoriza o acendimento. Se a integração
+  do motor estiver comprovadamente indisponível, o bypass preservado pode
+  substituir apenas esse gate; ele nunca supera um `off` confiável.
+- Se o motor ligar depois da entrada, ou se o bypass se tornar válido durante
+  falha comprovada da integração, a autorização reavalia imediatamente o
+  morador que ainda esteja armado e atual em `near_home`.
+  Depois que o refletor já estiver ativo, somente o `home` de um morador agenda
+  a leitura extraordinária do veículo 90 s mais tarde; nem `near_home` nem a
+  posição `home` do próprio carro iniciam esse prazo.
 - O botão técnico que resolve `vehicle_primary.force_refresh` não deve publicar
   estado visível; somente o `input_button` manual entra no coordenador. Isso
   evita que um alvo interno pareça uma segunda rotina de atualização.

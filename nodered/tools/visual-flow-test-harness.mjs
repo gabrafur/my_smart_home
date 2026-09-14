@@ -103,7 +103,8 @@ export function runVehicleRefreshVisual(call, message) {
 export function runSecurityArrivalVisual(call, message) {
   let msg = call("security_visual_arrival_facts", message);
   if (!msg) return null;
-  if (!msg._light_arrival.direction_valid) {
+  if (!msg._light_arrival.direction_valid ||
+      !msg._light_arrival.resident_approach_valid) {
     msg = call("security_light_arrival_direction_blocked_v1", msg);
   } else {
     msg = call("security_visual_arrival_pending", msg);
@@ -126,6 +127,7 @@ export function runSecurityArrivalVisual(call, message) {
 export function runSecurityContextVisual(call, message) {
   let msg = call("security_visual_context_cache", message);
   if (!msg) return null;
+  msg = call("security_visual_engine_on_near_home", msg);
   msg = call("security_visual_pending_validate", msg);
   if (msg._light_context.replay_ready) msg = call("security_visual_replay_build", msg);
   return call("48a5f40d806f6950", msg);

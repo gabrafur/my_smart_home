@@ -18,12 +18,12 @@ const aliasesByName = {
   context_tick: "POLÍTICA: reavaliar a cada 30 s",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_mark_active: "Marcar refletor ativo por chegada",
-  light_evaluate_off: "Alguma condição de desligamento ocorreu?",
+  light_evaluate_off: "Desligar agora ou agendar atualização do carro?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
   light_reconcile: "Emitir deadlines reconstruídos",
   light_auto_off: "Aguardar backstop de 15 min",
   light_check_inactive: "Rotear disponibilidade do refletor",
-  light_off_grace: "Respeitar carência de 90 s",
+  light_off_grace: "Aguardar 90 s após HOME",
   light_sun_event: "Luminosidade mudou",
   light_timeout: "Solicitar desligamento por timeout",
 };
@@ -67,7 +67,7 @@ const originalNow = Date.now;
 Date.now = () => clock;
 const LOCATION_POLICY = {
   version: 1, owner: "node_red", complete: true,
-  near_home_radius_m: 700, people_fast_refresh_radius_m: 2000, location_fresh_minutes: 15,
+  near_home_radius_m: 700, location_fresh_minutes: 15,
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
@@ -227,7 +227,8 @@ function lifecycle(overrides = {}) {
 
 function readyLight(overrides = {}) {
   return memoryFlow({
-    people_context_v1: { ready: true, updated_at: clock, resident_primary: { current_home: true } },
+    people_context_v1: { ready: true, updated_at: clock,
+      resident_primary: { ready: true, stale: false, state: "home", current_home: true } },
     vehicle_primary_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, updated_at: clock, home: true, in_use: true },
     sun_ready: true,
     sun_below_horizon: true,
@@ -288,12 +289,12 @@ scenario("06 vehicle_primary_in_use string false nao vira boolean false", () => 
   assert.equal(flow.get("security_vehicle_primary_recovery_v1").in_use, undefined);
 });
 
-scenario("07 deadline negativo e descartado sem desligar", () => {
+scenario("07 deadline de refresh negativo é descartado sem desligar", () => {
   const diagnostics = [];
-  const flow = readyLight({ security_light_lifecycle_v1: lifecycle({ pending_off_at: -1, pending_off_source: "resident_primary" }) });
+  const flow = readyLight({ security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: -1, vehicle_refresh_source: "resident_primary" }) });
   const output = run("light_reconcile", { payload: { kind: "light_physical", state: "on", updated_at: clock } }, flow, diagnostics);
-  assert(output[0].every((message) => message.payload.deadline_type !== "pending_off"));
-  assert.equal(flow.get("security_light_lifecycle_v1").pending_off_at, null);
+  assert(output[0].every((message) => message.payload.deadline_type !== "vehicle_refresh"));
+  assert.equal(flow.get("security_light_lifecycle_v1").vehicle_refresh_at, null);
 });
 
 scenario("08 deadline extremamente futuro remove ownership", () => {
@@ -332,10 +333,12 @@ scenario("11 deadline recuperado vence mesmo com estado físico stale", () => {
 
 scenario("12 dedupe do refletor so e gravado depois dos gates", () => {
   const flow = readyLight({
+    people_context_v1: { ready: true, updated_at: clock,
+      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false } },
     security_light_physical_state: "off",
     security_light_lifecycle_v1: { version: 1, active_by_arrival: false, updated_at: clock },
   });
-  const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", arrival_direction: "returning", external_cycle_confirmed: true, event_at: clock } };
+  const arrival = { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "approach", arrival_previous_state: "not_home", arrival_direction: "returning", external_cycle_confirmed: true, event_at: clock } };
   const prepared = run("light_prepare_arrival", structuredClone(arrival), flow)[0];
   assert.equal(flow.get("security_light_lifecycle_v1").last_arrival_key, undefined);
   const gated = run("light_check_vehicle_primary_in_use", prepared, flow);

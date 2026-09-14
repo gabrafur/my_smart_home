@@ -133,7 +133,7 @@ entrada no anel usa somente a fonte selecionada: um fallback antigo em `home`
 não bloqueia uma posição recente em `near_home`.
 
 O grupo `0. Política canônica de localização — edite os números` é a fonte
-única dos três raios de decisão (`home`, `near_home` e refresh rápido), além de
+única dos dois raios de decisão (`home` e `near_home`), além de
 freshness, desempate, precisão, movimento e retenção de chegada. Os links
 nomeados levam a mesma política às abas de veículo e
 iluminação. O Node-RED também publica no Home Assistant a fonte vencedora e os
@@ -192,6 +192,10 @@ depois `not_home` como fallback. O checker de bindings rejeita
   selecionada cruza o raio configurado ao redor da casa ou do portão. A zona
   `zone.location_update_ring`, de 1.500 m, apenas acorda o Companion App do iOS;
   seu nome e seu raio não participam das decisões, painéis ou automações.
+- Se todas as posições disponíveis ultrapassarem a janela de frescor de 15
+  minutos, o tracker canônico publica `unavailable` e não repete como atual o
+  último `home` ou `near_home`. O diagnóstico preserva o estado bruto, a fonte
+  e os horários, mas não republica coordenadas vencidas.
 - `home -> near_home` é saída, limpa o armado anterior e nunca é chegada.
 - Um rebote posterior `near_home -> home` continua bloqueado enquanto não houver
   ciclo externo confirmado. Pessoas e veículo terminam em blocos visuais
@@ -204,10 +208,12 @@ depois `not_home` como fallback. O checker de bindings rejeita
   `0. Política canônica de localização — edite os números`, guarda o raio em
   metros. Edite o valor do inject, entre 50 e 1.500 m, e faça Deploy para
   aplicá-lo a pessoas, veículo, iluminação e atributos dos painéis.
-- `Raio refresh rápido (m)` controla quando os iPhones fora de casa usam
-  o ciclo acelerado; `Raio home (m)` controla somente a classificação de
-  casa. A validação exige `home < near_home <= refresh rápido` e rejeita uma
-  combinação incoerente sem substituir a última política válida.
+- `Raio home (m)` controla somente a classificação de casa. O antigo
+  parâmetro `Raio refresh rápido (m)` foi removido porque não participava da
+  cadência efetiva: o iOS responde aos geofences e às mudanças significativas,
+  enquanto pedidos explícitos são reservados ao recovery com limite de duas
+  vezes por hora. A validação exige `home < near_home` e rejeita uma combinação
+  incoerente sem substituir a última política válida.
 - Um tracker primário que já está em casa há mais de 10 min bloqueia o catch-up
   tardio do tracker secundário. Sem `last_changed`, o comportamento permanece
   fail-open para não perder uma chegada real.
@@ -291,7 +297,7 @@ sempre em epoch Unix UTC, milissegundos:
 | Sinal | Janela | Ao expirar |
 | --- | ---: | --- |
 | trackers de resident_primary e resident_secondary | 15 min | pessoa `stale`, snapshot não ready; nunca vira `false` |
-| localização do vehicle_primary | 30 min | localização `stale`; não confirma `home`/`away` nem uma chegada originada pelo carro, mas não bloqueia chegada de morador com motor conhecido e API saudável |
+| localização do vehicle_primary | 30 min | localização `stale` não participa do acendimento; chegada de morador continua usando apenas motor/API do carro, nunca sua posição |
 | motor | 5 min | idade fica diagnóstica e pode motivar wake; `on`/`off` conhecidos não expiram apenas pelo tempo |
 | trava | 5 min | sinal inválido/stale; não confirma destravamento atual |
 | snapshots derivados | monotônico por `updated_at` | antigo e futuro >60 s são descartados; conflito no mesmo timestamp preserva o primeiro |
@@ -317,8 +323,8 @@ Quando uma chegada `not_home -> near_home` ocorre antes do anoitecer ou antes de
 a integração atualizar o motor, `iluminacao_seguranca` preserva a intenção por
 até 10 minutos, valor editável no mesmo grupo de política canônica. Durante
 esse prazo, uma aproximação de morador exige que a mesma pessoa permaneça em
-`near_home`, com localização `ready` e não stale; uma aproximação do veículo
-exige a localização equivalente do carro. A intenção é cancelada ao entrar em
+`near_home`, com localização `ready` e não stale. A posição do veículo não cria
+nem mantém intenção de acendimento. A intenção é cancelada ao entrar em
 `home`, sair de `near_home`, perder a atualidade da localização ou vencer a
 janela. Assim, uma entrada às 17:31 ainda pode ser reavaliada se o pôr do sol ou
 a telemetria do motor convergirem alguns minutos depois.
@@ -331,10 +337,9 @@ a idade do evento do motor, isoladamente, não libera o bypass. Quando há falha
 real de comunicação, porém, o último `off` deixa de ser prova atual e o bypass
 automático pode liberar o refletor; essa prioridade deliberadamente favorece
 um possível acendimento antecipado em vez de perder a chegada. O
-estado recente da posição do carro é obrigatório somente quando o próprio
-`vehicle_primary` origina a chegada. Em chegadas de moradores, posição antiga
-do carro é apenas diagnóstica: `ON` conhecido e API saudável liberam o gate,
-enquanto `OFF` conhecido e API saudável continuam bloqueando.
+estado da posição do carro nunca autoriza o acendimento. Em chegadas de
+moradores, essa posição é apenas diagnóstica: `ON` conhecido e API saudável
+liberam o gate, enquanto `OFF` conhecido e API saudável continuam bloqueando.
 O Node-RED liga a chave automaticamente enquanto a API do veículo está em falha
 ou backoff. Se ela já estava ligada manualmente, a automação não assume a
 posse nem a desliga na recuperação; um `ON` automático só volta para `OFF`
@@ -360,8 +365,11 @@ verdadeiras:
 
 1. há um evento `security.arrival.v1` com `arrival_direction: returning` e
    `external_cycle_confirmed: true`;
-2. o gate visual de direção aceita esse retorno; evento antigo, malformado ou
-   sem ciclo externo termina em `BLOQUEADO: sem direção de retorno`;
+2. a origem é `resident_primary` ou `resident_secondary`, o estágio é
+   `approach`, a transição vem de `not_home` ou outra zona externa para
+   `near_home` (ou recupera um ciclo externo já armado), e a localização atual
+   da mesma pessoa permanece `ready`, não stale e em `near_home`; evento do carro,
+   estágio `home`, saída, rebote ou evento malformado termina em `BLOQUEADO`;
 3. `sun.sun` está `below_horizon`;
 4. `vehicle_primary_in_use` é verdadeiro e o motor atual está `on`, **ou** o
    bypass manual ou automático está ligado e a telemetria do motor está comprovadamente não
@@ -377,25 +385,33 @@ Depois de todos os gates, a ação grava no store `persistent` o lifecycle
 `force_off_at`, dedupe recente e `updated_at`. Eventos barrados por claridade,
 readiness ou estado do vehicle_primary não consomem o dedupe do refletor.
 
-A origem da chegada pode ser `resident_primary`, `resident_secondary` ou
-`vehicle_primary`. Quando o motor atual está `on`, a entrada de qualquer
-residente em `near_home` aciona a avaliação mesmo que o tracker do veículo ainda
-esteja em `not_home`, `home` ou outra zona válida; o veículo não precisa entrar
-em `near_home` primeiro. Para residentes, o retorno precisa estar armado por
+A origem do acendimento pode ser somente `resident_primary` ou
+`resident_secondary`. Quando o motor atual está `on`, a entrada de qualquer
+residente em `near_home` aciona a avaliação independentemente da posição do
+veículo. Para residentes, o retorno precisa estar armado por
 `not_home` ou outra zona externa. `unknown`/`unavailable` só recuperam um armado
 externo já existente; não criam uma chegada. Essas transições de recovery ficam
 restritas à iluminação e não são publicadas como chegada geral para o desarme.
+
+Se o motor muda para `on` depois que o morador já entrou em `near_home`, o evento
+confirmado de motor reavalia imediatamente a chegada enquanto o ciclo externo
+daquela pessoa continuar armado e a localização ainda estiver atual. Um mero
+snapshot repetindo motor `on`, ou um morador em `near_home` sem ciclo externo,
+não recria a chegada. A ativação válida do bypass durante falha comprovada da
+integração faz a mesma reavaliação, inclusive se a intenção temporária de 10
+minutos já tiver expirado.
 
 Também chama `switch.turn_on`, avisa os moradores e inicia o backstop de 15
 minutos.
 
 Se um residente chega ao estágio `home` enquanto o lifecycle do refletor ainda
-está ativo e o último motor conhecido continua `on`, o canvas mostra um gate
-específico que solicita uma confirmação final do carro ao coordenador canônico.
-Essa confirmação atravessa o deadline periódico e a pausa noturna, mas continua
-serializada pelo controle de chamada em andamento. Assim que o carro responde
-`home` com motor `off`, o caminho normal desliga o refletor sem esperar o
-backstop de 15 minutos.
+está ativo, o canvas agenda uma atualização extraordinária do carro para 90
+segundos depois dessa confirmação de `home`. O prazo não começa na entrada em
+`near_home` nem no acendimento do refletor. Quando vence, a solicitação atravessa
+o deadline periódico de 30 minutos e a pausa noturna, mas continua serializada
+pelo controle de chamada em andamento. A confirmação de `home` não desliga a
+luz diretamente: somente a telemetria nova com motor `off` e porta destravada
+usa o caminho normal de desligamento antes do backstop de 15 minutos.
 
 O primeiro ciclo que liga o refletor — ou que determinaria o acendimento, mas
 encontra o atuador `unknown`, `unavailable`, stale ou não reconciliado — grava
@@ -404,29 +420,30 @@ chegadas não repetem avisos de `turn on` nem de “seria ligado”. Uma observa
 física confirmada em `off` libera o latch; `on` o mantém mesmo que o Zigbee
 fique indisponível logo depois.
 
-## Cinco condições independentes de desligamento
+## Desligamento e confirmação pós-chegada
 
 | # | Condição | Efeito |
 | --- | --- | --- |
 | 1 | motor desligado e porta destravada | imediato, após o filtro de 5 s do evento do veículo |
-| 2 | transição confirmada de resident_primary para `home` | após completar 90 s desde o acendimento |
-| 3 | transição confirmada de resident_secondary para `home` | após completar 90 s desde o acendimento |
-| 4 | transição confirmada do vehicle_primary para `home` | após completar 90 s desde o acendimento |
-| 5 | refletor ativo por 15 min | imediato ao vencer o backstop |
+| 2 | refletor ativo por 15 min | imediato ao vencer o backstop |
 
-Uma atualização genérica da trava não ignora o filtro de 5 s. A carência grava
-`pending_off_at` e revalida a condição quando vence. O backstop grava
+Uma transição confirmada de `resident_primary` ou `resident_secondary` para
+`home` agenda `vehicle_refresh_at` para 90 segundos depois; o estágio
+`near_home` não cria esse prazo e a posição `home` do próprio veículo também
+não o cria. O agendamento continua válido quando a integração do carro está
+indisponível, pois sua finalidade é justamente pedir uma leitura nova. Uma
+atualização genérica da trava não ignora o filtro de 5 s. O backstop grava
 `force_off_at`. Após desligar, `cooldown_until` bloqueia religamento por cinco
-minutos. Os três prazos são absolutos e são reconstruídos no restart; nenhum
-depende exclusivamente de um `delay` residente em memória.
+minutos. Os prazos são absolutos e reconstruídos no restart; nenhum depende
+exclusivamente de um `delay` residente em memória.
 
 ## Refresh
 
 - Tick base: 30 s, com snapshot de pessoas e vehicle_primary.
-- iPhones: quando uma pessoa está fora, 60 s; 30 s quando a menor distância
-  dos trackers de pessoas é até 2000 m. O veículo fora, sozinho, não solicita
-  localização dos telefones. Se o contexto precisar
-  de recuperação, o cooldown é de 15 min. GPS sem mudança não inicia recovery
+- iPhones: geofences e mudanças significativas do iOS produzem os eventos
+  responsivos. O veículo fora, sozinho, não solicita localização dos telefones.
+  Se o contexto precisar de recuperação, o pedido explícito tem cooldown de
+  30 min, limitado a duas vezes por hora. GPS sem mudança não inicia recovery
   quando os dois residentes continuam em `home`, nenhuma fonte indica saída e
   ao menos uma fonte de cada residente reportou nos últimos 75 min.
 - `request_location_update` é best-effort: `public_bindings` agenda a
@@ -463,10 +480,12 @@ depende exclusivamente de um `delay` residente em memória.
   busca o estado novo para determinar se o morador está usando o carro. Eventos
   repetidos são deduplicados e uma chamada realmente em andamento continua
   serializada.
-- A transição confirmada de chegada ao estágio `home`, com refletor ativo e
-  último motor conhecido ainda `on`, solicita uma confirmação final imediata
-  pelo mesmo coordenador. O bypass é uma decisão visual nomeada no tab de
-  iluminação; não existe agendador JavaScript paralelo.
+- A transição confirmada de chegada ao estágio `home`, com refletor ativo,
+  agenda para 90 segundos depois uma atualização extraordinária pelo mesmo
+  coordenador. Ela atravessa o intervalo normal de 30 minutos e a pausa
+  noturna; `near_home` não agenda essa confirmação. O bypass é uma decisão
+  visual nomeada no tab de iluminação; não existe agendador JavaScript
+  paralelo.
 - O Node-RED é o único agendador de wake real. No backend brasileiro, o
   `kia_uvo` no Home Assistant lê somente o cache do Bluelink a cada 15 min;
   esse polling não acorda o carro nem chama o agendador nativo de force
