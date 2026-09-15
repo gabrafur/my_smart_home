@@ -169,7 +169,8 @@ function runEvaluate(msg, flow) {
   for (const candidate of expanded?.[0] ?? []) {
     const data = candidate._observer_evaluation;
     if (!data.corroborated || !data.duration_met) {
-      execute(code.evaluateClear, candidate, flow);
+      const cleared = execute(code.evaluateClear, candidate, flow);
+      if (cleared) alerts.push(cleared);
       continue;
     }
     const confirmed = execute(code.evaluateConfirm, candidate, flow);
@@ -436,10 +437,43 @@ const recovered = structuredClone(statusFailure);
 recovered.observer_now = 263_000;
 recovered.status = { ...recovered.status, fill: "green", text: "connected" };
 runIngest(recovered, store);
-runEvaluate({ _global_observer_test: true, observer_now: 264_000 }, store);
+assert.deepEqual(
+  Object.keys(store.values.get("global_flow_observer_v1__test").status_sources),
+  [],
+  "a recuperação da conexão compartilhada deve limpar todas as fontes HA",
+);
+const recoveredIncident = runEvaluate({
+  _global_observer_test: true,
+  observer_now: 264_000,
+}, store);
+assert.equal(recoveredIncident[0].length, 1);
+assert.equal(
+  recoveredIncident[0][0].payload.persistent_notification_operation,
+  "dismiss",
+  "a recuperação deve remover o alerta persistente confirmado",
+);
+assert.equal(recoveredIncident[0][0].payload.mobile_notification, false);
+assert.equal(
+  recoveredIncident[0][0].payload.persistent_incident_kind,
+  "node_unavailable",
+);
+const recoveredProduction = structuredClone(recoveredIncident[0][0]);
+recoveredProduction._global_observer_test = false;
+recoveredProduction.payload.test_mode = false;
+const recoveredDispatch = execute(code.guard, recoveredProduction, store);
+assert.equal(recoveredDispatch[0], null);
+assert.ok(recoveredDispatch[1]);
+assert.equal(
+  recoveredDispatch[1]._observer_persistent_notification_id,
+  "nodered_observabilidade_global_node_unavailable_connection_home_assistant",
+  "a recuperação deve remover exatamente o ID criado pela queda",
+);
 const newFailure = structuredClone(statusFailure);
 newFailure.observer_now = 300_000;
 runIngest(newFailure, store);
+const newCorroboratedFailure = structuredClone(corroboratedStatus);
+newCorroboratedFailure.observer_now = 300_000;
+runIngest(newCorroboratedFailure, store);
 const newIncident = runEvaluate({
   _global_observer_test: true,
   observer_now: 361_000,

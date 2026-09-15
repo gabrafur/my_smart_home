@@ -54,6 +54,17 @@ for (const outputId of expectedOuts) {
 }
 assert.equal(input.links.includes("local_ai_rtx_alert_out"), false);
 const dispatchInput = required("global_observer_alert_to_dispatch_in");
+for (const [clearId, outputId] of [
+  ["global_observer_evaluate_clear_uncorroborated", "global_observer_uncorroborated_recovery_out"],
+  ["global_observer_evaluate_clear_transient", "global_observer_transient_recovery_out"],
+]) {
+  const clear = required(clearId);
+  const output = required(outputId);
+  assert.deepEqual(clear.wires, [[output.id]]);
+  assert.equal(output.type, "link out");
+  assert.deepEqual(output.links, [dispatchInput.id]);
+  assert.ok(dispatchInput.links.includes(output.id));
+}
 for (const id of [
   "global_observer_integration_alert_out",
   "local_ai_rtx_alert_out",

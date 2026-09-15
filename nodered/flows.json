@@ -46515,8 +46515,10 @@
             "global_observer_evaluate",
             "global_observer_evaluate_corroboration_gate",
             "global_observer_evaluate_clear_uncorroborated",
+            "global_observer_uncorroborated_recovery_out",
             "global_observer_evaluate_duration_gate",
             "global_observer_evaluate_clear_transient",
+            "global_observer_transient_recovery_out",
             "global_observer_evaluate_confirm",
             "global_observer_evaluate_notification_gate",
             "global_observer_evaluate_alert",
@@ -46537,9 +46539,9 @@
             "global_observer_internal_failure"
         ],
         "x": 64,
-        "y": 23,
+        "y": 39,
         "w": 3900,
-        "h": 538,
+        "h": 522,
         "notification_hub_layout_version": 1
     },
     {
@@ -46921,7 +46923,7 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Registrar recuperação da fonte",
-        "func": "const data = msg._observer_event;\nconst previous = data.state.status_sources[data.key];\nif (data.shared_incident_key && previous?.incident_key === data.incident_key) {\n    const event = data.state.connection_events[data.incident_key] ?? {};\n    data.state.connection_events[data.incident_key] = { ...event, last_recovered_at: data.now };\n}\ndelete data.state.status_sources[data.key];\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn null;",
+        "func": "const data = msg._observer_event;\nif (data.shared_incident_key) {\n    const sharedRecovered = Object.values(data.state.status_sources)\n        .some((entry) => entry.incident_key === data.incident_key);\n    if (sharedRecovered) {\n        const event = data.state.connection_events[data.incident_key] ?? {};\n        data.state.connection_events[data.incident_key] = {\n            ...event,\n            last_recovered_at: data.now\n        };\n    }\n    for (const [key, entry] of Object.entries(data.state.status_sources)) {\n        if (entry.incident_key === data.incident_key) {\n            delete data.state.status_sources[key];\n        }\n    }\n} else {\n    delete data.state.status_sources[data.key];\n}\nif (data.store) flow.set(data.state_key, data.state, data.store);\nelse flow.set(data.state_key, data.state);\nreturn null;",
         "outputs": 0,
         "timeout": 0,
         "noerr": 0,
@@ -47049,8 +47051,8 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Limpar incidente sem corroboração",
-        "func": "const data = msg._observer_evaluation;\nconst getState = () => data.store ? flow.get(data.state_key, data.store) : flow.get(data.state_key);\nconst state = getState();\nif (state?.version !== 2) return null;\nstate.status_incidents ??= {};\ndelete state.status_incidents[data.key];\nif (data.store) flow.set(data.state_key, state, data.store);\nelse flow.set(data.state_key, state);\nreturn null;",
-        "outputs": 0,
+        "func": "const data = msg._observer_evaluation;\nconst getState = () => data.store ? flow.get(data.state_key, data.store) : flow.get(data.state_key);\nconst state = getState();\nif (state?.version !== 2) return null;\nstate.status_incidents ??= {};\nconst previous = state.status_incidents[data.key];\ndelete state.status_incidents[data.key];\nif (data.store) flow.set(data.state_key, state, data.store);\nelse flow.set(data.state_key, state);\nif (!Number.isFinite(previous?.notified_at)) return null;\n\nmsg.payload = {\n    test_mode: data.test_mode,\n    observer_kind: \"node_recovery\",\n    persistent_incident_kind: \"node_unavailable\",\n    persistent_notification_operation: \"dismiss\",\n    mobile_notification: false,\n    incident_key: data.key,\n    resolution: data.active ? \"corroboration_lost\" : \"recovered\"\n};\nmsg.alert = {\n    title: data.test_mode\n        ? \"TESTE — Incidente do Node-RED encerrado\"\n        : \"Incidente do Node-RED encerrado\",\n    message: \"A condição de indisponibilidade não está mais ativa.\"\n};\nreturn msg;",
+        "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -47058,7 +47060,11 @@
         "libs": [],
         "x": 1090,
         "y": 520,
-        "wires": []
+        "wires": [
+            [
+                "global_observer_uncorroborated_recovery_out"
+            ]
+        ]
     },
     {
         "id": "global_observer_evaluate_duration_gate",
@@ -47096,8 +47102,8 @@
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
         "name": "Limpar incidente ainda transitório",
-        "func": "const data = msg._observer_evaluation;\nconst getState = () => data.store ? flow.get(data.state_key, data.store) : flow.get(data.state_key);\nconst state = getState();\nif (state?.version !== 2) return null;\nstate.status_incidents ??= {};\ndelete state.status_incidents[data.key];\nif (data.store) flow.set(data.state_key, state, data.store);\nelse flow.set(data.state_key, state);\nreturn null;",
-        "outputs": 0,
+        "func": "const data = msg._observer_evaluation;\nconst getState = () => data.store ? flow.get(data.state_key, data.store) : flow.get(data.state_key);\nconst state = getState();\nif (state?.version !== 2) return null;\nstate.status_incidents ??= {};\nconst previous = state.status_incidents[data.key];\ndelete state.status_incidents[data.key];\nif (data.store) flow.set(data.state_key, state, data.store);\nelse flow.set(data.state_key, state);\nif (!Number.isFinite(previous?.notified_at)) return null;\n\nmsg.payload = {\n    test_mode: data.test_mode,\n    observer_kind: \"node_recovery\",\n    persistent_incident_kind: \"node_unavailable\",\n    persistent_notification_operation: \"dismiss\",\n    mobile_notification: false,\n    incident_key: data.key,\n    resolution: data.active ? \"corroboration_lost\" : \"recovered\"\n};\nmsg.alert = {\n    title: data.test_mode\n        ? \"TESTE — Incidente do Node-RED encerrado\"\n        : \"Incidente do Node-RED encerrado\",\n    message: \"A condição de indisponibilidade não está mais ativa.\"\n};\nreturn msg;",
+        "outputs": 1,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -47105,7 +47111,11 @@
         "libs": [],
         "x": 1400,
         "y": 520,
-        "wires": []
+        "wires": [
+            [
+                "global_observer_transient_recovery_out"
+            ]
+        ]
     },
     {
         "id": "global_observer_evaluate_confirm",
@@ -47196,9 +47206,11 @@
         "type": "link in",
         "z": "global_flow_observer_tab",
         "g": "global_observer_production_group",
-        "name": "Receber alertas confirmados ou de domínio",
+        "name": "Receber alertas, encerramentos ou eventos de domínio",
         "links": [
             "global_observer_alert_to_dispatch_out",
+            "global_observer_uncorroborated_recovery_out",
+            "global_observer_transient_recovery_out",
             "global_observer_integration_alert_out",
             "local_ai_rtx_alert_out",
             "notification_hub_mobile_observer_out",
@@ -47243,7 +47255,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 2640,
+        "x": 2530,
         "y": 240,
         "wires": [
             [
@@ -47603,10 +47615,10 @@
             "global_observer_policy_store",
             "global_observer_policy_reject"
         ],
-        "x": 224,
-        "y": 563,
-        "w": 1692,
-        "h": 338
+        "x": 64,
+        "y": 579,
+        "w": 2100,
+        "h": 342
     },
     {
         "id": "global_observer_policy_comment",
@@ -47615,7 +47627,7 @@
         "g": "global_observer_policy_group",
         "name": "Cada parâmetro mostra unidade, padrão e limites. Valor inválido preserva a última política válida.",
         "info": "Carência de reconexão: 90 s [10..600]; confirmação: 60 s [10..600]; lembrete: 6 h [1..48]; retenção de erros: 7 dias [1..30]; corroboração HA: 2 fontes [2..10]. Valores inteiros.",
-        "x": 1560,
+        "x": 1500,
         "y": 620,
         "wires": []
     },
@@ -47641,7 +47653,7 @@
         "topic": "connection_recovery_grace_seconds",
         "payload": "90",
         "payloadType": "num",
-        "x": 420,
+        "x": 360,
         "y": 660,
         "wires": [
             [
@@ -47671,7 +47683,7 @@
         "topic": "status_confirm_seconds",
         "payload": "60",
         "payloadType": "num",
-        "x": 410,
+        "x": 350,
         "y": 710,
         "wires": [
             [
@@ -47701,7 +47713,7 @@
         "topic": "reminder_hours",
         "payload": "6",
         "payloadType": "num",
-        "x": 380,
+        "x": 320,
         "y": 760,
         "wires": [
             [
@@ -47731,7 +47743,7 @@
         "topic": "error_retention_days",
         "payload": "7",
         "payloadType": "num",
-        "x": 410,
+        "x": 350,
         "y": 810,
         "wires": [
             [
@@ -47761,7 +47773,7 @@
         "topic": "ha_corroboration_sources",
         "payload": "2",
         "payloadType": "num",
-        "x": 410,
+        "x": 350,
         "y": 860,
         "wires": [
             [
@@ -47782,7 +47794,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 840,
+        "x": 780,
         "y": 760,
         "wires": [
             [
@@ -47806,7 +47818,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1220,
+        "x": 1110,
         "y": 720,
         "wires": []
     },
@@ -47823,7 +47835,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1210,
+        "x": 1100,
         "y": 800,
         "wires": []
     },
@@ -47855,10 +47867,10 @@
             "global_observer_dry_run_in",
             "global_observer_dry_run_terminal"
         ],
-        "x": 114,
-        "y": 943,
-        "w": 2033,
-        "h": 354
+        "x": 64,
+        "y": 959,
+        "w": 2320,
+        "h": 322
     },
     {
         "id": "global_observer_test_instructions",
@@ -47867,7 +47879,7 @@
         "g": "global_observer_test_group",
         "name": "TESTE: 1–4 erro/status; 5 push real opcional; 6–9 integração falha, confirma e recupera",
         "info": "Erro e status atravessam classificação, dedupe e guard até o dry-run. Os passos 6–9 usam um snapshot sintético de config_entries. Somente o passo 5 chama o Home Assistant; ele é o smoke test explícito do canal.",
-        "x": 770,
+        "x": 710,
         "y": 1000,
         "wires": []
     },
@@ -47889,7 +47901,7 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 240,
+        "x": 180,
         "y": 1080,
         "wires": [
             [
@@ -47910,7 +47922,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
+        "x": 440,
         "y": 1080,
         "wires": []
     },
@@ -47947,7 +47959,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 250,
+        "x": 190,
         "y": 1140,
         "wires": [
             [
@@ -47988,7 +48000,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 260,
+        "x": 200,
         "y": 1200,
         "wires": [
             [
@@ -48006,7 +48018,7 @@
         "links": [
             "global_observer_events_in"
         ],
-        "x": 525,
+        "x": 465,
         "y": 1170,
         "wires": []
     },
@@ -48033,7 +48045,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 790,
+        "x": 730,
         "y": 1200,
         "wires": [
             [
@@ -48051,7 +48063,7 @@
         "links": [
             "global_observer_test_evaluate_in"
         ],
-        "x": 1045,
+        "x": 985,
         "y": 1200,
         "wires": []
     },
@@ -48083,7 +48095,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "x": 800,
+        "x": 740,
         "y": 1120,
         "wires": [
             [
@@ -48101,7 +48113,7 @@
         "links": [
             "global_observer_test_delivery_in"
         ],
-        "x": 1045,
+        "x": 985,
         "y": 1120,
         "wires": []
     },
@@ -48114,7 +48126,7 @@
         "links": [
             "global_observer_dry_run_out"
         ],
-        "x": 1220,
+        "x": 1160,
         "y": 1220,
         "wires": [
             [
@@ -48135,7 +48147,7 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 1470,
+        "x": 1410,
         "y": 1220,
         "wires": []
     },
@@ -48158,9 +48170,9 @@
             "global_observer_integration_alert_out"
         ],
         "x": 2200,
-        "y": 563,
+        "y": 579,
         "w": 1960,
-        "h": 358
+        "h": 342
     },
     {
         "id": "global_observer_integration_architecture",
@@ -69432,5 +69444,33 @@
             "target": "security_visual_context_decision_out",
             "output": 3
         }
+    },
+    {
+        "id": "global_observer_uncorroborated_recovery_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Recuperação sem corroboração → entrega",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 1500,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "global_observer_transient_recovery_out",
+        "type": "link out",
+        "z": "global_flow_observer_tab",
+        "g": "global_observer_production_group",
+        "name": "Recuperação transitória → entrega",
+        "mode": "link",
+        "links": [
+            "global_observer_alert_to_dispatch_in"
+        ],
+        "x": 1810,
+        "y": 480,
+        "wires": []
     }
 ]

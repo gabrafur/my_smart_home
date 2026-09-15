@@ -32,8 +32,11 @@ ao monitor específico. A queda compartilhada do Home Assistant exige
 corroboração simultânea de pelo menos dois nós; um único nó com domínio ou
 entidade indisponível não representa o servidor inteiro. Conexões do Home
 Assistant e MQTT são agregadas, evitando um push para cada nó quando a
-dependência compartilhada cai. Uma recuperação libera o alerta do próximo
-incidente após a carência de reconexão.
+dependência compartilhada cai. O primeiro sinal explícito de conexão
+restabelecida encerra todas as fontes da mesma conexão compartilhada e libera
+o alerta do próximo incidente após a carência de reconexão. Se o incidente já
+havia sido notificado, o monitor remove silenciosamente a notificação
+persistente correspondente, sem gerar um push adicional de recuperação.
 
 O monitor não inclui o próprio tab na captura universal. A falha do nó que
 envia o push ou cria a notificação persistente possui um `catch` específico que

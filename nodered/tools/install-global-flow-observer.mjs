@@ -319,8 +319,10 @@ const observerNodes = [
       "global_observer_evaluate",
       "global_observer_evaluate_corroboration_gate",
       "global_observer_evaluate_clear_uncorroborated",
+      "global_observer_uncorroborated_recovery_out",
       "global_observer_evaluate_duration_gate",
       "global_observer_evaluate_clear_transient",
+      "global_observer_transient_recovery_out",
       "global_observer_evaluate_confirm",
       "global_observer_evaluate_notification_gate",
       "global_observer_evaluate_alert",
@@ -506,8 +508,15 @@ const observerNodes = [
   functionNode(
     "global_observer_evaluate_clear_uncorroborated", productionGroup,
     "Limpar incidente sem corroboração", source("global-flow-observer-evaluate-clear.js"),
-    0, 1090, 520, [],
+    1, 1090, 520, [["global_observer_uncorroborated_recovery_out"]],
   ),
+  {
+    id: "global_observer_uncorroborated_recovery_out", type: "link out",
+    z: OBSERVER_TAB, g: productionGroup,
+    name: "Recuperação sem corroboração → entrega", mode: "link",
+    links: ["global_observer_alert_to_dispatch_in"],
+    x: 1500, y: 480, wires: [],
+  },
   switchNode(
     "global_observer_evaluate_duration_gate", productionGroup,
     "Tempo de confirmação atingido?", "_observer_evaluation.duration_met",
@@ -517,8 +526,15 @@ const observerNodes = [
   functionNode(
     "global_observer_evaluate_clear_transient", productionGroup,
     "Limpar incidente ainda transitório", source("global-flow-observer-evaluate-clear.js"),
-    0, 1400, 520, [],
+    1, 1400, 520, [["global_observer_transient_recovery_out"]],
   ),
+  {
+    id: "global_observer_transient_recovery_out", type: "link out",
+    z: OBSERVER_TAB, g: productionGroup,
+    name: "Recuperação transitória → entrega", mode: "link",
+    links: ["global_observer_alert_to_dispatch_in"],
+    x: 1810, y: 480, wires: [],
+  },
   functionNode(
     "global_observer_evaluate_confirm", productionGroup,
     "Confirmar e atualizar incidente", source("global-flow-observer-evaluate-confirm.js"),
@@ -542,7 +558,14 @@ const observerNodes = [
   },
   {
     id: "global_observer_alert_to_dispatch_in", type: "link in", z: OBSERVER_TAB,
-    g: productionGroup, name: "Receber alertas confirmados ou de domínio", links: ["global_observer_alert_to_dispatch_out", "global_observer_integration_alert_out", ...externalEventOutIds],
+    g: productionGroup, name: "Receber alertas, encerramentos ou eventos de domínio",
+    links: [
+      "global_observer_alert_to_dispatch_out",
+      "global_observer_uncorroborated_recovery_out",
+      "global_observer_transient_recovery_out",
+      "global_observer_integration_alert_out",
+      ...externalEventOutIds,
+    ],
     x: 2280, y: 300, wires: [["global_observer_dispatch_guard"]],
   },
   {
