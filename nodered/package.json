@@ -61,6 +61,7 @@
         "flows:test-storage": "node tools/test-storage-health-flow.mjs",
         "flows:test-weekly-docs-review": "node tools/test-weekly-docs-review-flow.mjs",
         "flows:test-vehicle-primary-refresh": "node tools/test-vehicle-primary-refresh-scheduler.mjs",
+        "flows:sync-vehicle-lifecycle-functions": "node tools/sync-vehicle-lifecycle-functions.mjs",
         "flows:test-security-recovery": "node tools/test-security-recovery-flow.mjs",
         "flows:test-security-adversarial": "node tools/test-security-recovery-adversarial.mjs",
         "flows:render": "node tools/render-flow-layout.mjs",

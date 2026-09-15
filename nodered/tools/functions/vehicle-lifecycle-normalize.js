@@ -60,7 +60,13 @@ const failureClasses = ["integration_unavailable", "provider_backoff", "authenti
 const engineCommunicationFailed = typeof refreshState?.engine_communication_failed === "boolean"
     ? refreshState.engine_communication_failed
     : failureClasses.includes(refreshState?.last_failure_class);
-const telemetryAt = Date.parse(msg.payload?.vehicle_primary_last_updated?.state ?? "");
+const reportedTelemetryAt = Date.parse(
+    msg.payload?.vehicle_primary_last_updated?.state ?? ""
+);
+const telemetryTimestampFuture = Number.isFinite(reportedTelemetryAt) &&
+    reportedTelemetryAt > Date.now() + futureMs;
+const telemetryAt = Number.isFinite(reportedTelemetryAt) &&
+    !telemetryTimestampFuture ? reportedTelemetryAt : null;
 msg._vehicle = {
     test_mode: TEST_MODE,
     policy,
@@ -76,7 +82,8 @@ msg._vehicle = {
     lock_fresh: lockFresh,
     lock_updated_at: observedAt(msg.payload?.vehicle_primary_lock),
     unlocked: lockFresh && lockState === "unlocked",
-    telemetry_updated_at: Number.isFinite(telemetryAt) ? telemetryAt : null,
+    telemetry_updated_at: telemetryAt,
+    telemetry_timestamp_future: telemetryTimestampFuture,
     is_location_event: msg.payload?.event === "location_update",
     event: msg.payload?.event,
     reason: msg.payload?.reason,

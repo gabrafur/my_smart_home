@@ -832,6 +832,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         current: dt.datetime | None,
         baseline: dt.datetime | None,
         requested_at: dt.datetime,
+        observed_at: dt.datetime | None = None,
     ) -> bool:
         """Return whether a BR timestamp proves data from the current wake."""
 
@@ -845,12 +846,45 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
         current_utc = as_utc(current)
         baseline_utc = as_utc(baseline)
         requested_utc = as_utc(requested_at)
+        observed_utc = as_utc(observed_at) or dt.datetime.now(dt.UTC)
         if current_utc is None or requested_utc is None:
             return False
         return (
             (baseline_utc is None or current_utc > baseline_utc)
             and current_utc >= requested_utc - BR_FRESH_DATA_CLOCK_TOLERANCE
+            and current_utc <= observed_utc + BR_FRESH_DATA_CLOCK_TOLERANCE
         )
+
+    @staticmethod
+    def _normalize_br_vehicle_timestamp(
+        value: dt.datetime | None,
+        data_timezone: dt.tzinfo,
+        observed_at: dt.datetime | None = None,
+    ) -> dt.datetime | None:
+        """Correct the intermittent BR three-hour future timestamp."""
+        if not isinstance(value, dt.datetime):
+            return None
+        current_utc = (
+            value.replace(tzinfo=dt.UTC)
+            if value.tzinfo is None
+            else value.astimezone(dt.UTC)
+        )
+        observed = observed_at or dt.datetime.now(dt.UTC)
+        observed_utc = (
+            observed.replace(tzinfo=dt.UTC)
+            if observed.tzinfo is None
+            else observed.astimezone(dt.UTC)
+        )
+        if current_utc <= observed_utc + BR_FRESH_DATA_CLOCK_TOLERANCE:
+            return current_utc
+
+        regional_offset = data_timezone.utcoffset(observed_utc)
+        if regional_offset is None or regional_offset >= dt.timedelta(0):
+            return None
+        corrected_utc = current_utc + regional_offset
+        if corrected_utc > observed_utc + BR_FRESH_DATA_CLOCK_TOLERANCE:
+            return None
+        return corrected_utc
 
     def _schedule_br_fresh_data_recheck(
         self,
@@ -1578,6 +1612,7 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
 
         def _parse_ccs2(api_self, vehicle, state):
             parser_state = copy.deepcopy(state)
+            previous_updated_at = getattr(vehicle, "last_updated_at", None)
             dte = (
                 parser_state.get("Drivetrain", {})
                 .get("FuelSystem", {})
@@ -1597,6 +1632,32 @@ class HyundaiKiaConnectDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any
                 # warning on every poll in API 4.26.5.
                 reservation.pop("OffPeakTime")
             original(api_self, vehicle, parser_state)
+            reported_updated_at = getattr(vehicle, "last_updated_at", None)
+            normalized_updated_at = self._normalize_br_vehicle_timestamp(
+                reported_updated_at,
+                api_self.data_timezone,
+            )
+            if reported_updated_at is None:
+                normalized_updated_at = self._normalize_br_vehicle_timestamp(
+                    previous_updated_at,
+                    api_self.data_timezone,
+                )
+            elif normalized_updated_at is None:
+                normalized_updated_at = self._normalize_br_vehicle_timestamp(
+                    previous_updated_at,
+                    api_self.data_timezone,
+                )
+                _LOGGER.warning(
+                    "CRETA_DATA_ANOMALY future_vehicle_timestamp_rejected"
+                )
+            elif normalized_updated_at != reported_updated_at:
+                _LOGGER.warning(
+                    "CRETA_DATA_ANOMALY future_vehicle_timestamp_corrected"
+                )
+            # The upstream property setter is monotonic and would retain the
+            # already-shifted future value. This compatibility wrapper owns the
+            # correction and must therefore replace the parsed backing value.
+            vehicle._last_updated_at = normalized_updated_at
             # BR sends Location.TimeStamp in the same UTC wall clock used by
             # Vehicle.Date. ApiImplType1 currently labels the components with
             # the regional timezone, shifting this entity three hours into the

@@ -904,6 +904,58 @@ class VehiclePrimaryBrazilDeviceRecoveryTest(unittest.TestCase):
         assert len(api.session.requests) == 1
 
 
+class VehiclePrimaryTimestampSafetyTest(unittest.TestCase):
+    """Reject provider timestamps that would make future data look fresh."""
+
+    def test_normalizes_intermittent_brazil_three_hour_shift(self):
+        observed_at = dt.datetime(2026, 9, 15, 9, 16, 6, tzinfo=UTC)
+        reported_at = dt.datetime(2026, 9, 15, 12, 3, 17, tzinfo=UTC)
+        brazil_timezone = dt.timezone(dt.timedelta(hours=-3))
+
+        normalized = (
+            HyundaiKiaConnectDataUpdateCoordinator._normalize_br_vehicle_timestamp(
+                reported_at,
+                brazil_timezone,
+                observed_at,
+            )
+        )
+
+        assert normalized == dt.datetime(2026, 9, 15, 9, 3, 17, tzinfo=UTC)
+
+    def test_rejects_future_timestamp_that_regional_offset_cannot_repair(self):
+        observed_at = dt.datetime(2026, 9, 15, 9, 16, 6, tzinfo=UTC)
+        reported_at = observed_at + dt.timedelta(hours=6)
+        brazil_timezone = dt.timezone(dt.timedelta(hours=-3))
+
+        normalized = (
+            HyundaiKiaConnectDataUpdateCoordinator._normalize_br_vehicle_timestamp(
+                reported_at,
+                brazil_timezone,
+                observed_at,
+            )
+        )
+
+        assert normalized is None
+
+    def test_future_timestamp_cannot_confirm_refresh(self):
+        observed_at = dt.datetime(2026, 9, 15, 9, 16, 6, tzinfo=UTC)
+        requested_at = observed_at - dt.timedelta(minutes=1)
+        baseline = requested_at - dt.timedelta(minutes=10)
+
+        assert not HyundaiKiaConnectDataUpdateCoordinator._br_timestamp_is_fresh(
+            observed_at + dt.timedelta(hours=3),
+            baseline,
+            requested_at,
+            observed_at,
+        )
+        assert HyundaiKiaConnectDataUpdateCoordinator._br_timestamp_is_fresh(
+            requested_at + dt.timedelta(seconds=30),
+            baseline,
+            requested_at,
+            observed_at,
+        )
+
+
 class VehiclePrimaryRefreshOwnershipTest(unittest.IsolatedAsyncioTestCase):
     """Keep cache polling in HA while Node-RED owns real-wake scheduling."""
 

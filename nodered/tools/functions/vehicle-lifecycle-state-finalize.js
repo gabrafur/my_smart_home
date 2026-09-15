@@ -26,6 +26,7 @@ data.context = {
     near_home_radius_m: Number(data.policy.near_home_radius_m),
     last_confirmed_location: data.location_observation ? { ...data.location_observation } : null,
     telemetry_updated_at: data.telemetry_updated_at,
+    telemetry_timestamp_future: data.telemetry_timestamp_future,
     distance_home_m: data.location.distance_m,
     home: data.location.ready ? data.facts.home : null,
     near_home: data.location.ready ? data.facts.near_home && !data.facts.home : null,

@@ -18,6 +18,7 @@ views:
               {% set engine = is_state('binary_sensor.vehicle_primary_engine', 'on') %}
               {% set updated = states('sensor.vehicle_primary_last_updated_at') %}
               {% set updated_ts = as_timestamp(updated, none) %}
+              {% set updated_future = updated_ts is not none and updated_ts > as_timestamp(now()) + 60 %}
               {% set age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
               {% set refresh_state = states('sensor.vehicle_primary_refresh_coordinator') %}
               {% set refresh_reason = state_attr('sensor.vehicle_primary_refresh_coordinator', 'reason') %}
@@ -27,6 +28,8 @@ views:
 
               {% if refresh_state == 'waiting' and refresh_reason == 'quiet_hours_both_home' %}
               🟢 **Pausa noturna programada** · ambos em casa; o próximo wake pode ocorrer a partir das {{ format_number_ptbr(quiet_end_hour) }}h{% if age_min is not none %}. Último dado do carro há {{ format_number_ptbr(age_min) }} min{% endif %}.
+              {% elif updated_future %}
+              🔴 **Horário inválido recebido do carro** · a leitura está no futuro e não é considerada atual.
               {% elif age_min is none %}
               🔴 **Sem telemetria válida** · o Bluelink ainda não forneceu uma leitura utilizável.
               {% elif age_min <= 30 %}
@@ -342,6 +345,7 @@ views:
               {% set cache_age_min = (cache_age_s / 60) | round(0) if cache_age_s is not none else none %}
               {% set updated = states('sensor.vehicle_primary_last_updated_at') %}
               {% set updated_ts = as_timestamp(updated, none) %}
+              {% set data_timestamp_future = updated_ts is not none and updated_ts > as_timestamp(now()) + 60 %}
               {% set data_age_min = ((as_timestamp(now()) - updated_ts) / 60) | round(0) if updated_ts else none %}
               {% set request_ts = as_timestamp(state_attr('sensor.vehicle_primary_refresh_coordinator', 'last_request_at'), none) %}
               {% set request_age_s = ([0, as_timestamp(now()) - request_ts] | max) if request_ts is not none else none %}
@@ -360,7 +364,8 @@ views:
               {% else %}🔴 **Consulta ao servidor indisponível**.
               {% endif %}
 
-              {% if data_age_min is none %}🔴 **Sem dados confirmados do carro**.
+              {% if data_timestamp_future %}🔴 **Horário dos dados do carro inválido** · o Bluelink informou uma data futura; ela não confirma atualização nem wake.
+              {% elif data_age_min is none %}🔴 **Sem dados confirmados do carro**.
               {% elif data_age_min <= 30 %}🟢 **Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.
               {% elif data_age_min <= 90 %}🟡 **Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.
               {% else %}🔴 **Dados do carro recebidos há {{ format_number_ptbr(data_age_min) }} min**.

@@ -34,6 +34,10 @@ def main() -> None:
     assert "última posição estacionada recebida há" not in dashboard
     assert "binary_sensor.vehicle_primary_engine" in dashboard
     assert "**Atualização dos dados**" in dashboard
+    assert "updated_future" in dashboard
+    assert "data_timestamp_future" in dashboard
+    assert "Horário inválido recebido do carro" in dashboard
+    assert "ela não confirma atualização nem wake" in dashboard
     assert "nova verificação em cerca de" in dashboard
     assert "verificando agora o cache do servidor antes de outro wake" in dashboard
     assert "Atualização do veículo ainda não concluída" in dashboard

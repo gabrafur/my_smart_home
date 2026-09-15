@@ -80,6 +80,7 @@ assert.doesNotMatch(code.policy, /peopleContext\.any_tracker_away/);
 assert.doesNotMatch(code.accepted, /AWAY_INTERVAL_MS|HOME_INTERVAL_MS/);
 assert.doesNotMatch(code.error, /\[15 \* 60 \* 1000, 30 \* 60 \* 1000\]/);
 assert.match(code.vehicleEvidenceRead, /baseline_observed_at/);
+assert.match(code.vehicleEvidenceRead, /current <= Date\.now\(\) \+ futureMs/);
 assert.match(code.vehicleEvidenceConfirm, /last_success_reason/);
 assert.ok(code.normalizer.length < 4000);
 assert.doesNotMatch(
@@ -1068,6 +1069,30 @@ scenario("24 cache atrasado posterior ao baseline não confirma wake", () => {
   assert.equal(state.awaiting_evidence, true);
   assert.equal(state.attempts, 1);
   assert.equal(state.last_success_at ?? 0, 0);
+});
+
+scenario("24a timestamp futuro não confirma wake", () => {
+  const baseline = DAY - 10 * 60_000;
+  const requestAt = DAY - 5 * 60_000;
+  const store = memory({
+    vehicle_primary_context_v1: readyContext(baseline),
+    [KEY]: {
+      attempts: 1,
+      awaiting_evidence: true,
+      request_in_flight: false,
+      last_attempt_at: requestAt,
+      last_request_at: requestAt,
+      next_allowed_at: requestAt + 15 * 60_000,
+      baseline_observed_at: { telemetry: baseline },
+    },
+  });
+
+  const normalized = normalize(store, DAY, DAY, DAY + 3 * 60 * 60_000);
+  const state = store.get(KEY);
+  assert.equal(state.awaiting_evidence, true);
+  assert.equal(state.last_success_at ?? 0, 0);
+  assert.equal(normalized[0].payload.context.telemetry_updated_at, null);
+  assert.equal(normalized[0].payload.context.telemetry_timestamp_future, true);
 });
 
 scenario("25 telemetria do wake processada após seis minutos confirma sucesso", () => {

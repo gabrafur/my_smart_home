@@ -17,6 +17,7 @@ const attemptCurrent = Number(data.refresh_state.last_attempt_at ?? 0) > 0 &&
 data.evidence = {
     awaiting: data.refresh_state.awaiting_evidence === true,
     confirmed: attemptCurrent && current > 0 &&
+        current <= Date.now() + futureMs &&
         (baseline <= 0 || current > baseline) && requestAt > 0 &&
         current >= requestAt - futureMs
 };
