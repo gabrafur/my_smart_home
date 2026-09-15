@@ -101,11 +101,12 @@ const config = group(
 grouped(config.id, {
   id: "people_visual_lifecycle_help", type: "comment", z: PEOPLE_TAB, g: config.id,
   name: "Valores inválidos são rejeitados; a última política válida permanece ativa para todos os consumidores.",
-  info: "Dedupe: 1–60 min; graça: 1–60 min; ciclo externo: 15–600 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
+  info: "Dedupe: 1–60 min; graça: 1–60 min; retorno local: 15–180 min; ciclo externo: 15–600 s; futuro: 0–300 s; sinais: 1–30 min; recovery: 1–168 h.",
   x: 2740, y: 100, wires: []
 });
 inject("people_visual_arrival_dedupe_config", config.id, "Dedupe chegada — 10 min [1..60]", "arrival_dedupe_minutes", 10, 2370, 160, "people_visual_lifecycle_config_left_out");
 inject("people_visual_primary_home_grace", config.id, "Graça home — 10 min [1..60]", "primary_home_grace_minutes", 10, 2370, 210, "people_visual_lifecycle_config_left_out");
+inject("people_visual_local_excursion", config.id, "Retorno local — 90 min [15..180]", "local_excursion_minutes", 90, 2370, 260, "people_visual_lifecycle_config_left_out");
 inject("people_visual_future_tolerance", config.id, "Tolerância futura — 60 s [0..300]", "future_tolerance_seconds", 60, 2740, 160, "people_visual_lifecycle_config_middle_out");
 inject("people_visual_vehicle_signal_fresh", config.id, "Sinal do veículo — 5 min [1..30]", "vehicle_signal_fresh_minutes", 5, 2740, 210, "people_visual_lifecycle_config_middle_out");
 const nearHomeRefresh = inject("people_visual_near_home_refresh", config.id,
@@ -227,7 +228,7 @@ for (const [id, x, y] of [
   if (!lifecycle.nodes.includes(id)) lifecycle.nodes.push(id);
 }
 notificationOut.name = "RETORNO confirmado → avisos de residentes";
-required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos.";
+required(PEOPLE_TAB).info = "Seleção de fontes, parâmetros, direção, armamento, dedupe, recovery e saídas são visíveis. JavaScript remanescente apenas normaliza estruturas e persiste contratos sem efeitos. Teste do retorno local: resete pessoas e veículo, execute NEG SAÍDA 1/2 (home → near_home), depois Motor sintético OFF e Motor sintético ON; o efeito termina no dry-run.";
 
 const vehicleLifecycle = required("d860cb4ad0d1fd89");
 vehicleLifecycle.name = "2. Lifecycle visual do veículo, chegada e confirmação de refresh";

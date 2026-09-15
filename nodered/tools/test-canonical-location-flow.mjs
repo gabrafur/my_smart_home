@@ -230,6 +230,7 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
   const controls = {
     near: byId.get("people_location_near_home_radius_v1"),
     home: byId.get("people_location_home_radius_v1"),
+    localExcursion: byId.get("people_visual_local_excursion"),
   };
   assert.deepEqual(
     [controls.near.topic, controls.home.topic],
@@ -239,6 +240,8 @@ const fallbackId = "device_tracker.mobile_primary_source_2";
     [controls.near.payload, controls.home.payload],
     ["700", "100"],
   );
+  assert.equal(controls.localExcursion.payload, "90");
+  assert.equal(controls.localExcursion.topic, "local_excursion_minutes");
   assert.equal(byId.has("people_location_fast_refresh_radius_v1"), false);
 
   const policyContext = runtimeGlobal();

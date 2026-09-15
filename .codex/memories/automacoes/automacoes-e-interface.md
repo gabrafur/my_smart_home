@@ -35,9 +35,10 @@ contrato de segurança. Antes de mudar esse comportamento, consulte
   `not_home` ou outra zona externa. Distância acima do limite casa/fora nunca
   arma a chegada sozinha, nem a própria borda inicial de saída; é necessária
   uma observação externa posterior ou a borda direcional externa `-> near_home`.
-  `home -> near_home` é saída e um rebote
-  posterior para `home` termina em um bloco visível sem efeitos, tanto para
-  residentes quanto para `vehicle_primary`.
+  `home -> near_home` é saída e não produz efeitos imediatos. Para residentes,
+  ela abre um ciclo local de 90 min restrito à iluminação; depois de um `off`,
+  somente um novo `on` com localização atual em `near_home` ou `home` caracteriza
+  a volta. Para `vehicle_primary`, o rebote continua sem efeitos.
 - O refletor do portão usa somente a aproximação de um morador com localização
   atual de `not_home`/zona externa para `near_home` (ou recovery de ciclo externo
   já armado), durante a noite, com motor `on` confiável.

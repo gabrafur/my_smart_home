@@ -24,21 +24,13 @@ if (lifecycle.active_by_arrival === true && (!Number.isFinite(lifecycle.on_since
         pending_off_at: null, pending_off_reason: null, pending_off_source: null,
         vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null });
 }
-if (lifecycle.active_by_arrival === true && lifecycle.vehicle_refresh_at == null &&
-    lifecycle.pending_off_at != null) {
-    lifecycle.vehicle_refresh_at = lifecycle.pending_off_at;
-    lifecycle.vehicle_refresh_reason = lifecycle.pending_off_reason ?? "legacy_home_confirmation";
-    lifecycle.vehicle_refresh_source = lifecycle.pending_off_source ?? null;
-    node.warn("iluminacao_seguranca: carência legada migrada para atualização do carro");
+if (lifecycle.pending_off_at != null || lifecycle.vehicle_refresh_at != null) {
+    node.warn("iluminacao_seguranca: deadline legado de refresh removido; regra pertence a contexto_chegadas");
 }
-Object.assign(lifecycle, { pending_off_at: null, pending_off_reason: null, pending_off_source: null });
-if (lifecycle.active_by_arrival === true && lifecycle.vehicle_refresh_at != null &&
-    (!Number.isFinite(lifecycle.vehicle_refresh_at) || lifecycle.vehicle_refresh_at < lifecycle.on_since ||
-    lifecycle.vehicle_refresh_at > lifecycle.force_off_at)) {
-    node.warn("iluminacao_seguranca: deadline de atualização do carro inválido; descartado");
-    Object.assign(lifecycle, { vehicle_refresh_at: null, vehicle_refresh_reason: null,
-        vehicle_refresh_source: null });
-}
+Object.assign(lifecycle, {
+    pending_off_at: null, pending_off_reason: null, pending_off_source: null,
+    vehicle_refresh_at: null, vehicle_refresh_reason: null, vehicle_refresh_source: null
+});
 const cooldownMaxMs = Number(policy.cooldown_max_minutes) * 60000;
 if (lifecycle.cooldown_until != null && (!Number.isFinite(lifecycle.cooldown_until) ||
     lifecycle.cooldown_until <= now || lifecycle.cooldown_until > now + cooldownMaxMs)) lifecycle.cooldown_until = null;

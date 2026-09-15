@@ -41,4 +41,20 @@ data.external_since = {
     resident_secondary: validExternalAt(Number(recoveredExternal.resident_secondary))
         ? Number(recoveredExternal.resident_secondary) : null
 };
+const recoveredExcursions = recovery.local_excursions &&
+    typeof recovery.local_excursions === "object" &&
+    !Array.isArray(recovery.local_excursions)
+    ? recovery.local_excursions : {};
+const excursionMaxMs = Number(data.policy.local_excursion_minutes ?? 90) * 60000;
+data.local_excursions = {};
+for (const role of ["resident_primary", "resident_secondary"]) {
+    const item = recoveredExcursions[role];
+    const startedAt = Number(item?.started_at);
+    const expiresAt = Number(item?.expires_at);
+    if (Number.isFinite(startedAt) && startedAt > 0 &&
+        startedAt <= now + futureMs && Number.isFinite(expiresAt) &&
+        now <= expiresAt && expiresAt - startedAt <= excursionMaxMs + 1000) {
+        data.local_excursions[role] = { started_at: startedAt, expires_at: expiresAt };
+    }
+}
 return msg;

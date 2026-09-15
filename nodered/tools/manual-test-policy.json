@@ -278,7 +278,10 @@
             "evidence_node_ids": [
                 "arrival_context_test_group",
                 "arrival_context_test_reset_control",
-                "arrival_context_test_cycle_control"
+                "arrival_context_test_cycle_control",
+                "arrival_context_test_vehicle_on_control",
+                "arrival_context_test_home_control",
+                "arrival_context_test_due_control"
             ],
             "dry_run_terminal_ids": [
                 "vehicle_primary_refresh_dry_run_terminal_v1",

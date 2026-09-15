@@ -684,6 +684,29 @@ scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
   }));
   assert.equal(engineOnStore.get(KEY).interval_ms, 5 * 60_000);
   assert.equal(engineOnStore.get(KEY).interval_policy, "approaching");
+
+  const localExcursionStore = memory({
+    [POLICY_KEY]: store.get(POLICY_KEY),
+    people_context_v1: {
+      arrival_armed: { resident_secondary: false },
+      local_excursions: {
+        resident_secondary: { started_at: NIGHT - 60_000, expires_at: NIGHT + 60_000 },
+      },
+    },
+    vehicle_primary_context_v1: { ready: false, engine_on: false },
+  });
+  const localSelected = execute(code.policy, {
+    now: NIGHT,
+    store: localExcursionStore,
+    msg: { payload: {
+      kind: "refresh_command",
+      resident_primary_state: "home",
+      resident_secondary_state: "near_home",
+    } },
+  });
+  assert(localSelected[0]);
+  assert.equal(localSelected[0].payload.refresh_arrival_restart_pending, true,
+    "passeio local deve usar a mesma cadência de 1 minuto enquanto o motor consta OFF");
 });
 
 scenario("29 saída reduz cooldown persistido de 30 para 15 minutos", () => {

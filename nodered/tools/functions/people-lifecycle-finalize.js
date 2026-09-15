@@ -5,6 +5,7 @@ const set = (name, value, store) => data.test_mode || !store
     ? flow.set(key(name), value) : flow.set(key(name), value, store);
 data.recovery.arrival_armed = { ...data.armed };
 data.recovery.external_since = { ...data.external_since };
+data.recovery.local_excursions = { ...data.local_excursions };
 data.recovery.updated_at = Date.now();
 set("people_arrival_armed", data.armed);
 set("security_people_recovery_v1", data.recovery, "persistent");
@@ -30,7 +31,8 @@ const contextValue = {
     ready: primary.ready && secondary.ready,
     stale: primary.stale || secondary.stale,
     updated_at: Math.max(...[primary.updated_at, secondary.updated_at].filter(Number.isFinite), 0),
-    arrival_armed: { ...data.armed }
+    arrival_armed: { ...data.armed },
+    local_excursions: { ...data.local_excursions }
 };
 set("people_context_v1", contextValue);
 const previousReady = flow.get(key("security_people_ready_logged"));

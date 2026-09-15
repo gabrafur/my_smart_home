@@ -47,6 +47,11 @@ for (const id of [
   "arrival_context_cycle_match", "arrival_context_both_received", "arrival_context_pending_emitted",
   "arrival_context_departure_precedence", "arrival_context_requested_reason", "arrival_context_recovery_reason",
   "arrival_context_people_reason",
+  "arrival_context_home_domain", "arrival_context_home_accepted", "arrival_context_home_source",
+  "arrival_context_home_transition", "arrival_context_home_current", "arrival_context_home_duplicate",
+  "arrival_context_home_pending", "arrival_context_home_ack", "arrival_context_home_expired",
+  "arrival_context_home_away", "arrival_context_home_engine_off", "arrival_context_home_due",
+  "arrival_context_home_engine_allows", "arrival_context_home_retry_due",
 ]) assert.equal(byId.get(id)?.type, "switch", `decisão visual ausente: ${id}`);
 
 const policyValidate = getFunction("arrival_context_policy_validate");
@@ -64,7 +69,14 @@ const pendingRead = getFunction("arrival_context_pending_read");
 const pendingUpdate = getFunction("arrival_context_pending_update");
 const markEmitted = getFunction("arrival_context_mark_emitted");
 const refreshBuild = getFunction("arrival_context_refresh_build");
-const defaults = { inflight_timeout_s: 10, future_tolerance_s: 60 };
+const homeRefreshRead = getFunction("arrival_context_home_refresh_read");
+const homeRefreshStore = getFunction("arrival_context_home_refresh_store");
+const homeRefreshDueRead = getFunction("arrival_context_home_due_read");
+const homeRefreshBuild = getFunction("arrival_context_home_refresh_build");
+const homeRefreshClear = getFunction("arrival_context_home_clear");
+const defaults = { inflight_timeout_s: 10, future_tolerance_s: 60,
+  home_confirmation_delay_s: 90, home_confirmation_retry_s: 30,
+  home_confirmation_expiry_min: 15 };
 const flow = context();
 let msg = call(policyValidate, { payload: defaults }, flow);
 assert.equal(msg.policy_valid, true);
@@ -74,9 +86,11 @@ for (const payload of [
   { ...defaults, inflight_timeout_s: 0 }, { ...defaults, inflight_timeout_s: 61 },
   { ...defaults, future_tolerance_s: -1 }, { ...defaults, future_tolerance_s: 301 },
   { ...defaults, inflight_timeout_s: 1.5 },
+  { ...defaults, home_confirmation_delay_s: 29 }, { ...defaults, home_confirmation_retry_s: 9 },
+  { ...defaults, home_confirmation_expiry_min: 61 },
 ]) assert.equal(call(policyValidate, { payload }, flow).policy_valid, false);
-assert.equal(call(policyValidate, { payload: { inflight_timeout_s: 1, future_tolerance_s: 0 } }, flow).policy_valid, true);
-assert.equal(call(policyValidate, { payload: { inflight_timeout_s: 60, future_tolerance_s: 300 } }, flow).policy_valid, true);
+assert.equal(call(policyValidate, { payload: { ...defaults, inflight_timeout_s: 1, future_tolerance_s: 0 } }, flow).policy_valid, true);
+assert.equal(call(policyValidate, { payload: { ...defaults, inflight_timeout_s: 60, future_tolerance_s: 300 } }, flow).policy_valid, true);
 assert.deepEqual(call(policyLoad, {}, flow).policy, { version: 1, ...defaults });
 
 const now = Date.UTC(2026, 0, 1, 12, 0, 0);
@@ -199,6 +213,75 @@ msg = call(cycleStart, msg, testFlow);
 assert.equal(msg.payload.test_mode, true);
 assert.equal(testFlow.get("refresh_pending"), undefined, "teste não contamina ciclo de produção");
 assert.ok(testFlow.get("refresh_pending__test"));
+
+const homeFlow = context({
+  persistent: { arrival_context_policy_v1: { version: 1, ...defaults } },
+  default: { vehicle_primary_context_v1: { updated_at: now - 10_000, ready: true,
+    engine_state_valid: true, engine_on: true, refresh: { last_request_at: null } } },
+});
+let homeMsg = {
+  policy: { version: 1, ...defaults }, context_domain: "people", context_snapshot_accepted: true,
+  context_incoming_at: now, context_now: now,
+  payload: { kind: "people_context", source: "resident_secondary",
+    trigger_prev_state: "unavailable", trigger_state: "home", ready: true,
+    context: { updated_at: now, ready: true,
+      resident_secondary: { state: "home", ready: true, stale: false,
+        current_home: true, updated_at: now } } },
+};
+homeFlow.set("people_context_v1", homeMsg.payload.context);
+homeMsg = call(homeRefreshRead, homeMsg, homeFlow);
+assert.equal(homeMsg.home_refresh.transition_valid, true,
+  "unavailable → home precisa ser uma chegada válida para o refresh extraordinário");
+assert.equal(homeMsg.home_refresh.engine_on_at_arrival, true);
+call(homeRefreshStore, homeMsg, homeFlow);
+let homePending = homeFlow.get("resident_home_refresh_v1", "persistent");
+assert.equal(homePending.due_at, now + 90_000);
+assert.equal(homePending.engine_on_at_arrival, true);
+
+let dueMsg = call(homeRefreshDueRead, {
+  policy: { version: 1, ...defaults }, monitor_now: now + 90_001,
+  payload: { kind: "home_confirmation_tick" },
+}, homeFlow);
+assert.equal(dueMsg.home_refresh_due.due, true);
+assert.equal(dueMsg.home_refresh_due.engine_allows, true);
+dueMsg.policy = { version: 1, ...defaults };
+const extraordinary = call(homeRefreshBuild, dueMsg, homeFlow);
+assert.equal(extraordinary.payload.reason, "resident_arrival_confirmation");
+assert.equal(extraordinary.payload.resident_arrival_force, true);
+assert.equal(extraordinary.payload.require_lighting_ready, false,
+  "refresh de HOME não pode depender do lifecycle do refletor");
+homePending = homeFlow.get("resident_home_refresh_v1", "persistent");
+assert.equal(homePending.attempts, 1);
+
+homeFlow.set("vehicle_primary_context_v1", { updated_at: now + 95_000, ready: true,
+  engine_state_valid: true, engine_on: true,
+  refresh: { last_request_at: homePending.issued_at + 1 } });
+dueMsg = call(homeRefreshDueRead, { payload: { kind: "home_confirmation_tick" } }, homeFlow);
+assert.equal(dueMsg.home_refresh_due.request_observed, true);
+call(homeRefreshClear, dueMsg, homeFlow);
+assert.equal(homeFlow.get("resident_home_refresh_v1", "persistent"), undefined);
+
+const offFlow = context({
+  persistent: { arrival_context_policy_v1: { version: 1, ...defaults },
+    resident_home_refresh_v1: { version: 1, source: "resident_primary",
+      arrival_observed_at: now, due_at: now + 90_000, expires_at: now + 990_000,
+      engine_on_at_arrival: true, next_emit_at: now + 90_000 } },
+  default: {
+    people_context_v1: { resident_primary: { ready: true, stale: false, current_home: true } },
+    vehicle_primary_context_v1: { updated_at: now + 30_000, engine_state_valid: true,
+      engine_on: false, refresh: {} },
+  },
+});
+dueMsg = call(homeRefreshDueRead, { payload: { kind: "home_confirmation_tick" } }, offFlow);
+assert.equal(dueMsg.home_refresh_due.explicit_engine_off, true,
+  "OFF confirmado após HOME cancela a consulta desnecessária");
+
+const arrivalFlagFlow = context({ persistent: { arrival_context_policy_v1: { version: 1, ...defaults } } });
+started = begin(arrivalFlagFlow, now, { reason: "resident_arrival_confirmation",
+  force_recovery: true, resident_arrival_force: true,
+  arrival_source: "resident_secondary", arrival_stage: "home" });
+assert.equal(arrivalFlagFlow.get("refresh_pending").resident_arrival_force, true,
+  "o bypass extraordinário não pode se perder no ciclo coordenado");
 
 for (const id of ["3514854bb1279cbb", "45cb8ce559f5a522", "9f9a1fe3c4afc387", "1ba5ecf650ac79b8", "6473697c19342f07", "9f109b7076619124"]) {
   assert.ok(byId.has(id), `contrato preservado: ${id}`);

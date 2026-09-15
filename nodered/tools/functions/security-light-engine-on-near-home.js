@@ -1,7 +1,7 @@
 const data = msg._light_context;
 if (!data) return null;
 
-data.engine_on_arrival = null;
+data.engine_on_arrival = data.engine_on_arrival ?? null;
 const engineJustTurnedOn =
     data.kind === "vehicle_primary_context" &&
     data.accepted === true &&
@@ -14,6 +14,7 @@ const bypassJustBecameAvailable =
 data.location_authorization_just_became_valid =
     engineJustTurnedOn || bypassJustBecameAvailable;
 if (!engineJustTurnedOn && !bypassJustBecameAvailable) return msg;
+if (data.engine_on_arrival) return msg;
 
 const armed = data.people?.arrival_armed ?? {};
 const freshnessMs = Number(data.location_policy.location_fresh_minutes) * 60000;

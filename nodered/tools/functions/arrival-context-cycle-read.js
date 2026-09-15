@@ -12,4 +12,7 @@ msg.context_cycle_inflight = Boolean(pending && pending.emitted !== true &&
 msg.context_force_recovery = msg.payload?.force_recovery === true;
 msg.context_require_lighting = msg.payload?.require_lighting_ready === true;
 msg.context_request_reason = msg.payload?.reason || "startup_or_periodic_reconciliation";
+msg.context_resident_arrival_force = msg.payload?.resident_arrival_force === true;
+msg.context_arrival_source = msg.payload?.arrival_source ?? null;
+msg.context_arrival_stage = msg.payload?.arrival_stage ?? null;
 return msg;

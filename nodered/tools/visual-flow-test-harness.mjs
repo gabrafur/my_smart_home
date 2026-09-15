@@ -127,6 +127,7 @@ export function runSecurityArrivalVisual(call, message) {
 export function runSecurityContextVisual(call, message) {
   let msg = call("security_visual_context_cache", message);
   if (!msg) return null;
+  msg = call("security_visual_local_excursion", msg);
   msg = call("security_visual_engine_on_near_home", msg);
   msg = call("security_visual_arrival_watch", msg);
   msg = call("security_visual_pending_validate", msg);
@@ -172,7 +173,9 @@ export function runSecurityBypassVisual(call, message) {
 
 export function ensureArrivalContextPolicy(call) {
   let msg = call("arrival_context_policy_validate", {
-    payload: { inflight_timeout_s: 10, future_tolerance_s: 60 }
+    payload: { inflight_timeout_s: 10, future_tolerance_s: 60,
+      home_confirmation_delay_s: 90, home_confirmation_retry_s: 30,
+      home_confirmation_expiry_min: 15 }
   });
   call("arrival_context_policy_store", msg);
 }

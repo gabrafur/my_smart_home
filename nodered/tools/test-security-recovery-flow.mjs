@@ -14,7 +14,6 @@ const aliasesByName = {
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
   light_reconcile: "Emitir deadlines reconstruídos",
-  light_vehicle_refresh: "Atualizar carro e aguardar motor OFF",
 };
 for (const [alias, name] of Object.entries(aliasesByName)) {
   const node = flows.find((item) => item.name === name);
@@ -245,10 +244,11 @@ scenario("06 restart durante cooldown de 5 minutos", () => {
   assert.equal(run("light_check_vehicle_primary_in_use", { payload: { vehicle_primary_in_use: true } }, flow), null);
 });
 
-scenario("07 restart durante espera de 90 segundos para atualizar o carro", () => {
+scenario("07 restart remove deadline legado de refresh do refletor", () => {
   const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW + 30_000, vehicle_refresh_source: "resident_primary" }) });
   const recovered = run("light_reconcile", { payload: { kind: "light_physical", state: "on" } }, flow)[0];
-  assert.equal(recovered.find((msg) => msg.payload.deadline_type === "vehicle_refresh").delay, 30_000);
+  assert.equal(recovered.some((msg) => msg.payload.deadline_type === "vehicle_refresh"), false);
+  assert.equal(flow.get("security_light_lifecycle_v1").vehicle_refresh_at, null);
 });
 
 scenario("08 restart durante timeout de 15 minutos", () => {
@@ -351,16 +351,17 @@ scenario("22 restart durante retry do vehicle_primary", () => {
   assert.equal(runVehicleRefresh({ payload: { kind: "refresh_command", anyone_away: true } }, flow), null);
 });
 
-scenario("23 restart após início da condição antes dos 90 s", () => {
+scenario("23 recovery preserva somente o backstop", () => {
   const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW + 45_000, vehicle_refresh_source: "resident_primary" }) });
   const messages = run("light_reconcile", { payload: { kind: "light_physical", state: "on" } }, flow)[0];
-  assert.equal(messages.find((msg) => msg.payload.deadline_type === "vehicle_refresh").delay, 45_000);
+  assert.equal(messages.some((msg) => msg.payload.deadline_type === "vehicle_refresh"), false);
+  assert(messages.some((msg) => msg.payload.deadline_type === "backstop"));
 });
 
-scenario("24 restart após os 90 segundos expirarem", () => {
+scenario("24 recovery descarta refresh legado já vencido", () => {
   const flow = readyFlow({ security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW - 1_000, vehicle_refresh_source: "resident_primary" }) });
   const messages = run("light_reconcile", { payload: { kind: "light_physical", state: "on" } }, flow)[0];
-  assert.equal(messages.find((msg) => msg.payload.deadline_type === "vehicle_refresh").delay, 0);
+  assert.equal(messages.some((msg) => msg.payload.deadline_type === "vehicle_refresh"), false);
 });
 
 scenario("25 restart após os 15 minutos expirarem", () => {
@@ -489,12 +490,12 @@ scenario("37 normalizador de pessoas não envia notificações laterais", () => 
   assert.equal(result[3], null);
 });
 
-scenario("38 saída de home durante 90 s cancela somente o refresh", () => {
+scenario("38 lifecycle legado perde somente o refresh movido", () => {
   const flow = readyFlow({
     people_context_v1: { ready: true, resident_primary: { current_home: false } },
     security_light_lifecycle_v1: lifecycle({ vehicle_refresh_at: NOW - 1, vehicle_refresh_source: "resident_primary" }),
   });
-  assert.equal(run("light_vehicle_refresh", { payload: { deadline_type: "vehicle_refresh" } }, flow), null);
+  run("light_reconcile", { payload: { kind: "light_physical", state: "on" } }, flow);
   assert.equal(flow.get("security_light_lifecycle_v1").vehicle_refresh_at, null);
   assert.equal(flow.get("security_light_lifecycle_v1").active_by_arrival, true);
 });

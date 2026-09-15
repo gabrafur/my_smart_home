@@ -8,7 +8,10 @@ const pending = {
     people_ready: false, vehicle_primary_ready: false, emitted: false,
     started_at: msg.context_now, force_recovery: msg.context_force_recovery,
     require_lighting_ready: msg.context_require_lighting,
-    request_reason: msg.context_request_reason
+    request_reason: msg.context_request_reason,
+    resident_arrival_force: msg.context_resident_arrival_force,
+    arrival_source: msg.context_arrival_source,
+    arrival_stage: msg.context_arrival_stage
 };
 flow.set(msg.context_pending_key, pending);
 msg.payload = {

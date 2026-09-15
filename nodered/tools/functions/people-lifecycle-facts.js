@@ -41,6 +41,19 @@ if (data.is_location_event && source?.ready === true &&
 const approach = data.trigger_state === "near_home" &&
     external(data.trigger_prev_state) && source?.current_home !== true;
 const departure = data.trigger_prev_state === "home" && data.trigger_state !== "home";
+const localExcursionStart = departure && data.trigger_state === "near_home" &&
+    source?.ready === true && source?.current_home !== true;
+if (localExcursionStart) {
+    const startedAt = validObservedAt(sourceObservedAt) ? sourceObservedAt : now;
+    data.local_excursions[data.source] = {
+        started_at: startedAt,
+        expires_at: startedAt +
+            Number(data.policy.local_excursion_minutes ?? 90) * 60000
+    };
+}
+if (source?.ready === true && external(source.state)) {
+    delete data.local_excursions[data.source];
+}
 const graceMs = Number(data.policy.primary_home_grace_minutes) * 60000;
 data.facts = {
     source_ready: source?.ready === true,
@@ -54,7 +67,8 @@ data.facts = {
     external_cycle_confirmed: data.armed[data.source] === true,
     directional_candidate: source?.ready === true &&
         data.trigger_state !== data.trigger_prev_state &&
-        ["home", "near_home"].includes(data.trigger_state)
+        ["home", "near_home"].includes(data.trigger_state),
+    local_excursion_start: localExcursionStart
 };
 if (source?.ready === true && !external(source.state)) {
     data.external_since[data.source] = null;

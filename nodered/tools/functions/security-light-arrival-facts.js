@@ -35,13 +35,17 @@ const previousAway = typeof previousState === "string" &&
 const recoveredAway = msg.payload?.illumination_only === true &&
     ["unknown", "unavailable"].includes(previousState) &&
     msg.payload?.external_cycle_confirmed === true;
+const localExcursionReturn = msg.payload?.local_excursion_return === true &&
+    msg.payload?.arrival_direction === "returning_local_excursion";
 const residentApproachValid =
     residentArrival &&
-    stage === "approach" &&
-    (previousAway || recoveredAway) &&
     residentCurrent &&
-    resident?.state === "near_home" &&
-    resident?.current_home !== true;
+    ((stage === "approach" &&
+        (previousAway || recoveredAway) &&
+        resident?.state === "near_home" &&
+        resident?.current_home !== true) ||
+     (stage === "local_return" && localExcursionReturn &&
+        ["home", "near_home"].includes(resident?.state)));
 const bypassEnabled = get("security_light_engine_bypass_enabled", "persistent") === true;
 const bypassAutomatic = get("security_light_engine_bypass_automatic", "persistent") === true;
 const engineKnown = vehicle.engine_state_valid === true;
@@ -85,8 +89,8 @@ msg._light_arrival = {
     logic_ready: sunReady && vehicleDecisionReady,
     sun_ready: sunReady,
     dark: flow.get("sun_below_horizon") === true,
-    direction_valid: msg.payload?.arrival_direction === "returning" &&
-        msg.payload?.external_cycle_confirmed === true,
+    direction_valid: (msg.payload?.arrival_direction === "returning" &&
+        msg.payload?.external_cycle_confirmed === true) || localExcursionReturn,
     recovery_needed: !vehicleLightingReady && !bypassAllowed,
     recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||
         now - lastRecoveryAt >= recoveryThrottleMs,

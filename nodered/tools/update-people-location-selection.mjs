@@ -207,6 +207,7 @@ const limits = {
     vehicle_location_fresh_minutes: { min: 5, max: 180, integer: false },
     movement_threshold_m: { min: 10, max: 2000, integer: true },
     arrival_recovery_minutes: { min: 3, max: 30, integer: false },
+    local_excursion_minutes: { min: 15, max: 180, integer: false },
     near_home_refresh_minutes: { min: 3, max: 14, integer: false }
 };
 
@@ -1067,6 +1068,7 @@ flows.push(
   inject("people_location_source_report_minutes_v1", policyGroup, "Fonte ativa — 75 min", "source_report_fresh_minutes", 75, 550, 200),
   inject("people_location_vehicle_fresh_minutes_v1", policyGroup, "Posição do carro — 30 min", "vehicle_location_fresh_minutes", 30, 550, 240),
   inject("people_location_recovery_minutes_v1", policyGroup, "Reter chegada — 15 min", "arrival_recovery_minutes", 15, 550, 280),
+  inject("people_location_local_excursion_minutes_v1", policyGroup, "Retorno local — 90 min", "local_excursion_minutes", 90, 250, 280),
   inject("people_location_recency_tie_seconds_v1", policyGroup, "Empate de recência — 60 s", "recency_tie_seconds", 60, 850, 160),
   inject("people_location_accuracy_v1", policyGroup, "Precisão máxima — 100 m", "max_gps_accuracy_m", 100, 850, 200),
   inject("people_location_movement_threshold_v1", policyGroup, "Movimento do carro — 250 m", "movement_threshold_m", 250, 850, 240),

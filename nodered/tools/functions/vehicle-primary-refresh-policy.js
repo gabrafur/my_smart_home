@@ -60,9 +60,12 @@ const anyoneApproaching =
     residentPrimaryState === "near_home" ||
     residentSecondaryState === "near_home";
 const arrivalArmed = peopleContext.arrival_armed ?? {};
+const localExcursions = peopleContext.local_excursions ?? {};
 const armedResidentApproaching =
     (residentPrimaryState === "near_home" && arrivalArmed.resident_primary === true) ||
-    (residentSecondaryState === "near_home" && arrivalArmed.resident_secondary === true);
+    (residentSecondaryState === "near_home" && arrivalArmed.resident_secondary === true) ||
+    (residentPrimaryState === "near_home" && Boolean(localExcursions.resident_primary)) ||
+    (residentSecondaryState === "near_home" && Boolean(localExcursions.resident_secondary));
 const arrivalRestartPending = armedResidentApproaching && vehicleContext.engine_on !== true;
 const anyoneAway =
     anyResidentAway ||
@@ -111,7 +114,7 @@ if (anyoneApproaching) {
         fill: "yellow",
         shape: "dot",
         text: arrivalRestartPending
-            ? `${config.arrival_armed_interval_minutes} min — chegada armada, aguardando motor`
+            ? `${config.arrival_armed_interval_minutes} min — retorno armado, aguardando motor`
             : `${config.approaching_interval_minutes} min — near_home`
     });
     return arrivalRestartPending

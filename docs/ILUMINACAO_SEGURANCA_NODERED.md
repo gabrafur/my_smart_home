@@ -225,6 +225,10 @@ incoerente sem substituir a última política válida.
   fail-open para não perder uma chegada real.
 - Recovery `unknown`/`unavailable -> near_home` só alcança a iluminação quando
   recupera um ciclo externo que já estava armado antes da indisponibilidade.
+- Uma saída curta `home -> near_home` abre um ciclo local por até 90 min, sem
+  ser tratada como chegada e sem acender o refletor. Depois de um `off`
+  observado, um novo `on` com a localização atual do morador ainda em
+  `near_home` ou já em `home` autoriza somente a iluminação.
 - A chegada do vehicle_primary atualiza o histórico de viagens do dia; no estágio
   `approach`, também tenta um wake pontual do veículo.
 - Atualizações de atributos do tracker também são observadas sem exigir troca
@@ -399,6 +403,13 @@ veículo. Para residentes, o retorno precisa estar armado por
 externo já existente; não criam uma chegada. Essas transições de recovery ficam
 restritas à iluminação e não são publicadas como chegada geral para o desarme.
 
+A exceção para uma parada próxima também é restrita à iluminação. A borda
+`home -> near_home` apenas abre o ciclo local configurável (90 min por padrão).
+O primeiro `on` não autoriza nada: o fluxo exige um `off` observado depois do
+início do ciclo e então outro `on`. Assim, a saída inicial não é confundida com
+chegada; o segundo `on` reavalia imediatamente a pessoa com localização atual
+em `near_home` ou `home`.
+
 Se o motor muda para `on` depois que o morador já entrou em `near_home`, o evento
 confirmado de motor reavalia imediatamente a chegada enquanto o ciclo externo
 daquela pessoa continuar armado e a localização ainda estiver atual. Se a
@@ -482,7 +493,7 @@ exclusivamente de um `delay` residente em memória.
 - vehicle_primary: a política fica visível no tab `contexto_vehicle_primary`,
   nos grupos `3. Configuração dos intervalos do veículo` e `4. Política
   visual`. Os seis injects numéricos são a única configuração: 1 min quando
-  uma chegada de morador continua armada em `near_home` e o motor ainda não
+  uma chegada externa ou um ciclo local continua armado em `near_home` e o motor ainda não
   está `on`, 5 min no `near_home` comum, 15 min quando está `not_home`, 30 min
   no ciclo saudável quando ambos estão `home`, início 0h e fim 6h para a pausa
   noturna nessa última condição.
@@ -490,7 +501,7 @@ exclusivamente de um `delay` residente em memória.
   Deploy. Essa presença usa a mesma fonte de melhor localização mostrada no
   mapa; divergência de uma fonte não selecionada fica apenas no diagnóstico.
   A idade dessa localização pode solicitar atualização dos telefones, mas não
-  reduz sozinha o ciclo do veículo. Durante uma chegada armada em `near_home`,
+  reduz sozinha o ciclo do veículo. Durante uma chegada externa ou local armada em `near_home`,
   motor `off` ou ainda desconhecido reduz temporariamente o ciclo para 1 min;
   depois de `on`, ou sem esse armamento, o intervalo volta a 5 min. Fora desse estado, a recuperação do
   próprio veículo usa o intervalo configurado para fora, inclusive em casa,

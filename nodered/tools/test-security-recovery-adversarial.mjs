@@ -18,12 +18,11 @@ const aliasesByName = {
   context_tick: "POLÍTICA: reavaliar a cada 30 s",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_mark_active: "Marcar refletor ativo por chegada",
-  light_evaluate_off: "Desligar agora ou agendar atualização do carro?",
+  light_evaluate_off: "Desligar quando o carro confirmar OFF",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
   light_reconcile: "Emitir deadlines reconstruídos",
   light_auto_off: "Aguardar backstop de 15 min",
   light_check_inactive: "Rotear disponibilidade do refletor",
-  light_off_grace: "Aguardar 90 s após HOME",
   light_sun_event: "Luminosidade mudou",
   light_timeout: "Solicitar desligamento por timeout",
 };

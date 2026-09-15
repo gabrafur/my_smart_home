@@ -14,6 +14,7 @@ let flows = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 const fixedGenerated = new Set([
   "security_light_arrival_direction_gate_v1",
   "security_light_arrival_direction_blocked_v1",
+  "71976ffe382e6d7d",
 ]);
 const generated = new Set(flows.filter((node) =>
   node.id.startsWith("security_visual_") || fixedGenerated.has(node.id)
@@ -210,23 +211,27 @@ linkIn("security_visual_context_route_in", decision.id, "Receber contextos canô
 linkIn("security_visual_arrival_route_in", decision.id, "Receber chegada canônica",
   ["security_visual_arrival_route_out"], "security_visual_arrival_facts", 160, 1900);
 fn("security_visual_context_cache", decision.id, "Normalizar e atualizar cache monotônico",
-  "security-light-context-cache.js", 1, 390, 1660, [["security_visual_engine_on_near_home"]]);
+  "security-light-context-cache.js", 1, 390, 1660, [["security_visual_local_excursion"]]);
+fn("security_visual_local_excursion", decision.id,
+  "Retorno local: OFF → novo ON",
+  "security-light-local-excursion.js", 1, 650, 1660,
+  [["security_visual_engine_on_near_home"]]);
 fn("security_visual_engine_on_near_home", decision.id,
-  "Motor ON + chegada armada ainda em near_home?",
-  "security-light-engine-on-near-home.js", 1, 700, 1660,
+  "Motor ON reavalia chegada armada?",
+  "security-light-engine-on-near-home.js", 1, 910, 1660,
   [["security_visual_arrival_watch"]]);
 fn("security_visual_arrival_watch", decision.id,
-  "Manter posição atual durante a aproximação",
-  "security-light-arrival-watch.js", 1, 990, 1660,
+  "Vigiar GPS da aproximação",
+  "security-light-arrival-watch.js", 1, 1160, 1660,
   [["security_visual_pending_validate"]]);
-fn("security_visual_pending_validate", decision.id, "Validar intenção pendente e retenção",
-  "security-light-pending-validate.js", 1, 1300, 1660, [["security_visual_replay_ready"]]);
+fn("security_visual_pending_validate", decision.id, "Validar intenção pendente",
+  "security-light-pending-validate.js", 1, 1420, 1660, [["security_visual_replay_ready"]]);
 sw("security_visual_replay_ready", decision.id,
   "Pendente ou motor ON permitem avaliar agora?",
-  "_light_context.replay_ready", 1660, 1660,
+  "_light_context.replay_ready", 1710, 1660,
   [["security_visual_replay_build"], ["48a5f40d806f6950"]]);
 fn("security_visual_replay_build", decision.id, "Montar replay preservando o evento",
-  "security-light-replay-build.js", 1, 1870, 1600, [["48a5f40d806f6950"]]);
+  "security-light-replay-build.js", 1, 1920, 1600, [["48a5f40d806f6950"]]);
 const contextOutput = required("48a5f40d806f6950");
 Object.assign(contextOutput, { g: decision.id, name: "Emitir contexto, reconciliação e replay",
   func: source("security-light-context-output.js"), outputs: 4, x: 2160, y: 1660 });
@@ -390,21 +395,10 @@ grouped(diagnostic.id, {
 const offGroup = required("a610d085d27ea80d");
 offGroup.name = "4. Confirmar carro e decidir desligamento";
 const evaluateOff = required("374d4e39be0a30ac");
-evaluateOff.name = "Desligar agora ou agendar atualização do carro?";
+evaluateOff.name = "Desligar quando o carro confirmar OFF";
 evaluateOff.func = source("security-light-off-decision.js");
-const grace = required("71976ffe382e6d7d");
-grace.name = "Aguardar 90 s após HOME";
-grace.wires = [["security_visual_vehicle_refresh_build"]];
-fn("security_visual_vehicle_refresh_build", offGroup.id,
-  "Atualizar carro e aguardar motor OFF",
-  "security-light-arrival-final-confirmation.js", 1, 980, 900,
-  [["security_visual_vehicle_refresh_out"]]);
-linkOut("security_visual_vehicle_refresh_out", offGroup.id,
-  "Refresh do carro → coordenador", "6473697c19342f07", 1270, 900);
-required("6473697c19342f07").links = [...new Set([
-  ...(required("6473697c19342f07").links ?? []),
-  "security_visual_vehicle_refresh_out",
-])];
+evaluateOff.outputs = 1;
+evaluateOff.wires = [["light_off_decision_route_out_v1"]];
 const turnOff = required("84d450933e67b8c1");
 turnOff.func = source("security-light-turn-off-if-active.js");
 
@@ -440,28 +434,13 @@ for (const id of ["704af53cd84ba2a2", "2405a253853fa82e"]) {
   if (!reconcile.nodes.includes(id)) reconcile.nodes.push(id);
 }
 Object.assign(required("704af53cd84ba2a2"), {
-  x: 2450, wires: [["security_visual_recovered_deadline_route"]],
+  x: 2450, wires: [["2405a253853fa82e"]],
 });
-swRules("security_visual_recovered_deadline_route", reconcile.id,
-  "Deadline recuperado exige refresh?", "payload.deadline_type", [
-    { t: "eq", v: "vehicle_refresh", vt: "str" },
-    { t: "else" },
-  ], 2730, 2200, [
-    ["security_visual_recovered_vehicle_refresh_out"],
-    ["2405a253853fa82e"],
-  ]);
-linkOut("security_visual_recovered_vehicle_refresh_out", reconcile.id,
-  "Refresh recuperado → confirmação", "security_visual_vehicle_refresh_due_in",
-  3020, 2160);
 reconcile.y += 60;
 for (const id of reconcile.nodes ?? []) {
   const node = required(id);
   if (Number.isFinite(node.y)) node.y += 60;
 }
-linkIn("security_visual_vehicle_refresh_due_in", offGroup.id,
-  "Receber refresh vencido", ["security_visual_recovered_vehicle_refresh_out"],
-  "security_visual_vehicle_refresh_build", 500, 970);
-
-required(TAB).info = "Decisões de contexto, replay, direção, recovery e políticas de tempo são visíveis. JavaScript remanescente adapta estruturas e aplica transações de estado; produção e teste divergem somente na fronteira final de efeitos.";
+required(TAB).info = "Decisões de contexto, replay, direção, recovery e políticas de tempo são visíveis. A confirmação HOME de 90 s e o refresh extraordinário pertencem a contexto_chegadas; este tab apenas usa o contexto atualizado para decidir o desligamento. JavaScript remanescente adapta estruturas e aplica transações de estado; produção e teste divergem somente na fronteira final de efeitos.";
 fs.writeFileSync(outputPath, `${JSON.stringify(flows, null, 4)}\n`);
 console.log(`Security light visual policy installed in ${outputPath}`);
