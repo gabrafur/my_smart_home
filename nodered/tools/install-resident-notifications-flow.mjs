@@ -87,7 +87,7 @@ const policy = {
 
 add({
   id: TAB, type: "tab", label: "notificacoes_chegadas_residentes", disabled: false,
-  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, distribui cada chegada para mobile_primary e mobile_secondary, solicita push visível e urgente ao iOS, registra o aceite do Home Assistant por destinatário e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.", env: [],
+  info: "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, encaminha cada chegada somente ao outro morador (resident_primary → mobile_secondary; resident_secondary → mobile_primary), solicita push visível e urgente ao iOS, registra o aceite do Home Assistant por destinatário e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.", env: [],
 });
 
 grouped(groups.config, {
@@ -132,9 +132,9 @@ sw("resident_notifications_cycle_switch", groups.decision, "Ciclo externo foi co
 terminal("resident_notifications_cycle_invalid", groups.decision, "Bloquear chegada sem ciclo externo", { fill: "yellow", shape: "ring", text: "ciclo externo não confirmado" }, 4090, 120);
 sw("resident_notifications_stage_switch", groups.decision, "Etapa é approach ou home?", "arrival_stage", "msg", [{ t: "eq", v: "approach", vt: "str" }, { t: "eq", v: "home", vt: "str" }, { t: "else" }], 4090, 240, [["resident_notifications_source_switch"], ["resident_notifications_source_switch"], ["resident_notifications_stage_invalid"]]);
 terminal("resident_notifications_stage_invalid", groups.decision, "Bloquear etapa desconhecida", { fill: "grey", shape: "ring", text: "etapa inválida" }, 4370, 120);
-sw("resident_notifications_source_switch", groups.decision, "Quem está chegando?", "resident_source", "msg", [{ t: "eq", v: "resident_primary", vt: "str" }, { t: "eq", v: "resident_secondary", vt: "str" }, { t: "else" }], 4370, 260, [["resident_notifications_recipient_primary", "resident_notifications_recipient_secondary"], ["resident_notifications_recipient_primary", "resident_notifications_recipient_secondary"], ["resident_notifications_source_invalid"]]);
-change("resident_notifications_recipient_secondary", groups.decision, "Fan-out: incluir resident_secondary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_secondary", tot: "str" }], 4590, 180, [["resident_notifications_decision_out"]]);
-change("resident_notifications_recipient_primary", groups.decision, "Fan-out: incluir resident_primary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_primary", tot: "str" }], 4590, 340, [["resident_notifications_decision_out"]]);
+sw("resident_notifications_source_switch", groups.decision, "Quem está chegando?", "resident_source", "msg", [{ t: "eq", v: "resident_primary", vt: "str" }, { t: "eq", v: "resident_secondary", vt: "str" }, { t: "else" }], 4370, 260, [["resident_notifications_recipient_secondary"], ["resident_notifications_recipient_primary"], ["resident_notifications_source_invalid"]]);
+change("resident_notifications_recipient_secondary", groups.decision, "primary chegando → avisar secondary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_secondary", tot: "str" }], 4590, 180, [["resident_notifications_decision_out"]]);
+change("resident_notifications_recipient_primary", groups.decision, "secondary chegando → avisar primary", [{ t: "set", p: "resident_recipient", pt: "msg", to: "resident_primary", tot: "str" }], 4590, 340, [["resident_notifications_decision_out"]]);
 terminal("resident_notifications_source_invalid", groups.decision, "Ignorar origem desconhecida", { fill: "grey", shape: "ring", text: "origem não canônica" }, 4370, 400);
 linkOut("resident_notifications_decision_out", groups.decision, "Chegada válida → frescor e entrega", "resident_notifications_state_in", 4710, 260);
 
@@ -195,7 +195,7 @@ linkOut("resident_notifications_retry_out", groups.output, "Retry → dedupe da 
 terminal("resident_notifications_retry_exhausted", groups.output, "Falha após três tentativas", { fill: "red", shape: "ring", text: "retry esgotado" }, 8010, 450);
 grouped(groups.output, {
   id: "resident_notifications_output_note", type: "comment", z: TAB, g: groups.output,
-  name: "Cada chegada passa pelas duas fronteiras; aceite e retry são isolados por destinatário.",
+  name: "Cada chegada avisa somente o outro morador; nunca o próprio.",
   info: "queue: all preserva eventos durante queda temporária do HA. O recibo confirma somente o aceite do serviço; a entrega no iOS continua best-effort. Nenhum botão manual possui ligação com estes serviços.", x: 7300, y: 80, wires: [],
 });
 

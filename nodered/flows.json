@@ -52686,7 +52686,7 @@
         "type": "tab",
         "label": "notificacoes_chegadas_residentes",
         "disabled": false,
-        "info": "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, distribui cada chegada para mobile_primary e mobile_secondary, solicita push visível e urgente ao iOS, registra o aceite do Home Assistant por destinatário e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.",
+        "info": "Consome somente security.arrival.v1 já decidido por localizacao_pessoas. Este tab valida o contrato, encaminha cada chegada somente ao outro morador (resident_primary → mobile_secondary; resident_secondary → mobile_primary), solicita push visível e urgente ao iOS, registra o aceite do Home Assistant por destinatário e separa produção/teste. Os replays manuais são dry-run; somente o botão explicitamente marcado envia um push TESTE ao mobile_secondary.",
         "env": []
     },
     {
@@ -53359,12 +53359,10 @@
         "y": 260,
         "wires": [
             [
-                "resident_notifications_recipient_primary",
                 "resident_notifications_recipient_secondary"
             ],
             [
-                "resident_notifications_recipient_primary",
-                "resident_notifications_recipient_secondary"
+                "resident_notifications_recipient_primary"
             ],
             [
                 "resident_notifications_source_invalid"
@@ -53376,7 +53374,7 @@
         "type": "change",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_decision_group",
-        "name": "Fan-out: incluir resident_secondary",
+        "name": "primary chegando → avisar secondary",
         "rules": [
             {
                 "t": "set",
@@ -53404,7 +53402,7 @@
         "type": "change",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_decision_group",
-        "name": "Fan-out: incluir resident_primary",
+        "name": "secondary chegando → avisar primary",
         "rules": [
             {
                 "t": "set",
@@ -54293,7 +54291,7 @@
         "type": "comment",
         "z": "resident_notifications_tab",
         "g": "resident_notifications_output_group",
-        "name": "Cada chegada passa pelas duas fronteiras; aceite e retry são isolados por destinatário.",
+        "name": "Cada chegada avisa somente o outro morador; nunca o próprio.",
         "info": "queue: all preserva eventos durante queda temporária do HA. O recibo confirma somente o aceite do serviço; a entrega no iOS continua best-effort. Nenhum botão manual possui ligação com estes serviços.",
         "x": 8313,
         "y": 96,

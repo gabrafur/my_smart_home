@@ -53,6 +53,7 @@ const tabNodes = flows.filter((node) => node.z === TAB);
 assert.ok(tabNodes.length >= 60);
 assert.equal(tabNodes.filter((node) => node.type === "server-state-changed").length, 0);
 assert.match(tab.info, /security\.arrival\.v1/);
+assert.match(tab.info, /resident_primary → mobile_secondary; resident_secondary → mobile_primary/);
 assert.match(tab.info, /somente o botão explicitamente marcado envia um push TESTE/);
 
 for (const id of [
@@ -180,9 +181,16 @@ function recipient(msg, role) {
 }
 
 const sourceSwitch = byId.get("resident_notifications_source_switch");
-const fanout = ["resident_notifications_recipient_primary", "resident_notifications_recipient_secondary"].sort();
-assert.deepEqual([...sourceSwitch.wires[0]].sort(), fanout);
-assert.deepEqual([...sourceSwitch.wires[1]].sort(), fanout);
+assert.deepEqual(sourceSwitch.wires[0], ["resident_notifications_recipient_secondary"]);
+assert.deepEqual(sourceSwitch.wires[1], ["resident_notifications_recipient_primary"]);
+assert.ok(
+  !sourceSwitch.wires[0].includes("resident_notifications_recipient_primary"),
+  "resident_primary não pode receber a própria chegada",
+);
+assert.ok(
+  !sourceSwitch.wires[1].includes("resident_notifications_recipient_secondary"),
+  "resident_secondary não pode receber a própria chegada",
+);
 
 message = recipient(normalize(arrival("resident_secondary"), flow, mock, {}), "resident_primary");
 assert.equal(message.arrival_contract_valid, true);
@@ -200,22 +208,20 @@ assert.equal(message.payload.message, "Example Secondary está perto de casa.");
 assert.equal(message.payload.dispatched, false);
 assert.equal(acknowledge(message, flow, mock, {}), null);
 
-for (const role of ["resident_primary", "resident_secondary"]) {
-  let primaryApproach = recipient(
-    normalize(arrival("resident_primary", "approach", 500), flow, mock, {}),
-    role,
-  );
-  primaryApproach = readState(primaryApproach, flow, mock, {});
-  assert.equal(primaryApproach.notification_duplicate, false);
-  primaryApproach = reserve(primaryApproach, flow, mock, {});
-  primaryApproach = buildMessage(primaryApproach, flow, mock, privateBindings);
-  assert.equal(primaryApproach.payload.recipient, role);
-  assert.equal(primaryApproach.payload.message, "Example Primary está perto de casa.");
-  assert.equal(acknowledge(primaryApproach, flow, mock, {}), null);
-}
-const fanoutState = flow.get("resident_notification_delivery_v4", "persistent");
-assert.equal(fanoutState.deliveries["resident_primary:resident_primary"].accepted_key, "resident_primary:approach:" + (NOW + 500));
-assert.equal(fanoutState.deliveries["resident_primary:resident_secondary"].accepted_key, "resident_primary:approach:" + (NOW + 500));
+let primaryApproach = recipient(
+  normalize(arrival("resident_primary", "approach", 500), flow, mock, {}),
+  "resident_secondary",
+);
+primaryApproach = readState(primaryApproach, flow, mock, {});
+assert.equal(primaryApproach.notification_duplicate, false);
+primaryApproach = reserve(primaryApproach, flow, mock, {});
+primaryApproach = buildMessage(primaryApproach, flow, mock, privateBindings);
+assert.equal(primaryApproach.payload.recipient, "resident_secondary");
+assert.equal(primaryApproach.payload.message, "Example Primary está perto de casa.");
+assert.equal(acknowledge(primaryApproach, flow, mock, {}), null);
+const crossRecipientState = flow.get("resident_notification_delivery_v4", "persistent");
+assert.equal(crossRecipientState.deliveries["resident_primary:resident_primary"], undefined);
+assert.equal(crossRecipientState.deliveries["resident_primary:resident_secondary"].accepted_key, "resident_primary:approach:" + (NOW + 500));
 
 const persisted = structuredClone(flow.get("resident_notification_delivery_v4", "persistent"));
 const restarted = context({ persistent: { resident_notification_delivery_v4: persisted } });
@@ -266,27 +272,27 @@ assert.ok(normalize(arrival("resident_primary", "approach", 60001), flow, mock, 
 assert.equal(NOW - normalize(arrival("resident_primary", "approach", -900000), flow, mock, {}).event_at, defaults.max_event_age_ms);
 assert.equal(normalize(arrival("resident_primary", "approach", 60000), flow, mock, {}).event_at, NOW + defaults.future_tolerance_ms);
 
-let failed = recipient(normalize(arrival("resident_primary", "approach", 2000), flow, mock, {}), "resident_primary");
+let failed = recipient(normalize(arrival("resident_primary", "approach", 2000), flow, mock, {}), "resident_secondary");
 failed = readState(failed, flow, mock, {});
 failed = reserve(failed, flow, mock, {});
 failed = failDelivery(failed, flow, mock, {});
 assert.equal(failed.notification_retry_allowed, true);
 assert.equal(failed.notification_retry_count, 1);
 assert.equal(failed.delay, 60000);
-assert.equal(flow.get("resident_notification_delivery_v4", "persistent").deliveries["resident_primary:resident_primary"].pending_key, null);
+assert.equal(flow.get("resident_notification_delivery_v4", "persistent").deliveries["resident_primary:resident_secondary"].pending_key, null);
 failed.notification_retry_count = 2;
 failed = failDelivery(failed, flow, mock, {});
 assert.equal(failed.notification_retry_allowed, false, "terceira falha deve encerrar retries");
 
-let synthetic = recipient(normalize(arrival("resident_primary", "home", 5000, true), flow, mock, {}), "resident_primary");
+let synthetic = recipient(normalize(arrival("resident_primary", "home", 5000, true), flow, mock, {}), "resident_secondary");
 synthetic = readState(synthetic, flow, mock, {});
 synthetic = reserve(synthetic, flow, mock, {});
 synthetic = buildMessage(synthetic, flow, mock, privateBindings);
 assert.equal(synthetic.payload.message, "[TESTE] Example Primary chegou em casa.");
 assert.equal(synthetic.payload.simulated, true);
 assert.equal(dryRun(synthetic, flow, mock, {}), null);
-assert.equal(flow.get("resident_notifications_last_dry_run_v2__test")["resident_primary:resident_primary"].dispatched, false);
-assert.equal(readState(recipient(normalize(arrival("resident_primary", "home", 5000, true), flow, mock, {}), "resident_primary"), flow, mock, {}).notification_duplicate, true);
+assert.equal(flow.get("resident_notifications_last_dry_run_v2__test")["resident_primary:resident_secondary"].dispatched, false);
+assert.equal(readState(recipient(normalize(arrival("resident_primary", "home", 5000, true), flow, mock, {}), "resident_secondary"), flow, mock, {}).notification_duplicate, true);
 
 for (const [id, resident] of [["resident_notifications_notify_primary", "resident_primary"], ["resident_notifications_notify_secondary", "resident_secondary"]]) {
   const adapter = byId.get(id);
