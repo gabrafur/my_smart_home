@@ -63,10 +63,17 @@ const engineCommunicationFailed = typeof refreshState?.engine_communication_fail
 const reportedTelemetryAt = Date.parse(
     msg.payload?.vehicle_primary_last_updated?.state ?? ""
 );
+const reportedCacheScannedAt = Date.parse(
+    msg.payload?.vehicle_primary_last_scanned?.state ?? ""
+);
 const telemetryTimestampFuture = Number.isFinite(reportedTelemetryAt) &&
     reportedTelemetryAt > Date.now() + futureMs;
+const cacheTimestampFuture = Number.isFinite(reportedCacheScannedAt) &&
+    reportedCacheScannedAt > Date.now() + futureMs;
 const telemetryAt = Number.isFinite(reportedTelemetryAt) &&
     !telemetryTimestampFuture ? reportedTelemetryAt : null;
+const cacheScannedAt = Number.isFinite(reportedCacheScannedAt) &&
+    !cacheTimestampFuture ? reportedCacheScannedAt : null;
 msg._vehicle = {
     test_mode: TEST_MODE,
     policy,
@@ -84,6 +91,8 @@ msg._vehicle = {
     unlocked: lockFresh && lockState === "unlocked",
     telemetry_updated_at: telemetryAt,
     telemetry_timestamp_future: telemetryTimestampFuture,
+    cache_scanned_at: cacheScannedAt,
+    cache_timestamp_future: cacheTimestampFuture,
     is_location_event: msg.payload?.event === "location_update",
     event: msg.payload?.event,
     reason: msg.payload?.reason,

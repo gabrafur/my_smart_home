@@ -43,6 +43,62 @@ const remainingSeconds = deadline && deadline > now
 const iso = (value) => Number(value) > 0
     ? new Date(Number(value)).toISOString()
     : null;
+const vehicleContext = flow.get("vehicle_primary_context_v1") ?? {};
+const MINUTE_MS = 60_000;
+const futureToleranceMs = MINUTE_MS;
+const timestampHealth = (timestamp, { freshMs, attentionMs, planned = false }) => {
+    const value = Number(timestamp ?? 0);
+    if (!Number.isFinite(value) || value <= 0) {
+        return { level: "critical", reason: "missing", age_seconds: null };
+    }
+    if (value > now + futureToleranceMs) {
+        return { level: "critical", reason: "future_timestamp", age_seconds: null };
+    }
+    const ageMs = Math.max(0, now - value);
+    if (planned) {
+        return {
+            level: "healthy",
+            reason: "planned_quiet_hours",
+            age_seconds: Math.round(ageMs / 1000)
+        };
+    }
+    if (ageMs <= freshMs) {
+        return { level: "healthy", reason: "fresh", age_seconds: Math.round(ageMs / 1000) };
+    }
+    if (ageMs <= attentionMs) {
+        return { level: "attention", reason: "overdue", age_seconds: Math.round(ageMs / 1000) };
+    }
+    return { level: "critical", reason: "stale", age_seconds: Math.round(ageMs / 1000) };
+};
+const plannedQuietHours = state === "waiting" &&
+    (raw.reason ?? raw.recovery_reason) === "quiet_hours_both_home";
+const activeRefresh = ["refreshing", "in_flight", "awaiting_evidence", "probing_cache"].includes(state);
+const refreshFailure = raw.last_failure_class ?? null;
+const refreshHealth = ["unknown", "unavailable"].includes(state)
+    ? { level: "critical", reason: "coordinator_unavailable" }
+    : activeRefresh
+        ? { level: "active", reason: "in_progress" }
+        : plannedQuietHours
+            ? { level: "healthy", reason: "planned_quiet_hours" }
+            : refreshFailure || state === "backoff"
+                ? { level: "attention", reason: refreshFailure ?? "backoff" }
+                : state === "waiting"
+                    ? { level: "attention", reason: "waiting_context" }
+                    : { level: "healthy", reason: "ready" };
+const intervalMs = Number(raw.interval_ms) > 0
+    ? Number(raw.interval_ms)
+    : 30 * MINUTE_MS;
+const dataFreshness = timestampHealth(vehicleContext.telemetry_updated_at, {
+    // A leitura permanece verde por pelo menos 30 min. Em ciclos mais longos,
+    // o próprio intervalo canônico amplia esse prazo sem o dashboard decidir.
+    freshMs: Math.max(30 * MINUTE_MS, intervalMs),
+    attentionMs: Math.max(60 * MINUTE_MS, intervalMs * 2),
+    planned: plannedQuietHours
+});
+const cacheFreshness = timestampHealth(vehicleContext.cache_scanned_at, {
+    freshMs: 20 * MINUTE_MS,
+    attentionMs: 30 * MINUTE_MS
+});
 
 const status = {
     state,
@@ -58,6 +114,20 @@ const status = {
         : null,
     remaining_seconds: remainingSeconds,
     awaiting_evidence: raw.awaiting_evidence === true,
+    refresh_health: refreshHealth.level,
+    refresh_health_reason: refreshHealth.reason,
+    data_freshness: dataFreshness.level,
+    data_freshness_reason: dataFreshness.reason,
+    data_age_seconds: dataFreshness.age_seconds,
+    data_fresh_within_seconds: Math.round(Math.max(30 * MINUTE_MS, intervalMs) / 1000),
+    data_attention_within_seconds: Math.round(
+        Math.max(60 * MINUTE_MS, intervalMs * 2) / 1000
+    ),
+    cache_freshness: cacheFreshness.level,
+    cache_freshness_reason: cacheFreshness.reason,
+    cache_age_seconds: cacheFreshness.age_seconds,
+    cache_fresh_within_seconds: 20 * 60,
+    cache_attention_within_seconds: 30 * 60,
     interval_minutes: Number(raw.interval_ms ?? 0) / 60_000 || null,
     interval_policy: raw.interval_policy ?? null,
     away_interval_minutes:

@@ -823,6 +823,7 @@ locationOrTelemetryEvent.entities = {
   entity: [
     "device_tracker.vehicle_primary",
     "sensor.vehicle_primary_last_updated_at",
+    "sensor.vehicle_primary_last_scanned_at",
   ],
   substring: [],
   regex: [],
@@ -846,11 +847,18 @@ for (const id of semanticEvidenceInputIds) {
   if (!payload.value.includes('"vehicle_primary_last_updated"')) {
     payload.value = payload.value.replace(
       /("vehicle_primary_lock"\s*:\s*\$entities\("lock\.vehicle_primary_door_lock"\))/,
-      '$1,"vehicle_primary_last_updated":$entities("sensor.vehicle_primary_last_updated_at")',
+      '$1,"vehicle_primary_last_updated":$entities("sensor.vehicle_primary_last_updated_at"),"vehicle_primary_last_scanned":$entities("sensor.vehicle_primary_last_scanned_at")',
     );
   }
-  if (!payload.value.includes('"vehicle_primary_last_updated"')) {
-    throw new Error(`Timestamp semântico não inserido no nó ${id}`);
+  if (!payload.value.includes('"vehicle_primary_last_scanned"')) {
+    payload.value = payload.value.replace(
+      /("vehicle_primary_last_updated"\s*:\s*\$entities\("sensor\.vehicle_primary_last_updated_at"\))/,
+      '$1,"vehicle_primary_last_scanned":$entities("sensor.vehicle_primary_last_scanned_at")',
+    );
+  }
+  if (!payload.value.includes('"vehicle_primary_last_updated"') ||
+      !payload.value.includes('"vehicle_primary_last_scanned"')) {
+    throw new Error(`Timestamps semânticos não inseridos no nó ${id}`);
   }
 }
 normalizer.func = normalizer.func.replaceAll(
@@ -869,6 +877,10 @@ if (!normalizer.func.includes("vehicle_primary_last_updated: testEntity(")) {
         ),
         vehicle_primary_last_updated: testEntity(
             "sensor.vehicle_primary_last_updated_at",
+            now
+        ),
+        vehicle_primary_last_scanned: testEntity(
+            "sensor.vehicle_primary_last_scanned_at",
             now
         )`,
   );
@@ -1427,6 +1439,44 @@ if (
 ) {
   throw new Error("Normalizer ainda recalcula o intervalo de refresh");
 }
+}
+
+// O lifecycle visual atual usa nós dedicados, portanto estes eventos não podem
+// depender do normalizador legado acima para receber a consulta ao cache.
+const lifecycleTelemetryEvent = required("46c2142f93cfc3e1");
+lifecycleTelemetryEvent.name = "Localização ou telemetria do vehicle_primary mudou";
+lifecycleTelemetryEvent.entities = {
+  entity: [
+    "device_tracker.vehicle_primary",
+    "sensor.vehicle_primary_last_updated_at",
+    "sensor.vehicle_primary_last_scanned_at",
+  ],
+  substring: [],
+  regex: [],
+};
+for (const id of [
+  "46c2142f93cfc3e1",
+  "94164ea9e4f5c8d1",
+  "vehicle_primary_engine_on_event_v1",
+  "9bbff0058231747f",
+  "2ff44a30d0a2cf18",
+  "f673b02282a47d31",
+]) {
+  const payload = required(id).outputProperties?.find(
+    (property) => property.property === "payload",
+  );
+  if (!payload || typeof payload.value !== "string") {
+    throw new Error(`Payload JSONata ausente no nó ${id}`);
+  }
+  if (!payload.value.includes('"vehicle_primary_last_scanned"')) {
+    payload.value = payload.value.replace(
+      /("vehicle_primary_last_updated"\s*:\s*\$entities\("sensor\.vehicle_primary_last_updated_at"\))/,
+      '$1,"vehicle_primary_last_scanned":$entities("sensor.vehicle_primary_last_scanned_at")',
+    );
+  }
+  if (!payload.value.includes('"vehicle_primary_last_scanned"')) {
+    throw new Error(`Consulta ao cache não inserida no nó ${id}`);
+  }
 }
 
 const errorLogger = required("vehicle_primary_api_error_log_v1");

@@ -324,11 +324,12 @@ scenario("02a eventos de motor ON e OFF são simétricos com filtro de 5 s", () 
   }
 });
 
-scenario("02b localização e telemetria alimentam o contexto do veículo", () => {
+scenario("02b localização, telemetria e cache alimentam o contexto do veículo", () => {
   const locationEvent = byId.get("vehicle_primary_location_event");
   assert.deepEqual(locationEvent.entities.entity, [
     "device_tracker.vehicle_primary",
     "sensor.vehicle_primary_last_updated_at",
+    "sensor.vehicle_primary_last_scanned_at",
   ]);
   assert.equal(locationEvent.outputOnlyOnStateChange, false);
 

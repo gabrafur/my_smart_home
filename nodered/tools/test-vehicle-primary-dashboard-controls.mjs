@@ -64,6 +64,18 @@ const remoteCommandMonitor = source("vehicle-primary-remote-command-monitor.js")
 const remoteCommandGuard = source("vehicle-primary-remote-command-dispatch-guard.js");
 const now = Date.parse("2026-08-17T03:00:00Z");
 
+function refreshStatus({ raw = {}, context = {}, at = now } = {}) {
+  const { result } = runtime(telemetry, {
+    now: at,
+    msg: {},
+    values: {
+      security_vehicle_primary_refresh_v1: raw,
+      vehicle_primary_context_v1: context,
+    },
+  });
+  return JSON.parse(result[0][3].payload);
+}
+
 function resolvedPolicy(overrides = {}) {
   const primary = String(overrides.resident_primary_state ?? "").toLowerCase();
   const secondary = String(overrides.resident_secondary_state ?? "").toLowerCase();
@@ -225,6 +237,10 @@ function resolvedPolicy(overrides = {}) {
         engine_communication_failed: false,
         last_evidence_domains: ["telemetry"],
       },
+      vehicle_primary_context_v1: {
+        telemetry_updated_at: now - 27 * 60_000,
+        cache_scanned_at: now - 16 * 60_000,
+      },
     },
     msg: {},
   });
@@ -255,6 +271,67 @@ function resolvedPolicy(overrides = {}) {
   assert.equal(payload.lighting_ready_after_wake, true);
   assert.equal(payload.engine_communication_failed, false);
   assert.deepEqual(payload.last_evidence_domains, ["telemetry"]);
+  assert.equal(payload.refresh_health, "attention");
+  assert.equal(payload.data_freshness, "healthy");
+  assert.equal(payload.cache_freshness, "healthy");
+}
+
+{
+  const healthyAt27Minutes = refreshStatus({
+    raw: { interval_ms: 5 * 60_000 },
+    context: {
+      telemetry_updated_at: now - 27 * 60_000,
+      cache_scanned_at: now - 20 * 60_000,
+    },
+  });
+  assert.equal(healthyAt27Minutes.data_freshness, "healthy");
+  assert.equal(healthyAt27Minutes.data_freshness_reason, "fresh");
+  assert.equal(healthyAt27Minutes.cache_freshness, "healthy");
+
+  const attention = refreshStatus({
+    raw: { interval_ms: 5 * 60_000 },
+    context: {
+      telemetry_updated_at: now - 31 * 60_000,
+      cache_scanned_at: now - 21 * 60_000,
+    },
+  });
+  assert.equal(attention.data_freshness, "attention");
+  assert.equal(attention.cache_freshness, "attention");
+
+  const critical = refreshStatus({
+    raw: { interval_ms: 5 * 60_000 },
+    context: {
+      telemetry_updated_at: now - 61 * 60_000,
+      cache_scanned_at: now - 31 * 60_000,
+    },
+  });
+  assert.equal(critical.data_freshness, "critical");
+  assert.equal(critical.cache_freshness, "critical");
+
+  const planned = refreshStatus({
+    raw: {
+      state: "waiting",
+      reason: "quiet_hours_both_home",
+      interval_ms: 30 * 60_000,
+    },
+    context: {
+      telemetry_updated_at: now - 4 * 60 * 60_000,
+      cache_scanned_at: now - 16 * 60_000,
+    },
+  });
+  assert.equal(planned.data_freshness, "healthy");
+  assert.equal(planned.data_freshness_reason, "planned_quiet_hours");
+  assert.equal(planned.refresh_health, "healthy");
+
+  const active = refreshStatus({
+    raw: { state: "in_flight" },
+    context: {
+      telemetry_updated_at: now - 10 * 60_000,
+      cache_scanned_at: now - 10 * 60_000,
+    },
+  });
+  assert.equal(active.refresh_health, "active");
+  assert.equal(active.refresh_health_reason, "in_progress");
 }
 
 const ids = flows.map((node) => node.id);

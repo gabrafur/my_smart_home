@@ -27,6 +27,8 @@ data.context = {
     last_confirmed_location: data.location_observation ? { ...data.location_observation } : null,
     telemetry_updated_at: data.telemetry_updated_at,
     telemetry_timestamp_future: data.telemetry_timestamp_future,
+    cache_scanned_at: data.cache_scanned_at,
+    cache_timestamp_future: data.cache_timestamp_future,
     distance_home_m: data.location.distance_m,
     home: data.location.ready ? data.facts.home : null,
     near_home: data.location.ready ? data.facts.near_home && !data.facts.home : null,

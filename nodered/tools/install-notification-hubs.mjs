@@ -567,6 +567,9 @@ function routeLongNotificationTabWires(flows) {
       for (const [index, targetId] of targets.entries()) {
         const target = byId.get(targetId);
         if (!target || target.z !== source.z || !Number.isFinite(source.x) || !Number.isFinite(target.x)) continue;
+        // A ligação para um link out já encerra a trilha visual local. Ela não
+        // deve ganhar outro par de links, mesmo quando o grupo for reposicionado.
+        if (source.type === "link in" || target.type === "link out") continue;
         const distance = Math.hypot(target.x - source.x, target.y - source.y);
         if (distance <= 500 && target.x >= source.x - 30) continue;
         routes.push({ source, target, output, index });

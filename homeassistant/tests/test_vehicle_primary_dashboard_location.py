@@ -34,12 +34,22 @@ def main() -> None:
     assert "última posição estacionada recebida há" not in dashboard
     assert "binary_sensor.vehicle_primary_engine" in dashboard
     assert "**Atualização dos dados**" in dashboard
-    assert "updated_future" in dashboard
-    assert "data_timestamp_future" in dashboard
+    assert "data_freshness" in dashboard
+    assert "data_freshness_reason" in dashboard
+    assert "data_age_seconds" in dashboard
+    assert "cache_freshness" in dashboard
+    assert "cache_freshness_reason" in dashboard
+    assert "cache_age_seconds" in dashboard
+    assert "refresh_health" in dashboard
+    assert "refresh_health_reason" in dashboard
+    assert "data_age_min <=" not in dashboard
+    assert "{% set cache_age_s =" not in dashboard
+    assert "updated_future" not in dashboard
+    assert "data_timestamp_future" not in dashboard
     assert "Horário inválido recebido do carro" in dashboard
     assert "ela não confirma atualização nem wake" in dashboard
     assert "nova verificação em cerca de" in dashboard
-    assert "verificando agora o cache do servidor antes de outro wake" in dashboard
+    assert "o atraso excedeu duas janelas de consulta" in dashboard
     assert "Atualização do veículo ainda não concluída" in dashboard
     assert "Integração Bluelink ainda indisponível" in dashboard
     assert "A última atualização do veículo falhou" in dashboard
@@ -51,42 +61,27 @@ def main() -> None:
     assert "idade da leitura é apenas informativa" in dashboard
     assert "motor OFF recente e confiável" not in dashboard
     assert "leitura recente e válida de `motor = ON`" not in dashboard
-    assert "refresh_awaiting" in dashboard
+    assert "refresh_awaiting" not in dashboard
     assert "engine_communication_failed" in dashboard
     assert "engine_revalidation_failed" in dashboard
     assert "fresh_telemetry_engine_unreliable" not in dashboard
     assert "no_fresh_data='o wake não produziu dados novos'" not in dashboard
     assert dashboard.count(
         "a leitura específica do motor continua não confiável para a iluminação"
-    ) == 3
+    ) == 2
     assert dashboard.count("{% if engine_revalidation_failed %}") == 2
     assert "nova tentativa automática em cerca de" in dashboard
-    assert "nova tentativa automática agora" in dashboard
-    assert "sensor.vehicle_primary_api_retry_at" in dashboard
-    assert "api_status == 'rate_limited'" in dashboard
-    assert "API liberada para nova tentativa em cerca de" in dashboard
-    assert "API liberada para nova tentativa agora" in dashboard
+    assert "nova tentativa automática agora" not in dashboard
+    assert "sensor.vehicle_primary_api_retry_at" not in dashboard
+    assert "api_status == 'rate_limited'" not in dashboard
     assert "nenhuma consulta ao servidor está em andamento" not in dashboard
-    assert "refresh_failure == 'api_error' and cache_age_s is none" in dashboard
     refresh_failure_definition = (
         "{% set refresh_failure = state_attr("
         "'sensor.vehicle_primary_refresh_coordinator', 'last_failure_class') %}"
     )
     assert dashboard.count(refresh_failure_definition) == 1
     assert dashboard.index(refresh_failure_definition) < dashboard.index(
-        "refresh_failure == 'integration_unavailable'"
-    )
-    assert dashboard.index("refresh_failure == 'integration_unavailable'") < dashboard.index(
-        "Último wake aceito pelo Bluelink, solicitado há cerca de"
-    )
-    assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
-        "Último wake aceito pelo Bluelink, solicitado há cerca de"
-    )
-    assert dashboard.index("refresh_failure_label is not none") < dashboard.index(
-        "Wake periódico pausado até {{ format_number_ptbr(quiet_end_hour) }}h"
-    )
-    assert dashboard.index("refresh_awaiting and refresh_state") < dashboard.index(
-        "refresh_failure == 'integration_unavailable'"
+        "refresh_health == 'attention' and refresh_failure_label is not none"
     )
     assert "<ha-alert" not in dashboard
     assert "🟢" in dashboard
@@ -99,15 +94,20 @@ def main() -> None:
     assert "O último comando falhou ou ainda está em cooldown" not in dashboard
     assert "Servidor consultado há" in dashboard
     assert "esta consulta não acorda o carro" in dashboard
-    assert "o esperado é uma consulta a cada 15 min" in dashboard
+    assert "o ciclo esperado de 15 min está atrasado" in dashboard
     assert "request_age_s = ([0, as_timestamp(now()) - request_ts] | max)" in dashboard
     assert "request_age_min = (request_age_s / 60) | round(0)" in dashboard
-    assert "Último wake aceito pelo Bluelink, solicitado há cerca de {{ format_number_ptbr(request_age_min) }} min" in dashboard
-    assert "o estado conhecido e confiável permanece válido mesmo sem mudança" in dashboard
-    assert "success_ts - request_ts <= 1260" in dashboard
+    assert "Último wake aceito pelo Bluelink" in dashboard
+    assert "🟢 **Wake pronto**" in dashboard
+    assert "🔵 **Wake pronto**" not in dashboard
+    assert "success_ts - request_ts <= 1260" not in dashboard
     assert "Ainda sem confirmação causal do último wake" not in dashboard
     assert "aguardando a conclusão da chamada ao Bluelink" in dashboard
     assert "O último wake ainda não produziu dados novos" not in dashboard
+    assert "refresh_health == 'active'" in dashboard
+    assert "refresh_health == 'critical'" in dashboard
+    assert "refresh_health == 'attention'" in dashboard
+    assert "refresh_health == 'healthy'" in dashboard
     assert "'interval_minutes') | int(0)" in dashboard
     assert "coordinator_interval_min in [15, 30]" not in dashboard
     assert "30 if both_home else 15" not in dashboard

@@ -18,15 +18,14 @@ assert.equal(locationEvent.outputOnlyOnStateChange, false);
 assert.deepEqual(locationEvent.entities?.entity, [
   "device_tracker.vehicle_primary",
   "sensor.vehicle_primary_last_updated_at",
+  "sensor.vehicle_primary_last_scanned_at",
 ]);
 
-const normalizer = byId.get("092625f2eb5cc156");
+const normalizer = byId.get("vehicle_visual_normalize");
 assert(normalizer?.type === "function", "normalizador do vehicle_primary ausente");
 assert.match(normalizer.func, /global\.get\("location_policy_v1", "persistent"\)/);
-assert.match(normalizer.func, /LOCATION_POLICY\.movement_threshold_m/);
-assert.match(normalizer.func, /LOCATION_OBSERVATION_KEY/);
-assert.match(normalizer.func, /significantCoordinateMovement/);
-assert.match(normalizer.func, /current_location_since/);
+assert.match(normalizer.func, /vehicle_primary_last_scanned/);
+assert.match(normalizer.func, /cache_scanned_at/);
 
 assert(byId.has("vehicle_primary_api_error_catch_v1"), "catch da API ausente");
 assert(byId.has("vehicle_primary_api_error_log_v1"), "logger da API ausente");

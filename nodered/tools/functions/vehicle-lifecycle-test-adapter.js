@@ -51,6 +51,7 @@ msg.payload = {
         shared.vehicle_primary_engine),
     vehicle_primary_lock: entity("lock.vehicle_primary_door_lock",
         shared.vehicle_primary_lock),
-    vehicle_primary_last_updated: entity("sensor.vehicle_primary_last_updated_at", timestamp)
+    vehicle_primary_last_updated: entity("sensor.vehicle_primary_last_updated_at", timestamp),
+    vehicle_primary_last_scanned: entity("sensor.vehicle_primary_last_scanned_at", timestamp)
 };
 return msg;
