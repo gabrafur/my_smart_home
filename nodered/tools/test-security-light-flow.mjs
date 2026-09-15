@@ -16,7 +16,7 @@ const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.ur
 const byId = new Map(flows.map((node) => [node.id, node]));
 const aliasesByName = {
   people_refresh_decide: "Atualizar iPhones agora?",
-  vehicle_primary_refresh_policy: "Escolher pela presença",
+  vehicle_primary_refresh_policy: "Escolher presença, chegada armada e motor",
   vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
   vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
   vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
@@ -62,7 +62,7 @@ const LOCATION_POLICY = {
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
-  arrival_recovery_minutes: 10,
+  arrival_recovery_minutes: 15, near_home_refresh_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
@@ -129,6 +129,7 @@ function runVehicleRefresh(msg, flow, env = environment()) {
     flow.set("vehicle_primary_refresh_policy_config_v1", {
       version: 1,
       complete: true,
+      arrival_armed_interval_minutes: 1,
       approaching_interval_minutes: 5,
       away_interval_minutes: 15,
       home_interval_minutes: 30,
@@ -152,13 +153,18 @@ function runVehicleRefresh(msg, flow, env = environment()) {
   if (!selected) return null;
   const bothHome = selected.payload.refresh_both_residents_home === true;
   const approaching = selected.payload.refresh_anyone_approaching === true;
-  selected.payload.refresh_interval_ms = approaching
-    ? selected.payload.refresh_policy_config.approaching_interval_ms
+  const arrivalRestartPending = selected.payload.refresh_arrival_restart_pending === true;
+  selected.payload.refresh_interval_ms = arrivalRestartPending
+    ? selected.payload.refresh_policy_config.arrival_armed_interval_ms
+    : approaching
+      ? selected.payload.refresh_policy_config.approaching_interval_ms
     : bothHome
       ? selected.payload.refresh_policy_config.home_interval_ms
       : selected.payload.refresh_policy_config.away_interval_ms;
-  selected.payload.refresh_interval_policy = approaching
-    ? "approaching"
+  selected.payload.refresh_interval_policy = arrivalRestartPending
+    ? "arrival_armed_engine_pending"
+    : approaching
+      ? "approaching"
     : bothHome
       ? "both_home"
       : "away";
@@ -193,8 +199,8 @@ function activeLightFlow(extra = {}) {
   const now = Date.now();
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: now,
-      resident_primary: { ready: true, stale: false, state: "home", current_home: true },
-      resident_secondary: { ready: true, stale: false, state: "home", current_home: true } },
+      resident_primary: { ready: true, stale: false, state: "home", current_home: true, updated_at: now },
+      resident_secondary: { ready: true, stale: false, state: "home", current_home: true, updated_at: now } },
     vehicle_primary_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, unlocked: false, updated_at: now, home: true, in_use: true },
     sun_ready: true,
     security_light_physical_state: "on",
@@ -213,12 +219,13 @@ function activeLightFlow(extra = {}) {
 }
 
 function readyLightFlow(extra = {}) {
+  const now = Date.now();
   return memoryFlow({
     people_context_v1: {
       ready: true,
-      updated_at: Date.now(),
-      resident_primary: { ready: true, stale: false, state: "near_home" },
-      resident_secondary: { ready: true, stale: false, state: "near_home" },
+      updated_at: now,
+      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false, updated_at: now },
+      resident_secondary: { ready: true, stale: false, state: "near_home", current_home: false, updated_at: now },
     },
     vehicle_primary_context_v1: { ready: true, lighting_ready: true, in_use: true, engine_on: true, engine_state_valid: true, updated_at: Date.now() },
     sun_ready: true,
@@ -1007,7 +1014,7 @@ scenario("33 chegada real é reprocessada quando motor muda de OFF para ON", () 
   const pending = flow.get(pendingKey);
   assert(pending, "chegada real deve ser preservada enquanto o motor está OFF");
   assert.equal(pending.retention, "while_approaching");
-  assert.equal(pending.expires_at, pending.queued_at + 10 * 60_000);
+  assert.equal(pending.expires_at, pending.queued_at + 15 * 60_000);
 
   const stillOffAt = now + 1;
   const stillOff = run("light_merge_context", {
@@ -1049,11 +1056,11 @@ scenario("33a motor ON reavalia morador armado que permanece em near_home", () =
     arrival_armed: { resident_primary: false, resident_secondary: true },
     resident_primary: {
       ready: true, stale: false, state: "home", current_home: true,
-      distance_m: 20,
+      distance_m: 20, updated_at: now,
     },
     resident_secondary: {
       ready: true, stale: false, state: "near_home", current_home: false,
-      distance_m: 650,
+      distance_m: 650, updated_at: now,
     },
   };
   const vehicleOff = {
@@ -1510,7 +1517,7 @@ scenario("37 tracker stale da outra pessoa não bloqueia chegada válida", () =>
   const flow = readyLightFlow({
     people_context_v1: {
       ready: false,
-      resident_primary: { ready: true, stale: false, state: "near_home" },
+      resident_primary: { ready: true, stale: false, state: "near_home", updated_at: Date.now() },
       resident_secondary: { ready: false, stale: true, state: "not_home" },
     },
   });
@@ -1570,6 +1577,173 @@ scenario("40 refresh vencido força consulta mesmo com intervalo normal de 30 mi
   assert.equal(flow.get("security_light_lifecycle_v1").vehicle_refresh_at, null);
 });
 
-assert.equal(passed.length, 56);
+scenario("41 backtest: chegada antes do anoitecer renova GPS antes de vencer", () => {
+  const now = Date.now();
+  const observedAt = now - 10 * 60_000 - 1_000;
+  const flow = readyLightFlow({
+    sun_below_horizon: false,
+    people_context_v1: {
+      ready: true, updated_at: observedAt,
+      arrival_armed: { resident_primary: true, resident_secondary: false },
+      resident_primary: { ready: true, stale: false, state: "near_home",
+        current_home: false, distance_m: 344, updated_at: observedAt },
+      resident_secondary: { ready: true, stale: false, state: "home",
+        current_home: true, distance_m: 20, updated_at: now },
+    },
+    security_light_arrival_watch_v1: { version: 1, residents: {
+      resident_primary: { source: "resident_primary", event_at: observedAt,
+        created_at: observedAt, attempts: 0, last_refresh_at: null,
+        waiting_for_callback: false },
+    } },
+  });
+  const output = run("light_merge_context", {
+    payload: { kind: "sun_context", sun_below_horizon: false, updated_at: now },
+  }, flow, geoEnv);
+  assert(output[3], "a vigília deve pedir atualização antes dos 15 min");
+  assert.equal(output[3].payload.source, "resident_primary");
+  assert.equal(output[3].payload.attempt, 1);
+  assert.equal(output[3].payload.reason, "near_home_refresh_before_stale");
+
+  const oneMinuteLater = run("light_merge_context", {
+    payload: { kind: "sun_context", sun_below_horizon: false,
+      updated_at: now + 60_001 },
+  }, flow, geoEnv);
+  assert.equal(oneMinuteLater[3], null,
+    "a segunda tentativa deve ficar reservada para motor ou bypass");
+  assert.equal(flow.get("security_light_arrival_watch_v1").residents.resident_primary.attempts, 1);
+});
+
+scenario("42 backtest: motor ON com GPS vencido pede fonte certa e não acende", () => {
+  const now = Date.now();
+  const oldAt = now - 21 * 60_000;
+  const people = {
+    ready: true, updated_at: oldAt,
+    arrival_armed: { resident_primary: false, resident_secondary: true },
+    resident_primary: { ready: true, stale: false, state: "home",
+      current_home: true, updated_at: now },
+    resident_secondary: { ready: true, stale: false, state: "near_home",
+      current_home: false, distance_m: 650, updated_at: oldAt },
+  };
+  const vehicleOff = { ready: true, lighting_ready: true, in_use: false,
+    engine_on: false, engine_state_valid: true, updated_at: now - 1 };
+  const flow = readyLightFlow({
+    people_context_v1: people, vehicle_primary_context_v1: vehicleOff,
+    security_light_arrival_watch_v1: { version: 1, residents: {
+      resident_secondary: { source: "resident_secondary", event_at: oldAt,
+        created_at: oldAt, attempts: 1, last_refresh_at: now - 11 * 60_000,
+        waiting_for_callback: true },
+    } },
+  });
+  const output = run("light_merge_context", { payload: {
+    kind: "vehicle_primary_context", event: "turn_on", updated_at: now,
+    context: { ...vehicleOff, in_use: true, engine_on: true, updated_at: now },
+  } }, flow, geoEnv);
+  assert.equal(output[2], null, "posição vencida nunca pode produzir replay");
+  assert.equal(output[3].payload.source, "resident_secondary");
+  assert.equal(output[3].payload.reason, "engine_authorized_location_stale");
+  assert.equal(output[3].payload.attempt, 2,
+    "motor ON deve consumir a tentativa reservada, não uma repetição periódica");
+});
+
+scenario("43 callback atual em near_home conclui o replay; callback home cancela", () => {
+  const now = Date.now();
+  const makeFlow = () => readyLightFlow({
+    people_context_v1: {
+      ready: false, updated_at: now - 16 * 60_000,
+      arrival_armed: { resident_primary: true, resident_secondary: false },
+      resident_primary: { ready: false, stale: true, state: "near_home",
+        current_home: null, updated_at: now - 16 * 60_000 },
+      resident_secondary: { ready: true, stale: false, state: "home",
+        current_home: true, updated_at: now },
+    },
+    security_light_arrival_watch_v1: { version: 1, residents: {
+      resident_primary: { source: "resident_primary", event_at: now - 16 * 60_000,
+        created_at: now - 16 * 60_000, attempts: 1, last_refresh_at: now - 5_000,
+        waiting_for_callback: true },
+    } },
+  });
+  const nearFlow = makeFlow();
+  const nearContext = structuredClone(nearFlow.get("people_context_v1"));
+  nearContext.ready = true; nearContext.updated_at = now;
+  Object.assign(nearContext.resident_primary, {
+    ready: true, stale: false, state: "near_home", current_home: false,
+    distance_m: 466, updated_at: now,
+  });
+  const replay = run("light_merge_context", { payload: {
+    kind: "people_context", source: "resident_primary", updated_at: now,
+    context: nearContext,
+  } }, nearFlow, geoEnv)[2];
+  assert(replay);
+  assert.equal(replay.payload.arrival_replayed_after_location_refresh, true);
+
+  const homeFlow = makeFlow();
+  const homeContext = structuredClone(homeFlow.get("people_context_v1"));
+  homeContext.ready = true; homeContext.updated_at = now;
+  Object.assign(homeContext.resident_primary, {
+    ready: true, stale: false, state: "home", current_home: true,
+    distance_m: 20, updated_at: now,
+  });
+  const homeOutput = run("light_merge_context", { payload: {
+    kind: "people_context", source: "resident_primary", updated_at: now,
+    context: homeContext,
+  } }, homeFlow, geoEnv);
+  assert.equal(homeOutput[2], null);
+  assert.equal(homeFlow.get("security_light_arrival_watch_v1").residents.resident_primary,
+    undefined, "home deve encerrar a vigília sem acender");
+});
+
+scenario("44 flags antigas não burlam o timestamp real da localização", () => {
+  const oldAt = Date.now() - 16 * 60_000;
+  const flow = readyLightFlow({ people_context_v1: {
+    ready: true,
+    resident_primary: { ready: true, stale: false, state: "near_home",
+      current_home: false, updated_at: oldAt },
+    resident_secondary: { ready: true, stale: false, state: "home",
+      current_home: true, updated_at: Date.now() },
+  } });
+  const result = run("light_mark_active", { payload: {
+    source: "resident_primary", arrival_key: "stale-flag-regression",
+    vehicle_primary_gate: "known_engine_on",
+  } }, flow, geoEnv);
+  assert.equal(result, null);
+});
+
+scenario("45 refresh extraordinário é por morador e ignora cooldown genérico", () => {
+  const primary = runDirect("people_visual_arrival_refresh_dispatch", {
+    payload: { kind: "arrival_location_refresh", source: "resident_primary" },
+  });
+  assert(primary[0]); assert.equal(primary[1], null);
+  const secondary = runDirect("people_visual_arrival_refresh_dispatch", {
+    payload: { kind: "arrival_location_refresh", source: "resident_secondary" },
+  });
+  assert.equal(secondary[0], null); assert(secondary[1]);
+  assert.deepEqual(byId.get("people_visual_arrival_refresh_dispatch").wires,
+    [["564fdc36031eaef8"], ["e0b7c0ecf1d8ee28"]]);
+});
+
+scenario("46 política alinha retenção e refresh preventivo ao frescor", () => {
+  assert.equal(LOCATION_POLICY.arrival_recovery_minutes, 15);
+  assert.equal(LOCATION_POLICY.near_home_refresh_minutes, 10);
+  assert(LOCATION_POLICY.near_home_refresh_minutes < LOCATION_POLICY.location_fresh_minutes);
+});
+
+scenario("47 decisão canônica publica estado e atributos para o Recorder", () => {
+  const flow = memoryFlow();
+  const discovery = runDirect("security_visual_decision_publish", {
+    topic: "security_light_decision_discovery", payload: "",
+  }, flow, geoEnv)[0][0];
+  assert.equal(discovery.topic,
+    "homeassistant/sensor/security_light_last_decision/config");
+  const published = runDirect("security_visual_decision_publish", {
+    _security_light_decision_state: "waiting_location_refresh",
+    payload: { source: "resident_secondary", reason: "engine_authorized_location_stale", attempt: 1 },
+  }, flow, geoEnv)[0];
+  assert.equal(published[0].payload, "waiting_location_refresh");
+  assert.equal(JSON.parse(published[1].payload).source, "resident_secondary");
+  assert.equal(flow.get("security_light_last_decision_v1").decision,
+    "waiting_location_refresh");
+});
+
+assert.equal(passed.length, 63);
 console.log(`security context/light replay: ${passed.length} cenarios OK`);
 for (const name of passed) console.log(name);

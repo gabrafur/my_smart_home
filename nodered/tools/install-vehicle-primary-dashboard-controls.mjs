@@ -283,14 +283,14 @@ upsert({
   x: 1344,
   y: 259,
   w: 552,
-  h: 302,
+  h: 342,
 });
 
 upsert({
   id: "vehicle_primary_refresh_policy_group_v1",
   type: "group",
   z: "c22d8b12055e87f7",
-  name: "4. Política visual: 5 min, 15 min, 30 min e pausa noturna",
+  name: "4. Política visual: 1 min armado, 5 min, 15 min, 30 min e pausa",
   style: {
     label: true,
     "label-position": "nw",
@@ -303,7 +303,7 @@ upsert({
   x: 1940,
   y: 259,
   w: 942,
-  h: 302,
+  h: 342,
 });
 
 upsert({
@@ -312,7 +312,7 @@ upsert({
   z: "c22d8b12055e87f7",
   g: "vehicle_primary_refresh_config_group_v1",
   name: "Duplo clique no número → altere o valor → Deploy",
-  info: "Os cinco blocos são a única configuração dos intervalos e da pausa noturna. Os valores são validados e persistidos no contexto do flow.",
+  info: "Os seis blocos são a única configuração dos intervalos e da pausa noturna. Os valores são validados e persistidos no contexto do flow.",
   x: 1585,
   y: 300,
   wires: [],
@@ -320,11 +320,12 @@ upsert({
 });
 
 const refreshPolicyInjects = [
-  ["vehicle_primary_refresh_approaching_minutes_v1", "near_home — 5 min", "approaching_interval_minutes", "5", 340],
-  ["vehicle_primary_refresh_away_minutes_v1", "Fora — 15 min", "away_interval_minutes", "15", 380],
-  ["vehicle_primary_refresh_home_minutes_v1", "Ambos em casa — 30 min", "home_interval_minutes", "30", 420],
-  ["vehicle_primary_refresh_quiet_start_v1", "Pausa começa — 0h", "quiet_start_hour", "0", 460],
-  ["vehicle_primary_refresh_quiet_end_v1", "Pausa termina — 6h", "quiet_end_hour", "6", 500],
+  ["vehicle_primary_refresh_arrival_armed_minutes_v1", "Chegada armada + motor não ON — 1 min", "arrival_armed_interval_minutes", "1", 340],
+  ["vehicle_primary_refresh_approaching_minutes_v1", "near_home comum — 5 min", "approaching_interval_minutes", "5", 380],
+  ["vehicle_primary_refresh_away_minutes_v1", "Fora — 15 min", "away_interval_minutes", "15", 420],
+  ["vehicle_primary_refresh_home_minutes_v1", "Ambos em casa — 30 min", "home_interval_minutes", "30", 460],
+  ["vehicle_primary_refresh_quiet_start_v1", "Pausa começa — 0h", "quiet_start_hour", "0", 500],
+  ["vehicle_primary_refresh_quiet_end_v1", "Pausa termina — 6h", "quiet_end_hour", "6", 540],
 ];
 
 for (const [id, name, topic, payload, y] of refreshPolicyInjects) {
@@ -362,7 +363,7 @@ upsert({
   finalize: "",
   libs: [],
   x: 1720,
-  y: 420,
+  y: 440,
   wires: [[]],
 });
 
@@ -378,9 +379,9 @@ upsert({
   type: "function",
   z: "c22d8b12055e87f7",
   g: "vehicle_primary_refresh_policy_group_v1",
-  name: "Escolher pela presença",
+  name: "Escolher presença, chegada armada e motor",
   func: source("vehicle-primary-refresh-policy.js"),
-  outputs: 4,
+  outputs: 5,
   timeout: 0,
   noerr: 0,
   initialize: "",
@@ -389,6 +390,7 @@ upsert({
   x: 2200,
   y: 350,
   wires: [
+    ["vehicle_primary_refresh_use_arrival_armed_interval_v1"],
     ["vehicle_primary_refresh_use_approaching_interval_v1"],
     ["vehicle_primary_refresh_use_away_interval_v1"],
     ["vehicle_primary_refresh_use_home_interval_v1"],
@@ -426,32 +428,39 @@ function refreshIntervalNode(id, name, configProperty, policy, y) {
 }
 
 refreshIntervalNode(
+  "vehicle_primary_refresh_use_arrival_armed_interval_v1",
+  "Usar 1 min enquanto aguarda motor",
+  "arrival_armed_interval_ms",
+  "arrival_armed_engine_pending",
+  290,
+);
+refreshIntervalNode(
   "vehicle_primary_refresh_use_approaching_interval_v1",
   "Usar intervalo near_home",
   "approaching_interval_ms",
   "approaching",
-  290,
+  330,
 );
 refreshIntervalNode(
   "vehicle_primary_refresh_use_away_interval_v1",
   "Usar intervalo fora",
   "away_interval_ms",
   "away",
-  330,
+  370,
 );
 refreshIntervalNode(
   "vehicle_primary_refresh_use_home_interval_v1",
   "Usar intervalo em casa",
   "home_interval_ms",
   "both_home",
-  370,
+  410,
 );
 refreshIntervalNode(
   "vehicle_primary_refresh_use_unknown_interval_v1",
   "Usar intervalo seguro sem localização",
   "away_interval_ms",
   "presence_unknown",
-  410,
+  450,
 );
 
 upsert({
@@ -2877,6 +2886,7 @@ addToGroup(
 addToGroup(
   "vehicle_primary_refresh_config_group_v1",
   "vehicle_primary_refresh_config_help_v1",
+  "vehicle_primary_refresh_arrival_armed_minutes_v1",
   "vehicle_primary_refresh_approaching_minutes_v1",
   "vehicle_primary_refresh_away_minutes_v1",
   "vehicle_primary_refresh_home_minutes_v1",
@@ -2889,6 +2899,7 @@ addToGroup(
   "25ca02f8c1de32d0",
   "vehicle_primary_arrival_refresh_in_v1",
   "vehicle_primary_refresh_policy_select_v1",
+  "vehicle_primary_refresh_use_arrival_armed_interval_v1",
   "vehicle_primary_refresh_use_approaching_interval_v1",
   "vehicle_primary_refresh_use_away_interval_v1",
   "vehicle_primary_refresh_use_home_interval_v1",
@@ -2964,9 +2975,9 @@ for (const id of remoteCommandGroup.nodes ?? []) {
 }
 
 const remoteRequestGroup = required("vehicle_primary_remote_request_group_v1");
-remoteRequestGroup.y += 100;
+remoteRequestGroup.y += 140;
 for (const id of remoteRequestGroup.nodes ?? []) {
-  required(id).y += 100;
+  required(id).y += 140;
 }
 
 const manualTestGroup = required("5df25064f701ecd2");
@@ -2980,8 +2991,12 @@ if (manualTestShift > 0) {
   }
 }
 
-required("vehicle_primary_remote_command_test_group_v1").name =
-  "9. TESTE — intenções e resultado remoto sem efeitos";
+const remoteCommandTestGroup = required("vehicle_primary_remote_command_test_group_v1");
+remoteCommandTestGroup.name = "9. TESTE — intenções e resultado remoto sem efeitos";
+remoteCommandTestGroup.y += 80;
+for (const id of remoteCommandTestGroup.nodes ?? []) {
+  required(id).y += 80;
+}
 const refreshOrchestrationGroup = required("vehicle_visual_refresh_decision_group_v2");
 refreshOrchestrationGroup.name =
   "10. Orquestração visual do refresh — gates, cooldown, cache e dry-run";

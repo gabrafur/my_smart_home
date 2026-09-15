@@ -14,6 +14,7 @@ const set = (name, value, store) => testMode || !store
     ? flow.set(name + suffix, value) : flow.set(name, value, store);
 if (testMode && msg._location_test_reset === true) {
     for (const name of ["security_light_pending_arrival_v1", "security_light_lifecycle_v1",
+        "security_light_arrival_watch_v1",
         "security_light_last_dry_run_v1", "security_light_turn_on_notification_latch_v1",
         "security_light_engine_bypass_enabled", "security_light_engine_bypass_automatic",
         "security_light_engine_communication_failed"]) set(name, null, "persistent");

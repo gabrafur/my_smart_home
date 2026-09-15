@@ -9,7 +9,7 @@ import {
 const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.url), "utf8"));
 const byId = new Map(flows.map((item) => [item.id, item]));
 const aliasesByName = {
-  vehicle_primary_refresh_policy: "Escolher pela presença",
+  vehicle_primary_refresh_policy: "Escolher presença, chegada armada e motor",
   vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_turn_off_if_active: "Desativar somente se foi ligado por chegada",
@@ -38,7 +38,7 @@ const LOCATION_POLICY = {
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
-  arrival_recovery_minutes: 10,
+  arrival_recovery_minutes: 15, near_home_refresh_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
@@ -102,6 +102,7 @@ function runVehicleRefresh(msg, flow) {
     flow.set("vehicle_primary_refresh_policy_config_v1", {
       version: 1,
       complete: true,
+      arrival_armed_interval_minutes: 1,
       approaching_interval_minutes: 5,
       away_interval_minutes: 15,
       home_interval_minutes: 30,
@@ -120,13 +121,18 @@ function runVehicleRefresh(msg, flow) {
   if (!selected) return null;
   const bothHome = selected.payload.refresh_both_residents_home === true;
   const approaching = selected.payload.refresh_anyone_approaching === true;
-  selected.payload.refresh_interval_ms = approaching
-    ? selected.payload.refresh_policy_config.approaching_interval_ms
+  const arrivalRestartPending = selected.payload.refresh_arrival_restart_pending === true;
+  selected.payload.refresh_interval_ms = arrivalRestartPending
+    ? selected.payload.refresh_policy_config.arrival_armed_interval_ms
+    : approaching
+      ? selected.payload.refresh_policy_config.approaching_interval_ms
     : bothHome
       ? selected.payload.refresh_policy_config.home_interval_ms
       : selected.payload.refresh_policy_config.away_interval_ms;
-  selected.payload.refresh_interval_policy = approaching
-    ? "approaching"
+  selected.payload.refresh_interval_policy = arrivalRestartPending
+    ? "arrival_armed_engine_pending"
+    : approaching
+      ? "approaching"
     : bothHome
       ? "both_home"
       : "away";
@@ -186,8 +192,8 @@ function lifecycle(overrides = {}) {
 function readyFlow(extra = {}) {
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: NOW,
-      resident_primary: { ready: true, stale: false, state: "home", current_home: true, primary_home: true },
-      resident_secondary: { ready: true, stale: false, state: "home", current_home: true, primary_home: true } },
+      resident_primary: { ready: true, stale: false, state: "home", current_home: true, primary_home: true, updated_at: NOW },
+      resident_secondary: { ready: true, stale: false, state: "home", current_home: true, primary_home: true, updated_at: NOW } },
     vehicle_primary_context_v1: { ready: true, updated_at: NOW, home: true, in_use: true },
     sun_ready: true, sun_below_horizon: true, light_reconciled: true, security_light_ready: true,
     security_light_physical_observed_at: NOW,
@@ -387,7 +393,7 @@ scenario("29 chegada recebida antes de readiness completo", () => {
     arrival(),
     memoryFlow({ people_context_v1: {
       ready: false,
-      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false },
+      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false, updated_at: NOW },
     } }),
   );
   assert.equal(physicalAction, null);

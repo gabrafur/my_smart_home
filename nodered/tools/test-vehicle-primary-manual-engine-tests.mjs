@@ -27,7 +27,8 @@ const LOCATION_POLICY = {
   vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250,
   home_radius_m: 100,
-  arrival_recovery_minutes: 10,
+  arrival_recovery_minutes: 15,
+  near_home_refresh_minutes: 10,
   arrival_dedupe_minutes: 10,
   primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
@@ -181,6 +182,8 @@ const gateFlow = memory({
       ready: true,
       stale: false,
       state: "near_home",
+      current_home: false,
+      updated_at: Date.now(),
     },
   },
 });
@@ -255,8 +258,8 @@ assert.equal(queued[0], null, "sem motor confiável a chegada deve aguardar");
 assert.equal(gateFlow.get(pendingKey).version, 2);
 assert.equal(gateFlow.get(pendingKey).retention, "while_approaching");
 assert(
-  gateFlow.get(pendingKey).expires_at >= Date.now() + 9 * 60_000,
-  "chegada deve usar a retenção visual de 10 minutos",
+  gateFlow.get(pendingKey).expires_at >= Date.now() + 14 * 60_000,
+  "chegada deve usar a retenção visual de 15 minutos",
 );
 
 gateFlow.set("sun_below_horizon", true);
@@ -389,8 +392,12 @@ assert.deepEqual(logicalWireTargets(markActive.id, 0), [
   "9f047ccb2ce2c3aa",
   "2818bf202b397612",
   "light_notify_on_secondary",
+  "security_visual_turned_on_decision_out",
 ]);
-assert.deepEqual(logicalWireTargets(markActive.id, 1), ["light_test_to_terminal_out_v1"]);
+assert.deepEqual(logicalWireTargets(markActive.id, 1), [
+  "light_test_to_terminal_out_v1",
+  "security_visual_turned_on_decision_out",
+]);
 
 execute(dryRunTerminal, dispatched[1], gateFlow, shared);
 const finalResult = gateFlow.get("security_light_last_dry_run_v1__test");
@@ -409,6 +416,8 @@ const cancelFlow = memory({
       ready: true,
       stale: false,
       state: "near_home",
+      current_home: false,
+      updated_at: Date.now() - 1,
     },
   },
   vehicle_primary_context_v1__test: {
@@ -448,6 +457,8 @@ mergeLight({
         ready: true,
         stale: false,
         state: "home",
+        current_home: true,
+        updated_at: Date.now(),
       },
     },
   },

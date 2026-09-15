@@ -102,11 +102,19 @@ const approachingConfigNode = flows.find(
 );
 assert.equal(approachingConfigNode?.topic, "approaching_interval_minutes");
 assert.equal(approachingConfigNode?.payload, "5");
+const arrivalArmedConfigNode = flows.find(
+  (node) => node.id === "vehicle_primary_refresh_arrival_armed_minutes_v1",
+);
+assert.equal(arrivalArmedConfigNode?.topic, "arrival_armed_interval_minutes");
+assert.equal(arrivalArmedConfigNode?.payload, "1");
 const policySelectNode = flows.find(
   (node) => node.id === "vehicle_primary_refresh_policy_select_v1",
 );
-assert.equal(policySelectNode?.outputs, 4);
+assert.equal(policySelectNode?.outputs, 5);
 assert.deepEqual(policySelectNode?.wires?.[0], [
+  "vehicle_primary_refresh_use_arrival_armed_interval_v1",
+]);
+assert.deepEqual(policySelectNode?.wires?.[1], [
   "vehicle_primary_refresh_use_approaching_interval_v1",
 ]);
 const approachingIntervalNode = flows.find(
@@ -193,6 +201,7 @@ function command(overrides = {}) {
     overrides.anyone_away === true ||
     awayStates.has(primary) ||
     awayStates.has(secondary);
+  const arrivalRestartPending = overrides.refresh_arrival_restart_pending === true;
   return {
     payload: {
       kind: "refresh_command",
@@ -201,6 +210,7 @@ function command(overrides = {}) {
       ...overrides,
       refresh_policy_version: 1,
       refresh_policy_config: {
+        arrival_armed_interval_ms: 1 * 60_000,
         approaching_interval_ms: 5 * 60_000,
         away_interval_ms: 15 * 60_000,
         home_interval_ms: 30 * 60_000,
@@ -217,13 +227,18 @@ function command(overrides = {}) {
       refresh_both_residents_home: bothHome,
       refresh_anyone_approaching:
         primary === "near_home" || secondary === "near_home",
+      refresh_arrival_restart_pending: arrivalRestartPending,
       refresh_anyone_away: anyoneAwayOrApproaching,
       refresh_interval_ms:
-        primary === "near_home" || secondary === "near_home"
-          ? 5 * 60_000
+        arrivalRestartPending
+          ? 1 * 60_000
+          : primary === "near_home" || secondary === "near_home"
+            ? 5 * 60_000
           : bothHome ? 30 * 60_000 : 15 * 60_000,
-      refresh_interval_policy: bothHome
-        ? "both_home"
+      refresh_interval_policy: arrivalRestartPending
+        ? "arrival_armed_engine_pending"
+        : bothHome
+          ? "both_home"
         : primary === "near_home" || secondary === "near_home"
           ? "approaching"
           : anyoneAwayOrApproaching
@@ -347,6 +362,7 @@ function scenario(name, callback) {
 scenario("00 política visual aceita valores configuráveis sem duplicar decisão", () => {
   const store = memory();
   for (const [topic, payload] of [
+    ["arrival_armed_interval_minutes", 1],
     ["approaching_interval_minutes", 8],
     ["away_interval_minutes", 20],
     ["home_interval_minutes", 45],
@@ -373,6 +389,7 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
     ),
     {
       version: 1,
+      arrival_armed_interval_minutes: 1,
       approaching_interval_minutes: 8,
       away_interval_minutes: 20,
       home_interval_minutes: 45,
@@ -399,19 +416,21 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
   });
   assert.equal(selected[0], null);
   assert.equal(selected[1], null);
-  assert(selected[2]);
-  assert.equal(selected[2].payload.refresh_policy_config.home_interval_ms, 45 * 60_000);
-  assert.equal(selected[2].payload.refresh_policy_config.approaching_interval_ms, 8 * 60_000);
-  assert.equal(selected[2].payload.refresh_policy_config.away_interval_ms, 20 * 60_000);
+  assert.equal(selected[2], null);
+  assert(selected[3]);
+  assert.equal(selected[3].payload.refresh_policy_config.home_interval_ms, 45 * 60_000);
+  assert.equal(selected[3].payload.refresh_policy_config.arrival_armed_interval_ms, 1 * 60_000);
+  assert.equal(selected[3].payload.refresh_policy_config.approaching_interval_ms, 8 * 60_000);
+  assert.equal(selected[3].payload.refresh_policy_config.away_interval_ms, 20 * 60_000);
 
-  selected[2].payload.refresh_interval_ms =
-    selected[2].payload.refresh_policy_config.home_interval_ms;
-  selected[2].payload.refresh_interval_policy = "both_home";
+  selected[3].payload.refresh_interval_ms =
+    selected[3].payload.refresh_policy_config.home_interval_ms;
+  selected[3].payload.refresh_interval_policy = "both_home";
   store.set("vehicle_primary_context_v1", readyContext(DAY));
   const permitted = execute(code.quietHours, {
     now: DAY,
     store,
-    msg: selected[2],
+    msg: selected[3],
   });
   const coordinated = runVisualCoordinator(permitted, store, DAY);
   assert(coordinated[0]);
@@ -422,7 +441,7 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
   execute(code.accepted, {
     now: acceptedAt,
     store,
-    msg: selected[2],
+    msg: selected[3],
   });
   assert.equal(
     store.get(KEY).next_allowed_at,
@@ -435,6 +454,7 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
   });
   const status = JSON.parse(telemetry[0][3].payload);
   assert.equal(status.interval_minutes, 45);
+  assert.equal(status.arrival_armed_interval_minutes, 1);
   assert.equal(status.approaching_interval_minutes, 8);
   assert.equal(status.away_interval_minutes, 20);
   assert.equal(status.home_interval_minutes, 45);
@@ -450,12 +470,13 @@ scenario("00 política visual aceita valores configuráveis sem duplicar decisã
       resident_secondary_state: "near_home",
     } },
   });
-  assert(approaching[0]);
-  assert.equal(approaching[1], null);
+  assert.equal(approaching[0], null);
+  assert(approaching[1]);
   assert.equal(approaching[2], null);
   assert.equal(approaching[3], null);
+  assert.equal(approaching[4], null);
   assert.equal(
-    approaching[0].payload.refresh_policy_config.approaching_interval_ms,
+    approaching[1].payload.refresh_policy_config.approaching_interval_ms,
     8 * 60_000,
   );
 });
@@ -604,6 +625,64 @@ scenario("28 estado near_home usa intervalo de 5 minutos", () => {
   }));
   assert.equal(store.get(KEY).interval_ms, 5 * 60_000);
   assert.equal(store.get(KEY).interval_policy, "approaching");
+});
+
+scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
+  const store = memory({
+    [POLICY_KEY]: {
+      version: 1,
+      complete: true,
+      arrival_armed_interval_minutes: 1,
+      approaching_interval_minutes: 5,
+      away_interval_minutes: 15,
+      home_interval_minutes: 30,
+      quiet_start_hour: 0,
+      quiet_end_hour: 6,
+      in_flight_lease_seconds: 120,
+      cache_probe_settle_seconds: 15,
+      provider_backoff_max_hours: 6,
+      semantic_evidence_window_minutes: 20,
+      unknown_location_start_hour: 7,
+      unknown_location_end_hour: 22,
+    },
+    people_context_v1: {
+      arrival_armed: { resident_secondary: true },
+    },
+    vehicle_primary_context_v1: { ready: false, engine_on: false },
+  });
+  const selected = execute(code.policy, {
+    now: NIGHT,
+    store,
+    msg: { payload: {
+      kind: "refresh_command",
+      resident_primary_state: "home",
+      resident_secondary_state: "near_home",
+    } },
+  });
+  assert(selected[0]);
+  assert.equal(selected[0].payload.refresh_arrival_restart_pending, true);
+  const result = coordinator(store, NIGHT, {
+    resident_primary_state: "home",
+    resident_secondary_state: "near_home",
+    vehicle_primary_ready: false,
+    refresh_arrival_restart_pending: true,
+  });
+  assert(result);
+  assert.equal(store.get(KEY).interval_ms, 1 * 60_000);
+  assert.equal(store.get(KEY).interval_policy, "arrival_armed_engine_pending");
+
+  const engineOnStore = memory({
+    people_context_v1: {
+      arrival_armed: { resident_secondary: true },
+    },
+    vehicle_primary_context_v1: { ready: true, engine_on: true },
+  });
+  assert(coordinator(engineOnStore, NIGHT, {
+    resident_primary_state: "home",
+    resident_secondary_state: "near_home",
+  }));
+  assert.equal(engineOnStore.get(KEY).interval_ms, 5 * 60_000);
+  assert.equal(engineOnStore.get(KEY).interval_policy, "approaching");
 });
 
 scenario("29 saída reduz cooldown persistido de 30 para 15 minutos", () => {

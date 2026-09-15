@@ -10,7 +10,7 @@ const flows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.meta.ur
 const byId = new Map(flows.map((node) => [node.id, node]));
 const aliasesByName = {
   people_refresh_decide: "Atualizar iPhones agora?",
-  vehicle_primary_refresh_policy: "Escolher pela presença",
+  vehicle_primary_refresh_policy: "Escolher presença, chegada armada e motor",
   vehicle_primary_refresh_quiet_hours: "Pausar madrugada se ambos em casa",
   vehicle_primary_arrival_actions: "Acordar carro e fechar viagem",
   vehicle_primary_trip_refresh: "Atualizar viagens do dia após chegada",
@@ -71,7 +71,7 @@ const LOCATION_POLICY = {
   source_report_fresh_minutes: 75, recency_tie_seconds: 60,
   max_gps_accuracy_m: 100, vehicle_location_fresh_minutes: 30,
   movement_threshold_m: 250, home_radius_m: 100,
-  arrival_recovery_minutes: 10,
+  arrival_recovery_minutes: 15, near_home_refresh_minutes: 10,
   arrival_dedupe_minutes: 10, primary_home_grace_minutes: 10,
   external_cycle_confirm_seconds: 60,
   future_tolerance_seconds: 60, vehicle_signal_fresh_minutes: 5,
@@ -139,6 +139,7 @@ function runVehicleRefresh(msg, flow) {
     flow.set("vehicle_primary_refresh_policy_config_v1", {
       version: 1,
       complete: true,
+      arrival_armed_interval_minutes: 1,
       approaching_interval_minutes: 5,
       away_interval_minutes: 15,
       home_interval_minutes: 30,
@@ -157,13 +158,18 @@ function runVehicleRefresh(msg, flow) {
   if (!selected) return null;
   const bothHome = selected.payload.refresh_both_residents_home === true;
   const approaching = selected.payload.refresh_anyone_approaching === true;
-  selected.payload.refresh_interval_ms = approaching
-    ? selected.payload.refresh_policy_config.approaching_interval_ms
+  const arrivalRestartPending = selected.payload.refresh_arrival_restart_pending === true;
+  selected.payload.refresh_interval_ms = arrivalRestartPending
+    ? selected.payload.refresh_policy_config.arrival_armed_interval_ms
+    : approaching
+      ? selected.payload.refresh_policy_config.approaching_interval_ms
     : bothHome
       ? selected.payload.refresh_policy_config.home_interval_ms
       : selected.payload.refresh_policy_config.away_interval_ms;
-  selected.payload.refresh_interval_policy = approaching
-    ? "approaching"
+  selected.payload.refresh_interval_policy = arrivalRestartPending
+    ? "arrival_armed_engine_pending"
+    : approaching
+      ? "approaching"
     : bothHome
       ? "both_home"
       : "away";
@@ -228,7 +234,7 @@ function lifecycle(overrides = {}) {
 function readyLight(overrides = {}) {
   return memoryFlow({
     people_context_v1: { ready: true, updated_at: clock,
-      resident_primary: { ready: true, stale: false, state: "home", current_home: true } },
+      resident_primary: { ready: true, stale: false, state: "home", current_home: true, updated_at: clock } },
     vehicle_primary_context_v1: { ready: true, lighting_ready: true, engine_on: true, engine_state_valid: true, updated_at: clock, home: true, in_use: true },
     sun_ready: true,
     sun_below_horizon: true,
@@ -334,7 +340,7 @@ scenario("11 deadline recuperado vence mesmo com estado físico stale", () => {
 scenario("12 dedupe do refletor so e gravado depois dos gates", () => {
   const flow = readyLight({
     people_context_v1: { ready: true, updated_at: clock,
-      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false } },
+      resident_primary: { ready: true, stale: false, state: "near_home", current_home: false, updated_at: clock } },
     security_light_physical_state: "off",
     security_light_lifecycle_v1: { version: 1, active_by_arrival: false, updated_at: clock },
   });
@@ -389,8 +395,10 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
     "Aguardar backstop de 15 min",
     "Preparar mobile para o hub",
     "Preparar mobile para o hub",
+    "Acendimento → histórico",
   ]);
-  const mobileAdapters = resolveWireTargets("light_mark_active", 0).slice(2);
+  const mobileAdapters = resolveWireTargets("light_mark_active", 0)
+    .filter((node) => node.name === "Preparar mobile para o hub");
   assert(mobileAdapters.every((node) => node.type === "change"));
   const contracts = mobileAdapters.map((node) =>
     node.rules.map((rule) => String(rule.to ?? "")).join("\n"),
@@ -399,6 +407,7 @@ scenario("16 side effects criticos estao ligados aos gates corretos", () => {
   assert.match(contracts[1], /"recipients":\["resident_secondary"\]/);
   assert.deepEqual(wireNames("light_mark_active", 1), [
     "Teste → terminal dry-run",
+    "Acendimento → histórico",
   ]);
   assert.deepEqual(wireNames("light_check_inactive", 2), [
     "Erro simulado → terminal dry-run",

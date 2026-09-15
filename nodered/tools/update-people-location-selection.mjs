@@ -206,7 +206,8 @@ const limits = {
     max_gps_accuracy_m: { min: 5, max: 1000, integer: false },
     vehicle_location_fresh_minutes: { min: 5, max: 180, integer: false },
     movement_threshold_m: { min: 10, max: 2000, integer: true },
-    arrival_recovery_minutes: { min: 3, max: 30, integer: false }
+    arrival_recovery_minutes: { min: 3, max: 30, integer: false },
+    near_home_refresh_minutes: { min: 3, max: 14, integer: false }
 };
 
 const key = String(msg.topic ?? "");
@@ -242,11 +243,12 @@ const allValuesPresent = Object.keys(limits).every(
 if (
     allValuesPresent &&
     (
-        policy.near_home_radius_m <= policy.home_radius_m
+        policy.near_home_radius_m <= policy.home_radius_m ||
+        policy.near_home_refresh_minutes >= policy.location_fresh_minutes
     )
 ) {
     node.error(
-        "Raios inválidos: home < near_home",
+        "Política inválida: home < near_home e refresh near_home < frescor",
         msg
     );
     return null;
@@ -1038,6 +1040,7 @@ const policyNodes = [
   "people_location_vehicle_fresh_minutes_v1",
   "people_location_movement_threshold_v1",
   "people_location_recovery_minutes_v1",
+  "people_location_near_home_refresh_minutes_v1",
   "people_location_values_route_out_v1",
   "people_location_values_route_middle_out_v1",
   "people_location_values_route_right_out_v1",
@@ -1063,10 +1066,11 @@ flows.push(
   inject("people_location_fresh_minutes_v1", policyGroup, "Posição atual — 15 min", "location_fresh_minutes", 15, 550, 160),
   inject("people_location_source_report_minutes_v1", policyGroup, "Fonte ativa — 75 min", "source_report_fresh_minutes", 75, 550, 200),
   inject("people_location_vehicle_fresh_minutes_v1", policyGroup, "Posição do carro — 30 min", "vehicle_location_fresh_minutes", 30, 550, 240),
-  inject("people_location_recovery_minutes_v1", policyGroup, "Reter chegada — 10 min", "arrival_recovery_minutes", 10, 550, 280),
+  inject("people_location_recovery_minutes_v1", policyGroup, "Reter chegada — 15 min", "arrival_recovery_minutes", 15, 550, 280),
   inject("people_location_recency_tie_seconds_v1", policyGroup, "Empate de recência — 60 s", "recency_tie_seconds", 60, 850, 160),
   inject("people_location_accuracy_v1", policyGroup, "Precisão máxima — 100 m", "max_gps_accuracy_m", 100, 850, 200),
   inject("people_location_movement_threshold_v1", policyGroup, "Movimento do carro — 250 m", "movement_threshold_m", 250, 850, 240),
+  inject("people_location_near_home_refresh_minutes_v1", policyGroup, "Refresh near_home — 10 min", "near_home_refresh_minutes", 10, 850, 280),
   {
     id: "people_location_values_route_out_v1",
     type: "link out",

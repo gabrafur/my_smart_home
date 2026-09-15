@@ -2050,7 +2050,7 @@ const verticalShifts = new Map([
   [testGroup, 900],
   [hacsGroup, 200],
   [unknownGroup, 200],
-  [firmwareGroup, 800],
+  [firmwareGroup, 820],
   [kiaUpdateGroup, 3500],
   [kiaCodexGroup, 3500],
   [dependencyGroup, 600],

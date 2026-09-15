@@ -1,12 +1,13 @@
 if (msg.payload?.kind !== "refresh_command") return null;
 const config = msg.payload?.refresh_policy_config ?? {};
-const required = ["away_interval_ms", "approaching_interval_ms", "home_interval_ms",
+const required = ["away_interval_ms", "arrival_armed_interval_ms",
+    "approaching_interval_ms", "home_interval_ms",
     "in_flight_lease_ms", "cache_probe_settle_ms", "provider_backoff_max_ms",
     "semantic_evidence_window_ms", "unknown_location_start_hour",
     "unknown_location_end_hour"];
 if (msg.payload?.refresh_policy_version !== 1 ||
     required.some((key) => !Number.isFinite(Number(config[key]))) ||
-    required.slice(0, 7).some((key) => Number(config[key]) <= 0)) {
+    required.slice(0, 8).some((key) => Number(config[key]) <= 0)) {
     node.error("Política visual de refresh ausente; comando não será despachado", msg);
     return null;
 }

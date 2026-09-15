@@ -65,6 +65,7 @@ const inject = (id, groupId, name, topic, payload, x, y, destination) => grouped
   once: true, onceDelay: "0.8", topic, payload: String(payload), payloadType: "num",
   x, y, wires: [[destination]]
 });
+const broker = required("security_light_engine_bypass_mqtt_out_v1").broker;
 
 const bypass = required("security_light_engine_bypass_group_v1");
 Object.assign(bypass, {
@@ -213,24 +214,41 @@ fn("security_visual_context_cache", decision.id, "Normalizar e atualizar cache m
 fn("security_visual_engine_on_near_home", decision.id,
   "Motor ON + chegada armada ainda em near_home?",
   "security-light-engine-on-near-home.js", 1, 700, 1660,
+  [["security_visual_arrival_watch"]]);
+fn("security_visual_arrival_watch", decision.id,
+  "Manter posição atual durante a aproximação",
+  "security-light-arrival-watch.js", 1, 990, 1660,
   [["security_visual_pending_validate"]]);
 fn("security_visual_pending_validate", decision.id, "Validar intenção pendente e retenção",
-  "security-light-pending-validate.js", 1, 1010, 1660, [["security_visual_replay_ready"]]);
+  "security-light-pending-validate.js", 1, 1300, 1660, [["security_visual_replay_ready"]]);
 sw("security_visual_replay_ready", decision.id,
   "Pendente ou motor ON permitem avaliar agora?",
-  "_light_context.replay_ready", 1380, 1660,
+  "_light_context.replay_ready", 1660, 1660,
   [["security_visual_replay_build"], ["48a5f40d806f6950"]]);
 fn("security_visual_replay_build", decision.id, "Montar replay preservando o evento",
-  "security-light-replay-build.js", 1, 1590, 1600, [["48a5f40d806f6950"]]);
+  "security-light-replay-build.js", 1, 1870, 1600, [["48a5f40d806f6950"]]);
 const contextOutput = required("48a5f40d806f6950");
 Object.assign(contextOutput, { g: decision.id, name: "Emitir contexto, reconciliação e replay",
-  func: source("security-light-context-output.js"), outputs: 3, x: 1880, y: 1660 });
+  func: source("security-light-context-output.js"), outputs: 4, x: 2160, y: 1660 });
+contextOutput.wires = [
+  contextOutput.wires?.[0] ?? [], contextOutput.wires?.[1] ?? [],
+  contextOutput.wires?.[2] ?? [],
+  ["security_visual_people_refresh_out", "security_visual_context_decision_out"]
+];
 if (!decision.nodes.includes(contextOutput.id)) decision.nodes.push(contextOutput.id);
-for (const [id, x, y] of [["77f539388438547c", 2180, 1600],
-  ["68a67feb7cc57957", 2180, 1660], ["light_arrival_replay_route_out_v1", 2180, 1720]]) {
+for (const [id, x, y] of [["77f539388438547c", 2460, 1560],
+  ["68a67feb7cc57957", 2460, 1620], ["light_arrival_replay_route_out_v1", 2460, 1680]]) {
   Object.assign(required(id), { g: decision.id, x, y });
   if (!decision.nodes.includes(id)) decision.nodes.push(id);
 }
+linkOut("security_visual_people_refresh_out", decision.id,
+  "Atualizar iPhone da chegada", "people_visual_arrival_refresh_in", 2460, 1740);
+required("people_visual_arrival_refresh_in").links = Array.from(new Set([
+  ...(required("people_visual_arrival_refresh_in").links ?? []),
+  "security_visual_people_refresh_out"
+]));
+linkOut("security_visual_context_decision_out", decision.id,
+  "Espera GPS → histórico", "security_visual_decision_route_in", 2700, 1740);
 
 required("light_arrival_replay_gate_in_v1").wires = [["security_visual_arrival_facts"]];
 fn("security_visual_arrival_facts", decision.id, "Derivar fatos sem decidir efeitos",
@@ -275,6 +293,11 @@ const arrivalOutput = required("62f77a1ad440639d");
 Object.assign(arrivalOutput, { g: decision.id, name: "Emitir decisão, diagnóstico e recovery",
   func: source("security-light-arrival-output.js"), outputs: 3, x: 2760, y: 1880 });
 if (!decision.nodes.includes(arrivalOutput.id)) decision.nodes.push(arrivalOutput.id);
+arrivalOutput.wires[1] = Array.from(new Set([
+  ...(arrivalOutput.wires?.[1] ?? []), "security_visual_arrival_decision_out"
+]));
+linkOut("security_visual_arrival_decision_out", decision.id,
+  "Decisão de chegada → histórico", "security_visual_decision_route_in", 3260, 1880);
 for (const [id, x, y] of [["e7542f3caa4a99e2", 3100, 1800],
   ["81994a8c6c38a4c1", 3100, 1880], ["54b3d667ae845416", 3100, 1960]]) {
   Object.assign(required(id), { g: decision.id, x, y });
@@ -284,7 +307,7 @@ for (const [id, x, y] of [
   ["security_light_engine_bypass_reevaluate_in_v1", 160, 1600],
   ["light_arrival_replay_gate_in_v1", 160, 1820],
   ["light_arrival_replay_debug_in_v1", 2400, 1600],
-  ["1bdb8c52397de8a9", 2650, 1600],
+  ["1bdb8c52397de8a9", 2850, 1600],
   ["e10a4b1a9880e827", 3100, 1720],
   ["276ba50ad0e36bab", 3380, 1800]
 ]) Object.assign(required(id), { x, y, g: decision.id });
@@ -327,14 +350,43 @@ for (const [id, x, y] of [
   ["light_unavailable_test_dry_run_out_v1", 6220, 1880]
 ]) Object.assign(required(id), { x, y, g: decision.id });
 
+const effects = required("95e7527bc7a0a9a1");
 const markActive = required("354c9839bfca592f");
 markActive.func = source("security-light-mark-active.js");
 markActive.outputs = 2;
 markActive.wires = [
-  markActive.wires[0] ?? [],
-  markActive.wires[1] ?? [],
+  Array.from(new Set([...(markActive.wires[0] ?? []), "security_visual_turned_on_decision_out"])),
+  Array.from(new Set([...(markActive.wires[1] ?? []), "security_visual_turned_on_decision_out"])),
 ];
-const effects = required("95e7527bc7a0a9a1");
+grouped(effects.id, {
+  id: "security_visual_turned_on_decision_out", type: "link out", z: TAB,
+  g: effects.id, name: "Acendimento → histórico", mode: "link",
+  links: ["security_visual_decision_route_in"], x: 1280, y: 300, wires: []
+});
+
+const diagnostic = group("security_visual_decision_diagnostic_group_v1",
+  "8. Última decisão — estado canônico para histórico",
+  4400, 1019, 1900, 302, "#0f766e", "#ccfbf1");
+grouped(diagnostic.id, {
+  id: "security_visual_decision_discovery", type: "inject", z: TAB, g: diagnostic.id,
+  name: "Publicar sensor no startup", props: [{ p: "payload" }, { p: "topic", vt: "str" }],
+  repeat: "", crontab: "", once: true, onceDelay: "2",
+  topic: "security_light_decision_discovery", payload: "", payloadType: "str",
+  x: 4660, y: 1120, wires: [["security_visual_decision_publish"]]
+});
+linkIn("security_visual_decision_route_in", diagnostic.id,
+  "Receber decisões operacionais", ["security_visual_context_decision_out",
+    "security_visual_arrival_decision_out", "security_visual_turned_on_decision_out"],
+  "security_visual_decision_publish", 4660, 1240);
+fn("security_visual_decision_publish", diagnostic.id,
+  "Classificar e publicar decisão", "security-light-decision-publish.js", 1,
+  5040, 1180, [["security_visual_decision_mqtt"]]);
+grouped(diagnostic.id, {
+  id: "security_visual_decision_mqtt", type: "mqtt out", z: TAB, g: diagnostic.id,
+  name: "Histórico da decisão", topic: "", qos: "1", retain: "true",
+  respTopic: "", contentType: "", userProps: "", correl: "", expiry: "",
+  broker, x: 5420, y: 1180, wires: []
+});
 const offGroup = required("a610d085d27ea80d");
 offGroup.name = "4. Confirmar carro e decidir desligamento";
 const evaluateOff = required("374d4e39be0a30ac");
@@ -401,6 +453,11 @@ swRules("security_visual_recovered_deadline_route", reconcile.id,
 linkOut("security_visual_recovered_vehicle_refresh_out", reconcile.id,
   "Refresh recuperado → confirmação", "security_visual_vehicle_refresh_due_in",
   3020, 2160);
+reconcile.y += 60;
+for (const id of reconcile.nodes ?? []) {
+  const node = required(id);
+  if (Number.isFinite(node.y)) node.y += 60;
+}
 linkIn("security_visual_vehicle_refresh_due_in", offGroup.id,
   "Receber refresh vencido", ["security_visual_recovered_vehicle_refresh_out"],
   "security_visual_vehicle_refresh_build", 500, 970);

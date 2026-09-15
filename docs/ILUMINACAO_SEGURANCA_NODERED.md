@@ -213,7 +213,13 @@ depois `not_home` como fallback. O checker de bindings rejeita
   cadência efetiva: o iOS responde aos geofences e às mudanças significativas,
   enquanto pedidos explícitos são reservados ao recovery com limite de duas
   vezes por hora. A validação exige `home < near_home` e rejeita uma combinação
-  incoerente sem substituir a última política válida.
+incoerente sem substituir a última política válida.
+- Enquanto uma chegada confirmada permanece armada em `near_home`, uma vigília
+  individual pede uma atualização extraordinária somente ao iPhone daquele
+  morador após 10 minutos. Ela não usa o cooldown genérico de 30 minutos: a
+  primeira tentativa é preventiva e a segunda fica reservada para quando motor
+  ou bypass se tornarem válidos com a posição vencida. O aceite do push nunca
+  vira prova de localização.
 - Um tracker primário que já está em casa há mais de 10 min bloqueia o catch-up
   tardio do tracker secundário. Sem `last_changed`, o comportamento permanece
   fail-open para não perder uma chegada real.
@@ -321,7 +327,7 @@ o mesmo filtro contra oscilações nos dois sentidos.
 
 Quando uma chegada `not_home -> near_home` ocorre antes do anoitecer ou antes de
 a integração atualizar o motor, `iluminacao_seguranca` preserva a intenção por
-até 10 minutos, valor editável no mesmo grupo de política canônica. Durante
+até 15 minutos, valor editável no mesmo grupo de política canônica. Durante
 esse prazo, uma aproximação de morador exige que a mesma pessoa permaneça em
 `near_home`, com localização `ready` e não stale. A posição do veículo não cria
 nem mantém intenção de acendimento. A intenção é cancelada ao entrar em
@@ -395,11 +401,20 @@ restritas à iluminação e não são publicadas como chegada geral para o desar
 
 Se o motor muda para `on` depois que o morador já entrou em `near_home`, o evento
 confirmado de motor reavalia imediatamente a chegada enquanto o ciclo externo
-daquela pessoa continuar armado e a localização ainda estiver atual. Um mero
+daquela pessoa continuar armado e a localização ainda estiver atual. Se a
+posição já venceu, o fluxo solicita uma leitura nova somente ao telefone dessa
+pessoa e aguarda o callback: `near_home` atual permite a reavaliação; `home`,
+saída do raio ou nova ausência de localização permanecem bloqueados. Um mero
 snapshot repetindo motor `on`, ou um morador em `near_home` sem ciclo externo,
 não recria a chegada. A ativação válida do bypass durante falha comprovada da
-integração faz a mesma reavaliação, inclusive se a intenção temporária de 10
+integração faz a mesma reavaliação, inclusive se a intenção temporária de 15
 minutos já tiver expirado.
+
+O estado `sensor.security_light_last_decision` registra no Recorder a última
+decisão canônica (`turned_on`, bloqueios por claridade, motor, localização,
+direção ou `waiting_location_refresh`) com apenas papéis lógicos e timestamps.
+Isso permite backtests futuros sem inferir o motivo a partir do estado físico
+do refletor.
 
 Também chama `switch.turn_on`, avisa os moradores e inicia o backstop de 15
 minutos.
@@ -446,6 +461,11 @@ exclusivamente de um `delay` residente em memória.
   30 min, limitado a duas vezes por hora. GPS sem mudança não inicia recovery
   quando os dois residentes continuam em `home`, nenhuma fonte indica saída e
   ao menos uma fonte de cada residente reportou nos últimos 75 min.
+  A única exceção é a vigília de uma chegada já comprovada: aos 10 minutos em
+  `near_home`, ou quando motor/bypass se tornam válidos com posição vencida,
+  ela pede atualização ao telefone correspondente, com dedupe próprio. A
+  tentativa preventiva não se repete; a segunda fica reservada à autorização
+  posterior por motor/bypass. O refletor continua bloqueado até chegar GPS atual.
 - `request_location_update` é best-effort: `public_bindings` agenda a
   notificação móvel sem aguardar a conclusão do serviço remoto. O aceite do
   Home Assistant não comprova uma posição nova; o ciclo seguinte reavalia os
@@ -461,15 +481,18 @@ exclusivamente de um `delay` residente em memória.
   telefone.
 - vehicle_primary: a política fica visível no tab `contexto_vehicle_primary`,
   nos grupos `3. Configuração dos intervalos do veículo` e `4. Política
-  visual`. Os cinco injects numéricos são a única configuração: 5 min quando
-  alguém está `near_home`, 15 min quando está `not_home`, 30 min no ciclo saudável quando ambos
-  estão `home`, início 0h e fim 6h para a pausa noturna nessa última condição.
+  visual`. Os seis injects numéricos são a única configuração: 1 min quando
+  uma chegada de morador continua armada em `near_home` e o motor ainda não
+  está `on`, 5 min no `near_home` comum, 15 min quando está `not_home`, 30 min
+  no ciclo saudável quando ambos estão `home`, início 0h e fim 6h para a pausa
+  noturna nessa última condição.
   Para mudar um valor, abra o inject correspondente, altere o número e faça
   Deploy. Essa presença usa a mesma fonte de melhor localização mostrada no
   mapa; divergência de uma fonte não selecionada fica apenas no diagnóstico.
   A idade dessa localização pode solicitar atualização dos telefones, mas não
-  reduz sozinha o ciclo do veículo. Durante `near_home`, os 5 min mantêm
-  precedência mesmo com dados pendentes. Fora desse estado, a recuperação do
+  reduz sozinha o ciclo do veículo. Durante uma chegada armada em `near_home`,
+  motor `off` ou ainda desconhecido reduz temporariamente o ciclo para 1 min;
+  depois de `on`, ou sem esse armamento, o intervalo volta a 5 min. Fora desse estado, a recuperação do
   próprio veículo usa o intervalo configurado para fora, inclusive em casa,
   fora dessa pausa noturna; um bloqueio explícito do provedor ainda pode impor
   backoff maior. O coordenador, o aceite/erro da API e o dashboard não
@@ -632,7 +655,7 @@ permanecer em `near_home`. Na aba `iluminacao_seguranca`, os controles
 sem alterar o switch real. O cenário comprova que `ON` antigo continua válido
 com API saudável, que falha real ativa o bypass em dry-run, que motor `OFF`
 conhecido bloqueia com API saudável e deixa de prevalecer durante falha real de
-comunicação. A mesma chegada pode ser mantida por até 10
+comunicação. A mesma chegada pode ser mantida por até 15
 minutos e reprocessada quando o sol muda para `below_horizon` ou quando o
 Bluelink conclui sua atualização tardia.
 O `test_mode` então atravessa disponibilidade do refletor, dedupe e lifecycle
@@ -682,7 +705,7 @@ npm run flows:test-security
 npm run flows:test-alarm-arrival
 ```
 
-`flows:test-security` executa 49 cenários de regressão, incluindo
+`flows:test-security` executa 63 cenários de regressão, incluindo
 estados inválidos, restart, eventos fora de ordem, simultaneidade e falha/sucesso
 de refresh, inclusive movimento dentro da mesma zona, simetria de motor
 `on`/`off`, replay real de chegada após atraso `off -> on` e preservação de

@@ -21,9 +21,14 @@ if (pending) {
     if (valid && pending.version === 2 && pending.retention === "while_approaching" &&
         ["resident_primary", "resident_secondary"].includes(pending.source)) {
         const resident = data.people[pending.source];
-        valid = resident?.ready === true && resident?.stale !== true && resident?.state === "near_home";
+        const observedAt = Number(resident?.updated_at);
+        const current = resident?.ready === true && resident?.stale !== true &&
+            Number.isFinite(observedAt) && observedAt > 0 &&
+            observedAt <= data.now + data.future_ms &&
+            data.now - observedAt <= Number(data.location_policy.location_fresh_minutes) * 60000;
+        valid = current && resident?.state === "near_home";
         if (!valid) reason = resident?.state === "home" ? "resident_home" :
-            resident?.stale === true || resident?.ready !== true ? "resident_location_stale" : "resident_left_approach_zone";
+            !current ? "resident_location_stale" : "resident_left_approach_zone";
     } else if (valid && pending.retention !== "recovery_window") {
         valid = false;
         reason = "invalid_retention";

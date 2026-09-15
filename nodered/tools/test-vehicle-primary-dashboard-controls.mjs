@@ -81,6 +81,7 @@ function resolvedPolicy(overrides = {}) {
     ...overrides,
     refresh_policy_version: 1,
     refresh_policy_config: {
+      arrival_armed_interval_ms: 1 * 60_000,
       approaching_interval_ms: 5 * 60_000,
       away_interval_ms: 15 * 60_000,
       home_interval_ms: 30 * 60_000,

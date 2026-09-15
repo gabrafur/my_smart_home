@@ -3328,7 +3328,7 @@
         },
         "vehicle_primary_remote_request_group_v1": {
           "x": 192,
-          "y": 1379
+          "y": 1419
         },
         "vehicle_primary_remote_command_group_v1": {
           "x": 2654,
@@ -3340,7 +3340,7 @@
         },
         "vehicle_primary_remote_command_test_group_v1": {
           "x": 1224,
-          "y": 2000
+          "y": 2080
         },
         "vehicle_visual_refresh_decision_group_v2": {
           "x": 69,
@@ -3453,8 +3453,8 @@
           "y": 1650
         },
         "vehicle_primary_remote_effect_invalid_out_v1": {
-          "x": 1900,
-          "y": 1420
+          "x": 2120,
+          "y": 1480
         },
         "vehicle_primary_remote_command_test_in_v1": {
           "x": 2785,
@@ -3550,7 +3550,7 @@
         },
         "vehicle_primary_remote_command_test_group_v1": {
           "x": 1224,
-          "y": 2000,
+          "y": 2080,
           "w": 602,
           "h": 382
         },
@@ -3564,7 +3564,7 @@
           "x": 1290,
           "y": 179,
           "w": 1132,
-          "h": 202
+          "h": 242
         },
         "vehicle_location_panel_group_v1": {
           "x": 2450,
@@ -3860,23 +3860,35 @@
         },
         "vehicle_primary_remote_command_test_help_v1": {
           "x": 1530,
-          "y": 2041
+          "y": 1980
+        },
+        "vehicle_primary_remote_request_test_available_v1": {
+          "x": 1420,
+          "y": 2040
+        },
+        "vehicle_primary_remote_request_test_out_v1": {
+          "x": 1745,
+          "y": 2070
+        },
+        "vehicle_primary_remote_request_test_unavailable_v1": {
+          "x": 1420,
+          "y": 2100
         },
         "vehicle_primary_remote_command_test_reset_v1": {
           "x": 1420,
-          "y": 2101
+          "y": 2160
         },
         "vehicle_primary_remote_command_test_success_v1": {
           "x": 1420,
-          "y": 2161
+          "y": 2220
         },
         "vehicle_primary_remote_command_test_failure_v1": {
           "x": 1420,
-          "y": 2221
+          "y": 2280
         },
         "vehicle_primary_remote_command_test_out_v1": {
           "x": 1745,
-          "y": 2161
+          "y": 2220
         },
         "vehicle_primary_refresh_notify_persistent_v1": {
           "x": 1390,
@@ -3910,6 +3922,10 @@
           "x": 916,
           "y": 120
         },
+        "vehicle_primary_refresh_arrival_armed_minutes_v1": {
+          "x": 816,
+          "y": 200
+        },
         "vehicle_primary_refresh_away_minutes_v1": {
           "x": 816,
           "y": 280
@@ -3932,27 +3948,31 @@
         },
         "vehicle_primary_refresh_policy_select_v1": {
           "x": 1551,
-          "y": 290
+          "y": 300
+        },
+        "vehicle_primary_refresh_use_arrival_armed_interval_v1": {
+          "x": 1836,
+          "y": 220
         },
         "vehicle_primary_refresh_use_away_interval_v1": {
           "x": 1796,
-          "y": 260
+          "y": 300
         },
         "vehicle_primary_refresh_use_home_interval_v1": {
           "x": 1806,
-          "y": 300
+          "y": 340
         },
         "vehicle_primary_refresh_use_unknown_interval_v1": {
           "x": 1856,
-          "y": 340
+          "y": 380
         },
         "vehicle_primary_refresh_quiet_hours_v1": {
           "x": 2176,
-          "y": 280
+          "y": 300
         },
         "vehicle_primary_refresh_policy_out_v1": {
           "x": 2381,
-          "y": 280
+          "y": 300
         },
         "vehicle_primary_refresh_policy_in_v1": {
           "x": 215,
@@ -3964,7 +3984,7 @@
         },
         "vehicle_primary_refresh_use_approaching_interval_v1": {
           "x": 1816,
-          "y": 220
+          "y": 260
         },
         "vehicle_primary_classify_near_home_v1": {
           "x": 2110,
@@ -4215,7 +4235,7 @@
           "y": 196
         },
         "vehicle_visual_refresh_config_in": {
-          "x": 941,
+          "x": 1120,
           "y": 180
         },
         "vehicle_visual_refresh_command_out": {
@@ -4396,7 +4416,7 @@
         },
         "vehicle_primary_remote_request_group_v1": {
           "x": 192,
-          "y": 1379,
+          "y": 1419,
           "w": 2414,
           "h": 492
         }
@@ -4429,7 +4449,7 @@
         },
         "6013a28eaa95addd": {
           "x": 124,
-          "y": 2440
+          "y": 2500
         },
         "global_observer_coverage__6b7552efb85343f4__group": {
           "x": 2134,
@@ -4606,27 +4626,31 @@
           "y": 410
         },
         "security_visual_replay_ready": {
-          "x": 1380,
+          "x": 1728,
           "y": 1863
         },
         "security_visual_replay_build": {
-          "x": 1590,
+          "x": 1938,
           "y": 1803
         },
         "48a5f40d806f6950": {
-          "x": 1880,
+          "x": 2228,
           "y": 1863
         },
+        "notification_hub_wire_out_60f0f8f4dde5": {
+          "x": 2350,
+          "y": 1740
+        },
         "77f539388438547c": {
-          "x": 2180,
+          "x": 2528,
           "y": 1803
         },
         "68a67feb7cc57957": {
-          "x": 2180,
+          "x": 2528,
           "y": 1863
         },
         "light_arrival_replay_route_out_v1": {
-          "x": 2180,
+          "x": 2528,
           "y": 1923
         },
         "aaeec8223d98ab0b": {
@@ -8179,19 +8203,19 @@
         },
         "git_backup_test_success": {
           "x": 268,
-          "y": 800
+          "y": 850
         },
         "git_backup_test_failure": {
           "x": 268,
-          "y": 860
+          "y": 910
         },
         "git_backup_test_deferred": {
           "x": 268,
-          "y": 920
+          "y": 970
         },
         "git_backup_test_invalid": {
           "x": 268,
-          "y": 980
+          "y": 1030
         }
       },
       "nodes": {

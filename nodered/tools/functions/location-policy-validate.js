@@ -7,7 +7,8 @@ const DEFAULTS = {
     max_gps_accuracy_m: 100,
     vehicle_location_fresh_minutes: 30,
     movement_threshold_m: 250,
-    arrival_recovery_minutes: 10,
+    arrival_recovery_minutes: 15,
+    near_home_refresh_minutes: 10,
     arrival_dedupe_minutes: 10,
     primary_home_grace_minutes: 10,
     external_cycle_confirm_seconds: 60,
@@ -25,6 +26,7 @@ const LIMITS = {
     vehicle_location_fresh_minutes: [5, 180],
     movement_threshold_m: [10, 2000],
     arrival_recovery_minutes: [3, 30],
+    near_home_refresh_minutes: [3, 14],
     arrival_dedupe_minutes: [1, 60],
     primary_home_grace_minutes: [1, 60],
     external_cycle_confirm_seconds: [15, 600],
@@ -57,5 +59,15 @@ msg.location_policy_candidate = {
     complete: true,
     updated_at: Date.now()
 };
+if (msg.location_policy_candidate.near_home_refresh_minutes >=
+    msg.location_policy_candidate.location_fresh_minutes) {
+    msg.location_policy_rejection = {
+        parameter: topic,
+        rejected_value: msg.payload,
+        reason: "near_home_refresh_must_precede_location_stale",
+        preserved: true
+    };
+    return [null, msg];
+}
 delete msg.location_policy_candidate.people_fast_refresh_radius_m;
 return [msg, null];

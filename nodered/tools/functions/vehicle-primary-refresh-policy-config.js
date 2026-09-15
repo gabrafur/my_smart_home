@@ -3,6 +3,7 @@ const PERSISTENT = "persistent";
 
 const limits = {
     away_interval_minutes: { min: 15, max: 1440, integer: false },
+    arrival_armed_interval_minutes: { min: 1, max: 15, integer: false },
     approaching_interval_minutes: { min: 5, max: 1440, integer: false },
     home_interval_minutes: { min: 15, max: 1440, integer: false },
     quiet_start_hour: { min: 0, max: 23, integer: true },
@@ -51,6 +52,7 @@ node.status({
     shape: config.complete ? "dot" : "ring",
     text: config.complete
         ? `${config.away_interval_minutes} min fora | ` +
+          `${config.arrival_armed_interval_minutes} min chegada armada | ` +
           `${config.approaching_interval_minutes} min near_home | ` +
           `${config.home_interval_minutes} min casa | ` +
           `${config.quiet_start_hour}h–${config.quiet_end_hour}h | ` +

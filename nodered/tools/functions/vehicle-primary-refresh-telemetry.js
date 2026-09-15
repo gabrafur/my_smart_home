@@ -62,6 +62,8 @@ const status = {
     interval_policy: raw.interval_policy ?? null,
     away_interval_minutes:
         Number(policy.away_interval_minutes ?? 0) || null,
+    arrival_armed_interval_minutes:
+        Number(policy.arrival_armed_interval_minutes ?? 0) || null,
     approaching_interval_minutes:
         Number(policy.approaching_interval_minutes ?? 0) || null,
     home_interval_minutes:

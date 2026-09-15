@@ -49,6 +49,11 @@ const residentArrival = ["resident_primary", "resident_secondary"].includes(
     arrivalSource
 );
 const sourcePeopleContext = people[arrivalSource];
+const sourceObservedAt = Number(sourcePeopleContext?.updated_at);
+const sourceCurrent = sourcePeopleContext?.ready === true &&
+    sourcePeopleContext?.stale !== true && Number.isFinite(sourceObservedAt) &&
+    sourceObservedAt > 0 && sourceObservedAt <= now + FUTURE_TOLERANCE_MS &&
+    now - sourceObservedAt <= Number(LOCATION_POLICY.location_fresh_minutes) * 60000;
 const sourcePeopleReadinessKnown =
     sourcePeopleContext &&
     typeof sourcePeopleContext === "object" &&
@@ -58,8 +63,7 @@ const sourcePeopleReadinessKnown =
  * para uma pessoa, revalide somente a fonte que produziu a chegada. */
 const peopleReadyForArrival = residentArrival
     ? sourcePeopleReadinessKnown
-        ? sourcePeopleContext.ready === true &&
-          sourcePeopleContext.stale !== true
+        ? sourceCurrent
         : people.ready === true
     : true;
 const engineGateAllowed =
@@ -112,6 +116,11 @@ lifecycle.updated_at = now;
 
 ctxSet("security_light_lifecycle_v1", lifecycle, PERSISTENT);
 ctxSet("security_light_pending_arrival_v1", null, PERSISTENT);
+const arrivalWatches = ctxGet("security_light_arrival_watch_v1", PERSISTENT);
+if (arrivalWatches?.residents && residentArrival) {
+    delete arrivalWatches.residents[arrivalSource];
+    ctxSet("security_light_arrival_watch_v1", arrivalWatches, PERSISTENT);
+}
 ctxSet(
     "security_light_turn_on_notification_latch_v1",
     {
@@ -134,6 +143,7 @@ msg.payload.reason = bypassAllowed
     : (TEST_MODE
         ? "test_arrival_with_vehicle_primary_engine_on_after_dark"
         : "arrival_with_vehicle_primary_engine_on_after_dark");
+msg._security_light_decision_state = "turned_on";
 
 if (TEST_MODE) {
     msg.payload.simulated = true;

@@ -85,11 +85,18 @@ required("402fd0cc609443b7").func = source("people-refresh-decide.js");
 required("people_location_publish_state_v1").func = source("people-location-publish.js");
 required("b35563e0f73e5b64").name =
   "3. Localização nativa + fallback dos iPhones (máx. 2/h)";
+Object.assign(required("b35563e0f73e5b64"), { h: 382 });
+linkIn("people_visual_arrival_refresh_in", "b35563e0f73e5b64",
+  "Refresh da chegada por morador", ["security_visual_people_refresh_out"],
+  "people_visual_arrival_refresh_dispatch", 100, 1030);
+fn("people_visual_arrival_refresh_dispatch", "b35563e0f73e5b64",
+  "Direcionar somente ao iPhone da chegada", "people-arrival-refresh-dispatch.js", 2,
+  330, 1030, [["564fdc36031eaef8"], ["e0b7c0ecf1d8ee28"]]);
 
 const config = group(
   "people_location_lifecycle_config_group_v2",
   "0b. Tempos de lifecycle — padrão, unidade e limites no nome",
-  2150, 59, 1190, 322, "#7c3aed", "#ede9fe"
+  2150, 59, 1190, 382, "#7c3aed", "#ede9fe"
 );
 grouped(config.id, {
   id: "people_visual_lifecycle_help", type: "comment", z: PEOPLE_TAB, g: config.id,
@@ -101,11 +108,15 @@ inject("people_visual_arrival_dedupe_config", config.id, "Dedupe chegada — 10 
 inject("people_visual_primary_home_grace", config.id, "Graça home — 10 min [1..60]", "primary_home_grace_minutes", 10, 2370, 210, "people_visual_lifecycle_config_left_out");
 inject("people_visual_future_tolerance", config.id, "Tolerância futura — 60 s [0..300]", "future_tolerance_seconds", 60, 2740, 160, "people_visual_lifecycle_config_middle_out");
 inject("people_visual_vehicle_signal_fresh", config.id, "Sinal do veículo — 5 min [1..30]", "vehicle_signal_fresh_minutes", 5, 2740, 210, "people_visual_lifecycle_config_middle_out");
+const nearHomeRefresh = inject("people_visual_near_home_refresh", config.id,
+  "Refresh near_home — 10 min [3..14]", "near_home_refresh_minutes", 10,
+  2740, 260, "people_visual_lifecycle_config_middle_out");
+nearHomeRefresh.onceDelay = "1.6";
 inject("people_visual_vehicle_recovery", config.id, "Recovery veículo — 24 h [1..168]", "vehicle_recovery_hours", 24, 3110, 160, "people_visual_lifecycle_config_right_out");
 inject("people_visual_external_confirm", config.id, "Confirmar ciclo externo — 60 s [15..600]", "external_cycle_confirm_seconds", 60, 3110, 210, "people_visual_lifecycle_config_right_out");
-linkOut("people_visual_lifecycle_config_left_out", config.id, "Tempos de chegada → política", "people_location_values_route_in_v1", 2550, 270);
-linkOut("people_visual_lifecycle_config_middle_out", config.id, "Validade → política", "people_location_values_route_in_v1", 2920, 270);
-linkOut("people_visual_lifecycle_config_right_out", config.id, "Recovery → política", "people_location_values_route_in_v1", 3290, 270);
+linkOut("people_visual_lifecycle_config_left_out", config.id, "Tempos de chegada → política", "people_location_values_route_in_v1", 2550, 330);
+linkOut("people_visual_lifecycle_config_middle_out", config.id, "Validade → política", "people_location_values_route_in_v1", 2920, 330);
+linkOut("people_visual_lifecycle_config_right_out", config.id, "Recovery → política", "people_location_values_route_in_v1", 3290, 330);
 
 const policyIn = required("people_location_values_route_in_v1");
 policyIn.x = 900;
@@ -122,6 +133,9 @@ policyGroup.y = 59;
 policyGroup.w = 1510;
 policyGroup.h = 342;
 policyGroup.nodes = policyGroup.nodes.filter((id) => id !== "people_location_policy_apply_v1");
+Object.assign(required("people_location_recovery_minutes_v1"), {
+  name: "Reter chegada — 15 min", payload: "15", onceDelay: "1.5"
+});
 const store = required("people_location_policy_apply_v1");
 store.name = "Guardar última política válida";
 store.func = source("location-policy-store.js");

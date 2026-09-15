@@ -11,15 +11,24 @@ const bypassJustBecameAvailable =
     data.kind === "engine_bypass_context" &&
     data.original_payload?.enabled === true &&
     data.bypass_allowed === true;
+data.location_authorization_just_became_valid =
+    engineJustTurnedOn || bypassJustBecameAvailable;
 if (!engineJustTurnedOn && !bypassJustBecameAvailable) return msg;
 
 const armed = data.people?.arrival_armed ?? {};
+const freshnessMs = Number(data.location_policy.location_fresh_minutes) * 60000;
+const isCurrent = (resident) => {
+    const observedAt = Number(resident?.updated_at);
+    return resident?.ready === true && resident?.stale !== true &&
+        Number.isFinite(observedAt) && observedAt > 0 &&
+        observedAt <= data.now + data.future_ms &&
+        data.now - observedAt <= freshnessMs;
+};
 const candidates = ["resident_primary", "resident_secondary"]
     .map((source) => ({ source, resident: data.people?.[source] }))
     .filter(({ source, resident }) =>
         armed[source] === true &&
-        resident?.ready === true &&
-        resident?.stale !== true &&
+        isCurrent(resident) &&
         resident?.state === "near_home" &&
         resident?.current_home !== true)
     .sort((left, right) => {

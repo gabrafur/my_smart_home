@@ -27,7 +27,10 @@ const arrivalBypass = requestedReason === "resident_arrival_confirmation" &&
     msg.payload?.resident_arrival_force === true;
 const deadlineBypass = manualBypass || departureBypass || arrivalBypass;
 const approaching = msg.payload?.refresh_anyone_approaching === true;
-const selectedInterval = approaching ? Number(config.approaching_interval_ms)
+const arrivalRestartPending = msg.payload?.refresh_arrival_restart_pending === true;
+const selectedInterval = arrivalRestartPending
+    ? Number(config.arrival_armed_interval_ms)
+    : approaching ? Number(config.approaching_interval_ms)
     : recoveryNeeded && !deadlineBypass ? Number(config.away_interval_ms)
     : Number(msg.payload?.refresh_interval_ms);
 if (!Number.isFinite(selectedInterval) || selectedInterval <= 0) {
@@ -35,6 +38,7 @@ if (!Number.isFinite(selectedInterval) || selectedInterval <= 0) {
     return null;
 }
 const allowedIntervals = [Number(config.away_interval_ms),
+    Number(config.arrival_armed_interval_ms),
     Number(config.approaching_interval_ms), Number(config.home_interval_ms)];
 const previousInterval = allowedIntervals.includes(Number(state.interval_ms))
     ? Number(state.interval_ms) : Number(config.away_interval_ms);
@@ -43,7 +47,8 @@ const floor = anchor > 0 ? anchor + selectedInterval : 0;
 state.next_allowed_at = previousInterval !== selectedInterval
     ? floor : Math.max(state.next_allowed_at, floor);
 state.interval_ms = selectedInterval;
-state.interval_policy = approaching ? "approaching"
+state.interval_policy = arrivalRestartPending ? "arrival_armed_engine_pending"
+    : approaching ? "approaching"
     : recoveryNeeded && !deadlineBypass ? "recovery" : msg.payload.refresh_interval_policy;
 const cacheActive = state.cache_probe_in_flight === true &&
     now < state.cache_probe_in_flight_until;

@@ -24,6 +24,11 @@ const source = msg.payload?.source;
 const stage = msg.payload?.arrival_stage;
 const residentArrival = ["resident_primary", "resident_secondary"].includes(source);
 const resident = people[source];
+const residentObservedAt = Number(resident?.updated_at);
+const residentCurrent = resident?.ready === true && resident?.stale !== true &&
+    Number.isFinite(residentObservedAt) && residentObservedAt > 0 &&
+    residentObservedAt <= now + futureMs &&
+    now - residentObservedAt <= Number(locationPolicy.location_fresh_minutes) * 60000;
 const previousState = msg.payload?.arrival_previous_state;
 const previousAway = typeof previousState === "string" &&
     !["", "home", "near_home", "unknown", "unavailable"].includes(previousState);
@@ -34,8 +39,7 @@ const residentApproachValid =
     residentArrival &&
     stage === "approach" &&
     (previousAway || recoveredAway) &&
-    resident?.ready === true &&
-    resident?.stale !== true &&
+    residentCurrent &&
     resident?.state === "near_home" &&
     resident?.current_home !== true;
 const bypassEnabled = get("security_light_engine_bypass_enabled", "persistent") === true;

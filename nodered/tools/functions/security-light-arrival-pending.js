@@ -1,6 +1,7 @@
 const data = msg._light_arrival;
 const suffix = data.test_mode ? "__test" : "";
 const key = "security_light_pending_arrival_v1";
+const watchKey = "security_light_arrival_watch_v1";
 const existing = data.test_mode ? flow.get(key + suffix) : flow.get(key, "persistent");
 const existingAt = Number(existing?.event_at ?? 0);
 const residentApproach = data.resident_arrival && data.stage === "approach";
@@ -29,6 +30,27 @@ if (!existing || !Number.isFinite(existingAt) || data.event_at >= existingAt) {
     };
     if (data.test_mode) flow.set(key + suffix, pending);
     else flow.set(key, pending, "persistent");
+
+    if (residentApproach) {
+        const watches = data.test_mode
+            ? (flow.get(watchKey + suffix) ?? { version: 1, residents: {} })
+            : (flow.get(watchKey, "persistent") ?? { version: 1, residents: {} });
+        const oldWatch = watches.residents?.[data.source];
+        if (!oldWatch || Number(oldWatch.event_at ?? 0) <= data.event_at) {
+            watches.version = 1;
+            watches.residents = { ...(watches.residents ?? {}) };
+            watches.residents[data.source] = {
+                source: data.source,
+                event_at: data.event_at,
+                created_at: data.queued_at,
+                attempts: 0,
+                last_refresh_at: null,
+                waiting_for_callback: false
+            };
+            if (data.test_mode) flow.set(watchKey + suffix, watches);
+            else flow.set(watchKey, watches, "persistent");
+        }
+    }
 }
 data.diagnostic = {
     ...msg,

@@ -107,13 +107,13 @@ grouped(groups.decision, {
   wires: [["git_backup_daily_update_out"]],
 });
 terminal("git_backup_manual_success", groups.decision, "Sucesso manual — encerrar sem updates", { fill: "green", shape: "dot", text: "backup manual concluído" }, 1730, 170);
-fn("git_backup_alert_build", groups.decision, "Montar alerta de falha", "git-backup-alert-build.js", 1, 1400, 280, [["git_backup_failure_gate"]]);
+fn("git_backup_alert_build", groups.decision, "Montar alerta de falha", "git-backup-alert-build.js", 1, 1280, 290, [["git_backup_failure_gate"]]);
 sw("git_backup_failure_gate", groups.decision, "Notificação de falha é TESTE?", "_git_backup_test", "msg", [
   { t: "true" }, { t: "else" },
 ], 1650, 280, [["git_backup_dry_out"], ["git_backup_notification_out"]]);
 sw("git_backup_deferred_gate", groups.decision, "Retry adiado é TESTE?", "_git_backup_test", "msg", [
   { t: "true" }, { t: "else" },
-], 1500, 320, [["git_backup_dry_out"], ["git_backup_retry_effect_out"]]);
+], 1500, 350, [["git_backup_dry_out"], ["git_backup_retry_effect_out"]]);
 sw("git_backup_invalid_gate", groups.decision, "Resposta inválida pertence a TESTE?", "_git_backup_test", "msg", [
   { t: "true" }, { t: "else" },
 ], 1350, 390, [["git_backup_dry_out"], ["git_backup_invalid_result"]]);
@@ -183,13 +183,13 @@ const testResult = (id, name, status, topic, x, y) => inject(id, groups.test, na
   { p: "payload", v: `git-backup status=${status} request_id=test finished_at=synthetic`, vt: "str" },
   { p: "_git_backup_test", v: "true", vt: "bool" }, { p: "topic", v: topic, vt: "str" },
 ], x, y, [["git_backup_test_result_out"]]);
-testResult("git_backup_test_success", "TESTE 3A: sucesso agendado", "success", "scheduled", 200, 800);
-testResult("git_backup_test_failure", "TESTE 3B: falha", "failed", "manual", 200, 850);
-testResult("git_backup_test_deferred", "TESTE 3C: adiado", "deferred", "scheduled", 200, 900);
+testResult("git_backup_test_success", "TESTE 3A: sucesso agendado", "success", "scheduled", 200, 840);
+testResult("git_backup_test_failure", "TESTE 3B: falha", "failed", "manual", 200, 900);
+testResult("git_backup_test_deferred", "TESTE 3C: adiado", "deferred", "scheduled", 200, 960);
 inject("git_backup_test_invalid", groups.test, "TESTE 3D: resposta inválida", [
   { p: "payload", v: "synthetic invalid result", vt: "str" }, { p: "_git_backup_test", v: "true", vt: "bool" },
-], 520, 850, [["git_backup_test_result_out"]]);
-linkOut("git_backup_test_result_out", groups.test, "Resultado TESTE → parser real", "git_backup_result_in", 680, 850);
+], 520, 1020, [["git_backup_test_result_out"]]);
+linkOut("git_backup_test_result_out", groups.test, "Resultado TESTE → parser real", "git_backup_result_in", 680, 930);
 linkIn("git_backup_dry_in", groups.test, "Receber efeito TESTE", ["git_backup_dry_out", "git_backup_request_dry_out"], "git_backup_dry_run_terminal", 1060, 730);
 fn("git_backup_dry_run_terminal", groups.test, "TESTE FINAL: nenhum efeito enviado", "git-backup-dry-run.js", 0, 1340, 730, []);
 
