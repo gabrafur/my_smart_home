@@ -847,8 +847,8 @@ upsert({
   g: ids.lightOnGroup,
   name: "Receber avisos de indisponibilidade",
   links: [ids.unavailableProdOut],
-  x: 1845,
-  y: 260,
+  x: 1300,
+  y: 480,
   wires: [[
     ids.notifyUnavailablePrimary,
     "d710ac9de2f98569",
@@ -876,8 +876,8 @@ upsert({
   g: ids.lightOnGroup,
   name: "Receber erro simulado seguro",
   links: [ids.unavailableDryOut],
-  x: 1845,
-  y: 380,
+  x: 1250,
+  y: 620,
   wires: [[ids.dryTerminalOut]],
 });
 
@@ -889,8 +889,8 @@ upsert({
   name: "Teste → terminal dry-run",
   mode: "link",
   links: [ids.dryTerminalIn],
-  x: 2320,
-  y: 400,
+  x: 1400,
+  y: 330,
   wires: [],
 });
 
@@ -1184,6 +1184,8 @@ manualTest.payloadType = "json";
 required(ids.lightManualOut).name = "Teste → terminal dry-run";
 const manualIn = required(ids.lightManualIn);
 manualIn.name = "Receber teste manual seguro";
+manualIn.x = 2680;
+manualIn.y = 410;
 manualIn.wires = [[ids.dryRunTerminal]];
 
 const lightTab = required(ids.lightTab);

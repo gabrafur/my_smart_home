@@ -30,6 +30,9 @@ classify_remote_error() {
     *"non-fast-forward"*|*"fetch first"*|*"behind or diverged"*)
       printf '%s\n' "remote_diverged"
       ;;
+    *"Node-RED canvas validation failed:"*|*"flows:validate-layout"*|*"validate-flow-layout.mjs"*)
+      printf '%s\n' "validation_node_red_layout"
+      ;;
     *"pre-push:"*|*"validate-public"*|*"make: ***"*|*"hook declined"*)
       printf '%s\n' "validation_failed"
       ;;

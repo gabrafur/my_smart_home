@@ -13,6 +13,16 @@ const sourceFlows = JSON.parse(fs.readFileSync(new URL("../flows.json", import.m
 const migrated = installNotificationHubs(structuredClone(sourceFlows));
 const repeated = installNotificationHubs(structuredClone(migrated));
 assert.deepEqual(repeated, migrated, "o gerador dos hubs precisa ser idempotente");
+const runtimeRoundTrip = structuredClone(migrated);
+for (const candidate of runtimeRoundTrip) {
+  if (candidate.type === "group") delete candidate.notification_hub_layout_version;
+}
+const afterRuntimeRoundTrip = installNotificationHubs(runtimeRoundTrip);
+assert.deepEqual(
+  afterRuntimeRoundTrip,
+  migrated,
+  "a serialização do Node-RED não pode reaplicar o deslocamento visual dos hubs",
+);
 
 const byId = new Map(migrated.map((node) => [node.id, node]));
 assert.equal(byId.size, migrated.length, "IDs duplicados após instalar os hubs");

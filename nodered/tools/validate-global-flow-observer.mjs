@@ -15,6 +15,13 @@ const required = (id) => {
   assert.ok(node, `Cobertura global ausente: ${id}`);
   return node;
 };
+const logicalWireTargets = (id, output = 0) => (required(id).wires?.[output] ?? []).flatMap((targetId) => {
+  const target = required(targetId);
+  const generatedRoute = target.notification_hub_wire_route ||
+    /^notification_hub_wire_out_[a-f0-9]{12}$/.test(target.id);
+  if (target.type !== "link out" || !generatedRoute) return [targetId];
+  return (target.links ?? []).flatMap((linkInId) => required(linkInId).wires?.[0] ?? []);
+});
 const observerTab = required("global_flow_observer_tab");
 assert.equal(observerTab.type, "tab");
 
@@ -91,11 +98,9 @@ assert.match(persistentRules, /persistent_notification_operation/);
 assert.equal(required("global_observer_notify_persistent__hub_call").type, "link call");
 assert.deepEqual(required("global_observer_notify_persistent__hub_call").links, ["notification_hub_persistent_in"]);
 assert.equal(guard.outputs, 3);
-assert.deepEqual(guard.wires, [
-  [notify.id],
-  [persistent.id],
-  ["global_observer_dry_run_out"],
-]);
+assert.deepEqual(logicalWireTargets(guard.id, 0), [notify.id]);
+assert.deepEqual(logicalWireTargets(guard.id, 1), [persistent.id]);
+assert.deepEqual(logicalWireTargets(guard.id, 2), ["global_observer_dry_run_out"]);
 assert.deepEqual(
   required("global_observer_notification_catch").scope,
   ["global_observer_notify_primary__hub_call", "global_observer_notify_persistent__hub_call"],
@@ -123,10 +128,8 @@ const expectedInternalScope = [
 ];
 assert.deepEqual(internalCatch.scope, expectedInternalScope);
 assert.deepEqual(internalCatch.wires, [["global_observer_internal_failure"]]);
-assert.deepEqual(required("global_observer_internal_failure").wires, [
-  [notify.id],
-  [persistent.id],
-]);
+assert.deepEqual(logicalWireTargets("global_observer_internal_failure", 0), [notify.id]);
+assert.deepEqual(logicalWireTargets("global_observer_internal_failure", 1), [persistent.id]);
 assert.ok(required("global_observer_test_delivery").props.some(
   (property) => property.p === "_observer_delivery_test" && property.v === "true",
 ));

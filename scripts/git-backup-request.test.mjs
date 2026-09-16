@@ -249,6 +249,15 @@ test("backup retries an existing local commit after validation contention", () =
   assert.match(failed.stdout, /git-backup-reason=network_unavailable/);
   assert.match(fs.readFileSync(path.join(repo, ".git-backup.log"), "utf8"),
     /reason=network_unavailable/);
+
+  fs.writeFileSync(
+    hook,
+    "#!/bin/sh\necho 'Node-RED canvas validation failed:' >&2\necho '- backup_git: left margin below 64px' >&2\nexit 1\n",
+  );
+  fs.chmodSync(hook, 0o755);
+  const layoutFailed = spawnSync("bash", ["scripts/git-backup.sh"], { cwd: repo, encoding: "utf8" });
+  assert.equal(layoutFailed.status, 1, layoutFailed.stderr);
+  assert.match(layoutFailed.stdout, /git-backup-reason=validation_node_red_layout/);
   fs.rmSync(fixture, { recursive: true, force: true });
 });
 

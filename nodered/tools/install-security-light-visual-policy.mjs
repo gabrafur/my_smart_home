@@ -429,7 +429,7 @@ Object.assign(recoveryOutput, { g: reconcile.id, name: "Emitir deadlines reconst
   func: source("security-light-recovery-output.js"), outputs: 1, x: 2170, y: 2200 });
 if (!reconcile.nodes.includes(recoveryOutput.id)) reconcile.nodes.push(recoveryOutput.id);
 Object.assign(required("704af53cd84ba2a2"), { g: reconcile.id, x: 2450, y: 2200 });
-Object.assign(required("2405a253853fa82e"), { g: reconcile.id, x: 3020, y: 2240 });
+Object.assign(required("2405a253853fa82e"), { g: reconcile.id, x: 2837, y: 2240 });
 for (const id of ["704af53cd84ba2a2", "2405a253853fa82e"]) {
   if (!reconcile.nodes.includes(id)) reconcile.nodes.push(id);
 }

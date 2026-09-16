@@ -12,6 +12,11 @@ const flows = JSON.parse(
   fs.readFileSync(path.resolve(here, "..", "flows.json"), "utf8"),
 );
 const byId = new Map(flows.map((node) => [node.id, node]));
+for (const node of flows.filter((candidate) => candidate.z === "global_flow_observer_tab" && candidate.g)) {
+  const owner = byId.get(node.g);
+  assert.equal(owner?.type, "group", `${node.id} deve apontar para um grupo existente`);
+  assert.ok(owner.nodes.includes(node.id), `${node.id} deve constar em ${owner.id}.nodes`);
+}
 const source = (name) => fs.readFileSync(path.join(functionDir, name), "utf8");
 const code = {
   policyValidate: source("global-flow-observer-policy-validate.js"),

@@ -2212,7 +2212,7 @@
           "y": 99
         },
         "global_observer_coverage__storage_health_tab__group": {
-          "x": 11520,
+          "x": 12120,
           "y": 59
         }
       },
@@ -2852,7 +2852,7 @@
           "y": 750
         },
         "6e71dbc937fe5669": {
-          "x": 74,
+          "x": 135,
           "y": 1100
         },
         "global_observer_coverage__ea0a6aa0d24ff863__group": {
@@ -4428,7 +4428,7 @@
       "apply_nodes": false,
       "group_positions": {
         "e53f5ed6c320c591": {
-          "x": 68,
+          "x": 90,
           "y": 79
         },
         "ed8fa1d49205cbdb": {
@@ -4562,19 +4562,19 @@
           "y": 360
         },
         "light_test_to_terminal_out_v1": {
-          "x": 1780,
+          "x": 1400,
           "y": 330
         },
         "light_unavailable_to_output_in_v1": {
-          "x": 830,
+          "x": 1300,
           "y": 480
         },
         "04007cc1732f60c9": {
-          "x": 1080,
+          "x": 1550,
           "y": 420
         },
         "04007cc1732f60c9__hub_call": {
-          "x": 1380,
+          "x": 1830,
           "y": 420
         },
         "notification_hub_wire_out_f2303c347ebe": {
@@ -4606,7 +4606,7 @@
           "y": 540
         },
         "light_unavailable_test_dry_run_in_v1": {
-          "x": 830,
+          "x": 1250,
           "y": 620
         },
         "notification_hub_wire_out_bfe3c043c2a2": {
@@ -4614,8 +4614,12 @@
           "y": 620
         },
         "d2cc7a5873776be0": {
-          "x": 2330,
-          "y": 360
+          "x": 2680,
+          "y": 410
+        },
+        "2405a253853fa82e": {
+          "x": 2900,
+          "y": 2633
         },
         "notification_hub_wire_out_4a052cb333c8": {
           "x": 2530,
@@ -8128,7 +8132,7 @@
       "apply_nodes": false,
       "group_positions": {
         "git_backup_input_group": {
-          "x": 64,
+          "x": 140,
           "y": 36
         },
         "git_backup_decision_group": {
@@ -10026,6 +10030,10 @@
       "label": "contexto_chegadas",
       "compact_groups": true,
       "group_positions": {
+        "arrival_context_home_refresh_group": {
+          "x": 103,
+          "y": 1937
+        },
         "arrival_context_snapshot_group": {
           "x": 64,
           "y": 1376
@@ -11252,6 +11260,12 @@
       "managed_node_overrides": [
         "global_observer_notification_failure"
       ],
+      "group_positions": {
+        "global_observer_production_group": {
+          "x": 114,
+          "y": 23
+        }
+      },
       "nodes": {
         "global_observer_production_group": {
           "x": 64,
@@ -11520,6 +11534,38 @@
         "global_observer_dispatch_guard": {
           "x": 2640,
           "y": 240
+        },
+        "global_observer_notify_primary": {
+          "x": 3020,
+          "y": 180
+        },
+        "global_observer_notify_primary__hub_call": {
+          "x": 3300,
+          "y": 180
+        },
+        "global_observer_notify_primary__hub_result": {
+          "x": 3550,
+          "y": 180
+        },
+        "global_observer_notify_persistent": {
+          "x": 3020,
+          "y": 300
+        },
+        "global_observer_notify_persistent__hub_call": {
+          "x": 3300,
+          "y": 300
+        },
+        "global_observer_notify_persistent__hub_result": {
+          "x": 3550,
+          "y": 300
+        },
+        "notification_hub_wire_in_5ff53957a24f": {
+          "x": 2840,
+          "y": 164
+        },
+        "notification_hub_wire_in_ec2aa148678e": {
+          "x": 2840,
+          "y": 284
         }
       }
     },
@@ -11541,7 +11587,7 @@
           "y": 39
         },
         "resident_notifications_test_group": {
-          "x": 64,
+          "x": 115,
           "y": 776
         },
         "global_observer_coverage__resident_notifications_tab__group": {

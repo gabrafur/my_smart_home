@@ -133,6 +133,10 @@ const alert = execute(source("git-backup-alert-build.js"), {
 }, flow).result;
 assert.match(alert.alert.title, /Falha no backup Git/);
 assert.match(alert.alert.message, /conexão com o GitHub estava indisponível/);
+const layoutAlert = execute(source("git-backup-alert-build.js"), {
+  payload: { status: "failed", reason: "validation_node_red_layout" },
+}, flow).result;
+assert.match(layoutAlert.alert.message, /organização visual obrigatória/);
 const bridgeError = execute(source("git-backup-error-build.js"), { payload: "synthetic timeout" }, flow);
 assert.equal(bridgeError.events.errors.length, 1);
 assert.match(bridgeError.result.alert.message, /worker do host/);

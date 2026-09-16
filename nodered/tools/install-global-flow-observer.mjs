@@ -1315,12 +1315,12 @@ const productionLayout = new Map([
   ["global_observer_test_delivery_in", [2280, 160]],
   ["global_observer_dispatch_guard", [2530, 240]],
   ["global_observer_dry_run_out", [2760, 360]],
-  ["global_observer_notify_primary", [2810, 200]],
-  ["global_observer_notify_primary__hub_call", [3070, 200]],
-  ["global_observer_notify_primary__hub_result", [3320, 200]],
-  ["global_observer_notify_persistent", [2830, 280]],
-  ["global_observer_notify_persistent__hub_call", [3090, 280]],
-  ["global_observer_notify_persistent__hub_result", [3340, 280]],
+  ["global_observer_notify_primary", [3020, 180]],
+  ["global_observer_notify_primary__hub_call", [3300, 180]],
+  ["global_observer_notify_primary__hub_result", [3550, 180]],
+  ["global_observer_notify_persistent", [3020, 300]],
+  ["global_observer_notify_persistent__hub_call", [3300, 300]],
+  ["global_observer_notify_persistent__hub_result", [3550, 300]],
   ["global_observer_notification_ack", [3590, 230]],
   ["global_observer_notification_catch", [3200, 400]],
   ["global_observer_notification_failure", [3680, 380]],
@@ -1334,9 +1334,10 @@ for (const node of observerNodes) {
 }
 
 next.push(...coverageNodes, ...observerNodes);
-const finalizedUnordered = hasNotificationHubs
-  ? next
-  : refreshNotificationWireRoutes(next);
+// Rebuild the generated visual routes after replacing the observer nodes.
+// Existing hubs do not imply that their old routes still belong to the newly
+// generated groups; keeping them would leave `g` and `group.nodes` divergent.
+const finalizedUnordered = refreshNotificationWireRoutes(next);
 const originalOrder = new Map(
   parsedFlows.map((node, index) => [node.id, index]),
 );

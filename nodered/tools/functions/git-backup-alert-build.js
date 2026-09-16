@@ -3,6 +3,7 @@ const details = {
     network_unavailable: "A conexão com o GitHub estava indisponível.",
     authentication_or_access: "O GitHub recusou a autenticação ou o acesso ao repositório.",
     remote_diverged: "A branch local divergiu da branch remota.",
+    validation_node_red_layout: "A organização visual obrigatória dos fluxos do Node-RED falhou.",
     validation_failed: "A validação obrigatória anterior ao push falhou.",
     security_scan_failed: "A verificação de segurança bloqueou o commit.",
     remote_operation_failed: "A operação remota do Git falhou sem uma categoria mais específica.",

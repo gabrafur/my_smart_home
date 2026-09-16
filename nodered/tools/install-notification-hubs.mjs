@@ -384,6 +384,9 @@ function migrateDirectCall(flows, migration) {
     original.y,
     [[callId]],
   );
+  if (original.notification_hub_layout_version === 1) {
+    adapter.notification_hub_layout_version = 1;
+  }
   const hubCall = caller(
     callId,
     original.z,
@@ -640,7 +643,9 @@ function applyBusinessCallerLayout(flows) {
       `${migration.id}__hub_call`,
       `${migration.id}__hub_result`,
     ]));
-    if (owner.notification_hub_layout_version !== 1) {
+    const layoutAlreadyApplied = owner.notification_hub_layout_version === 1 ||
+      entries.every(({ adapter }) => adapter.notification_hub_layout_version === 1);
+    if (!layoutAlreadyApplied) {
       const columns = [...new Set(entries.map(({ adapter }) => Number(adapter.x ?? 0)))].sort((a, b) => a - b);
       for (const candidate of flows.filter((node) => node.g === groupId && !generated.has(node.id))) {
         const originalX = Number(candidate.x ?? 0);
@@ -652,6 +657,7 @@ function applyBusinessCallerLayout(flows) {
       const result = byId.get(`${migration.id}__hub_result`);
       if (call) Object.assign(call, { x: Number(adapter.x ?? 0) + 280, y: adapter.y });
       if (result) Object.assign(result, { x: Number(adapter.x ?? 0) + 550, y: adapter.y });
+      adapter.notification_hub_layout_version = 1;
     }
     owner.notification_hub_layout_version = 1;
     const members = flows.filter((node) => node.g === groupId && Number.isFinite(node.x) && Number.isFinite(node.y));
