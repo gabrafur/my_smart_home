@@ -104,7 +104,7 @@ export function runSecurityArrivalVisual(call, message) {
   let msg = call("security_visual_arrival_facts", message);
   if (!msg) return null;
   if (!msg._light_arrival.direction_valid ||
-      !msg._light_arrival.resident_approach_valid) {
+      !msg._light_arrival.resident_arrival_valid) {
     msg = call("security_light_arrival_direction_blocked_v1", msg);
   } else {
     msg = call("security_visual_arrival_pending", msg);

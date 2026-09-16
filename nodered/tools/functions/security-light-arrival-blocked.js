@@ -10,7 +10,7 @@ msg.payload = {
     kind: "arrival_blocked",
     direction_reason: data.direction_valid !== true
         ? "external_cycle_not_confirmed"
-        : "resident_fresh_away_to_near_home_required",
+        : "resident_fresh_away_to_near_home_or_direct_home_required",
     simulated: true,
     dispatched: false,
     blocked_at: Date.now()

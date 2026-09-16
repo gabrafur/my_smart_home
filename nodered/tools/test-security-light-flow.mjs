@@ -25,7 +25,7 @@ const aliasesByName = {
   vehicle_primary_engine_off_event: "Motor desligado por 5 s",
   vehicle_primary_location_event: "Localização ou telemetria do vehicle_primary mudou",
   context_tick: "POLÍTICA: reavaliar a cada 30 s",
-  light_arrival_direction_gate: "Morador atual veio de away e permanece em near_home?",
+  light_arrival_direction_gate: "Morador retornou via near_home ou salto direto para home?",
   light_check_vehicle_primary_in_use: "vehicle_primary está em uso?",
   light_mark_active: "Marcar refletor ativo por chegada",
   light_evaluate_off: "Desligar quando o carro confirmar OFF",
@@ -1511,18 +1511,18 @@ scenario("35 near_home exige ciclo externo e recovery fica só na iluminação",
   );
 });
 
-scenario("35a gate final rejeita chegada sem direção confirmada", () => {
+scenario("35a gate final recupera away → home e rejeita direção inválida", () => {
   assert.equal(byId.get("light_arrival_direction_gate").type, "switch");
   assert.equal(
     byId.get("light_arrival_direction_gate").property,
-    "_light_arrival.direction_and_approach_valid",
+    "_light_arrival.direction_and_arrival_valid",
   );
   const blockedFlow = memoryFlow();
   let blockedMsg = runDirect("security_visual_arrival_facts",
     { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "home" } },
     blockedFlow, geoEnv);
   assert.equal(blockedMsg._light_arrival.direction_valid, false);
-  assert.equal(blockedMsg._light_arrival.direction_and_approach_valid, false);
+  assert.equal(blockedMsg._light_arrival.direction_and_arrival_valid, false);
   blockedMsg = runDirect("security_light_arrival_direction_blocked_v1", blockedMsg, blockedFlow, geoEnv);
   const blocked = runDirect("62f77a1ad440639d", blockedMsg, blockedFlow, geoEnv);
   assert.equal(blocked[0], null);
@@ -1533,19 +1533,51 @@ scenario("35a gate final rejeita chegada sem direção confirmada", () => {
     readyLightFlow(), geoEnv);
   assert.equal(accepted._light_arrival.direction_valid, true,
     "retorno com ciclo externo confirmado deve prosseguir");
-  assert.equal(accepted._light_arrival.resident_approach_valid, true,
+  assert.equal(accepted._light_arrival.resident_arrival_valid, true,
     "somente morador atual em near_home vindo de away deve prosseguir");
-  assert.equal(accepted._light_arrival.direction_and_approach_valid, true,
+  assert.equal(accepted._light_arrival.direction_and_arrival_valid, true,
     "o gate visual deve receber um booleano combinado válido");
 
   const homeBlocked = runDirect("security_visual_arrival_facts",
     arrival("resident_primary", "home"), readyLightFlow(), geoEnv);
-  assert.equal(homeBlocked._light_arrival.resident_approach_valid, false,
-    "entrada em home não pode mais iniciar o acendimento");
+  assert.equal(homeBlocked._light_arrival.resident_arrival_valid, false,
+    "near_home → home não pode iniciar um novo acendimento");
+
+  const now = Date.now();
+  const homePeople = {
+    ready: true,
+    updated_at: now,
+    resident_primary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+    resident_secondary: {
+      ready: true, stale: false, state: "home", current_home: true, updated_at: now,
+    },
+  };
+  const directHome = arrival("resident_primary", "home");
+  directHome.payload.arrival_previous_state = "not_home";
+  directHome.payload.event_at = now;
+  directHome.payload.arrival_resident_snapshot = {
+    ...homePeople.resident_primary,
+  };
+  const directHomeFlow = readyLightFlow({ people_context_v1: homePeople });
+  const directHomeAccepted = runDirect(
+    "security_visual_arrival_facts",
+    directHome,
+    directHomeFlow,
+    geoEnv,
+  );
+  assert.equal(directHomeAccepted._light_arrival.direct_home_recovery, true);
+  assert.equal(directHomeAccepted._light_arrival.arrival_path, "direct_home_recovery");
+  assert.equal(directHomeAccepted._light_arrival.resident_arrival_valid, true,
+    "not_home → home atual e confirmado deve recuperar a chegada perdida");
+  assert.equal(directHomeAccepted._light_arrival.direction_and_arrival_valid, true);
+  assert(run("light_prepare_arrival", directHome, directHomeFlow, geoEnv)[0],
+    "salto direto confirmado deve chegar aos gates finais do refletor");
 
   const vehicleBlocked = runDirect("security_visual_arrival_facts",
     arrival("vehicle_primary", "approach"), readyLightFlow(), geoEnv);
-  assert.equal(vehicleBlocked._light_arrival.resident_approach_valid, false,
+  assert.equal(vehicleBlocked._light_arrival.resident_arrival_valid, false,
     "localização do carro não pode iniciar o acendimento");
   assert.deepEqual(byId.get("cf9bc321e0ec89f9").wires,
     [["security_visual_arrival_route_out"]]);

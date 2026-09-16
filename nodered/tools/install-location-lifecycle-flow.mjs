@@ -165,7 +165,11 @@ lifecycle.y = 419;
 lifecycle.w = 3400;
 lifecycle.h = 322;
 lifecycle.nodes = lifecycle.nodes.filter((id) => !generated.has(id));
-Object.assign(required("people_arrival_direction_note_v1"), { x: 2700, y: 700 });
+Object.assign(required("people_arrival_direction_note_v1"), {
+  name: "RETORNO: away→near_home; salto away→home recuperado; SAÍDA bloqueada",
+  x: 2700,
+  y: 700,
+});
 const input = required("people_location_to_normalizer_in_v1");
 input.x = 2120; input.y = 560; input.wires = [["people_visual_test_adapter"]];
 fn("people_visual_test_adapter", lifecycle.id, "Adaptar somente o estado sintético", "people-lifecycle-test-adapter.js", 1, 2360, 560, [["people_visual_normalize"]]);

@@ -259,8 +259,8 @@ required("light_arrival_replay_gate_in_v1").wires = [["security_visual_arrival_f
 fn("security_visual_arrival_facts", decision.id, "Derivar fatos sem decidir efeitos",
   "security-light-arrival-facts.js", 1, 390, 1860, [["security_light_arrival_direction_gate_v1"]]);
 sw("security_light_arrival_direction_gate_v1", decision.id,
-  "Morador atual veio de away e permanece em near_home?",
-  "_light_arrival.direction_and_approach_valid", 700, 1860,
+  "Morador retornou via near_home ou salto direto para home?",
+  "_light_arrival.direction_and_arrival_valid", 700, 1860,
   [["security_visual_arrival_pending"], ["security_light_arrival_direction_blocked_v1"]]);
 fn("security_light_arrival_direction_blocked_v1", decision.id, "BLOQUEADO: sem direção de retorno",
   "security-light-arrival-blocked.js", 1, 990, 1980, [["security_visual_arrival_blocked_out"]]);

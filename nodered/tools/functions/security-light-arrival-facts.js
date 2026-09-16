@@ -50,13 +50,26 @@ const recoveredAway = msg.payload?.illumination_only === true &&
     msg.payload?.external_cycle_confirmed === true;
 const localExcursionReturn = msg.payload?.local_excursion_return === true &&
     msg.payload?.arrival_direction === "returning_local_excursion";
-const residentApproachValid =
+/* O iPhone pode atualizar em not_home fora de 700 m e somente voltar a
+ * publicar depois de já cruzar os 100 m. O produtor canônico confirma esse
+ * ciclo externo e carrega um snapshot atual no próprio evento. Aceitar esse
+ * salto direto evita perder a chegada sem transformar near_home → home ou
+ * um catch-up stale em autorização. */
+const directHomeRecovery =
+    stage === "home" &&
+    previousAway &&
+    msg.payload?.arrival_direction === "returning" &&
+    msg.payload?.external_cycle_confirmed === true &&
+    resident?.state === "home" &&
+    resident?.current_home === true;
+const residentArrivalValid =
     residentArrival &&
     residentCurrent &&
     ((stage === "approach" &&
         (previousAway || recoveredAway) &&
         resident?.state === "near_home" &&
         resident?.current_home !== true) ||
+     directHomeRecovery ||
      (stage === "local_return" && localExcursionReturn &&
         ["home", "near_home"].includes(resident?.state)));
 const bypassEnabled = get("security_light_engine_bypass_enabled", "persistent") === true;
@@ -95,7 +108,12 @@ msg._light_arrival = {
     physical_fresh: physicalFresh,
     light_reconciled: flow.get("light_reconciled") === true,
     resident_arrival: residentArrival,
-    resident_approach_valid: residentApproachValid,
+    resident_arrival_valid: residentArrivalValid,
+    direct_home_recovery: directHomeRecovery,
+    arrival_path: directHomeRecovery ? "direct_home_recovery"
+        : stage === "approach" ? "near_home_approach"
+        : localExcursionReturn ? "local_excursion_return"
+        : "invalid",
     bypass_enabled: bypassEnabled,
     bypass_allowed: bypassAllowed,
     engine_communication_failed: communicationFailed,
@@ -105,7 +123,7 @@ msg._light_arrival = {
     sun_ready: sunReady,
     dark: flow.get("sun_below_horizon") === true,
     direction_valid: directionValid,
-    direction_and_approach_valid: directionValid && residentApproachValid,
+    direction_and_arrival_valid: directionValid && residentArrivalValid,
     recovery_needed: !vehicleLightingReady && !bypassAllowed,
     recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||
         now - lastRecoveryAt >= recoveryThrottleMs,

@@ -1772,7 +1772,7 @@ flows.push(
     type: "comment",
     z: PEOPLE_TAB,
     g: normalizationGroup.id,
-    name: "SAÍDA home→near_home bloqueia; RETORNO exige passagem por not_home/zona externa",
+    name: "RETORNO: away→near_home; salto away→home recuperado; SAÍDA bloqueada",
     info: "O raio near_home configurado decide a chegada somente depois de um ciclo externo confirmado. Um rebote near_home→home durante a saída termina no bloco BLOQUEADO e nunca alcança iluminação, alarme ou notificações.",
     x: 2420,
     y: 460,
