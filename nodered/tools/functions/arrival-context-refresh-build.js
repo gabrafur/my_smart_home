@@ -9,6 +9,8 @@ msg.payload = {
     resident_primary_state: people.resident_primary?.state ?? null,
     resident_secondary_state: people.resident_secondary?.state ?? null,
     any_resident_away: people.best_location_away === true,
+    people_arrival_armed: { ...(people.arrival_armed ?? {}) },
+    people_local_excursions: { ...(people.local_excursions ?? {}) },
     people_ready: pending.people_ready === true,
     people_recovery_needed: msg.context_people_recovery_needed,
     vehicle_primary_ready: pending.vehicle_primary_ready === true,

@@ -687,12 +687,6 @@ scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
 
   const localExcursionStore = memory({
     [POLICY_KEY]: store.get(POLICY_KEY),
-    people_context_v1: {
-      arrival_armed: { resident_secondary: false },
-      local_excursions: {
-        resident_secondary: { started_at: NIGHT - 60_000, expires_at: NIGHT + 60_000 },
-      },
-    },
     vehicle_primary_context_v1: { ready: false, engine_on: false },
   });
   const localSelected = execute(code.policy, {
@@ -702,11 +696,87 @@ scenario("28b chegada armada em near_home aguarda motor a cada minuto", () => {
       kind: "refresh_command",
       resident_primary_state: "home",
       resident_secondary_state: "near_home",
+      people_arrival_armed: { resident_secondary: false },
+      people_local_excursions: {
+        resident_secondary: { started_at: NIGHT - 60_000, expires_at: NIGHT + 60_000 },
+      },
     } },
   });
   assert(localSelected[0]);
   assert.equal(localSelected[0].payload.refresh_arrival_restart_pending, true,
-    "passeio local deve usar a mesma cadência de 1 minuto enquanto o motor consta OFF");
+    "passeio local recebido de outro tab deve usar 1 minuto enquanto o motor consta OFF");
+
+  const expiredSelected = execute(code.policy, {
+    now: NIGHT,
+    store: localExcursionStore,
+    msg: { payload: {
+      kind: "refresh_command",
+      resident_primary_state: "home",
+      resident_secondary_state: "near_home",
+      people_local_excursions: {
+        resident_secondary: { started_at: NIGHT - 120_000, expires_at: NIGHT - 60_000 },
+      },
+    } },
+  });
+  assert(expiredSelected[1]);
+  assert.equal(expiredSelected[1].payload.refresh_arrival_restart_pending, false,
+    "parada curta expirada não pode manter a cadência acelerada");
+});
+
+scenario("28c parada curta reduz cooldown de 5 para 1 minuto", () => {
+  const stoppedAt = NIGHT;
+  const store = memory({
+    [POLICY_KEY]: {
+      version: 1,
+      complete: true,
+      arrival_armed_interval_minutes: 1,
+      approaching_interval_minutes: 5,
+      away_interval_minutes: 15,
+      home_interval_minutes: 30,
+      quiet_start_hour: 0,
+      quiet_end_hour: 6,
+      in_flight_lease_seconds: 120,
+      cache_probe_settle_seconds: 15,
+      provider_backoff_max_hours: 6,
+      semantic_evidence_window_minutes: 20,
+      unknown_location_start_hour: 7,
+      unknown_location_end_hour: 22,
+    },
+    vehicle_primary_context_v1: { ready: true, engine_on: false },
+    [KEY]: {
+      version: 14,
+      attempts: 0,
+      awaiting_evidence: false,
+      last_request_at: stoppedAt,
+      service_accepted_at: stoppedAt,
+      last_success_at: stoppedAt,
+      last_evidence_at: stoppedAt,
+      last_evidence_domains: ["telemetry"],
+      next_allowed_at: stoppedAt + 5 * 60_000,
+      interval_ms: 5 * 60_000,
+    },
+  });
+  const selected = execute(code.policy, {
+    now: stoppedAt + 60_000,
+    store,
+    msg: { payload: {
+      kind: "refresh_command",
+      resident_primary_state: "near_home",
+      resident_secondary_state: "home",
+      people_local_excursions: {
+        resident_primary: {
+          started_at: stoppedAt - 5 * 60_000,
+          expires_at: stoppedAt + 85 * 60_000,
+        },
+      },
+    } },
+  });
+  assert(selected[0]);
+  const result = coordinator(store, stoppedAt + 60_000, selected[0].payload);
+  assert(result?.[0], "o primeiro minuto após o OFF deve despachar novo refresh");
+  assert.equal(store.get(KEY).interval_ms, 60_000);
+  assert.equal(store.get(KEY).interval_policy, "arrival_armed_engine_pending");
+  assert.equal(store.get(KEY).last_request_at, stoppedAt + 60_000);
 });
 
 scenario("29 saída reduz cooldown persistido de 30 para 15 minutos", () => {

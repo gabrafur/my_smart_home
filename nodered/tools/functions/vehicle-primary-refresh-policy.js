@@ -59,13 +59,28 @@ const bothResidentsHome =
 const anyoneApproaching =
     residentPrimaryState === "near_home" ||
     residentSecondaryState === "near_home";
-const arrivalArmed = peopleContext.arrival_armed ?? {};
-const localExcursions = peopleContext.local_excursions ?? {};
+/* O comando chega de outro tab, portanto o contexto local deste canvas não é
+ * uma fonte confiável para fatos produzidos por localizacao_pessoas. O
+ * contrato conjunto transporta esses fatos explicitamente; o fallback existe
+ * apenas para comandos legados e testes isolados. */
+const arrivalArmed = msg.payload?.people_arrival_armed ??
+    peopleContext.arrival_armed ?? {};
+const localExcursions = msg.payload?.people_local_excursions ??
+    peopleContext.local_excursions ?? {};
+const localExcursionActive = (source) => {
+    const item = localExcursions?.[source];
+    const startedAt = Number(item?.started_at);
+    const expiresAt = Number(item?.expires_at);
+    const now = Date.now();
+    return Number.isFinite(startedAt) && startedAt > 0 &&
+        Number.isFinite(expiresAt) && expiresAt >= startedAt &&
+        now <= expiresAt;
+};
 const armedResidentApproaching =
     (residentPrimaryState === "near_home" && arrivalArmed.resident_primary === true) ||
     (residentSecondaryState === "near_home" && arrivalArmed.resident_secondary === true) ||
-    (residentPrimaryState === "near_home" && Boolean(localExcursions.resident_primary)) ||
-    (residentSecondaryState === "near_home" && Boolean(localExcursions.resident_secondary));
+    (residentPrimaryState === "near_home" && localExcursionActive("resident_primary")) ||
+    (residentSecondaryState === "near_home" && localExcursionActive("resident_secondary"));
 const arrivalRestartPending = armedResidentApproaching && vehicleContext.engine_on !== true;
 const anyoneAway =
     anyResidentAway ||

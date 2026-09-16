@@ -180,6 +180,10 @@ const pairFlow = context({ persistent: { arrival_context_policy_v1: { version: 1
 started = begin(pairFlow, now, { reason: "paired" });
 const cycle = started.started.payload.refresh_cycle_id;
 const peopleContext = { updated_at: now, ready: true, anyone_away: true, best_location_away: true,
+  arrival_armed: { resident_primary: true, resident_secondary: false },
+  local_excursions: {
+    resident_secondary: { started_at: now - 60_000, expires_at: now + 60_000 },
+  },
   resident_primary: { state: "not_home", ready: true, best_location_away: true, updated_at: now },
   resident_secondary: { state: "home", ready: true, updated_at: now } };
 processed = processSnapshot(pairFlow, { monitor_now: now, payload: { kind: "people_context", refresh_cycle_id: cycle, updated_at: now, context: peopleContext, ready: true } });
@@ -188,6 +192,12 @@ processed = processSnapshot(pairFlow, { monitor_now: now + 1, payload: { kind: "
 assert.equal(processed.paired.payload.contexts_ready, true);
 assert.equal(processed.paired.payload.recovery_needed, false);
 assert.equal(processed.paired.payload.anyone_away, true);
+assert.deepEqual(processed.paired.payload.people_arrival_armed,
+  peopleContext.arrival_armed,
+  "contrato entre tabs deve transportar a chegada armada");
+assert.deepEqual(processed.paired.payload.people_local_excursions,
+  peopleContext.local_excursions,
+  "contrato entre tabs deve transportar a parada curta");
 processed = processSnapshot(pairFlow, { monitor_now: now + 2, payload: { kind: "vehicle_primary_context", refresh_cycle_id: cycle, updated_at: now + 2, context: { updated_at: now + 2, ready: true }, ready: true } });
 assert.equal(processed.paired, null, "ciclo concluído não duplica política");
 
