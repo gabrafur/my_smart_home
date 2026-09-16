@@ -75,6 +75,8 @@ const queuedAt = Number.isFinite(queuedCandidate) && queuedCandidate > 0 &&
     queuedCandidate <= now + futureMs ? queuedCandidate : now;
 const lastRecoveryAt = Number(get("security_light_last_recovery_request_at") ?? 0);
 const recoveryThrottleMs = Number(lightPolicy.recovery_request_throttle_seconds) * 1000;
+const directionValid = (msg.payload?.arrival_direction === "returning" &&
+    msg.payload?.external_cycle_confirmed === true) || localExcursionReturn;
 msg._light_arrival = {
     test_mode: testMode,
     test_case: testCase,
@@ -102,8 +104,8 @@ msg._light_arrival = {
     logic_ready: sunReady && vehicleDecisionReady,
     sun_ready: sunReady,
     dark: flow.get("sun_below_horizon") === true,
-    direction_valid: (msg.payload?.arrival_direction === "returning" &&
-        msg.payload?.external_cycle_confirmed === true) || localExcursionReturn,
+    direction_valid: directionValid,
+    direction_and_approach_valid: directionValid && residentApproachValid,
     recovery_needed: !vehicleLightingReady && !bypassAllowed,
     recovery_allowed: !Number.isFinite(lastRecoveryAt) || lastRecoveryAt <= 0 ||
         now - lastRecoveryAt >= recoveryThrottleMs,

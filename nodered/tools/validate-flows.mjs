@@ -18,12 +18,17 @@ const notificationHubTabs = new Set([
   "notification_hub_persistent_tab",
 ]);
 const byId = new Map();
+const msgPropertyPath = /^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*|\[(?:\d+|['"][^'"]+['"])\])*$/;
 for (const node of flows) {
   if (!node.id) throw new Error("Node sem id");
   if (byId.has(node.id)) throw new Error(`ID duplicado: ${node.id}`);
   byId.set(node.id, node);
   if (node.type === "function") {
     new Function("msg", "node", "context", "flow", "global", "env", "setTimeout", "clearTimeout", node.func);
+  }
+  if (node.type === "switch" && node.propertyType === "msg" &&
+      !msgPropertyPath.test(String(node.property ?? ""))) {
+    throw new Error(`Propriedade msg inválida no switch ${node.id}: ${node.property}`);
   }
 }
 

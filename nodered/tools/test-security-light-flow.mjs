@@ -1515,13 +1515,14 @@ scenario("35a gate final rejeita chegada sem direção confirmada", () => {
   assert.equal(byId.get("light_arrival_direction_gate").type, "switch");
   assert.equal(
     byId.get("light_arrival_direction_gate").property,
-    "_light_arrival.direction_valid and _light_arrival.resident_approach_valid",
+    "_light_arrival.direction_and_approach_valid",
   );
   const blockedFlow = memoryFlow();
   let blockedMsg = runDirect("security_visual_arrival_facts",
     { payload: { kind: "arrival", source: "resident_primary", arrival_stage: "home" } },
     blockedFlow, geoEnv);
   assert.equal(blockedMsg._light_arrival.direction_valid, false);
+  assert.equal(blockedMsg._light_arrival.direction_and_approach_valid, false);
   blockedMsg = runDirect("security_light_arrival_direction_blocked_v1", blockedMsg, blockedFlow, geoEnv);
   const blocked = runDirect("62f77a1ad440639d", blockedMsg, blockedFlow, geoEnv);
   assert.equal(blocked[0], null);
@@ -1534,6 +1535,8 @@ scenario("35a gate final rejeita chegada sem direção confirmada", () => {
     "retorno com ciclo externo confirmado deve prosseguir");
   assert.equal(accepted._light_arrival.resident_approach_valid, true,
     "somente morador atual em near_home vindo de away deve prosseguir");
+  assert.equal(accepted._light_arrival.direction_and_approach_valid, true,
+    "o gate visual deve receber um booleano combinado válido");
 
   const homeBlocked = runDirect("security_visual_arrival_facts",
     arrival("resident_primary", "home"), readyLightFlow(), geoEnv);
