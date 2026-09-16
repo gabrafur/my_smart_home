@@ -22,14 +22,20 @@ class CodexChatCardBrowserTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         configured = os.environ.get("CODEX_BROWSER")
-        names = [configured] if configured else []
-        names.extend(("google-chrome", "google-chrome-stable", "chromium", "chromium-browser"))
+        names = [configured] if configured else [
+            "google-chrome",
+            "google-chrome-stable",
+            "chromium",
+            "chromium-browser",
+        ]
         candidates = []
         for name in names:
             executable = shutil.which(name) if name else None
             if executable and executable not in candidates:
                 candidates.append(executable)
         if not candidates:
+            if configured:
+                raise RuntimeError(f"Configured CODEX_BROWSER is not executable: {configured}")
             raise unittest.SkipTest("Chromium is not available for browser layout checks")
 
         failures = []
@@ -50,7 +56,7 @@ class CodexChatCardBrowserTest(unittest.TestCase):
                         check=False,
                         capture_output=True,
                         text=True,
-                        timeout=10,
+                        timeout=30,
                     )
                 if process.returncode == 0 and "codex-browser-ready" in process.stdout:
                     cls.chromium = executable

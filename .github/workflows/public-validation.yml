@@ -29,5 +29,11 @@ jobs:
             nodered/package-lock.json
             validation/package-lock.json
 
+      - name: Install deterministic Chrome for layout checks
+        id: setup-chrome
+        uses: browser-actions/setup-chrome@v2
+
       - name: Run canonical validation
         run: make validate-public
+        env:
+          CODEX_BROWSER: ${{ steps.setup-chrome.outputs.chrome-path }}
